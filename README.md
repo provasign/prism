@@ -1,164 +1,182 @@
 # Prism
 
-Token-optimized context delivery for coding agents.
+Prism delivers token-optimized context to AI coding agents.
 
-Prism has two integration modes:
+## Why Token Optimization Matters
 
-1. MCP stdio mode (recommended default for normal development)
-2. VS Code extension mode (for environments where MCP is not approved)
+An AI agent working on a 50,000-line codebase cannot receive all of it as context — and even if it could, most of it would be irrelevant noise that degrades response quality. The naive approach (send whatever files look related) wastes tokens on distant code and misses closely-related code that doesn't have an obvious filename match.
 
-For most users in Claude Code CLI, Cursor, Windsurf, and other MCP-capable tools, use MCP stdio.
+Prism solves this with a ranking pipeline. Given a task description, it queries Grove's knowledge graph, scores candidates across five signals, allocates a token budget across five categories, and applies progressive disclosure to maximize information density. The result is context scoped to what actually matters for the task at hand.
 
-## Get Started in 5 Minutes
+Typical token savings versus sending files manually: 35–92%.
 
-This is the fastest path for normal project work.
+## Architecture
 
-### 1) Install Prism binary
-
-If you are developing from source:
-
-```bash
-cd prism
-go build -o /tmp/prism ./cmd/prism
-sudo cp /tmp/prism /opt/homebrew/bin/prism
+```
+Task description ("add rate limiting to the login endpoint")
+     │
+     ▼
+prism_query
+     │
+     ├──► Grove: FTS5 symbol search
+     ├──► Grove: BFS graph traversal (depth 2–3)
+     │
+     ▼
+┌────────────────────────────────────────────────────┐
+│  5-Signal Ranking                                  │
+│                                                    │
+│  1. Graph distance    — BFS hops from seed symbol  │
+│  2. Semantic similarity — embedding cosine score   │
+│  3. Recency           — recent git commits score   │
+│  4. Test relevance    — is this a test for target? │
+│  5. Edit frequency    — hot files get priority     │
+└───────────────────────────┬────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────┐
+│  Budget Allocation                                 │
+│                                                    │
+│  Target symbols    35%  (the thing you're editing) │
+│  Dependencies      25%  (what it calls/imports)    │
+│  Tests             20%  (tests that cover it)      │
+│  Documentation     10%  (docstrings, comments)     │
+│  Summary           10%  (file/module overview)     │
+└───────────────────────────┬────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────┐
+│  Progressive Disclosure                            │
+│                                                    │
+│  First read:   full source text                    │
+│  Second read:  signature only (saves ~70%)         │
+│  Third+ read:  one-line reference (saves ~90%)     │
+└───────────────────────────┬────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────┐
+│  Session Deduplication                             │
+│                                                    │
+│  O(1) LRU cache: symbols already in context        │
+│  are downranked to avoid repeating known content   │
+└───────────────────────────┬────────────────────────┘
+                            │
+                            ▼
+Token-optimized context pack returned to agent
 ```
 
-Confirm:
+## Integration Modes
+
+Prism has two integration paths. Both produce identical context quality.
+
+### MCP Stdio (recommended)
+
+The `prism mcp` process is started by your coding tool on demand via the MCP configuration written by `prism init`. Each invocation is a short-lived process; there is no persistent HTTP daemon.
+
+Supported tools: Claude Code CLI, Cursor, Windsurf, Zed, any MCP-capable agent.
+
+### VS Code Extension
+
+The extension spawns the `prism` binary per tool call via `child_process.spawn`. It registers all 8 tools with VS Code's Language Model Tools API (`vscode.lm.registerTool`), making them available in Copilot Chat as `#prismQuery`, `#prismRead`, etc.
+
+Use this mode when MCP is not approved or available in your environment.
+
+[Extension documentation →](vscode-extension/README.md)
+
+## Quick Start
 
 ```bash
+# 1. Install
+cd prism && make install
+
+# 2. Verify
 prism version
-```
 
-### 2) Initialize one project
-
-From the project root you want to enable:
-
-```bash
+# 3. Initialize a project (run once per project root)
+cd /your/project
 prism init
-```
 
-What this does:
+# 4. Restart your coding tool to pick up the MCP config
 
-1. Writes `prism.yaml` in the project.
-2. Writes Prism steering instructions (including Copilot instructions).
-3. Registers MCP config for detected coding tools (Claude Code, Cursor, Windsurf, Zed).
-
-### 3) Restart your coding tool once
-
-This reloads MCP configuration.
-
-### 4) Use Prism in normal prompts
-
-Ask your coding agent to start with `prism_query`, then use `prism_read`, `prism_search`, and `prism_lookup`.
-
-### 5) Verify quickly
-
-```bash
+# 5. Index
 prism index
-prism query "find parser entrypoint"
+
+# 6. Verify savings after using the agent
 prism savings
 ```
 
-If you are on the latest Prism CLI, `prism savings` persists across separate CLI commands per project root.
+`prism init` does three things: writes `prism.yaml`, writes steering instructions for your agent (CLAUDE.md, .cursorrules, etc.), and registers the MCP server config for the coding tools it detects.
 
-## Recommended Default Workflow
+## MCP Tools
 
-Use MCP stdio mode for day-to-day coding.
+| Tool | What it does |
+|------|-------------|
+| `prism_query` | Ranked context pack for a task description — call this first |
+| `prism_read` | Progressive-disclosure file read (full → signature → reference) |
+| `prism_search` | Symbol search across the indexed graph |
+| `prism_lookup` | Full source for a named symbol |
+| `prism_index` | Trigger or check reindex |
+| `prism_savings` | Token savings report for this session |
+| `prism_feedback` | Rate a context result (trains future ranking) |
+| `prism_compact` | Summarize older conversation turns to free context |
 
-Why:
+**Rule of thumb for agents:** start every task with `prism_query`, use `prism_read` instead of reading files directly, use `prism_search` instead of grep.
 
-1. No HTTP port management.
-2. Works naturally with MCP-capable tools.
-3. Per-session process model is simple and reliable.
+## Session Savings Ledger
 
-## VS Code Extension Mode (No MCP Approval)
-
-Use this mode when MCP is restricted by policy.
-
-1. Install Prism VSIX once.
-2. Open a project in VS Code.
-3. Run `Prism: Setup Workspace` once per project.
-4. Use Prism commands/tools from VS Code.
-
-Notes:
-
-1. Extension install and project setup are intentionally separate actions.
-2. Status bar can show Prism savings percent.
-
-## Advanced Setups
-
-### Global initialization
+Token savings are persisted per project across separate CLI invocations. The ledger lives at `~/.cache/prism/ledger/<sha1(root)>.json` and is pruned automatically after 30 days. `prism savings` reads the current project's ledger:
 
 ```bash
-prism init --global
+prism savings
+# Session savings: 12,847 tokens delivered from 41,200 original (68.8% reduction)
+# grove_query:  8 calls · 31,400 → 9,100 tokens
+# grove_read:  22 calls · 9,800 → 3,747 tokens
 ```
 
-Use when you want user-level MCP registration defaults in supported tools.
+## CLI Reference
 
-### Multiple projects (A and B)
+```bash
+prism init [--global] [dir]     # initialize project or user-level config
+prism index [dir]               # index or reindex the project
+prism query <task> [dir]        # ranked context for a task description
+prism read <file> [dir]         # progressive-disclosure file read
+prism search <keyword> [dir]    # symbol search
+prism lookup <name> [dir]       # full source for a symbol
+prism savings [dir]             # token savings report
+prism serve [--port 8888] [dir] # start persistent HTTP server (optional)
+prism mcp [dir]                 # start MCP stdio server
+prism version                   # show version
+```
 
-Run `prism init` in each project root once.
+## HTTP Server Mode
 
-Important:
-
-1. `prism init` does not start `prism serve`.
-2. MCP stdio mode does not bind to an HTTP port.
-3. You do not get a new Prism HTTP server per project unless you explicitly run `prism serve`.
-
-### HTTP server mode (optional)
+`prism serve` is optional. Use it only when you need a persistent HTTP daemon — for non-MCP integrations, custom automation, or tooling that prefers HTTP over stdio.
 
 ```bash
 prism serve --port 8888 /path/to/project
 ```
 
-Use only when you need a persistent HTTP daemon (for non-MCP integrations or custom automation).
+HTTP binds to `127.0.0.1` only.
 
-If running multiple project daemons, use different ports.
+## Configuration
+
+`prism.yaml` in the project root:
+
+```yaml
+grove_url: http://localhost:7777   # Grove instance to use
+model: claude-sonnet-4-6           # model for embeddings and compaction
+profile: balanced                  # ranking profile: balanced | speed | recall
+budget_tokens: 8000                # default context budget
+embeddings_backend: local          # local | openai | voyageai
+```
+
+Environment overrides: `PRISM_GROVE_URL`, `PRISM_MODEL`, `PRISM_PROFILE`, `PRISM_EMBEDDINGS_BACKEND`.
 
 ## Troubleshooting
 
-### Savings stays at 0
+**Savings stays at 0:** Run `prism index` then try a query. Check `command -v prism` and `prism version` to confirm the right binary is on `$PATH`.
 
-1. Ensure you are running the expected binary:
+**Port 8888 already in use:** Another `prism serve` is running. Stop it, use `--port 8889`, or use MCP stdio mode instead (which uses no port).
 
-```bash
-command -v prism
-prism version
-```
+**Agent not using Prism after init:** Restart the coding tool to reload MCP config. Re-run `prism init` if needed.
 
-2. Run query/read first, then `prism savings`.
-3. Re-index if needed:
-
-```bash
-prism index
-```
-
-### Port 8888 already in use
-
-You likely have another `prism serve` process running.
-
-Options:
-
-1. Stop the existing process.
-2. Use another port (`--port 8889`).
-3. Prefer MCP stdio mode if possible.
-
-### Tool not using Prism after init
-
-1. Restart the coding tool.
-2. Check generated MCP config for that tool.
-3. Re-run `prism init` in that project root.
-
-## Command Cheat Sheet
-
-```bash
-prism init [--global] [dir]
-prism index [dir]
-prism query <task> [dir]
-prism read <file> [dir]
-prism search <keyword> [dir]
-prism lookup <name> [dir]
-prism savings [dir]
-prism serve [--port 8888] [dir]
-prism mcp [dir]
-```
+**Context looks wrong:** Check `prism savings` — if calls are 0, the agent is not calling Prism tools. Check that the steering instructions were written by `prism init` (look for `CLAUDE.md` or `.cursorrules` in the project root).

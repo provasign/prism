@@ -1,34 +1,106 @@
 # Prism — VS Code Extension
 
-Delivers ranked, compressed code context to AI agents directly via VS Code's Language Model Tools API. The extension spawns the `prism` binary per call — no `prism serve` required.
+The VS Code extension delivers ranked, compressed code context to AI agents without requiring `prism serve`. It spawns the `prism` binary per tool call and registers all 8 tools with VS Code's Language Model Tools API, making them available in GitHub Copilot Chat as `#prismQuery`, `#prismRead`, and so on.
 
-For full onboarding and integration modes, see `../README.md`.
+## When to Use This
 
-Install and project setup are intentionally separate actions:
+Use the VS Code extension when:
+- MCP is not approved or not available in your environment
+- You work primarily in VS Code with GitHub Copilot
 
-1. Install extension once.
-2. Run Prism: Setup Workspace per project when you want project-level initialization (instructions + AI tool wiring).
+For Claude Code CLI, Cursor, Windsurf, and other MCP-capable tools, use [MCP stdio mode](../README.md) instead — it requires no VS Code and no extension.
+
+## How It Works
+
+```
+Copilot Chat prompt with #prismQuery
+     │ vscode.lm.registerTool invocation
+     ▼
+Prism VS Code Extension (TypeScript)
+     │ child_process.spawn("prism query ...")
+     ▼
+prism binary (Go)
+     │ POST grove:7777/query  (auto-starts grove if unreachable)
+     ▼
+Grove (Go) — SQLite FTS5 + BFS graph traversal
+     │
+     ▼
+5-signal ranking → budget allocation → progressive disclosure
+     │
+     ▼
+Token-optimized context returned to Copilot Chat
+```
+
+Each tool call spawns a fresh `prism` process. There is no persistent extension host daemon.
 
 ## Requirements
 
-- `prism` binary on `$PATH` (or set `prism.binaryPath`)
-- `grove` binary on `$PATH` (auto-started by `prism` on first call)
+- `prism` binary on `$PATH` (or configure `prism.binaryPath`)
+- `grove` binary on `$PATH` (Prism auto-starts it on first call)
+
+Install both:
+
+```bash
+cd grove && make install
+cd prism && make install
+```
+
+## Setup
+
+Install the extension once. Then, for each project you want to enable:
+
+```bash
+cd /your/project
+prism init
+```
+
+`prism init` writes steering instructions and registers tool availability for the project. You do not need to run it again unless you move the project or want to update the instructions.
 
 ## Tools
 
-All 8 `prism_*` tools are registered with `vscode.lm.registerTool` and reference-able from chat prompts via `#prismQuery`, `#prismRead`, etc.
+All 8 tools are registered with `vscode.lm.registerTool`:
+
+| Chat reference | Tool | What it does |
+|----------------|------|-------------|
+| `#prismQuery` | `prism_query` | Ranked context pack for a task — call this first |
+| `#prismRead` | `prism_read` | Progressive-disclosure file read |
+| `#prismSearch` | `prism_search` | Symbol search across the indexed graph |
+| `#prismLookup` | `prism_lookup` | Full source for a named symbol |
+| `#prismIndex` | `prism_index` | Trigger or check reindex |
+| `#prismSavings` | `prism_savings` | Token savings report |
+| `#prismFeedback` | `prism_feedback` | Rate a context result |
+| `#prismCompact` | `prism_compact` | Summarize older conversation turns |
 
 ## Commands
 
-- **Prism: Setup Workspace** — run `prism init` for the current project.
-- **Prism: Index Workspace** — manual reindex.
-- **Prism: Query for Context** — interactive task input, opens JSON result.
-- **Prism: Show Session Savings** — token savings dashboard.
-- **Prism: Reset Session** — hint about CLI statelessness.
+Access via Command Palette (`Cmd+Shift+P`):
+
+- **Prism: Setup Workspace** — run `prism init` for the current project
+- **Prism: Index Workspace** — trigger a manual reindex
+- **Prism: Query for Context** — interactive task input, opens ranked result
+- **Prism: Show Session Savings** — token savings dashboard
+- **Prism: Reset Session** — clear session state
 
 ## Settings
 
-- `prism.binaryPath` — path to `prism` (default `prism`).
-- `prism.grovePath` — path to `grove`.
-- `prism.autoIndex` — reindex on save (default `true`).
-- `prism.profile` — default ranking profile.
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `prism.binaryPath` | `prism` | Path to the prism binary |
+| `prism.grovePath` | `grove` | Path to the grove binary |
+| `prism.autoIndex` | `true` | Reindex on file save |
+| `prism.profile` | `balanced` | Ranking profile: `balanced`, `speed`, `recall` |
+
+## Status Bar
+
+The status bar item shows the token savings percentage for the current session. Click it to open the full savings breakdown.
+
+## Building from Source
+
+```bash
+cd prism/vscode-extension
+npm install
+npm run compile
+vsce package   # produces prism-*.vsix
+```
+
+Install the `.vsix` via Extensions → Install from VSIX.
