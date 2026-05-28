@@ -13,6 +13,9 @@
 *.a
 vendor/
 
+# Grove index (generated, per-repo)
+.grove/
+
 # ONNX model cache
 ~/.prism/models/
 
