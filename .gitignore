@@ -1,0 +1,30 @@
+# Binaries
+/prism
+/prism-*
+*.exe
+*.test
+
+# Build output
+/dist/
+/bin/
+
+# Go
+*.o
+*.a
+vendor/
+
+# ONNX model cache
+~/.prism/models/
+
+# VS Code extension build output
+vscode-extension/out/
+vscode-extension/node_modules/
+vscode-extension/*.vsix
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
