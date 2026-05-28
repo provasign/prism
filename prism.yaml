@@ -1,0 +1,7 @@
+version: 1
+grove_url: "http://localhost:7777"
+grove_binary: "grove"
+# model: auto  # Prism detects the active model from the MCP initialize handshake.
+#               # Override here only if auto-detection fails, e.g.:
+#               # model: "claude-sonnet-4-6"
+profile: "default"
