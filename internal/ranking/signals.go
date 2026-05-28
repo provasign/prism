@@ -111,7 +111,11 @@ func (c *SignalComputer) gitStats(filePath string) gitFileStats {
 	// 90-day commit count.
 	out, err = runGit(c.WorkspaceRoot, "log", "--since=90.days", "--oneline", "--follow", "--", abs)
 	if err == nil {
-		s.CommitCount90d = strings.Count(out, "\n")
+		// TrimSpace before counting so a missing trailing newline (possible in
+		// piped environments) does not undercount a single-commit file as zero.
+		if trimmed := strings.TrimSpace(out); trimmed != "" {
+			s.CommitCount90d = strings.Count(trimmed, "\n") + 1
+		}
 	}
 	c.gitCache[filePath] = s
 	return s

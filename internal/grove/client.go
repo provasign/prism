@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"time"
@@ -65,6 +66,7 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("start grove: %w", err)
 	}
+	go func() { _ = cmd.Wait() }() // reap child process to prevent zombie on exit
 	c.startedPid = cmd.Process.Pid
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
@@ -217,13 +219,9 @@ func (c *Client) post(ctx context.Context, path string, in any, out any) error {
 }
 
 func portFromURL(u string) string {
-	// crude parse; assumes "http://host:port"
-	for i := len(u) - 1; i >= 0; i-- {
-		if u[i] == ':' {
-			return u[i+1:]
-		}
-		if u[i] == '/' {
-			break
+	if parsed, err := url.Parse(u); err == nil {
+		if p := parsed.Port(); p != "" {
+			return p
 		}
 	}
 	return "7777"
