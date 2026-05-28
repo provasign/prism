@@ -64,23 +64,62 @@ prism_query
 Token-optimized context pack returned to agent
 ```
 
-## Integration Modes
+## IDE and CLI Support
 
-Prism has two integration paths. Both produce identical context quality.
+Prism has two integration paths. Both produce identical context quality — only the transport layer differs.
 
-### MCP Stdio (recommended)
+### MCP Stdio
 
-The `prism mcp` process is started by your coding tool on demand via the MCP configuration written by `prism init`. Each invocation is a short-lived process; there is no persistent HTTP daemon.
+`prism init` detects which tools are installed and writes their MCP config automatically. After a tool restart, all 8 `prism_*` tools are available.
 
-Supported tools: Claude Code CLI, Cursor, Windsurf, Zed, any MCP-capable agent.
+| Tool | Config written | Notes |
+|------|---------------|-------|
+| Claude Code CLI | `.claude/mcp.json` | `prism mcp` launched per session |
+| Cursor | `.cursor/mcp.json` | Same |
+| Windsurf | `.windsurf/mcp.json` | Same |
+| Zed | `.zed/settings.json` | Same |
+| Any MCP client | manual config | Point at `prism mcp <dir>` |
 
-### VS Code Extension
+### VS Code (Copilot Agent Mode)
 
-The extension spawns the `prism` binary per tool call via `child_process.spawn`. It registers all 8 tools with VS Code's Language Model Tools API (`vscode.lm.registerTool`), making them available in Copilot Chat as `#prismQuery`, `#prismRead`, etc.
+The VS Code extension does not use MCP. It registers all 8 tools via `vscode.lm.registerTool` and spawns the `prism` binary per call. No `prism serve` required, no port.
 
-Use this mode when MCP is not approved or available in your environment.
+Tools appear in Copilot Chat as `#prismQuery`, `#prismRead`, `#prismSearch`, etc.
 
 [Extension documentation →](vscode-extension/README.md)
+
+### CLI (no agent)
+
+The `prism` binary is usable directly for scripting, debugging, or any workflow outside an AI agent:
+
+```bash
+prism query "add rate limiting to the login endpoint"
+prism read internal/auth/login.go
+prism search AuthService
+prism savings
+```
+
+Add `--json` for machine-readable output.
+
+## Language Support
+
+Prism delegates all parsing and graph construction to Grove. Language support is identical:
+
+| Language | Extensions | What is extracted |
+|----------|-----------|-------------------|
+| Go | `.go` | functions, methods, types, interfaces, structs, consts, vars |
+| TypeScript | `.ts` | classes, functions, interfaces, types, enums, namespaces |
+| TSX | `.tsx` | same as TypeScript + JSX components |
+| JavaScript | `.js .jsx .mjs .cjs` | functions, classes, arrow functions, exports |
+| Python | `.py` | functions, classes, methods, decorated definitions |
+| Java | `.java` | classes, interfaces, enums, methods, fields, constructors |
+| Rust | `.rs` | functions, structs, enums, traits, impl blocks, fields |
+| C | `.c .h` | functions, typedef structs/enums, tagged types |
+| C++ | `.cc .cpp .cxx .hh .hpp` | classes, namespaces, templates, methods |
+| C# | `.cs` | namespaces, classes, structs, interfaces, methods, properties |
+| PHP | `.php .phtml` | classes, interfaces, traits, enums, functions, methods |
+
+The semantic similarity signal uses TF-IDF by default (zero dependencies). Enable `all-MiniLM-L6-v2` via ONNX for higher-quality embeddings (`embeddings_backend: onnx` in `prism.yaml`).
 
 ## Quick Start
 
@@ -170,6 +209,36 @@ embeddings_backend: local          # local | openai | voyageai
 ```
 
 Environment overrides: `PRISM_GROVE_URL`, `PRISM_MODEL`, `PRISM_PROFILE`, `PRISM_EMBEDDINGS_BACKEND`.
+
+## Performance
+
+Benchmarks run on macOS against synthetic Go projects (2026-05-27). Prism runs atop Grove — query numbers include the full round-trip through Grove's FTS5 + BFS and Prism's ranking pipeline.
+
+### Indexing and Query
+
+| Project | Files | Grove index | Prism index | Query latency | Prism RSS |
+|---------|------:|------------:|------------:|--------------:|----------:|
+| Small | 61 | 0.06 s | 0.06 s | 680 ms | 12 MB |
+| Medium | 801 | 0.85 s | 3.9 s | 680 ms | 12 MB |
+| Large | 4,501 | 11.6 s | 8.0 s | 680 ms | 12 MB |
+| Monorepo | 9,901 | 34.0 s | 30.0 s | 690 ms | 12 MB |
+
+Prism's own RSS stays near 12 MB regardless of project size — the symbol graph lives in Grove's process, not Prism's. The indexing delta means re-runs on unchanged projects are near-instant.
+
+### Token Savings (progressive disclosure)
+
+| Project | Files | First read | Second read | Third+ read |
+|---------|------:|----------:|------------:|------------:|
+| Small | 61 | 0% | 68% | 68% |
+| Medium | 801 | 56% | 67% | 67% |
+| Large | 4,501 | 56% | 67% | 67% |
+| Monorepo | 9,901 | 0–58% | 58% | 58% |
+
+**First-read savings** reflect relevance scoring: symbols below the threshold are shown at signature level instead of full source. When nearly all symbols in a file are relevant to the current task (typical for small projects and targeted monorepo queries), first-read savings approach 0% — you receive everything. This is correct behaviour.
+
+**Second and third reads** apply session deduplication regardless of project size, cutting 57–68% of tokens. A file read three or more times within one session always receives full disclosure on the third read to prevent context drift.
+
+**Headline targets:** `prism_query` end-to-end < 200 ms · `prism_read` with session cache < 50 ms · budget selection over 10K symbols < 20 ms
 
 ## Troubleshooting
 
