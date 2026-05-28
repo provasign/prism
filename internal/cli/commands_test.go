@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // initRegisterMCPTools must create project-local config dirs when they are
@@ -120,6 +121,38 @@ func TestInitRegisterMCPToolsSkipsAbsentGlobalDirs(t *testing.T) {
 				t.Errorf("wrote %s whose parent %s doesn't exist", p, dir)
 			}
 			_ = rel
+		}
+	}
+}
+
+// pruneOldLedgers must remove files older than maxAge and leave recent ones.
+func TestPruneOldLedgers(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now()
+
+	write := func(name string, modtime time.Time) {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(p, modtime, modtime); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	write("old.json", now.Add(-40*24*time.Hour))   // 40 days ago — should be pruned
+	write("recent.json", now.Add(-5*24*time.Hour))  // 5 days ago  — must survive
+	write("fresh.json", now.Add(-1*time.Hour))      // 1 hour ago  — must survive
+	write("unrelated.txt", now.Add(-50*24*time.Hour)) // wrong ext — must survive
+
+	pruneOldLedgers(dir, 30*24*time.Hour)
+
+	if _, err := os.Stat(filepath.Join(dir, "old.json")); !os.IsNotExist(err) {
+		t.Error("old.json should have been pruned")
+	}
+	for _, keep := range []string{"recent.json", "fresh.json", "unrelated.txt"} {
+		if _, err := os.Stat(filepath.Join(dir, keep)); err != nil {
+			t.Errorf("%s should survive pruning: %v", keep, err)
 		}
 	}
 }

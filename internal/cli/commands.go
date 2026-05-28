@@ -761,7 +761,30 @@ func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, err
 	if saveErr := h.Ledger.Save(ledgerFile); saveErr != nil {
 		fmt.Fprintln(os.Stderr, "warning: could not persist savings ledger:", saveErr)
 	}
+	pruneOldLedgers(filepath.Dir(ledgerFile), 30*24*time.Hour)
 	return out, invokeErr
+}
+
+// pruneOldLedgers removes ledger files in dir that are older than maxAge.
+// Silently ignores errors — pruning is best-effort.
+func pruneOldLedgers(dir string, maxAge time.Duration) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-maxAge)
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			_ = os.Remove(filepath.Join(dir, e.Name()))
+		}
+	}
 }
 
 func mustAbs(p string) string {
