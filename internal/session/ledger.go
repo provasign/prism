@@ -10,9 +10,9 @@ import (
 
 // ToolStats records token accounting for one MCP tool.
 type ToolStats struct {
-	Calls     int
-	Original  int64
-	Delivered int64
+	Calls     int   `json:"calls"`
+	Original  int64 `json:"original"`
+	Delivered int64 `json:"delivered"`
 }
 
 // Ledger tracks per-session token savings.

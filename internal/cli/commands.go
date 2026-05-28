@@ -330,11 +330,22 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 
 	for _, w := range writers {
 		p := w.path()
-		// Only write if the parent directory already exists (i.e. the tool is
-		// installed). For global Zed settings we always try.
+		// For project-local configs (.claude, .cursor, .windsurf): create the
+		// parent directory so first-time init works without a pre-existing tool
+		// installation. For global user configs (Zed ~/.config/zed): only write
+		// if the directory already exists (i.e. the tool is installed).
 		parent := filepath.Dir(p)
+		isGlobalUserDir := strings.HasPrefix(parent, home)
 		if _, err := os.Stat(parent); err != nil {
-			continue // tool not installed / not detected
+			if !global && !isGlobalUserDir {
+				// Project-local: create it.
+				if mkErr := os.MkdirAll(parent, 0o755); mkErr != nil {
+					fmt.Fprintf(os.Stderr, "warning: could not create %s config dir: %v\n", w.name, mkErr)
+					continue
+				}
+			} else {
+				continue // global user tool not installed — skip
+			}
 		}
 		content := w.build()
 		// Merge rather than overwrite existing configs.
