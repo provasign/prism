@@ -682,7 +682,7 @@ func cmdServe(args []string) int {
 	}
 
 	server := httpapi.New(h).Handler()
-	addr := fmt.Sprintf(":%d", port)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	fmt.Fprintln(os.Stderr, "prism HTTP listening on", addr)
 	if err := http.ListenAndServe(addr, server); err != nil {
 		fmt.Fprintln(os.Stderr, "serve:", err)
@@ -711,12 +711,13 @@ func cmdMCP(args []string) int {
 // --- shared helpers ------------------------------------------------------
 
 func mustClient(dir string) (*config.Config, *grove.Client) {
-	cfg, err := config.LoadFromDir(mustAbs(dir))
+	root := mustAbs(dir)
+	cfg, err := config.LoadFromDir(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "config:", err)
 		os.Exit(1)
 	}
-	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary)
+	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
 	if err := client.EnsureRunning(context.Background()); err != nil {
 		fmt.Fprintln(os.Stderr, "grove:", err)
 		os.Exit(1)

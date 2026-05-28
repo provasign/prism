@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -18,6 +20,7 @@ import (
 type Client struct {
 	baseURL    string
 	http       *http.Client
+	token      string // shared-secret read from .grove/.token
 	groveBin   string // path to grove binary for auto-start
 	autoStart  bool
 	startedPid int
@@ -31,6 +34,19 @@ func NewClient(baseURL, groveBin string) *Client {
 		groveBin:  groveBin,
 		autoStart: true,
 	}
+}
+
+// WithTokenFromDir loads the shared-secret token from <root>/.grove/.token and
+// attaches it to the client. All subsequent requests carry
+// "Authorization: Bearer <token>". Safe to call even if the file doesn't exist
+// yet (e.g. before the first grove serve run).
+func (c *Client) WithTokenFromDir(root string) *Client {
+	path := filepath.Join(root, ".grove", ".token")
+	data, err := os.ReadFile(path)
+	if err == nil {
+		c.token = strings.TrimSpace(string(data))
+	}
+	return c
 }
 
 // BaseURL returns the configured Grove base URL.
@@ -179,8 +195,15 @@ func (c *Client) Tests(ctx context.Context, query string) ([]SymbolRecord, error
 
 // --- internal helpers ---
 
+func (c *Client) addAuth(req *http.Request) {
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+}
+
 func (c *Client) get(ctx context.Context, path string, out any) error {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	c.addAuth(req)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return err
@@ -203,6 +226,7 @@ func (c *Client) post(ctx context.Context, path string, in any, out any) error {
 	}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(buf))
 	req.Header.Set("Content-Type", "application/json")
+	c.addAuth(req)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return err
