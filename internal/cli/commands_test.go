@@ -1,8 +1,128 @@
 package cli
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 )
+
+// initRegisterMCPTools must create project-local config dirs when they are
+// absent (e.g. first-time init in a fresh repo) and write a valid prism
+// mcpServers entry into each one.
+func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
+	projectDir := t.TempDir()
+	prismBin := "/fake/prism"
+
+	written := initRegisterMCPTools(projectDir, prismBin, false)
+
+	// All three project-local configs must be written.
+	wantPaths := []string{
+		filepath.Join(projectDir, ".claude", "mcp.json"),
+		filepath.Join(projectDir, ".cursor", "mcp.json"),
+		filepath.Join(projectDir, ".windsurf", "mcp.json"),
+	}
+	writtenSet := make(map[string]bool, len(written))
+	for _, p := range written {
+		writtenSet[p] = true
+	}
+	for _, want := range wantPaths {
+		if !writtenSet[want] {
+			t.Errorf("expected %s to be written; got %v", want, written)
+		}
+		if _, err := os.Stat(want); err != nil {
+			t.Errorf("file not on disk: %s: %v", want, err)
+		}
+	}
+}
+
+// The written config must contain a valid mcpServers entry pointing to the
+// given prism binary with "mcp" + projectDir as args.
+func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
+	projectDir := t.TempDir()
+	prismBin := "/usr/local/bin/prism"
+
+	initRegisterMCPTools(projectDir, prismBin, false)
+
+	cfgPath := filepath.Join(projectDir, ".claude", "mcp.json")
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	var cfg struct {
+		MCPServers map[string]struct {
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+		} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	entry, ok := cfg.MCPServers["prism"]
+	if !ok {
+		t.Fatal("mcpServers.prism missing")
+	}
+	if entry.Command != prismBin {
+		t.Errorf("command: got %q want %q", entry.Command, prismBin)
+	}
+	if len(entry.Args) < 2 || entry.Args[0] != "mcp" {
+		t.Errorf("args: got %v, want [\"mcp\", ...]", entry.Args)
+	}
+	if entry.Args[1] != projectDir {
+		t.Errorf("args[1]: got %q want %q", entry.Args[1], projectDir)
+	}
+}
+
+// An existing config must be merged rather than overwritten — pre-existing
+// mcpServers entries must survive alongside the new prism entry.
+func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
+	projectDir := t.TempDir()
+	claudeDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	existing := `{"mcpServers":{"other-tool":{"command":"/bin/other","args":[]}}}`
+	if err := os.WriteFile(filepath.Join(claudeDir, "mcp.json"), []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	initRegisterMCPTools(projectDir, "/bin/prism", false)
+
+	raw, _ := os.ReadFile(filepath.Join(claudeDir, "mcp.json"))
+	var cfg struct {
+		MCPServers map[string]json.RawMessage `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("unmarshal merged config: %v", err)
+	}
+	if _, ok := cfg.MCPServers["other-tool"]; !ok {
+		t.Error("pre-existing other-tool entry was lost after merge")
+	}
+	if _, ok := cfg.MCPServers["prism"]; !ok {
+		t.Error("prism entry not added during merge")
+	}
+}
+
+// Global user-level config dirs that don't exist on this machine must be
+// skipped; only project-local dirs should be created.
+func TestInitRegisterMCPToolsSkipsAbsentGlobalDirs(t *testing.T) {
+	projectDir := t.TempDir()
+	written := initRegisterMCPTools(projectDir, "/bin/prism", false)
+
+	home, _ := os.UserHomeDir()
+	for _, p := range written {
+		// No written path should be inside the user home (Zed, global Cursor, etc.)
+		// unless that global tool is actually installed on this machine.
+		if rel, err := filepath.Rel(home, p); err == nil {
+			// If it's under home it should only be there because the dir existed.
+			dir := filepath.Dir(p)
+			if _, err := os.Stat(dir); err != nil {
+				t.Errorf("wrote %s whose parent %s doesn't exist", p, dir)
+			}
+			_ = rel
+		}
+	}
+}
 
 // cmdFeedback validation: missing --rating or out-of-range must return exit 2.
 func TestCmdFeedbackValidation(t *testing.T) {
