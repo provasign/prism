@@ -748,6 +748,14 @@ func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, err
 		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
 	}
 
+	// NOTE: the session.Tracker (which drives progressive disclosure: full →
+	// signature → reference) is not persisted between CLI invocations. Each
+	// call starts fresh, so prism_read always delivers the full file on the
+	// first read of any given path. This means the CLI savings ledger captures
+	// compression savings but never progressive-disclosure savings. In MCP
+	// server mode (prism serve / prism mcp) the Tracker lives for the full
+	// session and accumulates both. The numbers are correct for what they
+	// measure; they are just not directly comparable between modes.
 	h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
 	out, invokeErr := h.Invoke(tool, args)
 	if saveErr := h.Ledger.Save(ledgerFile); saveErr != nil {
