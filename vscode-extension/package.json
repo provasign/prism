@@ -2,7 +2,7 @@
   "name": "prism-vscode",
   "displayName": "Prism — Token-Optimized Context",
   "description": "Delivers ranked, compressed code context to AI agents via Language Model Tools.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "prism",
   "engines": {
     "vscode": "^1.93.0"
@@ -14,6 +14,7 @@
   ],
   "contributes": {
     "commands": [
+      { "command": "prism.setup",       "title": "Prism: Setup Workspace" },
       { "command": "prism.index",       "title": "Prism: Index Workspace" },
       { "command": "prism.query",       "title": "Prism: Query for Context" },
       { "command": "prism.savings",     "title": "Prism: Show Session Savings" },

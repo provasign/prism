@@ -27,7 +27,7 @@ export class PrismClient {
   }
 
   /** Invoke a CLI subcommand and parse stdout as JSON. */
-  async invoke(subcommand: string, args: string[] = []): Promise<unknown> {
+  async invoke(subcommand: string, args: string[] = [], stdin?: string): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const bin = this.binary();
       const fullArgs = [subcommand, ...args, this.workspaceRoot];
@@ -36,6 +36,10 @@ export class PrismClient {
       let stderr = "";
       child.stdout.on("data", (b: Buffer) => (stdout += b.toString()));
       child.stderr.on("data", (b: Buffer) => (stderr += b.toString()));
+      if (typeof stdin === "string") {
+        child.stdin.write(stdin);
+      }
+      child.stdin.end();
       child.on("error", (e) =>
         reject(new Error(`failed to spawn ${bin}: ${e.message}`)),
       );
@@ -93,6 +97,22 @@ export class PrismClient {
 
   savings(): Promise<unknown> {
     return this.invoke("savings");
+  }
+
+  compact(turns: unknown[]): Promise<unknown> {
+    return this.invoke("compact", [], JSON.stringify(turns));
+  }
+
+  feedback(queryId: string, rating: number, notes?: string): Promise<unknown> {
+    const args: string[] = [
+      "--tool", "prism_query",
+      "--query-id", queryId,
+      "--rating", String(rating),
+    ];
+    if (notes) {
+      args.push("--notes", notes);
+    }
+    return this.invoke("feedback", args);
   }
 
   absolutePath(file: string): string {

@@ -41,8 +41,15 @@ type Handler struct {
 
 // NewHandler constructs a handler with sensible defaults.
 func NewHandler(cfg *config.Config, root string, client *grove.Client) *Handler {
+	return NewHandlerWithLedger(cfg, root, client, nil)
+}
+
+// NewHandlerWithLedger constructs a handler and optionally reuses an existing ledger.
+func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client, ledger *session.Ledger) *Handler {
 	tr := session.NewTracker(cfg.MaxCacheFiles)
-	ledger := session.NewLedger(time.Now().Format("20060102-150405"))
+	if ledger == nil {
+		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
+	}
 	h := &Handler{
 		Cfg:     cfg,
 		Root:    root,
@@ -98,6 +105,7 @@ func (a semanticAdapter) Similarity(task string, sym grove.SymbolRecord) float64
 // FeedbackEntry is one user rating of a tool response.
 type FeedbackEntry struct {
 	Tool      string `json:"tool"`
+	QueryID   string `json:"queryId,omitempty"`
 	Rating    int    `json:"rating"`
 	Notes     string `json:"notes,omitempty"`
 	Timestamp string `json:"timestamp"`
@@ -526,6 +534,7 @@ func (h *Handler) toolSavings(_ context.Context, _ map[string]any) (any, error) 
 
 func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, error) {
 	tool := stringArg(args, "tool", "")
+	queryID := stringArg(args, "queryId", "")
 	rating := intArg(args, "rating", -1)
 	notes := stringArg(args, "notes", "")
 	if rating < 0 || rating > 5 {
@@ -533,6 +542,7 @@ func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, err
 	}
 	entry := FeedbackEntry{
 		Tool:      tool,
+		QueryID:   queryID,
 		Rating:    rating,
 		Notes:     notes,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),

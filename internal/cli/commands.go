@@ -4,7 +4,10 @@ package cli
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -17,6 +20,7 @@ import (
 	"github.com/tabladrum/grove-suite/prism/internal/grove"
 	"github.com/tabladrum/grove-suite/prism/internal/httpapi"
 	"github.com/tabladrum/grove-suite/prism/internal/mcp"
+	"github.com/tabladrum/grove-suite/prism/internal/session"
 )
 
 const helpText = `prism - token-optimized context delivery for AI agents (requires Grove)
@@ -31,6 +35,8 @@ Usage:
   prism search <keyword> [dir]    Search symbols by keyword
   prism lookup <name> [dir]       Show full source for a symbol
   prism compact [dir]             Compress conversation JSON from stdin
+	prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
+																	Submit quality feedback for a Prism result
   prism serve [--port 8888] [dir] Start MCP+HTTP server
   prism mcp [dir]                 Start MCP server on stdio
   prism savings [dir]             Show session savings dashboard
@@ -75,6 +81,8 @@ func Run(args []string) int {
 		return cmdLookup(rest)
 	case "compact":
 		return cmdCompact(rest)
+	case "feedback":
+		return cmdFeedback(rest)
 	case "serve":
 		return cmdServe(rest)
 	case "mcp":
@@ -164,6 +172,10 @@ Prism tools are registered via MCP. Follow these rules in every task:
 5. **Call prism_compact when the context window is near capacity** — it summarizes
    older turns while preserving recent ones.
 
+6. **If a Prism tool returns empty results, do not immediately fall back to grep/read.**
+	First run prism_index for the current workspace root and retry the same Prism tool.
+	Only use non-Prism fallback if the second Prism attempt is still empty.
+
 ### Tool priority order
 | Instead of...          | Use...         |
 |------------------------|----------------|
@@ -184,6 +196,7 @@ func writeSteeringInstructions(projectDir string) {
 	// CLAUDE.md is read by Claude Code as project-level instructions.
 	// .cursorrules is read by Cursor.
 	// .windsurfrules is read by Windsurf.
+	// .github/copilot-instructions.md is read by GitHub Copilot.
 	targets := []instrFile{
 		{
 			name:    "Claude Code",
@@ -200,10 +213,19 @@ func writeSteeringInstructions(projectDir string) {
 			relPath: ".windsurfrules",
 			wrap:    func(body string) string { return body },
 		},
+		{
+			name:    "GitHub Copilot",
+			relPath: ".github/copilot-instructions.md",
+			wrap:    func(body string) string { return body },
+		},
 	}
 
 	for _, t := range targets {
 		path := filepath.Join(projectDir, t.relPath)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not create directory for %s instructions: %v\n", t.name, err)
+			continue
+		}
 		content := t.wrap(steeringInstructions)
 
 		existing, err := os.ReadFile(path)
@@ -448,14 +470,11 @@ func cmdQuery(args []string) int {
 			}
 		}
 	}
-	cfg, client := mustClient(dir)
-	defer client.Shutdown()
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
 	invokeArgs := map[string]any{"task": task, "limit": limit}
 	if profile != "" {
 		invokeArgs["profile"] = profile
 	}
-	out, err := h.Invoke("prism_query", invokeArgs)
+	out, err := invokeWithPersistentLedger(dir, "prism_query", invokeArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "query:", err)
 		return 1
@@ -471,10 +490,7 @@ func cmdRead(args []string) int {
 	}
 	file := args[0]
 	dir := dirArg(args, 1, ".")
-	cfg, client := mustClient(dir)
-	defer client.Shutdown()
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
-	out, err := h.Invoke("prism_read", map[string]any{"file": file})
+	out, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": file})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1
@@ -507,10 +523,7 @@ func cmdSearch(args []string) int {
 			}
 		}
 	}
-	cfg, client := mustClient(dir)
-	defer client.Shutdown()
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
-	out, err := h.Invoke("prism_search", map[string]any{"query": query, "limit": limit})
+	out, err := invokeWithPersistentLedger(dir, "prism_search", map[string]any{"query": query, "limit": limit})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
@@ -525,10 +538,7 @@ func cmdLookup(args []string) int {
 		return 2
 	}
 	dir := dirArg(args, 1, ".")
-	cfg, client := mustClient(dir)
-	defer client.Shutdown()
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
-	out, err := h.Invoke("prism_lookup", map[string]any{"name": args[0]})
+	out, err := invokeWithPersistentLedger(dir, "prism_lookup", map[string]any{"name": args[0]})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
 		return 1
@@ -539,16 +549,13 @@ func cmdLookup(args []string) int {
 
 func cmdCompact(args []string) int {
 	dir := dirArg(args, 0, ".")
-	cfg, client := mustClient(dir)
-	defer client.Shutdown()
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
 	var turns []map[string]any
 	dec := json.NewDecoder(os.Stdin)
 	if err := dec.Decode(&turns); err != nil {
 		fmt.Fprintln(os.Stderr, "compact: stdin must be a JSON array of turns:", err)
 		return 2
 	}
-	out, err := h.Invoke("prism_compact", map[string]any{"turns": turns})
+	out, err := invokeWithPersistentLedger(dir, "prism_compact", map[string]any{"turns": turns})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "compact:", err)
 		return 1
@@ -557,12 +564,70 @@ func cmdCompact(args []string) int {
 	return 0
 }
 
+func cmdFeedback(args []string) int {
+	tool := ""
+	queryID := ""
+	notes := ""
+	rating := -1
+	dir := "."
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--tool":
+			if i+1 < len(args) {
+				tool = args[i+1]
+				i++
+			}
+		case "--query-id":
+			if i+1 < len(args) {
+				queryID = args[i+1]
+				i++
+			}
+		case "--rating":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil {
+					rating = n
+				}
+				i++
+			}
+		case "--notes":
+			if i+1 < len(args) {
+				notes = args[i+1]
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+
+	if rating < 0 || rating > 5 {
+		fmt.Fprintln(os.Stderr, "usage: prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]")
+		return 2
+	}
+	if tool == "" {
+		tool = "prism_query"
+	}
+
+	out, err := invokeWithPersistentLedger(dir, "prism_feedback", map[string]any{
+		"tool":    tool,
+		"queryId": queryID,
+		"rating":  rating,
+		"notes":   notes,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "feedback:", err)
+		return 1
+	}
+	printJSON(out)
+	return 0
+}
+
 func cmdSavings(args []string) int {
 	dir := dirArg(args, 0, ".")
-	cfg, client := mustClient(dir)
-	defer client.Shutdown()
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
-	out, err := h.Invoke("prism_savings", nil)
+	out, err := invokeWithPersistentLedger(dir, "prism_savings", nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "savings:", err)
 		return 1
@@ -646,6 +711,38 @@ func mustClient(dir string) (*config.Config, *grove.Client) {
 		os.Exit(1)
 	}
 	return cfg, client
+}
+
+func ledgerPathForRoot(root string) string {
+	sum := sha1.Sum([]byte(root))
+	key := hex.EncodeToString(sum[:])
+	cacheDir, err := os.UserCacheDir()
+	if err != nil || cacheDir == "" {
+		cacheDir = os.TempDir()
+	}
+	return filepath.Join(cacheDir, "prism", "ledger", key+".json")
+}
+
+func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, error) {
+	root := mustAbs(dir)
+	cfg, client := mustClient(root)
+	defer client.Shutdown()
+
+	ledgerFile := ledgerPathForRoot(root)
+	ledger, err := session.LoadLedger(ledgerFile)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintln(os.Stderr, "warning: could not load savings ledger:", err)
+		}
+		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
+	}
+
+	h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
+	out, invokeErr := h.Invoke(tool, args)
+	if saveErr := h.Ledger.Save(ledgerFile); saveErr != nil {
+		fmt.Fprintln(os.Stderr, "warning: could not persist savings ledger:", saveErr)
+	}
+	return out, invokeErr
 }
 
 func mustAbs(p string) string {

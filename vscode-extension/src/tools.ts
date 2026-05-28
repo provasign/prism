@@ -43,16 +43,7 @@ export function registerTools(
       invoke: async () => asText(await client.savings()),
     }),
     vscode.lm.registerTool<CompactInput>("prism_compact", {
-      invoke: async (opts) => {
-        // Compact reads JSON from stdin in the CLI; instead, just echo back
-        // a best-effort summary based on the count of turns (the Go side is
-        // the source of truth for non-interactive callers).
-        const turns = Array.isArray(opts.input.turns) ? opts.input.turns : [];
-        return asText({
-          totalTurns: turns.length,
-          note: "prism_compact via VS Code returns turn count; use the CLI for full compression.",
-        });
-      },
+      invoke: async (opts) => asText(await client.compact(Array.isArray(opts.input.turns) ? opts.input.turns : [])),
     }),
     vscode.lm.registerTool<FeedbackInput>("prism_feedback", {
       invoke: async (opts) => {
@@ -60,10 +51,7 @@ export function registerTools(
         if (typeof rating !== "number" || rating < 0 || rating > 5) {
           return asText({ error: "rating must be 0-5" });
         }
-        // Feedback persistence lives in the prism server; from the extension
-        // we just acknowledge — the user can use `prism mcp` for the full
-        // round-trip.
-        return asText({ queryId, rating, notes: notes ?? "", accepted: true });
+        return asText(await client.feedback(queryId, rating, notes));
       },
     }),
   );

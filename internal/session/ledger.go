@@ -1,6 +1,9 @@
 package session
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -94,4 +97,48 @@ func (l *Ledger) Snapshot() Summary {
 		SavingsPercent: saving,
 		ByTool:         tools,
 	}
+}
+
+// Save writes the current ledger snapshot to disk as JSON.
+func (l *Ledger) Save(path string) error {
+	s := l.Snapshot()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0o644)
+}
+
+// LoadLedger loads a persisted ledger from disk.
+func LoadLedger(path string) (*Ledger, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var s Summary
+	if err := json.Unmarshal(b, &s); err != nil {
+		return nil, err
+	}
+	start := time.Now()
+	if t, err := time.Parse(time.RFC3339, s.StartTime); err == nil {
+		start = t
+	}
+	l := &Ledger{
+		SessionID:      s.SessionID,
+		TotalOriginal:  s.TotalOriginal,
+		TotalDelivered: s.TotalDelivered,
+		ByTool:         make(map[string]*ToolStats, len(s.ByTool)),
+		StartTime:      start,
+	}
+	for k, v := range s.ByTool {
+		vv := v
+		l.ByTool[k] = &vv
+	}
+	if l.SessionID == "" {
+		l.SessionID = time.Now().Format("20060102-150405")
+	}
+	return l, nil
 }
