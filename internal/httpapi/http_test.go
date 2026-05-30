@@ -79,7 +79,10 @@ func TestCallTool_EmptyBody(t *testing.T) {
 func TestCallTool_UnknownTool(t *testing.T) {
 	srv := newTestServer(t)
 	defer srv.Close()
-	resp, _ := http.Post(srv.URL+"/prism_unknown", "application/json", strings.NewReader("{}"))
+	resp, err := http.Post(srv.URL+"/prism_unknown", "application/json", strings.NewReader("{}"))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
 	defer resp.Body.Close()
 	// unknown route → 404
 	if resp.StatusCode != 404 {
