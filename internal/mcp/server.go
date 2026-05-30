@@ -14,8 +14,6 @@ import (
 	"github.com/tabladrum/grove-suite/prism/internal/version"
 )
 
-
-
 // Server is the JSON-RPC stdio server.
 type Server struct {
 	handler *Handler
