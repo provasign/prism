@@ -2,23 +2,45 @@
   "name": "prism-vscode",
   "displayName": "Prism — Token-Optimized Context",
   "description": "Delivers ranked, compressed code context to AI agents via Language Model Tools.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "prism",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tabladrum/grove-suite"
+  },
   "engines": {
     "vscode": "^1.93.0"
   },
-  "categories": ["AI", "Other"],
+  "categories": [
+    "AI",
+    "Other"
+  ],
   "main": "./out/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
   "contributes": {
     "commands": [
-      { "command": "prism.setup",       "title": "Prism: Setup Workspace" },
-      { "command": "prism.index",       "title": "Prism: Index Workspace" },
-      { "command": "prism.query",       "title": "Prism: Query for Context" },
-      { "command": "prism.savings",     "title": "Prism: Show Session Savings" },
-      { "command": "prism.newSession",  "title": "Prism: Reset Session" }
+      {
+        "command": "prism.setup",
+        "title": "Prism: Setup Workspace"
+      },
+      {
+        "command": "prism.index",
+        "title": "Prism: Index Workspace"
+      },
+      {
+        "command": "prism.query",
+        "title": "Prism: Query for Context"
+      },
+      {
+        "command": "prism.savings",
+        "title": "Prism: Show Session Savings"
+      },
+      {
+        "command": "prism.newSession",
+        "title": "Prism: Reset Session"
+      }
     ],
     "configuration": {
       "title": "Prism",
@@ -40,7 +62,12 @@
         },
         "prism.profile": {
           "type": "string",
-          "enum": ["default", "implement_feature", "fix_bug", "code_review"],
+          "enum": [
+            "default",
+            "implement_feature",
+            "fix_bug",
+            "code_review"
+          ],
           "default": "default",
           "description": "Ranking profile used by prism_query."
         }
@@ -56,11 +83,27 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "task": { "type": "string", "description": "Natural-language description of what the agent is trying to do." },
-            "profile": { "type": "string", "enum": ["default","implement_feature","fix_bug","code_review"] },
-            "limit": { "type": "integer", "default": 50 }
+            "task": {
+              "type": "string",
+              "description": "Natural-language description of what the agent is trying to do."
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "default",
+                "implement_feature",
+                "fix_bug",
+                "code_review"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "default": 50
+            }
           },
-          "required": ["task"]
+          "required": [
+            "task"
+          ]
         }
       },
       {
@@ -71,8 +114,14 @@
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
-          "properties": { "file": { "type": "string" } },
-          "required": ["file"]
+          "properties": {
+            "file": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "file"
+          ]
         }
       },
       {
@@ -83,8 +132,18 @@
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
-          "properties": { "query": { "type": "string" }, "limit": { "type": "integer", "default": 20 } },
-          "required": ["query"]
+          "properties": {
+            "query": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          "required": [
+            "query"
+          ]
         }
       },
       {
@@ -95,21 +154,33 @@
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",
-          "properties": { "name": { "type": "string" } },
-          "required": ["name"]
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ]
         }
       },
       {
         "name": "prism_index",
         "displayName": "Prism Index",
         "modelDescription": "Trigger a delta index of the workspace.",
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
         "name": "prism_savings",
         "displayName": "Prism Savings",
         "modelDescription": "Get the current session's token savings report.",
-        "inputSchema": { "type": "object", "properties": {} }
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
         "name": "prism_compact",
@@ -117,8 +188,17 @@
         "modelDescription": "Compress conversation history by classifying turns and summarizing older ones.",
         "inputSchema": {
           "type": "object",
-          "properties": { "turns": { "type": "array", "items": { "type": "object" } } },
-          "required": ["turns"]
+          "properties": {
+            "turns": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          },
+          "required": [
+            "turns"
+          ]
         }
       },
       {
@@ -128,11 +208,22 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "queryId": { "type": "string" },
-            "rating": { "type": "integer", "minimum": 0, "maximum": 5 },
-            "notes": { "type": "string" }
+            "queryId": {
+              "type": "string"
+            },
+            "rating": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "notes": {
+              "type": "string"
+            }
           },
-          "required": ["queryId","rating"]
+          "required": [
+            "queryId",
+            "rating"
+          ]
         }
       }
     ]
@@ -145,6 +236,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.93.0",
+    "@vscode/vsce": "^3.9.1",
     "typescript": "^5.4.0"
   }
 }

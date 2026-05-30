@@ -4,6 +4,7 @@ import { registerTools } from "./tools";
 
 let client: PrismClient | undefined;
 let output: vscode.OutputChannel | undefined;
+let groveStatus: vscode.StatusBarItem | undefined;
 let savingsStatus: vscode.StatusBarItem | undefined;
 
 function logLine(message: string): void {
@@ -17,6 +18,29 @@ function formatSavingsText(value: unknown): string {
     return `Prism ${(Math.round(value * 10) / 10).toFixed(1)}%`;
   }
   return "Prism --";
+}
+
+function formatGroveText(symbolCount: unknown): string {
+  if (typeof symbolCount === "number" && Number.isFinite(symbolCount)) {
+    return `$(database) Grove ${symbolCount.toLocaleString()} syms`;
+  }
+  return "$(database) Grove --";
+}
+
+async function refreshGroveStatus(): Promise<void> {
+  if (!client || !groveStatus) {
+    return;
+  }
+  try {
+    const result = await client.status() as { symbolCount?: number };
+    groveStatus.text = formatGroveText(result?.symbolCount);
+    groveStatus.tooltip = `Grove knowledge graph: ${result?.symbolCount ?? "unknown"} symbols indexed. Click for details.`;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logLine(`Grove status refresh failed: ${msg}`);
+    groveStatus.text = "$(database) Grove --";
+    groveStatus.tooltip = "Grove symbol count unavailable.";
+  }
 }
 
 async function refreshSavingsStatus(): Promise<void> {
@@ -58,6 +82,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   output = vscode.window.createOutputChannel("Prism");
   context.subscriptions.push(output);
   logLine("Prism extension activating.");
+
+  groveStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101);
+  groveStatus.name = "Grove Symbols";
+  groveStatus.command = "prism.index";
+  groveStatus.text = "$(database) Grove --";
+  groveStatus.tooltip = "Grove symbol count. Click to re-index.";
+  groveStatus.show();
+  context.subscriptions.push(groveStatus);
 
   savingsStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   savingsStatus.name = "Prism Savings";
@@ -156,6 +188,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       client!.index().then((result) => {
         logLine(`Auto-index succeeded: ${JSON.stringify(result)}`);
         void refreshSavingsStatus();
+        void refreshGroveStatus();
       }).catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
         logLine(`Auto-index failed: ${msg}`);
@@ -168,14 +201,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   client.index().then((result) => {
     logLine(`Initial index succeeded: ${JSON.stringify(result)}`);
     void refreshSavingsStatus();
+    void refreshGroveStatus();
   }).catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     logLine(`Initial index failed: ${msg}`);
   });
 
   void refreshSavingsStatus();
+  void refreshGroveStatus();
   const refreshTimer = setInterval(() => {
     void refreshSavingsStatus();
+    void refreshGroveStatus();
   }, 15000);
   context.subscriptions.push({ dispose: () => clearInterval(refreshTimer) });
 }
@@ -183,6 +219,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 export function deactivate(): void {
   logLine("Prism extension deactivated.");
   client = undefined;
+  groveStatus?.dispose();
+  groveStatus = undefined;
   savingsStatus?.dispose();
   savingsStatus = undefined;
   output?.dispose();

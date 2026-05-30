@@ -4,4 +4,4 @@ package version
 
 // Version is the current prism release. Keep in sync with
 // vscode-extension/package.json.
-const Version = "0.2.0"
+const Version = "0.3.0"
