@@ -425,7 +425,11 @@ func mergeOrCreate(path string, content []byte) []byte {
 
 func cmdIndex(args []string) int {
 	dir := dirArg(args, 0, ".")
-	cfg, client := mustClient(dir)
+	cfg, client, err := newClient(dir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	defer client.Shutdown()
 	_ = cfg
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -441,7 +445,11 @@ func cmdIndex(args []string) int {
 
 func cmdStatus(args []string) int {
 	dir := dirArg(args, 0, ".")
-	_, client := mustClient(dir)
+	_, client, err := newClient(dir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	defer client.Shutdown()
 	res, err := client.Status(context.Background())
 	if err != nil {
@@ -673,7 +681,11 @@ func cmdServe(args []string) int {
 		}
 	}
 	dir := dirArg(rest, 0, ".")
-	cfg, client := mustClient(dir)
+	cfg, client, err := newClient(dir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	defer client.Shutdown()
 	h := mcp.NewHandler(cfg, mustAbs(dir), client)
 
@@ -694,7 +706,11 @@ func cmdServe(args []string) int {
 
 func cmdMCP(args []string) int {
 	dir := dirArg(args, 0, ".")
-	cfg, client := mustClient(dir)
+	cfg, client, err := newClient(dir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	defer client.Shutdown()
 	h := mcp.NewHandler(cfg, mustAbs(dir), client)
 	// Best-effort initial index.
@@ -711,19 +727,17 @@ func cmdMCP(args []string) int {
 
 // --- shared helpers ------------------------------------------------------
 
-func mustClient(dir string) (*config.Config, *grove.Client) {
+func newClient(dir string) (*config.Config, *grove.Client, error) {
 	root := mustAbs(dir)
 	cfg, err := config.LoadFromDir(root)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "config:", err)
-		os.Exit(1)
+		return nil, nil, fmt.Errorf("config: %w", err)
 	}
 	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
 	if err := client.EnsureRunning(context.Background()); err != nil {
-		fmt.Fprintln(os.Stderr, "grove:", err)
-		os.Exit(1)
+		return nil, nil, fmt.Errorf("grove: %w", err)
 	}
-	return cfg, client
+	return cfg, client, nil
 }
 
 func ledgerPathForRoot(root string) string {
@@ -738,7 +752,10 @@ func ledgerPathForRoot(root string) string {
 
 func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, error) {
 	root := mustAbs(dir)
-	cfg, client := mustClient(root)
+	cfg, client, err := newClient(root)
+	if err != nil {
+		return nil, err
+	}
 	defer client.Shutdown()
 
 	ledgerFile := ledgerPathForRoot(root)

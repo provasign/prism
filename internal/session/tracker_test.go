@@ -41,3 +41,28 @@ func TestTrackerResetClears(t *testing.T) {
 		t.Fatal("reset must clear")
 	}
 }
+
+func TestTrackerRecordUpdatesExistingEntry(t *testing.T) {
+	tr := NewTracker(10)
+	tr.Record("a.go", "h1", 100, "full")
+	tr.Record("a.go", "h2", 200, "signature") // hits the update branch
+	entry, found, same := tr.Lookup("a.go", "h2")
+	if !found {
+		t.Fatal("entry not found after update")
+	}
+	if !same {
+		t.Fatal("hash h2 should match after second Record")
+	}
+	if entry.AccessCount != 2 {
+		t.Fatalf("want AccessCount=2, got %d", entry.AccessCount)
+	}
+	if entry.TokenDistanceAtSend != 200 {
+		t.Fatalf("want TokenDistanceAtSend=200, got %d", entry.TokenDistanceAtSend)
+	}
+	if entry.DisclosureLevel != "signature" {
+		t.Fatalf("want DisclosureLevel=signature, got %s", entry.DisclosureLevel)
+	}
+	if tr.Len() != 1 {
+		t.Fatalf("should still be 1 entry after update, got %d", tr.Len())
+	}
+}

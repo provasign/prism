@@ -195,3 +195,22 @@ func TestRenderSHAPointer(t *testing.T) {
 		t.Errorf("sha-pointer must cost ≤40 tokens, got %d for: %q", tokens, out)
 	}
 }
+
+func TestTruncateToTokens_BelowCap(t *testing.T) {
+	s := strings.Repeat("a", 100)
+	got := truncateToTokens(s, 100) // maxBytes = 400, len(s)=100 <= 400
+	if got != s {
+		t.Errorf("should return unchanged")
+	}
+}
+
+func TestTruncateToTokens_ExceedsCap(t *testing.T) {
+	s := strings.Repeat("x", 1000)
+	got := truncateToTokens(s, 10) // maxBytes = 40, len(s)=1000 > 40
+	if !strings.HasSuffix(got, "[truncated by Prism MaxTokensPerFile cap]\n") {
+		t.Errorf("expected truncation marker, got %q", got[max(0, len(got)-60):])
+	}
+	if len(got) <= 40 {
+		t.Errorf("got too short: %d bytes", len(got))
+	}
+}
