@@ -2,7 +2,7 @@
   "name": "prism-vscode",
   "displayName": "Prism — Token-Optimized Context",
   "description": "Delivers ranked, compressed code context to AI agents via Language Model Tools.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "prism",
   "engines": {
     "vscode": "^1.93.0"

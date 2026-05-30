@@ -10,6 +10,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/tabladrum/grove-suite/prism/internal/version"
 )
 
 
@@ -66,7 +68,7 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 	case "initialize":
 		return map[string]any{
 			"protocolVersion": "2024-11-05",
-			"serverInfo":      map[string]string{"name": "prism", "version": "0.1.0-dev"},
+			"serverInfo":      map[string]string{"name": "prism", "version": version.Version},
 			"capabilities":    map[string]any{"tools": map[string]any{}},
 		}, nil
 	case "tools/list":

@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/tabladrum/grove-suite/prism/internal/mcp"
+	"github.com/tabladrum/grove-suite/prism/internal/version"
 )
 
 // Server wraps a Prism MCP handler with HTTP routes.
@@ -37,7 +38,7 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": "0.1.0-dev"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": version.Version})
 }
 
 func (s *Server) savings(w http.ResponseWriter, _ *http.Request) {

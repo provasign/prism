@@ -21,6 +21,7 @@ import (
 	"github.com/tabladrum/grove-suite/prism/internal/httpapi"
 	"github.com/tabladrum/grove-suite/prism/internal/mcp"
 	"github.com/tabladrum/grove-suite/prism/internal/session"
+	"github.com/tabladrum/grove-suite/prism/internal/version"
 )
 
 const helpText = `prism - token-optimized context delivery for AI agents (requires Grove)
@@ -63,7 +64,7 @@ func Run(args []string) int {
 		fmt.Print(helpText)
 		return 0
 	case "version":
-		fmt.Println("prism 0.1.0-dev")
+		fmt.Println("prism " + version.Version)
 		return 0
 	case "init":
 		return cmdInit(rest)
