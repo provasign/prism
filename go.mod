@@ -1,3 +1,3 @@
 module github.com/tabladrum/grove-suite/prism
 
-go 1.22
+go 1.26

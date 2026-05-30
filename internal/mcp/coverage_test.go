@@ -3,7 +3,6 @@ package mcp
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -62,7 +61,7 @@ func TestInvoke_Savings(t *testing.T) {
 
 func TestEnsureEmbeddings_GroveError(t *testing.T) {
 	h := newH(t)
-	if err := h.ensureEmbeddings(context.Background()); err == nil {
+	if err := h.ensureEmbeddings(t.Context()); err == nil {
 		t.Error("expected grove error")
 	}
 }
