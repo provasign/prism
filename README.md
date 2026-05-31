@@ -1,16 +1,20 @@
 # Prism
 
-Prism delivers token-optimized context to AI coding agents.
+> **Focused, graph-ranked context for any AI coding agent — 35–92% fewer tokens, zero manual file selection.**
 
-## Why Token Optimization Matters
+---
 
-An AI agent working on a 50,000-line codebase cannot receive all of it as context — and even if it could, most of it would be irrelevant noise that degrades response quality. The naive approach (send whatever files look related) wastes tokens on distant code and misses closely-related code that doesn't have an obvious filename match.
+An AI agent that gets bad context produces bad code. Not because it's a bad agent — because it's working blind.
 
-Prism solves this with a ranking pipeline. Given a task description, it queries Grove's knowledge graph, scores candidates across five signals, allocates a token budget across five categories, and applies progressive disclosure to maximize information density. The result is context scoped to what actually matters for the task at hand.
+The naive approach is to dump related files into the context window and hope the agent figures out what matters. This fails in two directions at once: it wastes tokens on code that's nearby in the file tree but irrelevant to the task, and it misses code that *is* critical but has no obvious filename match. The agent hallucinates the gaps.
 
-Typical token savings versus sending files manually: 35–92%.
+Prism solves this. Given a task description, it queries Grove's knowledge graph, scores every candidate symbol across five signals, allocates a token budget across five categories, and returns exactly what matters — full source for the first read, signatures on the second, one-line references on the third. The agent gets more signal per token. Every time.
 
-## Architecture
+Works with Claude Code, GitHub Copilot (VS Code), Cursor, Codex CLI, Windsurf, Zed, and any MCP-capable tool.
+
+---
+
+## How It Works
 
 ```
 Task description ("add rate limiting to the login endpoint")
@@ -26,7 +30,7 @@ prism_query
 │  5-Signal Ranking                                  │
 │                                                    │
 │  1. Graph distance    — BFS hops from seed symbol  │
-│  2. Semantic similarity — embedding cosine score   │
+│  2. Semantic similarity — Model2Vec cosine score   │
 │  3. Recency           — recent git commits score   │
 │  4. Test relevance    — is this a test for target? │
 │  5. Edit frequency    — hot files get priority     │
@@ -64,6 +68,8 @@ prism_query
 Token-optimized context pack returned to agent
 ```
 
+---
+
 ## IDE and CLI Support
 
 Prism has two integration paths. Both produce identical context quality — only the transport layer differs.
@@ -92,8 +98,6 @@ The extension also provides two left status bar items:
 - **Grove symbols** — live symbol count from the knowledge graph, click to re-index
 - **Prism savings** — session token savings %, click to view details
 
-The standalone Grove VS Code extension has been retired. The Prism extension is the sole VS Code integration point for both Grove and Prism.
-
 [Extension documentation →](vscode-extension/README.md)
 
 ### CLI (no agent)
@@ -108,6 +112,8 @@ prism savings
 ```
 
 Add `--json` for machine-readable output.
+
+---
 
 ## Language Support
 
@@ -127,31 +133,35 @@ Prism delegates all parsing and graph construction to Grove. Language support is
 | C# | `.cs` | namespaces, classes, structs, interfaces, methods, properties |
 | PHP | `.php .phtml` | classes, interfaces, traits, enums, functions, methods |
 
-The semantic similarity signal uses TF-IDF by default (zero dependencies). Enable `all-MiniLM-L6-v2` via ONNX for higher-quality embeddings (`embeddings_backend: onnx` in `prism.yaml`).
+Non-code files (`.md`, `.yaml`, `.json`, `.xml`, `.sh`, `.toml`, `.proto`, `.sql`, `Makefile`, `Dockerfile`, and more) are indexed as document symbols and ranked alongside code in every query. Agents can discover architectural decisions in ADRs, API contracts in OpenAPI files, and deployment configuration in Dockerfiles — all without manual file selection.
+
+Semantic similarity uses Model2Vec (potion-base-8M, embedded in the Grove binary — no download, no server, no GPU). Set `GROVE_EMBEDDINGS=tfidf` to opt out.
+
+---
 
 ## Quick Start
 
 ```bash
-# 1. Install
+# 1. Install (build Grove first — Prism requires it)
+cd grove && make install
 cd prism && make install
 
-# 2. Verify
-prism version
-
-# 3. Initialize a project (run once per project root)
+# 2. Initialize a project (run once per project root)
 cd /your/project
 prism init
 
-# 4. Restart your coding tool to pick up the MCP config
+# 3. Restart your coding tool to pick up the MCP config
 
-# 5. Index
+# 4. Index
 prism index
 
-# 6. Verify savings after using the agent
+# 5. Verify savings after using the agent
 prism savings
 ```
 
-`prism init` does three things: writes `prism.yaml`, writes steering instructions for your agent (CLAUDE.md, .cursorrules, etc.), and registers the MCP server config for the coding tools it detects.
+`prism init` does three things: writes `prism.yaml`, writes steering instructions for your agent (`CLAUDE.md`, `.cursorrules`, etc.), and registers the MCP server config for every coding tool it detects.
+
+---
 
 ## MCP Tools
 
@@ -168,6 +178,8 @@ prism savings
 
 **Rule of thumb for agents:** start every task with `prism_query`, use `prism_read` instead of reading files directly, use `prism_search` instead of grep.
 
+---
+
 ## Session Savings Ledger
 
 Token savings are persisted per project across separate CLI invocations. The ledger lives at `~/.cache/prism/ledger/<sha1(root)>.json` and is pruned automatically after 30 days. `prism savings` reads the current project's ledger:
@@ -178,6 +190,8 @@ prism savings
 # grove_query:  8 calls · 31,400 → 9,100 tokens
 # grove_read:  22 calls · 9,800 → 3,747 tokens
 ```
+
+---
 
 ## CLI Reference
 
@@ -194,6 +208,8 @@ prism mcp [dir]                 # start MCP stdio server
 prism version                   # show version
 ```
 
+---
+
 ## HTTP Server Mode
 
 `prism serve` is optional. Use it only when you need a persistent HTTP daemon — for non-MCP integrations, custom automation, or tooling that prefers HTTP over stdio.
@@ -203,6 +219,8 @@ prism serve --port 8888 /path/to/project
 ```
 
 HTTP binds to `127.0.0.1` only.
+
+---
 
 ## Configuration
 
@@ -218,6 +236,8 @@ embeddings_backend: local          # local | openai | voyageai
 
 Environment overrides: `PRISM_GROVE_URL`, `PRISM_MODEL`, `PRISM_PROFILE`, `PRISM_EMBEDDINGS_BACKEND`.
 
+---
+
 ## Performance
 
 Benchmarks run on macOS against synthetic Go projects (2026-05-27). Prism runs atop Grove — query numbers include the full round-trip through Grove's FTS5 + BFS and Prism's ranking pipeline.
@@ -231,7 +251,7 @@ Benchmarks run on macOS against synthetic Go projects (2026-05-27). Prism runs a
 | Large | 4,501 | 11.6 s | 8.0 s | 680 ms | 12 MB |
 | Monorepo | 9,901 | 34.0 s | 30.0 s | 690 ms | 12 MB |
 
-Prism's own RSS stays near 12 MB regardless of project size — the symbol graph lives in Grove's process, not Prism's. The indexing delta means re-runs on unchanged projects are near-instant.
+Prism's own RSS stays near 12 MB regardless of project size — the symbol graph lives in Grove's process, not Prism's.
 
 ### Token Savings (progressive disclosure)
 
@@ -242,11 +262,13 @@ Prism's own RSS stays near 12 MB regardless of project size — the symbol graph
 | Large | 4,501 | 56% | 67% | 67% |
 | Monorepo | 9,901 | 0–58% | 58% | 58% |
 
-**First-read savings** reflect relevance scoring: symbols below the threshold are shown at signature level instead of full source. When nearly all symbols in a file are relevant to the current task (typical for small projects and targeted monorepo queries), first-read savings approach 0% — you receive everything. This is correct behaviour.
+**First-read savings** reflect relevance scoring: symbols below the threshold are shown at signature level instead of full source. When nearly all symbols in a file are relevant to the current task (typical for small projects and targeted queries), first-read savings approach 0% — you receive everything. This is correct behaviour.
 
-**Second and third reads** apply session deduplication regardless of project size, cutting 57–68% of tokens. A file read three or more times within one session always receives full disclosure on the third read to prevent context drift.
+**Second and third reads** apply session deduplication regardless of project size, cutting 57–68% of tokens.
 
 **Headline targets:** `prism_query` end-to-end < 200 ms · `prism_read` with session cache < 50 ms · budget selection over 10K symbols < 20 ms
+
+---
 
 ## Troubleshooting
 
