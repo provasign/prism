@@ -3,6 +3,7 @@ package mcp
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -162,6 +163,7 @@ func TestToolCompactRecordsLedger(t *testing.T) {
 
 func TestSafePathWithinRoot(t *testing.T) {
 	root := t.TempDir()
+	absOutside := filepath.Join(t.TempDir(), "outside.go")
 	cases := []struct {
 		path    string
 		wantErr bool
@@ -169,7 +171,7 @@ func TestSafePathWithinRoot(t *testing.T) {
 		{"internal/foo.go", false},
 		{"./internal/../internal/foo.go", false}, // canonicalize, still in root
 		{"../outside.go", true},                  // escape attempt
-		{"/etc/passwd", true},                    // absolute outside root
+		{absOutside, true},                         // absolute outside root
 	}
 	for _, tc := range cases {
 		_, _, err := safePathWithinRoot(root, tc.path)

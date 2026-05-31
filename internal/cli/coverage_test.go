@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // startMockGrove starts an httptest.Server implementing Grove's HTTP API.
@@ -313,7 +314,9 @@ func TestPruneOldLedgers_RemovesOldFiles(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "old.json")
 	os.WriteFile(f, []byte("{}"), 0o644) //nolint:errcheck
-	pruneOldLedgers(dir, 0)
+	old := time.Now().Add(-2 * time.Hour)
+	_ = os.Chtimes(f, old, old)
+	pruneOldLedgers(dir, time.Hour)
 	if _, err := os.Stat(f); err == nil {
 		t.Error("expected old.json to be pruned")
 	}
