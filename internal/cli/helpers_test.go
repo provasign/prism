@@ -33,8 +33,9 @@ func TestRun_Help(t *testing.T) {
 }
 
 func TestMustAbs(t *testing.T) {
-	if mustAbs("/abs/x") != "/abs/x" {
-		t.Error("abs")
+	absIn := filepath.Join(t.TempDir(), "x")
+	if got := mustAbs(absIn); got != absIn {
+		t.Errorf("abs: got %q want %q", got, absIn)
 	}
 	if !filepath.IsAbs(mustAbs("rel")) {
 		t.Error("rel→abs")
