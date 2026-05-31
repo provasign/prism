@@ -75,9 +75,11 @@ Prism has two integration paths. Both produce identical context quality — only
 | Tool | Config written | Notes |
 |------|---------------|-------|
 | Claude Code CLI | `.claude/mcp.json` | `prism mcp` launched per session |
+| GitHub Copilot (VS Code) | `.vscode/mcp.json` | `"servers"` key, `"type":"stdio"` |
 | Cursor | `.cursor/mcp.json` | Same |
+| Codex CLI | `~/.codex/config.toml` | `[[mcp_servers]]` TOML; skipped if `~/.codex/` absent |
 | Windsurf | `.windsurf/mcp.json` | Same |
-| Zed | `.zed/settings.json` | Same |
+| Zed | `~/.config/zed/settings.json` | `context_servers` key |
 | Any MCP client | manual config | Point at `prism mcp <dir>` |
 
 ### VS Code (Copilot Agent Mode)
@@ -85,6 +87,12 @@ Prism has two integration paths. Both produce identical context quality — only
 The VS Code extension does not use MCP. It registers all 8 tools via `vscode.lm.registerTool` and spawns the `prism` binary per call. No `prism serve` required, no port.
 
 Tools appear in Copilot Chat as `#prismQuery`, `#prismRead`, `#prismSearch`, etc.
+
+The extension also provides two left status bar items:
+- **Grove symbols** — live symbol count from the knowledge graph, click to re-index
+- **Prism savings** — session token savings %, click to view details
+
+The standalone Grove VS Code extension has been retired. The Prism extension is the sole VS Code integration point for both Grove and Prism.
 
 [Extension documentation →](vscode-extension/README.md)
 

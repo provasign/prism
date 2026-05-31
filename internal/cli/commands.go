@@ -386,6 +386,20 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 		fmt.Printf("registered with %s: %s\n", w.name, p)
 		written = append(written, p)
 	}
+
+	// Codex CLI (~/.codex/config.toml) uses TOML, not JSON.
+	// Only write when ~/.codex/ already exists (i.e. Codex CLI is installed).
+	codexPath := filepath.Join(home, ".codex", "config.toml")
+	if _, err := os.Stat(filepath.Dir(codexPath)); err == nil {
+		codexArgs := []string{"mcp", projectDir}
+		if err := writePrismCodexConfig(codexPath, prismBin, codexArgs); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not write Codex CLI config: %v\n", err)
+		} else {
+			fmt.Printf("registered with Codex CLI: %s\n", codexPath)
+			written = append(written, codexPath)
+		}
+	}
+
 	return written
 }
 
@@ -430,6 +444,71 @@ func buildVSCodeConfig(prismBin, projectDir string) []byte {
 	}}
 	b, _ := json.MarshalIndent(s, "", "  ")
 	return b
+}
+
+// writePrismCodexConfig writes a prism [[mcp_servers]] entry to Codex CLI's
+// config.toml (~/.codex/config.toml). The file is created if absent.
+// An existing prism block is replaced idempotently.
+func writePrismCodexConfig(path, prismBin string, args []string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("mkdir codex config dir: %w", err)
+	}
+	var lines []string
+	if raw, err := os.ReadFile(path); err == nil {
+		lines = strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+	lines = stripPrismTOMLBlock(lines, "mcp_servers", "prism")
+	if len(lines) > 0 && lines[len(lines)-1] != "" {
+		lines = append(lines, "")
+	}
+	lines = append(lines,
+		"[[mcp_servers]]",
+		`name = "prism"`,
+		`type = "stdio"`,
+		fmt.Sprintf("command = %q", prismBin),
+		prismTOMLStringArray("args", args),
+	)
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
+}
+
+// stripPrismTOMLBlock removes all [[section]] array-of-tables blocks whose
+// "name" field equals targetName, preserving everything else.
+func stripPrismTOMLBlock(lines []string, section, targetName string) []string {
+	header := "[[" + section + "]]"
+	nameKV := `name = "` + targetName + `"`
+	var out []string
+	i := 0
+	for i < len(lines) {
+		if strings.TrimSpace(lines[i]) != header {
+			out = append(out, lines[i])
+			i++
+			continue
+		}
+		start := i
+		i++
+		isMatch := false
+		for i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "[[") {
+			if strings.TrimSpace(lines[i]) == nameKV {
+				isMatch = true
+			}
+			i++
+		}
+		if !isMatch {
+			out = append(out, lines[start:i]...)
+		}
+	}
+	return out
+}
+
+// prismTOMLStringArray formats a TOML key = ["v1", "v2"] line.
+func prismTOMLStringArray(key string, vals []string) string {
+	quoted := make([]string, len(vals))
+	for i, v := range vals {
+		quoted[i] = fmt.Sprintf("%q", v)
+	}
+	return key + " = [" + strings.Join(quoted, ", ") + "]"
 }
 
 // mergeOrCreate reads the existing JSON at path and deep-merges content into
@@ -739,6 +818,13 @@ func cmdServe(args []string) int {
 	if _, err := client.Index(context.Background(), mustAbs(dir)); err != nil {
 		fmt.Fprintln(os.Stderr, "warning: initial index failed:", err)
 	}
+
+	chosen, err := pickPort(port)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "port:", err)
+		return 1
+	}
+	port = chosen
 
 	server := httpapi.New(h).Handler()
 	addr := fmt.Sprintf("127.0.0.1:%d", port)

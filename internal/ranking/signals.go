@@ -19,9 +19,8 @@ type SignalComputer struct {
 	WorkspaceRoot string
 	Embeddings    SemanticBackend // optional; if nil, similarity is 0
 
-	gitMu      sync.Mutex
-	gitCache   map[string]gitFileStats
-	maxSeenCnt int
+	gitMu    sync.Mutex
+	gitCache map[string]gitFileStats
 }
 
 // SemanticBackend computes cosine similarity between a task and a symbol's

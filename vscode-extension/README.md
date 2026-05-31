@@ -88,11 +88,18 @@ Access via Command Palette (`Cmd+Shift+P`):
 | `prism.binaryPath` | `prism` | Path to the prism binary |
 | `prism.grovePath` | `grove` | Path to the grove binary |
 | `prism.autoIndex` | `true` | Reindex on file save |
-| `prism.profile` | `balanced` | Ranking profile: `balanced`, `speed`, `recall` |
+| `prism.profile` | `default` | Ranking profile: `default`, `implement_feature`, `fix_bug`, `code_review` |
 
 ## Status Bar
 
-The status bar item shows the token savings percentage for the current session. Click it to open the full savings breakdown.
+Two items appear in the **left** status bar:
+
+| Item | Click action | Shows |
+|------|-------------|-------|
+| `$(database) Grove N syms` | Re-index workspace | Live symbol count from the knowledge graph |
+| `$(graph) Prism X.X%` | Show session savings | Session token savings percentage |
+
+Both items refresh automatically every 15 seconds and after each file save.
 
 ## Building from Source
 
@@ -100,7 +107,7 @@ The status bar item shows the token savings percentage for the current session. 
 cd prism/vscode-extension
 npm install
 npm run compile
-vsce package   # produces prism-*.vsix
+npx vsce package --no-dependencies   # produces prism-vscode-X.Y.Z.vsix
 ```
 
 Install the `.vsix` via Extensions → Install from VSIX.

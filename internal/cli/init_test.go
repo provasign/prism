@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -84,6 +85,38 @@ func TestWriteSteeringInstructions_AllTargets(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(dir, want)); err != nil {
 			t.Errorf("missing %s: %v", want, err)
 		}
+	}
+}
+
+func TestWritePrismCodexConfig(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+
+	// First write.
+	if err := writePrismCodexConfig(path, "/usr/local/bin/prism", []string{"mcp", "/my/project"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(path)
+	s := string(raw)
+	for _, want := range []string{`[[mcp_servers]]`, `name = "prism"`, `type = "stdio"`, `command = "/usr/local/bin/prism"`, `args = ["mcp", "/my/project"]`} {
+		if !contains(s, want) {
+			t.Errorf("missing %q in:\n%s", want, s)
+		}
+	}
+
+	// Idempotent second write must not duplicate the block.
+	if err := writePrismCodexConfig(path, "/usr/local/bin/prism", []string{"mcp", "/my/project"}); err != nil {
+		t.Fatal(err)
+	}
+	raw2, _ := os.ReadFile(path)
+	blockCount := 0
+	for _, line := range strings.Split(string(raw2), "\n") {
+		if line == "[[mcp_servers]]" {
+			blockCount++
+		}
+	}
+	if blockCount != 1 {
+		t.Errorf("expected 1 [[mcp_servers]] block, got %d:\n%s", blockCount, raw2)
 	}
 }
 
