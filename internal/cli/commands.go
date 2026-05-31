@@ -29,6 +29,7 @@ const helpText = `prism - token-optimized context delivery for AI agents (requir
 Usage:
   prism init [--global] [dir]     Write prism.yaml + register MCP with detected AI tools
                                   --global writes to user-level config (~/.claude, ~/.cursor, etc.)
+  prism install [--global] [dir]  Alias for 'prism init'
   prism index [dir]               Index codebase via Grove (delta-aware)
   prism status [dir]              Show graph stats from Grove
   prism query <task> [dir]        Find ranked context for a task
@@ -45,11 +46,13 @@ Usage:
   prism version                   Print version
 
 Supported AI tools (auto-detected by prism init):
-  Claude Code  →  .claude/mcp.json
-  Cursor       →  .cursor/mcp.json
-  Windsurf     →  .windsurf/mcp.json
+  Claude Code  →  .claude/mcp.json + CLAUDE.md
+  Cursor       →  .cursor/mcp.json + .cursorrules + AGENTS.md
+  Windsurf     →  .windsurf/mcp.json + .windsurfrules
   Zed          →  ~/.config/zed/settings.json (context_servers)
-  VS Code      →  install vscode-extension/prism-vscode-*.vsix
+  VS Code      →  .vscode/mcp.json + .github/copilot-instructions.md
+  Codex / generic agents → AGENTS.md
+  Gemini CLI   →  GEMINI.md
 `
 
 // Run is the CLI entry point. Returns the exit code.
@@ -66,7 +69,7 @@ func Run(args []string) int {
 	case "version":
 		fmt.Println("prism " + version.Version)
 		return 0
-	case "init":
+	case "init", "install":
 		return cmdInit(rest)
 	case "index":
 		return cmdIndex(rest)
@@ -219,6 +222,20 @@ func writeSteeringInstructions(projectDir string) {
 			relPath: ".github/copilot-instructions.md",
 			wrap:    func(body string) string { return body },
 		},
+		{
+			// AGENTS.md is the emerging cross-vendor agent spec (OpenAI Codex,
+			// Cursor, etc.). Writing it ensures any agent that follows the spec
+			// will pick up Prism guidance with zero extra config.
+			name:    "AGENTS.md",
+			relPath: "AGENTS.md",
+			wrap:    func(body string) string { return body },
+		},
+		{
+			// GEMINI.md is read by the Gemini CLI / Gemini Code Assist.
+			name:    "Gemini CLI",
+			relPath: "GEMINI.md",
+			wrap:    func(body string) string { return body },
+		},
 	}
 
 	for _, t := range targets {
@@ -327,6 +344,17 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 				return buildZedConfig(prismBin, projectDir)
 			},
 		},
+		{
+			// VS Code (GitHub Copilot Chat / Continue): .vscode/mcp.json
+			// VS Code natively reads workspace-scoped MCP servers from this file.
+			name: "VS Code",
+			path: func() string {
+				return filepath.Join(projectDir, ".vscode", "mcp.json")
+			},
+			build: func() []byte {
+				return buildVSCodeConfig(prismBin, projectDir)
+			},
+		},
 	}
 
 	for _, w := range writers {
@@ -381,6 +409,24 @@ func buildZedConfig(prismBin, projectDir string) []byte {
 	}
 	s := zedSettings{ContextServers: map[string]zedServer{
 		"prism": {Command: prismBin, Args: []string{"mcp", projectDir}},
+	}}
+	b, _ := json.MarshalIndent(s, "", "  ")
+	return b
+}
+
+// buildVSCodeConfig returns the .vscode/mcp.json stanza VS Code's native
+// MCP host expects. Schema: {"servers": {"<name>": {"type":"stdio","command":..,"args":..}}}.
+func buildVSCodeConfig(prismBin, projectDir string) []byte {
+	type vscodeServer struct {
+		Type    string   `json:"type"`
+		Command string   `json:"command"`
+		Args    []string `json:"args"`
+	}
+	type vscodeMCP struct {
+		Servers map[string]vscodeServer `json:"servers"`
+	}
+	s := vscodeMCP{Servers: map[string]vscodeServer{
+		"prism": {Type: "stdio", Command: prismBin, Args: []string{"mcp", projectDir}},
 	}}
 	b, _ := json.MarshalIndent(s, "", "  ")
 	return b
