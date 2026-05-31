@@ -146,6 +146,47 @@ func TestCmdInit_InstallAlias(t *testing.T) {
 	}
 }
 
+func TestStripPrismTOMLBlock_NonMatchingBlock(t *testing.T) {
+	lines := []string{
+		"[[mcp_servers]]",
+		`name = "other-tool"`,
+		`command = "/usr/bin/other"`,
+	}
+	out := stripPrismTOMLBlock(lines, "mcp_servers", "prism")
+	if len(out) != len(lines) {
+		t.Errorf("expected %d lines preserved, got %d: %v", len(lines), len(out), out)
+	}
+}
+
+func TestStripPrismTOMLBlock_EmptyInput(t *testing.T) {
+	if out := stripPrismTOMLBlock(nil, "mcp_servers", "prism"); len(out) != 0 {
+		t.Errorf("expected empty, got %v", out)
+	}
+}
+
+func TestWritePrismCodexConfig_ExistingOtherContent(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	existing := "model = \"gpt-4\"\n\n[[mcp_servers]]\nname = \"other\"\ncommand = \"/usr/bin/other\"\n"
+	if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writePrismCodexConfig(path, "/usr/local/bin/prism", []string{"mcp", "/root"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(path)
+	s := string(raw)
+	if !strings.Contains(s, `model = "gpt-4"`) {
+		t.Error("existing model key lost")
+	}
+	if !strings.Contains(s, `name = "other"`) {
+		t.Error("other mcp_servers block lost")
+	}
+	if !strings.Contains(s, `name = "prism"`) {
+		t.Error("prism block not added")
+	}
+}
+
 // contains is a tiny helper so we don't pull in strings for one test.
 func contains(s, sub string) bool {
 	return len(sub) == 0 || (len(s) >= len(sub) && indexOf(s, sub) >= 0)
