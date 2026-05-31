@@ -1,6 +1,6 @@
 # Prism
 
-> **Focused, graph-ranked context for any AI coding agent — 35–92% fewer tokens, zero manual file selection.**
+> **Focused, graph-ranked context for any AI coding agent — 35–92% fewer tokens on first reads, ~99% on re-reads.**
 
 ---
 
@@ -51,17 +51,19 @@ prism_query
 ┌────────────────────────────────────────────────────┐
 │  Progressive Disclosure                            │
 │                                                    │
-│  First read:   full source text                    │
-│  Second read:  signature only (saves ~70%)         │
-│  Third+ read:  one-line reference (saves ~90%)     │
+│  First read:    full source (or ranked-compressed) │
+│  Second read:   sha-pointer (~10 tokens)  ~99%↓   │
+│  Third read:    sha-pointer or signature           │
+│  Fourth+ read:  full resend (scrolled out)         │
 └───────────────────────────┬────────────────────────┘
                             │
                             ▼
 ┌────────────────────────────────────────────────────┐
 │  Session Deduplication                             │
 │                                                    │
-│  O(1) LRU cache: symbols already in context        │
-│  are downranked to avoid repeating known content   │
+│  O(1) LRU cache keyed by file path + content SHA  │
+│  Unchanged file seen again → single-line pointer: │
+│  // [prism:cached] auth.go @sha:a1b2c3d4 (×1)     │
 └───────────────────────────┬────────────────────────┘
                             │
                             ▼
@@ -253,18 +255,43 @@ Benchmarks run on macOS against synthetic Go projects (2026-05-27). Prism runs a
 
 Prism's own RSS stays near 12 MB regardless of project size — the symbol graph lives in Grove's process, not Prism's.
 
-### Token Savings (progressive disclosure)
+### Token Savings
 
-| Project | Files | First read | Second read | Third+ read |
-|---------|------:|----------:|------------:|------------:|
-| Small | 61 | 0% | 68% | 68% |
-| Medium | 801 | 56% | 67% | 67% |
-| Large | 4,501 | 56% | 67% | 67% |
-| Monorepo | 9,901 | 0–58% | 58% | 58% |
+**There are two separate saving mechanisms:**
 
-**First-read savings** reflect relevance scoring: symbols below the threshold are shown at signature level instead of full source. When nearly all symbols in a file are relevant to the current task (typical for small projects and targeted queries), first-read savings approach 0% — you receive everything. This is correct behaviour.
+#### 1. First-read compression (graph-ranked, all modes)
 
-**Second and third reads** apply session deduplication regardless of project size, cutting 57–68% of tokens.
+| Project | Files | Typical first-read savings |
+|---------|------:|---------------------------:|
+| Small | 61 | 0–15% |
+| Medium | 801 | 50–60% |
+| Large | 4,501 | 50–60% |
+| Monorepo | 9,901 | 0–58% |
+
+First-read savings reflect relevance scoring: symbols below the relevance threshold are shown at signature level instead of full source. When nearly all symbols in a file are relevant to the task (typical for small projects and targeted queries), first-read savings approach 0% — you receive everything. This is correct behaviour.
+
+**This is the source of the 35–92% headline figure.**
+
+#### 2. Re-read deduplication (MCP and VS Code extension mode only)
+
+When a file is read a second time in the same session and its content has not changed, Prism returns a **sha-pointer** instead of any content:
+
+```
+// [prism:cached] internal/auth/login.go @sha:a1b2c3d4 (seen ×1, no changes — prior delivery still in context)
+```
+
+This costs ~10 tokens regardless of the file's original size. A 2,000-token file read again costs 10 tokens — **~99% savings**.
+
+| Read # | Strategy | Savings |
+|--------|----------|---------|
+| 1st | compressed-fresh (ranked) | 35–92% |
+| 2nd (unchanged) | sha-pointer (~10 tokens) | ~99% |
+| 3rd (high confidence) | sha-pointer | ~99% |
+| 3rd (medium confidence) | session-signature | ~85% |
+| 3rd (low confidence) | compressed-fresh | 35–92% |
+| 4th+ | escalated-full resend | 0% (content has scrolled out) |
+
+> **Note:** Re-read deduplication is active in MCP mode (`prism mcp`) and in the VS Code extension. It is **not** active in direct CLI invocations (`prism read`, `prism query`) because the session tracker does not persist across process boundaries. Benchmark figures measured via CLI reflect only first-read compression.
 
 **Headline targets:** `prism_query` end-to-end < 200 ms · `prism_read` with session cache < 50 ms · budget selection over 10K symbols < 20 ms
 
