@@ -13,8 +13,13 @@ import (
 
 func newH(t *testing.T) *Handler {
 	t.Helper()
-	gc := grove.NewClient("http://127.0.0.1:1", "")
-	return NewHandler(&config.Config{MaxCacheFiles: 100}, t.TempDir(), gc)
+	root := t.TempDir()
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	return NewHandler(&config.Config{MaxCacheFiles: 100}, root, gc)
 }
 
 func TestNewHandler(t *testing.T) {
@@ -56,13 +61,6 @@ func TestInvoke_Savings(t *testing.T) {
 	}
 	if out == nil {
 		t.Error("nil out")
-	}
-}
-
-func TestEnsureEmbeddings_GroveError(t *testing.T) {
-	h := newH(t)
-	if err := h.ensureEmbeddings(t.Context()); err == nil {
-		t.Error("expected grove error")
 	}
 }
 

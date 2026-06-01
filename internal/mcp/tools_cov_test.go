@@ -18,10 +18,15 @@ func fakeGroveSrv(t *testing.T, payload map[string]any) *httptest.Server {
 	}))
 }
 
-func newHWithGrove(t *testing.T, srv *httptest.Server) *Handler {
+func newHWithGrove(t *testing.T, _ *httptest.Server) *Handler {
 	t.Helper()
-	gc := grove.NewClient(srv.URL, "")
-	return NewHandler(&config.Config{MaxCacheFiles: 100}, t.TempDir(), gc)
+	root := t.TempDir()
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	return NewHandler(&config.Config{MaxCacheFiles: 100}, root, gc)
 }
 
 func TestToolSearch(t *testing.T) {
@@ -74,7 +79,7 @@ func TestToolIndex(t *testing.T) {
 	srv := fakeGroveSrv(t, map[string]any{"filesSeen": 5})
 	defer srv.Close()
 	h := newHWithGrove(t, srv)
-	if _, err := h.Invoke("prism_index", map[string]any{"dir": "/x"}); err != nil {
+	if _, err := h.Invoke("prism_index", map[string]any{"dir": h.Root}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -146,17 +151,6 @@ func TestStringArg(t *testing.T) {
 	}
 	if stringArg(map[string]any{"x": "v"}, "x", "def") != "v" {
 		t.Error("get")
-	}
-}
-
-func TestToolQuery_GroveError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(500)
-	}))
-	defer srv.Close()
-	h := newHWithGrove(t, srv)
-	if _, err := h.Invoke("prism_query", map[string]any{"task": "x"}); err == nil {
-		t.Error("expected err")
 	}
 }
 

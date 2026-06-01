@@ -121,18 +121,14 @@ func cmdInit(args []string) int {
 	abs, _ := filepath.Abs(dir)
 	cfg := config.Default()
 
-	// 1. Write prism.yaml into the project (always relative, even for --global).
-	// Use the absolute grove binary path so prism can auto-start grove even when
-	// Claude Code or other tools spawn it with a minimal PATH that excludes ~/bin.
-	groveBin := detectGrovePath()
+	// 1. Write prism.yaml into the project. Grove is embedded in-process now,
+	// so the file no longer needs grove_url / grove_binary.
 	yaml := fmt.Sprintf(`version: 1
-grove_url: "%s"
-grove_binary: "%s"
 # model: auto  # Prism detects the active model from the MCP initialize handshake.
 #               # Override here only if auto-detection fails, e.g.:
 #               # model: "claude-sonnet-4-6"
 profile: "%s"
-`, cfg.GroveURL, groveBin, cfg.Profile)
+`, cfg.Profile)
 	prismYAML := filepath.Join(abs, "prism.yaml")
 	if err := os.WriteFile(prismYAML, []byte(yaml), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)

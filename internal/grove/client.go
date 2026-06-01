@@ -1,263 +1,265 @@
+// Package grove is Prism's adapter to the in-process Grove engine.
+//
+// Historically this package was an HTTP client that spoke to a long-running
+// `grove serve` daemon. The embedded-Grove architecture removes the daemon:
+// Prism links against `grove/pkg/grove` directly and opens the on-disk index
+// in the same process. The public surface of Client (NewClient, EnsureRunning,
+// Index, Query…) is preserved so the rest of Prism (ranking, MCP, CLI) is
+// unchanged.
 package grove
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
-	"time"
+	"sync"
+
+	groveeng "github.com/tabladrum/grove-suite/grove/pkg/grove"
 )
 
-// Client is a thin HTTP wrapper around Grove's REST endpoints.
+// Client wraps an embedded Grove engine. baseURL/groveBin are ignored in the
+// embedded model and retained only so existing call sites keep compiling.
 type Client struct {
-	baseURL    string
-	http       *http.Client
-	token      string // shared-secret read from .grove/.token
-	groveBin   string // path to grove binary for auto-start
-	root       string // project root; passed to grove serve so token lands in <root>/.grove/.token
-	autoStart  bool
-	startedPid int
+	root string
+
+	mu  sync.Mutex
+	eng *groveeng.Engine
 }
 
-// NewClient creates a Grove client. baseURL is the form "http://host:port".
-func NewClient(baseURL, groveBin string) *Client {
-	return &Client{
-		baseURL:   baseURL,
-		http:      &http.Client{Timeout: 30 * time.Second},
-		groveBin:  groveBin,
-		autoStart: true,
-	}
+// NewClient returns a Client. baseURL and groveBin are accepted for API
+// compatibility but unused — Grove is now embedded in-process.
+func NewClient(_, _ string) *Client {
+	return &Client{}
 }
 
-// WithTokenFromDir loads the shared-secret token from <root>/.grove/.token and
-// attaches it to the client. All subsequent requests carry
-// "Authorization: Bearer <token>". Also stores root so EnsureRunning can pass
-// it to `grove serve`, ensuring the token is created in the right place even
-// when the process working directory differs (e.g. when Claude Code spawns prism).
-// Safe to call even if the file doesn't exist yet (e.g. before the first grove serve run).
+// WithTokenFromDir records the repository root so EnsureRunning can open the
+// engine at <root>/.grove/grove.db. The name is kept for compatibility; no
+// shared-secret token is read or sent (none exists in the embedded model).
 func (c *Client) WithTokenFromDir(root string) *Client {
-	c.root = root
-	path := filepath.Join(root, ".grove", ".token")
-	data, err := os.ReadFile(path)
-	if err == nil {
-		c.token = strings.TrimSpace(string(data))
+	if abs, err := filepath.Abs(root); err == nil {
+		c.root = abs
+	} else {
+		c.root = root
 	}
 	return c
 }
 
-// BaseURL returns the configured Grove base URL.
-func (c *Client) BaseURL() string { return c.baseURL }
+// BaseURL returns an embedded-mode marker so legacy log lines remain readable.
+func (c *Client) BaseURL() string { return "embedded://grove" }
 
-// Health returns nil if Grove is reachable.
+// Health returns nil once the engine is open.
 func (c *Client) Health(ctx context.Context) error {
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/health", nil)
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("grove /health: %d", resp.StatusCode)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.eng == nil {
+		return errors.New("grove engine not open; call EnsureRunning first")
 	}
 	return nil
 }
 
-// EnsureRunning probes /health; if unreachable, exec the grove binary and
-// wait up to 10s for it to become healthy.
+// EnsureRunning opens the embedded Grove engine if it has not been opened yet.
+// Replaces the old HTTP probe + auto-spawn of `grove serve`.
 func (c *Client) EnsureRunning(ctx context.Context) error {
-	if err := c.Health(ctx); err == nil {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.eng != nil {
 		return nil
 	}
-	if !c.autoStart {
-		return errors.New("grove not reachable and auto-start disabled")
+	if c.root == "" {
+		return errors.New("grove: WithTokenFromDir(root) must be called before EnsureRunning")
 	}
-	port := portFromURL(c.baseURL)
-	// Pass the project root so grove writes its token to <root>/.grove/.token.
-	// Without this, grove defaults to cwd which may not be the project root when
-	// spawned indirectly (e.g. Claude Code spawning the prism MCP server).
-	args := []string{"serve", "--port", port}
-	if c.root != "" {
-		args = append(args, c.root)
+	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root})
+	if err != nil {
+		return fmt.Errorf("grove open: %w", err)
 	}
-	cmd := exec.Command(c.groveBin, args...)
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start grove: %w", err)
-	}
-	go func() { _ = cmd.Wait() }() // reap child process to prevent zombie on exit
-	c.startedPid = cmd.Process.Pid
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		if err := c.Health(ctx); err == nil {
-			return nil
-		}
-		time.Sleep(150 * time.Millisecond)
-	}
-	return errors.New("grove failed to become healthy within 10s")
+	c.eng = eng
+	return nil
 }
 
-// Shutdown kills the Grove subprocess if Prism started it.
+// Shutdown closes the engine.
 func (c *Client) Shutdown() {
-	if c.startedPid > 0 {
-		_ = killProcess(c.startedPid)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.eng != nil {
+		_ = c.eng.Close()
+		c.eng = nil
 	}
 }
 
-func killProcess(pid int) error {
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return err
-	}
-	return p.Kill()
+func (c *Client) engine() *groveeng.Engine {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.eng
 }
 
-// Status calls GET /status.
+func (c *Client) requireEngine() (*groveeng.Engine, error) {
+	if e := c.engine(); e != nil {
+		return e, nil
+	}
+	return nil, errors.New("grove engine not open; call EnsureRunning first")
+}
+
+// Status returns the persisted index summary.
 func (c *Client) Status(ctx context.Context) (*StatusResult, error) {
-	var out StatusResult
-	if err := c.get(ctx, "/status", &out); err != nil {
+	e, err := c.requireEngine()
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	st, err := e.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &StatusResult{
+		FilesIndexed: st.FilesIndexed,
+		SymbolCount:  st.SymbolCount,
+		EdgeCount:    st.EdgeCount,
+	}, nil
 }
 
-// Index calls POST /index.
+// Index indexes dir (defaults to the project root) and returns a result
+// summary in the wire-format shape Prism's callers expect.
 func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {
-	var out IndexResult
-	if err := c.post(ctx, "/index", map[string]string{"dir": dir}, &out); err != nil {
+	e, err := c.requireEngine()
+	if err != nil {
 		return nil, err
 	}
-	return &out, nil
+	res, err := e.Index(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+	return &IndexResult{
+		Root:         res.Root,
+		FilesSeen:    res.FilesSeen,
+		FilesUpdated: res.FilesUpdated,
+		FilesSkipped: res.FilesSkipped,
+		FilesPruned:  res.FilesPruned,
+		SymbolCount:  res.SymbolCount,
+		EdgeCount:    res.EdgeCount,
+	}, nil
 }
 
-// QueryByIntent calls POST /query.
+// QueryByIntent resolves an intent string into ranked symbols.
 func (c *Client) QueryByIntent(ctx context.Context, intent string, limit int) ([]SymbolRecord, error) {
-	var out struct {
-		Symbols []SymbolRecord `json:"symbols"`
-	}
-	if err := c.post(ctx, "/query", map[string]any{"intent": intent, "limit": limit}, &out); err != nil {
+	e, err := c.requireEngine()
+	if err != nil {
 		return nil, err
 	}
-	return out.Symbols, nil
+	syms, err := e.Query(ctx, intent, limit)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
 }
 
-// SearchSymbols calls POST /symbols.
+// SearchSymbols returns symbols matching query (substring).
 func (c *Client) SearchSymbols(ctx context.Context, query string, limit int) ([]SymbolRecord, error) {
-	var out struct {
-		Symbols []SymbolRecord `json:"symbols"`
-	}
-	if err := c.post(ctx, "/symbols", map[string]any{"query": query, "limit": limit}, &out); err != nil {
+	e, err := c.requireEngine()
+	if err != nil {
 		return nil, err
 	}
-	return out.Symbols, nil
+	syms, err := e.Symbols(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
 }
 
-// Deps calls POST /deps for a file path.
+// Deps returns dependency edges for file.
 func (c *Client) Deps(ctx context.Context, file string) ([]Edge, error) {
-	var out struct {
-		Edges []Edge `json:"edges"`
-	}
-	if err := c.post(ctx, "/deps", map[string]string{"file": file}, &out); err != nil {
+	e, err := c.requireEngine()
+	if err != nil {
 		return nil, err
 	}
-	return out.Edges, nil
+	edges, err := e.Deps(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Edge, 0, len(edges))
+	for _, ed := range edges {
+		out = append(out, Edge{From: ed.From, To: ed.To, Type: string(ed.Type), Confidence: ed.Confidence})
+	}
+	return out, nil
 }
 
-// Impact calls POST /impact for a symbol-or-file query.
+// Impact returns the blast radius for a symbol/file query.
 func (c *Client) Impact(ctx context.Context, query string, maxDepth int) ([]SymbolRecord, error) {
-	var out struct {
-		Nodes []SymbolRecord `json:"nodes"`
-	}
-	if err := c.post(ctx, "/impact", map[string]any{"query": query, "maxDepth": maxDepth}, &out); err != nil {
+	e, err := c.requireEngine()
+	if err != nil {
 		return nil, err
 	}
-	return out.Nodes, nil
+	syms, err := e.Impact(ctx, query, maxDepth)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
 }
 
-// Semantic calls POST /semantic (Grove's TF-IDF semantic search).
+// Semantic returns TF-IDF-ranked symbols with cosine-similarity scores.
 func (c *Client) Semantic(ctx context.Context, query string, limit int) ([]SemanticResult, error) {
-	var out struct {
-		Results []SemanticResult `json:"results"`
-	}
-	if err := c.post(ctx, "/semantic", map[string]any{"query": query, "limit": limit}, &out); err != nil {
+	e, err := c.requireEngine()
+	if err != nil {
 		return nil, err
 	}
-	return out.Results, nil
-}
-
-// Tests calls POST /tests.
-func (c *Client) Tests(ctx context.Context, query string) ([]SymbolRecord, error) {
-	var out struct {
-		Tests []SymbolRecord `json:"tests"`
-	}
-	if err := c.post(ctx, "/tests", map[string]string{"query": query}, &out); err != nil {
+	scored, err := e.Semantic(ctx, query, limit)
+	if err != nil {
 		return nil, err
 	}
-	return out.Tests, nil
-}
-
-// --- internal helpers ---
-
-func (c *Client) addAuth(req *http.Request) {
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
-	}
-}
-
-func (c *Client) get(ctx context.Context, path string, out any) error {
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
-	c.addAuth(req)
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("grove GET %s: %d %s", path, resp.StatusCode, string(body))
-	}
-	if out == nil {
-		return nil
-	}
-	return json.Unmarshal(body, out)
-}
-
-func (c *Client) post(ctx context.Context, path string, in any, out any) error {
-	buf, err := json.Marshal(in)
-	if err != nil {
-		return err
-	}
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(buf))
-	req.Header.Set("Content-Type", "application/json")
-	c.addAuth(req)
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("grove POST %s: %d %s", path, resp.StatusCode, string(body))
-	}
-	if out == nil {
-		return nil
-	}
-	return json.Unmarshal(body, out)
-}
-
-func portFromURL(u string) string {
-	if parsed, err := url.Parse(u); err == nil {
-		if p := parsed.Port(); p != "" {
-			return p
+	out := make([]SemanticResult, 0, len(scored))
+	for _, sc := range scored {
+		if sc.Symbol == nil {
+			continue
 		}
+		out = append(out, SemanticResult{Score: sc.Score, Symbol: convertSymbol(*sc.Symbol)})
 	}
-	return "7777"
+	return out, nil
+}
+
+// Tests returns the tests covering query.
+func (c *Client) Tests(ctx context.Context, query string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	syms, err := e.Tests(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
+}
+
+// convertSymbols maps grove engine symbols to Prism's wire-format type.
+func convertSymbols(in []groveeng.Symbol) []SymbolRecord {
+	out := make([]SymbolRecord, 0, len(in))
+	for _, s := range in {
+		out = append(out, convertSymbol(s))
+	}
+	return out
+}
+
+func convertSymbol(s groveeng.Symbol) SymbolRecord {
+	calls := make([]CallSite, 0, len(s.CallSites))
+	for _, cs := range s.CallSites {
+		calls = append(calls, CallSite{Callee: cs.Callee, Line: cs.Line})
+	}
+	return SymbolRecord{
+		ID:             s.ID,
+		FilePath:       s.FilePath,
+		BlobSha:        s.BlobSHA,
+		Language:       s.Language,
+		Kind:           string(s.Kind),
+		Name:           s.Name,
+		QualifiedName:  s.QualifiedName,
+		Signature:      s.Signature,
+		Docstring:      s.Docstring,
+		Span:           SpanInfo{Start: s.Span.Start, End: s.Span.End},
+		ParentSymbol:   s.ParentSymbol,
+		Imports:        s.Imports,
+		Exports:        s.Exports,
+		RawText:        s.RawText,
+		Modifiers:      s.Modifiers,
+		TypeParameters: s.TypeParameters,
+		Annotations:    s.Annotations,
+		CallSites:      calls,
+	}
 }

@@ -2,6 +2,8 @@
 
 > **Focused, graph-ranked context for any AI coding agent — 35–92% fewer tokens on first reads, ~99% on re-reads.**
 
+> **Embedded Grove:** Prism now links Grove directly and opens the on-disk index in-process. No `grove serve` daemon, no `grove_url`, no token — if old docs mention them, you're on a pre-embedded build.
+
 ---
 
 An AI agent that gets bad context produces bad code. Not because it's a bad agent — because it's working blind.
