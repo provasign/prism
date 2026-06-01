@@ -22,6 +22,8 @@ func TestCmdInit(t *testing.T) {
 
 func TestCmdInit_GlobalFlag(t *testing.T) {
 	dir := t.TempDir()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	if rc := cmdInit([]string{dir, "--global"}); rc != 0 {
 		t.Errorf("rc %d", rc)
 	}
