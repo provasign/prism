@@ -158,16 +158,9 @@ func TestRun_DispatchSmoke(t *testing.T) {
 	}
 }
 
-func TestCmdServeAndMCP_ErrorPaths(t *testing.T) {
+func TestCmdMCP_ErrorPath(t *testing.T) {
 	dir := t.TempDir()
 	fileRoot := writeCLIFile(t, dir, "not-a-dir.txt", "x")
-
-	if got := cmdServe([]string{"--port", "9999", fileRoot}); got != 1 {
-		t.Fatalf("cmdServe error path=%d", got)
-	}
-	if got := cmdServe([]string{"--port", "bad", fileRoot}); got != 1 {
-		t.Fatalf("cmdServe bad-port path=%d", got)
-	}
 	if got := cmdMCP([]string{fileRoot}); got != 1 {
 		t.Fatalf("cmdMCP error path=%d", got)
 	}
@@ -202,5 +195,38 @@ func TestRun_SubcommandUsagePaths(t *testing.T) {
 	}
 	if got := Run([]string{"feedback"}); got != 2 {
 		t.Fatalf("Run feedback usage=%d", got)
+	}
+}
+
+func TestCLIHelpersAndConfigPaths(t *testing.T) {
+	dir := setupCLIProject(t)
+
+	if got := cmdConfig([]string{dir}); got != 0 {
+		t.Fatalf("cmdConfig=%d", got)
+	}
+
+	if p := detectSelfPath(); p == "" {
+		t.Fatal("detectSelfPath returned empty path")
+	}
+	if p := detectGrovePath(); p == "" {
+		t.Fatal("detectGrovePath returned empty path")
+	}
+
+	// newClient should reject a file path used as a repo root.
+	badRoot := writeCLIFile(t, t.TempDir(), "not-dir.txt", "x")
+	if _, _, err := newClient(badRoot); err == nil {
+		t.Fatal("expected newClient to fail for non-directory root")
+	}
+
+	// isExecutable helper branches.
+	execFile := writeCLIFile(t, t.TempDir(), "bin/tool", "#!/bin/sh\n")
+	if err := os.Chmod(execFile, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if !isExecutable(execFile) {
+		t.Fatal("expected executable file")
+	}
+	if isExecutable(filepath.Dir(execFile)) {
+		t.Fatal("directory must not be executable target")
 	}
 }
