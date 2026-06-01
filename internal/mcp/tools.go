@@ -34,6 +34,10 @@ type Handler struct {
 	corpus []grove.SymbolRecord
 	dirty  bool
 
+	// readyCh is closed when the background Grove connection + initial index
+	// completes. Nil means no deferred init (Grove is already ready).
+	readyCh <-chan struct{}
+
 	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
@@ -42,6 +46,15 @@ type Handler struct {
 // NewHandler constructs a handler with sensible defaults.
 func NewHandler(cfg *config.Config, root string, client *grove.Client) *Handler {
 	return NewHandlerWithLedger(cfg, root, client, nil)
+}
+
+// NewHandlerWithReady constructs a handler that defers the Grove connection.
+// readyCh must be closed by the caller once Grove is reachable and indexed;
+// Invoke will block until then (or until its own 60-second timeout fires).
+func NewHandlerWithReady(cfg *config.Config, root string, client *grove.Client, readyCh <-chan struct{}) *Handler {
+	h := NewHandlerWithLedger(cfg, root, client, nil)
+	h.readyCh = readyCh
+	return h
 }
 
 // NewHandlerWithLedger constructs a handler and optionally reuses an existing ledger.
@@ -117,6 +130,16 @@ type FeedbackEntry struct {
 func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	// In MCP mode, Grove connection and initial index run in the background so
+	// the MCP handshake (initialize / tools/list) can complete immediately.
+	// Wait here until Grove is ready before dispatching any tool call.
+	if h.readyCh != nil {
+		select {
+		case <-h.readyCh:
+		case <-ctx.Done():
+			return nil, errors.New("timed out waiting for Grove to become ready")
+		}
+	}
 	switch name {
 	case "prism_query":
 		return h.toolQuery(ctx, args)

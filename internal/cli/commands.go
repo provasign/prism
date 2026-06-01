@@ -840,17 +840,32 @@ func cmdServe(args []string) int {
 
 func cmdMCP(args []string) int {
 	dir := dirArg(args, 0, ".")
-	cfg, client, err := newClient(dir)
+	root := mustAbs(dir)
+
+	// Load config and create the Grove client without connecting yet — the MCP
+	// handshake (initialize / tools/list) must be serviced immediately or
+	// Claude Code will time out and never load the tools.
+	cfg, err := config.LoadFromDir(root)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, "config:", err)
 		return 1
 	}
-	defer client.Shutdown()
-	h := mcp.NewHandler(cfg, mustAbs(dir), client)
-	// Best-effort initial index.
-	if _, err := client.Index(context.Background(), mustAbs(dir)); err != nil {
-		fmt.Fprintln(os.Stderr, "warning: initial index failed:", err)
-	}
+	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
+
+	// Connect to Grove and run the initial index in the background.
+	readyCh := make(chan struct{})
+	go func() {
+		defer close(readyCh)
+		if err := client.EnsureRunning(context.Background()); err != nil {
+			fmt.Fprintln(os.Stderr, "warning: grove not reachable:", err)
+			return
+		}
+		if _, err := client.Index(context.Background(), root); err != nil {
+			fmt.Fprintln(os.Stderr, "warning: initial index failed:", err)
+		}
+	}()
+
+	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)
 	srv := mcp.NewServer(h)
 	if err := srv.Serve(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "mcp:", err)

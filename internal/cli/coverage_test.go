@@ -278,10 +278,13 @@ func TestCmdServe_NoGrove(t *testing.T) {
 }
 
 func TestCmdMCP_NoGrove(t *testing.T) {
+	// cmdMCP now defers Grove connection to a background goroutine so the MCP
+	// handshake succeeds immediately even when Grove is unreachable. The server
+	// exits cleanly (0) when stdin closes; Grove errors are logged as warnings.
 	noGrove(t)
 	dir := t.TempDir()
-	if got := cmdMCP([]string{dir}); got != 1 {
-		t.Fatalf("want 1, got %d", got)
+	if got := cmdMCP([]string{dir}); got != 0 {
+		t.Fatalf("want 0, got %d", got)
 	}
 }
 
