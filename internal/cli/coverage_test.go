@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -218,12 +219,13 @@ func TestCLIHelpersAndConfigPaths(t *testing.T) {
 		t.Fatal("expected newClient to fail for non-directory root")
 	}
 
-	// isExecutable helper branches.
+	// isExecutable helper branches. The Unix exec bit (Mode()&0o111) does not
+	// exist on Windows, so only assert the positive case off-Windows.
 	execFile := writeCLIFile(t, t.TempDir(), "bin/tool", "#!/bin/sh\n")
 	if err := os.Chmod(execFile, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if !isExecutable(execFile) {
+	if runtime.GOOS != "windows" && !isExecutable(execFile) {
 		t.Fatal("expected executable file")
 	}
 	if isExecutable(filepath.Dir(execFile)) {

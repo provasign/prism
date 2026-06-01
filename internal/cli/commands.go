@@ -965,6 +965,14 @@ func cmdMCP(args []string) int {
 	dir := dirArg(args, 0, ".")
 	root := mustAbs(dir)
 
+	// Validate the project root up front. Without this, a bad path would block
+	// in Serve (reading stdin) instead of failing fast, and the embedded Grove
+	// engine would error mid-handshake.
+	if info, err := os.Stat(root); err != nil || !info.IsDir() {
+		fmt.Fprintln(os.Stderr, "mcp: project root is not a directory:", root)
+		return 1
+	}
+
 	// Load config and create the Grove client without connecting yet — the MCP
 	// handshake (initialize / tools/list) must be serviced immediately or
 	// Claude Code will time out and never load the tools.
@@ -975,23 +983,36 @@ func cmdMCP(args []string) int {
 	}
 	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
 
-	// Connect to Grove and run the initial index in the background.
+	// Open the embedded Grove engine and run the initial index in the
+	// background so the MCP handshake is serviced without waiting on I/O.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	readyCh := make(chan struct{})
 	go func() {
 		defer close(readyCh)
-		if err := client.EnsureRunning(context.Background()); err != nil {
+		if err := client.EnsureRunning(ctx); err != nil {
 			fmt.Fprintln(os.Stderr, "warning: grove not reachable:", err)
 			return
 		}
-		if _, err := client.Index(context.Background(), root); err != nil {
+		if _, err := client.Index(ctx, root); err != nil {
 			fmt.Fprintln(os.Stderr, "warning: initial index failed:", err)
 		}
 	}()
 
 	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)
 	srv := mcp.NewServer(h)
-	if err := srv.Serve(os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "mcp:", err)
+	serveErr := srv.Serve(os.Stdin, os.Stdout)
+
+	// Stop background work and close the embedded engine before returning so no
+	// SQLite handles or .grove files linger — otherwise a caller that removes
+	// the project directory (e.g. a test using t.TempDir) races file creation
+	// and fails with "directory not empty" on Linux or a lock error on Windows.
+	cancel()
+	<-readyCh
+	client.Shutdown()
+
+	if serveErr != nil {
+		fmt.Fprintln(os.Stderr, "mcp:", serveErr)
 		return 1
 	}
 	return 0
