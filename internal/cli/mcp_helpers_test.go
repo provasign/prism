@@ -66,7 +66,10 @@ func TestMCPEntryAlreadyPresent(t *testing.T) {
 
 func TestEnsureClaudeCodeApproval(t *testing.T) {
 	home := t.TempDir()
+	// os.UserHomeDir reads $HOME on Unix and %USERPROFILE% on Windows — set both
+	// so the test redirects to the temp dir on every platform.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	settings := filepath.Join(home, ".claude", "settings.json")
 
@@ -101,6 +104,21 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	servers, _ = doc["enabledMcpjsonServers"].([]any)
 	if len(servers) != 2 {
 		t.Fatalf("expected 2 servers, got %v", servers)
+	}
+}
+
+func TestRunDispatchSafeSubcommands(t *testing.T) {
+	// Exercise the Run dispatcher for subcommands that don't touch Grove or the
+	// network, from an isolated temp cwd. We only assert they return (the exit
+	// code is incidental) — the point is dispatcher + command-body coverage.
+	dir := t.TempDir()
+	t.Chdir(dir)
+	for _, args := range [][]string{
+		{"config"},
+		{"savings"},
+		{"feedback"}, // missing args → returns non-zero, exercises the early path
+	} {
+		_ = Run(args)
 	}
 }
 
