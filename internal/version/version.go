@@ -2,6 +2,6 @@
 // consumed by the CLI, the MCP server, and the HTTP health endpoint.
 package version
 
-// Version is the current prism release. Keep in sync with
-// vscode-extension/package.json.
-const Version = "0.3.0"
+// Version is overridden via -ldflags at build time. Keep in sync with
+// vscode-extension/package.json for local dev builds.
+var Version = "dev"
