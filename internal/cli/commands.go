@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -121,6 +122,9 @@ func cmdInit(args []string) int {
 	cfg := config.Default()
 
 	// 1. Write prism.yaml into the project (always relative, even for --global).
+	// Use the absolute grove binary path so prism can auto-start grove even when
+	// Claude Code or other tools spawn it with a minimal PATH that excludes ~/bin.
+	groveBin := detectGrovePath()
 	yaml := fmt.Sprintf(`version: 1
 grove_url: "%s"
 grove_binary: "%s"
@@ -128,7 +132,7 @@ grove_binary: "%s"
 #               # Override here only if auto-detection fails, e.g.:
 #               # model: "claude-sonnet-4-6"
 profile: "%s"
-`, cfg.GroveURL, cfg.GroveBinary, cfg.Profile)
+`, cfg.GroveURL, groveBin, cfg.Profile)
 	prismYAML := filepath.Join(abs, "prism.yaml")
 	if err := os.WriteFile(prismYAML, []byte(yaml), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)
@@ -272,6 +276,43 @@ func detectSelfPath() string {
 	return exe
 }
 
+// detectGrovePath returns the absolute path to the grove binary. It searches:
+// 1. Same directory as the running prism binary (most common install layout).
+// 2. ~/bin/grove
+// 3. /usr/local/bin/grove
+// 4. $PATH via exec.LookPath
+// Falls back to "grove" if none found, which will work only if grove is on PATH.
+func detectGrovePath() string {
+	// Same directory as prism — handles ~/bin layout where all binaries live together.
+	if exe, err := os.Executable(); err == nil {
+		candidate := filepath.Join(filepath.Dir(exe), "grove")
+		if isExecutable(candidate) {
+			return candidate
+		}
+	}
+	// ~/bin/grove
+	if home, err := os.UserHomeDir(); err == nil {
+		candidate := filepath.Join(home, "bin", "grove")
+		if isExecutable(candidate) {
+			return candidate
+		}
+	}
+	// /usr/local/bin/grove
+	if isExecutable("/usr/local/bin/grove") {
+		return "/usr/local/bin/grove"
+	}
+	// $PATH
+	if p, err := exec.LookPath("grove"); err == nil {
+		return p
+	}
+	return "grove"
+}
+
+func isExecutable(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
+}
+
 // mcpEntry is the JSON structure every MCP-compatible tool expects.
 type mcpEntry struct {
 	Command string   `json:"command"`
@@ -378,6 +419,15 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 				continue // global user tool not installed — skip
 			}
 		}
+		// Skip writing .mcp.json if the prism entry is already correct.
+		// Writing the file resets Claude Code's MCP approval state, which
+		// forces the user to re-approve on every `prism init` run.
+		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", entry) {
+			fmt.Printf("already registered with %s: %s\n", w.name, p)
+			written = append(written, p)
+			ensureClaudeCodeApproval("prism")
+			continue
+		}
 		content := w.build()
 		// Merge rather than overwrite existing configs.
 		merged := mergeOrCreate(p, content)
@@ -387,6 +437,9 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 		}
 		fmt.Printf("registered with %s: %s\n", w.name, p)
 		written = append(written, p)
+		if filepath.Base(p) == ".mcp.json" {
+			ensureClaudeCodeApproval("prism")
+		}
 	}
 
 	// Codex CLI (~/.codex/config.toml) uses TOML, not JSON.
@@ -412,6 +465,36 @@ func buildMCPConfig(name string, e mcpEntry) []byte {
 	}
 	b, _ := json.MarshalIndent(envelope{MCPServers: map[string]mcpEntry{name: e}}, "", "  ")
 	return b
+}
+
+// mcpEntryAlreadyPresent returns true if the JSON file at path already
+// contains an mcpServers entry for name with the exact same command and args.
+// This avoids rewriting .mcp.json on repeated `prism init` runs, which would
+// reset Claude Code's MCP approval state on every run.
+func mcpEntryAlreadyPresent(path string, name string, want mcpEntry) bool {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		MCPServers map[string]mcpEntry `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return false
+	}
+	got, ok := doc.MCPServers[name]
+	if !ok {
+		return false
+	}
+	if got.Command != want.Command || len(got.Args) != len(want.Args) {
+		return false
+	}
+	for i, a := range want.Args {
+		if got.Args[i] != a {
+			return false
+		}
+	}
+	return true
 }
 
 // buildZedConfig returns the minimal Zed context_servers stanza.
@@ -548,6 +631,50 @@ func mergeOrCreate(path string, content []byte) []byte {
 	}
 	out, _ := json.MarshalIndent(base, "", "  ")
 	return out
+}
+
+// ensureClaudeCodeApproval adds serverName to enabledMcpjsonServers in
+// ~/.claude/settings.json so Claude Code trusts the server without requiring
+// interactive re-approval after every `prism init` run.
+func ensureClaudeCodeApproval(serverName string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	path := filepath.Join(home, ".claude", "settings.json")
+	var doc map[string]any
+	if raw, err := os.ReadFile(path); err == nil {
+		json.Unmarshal(raw, &doc) //nolint:errcheck
+	}
+	if doc == nil {
+		doc = map[string]any{}
+	}
+	var servers []any
+	if s, ok := doc["enabledMcpjsonServers"].([]any); ok {
+		servers = s
+	}
+	for _, s := range servers {
+		if s == serverName {
+			return // already approved
+		}
+	}
+	servers = append(servers, serverName)
+	doc["enabledMcpjsonServers"] = servers
+	data, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
+		return
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return
+	}
+	fmt.Printf("approved %s in Claude Code MCP settings\n", serverName)
 }
 
 func cmdIndex(args []string) int {

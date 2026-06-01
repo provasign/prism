@@ -172,8 +172,16 @@ func TestWriteMessage(t *testing.T) {
 	if err := writeMessage(&buf, 1, map[string]string{"ok": "yes"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "Content-Length:") {
-		t.Errorf("no header: %q", buf.String())
+	// MCP stdio transport: newline-delimited compact JSON, no Content-Length header.
+	out := buf.String()
+	if strings.Contains(out, "Content-Length:") {
+		t.Errorf("unexpected Content-Length header (stdio must be newline-delimited): %q", out)
+	}
+	if !strings.HasSuffix(out, "\n") {
+		t.Errorf("response not newline-terminated: %q", out)
+	}
+	if strings.Count(strings.TrimRight(out, "\n"), "\n") != 0 {
+		t.Errorf("response contains embedded newlines (must be one compact object per line): %q", out)
 	}
 }
 

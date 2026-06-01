@@ -1,6 +1,8 @@
-// Package mcp implements Prism's JSON-RPC 2.0 server (stdio framing) exposing
-// the 8 prism_* tools. The on-the-wire format matches the Model Context
-// Protocol "Content-Length: N\r\n\r\n{json}" framing used by Grove.
+// Package mcp implements Prism's JSON-RPC 2.0 server (stdio transport) exposing
+// the 8 prism_* tools. The on-the-wire format is the Model Context Protocol
+// stdio transport: newline-delimited JSON (one compact JSON object per line).
+// The reader additionally tolerates legacy "Content-Length: N\r\n\r\n{json}"
+// framing for backward compatibility with older test harnesses.
 package mcp
 
 import (
@@ -61,11 +63,35 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 	}
 }
 
+// defaultProtocolVersion is the latest MCP revision these servers target.
+const defaultProtocolVersion = "2025-03-26"
+
+// supportedProtocolVersions are the MCP revisions this server can speak.
+var supportedProtocolVersions = map[string]bool{
+	"2024-11-05": true,
+	"2025-03-26": true,
+	"2025-06-18": true,
+}
+
+// negotiateProtocolVersion echoes the client's requested protocolVersion when
+// it is one we support (required by the MCP spec), otherwise falls back to our
+// latest. Maximizes compatibility across clients (Claude Code, Cursor, VS Code,
+// Copilot) that each pin different revisions.
+func negotiateProtocolVersion(params json.RawMessage) string {
+	var p struct {
+		ProtocolVersion string `json:"protocolVersion"`
+	}
+	if err := json.Unmarshal(params, &p); err == nil && supportedProtocolVersions[p.ProtocolVersion] {
+		return p.ProtocolVersion
+	}
+	return defaultProtocolVersion
+}
+
 func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError) {
 	switch method {
 	case "initialize":
 		return map[string]any{
-			"protocolVersion": "2025-03-26",
+			"protocolVersion": negotiateProtocolVersion(params),
 			"serverInfo":      map[string]string{"name": "prism", "version": version.Version},
 			"capabilities":    map[string]any{"tools": map[string]any{}},
 		}, nil
@@ -135,6 +161,12 @@ func writeMessage(w io.Writer, id any, result any, rpcErr *rpcError) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(w, "Content-Length: %d\r\n\r\n%s", len(payload), payload)
+	// MCP stdio transport requires newline-delimited JSON (one compact JSON
+	// object per line, no embedded newlines). json.Marshal already produces a
+	// compact, newline-free payload. Emitting LSP-style "Content-Length"
+	// framing here makes every newline-delimited MCP client (Claude Code,
+	// Cursor, VS Code, Copilot) block waiting for a terminating newline and
+	// time out the connection.
+	_, err = fmt.Fprintf(w, "%s\n", payload)
 	return err
 }

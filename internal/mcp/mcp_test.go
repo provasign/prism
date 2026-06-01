@@ -223,13 +223,11 @@ func rpcLine(id int, method string, params any) string {
 
 func readRPCResponse(t *testing.T, buf *bytes.Buffer) map[string]any {
 	t.Helper()
-	// Skip "Content-Length: N\r\n\r\n" header.
-	raw := buf.String()
-	idx := strings.Index(raw, "\r\n\r\n")
-	if idx < 0 {
-		t.Fatalf("no Content-Length header in: %q", raw)
+	// MCP stdio transport: one newline-delimited compact JSON object per line.
+	payload := strings.TrimSpace(buf.String())
+	if payload == "" {
+		t.Fatalf("empty response")
 	}
-	payload := raw[idx+4:]
 	var m map[string]any
 	if err := json.Unmarshal([]byte(payload), &m); err != nil {
 		t.Fatalf("unmarshal response: %v (payload: %q)", err, payload)

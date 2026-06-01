@@ -22,6 +22,7 @@ type Client struct {
 	http       *http.Client
 	token      string // shared-secret read from .grove/.token
 	groveBin   string // path to grove binary for auto-start
+	root       string // project root; passed to grove serve so token lands in <root>/.grove/.token
 	autoStart  bool
 	startedPid int
 }
@@ -38,9 +39,12 @@ func NewClient(baseURL, groveBin string) *Client {
 
 // WithTokenFromDir loads the shared-secret token from <root>/.grove/.token and
 // attaches it to the client. All subsequent requests carry
-// "Authorization: Bearer <token>". Safe to call even if the file doesn't exist
-// yet (e.g. before the first grove serve run).
+// "Authorization: Bearer <token>". Also stores root so EnsureRunning can pass
+// it to `grove serve`, ensuring the token is created in the right place even
+// when the process working directory differs (e.g. when Claude Code spawns prism).
+// Safe to call even if the file doesn't exist yet (e.g. before the first grove serve run).
 func (c *Client) WithTokenFromDir(root string) *Client {
+	c.root = root
 	path := filepath.Join(root, ".grove", ".token")
 	data, err := os.ReadFile(path)
 	if err == nil {
@@ -76,7 +80,14 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 		return errors.New("grove not reachable and auto-start disabled")
 	}
 	port := portFromURL(c.baseURL)
-	cmd := exec.Command(c.groveBin, "serve", "--port", port)
+	// Pass the project root so grove writes its token to <root>/.grove/.token.
+	// Without this, grove defaults to cwd which may not be the project root when
+	// spawned indirectly (e.g. Claude Code spawning the prism MCP server).
+	args := []string{"serve", "--port", port}
+	if c.root != "" {
+		args = append(args, c.root)
+	}
+	cmd := exec.Command(c.groveBin, args...)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	if err := cmd.Start(); err != nil {
