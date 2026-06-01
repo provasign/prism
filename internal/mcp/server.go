@@ -65,10 +65,12 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 	switch method {
 	case "initialize":
 		return map[string]any{
-			"protocolVersion": "2024-11-05",
+			"protocolVersion": "2025-03-26",
 			"serverInfo":      map[string]string{"name": "prism", "version": version.Version},
 			"capabilities":    map[string]any{"tools": map[string]any{}},
 		}, nil
+	case "ping":
+		return map[string]any{}, nil
 	case "tools/list":
 		return map[string]any{"tools": ToolSchemas()}, nil
 	case "tools/call":
