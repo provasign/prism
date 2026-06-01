@@ -46,7 +46,7 @@ Usage:
   prism version                   Print version
 
 Supported AI tools (auto-detected by prism init):
-  Claude Code  →  .claude/mcp.json + CLAUDE.md
+  Claude Code  →  .mcp.json + CLAUDE.md
   Cursor       →  .cursor/mcp.json + .cursorrules + AGENTS.md
   Windsurf     →  .windsurf/mcp.json + .windsurfrules
   Zed          →  ~/.config/zed/settings.json (context_servers)
@@ -296,13 +296,15 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 
 	writers := []writer{
 		{
-			// Claude Code: .claude/mcp.json (project) or ~/.claude/mcp.json (global)
+			// Claude Code: .mcp.json at project root (project) or ~/.claude.json (global).
+			// Claude Code reads project MCP servers from .mcp.json in the repo root;
+			// global user-level servers live in ~/.claude.json under "mcpServers".
 			name: "Claude Code",
 			path: func() string {
 				if global {
-					return filepath.Join(home, ".claude", "mcp.json")
+					return filepath.Join(home, ".claude.json")
 				}
-				return filepath.Join(projectDir, ".claude", "mcp.json")
+				return filepath.Join(projectDir, ".mcp.json")
 			},
 			build: func() []byte {
 				return buildMCPConfig("prism", entry)

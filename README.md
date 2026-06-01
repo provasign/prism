@@ -82,7 +82,7 @@ Prism has two integration paths. Both produce identical context quality — only
 
 | Tool | Config written | Notes |
 |------|---------------|-------|
-| Claude Code CLI | `.claude/mcp.json` | `prism mcp` launched per session |
+| Claude Code CLI | `.mcp.json` (project root) | `prism mcp` launched per session; approve when prompted on restart |
 | GitHub Copilot (VS Code) | `.vscode/mcp.json` | `"servers"` key, `"type":"stdio"` |
 | Cursor | `.cursor/mcp.json` | Same |
 | Codex CLI | `~/.codex/config.toml` | `[[mcp_servers]]` TOML; skipped if `~/.codex/` absent |

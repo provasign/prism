@@ -19,7 +19,7 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 
 	// All three project-local configs must be written.
 	wantPaths := []string{
-		filepath.Join(projectDir, ".claude", "mcp.json"),
+		filepath.Join(projectDir, ".mcp.json"),
 		filepath.Join(projectDir, ".cursor", "mcp.json"),
 		filepath.Join(projectDir, ".windsurf", "mcp.json"),
 	}
@@ -45,7 +45,7 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 
 	initRegisterMCPTools(projectDir, prismBin, false)
 
-	cfgPath := filepath.Join(projectDir, ".claude", "mcp.json")
+	cfgPath := filepath.Join(projectDir, ".mcp.json")
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
 		t.Fatalf("read config: %v", err)
@@ -78,18 +78,14 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 // mcpServers entries must survive alongside the new prism entry.
 func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 	projectDir := t.TempDir()
-	claudeDir := filepath.Join(projectDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	existing := `{"mcpServers":{"other-tool":{"command":"/bin/other","args":[]}}}`
-	if err := os.WriteFile(filepath.Join(claudeDir, "mcp.json"), []byte(existing), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, ".mcp.json"), []byte(existing), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	initRegisterMCPTools(projectDir, "/bin/prism", false)
 
-	raw, _ := os.ReadFile(filepath.Join(claudeDir, "mcp.json"))
+	raw, _ := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))
 	var cfg struct {
 		MCPServers map[string]json.RawMessage `json:"mcpServers"`
 	}
