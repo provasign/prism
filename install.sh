@@ -103,5 +103,25 @@ if ! grep -qsF "$LINE" "$SHELL_RC" 2>/dev/null; then
 fi
 export PATH="${INSTALL_DIR}:$PATH"
 
+# ── Global AI tool registration ──────────────────────────────────────────────
+info "Registering prism with detected AI coding tools (global)…"
+"${INSTALL_DIR}/prism" init --global 2>/dev/null \
+  && ok "prism registered globally with detected AI tools" \
+  || info "prism global init skipped (run: prism init --global)"
+
+# ── Optional project initialization ─────────────────────────────────────────
+if [ -n "${PROJECT:-}" ]; then
+  [ -d "$PROJECT" ] || die "project dir not found: $PROJECT"
+  info "Initializing project: $PROJECT"
+  ( cd "$PROJECT"
+    "${INSTALL_DIR}/prism" init >/dev/null 2>&1 \
+      && ok "prism: project initialized" \
+      || err "prism init failed — run manually: prism init"
+    "${INSTALL_DIR}/prism" index >/dev/null 2>&1 \
+      && ok "prism: index built" \
+      || err "prism index failed — run manually: prism index"
+  )
+fi
+
 printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nNext: cd /your/project && prism init && prism index\n' \
   "$PRODUCT" "$VERSION" "$INSTALL_DIR"

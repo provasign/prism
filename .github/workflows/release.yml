@@ -110,3 +110,5 @@ jobs:
             dist/checksums.txt
             install.sh
             install.ps1
+            uninstall.sh
+            uninstall.ps1
