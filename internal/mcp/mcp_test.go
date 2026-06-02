@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tabladrum/grove-suite/prism/internal/config"
-	"github.com/tabladrum/grove-suite/prism/internal/session"
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/session"
 )
 
 // newTestHandler builds a Handler with no Grove client — suitable for

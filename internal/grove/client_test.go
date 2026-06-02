@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	groveeng "github.com/tabladrum/grove-suite/grove/pkg/grove"
+	groveeng "github.com/provasign/grove/pkg/grove"
 )
 
 func writePrismFile(t *testing.T, root, rel, content string) string {

@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tabladrum/grove-suite/prism/internal/compression"
-	"github.com/tabladrum/grove-suite/prism/internal/config"
-	"github.com/tabladrum/grove-suite/prism/internal/embeddings"
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
-	"github.com/tabladrum/grove-suite/prism/internal/ranking"
-	"github.com/tabladrum/grove-suite/prism/internal/session"
+	"github.com/provasign/prism/internal/compression"
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/embeddings"
+	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/ranking"
+	"github.com/provasign/prism/internal/session"
 )
 
 // Handler holds the shared backend state used by all 8 prism_* tools.

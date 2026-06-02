@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
-	"github.com/tabladrum/grove-suite/prism/internal/ranking"
-	"github.com/tabladrum/grove-suite/prism/internal/session"
+	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/ranking"
+	"github.com/provasign/prism/internal/session"
 )
 
 func makeSymbols(filePath string, n int) []grove.SymbolRecord {

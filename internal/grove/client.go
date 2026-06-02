@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	groveeng "github.com/tabladrum/grove-suite/grove/pkg/grove"
+	groveeng "github.com/provasign/grove/pkg/grove"
 )
 
 // Client wraps an embedded Grove engine. baseURL/groveBin are ignored in the

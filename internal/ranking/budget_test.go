@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/grove"
 )
 
 func TestScore_LinearCombination(t *testing.T) {

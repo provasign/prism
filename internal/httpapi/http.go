@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/tabladrum/grove-suite/prism/internal/mcp"
-	"github.com/tabladrum/grove-suite/prism/internal/version"
+	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/version"
 )
 
 // Server wraps a Prism MCP handler with HTTP routes.

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tabladrum/grove-suite/prism/internal/config"
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/grove"
 )
 
 func newH(t *testing.T) *Handler {

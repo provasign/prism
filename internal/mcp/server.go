@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tabladrum/grove-suite/prism/internal/version"
+	"github.com/provasign/prism/internal/version"
 )
 
 // Server is the JSON-RPC stdio server.

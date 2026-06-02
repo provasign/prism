@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/grove"
 )
 
 func TestIntArg(t *testing.T) {
