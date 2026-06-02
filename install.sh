@@ -86,6 +86,7 @@ mkdir -p "$INSTALL_DIR"
 mv "${TMP}/${FILE}" "${INSTALL_DIR}/${PRODUCT}"
 chmod +x "${INSTALL_DIR}/${PRODUCT}"
 [ "$OS" = "darwin" ] && xattr -d com.apple.quarantine "${INSTALL_DIR}/${PRODUCT}" 2>/dev/null || true
+[ "$OS" = "darwin" ] && codesign -f -s - "${INSTALL_DIR}/${PRODUCT}" 2>/dev/null || true
 ok "${PRODUCT} ${VERSION} → ${INSTALL_DIR}/${PRODUCT}"
 
 # ── PATH registration ────────────────────────────────────────────────────────
