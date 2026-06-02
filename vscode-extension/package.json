@@ -6,7 +6,7 @@
   "publisher": "prism",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tabladrum/grove-suite"
+    "url": "https://github.com/provasign/provasign"
   },
   "engines": {
     "vscode": "^1.93.0"

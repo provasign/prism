@@ -53,4 +53,4 @@ Prism delivers token-optimized code context to AI agents. MIT licensed. Requires
 - [ ] VS Code extension published to Marketplace
 - [ ] Homebrew tap: `brew install prism`
 - [ ] `curl | sh` installer for Linux
-- [ ] Published Go module: `github.com/tabladrum/grove-suite/prism`
+- [ ] Published Go module: `github.com/provasign/prism`

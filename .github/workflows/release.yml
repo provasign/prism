@@ -8,35 +8,85 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GO_VERSION: "1.26.3"
 jobs:
-  release:
-    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
-    runs-on: ${{ matrix.runner }}
+  build-linux:
+    name: Build linux/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - goos: linux;   goarch: amd64; runner: ubuntu-latest
-          - goos: linux;   goarch: arm64; runner: ubuntu-latest
-          - goos: darwin;  goarch: arm64; runner: macos-latest
-          - goos: darwin;  goarch: amd64; runner: macos-latest
-          - goos: windows; goarch: amd64; runner: windows-latest
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Install arm64 cross-compiler
+        if: matrix.goarch == 'arm64'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Build
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "1"
+          CC: ${{ matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
+        run: |
+          mkdir -p dist
+          go build -ldflags="-s -w" -o "dist/prism-${{ github.ref_name }}-linux-${{ matrix.goarch }}" ./cmd/prism
+      - uses: actions/upload-artifact@v5
+        with:
+          name: prism-linux-${{ matrix.goarch }}
+          path: dist/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+
+  build-darwin:
+    name: Build darwin/${{ matrix.goarch }}
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Build
-        shell: bash
         env:
-          GOOS: ${{ matrix.goos }}
+          GOOS: darwin
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "1"
+          CC: ${{ matrix.goarch == 'amd64' && 'clang -arch x86_64' || 'clang -arch arm64' }}
         run: |
           mkdir -p dist
-          EXT=$([ "${{ matrix.goos }}" = "windows" ] && echo ".exe" || echo "")
-          go build -ldflags="-s -w" -o "dist/prism-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}" ./cmd/prism
+          go build -ldflags="-s -w" -o "dist/prism-${{ github.ref_name }}-darwin-${{ matrix.goarch }}" ./cmd/prism
       - uses: actions/upload-artifact@v5
         with:
-          name: prism-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: prism-darwin-${{ matrix.goarch }}
+          path: dist/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+
+  build-windows:
+    name: Build windows/amd64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: "1"
+        shell: bash
+        run: |
+          mkdir -p dist
+          go build -ldflags="-s -w" -o "dist/prism-${{ github.ref_name }}-windows-amd64.exe" ./cmd/prism
+      - uses: actions/upload-artifact@v5
+        with:
+          name: prism-windows-amd64
           path: dist/
       - uses: softprops/action-gh-release@v2
         with:
