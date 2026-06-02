@@ -91,3 +91,22 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+
+  release-meta:
+    name: Checksums + install scripts
+    needs: [build-linux, build-darwin, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          merge-multiple: true
+          path: dist/
+      - name: Generate checksums
+        run: cd dist && sha256sum * | tee checksums.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/checksums.txt
+            install.sh
+            install.ps1
