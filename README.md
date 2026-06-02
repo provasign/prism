@@ -143,12 +143,39 @@ Semantic similarity uses Model2Vec (potion-base-8M, embedded in the Grove binary
 
 ---
 
+## Installation
+
+**Binary install (fastest):**
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
+
+# Pin a specific version
+VERSION=v0.4.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+```
+
+Installs to `~/bin` by default. Set `INSTALL_DIR=/usr/local/bin` to override.
+Grove is embedded — no separate grove installation needed.
+
+**Build from source:**
+
+```bash
+make build    # compile ./bin/prism
+make install  # install to $GOPATH/bin
+make test     # run all tests
+```
+
+---
+
 ## Quick Start
 
 ```bash
-# 1. Install (build Grove first — Prism requires it)
-cd grove && make install
-cd prism && make install
+# 1. Install
+curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 
 # 2. Initialize a project (run once per project root)
 cd /your/project
