@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/grove"
 )
 
 type fakeEmb struct{ v float64 }

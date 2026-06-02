@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/tabladrum/grove-suite/prism/internal/cli"
+	"github.com/provasign/prism/internal/cli"
 )
 
 func main() {

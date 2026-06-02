@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/grove"
 )
 
 // SignalComputer computes individual signal values for a symbol relative to

@@ -1,3 +1,3 @@
-module github.com/tabladrum/grove-suite/prism
+module github.com/provasign/prism
 
 go 1.26

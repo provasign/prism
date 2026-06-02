@@ -10,7 +10,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/grove"
 )
 
 // Backend is the Prism semantic-similarity interface used by the ranker.

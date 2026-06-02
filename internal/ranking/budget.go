@@ -3,7 +3,7 @@ package ranking
 import (
 	"sort"
 
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/grove"
 )
 
 // DisclosureLevel controls how much of a symbol is rendered.

@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tabladrum/grove-suite/prism/internal/config"
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/grove"
 )
 
 func fakeGroveSrv(t *testing.T, payload map[string]any) *httptest.Server {

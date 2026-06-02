@@ -17,12 +17,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tabladrum/grove-suite/prism/internal/config"
-	"github.com/tabladrum/grove-suite/prism/internal/grove"
-	"github.com/tabladrum/grove-suite/prism/internal/httpapi"
-	"github.com/tabladrum/grove-suite/prism/internal/mcp"
-	"github.com/tabladrum/grove-suite/prism/internal/session"
-	"github.com/tabladrum/grove-suite/prism/internal/version"
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/httpapi"
+	"github.com/provasign/prism/internal/mcp"
+	"github.com/provasign/prism/internal/session"
+	"github.com/provasign/prism/internal/version"
 )
 
 const helpText = `prism - token-optimized context delivery for AI agents (requires Grove)
@@ -155,7 +155,7 @@ profile: "%s"
 const steeringInstructions = `
 ## Prism — context delivery (ALWAYS use these tools)
 
-This project uses [Prism](https://github.com/tabladrum/grove-suite/prism) for token-optimized context delivery.
+This project uses [Prism](https://github.com/provasign/prism) for token-optimized context delivery.
 Prism tools are registered via MCP. Follow these rules in every task:
 
 ### Rules
