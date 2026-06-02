@@ -30,7 +30,7 @@ jobs:
           CC: ${{ matrix.goarch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
         run: |
           mkdir -p dist
-          go build -ldflags="-s -w" -o "dist/prism-${{ github.ref_name }}-linux-${{ matrix.goarch }}" ./cmd/prism
+          go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-linux-${{ matrix.goarch }}" ./cmd/prism
       - uses: actions/upload-artifact@v5
         with:
           name: prism-linux-${{ matrix.goarch }}
@@ -58,7 +58,7 @@ jobs:
           CC: ${{ matrix.goarch == 'amd64' && 'clang -arch x86_64' || 'clang -arch arm64' }}
         run: |
           mkdir -p dist
-          go build -ldflags="-s -w" -o "dist/prism-${{ github.ref_name }}-darwin-${{ matrix.goarch }}" ./cmd/prism
+          go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-darwin-${{ matrix.goarch }}" ./cmd/prism
       - uses: actions/upload-artifact@v5
         with:
           name: prism-darwin-${{ matrix.goarch }}
@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          go build -ldflags="-s -w" -o "dist/prism-${{ github.ref_name }}-windows-amd64.exe" ./cmd/prism
+          go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-windows-amd64.exe" ./cmd/prism
       - uses: actions/upload-artifact@v5
         with:
           name: prism-windows-amd64
