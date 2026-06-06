@@ -97,7 +97,8 @@ func TestReReadSHAPointer(t *testing.T) {
 // TestThirdReadSHAPointerHighConf verifies that 3rd read with High confidence
 // also gets a sha-pointer (still within 30% of window).
 func TestThirdReadSHAPointerHighConf(t *testing.T) {
-	content := "package pkg\n\nfunc X() {}\n"
+	content := strings.Repeat("// enough code to make a cache pointer cheaper\n", 20) +
+		"package pkg\n\nfunc X() {}\n"
 	syms := makeSymbols("pkg/x.go", 1)
 	tracker := session.NewTracker(100)
 	opts := freshOpts(tracker, syms)
@@ -115,7 +116,8 @@ func TestThirdReadSHAPointerHighConf(t *testing.T) {
 // TestThirdReadMediumConf verifies 3rd read with Medium confidence uses
 // session-signature (refresher but not full resend).
 func TestThirdReadMediumConf(t *testing.T) {
-	content := "package pkg\n\nfunc X() {}\nfunc Y() {}\n"
+	content := strings.Repeat("// enough code to make signatures cheaper than full content\n", 20) +
+		"package pkg\n\nfunc X() {}\nfunc Y() {}\n"
 	syms := makeSymbols("pkg/xy.go", 2)
 	tracker := session.NewTracker(100)
 	opts := freshOpts(tracker, syms)
@@ -151,6 +153,26 @@ func TestFourthReadEscalated(t *testing.T) {
 	}
 }
 
+func TestCompressionNeverExpandsTinyFiles(t *testing.T) {
+	content := "package pkg\n\nfunc Tiny() {}\n"
+	syms := makeSymbols("pkg/tiny.go", 1)
+	tracker := session.NewTracker(100)
+	opts := freshOpts(tracker, syms)
+
+	CompressFileRead("pkg/tiny.go", content, opts)
+	r2 := CompressFileRead("pkg/tiny.go", content, opts)
+
+	if r2.DeliveredTokens > r2.OriginalTokens {
+		t.Fatalf("tiny file delivery expanded: delivered=%d original=%d", r2.DeliveredTokens, r2.OriginalTokens)
+	}
+	if r2.SavingsPercent < 0 {
+		t.Fatalf("tiny file savings must not be negative, got %.1f", r2.SavingsPercent)
+	}
+	if r2.Strategy != "full-fresh" {
+		t.Fatalf("tiny expanded cache pointer should fall back to full-fresh, got %s", r2.Strategy)
+	}
+}
+
 // TestChangedContentRestartsFromFresh verifies that if the file content changes
 // the session counter resets and a fresh compressed delivery is made.
 func TestChangedContentRestartsFromFresh(t *testing.T) {
@@ -160,8 +182,8 @@ func TestChangedContentRestartsFromFresh(t *testing.T) {
 	tracker := session.NewTracker(100)
 	opts := freshOpts(tracker, syms)
 
-	CompressFileRead("pkg/c.go", v1, opts) // R1 v1
-	CompressFileRead("pkg/c.go", v1, opts) // R2 v1 → sha-pointer
+	CompressFileRead("pkg/c.go", v1, opts)       // R1 v1
+	CompressFileRead("pkg/c.go", v1, opts)       // R2 v1 → sha-pointer
 	r3 := CompressFileRead("pkg/c.go", v2, opts) // R3 v2 — content changed
 
 	if r3.Strategy != "compressed-fresh" {
@@ -212,5 +234,92 @@ func TestTruncateToTokens_ExceedsCap(t *testing.T) {
 	}
 	if len(got) <= 40 {
 		t.Errorf("got too short: %d bytes", len(got))
+	}
+}
+
+// --- D: Semantic delta encoding ------------------------------------------
+
+// makeSymbolsWithBody returns symbols that have RawText populated so that
+// computeSymbolSHAs can produce non-empty hashes for delta diffing.
+func makeSymbolsWithBody(filePath string, bodies []string) []grove.SymbolRecord {
+	syms := make([]grove.SymbolRecord, len(bodies))
+	for i, body := range bodies {
+		syms[i] = grove.SymbolRecord{
+			FilePath:  filePath,
+			Name:      "Func" + string(rune('A'+i)),
+			Signature: "func Func" + string(rune('A'+i)) + "()",
+			Kind:      "function",
+			RawText:   body,
+			Span:      grove.SpanInfo{Start: i * 10, End: i*10 + 5},
+		}
+	}
+	return syms
+}
+
+// TestSemanticDelta_ChangedFile verifies that re-reading a file whose content
+// changed produces the "semantic-delta" strategy (not compressed-fresh) when
+// symbol SHAs were recorded on the first read.
+func TestSemanticDelta_ChangedFile(t *testing.T) {
+	v1bodies := []string{
+		"func FuncA() { return 1 }\n",
+		"func FuncB() { return 2 }\n",
+		strings.Repeat("// unchanged padding\n", 10),
+	}
+	v2bodies := []string{
+		"func FuncA() { return 1 }\n",                // unchanged
+		"func FuncB() { return 999 /* edited */ }\n", // changed
+		strings.Repeat("// unchanged padding\n", 10),
+	}
+	v1 := strings.Join(v1bodies, "\n")
+	v2 := strings.Join(v2bodies, "\n")
+
+	symsV1 := makeSymbolsWithBody("pkg/delta.go", v1bodies)
+	symsV2 := makeSymbolsWithBody("pkg/delta.go", v2bodies)
+
+	tracker := session.NewTracker(100)
+	opts := freshOpts(tracker, symsV1)
+
+	// R1: first read — records symbol SHAs.
+	CompressFileRead("pkg/delta.go", v1, opts)
+
+	// R2: file content changed — should trigger semantic-delta.
+	opts.Symbols = symsV2
+	r2 := CompressFileRead("pkg/delta.go", v2, opts)
+
+	if r2.Strategy != "semantic-delta" {
+		t.Errorf("changed file with symbol SHAs: want semantic-delta, got %s", r2.Strategy)
+	}
+	// Unchanged symbol should be a [prism:cached] pointer.
+	if !strings.Contains(r2.Content, "[prism:cached] FuncA") {
+		t.Errorf("FuncA unchanged: want [prism:cached] pointer in delta, got:\n%s", r2.Content)
+	}
+	// Changed symbol should appear as full source.
+	if !strings.Contains(r2.Content, "func FuncB()") {
+		t.Errorf("FuncB changed: want full body in delta, got:\n%s", r2.Content)
+	}
+	// Delta should save tokens vs the original.
+	if r2.DeliveredTokens >= r2.OriginalTokens {
+		t.Errorf("delta should deliver fewer tokens: delivered=%d original=%d", r2.DeliveredTokens, r2.OriginalTokens)
+	}
+}
+
+// TestSemanticDelta_NoSymbolSHAs verifies that without prior symbol SHAs
+// (first read ever), a changed file falls back to compressed-fresh.
+func TestSemanticDelta_NoSymbolSHAs(t *testing.T) {
+	v1 := "package pkg\n\nfunc A() {}\n"
+	v2 := "package pkg\n\nfunc A() {}\nfunc B() {} // new\n"
+	syms := makeSymbols("pkg/nodelta.go", 2)
+	// Fresh tracker — no prior reads, so no symbol SHAs stored.
+	tracker := session.NewTracker(100)
+	opts := freshOpts(tracker, syms)
+
+	// First read of v1 populates entry but makeSymbols has no RawText → no SHAs.
+	CompressFileRead("pkg/nodelta.go", v1, opts)
+
+	// Now v2 is different content — should NOT produce semantic-delta
+	// (no SHAs means we can't delta-encode).
+	r2 := CompressFileRead("pkg/nodelta.go", v2, opts)
+	if r2.Strategy == "semantic-delta" {
+		t.Errorf("without symbol SHAs: should not produce semantic-delta, got %s", r2.Strategy)
 	}
 }

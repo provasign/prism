@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,7 +23,7 @@ func writeCLIFile(t *testing.T, root, rel, content string) string {
 
 func setupCLIProject(t *testing.T) string {
 	dir := t.TempDir()
-	_ = writeCLIFile(t, dir, "main.go", "package main\n\nfunc Main() {}\n")
+	_ = writeCLIFile(t, dir, "main.go", "package main\n\n"+strings.Repeat("// fixture padding for cache pointer savings\n", 20)+"func Main() {}\n")
 	_ = writeCLIFile(t, dir, "main_test.go", "package main\n\nimport \"testing\"\n\nfunc TestMain(t *testing.T) { Main() }\n")
 	return dir
 }
@@ -141,6 +142,24 @@ func TestInvokeWithPersistentLedger_Smoke(t *testing.T) {
 	}
 	if out == nil {
 		t.Fatal("expected output")
+	}
+}
+
+func TestInvokeWithPersistentLedger_PersistsSessionCache(t *testing.T) {
+	dir := setupCLIProject(t)
+	if _, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": "main.go"}); err != nil {
+		t.Fatalf("first prism_read: %v", err)
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": "main.go"})
+	if err != nil {
+		t.Fatalf("second prism_read: %v", err)
+	}
+	got, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected output type %T", out)
+	}
+	if got["strategy"] != "sha-pointer" {
+		t.Fatalf("expected second CLI read to use persisted sha-pointer cache, got %v", got["strategy"])
 	}
 }
 

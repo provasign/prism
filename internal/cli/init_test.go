@@ -100,7 +100,7 @@ func TestWritePrismCodexConfig(t *testing.T) {
 	}
 	raw, _ := os.ReadFile(path)
 	s := string(raw)
-	for _, want := range []string{`[[mcp_servers]]`, `name = "prism"`, `type = "stdio"`, `command = "/usr/local/bin/prism"`, `args = ["mcp", "/my/project"]`} {
+	for _, want := range []string{`[mcp_servers.prism]`, `type = "stdio"`, `command = "/usr/local/bin/prism"`, `args = ["mcp", "/my/project"]`} {
 		if !contains(s, want) {
 			t.Errorf("missing %q in:\n%s", want, s)
 		}
@@ -113,12 +113,12 @@ func TestWritePrismCodexConfig(t *testing.T) {
 	raw2, _ := os.ReadFile(path)
 	blockCount := 0
 	for _, line := range strings.Split(string(raw2), "\n") {
-		if line == "[[mcp_servers]]" {
+		if line == "[mcp_servers.prism]" {
 			blockCount++
 		}
 	}
 	if blockCount != 1 {
-		t.Errorf("expected 1 [[mcp_servers]] block, got %d:\n%s", blockCount, raw2)
+		t.Errorf("expected 1 [mcp_servers.prism] block, got %d:\n%s", blockCount, raw2)
 	}
 }
 
@@ -184,8 +184,8 @@ func TestWritePrismCodexConfig_ExistingOtherContent(t *testing.T) {
 	if !strings.Contains(s, `name = "other"`) {
 		t.Error("other mcp_servers block lost")
 	}
-	if !strings.Contains(s, `name = "prism"`) {
-		t.Error("prism block not added")
+	if !strings.Contains(s, `[mcp_servers.prism]`) {
+		t.Error("prism table not added")
 	}
 }
 

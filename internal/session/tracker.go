@@ -6,6 +6,7 @@ package session
 
 import (
 	"container/list"
+	"path/filepath"
 	"sync"
 )
 
@@ -16,6 +17,7 @@ type Entry struct {
 	TokenDistanceAtSend int64  // cumulative tokens delivered when this was sent
 	DisclosureLevel     string
 	AccessCount         int
+	SymbolSHAs          map[string]string // symbolName → sha(RawText); used for semantic delta encoding
 }
 
 // Tracker is an O(1) LRU cache keyed by file path.
@@ -41,6 +43,7 @@ func NewTracker(maxFiles int) *Tracker {
 // Record marks filePath as delivered with the given metadata. If the file is
 // already tracked, AccessCount is incremented and metadata is updated.
 func (t *Tracker) Record(filePath, contentHash string, tokensDelivered int64, level string) {
+	filePath = normalizeFilePath(filePath)
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if el, ok := t.entries[filePath]; ok {
@@ -70,6 +73,7 @@ func (t *Tracker) Record(filePath, contentHash string, tokensDelivered int64, le
 // value matches whether the stored contentHash is the same as the supplied
 // one — false means the file changed since last seen.
 func (t *Tracker) Lookup(filePath, contentHash string) (*Entry, bool, bool) {
+	filePath = normalizeFilePath(filePath)
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	el, ok := t.entries[filePath]
@@ -96,6 +100,18 @@ func (t *Tracker) Reset() {
 	t.lru = list.New()
 }
 
+// UpdateSymbolSHAs stores a symbolName→sha map for a file that has already
+// been tracked. Called after delivering a semantic delta so future re-reads
+// can diff at symbol granularity. No-op if the file isn't tracked.
+func (t *Tracker) UpdateSymbolSHAs(filePath string, shas map[string]string) {
+	filePath = normalizeFilePath(filePath)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if el, ok := t.entries[filePath]; ok {
+		el.Value.(*Entry).SymbolSHAs = shas
+	}
+}
+
 func (t *Tracker) evictOldest() {
 	el := t.lru.Back()
 	if el == nil {
@@ -103,4 +119,8 @@ func (t *Tracker) evictOldest() {
 	}
 	t.lru.Remove(el)
 	delete(t.entries, el.Value.(*Entry).FilePath)
+}
+
+func normalizeFilePath(p string) string {
+	return filepath.ToSlash(p)
 }

@@ -159,6 +159,92 @@ func TestToolCompactRecordsLedger(t *testing.T) {
 	}
 }
 
+// ─── toolEvidence ────────────────────────────────────────────────────────
+
+func TestToolEvidenceRequiresClaims(t *testing.T) {
+	h := newTestHandler(t)
+	_, err := h.Invoke("prism_evidence", map[string]any{})
+	if err == nil {
+		t.Fatal("expected error when claims are missing")
+	}
+}
+
+func TestToolEvidenceReturnsTypedPackets(t *testing.T) {
+	h := newTestHandler(t)
+	out, err := h.Invoke("prism_evidence", map[string]any{
+		"claims": []map[string]any{
+			{
+				"claim":     "SaveCache skips empty ContentHash entries",
+				"file":      "internal/session/cache.go",
+				"lineStart": 67,
+				"lineEnd":   71,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("prism_evidence: %v", err)
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map output, got %T", out)
+	}
+	evidence, ok := m["evidence"].([]EvidencePacket)
+	if !ok {
+		t.Fatalf("evidence type: got %T", m["evidence"])
+	}
+	if len(evidence) != 1 {
+		t.Fatalf("expected 1 evidence packet, got %d", len(evidence))
+	}
+	if evidence[0].Claim == "" || evidence[0].File == "" {
+		t.Fatalf("expected non-empty typed packet: %+v", evidence[0])
+	}
+}
+
+func TestToolEvidenceTokenSavingsCrossover(t *testing.T) {
+	h := newTestHandler(t)
+
+	makeClaims := func(n int, claimLen int) []map[string]any {
+		claims := make([]map[string]any, 0, n)
+		for i := 0; i < n; i++ {
+			claims = append(claims, map[string]any{
+				"claim":     strings.Repeat("evidence detail ", claimLen) + "#" + string(rune('A'+(i%26))),
+				"file":      "internal/session/cache.go",
+				"lineStart": 60 + i,
+				"lineEnd":   61 + i,
+			})
+		}
+		return claims
+	}
+
+	// Small packet can be neutral/negative due to typed envelope overhead.
+	smallOut, err := h.Invoke("prism_evidence", map[string]any{"claims": makeClaims(2, 1)})
+	if err != nil {
+		t.Fatalf("small prism_evidence: %v", err)
+	}
+	small := smallOut.(map[string]any)
+	smallSavings, ok := small["savingsPercent"].(float64)
+	if !ok {
+		t.Fatalf("small savingsPercent type: %T", small["savingsPercent"])
+	}
+	if smallSavings > 50 {
+		t.Fatalf("unexpectedly high small-packet savings: %.2f", smallSavings)
+	}
+
+	// Large packet should strongly benefit from typed compact representation.
+	largeOut, err := h.Invoke("prism_evidence", map[string]any{"claims": makeClaims(40, 25)})
+	if err != nil {
+		t.Fatalf("large prism_evidence: %v", err)
+	}
+	large := largeOut.(map[string]any)
+	largeSavings, ok := large["savingsPercent"].(float64)
+	if !ok {
+		t.Fatalf("large savingsPercent type: %T", large["savingsPercent"])
+	}
+	if !(largeSavings > smallSavings) {
+		t.Fatalf("expected large packet to improve over small packet: small=%.2f large=%.2f", smallSavings, largeSavings)
+	}
+}
+
 // ─── safePathWithinRoot ───────────────────────────────────────────────────
 
 func TestSafePathWithinRoot(t *testing.T) {
@@ -183,10 +269,10 @@ func TestSafePathWithinRoot(t *testing.T) {
 
 // ─── ToolSchemas ──────────────────────────────────────────────────────────
 
-func TestToolSchemasReturnsEightTools(t *testing.T) {
+func TestToolSchemasReturnsNineTools(t *testing.T) {
 	schemas := ToolSchemas()
-	if len(schemas) != 8 {
-		t.Fatalf("want 8 tool schemas, got %d", len(schemas))
+	if len(schemas) != 9 {
+		t.Fatalf("want 9 tool schemas, got %d", len(schemas))
 	}
 	names := make(map[string]bool)
 	for _, s := range schemas {
@@ -275,8 +361,8 @@ func TestServerToolsList(t *testing.T) {
 	if !ok {
 		t.Fatalf("tools field missing or wrong type: %T", result["tools"])
 	}
-	if len(tools) != 8 {
-		t.Errorf("tools/list: got %d tools, want 8", len(tools))
+	if len(tools) != 9 {
+		t.Errorf("tools/list: got %d tools, want 9", len(tools))
 	}
 }
 

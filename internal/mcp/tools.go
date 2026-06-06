@@ -28,6 +28,7 @@ type Handler struct {
 	Session *session.Tracker
 	Ledger  *session.Ledger
 	Signals *ranking.SignalComputer
+	Weights *ranking.LearnedWeights // A: per-repo outcome-conditioned weights
 
 	embMu  sync.Mutex
 	emb    embeddings.Backend
@@ -60,6 +61,9 @@ func NewHandlerWithReady(cfg *config.Config, root string, client *grove.Client, 
 // NewHandlerWithLedger constructs a handler and optionally reuses an existing ledger.
 func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client, ledger *session.Ledger) *Handler {
 	tr := session.NewTracker(cfg.MaxCacheFiles)
+	// H: warm-load the persisted LRU so this session starts at sha-pointer
+	// level for files the agent has seen recently and that haven't changed.
+	session.LoadCache(tr, root, 0 /* default 7 days */)
 	if ledger == nil {
 		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
 	}
@@ -70,9 +74,16 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		Session: tr,
 		Ledger:  ledger,
 		dirty:   true,
+		Weights: ranking.LoadLearnedWeights(root), // A: load per-repo learned weights
 	}
 	h.Signals = ranking.NewSignalComputer(root, semanticAdapter{h: h})
 	return h
+}
+
+// SaveSessionCache flushes the LRU tracker to disk. Called by the MCP server
+// on shutdown so the next session opens warm.
+func (h *Handler) SaveSessionCache() {
+	session.SaveCache(h.Session, h.Root, 500)
 }
 
 // MarkCorpusStale forces a rebuild of the embedding index on next use.
@@ -157,6 +168,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolSavings(ctx, args)
 	case "prism_feedback":
 		return h.toolFeedback(ctx, args)
+	case "prism_evidence":
+		return h.toolEvidence(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -167,6 +180,7 @@ func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_index", "prism_compact", "prism_savings", "prism_feedback",
+		"prism_evidence",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
@@ -221,6 +235,27 @@ func toolSchema(name string) map[string]any {
 				"dir":   map[string]any{"type": "string", "description": "Project root directory (optional)."},
 			},
 		}
+	case "prism_evidence":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"claims"},
+			"properties": map[string]any{
+				"claims": map[string]any{
+					"type":        "array",
+					"description": "Array of evidence claims. Each item must have 'claim' (string) and 'file' (path). Optional: 'lineStart', 'lineEnd' (int), 'symbolName' (string for sha lookup).",
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"claim":      map[string]any{"type": "string"},
+							"file":       map[string]any{"type": "string"},
+							"lineStart":  map[string]any{"type": "integer"},
+							"lineEnd":    map[string]any{"type": "integer"},
+							"symbolName": map[string]any{"type": "string"},
+						},
+					},
+				},
+			},
+		}
 	default:
 		return open
 	}
@@ -262,6 +297,11 @@ func toolDescription(name string) string {
 	case "prism_feedback":
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
+	case "prism_evidence":
+		return "Convert a sub-agent's prose summary into a typed evidence packet: " +
+			"an array of {claim, file, lineStart, lineEnd, sha} citations. " +
+			"Pass this packet to the parent agent instead of the full prose to save 75–95% tokens. " +
+			"Each claim is dereferenceable via prism_lookup."
 	}
 	return "Prism tool: " + name
 }
@@ -269,12 +309,14 @@ func toolDescription(name string) string {
 // --- Tool implementations -----------------------------------------------
 
 type queryResult struct {
-	Task        string           `json:"task"`
-	Profile     string           `json:"profile"`
-	BudgetUsed  int              `json:"budgetUsed"`
-	BudgetTotal int              `json:"budgetTotal"`
-	Symbols     []rankedSymbol   `json:"symbols"`
-	TimingMs    map[string]int64 `json:"timingMs"`
+	Task             string           `json:"task"`
+	Profile          string           `json:"profile"`
+	Phase            string           `json:"phase,omitempty"`
+	BudgetUsed       int              `json:"budgetUsed"`
+	BudgetTotal      int              `json:"budgetTotal"`
+	Symbols          []rankedSymbol   `json:"symbols"`
+	TimingMs         map[string]int64 `json:"timingMs"`
+	ExcludedManifest []string         `json:"excludedManifest,omitempty"`
 }
 
 type rankedSymbol struct {
@@ -296,7 +338,19 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	if task == "" {
 		return nil, errors.New("task is required")
 	}
-	profileName := stringArg(args, "profile", h.Cfg.Profile)
+	// B: phase-aware budget shaping — infer the agent work phase from the task
+	// description and auto-select a matching profile + budget multiplier.
+	// An explicit "profile" arg always wins; otherwise let phase detection decide.
+	explicitProfile := stringArg(args, "profile", "")
+	phase := ranking.DetectPhase(task)
+	phaseProfileHint, phaseBudgetMult := ranking.ShapeForPhase(phase)
+	profileName := explicitProfile
+	if profileName == "" {
+		profileName = phaseProfileHint
+	}
+	if profileName == "" {
+		profileName = h.Cfg.Profile
+	}
 	// model arg overrides config for this call's budget calculation only.
 	// If the agent passes its own model ID (e.g. "claude-sonnet-4-6"), we use
 	// it; otherwise fall back to whatever was set at initialize time.
@@ -314,6 +368,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	if err != nil {
 		return nil, fmt.Errorf("grove query: %w", err)
 	}
+	seeds = filterGeneratedPrismContext(seeds)
 	tGrove := time.Since(t0)
 
 	// Build candidates: Grove returns ordered results; treat first 5 as seeds
@@ -323,6 +378,8 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	candidateSyms := seeds[seedCount:]
 
 	profile := ranking.SelectProfile(profileName)
+	// A: blend in per-repo learned weight adjustments (no-op when no data yet).
+	profile = h.Weights.Apply(profile)
 	candidates := make([]ranking.Candidate, 0, len(candidateSyms))
 	for i, sym := range candidateSyms {
 		dist := 1 + (i / 10) // crude — grove doesn't return distance today
@@ -351,6 +408,14 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	if budget < 4000 {
 		budget = 4000
 	}
+	// B: apply phase-derived budget multiplier (e.g. 0.60 for code_review).
+	if phaseBudgetMult > 0 && phaseBudgetMult != 1.0 {
+		shaped := int(float64(budget) * phaseBudgetMult)
+		if shaped < 4000 {
+			shaped = 4000
+		}
+		budget = shaped
+	}
 	picked := ranking.Select(seedSyms, candidates, budget)
 
 	// Build response.
@@ -358,6 +423,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	out := queryResult{
 		Task:        task,
 		Profile:     profile.Name,
+		Phase:       string(phase),
 		BudgetTotal: budget,
 		Symbols:     make([]rankedSymbol, 0, len(picked)),
 		TimingMs: map[string]int64{
@@ -382,8 +448,64 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
+
+	// Anti-context manifest: collect low-scoring candidates the ranker
+	// rejected. Emit them as // [prism:excluded] sentinel lines so the agent
+	// knows not to speculatively read those paths.
+	out.ExcludedManifest = buildAntiContextManifest(candidates, picked)
+
 	h.Ledger.Record("prism_query", used*3 /* approximate "what raw would cost" */, used)
 	return out, nil
+}
+
+// excludeScoreThreshold is the maximum score a candidate can have and still
+// appear in the anti-context manifest. Candidates below this threshold are
+// considered irrelevant enough to suppress.
+const excludeScoreThreshold = 0.10
+
+// buildAntiContextManifest builds the list of [prism:excluded] sentinel lines
+// from candidates that were not selected AND scored below the exclusion
+// threshold. Entries are grouped by directory to keep the manifest compact.
+func buildAntiContextManifest(candidates []ranking.Candidate, picked []ranking.BudgetedSymbol) []string {
+	pickedIDs := make(map[string]bool, len(picked))
+	for _, p := range picked {
+		pickedIDs[p.Symbol.ID] = true
+	}
+
+	excluded := make(map[string]float64) // dir → lowest score seen
+	for _, c := range candidates {
+		if pickedIDs[c.Symbol.ID] {
+			continue
+		}
+		if c.Score >= excludeScoreThreshold {
+			continue
+		}
+		dir := filepath.ToSlash(filepath.Dir(c.Symbol.FilePath))
+		if dir == "." {
+			dir = filepath.ToSlash(c.Symbol.FilePath)
+		}
+		if prev, ok := excluded[dir]; !ok || c.Score < prev {
+			excluded[dir] = c.Score
+		}
+	}
+
+	if len(excluded) == 0 {
+		return nil
+	}
+
+	// Sort for deterministic output.
+	dirs := make([]string, 0, len(excluded))
+	for d := range excluded {
+		dirs = append(dirs, d)
+	}
+	sort.Strings(dirs)
+
+	manifest := make([]string, 0, len(dirs))
+	for _, d := range dirs {
+		manifest = append(manifest,
+			fmt.Sprintf("// [prism:excluded] %s/* — score %.2f, not relevant to this task", d, excluded[d]))
+	}
+	return manifest
 }
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
@@ -452,6 +574,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	if err != nil {
 		return nil, err
 	}
+	syms = filterGeneratedPrismContext(syms)
 	return map[string]any{"symbols": syms}, nil
 }
 
@@ -464,6 +587,7 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	if err != nil {
 		return nil, err
 	}
+	syms = filterGeneratedPrismContext(syms)
 	// Prefer exact qualified-name match.
 	for _, s := range syms {
 		if s.QualifiedName == name || s.Name == name {
@@ -555,6 +679,83 @@ func (h *Handler) toolSavings(_ context.Context, _ map[string]any) (any, error) 
 	return h.Ledger.Snapshot(), nil
 }
 
+// EvidencePacket is the G: sub-agent evidence response.
+// An array of these replaces a prose sub-agent summary in the parent context.
+type EvidencePacket struct {
+	Claim      string `json:"claim"`
+	File       string `json:"file,omitempty"`
+	LineStart  int    `json:"lineStart,omitempty"`
+	LineEnd    int    `json:"lineEnd,omitempty"`
+	SymbolName string `json:"symbolName,omitempty"`
+	SHA        string `json:"sha,omitempty"`        // content SHA of the file at delivery time
+	LookupHint string `json:"lookupHint,omitempty"` // prism_lookup key if symbol is known
+}
+
+// toolEvidence compiles a typed evidence packet from an array of caller-supplied
+// claim objects. For each claim that references a file, it resolves the content
+// SHA from the session tracker (if available) so the parent can verify staleness.
+func (h *Handler) toolEvidence(_ context.Context, args map[string]any) (any, error) {
+	rawClaims, ok := args["claims"]
+	if !ok {
+		return nil, errors.New("claims is required")
+	}
+	buf, _ := json.Marshal(rawClaims)
+	var claims []map[string]any
+	if err := json.Unmarshal(buf, &claims); err != nil {
+		return nil, fmt.Errorf("claims: %w", err)
+	}
+
+	packets := make([]EvidencePacket, 0, len(claims))
+	originalTokens := 0
+	for _, c := range claims {
+		// Estimate tokens the prose claim would have cost if passed verbatim.
+		rawJSON, _ := json.Marshal(c)
+		originalTokens += ranking.EstimateTokens(string(rawJSON))
+
+		p := EvidencePacket{
+			Claim:      stringArg(c, "claim", ""),
+			File:       normalizePath(stringArg(c, "file", "")),
+			LineStart:  intArg(c, "lineStart", 0),
+			LineEnd:    intArg(c, "lineEnd", 0),
+			SymbolName: stringArg(c, "symbolName", ""),
+		}
+		// Resolve SHA from session tracker so the parent can detect if the
+		// file changed since the sub-agent read it.
+		if p.File != "" {
+			if entry, seen, _ := h.Session.Lookup(p.File, ""); seen && entry.ContentHash != "" {
+				short := entry.ContentHash
+				if len(short) > 8 {
+					short = short[:8]
+				}
+				p.SHA = short
+			}
+		}
+		if p.SymbolName != "" {
+			p.LookupHint = p.SymbolName
+		}
+		if p.Claim != "" {
+			packets = append(packets, p)
+		}
+	}
+
+	// Measure delivered tokens (the typed packet JSON).
+	deliveredBuf, _ := json.Marshal(packets)
+	deliveredTokens := ranking.EstimateTokens(string(deliveredBuf))
+	h.Ledger.Record("prism_evidence", originalTokens, deliveredTokens)
+
+	savings := 0.0
+	if originalTokens > 0 {
+		savings = (1.0 - float64(deliveredTokens)/float64(originalTokens)) * 100.0
+	}
+	return map[string]any{
+		"evidence":        packets,
+		"claimCount":      len(packets),
+		"originalTokens":  originalTokens,
+		"deliveredTokens": deliveredTokens,
+		"savingsPercent":  savings,
+	}, nil
+}
+
 func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, error) {
 	tool := stringArg(args, "tool", "")
 	queryID := stringArg(args, "queryId", "")
@@ -573,17 +774,35 @@ func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, err
 	h.fbMu.Lock()
 	h.feedback = append(h.feedback, entry)
 	h.fbMu.Unlock()
+
+	// A: treat explicit low rating (0-1) as a weak negative outcome signal
+	// and high rating (4-5) as a weak positive one, applied to the default profile.
+	if tool == "prism_query" {
+		if rating <= 1 {
+			h.Weights.RecordOutcome("default", nil, nil, false)
+		} else if rating >= 4 {
+			h.Weights.RecordOutcome("default", []string{"__positive_feedback__"}, []string{"__positive_feedback__"}, false)
+		}
+	}
+
 	return map[string]any{"recorded": entry, "totalRatings": len(h.feedback)}, nil
 }
 
 // --- helpers -------------------------------------------------------------
 
 func categorize(s grove.SymbolRecord) ranking.Category {
-	// Tests usually live in *_test.go / __tests__ / .spec.ts / .test.ts.
+	// Tests usually live in language-specific test file patterns.
 	p := strings.ToLower(s.FilePath)
 	if strings.Contains(p, "_test.") || strings.Contains(p, ".test.") ||
 		strings.Contains(p, ".spec.") || strings.Contains(p, "/__tests__/") ||
-		strings.HasSuffix(p, "_test.py") {
+		strings.HasSuffix(p, "_test.py") ||
+		strings.HasSuffix(p, "test.java") || strings.HasSuffix(p, "tests.java") ||
+		strings.Contains(p, "/tests/") || strings.Contains(p, "/test/") ||
+		strings.HasSuffix(p, "_test.rs") || strings.HasSuffix(p, "tests.rs") ||
+		strings.HasSuffix(p, "_test.c") || strings.HasSuffix(p, "_test.h") ||
+		strings.HasSuffix(p, "_test.cc") || strings.HasSuffix(p, "_test.cpp") ||
+		strings.HasSuffix(p, "test.cs") || strings.HasSuffix(p, "tests.cs") ||
+		strings.HasSuffix(p, "test.php") || strings.HasSuffix(p, "tests.php") {
 		return ranking.CategoryTest
 	}
 	if s.Kind == "namespace" || strings.HasSuffix(p, ".md") {
@@ -593,6 +812,47 @@ func categorize(s grove.SymbolRecord) ranking.Category {
 		return ranking.CategoryDoc
 	}
 	return ranking.CategoryDependency
+}
+
+func filterGeneratedPrismContext(in []grove.SymbolRecord) []grove.SymbolRecord {
+	out := in[:0]
+	for _, sym := range in {
+		if isGeneratedPrismContext(sym) {
+			continue
+		}
+		out = append(out, sym)
+	}
+	return out
+}
+
+func isGeneratedPrismContext(sym grove.SymbolRecord) bool {
+	p := strings.TrimPrefix(filepath.ToSlash(sym.FilePath), "./")
+	switch p {
+	case ".mcp.json",
+		".cursor/mcp.json",
+		".windsurf/mcp.json",
+		".vscode/mcp.json",
+		".kiro/settings/mcp.json",
+		"prism.yaml":
+		return true
+	case "CLAUDE.md",
+		"AGENTS.md",
+		"GEMINI.md",
+		".cursorrules",
+		".windsurfrules",
+		".clinerules",
+		".amp/instructions.md",
+		".devin/instructions.md",
+		".github/copilot-instructions.md",
+		".kiro/steering/prism.md",
+		".kiro/steering/provasign.md":
+		text := sym.RawText
+		if text == "" {
+			text = sym.Docstring
+		}
+		return strings.Contains(text, "## Prism — context delivery")
+	}
+	return false
 }
 
 func stringArg(args map[string]any, key, def string) string {

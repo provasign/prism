@@ -96,22 +96,39 @@ func CompressFileRead(filePath, content string, opts Options) Result {
 			r.DeliveredTokens = ranking.EstimateTokens(r.Content)
 		}
 	} else {
-		// Fresh read (or content changed).
-		if len(opts.Symbols) == 0 {
+		// Fresh read, or content changed since last delivery.
+		switch {
+		case seen && !sameHash && len(opts.Symbols) > 0 && len(entry.SymbolSHAs) > 0:
+			// Semantic delta: file was edited since last read. Only re-send
+			// symbols whose content actually changed; pointer the rest.
+			delta := renderSemanticDelta(opts, content, entry.SymbolSHAs)
+			if ranking.EstimateTokens(delta) < originalTokens {
+				r.Strategy = "semantic-delta"
+				r.Content = delta
+			} else {
+				// Delta expanded (e.g. many new symbols) — fall back.
+				r.Strategy = "compressed-fresh"
+				r.Content = renderRanked(opts, content)
+			}
+		case len(opts.Symbols) == 0:
 			r.Strategy = "full-fresh"
 			r.Content = content
-			r.DeliveredTokens = originalTokens
-		} else {
+		default:
 			r.Strategy = "compressed-fresh"
 			r.Content = renderRanked(opts, content)
-			r.DeliveredTokens = ranking.EstimateTokens(r.Content)
 		}
+		r.DeliveredTokens = ranking.EstimateTokens(r.Content)
 	}
 
 	// Safety cap.
 	if r.DeliveredTokens > MaxTokensPerFile {
 		r.Content = truncateToTokens(r.Content, MaxTokensPerFile)
 		r.DeliveredTokens = ranking.EstimateTokens(r.Content)
+	}
+	if r.OriginalTokens > 0 && r.DeliveredTokens > r.OriginalTokens && r.Strategy != "full-fresh" && r.Strategy != "escalated-full" {
+		r.Strategy = "full-fresh"
+		r.Content = content
+		r.DeliveredTokens = r.OriginalTokens
 	}
 
 	if r.OriginalTokens > 0 {
@@ -121,6 +138,10 @@ func CompressFileRead(filePath, content string, opts Options) Result {
 	// Record in session + ledger.
 	if opts.Session != nil {
 		opts.Session.Record(filePath, hash, int64(r.DeliveredTokens), r.Strategy)
+		// Keep symbol-level SHAs up-to-date so the next read can delta-encode.
+		if len(opts.Symbols) > 0 {
+			opts.Session.UpdateSymbolSHAs(filePath, computeSymbolSHAs(opts.Symbols))
+		}
 	}
 	if opts.Ledger != nil && opts.TokenLedgerName != "" {
 		opts.Ledger.Record(opts.TokenLedgerName, r.OriginalTokens, r.DeliveredTokens)
@@ -192,6 +213,62 @@ func renderSHAPointer(filePath, contentHash string, accessCount int) string {
 	}
 	return fmt.Sprintf("// [prism:cached] %s @sha:%s (seen ×%d, no changes — prior delivery still in context)\n",
 		filePath, short, accessCount)
+}
+
+// computeSymbolSHAs returns a map of symbolName → SHA-256(RawText) for each
+// symbol. BlobSha is used if RawText is empty (Grove may populate either).
+func computeSymbolSHAs(syms []grove.SymbolRecord) map[string]string {
+	m := make(map[string]string, len(syms))
+	for _, s := range syms {
+		switch {
+		case s.RawText != "":
+			m[s.Name] = Hash(s.RawText)
+		case s.BlobSha != "":
+			m[s.Name] = s.BlobSha
+		}
+	}
+	return m
+}
+
+// renderSemanticDelta produces a mixed rendering: unchanged symbols become
+// single-line [prism:cached] pointers; changed or new symbols are emitted at
+// full fidelity. Falls back to renderRanked when no per-symbol SHAs can be
+// computed (e.g. Grove returned neither RawText nor BlobSha).
+func renderSemanticDelta(opts Options, content string, prevSHAs map[string]string) string {
+	if len(opts.Symbols) == 0 {
+		return content
+	}
+	currentSHAs := computeSymbolSHAs(opts.Symbols)
+
+	var sb strings.Builder
+	sb.WriteString("// file: ")
+	sb.WriteString(opts.Symbols[0].FilePath)
+	sb.WriteString(" [prism:delta — changed symbols only]\n")
+
+	changedCount := 0
+	for _, sym := range opts.Symbols {
+		curSHA := currentSHAs[sym.Name]
+		prevSHA := prevSHAs[sym.Name]
+		if curSHA != "" && prevSHA != "" && curSHA == prevSHA {
+			// Symbol body unchanged — pointer only.
+			short := curSHA
+			if len(short) > 8 {
+				short = short[:8]
+			}
+			sb.WriteString(fmt.Sprintf("// [prism:cached] %s @sha:%s (unchanged)\n", sym.Name, short))
+		} else {
+			// Changed or new symbol — full fidelity.
+			sb.WriteString(ranking.Render(sym, ranking.DisclosureFull))
+			sb.WriteString("\n\n")
+			changedCount++
+		}
+	}
+	// If we couldn't identify any changed symbols (no SHA data at all), fall
+	// back to the normal ranked rendering so we don't return an empty delta.
+	if changedCount == 0 {
+		return renderRanked(opts, content)
+	}
+	return sb.String()
 }
 
 func truncateToTokens(s string, maxTok int) string {

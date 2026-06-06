@@ -8,6 +8,7 @@ import (
 
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/ranking"
 )
 
 func fakeGroveSrv(t *testing.T, payload map[string]any) *httptest.Server {
@@ -128,20 +129,48 @@ func TestToolFeedback(t *testing.T) {
 
 func TestCategorize(t *testing.T) {
 	cases := []struct {
-		s grove.SymbolRecord
+		name string
+		s    grove.SymbolRecord
+		want ranking.Category
 	}{
-		{grove.SymbolRecord{FilePath: "x_test.go"}},
-		{grove.SymbolRecord{FilePath: "x.test.ts"}},
-		{grove.SymbolRecord{FilePath: "x.spec.ts"}},
-		{grove.SymbolRecord{FilePath: "/__tests__/x.js"}},
-		{grove.SymbolRecord{FilePath: "x_test.py"}},
-		{grove.SymbolRecord{FilePath: "x.md", Kind: "function"}},
-		{grove.SymbolRecord{Kind: "namespace"}},
-		{grove.SymbolRecord{Docstring: "doc"}},
-		{grove.SymbolRecord{FilePath: "x.go", Kind: "function"}},
+		{"go test", grove.SymbolRecord{FilePath: "x_test.go"}, ranking.CategoryTest},
+		{"typescript test", grove.SymbolRecord{FilePath: "x.test.ts"}, ranking.CategoryTest},
+		{"typescript spec", grove.SymbolRecord{FilePath: "x.spec.ts"}, ranking.CategoryTest},
+		{"javascript tests dir", grove.SymbolRecord{FilePath: "/__tests__/x.js"}, ranking.CategoryTest},
+		{"python test", grove.SymbolRecord{FilePath: "x_test.py"}, ranking.CategoryTest},
+		{"java test", grove.SymbolRecord{FilePath: "src/UserServiceTest.java"}, ranking.CategoryTest},
+		{"rust test", grove.SymbolRecord{FilePath: "src/service_test.rs"}, ranking.CategoryTest},
+		{"c test", grove.SymbolRecord{FilePath: "tests/service_test.c"}, ranking.CategoryTest},
+		{"cpp test", grove.SymbolRecord{FilePath: "tests/service_test.cpp"}, ranking.CategoryTest},
+		{"csharp test", grove.SymbolRecord{FilePath: "UserServiceTests.cs"}, ranking.CategoryTest},
+		{"php test", grove.SymbolRecord{FilePath: "UserServiceTest.php"}, ranking.CategoryTest},
+		{"markdown doc", grove.SymbolRecord{FilePath: "x.md", Kind: "function"}, ranking.CategoryDoc},
+		{"namespace doc", grove.SymbolRecord{Kind: "namespace"}, ranking.CategoryDoc},
+		{"docstring doc", grove.SymbolRecord{Docstring: "doc"}, ranking.CategoryDoc},
+		{"dependency", grove.SymbolRecord{FilePath: "x.go", Kind: "function"}, ranking.CategoryDependency},
 	}
 	for _, c := range cases {
-		_ = categorize(c.s)
+		t.Run(c.name, func(t *testing.T) {
+			if got := categorize(c.s); got != c.want {
+				t.Fatalf("categorize() = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+func TestFilterGeneratedPrismContext(t *testing.T) {
+	in := []grove.SymbolRecord{
+		{FilePath: ".mcp.json", RawText: `{"mcpServers":{"prism":{}}}`},
+		{FilePath: "AGENTS.md", RawText: "## Prism — context delivery\nUse Prism."},
+		{FilePath: "docs/architecture.md", RawText: "## Prism architecture"},
+		{FilePath: "src/app.ts", Name: "authorize"},
+	}
+	got := filterGeneratedPrismContext(in)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 non-generated symbols, got %d: %+v", len(got), got)
+	}
+	if got[0].FilePath != "docs/architecture.md" || got[1].FilePath != "src/app.ts" {
+		t.Fatalf("unexpected filtered symbols: %+v", got)
 	}
 }
 

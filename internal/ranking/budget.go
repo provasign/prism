@@ -119,6 +119,33 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 	return out
 }
 
+// IsTrivialBody reports whether a symbol's body carries no additional
+// information beyond its signature. Trivial symbols (short one-liners,
+// passthrough wrappers, getters) are always rendered at DisclosureSignature
+// regardless of their relevance score — the agent needs the signature but
+// gains nothing from seeing the implementation.
+//
+// A symbol is trivial when ALL of:
+//   - span is populated (End > Start) and spans ≤ 8 lines
+//   - no outgoing calls (CallSites is empty)
+//   - kind is function, method, or constructor
+func IsTrivialBody(sym grove.SymbolRecord) bool {
+	if sym.Span.End <= sym.Span.Start {
+		return false // span not populated — do not assume trivial
+	}
+	if sym.Span.End-sym.Span.Start > 8 {
+		return false
+	}
+	if len(sym.CallSites) > 0 {
+		return false
+	}
+	switch sym.Kind {
+	case "function", "method", "constructor":
+		return true
+	}
+	return false
+}
+
 // chooseDisclosure picks the desired (pre-budget-check) disclosure level
 // based on score + session history.
 func chooseDisclosure(c Candidate) DisclosureLevel {
@@ -130,6 +157,10 @@ func chooseDisclosure(c Candidate) DisclosureLevel {
 			return DisclosureSignature
 		}
 		// low confidence — treat as fresh
+	}
+	// Trivial bodies are semantically equivalent to their signature.
+	if IsTrivialBody(c.Symbol) {
+		return DisclosureSignature
 	}
 	if c.Score >= RelevanceThreshold {
 		return DisclosureFull
@@ -147,6 +178,14 @@ func Render(sym grove.SymbolRecord, lvl DisclosureLevel) string {
 		}
 		return sym.Signature
 	case DisclosureSignature:
+		if sym.Kind == "document" || sym.Language == "plaintext" {
+			if sym.Signature != "" {
+				return sym.Signature
+			}
+			if sym.Docstring != "" {
+				return sym.Docstring
+			}
+		}
 		if sym.Docstring != "" && sym.Signature != "" {
 			return sym.Docstring + "\n" + sym.Signature
 		}
