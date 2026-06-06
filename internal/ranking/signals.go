@@ -120,8 +120,17 @@ func (c *SignalComputer) gitStats(filePath string) gitFileStats {
 	return s
 }
 
+// gitCommandTimeout bounds every git invocation. prism_query runs git per
+// candidate symbol; without a hard cap a single slow or stuck git process (a
+// pathological --follow history, a stalled filesystem, an unexpected prompt)
+// would hang the whole request past its deadline. On timeout we return an
+// error and the caller falls back to the neutral default signal values.
+const gitCommandTimeout = 10 * time.Second
+
 func runGit(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

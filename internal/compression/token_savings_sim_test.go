@@ -99,11 +99,22 @@ func (r scenarioResult) savings() float64 {
 func TestTokenSavings(t *testing.T) {
 	root := repoRoot()
 
-	// Collect all .go source files (excluding test files for cleaner signal).
+	// Collect the project's own .go source files (excluding test files for a
+	// cleaner signal). Skip hidden and vendored directories — most importantly
+	// the local Go module cache (.cache/.../pkg/mod) whose multi-million-token
+	// generated files would otherwise dominate the corpus and inflate "savings"
+	// via the MaxTokensPerFile truncation cap rather than real compression.
 	var goFiles []string
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if path != root && (strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules") {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") {
 			goFiles = append(goFiles, path)
@@ -150,7 +161,7 @@ func TestTokenSavings(t *testing.T) {
 	scB := func() scenarioResult {
 		tr := session.NewTracker(500)
 		ledger := session.NewLedger("sim")
-		res := scenarioResult{name: "compressed-fresh (turn 1)"}
+		res := scenarioResult{name: "full-fresh (turn 1, faithful)"}
 		for _, fd := range corpus {
 			r := CompressFileRead(fd.path, fd.content, Options{
 				Task:            "implement caching layer",
@@ -281,15 +292,23 @@ func TestTokenSavings(t *testing.T) {
 
 	fmt.Printf("\n")
 
-	// Assert each new feature delivers meaningful savings over baseline.
-	if scB.savings() < 10 {
-		t.Errorf("compressed-fresh should save >10%% of tokens, got %.1f%%", scB.savings())
+	// Assert honest, corrected behavior:
+	//  - First read is byte-faithful (no first-read compression). Any savings
+	//    here would mean content was dropped, so we require ~0%.
+	//  - The genuine savings live in the safe re-read paths: sha-pointer on an
+	//    unchanged re-read, and the lossless semantic delta on an edited file.
+	if scB.savings() > 1 {
+		t.Errorf("first read must be faithful (≈0%% savings, no body-dropping), got %.1f%%", scB.savings())
+	}
+	if scB.deliveredTokens != scB.originalTokens {
+		t.Errorf("first read must deliver every token: delivered=%d original=%d",
+			scB.deliveredTokens, scB.originalTokens)
 	}
 	if scC.savings() < 50 {
-		t.Errorf("sha-pointer (turn 2) should save >50%% of tokens, got %.1f%%", scC.savings())
+		t.Errorf("sha-pointer (turn 2, unchanged) should save >50%% of tokens, got %.1f%%", scC.savings())
 	}
 	if scD.savings() < 30 {
-		t.Errorf("semantic-delta should save >30%% of tokens, got %.1f%%", scD.savings())
+		t.Errorf("semantic-delta (turn 2, edited) should save >30%% of tokens, got %.1f%%", scD.savings())
 	}
 	if scE.savings() < 30 {
 		t.Errorf("phase-shaping (review) should save >30%% of tokens, got %.1f%%", scE.savings())

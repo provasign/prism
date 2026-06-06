@@ -34,16 +34,20 @@ func freshOpts(tracker *session.Tracker, syms []grove.SymbolRecord) Options {
 	}
 }
 
-// TestFreshRead verifies that the first read of a file uses compressed-fresh
-// when symbols are available.
+// TestFreshRead verifies that the first read of a file is delivered in full,
+// byte-for-byte. Prism never trims symbol bodies on a first read — doing so
+// silently drops content the model has never seen.
 func TestFreshRead(t *testing.T) {
 	tracker := session.NewTracker(100)
 	syms := makeSymbols("pkg/foo.go", 3)
 	content := "package pkg\n\nfunc FuncA() {}\nfunc FuncB() {}\nfunc FuncC() {}\n"
 
 	r := CompressFileRead("pkg/foo.go", content, freshOpts(tracker, syms))
-	if r.Strategy != "compressed-fresh" {
-		t.Errorf("first read: want compressed-fresh, got %s", r.Strategy)
+	if r.Strategy != "full-fresh" {
+		t.Errorf("first read: want full-fresh (faithful), got %s", r.Strategy)
+	}
+	if r.Content != content {
+		t.Errorf("first read must be byte-faithful, got:\n%s", r.Content)
 	}
 	if r.OriginalTokens == 0 {
 		t.Error("originalTokens must be > 0")
@@ -186,8 +190,10 @@ func TestChangedContentRestartsFromFresh(t *testing.T) {
 	CompressFileRead("pkg/c.go", v1, opts)       // R2 v1 → sha-pointer
 	r3 := CompressFileRead("pkg/c.go", v2, opts) // R3 v2 — content changed
 
-	if r3.Strategy != "compressed-fresh" {
-		t.Errorf("changed content: want compressed-fresh, got %s", r3.Strategy)
+	// makeSymbols carries no RawText, so no per-symbol SHAs were recorded and a
+	// lossless delta is impossible — the changed file is re-delivered in full.
+	if r3.Strategy != "full-fresh" {
+		t.Errorf("changed content without symbol SHAs: want full-fresh, got %s", r3.Strategy)
 	}
 }
 
@@ -239,21 +245,32 @@ func TestTruncateToTokens_ExceedsCap(t *testing.T) {
 
 // --- D: Semantic delta encoding ------------------------------------------
 
-// makeSymbolsWithBody returns symbols that have RawText populated so that
-// computeSymbolSHAs can produce non-empty hashes for delta diffing.
-func makeSymbolsWithBody(filePath string, bodies []string) []grove.SymbolRecord {
+// fileWithBodies concatenates the given symbol bodies into a file and returns
+// both the file content and symbols whose 1-based line spans match exactly.
+// Realistic spans are required: the lossless delta encoder reconstructs the
+// file from its own lines and refuses to operate on out-of-range spans.
+func fileWithBodies(filePath string, bodies []string) (string, []grove.SymbolRecord) {
+	var b strings.Builder
 	syms := make([]grove.SymbolRecord, len(bodies))
+	line := 1
 	for i, body := range bodies {
+		bt := body
+		if !strings.HasSuffix(bt, "\n") {
+			bt += "\n"
+		}
+		nlines := strings.Count(bt, "\n")
 		syms[i] = grove.SymbolRecord{
 			FilePath:  filePath,
 			Name:      "Func" + string(rune('A'+i)),
 			Signature: "func Func" + string(rune('A'+i)) + "()",
 			Kind:      "function",
-			RawText:   body,
-			Span:      grove.SpanInfo{Start: i * 10, End: i*10 + 5},
+			RawText:   bt,
+			Span:      grove.SpanInfo{Start: line, End: line + nlines - 1},
 		}
+		b.WriteString(bt)
+		line += nlines
 	}
-	return syms
+	return b.String(), syms
 }
 
 // TestSemanticDelta_ChangedFile verifies that re-reading a file whose content
@@ -270,11 +287,8 @@ func TestSemanticDelta_ChangedFile(t *testing.T) {
 		"func FuncB() { return 999 /* edited */ }\n", // changed
 		strings.Repeat("// unchanged padding\n", 10),
 	}
-	v1 := strings.Join(v1bodies, "\n")
-	v2 := strings.Join(v2bodies, "\n")
-
-	symsV1 := makeSymbolsWithBody("pkg/delta.go", v1bodies)
-	symsV2 := makeSymbolsWithBody("pkg/delta.go", v2bodies)
+	v1, symsV1 := fileWithBodies("pkg/delta.go", v1bodies)
+	v2, symsV2 := fileWithBodies("pkg/delta.go", v2bodies)
 
 	tracker := session.NewTracker(100)
 	opts := freshOpts(tracker, symsV1)

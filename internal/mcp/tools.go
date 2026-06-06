@@ -380,10 +380,63 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	profile := ranking.SelectProfile(profileName)
 	// A: blend in per-repo learned weight adjustments (no-op when no data yet).
 	profile = h.Weights.Apply(profile)
-	candidates := make([]ranking.Candidate, 0, len(candidateSyms))
-	for i, sym := range candidateSyms {
-		dist := 1 + (i / 10) // crude — grove doesn't return distance today
-		sv := h.Signals.Compute(ctx, task, sym, dist, false, false)
+	// Wire the graph: for each seed, call Impact (BFS over callers up to depth 3)
+	// and Tests (test-coverage edges). This replaces the fake position-based distance
+	// with real graph proximity and surfaces structurally relevant symbols that
+	// TF-IDF alone would miss entirely.
+	graphDist := make(map[string]int)       // symbolID → min BFS hops from nearest seed
+	hasTestEdgeID := make(map[string]bool)  // symbolID → directly tests a seed
+	testFilePaths := make(map[string]bool)  // filePath → contains a test symbol for seeds
+
+	seenIDs := make(map[string]bool, len(seeds))
+	for _, s := range seeds {
+		seenIDs[s.ID] = true
+	}
+	var graphExtra []grove.SymbolRecord
+
+	for _, seed := range seedSyms {
+		if impacted, err := h.Grove.Impact(ctx, seed.Name, 3); err == nil {
+			for _, imp := range impacted {
+				if _, exists := graphDist[imp.ID]; !exists {
+					graphDist[imp.ID] = 1
+				}
+				if !seenIDs[imp.ID] {
+					seenIDs[imp.ID] = true
+					graphExtra = append(graphExtra, imp)
+				}
+			}
+		}
+		if tests, err := h.Grove.Tests(ctx, seed.Name); err == nil {
+			for _, tst := range tests {
+				hasTestEdgeID[tst.ID] = true
+				testFilePaths[tst.FilePath] = true
+				if _, exists := graphDist[tst.ID]; !exists {
+					graphDist[tst.ID] = 1
+				}
+				if !seenIDs[tst.ID] {
+					seenIDs[tst.ID] = true
+					graphExtra = append(graphExtra, tst)
+				}
+			}
+		}
+	}
+
+	// Merge TF-IDF candidates and graph-enriched symbols into one scoring pool.
+	// Graph extras are appended after so TF-IDF position still tiebreaks among
+	// symbols not reached by the graph BFS.
+	merged := make([]grove.SymbolRecord, 0, len(candidateSyms)+len(graphExtra))
+	merged = append(merged, candidateSyms...)
+	merged = append(merged, graphExtra...)
+
+	candidates := make([]ranking.Candidate, 0, len(merged))
+	for i, sym := range merged {
+		dist, inGraph := graphDist[sym.ID]
+		if !inGraph {
+			// Not reached by BFS: fall back to TF-IDF position as distance proxy
+			// so semantically adjacent symbols still score above unrelated ones.
+			dist = 3 + (i / 10)
+		}
+		sv := h.Signals.Compute(ctx, task, sym, dist, hasTestEdgeID[sym.ID], testFilePaths[sym.FilePath])
 		score := ranking.Score(sv, profile)
 		cat := categorize(sym)
 		sessionPath := normalizePath(sym.FilePath)

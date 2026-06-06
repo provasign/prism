@@ -22,7 +22,7 @@ const MaxTokensPerFile = 50000
 type Result struct {
 	FilePath        string
 	Content         string
-	Strategy        string // "full-fresh" | "compressed-fresh" | "session-reference" | "session-signature" | "escalated-full"
+	Strategy        string // "full-fresh" | "semantic-delta" | "session-signature" | "sha-pointer" | "escalated-full"
 	OriginalTokens  int
 	DeliveredTokens int
 	SavingsPercent  float64
@@ -34,20 +34,22 @@ func Hash(content string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// CompressFileRead produces a fidelity-appropriate rendering of a file based
-// on the symbols Grove has indexed for it, the current task, and the
-// session state.
+// Options configures CompressFileRead.
 //
-// The "task" is optional context for ranking; if empty, all symbols are
-// treated as equally relevant.
+// Task and Embeddings are retained for API compatibility and potential future
+// use, but they intentionally do NOT influence a first read: Prism delivers the
+// complete file on first read and never trims symbol bodies by relevance, since
+// a lossy first-read reconstruction silently drops content the model has never
+// seen. All compression happens on the safe re-read paths (sha-pointer and the
+// lossless semantic delta), which key off Session state, not relevance.
 type Options struct {
-	Task            string
+	Task            string               // unused by file-read compression (see above)
 	Symbols         []grove.SymbolRecord // symbols in this file (from Grove)
 	Session         *session.Tracker
 	Ledger          *session.Ledger
 	TokenLedgerName string // tool name to bill ledger ("prism_read")
 	Confidence      session.Confidence
-	Embeddings      ranking.SemanticBackend // optional; nil → no semantic signal
+	Embeddings      ranking.SemanticBackend // unused by file-read compression (see above)
 }
 
 // CompressFileRead returns the rendered output and ledger metadata.
@@ -82,9 +84,12 @@ func CompressFileRead(filePath, content string, opts Options) Result {
 				r.Strategy = "session-signature"
 				r.Content = renderSignatures(opts.Symbols)
 			default:
-				// Past 70% of window → recompress and resend.
-				r.Strategy = "compressed-fresh"
-				r.Content = renderRanked(opts, content)
+				// Past 70% of window → the prior delivery has almost certainly
+				// scrolled out of attention. Re-deliver the complete file: a
+				// lossy "refresh" of unchanged content the agent can no longer
+				// see would be worse than no compression at all.
+				r.Strategy = "full-fresh"
+				r.Content = content
 			}
 			r.DeliveredTokens = ranking.EstimateTokens(r.Content)
 
@@ -97,25 +102,33 @@ func CompressFileRead(filePath, content string, opts Options) Result {
 		}
 	} else {
 		// Fresh read, or content changed since last delivery.
-		switch {
-		case seen && !sameHash && len(opts.Symbols) > 0 && len(entry.SymbolSHAs) > 0:
-			// Semantic delta: file was edited since last read. Only re-send
-			// symbols whose content actually changed; pointer the rest.
-			delta := renderSemanticDelta(opts, content, entry.SymbolSHAs)
-			if ranking.EstimateTokens(delta) < originalTokens {
+		//
+		// On a FIRST read Prism delivers the complete, byte-faithful file. We
+		// deliberately do not trim or re-rank symbol bodies here: a lossy
+		// first-read reconstruction silently drops inter-symbol content
+		// (comments, statements a parser did not model as symbols, whole
+		// columns of a SQL table) and is the single biggest source of
+		// "the model can't read the file" failures. All of Prism's genuine
+		// savings come from the SAFE re-read paths (sha-pointer, semantic
+		// delta, escalated refresh), where the agent already received the
+		// full content earlier in the session.
+		if seen && !sameHash && len(opts.Symbols) > 0 && len(entry.SymbolSHAs) > 0 {
+			// File was edited since last read. Attempt a lossless delta: pointer
+			// the symbols whose body is unchanged (the agent still has them from
+			// the first faithful delivery) and re-send everything else verbatim.
+			if delta, ok := renderSemanticDelta(opts.Symbols, content, entry.SymbolSHAs); ok &&
+				ranking.EstimateTokens(delta) < originalTokens {
 				r.Strategy = "semantic-delta"
 				r.Content = delta
 			} else {
-				// Delta expanded (e.g. many new symbols) — fall back.
-				r.Strategy = "compressed-fresh"
-				r.Content = renderRanked(opts, content)
+				// Spans untrustworthy, nothing saved, or delta expanded — deliver
+				// the full file rather than risk a lossy rendering.
+				r.Strategy = "full-fresh"
+				r.Content = content
 			}
-		case len(opts.Symbols) == 0:
+		} else {
 			r.Strategy = "full-fresh"
 			r.Content = content
-		default:
-			r.Strategy = "compressed-fresh"
-			r.Content = renderRanked(opts, content)
 		}
 		r.DeliveredTokens = ranking.EstimateTokens(r.Content)
 	}
@@ -156,43 +169,6 @@ func tryLookup(s *session.Tracker, path, hash string) (*session.Entry, bool, boo
 	return s.Lookup(path, hash)
 }
 
-// renderRanked picks the right disclosure per symbol; for non-relevant ones
-// emits a signature line. Falls back to full content when symbols don't
-// cover the whole file (best-effort compression, not lossless).
-func renderRanked(opts Options, full string) string {
-	if len(opts.Symbols) == 0 {
-		return full
-	}
-	// Sort by span start for stable output.
-	syms := append([]grove.SymbolRecord(nil), opts.Symbols...)
-	sort.SliceStable(syms, func(i, j int) bool {
-		return syms[i].Span.Start < syms[j].Span.Start
-	})
-	var sb strings.Builder
-	sb.WriteString("// file: ")
-	sb.WriteString(opts.Symbols[0].FilePath)
-	sb.WriteString("\n")
-	for _, s := range syms {
-		score := 0.0
-		if opts.Embeddings != nil && opts.Task != "" {
-			score = opts.Embeddings.Similarity(opts.Task, s)
-		}
-		level := ranking.DisclosureFull
-		if opts.Task != "" && score < ranking.RelevanceThreshold {
-			level = ranking.DisclosureSignature
-		}
-		sb.WriteString(ranking.Render(s, level))
-		sb.WriteString("\n\n")
-	}
-	out := sb.String()
-	// If our reconstruction is somehow larger than the original (small files
-	// with rich docstrings), fall back to original.
-	if len(out) > len(full) {
-		return full
-	}
-	return out
-}
-
 func renderSignatures(syms []grove.SymbolRecord) string {
 	var sb strings.Builder
 	for _, s := range syms {
@@ -230,45 +206,125 @@ func computeSymbolSHAs(syms []grove.SymbolRecord) map[string]string {
 	return m
 }
 
-// renderSemanticDelta produces a mixed rendering: unchanged symbols become
-// single-line [prism:cached] pointers; changed or new symbols are emitted at
-// full fidelity. Falls back to renderRanked when no per-symbol SHAs can be
-// computed (e.g. Grove returned neither RawText nor BlobSha).
-func renderSemanticDelta(opts Options, content string, prevSHAs map[string]string) string {
-	if len(opts.Symbols) == 0 {
-		return content
+// renderSemanticDelta reconstructs the file from its own lines, replacing only
+// the bodies of symbols whose content is unchanged since the last read with a
+// compact, recoverable [prism:cached] pointer. Every other byte — inter-symbol
+// comments, blank lines, statements no parser modelled as a symbol, and the
+// full text of changed/new symbols — is emitted verbatim. This makes the delta
+// lossless: the agent never silently loses content, and a pointered symbol was
+// already delivered in full earlier in the session.
+//
+// It returns ok=false (and the caller delivers the full file) when the symbol
+// spans cannot be trusted to reconstruct the file — out-of-range or overlapping
+// line ranges, no usable per-symbol SHAs, or nothing actually changed at symbol
+// granularity. Refusing to guess is what keeps the rendering safe.
+func renderSemanticDelta(symbols []grove.SymbolRecord, content string, prevSHAs map[string]string) (string, bool) {
+	if len(symbols) == 0 || len(prevSHAs) == 0 {
+		return "", false
 	}
-	currentSHAs := computeSymbolSHAs(opts.Symbols)
 
-	var sb strings.Builder
-	sb.WriteString("// file: ")
-	sb.WriteString(opts.Symbols[0].FilePath)
-	sb.WriteString(" [prism:delta — changed symbols only]\n")
+	// Treat the file as 1-based inclusive lines. Drop the synthetic trailing
+	// empty element produced when the file ends in a newline so reconstruction
+	// does not double it.
+	lines := strings.Split(content, "\n")
+	if n := len(lines); n > 0 && lines[n-1] == "" {
+		lines = lines[:n-1]
+	}
+	lineCount := len(lines)
 
-	changedCount := 0
-	for _, sym := range opts.Symbols {
-		curSHA := currentSHAs[sym.Name]
-		prevSHA := prevSHAs[sym.Name]
-		if curSHA != "" && prevSHA != "" && curSHA == prevSHA {
-			// Symbol body unchanged — pointer only.
-			short := curSHA
-			if len(short) > 8 {
-				short = short[:8]
-			}
-			sb.WriteString(fmt.Sprintf("// [prism:cached] %s @sha:%s (unchanged)\n", sym.Name, short))
-		} else {
-			// Changed or new symbol — full fidelity.
-			sb.WriteString(ranking.Render(sym, ranking.DisclosureFull))
-			sb.WriteString("\n\n")
-			changedCount++
+	type spanSym struct {
+		sym        grove.SymbolRecord
+		start, end int // 1-based inclusive
+	}
+	spans := make([]spanSym, 0, len(symbols))
+	for _, s := range symbols {
+		st, en := s.Span.Start, s.Span.End
+		if st < 1 || en < st || en > lineCount {
+			return "", false // span out of range — cannot reconstruct losslessly
+		}
+		spans = append(spans, spanSym{sym: s, start: st, end: en})
+	}
+	sort.Slice(spans, func(i, j int) bool { return spans[i].start < spans[j].start })
+	for i := 1; i < len(spans); i++ {
+		if spans[i].start <= spans[i-1].end {
+			return "", false // overlapping spans would duplicate or drop lines
 		}
 	}
-	// If we couldn't identify any changed symbols (no SHA data at all), fall
-	// back to the normal ranked rendering so we don't return an empty delta.
-	if changedCount == 0 {
-		return renderRanked(opts, content)
+
+	currentSHAs := computeSymbolSHAs(symbols)
+	var sb strings.Builder
+	emit := func(from, to int) { // emit verbatim 1-based inclusive line range
+		for i := from; i <= to; i++ {
+			sb.WriteString(lines[i-1])
+			sb.WriteByte('\n')
+		}
 	}
-	return sb.String()
+
+	pointered := 0
+	cursor := 1
+	for _, sp := range spans {
+		if sp.start > cursor {
+			emit(cursor, sp.start-1) // gap before this symbol — verbatim
+		}
+		cur := currentSHAs[sp.sym.Name]
+		prev := prevSHAs[sp.sym.Name]
+		if cur != "" && prev != "" && cur == prev {
+			// Body unchanged: the agent already has it from the first faithful
+			// read. Emit a pointer. Any surrounding edit (a new comment, a moved
+			// blank line) is still captured verbatim as gap content above/below,
+			// so the delta stays lossless even when only inter-symbol text moved.
+			sb.WriteString(deltaPointer(sp.sym, cur))
+			pointered++
+		} else {
+			emit(sp.start, sp.end) // changed/new symbol — verbatim from the file
+		}
+		cursor = sp.end + 1
+	}
+	if cursor <= lineCount {
+		emit(cursor, lineCount) // trailing gap — verbatim
+	}
+	if pointered == 0 {
+		// Every symbol body changed — there is nothing to pointer, so the
+		// "delta" is just the full file with extra sentinel noise. Let the
+		// caller deliver the file cleanly instead.
+		return "", false
+	}
+	return sb.String(), true
+}
+
+// deltaPointer renders the single-line, recoverable placeholder substituted for
+// an unchanged symbol body. The comment marker is chosen to match the file's
+// language so the rendering stays syntactically valid, and it names a
+// prism_lookup key so the agent can re-expand the body on demand.
+func deltaPointer(sym grove.SymbolRecord, sha string) string {
+	short := sha
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	name := sym.QualifiedName
+	if name == "" {
+		name = sym.Name
+	}
+	// Keep this line compact: it must be cheaper than the body it replaces.
+	// The symbol name is a valid prism_lookup key, so the body is recoverable
+	// without spelling that out on every line.
+	return fmt.Sprintf("%s [prism:cached] %s @sha:%s (unchanged — prism_lookup to expand)\n",
+		commentPrefix(sym.Language), name, short)
+}
+
+// commentPrefix returns the single-line comment token for a language so Prism's
+// injected sentinel lines do not corrupt the file when an agent copies them.
+// Defaults to "//" for the large C-family/Go/JS/etc. majority.
+func commentPrefix(language string) string {
+	switch strings.ToLower(language) {
+	case "sql", "lua", "haskell", "ada":
+		return "--"
+	case "python", "ruby", "shell", "bash", "sh", "zsh", "yaml", "yml",
+		"toml", "perl", "r", "makefile", "dockerfile", "elixir", "powershell":
+		return "#"
+	default:
+		return "//"
+	}
 }
 
 func truncateToTokens(s string, maxTok int) string {
