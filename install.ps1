@@ -74,6 +74,19 @@ if ($currentPath -notlike "*$InstallDir*") {
   ok "Added $InstallDir to PATH (open a new terminal for it to take effect)"
 }
 
+# ── Global AI tool registration ──────────────────────────────────────────────
+info "Registering prism with detected AI coding tools (global)…"
+& "$InstallDir\$PRODUCT.exe" init --global 2>$null
+if ($LASTEXITCODE -eq 0) {
+  ok "prism registered globally with detected AI tools"
+} else {
+  info "prism global init skipped (run: prism init --global)"
+}
+
 Write-Host ""
 Write-Host "$PRODUCT $Version installed."
+Write-Host "AI tool note:"
+Write-Host "  Restart or reload your coding agent / IDE so it respawns MCP servers from the updated config."
+Write-Host "  For Claude Code, approve the .mcp.json servers if prompted, then verify with: claude mcp list"
+Write-Host ""
 Write-Host "Next: cd \your\project; prism init; prism index"

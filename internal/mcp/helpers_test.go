@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/ranking"
 )
 
 func TestIntArg(t *testing.T) {
@@ -102,5 +104,72 @@ func TestToolRead_NotFound(t *testing.T) {
 	h := newHWithGrove(t, srv)
 	if _, err := h.Invoke("prism_read", map[string]any{"file": "nope.go"}); err == nil {
 		t.Error("expected err")
+	}
+}
+
+// --- C: Anti-context manifest --------------------------------------------
+
+func TestBuildAntiContextManifest_LowScoreExcluded(t *testing.T) {
+	// Two candidates; one below excludeScoreThreshold, one above.
+	candidates := []ranking.Candidate{
+		{Symbol: grove.SymbolRecord{ID: "a", FilePath: "internal/legacy/old.go"}, Score: 0.04},
+		{Symbol: grove.SymbolRecord{ID: "b", FilePath: "internal/core/main.go"}, Score: 0.50},
+	}
+	// Neither is in picked.
+	manifest := buildAntiContextManifest(candidates, nil)
+
+	if len(manifest) == 0 {
+		t.Fatal("expected at least one excluded entry")
+	}
+	found := false
+	for _, line := range manifest {
+		if strings.Contains(line, "internal/legacy") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("low-score path should appear in manifest, got: %v", manifest)
+	}
+	// High-score candidate should NOT be excluded.
+	for _, line := range manifest {
+		if strings.Contains(line, "internal/core") {
+			t.Errorf("high-score path should not appear in manifest: %s", line)
+		}
+	}
+}
+
+func TestBuildAntiContextManifest_PickedNotExcluded(t *testing.T) {
+	// Candidate with low score but already in picked — should not appear.
+	sym := grove.SymbolRecord{ID: "x", FilePath: "internal/picked/file.go"}
+	candidates := []ranking.Candidate{
+		{Symbol: sym, Score: 0.02},
+	}
+	picked := []ranking.BudgetedSymbol{
+		{Symbol: sym},
+	}
+	manifest := buildAntiContextManifest(candidates, picked)
+	for _, line := range manifest {
+		if strings.Contains(line, "internal/picked") {
+			t.Errorf("picked symbol's dir should not appear in manifest: %s", line)
+		}
+	}
+}
+
+func TestBuildAntiContextManifest_GroupsByDir(t *testing.T) {
+	// Multiple symbols in the same directory → one manifest line.
+	candidates := []ranking.Candidate{
+		{Symbol: grove.SymbolRecord{ID: "1", FilePath: "vendor/gopkg.in/a.go"}, Score: 0.01},
+		{Symbol: grove.SymbolRecord{ID: "2", FilePath: "vendor/gopkg.in/b.go"}, Score: 0.02},
+		{Symbol: grove.SymbolRecord{ID: "3", FilePath: "vendor/gopkg.in/c.go"}, Score: 0.03},
+	}
+	manifest := buildAntiContextManifest(candidates, nil)
+	count := 0
+	for _, line := range manifest {
+		if strings.Contains(line, "vendor/gopkg.in") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("same directory should produce 1 manifest line, got %d: %v", count, manifest)
 	}
 }

@@ -80,7 +80,9 @@ Prism has two integration paths. Both produce identical context quality — only
 
 ### MCP Stdio
 
-`prism init` detects which tools are installed and writes their MCP config automatically. After a tool restart, all 8 `prism_*` tools are available.
+`prism init` detects which tools are installed and writes their MCP config automatically. After a tool restart, all 9 `prism_*` tools are available.
+
+The current MCP server also ships `prism_evidence` for typed sub-agent citations, phase-aware budget shaping, learned per-repo ranking weights, and cross-session warm-cache loading.
 
 | Tool | Config written | Notes |
 |------|---------------|-------|
@@ -94,7 +96,7 @@ Prism has two integration paths. Both produce identical context quality — only
 
 ### VS Code (Copilot Agent Mode)
 
-The VS Code extension does not use MCP. It registers all 8 tools via `vscode.lm.registerTool` and spawns the `prism` binary per call. No `prism serve` required, no port.
+The VS Code extension does not use MCP. It registers all 9 tools via `vscode.lm.registerTool` and spawns the `prism` binary per call. No `prism serve` required, no port.
 
 Tools appear in Copilot Chat as `#prismQuery`, `#prismRead`, `#prismSearch`, etc.
 
@@ -133,11 +135,11 @@ Prism delegates all parsing and graph construction to Grove. Language support is
 | Java | `.java` | classes, interfaces, enums, methods, fields, constructors |
 | Rust | `.rs` | functions, structs, enums, traits, impl blocks, fields |
 | C | `.c .h` | functions, typedef structs/enums, tagged types |
-| C++ | `.cc .cpp .cxx .hh .hpp` | classes, namespaces, templates, methods |
+| C++ | `.cc .cpp .cxx .c++ .hh .hpp .hxx` | classes, namespaces, templates, methods |
 | C# | `.cs` | namespaces, classes, structs, interfaces, methods, properties |
-| PHP | `.php .phtml` | classes, interfaces, traits, enums, functions, methods |
+| PHP | `.php .php3 .php4 .php5 .phtml` | classes, interfaces, traits, enums, functions, methods |
 
-Non-code files (`.md`, `.yaml`, `.json`, `.xml`, `.sh`, `.toml`, `.proto`, `.sql`, `Makefile`, `Dockerfile`, and more) are indexed as document symbols and ranked alongside code in every query. Agents can discover architectural decisions in ADRs, API contracts in OpenAPI files, and deployment configuration in Dockerfiles — all without manual file selection.
+Non-code files (`.md`, `.mdx`, `.markdown`, `.yaml`, `.yml`, `.json`, `.xml`, `.sh`, `.bash`, `.zsh`, `.fish`, `.toml`, `.ini`, `.cfg`, `.conf`, `.txt`, `.proto`, `.sql`, `.graphql`, `.gql`, `.csv`, `Makefile`, `Dockerfile`, and more) are indexed as document symbols and ranked alongside code in every query. Agents can discover architectural decisions in ADRs, API contracts in OpenAPI files, and deployment configuration in Dockerfiles — all without manual file selection.
 
 Semantic similarity uses Model2Vec (potion-base-8M, embedded in the Grove binary — no download, no server, no GPU). Set `GROVE_EMBEDDINGS=tfidf` to opt out.
 

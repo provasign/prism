@@ -123,5 +123,5 @@ if [ -n "${PROJECT:-}" ]; then
   )
 fi
 
-printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nNext: cd /your/project && prism init && prism index\n' \
+printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nAI tool note:\n  Restart or reload your coding agent / IDE so it respawns MCP servers from the updated config.\n  For Claude Code, approve the .mcp.json servers if prompted, then verify with: claude mcp list\n\nNext: cd /your/project && prism init && prism index\n' \
   "$PRODUCT" "$VERSION" "$INSTALL_DIR"

@@ -1,6 +1,8 @@
 # Prism — VS Code Extension
 
-The VS Code extension delivers ranked, compressed code context to AI agents without requiring `prism serve`. It spawns the `prism` binary per tool call and registers all 8 tools with VS Code's Language Model Tools API, making them available in GitHub Copilot Chat as `#prismQuery`, `#prismRead`, and so on.
+The VS Code extension delivers ranked, compressed code context to AI agents without requiring `prism serve`. It spawns the `prism` binary per tool call and registers all 9 tools with VS Code's Language Model Tools API, making them available in GitHub Copilot Chat as `#prismQuery`, `#prismRead`, and so on.
+
+The current tool set includes typed sub-agent evidence packets (`prism_evidence`) plus the same phase-aware ranking and warm-cache behavior available in MCP mode.
 
 ## When to Use This
 
@@ -58,7 +60,7 @@ prism init
 
 ## Tools
 
-All 8 tools are registered with `vscode.lm.registerTool`:
+All 9 tools are registered with `vscode.lm.registerTool`:
 
 | Chat reference | Tool | What it does |
 |----------------|------|-------------|

@@ -527,9 +527,9 @@ func buildVSCodeConfig(prismBin, projectDir string) []byte {
 	return b
 }
 
-// writePrismCodexConfig writes a prism [[mcp_servers]] entry to Codex CLI's
+// writePrismCodexConfig writes a prism [mcp_servers.prism] entry to Codex CLI's
 // config.toml (~/.codex/config.toml). The file is created if absent.
-// An existing prism block is replaced idempotently.
+// Existing legacy and map-style prism entries are removed idempotently.
 func writePrismCodexConfig(path, prismBin string, args []string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("mkdir codex config dir: %w", err)
@@ -541,12 +541,12 @@ func writePrismCodexConfig(path, prismBin string, args []string) error {
 		return fmt.Errorf("read %s: %w", path, err)
 	}
 	lines = stripPrismTOMLBlock(lines, "mcp_servers", "prism")
+	lines = stripPrismNamedTable(lines, "mcp_servers", "prism")
 	if len(lines) > 0 && lines[len(lines)-1] != "" {
 		lines = append(lines, "")
 	}
 	lines = append(lines,
-		"[[mcp_servers]]",
-		`name = "prism"`,
+		"[mcp_servers.prism]",
 		`type = "stdio"`,
 		fmt.Sprintf("command = %q", prismBin),
 		prismTOMLStringArray("args", args),
@@ -570,7 +570,7 @@ func stripPrismTOMLBlock(lines []string, section, targetName string) []string {
 		start := i
 		i++
 		isMatch := false
-		for i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "[[") {
+		for i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "[") {
 			if strings.TrimSpace(lines[i]) == nameKV {
 				isMatch = true
 			}
@@ -578,6 +578,25 @@ func stripPrismTOMLBlock(lines []string, section, targetName string) []string {
 		}
 		if !isMatch {
 			out = append(out, lines[start:i]...)
+		}
+	}
+	return out
+}
+
+// stripPrismNamedTable removes a [section.target] table and its body.
+func stripPrismNamedTable(lines []string, section, targetName string) []string {
+	header := "[" + section + "." + targetName + "]"
+	var out []string
+	i := 0
+	for i < len(lines) {
+		if strings.TrimSpace(lines[i]) != header {
+			out = append(out, lines[i])
+			i++
+			continue
+		}
+		i++
+		for i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "[") {
+			i++
 		}
 	}
 	return out
@@ -1052,28 +1071,33 @@ func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, err
 	defer client.Shutdown()
 
 	ledgerFile := ledgerPathForRoot(root)
-	ledger, err := session.LoadLedger(ledgerFile)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintln(os.Stderr, "warning: could not load savings ledger:", err)
+	var out any
+	var invokeErr error
+	lockFile := ledgerFile + ".lock"
+	lockErr := session.WithFileLock(lockFile, 5*time.Second, func() error {
+		ledger, err := session.LoadLedger(ledgerFile)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				fmt.Fprintln(os.Stderr, "warning: could not load savings ledger:", err)
+			}
+			ledger = session.NewLedger(time.Now().Format("20060102-150405"))
 		}
-		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
-	}
 
-	// NOTE: the session.Tracker (which drives progressive disclosure: full →
-	// signature → reference) is not persisted between CLI invocations. Each
-	// call starts fresh, so prism_read always delivers the full file on the
-	// first read of any given path. This means the CLI savings ledger captures
-	// compression savings but never progressive-disclosure savings. In MCP
-	// server mode (prism serve / prism mcp) the Tracker lives for the full
-	// session and accumulates both. The numbers are correct for what they
-	// measure; they are just not directly comparable between modes.
-	h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
-	out, invokeErr := h.Invoke(tool, args)
-	if saveErr := h.Ledger.Save(ledgerFile); saveErr != nil {
-		fmt.Fprintln(os.Stderr, "warning: could not persist savings ledger:", saveErr)
+		// The handler warm-loads the session.Tracker from disk and we flush it
+		// after each CLI invocation. The lock serializes standalone CLI processes
+		// that share the same repo/home cache files.
+		h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
+		out, invokeErr = h.Invoke(tool, args)
+		h.SaveSessionCache()
+		if saveErr := h.Ledger.Save(ledgerFile); saveErr != nil {
+			fmt.Fprintln(os.Stderr, "warning: could not persist savings ledger:", saveErr)
+		}
+		pruneOldLedgers(filepath.Dir(ledgerFile), 30*24*time.Hour)
+		return nil
+	})
+	if lockErr != nil {
+		return nil, lockErr
 	}
-	pruneOldLedgers(filepath.Dir(ledgerFile), 30*24*time.Hour)
 	return out, invokeErr
 }
 
