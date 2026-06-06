@@ -1,0 +1,14 @@
+# Auto-Intent Capture artifact. The user's prompt that produced this code.
+# See docs/architecture.md. Do not hand-edit unless you know what you're doing.
+schema: relay.intent/v2
+id: INT-2026-06-06-fix-prism-index-context-deadline-exceeded-timeout
+status: committed
+title: Fix prism_index context deadline exceeded timeout
+description: 'prism_index is broken. Called prism.prism_index({"dir":"/Users/tapabratapal/Projects/provasign/provasign"}) and got Error: tool call error: tool call failed for `prism/prism_index` Caused by: Mcp error: -32000: context deadline exceeded and many other errors. I NEED THIS FIXED'
+originated_from:
+    agent: claude-code:1.4.2
+    model: claude-sonnet-4-6:2026-06-06
+    prompt_hash: 583dc4f9f0112a00cdddfa5f1ed06b23a6d6137a20b46701bc43fa5aaf9798e3
+created_at: 2026-06-06T16:02:21.374326Z
+committed_at: 2026-06-06T16:11:29.498023Z
+committed_by_agent: claude-code:1.4.2

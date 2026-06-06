@@ -1006,13 +1006,19 @@ func cmdMCP(args []string) int {
 	// background so the MCP handshake is serviced without waiting on I/O.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	readyCh := make(chan struct{})
+	readyCh := make(chan struct{}) // closed once Grove engine is open (ready for queries)
+	doneCh := make(chan struct{})  // closed once the goroutine fully exits
 	go func() {
-		defer close(readyCh)
+		defer close(doneCh)
 		if err := client.EnsureRunning(ctx); err != nil {
 			fmt.Fprintln(os.Stderr, "warning: grove not reachable:", err)
+			close(readyCh)
 			return
 		}
+		// Signal ready as soon as the engine is open so tool calls (including
+		// explicit prism_index calls) are not blocked waiting for the initial
+		// index to complete. Large codebases can take minutes to index.
+		close(readyCh)
 		if _, err := client.Index(ctx, root); err != nil {
 			fmt.Fprintln(os.Stderr, "warning: initial index failed:", err)
 		}
@@ -1027,7 +1033,7 @@ func cmdMCP(args []string) int {
 	// the project directory (e.g. a test using t.TempDir) races file creation
 	// and fails with "directory not empty" on Linux or a lock error on Windows.
 	cancel()
-	<-readyCh
+	<-doneCh
 	client.Shutdown()
 
 	if serveErr != nil {

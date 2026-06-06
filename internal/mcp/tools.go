@@ -600,9 +600,13 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	return map[string]any{"symbol": nil}, nil
 }
 
-func (h *Handler) toolIndex(ctx context.Context, args map[string]any) (any, error) {
+func (h *Handler) toolIndex(_ context.Context, args map[string]any) (any, error) {
 	dir := stringArg(args, "dir", h.Root)
-	res, err := h.Grove.Index(ctx, dir)
+	// Indexing large codebases can take several minutes; use a fresh context
+	// with an extended deadline instead of the 60-second Invoke-level one.
+	idxCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	res, err := h.Grove.Index(idxCtx, dir)
 	if err != nil {
 		return nil, err
 	}
