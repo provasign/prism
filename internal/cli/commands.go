@@ -34,6 +34,7 @@ Usage:
   prism index [dir]               Index codebase via Grove (delta-aware)
   prism status [dir]              Show graph stats from Grove
   prism query <task> [dir]        Find ranked context for a task
+                                  --terms a,b,c  Anchor on specific symbol names (grep-precision)
   prism read <file> [dir]         Read file with compression
   prism search <keyword> [dir]    Search symbols by keyword
   prism lookup <name> [dir]       Show full source for a symbol
@@ -165,7 +166,7 @@ contracts the agent would not find by grep+read alone.
 
 | Situation | Tool |
 |---|---|
-| Locate a string, symbol, or file | grep — not Prism |
+| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
 | Callers/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") |
@@ -175,7 +176,7 @@ contracts the agent would not find by grep+read alone.
 
 ### Canonical workflow
 
-    grep <terms>                         <- locate anchor first; grep always wins here
+    grep/find/rg <terms>                 <- locate anchor first; shell tools always win here
       -> prism_query(                    <- expand from anchor: callers, callees, tests
            terms=["same-grep-terms"],
            include=["graph","tests"],
@@ -190,7 +191,7 @@ contracts the agent would not find by grep+read alone.
 | Parameter | Default | Purpose |
 |---|---|---|
 | task | required | What you are doing |
-| terms | — | Grep terms — same precision as grep, plus graph expansion |
+| terms | — | Search terms — same precision as shell search tools, plus graph expansion |
 | include | ["graph","tests"] | "graph" (callers/callees), "tests", "docs" (filenames only), "coverage_gaps" (untested symbols — use when writing/fixing code) |
 | graph_depth | 2 | BFS hops: 1 = immediate callers, 3+ = blast radius |
 | budget | 8000 | Token ceiling. Increase for large refactors. |
@@ -206,8 +207,8 @@ contracts the agent would not find by grep+read alone.
 
 ### Do NOT
 
-- Do NOT call prism_query before grep — grep finds the anchor, prism expands from it
-- Do NOT use prism_search as a grep replacement — it searches symbol names only, not source text
+- Do NOT call prism_query before searching — use shell tools (grep, find, rg) to find the anchor first; prism expands from it
+- Do NOT use prism_search as a search replacement — it searches symbol names only, not source text
 - Do NOT use prism_read for a single function — use prism_lookup instead
 - Do NOT re-run prism_index on every step — delta indexing is automatic
 `
@@ -751,6 +752,7 @@ func cmdQuery(args []string) int {
 	dir := "."
 	profile := ""
 	limit := 50
+	var terms []string
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -766,6 +768,15 @@ func cmdQuery(args []string) int {
 				}
 				i++
 			}
+		case "--terms":
+			if i+1 < len(args) {
+				for _, t := range strings.Split(args[i+1], ",") {
+					if t = strings.TrimSpace(t); t != "" {
+						terms = append(terms, t)
+					}
+				}
+				i++
+			}
 		default:
 			if !strings.HasPrefix(a, "-") {
 				dir = a
@@ -775,6 +786,9 @@ func cmdQuery(args []string) int {
 	invokeArgs := map[string]any{"task": task, "limit": limit}
 	if profile != "" {
 		invokeArgs["profile"] = profile
+	}
+	if len(terms) > 0 {
+		invokeArgs["terms"] = terms
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_query", invokeArgs)
 	if err != nil {

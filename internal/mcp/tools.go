@@ -279,8 +279,8 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "Call AFTER grep locates your anchor. " +
-			"Pass the same terms you used in grep via terms=[...] — Prism searches those terms " +
+		return "Call AFTER shell tools (grep, find, rg) locate your anchor. " +
+			"Pass the same terms you used via terms=[...] — Prism searches those terms " +
 			"directly and then expands through the call graph to return callers, callees, and " +
 			"tests the agent would not find by reading alone. " +
 			"Default include=[\"graph\",\"tests\"]. " +
@@ -486,6 +486,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			return nil, fmt.Errorf("grove query: %w", err)
 		}
 		seeds = filterGeneratedPrismContext(seeds)
+		seeds = filterDocSeeds(seeds)
 	}
 	tGrove := time.Since(t0)
 
@@ -1131,6 +1132,16 @@ func isMarkdownStringConst(raw string) bool {
 		}
 	}
 	return markers >= 3
+}
+
+func filterDocSeeds(in []grove.SymbolRecord) []grove.SymbolRecord {
+	out := in[:0]
+	for _, s := range in {
+		if categorize(s) != ranking.CategoryDoc {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func filterGeneratedPrismContext(in []grove.SymbolRecord) []grove.SymbolRecord {

@@ -159,6 +159,22 @@ func TestCategorize(t *testing.T) {
 	}
 }
 
+func TestFilterDocSeeds(t *testing.T) {
+	in := []grove.SymbolRecord{
+		{FilePath: "README.md", Kind: "namespace"},
+		{FilePath: "internal/mcp/tools.go", Kind: "function", Name: "Invoke"},
+		{FilePath: "ROADMAP.md", Kind: "namespace"},
+		{FilePath: "internal/ranking/budget.go", Kind: "function", Name: "Select"},
+	}
+	got := filterDocSeeds(in)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 code symbols, got %d: %+v", len(got), got)
+	}
+	if got[0].Name != "Invoke" || got[1].Name != "Select" {
+		t.Fatalf("unexpected symbols: %+v", got)
+	}
+}
+
 func TestFilterGeneratedPrismContext(t *testing.T) {
 	in := []grove.SymbolRecord{
 		{FilePath: ".mcp.json", RawText: `{"mcpServers":{"prism":{}}}`},
