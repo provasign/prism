@@ -16,6 +16,58 @@ Works with Claude Code, GitHub Copilot (VS Code), Cursor, Codex CLI, Windsurf, Z
 
 ---
 
+## The Real Token Story
+
+The headline savings figures (35–92% on first reads, ~99% on re-reads) describe per-file compression. The bigger story is **context gathering**: how many tool calls and total tokens does an agent consume just to assemble enough information to start working?
+
+### Concrete example: "Write tests for `buildCoverageGaps`"
+
+A capable agent working natively follows this chain — each step forced by what the previous step didn't answer:
+
+| Step | What the agent does | Why it's necessary | Tokens |
+|-----:|--------------------|--------------------|-------:|
+| 1 | `grep -rn buildCoverageGaps internal/` | Find where the function lives | ~330 |
+| 2 | Read `tools.go:728–780` (function body) | Understand what to test | ~354 |
+| 3 | `grep "type coverageGap"` + read struct | Know the return type's fields | ~204 |
+| 4 | `grep "type SymbolRecord"` + read struct | Build test fixtures (`ID`, `Name`, `FilePath`, `Kind`) | ~448 |
+| 5 | `grep "func.*Tests"` in `grove/client.go` | Confirm `g.Tests()` return type and error contract | ~50 |
+| 6 | Read `tools_cov_test.go` (468 lines) | Find `newHWithGrove` helper — only way to know which file it's in | ~3,727 |
+| 7 | Read `categorize()` (50 lines) | Understand `isCodeSym` — which symbols are filtered out | ~505 |
+| 8 | `grep "func NewClient"` + read signature | Confirm `grove.NewClient("","")` constructor for test setup | ~227 |
+| | **Total** | | **~5,845** |
+
+Step 6 is the trap. The agent doesn't know which file contains `newHWithGrove`. Its only option is to read all 468 lines of `tools_cov_test.go` (3,727 tokens) to find a 9-line helper. With Prism, that helper surfaces alongside the target function automatically — no fishing.
+
+**Prism for the same task: 1 call, 1,987 tokens.** Everything above delivered, ranked, in one round trip.
+
+```
+prism_query(
+  task="write tests for buildCoverageGaps",
+  terms=["buildCoverageGaps"],
+  include=["graph","tests","coverage_gaps"]
+)
+→ buildCoverageGaps body (257 tokens)
+→ coverageGap struct (implicit in body)
+→ Handler struct with Grove field (156 tokens)
+→ newHWithGrove helper + 4 existing test bodies (showing exact patterns)
+→ Coverage gaps: which branches have no test edge yet
+```
+
+### Summary
+
+| | Native (8 steps) | Prism (1 call) |
+|---|---:|---:|
+| Tool calls | 8 | 1 |
+| Tokens consumed | ~5,845 | ~1,987 |
+| Key context missed | `newHWithGrove` (buried in 468-line file) | Nothing |
+| **Effective savings** | — | **~66% fewer tokens, 8× fewer round trips** |
+
+The naive token comparison — "grep output: ~60 tokens vs Prism: 1,987 tokens" — gets it exactly backwards. Grep output is pointers, not context. The agent still has to follow every pointer.
+
+> **Rule of thumb:** Compare Prism's delivered tokens against the sum of all reads the agent would need, not against the grep lines that prompted those reads.
+
+---
+
 ## How It Works
 
 ```

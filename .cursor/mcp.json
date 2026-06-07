@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "prism": {
+      "command": "/Users/tapabratapal/bin/prism",
+      "args": [
+        "mcp",
+        "/Users/tapabratapal/Projects/provasign/prism"
+      ]
+    },
+    "provasign": {
+      "args": [
+        "mcp",
+        "serve",
+        "--repo",
+        "/Users/tapabratapal/Projects/provasign/prism"
+      ],
+      "command": "/Users/tapabratapal/bin/provasign"
+    }
+  }
+}

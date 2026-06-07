@@ -1,6 +1,7 @@
 # Binaries
 /prism
 /prism-*
+!/prism-position.md
 *.exe
 *.test
 

@@ -143,9 +143,15 @@ func (e *TFIDF) Query(task string, corpus []grove.SymbolRecord, limit int) []Sco
 	return out
 }
 
-// documentText joins symbol fields into the canonical text representation.
+// documentText joins symbol fields into the canonical text representation
+// used for TF-IDF indexing. RawText is included but capped so large files
+// don't dominate the IDF weights.
 func documentText(s grove.SymbolRecord) string {
-	parts := []string{s.Name, s.QualifiedName, s.Signature, s.Docstring, s.ParentSymbol}
+	body := s.RawText
+	if len(body) > 512 {
+		body = body[:512]
+	}
+	parts := []string{s.Name, s.QualifiedName, s.Signature, s.Docstring, s.ParentSymbol, body}
 	return strings.Join(parts, " ")
 }
 

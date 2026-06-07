@@ -215,10 +215,25 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Natural-language description of what you are trying to do.",
 				},
+				"terms": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "Grep-style search terms to seed retrieval (e.g. [\"AccessCount\",\"sha-pointer\"]). When provided, Prism searches these terms directly instead of TF-IDF guessing — same precision as your own grep, plus graph expansion.",
+				},
+				"include": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string", "enum": []string{"graph", "tests", "docs", "coverage_gaps"}},
+					"description": "Which result categories to return. \"graph\" = code + callers/callees, \"tests\" = test files, \"docs\" = doc filenames only, \"coverage_gaps\" = code symbols in the blast radius with no test edges (use when writing or fixing code). Default: [\"graph\",\"tests\"].",
+				},
+				"graph_depth": map[string]any{
+					"type":        "integer",
+					"description": "BFS depth for call-graph expansion via Impact(). 1 = immediate callers only, 2 = two hops (default), 3+ = wider blast radius.",
+				},
 				"model":   modelProp,
 				"dir":     map[string]any{"type": "string", "description": "Project root directory (optional, defaults to workspace root)."},
 				"limit":   map[string]any{"type": "integer", "description": "Max symbols to return (default 50)."},
-				"profile": map[string]any{"type": "string", "description": "Ranking profile: default | test-heavy | doc-heavy"},
+				"profile": map[string]any{"type": "string", "description": "Ranking profile: default | implement_feature | fix_bug | code_review"},
+				"budget":  map[string]any{"type": "integer", "description": "Token budget (default 8000). Increase for large refactors or module-wide exploration."},
 			},
 		}
 	case "prism_read":
@@ -264,43 +279,47 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "ALWAYS call this BEFORE reading any files or searching code. " +
-			"Given a natural-language task description, returns pre-ranked, " +
-			"token-compressed symbol definitions covering target (35%), " +
-			"dependencies (25%), tests (20%), docs (10%). Replaces grep/find/read " +
-			"for context gathering. Uses 5-signal ranking: graph distance, semantic " +
-			"similarity, recency, test relevance, edit frequency."
+		return "Call AFTER grep locates your anchor. " +
+			"Pass the same terms you used in grep via terms=[...] — Prism searches those terms " +
+			"directly and then expands through the call graph to return callers, callees, and " +
+			"tests the agent would not find by reading alone. " +
+			"Default include=[\"graph\",\"tests\"]. " +
+			"Use include=[\"docs\"] for documentation search — returns ranked filenames only (~10 tokens each), not content. " +
+			"Use include=[\"coverage_gaps\"] when writing or fixing code — returns code symbols in the blast radius with no test edges, so you know what to test before making changes. " +
+			"graph_depth controls BFS hops: 1=immediate callers, 2=two hops (default), 3+=blast radius."
 	case "prism_read":
-		return "Call instead of any built-in 'read file' or 'cat' action. " +
-			"Returns the file with session-aware compression: full text on first " +
-			"read, signatures only on second read, symbol references on third+ read. " +
-			"Saves 35–92% tokens on average; 99.7% savings on repeated reads. " +
-			"Always prefer this over direct file reads."
+		return "Read a whole file with session-aware compression: " +
+			"full content on first read, SHA-pointer (~10 tokens) on second read, " +
+			"signatures on third read if content has scrolled past attention. " +
+			"Use for whole files. " +
+			"For a single function body, use prism_lookup instead — ~5× cheaper."
 	case "prism_search":
-		return "Keyword search across all indexed symbols (names, signatures, docs). " +
-			"Use instead of grep when looking for a function or type by name. " +
-			"Returns symbol records with file path, kind, and signature."
+		return "Substring search over indexed symbol names, signatures, and docstrings. " +
+			"Use when you know a symbol's name but not which file it lives in. " +
+			"Does NOT search source code text — for that, use grep."
 	case "prism_lookup":
-		return "Retrieve the complete source of one symbol by its qualified name " +
-			"(e.g. 'ranking.Select' or 'mcp.Handler'). Use after prism_search narrows " +
-			"the candidate to one specific symbol."
+		return "Retrieve the complete source of one symbol by qualified name " +
+			"(e.g. 'ranking.Select' or 'mcp.Handler'). " +
+			"Use this instead of prism_read when you want one function body — " +
+			"costs ~5× fewer tokens than reading the whole file."
 	case "prism_index":
-		return "Delta-index the workspace through Grove. Call once at session start " +
-			"or after significant file changes. Subsequent prism_query calls are only " +
-			"as fresh as the last index."
+		return "Delta-index the workspace through Grove. " +
+			"Call once at session start or after significant file changes. " +
+			"Do not call on every step — delta indexing runs automatically."
 	case "prism_compact":
-		return "Compress a conversation history JSON array. Call when the context " +
-			"window is near capacity to summarize older turns while preserving recent ones."
+		return "Compress a conversation history JSON array. " +
+			"Call when the context window is near capacity to summarize older turns " +
+			"while preserving recent ones."
 	case "prism_savings":
 		return "Return this session's token-savings dashboard: total delivered, " +
-			"percentage saved, per-tool breakdown. Useful for reporting efficiency."
+			"percentage saved, per-tool breakdown."
 	case "prism_feedback":
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_evidence":
 		return "Convert a sub-agent's prose summary into a typed evidence packet: " +
 			"an array of {claim, file, lineStart, lineEnd, sha} citations. " +
-			"Pass this packet to the parent agent instead of the full prose to save 75–95% tokens. " +
+			"Pass this packet to the parent agent instead of full prose to save 75–95% tokens. " +
 			"Each claim is dereferenceable via prism_lookup."
 	}
 	return "Prism tool: " + name
@@ -315,8 +334,19 @@ type queryResult struct {
 	BudgetUsed       int              `json:"budgetUsed"`
 	BudgetTotal      int              `json:"budgetTotal"`
 	Symbols          []rankedSymbol   `json:"symbols"`
+	CoverageGaps     []coverageGap    `json:"coverageGaps,omitempty"`
 	TimingMs         map[string]int64 `json:"timingMs"`
 	ExcludedManifest []string         `json:"excludedManifest,omitempty"`
+}
+
+// coverageGap is a code symbol in the query blast radius that has no test
+// edges in the graph. Returned only when include contains "coverage_gaps".
+type coverageGap struct {
+	Name      string         `json:"name"`
+	QualName  string         `json:"qualifiedName,omitempty"`
+	FilePath  string         `json:"filePath"`
+	Kind      string         `json:"kind"`
+	Span      grove.SpanInfo `json:"span,omitempty"`
 }
 
 type rankedSymbol struct {
@@ -338,6 +368,58 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	if task == "" {
 		return nil, errors.New("task is required")
 	}
+
+	// --- Agent-directed parameters ---
+
+	// terms: agent-supplied grep-style search terms used to seed retrieval
+	// instead of relying purely on TF-IDF over the task string. When provided,
+	// Prism searches for each term as a symbol name/substring and uses the
+	// matches as seeds — same precision as the agent's own grep, plus graph expansion.
+	var terms []string
+	if raw, ok := args["terms"]; ok {
+		switch v := raw.(type) {
+		case []any:
+			for _, t := range v {
+				if s, ok := t.(string); ok && s != "" {
+					terms = append(terms, s)
+				}
+			}
+		case []string:
+			terms = v
+		}
+	}
+
+	// include: controls which result categories are returned.
+	// Accepted values: "graph" (code + callers/callees), "tests", "docs".
+	// Default when omitted: ["graph", "tests"].
+	includeSet := map[string]bool{}
+	if raw, ok := args["include"]; ok {
+		switch v := raw.(type) {
+		case []any:
+			for _, t := range v {
+				if s, ok := t.(string); ok {
+					includeSet[s] = true
+				}
+			}
+		case []string:
+			for _, s := range v {
+				includeSet[s] = true
+			}
+		}
+	}
+	if len(includeSet) == 0 {
+		includeSet = map[string]bool{"graph": true, "tests": true}
+	}
+
+	// graph_depth: BFS depth for Impact() calls. Default 2.
+	graphDepth := intArg(args, "graph_depth", 2)
+	if graphDepth < 1 {
+		graphDepth = 1
+	}
+	if graphDepth > 5 {
+		graphDepth = 5
+	}
+
 	// B: phase-aware budget shaping — infer the agent work phase from the task
 	// description and auto-select a matching profile + budget multiplier.
 	// An explicit "profile" arg always wins; otherwise let phase detection decide.
@@ -351,9 +433,6 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	if profileName == "" {
 		profileName = h.Cfg.Profile
 	}
-	// model arg overrides config for this call's budget calculation only.
-	// If the agent passes its own model ID (e.g. "claude-sonnet-4-6"), we use
-	// it; otherwise fall back to whatever was set at initialize time.
 	callCfg := h.Cfg.WithModel(stringArg(args, "model", ""))
 	limit := intArg(args, "limit", 50)
 
@@ -364,29 +443,69 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	tEmb := time.Since(t0)
 
 	t0 = time.Now()
-	seeds, err := h.Grove.QueryByIntent(ctx, task, limit)
-	if err != nil {
-		return nil, fmt.Errorf("grove query: %w", err)
+	var seeds []grove.SymbolRecord
+
+	if len(terms) > 0 {
+		// Term-seeded retrieval: search for each agent-supplied term and union
+		// the results. This gives grep-level precision as the entry point.
+		seenTermSeeds := map[string]bool{}
+		for _, term := range terms {
+			matches, err := h.Grove.SearchSymbols(ctx, term, 10)
+			if err != nil {
+				continue
+			}
+			// Prioritise symbols whose Name/QualifiedName contains the term
+			// (grep-level precision). Content-only matches (term appears only
+			// in RawText) are capped at 3 to suppress doc-string noise.
+			termLower := strings.ToLower(term)
+			var nameHits, contentHits []grove.SymbolRecord
+			for _, m := range matches {
+				if strings.Contains(strings.ToLower(m.Name), termLower) ||
+					strings.Contains(strings.ToLower(m.QualifiedName), termLower) {
+					nameHits = append(nameHits, m)
+				} else {
+					contentHits = append(contentHits, m)
+				}
+			}
+			if len(contentHits) > 3 {
+				contentHits = contentHits[:3]
+			}
+			for _, m := range append(nameHits, contentHits...) {
+				if !seenTermSeeds[m.ID] {
+					seenTermSeeds[m.ID] = true
+					seeds = append(seeds, m)
+				}
+			}
+		}
+		seeds = filterGeneratedPrismContext(seeds)
+	} else {
+		// TF-IDF fallback when no terms provided.
+		var err error
+		seeds, err = h.Grove.QueryByIntent(ctx, task, limit)
+		if err != nil {
+			return nil, fmt.Errorf("grove query: %w", err)
+		}
+		seeds = filterGeneratedPrismContext(seeds)
 	}
-	seeds = filterGeneratedPrismContext(seeds)
 	tGrove := time.Since(t0)
 
-	// Build candidates: Grove returns ordered results; treat first 5 as seeds
-	// (distance 0), remainder as distance 1+ candidates.
+	// Build candidates: treat first 5 as seeds (distance 0), remainder as candidates.
 	seedCount := minInt(5, len(seeds))
 	seedSyms := seeds[:seedCount]
 	candidateSyms := seeds[seedCount:]
 
 	profile := ranking.SelectProfile(profileName)
-	// A: blend in per-repo learned weight adjustments (no-op when no data yet).
 	profile = h.Weights.Apply(profile)
-	// Wire the graph: for each seed, call Impact (BFS over callers up to depth 3)
-	// and Tests (test-coverage edges). This replaces the fake position-based distance
-	// with real graph proximity and surfaces structurally relevant symbols that
-	// TF-IDF alone would miss entirely.
-	graphDist := make(map[string]int)       // symbolID → min BFS hops from nearest seed
-	hasTestEdgeID := make(map[string]bool)  // symbolID → directly tests a seed
-	testFilePaths := make(map[string]bool)  // filePath → contains a test symbol for seeds
+
+	// For test-writing tasks, boost TestRelevance so test symbols rank higher
+	// in scoring. The budget expansion happens after callerBudget is parsed.
+	if explicitProfile == "" && isTestWritingTask(task) && profile.TestRelevance < 0.45 {
+		profile.TestRelevance = minFloat(profile.TestRelevance*2.0, 0.45)
+	}
+
+	graphDist := make(map[string]int)
+	hasTestEdgeID := make(map[string]bool)
+	testFilePaths := make(map[string]bool)
 
 	seenIDs := make(map[string]bool, len(seeds))
 	for _, s := range seeds {
@@ -394,39 +513,66 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	var graphExtra []grove.SymbolRecord
 
+	// seedCoverage tracks whether each seed has at least one test edge.
+	// Populated whenever tests or coverage_gaps is requested.
+	seedCoverage := make(map[string]bool)
+	needTestEdges := includeSet["tests"] || includeSet["coverage_gaps"]
+
 	for _, seed := range seedSyms {
-		if impacted, err := h.Grove.Impact(ctx, seed.Name, 3); err == nil {
-			for _, imp := range impacted {
-				if _, exists := graphDist[imp.ID]; !exists {
-					graphDist[imp.ID] = 1
-				}
-				if !seenIDs[imp.ID] {
-					seenIDs[imp.ID] = true
-					graphExtra = append(graphExtra, imp)
+		if includeSet["graph"] {
+			if impacted, err := h.Grove.Impact(ctx, seed.Name, graphDepth); err == nil {
+				for _, imp := range impacted {
+					if _, exists := graphDist[imp.ID]; !exists {
+						graphDist[imp.ID] = 1
+					}
+					if !seenIDs[imp.ID] {
+						seenIDs[imp.ID] = true
+						graphExtra = append(graphExtra, imp)
+					}
 				}
 			}
 		}
-		if tests, err := h.Grove.Tests(ctx, seed.Name); err == nil {
-			for _, tst := range tests {
-				hasTestEdgeID[tst.ID] = true
-				testFilePaths[tst.FilePath] = true
-				if _, exists := graphDist[tst.ID]; !exists {
-					graphDist[tst.ID] = 1
-				}
-				if !seenIDs[tst.ID] {
-					seenIDs[tst.ID] = true
-					graphExtra = append(graphExtra, tst)
+		if needTestEdges {
+			if tests, err := h.Grove.Tests(ctx, seed.Name); err == nil {
+				seedCoverage[seed.ID] = len(tests) > 0
+				for _, tst := range tests {
+					hasTestEdgeID[tst.ID] = true
+					testFilePaths[tst.FilePath] = true
+					if _, exists := graphDist[tst.ID]; !exists {
+						graphDist[tst.ID] = 1
+					}
+					// Only add test symbols to the output when tests are requested.
+					if includeSet["tests"] && !seenIDs[tst.ID] {
+						seenIDs[tst.ID] = true
+						graphExtra = append(graphExtra, tst)
+					}
 				}
 			}
 		}
 	}
 
-	// Merge TF-IDF candidates and graph-enriched symbols into one scoring pool.
-	// Graph extras are appended after so TF-IDF position still tiebreaks among
-	// symbols not reached by the graph BFS.
+	// Merge candidates and graph-enriched symbols, then filter by include set.
 	merged := make([]grove.SymbolRecord, 0, len(candidateSyms)+len(graphExtra))
 	merged = append(merged, candidateSyms...)
 	merged = append(merged, graphExtra...)
+
+	// Drop categories the agent did not request.
+	if len(includeSet) > 0 {
+		filtered := merged[:0]
+		for _, sym := range merged {
+			cat := string(categorize(sym))
+			switch {
+			case cat == string(ranking.CategoryTest) && !includeSet["tests"]:
+				continue
+			case cat == string(ranking.CategoryDoc) && !includeSet["docs"]:
+				continue
+			case (cat == string(ranking.CategoryTarget) || cat == string(ranking.CategoryDependency)) && !includeSet["graph"]:
+				continue
+			}
+			filtered = append(filtered, sym)
+		}
+		merged = filtered
+	}
 
 	candidates := make([]ranking.Candidate, 0, len(merged))
 	for i, sym := range merged {
@@ -457,7 +603,16 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			Confidence:     string(conf),
 		})
 	}
-	budget := callCfg.ContextWindow() - 5000 /* output reserve */ - 1000 /* system reserve */
+	// Default budget is task-sized (8k tokens), not context-window-sized.
+	// The score-cliff cutoff in Select() stops early when relevance drops off,
+	// so the ceiling here is a safety cap, not a fill target. Callers that
+	// genuinely need more context can pass budget explicitly via the args.
+	const defaultTaskBudget = 8000
+	callerBudget := intArg(args, "budget", 0)
+	budget := defaultTaskBudget
+	if callerBudget > 0 {
+		budget = callerBudget
+	}
 	if budget < 4000 {
 		budget = 4000
 	}
@@ -468,6 +623,11 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			shaped = 4000
 		}
 		budget = shaped
+	}
+	// Expand budget for test-writing tasks so the test category gets more
+	// absolute token room (20% share of a larger total = more test content).
+	if callerBudget == 0 && explicitProfile == "" && isTestWritingTask(task) {
+		budget = int(float64(budget) * 1.25)
 	}
 	picked := ranking.Select(seedSyms, candidates, budget)
 
@@ -506,6 +666,12 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	// rejected. Emit them as // [prism:excluded] sentinel lines so the agent
 	// knows not to speculatively read those paths.
 	out.ExcludedManifest = buildAntiContextManifest(candidates, picked)
+
+	// Coverage gaps: code symbols in the blast radius with no test edges.
+	// Only computed when the agent explicitly requests include=["coverage_gaps"].
+	if includeSet["coverage_gaps"] {
+		out.CoverageGaps = buildCoverageGaps(ctx, h.Grove, seedSyms, graphExtra, seedCoverage)
+	}
 
 	h.Ledger.Record("prism_query", used*3 /* approximate "what raw would cost" */, used)
 	return out, nil
@@ -559,6 +725,54 @@ func buildAntiContextManifest(candidates []ranking.Candidate, picked []ranking.B
 			fmt.Sprintf("// [prism:excluded] %s/* — score %.2f, not relevant to this task", d, excluded[d]))
 	}
 	return manifest
+}
+
+// buildCoverageGaps returns code symbols (seeds + blast-radius) that have no
+// test edges in the graph. Seeds use the already-fetched seedCoverage map;
+// blast-radius symbols get a separate Tests() call per symbol.
+func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.SymbolRecord, blastRadius []grove.SymbolRecord, seedCoverage map[string]bool) []coverageGap {
+	var gaps []coverageGap
+	seen := make(map[string]bool)
+
+	isCodeSym := func(s grove.SymbolRecord) bool {
+		cat := categorize(s)
+		return cat != ranking.CategoryTest && cat != ranking.CategoryDoc
+	}
+
+	for _, s := range seeds {
+		if seen[s.ID] || !isCodeSym(s) {
+			continue
+		}
+		seen[s.ID] = true
+		if !seedCoverage[s.ID] {
+			gaps = append(gaps, coverageGap{
+				Name:     s.Name,
+				QualName: s.QualifiedName,
+				FilePath: s.FilePath,
+				Kind:     s.Kind,
+				Span:     s.Span,
+			})
+		}
+	}
+
+	for _, s := range blastRadius {
+		if seen[s.ID] || !isCodeSym(s) {
+			continue
+		}
+		seen[s.ID] = true
+		tests, err := g.Tests(ctx, s.Name)
+		if err != nil || len(tests) == 0 {
+			gaps = append(gaps, coverageGap{
+				Name:     s.Name,
+				QualName: s.QualifiedName,
+				FilePath: s.FilePath,
+				Kind:     s.Kind,
+				Span:     s.Span,
+			})
+		}
+	}
+
+	return gaps
 }
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
@@ -623,6 +837,32 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
 	q := stringArg(args, "query", "")
 	limit := intArg(args, "limit", 25)
+
+	// Attempt semantic re-ranking via TF-IDF if the corpus is ready.
+	// Falls back to Grove substring results if embeddings are unavailable.
+	if q != "" {
+		if err := h.ensureEmbeddings(ctx); err == nil {
+			h.embMu.Lock()
+			tf, corpus := h.emb, h.corpus
+			h.embMu.Unlock()
+			if tf != nil && len(corpus) > 0 {
+				if tfidf, ok := tf.(*embeddings.TFIDF); ok {
+					hits := tfidf.Query(q, corpus, limit)
+					out := make([]grove.SymbolRecord, 0, len(hits))
+					for _, h := range hits {
+						if !isGeneratedPrismContext(h.Symbol) {
+							out = append(out, h.Symbol)
+						}
+					}
+					if len(out) > 0 {
+						return map[string]any{"symbols": out}, nil
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback: Grove substring match.
 	syms, err := h.Grove.SearchSymbols(ctx, q, limit)
 	if err != nil {
 		return nil, err
@@ -868,7 +1108,29 @@ func categorize(s grove.SymbolRecord) ranking.Category {
 	if s.Docstring != "" && s.Signature == "" {
 		return ranking.CategoryDoc
 	}
+	// Consts whose value is a large multi-line string containing markdown
+	// markers (e.g. steeringInstructions) are documentation, not code.
+	if s.Kind == "const" && isMarkdownStringConst(s.RawText) {
+		return ranking.CategoryDoc
+	}
 	return ranking.CategoryDependency
+}
+
+// isMarkdownStringConst reports whether raw is a const declaration whose
+// value is a multi-line string with 3+ markdown structural markers.
+func isMarkdownStringConst(raw string) bool {
+	if strings.Count(raw, "\n") < 5 {
+		return false
+	}
+	markers := 0
+	for _, line := range strings.Split(raw, "\n") {
+		l := strings.TrimSpace(line)
+		if strings.HasPrefix(l, "##") || strings.HasPrefix(l, "|---") ||
+			strings.HasPrefix(l, "| ---") || (strings.HasPrefix(l, "- ") && len(l) > 4) {
+			markers++
+		}
+	}
+	return markers >= 3
 }
 
 func filterGeneratedPrismContext(in []grove.SymbolRecord) []grove.SymbolRecord {
@@ -932,6 +1194,25 @@ func intArg(args map[string]any, key string, def int) int {
 		return int(n)
 	}
 	return def
+}
+
+// isTestWritingTask reports whether the task description signals the agent
+// is about to write or add tests, so we can surface more test context.
+func isTestWritingTask(task string) bool {
+	lower := strings.ToLower(task)
+	return strings.Contains(lower, "write test") ||
+		strings.Contains(lower, "add test") ||
+		strings.Contains(lower, "test for") ||
+		strings.Contains(lower, "tests for") ||
+		strings.Contains(lower, "coverage for") ||
+		strings.Contains(lower, "need to test")
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func summarize(s string, max int) string {

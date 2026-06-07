@@ -173,3 +173,61 @@ func TestBuildAntiContextManifest_GroupsByDir(t *testing.T) {
 		t.Errorf("same directory should produce 1 manifest line, got %d: %v", count, manifest)
 	}
 }
+
+func TestIsMarkdownStringConst_DocConst(t *testing.T) {
+	raw := "const x = `\n## Section\n\n| col | col2 |\n|---|---|\n- item one\n- item two\n`"
+	if !isMarkdownStringConst(raw) {
+		t.Error("expected markdown const to be detected")
+	}
+}
+
+func TestIsMarkdownStringConst_ShortConst(t *testing.T) {
+	if isMarkdownStringConst("const x = 42") {
+		t.Error("short const should not be flagged")
+	}
+}
+
+func TestIsMarkdownStringConst_NonMarkdown(t *testing.T) {
+	raw := "const defaultBudget = 8000\n// line\n// line\n// line\n// line\n// line"
+	if isMarkdownStringConst(raw) {
+		t.Error("code const should not be flagged")
+	}
+}
+
+func TestCategorize_MarkdownConst(t *testing.T) {
+	raw := "const steeringInstructions = `\n## Prism\n\n| col | col2 |\n|---|---|\n- item one\n- item two\n`"
+	sym := grove.SymbolRecord{
+		Kind:    "const",
+		RawText: raw,
+	}
+	if got := categorize(sym); got != ranking.CategoryDoc {
+		t.Errorf("markdown const should be CategoryDoc, got %q", got)
+	}
+}
+
+func TestIsTestWritingTask_Positive(t *testing.T) {
+	for _, task := range []string{
+		"write tests for buildAntiContextManifest",
+		"add test coverage for toolQuery",
+		"write test for Select",
+		"tests for the ranking package",
+		"coverage for the compression module",
+		"need to test the new parameter",
+	} {
+		if !isTestWritingTask(task) {
+			t.Errorf("expected %q to be detected as test-writing task", task)
+		}
+	}
+}
+
+func TestIsTestWritingTask_Negative(t *testing.T) {
+	for _, task := range []string{
+		"implement a new parameter",
+		"fix the sha-pointer bug",
+		"refactor toolRead",
+	} {
+		if isTestWritingTask(task) {
+			t.Errorf("expected %q to NOT be a test-writing task", task)
+		}
+	}
+}
