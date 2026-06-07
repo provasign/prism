@@ -77,6 +77,39 @@ func TestToolLookup_NoMatch(t *testing.T) {
 	}
 }
 
+// TestToolLookup_QualifiedName verifies that "pkg/path.Symbol" and
+// "github.com/mod/pkg/path.Symbol" forms resolve correctly.
+func TestToolLookup_QualifiedName(t *testing.T) {
+	h := newHWithGrove(t, nil)
+
+	// Write a Go source file under internal/cli/ so Grove can index it.
+	dir := h.Root + "/internal/cli"
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dir+"/lookup.go", []byte("package cli\n\nfunc DoLookup() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Grove.Index(t.Context(), h.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{
+		"DoLookup",
+		"internal/cli.DoLookup",
+		"github.com/provasign/prism/internal/cli.DoLookup",
+	} {
+		out, err := h.Invoke("prism_lookup", map[string]any{"name": name})
+		if err != nil {
+			t.Fatalf("name=%q: %v", name, err)
+		}
+		m := out.(map[string]any)
+		if m["symbol"] == nil {
+			t.Errorf("name=%q: expected symbol, got nil", name)
+		}
+	}
+}
+
 func TestToolIndex(t *testing.T) {
 	srv := fakeGroveSrv(t, map[string]any{"filesSeen": 5})
 	defer srv.Close()
