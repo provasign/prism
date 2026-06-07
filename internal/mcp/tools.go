@@ -1239,11 +1239,19 @@ func safePathWithinRoot(root, p string) (abs string, sessionPath string, err err
 	if err != nil {
 		return "", "", fmt.Errorf("resolve root: %w", err)
 	}
+	// Resolve symlinks so /tmp and /private/tmp compare equal on macOS.
+	if resolved, e := filepath.EvalSymlinks(rootAbs); e == nil {
+		rootAbs = resolved
+	}
 	rootAbs = filepath.Clean(rootAbs)
 
 	var candidate string
 	if filepath.IsAbs(p) {
 		candidate = filepath.Clean(p)
+		// Resolve symlinks in caller-supplied absolute paths too.
+		if resolved, e := filepath.EvalSymlinks(candidate); e == nil {
+			candidate = resolved
+		}
 	} else {
 		candidate = filepath.Clean(filepath.Join(rootAbs, p))
 	}

@@ -25,6 +25,15 @@ import (
 	"github.com/provasign/prism/internal/version"
 )
 
+// outputFormat controls how CLI results are printed.
+type outputFormat string
+
+const (
+	formatText outputFormat = "text"
+	formatLean outputFormat = "lean"
+	formatJSON outputFormat = "json"
+)
+
 const helpText = `prism - token-optimized context delivery for AI agents (requires Grove)
 
 Usage:
@@ -34,10 +43,16 @@ Usage:
   prism index [dir]               Index codebase via Grove (delta-aware)
   prism status [dir]              Show graph stats from Grove
   prism query <task> [dir]        Find ranked context for a task
-                                  --terms a,b,c  Anchor on specific symbol names (grep-precision)
+                                  --terms a,b,c      Anchor on specific symbol names (grep-precision)
+                                  --include a,b      Categories: graph,tests,docs,coverage_gaps (default: graph,tests)
+                                  --depth N          BFS hops for graph expansion (default: 2)
+                                  --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
+                                  --format text|lean|json  Output format (default: text)
   prism search <keyword> [dir]    Search symbols by keyword
+                                  --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
+                                  --format text|lean|json  Output format (default: text)
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Submit quality feedback for a Prism result
@@ -211,6 +226,7 @@ contracts the agent would not find by grep+read alone.
 - Do NOT use prism_search as a search replacement — it searches symbol names only, not source text
 - Do NOT use prism_read for a single function — use prism_lookup instead
 - Do NOT re-run prism_index on every step — delta indexing is automatic
+- Do NOT manually cross-reference coverage_gaps output with prism_search — treat coverage_gaps as authoritative and use it as the terminal step, not the start of a manual verification chain
 `
 
 // writeSteeringInstructions writes per-tool instruction files into the project
@@ -752,7 +768,10 @@ func cmdQuery(args []string) int {
 	dir := "."
 	profile := ""
 	limit := 50
+	depth := 0
+	format := formatText
 	var terms []string
+	var include []string
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -777,6 +796,30 @@ func cmdQuery(args []string) int {
 				}
 				i++
 			}
+		case "--include":
+			if i+1 < len(args) {
+				for _, inc := range strings.Split(args[i+1], ",") {
+					if inc = strings.TrimSpace(inc); inc != "" {
+						include = append(include, inc)
+					}
+				}
+				i++
+			}
+		case "--depth", "--graph-depth":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+					depth = n
+				}
+				i++
+			}
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
 		default:
 			if !strings.HasPrefix(a, "-") {
 				dir = a
@@ -790,12 +833,18 @@ func cmdQuery(args []string) int {
 	if len(terms) > 0 {
 		invokeArgs["terms"] = terms
 	}
+	if len(include) > 0 {
+		invokeArgs["include"] = include
+	}
+	if depth > 0 {
+		invokeArgs["graph_depth"] = depth
+	}
 	out, err := invokeWithPersistentLedger(dir, "prism_query", invokeArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "query:", err)
 		return 1
 	}
-	printJSON(out)
+	printOutput(out, format)
 	return 0
 }
 
@@ -805,13 +854,31 @@ func cmdRead(args []string) int {
 		return 2
 	}
 	file := args[0]
-	dir := dirArg(args, 1, ".")
+	dir := "."
+	format := formatText
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
 	out, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": file})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1
 	}
-	printJSON(out)
+	printOutput(out, format)
 	return 0
 }
 
@@ -823,6 +890,7 @@ func cmdSearch(args []string) int {
 	query := args[0]
 	limit := 25
 	dir := "."
+	format := formatText
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -830,6 +898,14 @@ func cmdSearch(args []string) int {
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
 					limit = n
+				}
+				i++
+			}
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
 				}
 				i++
 			}
@@ -844,7 +920,7 @@ func cmdSearch(args []string) int {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
 	}
-	printJSON(out)
+	printOutput(out, format)
 	return 0
 }
 
@@ -853,13 +929,32 @@ func cmdLookup(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: prism lookup <name> [dir]")
 		return 2
 	}
-	dir := dirArg(args, 1, ".")
-	out, err := invokeWithPersistentLedger(dir, "prism_lookup", map[string]any{"name": args[0]})
+	name := args[0]
+	dir := "."
+	format := formatText
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_lookup", map[string]any{"name": name})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
 		return 1
 	}
-	printJSON(out)
+	printOutput(out, format)
 	return 0
 }
 
@@ -1178,4 +1273,169 @@ func printJSON(v any) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(v)
+}
+
+// printOutput prints v in the requested format.
+// JSON round-trips through map[string]any so both typed structs (queryResult)
+// and plain maps are handled uniformly by the text/lean formatters.
+func printOutput(v any, format outputFormat) {
+	if format == formatJSON || format == "" {
+		printJSON(v)
+		return
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		printJSON(v)
+		return
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		printJSON(v)
+		return
+	}
+	switch format {
+	case formatText:
+		printTextOutput(m)
+	case formatLean:
+		printLeanOutput(m)
+	default:
+		printJSON(v)
+	}
+}
+
+// printTextOutput renders a Prism response as plain text for agent consumption.
+// Handles prism_query, prism_read, prism_search, and prism_lookup responses.
+func printTextOutput(m map[string]any) {
+	// prism_lookup: top-level "content" + "symbol" subkey
+	if sym, hasSym := m["symbol"].(map[string]any); hasSym && sym != nil {
+		if content, ok := m["content"].(string); ok {
+			name, _ := sym["name"].(string)
+			fp, _ := sym["filePath"].(string)
+			fmt.Printf("// %s — %s\n", fp, name)
+			fmt.Print(content)
+			if !strings.HasSuffix(content, "\n") {
+				fmt.Println()
+			}
+			return
+		}
+	}
+	// prism_read: top-level "content" + "file" key
+	if content, ok := m["content"].(string); ok {
+		file, _ := m["file"].(string)
+		strategy, _ := m["strategy"].(string)
+		if strategy == "sha-pointer" {
+			fmt.Printf("// %s [cached — use previous read]\n", file)
+		} else {
+			if file != "" {
+				fmt.Printf("// %s\n", file)
+			}
+			fmt.Print(content)
+			if !strings.HasSuffix(content, "\n") {
+				fmt.Println()
+			}
+		}
+		return
+	}
+	// prism_query and prism_search: "symbols" array
+	if rawSyms, ok := m["symbols"]; ok {
+		syms, _ := rawSyms.([]any)
+		for _, s := range syms {
+			sym, ok := s.(map[string]any)
+			if !ok {
+				continue
+			}
+			fp, _ := sym["filePath"].(string)
+			name, _ := sym["name"].(string)
+			category, _ := sym["category"].(string)
+			content, _ := sym["content"].(string)
+			if content == "" {
+				content, _ = sym["rawText"].(string)
+			}
+			if fp != "" && name != "" {
+				if category != "" {
+					fmt.Printf("// %s — %s [%s]\n", fp, name, category)
+				} else {
+					fmt.Printf("// %s — %s\n", fp, name)
+				}
+			}
+			if content != "" {
+				fmt.Print(content)
+				if !strings.HasSuffix(content, "\n") {
+					fmt.Println()
+				}
+				fmt.Println()
+			}
+		}
+		if rawGaps, ok := m["coverageGaps"]; ok {
+			if gaps, ok := rawGaps.([]any); ok && len(gaps) > 0 {
+				fmt.Println("// coverage_gaps:")
+				for _, g := range gaps {
+					if gap, ok := g.(map[string]any); ok {
+						name, _ := gap["name"].(string)
+						fp, _ := gap["filePath"].(string)
+						fmt.Printf("//   %s (%s)\n", name, fp)
+					}
+				}
+			}
+		}
+		return
+	}
+	// Fallback: JSON
+	printJSON(m)
+}
+
+// printLeanOutput strips metadata fields (scores, spans, IDs, timing) and
+// emits compact JSON with only the fields agents actually use.
+func printLeanOutput(m map[string]any) {
+	lean := map[string]any{}
+	if _, hasSyms := m["symbols"]; !hasSyms {
+		// prism_read: keep content + identity fields
+		for _, k := range []string{"file", "strategy", "content", "originalTokens", "deliveredTokens", "savingsPercent"} {
+			if v, ok := m[k]; ok {
+				lean[k] = v
+			}
+		}
+		// prism_lookup: keep minimal symbol identity
+		if sym, ok := m["symbol"].(map[string]any); ok && sym != nil {
+			lean["symbol"] = map[string]any{
+				"name":     sym["name"],
+				"filePath": sym["filePath"],
+			}
+		}
+		if content, ok := m["content"]; ok {
+			lean["content"] = content
+		}
+	} else {
+		// prism_query or prism_search
+		if bu, ok := m["budgetUsed"]; ok {
+			lean["budgetUsed"] = bu
+		}
+		if rawSyms, ok := m["symbols"]; ok {
+			syms, _ := rawSyms.([]any)
+			leanSyms := make([]any, 0, len(syms))
+			for _, s := range syms {
+				sym, ok := s.(map[string]any)
+				if !ok {
+					continue
+				}
+				content, _ := sym["content"].(string)
+				if content == "" {
+					content, _ = sym["rawText"].(string)
+				}
+				leanSyms = append(leanSyms, map[string]any{
+					"filePath": sym["filePath"],
+					"name":     sym["name"],
+					"category": sym["category"],
+					"content":  content,
+				})
+			}
+			lean["symbols"] = leanSyms
+		}
+		if rawGaps, ok := m["coverageGaps"]; ok {
+			lean["coverageGaps"] = rawGaps
+		}
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(lean)
 }

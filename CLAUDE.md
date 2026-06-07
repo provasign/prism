@@ -92,3 +92,4 @@ contracts the agent would not find by grep+read alone.
 - Do NOT use prism_search as a search replacement — it searches symbol names only, not source text
 - Do NOT use prism_read for a single function — use prism_lookup instead
 - Do NOT re-run prism_index on every step — delta indexing is automatic
+- Do NOT manually cross-reference coverage_gaps output with prism_search — treat coverage_gaps as authoritative and use it as the terminal step, not the start of a manual verification chain
