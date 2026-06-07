@@ -454,7 +454,23 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			if err != nil {
 				continue
 			}
+			// Prioritise symbols whose Name/QualifiedName contains the term
+			// (grep-level precision). Content-only matches (term appears only
+			// in RawText) are capped at 3 to suppress doc-string noise.
+			termLower := strings.ToLower(term)
+			var nameHits, contentHits []grove.SymbolRecord
 			for _, m := range matches {
+				if strings.Contains(strings.ToLower(m.Name), termLower) ||
+					strings.Contains(strings.ToLower(m.QualifiedName), termLower) {
+					nameHits = append(nameHits, m)
+				} else {
+					contentHits = append(contentHits, m)
+				}
+			}
+			if len(contentHits) > 3 {
+				contentHits = contentHits[:3]
+			}
+			for _, m := range append(nameHits, contentHits...) {
 				if !seenTermSeeds[m.ID] {
 					seenTermSeeds[m.ID] = true
 					seeds = append(seeds, m)
@@ -480,6 +496,12 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 
 	profile := ranking.SelectProfile(profileName)
 	profile = h.Weights.Apply(profile)
+
+	// For test-writing tasks, boost TestRelevance so test symbols rank higher
+	// in scoring. The budget expansion happens after callerBudget is parsed.
+	if explicitProfile == "" && isTestWritingTask(task) && profile.TestRelevance < 0.45 {
+		profile.TestRelevance = minFloat(profile.TestRelevance*2.0, 0.45)
+	}
 
 	graphDist := make(map[string]int)
 	hasTestEdgeID := make(map[string]bool)
@@ -601,6 +623,11 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			shaped = 4000
 		}
 		budget = shaped
+	}
+	// Expand budget for test-writing tasks so the test category gets more
+	// absolute token room (20% share of a larger total = more test content).
+	if callerBudget == 0 && explicitProfile == "" && isTestWritingTask(task) {
+		budget = int(float64(budget) * 1.25)
 	}
 	picked := ranking.Select(seedSyms, candidates, budget)
 
@@ -1081,7 +1108,29 @@ func categorize(s grove.SymbolRecord) ranking.Category {
 	if s.Docstring != "" && s.Signature == "" {
 		return ranking.CategoryDoc
 	}
+	// Consts whose value is a large multi-line string containing markdown
+	// markers (e.g. steeringInstructions) are documentation, not code.
+	if s.Kind == "const" && isMarkdownStringConst(s.RawText) {
+		return ranking.CategoryDoc
+	}
 	return ranking.CategoryDependency
+}
+
+// isMarkdownStringConst reports whether raw is a const declaration whose
+// value is a multi-line string with 3+ markdown structural markers.
+func isMarkdownStringConst(raw string) bool {
+	if strings.Count(raw, "\n") < 5 {
+		return false
+	}
+	markers := 0
+	for _, line := range strings.Split(raw, "\n") {
+		l := strings.TrimSpace(line)
+		if strings.HasPrefix(l, "##") || strings.HasPrefix(l, "|---") ||
+			strings.HasPrefix(l, "| ---") || (strings.HasPrefix(l, "- ") && len(l) > 4) {
+			markers++
+		}
+	}
+	return markers >= 3
 }
 
 func filterGeneratedPrismContext(in []grove.SymbolRecord) []grove.SymbolRecord {
@@ -1145,6 +1194,25 @@ func intArg(args map[string]any, key string, def int) int {
 		return int(n)
 	}
 	return def
+}
+
+// isTestWritingTask reports whether the task description signals the agent
+// is about to write or add tests, so we can surface more test context.
+func isTestWritingTask(task string) bool {
+	lower := strings.ToLower(task)
+	return strings.Contains(lower, "write test") ||
+		strings.Contains(lower, "add test") ||
+		strings.Contains(lower, "test for") ||
+		strings.Contains(lower, "tests for") ||
+		strings.Contains(lower, "coverage for") ||
+		strings.Contains(lower, "need to test")
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func summarize(s string, max int) string {
