@@ -38,8 +38,8 @@ Usage:
   prism search <keyword> [dir]    Search symbols by keyword
   prism lookup <name> [dir]       Show full source for a symbol
   prism compact [dir]             Compress conversation JSON from stdin
-	prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
-																	Submit quality feedback for a Prism result
+  prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
+                                  Submit quality feedback for a Prism result
   prism serve [--port 8888] [dir] Start MCP+HTTP server
   prism mcp [dir]                 Start MCP server on stdio
   prism savings [dir]             Show session savings dashboard
@@ -54,6 +54,9 @@ Supported AI tools (auto-detected by prism init):
   VS Code      →  .vscode/mcp.json + .github/copilot-instructions.md
   Codex / generic agents → AGENTS.md
   Gemini CLI   →  GEMINI.md
+  Cline        →  .clinerules
+  Devin        →  .devin/instructions.md
+  Kiro         →  .kiro/steering/prism.md
 `
 
 // Run is the CLI entry point. Returns the exit code.
