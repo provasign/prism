@@ -342,11 +342,11 @@ type queryResult struct {
 // coverageGap is a code symbol in the query blast radius that has no test
 // edges in the graph. Returned only when include contains "coverage_gaps".
 type coverageGap struct {
-	Name      string         `json:"name"`
-	QualName  string         `json:"qualifiedName,omitempty"`
-	FilePath  string         `json:"filePath"`
-	Kind      string         `json:"kind"`
-	Span      grove.SpanInfo `json:"span,omitempty"`
+	Name     string         `json:"name"`
+	QualName string         `json:"qualifiedName,omitempty"`
+	FilePath string         `json:"filePath"`
+	Kind     string         `json:"kind"`
+	Span     grove.SpanInfo `json:"span,omitempty"`
 }
 
 type rankedSymbol struct {
@@ -514,7 +514,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	var graphExtra []grove.SymbolRecord
 
-	// seedCoverage tracks whether each seed has at least one test edge.
+	// seedCoverage tracks whether each seed has a direct test edge.
 	// Populated whenever tests or coverage_gaps is requested.
 	seedCoverage := make(map[string]bool)
 	needTestEdges := includeSet["tests"] || includeSet["coverage_gaps"]
@@ -535,7 +535,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		}
 		if needTestEdges {
 			if tests, err := h.Grove.Tests(ctx, seed.Name); err == nil {
-				seedCoverage[seed.ID] = len(tests) > 0
+				seedCoverage[seed.ID] = hasDirectTestCoverage(ctx, h.Grove, seed, tests)
 				for _, tst := range tests {
 					hasTestEdgeID[tst.ID] = true
 					testFilePaths[tst.FilePath] = true
@@ -729,15 +729,24 @@ func buildAntiContextManifest(candidates []ranking.Candidate, picked []ranking.B
 }
 
 // buildCoverageGaps returns code symbols (seeds + blast-radius) that have no
-// test edges in the graph. Seeds use the already-fetched seedCoverage map;
-// blast-radius symbols get a separate Tests() call per symbol.
+// direct test edge in the graph. Seeds use the already-fetched seedCoverage
+// map; blast-radius symbols get a separate Tests() call per symbol.
 func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.SymbolRecord, blastRadius []grove.SymbolRecord, seedCoverage map[string]bool) []coverageGap {
 	var gaps []coverageGap
 	seen := make(map[string]bool)
 
 	isCodeSym := func(s grove.SymbolRecord) bool {
 		cat := categorize(s)
-		return cat != ranking.CategoryTest && cat != ranking.CategoryDoc
+		if cat == ranking.CategoryTest || cat == ranking.CategoryDoc {
+			return false
+		}
+		if s.Kind != "function" && s.Kind != "method" {
+			return false
+		}
+		if strings.HasPrefix(s.Name, "New") {
+			return false
+		}
+		return isExportedName(s.Name)
 	}
 
 	for _, s := range seeds {
@@ -762,7 +771,7 @@ func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.Symbo
 		}
 		seen[s.ID] = true
 		tests, err := g.Tests(ctx, s.Name)
-		if err != nil || len(tests) == 0 {
+		if err != nil || !hasDirectTestCoverage(ctx, g, s, tests) {
 			gaps = append(gaps, coverageGap{
 				Name:     s.Name,
 				QualName: s.QualifiedName,
@@ -774,6 +783,98 @@ func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.Symbo
 	}
 
 	return gaps
+}
+
+func hasDirectTestCoverage(ctx context.Context, g *grove.Client, sym grove.SymbolRecord, tests []grove.SymbolRecord) bool {
+	if hasDirectTestCoverageInSymbols(sym, tests) {
+		return true
+	}
+	found, err := g.SearchSymbols(ctx, "", 5000)
+	if err == nil && hasDirectTestCoverageInSymbols(sym, found) {
+		return true
+	}
+	return false
+}
+
+func hasDirectTestCoverageInSymbols(sym grove.SymbolRecord, tests []grove.SymbolRecord) bool {
+	targets := directTestNames(sym)
+	for _, test := range tests {
+		if filepath.Dir(test.FilePath) != filepath.Dir(sym.FilePath) {
+			continue
+		}
+		if categorize(test) != ranking.CategoryTest {
+			continue
+		}
+		for _, target := range targets {
+			if directTestNameMatches(test.Name, target) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func directTestNames(sym grove.SymbolRecord) []string {
+	name := strings.TrimSpace(sym.Name)
+	if name == "" {
+		return nil
+	}
+	names := []string{"Test" + name, name + "Test", name + "Spec", "test_" + name}
+	if stem := domainStem(name); stem != "" && stem != name {
+		names = append(names, "Test"+stem, stem+"Test", stem+"Spec", "test_"+stem)
+	}
+	if recv := receiverName(sym.QualifiedName); recv != "" {
+		names = append(names, "Test"+recv+"_"+name, "Test"+recv+name)
+	}
+	return names
+}
+
+func domainStem(name string) string {
+	for _, suffix := range []string{"Payments", "Payment"} {
+		if strings.HasSuffix(name, suffix) && len(name) > len(suffix) {
+			return strings.TrimSuffix(name, suffix)
+		}
+	}
+	return name
+}
+
+func directTestNameMatches(testName, target string) bool {
+	if strings.EqualFold(testName, target) {
+		return true
+	}
+	if len(testName) > len(target) && strings.EqualFold(testName[:len(target)], target) {
+		next := testName[len(target)]
+		return next == '_' || (next >= 'A' && next <= 'Z')
+	}
+	return false
+}
+
+func receiverName(qualName string) string {
+	open := strings.LastIndex(qualName, "(*")
+	if open >= 0 {
+		rest := qualName[open+2:]
+		close := strings.Index(rest, ")")
+		if close > 0 {
+			return rest[:close]
+		}
+	}
+	open = strings.LastIndex(qualName, ".(")
+	if open >= 0 {
+		rest := qualName[open+2:]
+		close := strings.Index(rest, ")")
+		if close > 0 {
+			return strings.TrimPrefix(rest[:close], "*")
+		}
+	}
+	return ""
+}
+
+func isExportedName(name string) bool {
+	if name == "" {
+		return false
+	}
+	ch := name[0]
+	return ch >= 'A' && ch <= 'Z'
 }
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {

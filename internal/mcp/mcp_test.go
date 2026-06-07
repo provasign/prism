@@ -3,6 +3,7 @@ package mcp
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -264,6 +265,33 @@ func TestSafePathWithinRoot(t *testing.T) {
 		if (err != nil) != tc.wantErr {
 			t.Errorf("safePathWithinRoot(%q): err=%v, wantErr=%v", tc.path, err, tc.wantErr)
 		}
+	}
+}
+
+func TestSafePathWithinRoot_EquivalentSymlinkRoots(t *testing.T) {
+	realRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(realRoot, "x.go"), []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	linkRoot := filepath.Join(t.TempDir(), "linked-root")
+	if err := os.Symlink(realRoot, linkRoot); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	inputPath := filepath.Join(realRoot, "x.go")
+	wantAbs, err := filepath.EvalSymlinks(inputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs, sessionPath, err := safePathWithinRoot(linkRoot, inputPath)
+	if err != nil {
+		t.Fatalf("equivalent symlink path rejected: %v", err)
+	}
+	if abs != wantAbs {
+		t.Fatalf("abs = %q, want %q", abs, wantAbs)
+	}
+	if sessionPath != "x.go" {
+		t.Fatalf("sessionPath = %q, want x.go", sessionPath)
 	}
 }
 

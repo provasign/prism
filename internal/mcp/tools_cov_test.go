@@ -452,6 +452,133 @@ func TestBuildCoverageGaps_BlastRadius(t *testing.T) {
 	}
 }
 
+func TestBuildCoverageGaps_BlastRadiusRequiresDirectTest(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	src := `package pay
+
+func UpdatePayment() {}
+func RefundPayment() { UpdatePayment() }
+`
+	testSrc := `package pay
+
+func TestRefundPayment(t interface{}) {
+	RefundPayment()
+}
+`
+	if err := os.WriteFile(h.Root+"/payment.go", []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/payment_test.go", []byte(testSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Grove.Index(t.Context(), h.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	update := grove.SymbolRecord{ID: "payment.go::UpdatePayment@", Name: "UpdatePayment", FilePath: "payment.go", Kind: "function"}
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{update}, map[string]bool{})
+	if len(gaps) != 1 || gaps[0].Name != "UpdatePayment" {
+		t.Fatalf("indirectly reached test should not cover UpdatePayment, got %+v", gaps)
+	}
+}
+
+func TestBuildCoverageGaps_BlastRadiusAcceptsDirectTest(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	src := `package pay
+
+func RefundPayment() {}
+`
+	testSrc := `package pay
+
+func TestRefundPayment(t interface{}) {
+	RefundPayment()
+}
+`
+	if err := os.WriteFile(h.Root+"/payment.go", []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/payment_test.go", []byte(testSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Grove.Index(t.Context(), h.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	refund := grove.SymbolRecord{ID: "payment.go::RefundPayment@", Name: "RefundPayment", FilePath: "payment.go", Kind: "function"}
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{refund}, map[string]bool{})
+	if len(gaps) != 0 {
+		t.Fatalf("direct test should cover RefundPayment, got %+v", gaps)
+	}
+}
+
+func TestBuildCoverageGaps_DirectTestRequiresSamePackageDir(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	if err := os.MkdirAll(h.Root+"/payment", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(h.Root+"/storage", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/payment/service.go", []byte("package payment\n\nfunc ListPayments() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/storage/memory.go", []byte("package storage\n\nfunc ListPayments() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/storage/memory_test.go", []byte("package storage\n\nfunc TestListPayments_FilterByUser(t interface{}) { ListPayments() }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Grove.Index(t.Context(), h.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	paymentList := grove.SymbolRecord{ID: "payment/service.go::ListPayments@", Name: "ListPayments", FilePath: "payment/service.go", Kind: "function"}
+	storageList := grove.SymbolRecord{ID: "storage/memory.go::ListPayments@", Name: "ListPayments", FilePath: "storage/memory.go", Kind: "function"}
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{paymentList, storageList}, map[string]bool{})
+	if len(gaps) != 1 || gaps[0].FilePath != "payment/service.go" {
+		t.Fatalf("same-name test in another package should not cover payment ListPayments, got %+v", gaps)
+	}
+}
+
+func TestBuildCoverageGaps_SkipsConstructorsAndAcceptsDomainStemTests(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	if err := os.WriteFile(h.Root+"/memory.go", []byte("package storage\n\nfunc NewMemoryStore() {}\nfunc SavePayment() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/memory_test.go", []byte("package storage\n\nimport \"testing\"\n\nfunc TestSaveAndGet(t *testing.T) { SavePayment() }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Grove.Index(t.Context(), h.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	constructor := grove.SymbolRecord{ID: "memory.go::NewMemoryStore@", Name: "NewMemoryStore", FilePath: "memory.go", Kind: "function"}
+	save := grove.SymbolRecord{ID: "memory.go::SavePayment@", Name: "SavePayment", FilePath: "memory.go", Kind: "function"}
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{constructor, save}, map[string]bool{})
+	if len(gaps) != 0 {
+		t.Fatalf("constructor and domain-stem-covered SavePayment should not be gaps, got %+v", gaps)
+	}
+}
+
+func TestBuildCoverageGaps_DomainStemDoesNotCrossDifferentConcepts(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	if err := os.WriteFile(h.Root+"/validator.go", []byte("package payment\n\nfunc ValidateCurrency() {}\nfunc ValidateAmount() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/validator_test.go", []byte("package payment\n\nimport \"testing\"\n\nfunc TestValidateAmount(t *testing.T) { ValidateAmount() }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Grove.Index(t.Context(), h.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	currency := grove.SymbolRecord{ID: "validator.go::ValidateCurrency@", Name: "ValidateCurrency", FilePath: "validator.go", Kind: "function"}
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{currency}, map[string]bool{})
+	if len(gaps) != 1 || gaps[0].Name != "ValidateCurrency" {
+		t.Fatalf("TestValidateAmount should not cover ValidateCurrency, got %+v", gaps)
+	}
+}
+
 func TestBuildCoverageGaps_Dedup(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	sym := grove.SymbolRecord{ID: "d1", Name: "DupFn", FilePath: "dup.go", Kind: "function"}
