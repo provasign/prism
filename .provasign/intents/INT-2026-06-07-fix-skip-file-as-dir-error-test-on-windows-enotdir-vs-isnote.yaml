@@ -1,0 +1,14 @@
+# Auto-Intent Capture artifact. The user's prompt that produced this code.
+# See docs/architecture.md. Do not hand-edit unless you know what you're doing.
+schema: relay.intent/v2
+id: INT-2026-06-07-fix-skip-file-as-dir-error-test-on-windows-enotdir-vs-isnote
+status: committed
+title: 'fix: skip file-as-dir error test on Windows (ENOTDIR vs IsNotExist)'
+description: TestCmdErrorPaths_FileAsDir fails on Windows because os.ReadFile("file.txt/prism.yaml") returns ERROR_PATH_NOT_FOUND which Go treats as IsNotExist, causing config.LoadFromDir to return success instead of an error. Fix by skipping the test on Windows.
+originated_from:
+    agent: claude-code:1.4.2
+    model: claude-sonnet-4-6:2026-06-06
+    prompt_hash: 7dab20e84947466ba1dd74512d705aeb8195fc476e03db4c212004118524a09f
+created_at: 2026-06-07T03:10:52.490328Z
+committed_at: 2026-06-07T03:11:34.165986Z
+committed_by_agent: claude-code:1.4.2

@@ -17,7 +17,7 @@ Use the shape of the question, not a blanket rule.
 
 | Situation | Tool |
 |---|---|
-| Locate a string, symbol, or filename | **grep** — not Prism |
+| Locate a string, symbol, or filename | **shell tools (grep, find, rg, etc.)** — not Prism |
 | Callers/callees/tests for a symbol I just found | `prism_query(terms=[...], include=["graph","tests"])` |
 | Read a whole file (session-aware, SHA-pointer on repeat) | `prism_read` |
 | Read one function body | `prism_lookup(name="pkg.FuncName")` |
@@ -30,7 +30,7 @@ Use the shape of the question, not a blanket rule.
 ## The canonical workflow
 
 ```
-grep <terms>                    ← always locate the anchor first; grep wins here
+grep/find/rg <terms>            ← always locate the anchor first; shell tools win here
   └─▶ prism_query(              ← expand from anchor
         terms=["CompressFileRead"],  ← same terms you grep'd
         include=["graph","tests"],   ← categories you want
@@ -146,7 +146,7 @@ On a 5,000-file repo, "what ripples if I touch this" is infeasible by hand.
 
 | Tool | When |
 |---|---|
-| `prism_query` | After grep — expand anchor to graph + tests |
+| `prism_query` | After shell search (grep/find/rg) — expand anchor to graph + tests |
 | `prism_read` | Whole file with session-aware compression |
 | `prism_lookup` | Single function body by qualified name |
 | `prism_search` | Find a symbol when you know its name but not file |

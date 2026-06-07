@@ -1,0 +1,14 @@
+# Auto-Intent Capture artifact. The user's prompt that produced this code.
+# See docs/architecture.md. Do not hand-edit unless you know what you're doing.
+schema: relay.intent/v2
+id: INT-2026-06-06-release-astkit-v041-grove-v045-bump-prism-to-grove-v045
+status: committed
+title: Release astkit v0.4.1, grove v0.4.5, bump prism to grove v0.4.5
+description: do it in order and completely orchestrated - zero touch
+originated_from:
+    agent: claude-code
+    model: claude-sonnet-4-6
+    prompt_hash: 66b70709d0ec65e807fffae2b426e1555bf122465c6de488b4b3ee222dbe78e2
+created_at: 2026-06-06T21:33:27.648134Z
+committed_at: 2026-06-06T23:13:03.639363Z
+committed_by_agent: claude-code

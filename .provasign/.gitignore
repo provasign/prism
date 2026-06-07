@@ -1,0 +1,5 @@
+# Written by `provasign init`. Mutable state owned by the laptop daemon.
+.cache/
+keys/
+*.local.yaml
+engine.db

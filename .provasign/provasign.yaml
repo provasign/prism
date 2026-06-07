@@ -1,0 +1,40 @@
+provasign_version: "0.1"
+# Uncomment and set when using a stack template.
+# stack: go-microservice
+policies:
+  path:
+    enabled: true
+    options:
+      deny:
+        - ".git/"
+        - "vendor/"
+        - "node_modules/"
+  size:
+    enabled: true
+    options:
+      max_files: 100
+      max_added_lines: 5000
+  coverage:
+    enabled: true
+    options:
+      min_coverage: 80  # Minimum aggregate coverage %. Default: 80. Set to 0 to disable.
+                        # Override per stack/profile. Annotate irreducible diffs with:
+                        #   // relay:no-test-required
+
+analyzers:
+  inline-secrets:
+    enabled: true
+  gitleaks:
+    enabled: true
+  semgrep:
+    enabled: true
+    rule_packs:
+      - auto
+    rulesets_from_relay_dir: true
+  govulncheck:
+    enabled: true
+  ruff:
+    enabled: true
+  sonar:
+    enabled: true
+    rulesets_from_relay_dir: true

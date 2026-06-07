@@ -1,0 +1,14 @@
+# Auto-Intent Capture artifact. The user's prompt that produced this code.
+# See docs/architecture.md. Do not hand-edit unless you know what you're doing.
+schema: relay.intent/v2
+id: INT-2026-06-07-fix-helptext-missing-cline-devin-kiro-and-feedback-tab-inden
+status: committed
+title: 'fix: helpText missing Cline/Devin/Kiro and feedback tab indent'
+description: 'Fix two issues in helpText const: (1) Cline (.clinerules), Devin (.devin/instructions.md), and Kiro (.kiro/steering/prism.md) are written by writeSteeringInstructions but not listed in the "Supported AI tools" section; (2) the prism feedback line uses a tab instead of spaces, misaligning with the rest of the help text.'
+originated_from:
+    agent: claude-code:1.4.2
+    model: claude-sonnet-4-6:2026-06-06
+    prompt_hash: ae6218130006bd74e8bbdbe3a5e84dc36222e585d43dad8c4981a7a511718e13
+created_at: 2026-06-07T02:58:21.023501Z
+committed_at: 2026-06-07T03:04:29.323731Z
+committed_by_agent: claude-code:1.4.2
