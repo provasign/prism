@@ -33,7 +33,7 @@ contracts the agent would not find by grep+read alone.
 |---|---|---|
 | task | required | What you are doing |
 | terms | — | Grep terms — same precision as grep, plus graph expansion |
-| include | ["graph","tests"] | "graph" (callers/callees), "tests", or "docs" (filenames only) |
+| include | ["graph","tests"] | "graph" (callers/callees), "tests", "docs" (filenames only), "coverage_gaps" (untested symbols — use when writing/fixing code) |
 | graph_depth | 2 | BFS hops: 1 = immediate callers, 3+ = blast radius |
 | budget | 8000 | Token ceiling. Increase for large refactors. |
 

@@ -53,6 +53,7 @@ contracts the agent would not find by grep+read alone.
 | Read one function body | `prism_lookup(name="pkg.FuncName")` |
 | Find docs about a topic | `prism_query(task=..., include=["docs"])` — filenames only |
 | Blast radius of a change | `prism_query(terms=[...], graph_depth=3)` |
+| Symbols with no tests (before writing/fixing) | `prism_query(terms=[...], include=["graph","coverage_gaps"])` |
 
 ### Canonical workflow
 
@@ -74,7 +75,7 @@ grep <terms>                         ← locate anchor first — grep always win
 |---|---|---|
 | `task` | required | What you are doing |
 | `terms` | — | Grep terms — same precision as grep, plus graph expansion |
-| `include` | `["graph","tests"]` | `"graph"` (callers/callees), `"tests"`, or `"docs"` (filenames only) |
+| `include` | `["graph","tests"]` | `"graph"` (callers/callees), `"tests"`, `"docs"` (filenames only), `"coverage_gaps"` (untested symbols — use when writing/fixing code) |
 | `graph_depth` | 2 | BFS hops: 1 = immediate callers, 3+ = blast radius |
 | `budget` | 8000 | Token ceiling. Increase for large refactors. |
 

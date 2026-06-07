@@ -23,6 +23,7 @@ Use the shape of the question, not a blanket rule.
 | Read one function body | `prism_lookup(name="pkg.FuncName")` |
 | Find docs/design files about a topic | `prism_query(task=..., include=["docs"])` |
 | Check blast radius before a change | `prism_query(terms=[...], graph_depth=3)` |
+| Symbols with no tests (before writing/fixing) | `prism_query(terms=[...], include=["graph","coverage_gaps"])` |
 
 ---
 
@@ -75,7 +76,7 @@ The core benefit is **fewer broken changes**, not fewer tokens.
 |---|---|---|
 | `task` | required | Natural-language description of what you are doing |
 | `terms` | — | Grep-style terms to seed retrieval. Same precision as grep, plus graph. |
-| `include` | `["graph","tests"]` | `"graph"` = code + callers/callees, `"tests"` = test files, `"docs"` = doc filenames |
+| `include` | `["graph","tests"]` | `"graph"` = code + callers/callees, `"tests"` = test files, `"docs"` = doc filenames, `"coverage_gaps"` = untested symbols in blast radius (use when writing/fixing code) |
 | `graph_depth` | 2 | BFS hops. 1 = immediate callers, 2 = two hops, 3+ = blast radius |
 | `budget` | 8000 tokens | Token ceiling. Increase for large refactors. |
 

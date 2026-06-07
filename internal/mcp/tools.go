@@ -222,8 +222,8 @@ func toolSchema(name string) map[string]any {
 				},
 				"include": map[string]any{
 					"type":        "array",
-					"items":       map[string]any{"type": "string", "enum": []string{"graph", "tests", "docs"}},
-					"description": "Which result categories to return. \"graph\" = code + callers/callees, \"tests\" = test files, \"docs\" = markdown/docs. Default: [\"graph\",\"tests\"].",
+					"items":       map[string]any{"type": "string", "enum": []string{"graph", "tests", "docs", "coverage_gaps"}},
+					"description": "Which result categories to return. \"graph\" = code + callers/callees, \"tests\" = test files, \"docs\" = doc filenames only, \"coverage_gaps\" = code symbols in the blast radius with no test edges (use when writing or fixing code). Default: [\"graph\",\"tests\"].",
 				},
 				"graph_depth": map[string]any{
 					"type":        "integer",
@@ -285,6 +285,7 @@ func toolDescription(name string) string {
 			"tests the agent would not find by reading alone. " +
 			"Default include=[\"graph\",\"tests\"]. " +
 			"Use include=[\"docs\"] for documentation search — returns ranked filenames only (~10 tokens each), not content. " +
+			"Use include=[\"coverage_gaps\"] when writing or fixing code — returns code symbols in the blast radius with no test edges, so you know what to test before making changes. " +
 			"graph_depth controls BFS hops: 1=immediate callers, 2=two hops (default), 3+=blast radius."
 	case "prism_read":
 		return "Read a whole file with session-aware compression: " +
@@ -333,8 +334,19 @@ type queryResult struct {
 	BudgetUsed       int              `json:"budgetUsed"`
 	BudgetTotal      int              `json:"budgetTotal"`
 	Symbols          []rankedSymbol   `json:"symbols"`
+	CoverageGaps     []coverageGap    `json:"coverageGaps,omitempty"`
 	TimingMs         map[string]int64 `json:"timingMs"`
 	ExcludedManifest []string         `json:"excludedManifest,omitempty"`
+}
+
+// coverageGap is a code symbol in the query blast radius that has no test
+// edges in the graph. Returned only when include contains "coverage_gaps".
+type coverageGap struct {
+	Name      string         `json:"name"`
+	QualName  string         `json:"qualifiedName,omitempty"`
+	FilePath  string         `json:"filePath"`
+	Kind      string         `json:"kind"`
+	Span      grove.SpanInfo `json:"span,omitempty"`
 }
 
 type rankedSymbol struct {
@@ -479,6 +491,11 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	var graphExtra []grove.SymbolRecord
 
+	// seedCoverage tracks whether each seed has at least one test edge.
+	// Populated whenever tests or coverage_gaps is requested.
+	seedCoverage := make(map[string]bool)
+	needTestEdges := includeSet["tests"] || includeSet["coverage_gaps"]
+
 	for _, seed := range seedSyms {
 		if includeSet["graph"] {
 			if impacted, err := h.Grove.Impact(ctx, seed.Name, graphDepth); err == nil {
@@ -493,15 +510,17 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 				}
 			}
 		}
-		if includeSet["tests"] {
+		if needTestEdges {
 			if tests, err := h.Grove.Tests(ctx, seed.Name); err == nil {
+				seedCoverage[seed.ID] = len(tests) > 0
 				for _, tst := range tests {
 					hasTestEdgeID[tst.ID] = true
 					testFilePaths[tst.FilePath] = true
 					if _, exists := graphDist[tst.ID]; !exists {
 						graphDist[tst.ID] = 1
 					}
-					if !seenIDs[tst.ID] {
+					// Only add test symbols to the output when tests are requested.
+					if includeSet["tests"] && !seenIDs[tst.ID] {
 						seenIDs[tst.ID] = true
 						graphExtra = append(graphExtra, tst)
 					}
@@ -621,6 +640,12 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	// knows not to speculatively read those paths.
 	out.ExcludedManifest = buildAntiContextManifest(candidates, picked)
 
+	// Coverage gaps: code symbols in the blast radius with no test edges.
+	// Only computed when the agent explicitly requests include=["coverage_gaps"].
+	if includeSet["coverage_gaps"] {
+		out.CoverageGaps = buildCoverageGaps(ctx, h.Grove, seedSyms, graphExtra, seedCoverage)
+	}
+
 	h.Ledger.Record("prism_query", used*3 /* approximate "what raw would cost" */, used)
 	return out, nil
 }
@@ -673,6 +698,54 @@ func buildAntiContextManifest(candidates []ranking.Candidate, picked []ranking.B
 			fmt.Sprintf("// [prism:excluded] %s/* — score %.2f, not relevant to this task", d, excluded[d]))
 	}
 	return manifest
+}
+
+// buildCoverageGaps returns code symbols (seeds + blast-radius) that have no
+// test edges in the graph. Seeds use the already-fetched seedCoverage map;
+// blast-radius symbols get a separate Tests() call per symbol.
+func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.SymbolRecord, blastRadius []grove.SymbolRecord, seedCoverage map[string]bool) []coverageGap {
+	var gaps []coverageGap
+	seen := make(map[string]bool)
+
+	isCodeSym := func(s grove.SymbolRecord) bool {
+		cat := categorize(s)
+		return cat != ranking.CategoryTest && cat != ranking.CategoryDoc
+	}
+
+	for _, s := range seeds {
+		if seen[s.ID] || !isCodeSym(s) {
+			continue
+		}
+		seen[s.ID] = true
+		if !seedCoverage[s.ID] {
+			gaps = append(gaps, coverageGap{
+				Name:     s.Name,
+				QualName: s.QualifiedName,
+				FilePath: s.FilePath,
+				Kind:     s.Kind,
+				Span:     s.Span,
+			})
+		}
+	}
+
+	for _, s := range blastRadius {
+		if seen[s.ID] || !isCodeSym(s) {
+			continue
+		}
+		seen[s.ID] = true
+		tests, err := g.Tests(ctx, s.Name)
+		if err != nil || len(tests) == 0 {
+			gaps = append(gaps, coverageGap{
+				Name:     s.Name,
+				QualName: s.QualifiedName,
+				FilePath: s.FilePath,
+				Kind:     s.Kind,
+				Span:     s.Span,
+			})
+		}
+	}
+
+	return gaps
 }
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {

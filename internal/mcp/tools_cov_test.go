@@ -270,6 +270,42 @@ func TestToolQuery_GraphDepthClamped(t *testing.T) {
 	}
 }
 
+func TestToolQuery_CoverageGaps(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task":    "fix compression bug",
+		"include": []any{"graph", "tests", "coverage_gaps"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	res := out.(queryResult)
+	// coverageGaps must be a slice (may be empty if grove has no index) — not nil/panic
+	// Each gap entry must have a non-empty name and filePath
+	for _, g := range res.CoverageGaps {
+		if g.Name == "" {
+			t.Error("gap entry has empty name")
+		}
+		if g.FilePath == "" {
+			t.Error("gap entry has empty filePath")
+		}
+	}
+}
+
+func TestToolQuery_CoverageGaps_NotIncludedByDefault(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task": "fix bug",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	res := out.(queryResult)
+	if len(res.CoverageGaps) > 0 {
+		t.Error("coverage_gaps should be empty when not requested")
+	}
+}
+
 func TestToolQuery_TermsAndIncludeCombined(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	out, err := h.Invoke("prism_query", map[string]any{
