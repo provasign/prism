@@ -151,91 +151,87 @@ profile: "%s"
 }
 
 // steeringInstructions is injected into per-tool instruction files so the
-// agent knows to prefer Prism tools over built-in file/grep operations.
+// agent knows to use Prism tools correctly.
 const steeringInstructions = `
 ## Prism — context delivery (ALWAYS use these tools)
 
-This project uses [Prism](https://github.com/provasign/prism) for token-optimized context delivery.
-Prism tools are registered via MCP. Follow these rules in every task:
+Prism is a call-graph oracle. Its value is surfacing callers, callees, and test
+contracts the agent would not find by grep+read alone.
 
-### Rules
-1. **Start every task with prism_query** — call it with the task description before
-   reading any files. It returns pre-ranked, compressed context covering targets,
-   dependencies, and tests within the token budget.
+### Decision tree
 
-2. **Use prism_read instead of read_file / cat** — it applies session-aware compression:
-   full text on first read, signatures on second, references on third+.
-   This saves 35–92% tokens and prevents context window overflow.
+| Situation | Tool |
+|---|---|
+| Locate a string, symbol, or file | grep — not Prism |
+| Callers/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
+| Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
+| Read one function body | prism_lookup(name="pkg.FuncName") |
+| Find docs about a topic | prism_query(task=..., include=["docs"]) — filenames only |
+| Blast radius of a change | prism_query(terms=[...], graph_depth=3) |
 
-3. **Use prism_search instead of grep/ripgrep** — when you need to find a symbol
-   by name, use prism_search. Follow up with prism_lookup for the full source.
+### Canonical workflow
 
-4. **Call prism_index once at session start** (or after significant file changes).
-   Do not re-index on every step — delta indexing is automatic.
+    grep <terms>                         <- locate anchor first; grep always wins here
+      -> prism_query(                    <- expand from anchor: callers, callees, tests
+           terms=["same-grep-terms"],
+           include=["graph","tests"],
+           graph_depth=2
+         )
+      then selectively:
+      -> prism_read(file=...)            <- whole file, session-compressed
+      -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
 
-5. **Call prism_compact when the context window is near capacity** — it summarizes
-   older turns while preserving recent ones.
+### prism_query parameters
 
-6. **If a Prism tool returns empty results, do not immediately fall back to grep/read.**
-	First run prism_index for the current workspace root and retry the same Prism tool.
-	Only use non-Prism fallback if the second Prism attempt is still empty.
+| Parameter | Default | Purpose |
+|---|---|---|
+| task | required | What you are doing |
+| terms | — | Grep terms — same precision as grep, plus graph expansion |
+| include | ["graph","tests"] | "graph" (callers/callees), "tests", or "docs" (filenames only) |
+| graph_depth | 2 | BFS hops: 1 = immediate callers, 3+ = blast radius |
+| budget | 8000 | Token ceiling. Increase for large refactors. |
 
-### Tool priority order
-| Instead of...          | Use...         |
-|------------------------|----------------|
-| read_file / open file  | prism_read     |
-| grep / ripgrep / find  | prism_search   |
-| manual context gather  | prism_query    |
-| symbol definition      | prism_lookup   |
+### Other tools
+
+| Tool | When |
+|---|---|
+| prism_index | Once at session start — not on every step |
+| prism_compact | When context window is near capacity |
+| prism_search | Find a symbol by name when file is unknown (not a grep replacement) |
+| prism_evidence | Sub-agent to parent: typed citations instead of prose |
+
+### Do NOT
+
+- Do NOT call prism_query before grep — grep finds the anchor, prism expands from it
+- Do NOT use prism_search as a grep replacement — it searches symbol names only, not source text
+- Do NOT use prism_read for a single function — use prism_lookup instead
+- Do NOT re-run prism_index on every step — delta indexing is automatic
 `
 
 // writeSteeringInstructions writes per-tool instruction files into the project
-// so agents know to prefer Prism tools over built-in alternatives.
+// so agents know how to use Prism tools correctly.
+// On re-init it replaces a stale Prism section rather than skipping.
 func writeSteeringInstructions(projectDir string) {
 	type instrFile struct {
 		name    string // description for log
 		relPath string // path relative to projectDir
-		wrap    func(body string) string
 	}
-	// CLAUDE.md is read by Claude Code as project-level instructions.
-	// .cursorrules is read by Cursor.
-	// .windsurfrules is read by Windsurf.
-	// .github/copilot-instructions.md is read by GitHub Copilot.
 	targets := []instrFile{
-		{
-			name:    "Claude Code",
-			relPath: "CLAUDE.md",
-			wrap:    func(body string) string { return body },
-		},
-		{
-			name:    ".cursorrules",
-			relPath: ".cursorrules",
-			wrap:    func(body string) string { return body },
-		},
-		{
-			name:    "Windsurf",
-			relPath: ".windsurfrules",
-			wrap:    func(body string) string { return body },
-		},
-		{
-			name:    "GitHub Copilot",
-			relPath: ".github/copilot-instructions.md",
-			wrap:    func(body string) string { return body },
-		},
-		{
-			// AGENTS.md is the emerging cross-vendor agent spec (OpenAI Codex,
-			// Cursor, etc.). Writing it ensures any agent that follows the spec
-			// will pick up Prism guidance with zero extra config.
-			name:    "AGENTS.md",
-			relPath: "AGENTS.md",
-			wrap:    func(body string) string { return body },
-		},
-		{
-			// GEMINI.md is read by the Gemini CLI / Gemini Code Assist.
-			name:    "Gemini CLI",
-			relPath: "GEMINI.md",
-			wrap:    func(body string) string { return body },
-		},
+		// File-based agent instruction formats
+		{name: "Claude Code", relPath: "CLAUDE.md"},
+		{name: "Cursor", relPath: ".cursorrules"},
+		{name: "Windsurf", relPath: ".windsurfrules"},
+		{name: "GitHub Copilot", relPath: ".github/copilot-instructions.md"},
+		// AGENTS.md: cross-vendor spec (OpenAI Codex, etc.)
+		{name: "AGENTS.md", relPath: "AGENTS.md"},
+		// Gemini CLI / Gemini Code Assist
+		{name: "Gemini CLI", relPath: "GEMINI.md"},
+		// Cline (VS Code extension)
+		{name: "Cline", relPath: ".clinerules"},
+		// Devin
+		{name: "Devin", relPath: ".devin/instructions.md"},
+		// Kiro (Amazon): each file in .kiro/steering/ is a topic steering doc
+		{name: "Kiro", relPath: ".kiro/steering/prism.md"},
 	}
 
 	for _, t := range targets {
@@ -244,22 +240,35 @@ func writeSteeringInstructions(projectDir string) {
 			fmt.Fprintf(os.Stderr, "warning: could not create directory for %s instructions: %v\n", t.name, err)
 			continue
 		}
-		content := t.wrap(steeringInstructions)
 
-		existing, err := os.ReadFile(path)
-		if err == nil {
-			// File already exists — append only if our marker is not already present.
-			if strings.Contains(string(existing), "## Prism — context delivery") {
-				continue // already has Prism instructions
-			}
-			content = string(existing) + "\n" + content
+		var content string
+		if existing, err := os.ReadFile(path); err == nil {
+			// File exists — replace stale Prism section or append if absent.
+			content = injectPrismSection(string(existing), steeringInstructions)
+		} else {
+			content = steeringInstructions
 		}
+
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not write %s instructions: %v\n", t.name, err)
 			continue
 		}
 		fmt.Printf("wrote steering instructions: %s\n", path)
 	}
+}
+
+// injectPrismSection replaces the existing Prism steering section in content
+// with block, or appends block if no section is present. This allows re-init
+// to upgrade stale instructions rather than leaving old guidance in place.
+func injectPrismSection(content, block string) string {
+	const marker = "## Prism — context delivery"
+	if idx := strings.Index(content, "\n"+marker); idx >= 0 {
+		return content[:idx] + block
+	}
+	if strings.HasPrefix(content, marker) {
+		return block
+	}
+	return strings.TrimRight(content, "\n") + block
 }
 
 // detectSelfPath returns the absolute path to the running prism binary, or

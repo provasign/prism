@@ -50,17 +50,16 @@ func TestSelect_HighScoreGetsFull_LowScoreGetsSignature(t *testing.T) {
 	}
 	cands := []Candidate{
 		{Symbol: hi, Score: 0.8, Category: CategoryDependency},
-		{Symbol: lo, Score: 0.05, Category: CategoryDependency},
+		{Symbol: lo, Score: 0.05, Category: CategoryDependency}, // below cliff — only hi selected
 	}
+	// lo scores below ScoreCliffFactor*0.8=0.48, so it is dropped by the cliff cutoff.
+	// Test only validates that hi gets full disclosure.
 	out := Select(nil, cands, 10000)
-	if len(out) != 2 {
-		t.Fatalf("want 2 picked, got %d", len(out))
+	if len(out) != 1 {
+		t.Fatalf("want 1 picked (lo below score cliff), got %d", len(out))
 	}
 	if out[0].Disclosure != DisclosureFull {
 		t.Errorf("hi should be full, got %s", out[0].Disclosure)
-	}
-	if out[1].Disclosure != DisclosureSignature {
-		t.Errorf("lo should be signature, got %s", out[1].Disclosure)
 	}
 }
 
@@ -145,6 +144,25 @@ func TestIsTrivialBody_NonFunctionKind(t *testing.T) {
 		if IsTrivialBody(sym) {
 			t.Errorf("kind=%q should not be trivial", kind)
 		}
+	}
+}
+
+func TestChooseDisclosure_DocCategoryForcesReference(t *testing.T) {
+	// Docs have no graph — regardless of score, they must come back as
+	// DisclosureReference (ranked name only, no content).
+	c := Candidate{
+		Symbol: grove.SymbolRecord{
+			Kind:          "document",
+			Name:          "docs/design.md",
+			QualifiedName: "docs/design.md",
+			FilePath:      "docs/design.md",
+			RawText:       "# Design\n" + "very long content...",
+		},
+		Score:    0.99,
+		Category: CategoryDoc,
+	}
+	if got := chooseDisclosure(c); got != DisclosureReference {
+		t.Errorf("doc with high score: want DisclosureReference, got %s", got)
 	}
 }
 

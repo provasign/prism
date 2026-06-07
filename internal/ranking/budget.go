@@ -55,6 +55,13 @@ type Candidate struct {
 	Confidence     string // "high" | "medium" | "low"
 }
 
+// ScoreCliffFactor is the multiplier applied to the highest candidate score
+// seen so far to derive the cutoff for subsequent candidates. When a
+// candidate's score drops below (peakScore * ScoreCliffFactor), selection
+// stops — the remaining candidates are noise relative to the top of the list.
+// 0.6 means: stop when score falls more than 40% below the peak.
+const ScoreCliffFactor = 0.6
+
 // Select runs the budget-aware greedy selector.
 //
 //   - Seeds are always included at DisclosureFull and are NOT charged against
@@ -64,6 +71,8 @@ type Candidate struct {
 //   - Candidates below RelevanceThreshold are forced to DisclosureSignature
 //     even if a higher level would fit.
 //   - Previously-seen items are demoted by confidence.
+//   - Selection stops when a candidate's score drops more than ScoreCliffFactor
+//     below the peak score seen so far (score cliff cutoff).
 func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int) []BudgetedSymbol {
 	out := make([]BudgetedSymbol, 0, len(seeds)+len(candidates))
 	for _, s := range seeds {
@@ -91,7 +100,17 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 		return candidates[i].Score > candidates[j].Score
 	})
 
+	var peakScore float64
 	for _, cand := range candidates {
+		// Score-cliff cutoff: stop when relevance falls off sharply from the
+		// peak. This prevents budget-filling with low-signal noise once the
+		// genuinely relevant symbols have been selected.
+		if cand.Score > peakScore {
+			peakScore = cand.Score
+		} else if peakScore > 0 && cand.Score < peakScore*ScoreCliffFactor {
+			break
+		}
+
 		desired := chooseDisclosure(cand)
 		// Try desired level first, then degrade until it fits or we give up.
 		levels := []DisclosureLevel{desired, DisclosureSignature, DisclosureReference}
@@ -149,6 +168,12 @@ func IsTrivialBody(sym grove.SymbolRecord) bool {
 // chooseDisclosure picks the desired (pre-budget-check) disclosure level
 // based on score + session history.
 func chooseDisclosure(c Candidate) DisclosureLevel {
+	// Doc symbols (markdown, plaintext) have no graph to traverse.
+	// Return reference level only — the agent gets the ranked file name
+	// and fetches the content itself via prism_read if needed.
+	if c.Category == CategoryDoc {
+		return DisclosureReference
+	}
 	if c.PreviouslySeen {
 		switch c.Confidence {
 		case "high":

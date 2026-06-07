@@ -204,3 +204,88 @@ func TestToolRead_NoFile(t *testing.T) {
 		t.Error("expected err")
 	}
 }
+
+// ─── agent-directed query parameters ─────────────────────────────────────────
+
+func TestToolQuery_TermsSeeding(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	// terms param should not error even when grove returns no matches
+	_, err := h.Invoke("prism_query", map[string]any{
+		"task":  "find AccessCount",
+		"terms": []any{"AccessCount", "sha-pointer"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error with terms param: %v", err)
+	}
+}
+
+func TestToolQuery_IncludeGraphOnly(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task":    "compression",
+		"include": []any{"graph"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	res := out.(queryResult)
+	for _, sym := range res.Symbols {
+		if sym.Category == string(ranking.CategoryTest) {
+			t.Errorf("include=[graph] should not return test symbol %q", sym.Name)
+		}
+		if sym.Category == string(ranking.CategoryDoc) {
+			t.Errorf("include=[graph] should not return doc symbol %q", sym.Name)
+		}
+	}
+}
+
+func TestToolQuery_IncludeDocsOnly(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task":    "architecture",
+		"include": []any{"docs"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	res := out.(queryResult)
+	for _, sym := range res.Symbols {
+		if sym.Category != string(ranking.CategoryDoc) {
+			t.Errorf("include=[docs] should only return doc symbols, got category %q for %q", sym.Category, sym.Name)
+		}
+	}
+}
+
+func TestToolQuery_GraphDepthClamped(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	// depth=0 should be clamped to 1, depth=99 to 5 — neither should error
+	for _, depth := range []int{0, 1, 5, 99} {
+		_, err := h.Invoke("prism_query", map[string]any{
+			"task":        "find symbols",
+			"graph_depth": depth,
+		})
+		if err != nil {
+			t.Errorf("depth=%d: unexpected error: %v", depth, err)
+		}
+	}
+}
+
+func TestToolQuery_TermsAndIncludeCombined(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task":        "repeat read handling",
+		"terms":       []any{"AccessCount"},
+		"include":     []any{"graph", "tests"},
+		"graph_depth": 2,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	res := out.(queryResult)
+	// docs must be absent
+	for _, sym := range res.Symbols {
+		if sym.Category == string(ranking.CategoryDoc) {
+			t.Errorf("should not return doc symbol %q when include=[graph,tests]", sym.Name)
+		}
+	}
+}
