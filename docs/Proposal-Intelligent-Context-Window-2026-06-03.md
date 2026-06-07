@@ -5,6 +5,12 @@
 **Scope:** Prism core + Grove client + Provasign feedback loop
 **Author:** GitHub Copilot (Claude Opus 4.7), in dialogue with @tapabratapal
 
+> Historical note, 2026-06-07: this proposal predates the current default
+> agent setup, which is CLI `--format text` via `prism init . --mode cli`.
+> Treat the savings numbers below as transport-specific design context. For the
+> current real-world agent benchmark, see
+> [Prism CLI Real-World Benchmark](Prism-CLI-Real-World-Benchmark-2026-06-07.md).
+
 ---
 
 ## 1. Motivation

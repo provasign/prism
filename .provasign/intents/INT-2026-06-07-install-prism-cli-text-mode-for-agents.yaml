@@ -1,0 +1,14 @@
+# Auto-Intent Capture artifact. The user's prompt that produced this code.
+# See docs/architecture.md. Do not hand-edit unless you know what you're doing.
+schema: relay.intent/v2
+id: INT-2026-06-07-install-prism-cli-text-mode-for-agents
+status: committed
+title: Install Prism CLI text mode for agents
+description: install prism in cli text mode for agents
+originated_from:
+    agent: codex
+    model: gpt-5
+    prompt_hash: 91d3bf1811bf019130fca364c6a8f8aae67165f38a49f4921b934da8fcebc0a8
+created_at: 2026-06-07T17:31:08.578226Z
+committed_at: 2026-06-07T17:34:07.204423Z
+committed_by_agent: codex

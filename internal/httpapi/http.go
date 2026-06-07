@@ -1,6 +1,5 @@
 // Package httpapi exposes the Prism MCP tools over plain HTTP for clients
-// that don't speak JSON-RPC stdio (e.g., curl, the VS Code extension's
-// child-process fallback path).
+// that don't speak JSON-RPC stdio, for example curl or custom automation.
 package httpapi
 
 import (

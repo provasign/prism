@@ -3,3 +3,4 @@ version: 1
 #               # Override here only if auto-detection fails, e.g.:
 #               # model: "claude-sonnet-4-6"
 profile: "default"
+agent_mode: "cli"

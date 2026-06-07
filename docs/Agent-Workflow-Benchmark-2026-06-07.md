@@ -1,5 +1,10 @@
 # Prism Agent Workflow Benchmark (2026-06-07)
 
+> **Historical note:** This report measured Prism through MCP-style
+> `prism_query` responses. For the current recommended agent path, use CLI
+> `--format text`; see
+> [Prism CLI Real-World Benchmark](Prism-CLI-Real-World-Benchmark-2026-06-07.md).
+
 Real agent tasks run both ways — shell tools (grep/find/cat) vs Prism MCP — on the Prism
 codebase itself. All measurements are from live tool calls, not synthetic data.
 

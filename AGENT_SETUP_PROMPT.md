@@ -35,7 +35,12 @@ https://raw.githubusercontent.com/provasign/prism/main/AGENT_SETUP_PROMPT.md
 
 ## Instructions for the Agent
 
-You are setting up **Prism** — token-optimized context delivery for AI coding agents. Prism ranks, compresses, and deduplicates context so your agent uses 35–92% fewer tokens on every task. It embeds Grove as a library; no separate Grove installation is required.
+You are setting up **Prism** — graph-ranked context delivery for AI coding agents.
+The recommended setup is **CLI text mode**: agents use `prism query/read/lookup
+--format text` through Bash. This avoids JSON metadata overhead, works in
+subagents, and still surfaces callers, callees, tests, docs, and coverage gaps.
+
+Prism embeds Grove as a library; no separate Grove installation is required.
 
 Before Step 1, ask:
 
@@ -145,53 +150,46 @@ Invoke-WebRequest `
 
 Ask the user for the path to their project.
 
-**Also ask (if the user is on VS Code with GitHub Copilot Chat):**
+Ask which agent mode they want:
 
-> Are you using VS Code with GitHub Copilot Chat and would like to use the Prism VS Code extension instead of the MCP server?
+> Which Prism agent mode should I configure?
 >
-> - **Yes (extension mode):** installs `prism.prism-vscode`; Prism MCP wiring is skipped for VS Code only.
-> - **No (MCP mode, default):** standard `prism init` — MCP server wired for all detected AI tools.
+> - **CLI text mode (recommended):** agents use `prism query ... --format text`.
+> - **MCP mode:** agents use `prism_query`, `prism_read`, etc. and get persistent session dedupe.
+> - **Both:** MCP primary with CLI fallback.
 
-**Standard MCP mode:**
+If the user does not choose, use CLI text mode.
+
+**CLI text mode (recommended):**
 
 ```bash
 PROJECT="/path/to/your/project"
 cd "$PROJECT"
-prism init    # detects installed AI tools, writes MCP configs
-prism index   # builds initial index (subsequent runs are delta-only)
-echo "Prism initialized. Restart your AI coding tool to activate the MCP server."
+prism init . --mode cli
+prism index .   # builds initial index (subsequent runs are delta-only)
+echo "Prism initialized in CLI text mode. Restart your AI coding tool so it reloads steering instructions."
 ```
 
-> **Claude Code users:** `prism init` writes `.mcp.json` at the project root. When Claude Code restarts it will prompt "Allow MCP servers from .mcp.json?" — click **Allow**. The MCP server will not connect until approved.
-
-**VS Code extension mode:**
+**MCP mode:**
 
 ```bash
-# Install the extension (native VS Code tools; no Prism MCP in VS Code)
-code --install-extension prism.prism-vscode
-
-# Still run prism init for other tools (Cursor, Claude Code, etc.) if also installed:
-prism init
-prism index
-
-# Remove the VS Code MCP entry to avoid duplicate Prism providers in Copilot Chat:
-if [ -f .vscode/mcp.json ]; then
-  python3 - << 'PY'
-import json, pathlib
-p = pathlib.Path('.vscode/mcp.json')
-doc = json.loads(p.read_text()) if p.exists() else {}
-servers = doc.get('servers', {})
-if 'prism' in servers:
-    del servers['prism']
-doc['servers'] = servers
-p.write_text(json.dumps(doc, indent=2) + '\n')
-print('Updated .vscode/mcp.json: removed prism entry for VS Code extension mode')
-PY
-fi
-echo "Prism VS Code extension installed. Restart VS Code to activate native Prism tools."
+PROJECT="/path/to/your/project"
+cd "$PROJECT"
+prism init . --mode mcp
+prism index .
+echo "Prism initialized in MCP mode. Restart your AI coding tool to activate the MCP server."
 ```
 
-If the `code` CLI is unavailable, tell the user to install the extension manually in VS Code Extensions: `prism.prism-vscode`.
+> **Claude Code users:** `prism init` writes `.mcp.json` at the project root. When Claude Code restarts it may prompt "Allow MCP servers from .mcp.json?" — click **Allow**.
+
+**Both mode:**
+
+```bash
+PROJECT="/path/to/your/project"
+cd "$PROJECT"
+prism init . --mode both
+prism index .
+```
 
 ---
 
@@ -201,13 +199,13 @@ If the `code` CLI is unavailable, tell the user to install the extension manuall
 prism version && echo "✅ prism binary ok" || echo "❌ prism binary failed"
 
 echo "--- Context query ---"
-RESULT=$(prism query "main entry point" 2>/dev/null | head -5)
+RESULT=$(prism query "main entry point" --format text 2>/dev/null | head -5)
 [ -n "$RESULT" ] \
   && echo "✅ prism query ok:" && echo "$RESULT" \
-  || echo "❌ prism query returned nothing — run: prism index"
+  || echo "❌ prism query returned nothing — run: prism index ."
 ```
 
-**Verify the MCP server connects (Claude Code) — do not skip:**
+**If MCP mode was selected, verify the MCP server connects (Claude Code):**
 
 ```bash
 MCP_OUT="$(claude mcp list 2>&1)"
@@ -217,7 +215,7 @@ if echo "$MCP_OUT" | grep -qiE "^prism:.*(✓|connected)"; then
 elif echo "$MCP_OUT" | grep -qi "prism"; then
   echo "❌ prism: registered but NOT connected — see fixes below"
 else
-  echo "❌ prism: not found in mcp list — run: prism init, then restart Claude Code"
+  echo "❌ prism: not found in mcp list — run: prism init . --mode mcp, then restart Claude Code"
 fi
 ```
 
@@ -234,9 +232,10 @@ tail -n 5 "$(ls -t "$LOGDIR"/*/mcp-logs-prism/*.jsonl 2>/dev/null | head -1)" 2>
 | `command not found` | Install directory not on `$PATH` — add it and restart shell |
 | macOS "cannot be opened because the developer cannot be verified" | `xattr -d com.apple.quarantine $(which prism)` |
 | macOS `zsh: killed` (exit 137) | `codesign -f -s - $(which prism)` |
+| Agent still uses `prism_query` instructions after CLI setup | Re-run `prism init . --mode cli`; verify `prism.yaml` has `agent_mode: "cli"` |
 | `claude mcp list` shows prism **Failed to connect** | Upgrade to the latest release (`prism version` to confirm); fully restart your AI tool |
-| `claude mcp list` doesn't show prism | Re-run `prism init` from the project root, restart Claude Code, approve `.mcp.json` when prompted |
-| Empty results from `prism query` | Run `prism index` from the project root and retry |
+| `claude mcp list` doesn't show prism | Re-run `prism init . --mode mcp` from the project root, restart Claude Code, approve `.mcp.json` when prompted |
+| Empty results from `prism query` | Run `prism index .` from the project root and retry |
 
 ---
 
@@ -250,8 +249,8 @@ Prism installation complete
 
 Next steps
 ──────────
+  CLI mode:       Restart your AI coding tool so it reloads CLI text-mode steering
   MCP mode:       Restart your AI coding tool to activate the MCP server
-  Extension mode: Restart VS Code, then use #prismQuery in Copilot Chat
   Token savings:  prism savings   (after your first task)
 
 Documentation: https://github.com/provasign/prism

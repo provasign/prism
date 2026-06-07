@@ -1,5 +1,11 @@
 # Prism + Grove Benchmark Results (2026-05-27)
 
+> **Historical note:** This is an early indexing, latency, and repeated-read
+> benchmark from before embedded Grove and CLI text-mode agent workflows became
+> the default story. For current agent context-gathering results, see
+> [Prism CLI Real-World Benchmark](Prism-CLI-Real-World-Benchmark-2026-06-07.md)
+> and [Payflow A/B Agent Benchmark](AB-Test-Payflow-2026-06-07.md).
+
 ## Scope
 
 This report captures end-to-end benchmark results for Grove and Prism across four project sizes:

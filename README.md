@@ -1,395 +1,324 @@
 # Prism
 
-> **Focused, graph-ranked context for any AI coding agent — 35–92% fewer tokens on first reads, ~99% on re-reads.**
+> **Graph-ranked code context for AI coding agents.**
+>
+> Prism turns a task plus a few precise anchors into the code, callers, callees,
+> tests, docs, and coverage gaps an agent needs to make a change safely.
 
-> **Embedded Grove:** Prism now links Grove directly and opens the on-disk index in-process. No `grove serve` daemon, no `grove_url`, no token — if old docs mention them, you're on a pre-embedded build.
+Prism is not a better `grep`. Use `rg`/`grep` to find the first anchor. Use
+Prism to answer the follow-up questions that usually cost several file reads:
+
+- What calls this?
+- What does this call?
+- Which tests define the contract?
+- What else is in the blast radius?
+- Which nearby exported functions have no direct test coverage?
+
+The recommended agent path is now **CLI text mode**:
+
+```bash
+prism query "fix direct coverage gaps" --terms buildCoverageGaps --include graph,tests,coverage_gaps --format text
+prism read internal/mcp/tools.go --format text
+prism lookup github.com/provasign/prism/internal/mcp.buildCoverageGaps --format text
+```
+
+`--format text` avoids the large JSON metadata wrappers that made early MCP
+benchmarks look expensive. Agents see plain source-like context with short
+headers, and can ask for `lean` or `json` only when automation needs it.
+
+Grove is embedded in the Prism binary. There is no separate daemon, token, or
+`grove_url` setup in current releases.
 
 ---
 
-An AI agent that gets bad context produces bad code. Not because it's a bad agent — because it's working blind.
+## Why Prism
 
-The naive approach is to dump related files into the context window and hope the agent figures out what matters. This fails in two directions at once: it wastes tokens on code that's nearby in the file tree but irrelevant to the task, and it misses code that *is* critical but has no obvious filename match. The agent hallucinates the gaps.
+Shell search gives pointers. Agents still have to chase those pointers by
+reading files, guessing test names, and manually reconstructing call paths.
 
-Prism solves this. Given a task description, it queries Grove's knowledge graph, scores every candidate symbol across five signals, allocates a token budget across five categories, and returns exactly what matters — full source for the first read, signatures on the second, one-line references on the third. The agent gets more signal per token. Every time.
+Prism precomputes the project graph and lets the agent ask for relationships:
 
-Works with Claude Code, GitHub Copilot (VS Code), Cursor, Codex CLI, Windsurf, Zed, and any MCP-capable tool.
-
----
-
-## The Real Token Story
-
-The headline savings figures (35–92% on first reads, ~99% on re-reads) describe per-file compression. The bigger story is **context gathering**: how many tool calls and total tokens does an agent consume just to assemble enough information to start working?
-
-### Concrete example: "Write tests for `buildCoverageGaps`"
-
-A capable agent working natively follows this chain — each step forced by what the previous step didn't answer:
-
-| Step | What the agent does | Why it's necessary | Tokens |
-|-----:|--------------------|--------------------|-------:|
-| 1 | `grep -rn buildCoverageGaps internal/` | Find where the function lives | ~330 |
-| 2 | Read `tools.go:728–780` (function body) | Understand what to test | ~354 |
-| 3 | `grep "type coverageGap"` + read struct | Know the return type's fields | ~204 |
-| 4 | `grep "type SymbolRecord"` + read struct | Build test fixtures (`ID`, `Name`, `FilePath`, `Kind`) | ~448 |
-| 5 | `grep "func.*Tests"` in `grove/client.go` | Confirm `g.Tests()` return type and error contract | ~50 |
-| 6 | Read `tools_cov_test.go` (468 lines) | Find `newHWithGrove` helper — only way to know which file it's in | ~3,727 |
-| 7 | Read `categorize()` (50 lines) | Understand `isCodeSym` — which symbols are filtered out | ~505 |
-| 8 | `grep "func NewClient"` + read signature | Confirm `grove.NewClient("","")` constructor for test setup | ~227 |
-| | **Total** | | **~5,845** |
-
-Step 6 is the trap. The agent doesn't know which file contains `newHWithGrove`. Its only option is to read all 468 lines of `tools_cov_test.go` (3,727 tokens) to find a 9-line helper. With Prism, that helper surfaces alongside the target function automatically — no fishing.
-
-**Prism for the same task: 1 call, 1,987 tokens.** Everything above delivered, ranked, in one round trip.
-
-```
-prism_query(
-  task="write tests for buildCoverageGaps",
-  terms=["buildCoverageGaps"],
-  include=["graph","tests","coverage_gaps"]
-)
-→ buildCoverageGaps body (257 tokens)
-→ coverageGap struct (implicit in body)
-→ Handler struct with Grove field (156 tokens)
-→ newHWithGrove helper + 4 existing test bodies (showing exact patterns)
-→ Coverage gaps: which branches have no test edge yet
+```text
+rg buildCoverageGaps internal/
+  -> prism query "write tests for buildCoverageGaps" \
+       --terms buildCoverageGaps \
+       --include graph,tests,coverage_gaps \
+       --format text
 ```
 
-### Summary
+On this repository, five real maintenance scenarios were run both ways on
+2026-06-07. Shell-only baselines used `rg` plus targeted `sed` reads; Prism used
+one CLI text command per scenario.
 
-| | Native (8 steps) | Prism (1 call) |
-|---|---:|---:|
-| Tool calls | 8 | 1 |
-| Tokens consumed | ~5,845 | ~1,987 |
-| Key context missed | `newHWithGrove` (buried in 468-line file) | Nothing |
-| **Effective savings** | — | **~66% fewer tokens, 8× fewer round trips** |
+| Scenario | Shell bytes | Prism CLI bytes | Context reduction |
+|---|---:|---:|---:|
+| Init `agent_mode` / CLI steering impact | 19,970 | 12,818 | 35.8% |
+| `coverage_gaps` precision | 21,226 | 17,145 | 19.2% |
+| CLI text/lean/json output formatting | 15,820 | 14,198 | 10.3% |
+| Session cache / savings ledger | 33,134 | 19,922 | 39.9% |
+| Release/version/install wiring | 21,246 | 12,157 | 42.8% |
 
-The naive token comparison — "grep output: ~60 tokens vs Prism: 1,987 tokens" — gets it exactly backwards. Grep output is pointers, not context. The agent still has to follow every pointer.
+The average reduction was **29.6%** with one Prism command instead of 5-6 shell
+commands. The bigger correctness win is that Prism surfaces tests and coverage
+gaps proactively; shell-only workflows often discover those after CI fails.
 
-> **Rule of thumb:** Compare Prism's delivered tokens against the sum of all reads the agent would need, not against the grep lines that prompted those reads.
+Details: [Real-World Prism CLI Benchmark](docs/Prism-CLI-Real-World-Benchmark-2026-06-07.md).
 
 ---
 
 ## How It Works
 
-```
-Task description ("add rate limiting to the login endpoint")
-     │
-     ▼
-prism_query
-     │
-     ├──► Grove: FTS5 symbol search
-     ├──► Grove: BFS graph traversal (depth 2–3)
-     │
-     ▼
-┌────────────────────────────────────────────────────┐
-│  5-Signal Ranking                                  │
-│                                                    │
-│  1. Graph distance    — BFS hops from seed symbol  │
-│  2. Semantic similarity — Model2Vec cosine score   │
-│  3. Recency           — recent git commits score   │
-│  4. Test relevance    — is this a test for target? │
-│  5. Edit frequency    — hot files get priority     │
-└───────────────────────────┬────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────┐
-│  Budget Allocation                                 │
-│                                                    │
-│  Target symbols    35%  (the thing you're editing) │
-│  Dependencies      25%  (what it calls/imports)    │
-│  Tests             20%  (tests that cover it)      │
-│  Documentation     10%  (docstrings, comments)     │
-│  Summary           10%  (file/module overview)     │
-└───────────────────────────┬────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────┐
-│  Progressive Disclosure                            │
-│                                                    │
-│  First read:    full source (or ranked-compressed) │
-│  Second read:   sha-pointer (~10 tokens)  ~99%↓   │
-│  Third read:    sha-pointer or signature           │
-│  Fourth+ read:  full resend (scrolled out)         │
-└───────────────────────────┬────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────┐
-│  Session Deduplication                             │
-│                                                    │
-│  O(1) LRU cache keyed by file path + content SHA  │
-│  Unchanged file seen again → single-line pointer: │
-│  // [prism:cached] auth.go @sha:a1b2c3d4 (×1)     │
-└───────────────────────────┬────────────────────────┘
-                            │
-                            ▼
-Token-optimized context pack returned to agent
+```text
+Task + anchor terms
+      |
+      v
+Embedded Grove index
+  - symbols
+  - call edges
+  - dependency edges
+  - test edges
+      |
+      v
+Prism ranking
+  - graph distance
+  - semantic similarity
+  - recency
+  - test relevance
+  - edit frequency / learned weights
+      |
+      v
+Budgeted text context
+  - target symbols
+  - callers/callees
+  - tests
+  - docs
+  - coverage_gaps
 ```
 
----
+Prism supports two distinct saving mechanisms:
 
-## IDE and CLI Support
+1. **Context gathering reduction**: one graph-aware query replaces multiple
+   shell searches and file reads. This is what CLI text-mode benchmarks measure.
+2. **Session deduplication**: in persistent MCP transports, repeated reads of
+   unchanged files can become a short SHA pointer. This is where the ~99%
+   repeated-read savings come from.
 
-Prism has two integration paths. Both produce identical context quality — only the transport layer differs.
-
-### MCP Stdio
-
-`prism init` detects which tools are installed and writes their MCP config automatically. After a tool restart, all 9 `prism_*` tools are available.
-
-The current MCP server also ships `prism_evidence` for typed sub-agent citations, phase-aware budget shaping, learned per-repo ranking weights, and cross-session warm-cache loading.
-
-| Tool | Config written | Notes |
-|------|---------------|-------|
-| Claude Code CLI | `.mcp.json` (project root) | `prism mcp` launched per session; approve when prompted on restart |
-| GitHub Copilot (VS Code) | `.vscode/mcp.json` | `"servers"` key, `"type":"stdio"` |
-| Cursor | `.cursor/mcp.json` | Same |
-| Codex CLI | `~/.codex/config.toml` | `[[mcp_servers]]` TOML; skipped if `~/.codex/` absent |
-| Windsurf | `.windsurf/mcp.json` | Same |
-| Zed | `~/.config/zed/settings.json` | `context_servers` key |
-| Any MCP client | manual config | Point at `prism mcp <dir>` |
-
-### VS Code (Copilot Agent Mode)
-
-The VS Code extension does not use MCP. It registers all 9 tools via `vscode.lm.registerTool` and spawns the `prism` binary per call. No `prism serve` required, no port.
-
-Tools appear in Copilot Chat as `#prismQuery`, `#prismRead`, `#prismSearch`, etc.
-
-The extension also provides two left status bar items:
-- **Grove symbols** — live symbol count from the knowledge graph, click to re-index
-- **Prism savings** — session token savings %, click to view details
-
-[Extension documentation →](vscode-extension/README.md)
-
-### CLI (no agent)
-
-The `prism` binary is usable directly for scripting, debugging, or any workflow outside an AI agent:
-
-```bash
-prism query "add rate limiting to the login endpoint"
-prism read internal/auth/login.go
-prism search AuthService
-prism savings
-```
-
-Add `--json` for machine-readable output.
-
----
-
-## Language Support
-
-Prism delegates all parsing and graph construction to Grove. Language support is identical:
-
-| Language | Extensions | What is extracted |
-|----------|-----------|-------------------|
-| Go | `.go` | functions, methods, types, interfaces, structs, consts, vars |
-| TypeScript | `.ts` | classes, functions, interfaces, types, enums, namespaces |
-| TSX | `.tsx` | same as TypeScript + JSX components |
-| JavaScript | `.js .jsx .mjs .cjs` | functions, classes, arrow functions, exports |
-| Python | `.py` | functions, classes, methods, decorated definitions |
-| Java | `.java` | classes, interfaces, enums, methods, fields, constructors |
-| Rust | `.rs` | functions, structs, enums, traits, impl blocks, fields |
-| C | `.c .h` | functions, typedef structs/enums, tagged types |
-| C++ | `.cc .cpp .cxx .c++ .hh .hpp .hxx` | classes, namespaces, templates, methods |
-| C# | `.cs` | namespaces, classes, structs, interfaces, methods, properties |
-| PHP | `.php .php3 .php4 .php5 .phtml` | classes, interfaces, traits, enums, functions, methods |
-
-Non-code files (`.md`, `.mdx`, `.markdown`, `.yaml`, `.yml`, `.json`, `.xml`, `.sh`, `.bash`, `.zsh`, `.fish`, `.toml`, `.ini`, `.cfg`, `.conf`, `.txt`, `.proto`, `.sql`, `.graphql`, `.gql`, `.csv`, `Makefile`, `Dockerfile`, and more) are indexed as document symbols and ranked alongside code in every query. Agents can discover architectural decisions in ADRs, API contracts in OpenAPI files, and deployment configuration in Dockerfiles — all without manual file selection.
-
-Semantic similarity uses Model2Vec (potion-base-8M, embedded in the Grove binary — no download, no server, no GPU). Set `GROVE_EMBEDDINGS=tfidf` to opt out.
+Direct CLI invocations are process-per-command, so they should be evaluated on
+context gathering and output wrapper size, not same-session re-read dedupe.
 
 ---
 
 ## Installation
 
-**Binary install (fastest):**
-
 ```bash
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 
-# Windows (PowerShell)
+# Windows PowerShell
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
-# Pin a specific version
-VERSION=v0.4.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+# Pin a version
+VERSION=v0.5.6 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
-Installs to `~/bin` by default. Set `INSTALL_DIR=/usr/local/bin` to override.
-Grove is embedded — no separate grove installation needed.
+The installer writes `prism` to `~/bin` by default. Set
+`INSTALL_DIR=/usr/local/bin` or another directory to override.
 
-**Build from source:**
+Build from source:
 
 ```bash
-make build    # compile ./bin/prism
-make install  # install to $GOPATH/bin
-make test     # run all tests
+make build
+make test
+make install
 ```
 
 ---
 
-## Quick Start
+## Quick Start: Agent CLI Text Mode
+
+Run this once at the project root:
 
 ```bash
-# 1. Install
-curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
-
-# 2. Initialize a project (run once per project root)
-cd /your/project
-prism init
-
-# 3. Restart your coding tool to pick up the MCP config
-
-# 4. Index
-prism index
-
-# 5. Verify savings after using the agent
-prism savings
+prism init . --mode cli
+prism index .
 ```
 
-`prism init` does three things: writes `prism.yaml`, writes steering instructions for your agent (`CLAUDE.md`, `.cursorrules`, etc.), and registers the MCP server config for every coding tool it detects.
+This writes:
+
+- `prism.yaml` with `agent_mode: "cli"`
+- steering files such as `AGENTS.md`, `CLAUDE.md`, `.cursorrules`,
+  `.windsurfrules`, `.github/copilot-instructions.md`, and others
+- compatible tool config files where detected
+
+The generated agent instructions tell agents to use commands like:
+
+```bash
+prism query "trace the payment refund flow" --terms RefundPayment --include graph,tests --format text
+prism query "find direct coverage gaps" --terms UpdatePayment,RequireScope --include graph,coverage_gaps --format text
+prism read internal/payment/service.go --format text
+prism lookup github.com/example/payflow/internal/payment.(*Service).RefundPayment --format text
+```
+
+Recommended agent workflow:
+
+1. Locate the first anchor with `rg`, `grep`, or `find`.
+2. Run `prism query` with the same anchor terms.
+3. Use `prism read` for whole files only when needed.
+4. Use `prism lookup` for one known function or method.
+5. Treat `coverage_gaps` as a terminal structured output, not the start of
+   manual cross-referencing.
 
 ---
 
-## MCP Tools
+## Other Modes
 
-| Tool | What it does |
-|------|-------------|
-| `prism_query` | Ranked context pack for a task description — call this first |
-| `prism_read` | Progressive-disclosure file read (full → signature → reference) |
-| `prism_search` | Symbol search across the indexed graph |
-| `prism_lookup` | Full source for a named symbol |
-| `prism_index` | Trigger or check reindex |
-| `prism_savings` | Token savings report for this session |
-| `prism_feedback` | Rate a context result (trains future ranking) |
-| `prism_compact` | Summarize older conversation turns to free context |
-
-**Rule of thumb for agents:** start every task with `prism_query`, use `prism_read` instead of reading files directly, use `prism_search` instead of grep.
-
----
-
-## Session Savings Ledger
-
-Token savings are persisted per project across separate CLI invocations. The ledger lives at `~/.cache/prism/ledger/<sha1(root)>.json` and is pruned automatically after 30 days. `prism savings` reads the current project's ledger:
+`prism init` supports three modes:
 
 ```bash
-prism savings
-# Session savings: 12,847 tokens delivered from 41,200 original (68.8% reduction)
-# grove_query:  8 calls · 31,400 → 9,100 tokens
-# grove_read:  22 calls · 9,800 → 3,747 tokens
+prism init . --mode cli   # recommended for agents that can run shell commands
+prism init . --mode mcp   # MCP tools only: prism_query, prism_read, ...
+prism init . --mode both  # MCP primary + CLI fallback
 ```
+
+### MCP
+
+MCP exposes `prism_query`, `prism_read`, `prism_search`, `prism_lookup`,
+`prism_index`, `prism_savings`, `prism_feedback`, `prism_compact`, and
+`prism_evidence`. Use MCP when the client has first-class MCP support and you
+want persistent session deduplication.
+
+### HTTP Server
+
+`prism serve` is optional. Use it for custom automation that wants HTTP instead
+of CLI or MCP:
+
+```bash
+prism serve --port 8888 /path/to/project
+```
+
+It binds to `127.0.0.1`.
 
 ---
 
 ## CLI Reference
 
 ```bash
-prism init [--global] [dir]     # initialize project or user-level config
-prism index [dir]               # index or reindex the project
-prism query <task> [dir]        # ranked context for a task description
-prism read <file> [dir]         # progressive-disclosure file read
-prism search <keyword> [dir]    # symbol search
-prism lookup <name> [dir]       # full source for a symbol
-prism savings [dir]             # token savings report
-prism serve [--port 8888] [dir] # start persistent HTTP server (optional)
-prism mcp [dir]                 # start MCP stdio server
-prism version                   # show version
+prism init [--global] [--mode cli|mcp|both] [dir]
+prism index [dir]
+prism status [dir]
+
+prism query <task> [dir] \
+  --terms a,b,c \
+  --include graph,tests,docs,coverage_gaps \
+  --depth 2 \
+  --format text
+
+prism read <file> [dir] --format text
+prism lookup <name> [dir] --format text
+prism search <keyword> [dir] --format text
+prism savings [dir]
+prism compact [dir]
+prism feedback --tool <name> --rating <0-5> [dir]
+prism mcp [dir]
+prism serve [--port 8888] [dir]
+prism version
 ```
 
----
+Output formats:
 
-## HTTP Server Mode
-
-`prism serve` is optional. Use it only when you need a persistent HTTP daemon — for non-MCP integrations, custom automation, or tooling that prefers HTTP over stdio.
-
-```bash
-prism serve --port 8888 /path/to/project
-```
-
-HTTP binds to `127.0.0.1` only.
+| Format | Use |
+|---|---|
+| `text` | Default and recommended for agents |
+| `lean` | Compact JSON without most metadata |
+| `json` | Full metadata for tooling/debugging |
 
 ---
 
 ## Configuration
 
-`prism.yaml` in the project root:
+`prism.yaml` is intentionally small:
 
 ```yaml
-grove_url: http://localhost:7777   # Grove instance to use
-model: claude-sonnet-4-6           # model for embeddings and compaction
-profile: balanced                  # ranking profile: balanced | speed | recall
-budget_tokens: 8000                # default context budget
-embeddings_backend: local          # local | openai | voyageai
+version: 1
+profile: "default"
+agent_mode: "cli"
 ```
 
-Environment overrides: `PRISM_GROVE_URL`, `PRISM_MODEL`, `PRISM_PROFILE`, `PRISM_EMBEDDINGS_BACKEND`.
+Optional keys:
+
+```yaml
+model: "claude-sonnet-4-6"
+grove_binary: "grove"
+embeddings_backend: "tfidf"
+```
+
+Environment overrides include `PRISM_MODEL`, `PRISM_PROFILE`,
+`PRISM_GROVE_BINARY`, and `PRISM_EMBEDDINGS_BACKEND`.
 
 ---
 
-## Performance
+## Language Support
 
-Benchmarks run on macOS against synthetic Go projects (2026-05-27). Prism runs atop Grove — query numbers include the full round-trip through Grove's FTS5 + BFS and Prism's ranking pipeline.
+Prism delegates parsing and graph construction to embedded Grove.
 
-For real-world agent workflow comparisons (token savings, correctness, and scope safety across four live coding tasks), see [docs/Agent-Workflow-Benchmark-2026-06-07.md](docs/Agent-Workflow-Benchmark-2026-06-07.md).
+| Language | Extensions |
+|---|---|
+| Go | `.go` |
+| TypeScript / TSX | `.ts`, `.tsx` |
+| JavaScript / JSX | `.js`, `.jsx`, `.mjs`, `.cjs` |
+| Python | `.py` |
+| Java | `.java` |
+| Rust | `.rs` |
+| C / C++ | `.c`, `.h`, `.cc`, `.cpp`, `.hpp`, ... |
+| C# | `.cs` |
+| PHP | `.php`, `.phtml`, ... |
 
-For a controlled A/B test — 8 subagents (4 Prism vs 4 baseline) on a synthetic Go project with pre-established ground truth — including honest subagent token measurements and correctness scoring, see [docs/AB-Test-Payflow-2026-06-07.md](docs/AB-Test-Payflow-2026-06-07.md).
+Markdown, YAML, JSON, shell scripts, Dockerfiles, Makefiles, SQL, GraphQL, and
+other non-code files are indexed as document symbols and can be requested with
+`--include docs`.
 
-### Indexing and Query
+---
 
-| Project | Files | Grove index | Prism index | Query latency | Prism RSS |
-|---------|------:|------------:|------------:|--------------:|----------:|
-| Small | 61 | 0.06 s | 0.06 s | 680 ms | 12 MB |
-| Medium | 801 | 0.85 s | 3.9 s | 680 ms | 12 MB |
-| Large | 4,501 | 11.6 s | 8.0 s | 680 ms | 12 MB |
-| Monorepo | 9,901 | 34.0 s | 30.0 s | 690 ms | 12 MB |
+## Benchmarks
 
-Prism's own RSS stays near 12 MB regardless of project size — the symbol graph lives in Grove's process, not Prism's.
+Read benchmark numbers by transport:
 
-### Token Savings
+- [Prism CLI Real-World Benchmark](docs/Prism-CLI-Real-World-Benchmark-2026-06-07.md):
+  current recommended path; Prism CLI text mode vs shell-only on Prism itself.
+- [Payflow A/B Agent Benchmark](docs/AB-Test-Payflow-2026-06-07.md):
+  controlled baseline vs Prism benchmark, including the early MCP JSON overhead
+  finding, CLI text-mode round, and coverage-gap precision fix.
+- [Agent Workflow Benchmark](docs/Agent-Workflow-Benchmark-2026-06-07.md):
+  older MCP-focused workflow benchmark on Prism itself.
+- [Indexing/Read Benchmark](docs/Benchmark-Results-2026-05-27.md):
+  older performance run for indexing and repeated file reads.
 
-**There are two separate saving mechanisms:**
+Current practical summary:
 
-#### 1. First-read compression (graph-ranked, all modes)
-
-| Project | Files | Typical first-read savings |
-|---------|------:|---------------------------:|
-| Small | 61 | 0–15% |
-| Medium | 801 | 50–60% |
-| Large | 4,501 | 50–60% |
-| Monorepo | 9,901 | 0–58% |
-
-First-read savings reflect relevance scoring: symbols below the relevance threshold are shown at signature level instead of full source. When nearly all symbols in a file are relevant to the task (typical for small projects and targeted queries), first-read savings approach 0% — you receive everything. This is correct behaviour.
-
-**This is the source of the 35–92% headline figure.**
-
-#### 2. Re-read deduplication (MCP and VS Code extension mode only)
-
-When a file is read a second time in the same session and its content has not changed, Prism returns a **sha-pointer** instead of any content:
-
-```
-// [prism:cached] internal/auth/login.go @sha:a1b2c3d4 (seen ×1, no changes — prior delivery still in context)
-```
-
-This costs ~10 tokens regardless of the file's original size. A 2,000-token file read again costs 10 tokens — **~99% savings**.
-
-| Read # | Strategy | Savings |
-|--------|----------|---------|
-| 1st | compressed-fresh (ranked) | 35–92% |
-| 2nd (unchanged) | sha-pointer (~10 tokens) | ~99% |
-| 3rd (high confidence) | sha-pointer | ~99% |
-| 3rd (medium confidence) | session-signature | ~85% |
-| 3rd (low confidence) | compressed-fresh | 35–92% |
-| 4th+ | escalated-full resend | 0% (content has scrolled out) |
-
-> **Note:** Re-read deduplication is active in MCP mode (`prism mcp`) and in the VS Code extension. It is **not** active in direct CLI invocations (`prism read`, `prism query`) because the session tracker does not persist across process boundaries. Benchmark figures measured via CLI reflect only first-read compression.
-
-**Headline targets:** `prism_query` end-to-end < 200 ms · `prism_read` with session cache < 50 ms · budget selection over 10K symbols < 20 ms
+- CLI `--format text` is the recommended default for shell-capable agents.
+- Prism is strongest on graph/blast-radius/test/coverage-gap questions.
+- Shell tools remain best for locating exact strings or filenames.
+- MCP persistent transports add repeated-read deduplication that direct CLI
+  invocations do not fully exercise.
 
 ---
 
 ## Troubleshooting
 
-**Savings stays at 0:** Run `prism index` then try a query. Check `command -v prism` and `prism version` to confirm the right binary is on `$PATH`.
+**`prism query` returns nothing**: run `prism index .` from the project root.
 
-**Port 8888 already in use:** Another `prism serve` is running. Stop it, use `--port 8889`, or use MCP stdio mode instead (which uses no port).
+**Agent still uses MCP instructions**: run `prism init . --mode cli` and check
+that `prism.yaml` contains `agent_mode: "cli"`.
 
-**Agent not using Prism after init:** Restart the coding tool to reload MCP config. Re-run `prism init` if needed.
+**Wrong Prism binary**: run `command -v prism` and `prism version`. Reinstall if
+the version is old.
 
-**Context looks wrong:** Check `prism savings` — if calls are 0, the agent is not calling Prism tools. Check that the steering instructions were written by `prism init` (look for `CLAUDE.md` or `.cursorrules` in the project root).
+**macOS quarantine**:
+
+```bash
+xattr -d com.apple.quarantine "$(which prism)"
+codesign -f -s - "$(which prism)"
+```
+
+**MCP client does not connect**: restart the coding tool after `prism init`, and
+approve project MCP configuration if the tool prompts.

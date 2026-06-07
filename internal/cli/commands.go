@@ -404,7 +404,7 @@ func writeSteeringInstructions(projectDir, mode string) {
 		{name: "AGENTS.md", relPath: "AGENTS.md"},
 		// Gemini CLI / Gemini Code Assist
 		{name: "Gemini CLI", relPath: "GEMINI.md"},
-		// Cline (VS Code extension)
+		// Cline agent steering
 		{name: "Cline", relPath: ".clinerules"},
 		// Devin
 		{name: "Devin", relPath: ".devin/instructions.md"},

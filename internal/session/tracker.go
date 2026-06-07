@@ -1,7 +1,7 @@
 // Package session implements Prism's per-session state: an O(1) LRU file
 // tracker (for delivery deduplication) and a token ledger (for savings
 // reporting). Both are concurrency-safe and live for the lifetime of one
-// MCP session or one VS Code workspace window.
+// MCP session or one CLI/agent session.
 package session
 
 import (

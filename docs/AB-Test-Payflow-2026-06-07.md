@@ -441,3 +441,28 @@ problem anchors:
 The remaining caveat is enumeration: `prism query` is still a ranked context
 retrieval tool, not a whole-repository coverage lister. For a full T3-style audit,
 agents should query focused anchors or supplement with explicit test/source reads.
+
+---
+
+## Round 4: Prism repository CLI benchmark
+
+**Date:** 2026-06-07  
+**Method:** Real maintenance scenarios on the Prism repository itself, using
+shell-only `rg` + targeted `sed` reads versus one Prism CLI text query per
+scenario.
+
+| Scenario | Shell bytes | Prism CLI bytes | Context reduction |
+|---|---:|---:|---:|
+| Init `agent_mode` / CLI steering impact | 19,970 | 12,818 | 35.8% |
+| `coverage_gaps` precision | 21,226 | 17,145 | 19.2% |
+| CLI text/lean/json output formatting | 15,820 | 14,198 | 10.3% |
+| Session cache / savings ledger | 33,134 | 19,922 | 39.9% |
+| Release/version/install wiring | 21,246 | 12,157 | 42.8% |
+
+Average context reduction was **29.6%**, with one Prism command replacing 5-6
+shell commands per scenario. The detailed report is
+[Prism-CLI-Real-World-Benchmark-2026-06-07.md](Prism-CLI-Real-World-Benchmark-2026-06-07.md).
+
+Takeaway: CLI text mode is now the recommended agent default. It avoids the MCP
+JSON wrapper overhead measured in Round 1, keeps the graph/test/coverage-gap
+benefits, and works naturally in agents that can run shell commands.
