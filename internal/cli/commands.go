@@ -265,11 +265,6 @@ func injectPrismSection(content, block string) string {
 	return strings.TrimRight(content, "\n") + block
 }
 
-func isExecutable(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
-}
-
 func cmdIndex(args []string) int {
 	dir := dirArg(args, 0, ".")
 	cfg, client, err := newClient(dir)
