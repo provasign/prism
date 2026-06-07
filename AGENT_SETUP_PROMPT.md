@@ -150,45 +150,12 @@ Invoke-WebRequest `
 
 Ask the user for the path to their project.
 
-Ask which agent mode they want:
-
-> Which Prism agent mode should I configure?
->
-> - **CLI text mode (recommended):** agents use `prism query ... --format text`.
-> - **MCP mode:** agents use `prism_query`, `prism_read`, etc. and get persistent session dedupe.
-> - **Both:** MCP primary with CLI fallback.
-
-If the user does not choose, use CLI text mode.
-
-**CLI text mode (recommended):**
-
 ```bash
 PROJECT="/path/to/your/project"
 cd "$PROJECT"
-prism init . --mode cli
+prism init .
 prism index .   # builds initial index (subsequent runs are delta-only)
 echo "Prism initialized in CLI text mode. Restart your AI coding tool so it reloads steering instructions."
-```
-
-**MCP mode:**
-
-```bash
-PROJECT="/path/to/your/project"
-cd "$PROJECT"
-prism init . --mode mcp
-prism index .
-echo "Prism initialized in MCP mode. Restart your AI coding tool to activate the MCP server."
-```
-
-> **Claude Code users:** `prism init` writes `.mcp.json` at the project root. When Claude Code restarts it may prompt "Allow MCP servers from .mcp.json?" — click **Allow**.
-
-**Both mode:**
-
-```bash
-PROJECT="/path/to/your/project"
-cd "$PROJECT"
-prism init . --mode both
-prism index .
 ```
 
 ---
@@ -205,26 +172,6 @@ RESULT=$(prism query "main entry point" --format text 2>/dev/null | head -5)
   || echo "❌ prism query returned nothing — run: prism index ."
 ```
 
-**If MCP mode was selected, verify the MCP server connects (Claude Code):**
-
-```bash
-MCP_OUT="$(claude mcp list 2>&1)"
-echo "$MCP_OUT"
-if echo "$MCP_OUT" | grep -qiE "^prism:.*(✓|connected)"; then
-  echo "✅ prism: connected"
-elif echo "$MCP_OUT" | grep -qi "prism"; then
-  echo "❌ prism: registered but NOT connected — see fixes below"
-else
-  echo "❌ prism: not found in mcp list — run: prism init . --mode mcp, then restart Claude Code"
-fi
-```
-
-If `Failed to connect`, inspect the MCP log:
-```bash
-LOGDIR="$HOME/Library/Caches/claude-cli-nodejs"   # macOS
-tail -n 5 "$(ls -t "$LOGDIR"/*/mcp-logs-prism/*.jsonl 2>/dev/null | head -1)" 2>/dev/null
-```
-
 **Common failures:**
 
 | Symptom | Fix |
@@ -232,9 +179,7 @@ tail -n 5 "$(ls -t "$LOGDIR"/*/mcp-logs-prism/*.jsonl 2>/dev/null | head -1)" 2>
 | `command not found` | Install directory not on `$PATH` — add it and restart shell |
 | macOS "cannot be opened because the developer cannot be verified" | `xattr -d com.apple.quarantine $(which prism)` |
 | macOS `zsh: killed` (exit 137) | `codesign -f -s - $(which prism)` |
-| Agent still uses `prism_query` instructions after CLI setup | Re-run `prism init . --mode cli`; verify `prism.yaml` has `agent_mode: "cli"` |
-| `claude mcp list` shows prism **Failed to connect** | Upgrade to the latest release (`prism version` to confirm); fully restart your AI tool |
-| `claude mcp list` doesn't show prism | Re-run `prism init . --mode mcp` from the project root, restart Claude Code, approve `.mcp.json` when prompted |
+| Agent still uses stale Prism instructions | Re-run `prism init .`; fully restart your AI tool |
 | Empty results from `prism query` | Run `prism index .` from the project root and retry |
 
 ---
@@ -249,8 +194,7 @@ Prism installation complete
 
 Next steps
 ──────────
-  CLI mode:       Restart your AI coding tool so it reloads CLI text-mode steering
-  MCP mode:       Restart your AI coding tool to activate the MCP server
+  Agent setup:    Restart your AI coding tool so it reloads CLI steering
   Token savings:  prism savings   (after your first task)
 
 Documentation: https://github.com/provasign/prism
@@ -260,29 +204,23 @@ Documentation: https://github.com/provasign/prism
 
 ## Step U1 — Uninstall / Reset
 
-Ask for the target project path and whether to stop running Prism MCP processes:
-
-> Should I stop currently running Prism MCP server processes during uninstall?
-
-If yes, set `KILL_MCPS=1`. If no, tell the user to restart their AI tool after uninstall.
+Ask for the target project path.
 
 ```bash
 PROJECT="/path/to/your/project"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/bin}"
-KILL_MCPS="${KILL_MCPS:-0}"
 
 PRISM_VERSION=$(curl -sf "https://api.github.com/repos/provasign/prism/releases/latest" \
   | grep '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
 curl -fsSL \
   "https://github.com/provasign/prism/releases/download/${PRISM_VERSION}/uninstall.sh" \
-  | INSTALL_DIR="$INSTALL_DIR" PROJECT="$PROJECT" KILL_MCPS="$KILL_MCPS" bash
+  | INSTALL_DIR="$INSTALL_DIR" PROJECT="$PROJECT" bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
 $INSTALL_DIR = "$env:USERPROFILE\bin"
 $PROJECT = "C:\path\to\project"
-$KILL_MCPS = "0"
 $PRISM_VERSION = (Invoke-RestMethod "https://api.github.com/repos/provasign/prism/releases/latest").tag_name
 $tmpScript = "$env:TEMP\uninstall-prism.ps1"
 Invoke-WebRequest `

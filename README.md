@@ -18,13 +18,12 @@ The recommended agent path is now **CLI text mode**:
 
 ```bash
 prism query "fix direct coverage gaps" --terms buildCoverageGaps --include graph,tests,coverage_gaps --format text
-prism read internal/mcp/tools.go --format text
-prism lookup github.com/provasign/prism/internal/mcp.buildCoverageGaps --format text
+prism read internal/cli/commands.go --format text
+prism lookup github.com/provasign/prism/internal/cli.invokeWithPersistentLedger --format text
 ```
 
-`--format text` avoids the large JSON metadata wrappers that made early MCP
-benchmarks look expensive. Agents see plain source-like context with short
-headers, and can ask for `lean` or `json` only when automation needs it.
+`--format text` gives agents plain source-like context with short headers.
+Use `lean` or `json` only when automation needs structured output.
 
 Grove is embedded in the Prism binary. There is no separate daemon, token, or
 `grove_url` setup in current releases.
@@ -52,7 +51,7 @@ one CLI text command per scenario.
 
 | Scenario | Shell bytes | Prism CLI bytes | Context reduction |
 |---|---:|---:|---:|
-| Init `agent_mode` / CLI steering impact | 19,970 | 12,818 | 35.8% |
+| Init / CLI steering impact | 19,970 | 12,818 | 35.8% |
 | `coverage_gaps` precision | 21,226 | 17,145 | 19.2% |
 | CLI text/lean/json output formatting | 15,820 | 14,198 | 10.3% |
 | Session cache / savings ledger | 33,134 | 19,922 | 39.9% |
@@ -95,16 +94,9 @@ Budgeted text context
   - coverage_gaps
 ```
 
-Prism supports two distinct saving mechanisms:
-
-1. **Context gathering reduction**: one graph-aware query replaces multiple
-   shell searches and file reads. This is what CLI text-mode benchmarks measure.
-2. **Session deduplication**: in persistent MCP transports, repeated reads of
-   unchanged files can become a short SHA pointer. This is where the ~99%
-   repeated-read savings come from.
-
-Direct CLI invocations are process-per-command, so they should be evaluated on
-context gathering and output wrapper size, not same-session re-read dedupe.
+Prism saves context by replacing repeated manual graph chasing with one
+graph-aware query. The CLI also persists its ledger and file-read cache between
+commands, so repeated unchanged file reads can return a short SHA pointer.
 
 ---
 
@@ -134,21 +126,20 @@ make install
 
 ---
 
-## Quick Start: Agent CLI Text Mode
+## Quick Start
 
 Run this once at the project root:
 
 ```bash
-prism init . --mode cli
+prism init .
 prism index .
 ```
 
 This writes:
 
-- `prism.yaml` with `agent_mode: "cli"`
 - steering files such as `AGENTS.md`, `CLAUDE.md`, `.cursorrules`,
   `.windsurfrules`, `.github/copilot-instructions.md`, and others
-- compatible tool config files where detected
+- `prism.yaml` with the project profile and optional model settings
 
 The generated agent instructions tell agents to use commands like:
 
@@ -168,42 +159,10 @@ Recommended agent workflow:
 5. Treat `coverage_gaps` as a terminal structured output, not the start of
    manual cross-referencing.
 
----
-
-## Other Modes
-
-`prism init` supports three modes:
-
-```bash
-prism init . --mode cli   # recommended for agents that can run shell commands
-prism init . --mode mcp   # MCP tools only: prism_query, prism_read, ...
-prism init . --mode both  # MCP primary + CLI fallback
-```
-
-### MCP
-
-MCP exposes `prism_query`, `prism_read`, `prism_search`, `prism_lookup`,
-`prism_index`, `prism_savings`, `prism_feedback`, `prism_compact`, and
-`prism_evidence`. Use MCP when the client has first-class MCP support and you
-want persistent session deduplication.
-
-### HTTP Server
-
-`prism serve` is optional. Use it for custom automation that wants HTTP instead
-of CLI or MCP:
-
-```bash
-prism serve --port 8888 /path/to/project
-```
-
-It binds to `127.0.0.1`.
-
----
-
 ## CLI Reference
 
 ```bash
-prism init [--global] [--mode cli|mcp|both] [dir]
+prism init [dir]
 prism index [dir]
 prism status [dir]
 
@@ -219,8 +178,6 @@ prism search <keyword> [dir] --format text
 prism savings [dir]
 prism compact [dir]
 prism feedback --tool <name> --rating <0-5> [dir]
-prism mcp [dir]
-prism serve [--port 8888] [dir]
 prism version
 ```
 
@@ -241,7 +198,6 @@ Output formats:
 ```yaml
 version: 1
 profile: "default"
-agent_mode: "cli"
 ```
 
 Optional keys:
@@ -286,10 +242,10 @@ Read benchmark numbers by transport:
 - [Prism CLI Real-World Benchmark](docs/Prism-CLI-Real-World-Benchmark-2026-06-07.md):
   current recommended path; Prism CLI text mode vs shell-only on Prism itself.
 - [Payflow A/B Agent Benchmark](docs/AB-Test-Payflow-2026-06-07.md):
-  controlled baseline vs Prism benchmark, including the early MCP JSON overhead
-  finding, CLI text-mode round, and coverage-gap precision fix.
+  controlled baseline vs Prism benchmark, including the CLI text-mode round and
+  coverage-gap precision fix.
 - [Agent Workflow Benchmark](docs/Agent-Workflow-Benchmark-2026-06-07.md):
-  older MCP-focused workflow benchmark on Prism itself.
+  historical MCP-focused workflow benchmark on Prism itself.
 - [Indexing/Read Benchmark](docs/Benchmark-Results-2026-05-27.md):
   older performance run for indexing and repeated file reads.
 
@@ -298,8 +254,6 @@ Current practical summary:
 - CLI `--format text` is the recommended default for shell-capable agents.
 - Prism is strongest on graph/blast-radius/test/coverage-gap questions.
 - Shell tools remain best for locating exact strings or filenames.
-- MCP persistent transports add repeated-read deduplication that direct CLI
-  invocations do not fully exercise.
 
 ---
 
@@ -307,8 +261,8 @@ Current practical summary:
 
 **`prism query` returns nothing**: run `prism index .` from the project root.
 
-**Agent still uses MCP instructions**: run `prism init . --mode cli` and check
-that `prism.yaml` contains `agent_mode: "cli"`.
+**Agent still uses stale instructions**: run `prism init .` and restart or
+reload the coding agent so it reads the updated steering files.
 
 **Wrong Prism binary**: run `command -v prism` and `prism version`. Reinstall if
 the version is old.
@@ -319,6 +273,3 @@ the version is old.
 xattr -d com.apple.quarantine "$(which prism)"
 codesign -f -s - "$(which prism)"
 ```
-
-**MCP client does not connect**: restart the coding tool after `prism init`, and
-approve project MCP configuration if the tool prompts.

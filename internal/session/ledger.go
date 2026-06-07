@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// ToolStats records token accounting for one MCP tool.
+// ToolStats records token accounting for one Prism operation.
 type ToolStats struct {
 	Calls     int   `json:"calls"`
 	Original  int64 `json:"original"`

@@ -12,8 +12,8 @@ Prism is a complement to shell search, not a replacement.
   anchor terms.
 - Use Prism to expand those anchors into the graph and test surface.
 
-The recommended agent transport is **CLI text mode** because it is simple,
-works in subagents, and avoids JSON wrapper overhead:
+The agent interface is **CLI text mode** because it is simple, works in
+subagents, and avoids JSON wrapper overhead:
 
 ```bash
 prism query "trace refund flow" --terms RefundPayment --include graph,tests --format text
@@ -45,7 +45,7 @@ prism query "write focused tests for buildCoverageGaps" \
   --include graph,tests,coverage_gaps \
   --format text
 
-prism lookup github.com/provasign/prism/internal/mcp.buildCoverageGaps --format text
+prism lookup github.com/provasign/prism/internal/tools.buildCoverageGaps --format text
 ```
 
 The important rule is ordering: shell tools find the anchor; Prism expands it.
@@ -100,7 +100,6 @@ first `rg` output.
 |---|---|
 | Shell-only | Cheap anchor search, then several file reads and manual test discovery |
 | Prism CLI text | One graph-ranked text response, usually less total context for relational tasks |
-| MCP | Same graph value plus persistent session deduplication |
 
 Recent real Prism-repo CLI scenarios showed 10-43% less delivered context than
 shell-only baselines, with one Prism command replacing 5-6 shell commands.
@@ -122,7 +121,7 @@ callees, tests, blast radius, and coverage gaps.
 ## Quick Reference
 
 ```bash
-prism init . --mode cli
+prism init .
 prism index .
 
 prism query "<task>" --terms a,b --include graph,tests --depth 2 --format text

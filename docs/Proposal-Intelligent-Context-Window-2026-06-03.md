@@ -6,7 +6,7 @@
 **Author:** GitHub Copilot (Claude Opus 4.7), in dialogue with @tapabratapal
 
 > Historical note, 2026-06-07: this proposal predates the current default
-> agent setup, which is CLI `--format text` via `prism init . --mode cli`.
+> agent setup, which is CLI `--format text` via `prism init .`.
 > Treat the savings numbers below as transport-specific design context. For the
 > current real-world agent benchmark, see
 > [Prism CLI Real-World Benchmark](Prism-CLI-Real-World-Benchmark-2026-06-07.md).
@@ -294,7 +294,7 @@ These do not show up as token reductions but reduce the *cost of being wrong*, w
 
 1. **Telemetry contract with Provasign.** What does a verdict-with-symbol-citations payload look like? Does Provasign already know which symbols a diff touched, or do we infer from line ranges?
 2. **Phase classifier training data.** Can we synthesize from Prism session logs, or does this need a labeled corpus?
-3. **Streaming and MCP clients.** Which clients (Claude Code, Copilot, Cursor) support partial streaming responses today vs. require a final-response shape?
+3. **Streaming clients.** Which clients (Claude Code, Copilot, Cursor) support partial streaming responses today vs. require a final-response shape?
 4. **Cross-session cache invalidation.** Path-only or path + git-rev? What about uncommitted edits?
 5. **Counterfactual pruning host.** Local (~100 M model bundled like Model2Vec) or optional remote? Affects the latency budget.
 

@@ -1,4 +1,4 @@
-package mcp
+package tools
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"github.com/provasign/prism/internal/session"
 )
 
-// Handler holds the shared backend state used by all 8 prism_* tools.
+// Handler holds the shared backend state used by Prism CLI operations.
 type Handler struct {
 	Cfg     *config.Config
 	Root    string
@@ -39,7 +39,7 @@ type Handler struct {
 	// completes. Nil means no deferred init (Grove is already ready).
 	readyCh <-chan struct{}
 
-	// Feedback store (in-memory; persisted across MCP calls in one session).
+	// Feedback store for the current agent session.
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
 }
@@ -80,8 +80,7 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 	return h
 }
 
-// SaveSessionCache flushes the LRU tracker to disk. Called by the MCP server
-// on shutdown so the next session opens warm.
+// SaveSessionCache flushes the LRU tracker to disk so the next session opens warm.
 func (h *Handler) SaveSessionCache() {
 	session.SaveCache(h.Session, h.Root, 500)
 }
@@ -137,13 +136,12 @@ type FeedbackEntry struct {
 
 // --- Tool dispatch -------------------------------------------------------
 
-// Invoke routes a tools/call to the right handler.
+// Invoke routes a Prism operation to the right handler.
 func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	// In MCP mode, Grove connection and initial index run in the background so
-	// the MCP handshake (initialize / tools/list) can complete immediately.
-	// Wait here until Grove is ready before dispatching any tool call.
+	// Some callers may open Grove in the background; wait here until it is ready
+	// before dispatching operations.
 	if h.readyCh != nil {
 		select {
 		case <-h.readyCh:
@@ -175,7 +173,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 	}
 }
 
-// ToolSchemas returns the schema list for tools/list.
+// ToolSchemas returns operation schemas for internal automation.
 func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
@@ -299,7 +297,7 @@ func toolDescription(name string) string {
 			"Does NOT search source code text — for that, use grep."
 	case "prism_lookup":
 		return "Retrieve the complete source of one symbol by qualified name " +
-			"(e.g. 'ranking.Select' or 'mcp.Handler'). " +
+			"(e.g. 'ranking.Select' or 'tools.Handler'). " +
 			"Use this instead of prism_read when you want one function body — " +
 			"costs ~5× fewer tokens than reading the whole file."
 	case "prism_index":
@@ -1259,12 +1257,7 @@ func filterGeneratedPrismContext(in []grove.SymbolRecord) []grove.SymbolRecord {
 func isGeneratedPrismContext(sym grove.SymbolRecord) bool {
 	p := strings.TrimPrefix(filepath.ToSlash(sym.FilePath), "./")
 	switch p {
-	case ".mcp.json",
-		".cursor/mcp.json",
-		".windsurf/mcp.json",
-		".vscode/mcp.json",
-		".kiro/settings/mcp.json",
-		"prism.yaml":
+	case "prism.yaml":
 		return true
 	case "CLAUDE.md",
 		"AGENTS.md",

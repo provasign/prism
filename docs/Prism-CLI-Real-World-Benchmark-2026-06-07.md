@@ -38,7 +38,7 @@ prism index .
 
 | Scenario | Shell bytes | Prism CLI bytes | Shell est. tokens | Prism est. tokens | Context reduction |
 |---|---:|---:|---:|---:|---:|
-| S1: Init `agent_mode` / CLI steering impact | 19,970 | 12,818 | 4,992 | 3,204 | 35.8% |
+| S1: Init / CLI steering impact | 19,970 | 12,818 | 4,992 | 3,204 | 35.8% |
 | S2: `coverage_gaps` precision | 21,226 | 17,145 | 5,306 | 4,286 | 19.2% |
 | S3: CLI text/lean/json output formatting | 15,820 | 14,198 | 3,955 | 3,550 | 10.3% |
 | S4: Session cache / savings ledger | 33,134 | 19,922 | 8,284 | 4,980 | 39.9% |
@@ -51,12 +51,11 @@ prism index .
 
 ## Scenario Notes
 
-### S1: Init `agent_mode` / CLI Steering Impact
+### S1: Init / CLI Steering Impact
 
-Prism surfaced `cmdInit`, `promptAgentMode`, `AgentModeCLI`,
-`steeringBlockForMode`, and relevant init tests. The shell baseline also found
-these, but required several reads across `internal/cli`, `internal/config`, and
-generated steering docs.
+Prism surfaced `cmdInit`, steering injection, and relevant init tests. The shell
+baseline also found these, but required several reads across `internal/cli`,
+`internal/config`, and generated steering docs.
 
 Nuance: Prism did not include the full `steeringInstructionsCLI` constant body
 in the first response. Editing that prose would need one follow-up
@@ -84,14 +83,14 @@ surface where targeted shell reads are already efficient.
 ### S4: Session Cache / Savings Ledger
 
 This was one of the strongest Prism wins. Prism grouped cache, ledger, CLI
-persistence, and related tests without pulling entire session and MCP files.
+persistence, and related tests without pulling entire session files.
 
 ### S5: Release / Version / Install Wiring
 
 Prism found release workflow ldflags, installer artifacts, and version wiring
-with less output than shell-only reads. Because `Version` is a broad term, Prism
-also surfaced MCP protocol-version symbols. Better anchors such as
-`version.Version`, `release.yml`, `ldflags`, and `checksums` reduce that noise.
+with less output than shell-only reads. Because `Version` is a broad term,
+better anchors such as `version.Version`, `release.yml`, `ldflags`, and
+`checksums` reduce noise.
 
 ---
 
@@ -122,8 +121,6 @@ reads the agent would perform after `rg`.
 
 - This benchmark measures delivered context bytes, not total model billing
   tokens.
-- It uses direct CLI invocations, so persistent MCP re-read deduplication is
-  not exercised.
 - Scenario design matters. Broad anchors can pull noisy but valid graph
   neighbors; precise `--terms` improves results.
 - For editing large constants or prose blocks, a follow-up `prism read` may be

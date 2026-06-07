@@ -3,9 +3,8 @@
 // Historically this package was an HTTP client that spoke to a long-running
 // `grove serve` daemon. The embedded-Grove architecture removes the daemon:
 // Prism links against `grove/pkg/grove` directly and opens the on-disk index
-// in the same process. The public surface of Client (NewClient, EnsureRunning,
-// Index, Query…) is preserved so the rest of Prism (ranking, MCP, CLI) is
-// unchanged.
+// in the same process. The Client surface keeps indexing and query code
+// decoupled from the embedded engine details.
 package grove
 
 import (

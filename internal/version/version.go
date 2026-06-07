@@ -1,5 +1,4 @@
-// Package version exposes the prism build version. Single source of truth —
-// consumed by the CLI, the MCP server, and the HTTP health endpoint.
+// Package version exposes the prism build version.
 package version
 
 // Version is overridden via -ldflags at build time for local dev builds.

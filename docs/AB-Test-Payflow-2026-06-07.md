@@ -453,7 +453,7 @@ scenario.
 
 | Scenario | Shell bytes | Prism CLI bytes | Context reduction |
 |---|---:|---:|---:|
-| Init `agent_mode` / CLI steering impact | 19,970 | 12,818 | 35.8% |
+| Init / CLI steering impact | 19,970 | 12,818 | 35.8% |
 | `coverage_gaps` precision | 21,226 | 17,145 | 19.2% |
 | CLI text/lean/json output formatting | 15,820 | 14,198 | 10.3% |
 | Session cache / savings ledger | 33,134 | 19,922 | 39.9% |

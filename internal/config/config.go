@@ -7,29 +7,16 @@ import (
 	"strings"
 )
 
-// AgentMode controls which steering instructions prism init writes.
-const (
-	AgentModeMCP  = "mcp"  // MCP tools only (prism_query, prism_read, …)
-	AgentModeCLI  = "cli"  // CLI via Bash only (prism query --format text, …)
-	AgentModeBoth = "both" // MCP primary + CLI fallback (default)
-)
-
 // Config holds the resolved Prism configuration.
 type Config struct {
-	GroveURL          string
-	GroveBinary       string
+	GroveURL    string
+	GroveBinary string
 	// Model is the active AI model identifier. Empty means "auto" — Prism
-	// will use whatever is reported by the MCP client at initialize time or
-	// passed per-call. When empty, ContextWindow() returns a safe 200k
-	// default that covers all current production models.
+	// uses a safe 200k default that covers all current production models.
 	Model             string
 	Profile           string
 	EmbeddingsBackend string // "tfidf" (only backend implemented today)
 	MaxCacheFiles     int
-	Port              int
-	// AgentMode controls which steering instructions are written by prism init.
-	// Valid values: "mcp", "cli", "both" (default).
-	AgentMode         string
 }
 
 // Default returns config values with environment overrides applied.
@@ -42,8 +29,6 @@ func Default() *Config {
 		Profile:           envOr("PRISM_PROFILE", "default"),
 		EmbeddingsBackend: envOr("PRISM_EMBEDDINGS_BACKEND", "tfidf"),
 		MaxCacheFiles:     50000,
-		Port:              8888,
-		AgentMode:         AgentModeBoth,
 	}
 	return c
 }
@@ -81,11 +66,6 @@ func LoadFromDir(dir string) (*Config, error) {
 			c.Model = v
 		case "profile":
 			c.Profile = v
-		case "agent_mode":
-			switch v {
-			case AgentModeMCP, AgentModeCLI, AgentModeBoth:
-				c.AgentMode = v
-			}
 		}
 	}
 	return c, nil
