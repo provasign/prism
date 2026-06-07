@@ -327,6 +327,10 @@ Environment overrides: `PRISM_GROVE_URL`, `PRISM_MODEL`, `PRISM_PROFILE`, `PRISM
 
 Benchmarks run on macOS against synthetic Go projects (2026-05-27). Prism runs atop Grove — query numbers include the full round-trip through Grove's FTS5 + BFS and Prism's ranking pipeline.
 
+For real-world agent workflow comparisons (token savings, correctness, and scope safety across four live coding tasks), see [docs/Agent-Workflow-Benchmark-2026-06-07.md](docs/Agent-Workflow-Benchmark-2026-06-07.md).
+
+For a controlled A/B test — 8 subagents (4 Prism vs 4 baseline) on a synthetic Go project with pre-established ground truth — including honest subagent token measurements and correctness scoring, see [docs/AB-Test-Payflow-2026-06-07.md](docs/AB-Test-Payflow-2026-06-07.md).
+
 ### Indexing and Query
 
 | Project | Files | Grove index | Prism index | Query latency | Prism RSS |
