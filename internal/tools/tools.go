@@ -976,14 +976,48 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
-	syms, err := h.Grove.SearchSymbols(ctx, name, 25)
+
+	// Accept "pkg/path.SymbolName" and "github.com/mod/pkg/path.SymbolName".
+	// Split on the last '.' whose right side contains no '/' (i.e. is a symbol
+	// name, not a URL segment) to get the bare search term and an optional
+	// package-path hint used to disambiguate when multiple packages export a
+	// symbol with the same name.
+	searchName := name
+	pkgHint := ""
+	if idx := strings.LastIndex(name, "."); idx > 0 {
+		right := name[idx+1:]
+		if !strings.Contains(right, "/") {
+			searchName = right
+			pkgHint = name[:idx]
+		}
+	}
+
+	syms, err := h.Grove.SearchSymbols(ctx, searchName, 25)
 	if err != nil {
 		return nil, err
 	}
 	syms = filterGeneratedPrismContext(syms)
-	// Prefer exact qualified-name match.
+
+	// pkgMatches returns true when s lives in the package identified by pkgHint.
+	// pkgHint may be a short path ("internal/cli") or a full module path
+	// ("github.com/provasign/prism/internal/cli"); both are matched against the
+	// file's directory using a suffix check with a slash guard.
+	pkgMatches := func(s grove.SymbolRecord) bool {
+		if pkgHint == "" {
+			return true
+		}
+		dir := filepath.ToSlash(filepath.Dir(s.FilePath))
+		return dir == pkgHint || strings.HasSuffix(pkgHint, "/"+dir)
+	}
+
+	// Prefer: exact name match AND package match, then exact name, then first result.
 	for _, s := range syms {
-		if s.QualifiedName == name || s.Name == name {
+		if (s.QualifiedName == searchName || s.Name == searchName) && pkgMatches(s) {
+			return map[string]any{"symbol": s, "content": s.RawText}, nil
+		}
+	}
+	for _, s := range syms {
+		if s.QualifiedName == searchName || s.Name == searchName {
 			return map[string]any{"symbol": s, "content": s.RawText}, nil
 		}
 	}
