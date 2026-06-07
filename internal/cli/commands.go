@@ -125,12 +125,24 @@ func Run(args []string) int {
 
 func cmdInit(args []string) int {
 	// Flags: --global (write to ~/.config/... instead of project dir)
+	// --mode mcp|cli|both  (skip interactive prompt)
 	global := false
+	mode := ""
 	filtered := args[:0]
-	for _, a := range args {
-		if a == "--global" {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--global":
 			global = true
-		} else {
+		case "--mode":
+			if i+1 < len(args) {
+				switch args[i+1] {
+				case config.AgentModeMCP, config.AgentModeCLI, config.AgentModeBoth:
+					mode = args[i+1]
+				}
+				i++
+			}
+		default:
 			filtered = append(filtered, a)
 		}
 	}
@@ -140,6 +152,12 @@ func cmdInit(args []string) int {
 	abs, _ := filepath.Abs(dir)
 	cfg := config.Default()
 
+	// If mode not set by flag, prompt interactively (or default to "both" if
+	// stdin is not a terminal, e.g. in CI or when piped).
+	if mode == "" {
+		mode = promptAgentMode()
+	}
+
 	// 1. Write prism.yaml into the project. Grove is embedded in-process now,
 	// so the file no longer needs grove_url / grove_binary.
 	yaml := fmt.Sprintf(`version: 1
@@ -147,7 +165,8 @@ func cmdInit(args []string) int {
 #               # Override here only if auto-detection fails, e.g.:
 #               # model: "claude-sonnet-4-6"
 profile: "%s"
-`, cfg.Profile)
+agent_mode: "%s"
+`, cfg.Profile, mode)
 	prismYAML := filepath.Join(abs, "prism.yaml")
 	if err := os.WriteFile(prismYAML, []byte(yaml), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)
@@ -158,8 +177,8 @@ profile: "%s"
 	// 2. Detect the prism binary path for use in MCP configs.
 	prismBin := detectSelfPath()
 
-	// 3. Write steering instructions so agents prefer Prism tools.
-	writeSteeringInstructions(abs)
+	// 3. Write steering instructions matching the chosen mode.
+	writeSteeringInstructions(abs, mode)
 
 	// 4. Register with every detected AI coding tool.
 	registered := initRegisterMCPTools(abs, prismBin, global)
@@ -169,9 +188,34 @@ profile: "%s"
 	return 0
 }
 
-// steeringInstructions is injected into per-tool instruction files so the
-// agent knows to use Prism tools correctly.
-const steeringInstructions = `
+// promptAgentMode asks the user which agent interface to use.
+// Returns "both" if stdin is not a terminal or the user presses Enter.
+func promptAgentMode() string {
+	// Detect non-interactive stdin (pipe, file, CI).
+	fi, err := os.Stdin.Stat()
+	if err != nil || (fi.Mode()&os.ModeCharDevice) == 0 {
+		return config.AgentModeBoth
+	}
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "How will agents access Prism?")
+	fmt.Fprintln(os.Stderr, "  [1] both  — MCP tools (primary) + CLI fallback for subagents  (default)")
+	fmt.Fprintln(os.Stderr, "  [2] mcp   — MCP tools only  (prism_query, prism_read, …)")
+	fmt.Fprintln(os.Stderr, "  [3] cli   — CLI via Bash only  (prism query --format text, …)")
+	fmt.Fprint(os.Stderr, "Choice [1]: ")
+	var line string
+	fmt.Scanln(&line)
+	switch strings.TrimSpace(line) {
+	case "2", "mcp":
+		return config.AgentModeMCP
+	case "3", "cli":
+		return config.AgentModeCLI
+	default:
+		return config.AgentModeBoth
+	}
+}
+
+// steeringInstructionsMCP is injected when agent_mode is "mcp" or "both".
+const steeringInstructionsMCP = `
 ## Prism — context delivery (ALWAYS use these tools)
 
 Prism is a call-graph oracle. Its value is surfacing callers, callees, and test
@@ -229,10 +273,123 @@ contracts the agent would not find by grep+read alone.
 - Do NOT manually cross-reference coverage_gaps output with prism_search — treat coverage_gaps as authoritative and use it as the terminal step, not the start of a manual verification chain
 `
 
+// steeringInstructionsCLI is injected when agent_mode is "cli".
+// Agents that only have Bash access use the prism CLI with --format text.
+const steeringInstructionsCLI = `
+## Prism — context delivery (ALWAYS use these tools)
+
+Prism is a call-graph oracle available as a CLI. Use it via Bash to get
+callers, callees, and test contracts the agent would not find by grep+read alone.
+
+### Decision tree
+
+| Situation | Command |
+|---|---|
+| Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
+| Callers/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
+| Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
+| Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
+| Find docs about a topic | ` + "`" + `prism query "<task>" --include docs --format text` + "`" + ` |
+| Blast radius of a change | ` + "`" + `prism query "<task>" --terms a,b --depth 3 --format text` + "`" + ` |
+| Symbols with no tests (before writing/fixing) | ` + "`" + `prism query "<task>" --terms a,b --include graph,coverage_gaps --format text` + "`" + ` |
+
+### Canonical workflow
+
+    grep/find/rg <terms>                      <- locate anchor first; shell tools always win here
+      -> prism query "<task>" \               <- expand from anchor: callers, callees, tests
+           --terms <same-terms> \
+           --include graph,tests \
+           --format text
+      then selectively:
+      -> prism read <file> --format text      <- whole file, session-compressed
+      -> prism lookup <pkg.FuncName> --format text  <- one function (~5x cheaper than read)
+
+### prism query flags
+
+| Flag | Default | Purpose |
+|---|---|---|
+| --terms a,b | — | Anchor on specific symbol names (grep-precision + graph expansion) |
+| --include a,b | graph,tests | graph (callers/callees), tests, docs (filenames only), coverage_gaps |
+| --depth N | 2 | BFS hops: 1 = immediate callers, 3+ = blast radius |
+| --format | text | text (default), lean (compact JSON), json (full metadata) |
+
+### Other commands
+
+| Command | When |
+|---|---|
+| prism index [dir] | Once at session start — not on every step |
+| prism search <keyword> --format text | Find a symbol by name when file is unknown |
+
+### Do NOT
+
+- Do NOT call prism query before searching — use shell tools (grep, find, rg) to find the anchor first; prism expands from it
+- Do NOT use prism search as a search replacement — it searches symbol names only, not source text
+- Do NOT use prism read for a single function — use prism lookup instead
+- Do NOT re-run prism index on every step — delta indexing is automatic
+- Do NOT manually cross-reference coverage_gaps output — treat it as authoritative and use it as the terminal step, not the start of a manual verification chain
+`
+
+// steeringInstructionsBoth is injected when agent_mode is "both" (default).
+// MCP tools are primary; the CLI section serves as fallback for subagents
+// that only have Bash access.
+const steeringInstructionsBoth = `
+## Prism — context delivery (ALWAYS use these tools)
+
+Prism is a call-graph oracle. Its value is surfacing callers, callees, and test
+contracts the agent would not find by grep+read alone.
+
+### When MCP tools are available
+
+Use the registered prism_* MCP tools:
+
+| Situation | Tool |
+|---|---|
+| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
+| Callers/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
+| Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
+| Read one function body | prism_lookup(name="pkg.FuncName") |
+| Find docs about a topic | prism_query(task=..., include=["docs"]) — filenames only |
+| Blast radius of a change | prism_query(terms=[...], graph_depth=3) |
+| Symbols with no tests (before writing/fixing) | prism_query(terms=[...], include=["graph","coverage_gaps"]) |
+
+Canonical workflow:
+
+    grep/find/rg <terms>                 <- locate anchor first; shell tools always win here
+      -> prism_query(                    <- expand from anchor: callers, callees, tests
+           terms=["same-grep-terms"],
+           include=["graph","tests"],
+           graph_depth=2
+         )
+      then selectively:
+      -> prism_read(file=...)            <- whole file, session-compressed
+      -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
+
+### When only Bash is available (subagents, CI)
+
+Use the prism CLI with --format text instead of MCP tools:
+
+| Situation | Command |
+|---|---|
+| Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
+| Callers/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
+| Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
+| Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
+| Blast radius of a change | ` + "`" + `prism query "<task>" --terms a,b --depth 3 --format text` + "`" + ` |
+| Symbols with no tests | ` + "`" + `prism query "<task>" --terms a,b --include graph,coverage_gaps --format text` + "`" + ` |
+
+### Do NOT
+
+- Do NOT call prism_query (or prism query) before searching — use shell tools first; prism expands from the anchor
+- Do NOT use prism_search / prism search as a search replacement — it searches symbol names only, not source text
+- Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
+- Do NOT re-run prism_index / prism index on every step — delta indexing is automatic
+- Do NOT manually cross-reference coverage_gaps output — treat it as authoritative and use it as the terminal step, not the start of a manual verification chain
+`
+
 // writeSteeringInstructions writes per-tool instruction files into the project
 // so agents know how to use Prism tools correctly.
 // On re-init it replaces a stale Prism section rather than skipping.
-func writeSteeringInstructions(projectDir string) {
+func writeSteeringInstructions(projectDir, mode string) {
 	type instrFile struct {
 		name    string // description for log
 		relPath string // path relative to projectDir
@@ -255,6 +412,8 @@ func writeSteeringInstructions(projectDir string) {
 		{name: "Kiro", relPath: ".kiro/steering/prism.md"},
 	}
 
+	block := steeringBlockForMode(mode)
+
 	for _, t := range targets {
 		path := filepath.Join(projectDir, t.relPath)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -265,9 +424,9 @@ func writeSteeringInstructions(projectDir string) {
 		var content string
 		if existing, err := os.ReadFile(path); err == nil {
 			// File exists — replace stale Prism section or append if absent.
-			content = injectPrismSection(string(existing), steeringInstructions)
+			content = injectPrismSection(string(existing), block)
 		} else {
-			content = steeringInstructions
+			content = block
 		}
 
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -275,6 +434,18 @@ func writeSteeringInstructions(projectDir string) {
 			continue
 		}
 		fmt.Printf("wrote steering instructions: %s\n", path)
+	}
+}
+
+// steeringBlockForMode returns the steering instructions for the given mode.
+func steeringBlockForMode(mode string) string {
+	switch mode {
+	case config.AgentModeMCP:
+		return steeringInstructionsMCP
+	case config.AgentModeCLI:
+		return steeringInstructionsCLI
+	default:
+		return steeringInstructionsBoth
 	}
 }
 

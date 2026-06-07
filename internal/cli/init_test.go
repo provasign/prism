@@ -52,7 +52,7 @@ func TestDetectSelfPath(t *testing.T) {
 
 func TestWriteSteeringInstructions(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, "both")
 	// Should have written at least one instruction file
 	entries, _ := os.ReadDir(dir)
 	if len(entries) == 0 {
@@ -82,7 +82,7 @@ func TestBuildVSCodeConfig(t *testing.T) {
 
 func TestWriteSteeringInstructions_AllTargets(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, "both")
 	for _, want := range []string{
 		"CLAUDE.md",
 		"AGENTS.md",
@@ -108,7 +108,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 	if err := os.WriteFile(path, []byte(stale), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, "both")
 	raw, _ := os.ReadFile(path)
 	s := string(raw)
 	// Old guidance must be gone.
@@ -260,6 +260,70 @@ func TestWritePrismCodexConfig_ExistingOtherContent(t *testing.T) {
 	}
 	if !strings.Contains(s, `[mcp_servers.prism]`) {
 		t.Error("prism table not added")
+	}
+}
+
+func TestSteeringBlockForMode(t *testing.T) {
+	cases := []struct {
+		mode    string
+		wantStr string
+	}{
+		{"mcp", "prism_query"},
+		{"cli", "prism query"},
+		{"both", "prism_query"},
+		{"both", "prism query"},
+		{"unknown", "prism query"}, // unknown → both
+	}
+	seen := map[string]string{}
+	for _, tc := range cases {
+		got := steeringBlockForMode(tc.mode)
+		if !strings.Contains(got, tc.wantStr) {
+			t.Errorf("mode %q: expected %q in block", tc.mode, tc.wantStr)
+		}
+		seen[tc.mode] = got
+	}
+	// MCP and CLI modes must produce distinct content.
+	if seen["mcp"] == seen["cli"] {
+		t.Error("mcp and cli produced identical steering blocks")
+	}
+}
+
+func TestCmdInit_ModeFlag(t *testing.T) {
+	for _, mode := range []string{"mcp", "cli", "both"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := t.TempDir()
+			if rc := cmdInit([]string{dir, "--mode", mode}); rc != 0 {
+				t.Fatalf("rc %d", rc)
+			}
+			raw, _ := os.ReadFile(filepath.Join(dir, "prism.yaml"))
+			if !strings.Contains(string(raw), `agent_mode: "`+mode+`"`) {
+				t.Errorf("agent_mode %q not in prism.yaml: %s", mode, raw)
+			}
+			claudeMD, _ := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+			block := steeringBlockForMode(mode)
+			// Pick a distinctive string from each mode's block.
+			var mustContain string
+			switch mode {
+			case "mcp":
+				mustContain = "prism_query"
+			case "cli":
+				mustContain = "prism query"
+			case "both":
+				mustContain = "prism_query"
+			}
+			if !strings.Contains(string(claudeMD), mustContain) {
+				t.Errorf("CLAUDE.md missing %q for mode %q", mustContain, mode)
+			}
+			_ = block
+		})
+	}
+}
+
+func TestPromptAgentMode_NonInteractive(t *testing.T) {
+	// In tests stdin is a pipe, not a terminal — must return "both" without blocking.
+	got := promptAgentMode()
+	if got != "both" {
+		t.Errorf("non-interactive mode: got %q, want both", got)
 	}
 }
 
