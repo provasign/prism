@@ -14,6 +14,7 @@ contracts the agent would not find by grep+read alone.
 | Read one function body | prism_lookup(name="pkg.FuncName") |
 | Find docs about a topic | prism_query(task=..., include=["docs"]) — filenames only |
 | Blast radius of a change | prism_query(terms=[...], graph_depth=3) |
+| Symbols with no tests (before writing/fixing) | prism_query(terms=[...], include=["graph","coverage_gaps"]) |
 
 ### Canonical workflow
 
