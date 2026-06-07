@@ -123,3 +123,175 @@ func TestCmdConfig(t *testing.T) {
 		t.Errorf("rc %d", rc)
 	}
 }
+
+func captureStdout(fn func()) string {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	fn()
+	_ = w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	return buf.String()
+}
+
+func TestPrintOutput_JSON(t *testing.T) {
+	got := captureStdout(func() {
+		printOutput(map[string]int{"x": 42}, formatJSON)
+	})
+	var m map[string]int
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["x"] != 42 {
+		t.Errorf("got %v", m)
+	}
+}
+
+func TestPrintOutput_Text_Lookup(t *testing.T) {
+	input := map[string]any{
+		"symbol":  map[string]any{"name": "MyFunc", "filePath": "pkg/foo.go"},
+		"content": "func MyFunc() {}\n",
+	}
+	got := captureStdout(func() { printOutput(input, formatText) })
+	if !strings.Contains(got, "pkg/foo.go") {
+		t.Errorf("missing filePath: %q", got)
+	}
+	if !strings.Contains(got, "MyFunc") {
+		t.Errorf("missing name: %q", got)
+	}
+	if !strings.Contains(got, "func MyFunc()") {
+		t.Errorf("missing content: %q", got)
+	}
+}
+
+func TestPrintOutput_Text_Read(t *testing.T) {
+	input := map[string]any{
+		"file":    "internal/foo.go",
+		"content": "package foo\n",
+	}
+	got := captureStdout(func() { printOutput(input, formatText) })
+	if !strings.Contains(got, "internal/foo.go") {
+		t.Errorf("missing file: %q", got)
+	}
+	if !strings.Contains(got, "package foo") {
+		t.Errorf("missing content: %q", got)
+	}
+}
+
+func TestPrintOutput_Text_Read_ShaPointer(t *testing.T) {
+	input := map[string]any{
+		"file":     "internal/foo.go",
+		"strategy": "sha-pointer",
+		"content":  "abc123",
+	}
+	got := captureStdout(func() { printOutput(input, formatText) })
+	if !strings.Contains(got, "[cached") {
+		t.Errorf("expected cached marker: %q", got)
+	}
+	if strings.Contains(got, "abc123") {
+		t.Errorf("sha should not appear as content: %q", got)
+	}
+}
+
+func TestPrintOutput_Text_Query(t *testing.T) {
+	input := map[string]any{
+		"budgetUsed": 100,
+		"symbols": []any{
+			map[string]any{
+				"filePath": "pkg/a.go",
+				"name":     "DoThing",
+				"category": "target",
+				"content":  "func DoThing() {}\n",
+			},
+		},
+	}
+	got := captureStdout(func() { printOutput(input, formatText) })
+	if !strings.Contains(got, "pkg/a.go") {
+		t.Errorf("missing filePath: %q", got)
+	}
+	if !strings.Contains(got, "[target]") {
+		t.Errorf("missing category: %q", got)
+	}
+	if !strings.Contains(got, "func DoThing") {
+		t.Errorf("missing content: %q", got)
+	}
+}
+
+func TestPrintOutput_Text_Query_CoverageGaps(t *testing.T) {
+	input := map[string]any{
+		"budgetUsed": 50,
+		"symbols":    []any{},
+		"coverageGaps": []any{
+			map[string]any{"name": "UntestedFn", "filePath": "pkg/b.go"},
+		},
+	}
+	got := captureStdout(func() { printOutput(input, formatText) })
+	if !strings.Contains(got, "coverage_gaps") {
+		t.Errorf("missing coverage_gaps header: %q", got)
+	}
+	if !strings.Contains(got, "UntestedFn") {
+		t.Errorf("missing gap name: %q", got)
+	}
+}
+
+func TestPrintOutput_Lean_Query(t *testing.T) {
+	input := map[string]any{
+		"budgetUsed": 200,
+		"timingMs":   99,
+		"phase":      "fts",
+		"symbols": []any{
+			map[string]any{
+				"filePath": "pkg/c.go",
+				"name":     "Lean",
+				"category": "caller",
+				"content":  "func Lean() {}\n",
+				"score":    0.99,
+				"id":       "abc",
+			},
+		},
+	}
+	got := captureStdout(func() { printOutput(input, formatLean) })
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("lean output not valid JSON: %v\n%s", err, got)
+	}
+	if _, hasPhase := m["phase"]; hasPhase {
+		t.Error("lean should strip phase")
+	}
+	if _, hasTiming := m["timingMs"]; hasTiming {
+		t.Error("lean should strip timingMs")
+	}
+	syms, _ := m["symbols"].([]any)
+	if len(syms) != 1 {
+		t.Fatalf("expected 1 symbol, got %d", len(syms))
+	}
+	sym := syms[0].(map[string]any)
+	if sym["filePath"] != "pkg/c.go" {
+		t.Errorf("filePath lost: %v", sym)
+	}
+	if _, hasScore := sym["score"]; hasScore {
+		t.Error("lean should strip score from symbol")
+	}
+}
+
+func TestPrintOutput_Lean_Read(t *testing.T) {
+	input := map[string]any{
+		"file":       "pkg/d.go",
+		"content":    "package d\n",
+		"timingMs":   5,
+		"disclosure": "full",
+	}
+	got := captureStdout(func() { printOutput(input, formatLean) })
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("lean read not valid JSON: %v\n%s", err, got)
+	}
+	if m["file"] != "pkg/d.go" {
+		t.Errorf("file lost: %v", m)
+	}
+	if _, hasTiming := m["timingMs"]; hasTiming {
+		t.Error("lean should strip timingMs")
+	}
+}
