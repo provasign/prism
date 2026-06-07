@@ -256,7 +256,12 @@ func TestCLIHelpersAndConfigPaths(t *testing.T) {
 // cmd functions. Using a regular file as the project root causes
 // config.LoadFromDir to return ENOTDIR (not IsNotExist), which propagates as
 // a non-nil error through newClient and invokeWithPersistentLedger.
+// On Windows, ERROR_PATH_NOT_FOUND is treated as IsNotExist, so the function
+// returns success instead of an error — skip there.
 func TestCmdErrorPaths_FileAsDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("ENOTDIR treated as IsNotExist on Windows")
+	}
 	f, err := os.CreateTemp("", "prism_not_a_dir*.txt")
 	if err != nil {
 		t.Fatal(err)
