@@ -251,3 +251,33 @@ func TestCLIHelpersAndConfigPaths(t *testing.T) {
 		t.Fatal("directory must not be executable target")
 	}
 }
+
+// TestCmdErrorPaths_FileAsDir exercises the error-return branches of several
+// cmd functions. Using a regular file as the project root causes
+// config.LoadFromDir to return ENOTDIR (not IsNotExist), which propagates as
+// a non-nil error through newClient and invokeWithPersistentLedger.
+func TestCmdErrorPaths_FileAsDir(t *testing.T) {
+	f, err := os.CreateTemp("", "prism_not_a_dir*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	defer os.Remove(f.Name())
+	notADir := f.Name()
+
+	if rc := cmdConfig([]string{notADir}); rc != 1 {
+		t.Errorf("cmdConfig file-as-dir: want rc=1, got %d", rc)
+	}
+	if rc := cmdStatus([]string{notADir}); rc != 1 {
+		t.Errorf("cmdStatus file-as-dir: want rc=1, got %d", rc)
+	}
+	if rc := cmdSavings([]string{notADir}); rc != 1 {
+		t.Errorf("cmdSavings file-as-dir: want rc=1, got %d", rc)
+	}
+	if rc := cmdIndex([]string{notADir}); rc != 1 {
+		t.Errorf("cmdIndex file-as-dir: want rc=1, got %d", rc)
+	}
+	if rc := cmdServe([]string{notADir}); rc != 1 {
+		t.Errorf("cmdServe file-as-dir: want rc=1, got %d", rc)
+	}
+}
