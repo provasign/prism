@@ -6,6 +6,7 @@ PRISM_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 GROVE_ROOT_DEFAULT="$(cd "$PRISM_ROOT/../grove" 2>/dev/null && pwd || true)"
 
 WORKSPACE_DIR="${1:-$PWD}"
+GLOBAL_INIT="${PRISM_GLOBAL_INIT:-1}"
 
 if ! command -v go >/dev/null 2>&1; then
   echo "error: go is required but was not found in PATH" >&2
@@ -58,8 +59,13 @@ if [[ ! -x "$PRISM_BIN" ]]; then
   exit 1
 fi
 
-echo "[bootstrap] running prism init $WORKSPACE_DIR"
-"$PRISM_BIN" init "$WORKSPACE_DIR"
+if [[ "$GLOBAL_INIT" == "1" ]]; then
+  echo "[bootstrap] running prism init --global $WORKSPACE_DIR"
+  "$PRISM_BIN" init --global "$WORKSPACE_DIR"
+else
+  echo "[bootstrap] running prism init $WORKSPACE_DIR"
+  "$PRISM_BIN" init "$WORKSPACE_DIR"
+fi
 
 echo "[bootstrap] done"
 echo "[bootstrap] next steps:"
@@ -69,3 +75,5 @@ echo
 echo "[bootstrap] agent steering files written into $WORKSPACE_DIR:"
 echo "  - CLAUDE.md, AGENTS.md, GEMINI.md, .cursorrules, .windsurfrules"
 echo "  - .github/copilot-instructions.md"
+echo "  - .vscode/mcp.json (VS Code native MCP host)"
+echo "  - per-tool .mcp.json (Claude Code) / .cursor/mcp.json / .windsurf/mcp.json"

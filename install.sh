@@ -103,6 +103,12 @@ if ! grep -qsF "$LINE" "$SHELL_RC" 2>/dev/null; then
 fi
 export PATH="${INSTALL_DIR}:$PATH"
 
+# ── Global AI tool registration ──────────────────────────────────────────────
+info "Registering prism with detected AI coding tools (global)…"
+"${INSTALL_DIR}/prism" init --global 2>/dev/null \
+  && ok "prism registered globally with detected AI tools" \
+  || info "prism global init skipped (run: prism init --global)"
+
 # ── Optional project initialization ─────────────────────────────────────────
 if [ -n "${PROJECT:-}" ]; then
   [ -d "$PROJECT" ] || die "project dir not found: $PROJECT"
@@ -117,5 +123,5 @@ if [ -n "${PROJECT:-}" ]; then
   )
 fi
 
-printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nNext: cd /your/project && prism init && prism index\nThen restart or reload your coding agent so it reads the updated steering files.\n' \
+printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nAI tool note:\n  Restart or reload your coding agent / IDE so it respawns MCP servers from the updated config.\n  For Claude Code, approve the .mcp.json servers if prompted, then verify with: claude mcp list\n\nNext: cd /your/project && prism init && prism index\n' \
   "$PRODUCT" "$VERSION" "$INSTALL_DIR"

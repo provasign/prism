@@ -1,6 +1,8 @@
-package tools
+package mcp
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -297,8 +299,8 @@ func TestSafePathWithinRoot_EquivalentSymlinkRoots(t *testing.T) {
 
 func TestToolSchemasReturnsNineTools(t *testing.T) {
 	schemas := ToolSchemas()
-	if len(schemas) != 9 {
-		t.Fatalf("want 9 tool schemas, got %d", len(schemas))
+	if len(schemas) != 5 {
+		t.Fatalf("want 5 tool schemas, got %d", len(schemas))
 	}
 	names := make(map[string]bool)
 	for _, s := range schemas {
@@ -316,10 +318,111 @@ func TestToolSchemasReturnsNineTools(t *testing.T) {
 	}
 	for _, want := range []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_index", "prism_compact", "prism_savings", "prism_feedback",
+		"prism_index",
 	} {
 		if !names[want] {
 			t.Errorf("ToolSchemas missing %q", want)
 		}
+	}
+}
+
+// ─── Server framing + dispatch ────────────────────────────────────────────
+
+func rpcLine(id int, method string, params any) string {
+	p, _ := json.Marshal(params)
+	msg := map[string]any{"jsonrpc": "2.0", "id": id, "method": method, "params": json.RawMessage(p)}
+	b, _ := json.Marshal(msg)
+	return string(b) + "\n"
+}
+
+func readRPCResponse(t *testing.T, buf *bytes.Buffer) map[string]any {
+	t.Helper()
+	// MCP stdio transport: one newline-delimited compact JSON object per line.
+	payload := strings.TrimSpace(buf.String())
+	if payload == "" {
+		t.Fatalf("empty response")
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(payload), &m); err != nil {
+		t.Fatalf("unmarshal response: %v (payload: %q)", err, payload)
+	}
+	return m
+}
+
+func TestServerInitializeHandshake(t *testing.T) {
+	h := newTestHandler(t)
+	srv := NewServer(h)
+
+	in := strings.NewReader(rpcLine(1, "initialize", map[string]any{
+		"protocolVersion": "2024-11-05",
+		"clientInfo":      map[string]string{"name": "test", "version": "1"},
+		"capabilities":    map[string]any{},
+	}))
+	var out bytes.Buffer
+	// Serve returns on EOF which happens after the single message.
+	_ = srv.Serve(in, &out)
+
+	resp := readRPCResponse(t, &out)
+	if resp["error"] != nil {
+		t.Fatalf("initialize returned error: %v", resp["error"])
+	}
+	result := resp["result"].(map[string]any)
+	if result["protocolVersion"] != "2024-11-05" {
+		t.Errorf("protocolVersion: got %v", result["protocolVersion"])
+	}
+}
+
+func TestServerToolsList(t *testing.T) {
+	h := newTestHandler(t)
+	srv := NewServer(h)
+
+	in := strings.NewReader(rpcLine(2, "tools/list", map[string]any{}))
+	var out bytes.Buffer
+	_ = srv.Serve(in, &out)
+
+	resp := readRPCResponse(t, &out)
+	if resp["error"] != nil {
+		t.Fatalf("tools/list error: %v", resp["error"])
+	}
+	result := resp["result"].(map[string]any)
+	tools, ok := result["tools"].([]any)
+	if !ok {
+		t.Fatalf("tools field missing or wrong type: %T", result["tools"])
+	}
+	if len(tools) != 5 {
+		t.Errorf("tools/list: got %d tools, want 5", len(tools))
+	}
+}
+
+func TestServerUnknownMethod(t *testing.T) {
+	h := newTestHandler(t)
+	srv := NewServer(h)
+
+	in := strings.NewReader(rpcLine(3, "not/a/method", nil))
+	var out bytes.Buffer
+	_ = srv.Serve(in, &out)
+
+	resp := readRPCResponse(t, &out)
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error object, got: %v", resp["error"])
+	}
+	if code, _ := errObj["code"].(float64); code != -32601 {
+		t.Errorf("error code: got %v want -32601", errObj["code"])
+	}
+}
+
+func TestServerNotificationNoResponse(t *testing.T) {
+	h := newTestHandler(t)
+	srv := NewServer(h)
+
+	// A notification has no "id" field — server must not send a response.
+	notification := `{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}` + "\n"
+	in := strings.NewReader(notification)
+	var out bytes.Buffer
+	_ = srv.Serve(in, &out)
+
+	if out.Len() > 0 {
+		t.Errorf("server sent response to notification: %q", out.String())
 	}
 }

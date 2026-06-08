@@ -1,4 +1,4 @@
-package tools
+package mcp
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"github.com/provasign/prism/internal/session"
 )
 
-// Handler holds the shared backend state used by Prism CLI operations.
+// Handler holds the shared backend state used by all 8 prism_* tools.
 type Handler struct {
 	Cfg     *config.Config
 	Root    string
@@ -39,7 +39,7 @@ type Handler struct {
 	// completes. Nil means no deferred init (Grove is already ready).
 	readyCh <-chan struct{}
 
-	// Feedback store for the current agent session.
+	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
 }
@@ -80,7 +80,8 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 	return h
 }
 
-// SaveSessionCache flushes the LRU tracker to disk so the next session opens warm.
+// SaveSessionCache flushes the LRU tracker to disk. Called by the MCP server
+// on shutdown so the next session opens warm.
 func (h *Handler) SaveSessionCache() {
 	session.SaveCache(h.Session, h.Root, 500)
 }
@@ -136,12 +137,13 @@ type FeedbackEntry struct {
 
 // --- Tool dispatch -------------------------------------------------------
 
-// Invoke routes a Prism operation to the right handler.
+// Invoke routes a tools/call to the right handler.
 func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	// Some callers may open Grove in the background; wait here until it is ready
-	// before dispatching operations.
+	// In MCP mode, Grove connection and initial index run in the background so
+	// the MCP handshake (initialize / tools/list) can complete immediately.
+	// Wait here until Grove is ready before dispatching any tool call.
 	if h.readyCh != nil {
 		select {
 		case <-h.readyCh:
@@ -173,12 +175,11 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 	}
 }
 
-// ToolSchemas returns operation schemas for internal automation.
+// ToolSchemas returns the schema list for tools/list.
 func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_index", "prism_compact", "prism_savings", "prism_feedback",
-		"prism_evidence",
+		"prism_index",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
@@ -195,10 +196,8 @@ func ToolSchemas() []map[string]any {
 // prism_read. Agents must pass their current model ID so Prism can correctly
 // size the context budget and session confidence thresholds.
 var modelProp = map[string]any{
-	"type": "string",
-	"description": "The model ID you are currently running on (e.g. \"claude-sonnet-4-6\", " +
-		"\"claude-opus-4-7\", \"gpt-4o\"). Optional but recommended — Prism uses this to size " +
-		"context budgets to your actual window. If omitted, Prism falls back to configured/default model.",
+	"type":        "string",
+	"description": "Your model ID (e.g. \"claude-sonnet-4-6\", \"gpt-4o\"). Sizes context budgets. Optional.",
 }
 
 func toolSchema(name string) map[string]any {
@@ -211,27 +210,26 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"task": map[string]any{
 					"type":        "string",
-					"description": "Natural-language description of what you are trying to do.",
+					"description": "What you are trying to do.",
 				},
 				"terms": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "Grep-style search terms to seed retrieval (e.g. [\"AccessCount\",\"sha-pointer\"]). When provided, Prism searches these terms directly instead of TF-IDF guessing — same precision as your own grep, plus graph expansion.",
+					"description": "Your grep/rg search terms (e.g. [\"AccessCount\"]). Prism searches these then expands via call graph.",
 				},
 				"include": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string", "enum": []string{"graph", "tests", "docs", "coverage_gaps"}},
-					"description": "Which result categories to return. \"graph\" = code + callers/callees, \"tests\" = test files, \"docs\" = doc filenames only, \"coverage_gaps\" = code symbols in the blast radius with no test edges (use when writing or fixing code). Default: [\"graph\",\"tests\"].",
+					"description": "Categories: graph (callers/callees), tests, docs (filenames only), coverage_gaps (untested symbols). Default: [\"graph\",\"tests\"].",
 				},
 				"graph_depth": map[string]any{
 					"type":        "integer",
-					"description": "BFS depth for call-graph expansion via Impact(). 1 = immediate callers only, 2 = two hops (default), 3+ = wider blast radius.",
+					"description": "BFS hops: 1=immediate callers, 2=default, 3+=blast radius.",
 				},
 				"model":   modelProp,
-				"dir":     map[string]any{"type": "string", "description": "Project root directory (optional, defaults to workspace root)."},
-				"limit":   map[string]any{"type": "integer", "description": "Max symbols to return (default 50)."},
-				"profile": map[string]any{"type": "string", "description": "Ranking profile: default | implement_feature | fix_bug | code_review"},
-				"budget":  map[string]any{"type": "integer", "description": "Token budget (default 8000). Increase for large refactors or module-wide exploration."},
+				"dir":     map[string]any{"type": "string", "description": "Project root (optional)."},
+				"profile": map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
+				"budget":  map[string]any{"type": "integer", "description": "Token budget (default 8000)."},
 			},
 		}
 	case "prism_read":
@@ -241,11 +239,11 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"file": map[string]any{
 					"type":        "string",
-					"description": "File path relative to the project root.",
+					"description": "File path relative to project root.",
 				},
 				"model": modelProp,
-				"task":  map[string]any{"type": "string", "description": "Current task description, used for relevance ranking within the file."},
-				"dir":   map[string]any{"type": "string", "description": "Project root directory (optional)."},
+				"task":  map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
+				"dir":   map[string]any{"type": "string", "description": "Project root (optional)."},
 			},
 		}
 	case "prism_evidence":
@@ -255,7 +253,7 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"claims": map[string]any{
 					"type":        "array",
-					"description": "Array of evidence claims. Each item must have 'claim' (string) and 'file' (path). Optional: 'lineStart', 'lineEnd' (int), 'symbolName' (string for sha lookup).",
+					"description": "Array of {claim, file, lineStart?, lineEnd?, symbolName?} objects.",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
@@ -277,27 +275,20 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "Call AFTER shell tools (grep, find, rg) locate your anchor. " +
-			"Pass the same terms you used via terms=[...] — Prism searches those terms " +
-			"directly and then expands through the call graph to return callers, callees, and " +
-			"tests the agent would not find by reading alone. " +
-			"Default include=[\"graph\",\"tests\"]. " +
-			"Use include=[\"docs\"] for documentation search — returns ranked filenames only (~10 tokens each), not content. " +
-			"Use include=[\"coverage_gaps\"] when writing or fixing code — returns code symbols in the blast radius with no test edges, so you know what to test before making changes. " +
-			"graph_depth controls BFS hops: 1=immediate callers, 2=two hops (default), 3+=blast radius."
+		return "Call AFTER grep/rg locates an anchor. Pass the same terms=[...] you searched — " +
+			"Prism finds those symbols then expands through the call graph (callers, callees, tests). " +
+			"Use include=[\"coverage_gaps\"] when writing or fixing code. " +
+			"Use include=[\"docs\"] for doc filenames only."
 	case "prism_read":
-		return "Read a whole file with session-aware compression: " +
-			"full content on first read, SHA-pointer (~10 tokens) on second read, " +
-			"signatures on third read if content has scrolled past attention. " +
-			"Use for whole files. " +
-			"For a single function body, use prism_lookup instead — ~5× cheaper."
+		return "Whole-file read with session compression: full on first read, SHA-pointer on repeats. " +
+			"For a single function use prism_lookup (~5× cheaper)."
 	case "prism_search":
 		return "Substring search over indexed symbol names, signatures, and docstrings. " +
 			"Use when you know a symbol's name but not which file it lives in. " +
 			"Does NOT search source code text — for that, use grep."
 	case "prism_lookup":
 		return "Retrieve the complete source of one symbol by qualified name " +
-			"(e.g. 'ranking.Select' or 'tools.Handler'). " +
+			"(e.g. 'ranking.Select' or 'mcp.Handler'). " +
 			"Use this instead of prism_read when you want one function body — " +
 			"costs ~5× fewer tokens than reading the whole file."
 	case "prism_index":
@@ -315,10 +306,8 @@ func toolDescription(name string) string {
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_evidence":
-		return "Convert a sub-agent's prose summary into a typed evidence packet: " +
-			"an array of {claim, file, lineStart, lineEnd, sha} citations. " +
-			"Pass this packet to the parent agent instead of full prose to save 75–95% tokens. " +
-			"Each claim is dereferenceable via prism_lookup."
+		return "Convert a sub-agent prose summary into typed {claim, file, line} citations. " +
+			"Send to parent agent instead of prose. Each claim is dereferenceable via prism_lookup."
 	}
 	return "Prism tool: " + name
 }
@@ -326,15 +315,9 @@ func toolDescription(name string) string {
 // --- Tool implementations -----------------------------------------------
 
 type queryResult struct {
-	Task             string           `json:"task"`
-	Profile          string           `json:"profile"`
-	Phase            string           `json:"phase,omitempty"`
-	BudgetUsed       int              `json:"budgetUsed"`
-	BudgetTotal      int              `json:"budgetTotal"`
-	Symbols          []rankedSymbol   `json:"symbols"`
-	CoverageGaps     []coverageGap    `json:"coverageGaps,omitempty"`
-	TimingMs         map[string]int64 `json:"timingMs"`
-	ExcludedManifest []string         `json:"excludedManifest,omitempty"`
+	BudgetUsed   int            `json:"budgetUsed"`
+	Symbols      []rankedSymbol `json:"symbols"`
+	CoverageGaps []coverageGap  `json:"coverageGaps,omitempty"`
 }
 
 // coverageGap is a code symbol in the query blast radius that has no test
@@ -348,15 +331,12 @@ type coverageGap struct {
 }
 
 type rankedSymbol struct {
-	ID            string         `json:"id"`
 	Name          string         `json:"name"`
 	QualifiedName string         `json:"qualifiedName"`
 	FilePath      string         `json:"filePath"`
 	Kind          string         `json:"kind"`
-	Score         float64        `json:"score"`
 	Category      string         `json:"category"`
 	Disclosure    string         `json:"disclosure"`
-	TokenCost     int            `json:"tokenCost"`
 	Content       string         `json:"content"`
 	Span          grove.SpanInfo `json:"span"`
 }
@@ -434,13 +414,9 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	callCfg := h.Cfg.WithModel(stringArg(args, "model", ""))
 	limit := intArg(args, "limit", 50)
 
-	t0 := time.Now()
 	if err := h.ensureEmbeddings(ctx); err != nil {
 		return nil, err
 	}
-	tEmb := time.Since(t0)
-
-	t0 = time.Now()
 	var seeds []grove.SymbolRecord
 
 	if len(terms) > 0 {
@@ -486,8 +462,6 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		seeds = filterGeneratedPrismContext(seeds)
 		seeds = filterDocSeeds(seeds)
 	}
-	tGrove := time.Since(t0)
-
 	// Build candidates: treat first 5 as seeds (distance 0), remainder as candidates.
 	seedCount := minInt(5, len(seeds))
 	seedSyms := seeds[:seedCount]
@@ -633,38 +607,22 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	// Build response.
 	used := 0
 	out := queryResult{
-		Task:        task,
-		Profile:     profile.Name,
-		Phase:       string(phase),
-		BudgetTotal: budget,
-		Symbols:     make([]rankedSymbol, 0, len(picked)),
-		TimingMs: map[string]int64{
-			"embeddings": tEmb.Milliseconds(),
-			"grove":      tGrove.Milliseconds(),
-		},
+		Symbols: make([]rankedSymbol, 0, len(picked)),
 	}
 	for _, p := range picked {
 		used += p.TokenCost
 		out.Symbols = append(out.Symbols, rankedSymbol{
-			ID:            p.Symbol.ID,
 			Name:          p.Symbol.Name,
 			QualifiedName: p.Symbol.QualifiedName,
 			FilePath:      p.Symbol.FilePath,
 			Kind:          p.Symbol.Kind,
-			Score:         p.Score,
 			Category:      string(p.Category),
 			Disclosure:    string(p.Disclosure),
-			TokenCost:     p.TokenCost,
 			Content:       ranking.Render(p.Symbol, p.Disclosure),
 			Span:          p.Symbol.Span,
 		})
 	}
 	out.BudgetUsed = used
-
-	// Anti-context manifest: collect low-scoring candidates the ranker
-	// rejected. Emit them as // [prism:excluded] sentinel lines so the agent
-	// knows not to speculatively read those paths.
-	out.ExcludedManifest = buildAntiContextManifest(candidates, picked)
 
 	// Coverage gaps: code symbols in the blast radius with no test edges.
 	// Only computed when the agent explicitly requests include=["coverage_gaps"].
@@ -1291,7 +1249,12 @@ func filterGeneratedPrismContext(in []grove.SymbolRecord) []grove.SymbolRecord {
 func isGeneratedPrismContext(sym grove.SymbolRecord) bool {
 	p := strings.TrimPrefix(filepath.ToSlash(sym.FilePath), "./")
 	switch p {
-	case "prism.yaml":
+	case ".mcp.json",
+		".cursor/mcp.json",
+		".windsurf/mcp.json",
+		".vscode/mcp.json",
+		".kiro/settings/mcp.json",
+		"prism.yaml":
 		return true
 	case "CLAUDE.md",
 		"AGENTS.md",

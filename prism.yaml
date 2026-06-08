@@ -1,5 +1,6 @@
 version: 1
-# model: auto  # Prism uses a safe default context window unless overridden.
-#               # Override here for project-specific model sizing, e.g.:
+# model: auto  # Prism detects the active model from the MCP initialize handshake.
+#               # Override here only if auto-detection fails, e.g.:
 #               # model: "claude-sonnet-4-6"
 profile: "default"
+agent_mode: "cli"

@@ -1,6 +1,9 @@
-package tools
+package mcp
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -9,17 +12,15 @@ import (
 	"github.com/provasign/prism/internal/ranking"
 )
 
-type fakeServer struct{}
-
-func (fakeServer) Close() {}
-
-func fakeGroveSrv(t *testing.T, payload map[string]any) fakeServer {
+func fakeGroveSrv(t *testing.T, payload map[string]any) *httptest.Server {
 	t.Helper()
-	_ = payload
-	return fakeServer{}
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(payload)
+	}))
 }
 
-func newHWithGrove(t *testing.T, _ any) *Handler {
+func newHWithGrove(t *testing.T, _ *httptest.Server) *Handler {
 	t.Helper()
 	root := t.TempDir()
 	gc := grove.NewClient("", "").WithTokenFromDir(root)
@@ -119,7 +120,7 @@ func TestToolIndex(t *testing.T) {
 }
 
 func TestToolCompact(t *testing.T) {
-	h := newHWithGrove(t, nil)
+	h := newH(t)
 	turns := []map[string]any{
 		{"role": "user", "content": "task A", "kind": "exploration"},
 		{"role": "assistant", "content": "result file 1", "kind": "file_read"},
@@ -138,7 +139,7 @@ func TestToolCompact(t *testing.T) {
 }
 
 func TestToolCompact_NoTurns(t *testing.T) {
-	h := newHWithGrove(t, nil)
+	h := newH(t)
 	if _, err := h.Invoke("prism_compact", map[string]any{}); err == nil {
 		t.Error("expected err")
 	}
@@ -148,7 +149,7 @@ func TestToolCompact_NoTurns(t *testing.T) {
 }
 
 func TestToolFeedback(t *testing.T) {
-	h := newHWithGrove(t, nil)
+	h := newH(t)
 	if _, err := h.Invoke("prism_feedback", map[string]any{"tool": "x", "rating": 4}); err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +195,7 @@ func TestCategorize(t *testing.T) {
 func TestFilterDocSeeds(t *testing.T) {
 	in := []grove.SymbolRecord{
 		{FilePath: "README.md", Kind: "namespace"},
-		{FilePath: "internal/tools/tools.go", Kind: "function", Name: "Invoke"},
+		{FilePath: "internal/mcp/tools.go", Kind: "function", Name: "Invoke"},
 		{FilePath: "ROADMAP.md", Kind: "namespace"},
 		{FilePath: "internal/ranking/budget.go", Kind: "function", Name: "Select"},
 	}
@@ -209,16 +210,16 @@ func TestFilterDocSeeds(t *testing.T) {
 
 func TestFilterGeneratedPrismContext(t *testing.T) {
 	in := []grove.SymbolRecord{
-		{FilePath: "AGENTS.md", RawText: "Prism steering"},
+		{FilePath: ".mcp.json", RawText: `{"mcpServers":{"prism":{}}}`},
 		{FilePath: "AGENTS.md", RawText: "## Prism — context delivery\nUse Prism."},
 		{FilePath: "docs/architecture.md", RawText: "## Prism architecture"},
 		{FilePath: "src/app.ts", Name: "authorize"},
 	}
 	got := filterGeneratedPrismContext(in)
-	if len(got) != 3 {
-		t.Fatalf("expected 3 non-generated symbols, got %d: %+v", len(got), got)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 non-generated symbols, got %d: %+v", len(got), got)
 	}
-	if got[0].FilePath != "AGENTS.md" || got[1].FilePath != "docs/architecture.md" || got[2].FilePath != "src/app.ts" {
+	if got[0].FilePath != "docs/architecture.md" || got[1].FilePath != "src/app.ts" {
 		t.Fatalf("unexpected filtered symbols: %+v", got)
 	}
 }
@@ -248,7 +249,7 @@ func TestToolQuery_OK(t *testing.T) {
 }
 
 func TestToolRead_NoFile(t *testing.T) {
-	h := newHWithGrove(t, nil)
+	h := newH(t)
 	if _, err := h.Invoke("prism_read", map[string]any{}); err == nil {
 		t.Error("expected err")
 	}
