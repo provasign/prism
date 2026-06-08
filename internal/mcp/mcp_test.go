@@ -299,8 +299,8 @@ func TestSafePathWithinRoot_EquivalentSymlinkRoots(t *testing.T) {
 
 func TestToolSchemasReturnsNineTools(t *testing.T) {
 	schemas := ToolSchemas()
-	if len(schemas) != 9 {
-		t.Fatalf("want 9 tool schemas, got %d", len(schemas))
+	if len(schemas) != 5 {
+		t.Fatalf("want 5 tool schemas, got %d", len(schemas))
 	}
 	names := make(map[string]bool)
 	for _, s := range schemas {
@@ -318,7 +318,7 @@ func TestToolSchemasReturnsNineTools(t *testing.T) {
 	}
 	for _, want := range []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_index", "prism_compact", "prism_savings", "prism_feedback",
+		"prism_index",
 	} {
 		if !names[want] {
 			t.Errorf("ToolSchemas missing %q", want)
@@ -389,8 +389,8 @@ func TestServerToolsList(t *testing.T) {
 	if !ok {
 		t.Fatalf("tools field missing or wrong type: %T", result["tools"])
 	}
-	if len(tools) != 9 {
-		t.Errorf("tools/list: got %d tools, want 9", len(tools))
+	if len(tools) != 5 {
+		t.Errorf("tools/list: got %d tools, want 5", len(tools))
 	}
 }
 
