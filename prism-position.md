@@ -12,10 +12,15 @@ Prism is a complement to shell search, not a replacement.
   anchor terms.
 - Use Prism to expand those anchors into the graph and test surface.
 
-The recommended agent transport is **CLI text mode** because it is simple,
-works in subagents, and avoids JSON wrapper overhead:
+The recommended agent mode is **both** (`prism init . --mode both`): MCP tools
+as the primary surface for agents with an active session, plus CLI fallback for
+subagents and CI scripts that don't inherit the MCP connection:
 
 ```bash
+# MCP-capable agents (primary):
+prism_query(terms=["RefundPayment"], include=["graph","tests"])
+
+# Subagents / CI fallback:
 prism query "trace refund flow" --terms RefundPayment --include graph,tests --format text
 ```
 
@@ -122,7 +127,7 @@ callees, tests, blast radius, and coverage gaps.
 ## Quick Reference
 
 ```bash
-prism init . --mode cli
+prism init . --mode both
 prism index .
 
 prism query "<task>" --terms a,b --include graph,tests --depth 2 --format text

@@ -14,7 +14,15 @@ Prism to answer the follow-up questions that usually cost several file reads:
 - What else is in the blast radius?
 - Which nearby exported functions have no direct test coverage?
 
-The recommended agent path is now **CLI text mode**:
+The recommended agent mode is **both** (MCP tools as primary surface, CLI
+fallback for subagents that don't inherit the MCP session):
+
+```bash
+prism init . --mode both
+```
+
+Agents with an active MCP session call `prism_query`, `prism_read`, and
+`prism_lookup` directly. Subagents and CI scripts fall back to the CLI:
 
 ```bash
 prism query "fix direct coverage gaps" --terms buildCoverageGaps --include graph,tests,coverage_gaps --format text
@@ -139,13 +147,14 @@ make install
 Run this once at the project root:
 
 ```bash
-prism init . --mode cli
+prism init . --mode both
 prism index .
 ```
 
 This writes:
 
-- `prism.yaml` with `agent_mode: "cli"`
+- `prism.yaml` with `agent_mode: "both"`
+- `.mcp.json` wiring the MCP server for MCP-capable clients
 - steering files such as `AGENTS.md`, `CLAUDE.md`, `.cursorrules`,
   `.windsurfrules`, `.github/copilot-instructions.md`, and others
 - compatible tool config files where detected
@@ -175,9 +184,9 @@ Recommended agent workflow:
 `prism init` supports three modes:
 
 ```bash
-prism init . --mode cli   # recommended for agents that can run shell commands
+prism init . --mode both  # recommended: MCP primary + CLI fallback for subagents
 prism init . --mode mcp   # MCP tools only: prism_query, prism_read, ...
-prism init . --mode both  # MCP primary + CLI fallback
+prism init . --mode cli   # CLI only: for environments without MCP support
 ```
 
 ### MCP
@@ -307,8 +316,7 @@ Current practical summary:
 
 **`prism query` returns nothing**: run `prism index .` from the project root.
 
-**Agent still uses MCP instructions**: run `prism init . --mode cli` and check
-that `prism.yaml` contains `agent_mode: "cli"`.
+**Agent uses wrong steering**: run `prism init . --mode both` (or your chosen mode) and verify `prism.yaml` has the correct `agent_mode`.
 
 **Wrong Prism binary**: run `command -v prism` and `prism version`. Reinstall if
 the version is old.
