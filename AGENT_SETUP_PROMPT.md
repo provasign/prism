@@ -36,9 +36,10 @@ https://raw.githubusercontent.com/provasign/prism/main/AGENT_SETUP_PROMPT.md
 ## Instructions for the Agent
 
 You are setting up **Prism** — graph-ranked context delivery for AI coding agents.
-The recommended setup is **CLI text mode**: agents use `prism query/read/lookup
---format text` through Bash. This avoids JSON metadata overhead, works in
-subagents, and still surfaces callers, callees, tests, docs, and coverage gaps.
+The recommended setup is **both mode**: MCP tools (`prism_query`, `prism_read`,
+`prism_search`, `prism_lookup`) as the primary surface, with CLI fallback
+(`prism query/read/lookup --format text`) for subagents that don't inherit the
+MCP session. MCP keeps the call-graph hot in memory; CLI reloads it per call.
 
 Prism embeds Grove as a library; no separate Grove installation is required.
 
@@ -154,21 +155,23 @@ Ask which agent mode they want:
 
 > Which Prism agent mode should I configure?
 >
-> - **CLI text mode (recommended):** agents use `prism query ... --format text`.
-> - **MCP mode:** agents use `prism_query`, `prism_read`, etc. and get persistent session dedupe.
-> - **Both:** MCP primary with CLI fallback.
+> - **Both — MCP + CLI (recommended):** MCP tools as primary surface; CLI fallback for subagents.
+> - **MCP only:** MCP tools only; subagents without MCP access won't have Prism context.
+> - **CLI only:** agents use `prism query ... --format text` through Bash.
 
-If the user does not choose, use CLI text mode.
+If the user does not choose, use both mode (the `prism init` default).
 
-**CLI text mode (recommended):**
+**Both mode (recommended):**
 
 ```bash
 PROJECT="/path/to/your/project"
 cd "$PROJECT"
-prism init . --mode cli
+prism init . --mode both
 prism index .   # builds initial index (subsequent runs are delta-only)
-echo "Prism initialized in CLI text mode. Restart your AI coding tool so it reloads steering instructions."
+echo "Prism initialized in both mode. Restart your AI coding tool to activate MCP and reload steering instructions."
 ```
+
+> **Claude Code users:** `prism init` writes `.mcp.json` at the project root. When Claude Code restarts it may prompt "Allow MCP servers from .mcp.json?" — click **Allow**.
 
 **MCP mode:**
 
@@ -180,15 +183,14 @@ prism index .
 echo "Prism initialized in MCP mode. Restart your AI coding tool to activate the MCP server."
 ```
 
-> **Claude Code users:** `prism init` writes `.mcp.json` at the project root. When Claude Code restarts it may prompt "Allow MCP servers from .mcp.json?" — click **Allow**.
-
-**Both mode:**
+**CLI mode:**
 
 ```bash
 PROJECT="/path/to/your/project"
 cd "$PROJECT"
-prism init . --mode both
+prism init . --mode cli
 prism index .
+echo "Prism initialized in CLI mode. Restart your AI coding tool so it reloads steering instructions."
 ```
 
 ---
@@ -205,7 +207,7 @@ RESULT=$(prism query "main entry point" --format text 2>/dev/null | head -5)
   || echo "❌ prism query returned nothing — run: prism index ."
 ```
 
-**If MCP mode was selected, verify the MCP server connects (Claude Code):**
+**If MCP or both mode was selected, verify the MCP server connects (Claude Code):**
 
 ```bash
 MCP_OUT="$(claude mcp list 2>&1)"
@@ -215,7 +217,7 @@ if echo "$MCP_OUT" | grep -qiE "^prism:.*(✓|connected)"; then
 elif echo "$MCP_OUT" | grep -qi "prism"; then
   echo "❌ prism: registered but NOT connected — see fixes below"
 else
-  echo "❌ prism: not found in mcp list — run: prism init . --mode mcp, then restart Claude Code"
+  echo "❌ prism: not found in mcp list — run: prism init . --mode both, then restart Claude Code"
 fi
 ```
 
@@ -232,9 +234,9 @@ tail -n 5 "$(ls -t "$LOGDIR"/*/mcp-logs-prism/*.jsonl 2>/dev/null | head -1)" 2>
 | `command not found` | Install directory not on `$PATH` — add it and restart shell |
 | macOS "cannot be opened because the developer cannot be verified" | `xattr -d com.apple.quarantine $(which prism)` |
 | macOS `zsh: killed` (exit 137) | `codesign -f -s - $(which prism)` |
-| Agent still uses `prism_query` instructions after CLI setup | Re-run `prism init . --mode cli`; verify `prism.yaml` has `agent_mode: "cli"` |
+| Agent uses CLI steering after MCP setup | Re-run `prism init . --mode both`; verify `prism.yaml` has `agent_mode: "both"` or `"mcp"` |
 | `claude mcp list` shows prism **Failed to connect** | Upgrade to the latest release (`prism version` to confirm); fully restart your AI tool |
-| `claude mcp list` doesn't show prism | Re-run `prism init . --mode mcp` from the project root, restart Claude Code, approve `.mcp.json` when prompted |
+| `claude mcp list` doesn't show prism | Re-run `prism init . --mode both` from the project root, restart Claude Code, approve `.mcp.json` when prompted |
 | Empty results from `prism query` | Run `prism index .` from the project root and retry |
 
 ---
@@ -249,8 +251,8 @@ Prism installation complete
 
 Next steps
 ──────────
-  CLI mode:       Restart your AI coding tool so it reloads CLI text-mode steering
-  MCP mode:       Restart your AI coding tool to activate the MCP server
+  Both/MCP mode:  Restart your AI coding tool to activate the MCP server
+  CLI mode:       Restart your AI coding tool so it reloads CLI steering
   Token savings:  prism savings   (after your first task)
 
 Documentation: https://github.com/provasign/prism
