@@ -70,7 +70,7 @@ The average reduction was **29.6%** with one Prism command instead of 5-6 shell
 commands. The bigger correctness win is that Prism surfaces tests and coverage
 gaps proactively; shell-only workflows often discover those after CI fails.
 
-Details: [Real-World Prism CLI Benchmark](docs/Prism-CLI-Real-World-Benchmark-2026-06-07.md).
+More detail, including repeat-read savings: [provasign.dev/prism](https://provasign.dev/prism/).
 
 ---
 
@@ -290,17 +290,11 @@ other non-code files are indexed as document symbols and can be requested with
 
 ## Benchmarks
 
-Read benchmark numbers by transport:
-
-- [Prism CLI Real-World Benchmark](docs/Prism-CLI-Real-World-Benchmark-2026-06-07.md):
-  current recommended path; Prism CLI text mode vs shell-only on Prism itself.
-- [Payflow A/B Agent Benchmark](docs/AB-Test-Payflow-2026-06-07.md):
-  controlled baseline vs Prism benchmark, including the early MCP JSON overhead
-  finding, CLI text-mode round, and coverage-gap precision fix.
-- [Agent Workflow Benchmark](docs/Agent-Workflow-Benchmark-2026-06-07.md):
-  older MCP-focused workflow benchmark on Prism itself.
-- [Indexing/Read Benchmark](docs/Benchmark-Results-2026-05-27.md):
-  older performance run for indexing and repeated file reads.
+The headline numbers (context reduction per scenario, repeat-read savings by
+project size, and the SHA-pointer dedup mechanism) are summarized with
+methodology at [provasign.dev/prism](https://provasign.dev/prism/). The full
+benchmark reports were trimmed from this repo to keep it lean; they remain
+available in git history (`git log --diff-filter=D -- docs/` to locate them).
 
 Current practical summary:
 
