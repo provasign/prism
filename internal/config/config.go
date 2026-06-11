@@ -16,8 +16,8 @@ const (
 
 // Config holds the resolved Prism configuration.
 type Config struct {
-	GroveURL          string
-	GroveBinary       string
+	GroveURL    string
+	GroveBinary string
 	// Model is the active AI model identifier. Empty means "auto" — Prism
 	// will use whatever is reported by the MCP client at initialize time or
 	// passed per-call. When empty, ContextWindow() returns a safe 200k
@@ -29,14 +29,16 @@ type Config struct {
 	Port              int
 	// AgentMode controls which steering instructions are written by prism init.
 	// Valid values: "mcp", "cli", "both" (default).
-	AgentMode         string
+	AgentMode string
 }
 
 // Default returns config values with environment overrides applied.
 // Model intentionally defaults to "" (auto-detect at runtime).
 func Default() *Config {
 	c := &Config{
-		GroveURL:          envOr("PRISM_GROVE_URL", "http://localhost:7777"),
+		// Grove is embedded in-process; the URL is a legacy field kept for
+		// compatibility and shown in config output. No daemon, no port.
+		GroveURL:          envOr("PRISM_GROVE_URL", "embedded://grove"),
 		GroveBinary:       envOr("PRISM_GROVE_BINARY", "grove"),
 		Model:             envOr("PRISM_MODEL", ""), // "" = auto
 		Profile:           envOr("PRISM_PROFILE", "default"),

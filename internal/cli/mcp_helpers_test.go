@@ -122,10 +122,3 @@ func TestRunDispatchSafeSubcommands(t *testing.T) {
 	}
 }
 
-func TestDetectGrovePath(t *testing.T) {
-	// Just exercise the resolution chain; the result depends on the environment
-	// but the function must always return a non-empty path (falls back to "grove").
-	if got := detectGrovePath(); got == "" {
-		t.Error("detectGrovePath returned empty string")
-	}
-}

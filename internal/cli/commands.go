@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -471,43 +470,6 @@ func detectSelfPath() string {
 		return "prism"
 	}
 	return exe
-}
-
-// detectGrovePath returns the absolute path to the grove binary. It searches:
-// 1. Same directory as the running prism binary (most common install layout).
-// 2. ~/bin/grove
-// 3. /usr/local/bin/grove
-// 4. $PATH via exec.LookPath
-// Falls back to "grove" if none found, which will work only if grove is on PATH.
-func detectGrovePath() string {
-	// Same directory as prism — handles ~/bin layout where all binaries live together.
-	if exe, err := os.Executable(); err == nil {
-		candidate := filepath.Join(filepath.Dir(exe), "grove")
-		if isExecutable(candidate) {
-			return candidate
-		}
-	}
-	// ~/bin/grove
-	if home, err := os.UserHomeDir(); err == nil {
-		candidate := filepath.Join(home, "bin", "grove")
-		if isExecutable(candidate) {
-			return candidate
-		}
-	}
-	// /usr/local/bin/grove
-	if isExecutable("/usr/local/bin/grove") {
-		return "/usr/local/bin/grove"
-	}
-	// $PATH
-	if p, err := exec.LookPath("grove"); err == nil {
-		return p
-	}
-	return "grove"
-}
-
-func isExecutable(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
 }
 
 // mcpEntry is the JSON structure every MCP-compatible tool expects.
