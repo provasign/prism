@@ -1,0 +1,14 @@
+*.go merge=fuse
+*.ts merge=fuse
+*.tsx merge=fuse
+*.js merge=fuse
+*.jsx merge=fuse
+*.mjs merge=fuse
+*.cjs merge=fuse
+*.py merge=fuse
+*.java merge=fuse
+*.rs merge=fuse
+*.json merge=fuse
+*.yaml merge=fuse
+*.yml merge=fuse
+*.toml merge=fuse

@@ -35,3 +35,7 @@ vscode-extension/*.vsix
 
 # Provasign (paused) — local daemon state only, not tracked
 .provasign/
+
+# Build artifacts
+/coverage.out
+/.cache/
