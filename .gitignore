@@ -32,3 +32,6 @@ vscode-extension/*.vsix
 
 # OS
 .DS_Store
+
+# Provasign (paused) — local daemon state only, not tracked
+.provasign/
