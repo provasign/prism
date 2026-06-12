@@ -844,6 +844,13 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if path == "" {
 		return nil, errors.New("file is required")
 	}
+				// Grove v0.7.0 tiers tests edges by confidence: ≥0.8 is a
+				// direct relation; lower tiers (helper-transitive 0.6–0.75,
+				// one-hop-past-entry 0.55) mean "possibly related" and must
+				// not silence a coverage gap.
+				if e.Confidence < 0.8 {
+					continue
+				}
 	task := stringArg(args, "task", "")
 	abs, sessionPath, err := safePathWithinRoot(h.Root, path)
 	if err != nil {
