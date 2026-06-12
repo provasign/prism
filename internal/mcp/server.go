@@ -115,11 +115,30 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		}
 		// MCP expects content array with text parts.
 		encoded, _ := json.MarshalIndent(out, "", "  ")
-		return map[string]any{
-			"content": []map[string]string{{"type": "text", "text": string(encoded)}},
-		}, nil
+		content := []map[string]string{{"type": "text", "text": string(encoded)}}
+		// Stale-context delivery: when any recently delivered file changed
+		// on disk, every context-bearing response carries the warning, so
+		// the agent learns mid-task instead of at merge time. Cheap probe
+		// (bounded hash comparison); prism_drift gives symbol-level detail.
+		if contextBearingTool(call.Name) {
+			if warning := s.handler.StaleContextWarning(); warning != "" {
+				content = append(content, map[string]string{"type": "text", "text": warning})
+			}
+		}
+		return map[string]any{"content": content}, nil
 	default:
 		return nil, &rpcError{Code: -32601, Message: "method not found"}
+	}
+}
+
+// contextBearingTool reports whether a tool delivers code context the agent
+// may go on to rely on — the calls worth annotating with staleness warnings.
+func contextBearingTool(name string) bool {
+	switch name {
+	case "prism_query", "prism_read", "prism_search", "prism_lookup":
+		return true
+	default:
+		return false
 	}
 }
 

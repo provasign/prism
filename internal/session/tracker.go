@@ -85,6 +85,29 @@ func (t *Tracker) Lookup(filePath, contentHash string) (*Entry, bool, bool) {
 	return e, true, e.ContentHash == contentHash
 }
 
+// RecentEntries returns copies of up to n entries, most recently used first.
+// Used by drift checks to bound work to the hot working set.
+func (t *Tracker) RecentEntries(n int) []Entry {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if n <= 0 || n > t.lru.Len() {
+		n = t.lru.Len()
+	}
+	out := make([]Entry, 0, n)
+	for el := t.lru.Front(); el != nil && len(out) < n; el = el.Next() {
+		e := *el.Value.(*Entry)
+		if e.SymbolSHAs != nil {
+			shas := make(map[string]string, len(e.SymbolSHAs))
+			for k, v := range e.SymbolSHAs {
+				shas[k] = v
+			}
+			e.SymbolSHAs = shas
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
 // Len returns the number of tracked files.
 func (t *Tracker) Len() int {
 	t.mu.Lock()

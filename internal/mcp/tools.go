@@ -170,6 +170,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolFeedback(ctx, args)
 	case "prism_evidence":
 		return h.toolEvidence(ctx, args)
+	case "prism_drift":
+		return h.toolDrift(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -179,7 +181,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_index",
+		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
@@ -302,6 +304,13 @@ func toolDescription(name string) string {
 	case "prism_savings":
 		return "Return this session's token-savings dashboard: total delivered, " +
 			"percentage saved, per-tool breakdown."
+	case "prism_drift":
+		return "Check whether the ground shifted under you: re-verify every file " +
+			"delivered in this session against the working tree and report, symbol " +
+			"by symbol, what changed/was removed/was added since you saw it — with " +
+			"merge provenance when a Fuse merge caused it. Call this when a stale-" +
+			"context warning appears, before editing files you read a while ago, " +
+			"or after another agent's branch lands."
 	case "prism_feedback":
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."

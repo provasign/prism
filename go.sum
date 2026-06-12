@@ -22,6 +22,8 @@ github.com/provasign/grove v0.5.0 h1:S6gAlojh42AzpQtyRIBe8YutcKjEYKvBIySog4r3IT4
 github.com/provasign/grove v0.5.0/go.mod h1:DbAcj5J8wdPVCUetGn8bEfgW8LPDZNvozgUh/TeDvf4=
 github.com/provasign/grove v0.6.0 h1:CZN7HrzIP/VTNaVssN4JEDKWV91o7YpjGj+xS9UPyEs=
 github.com/provasign/grove v0.6.0/go.mod h1:DbAcj5J8wdPVCUetGn8bEfgW8LPDZNvozgUh/TeDvf4=
+github.com/provasign/grove v0.6.1 h1:WEsLFBJbl+Evimjao8n1YxGK9XoSdjC6SF/En+kvhco=
+github.com/provasign/grove v0.6.1/go.mod h1:DbAcj5J8wdPVCUetGn8bEfgW8LPDZNvozgUh/TeDvf4=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82 h1:6C8qej6f1bStuePVkLSFxoU22XBS165D3klxlzRg8F4=

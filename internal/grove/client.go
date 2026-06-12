@@ -100,6 +100,16 @@ func (c *Client) requireEngine() (*groveeng.Engine, error) {
 	return nil, errors.New("grove engine not open; call EnsureRunning first")
 }
 
+// FileSymbols returns the symbols currently indexed for one repo-relative
+// file path. Used by working-set drift checks.
+func (c *Client) FileSymbols(ctx context.Context, relPath string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(e.FileSymbols(ctx, relPath)), nil
+}
+
 // Status returns the persisted index summary.
 func (c *Client) Status(ctx context.Context) (*StatusResult, error) {
 	e, err := c.requireEngine()

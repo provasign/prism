@@ -58,6 +58,7 @@ Usage:
   prism serve [--port 8888] [dir] Start MCP+HTTP server
   prism mcp [dir]                 Start MCP server on stdio
   prism savings [dir]             Show session savings dashboard
+  prism drift [dir]              Report files/symbols that changed since they were delivered this session
   prism config [dir]              Show resolved configuration
   prism version                   Print version
 
@@ -112,6 +113,8 @@ func Run(args []string) int {
 		return cmdMCP(rest)
 	case "savings":
 		return cmdSavings(rest)
+	case "drift":
+		return cmdDrift(rest)
 	case "config":
 		return cmdConfig(rest)
 	}
@@ -1174,6 +1177,17 @@ func cmdSavings(args []string) int {
 	out, err := invokeWithPersistentLedger(dir, "prism_savings", nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "savings:", err)
+		return 1
+	}
+	printJSON(out)
+	return 0
+}
+
+func cmdDrift(args []string) int {
+	dir := dirArg(args, 0, ".")
+	out, err := invokeWithPersistentLedger(dir, "prism_drift", nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "drift:", err)
 		return 1
 	}
 	printJSON(out)

@@ -2,7 +2,7 @@ module github.com/provasign/prism
 
 go 1.26
 
-require github.com/provasign/grove v0.6.0
+require github.com/provasign/grove v0.6.1
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
