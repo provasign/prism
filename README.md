@@ -70,6 +70,15 @@ The average reduction was **29.6%** with one Prism command instead of 5-6 shell
 commands. The bigger correctness win is that Prism surfaces tests and coverage
 gaps proactively; shell-only workflows often discover those after CI fails.
 
+A controlled A/B re-run (2026-06-12, post Grove-v0.6.2 fixes) on the payflow
+ground-truth project: zero coverage false positives at the tool level, total
+agent-token parity with the shell baseline (the 2026-06-07 run had +27–147%
+overhead), 47 vs 84 tool calls, and the baseline agent missing 3 of 12
+designed coverage gaps that `coverage_gaps` reports mechanically. Repeat
+reads cost 29 tokens (95% saved); a rename under the agent's feet is reported
+as one breaking `renamed` entry for ~130 tokens. Full report:
+[docs/AB-Test-Payflow-2026-06-12.md](docs/AB-Test-Payflow-2026-06-12.md).
+
 More detail, including repeat-read savings: [provasign.dev/prism](https://provasign.dev/prism/).
 
 ---
@@ -191,10 +200,12 @@ prism init . --mode cli   # CLI only: for environments without MCP support
 
 ### MCP
 
-MCP exposes `prism_query`, `prism_read`, `prism_search`, `prism_lookup`,
-`prism_index`, `prism_savings`, `prism_feedback`, `prism_compact`, and
-`prism_evidence`. Use MCP when the client has first-class MCP support and you
-want persistent session deduplication.
+MCP advertises six tools: `prism_query`, `prism_read`, `prism_search`,
+`prism_lookup`, `prism_index`, and `prism_drift`. The auxiliary tools
+(`prism_savings`, `prism_feedback`, `prism_compact`, `prism_evidence`) stay
+available through the CLI and HTTP server without spending schema tokens in
+every MCP session. Use MCP when the client has first-class MCP support and
+you want persistent session deduplication.
 
 ### HTTP Server
 
