@@ -1,0 +1,74 @@
+shale_version: "0"
+id: cbdd4dba-d2f4-4134-97f1-ba4d0bed410a
+created_at: 2026-06-12T17:46:32.826073Z
+finalized_at: 2026-06-12T18:20:48.733562Z
+agent:
+    tool: claude-code
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: LICENSE
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-06-12T18:03:26.944375Z
+    - path: NOTICE
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-06-12T18:03:26.990875Z
+commands:
+    - cmd: 'gh issue view 5 --repo provasign/shale --json title,body,author,createdAt -q ''{title: .title, author: .author.login, createdAt: .createdAt, body: .body}'''
+      at: 2026-06-12T17:50:06.454021Z
+      classified: other
+    - cmd: 'gh repo view provasign/shale --json visibility,licenseInfo -q ''{visibility: .visibility, license: .licenseInfo.key}''; gh repo view provasign/prism --json visibility,licenseInfo -q ''{visibility: .visibility, license: .licenseInfo.key}''; gh repo view provasign/fuse --json visibility,licenseInfo -q ''{visibility: .visibility, license: .licenseInfo.key}''; gh repo view provasign/grove --json visibility,licenseInfo -q ''{visibility: .visibility, license: .licenseInfo.key}'' 2>&1'
+      at: 2026-06-12T17:50:32.143705Z
+      classified: other
+    - cmd: for r in prism fuse grove shale; do echo "== $r =="; gh api repos/provasign/$r/contributors -q '.[].login' 2>&1; done
+      at: 2026-06-12T17:55:38.308478Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism; echo ---; ls /Users/tapabratapal/Projects/provasign/
+      at: 2026-06-12T18:01:53.949333Z
+      classified: other
+    - cmd: gh api orgs/provasign/repos -q '.[].name'; echo ---; gh api repos/provasign/provasign.github.io/pages 2>&1 | head -5
+      at: 2026-06-12T18:01:58.49163Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/provasign.github.io/; echo ---; cd /Users/tapabratapal/Projects/provasign/provasign.github.io && git status --short --branch && git log --oneline -3
+      at: 2026-06-12T18:02:15.169549Z
+      classified: other
+    - cmd: grep -rn -i "MIT" /Users/tapabratapal/Projects/provasign/prism/README.md /Users/tapabratapal/Projects/provasign/prism/.goreleaser* /Users/tapabratapal/Projects/provasign/prism/docs 2>/dev/null | grep -vi commit | head -20
+      at: 2026-06-12T18:02:30.679894Z
+      classified: other
+    - cmd: grep -rn -il "MIT" /Users/tapabratapal/Projects/provasign/prism --include="*.md" --include="*.yml" --include="*.yaml" --include="*.rb" --include="*.json" 2>/dev/null | grep -v node_modules | head; echo ---; ls /Users/tapabratapal/Projects/provasign/prism/scripts /Users/tapabratapal/Projects/provasign/prism/.github/workflows 2>/dev/null
+      at: 2026-06-12T18:02:38.047796Z
+      classified: other
+    - cmd: grep -n -i "license" /Users/tapabratapal/Projects/provasign/prism/README.md /Users/tapabratapal/Projects/provasign/prism/.github/workflows/release.yml 2>/dev/null; find /Users/tapabratapal/Projects/provasign/prism -maxdepth 1 -name "*.goreleaser*" -o -maxdepth 1 -name "goreleaser*"; grep -rn -i "license" /Users/tapabratapal/Projects/provasign/prism/prism.yaml 2>/dev/null
+      at: 2026-06-12T18:02:45.257967Z
+      classified: other
+    - cmd: chmod +x /Users/tapabratapal/Projects/provasign/scripts-relicense-apache2.sh && /Users/tapabratapal/Projects/provasign/scripts-relicense-apache2.sh
+      at: 2026-06-12T18:04:07.026338Z
+      classified: other
+    - cmd: cd /tmp/vision-preview && sips -g pixelWidth -g pixelHeight vision-full.png | tail -2 && sips -c 3300 1440 --cropOffset 0 0 vision-full.png --out vision-p1.png >/dev/null 2>&1 && sips -c 3300 1440 --cropOffset 3300 0 vision-full.png --out vision-p2.png >/dev/null 2>&1 && ls -la vision-p*.png
+      at: 2026-06-12T18:15:48.840497Z
+      classified: other
+    - cmd: cd /tmp/vision-preview && sips -c 900 1440 --cropOffset 600 0 vision-full.png --out check-prism.png >/dev/null 2>&1 && sips -c 1100 1440 --cropOffset 3650 0 vision-full.png --out check-loop.png >/dev/null 2>&1 && echo done
+      at: 2026-06-12T18:16:26.126649Z
+      classified: other
+    - cmd: cd /tmp/vision-preview && sips -c 1000 1440 --cropOffset 1500 0 vision-full.png --out check-act1.png >/dev/null 2>&1 && sips -c 1300 1440 --cropOffset 2450 0 vision-full.png --out check-act23.png >/dev/null 2>&1 && echo done
+      at: 2026-06-12T18:16:51.835786Z
+      classified: other
+    - cmd: head -12 /Users/tapabratapal/Projects/provasign/provasign.github.io/prism.md /Users/tapabratapal/Projects/provasign/provasign.github.io/fuse.md
+      at: 2026-06-12T18:20:03.56557Z
+      classified: other
+    - cmd: grep -H "nav_order\|^title" /Users/tapabratapal/Projects/provasign/provasign.github.io/*.md /Users/tapabratapal/Projects/provasign/provasign.github.io/docs/*.md 2>/dev/null | head -20
+      at: 2026-06-12T18:20:12.067223Z
+      classified: other
+    - cmd: grep -H "nav_order:\|^title:" /Users/tapabratapal/Projects/provasign/provasign.github.io/*.md; find /Users/tapabratapal/Projects/provasign/provasign.github.io -name "*.md" -not -path "*/vendor/*" | head
+      at: 2026-06-12T18:20:16.995631Z
+      classified: other
+notes: []
+redactions: 0

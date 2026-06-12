@@ -1,0 +1,199 @@
+shale_version: "0"
+id: d8325d95-32c5-403e-bf9b-31c3836d7af2
+created_at: 2026-06-12T17:11:41.625644Z
+finalized_at: 2026-06-12T18:20:48.733562Z
+agent:
+    tool: claude-code
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-12T17:24:07.920904Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-12T17:28:18.350131Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-12T17:31:02.594476Z
+    - path: internal/cli/commands_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-12T17:35:12.547832Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-12T17:35:33.335729Z
+    - path: .mcp.json
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-06-12T17:38:12.253054Z
+commands:
+    - cmd: grep -ril "java" /Users/tapabratapal/Projects/provasign/prism --include="*.go" -l | head -20
+      at: 2026-06-12T17:11:57.034778Z
+      classified: other
+    - cmd: grep -ril "java" /Users/tapabratapal/Projects/provasign/prism/internal /Users/tapabratapal/Projects/provasign/prism/cmd 2>/dev/null; echo ---; ls /Users/tapabratapal/Projects/provasign/prism/internal
+      at: 2026-06-12T17:12:02.266987Z
+      classified: other
+    - cmd: grep -n -i "java" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go; echo ---; grep -rn -il "java" /Users/tapabratapal/Projects/provasign/grove/internal 2>/dev/null | head; echo ---; ls /Users/tapabratapal/Projects/provasign/grove/internal 2>/dev/null
+      at: 2026-06-12T17:12:11.302013Z
+      classified: other
+    - cmd: grep -r "Java\|java" /Users/tapabratapal/Projects/provasign/grove/internal/native/java.go | grep -E "^[a-zA-Z].*func|type " | head -5
+      at: 2026-06-12T17:13:37.743482Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && prism query "What breaks if I change Java extraction?" --terms java --include graph,tests --depth 3 --format text 2>&1 | head -100
+      at: 2026-06-12T17:13:46.265713Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign -name "*.go" -type f ! -path "*/.cache/*" ! -path "*/.git/*" -exec grep -l "javaVisit\|javaAnalyzer" {} \;
+      at: 2026-06-12T17:14:35.894922Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && prism index --format text 2>&1 | head -20
+      at: 2026-06-12T17:14:46.329777Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep "^func " grove/internal/native/java.go astkit/strategies/extractors.go | grep -i java
+      at: 2026-06-12T17:14:49.949512Z
+      classified: other
+    - cmd: pwd && cd /Users/tapabratapal/Projects/provasign && prism query "What calls extractJavaNodes" --terms extractJavaNodes --include graph --format text 2>&1
+      at: 2026-06-12T17:14:57.185974Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && prism query "What calls Java extraction" --terms extractJavaNodes --include graph --depth 3 --format text 2>&1 | head -150
+      at: 2026-06-12T17:15:01.949503Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -r "extractJavaNodes" --include="*.go" . 2>/dev/null | grep -v ".cache" | grep -v test
+      at: 2026-06-12T17:15:05.499694Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -r "registry" astkit --include="*.go" | grep -E "import|Registry|Extract" | head -20
+      at: 2026-06-12T17:15:08.406214Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/prism/.mcp.json 2>/dev/null; echo ---; cat /Users/tapabratapal/Projects/provasign/.mcp.json 2>/dev/null
+      at: 2026-06-12T17:17:26.815378Z
+      classified: other
+    - cmd: grep -m5 "^func " /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-06-12T17:17:43.725596Z
+      classified: other
+    - cmd: grep -n '"dir"' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head; echo ---; grep -n "dir" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | grep -iv "directory\|drift" | head -20
+      at: 2026-06-12T17:17:59.65448Z
+      classified: other
+    - cmd: sed -n 255,320p /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-06-12T17:18:23.739544Z
+      classified: other
+    - cmd: |-
+        echo "=== user-level (~/.claude.json mcpServers) ==="; python3 -c "
+        import json
+        d = json.load(open('/Users/tapabratapal/.claude.json'))
+        print(json.dumps(d.get('mcpServers', {}), indent=1))
+        for proj, cfg in d.get('projects', {}).items():
+            if cfg.get('mcpServers'):
+                print(proj, '->', json.dumps(cfg['mcpServers'], indent=1))
+        " 2>/dev/null; echo "=== prism/.cursor/mcp.json ==="; cat /Users/tapabratapal/Projects/provasign/prism/.cursor/mcp.json 2>/dev/null; echo; echo "=== prism/.windsurf ==="; ls -la /Users/tapabratapal/Projects/provasign/prism/.windsurf/ 2>/dev/null; cat /Users/tapabratapal/Projects/provasign/prism/.windsurf/mcp.json 2>/dev/null
+      at: 2026-06-12T17:20:39.54301Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign && for d in . grove fuse astkit shale; do echo "--- $d: repo=$(git -C $d rev-parse --show-toplevel 2>/dev/null || echo none)"; ls $d/.mcp.json 2>/dev/null && cat $d/.mcp.json; done 2>/dev/null; ls'
+      at: 2026-06-12T17:22:28.303744Z
+      classified: other
+    - cmd: grep -n "func (h \*Handler)\|case \"prism_\|stringArg(args" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -50
+      at: 2026-06-12T17:22:46.761375Z
+      classified: other
+    - cmd: grep -n "type queryResult\|type rankedSymbol\|type Handler struct" -A 12 /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -45
+      at: 2026-06-12T17:23:28.136591Z
+      classified: other
+    - cmd: grep -n '"dir"' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-06-12T17:26:34.412701Z
+      classified: other
+    - cmd: gofmt -l internal/mcp/ && go build ./... && go test ./internal/mcp/ 2>&1 | tail -5
+      at: 2026-06-12T17:27:21.360547Z
+      classified: test
+    - cmd: ls internal/mcp/*_test.go && grep -n "func Test" internal/mcp/*_test.go | head -20
+      at: 2026-06-12T17:27:27.241056Z
+      classified: other
+    - cmd: sed -n 1,70p internal/mcp/coverage_test.go
+      at: 2026-06-12T17:27:53.703814Z
+      classified: other
+    - cmd: grep -n "func TestInvoke_Savings" -A 12 internal/mcp/coverage_test.go | tail -4
+      at: 2026-06-12T17:28:02.98464Z
+      classified: other
+    - cmd: grep -n '"path/filepath"' internal/mcp/coverage_test.go || sed -i '' 's|"encoding/json"|"encoding/json"\n\t"path/filepath"|' internal/mcp/coverage_test.go; go test ./internal/mcp/ -run "TestInvoke_Dir|TestSameRoot|TestQueryEmpty|TestDirRemoved" -v 2>&1 | tail -15
+      at: 2026-06-12T17:28:51.728801Z
+      classified: test
+    - cmd: 'go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "ALL: $?"'
+      at: 2026-06-12T17:29:05.61962Z
+      classified: test
+    - cmd: ls -la /Users/tapabratapal/bin/prism /Users/tapabratapal/bin/fuse; /Users/tapabratapal/bin/prism --version 2>/dev/null || /Users/tapabratapal/bin/prism version 2>/dev/null; grep -rn "bin/prism\|install" Makefile 2>/dev/null | head -5
+      at: 2026-06-12T17:29:20.468926Z
+      classified: other
+    - cmd: sed -n 1,25p Makefile; echo ---; which prism; echo GOBIN=$(go env GOBIN) GOPATH=$(go env GOPATH)
+      at: 2026-06-12T17:29:27.747392Z
+      classified: other
+    - cmd: grep -rn "mcp.json\|\"mcp\"" internal/cli/*.go | grep -in "write\|render\|args\|template" | head; grep -rln "mcpServers" internal/
+      at: 2026-06-12T17:29:39.9637Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/cli/ 2>&1 | tail -20
+      at: 2026-06-12T17:31:15.581408Z
+      classified: test
+    - cmd: cat /Users/tapabratapal/.codex/config.toml 2>/dev/null | tail -20
+      at: 2026-06-12T17:31:44.249983Z
+      classified: other
+    - cmd: |-
+        grep -n "ensureClaudeCodeApproval" internal/cli/commands.go | head -3; python3 -c "
+        import json
+        d = json.load(open('/Users/tapabratapal/.claude.json'))
+        hits = [p for p in d.get('projects', {}) if '/T/Test' in p or 'TestInit' in p]
+        print('temp-dir project entries in ~/.claude.json:', len(hits))
+        for h in hits[:5]: print(' ', h)
+        "
+      at: 2026-06-12T17:32:03.058844Z
+      classified: other
+    - cmd: grep -n "initRegisterMCPTools(" internal/cli/*_test.go
+      at: 2026-06-12T17:33:26.266006Z
+      classified: other
+    - cmd: grep -n 'Run(\[\]string{"init\|Run(\[\]string{"install\|cmdInit' internal/cli/*_test.go
+      at: 2026-06-12T17:34:55.925249Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/cli/ 2>&1 | tail -5 && go test ./... 2>&1 | grep -v "no test files" | grep -cv "^ok" ; grep -c "mcp_servers.prism" ~/.codex/config.toml
+      at: 2026-06-12T17:36:31.501031Z
+      classified: test
+    - cmd: go build -o /Users/tapabratapal/bin/prism ./cmd/prism && /Users/tapabratapal/bin/prism version
+      at: 2026-06-12T17:36:53.237833Z
+      classified: build
+    - cmd: cat internal/version/*.go; grep -rn "ldflags" .goreleaser* Makefile scripts/ 2>/dev/null | head -5
+      at: 2026-06-12T17:37:01.310255Z
+      classified: other
+    - cmd: git tag --sort=-v:refname | head -3; go build -ldflags "-X github.com/provasign/prism/internal/version.Version=v0.7.0-dev+dirfix" -o /Users/tapabratapal/bin/prism ./cmd/prism && /Users/tapabratapal/bin/prism version
+      at: 2026-06-12T17:37:11.003385Z
+      classified: build
+    - cmd: |-
+        cp ~/.claude.json ~/.claude.json.bak-mcp-consolidation && python3 -c "
+        import json
+        p = '/Users/tapabratapal/.claude.json'
+        d = json.load(open(p))
+        g = d['projects'].get('/Users/tapabratapal/Projects/provasign/grove', {})
+        removed = g.pop('mcpServers', None)
+        json.dump(d, open(p, 'w'), indent=2)
+        print('removed local-scope servers:', list(removed or {}))
+        "
+      at: 2026-06-12T17:38:21.785321Z
+      classified: other
+    - cmd: 'go vet ./... && gofmt -l internal cmd; echo "lint: $?"; go test ./... 2>&1 | grep -v "no test files" | grep -v "^ok" | head -3; echo done'
+      at: 2026-06-12T17:38:59.573622Z
+      classified: lint
+    - cmd: git status --short internal/cli/mcp_helpers_test.go internal/grove/graph_test.go; gofmt -d internal/cli/commands_test.go | head -20
+      at: 2026-06-12T17:39:11.263622Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands_test.go && go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -2
+      at: 2026-06-12T17:39:29.179951Z
+      classified: test
+notes: []
+redactions: 0

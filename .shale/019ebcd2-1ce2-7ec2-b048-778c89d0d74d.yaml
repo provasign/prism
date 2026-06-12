@@ -1,0 +1,153 @@
+shale_version: "0"
+id: 019ebcd2-1ce2-7ec2-b048-778c89d0d74d
+created_at: 2026-06-12T17:14:34.941888Z
+finalized_at: 2026-06-12T18:20:48.733562Z
+agent:
+    tool: codex
+    model: gpt-5.5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: pwd; rg -n "(/tmp|/private/tmp|shale|grove|fuse|benchmark|smoke)" .agents .codex .shale 2>/dev/null
+      at: 2026-06-12T17:31:43.181863Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects -maxdepth 4 -type d \( -name .git -o -name .shale \) 2>/dev/null | sed 's#/\.git$##; s#/\.shale$##' | sort -u | rg 'provasign|shale|prism|grove|fuse'
+      at: 2026-06-12T17:31:43.185014Z
+      classified: other
+    - cmd: find /private/tmp /tmp -maxdepth 3 -type d \( -iname '*shale*' -o -iname '*prism*' -o -iname '*grove*' -o -iname '*fuse*' -o -iname '*provasign*' \) 2>/dev/null | sort | head -200
+      at: 2026-06-12T17:31:43.24064Z
+      classified: other
+    - cmd: find /private/tmp /tmp -maxdepth 2 -type d \( -iname '*shale*' -o -iname '*prism*' -o -iname '*grove*' -o -iname '*fuse*' -o -iname '*provasign*' \) 2>/dev/null | sort | while read d; do printf '%s\t' "$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' "$d" 2>/dev/null)"; printf '%s\t' "$d"; if test -d "$d/.git"; then git -C "$d" remote -v 2>/dev/null | head -1 | awk '{print $2}'; else printf '\n'; fi; done
+      at: 2026-06-12T17:31:50.041994Z
+      classified: other
+    - cmd: find /private/tmp -maxdepth 3 -type f \( -name 'go.mod' -o -name 'package.json' -o -name 'pyproject.toml' -o -name 'requirements.txt' -o -name 'Cargo.toml' -o -name 'README*' -o -name '*.md' \) 2>/dev/null | rg '/(shale|prism|grove|fuse|provasign)' | sort
+      at: 2026-06-12T17:32:57.537568Z
+      classified: other
+    - cmd: find /private/tmp /tmp -maxdepth 2 -type d \( -iname '*shale*' -o -iname '*prism*' -o -iname '*grove*' -o -iname '*fuse*' -o -iname '*provasign*' \) 2>/dev/null | sort | while read d; do if test -d "$d/.git"; then printf 'GIT\t%s\t' "$d"; git -C "$d" remote -v 2>/dev/null | head -1 | awk '{print $2}'; fi; done
+      at: 2026-06-12T17:32:57.582438Z
+      classified: other
+    - cmd: find /private/tmp /tmp -maxdepth 2 -type d \( -iname '*shale*' -o -iname '*prism*' -o -iname '*grove*' -o -iname '*fuse*' -o -iname '*provasign*' \) 2>/dev/null | sort | while read d; do count=$(find "$d" -maxdepth 2 -type f 2>/dev/null | wc -l | tr -d ' '); printf '%s\t%s\n' "$count" "$d"; done
+      at: 2026-06-12T17:32:57.667661Z
+      classified: other
+    - cmd: find /private/tmp/fuse-action-test.KAc8 /private/tmp/fuse-drift-e2e /private/tmp/fuse-init-smoke /private/tmp/grove-bugtest /private/tmp/grove-pytest /private/tmp/prism-ab-bench /private/tmp/prism-bench-2026-06-08 /private/tmp/provasign-release-test /private/tmp/shale-dist /private/tmp/shale-release-check -maxdepth 3 -type f 2>/dev/null | sort
+      at: 2026-06-12T17:33:06.012546Z
+      classified: test
+    - cmd: find /private/tmp/fuse-corpus -maxdepth 2 -mindepth 1 -type d 2>/dev/null | sort | while read d; do printf '%s\t' "$d"; test -d "$d/.git" && git -C "$d" remote -v 2>/dev/null | head -1 | awk '{printf "%s",$2}'; printf '\n'; done
+      at: 2026-06-12T17:33:06.098528Z
+      classified: other
+    - cmd: for d in /private/tmp/fuse-action-test.KAc8 /private/tmp/fuse-bench-gin /private/tmp/fuse-drift-e2e /private/tmp/fuse-init-smoke /private/tmp/homebrew-shale /private/tmp/provasign-github /private/tmp/provasign-org-profile /private/tmp/shale-action; do test -d "$d/.git" || continue; echo "$d"; git -C "$d" status --short; git -C "$d" log --oneline -3 2>/dev/null; done
+      at: 2026-06-12T17:33:06.130552Z
+      classified: other
+    - cmd: for f in /private/tmp/prism-ab-bench/mcp_scenarios.py /private/tmp/prism-bench-2026-06-08/S1_shell.txt /private/tmp/prism-bench-2026-06-08/S1_mcp.json /private/tmp/fuse-drift-e2e/auth.go /private/tmp/fuse-action-test.KAc8/x.go /private/tmp/grove-bugtest/main.go /private/tmp/grove-bugtest/svc.py /private/tmp/grove-pytest/main.py /private/tmp/grove-pytest/pkg/sub.py; do echo '---' "$f"; sed -n '1,160p' "$f" 2>/dev/null; done
+      at: 2026-06-12T17:33:14.227135Z
+      classified: test
+    - cmd: find /private/tmp/prism-ab-bench /private/tmp/prism-bench-2026-06-08 -maxdepth 3 -type f -print -exec wc -c {} \; 2>/dev/null
+      at: 2026-06-12T17:33:14.269907Z
+      classified: other
+    - cmd: for d in /private/tmp/fuse-corpus/django /private/tmp/fuse-corpus/express /private/tmp/fuse-corpus/flask /private/tmp/fuse-corpus/gin /private/tmp/fuse-corpus/grafana /private/tmp/fuse-corpus/prometheus /private/tmp/fuse-corpus/requests /private/tmp/fuse-corpus/socket.io /private/tmp/fuse-bench-gin; do test -d "$d/.git" || continue; printf '%s\t' "$d"; git -C "$d" rev-parse --short HEAD; done
+      at: 2026-06-12T17:33:14.282152Z
+      classified: other
+    - cmd: find /private/tmp/prism-ab-bench/payflow -maxdepth 4 -type f ! -path '*/.git/*' ! -path '*/.grove/*' -print | sort -exec sed -n '1,80p' {} \;
+      at: 2026-06-12T17:33:19.705416Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign -maxdepth 3 -type f \( -iname '*bench*' -o -iname '*corpus*' -o -iname '*fixture*' -o -iname '*smoke*' \) 2>/dev/null | sort | rg '(prism|grove|fuse|shale)'
+      at: 2026-06-12T17:33:19.728861Z
+      classified: other
+    - cmd: find /private/tmp/fuse-corpus -maxdepth 3 -name '.grove' -type d -print | while read d; do du -sh "$d"; done
+      at: 2026-06-12T17:33:19.728738Z
+      classified: other
+    - cmd: find /private/tmp/prism-ab-bench/payflow -maxdepth 4 -type f ! -path '*/.git/*' ! -path '*/.grove/*' -print 2>/dev/null | sort | while read f; do echo '---' "$f"; sed -n '1,120p' "$f"; done
+      at: 2026-06-12T17:33:23.398873Z
+      classified: other
+    - cmd: rg -n "payflow|prism-ab-bench|fuse-corpus|fuse-drift-e2e|fuse-action-test|grove-bugtest|grove-pytest|S1_mcp|mcp_scenarios" /Users/tapabratapal/Projects/provasign/prism /Users/tapabratapal/Projects/provasign/fuse /Users/tapabratapal/Projects/provasign/grove /Users/tapabratapal/Projects/provasign/shale 2>/dev/null
+      at: 2026-06-12T17:33:29.670555Z
+      classified: test
+    - cmd: find /Users/tapabratapal/Projects/provasign/fuse /Users/tapabratapal/Projects/provasign/grove /Users/tapabratapal/Projects/provasign/prism -maxdepth 4 -type d \( -iname '*fixture*' -o -iname '*bench*' -o -iname '*testdata*' -o -iname '*corpus*' \) 2>/dev/null | sort
+      at: 2026-06-12T17:33:30.06982Z
+      classified: other
+    - cmd: sed -n '1,230p' docs/AB-Test-Payflow-2026-06-12.md
+      at: 2026-06-12T17:33:35.603776Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/grove/testdata -maxdepth 4 -type f | sort | head -120
+      at: 2026-06-12T17:33:35.6067Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/fuse -maxdepth 4 -type f | rg '(testdata|fixture|bench|corpus|smoke|drift)' | sort | head -160
+      at: 2026-06-12T17:33:35.628667Z
+      classified: other
+    - cmd: rm -rf /private/tmp/provasign-test-fixtures && mkdir -p /private/tmp/provasign-test-fixtures/prism/payflow /private/tmp/provasign-test-fixtures/prism/results/2026-06-08 /private/tmp/provasign-test-fixtures/fuse/fixtures /private/tmp/provasign-test-fixtures/grove/fixtures /private/tmp/provasign-test-fixtures/corpora && rsync -a --exclude='.git' --exclude='.grove' /private/tmp/prism-ab-bench/payflow/ /private/tmp/provasign-test-fixtures/prism/payflow/ && cp /private/tmp/prism-ab-bench/mcp_scenarios.py /private/tmp/provasign-test-fixtures/prism/mcp_scenarios.py && rsync -a /private/tmp/prism-bench-2026-06-08/ /private/tmp/provasign-test-fixtures/prism/results/2026-06-08/ && rsync -a --exclude='.git' --exclude='.grove' /private/tmp/fuse-drift-e2e/ /private/tmp/provasign-test-fixtures/fuse/fixtures/drift-e2e/ && rsync -a --exclude='.git' --exclude='.grove' /private/tmp/fuse-action-test.KAc8/ /private/tmp/provasign-test-fixtures/fuse/fixtures/action-merge/ && rsync -a --exclude='.git' --exclude='.grove' /private/tmp/grove-bugtest/ /private/tmp/provasign-test-fixtures/grove/fixtures/bugtest/ && rsync -a --exclude='.git' --exclude='.grove' /private/tmp/grove-pytest/ /private/tmp/provasign-test-fixtures/grove/fixtures/pytest-import/ && find /private/tmp/provasign-test-fixtures -maxdepth 4 -type f | sort
+      at: 2026-06-12T17:35:56.866903Z
+      classified: test
+    - cmd: command -v gitleaks || true; command -v trufflehog || true; command -v detect-secrets || true
+      at: 2026-06-12T17:36:34.057717Z
+      classified: scan
+    - cmd: rg -n --hidden --glob '!.git/**' --glob '!.grove/**' --glob '!*.db' --glob '!*.tar.gz' --glob '!*.zip' --glob '!*.sha256' --glob '!checksums.txt' -i "(secret|password|passwd|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|authorization:|bearer |BEGIN (RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16})" /private/tmp/provasign-test-fixtures /private/tmp/prism-ab-bench/payflow /private/tmp/prism-ab-bench/mcp_scenarios.py /private/tmp/prism-bench-2026-06-08 /private/tmp/fuse-drift-e2e /private/tmp/fuse-action-test.KAc8 /private/tmp/grove-bugtest /private/tmp/grove-pytest
+      at: 2026-06-12T17:36:34.065833Z
+      classified: test
+    - cmd: find /private/tmp/provasign-test-fixtures -type f -maxdepth 8 -print | sort | wc -l && find /private/tmp/provasign-test-fixtures -type d \( -name .git -o -name .grove \) -print
+      at: 2026-06-12T17:36:34.095546Z
+      classified: other
+    - cmd: rg -n --hidden --pcre2 --glob '!.git/**' --glob '!.grove/**' --glob '!*.db' "(ghp_[A-Za-z0-9_]{36}|github_pat_[A-Za-z0-9_]{22,}_[A-Za-z0-9_]{59,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{32,}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|[A-Za-z0-9+/]{40,}={0,2})" /private/tmp/provasign-test-fixtures
+      at: 2026-06-12T17:36:42.386109Z
+      classified: other
+    - cmd: find /private/tmp/provasign-test-fixtures -type f -maxdepth 8 -print0 | xargs -0 file | rg -v 'text|JSON|Python|Go source|ASCII|Unicode|empty'
+      at: 2026-06-12T17:36:42.432503Z
+      classified: other
+    - cmd: du -sh /private/tmp/provasign-test-fixtures && find /private/tmp/provasign-test-fixtures -type f -maxdepth 8 -print | sort
+      at: 2026-06-12T17:36:42.431848Z
+      classified: other
+    - cmd: sed -n '1,220p' /private/tmp/provasign-test-fixtures/prism/mcp_scenarios.py
+      at: 2026-06-12T17:36:48.0703Z
+      classified: other
+    - cmd: go test ./...
+      at: 2026-06-12T17:37:02.938982Z
+      classified: test
+    - cmd: rg -n --hidden --glob '!.git/**' --glob '!.grove/**' -i "(password\s*=|passwd\s*=|secret\s*=|api[_-]?key\s*=|access[_-]?key\s*=|client[_-]?secret\s*=|private[_-]?key\s*=|authorization:\s*bearer\s+[A-Za-z0-9._~+/=-]{12,})" /private/tmp/provasign-test-fixtures
+      at: 2026-06-12T17:37:02.958407Z
+      classified: other
+    - cmd: python3 -m py_compile /private/tmp/provasign-test-fixtures/prism/mcp_scenarios.py
+      at: 2026-06-12T17:37:02.959311Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/provasign-test-fixtures/.cache/go-build /private/tmp/provasign-test-fixtures/.cache/home && GOCACHE=/private/tmp/provasign-test-fixtures/.cache/go-build HOME=/private/tmp/provasign-test-fixtures/.cache/home go test ./...
+      at: 2026-06-12T17:37:11.572444Z
+      classified: test
+    - cmd: rm -rf /private/tmp/provasign-test-fixtures/.cache && git init -b main && git status --short
+      at: 2026-06-12T17:37:18.031567Z
+      classified: other
+    - cmd: find . -type d \( -name .grove -o -name .git -o -name .cache \) -print
+      at: 2026-06-12T17:37:23.783096Z
+      classified: other
+    - cmd: git diff --stat --no-index /dev/null . 2>/dev/null | tail -40
+      at: 2026-06-12T17:37:23.785177Z
+      classified: other
+    - cmd: rg -n --hidden --pcre2 --glob '!.git/**' "(ghp_[A-Za-z0-9_]{36}|github_pat_[A-Za-z0-9_]{22,}_[A-Za-z0-9_]{59,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{32,}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)" .
+      at: 2026-06-12T17:37:23.795127Z
+      classified: other
+    - cmd: git add . && git commit -m "Initial reusable Provasign test fixtures"
+      at: 2026-06-12T17:37:27.007779Z
+      classified: other
+    - cmd: rm -rf prism/__pycache__ && git rm -r --cached prism/__pycache__
+      at: 2026-06-12T17:38:03.764441Z
+      classified: other
+    - cmd: git add .gitignore && git commit --amend --no-edit && git status --short && git ls-files | rg '(__pycache__|\.pyc|\.grove|\.cache)' || true
+      at: 2026-06-12T17:39:06.95883Z
+      classified: other
+    - cmd: gh repo view provasign/test-fixtures --json nameWithOwner,visibility >/tmp/test-fixtures-view.json 2>/tmp/test-fixtures-view.err || gh repo create provasign/test-fixtures --private --description "Reusable benchmark and smoke-test fixtures for Provasign projects" --source /private/tmp/provasign-test-fixtures --remote origin
+      at: 2026-06-12T17:39:17.410064Z
+      classified: other
+    - cmd: git push -u origin main
+      at: 2026-06-12T17:39:21.475334Z
+      classified: other
+    - cmd: git status --short && git rev-parse --short HEAD && git remote -v
+      at: 2026-06-12T17:39:27.075417Z
+      classified: other
+    - cmd: git ls-tree -r --name-only HEAD | wc -l && git ls-tree -r --name-only HEAD | rg '(__pycache__|\.pyc|\.grove|\.cache|\.git/fuse|\.tar\.gz|\.zip|\.sha256|checksums\.txt)' || true
+      at: 2026-06-12T17:39:27.075416Z
+      classified: other
+    - cmd: gh repo view provasign/test-fixtures --json nameWithOwner,visibility,url,defaultBranchRef -q '.nameWithOwner + " " + .visibility + " " + .url + " default=" + .defaultBranchRef.name'
+      at: 2026-06-12T17:39:31.002028Z
+      classified: other
+notes: []
+redactions: 0

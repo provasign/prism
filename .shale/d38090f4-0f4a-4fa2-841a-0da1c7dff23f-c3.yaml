@@ -1,0 +1,1092 @@
+shale_version: "0"
+id: d38090f4-0f4a-4fa2-841a-0da1c7dff23f-c3
+created_at: 2026-06-12T14:06:17.181103Z
+finalized_at: 2026-06-12T18:20:48.733562Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git add .shale/d38090f4-0f4a-4fa2-841a-0da1c7dff23f-c2.yaml && git commit -m "chore(shale): continuation evidence for session d38090f4 (shale v0.1.21)
+
+        The closing 'shale done' note for the provasign cleanup raced the pre-push
+        finalize under shale v0.1.20 and was left out of the published evidence;
+        v0.1.21 folds such remnants into a continuation file.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push origin main 2>&1
+      at: 2026-06-12T14:06:17.181103Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/Projects/provasign/shale-test-bed/ && git -C /Users/tapabratapal/Projects/provasign/shale-test-bed log --oneline -5 2>/dev/null && git -C /Users/tapabratapal/Projects/provasign/shale-test-bed remote -v && git -C /Users/tapabratapal/Projects/provasign/shale-test-bed status --short
+      at: 2026-06-12T14:08:33.014802Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/shale-test-bed/.shale/ /Users/tapabratapal/Projects/provasign/shale-test-bed/.shale/local/ 2>/dev/null; cat /Users/tapabratapal/Projects/provasign/shale-test-bed/.git/hooks/pre-push 2>/dev/null; ls /Users/tapabratapal/Projects/provasign/shale-test-bed/.github/workflows/ && grep -n "uses:\|on:" /Users/tapabratapal/Projects/provasign/shale-test-bed/.github/workflows/*.yml | head; echo ----; shale doctor 2>&1 | head -5
+      at: 2026-06-12T14:09:26.1952Z
+      classified: other
+    - cmd: |-
+        TB=/Users/tapabratapal/Projects/provasign/shale-test-bed
+        SID=$(uuidgen | tr 'A-Z' 'a-z')
+        echo "session: $SID" > /tmp/shale-test-sid.txt
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"SessionStart","model":"claude-fable-5"}' "$SID" "$TB" | shale capture claude-code
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"UserPromptSubmit","prompt":"Add input validation to the parser, then retire the legacy capture note. My token is [REDACTED:github-token] by the way."}' "$SID" "$TB" | shale capture claude-code
+        cat "$TB/.shale/local/current"
+      at: 2026-06-12T14:10:10.148326Z
+      classified: other
+    - cmd: |-
+        TB=/Users/tapabratapal/Projects/provasign/shale-test-bed
+        SID=720d6a8e-c305-4a2e-a7c5-343ac19395df
+        cd "$TB" && shale intent "Add input validation to the parser" --body "Task 1: reject empty and oversized inputs before parse. Tests required."
+        mkdir -p internal/parser
+        cat > internal/parser/validate.go <<'EOF'
+        package parser
+
+        import "errors"
+
+        // Validate rejects input the parser must never see.
+        func Validate(s string) error {
+        	if s == "" {
+        		return errors.New("empty input")
+        	}
+        	if len(s) > 1<<16 {
+        		return errors.New("input too large")
+        	}
+        	return nil
+        }
+        EOF
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"%s/internal/parser/validate.go"}}' "$SID" "$TB" "$TB" | shale capture claude-code
+        printf '// validation wired in by test session\n' >> main.go
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/main.go"}}' "$SID" "$TB" "$TB" | shale capture claude-code
+        go build ./... && printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"go build ./..."},"tool_response":{"exit_code":0}}' "$SID" "$TB" | shale capture claude-code
+        git add internal/parser/validate.go main.go && git commit -q -m "feat: input validation for the parser" && echo "task1 committed"
+      at: 2026-06-12T14:11:04.336336Z
+      classified: build
+    - cmd: |-
+        TB=/Users/tapabratapal/Projects/provasign/shale-test-bed
+        SID=720d6a8e-c305-4a2e-a7c5-343ac19395df
+        cd "$TB" && GOWORK=off go build ./... && printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"go build ./..."},"tool_response":{"exit_code":0}}' "$SID" "$TB" | shale capture claude-code
+        shale done --note "Task 1 shipped: parser validation with size and empty checks" --tokens-in 52000 --tokens-out 9000 --model claude-fable-5 --iterations 4
+        shale intent "Retire the legacy capture note and update docs" --body "Task 2: capture-note.md is dead; fold its content into README, add a changelog."
+        git rm -q capture-note.md
+        printf '\n## Validation\n\nInput validation lives in internal/parser.\n' >> README.md
+        printf '# Changelog\n\n- parser validation\n- legacy capture note retired\n' > CHANGELOG.md
+        git add README.md CHANGELOG.md && git commit -q -m "docs: retire capture-note, add changelog" && git log --oneline -2
+      at: 2026-06-12T14:11:29.481706Z
+      classified: build
+    - cmd: cut -c1-120 /Users/tapabratapal/Projects/provasign/shale-test-bed/.shale/local/019eb41d-91c3-7cd3-bd3b-2e886be6c66d.jsonl; echo ----; ls /Users/tapabratapal/Projects/provasign/shale-test-bed/.shale/local/archive/
+      at: 2026-06-12T14:11:49.668967Z
+      classified: other
+    - cmd: |-
+        TB=/Users/tapabratapal/Projects/provasign/shale-test-bed
+        wc -c "$TB/.shale/local/archive/019eb41d-91c3-7cd3-bd3b-2e886be6c66d.jsonl"
+        cd "$TB" && git push origin main 2>&1
+        echo "==== after push ===="
+        git log --oneline -2; ls .shale/*.yaml | tail -3; wc -c .shale/local/archive/019eb41d-91c3-7cd3-bd3b-2e886be6c66d.jsonl
+      at: 2026-06-12T14:12:23.607518Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && git ls-remote origin main; git rev-parse main origin/main; git log origin/main..main --oneline; git reflog show origin/main --date=format:'%H:%M:%S' -3
+      at: 2026-06-12T14:12:41.527868Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && git log --oneline -6 && git show 35140a5 --stat | head -12 && git reflog -8 --date=format:'%H:%M:%S'
+      at: 2026-06-12T14:13:05.803689Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && git config --list --show-origin | grep -v 'file:/Users/tapabratapal/.gitconfig' | head -20; echo ----; git config --get-all remote.origin.push; git config push.default; git branch -vv
+      at: 2026-06-12T14:13:39.33615Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/shale-test-bed/.shale/720d6a8e-c305-4a2e-a7c5-343ac19395df.yaml
+      at: 2026-06-12T14:14:06.179731Z
+      classified: other
+    - cmd: |-
+        TB=/Users/tapabratapal/Projects/provasign/shale-test-bed
+        SID=720d6a8e-c305-4a2e-a7c5-343ac19395df
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"git push origin docs/readme-evidence"},"tool_response":{"exit_code":0}}' "$SID" "$TB" | shale capture claude-code
+        cd "$TB" && shale done --note "Task 2 done: legacy note retired, README and changelog updated" --tokens-in 18000 --tokens-out 4000 --model claude-fable-5 --iterations 2
+        git push origin docs/readme-evidence 2>&1
+        echo "==== second push (publishes the continuation evidence) ===="
+        git push origin docs/readme-evidence 2>&1
+      at: 2026-06-12T14:14:30.617342Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && git log --oneline -3 && git ls-remote origin docs/readme-evidence && git rev-parse HEAD
+      at: 2026-06-12T14:14:51.279319Z
+      classified: other
+    - cmd: |-
+        git --version; T=$(mktemp -d); git init -q --bare "$T/remote.git"; git -C "$T" clone -q "$T/remote.git" work 2>/dev/null; cd "$T/work" && git config user.email t@e.com && git config user.name T && git commit -q --allow-empty -m base && cat > .git/hooks/pre-push <<'EOF'
+        #!/bin/sh
+        git commit -q --allow-empty -m hook-made-this
+        exit 0
+        EOF
+        chmod +x .git/hooks/pre-push && git push -q origin main 2>/dev/null; echo "local:  $(git rev-parse HEAD) $(git log -1 --format=%s HEAD)"; echo "remote: $(git -C "$T/remote.git" rev-parse main) $(git -C "$T/remote.git" log -1 --format=%s main)"; rm -rf "$T"
+      at: 2026-06-12T14:16:09.13734Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale-test-bed && shale note "v0.1.21 validation pass — checking pre-push transfer semantics" && git push origin docs/readme-evidence 2>&1; echo ----; echo "local : $(git rev-parse HEAD)"; echo "remote: $(git ls-remote origin docs/readme-evidence | cut -f1)"'
+      at: 2026-06-12T14:17:02.094033Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale-test-bed && git push origin docs/readme-evidence 2>&1 | tail -2; echo "remote now: $(git ls-remote origin docs/readme-evidence | cut -f1)"; echo ----; cat .shale/720d6a8e-c305-4a2e-a7c5-343ac19395df-c2.yaml'
+      at: 2026-06-12T14:18:22.023234Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && ls .shale/local/archive/ | grep 720d && grep -c '"kind"' .shale/local/archive/720d6a8e-*.jsonl && echo "-- events by kind:" && grep -o '"kind":"[a-z_]*"' .shale/local/archive/720d6a8e-*.jsonl | sort | uniq -c; shale finalize; git status --short | head -3
+      at: 2026-06-12T14:18:44.882007Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && gh pr list --state all --head docs/readme-evidence --json number,state,title 2>&1 | head -3
+      at: 2026-06-12T14:19:26.186731Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && gh run list --workflow=shale.yml --limit 3 && sleep 20 && gh run list --workflow=shale.yml --limit 1
+      at: 2026-06-12T14:20:06.519717Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && gh run view 27421517221 --log 2>/dev/null | grep -i "shale_version\|download\|v0.1.2" | head -4; gh pr view 4 --json comments --jq '.comments[-1].body' | head -60
+      at: 2026-06-12T14:20:35.601865Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && go build ./... && go test ./internal/cli/ ./internal/fold/ 2>&1 | tail -3 && shale intent "Correct finalize pre-push message: hook-commit push inclusion is git-version/transport dependent" && git add internal/cli/finalize_command.go && git commit -m "fix: finalize message must not promise the hook commit misses the push
+
+        Live testing on the shale-test-bed showed git 2.50 over https DOES include
+        a pre-push-hook commit when the push transfers something, and strands it
+        when the push is computed up-to-date (file:// remotes strand it either
+        way). The v0.1.21 wording asserted one behavior; state only what is true
+        in every case.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "Message corrected after empirical verification in shale-test-bed" --model claude-fable-5 && git push origin main 2>&1 | tail -3
+      at: 2026-06-12T14:21:21.439844Z
+      classified: test
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale && git tag -a v0.1.22 -m "fix: finalize message must not promise the hook commit misses the push" && git push origin v0.1.22 2>&1 | tail -1 && sleep 15 && gh run list --workflow=release.yml --limit 1'
+      at: 2026-06-12T14:21:48.100518Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && gh run watch 27421699168 --exit-status >/dev/null 2>&1; gh run view 27421699168 --json conclusion -q .conclusion && gh api repos/provasign/homebrew-shale/commits --jq '.[0].commit.message' | head -1
+      at: 2026-06-12T14:23:08.559649Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && /usr/bin/sed -i '' 's/default: "v0.1.21"/default: "v0.1.22"/' action/action.yml && git add action/action.yml && git commit -m "chore: sync action source copy default to v0.1.22
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push origin main 2>&1 | tail -1
+        cd /tmp && rm -rf sa22 && gh repo clone provasign/shale-action sa22 -- -q && cp /Users/tapabratapal/Projects/provasign/shale/action/action.yml sa22/action.yml && cd sa22 && git commit -aqm "chore: default to shale v0.1.22
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && git tag -f v1 && git push -f origin v1 2>&1 | tail -1 && cd /tmp && rm -rf sa22
+        brew upgrade provasign/shale/shale 2>&1 | tail -1; shale version
+      at: 2026-06-12T14:24:39.758452Z
+      classified: other
+    - cmd: grep -n "pre-push\|PrePush" /Users/tapabratapal/Projects/provasign/shale/internal/initx/doctor.go | head; echo ----; grep -rn "Pre-push hook skipped\|existing hook found" /Users/tapabratapal/Projects/provasign/shale/internal/
+      at: 2026-06-12T14:26:47.054544Z
+      classified: other
+    - cmd: sed -n '60,100p' /Users/tapabratapal/Projects/provasign/shale/internal/cli/init_command.go; grep -rn "Pre-push hook" /Users/tapabratapal/Projects/provasign/shale/internal/cli/cli_test.go /Users/tapabratapal/Projects/provasign/shale/internal/initx/*_test.go 2>/dev/null
+      at: 2026-06-12T14:36:27.61145Z
+      classified: other
+    - cmd: sed -n '1,60p' /Users/tapabratapal/Projects/provasign/shale/internal/cli/cli_test.go; ls /Users/tapabratapal/Projects/provasign/shale/internal/initx/
+      at: 2026-06-12T14:37:37.651278Z
+      classified: other
+    - cmd: grep -c '' /Users/tapabratapal/Projects/provasign/shale/internal/cli/cli_test.go
+      at: 2026-06-12T14:40:58.891419Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale && go build ./... && go vet ./... && gofmt -l . && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -10; echo "exit: $?"'
+      at: 2026-06-12T14:41:34.789472Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && go build -o /tmp/shale-dev . 2>/dev/null || go build -o /tmp/shale-dev ./cmd/shale; T=$(mktemp -d) && cd "$T" && git init -q -b main && git config user.email t@e.com && git config user.name T && mkdir -p .git/hooks && printf '#!/bin/sh\nnpm run lint\n' > .git/hooks/pre-push && chmod +x .git/hooks/pre-push && /tmp/shale-dev init | grep "Pre-push"; /tmp/shale-dev intent "test" >/dev/null && /tmp/shale-dev done --note "test"; rm -rf "$T"
+      at: 2026-06-12T14:41:47.313177Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && git add -A && git status --short && git commit -m "feat: make a dead pre-push hook impossible to miss
+
+        Two users hit the same silent failure in one morning: init skipped their
+        existing pre-push hook, the ! line scrolled past, and every session they
+        recorded published nowhere while capture looked perfectly healthy.
+
+        - init: the skip message names the resolved hook path (Husky users have no
+          idea their hook lives in .husky/) and says what silence costs; a non-git
+          directory gets its own message instead of 'existing hook found'.
+        - done: when the effective pre-push hook does not run shale finalize, print
+          a one-line stderr warning with the pending session count — done is the
+          last moment an agent can relay this to the user.
+        - initx: HookRunsFinalize / DisplayHookPath / FinalizeHookWarning shared
+          with doctor instead of doctor-private logic.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "Init skip message + done warning implemented with tests; smoke-tested live" --model claude-fable-5 && git push origin main 2>&1 | tail -1 && git tag -a v0.1.23 -m "feat: make a dead pre-push hook impossible to miss" && git push origin v0.1.23 2>&1 | tail -1
+      at: 2026-06-12T14:43:29.306854Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && sleep 10 && RUN=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') && gh run watch "$RUN" --exit-status >/dev/null 2>&1; gh run view "$RUN" --json conclusion -q .conclusion && gh api repos/provasign/homebrew-shale/commits --jq '.[0].commit.message' | head -1
+      at: 2026-06-12T14:45:04.6077Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && /usr/bin/sed -i '' 's/default: "v0.1.22"/default: "v0.1.23"/' action/action.yml && git add action/action.yml && git commit -qm "chore: sync action source copy default to v0.1.23
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main
+        cd /tmp && rm -rf sa23 && gh repo clone provasign/shale-action sa23 -- -q && cp /Users/tapabratapal/Projects/provasign/shale/action/action.yml sa23/action.yml && cd sa23 && git commit -aqm "chore: default to shale v0.1.23
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && git tag -f v1 >/dev/null && git push -f origin v1 2>&1 | tail -1 && cd /tmp && rm -rf sa23
+        brew upgrade provasign/shale/shale 2>&1 | tail -1; shale version
+      at: 2026-06-12T14:46:40.890775Z
+      classified: other
+    - cmd: grep -n "schema-version\|scaffold\|Scaffold" /Users/tapabratapal/Projects/provasign/shale/internal/cli/capture_command.go /Users/tapabratapal/Projects/provasign/shale/internal/initx/scaffold.go | head -12; echo ----; grep -n "LoadConfig" /Users/tapabratapal/Projects/provasign/shale/internal/initx/*.go | head -4
+      at: 2026-06-12T14:56:30.883763Z
+      classified: other
+    - cmd: sed -n '50,70p' /Users/tapabratapal/Projects/provasign/shale/internal/cli/capture_command.go
+      at: 2026-06-12T14:56:45.412612Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale && head -3 internal/gitx/gitx_test.go | grep -q strings || /usr/bin/sed -i '''' ''s/import (/import (\n\t"strings"/'' internal/gitx/gitx_test.go; go build ./... && go vet ./... && gofmt -l . ; go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "tests-exit: $?"'
+      at: 2026-06-12T15:00:30.153799Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && gofmt -w internal/gitx/gitx_test.go && gofmt -l . && go vet ./... && go test ./... 2>&1 | tail -14
+      at: 2026-06-12T15:11:31.13257Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && go test -count=1 ./internal/gitx/ ./internal/cli/ ./internal/fold/ ./internal/initx/
+      at: 2026-06-12T15:11:43.530529Z
+      classified: test
+    - cmd: grep -n "pre-push\|finalize" /Users/tapabratapal/Projects/provasign/shale/README.md /Users/tapabratapal/Projects/provasign/shale/docs/getting-started.md | head -12
+      at: 2026-06-12T15:11:53.110441Z
+      classified: other
+    - cmd: sed -n '20,56p' /Users/tapabratapal/Projects/provasign/shale/docs/getting-started.md; echo ----; sed -n '100,125p' /Users/tapabratapal/Projects/provasign/shale/README.md
+      at: 2026-06-12T15:12:14.520934Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && python3 - <<'EOF'
+        import re
+        p = 'docs/getting-started.md'
+        s = open(p).read()
+        s = s.replace("""Agent calls: shale done --note "…"
+          → appends completion event
+
+        git push
+          → pre-push hook fires:
+             shale finalize --auto-commit
+             reads .shale/local/<session>.jsonl
+             redacts → folds → writes .shale/<session>.yaml
+             commits the evidence file
+             push continues (with evidence commit)""",
+        """Agent calls: shale done --note "…"
+          → appends completion event
+          → finalizes on the spot:
+             reads .shale/local/<session>.jsonl
+             redacts → folds → writes .shale/<session>.yaml
+             commits the evidence file
+
+        git push
+          → evidence commit rides along
+          → pre-push hook runs shale finalize --auto-commit
+            as a safety net for sessions without a done""")
+        s = s.replace("""- **The evidence commit rides with your push** — `shale finalize` commits it
+          during the pre-push hook, so you push once and the evidence lands with the code.""",
+        """- **The evidence commit rides with your push** — `shale done` finalizes and
+          commits on the spot, so the commit exists before you push and lands with the
+          code. The pre-push hook is the safety net for sessions that never called
+          `done`.""")
+        open(p,'w').write(s)
+
+        p = 'README.md'
+        s = open(p).read()
+        s = s.replace("""  → agent closes with:  shale done
+          → git push runs shale finalize  (evidence committed under .shale/)""",
+        """  → agent closes with:  shale done  (evidence finalized + committed under .shale/)
+          → git push carries the evidence; the pre-push hook finalizes anything left""")
+        s = s.replace("- a local pre-push hook that finalizes evidence before push",
+        "- a local pre-push hook that finalizes any session `shale done` didn't (safety net)")
+        open(p,'w').write(s)
+        print("docs updated")
+        EOF
+        grep -rn "semantic act" docs/shale-spec.md
+      at: 2026-06-12T15:12:25.982917Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && /usr/bin/sed -i '' 's|# the work is complete, before asking for review. Steered by the same|# the work is complete, before asking for review — it folds and commits the|; s|# block as intent. `shale finalize` (pre-push hook) is the mechanical|# evidence on the spot. Steered by the same block as intent. `shale finalize`|; s|# safety net; `shale done` is the semantic act.|# (pre-push hook) is the mechanical safety net for sessions without a done.|' docs/shale-spec.md && sed -n '58,63p' docs/shale-spec.md && git diff --stat
+      at: 2026-06-12T15:13:08.805352Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && go build -o /tmp/shale-dev . ; T=$(mktemp -d) && cd "$T" && git init -q -b main && git config user.email t@e.com && git config user.name T && /tmp/shale-dev init >/dev/null && git add -A && git commit -qm scaffold && echo "package x" > x.go && git add x.go && /tmp/shale-dev intent "smoke" >/dev/null && /tmp/shale-dev done --note "smoke done"; echo "-- last commit:"; git log -1 --name-only --pretty=%s; echo "-- still staged (user wip must survive):"; git diff --cached --name-only; rm -rf "$T"
+      at: 2026-06-12T15:13:53.582051Z
+      classified: build
+    - cmd: go build -o /tmp/shale-dev /Users/tapabratapal/Projects/provasign/shale/cmd/shale && T=$(mktemp -d) && cd "$T" && git init -q -b main && git config user.email t@e.com && git config user.name T && /tmp/shale-dev init >/dev/null && git add -A && git commit -qm scaffold && echo "package x" > x.go && git add x.go && /tmp/shale-dev intent "smoke" >/dev/null && /tmp/shale-dev done --note "smoke done"; echo "-- last commit:"; git log -1 --name-only --pretty=%s; echo "-- still staged:"; git diff --cached --name-only; rm -rf "$T"
+      at: 2026-06-12T15:14:13.247991Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && shale intent "Finalize-on-done: shale done folds and commits evidence immediately; pre-push hook becomes safety net" && git add -A && git commit -m "feat: finalize on shale done — evidence commits before the push exists
+
+        The pre-push hook was the single point of failure for publishing: skipped
+        installs (foreign hooks) silently published nothing, and a commit created
+        inside pre-push may or may not ride the push in flight (git-version and
+        transport dependent). Folding at done-time removes the hook from the agent
+        path entirely: the evidence commit exists before the user pushes, so it
+        always travels with the work.
+
+        - done: in opted-in repos (scaffold marker present) fold + auto-commit on
+          the spot; ack says 'evidence committed; publishes with your push'.
+          Fail-open: any error falls back to the push-time path, where the dead-
+          hook warning still fires.
+        - gitx.AutoCommit: commit --only with the evidence pathspec — done runs
+          mid-session, when users have their own work staged; that staging must
+          survive untouched and stay out of the evidence commit.
+        - pre-push hook demoted to safety net for sessions that never got a done.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "Finalize-on-done implemented; smoke-verified: evidence commits at done, user staging survives" --model claude-fable-5; git push origin main 2>&1 | tail -2 && git tag -a v0.1.24 -m "feat: finalize on shale done — evidence commits before the push exists" && git push origin v0.1.24 2>&1 | tail -1
+      at: 2026-06-12T15:14:35.803711Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && sleep 10 && RUN=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') && gh run watch "$RUN" --exit-status >/dev/null 2>&1; gh run view "$RUN" --json conclusion -q .conclusion && gh api repos/provasign/homebrew-shale/commits --jq '.[0].commit.message' | head -1
+      at: 2026-06-12T15:16:08.373667Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && /usr/bin/sed -i '' 's/default: "v0.1.23"/default: "v0.1.24"/' action/action.yml && git add action/action.yml && git commit -qm "chore: sync action source copy default to v0.1.24
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main
+        cd /tmp && rm -rf sa24 && gh repo clone provasign/shale-action sa24 -- -q && cp /Users/tapabratapal/Projects/provasign/shale/action/action.yml sa24/action.yml && cd sa24 && git commit -aqm "chore: default to shale v0.1.24
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && git tag -f v1 >/dev/null && git push -f origin v1 2>&1 | tail -1 && cd /tmp && rm -rf sa24
+        brew upgrade provasign/shale/shale 2>&1 | tail -1; shale version
+      at: 2026-06-12T15:23:48.165229Z
+      classified: other
+    - cmd: |-
+        TB=/Users/tapabratapal/Projects/provasign/shale-test-bed
+        cd "$TB" && mv .git/hooks/pre-push .git/hooks/pre-push.shale-backup && printf '#!/bin/sh\necho "foreign hook: lint ok"\nexit 0\n' > .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+        SID=$(uuidgen | tr 'A-Z' 'a-z')
+        echo "$SID" > /tmp/done-flow-sid.txt
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"SessionStart","model":"claude-fable-5"}' "$SID" "$TB" | shale capture claude-code
+        cd "$TB" && shale intent "Verify finalize-on-done publishes without a shale pre-push hook"
+        printf '\n- v0.1.24 finalize-on-done verification\n' >> CHANGELOG.md
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"%s/CHANGELOG.md"}}' "$SID" "$TB" "$TB" | shale capture claude-code
+        git add CHANGELOG.md && git commit -qm "docs: changelog note for done-flow verification"
+        shale done --note "Done-flow verified: evidence must commit here, before any push, with no shale hook installed" --model claude-fable-5
+        echo "-- git log before push:"; git log --oneline -3
+      at: 2026-06-12T15:26:26.222881Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale-test-bed && git push origin docs/readme-evidence 2>&1; echo ----; echo "local : $(git rev-parse HEAD)"; echo "remote: $(git ls-remote origin docs/readme-evidence | cut -f1)"; mv .git/hooks/pre-push.shale-backup .git/hooks/pre-push'
+      at: 2026-06-12T15:26:46.757382Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && sleep 30 && gh run list --workflow=shale.yml --limit 1 && SID=$(cat /tmp/done-flow-sid.txt) && gh pr view 4 --json comments --jq '.comments[-1].body' | grep -A2 "${SID:0:8}" | head -8
+      at: 2026-06-12T15:27:26.759841Z
+      classified: other
+    - cmd: |-
+        S=/tmp/shale-smoke && rm -rf $S && mkdir -p $S/origin $S/repo && git init -q --bare $S/origin/r.git
+        cd $S/repo && git init -q -b main && git config user.email c@x.com && git config user.name C && git remote add origin $S/origin/r.git
+        shale init | tail -2
+        git add -A && git commit -qm "scaffold" && git push -q origin main 2>/dev/null
+        SID=fresh-claude-001
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"SessionStart","model":"claude-fable-5"}' "$SID" "$S/repo" | shale capture claude-code
+        shale intent "Add health endpoint" --body "Expose /healthz returning 200"
+        echo 'package main' > health.go
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"%s/repo/health.go"}}' "$SID" "$S/repo" "$S" | shale capture claude-code
+        git add health.go && git commit -qm "feat: health endpoint"
+        shale done --note "Health endpoint added" --tokens-in 9000 --tokens-out 2000 --model claude-fable-5
+        echo "-- log:"; git log --oneline -2
+        git push origin main 2>&1 | grep -i shale; echo "-- remote == local: $([ "$(git rev-parse main)" = "$(git --git-dir=$S/origin/r.git rev-parse main)" ] && echo YES || echo NO)"
+        shale doctor | tail -3
+      at: 2026-06-12T15:33:00.625556Z
+      classified: other
+    - cmd: |-
+        S=/tmp/shale-smoke; cd $S/repo
+        printf '{"session_id":"codex-sess-7","cwd":"%s","hook_event_name":"SessionStart","model":"gpt-5-codex"}' "$S/repo" | shale capture codex
+        echo 'package main // codex' > worker.go
+        printf '{"session_id":"codex-sess-7","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"worker.go"}}' "$S/repo" | shale capture codex
+        git add worker.go && git commit -qm "feat: worker (codex, no done)"
+        printf '{"sessionId":"cursor-sess-9","cwd":"%s","hookEventName":"afterFileEdit","toolInfo":{"filePath":"ui.css"}}' "$S/repo" | shale capture cursor
+        echo 'body{}' > ui.css && git add ui.css && git commit -qm "style: ui (cursor, no done)"
+        SID=claude-sess-2
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"SessionStart","model":"claude-fable-5"}' "$SID" "$S/repo" | shale capture claude-code
+        shale intent "Wire worker into health check"
+        echo 'package main // wired' >> health.go
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"health.go"}}' "$SID" "$S/repo" | shale capture claude-code
+        git add health.go && git commit -qm "feat: wire worker"
+        shale done --note "Worker wired in" --model claude-fable-5
+        echo "-- yamls after claude done (done folds ALL pending):"; ls .shale/*.yaml | grep -v config
+        echo "-- manual push from terminal:"; git push origin main 2>&1 | grep -i "shale\|->"
+        for f in .shale/codex-sess-7.yaml .shale/cursor-sess-9.yaml .shale/claude-sess-2.yaml; do echo "== $f"; grep -E "tool:|model:|title:|note:" $f | head -4; done
+      at: 2026-06-12T15:33:34.579547Z
+      classified: other
+    - cmd: |-
+        S=/tmp/shale-smoke; cd $S/repo
+        SID=claude-sess-2
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"go test ./..."},"tool_response":{"exit_code":0}}' "$SID" "$S/repo" | shale capture claude-code
+        shale intent "Follow-up: rate-limit the health endpoint"
+        echo 'package main // ratelimited' >> health.go
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"health.go"}}' "$SID" "$S/repo" | shale capture claude-code
+        git add health.go && git commit -qm "feat: rate limit health"
+        shale done --note "Rate limit added to health endpoint" --model claude-fable-5
+        echo "-- continuation file:"; ls .shale/ | grep claude-sess-2
+        echo "-- c2 pairing:"; grep -E "^id:|title:|note:|continuation" .shale/claude-sess-2-c2.yaml
+        echo "-- archive intact:"; grep -c '"kind"' .shale/local/archive/claude-sess-2.jsonl
+      at: 2026-06-12T15:34:32.608841Z
+      classified: test
+    - cmd: |-
+        S=/tmp/shale-smoke; cd $S/repo
+        SID=claude-sess-2
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"curl -H \\"Authorization: [REDACTED:bearer-token]\\" https://api.internal"},"tool_response":{"exit_code":0}}' "$SID" "$S/repo" | shale capture claude-code
+        shale intent "Check API auth" --body "Use the token ghp_LiveSecretToken0123456789abcdefABCD to verify"
+        shale done --note "Verified with AWS key [REDACTED:aws-access-key] and it worked" --model claude-fable-5
+        F=.shale/claude-sess-2-c3.yaml
+        echo "-- secrets leaked into evidence?"; grep -c "ghp_Live\|AKIAIOSFODNN" $F || echo "NONE — clean"
+        grep -E "redactions:|note:|body:" $F | head -4
+        echo "==== hash-only repo ===="
+        mkdir -p $S/ho && cd $S/ho && git init -q -b main && git config user.email c@x.com && git config user.name C
+        shale init --privacy hash-only >/dev/null && git add -A && git commit -qm scaffold
+        shale intent "Secret task" --body "internal codename PROJECT-X with key [REDACTED:github-token]"
+        shale done --note "done quietly"
+        F=$(ls .shale/*.yaml | grep -v config)
+        grep -E "privacy:|title:|body:|body_sha256:" $F | head -5
+      at: 2026-06-12T15:34:50.2013Z
+      classified: other
+    - cmd: grep -n "ghp\|github" /Users/tapabratapal/Projects/provasign/shale/internal/redact/redact.go | head -5; cd /tmp/shale-smoke/repo && grep -A2 "commands:" .shale/claude-sess-2-c3.yaml | head -4
+      at: 2026-06-12T15:36:46.031567Z
+      classified: other
+    - cmd: cd /tmp/shale-smoke/repo && F=$(ls -t .shale/*.yaml | head -1) && echo "$F:" && grep -E "body:|redactions:" "$F"
+      at: 2026-06-12T15:37:54.036698Z
+      classified: other
+    - cmd: |-
+        S=/tmp/shale-smoke
+        mkdir -p $S/nogit && cd $S/nogit && shale intent "no git here" && shale done --note "still must not crash"; echo "exit=$?"
+        echo "==== non-scaffold git repo (never opted in) ===="
+        mkdir -p $S/optout && cd $S/optout && git init -q -b main && git config user.email c@x.com && git config user.name C && echo hi > f.txt && git add f.txt && git commit -qm base
+        shale intent "ad hoc" && shale done --note "no scaffold"; echo "exit=$?"; echo "-- evidence yaml created? $(ls .shale/*.yaml 2>/dev/null | wc -l | tr -d ' ') (want 0)"; echo "-- git log unchanged: $(git log --oneline | wc -l | tr -d ' ') commit(s)"
+        echo "==== corrupted jsonl line ===="
+        cd $S/repo && SID=$(cat .shale/local/current 2>/dev/null || echo corrupt-test); SID=corrupt-test
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"SessionStart","model":"claude-fable-5"}' "$SID" "$S/repo" | shale capture claude-code
+        echo 'TOTALLY{{{NOT-JSON' >> .shale/local/corrupt-test.jsonl
+        shale intent "survive corruption" && shale done --note "folded around the torn line"; ls .shale/corrupt-test.yaml && grep "title:" .shale/corrupt-test.yaml
+      at: 2026-06-12T15:40:05.7932Z
+      classified: other
+    - cmd: 'cd /tmp/shale-smoke/repo && shale uninstall 2>&1 | head -12; echo "-- hook gone: $([ -f .git/hooks/pre-push ] && echo NO || echo YES)"; echo "-- local state gone: $([ -d .shale/local ] && echo NO || echo YES)"; echo "-- committed evidence kept: $(ls .shale/*.yaml 2>/dev/null | grep -vc config)"'
+      at: 2026-06-12T15:41:10.208094Z
+      classified: other
+    - cmd: |-
+        TB=/Users/tapabratapal/Projects/provasign/shale-test-bed; cd "$TB"
+        printf '{"session_id":"codex-smoke-1","cwd":"%s","hook_event_name":"SessionStart","model":"gpt-5-codex"}' "$TB" | shale capture codex
+        printf '\n- codex smoke entry\n' >> CHANGELOG.md
+        printf '{"session_id":"codex-smoke-1","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"CHANGELOG.md"}}' "$TB" | shale capture codex
+        git add CHANGELOG.md && git commit -qm "docs: codex smoke entry (no done)"
+        SID=$(uuidgen | tr 'A-Z' 'a-z')
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"SessionStart","model":"claude-fable-5"}' "$SID" "$TB" | shale capture claude-code
+        shale intent "Multi-agent smoke: claude finishes, codex left pending"
+        printf '\n- claude smoke entry\n' >> CHANGELOG.md
+        printf '{"session_id":"%s","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"CHANGELOG.md"}}' "$SID" "$TB" | shale capture claude-code
+        git add CHANGELOG.md && git commit -qm "docs: claude smoke entry"
+        shale done --note "Multi-agent smoke complete: this done should also sweep the pending codex session" --model claude-fable-5
+        git push origin docs/readme-evidence 2>&1 | grep -E "shale|->"; echo "remote==local: $([ "$(git rev-parse HEAD)" = "$(git ls-remote origin docs/readme-evidence | cut -f1)" ] && echo YES || echo NO)"
+      at: 2026-06-12T15:41:26.891994Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale-test-bed && sleep 35 && gh run list --workflow=shale.yml --limit 1 && gh pr view 4 --json comments --jq '.comments[-1].body' | grep -E "codex-smoke|88185d|Multi-agent" | head -5
+      at: 2026-06-12T15:42:10.765918Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale-test-bed && git show --name-only --pretty=format: HEAD | grep shale; gh pr view 4 --json comments --jq ''.comments[-1].body'' | grep -B1 -A1 "codex" | head -8'
+      at: 2026-06-12T15:42:24.366661Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && cat >> internal/initx/initx_test.go <<'EOF'
+
+        // A repo that never opted in (no scaffold marker) must not get the dead-hook
+        // lecture — nothing there was ever going to publish.
+        func TestFinalizeHookWarningRequiresOptIn(t *testing.T) {
+        	root := t.TempDir()
+        	if err := os.MkdirAll(filepath.Join(root, ".git", "hooks"), 0o755); err != nil {
+        		t.Fatal(err)
+        	}
+        	if w := FinalizeHookWarning(root); w != "" {
+        		t.Fatalf("warned in a non-opted-in repo: %q", w)
+        	}
+        	// Opt in: scaffold marker present, hook still dead → warn.
+        	if err := os.MkdirAll(filepath.Join(root, ".shale"), 0o755); err != nil {
+        		t.Fatal(err)
+        	}
+        	os.WriteFile(filepath.Join(root, ".shale", "schema-version"), []byte("0\n"), 0o644)
+        	if w := FinalizeHookWarning(root); w == "" {
+        		t.Fatal("opted-in repo with dead hook must warn")
+        	}
+        }
+        EOF
+        gofmt -w internal/initx/initx_test.go && go vet ./... && go test -count=1 ./internal/initx/ ./internal/cli/ && go test ./... 2>&1 | grep -c "^ok"
+      at: 2026-06-12T15:42:55.512064Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && shale intent "Gate the dead-hook warning on the scaffold marker: no lecture in repos that never opted in" >/dev/null; git add -A && git commit -qm "fix: dead-hook warning only in opted-in repos
+
+        Found in the v0.1.24 customer-readiness smoke battery: calling shale done
+        in a repo that never ran shale init produced the pre-push hook warning —
+        pure noise, since nothing there was ever going to publish. Gate it on the
+        committed scaffold marker, same opt-in finalize-on-done uses.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "Warning gated on opt-in; test added" --model claude-fable-5 >/dev/null 2>&1; git push -q origin main && git tag -a v0.1.25 -m "fix: dead-hook warning only in opted-in repos" && git push origin v0.1.25 2>&1 | tail -1
+      at: 2026-06-12T15:43:10.446306Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && sleep 12 && RUN=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') && gh run watch "$RUN" --exit-status >/dev/null 2>&1; gh run view "$RUN" --json conclusion -q .conclusion
+        /usr/bin/sed -i '' 's/default: "v0.1.24"/default: "v0.1.25"/' action/action.yml && git add action/action.yml && git commit -qm "chore: sync action source copy default to v0.1.25
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main
+        cd /tmp && rm -rf sa25 && gh repo clone provasign/shale-action sa25 -- -q && cp /Users/tapabratapal/Projects/provasign/shale/action/action.yml sa25/action.yml && cd sa25 && git commit -aqm "chore: default to shale v0.1.25
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && git tag -f v1 >/dev/null && git push -f origin v1 2>&1 | tail -1; cd /tmp && rm -rf sa25
+        brew upgrade provasign/shale/shale 2>&1 | tail -1; shale version
+        cd /tmp/shale-smoke/optout && shale done --note "retest" 2>&1 | tail -1
+      at: 2026-06-12T15:45:00.481213Z
+      classified: other
+    - cmd: rm -rf /tmp/shale-smoke /tmp/shale-dev /tmp/shale-test-sid.txt /tmp/done-flow-sid.txt
+      at: 2026-06-12T15:45:09.44562Z
+      classified: other
+    - cmd: grep -n "stdin" /Users/tapabratapal/Projects/provasign/shale/internal/cli/cli.go | head -5; sed -n '1,60p' /Users/tapabratapal/Projects/provasign/shale/internal/initx/uninstall.go
+      at: 2026-06-12T16:04:06.29101Z
+      classified: other
+    - cmd: grep -n "claude\|Claude" /Users/tapabratapal/Projects/provasign/shale/internal/initx/uninstall.go | head -8; sed -n '30,60p' /Users/tapabratapal/Projects/provasign/shale/internal/cli/cli.go
+      at: 2026-06-12T16:04:22.703688Z
+      classified: other
+    - cmd: sed -n '72,160p' /Users/tapabratapal/Projects/provasign/shale/internal/initx/uninstall.go
+      at: 2026-06-12T16:05:03.830775Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/Projects/provasign/shale/internal/initx/initx_test.go <<'EOF'
+
+        func TestClaudeAllowlistInstallAndRemove(t *testing.T) {
+        	dir := t.TempDir()
+        	path := filepath.Join(dir, ".claude", "settings.json")
+
+        	// Fresh install.
+        	changed, err := InstallClaudeAllowlist(path)
+        	if err != nil || !changed {
+        		t.Fatalf("install: changed=%v err=%v", changed, err)
+        	}
+        	// Idempotent.
+        	changed, err = InstallClaudeAllowlist(path)
+        	if err != nil || changed {
+        		t.Fatalf("re-install: changed=%v err=%v", changed, err)
+        	}
+
+        	// User adds their own entry alongside ours; removal must keep it.
+        	raw, _ := os.ReadFile(path)
+        	var settings map[string]any
+        	json.Unmarshal(raw, &settings)
+        	perms := settings["permissions"].(map[string]any)
+        	perms["allow"] = append(perms["allow"].([]any), "Bash(go test *)")
+        	out, _ := json.MarshalIndent(settings, "", "  ")
+        	os.WriteFile(path, out, 0o644)
+
+        	changed, err = RemoveClaudeAllowlist(path)
+        	if err != nil || !changed {
+        		t.Fatalf("remove: changed=%v err=%v", changed, err)
+        	}
+        	raw, _ = os.ReadFile(path)
+        	if strings.Contains(string(raw), "shale intent") || strings.Contains(string(raw), "shale done") {
+        		t.Fatalf("our entries survived removal: %s", raw)
+        	}
+        	if !strings.Contains(string(raw), "Bash(go test *)") {
+        		t.Fatalf("user entry lost: %s", raw)
+        	}
+        	// Nothing of ours left: removal is a no-op.
+        	changed, err = RemoveClaudeAllowlist(path)
+        	if err != nil || changed {
+        		t.Fatalf("re-remove: changed=%v err=%v", changed, err)
+        	}
+        }
+        EOF
+        grep -n '"encoding/json"\|"strings"' /Users/tapabratapal/Projects/provasign/shale/internal/initx/initx_test.go | head -3
+      at: 2026-06-12T16:07:15.590598Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && /usr/bin/sed -i '' 's|^import (|import (\n\t"encoding/json"|' internal/cli/cli_test.go && gofmt -w internal/cli/cli_test.go && go vet ./... && go test -count=1 ./internal/cli/ ./internal/initx/ ./internal/fold/ ./internal/gitx/ && go test ./... 2>&1 | grep -c "^ok"
+      at: 2026-06-12T16:08:06.848041Z
+      classified: lint
+    - cmd: |-
+        go build -o /tmp/shale-dev /Users/tapabratapal/Projects/provasign/shale/cmd/shale && T=$(mktemp -d) && cd "$T" && git init -q -b main && git config user.email t@e.com && git config user.name C
+        echo "== non-interactive default (must not hang, must not grant):"
+        /tmp/shale-dev init </dev/null | grep -E "auto-approve|Claude"
+        grep -c permissions .claude/settings.json 2>/dev/null || echo "no permissions key — correct"
+        echo "== flag opt-in:"
+        /tmp/shale-dev init --allow-agent-commands | grep "auto-approve"
+        python3 -c "import json;print(json.load(open('.claude/settings.json'))['permissions']['allow'])"
+        echo "== uninstall --repo removes grant:"
+        /tmp/shale-dev uninstall --repo >/dev/null 2>&1; grep -c "shale intent" .claude/settings.json 2>/dev/null || echo "grant gone — correct"
+        rm -rf "$T"
+      at: 2026-06-12T16:08:22.269189Z
+      classified: build
+    - cmd: cat /Users/tapabratapal/Projects/provasign/shale/go.mod
+      at: 2026-06-12T16:08:37.152168Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && go get golang.org/x/term@latest 2>&1 | tail -1
+      at: 2026-06-12T16:08:56.736801Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && go mod tidy && go vet ./... && gofmt -l . && go test ./... 2>&1 | grep -cE "^ok" && go build -o /tmp/shale-dev ./cmd/shale && T=$(mktemp -d) && cd "$T" && git init -q -b main && git config user.email t@e.com && git config user.name C && echo "== /dev/null run (no prompt text now):" && /tmp/shale-dev init </dev/null | grep -E "\?|auto-approve" && rm -rf "$T"
+      at: 2026-06-12T16:09:24.739227Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && python3 - <<'EOF'
+        s = open('README.md').read()
+        s = s.replace("- a local pre-push hook that finalizes any session `shale done` didn't (safety net)",
+        """- a local pre-push hook that finalizes any session `shale done` didn't (safety net)
+        - optionally — with your explicit consent (interactive prompt or
+          `--allow-agent-commands`) — a Claude Code permissions allowlist for exactly
+          `shale intent` / `shale done` / `shale note`, so your team's agents stop
+          asking permission for the evidence commands (and nothing else)""")
+        open('README.md','w').write(s)
+        print("ok")
+        EOF
+        shale intent "Consent-gated Claude allowlist in shale init: prompt at TTY or --allow-agent-commands flag" >/dev/null
+        git add -A && git commit -qm "feat: consent-gated Claude Code allowlist for the evidence commands
+
+        Users kept hitting permission prompts for shale done (and the agent flow
+        stalls when one is denied). shale init can now write a permissions
+        allowlist into the committed .claude/settings.json — scoped to exactly
+        Bash(shale intent*/done*/note*), never Bash(shale *) — so the whole team's
+        agents stop prompting for the evidence commands.
+
+        Consent is explicit, never default: an interactive [y/N] prompt (real TTY
+        only, via x/term — /dev/null and pipes never see it) or the
+        --allow-agent-commands flag for scripts. uninstall --repo removes exactly
+        our entries and leaves user permissions untouched.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "Allowlist opt-in shipped with tests; smoke-verified default/flag/uninstall paths" --model claude-fable-5 >/dev/null 2>&1; git push -q origin main && git tag -a v0.1.26 -m "feat: consent-gated Claude Code allowlist for the evidence commands" && git push origin v0.1.26 2>&1 | tail -1
+      at: 2026-06-12T16:11:34.385157Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && sleep 12 && RUN=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') && gh run watch "$RUN" --exit-status >/dev/null 2>&1; gh run view "$RUN" --json conclusion -q .conclusion
+        /usr/bin/sed -i '' 's/default: "v0.1.25"/default: "v0.1.26"/' action/action.yml && git add action/action.yml && git commit -qm "chore: sync action source copy default to v0.1.26
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main
+        cd /tmp && rm -rf sa26 && gh repo clone provasign/shale-action sa26 -- -q && cp /Users/tapabratapal/Projects/provasign/shale/action/action.yml sa26/action.yml && cd sa26 && git commit -aqm "chore: default to shale v0.1.26
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && git tag -f v1 >/dev/null && git push -f origin v1 2>&1 | tail -1; cd /tmp && rm -rf sa26
+        brew upgrade provasign/shale/shale 2>&1 | tail -1; shale version
+      at: 2026-06-12T16:13:24.855563Z
+      classified: other
+    - cmd: |-
+        T=$(mktemp -d) && cd "$T" && git init -q -b main && git config user.email dev@team.com && git config user.name Dev
+        /usr/bin/expect -c '
+        set timeout 15
+        spawn shale init
+        expect "\[y/N\]"
+        send "y\r"
+        expect eof
+        ' 2>/dev/null | tr -d '\r'
+        echo; echo "### .claude/settings.json (committed) now contains:"; python3 -c "import json; d=json.load(open('.claude/settings.json')); print(json.dumps(d.get('permissions'), indent=2))"
+        rm -rf "$T"
+      at: 2026-06-12T16:14:55.196335Z
+      classified: other
+    - cmd: which vhs asciinema agg ttyd 2>/dev/null; ls /Users/tapabratapal/Projects/provasign/shale/assets/; echo ----; ls /Users/tapabratapal/Projects/provasign/provasign.github.io/ && git -C /Users/tapabratapal/Projects/provasign/provasign.github.io status --short | head -3 && git -C /Users/tapabratapal/Projects/provasign/provasign.github.io log --oneline -2
+      at: 2026-06-12T16:17:18.872499Z
+      classified: other
+    - cmd: brew install vhs 2>&1 | tail -3
+      at: 2026-06-12T16:17:39.250356Z
+      classified: other
+    - cmd: wc -l /Users/tapabratapal/Projects/provasign/provasign.github.io/shale.md && ls /Users/tapabratapal/Projects/provasign/provasign.github.io/assets/ && grep -n "0\.1\.\|init\|done\|pre-push\|gif\|GIF" /Users/tapabratapal/Projects/provasign/provasign.github.io/shale.md | head -30
+      at: 2026-06-12T16:17:41.17631Z
+      classified: other
+    - cmd: vhs /tmp/shale-init.tape 2>&1 | head -20
+      at: 2026-06-12T16:18:48.115314Z
+      classified: other
+    - cmd: cd /tmp && vhs shale-init.tape 2>&1 | tail -2; ls -la /tmp/shale-init.gif
+      at: 2026-06-12T16:19:37.61983Z
+      classified: other
+    - cmd: 'cd /tmp && N=$(ffprobe -v error -select_streams v -count_frames -show_entries stream=nb_read_frames -of csv=p=0 shale-init.gif) && echo "frames: $N" && ffmpeg -y -v error -i shale-init.gif -vf "select=eq(n\,$((N-2)))" -vframes 1 shale-init-last.png && echo done'
+      at: 2026-06-12T16:20:00.224493Z
+      classified: other
+    - cmd: |-
+        cd /tmp && cat > shale-init.tape <<'EOF'
+        Output shale-init.gif
+
+        Set FontSize 15
+        Set Width 960
+        Set Height 600
+        Set Padding 16
+        Set Theme "Catppuccin Mocha"
+        Set TypingSpeed 55ms
+
+        Hide
+        Type `cd $(mktemp -d) && git init -q -b main && git config user.email dev@team.com && git config user.name Dev && PS1='your-repo $ ' && clear`
+        Enter
+        Sleep 500ms
+        Show
+
+        Sleep 1s
+        Type "shale init"
+        Sleep 500ms
+        Enter
+        Sleep 3s
+        Type "y"
+        Sleep 1s
+        Enter
+        Sleep 5s
+        Hide
+        Type "exit"
+        Enter
+        EOF
+        vhs shale-init.tape 2>&1 | tail -1; N=$(ffprobe -v error -select_streams v -count_frames -show_entries stream=nb_read_frames -of csv=p=0 shale-init.gif) && ffmpeg -y -v error -i shale-init.gif -vf "select=eq(n\,$((N-2)))" -vframes 1 shale-init-last.png && ls -la shale-init.gif
+      at: 2026-06-12T16:20:57.736889Z
+      classified: other
+    - cmd: grep -n "^#\|^##\|brew install\|Quick" /Users/tapabratapal/Projects/provasign/shale/README.md | head -16; sed -n '95,118p' /Users/tapabratapal/Projects/provasign/shale/docs/getting-started.md
+      at: 2026-06-12T16:21:23.364332Z
+      classified: other
+    - cmd: sed -n '45,66p' /Users/tapabratapal/Projects/provasign/shale/README.md
+      at: 2026-06-12T16:21:34.396127Z
+      classified: other
+    - cmd: cp /tmp/shale-init.gif /Users/tapabratapal/Projects/provasign/shale/assets/shale-init.gif && cp /tmp/shale-init.tape /Users/tapabratapal/Projects/provasign/shale/assets/shale-init.tape && cp /tmp/shale-init.gif /Users/tapabratapal/Projects/provasign/provasign.github.io/assets/images/shale-init.gif && ls -la /Users/tapabratapal/Projects/provasign/shale/assets/ /Users/tapabratapal/Projects/provasign/provasign.github.io/assets/images/ | grep -i "shale-init\|demo"
+      at: 2026-06-12T16:21:42.380826Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && python3 - <<'PYEOF'
+        s = open('README.md').read()
+        s = s.replace("""> Newer Homebrew versions ask you to trust third-party taps once: if brew
+        > refuses with "untrusted tap", run `brew trust provasign/shale` and retry.""",
+        """> Newer Homebrew versions ask you to trust third-party taps once: if brew
+        > refuses with "untrusted tap", run `brew trust provasign/shale` and retry.
+
+        ![shale init in a fresh repo: steering, capture hooks, consent prompt for the Claude allowlist, scaffold, workflow, pre-push hook](assets/shale-init.gif)
+
+        At a real terminal, `init` asks one question — whether to auto-approve the
+        three shale evidence commands for Claude Code (committed allowlist, your
+        team stops seeing permission prompts). Default is no; scripts are never
+        asked. The recording is reproducible: [`assets/shale-init.tape`](assets/shale-init.tape).""")
+        open('README.md','w').write(s)
+
+        s = open('docs/getting-started.md').read()
+        s = s.replace("""  ✓ Steering prompt added      (CLAUDE.md, AGENTS.md)
+          ✓ Wrote repo capture hooks   (.claude/settings.json, .github/hooks/shale.json,
+                                        .cursor/hooks.json, .codex/hooks.json)
+          ✓ Created .shale/            (committed; .shale/local/ gitignored)
+          ✓ Wrote .github/workflows/shale.yml
+          ✓ Installed pre-push hook    (runs shale finalize)
+          → Commit these files. Contributors and their agents are wired on clone.""",
+        """  ✓ Steering prompt added      (CLAUDE.md, AGENTS.md)
+          ✓ Wrote repo capture hooks   (.claude/settings.json, .github/hooks/shale.json,
+                                        .cursor/hooks.json, .codex/hooks.json)
+          ? Auto-approve shale evidence commands (shale intent/done/note) for Claude Code?
+            Writes a permissions allowlist into the committed .claude/settings.json so your
+            team's agents stop prompting for exactly these three commands. [y/N] y
+          ✓ Claude auto-approve        (shale intent/done/note allowlisted in .claude/settings.json)
+          ✓ Created .shale/            (committed; .shale/local/ gitignored)
+          ✓ Wrote .github/workflows/shale.yml
+          ✓ Installed pre-push hook    (runs shale finalize)
+          → Commit these files. Contributors and their agents are wired on clone.
+
+        The `[y/N]` question only appears at a real terminal (never in scripts or
+        CI — pass `--allow-agent-commands` there). Answering `y` writes a Claude
+        Code permissions allowlist scoped to exactly `shale intent`, `shale done`,
+        and `shale note` into the committed settings, so nobody on the team gets
+        permission prompts for the evidence commands. `shale uninstall --repo`
+        removes it cleanly.""")
+        s = s.replace("| Pre-push hook | Finalizes any open session and commits the evidence before push. Fail-open: it can never block your push |",
+        "| Pre-push hook | Safety net: finalizes any session `shale done` didn't (interrupted agents, sessions without a done) and commits the evidence. Fail-open: it can never block your push |")
+        open('docs/getting-started.md','w').write(s)
+        print("ok")
+        PYEOF
+      at: 2026-06-12T16:21:59.731759Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io && python3 - <<'PYEOF'
+        s = open('shale.md').read()
+
+        # 1. Embed the init recording in the five-minutes section.
+        s = s.replace("""`shale init` writes everything **into the repo** — agent steering, capture
+        hooks, evidence store, and the GitHub Action. Your teammates get wired
+        automatically on `git clone`. Nobody signs up for anything; there is no
+        server, no account, no GitHub App, no token to paste.""",
+        """<img src="{{ '/assets/images/shale-init.gif' | relative_url }}"
+             alt="shale init in a fresh repo: steering, capture hooks, a consent prompt for the Claude Code allowlist, scaffold, workflow, pre-push hook"
+             width="720" style="max-width:100%; border-radius:10px; margin: 8px 0 4px;">
+
+        `shale init` writes everything **into the repo** — agent steering, capture
+        hooks, evidence store, and the GitHub Action. Your teammates get wired
+        automatically on `git clone`. Nobody signs up for anything; there is no
+        server, no account, no GitHub App, no token to paste.
+
+        The one question it asks (real terminals only, default no): whether to
+        auto-approve the three shale evidence commands for Claude Code. Saying yes
+        writes a permissions allowlist — scoped to exactly `shale intent`,
+        `shale done`, and `shale note`, never a wildcard — into the committed
+        `.claude/settings.json`, so the whole team's agents stop hitting permission
+        prompts for evidence. It's visible in the bootstrap PR diff and
+        `shale uninstall --repo` removes it.""")
+
+        # 2. How-it-works step 3: done publishes; hook is the safety net.
+        s = s.replace("""3. **Push finalizes.** A pre-push hook folds the session into
+           `.shale/<session>.yaml` and commits it alongside your code. Fail-open: a
+           Shale problem can never block your push.""",
+        """3. **`shale done` publishes.** The done call folds the session into
+           `.shale/<session>.yaml` and commits it on the spot — the evidence commit
+           exists before you push, so it always travels with the code. A pre-push
+           hook remains as the safety net, finalizing any session that never got a
+           `done` (interrupted agents, sessions an agent abandoned). Fail-open both
+           ways: a Shale problem can never block your push.""")
+
+        # 3. Husky/lefthook paragraph: foreign hooks no longer matter for agent sessions.
+        s = s.replace("""**Already using husky/lefthook or another PR bot?** Fine on both counts:
+        `init` never clobbers existing hooks (it honors `core.hooksPath` and tells
+        you if you need to chain `shale finalize --auto-commit` into a
+        manager-owned hook), and the card never touches comments posted by other
+        tools.""",
+        """**Already using husky/lefthook or another PR bot?** Fine on both counts.
+        `init` never clobbers existing hooks (it honors `core.hooksPath` and names
+        the exact hook file if you want to chain `shale finalize --auto-commit`
+        into it) — and since evidence now publishes at `shale done`, agent sessions
+        don't depend on that hook at all; chaining only matters as the safety net
+        for sessions without a done. The card never touches comments posted by
+        other tools.""")
+
+        # 4. Security FAQ: the permission grant question.
+        s = s.replace("""**Can the author fake the evidence?**""",
+        """**What permissions does it grant agents?** None by default. With your
+        explicit consent at `init` (an interactive `[y/N]`, or a flag in scripts),
+        it allowlists exactly three commands for Claude Code — `shale intent`,
+        `shale done`, `shale note` — in the committed `.claude/settings.json`.
+        Never `shale *`: uninstalling, re-initializing, and anything shipped later
+        still prompt. The grant is reviewable in the PR that adds it and
+        `shale uninstall --repo` removes precisely those entries.
+
+        **Can the author fake the evidence?**""")
+
+        # 5. Demo alt text: push → done.
+        s = s.replace("alt=\"A real Claude Code session with Shale: the agent declares intent, edits files, runs tests, reports done; git push commits the evidence\"",
+        "alt=\"A real Claude Code session with Shale: the agent declares intent, edits files, runs tests, reports done — and done commits the evidence\"")
+
+        open('shale.md','w').write(s)
+        print("ok")
+        PYEOF
+        git diff --stat
+      at: 2026-06-12T16:23:00.568411Z
+      classified: other
+    - cmd: grep -o "shale[^<]*\|git push[^<]*\|finalize[^<]*\|evidence committed[^<]*" /Users/tapabratapal/Projects/provasign/provasign.github.io/assets/images/shale-demo.svg | head -10
+      at: 2026-06-12T16:23:13.476887Z
+      classified: other
+    - cmd: grep -n "finalize runs on push\|git push\|completion recorded\|evidence" /Users/tapabratapal/Projects/provasign/provasign.github.io/assets/images/shale-demo.svg | head -8
+      at: 2026-06-12T16:23:20.105724Z
+      classified: other
+    - cmd: sed -n '50,70p' /Users/tapabratapal/Projects/provasign/provasign.github.io/assets/images/shale-demo.svg
+      at: 2026-06-12T16:23:46.407974Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io && python3 - <<'PYEOF'
+        p = 'assets/images/shale-demo.svg'
+        s = open(p).read()
+        s = s.replace('<tspan class="ok" dx="8">✓ completion recorded (session 25f37d) — finalize runs on push</tspan>',
+        '<tspan class="ok" dx="8">✓ completion recorded (session 25f37d) — evidence committed; publishes with your push</tspan>')
+        s = s.replace('<text x="24" y="326"><tspan class="out">shale: finalized 1 file(s)</tspan><tspan class="hook" dx="10">· .shale/25f37dfc….yaml</tspan></text>',
+        '<text x="24" y="326"><tspan class="out">shale: nothing to finalize</tspan><tspan class="hook" dx="10">· evidence already committed at done</tspan></text>')
+        s = s.replace('<text x="24" y="346"><tspan class="out">shale: evidence committed</tspan><tspan class="hook" dx="10">· chore(shale): session evidence — prompts stay local</tspan></text>',
+        '<text x="24" y="346"><tspan class="out">→ chore(shale): session evidence rides the push</tspan><tspan class="hook" dx="10">· prompts stay local</tspan></text>')
+        open(p,'w').write(s)
+        print("ok")
+        PYEOF
+        git add -A && git status --short
+      at: 2026-06-12T16:23:59.966792Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io && python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('assets/images/shale-demo.svg'); print('svg valid')" && git commit -qm "Shale page: init recording, finalize-on-done flow, consent allowlist FAQ
+
+        - embed the shale-init terminal recording (consent prompt included)
+        - step 3 of 'How it works': evidence publishes at shale done; pre-push
+          hook is the safety net — matches shale v0.1.24+
+        - husky/lefthook note: agent sessions no longer depend on the hook
+        - security FAQ: what permissions shale grants agents (three commands,
+          consent-gated, never a wildcard)
+        - demo SVG updated to the new verbatim output
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && echo "pages pushed: $(git rev-parse --short HEAD)"
+      at: 2026-06-12T16:24:14.082351Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && shale intent "Embed shale-init terminal recording in README; refresh getting-started init sample for the consent prompt" >/dev/null; git add -A && git commit -qm "docs: shale init terminal recording + consent-prompt sample output
+
+        GIF rendered with vhs (tape committed alongside for reproducibility).
+        getting-started's init sample now shows the [y/N] allowlist question and
+        explains its scope; the pre-push table row reads as the safety net it is.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "README + getting-started + assets committed; pages repo updated separately" --model claude-fable-5 | head -1; git push -q origin main && echo "shale pushed: $(git rev-parse --short HEAD)" && git show --stat HEAD | tail -6
+      at: 2026-06-12T16:24:27.433664Z
+      classified: other
+    - cmd: 'until [ "$(curl -s -o /dev/null -w ''%{http_code}'' https://provasign.dev/assets/images/shale-init.gif)" = "200" ]; do sleep 10; done; echo "site GIF live"; curl -s -o /dev/null -w "README GIF: HTTP %{http_code}\n" https://raw.githubusercontent.com/provasign/shale/main/assets/shale-init.gif'
+      at: 2026-06-12T16:25:11.332561Z
+      classified: other
+    - cmd: sleep 60; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d38090f4-0f4a-4fa2-841a-0da1c7dff23f/tasks/bzkhnptq7.output 2>/dev/null; echo "(interim)"
+      at: 2026-06-12T16:25:20.672072Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && go vet ./... && gofmt -l . && go test -count=1 ./internal/cli/ && shale intent "Harden init consent prompt: accept bare CR as Enter (non-ICRNL terminals)" >/dev/null; git add -A && git commit -qm "fix: consent prompt accepts bare CR as Enter
+
+        A user's terminal (zsh/p10k, ICRNL off) delivered Enter as a raw \r; the
+        prompt waited for \n forever while keystrokes echoed as ^M. Real terminals
+        in that state exist — read the consent line up to \n OR \r, bounded.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "CR-tolerant prompt; regression case y\\r in tests" --model claude-fable-5 >/dev/null 2>&1; git push -q origin main && git tag -a v0.1.27 -m "fix: consent prompt accepts bare CR as Enter" && git push origin v0.1.27 2>&1 | tail -1
+      at: 2026-06-12T16:45:15.696068Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && sleep 12 && RUN=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') && gh run watch "$RUN" --exit-status >/dev/null 2>&1; gh run view "$RUN" --json conclusion -q .conclusion
+        /usr/bin/sed -i '' 's/default: "v0.1.26"/default: "v0.1.27"/' action/action.yml && git add action/action.yml && git commit -qm "chore: sync action source copy default to v0.1.27
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main
+        cd /tmp && rm -rf sa27 && gh repo clone provasign/shale-action sa27 -- -q && cp /Users/tapabratapal/Projects/provasign/shale/action/action.yml sa27/action.yml && cd sa27 && git commit -aqm "chore: default to shale v0.1.27
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && git tag -f v1 >/dev/null && git push -f origin v1 2>&1 | tail -1; cd /tmp && rm -rf sa27
+        brew upgrade provasign/shale/shale 2>&1 | tail -1; shale version
+      at: 2026-06-12T16:47:02.484757Z
+      classified: other
+    - cmd: head -30 /Users/tapabratapal/Projects/provasign/shale/install.sh; echo ----; ls /Users/tapabratapal/Projects/provasign/provasign.github.io/_includes/ /Users/tapabratapal/Projects/provasign/provasign.github.io/_sass/ && head -30 /Users/tapabratapal/Projects/provasign/provasign.github.io/_config.yml
+      at: 2026-06-12T16:52:51.758265Z
+      classified: other
+    - cmd: 'curl -s -o /dev/null -w "get.shale.dev: %{http_code}\n" -m 5 https://get.shale.dev 2>&1 | tail -1; P=/Users/tapabratapal/Projects/provasign/provasign.github.io; cat $P/_includes/head_custom.html; ls $P/_sass/custom/; echo ----; grep -n "brew install\|curl -fsSL" $P/index.html $P/shale.md $P/prism.md $P/grove.md $P/fuse.md'
+      at: 2026-06-12T16:56:01.279604Z
+      classified: other
+    - cmd: 'for r in shale prism grove fuse; do echo "$r: $(gh api repos/provasign/$r/releases/latest --jq .tag_name 2>/dev/null || echo none)"; done; sed -n ''125,150p'' /Users/tapabratapal/Projects/provasign/provasign.github.io/index.html; echo ----; sed -n ''150,166p'' /Users/tapabratapal/Projects/provasign/provasign.github.io/prism.md; sed -n ''205,224p'' /Users/tapabratapal/Projects/provasign/provasign.github.io/grove.md; sed -n ''175,192p'' /Users/tapabratapal/Projects/provasign/provasign.github.io/fuse.md'
+      at: 2026-06-12T16:56:32.491972Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula --jq '.[].name'
+      at: 2026-06-12T16:57:10.995299Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io && python3 - <<'PYEOF'
+        # shale.md — replace the install code fence with the widget; keep the repo steps.
+        s = open('shale.md').read()
+        s = s.replace("""```sh
+        brew install provasign/shale/shale
+        cd your-repo
+        shale init
+        git add . && git commit -m "chore: enable shale" && git push
+        ```""",
+        """{% include install.html repo="provasign/shale" formula="provasign/shale/shale" curl="curl -fsSL https://raw.githubusercontent.com/provasign/shale/main/install.sh | sh" %}
+
+        ```sh
+        cd your-repo
+        shale init
+        git add . && git commit -m "chore: enable shale" && git push
+        ```""")
+        open('shale.md','w').write(s)
+
+        # index.html — hero install block becomes the widget + the two repo commands.
+        s = open('index.html').read()
+        s = s.replace("""        <div class="install">
+                  <div class="install-title">Install Shale</div>
+        <pre>brew tap provasign/shale
+        brew install shale
+        cd your-repo
+        shale init</pre>
+                </div>""",
+        """        <div class="install">
+                  <div class="install-title">Install Shale</div>
+                  {% include install.html repo="provasign/shale" formula="provasign/shale/shale" curl="curl -fsSL https://raw.githubusercontent.com/provasign/shale/main/install.sh | sh" %}
+        <pre>cd your-repo
+        shale init</pre>
+                </div>""")
+        open('index.html','w').write(s)
+
+        # prism.md — widget (brew is in the family tap) + keep pin/Windows notes, refreshed.
+        s = open('prism.md').read()
+        s = s.replace("""```sh
+        # macOS / Linux
+        curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+
+        # Windows (PowerShell)
+        irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
+
+        # Pin a version
+        VERSION=v0.5.6 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+        ```""",
+        """{% include install.html repo="provasign/prism" formula="provasign/shale/prism" curl="curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash" ps="irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex" %}
+
+        ```sh
+        # Pin a version
+        VERSION=v0.7.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+        ```""")
+        open('prism.md','w').write(s)
+
+        # grove.md — no brew formula; curl + powershell.
+        s = open('grove.md').read()
+        s = s.replace("""```sh
+        # macOS / Linux
+        curl -fsSL https://raw.githubusercontent.com/provasign/grove/main/install.sh | bash
+
+        # Windows (PowerShell)
+        irm https://raw.githubusercontent.com/provasign/grove/main/install.ps1 | iex
+
+        # Pin a specific version
+        VERSION=v0.6.2 curl -fsSL https://raw.githubusercontent.com/provasign/grove/main/install.sh | bash
+        ```""",
+        """{% include install.html repo="provasign/grove" curl="curl -fsSL https://raw.githubusercontent.com/provasign/grove/main/install.sh | bash" ps="irm https://raw.githubusercontent.com/provasign/grove/main/install.ps1 | iex" %}
+
+        ```sh
+        # Pin a specific version
+        VERSION=v0.6.3 curl -fsSL https://raw.githubusercontent.com/provasign/grove/main/install.sh | bash
+        ```""")
+        open('grove.md','w').write(s)
+
+        # fuse.md — two install spots: the quick one at top (line ~25) and the full section.
+        s = open('fuse.md').read()
+        s = s.replace("""```sh
+        # Homebrew (macOS / Linux) — one tap for the family
+        brew install provasign/shale/fuse
+
+        # Script install (macOS / Linux)
+        curl -fsSL https://raw.githubusercontent.com/provasign/fuse/main/install.sh | bash
+
+        # Windows (PowerShell)
+        irm https://raw.githubusercontent.com/provasign/fuse/main/install.ps1 | iex
+
+        # Pin a version
+        VERSION=v0.8.0 curl -fsSL https://raw.githubusercontent.com/provasign/fuse/main/install.sh | bash
+        ```""",
+        """{% include install.html repo="provasign/fuse" formula="provasign/shale/fuse" curl="curl -fsSL https://raw.githubusercontent.com/provasign/fuse/main/install.sh | bash" ps="irm https://raw.githubusercontent.com/provasign/fuse/main/install.ps1 | iex" %}
+
+        ```sh
+        # Pin a version
+        VERSION=v0.8.1 curl -fsSL https://raw.githubusercontent.com/provasign/fuse/main/install.sh | bash
+        ```""")
+        open('fuse.md','w').write(s)
+        print("ok")
+        PYEOF
+        grep -c "include install.html" shale.md index.html prism.md grove.md fuse.md && git diff --stat
+      at: 2026-06-12T16:59:09.560332Z
+      classified: other
+    - cmd: head -30 /Users/tapabratapal/Projects/provasign/provasign.github.io/index.html
+      at: 2026-06-12T16:59:25.202489Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io && python3 - <<'PYEOF'
+        hc = open('_includes/head_custom.html').read()
+        start = hc.index('  /* ── Install widget (_includes/install.html) ─────────── */')
+        style_end = hc.index('</style>', start)
+        script_start = hc.index('<script>', style_end)
+        script_end = hc.index('</script>', script_start) + len('</script>')
+
+        widget_css = hc[start:style_end].rstrip()
+        widget_js  = hc[script_start:script_end]
+
+        assets = "<style>\n" + widget_css + "\n</style>\n\n" + widget_js + "\n"
+        open('_includes/install-widget-assets.html','w').write(assets)
+
+        # head_custom: drop the moved chunk, include the assets file instead.
+        new_hc = hc[:start].rstrip('\n ') + "\n</style>\n\n{% include install-widget-assets.html %}\n"
+        # hc[:start] ends inside the <style> block (before widget css); closing tag re-added above.
+        open('_includes/head_custom.html','w').write(new_hc)
+
+        # index.html: pull the assets into its standalone head.
+        idx = open('index.html').read()
+        idx = idx.replace('</head>', '{% include install-widget-assets.html %}\n</head>', 1)
+        open('index.html','w').write(idx)
+        print("ok")
+        PYEOF
+        grep -c "install-widget-assets" _includes/head_custom.html index.html && grep -c "ps-install" _includes/install-widget-assets.html && tail -3 _includes/head_custom.html
+      at: 2026-06-12T16:59:55.001803Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/provasign.github.io && (bundle exec jekyll build --destination /tmp/site-build 2>&1 | tail -3) || (gem list jekyll 2>/dev/null | head -2; echo "no local jekyll — will validate via Pages CI")
+      at: 2026-06-12T17:00:07.73767Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io && git checkout -q Gemfile.lock 2>/dev/null; git add -A && git status --short && git commit -qm "Install widget: brew/curl/powershell tabs, copy button, live latest-version badge
+
+        - _includes/install.html — reusable per-product widget (entire.io-style,
+          plus method tabs and a copy affordance)
+        - _includes/install-widget-assets.html — shared CSS/JS; the version badge
+          fetches releases/latest client-side (sessionStorage-cached, one call per
+          repo per session) so the site always shows the current version
+        - wired into index hero, shale, prism (now also via the family tap), grove,
+          fuse; stale pinned versions refreshed; index's wrong 'brew install shale'
+          corrected to the family tap
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main && echo "pushed $(git rev-parse --short HEAD)"
+      at: 2026-06-12T17:00:45.566545Z
+      classified: other
+    - cmd: 'until s=$(gh api repos/provasign/provasign.github.io/pages/builds/latest --jq ''.status + " " + (.commit // "")'' 2>/dev/null) && [ "${s%% *}" = "built" ] && [ "${s##* }" = "$(git -C /Users/tapabratapal/Projects/provasign/provasign.github.io rev-parse HEAD)" ]; do sleep 15; done; echo "pages built: $s"; for u in / /shale/ /prism/ /grove/ /fuse/; do echo "$u: $(curl -s https://provasign.dev$u | grep -c ''ps-install-tab'') tab elements"; done'
+      at: 2026-06-12T17:00:56.584182Z
+      classified: other
+    - cmd: gh api repos/provasign/provasign.github.io/pages/builds/latest --jq '.status + " " + (.error.message // "no error") + " " + .commit'
+      at: 2026-06-12T17:06:19.880158Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/provasign.github.io && gh run list --limit 3 2>/dev/null; gh api repos/provasign/provasign.github.io/pages --jq '.build_type + " " + .source.branch' 2>/dev/null
+      at: 2026-06-12T17:07:14.27911Z
+      classified: other
+    - cmd: 'for u in / /shale/ /prism/ /grove/ /fuse/; do echo "$u: $(curl -s https://provasign.dev$u | grep -c ''ps-install-tab'') tabs, $(curl -s https://provasign.dev$u | grep -c ''install-widget-assets\|ps-install-copy'') copy/assets"; done; curl -s https://provasign.dev/shale/ | grep -o ''data-cmd="[^"]*"'' | head -3'
+      at: 2026-06-12T17:07:36.319746Z
+      classified: other
+    - cmd: 'for p in prism fuse grove; do echo "== /$p/"; curl -s https://provasign.dev/$p/ | grep -o ''data-cmd="[^"]*"\|data-repo="[^"]*"'' | sed ''s/data-cmd=/  /;s/data-repo=/  repo: /''; done'
+      at: 2026-06-12T17:08:29.191399Z
+      classified: other
+notes:
+    - text: continuation of session d38090f4-0f4a-4fa2-841a-0da1c7dff23f — events captured after its evidence was finalized
+      at: 2026-06-12T14:06:17.181103Z
+redactions: 4
