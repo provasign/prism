@@ -1,0 +1,203 @@
+shale_version: "0"
+id: cbdd4dba-d2f4-4134-97f1-ba4d0bed410a-c2
+created_at: 2026-06-12T18:20:49.829873Z
+finalized_at: 2026-06-12T23:36:59.331563Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-12T23:35:53.634324Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism && git add LICENSE NOTICE && git commit -m "Relicense to Apache 2.0; add NOTICE
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push origin main 2>&1 | tail -1
+      at: 2026-06-12T18:20:49.829873Z
+      classified: other
+    - cmd: GOWORK=off go build -o /tmp/grove-eval ./cmd/grove-eval && mkdir -p /tmp/eval-corpus && cd /tmp/eval-corpus && rm -rf gin && git clone --quiet https://github.com/gin-gonic/gin.git && cd gin && git checkout --quiet d75fcd4 && go mod download 2>&1 | tail -2; echo CLONE-OK $(git rev-parse --short HEAD)
+      at: 2026-06-12T19:04:39.151093Z
+      classified: build
+    - cmd: /tmp/grove-eval run --repo /tmp/eval-corpus/gin --commit d75fcd4 --out-dir /tmp/eval-out/gin 2>&1 | tail -10
+      at: 2026-06-12T19:04:55.175843Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus && rm -rf flask && git clone --quiet https://github.com/pallets/flask.git && cd flask && git checkout --quiet 36e4a824 && python3 -m venv /tmp/flask-venv && /tmp/flask-venv/bin/pip install --quiet -e . pytest 2>&1 | tail -1; echo FLASK-READY $(git rev-parse --short HEAD)
+      at: 2026-06-12T20:13:27.048024Z
+      classified: test
+    - cmd: /tmp/flask-venv/bin/python /Users/tapabratapal/Projects/provasign/grove/eval/pytruth/gen_truth.py --repo /tmp/eval-corpus/flask --commit 36e4a824 --out /tmp/eval-out/flask-truth.jsonl 2>&1 | tail -4
+      at: 2026-06-12T20:13:47.418709Z
+      classified: other
+    - cmd: head -1 /tmp/eval-out/flask-truth.jsonl | python3 -m json.tool && rm -rf /tmp/eval-corpus/flask/.grove && /tmp/grove-eval score --repo /tmp/eval-corpus/flask --truth /tmp/eval-out/flask-truth.jsonl --out-dir /tmp/eval-out/flask-r1 2>&1 | head -1
+      at: 2026-06-12T20:14:25.022124Z
+      classified: other
+    - cmd: /tmp/flask-venv/bin/python /Users/tapabratapal/Projects/provasign/grove/eval/pytruth/gen_truth.py --repo /tmp/eval-corpus/flask --commit 36e4a824 --out /tmp/eval-out/flask-truth.jsonl 2>&1 | tail -2 && rm -rf /tmp/eval-corpus/flask/.grove && /tmp/grove-eval score --repo /tmp/eval-corpus/flask --truth /tmp/eval-out/flask-truth.jsonl --out-dir /tmp/eval-out/flask-r2 2>&1 | head -1
+      at: 2026-06-12T20:15:25.628159Z
+      classified: other
+    - cmd: grep -A22 "False negatives" /tmp/eval-out/flask-r2/scorecard.md | head -24
+      at: 2026-06-12T20:16:15.011067Z
+      classified: other
+    - cmd: |-
+        grep -c '__init__' /tmp/eval-out/flask-truth.jsonl; python3 - <<'EOF'
+        import json
+        edges=[json.loads(l) for l in open('/tmp/eval-out/flask-truth.jsonl')][1:]
+        init=sum(1 for e in edges if e['callee']['name'].endswith('__init__'))
+        prop_like=sum(1 for e in edges if not e['callee']['name'].endswith('__init__'))
+        print(f"edges to __init__: {init} / {len(edges)}")
+        EOF
+      at: 2026-06-12T20:16:46.855062Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus && rm -rf requests && git clone --quiet https://github.com/psf/requests.git && cd requests && git checkout --quiet 6f66281a && python3 -m venv /tmp/requests-venv && /tmp/requests-venv/bin/pip install --quiet -e . pytest pytest-httpbin pytest-mock trustme 2>&1 | grep -i error | head -3; echo REQUESTS-READY $(git rev-parse --short HEAD)
+      at: 2026-06-12T20:18:17.067614Z
+      classified: test
+    - cmd: /tmp/requests-venv/bin/python /Users/tapabratapal/Projects/provasign/grove/eval/pytruth/gen_truth.py --repo /tmp/eval-corpus/requests --commit 6f66281a --out /tmp/eval-out/requests-truth.jsonl --pytest-arg=-q --pytest-arg=-x --pytest-arg=tests/test_requests.py --pytest-arg=-k "not network" 2>&1 | tail -3
+      at: 2026-06-12T20:18:35.385544Z
+      classified: test
+    - cmd: /tmp/requests-venv/bin/python /Users/tapabratapal/Projects/provasign/grove/eval/pytruth/gen_truth.py --repo /tmp/eval-corpus/requests --commit 6f66281a --out /tmp/eval-out/requests-truth.jsonl --pytest-arg=-q --pytest-arg=tests/test_requests.py 2>&1 | tail -3
+      at: 2026-06-12T20:19:37.225318Z
+      classified: test
+    - cmd: head -1 /tmp/eval-out/requests-truth.jsonl | python3 -c "import json,sys; h=json.loads(sys.stdin.read()); print(h['functions'],'functions,',h['edges'],'edges')" && rm -rf /tmp/eval-corpus/requests/.grove && /tmp/grove-eval score --repo /tmp/eval-corpus/requests --truth /tmp/eval-out/requests-truth.jsonl --out-dir /tmp/eval-out/requests-r1 2>&1 | head -1
+      at: 2026-06-12T20:19:45.773674Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval/tstruth && npm init -y >/dev/null 2>&1 && npm install --save-exact typescript@5.9.3 2>&1 | tail -1 && cd /tmp/eval-corpus && rm -rf socket.io express && git clone --quiet https://github.com/socketio/socket.io.git && cd socket.io && git checkout --quiet 3ad4e1f2 && npm install --ignore-scripts --no-audit --no-fund 2>&1 | tail -1; echo SOCKETIO-READY $(git rev-parse --short HEAD)
+      at: 2026-06-12T21:01:33.601999Z
+      classified: other
+    - cmd: cd eval && GOWORK=off go build -o /tmp/grove-eval ./cmd/grove-eval 2>/dev/null; cd /tmp/eval-corpus/socket.io && /tmp/grove-eval score --repo . --truth /tmp/eval-out/socketio-truth.jsonl --out-dir /tmp/eval-out/sock-tmp >/dev/null 2>&1; sqlite3 .grove/grove.db "SELECT name, parent_symbol, signature FROM symbols WHERE kind='field' AND file_path='packages/engine.io-client/lib/socket.ts' LIMIT 6" && sqlite3 .grove/grove.db "SELECT signature FROM symbols WHERE name='SocketWithUpgrade' AND kind='class'"
+      at: 2026-06-12T21:43:54.453165Z
+      classified: build
+    - cmd: |-
+        export PATH="/opt/homebrew/opt/openjdk/bin:$PATH" && javac --version && mkdir -p /tmp/jtest && cat > /tmp/jtest/Demo.java <<'EOF'
+        package demo;
+        public class Demo {
+          private final Helper helper = new Helper();
+          public int run(String s) {
+            return helper.size(s) + Util.twice(1);
+          }
+          static class Util {
+            static int twice(int x) { return x + x; }
+          }
+        }
+        class Helper {
+          int size(String s) { return s.length(); }
+        }
+        EOF
+        cd /tmp/jtest && javac -g -d classes Demo.java && javap -c -p -l -classpath classes demo.Demo | head -40
+      at: 2026-06-12T21:59:23.751832Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        s=open('cmd/grove-eval/main.go').read()
+        s=s.replace('''	repo := fs.String("repo", "", "repository root")
+        	out := fs.String("out", "", "output truth JSONL path")
+        	commit := fs.String("commit", "", "commit SHA recorded in the header")
+        	includeTests := fs.Bool("include-tests", false, "include _test.go packages")
+        	_ = fs.Parse(args)
+        	if *repo == "" || *out == "" {
+        		return fmt.Errorf("truth: --repo and --out are required")
+        	}
+        	header, edges, err := generateTruth(*repo, *commit, *includeTests)''','''	repo := fs.String("repo", "", "repository root")
+        	out := fs.String("out", "", "output truth JSONL path")
+        	commit := fs.String("commit", "", "commit SHA recorded in the header")
+        	lang := fs.String("lang", "go", "oracle language: go (ssa+vta) or java (javac+javap)")
+        	includeTests := fs.Bool("include-tests", false, "include _test.go packages")
+        	_ = fs.Parse(args)
+        	if *repo == "" || *out == "" {
+        		return fmt.Errorf("truth: --repo and --out are required")
+        	}
+        	var header eval.TruthFile
+        	var edges []eval.TruthEdge
+        	var err error
+        	if *lang == "java" {
+        		header, edges, err = eval.JavaCallTruth(*repo)
+        		header.Commit = *commit
+        	} else {
+        		header, edges, err = generateTruth(*repo, *commit, *includeTests)
+        	}''')
+        open('cmd/grove-eval/main.go','w').write(s)
+        print('lang flag wired')
+        EOF
+        GOWORK=off go build -o /tmp/grove-eval ./cmd/grove-eval && cd /tmp/eval-corpus && rm -rf commons-lang && git clone --quiet --depth 50 https://github.com/apache/commons-lang.git && cd commons-lang && git log --oneline -1 && export PATH="/opt/homebrew/opt/openjdk/bin:$PATH" && /tmp/grove-eval truth --lang java --repo . --commit $(git rev-parse --short HEAD) --out /tmp/eval-out/commonslang-truth.jsonl 2>&1 | tail -2
+      at: 2026-06-12T22:03:21.303596Z
+      classified: build
+    - cmd: rm -rf /tmp/eval-corpus/commons-lang/.grove && /tmp/grove-eval score --repo /tmp/eval-corpus/commons-lang --truth /tmp/eval-out/commonslang-truth.jsonl --out-dir /tmp/eval-out/commonslang-r1 2>&1 | head -1
+      at: 2026-06-12T22:05:05.902414Z
+      classified: other
+    - cmd: 'sqlite3 /tmp/eval-corpus/commons-lang/.grove/grove.db "SELECT name, parent_symbol, kind, span_start, call_sites FROM symbols WHERE span_start<=6442 AND span_end>=6442 AND file_path LIKE ''%ArrayUtils%'' AND kind=''method''" | head -3 && awk ''NR>=6435 && NR<=6448'' /tmp/eval-corpus/commons-lang/src/main/java/org/apache/commons/lang3/ArrayUtils.java && sqlite3 /tmp/eval-corpus/commons-lang/.grove/grove.db "SELECT span_start, signature FROM symbols WHERE name=''isEmpty'' AND file_path LIKE ''%ArrayUtils%'' ORDER BY span_start" | head -12 && cd /tmp/eval-corpus/commons-lang && /opt/homebrew/opt/openjdk/bin/javap -c -p -l -classpath /dev/null 2>/dev/null; sqlite3 .grove/grove.db "SELECT COUNT(*) FROM symbols WHERE kind=''method'' AND call_sites=''[]'' AND language=''java'' AND raw_text LIKE ''%(%''" '
+      at: 2026-06-12T22:45:25.049729Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, sqlite3, collections
+        truth=[json.loads(l) for l in open('/tmp/eval-out/commonslang-truth.jsonl')][1:]
+        db=sqlite3.connect('/tmp/eval-corpus/commons-lang/.grove/grove.db')
+        byfile=collections.defaultdict(list)
+        for sid,f,n,s,e in db.execute("SELECT id,file_path,name,span_start,span_end FROM symbols WHERE kind IN ('function','method','constructor')"):
+            byfile[f].append((sid,n,s,e))
+        refs={}
+        for e in truth:
+            for r in (e['caller'],e['callee']):
+                refs[(r['file'],r['line'],r['name'])]=r
+        sid2refs=collections.defaultdict(list)
+        for k,r in refs.items():
+            base=r['name'].split('.')[-1];best=None;bs=10**9
+            for sid,n,s,e in byfile.get(r['file'],[]):
+                if s<=r['line']<=e and (n==base or n==r['name'] or n.endswith('.'+base)):
+                    if e-s<bs: bs=e-s;best=sid
+            if best: sid2refs[best].append(k)
+        multi={sid:ks for sid,ks in sid2refs.items() if len(ks)>1}
+        print("grove symbols matched by >1 truth ref:", len(multi), "refs involved:", sum(len(v) for v in multi.values()))
+        for sid,ks in list(multi.items())[:5]:
+            print(" ", sid.split("::")[-1], "←", [f"{k[1]}:{k[2]}" for k in ks])
+        EOF
+      at: 2026-06-12T22:45:59.54614Z
+      classified: other
+    - cmd: export PATH="/opt/homebrew/opt/openjdk/bin:$PATH" && cd /tmp/jtest && javap -v -p -classpath classes demo.Demo 2>/dev/null | grep -A2 "public int run" | head -4
+      at: 2026-06-12T22:46:52.963584Z
+      classified: other
+    - cmd: export PATH="/opt/homebrew/opt/openjdk/bin:$PATH" && cd /tmp/jtest && javap -v -p classes/demo/Demo.class 2>/dev/null | sed -n '1,12p;25,50p'
+      at: 2026-06-12T22:48:51.425802Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=off GOFLAGS=-mod=mod go get github.com/provasign/grove@v0.7.0 2>&1 | tail -2 && GOWORK=off go mod tidy && GOWORK=off go build ./... && GOWORK=off go test ./... -count=1 2>&1 | grep -v "^ok\|no test files" | head -5; echo PRISM-SUITE-DONE
+      at: 2026-06-12T23:34:58.921011Z
+      classified: test
+    - cmd: grep -rn "EdgeTests\|\"tests\"" internal/mcp/*.go internal/grove/*.go | grep -vi test_ | grep -v "_test.go" | head -8
+      at: 2026-06-12T23:35:14.532634Z
+      classified: other
+    - cmd: sed -n '835,870p' internal/mcp/tools.go
+      at: 2026-06-12T23:35:42.189071Z
+      classified: other
+    - cmd: GOWORK=off go test ./... -count=1 2>&1 | grep -v "^ok\|no test files" | head -5; echo PRISM-SUITE-DONE
+      at: 2026-06-12T23:36:04.794175Z
+      classified: test
+    - cmd: |-
+        git diff -U3 -- internal/mcp/tools.go | grep -c "^+" && git diff -U0 -- internal/mcp/tools.go | awk '/^@@/{keep=0} /Grove v0.7.0 tiers/{keep=1} {buf[NR]=$0} END{}' >/dev/null; python3 - <<'EOF'
+        import subprocess
+        diff = subprocess.run(['git','diff','-U0','--','internal/mcp/tools.go'],capture_output=True,text=True).stdout
+        lines = diff.split('\n')
+        header, hunks, cur = [], [], None
+        for l in lines:
+            if l.startswith(('diff ','index ','--- ','+++ ')):
+                header.append(l); continue
+            if l.startswith('@@'):
+                if cur: hunks.append(cur)
+                cur=[l]; continue
+            if cur is not None: cur.append(l)
+        if cur: hunks.append(cur)
+        mine=[h for h in hunks if any('Grove v0.7.0 tiers' in x for x in h)]
+        print(f"total hunks {len(hunks)}, mine {len(mine)}")
+        patch='\n'.join(header)+'\n'+'\n'.join('\n'.join(h) for h in mine)+'\n'
+        open('/tmp/mine.patch','w').write(patch)
+        EOF
+        git apply --cached --unidiff-zero /tmp/mine.patch && git add go.mod go.sum && git diff --cached --stat
+      at: 2026-06-12T23:36:44.116451Z
+      classified: other
+notes:
+    - text: continuation of session cbdd4dba-d2f4-4134-97f1-ba4d0bed410a — events captured after its evidence was finalized
+      at: 2026-06-12T18:20:49.829873Z
+redactions: 0
