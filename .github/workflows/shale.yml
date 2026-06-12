@@ -1,0 +1,13 @@
+name: shale
+on:
+  pull_request_target:          # write-capable token for fork PRs — safe because
+    types: [opened, synchronize, reopened]   # we never check out PR code
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+jobs:
+  card:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: provasign/shale-action@v1   # no actions/checkout — everything via API

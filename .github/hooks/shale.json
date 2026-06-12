@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "postToolUse": [
+      {
+        "bash": "command -v shale >/dev/null 2>&1 && shale capture copilot || true",
+        "powershell": "if (Get-Command shale -ErrorAction SilentlyContinue) { shale capture copilot }",
+        "type": "command"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "bash": "command -v shale >/dev/null 2>&1 && shale capture copilot || true",
+        "powershell": "if (Get-Command shale -ErrorAction SilentlyContinue) { shale capture copilot }",
+        "type": "command"
+      }
+    ],
+    "sessionStart": [
+      {
+        "bash": "command -v shale >/dev/null 2>&1 && shale capture copilot || true",
+        "powershell": "if (Get-Command shale -ErrorAction SilentlyContinue) { shale capture copilot }",
+        "type": "command"
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "bash": "command -v shale >/dev/null 2>&1 && shale capture copilot || true",
+        "powershell": "if (Get-Command shale -ErrorAction SilentlyContinue) { shale capture copilot }",
+        "type": "command"
+      }
+    ]
+  }
+}

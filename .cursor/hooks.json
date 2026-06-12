@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "command -v shale >/dev/null 2>&1 && shale capture cursor || true"
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "command -v shale >/dev/null 2>&1 && shale capture cursor || true"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "command -v shale >/dev/null 2>&1 && shale capture cursor || true"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "command -v shale >/dev/null 2>&1 && shale capture cursor || true"
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "command -v shale >/dev/null 2>&1 && shale capture cursor || true"
+      }
+    ]
+  },
+  "version": 1
+}

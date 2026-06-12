@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "command -v shale >/dev/null 2>&1 && shale capture codex || true",
+            "commandWindows": "where shale >NUL 2>&1 && shale capture codex || ver >NUL",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "command -v shale >/dev/null 2>&1 && shale capture codex || true",
+            "commandWindows": "where shale >NUL 2>&1 && shale capture codex || ver >NUL",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "command -v shale >/dev/null 2>&1 && shale capture codex || true",
+            "commandWindows": "where shale >NUL 2>&1 && shale capture codex || ver >NUL",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "command -v shale >/dev/null 2>&1 && shale capture codex || true",
+            "commandWindows": "where shale >NUL 2>&1 && shale capture codex || ver >NUL",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}
