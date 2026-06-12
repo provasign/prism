@@ -128,14 +128,17 @@ context gathering and output wrapper size, not same-session re-read dedupe.
 ## Installation
 
 ```bash
-# macOS / Linux
+# Homebrew (macOS / Linux) — one tap for the family (prism, fuse, shale)
+brew install provasign/shale/prism
+
+# macOS / Linux script
 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 
 # Windows PowerShell
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin a version
-VERSION=v0.5.6 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v0.7.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes `prism` to `~/bin` by default. Set
