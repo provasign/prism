@@ -1,0 +1,170 @@
+shale_version: "0"
+id: d38090f4-0f4a-4fa2-841a-0da1c7dff23f-c2
+created_at: 2026-06-12T13:34:35.340138Z
+finalized_at: 2026-06-12T14:05:51.231577Z
+agent:
+    tool: ""
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+completion:
+    note: Untracked .provasign (kept local daemon state), gitignored it plus coverage.out/.cache, removed .amp steering, committed fuse .gitattributes, pushed all to origin/main
+    model: claude-fable-5
+commands:
+    - cmd: 'git push origin main 2>&1 && git log origin/main..main --oneline; echo "unpushed: $(git rev-list origin/main..main --count)"'
+      at: 2026-06-12T13:34:35.340138Z
+      classified: other
+    - cmd: git ls-remote origin main && git rev-parse main
+      at: 2026-06-12T13:34:52.921685Z
+      classified: other
+    - cmd: shale done --note "Untracked .provasign (kept local daemon state), gitignored it plus coverage.out/.cache, removed .amp steering, committed fuse .gitattributes, pushed all to origin/main" --model claude-fable-5
+      at: 2026-06-12T13:35:00.94044Z
+      classified: other
+    - cmd: git show --stat ad4cf22; echo ----; git show ad4cf22 --name-only --format=
+      at: 2026-06-12T13:37:39.973394Z
+      classified: other
+    - cmd: ls -la .shale/ .shale/local/ 2>/dev/null; echo ----; cat .shale/local/current 2>/dev/null
+      at: 2026-06-12T13:37:40.668651Z
+      classified: other
+    - cmd: git show ad4cf22:.shale/d38090f4-0f4a-4fa2-841a-0da1c7dff23f.yaml | head -80
+      at: 2026-06-12T13:37:46.200687Z
+      classified: other
+    - cmd: cat .shale/local/d38090f4-0f4a-4fa2-841a-0da1c7dff23f.jsonl; echo ----; git reflog --date=format:'%H:%M:%S' -8
+      at: 2026-06-12T13:37:47.400558Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/ && ls /Users/tapabratapal/Projects/provasign/shale
+      at: 2026-06-12T13:40:48.950851Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/shale status --short; git -C /Users/tapapal/x 2>/dev/null; git -C /Users/tapabratapal/Projects/provasign/shale log --oneline -3; echo ----; find /Users/tapabratapal/Projects/provasign/shale/internal /Users/tapabratapal/Projects/provasign/shale/cmd -name '*.go' ! -name '*_test.go' | sed 's|.*/shale/||'
+      at: 2026-06-12T13:41:34.073042Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/prism/.git/hooks/pre-push 2>/dev/null; echo ----; grep -rn "git push\|\"push\"\|, \"push\"" /Users/tapabratapal/Projects/provasign/shale/internal /Users/tapabratapal/Projects/provasign/shale/cmd /Users/tapabratapal/Projects/provasign/shale/main.go 2>/dev/null; echo ----; shale version 2>/dev/null || shale --version; echo ----; ls -la /Users/tapabratapal/Projects/provasign/prism/.shale/local/archive/
+      at: 2026-06-12T13:44:02.986581Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/prism reflog show origin/main --date=format:'%H:%M:%S' 2>/dev/null | head -5; echo ----; cat /Users/tapabratapal/Projects/provasign/prism/.shale/local/archive/*.jsonl
+      at: 2026-06-12T13:44:56.883952Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/shale/docs/ && wc -l /Users/tapabratapal/Projects/provasign/shale/docs/*.md /Users/tapabratapal/Projects/provasign/shale/internal/prcard/prcard.go /Users/tapabratapal/Projects/provasign/shale/internal/render/render.go
+      at: 2026-06-12T13:46:51.341849Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale && shale intent "Fix fold/finalize bugs: intent-completion cross-pairing, post-finalize event loss + archive clobber, tier-3 git ops always-edit, pre-push evidence-lag messaging" --body "Found via real prism session d38090f4: published evidence paired the provasign-cleanup intent with the shale-init completion note; the closing shale done landed after finalize and was then destroyed by an archive os.Rename clobber; tier-3 files all said ops:[edit] including deletions. Fix in fold/gitx/store/cli with tests."'
+      at: 2026-06-12T13:48:40.306549Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/shale/internal/fold/ /Users/tapabratapal/Projects/provasign/shale/internal/gitx/ /Users/tapabratapal/Projects/provasign/shale/internal/store/ /Users/tapabratapal/Projects/provasign/shale/internal/cli/
+      at: 2026-06-12T13:48:43.43818Z
+      classified: other
+    - cmd: grep -rn "FilesChangedSince\|AutoCommit" /Users/tapabratapal/Projects/provasign/shale --include='*.go'; echo ----; grep -n "Ops\|Notes" /Users/tapabratapal/Projects/provasign/shale/internal/render/render.go | head -20
+      at: 2026-06-12T13:49:47.668542Z
+      classified: other
+    - cmd: sed -n '280,340p' /Users/tapabratapal/Projects/provasign/shale/internal/cli/cli_test.go; echo ====; grep -n "Archive" /Users/tapabratapal/Projects/provasign/shale/internal/store/store_test.go
+      at: 2026-06-12T13:51:06.644694Z
+      classified: other
+    - cmd: grep -n "ArchiveSession" /Users/tapabratapal/Projects/provasign/shale/internal/store/store_test.go
+      at: 2026-06-12T13:51:15.152494Z
+      classified: other
+    - cmd: grep -n "sessionID" /Users/tapabratapal/Projects/provasign/shale/internal/fold/fold.go
+      at: 2026-06-12T13:54:26.532143Z
+      classified: other
+    - cmd: grep -rn "evidence committed" /Users/tapabratapal/Projects/provasign/shale --include='*.go' --include='*.md' --include='*.sh' | grep -v finalize_command.go
+      at: 2026-06-12T13:56:52.40126Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && go build ./... && go test ./... 2>&1 | tail -25
+      at: 2026-06-12T13:56:59.583694Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && go vet ./... && gofmt -l . && git diff --stat
+      at: 2026-06-12T13:57:22.59191Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && git add -A && git commit -m "fix: fold multi-task sessions, post-finalize remnants, and via:git ops honestly
+
+        Found live in the prism repo (session d38090f4): the published evidence
+        paired one task's intent with another task's completion note, the closing
+        'shale done' raced the pre-push finalize and was then destroyed by an
+        archive clobber, and every via:git file said ops:[edit] including deletions.
+
+        - fold: a completion pairs only with the intent that precedes it; a session
+          with several intent→done arcs publishes the last cycle and preserves the
+          earlier ones as timestamped notes, never cross-paired, never dropped.
+        - fold: events captured after a session was finalized fold into a
+          continuation file (<id>-c2.yaml) when they carry task evidence; ambient
+          capture alone is archived without minting one.
+        - store: ArchiveSession appends when the archive already holds the session
+          id — the local audit trail is never clobbered by a remnant.
+        - gitx: FilesChangedSince derives write/edit/delete from git statuses
+          (log --name-status + status --porcelain) instead of hardcoding edit.
+        - finalize --auto-commit: say plainly that a commit created in a pre-push
+          hook is not part of the push in flight and ships with the next one.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && shale done --note "Fixed all four fold/finalize bugs with regression tests; go test ./... green, vet+gofmt clean" --model claude-fable-5
+      at: 2026-06-12T13:57:39.445811Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && git rm -r -q --cached .shale/local && printf '# Written by shale init in consumer repos; mirrored here so the tool'\''s own\n# session logs never get committed.\nlocal/\n' > .shale/.gitignore && git add .shale/.gitignore && git commit --amend --no-edit && git show --stat HEAD | head -16
+      at: 2026-06-12T13:57:59.168236Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && git status --short && git push origin main 2>&1
+      at: 2026-06-12T13:58:06.946528Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/shale/internal/version/version.go; echo ----; ls /Users/tapapal 2>/dev/null; ls /Users/tapabratapal/Projects/provasign/shale/hack/ /Users/tapabratapal/Projects/provasign/shale/.github/workflows/ 2>/dev/null; echo ----; grep -n "release\|version\|VERSION" /Users/tapabratapal/Projects/provasign/shale/Makefile | head -20
+      at: 2026-06-12T13:59:42.767563Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/shale/.github/workflows/release.yml; echo ----; git -C /Users/tapabratapal/Projects/provasign/shale tag --sort=-v:refname | head -5; echo ----; grep -rn "v0.1.20" /Users/tapabratapal/Projects/provasign/shale --include='*.yml' --include='*.yaml' --include='*.go' --include='*.sh' --include='Makefile' | head
+      at: 2026-06-12T13:59:50.609346Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/shale log --oneline -6 v0.1.20 && git -C /Users/tapabratapal/Projects/provasign/shale describe --tags && sed -n '1,25p' /Users/tapabratapal/Projects/provasign/shale/action/action.yml
+      at: 2026-06-12T14:00:05.095273Z
+      classified: other
+    - cmd: sed -n '25,90p' /Users/tapabratapal/Projects/provasign/shale/action/action.yml; echo ----; git -C /Users/tapabratapal/Projects/provasign/shale show dc54ef3 --stat
+      at: 2026-06-12T14:00:25.194601Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/shale tag -l --format='%(contents:subject)' v0.1.20 v0.1.19
+      at: 2026-06-12T14:01:19.566052Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale && git tag -a v0.1.21 -m "fix: fold multi-task sessions, post-finalize remnants, and via:git ops honestly" 962c180 && git push origin v0.1.21 2>&1'
+      at: 2026-06-12T14:01:29.732491Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && sleep 10 && gh run list --workflow=release.yml --limit 2
+      at: 2026-06-12T14:01:47.676553Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/shale && gh run watch 27420552420 --exit-status 2>&1 | tail -5
+      at: 2026-06-12T14:03:04.950533Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/shale && gh run view 27420552420 --json status,conclusion -q ''.status + " " + .conclusion'' && gh release view v0.1.21 --json tagName,assets -q ''.tagName + ": " + ([.assets[].name] | join(", "))'''
+      at: 2026-06-12T14:03:21.58568Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/commits --jq '.[0].commit.message' 2>/dev/null | head -2
+      at: 2026-06-12T14:03:33.145178Z
+      classified: other
+    - cmd: 'grep -n ''default: "v0'' /Users/tapabratapal/Projects/provasign/shale/action/action.yml'
+      at: 2026-06-12T14:03:40.036874Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/shale && git add action/action.yml && git commit -m "chore: sync action source copy default to v0.1.21
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push origin main 2>&1
+      at: 2026-06-12T14:04:05.294904Z
+      classified: other
+    - cmd: 'grep -n "uses:" /Users/tapabratapal/Projects/provasign/prism/.github/workflows/shale.yml; echo ----; gh api repos/provasign/shale-action --jq ''.full_name + " default:" + .default_branch'' 2>&1 | head -2; gh api repos/provasign/shale-action/contents/action.yml --jq ''.content'' 2>/dev/null | base64 -d | grep -n ''default: "v0'' '
+      at: 2026-06-12T14:04:22.473086Z
+      classified: other
+    - cmd: gh api repos/provasign/shale-action/commits --jq '.[0:4][] | .sha[0:7] + " " + (.commit.message | split("\n")[0])'; echo ----; gh api repos/provasign/shale-action/tags --jq '.[] | .name + " " + .commit.sha[0:7]'
+      at: 2026-06-12T14:04:37.496758Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/shale/action/; cd /tmp && rm -rf shale-action-release && gh repo clone provasign/shale-action shale-action-release -- -q && ls shale-action-release/
+      at: 2026-06-12T14:04:55.454305Z
+      classified: other
+    - cmd: |-
+        cp /Users/tapabratapal/Projects/provasign/shale/action/action.yml /tmp/shale-action-release/action.yml && cd /tmp/shale-action-release && git diff --stat && git add action.yml && git commit -m "chore: default to shale v0.1.21
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push origin main && git tag -f v1 && git push -f origin v1 2>&1
+      at: 2026-06-12T14:05:05.706483Z
+      classified: other
+    - cmd: brew upgrade provasign/shale/shale 2>&1 | tail -4; shale version; rm -rf /tmp/shale-action-release
+      at: 2026-06-12T14:05:27.542228Z
+      classified: other
+notes:
+    - text: continuation of session d38090f4-0f4a-4fa2-841a-0da1c7dff23f — events captured after its evidence was finalized
+      at: 2026-06-12T13:34:35.340138Z
+redactions: 0
