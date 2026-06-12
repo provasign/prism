@@ -1,0 +1,204 @@
+shale_version: "0"
+id: d38090f4-0f4a-4fa2-841a-0da1c7dff23f
+created_at: 2026-06-12T13:26:32.875477Z
+finalized_at: 2026-06-12T13:34:18.001152Z
+agent:
+    tool: claude-code
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+intent:
+    title: 'Remove .provasign from git tracking (provasign paused): untrack, gitignore, drop .amp steering, push'
+    title_sha256: 69467d3a17580b38a30c675230058ac9a8184891be3f0843e5ee61a107ad337b
+    declared_at: 2026-06-12T13:33:28.833503Z
+    prompt_count: 4
+completion:
+    note: Committed shale init output (17 files) as 5cf7829; excluded settings.local.json, .gitattributes, .amp/, .cache/, .provasign/intents, coverage.out
+    model: claude-fable-5
+files:
+    - path: .claude/settings.json
+      ops:
+        - edit
+      via: git
+    - path: .clinerules
+      ops:
+        - edit
+      via: git
+    - path: .codex/hooks.json
+      ops:
+        - edit
+      via: git
+    - path: .cursor/hooks.json
+      ops:
+        - edit
+      via: git
+    - path: .cursorrules
+      ops:
+        - edit
+      via: git
+    - path: .gitattributes
+      ops:
+        - edit
+      via: git
+    - path: .github/copilot-instructions.md
+      ops:
+        - edit
+      via: git
+    - path: .github/hooks/shale.json
+      ops:
+        - edit
+      via: git
+    - path: .github/workflows/shale.yml
+      ops:
+        - edit
+      via: git
+    - path: .gitignore
+      ops:
+        - edit
+      via: git
+    - path: .kiro/steering/shale.md
+      ops:
+        - edit
+      via: git
+    - path: .provasign/.gitignore
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-06-convert-grove-spike-test-to-fixture-based-add-precision-scor.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-06-fix-prism-index-context-deadline-exceeded-timeout.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-06-release-astkit-v041-grove-v045-bump-prism-to-grove-v045.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-bump-grove-dependency-from-v045-to-v050.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-document-real-token-cost-story-in-readme.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-enhance-prism-query-quality-doc-const-filter-callers-mode-na.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-fix-helptext-missing-cline-devin-kiro-and-feedback-tab-inden.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-fix-prism-payflow-benchmark-follow-ups.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-fix-skip-file-as-dir-error-test-on-windows-enotdir-vs-isnote.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-fix-tf-idf-doc-noise-and-add-terms-flag-to-cli.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-install-prism-cli-text-mode-for-agents.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-overhaul-prism-docs-for-cli-mode-and-benchmarks.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-remove-vs-code-extension-and-release.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/intents/INT-2026-06-07-restore-mcp-surface-alongside-cli.yaml
+      ops:
+        - edit
+      via: git
+    - path: .provasign/provasign.yaml
+      ops:
+        - edit
+      via: git
+    - path: .windsurfrules
+      ops:
+        - edit
+      via: git
+    - path: AGENTS.md
+      ops:
+        - edit
+      via: git
+    - path: CLAUDE.md
+      ops:
+        - edit
+      via: git
+    - path: GEMINI.md
+      ops:
+        - edit
+      via: git
+commands:
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/prism diff --stat && echo ---- && git -C /Users/tapabratapal/Projects/provasign/prism status --short
+      at: 2026-06-12T13:27:06.547235Z
+      classified: other
+    - cmd: find .shale .claude .codex .cursor .github/hooks .amp .cache -type f | head -50
+      at: 2026-06-12T13:27:06.598522Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/prism diff CLAUDE.md
+      at: 2026-06-12T13:27:24.691378Z
+      classified: other
+    - cmd: cat .gitattributes .shale/.gitignore; echo ----; cat .gitignore 2>/dev/null | head -30; echo ----; head -5 .amp/instructions.md
+      at: 2026-06-12T13:27:24.735587Z
+      classified: other
+    - cmd: cat .claude/settings.json; echo ----; cat .claude/settings.local.json
+      at: 2026-06-12T13:27:49.691239Z
+      classified: other
+    - cmd: 'shale intent "Commit shale init output: steering blocks, capture hooks, .shale/, PR workflow, kiro steering"'
+      at: 2026-06-12T13:28:11.865307Z
+      classified: other
+    - cmd: git add CLAUDE.md AGENTS.md GEMINI.md .cursorrules .windsurfrules .clinerules .github/copilot-instructions.md .github/hooks/shale.json .github/workflows/shale.yml .claude/settings.json .codex/hooks.json .cursor/hooks.json .kiro/steering/shale.md .shale/ && git status --short | grep '^[MA]'
+      at: 2026-06-12T13:28:18.752615Z
+      classified: other
+    - cmd: |-
+        git commit -m "shale init: steering blocks, capture hooks, .shale/, PR card workflow
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+      at: 2026-06-12T13:28:27.902985Z
+      classified: other
+    - cmd: shale done --note "Committed shale init output (17 files) as 5cf7829; excluded settings.local.json, .gitattributes, .amp/, .cache/, .provasign/intents, coverage.out" --model claude-fable-5
+      at: 2026-06-12T13:28:36.659723Z
+      classified: other
+    - cmd: git ls-files .provasign | head -40; echo ----; ls -la .provasign/ 2>/dev/null; ls .provasign/intents/ | head
+      at: 2026-06-12T13:30:14.277399Z
+      classified: other
+    - cmd: cat .provasign/.gitignore; echo ----; cat .provasign/provasign.yaml; echo ----; cat ".provasign/intents/INT-2026-06-08-update-agent-setup-promptmd-to-recommend-both-mode.yaml"
+      at: 2026-06-12T13:30:25.372313Z
+      classified: other
+    - cmd: ls -lat .provasign/intents/ | head -5; echo ----; cat .shale/config.yaml; echo ----; ls -la .shale/local/; echo ----; head -c 2000 .shale/local/d38090f4-0f4a-4fa2-841a-0da1c7dff23f.jsonl
+      at: 2026-06-12T13:31:51.392911Z
+      classified: other
+    - cmd: 'shale intent "Remove .provasign from git tracking (provasign paused): untrack, gitignore, drop .amp steering, push"'
+      at: 2026-06-12T13:33:28.84898Z
+      classified: other
+    - cmd: git remote -v && git log origin/main..main --oneline 2>/dev/null; echo ----; find .amp -type f
+      at: 2026-06-12T13:33:29.921151Z
+      classified: other
+    - cmd: git rm -r -q --cached .provasign && rm -rf .amp && printf '\n# Provasign (paused) — local daemon state only, not tracked\n.provasign/\n' >> .gitignore && git add .gitignore && git status --short | head -30
+      at: 2026-06-12T13:33:38.429157Z
+      classified: other
+    - cmd: |-
+        git commit -m "Untrack .provasign: provasign is paused; keep local daemon state only
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && printf '\n# Build artifacts\n/coverage.out\n/.cache/\n' >> .gitignore && git add .gitignore .gitattributes && git commit -m "Gitignore build artifacts; commit fuse merge-driver .gitattributes
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git status --short
+      at: 2026-06-12T13:34:06.418653Z
+      classified: other
+notes: []
+redactions: 0
