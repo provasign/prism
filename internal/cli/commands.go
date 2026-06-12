@@ -262,9 +262,8 @@ contracts the agent would not find by grep+read alone.
 | Tool | When |
 |---|---|
 | prism_index | Once at session start — not on every step |
-| prism_compact | When context window is near capacity |
 | prism_search | Find a symbol by name when file is unknown (not a grep replacement) |
-| prism_evidence | Sub-agent to parent: typed citations instead of prose |
+| prism_drift | When a stale-context warning appears, or before editing files read a while ago |
 
 ### Do NOT
 
@@ -273,6 +272,7 @@ contracts the agent would not find by grep+read alone.
 - Do NOT use prism_read for a single function — use prism_lookup instead
 - Do NOT re-run prism_index on every step — delta indexing is automatic
 - Do NOT manually cross-reference coverage_gaps output with prism_search — treat coverage_gaps as authoritative and use it as the terminal step, not the start of a manual verification chain
+- For coverage audits, use 1-2 terms per prism_query and union the results — each query audits only its seeds + blast radius, so packing many terms into one call narrows the audit
 `
 
 // steeringInstructionsCLI is injected when agent_mode is "cli".
@@ -329,6 +329,7 @@ callers, callees, and test contracts the agent would not find by grep+read alone
 - Do NOT use prism read for a single function — use prism lookup instead
 - Do NOT re-run prism index on every step — delta indexing is automatic
 - Do NOT manually cross-reference coverage_gaps output — treat it as authoritative and use it as the terminal step, not the start of a manual verification chain
+- For coverage audits, use 1-2 terms per query and union the results — each query audits only its seeds + blast radius
 `
 
 // steeringInstructionsBoth is injected when agent_mode is "both" (default).
@@ -386,6 +387,7 @@ Use the prism CLI with --format text instead of MCP tools:
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
 - Do NOT re-run prism_index / prism index on every step — delta indexing is automatic
 - Do NOT manually cross-reference coverage_gaps output — treat it as authoritative and use it as the terminal step, not the start of a manual verification chain
+- For coverage audits, use 1-2 terms per query and union the results — each query audits only its seeds + blast radius
 `
 
 // writeSteeringInstructions writes per-tool instruction files into the project

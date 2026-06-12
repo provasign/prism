@@ -7,20 +7,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/config"
-	"github.com/provasign/prism/internal/embeddings"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/session"
 )
 
-// Handler holds the shared backend state used by all 8 prism_* tools.
+// Handler holds the shared backend state used by the prism_* tools.
 type Handler struct {
 	Cfg     *config.Config
 	Root    string
@@ -30,10 +28,16 @@ type Handler struct {
 	Signals *ranking.SignalComputer
 	Weights *ranking.LearnedWeights // A: per-repo outcome-conditioned weights
 
-	embMu  sync.Mutex
-	emb    embeddings.Backend
-	corpus []grove.SymbolRecord
-	dirty  bool
+	// semScores holds the current query's semantic similarity scores from
+	// Grove (model2vec, vectors cached by symbol ID inside the engine).
+	semMu     sync.Mutex
+	semScores map[string]float64
+
+	// driftBase records the symbols delivered with each full file read this
+	// session, so prism_drift can diff structurally (renames, breaking
+	// changes) via Grove's GraphDiff instead of comparing hashes.
+	driftMu   sync.Mutex
+	driftBase map[string][]grove.SymbolRecord
 
 	// readyCh is closed when the background Grove connection + initial index
 	// completes. Nil means no deferred init (Grove is already ready).
@@ -68,13 +72,13 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
 	}
 	h := &Handler{
-		Cfg:     cfg,
-		Root:    root,
-		Grove:   client,
-		Session: tr,
-		Ledger:  ledger,
-		dirty:   true,
-		Weights: ranking.LoadLearnedWeights(root), // A: load per-repo learned weights
+		Cfg:       cfg,
+		Root:      root,
+		Grove:     client,
+		Session:   tr,
+		Ledger:    ledger,
+		driftBase: map[string][]grove.SymbolRecord{},
+		Weights:   ranking.LoadLearnedWeights(root), // A: load per-repo learned weights
 	}
 	h.Signals = ranking.NewSignalComputer(root, semanticAdapter{h: h})
 	return h
@@ -86,44 +90,65 @@ func (h *Handler) SaveSessionCache() {
 	session.SaveCache(h.Session, h.Root, 500)
 }
 
-// MarkCorpusStale forces a rebuild of the embedding index on next use.
-func (h *Handler) MarkCorpusStale() {
-	h.embMu.Lock()
-	h.dirty = true
-	h.embMu.Unlock()
-}
-
-func (h *Handler) ensureEmbeddings(ctx context.Context) error {
-	h.embMu.Lock()
-	defer h.embMu.Unlock()
-	if !h.dirty && h.emb != nil {
-		return nil
-	}
-	// Pull a representative sample of symbols from Grove for the corpus.
-	syms, err := h.Grove.SearchSymbols(ctx, "", 5000)
+// loadSemanticScores fetches Grove's semantic ranking for task and caches
+// the scores by symbol ID for this query's signal computation. The engine
+// caches embedding vectors by symbol ID across index rebuilds, so only
+// changed files' symbols are re-embedded — Prism keeps no corpus of its own.
+func (h *Handler) loadSemanticScores(ctx context.Context, task string) {
+	scored, err := h.Grove.Semantic(ctx, task, 200)
+	h.semMu.Lock()
+	defer h.semMu.Unlock()
+	h.semScores = map[string]float64{}
 	if err != nil {
-		return fmt.Errorf("warm embeddings: %w", err)
+		return
 	}
-	tf := embeddings.NewTFIDF()
-	tf.Index(syms)
-	h.emb = tf
-	h.corpus = syms
-	h.dirty = false
-	return nil
+	for _, sc := range scored {
+		h.semScores[sc.Symbol.ID] = sc.Score
+	}
 }
 
-// semanticAdapter is a tiny shim so the ranker can use whatever Backend the
-// handler currently has loaded.
+// semanticAdapter exposes the per-query Grove semantic scores to the ranker.
+// Symbols outside the fetched top-N score 0 (graph distance and the other
+// signals still rank them).
 type semanticAdapter struct{ h *Handler }
 
-func (a semanticAdapter) Similarity(task string, sym grove.SymbolRecord) float64 {
-	a.h.embMu.Lock()
-	b := a.h.emb
-	a.h.embMu.Unlock()
-	if b == nil {
-		return 0
+func (a semanticAdapter) Similarity(_ string, sym grove.SymbolRecord) float64 {
+	a.h.semMu.Lock()
+	defer a.h.semMu.Unlock()
+	return a.h.semScores[sym.ID]
+}
+
+// confidenceFor estimates whether previously delivered content for entry is
+// still visible in the agent's window. The ledger delta only counts Prism's
+// own deliveries; when the agent reported context_used both now and at send
+// time, the larger of the two deltas wins — the agent's own count sees
+// tokens Prism never delivered (shell output, edits, other servers).
+func (h *Handler) confidenceFor(entry *session.Entry, contextUsed int64, window int) session.Confidence {
+	tokensSince := h.Ledger.TotalDeliveredTokens() - entry.TokenDistanceAtSend
+	if tokensSince < 0 {
+		tokensSince = 0
 	}
-	return b.Similarity(task, sym)
+	if contextUsed > 0 && entry.ContextUsedAtSend > 0 {
+		if d := contextUsed - entry.ContextUsedAtSend; d > tokensSince {
+			tokensSince = d
+		}
+	}
+	return session.EstimateConfidence(tokensSince, window)
+}
+
+// setDriftBase records the symbols delivered with a full read of file, the
+// structural baseline prism_drift diffs against.
+func (h *Handler) setDriftBase(file string, syms []grove.SymbolRecord) {
+	h.driftMu.Lock()
+	h.driftBase[file] = syms
+	h.driftMu.Unlock()
+}
+
+// driftBaseFor returns the delivered-symbol baseline for file, if any.
+func (h *Handler) driftBaseFor(file string) []grove.SymbolRecord {
+	h.driftMu.Lock()
+	defer h.driftMu.Unlock()
+	return h.driftBase[file]
 }
 
 // FeedbackEntry is one user rating of a tool response.
@@ -202,6 +227,15 @@ var modelProp = map[string]any{
 	"description": "Your model ID (e.g. \"claude-sonnet-4-6\", \"gpt-4o\"). Sizes context budgets. Optional.",
 }
 
+// contextUsedProp lets agents report how many tokens their context window
+// already holds. Prism's ledger only sees its own deliveries; this hint
+// keeps re-read confidence honest when most context flows through other
+// tools (shell output, edits, other MCP servers).
+var contextUsedProp = map[string]any{
+	"type":        "integer",
+	"description": "Tokens currently in your context window. Improves re-read confidence. Optional.",
+}
+
 func toolSchema(name string) map[string]any {
 	open := map[string]any{"type": "object", "additionalProperties": true}
 	switch name {
@@ -222,16 +256,17 @@ func toolSchema(name string) map[string]any {
 				"include": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string", "enum": []string{"graph", "tests", "docs", "coverage_gaps"}},
-					"description": "Categories: graph (callers/callees), tests, docs (filenames only), coverage_gaps (untested symbols). Default: [\"graph\",\"tests\"].",
+					"description": "Categories: graph (callers/callees), tests, docs (filenames only), coverage_gaps (untested symbols; audits only the seeds + blast radius, so use 1-2 terms per query and union results). Default: [\"graph\",\"tests\"].",
 				},
 				"graph_depth": map[string]any{
 					"type":        "integer",
 					"description": "BFS hops: 1=immediate callers, 2=default, 3+=blast radius.",
 				},
-				"model":   modelProp,
-				"dir":     map[string]any{"type": "string", "description": "Project root (optional)."},
-				"profile": map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
-				"budget":  map[string]any{"type": "integer", "description": "Token budget (default 8000)."},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
+				"dir":          map[string]any{"type": "string", "description": "Project root (optional)."},
+				"profile":      map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
+				"budget":       map[string]any{"type": "integer", "description": "Token budget. Explicit values are honored exactly; default 8000."},
 			},
 		}
 	case "prism_read":
@@ -243,10 +278,48 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "File path relative to project root.",
 				},
-				"model": modelProp,
-				"task":  map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
+				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
+				"dir":          map[string]any{"type": "string", "description": "Project root (optional)."},
+			},
+		}
+	case "prism_search":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"query"},
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "Substring matched against symbol names, signatures, and docstrings.",
+				},
+				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 				"dir":   map[string]any{"type": "string", "description": "Project root (optional)."},
 			},
+		}
+	case "prism_lookup":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"name"},
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type":        "string",
+					"description": "Symbol name, optionally package-qualified ('internal/cli.Run' or bare 'Run').",
+				},
+				"dir": map[string]any{"type": "string", "description": "Project root (optional)."},
+			},
+		}
+	case "prism_index":
+		return map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"dir": map[string]any{"type": "string", "description": "Directory to index (default: project root)."},
+			},
+		}
+	case "prism_drift":
+		return map[string]any{
+			"type":       "object",
+			"properties": map[string]any{},
 		}
 	case "prism_evidence":
 		return map[string]any{
@@ -345,7 +418,6 @@ type rankedSymbol struct {
 	FilePath      string         `json:"filePath"`
 	Kind          string         `json:"kind"`
 	Category      string         `json:"category"`
-	Disclosure    string         `json:"disclosure"`
 	Content       string         `json:"content"`
 	Span          grove.SpanInfo `json:"span"`
 }
@@ -422,10 +494,11 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	callCfg := h.Cfg.WithModel(stringArg(args, "model", ""))
 	limit := intArg(args, "limit", 50)
+	contextUsed := int64(intArg(args, "context_used", 0))
 
-	if err := h.ensureEmbeddings(ctx); err != nil {
-		return nil, err
-	}
+	// Semantic similarity scores for this task, served from Grove's cached
+	// embedding index (one engine call; no corpus rebuild in Prism).
+	h.loadSemanticScores(ctx, task)
 	var seeds []grove.SymbolRecord
 
 	if len(terms) > 0 {
@@ -462,7 +535,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		}
 		seeds = filterGeneratedPrismContext(seeds)
 	} else {
-		// TF-IDF fallback when no terms provided.
+		// Intent-ranked fallback (Grove Query) when no terms provided.
 		var err error
 		seeds, err = h.Grove.QueryByIntent(ctx, task, limit)
 		if err != nil {
@@ -495,14 +568,16 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	var graphExtra []grove.SymbolRecord
 
-	// seedCoverage tracks whether each seed has a direct test edge.
-	// Populated whenever tests or coverage_gaps is requested.
-	seedCoverage := make(map[string]bool)
-	needTestEdges := includeSet["tests"] || includeSet["coverage_gaps"]
-
 	for _, seed := range seedSyms {
+		// Expand by qualified name when the symbol has one: bare names
+		// ("Get", "Keys") collide across packages on large repos and drag
+		// unrelated symbols' callers and tests into the result set.
+		seedQuery := seed.QualifiedName
+		if seedQuery == "" {
+			seedQuery = seed.Name
+		}
 		if includeSet["graph"] {
-			if impacted, err := h.Grove.Impact(ctx, seed.Name, graphDepth); err == nil {
+			if impacted, err := h.Grove.Impact(ctx, seedQuery, graphDepth); err == nil {
 				for _, imp := range impacted {
 					if _, exists := graphDist[imp.ID]; !exists {
 						graphDist[imp.ID] = 1
@@ -514,17 +589,15 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 				}
 			}
 		}
-		if needTestEdges {
-			if tests, err := h.Grove.Tests(ctx, seed.Name); err == nil {
-				seedCoverage[seed.ID] = hasDirectTestCoverage(ctx, h.Grove, seed, tests)
+		if includeSet["tests"] {
+			if tests, err := h.Grove.Tests(ctx, seedQuery); err == nil {
 				for _, tst := range tests {
 					hasTestEdgeID[tst.ID] = true
 					testFilePaths[tst.FilePath] = true
 					if _, exists := graphDist[tst.ID]; !exists {
 						graphDist[tst.ID] = 1
 					}
-					// Only add test symbols to the output when tests are requested.
-					if includeSet["tests"] && !seenIDs[tst.ID] {
+					if !seenIDs[tst.ID] {
 						seenIDs[tst.ID] = true
 						graphExtra = append(graphExtra, tst)
 					}
@@ -560,8 +633,9 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	for i, sym := range merged {
 		dist, inGraph := graphDist[sym.ID]
 		if !inGraph {
-			// Not reached by BFS: fall back to TF-IDF position as distance proxy
-			// so semantically adjacent symbols still score above unrelated ones.
+			// Not reached by BFS: fall back to retrieval position as distance
+			// proxy so semantically adjacent symbols still score above
+			// unrelated ones.
 			dist = 3 + (i / 10)
 		}
 		sv := h.Signals.Compute(ctx, task, sym, dist, hasTestEdgeID[sym.ID], testFilePaths[sym.FilePath])
@@ -571,11 +645,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		entry, seen, _ := h.Session.Lookup(sessionPath, "")
 		conf := session.Low
 		if seen {
-			tokensSince := h.Ledger.TotalDeliveredTokens() - entry.TokenDistanceAtSend
-			if tokensSince < 0 {
-				tokensSince = 0
-			}
-			conf = session.EstimateConfidence(tokensSince, callCfg.ContextWindow())
+			conf = h.confidenceFor(entry, contextUsed, callCfg.ContextWindow())
 		}
 		candidates = append(candidates, ranking.Candidate{
 			Symbol:         sym,
@@ -587,29 +657,30 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	// Default budget is task-sized (8k tokens), not context-window-sized.
 	// The score-cliff cutoff in Select() stops early when relevance drops off,
-	// so the ceiling here is a safety cap, not a fill target. Callers that
-	// genuinely need more context can pass budget explicitly via the args.
+	// so the ceiling here is a safety cap, not a fill target.
 	const defaultTaskBudget = 8000
 	callerBudget := intArg(args, "budget", 0)
-	budget := defaultTaskBudget
+	var budget int
 	if callerBudget > 0 {
+		// An explicit budget is a contract: honor it exactly — no floor, no
+		// phase shaping. The caller knows its token constraints best.
 		budget = callerBudget
-	}
-	if budget < 4000 {
-		budget = 4000
-	}
-	// B: apply phase-derived budget multiplier (e.g. 0.60 for code_review).
-	if phaseBudgetMult > 0 && phaseBudgetMult != 1.0 {
-		shaped := int(float64(budget) * phaseBudgetMult)
-		if shaped < 4000 {
-			shaped = 4000
+	} else {
+		budget = defaultTaskBudget
+		// B: apply phase-derived budget multiplier (e.g. 0.60 for code_review),
+		// floored so a shaped default never starves the response.
+		if phaseBudgetMult > 0 && phaseBudgetMult != 1.0 {
+			shaped := int(float64(budget) * phaseBudgetMult)
+			if shaped < 4000 {
+				shaped = 4000
+			}
+			budget = shaped
 		}
-		budget = shaped
-	}
-	// Expand budget for test-writing tasks so the test category gets more
-	// absolute token room (20% share of a larger total = more test content).
-	if callerBudget == 0 && explicitProfile == "" && isTestWritingTask(task) {
-		budget = int(float64(budget) * 1.25)
+		// Expand budget for test-writing tasks so the test category gets more
+		// absolute token room (20% share of a larger total = more test content).
+		if explicitProfile == "" && isTestWritingTask(task) {
+			budget = int(float64(budget) * 1.25)
+		}
 	}
 	picked := ranking.Select(seedSyms, candidates, budget)
 
@@ -626,7 +697,6 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			FilePath:      p.Symbol.FilePath,
 			Kind:          p.Symbol.Kind,
 			Category:      string(p.Category),
-			Disclosure:    string(p.Disclosure),
 			Content:       ranking.Render(p.Symbol, p.Disclosure),
 			Span:          p.Symbol.Span,
 		})
@@ -636,69 +706,49 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	// Coverage gaps: code symbols in the blast radius with no test edges.
 	// Only computed when the agent explicitly requests include=["coverage_gaps"].
 	if includeSet["coverage_gaps"] {
-		out.CoverageGaps = buildCoverageGaps(ctx, h.Grove, seedSyms, graphExtra, seedCoverage)
+		out.CoverageGaps = buildCoverageGaps(ctx, h.Grove, seedSyms, graphExtra)
 	}
 
-	h.Ledger.Record("prism_query", used*3 /* approximate "what raw would cost" */, used)
+	// Baseline for the savings ledger: the token cost of reading each
+	// containing file once in full — what assembling the same context by
+	// file reads would have cost. Measured from on-disk sizes, never assumed.
+	h.Ledger.Record("prism_query", h.queryBaselineTokens(picked, used), used)
 	return out, nil
 }
 
-// excludeScoreThreshold is the maximum score a candidate can have and still
-// appear in the anti-context manifest. Candidates below this threshold are
-// considered irrelevant enough to suppress.
-const excludeScoreThreshold = 0.10
-
-// buildAntiContextManifest builds the list of [prism:excluded] sentinel lines
-// from candidates that were not selected AND scored below the exclusion
-// threshold. Entries are grouped by directory to keep the manifest compact.
-func buildAntiContextManifest(candidates []ranking.Candidate, picked []ranking.BudgetedSymbol) []string {
-	pickedIDs := make(map[string]bool, len(picked))
+// queryBaselineTokens estimates what the delivered context would have cost
+// without graph-ranked selection: one full read of every distinct file a
+// selected symbol lives in. Files that cannot be stat'ed contribute nothing;
+// the result is never below the delivered token count, so savings are never
+// invented when measurement fails.
+func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered int) int {
+	seen := map[string]bool{}
+	total := 0
 	for _, p := range picked {
-		pickedIDs[p.Symbol.ID] = true
-	}
-
-	excluded := make(map[string]float64) // dir → lowest score seen
-	for _, c := range candidates {
-		if pickedIDs[c.Symbol.ID] {
+		fp := normalizePath(p.Symbol.FilePath)
+		if fp == "" || seen[fp] {
 			continue
 		}
-		if c.Score >= excludeScoreThreshold {
-			continue
-		}
-		dir := filepath.ToSlash(filepath.Dir(c.Symbol.FilePath))
-		if dir == "." {
-			dir = filepath.ToSlash(c.Symbol.FilePath)
-		}
-		if prev, ok := excluded[dir]; !ok || c.Score < prev {
-			excluded[dir] = c.Score
+		seen[fp] = true
+		if info, err := os.Stat(filepath.Join(h.Root, filepath.FromSlash(fp))); err == nil {
+			total += int(info.Size() / 4) // ~4 bytes/token, same estimate as EstimateTokens
 		}
 	}
-
-	if len(excluded) == 0 {
-		return nil
+	if total < delivered {
+		return delivered
 	}
-
-	// Sort for deterministic output.
-	dirs := make([]string, 0, len(excluded))
-	for d := range excluded {
-		dirs = append(dirs, d)
-	}
-	sort.Strings(dirs)
-
-	manifest := make([]string, 0, len(dirs))
-	for _, d := range dirs {
-		manifest = append(manifest,
-			fmt.Sprintf("// [prism:excluded] %s/* — score %.2f, not relevant to this task", d, excluded[d]))
-	}
-	return manifest
+	return total
 }
 
 // buildCoverageGaps returns code symbols (seeds + blast-radius) that have no
-// direct test edge in the graph. Seeds use the already-fetched seedCoverage
-// map; blast-radius symbols get a separate Tests() call per symbol.
-func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.SymbolRecord, blastRadius []grove.SymbolRecord, seedCoverage map[string]bool) []coverageGap {
+// direct `tests` edge pointing at them in Grove's graph. Grove scopes test
+// edges through the import graph and backs them with call-site evidence
+// (v0.6.0), so the edge itself is the authority — no name heuristics. Cost is
+// one Deps() call per distinct file.
+func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.SymbolRecord, blastRadius []grove.SymbolRecord) []coverageGap {
 	var gaps []coverageGap
 	seen := make(map[string]bool)
+	tested := newTestedChecker(g)
 
 	isCodeSym := func(s grove.SymbolRecord) bool {
 		cat := categorize(s)
@@ -714,124 +764,71 @@ func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.Symbo
 		return isExportedName(s.Name)
 	}
 
-	for _, s := range seeds {
-		if seen[s.ID] || !isCodeSym(s) {
-			continue
-		}
-		seen[s.ID] = true
-		if !seedCoverage[s.ID] {
-			gaps = append(gaps, coverageGap{
-				Name:     s.Name,
-				QualName: s.QualifiedName,
-				FilePath: s.FilePath,
-				Kind:     s.Kind,
-				Span:     s.Span,
-			})
-		}
-	}
-
-	for _, s := range blastRadius {
-		if seen[s.ID] || !isCodeSym(s) {
-			continue
-		}
-		seen[s.ID] = true
-		tests, err := g.Tests(ctx, s.Name)
-		if err != nil || !hasDirectTestCoverage(ctx, g, s, tests) {
-			gaps = append(gaps, coverageGap{
-				Name:     s.Name,
-				QualName: s.QualifiedName,
-				FilePath: s.FilePath,
-				Kind:     s.Kind,
-				Span:     s.Span,
-			})
+	for _, group := range [][]grove.SymbolRecord{seeds, blastRadius} {
+		for _, s := range group {
+			if seen[s.ID] || !isCodeSym(s) {
+				continue
+			}
+			seen[s.ID] = true
+			if !tested.covered(ctx, s) {
+				gaps = append(gaps, coverageGap{
+					Name:     s.Name,
+					QualName: s.QualifiedName,
+					FilePath: s.FilePath,
+					Kind:     s.Kind,
+					Span:     s.Span,
+				})
+			}
 		}
 	}
 
 	return gaps
 }
 
-func hasDirectTestCoverage(ctx context.Context, g *grove.Client, sym grove.SymbolRecord, tests []grove.SymbolRecord) bool {
-	if hasDirectTestCoverageInSymbols(sym, tests) {
-		return true
-	}
-	found, err := g.SearchSymbols(ctx, "", 5000)
-	if err == nil && hasDirectTestCoverageInSymbols(sym, found) {
-		return true
-	}
-	return false
+// testedChecker answers "does a direct tests edge point at this symbol?"
+// with a per-file edge cache so each file's edges are fetched once.
+type testedChecker struct {
+	g      *grove.Client
+	byFile map[string]map[string]bool // file → set of tested edge-target keys
 }
 
-func hasDirectTestCoverageInSymbols(sym grove.SymbolRecord, tests []grove.SymbolRecord) bool {
-	targets := directTestNames(sym)
-	for _, test := range tests {
-		if filepath.Dir(test.FilePath) != filepath.Dir(sym.FilePath) {
-			continue
-		}
-		if categorize(test) != ranking.CategoryTest {
-			continue
-		}
-		for _, target := range targets {
-			if directTestNameMatches(test.Name, target) {
-				return true
+func newTestedChecker(g *grove.Client) *testedChecker {
+	return &testedChecker{g: g, byFile: map[string]map[string]bool{}}
+}
+
+func (t *testedChecker) covered(ctx context.Context, sym grove.SymbolRecord) bool {
+	targets, ok := t.byFile[sym.FilePath]
+	if !ok {
+		targets = map[string]bool{}
+		if edges, err := t.g.Deps(ctx, sym.FilePath); err == nil {
+			for _, e := range edges {
+				if e.Type != "tests" {
+					continue
+				}
+				targets[e.To] = true
+				// Also key by the SHA-independent form so a record from an
+				// older snapshot still matches after the blob hash moved.
+				targets[trimSymbolID(e.To)] = true
 			}
 		}
+		t.byFile[sym.FilePath] = targets
 	}
-	return false
-}
-
-func directTestNames(sym grove.SymbolRecord) []string {
-	name := strings.TrimSpace(sym.Name)
-	if name == "" {
-		return nil
-	}
-	names := []string{"Test" + name, name + "Test", name + "Spec", "test_" + name}
-	if stem := domainStem(name); stem != "" && stem != name {
-		names = append(names, "Test"+stem, stem+"Test", stem+"Spec", "test_"+stem)
-	}
-	if recv := receiverName(sym.QualifiedName); recv != "" {
-		names = append(names, "Test"+recv+"_"+name, "Test"+recv+name)
-	}
-	return names
-}
-
-func domainStem(name string) string {
-	for _, suffix := range []string{"Payments", "Payment"} {
-		if strings.HasSuffix(name, suffix) && len(name) > len(suffix) {
-			return strings.TrimSuffix(name, suffix)
-		}
-	}
-	return name
-}
-
-func directTestNameMatches(testName, target string) bool {
-	if strings.EqualFold(testName, target) {
+	if targets[sym.ID] {
 		return true
 	}
-	if len(testName) > len(target) && strings.EqualFold(testName[:len(target)], target) {
-		next := testName[len(target)]
-		return next == '_' || (next >= 'A' && next <= 'Z')
+	if sym.QualifiedName != "" && targets[sym.FilePath+"::"+sym.QualifiedName] {
+		return true
 	}
-	return false
+	return targets[sym.FilePath+"::"+sym.Name]
 }
 
-func receiverName(qualName string) string {
-	open := strings.LastIndex(qualName, "(*")
-	if open >= 0 {
-		rest := qualName[open+2:]
-		close := strings.Index(rest, ")")
-		if close > 0 {
-			return rest[:close]
-		}
+// trimSymbolID strips the trailing "@<blobSHA>[#n]" from a Grove symbol ID
+// ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
+func trimSymbolID(id string) string {
+	if i := strings.LastIndex(id, "@"); i > 0 {
+		return id[:i]
 	}
-	open = strings.LastIndex(qualName, ".(")
-	if open >= 0 {
-		rest := qualName[open+2:]
-		close := strings.Index(rest, ")")
-		if close > 0 {
-			return strings.TrimPrefix(rest[:close], "*")
-		}
-	}
-	return ""
+	return id
 }
 
 func isExportedName(name string) bool {
@@ -856,31 +853,16 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
-	// Look up file's symbols via Grove (by file basename).
-	syms, err := h.Grove.SearchSymbols(ctx, baseName(sessionPath), 200)
+	// The file's currently indexed symbols, by exact path (Grove v0.6.1).
+	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))
 	if err != nil {
 		return nil, fmt.Errorf("grove symbols: %w", err)
 	}
-	// Filter to symbols actually in this file path.
-	fileSyms := make([]grove.SymbolRecord, 0, len(syms))
-	needle := normalizePath(sessionPath)
-	for _, s := range syms {
-		sp := normalizePath(s.FilePath)
-		if sp == needle || strings.HasSuffix(sp, "/"+needle) {
-			fileSyms = append(fileSyms, s)
-		}
-	}
-	if err := h.ensureEmbeddings(ctx); err != nil {
-		// non-fatal — fall back to no semantic
-	}
 	readCfg := h.Cfg.WithModel(stringArg(args, "model", ""))
+	contextUsed := int64(intArg(args, "context_used", 0))
 	confidence := session.Low
 	if entry, seen, _ := h.Session.Lookup(sessionPath, ""); seen {
-		tokensSince := h.Ledger.TotalDeliveredTokens() - entry.TokenDistanceAtSend
-		if tokensSince < 0 {
-			tokensSince = 0
-		}
-		confidence = session.EstimateConfidence(tokensSince, readCfg.ContextWindow())
+		confidence = h.confidenceFor(entry, contextUsed, readCfg.ContextWindow())
 	}
 	res := compression.CompressFileRead(sessionPath, string(data), compression.Options{
 		Task:            task,
@@ -889,8 +871,13 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 		Ledger:          h.Ledger,
 		TokenLedgerName: "prism_read",
 		Confidence:      confidence,
-		Embeddings:      semanticAdapter{h: h},
+		ContextUsed:     contextUsed,
 	})
+	// Record the structural baseline for prism_drift: these are the symbols
+	// the agent's copy of the file reflects as of this delivery.
+	if len(fileSyms) > 0 {
+		h.setDriftBase(sessionPath, fileSyms)
+	}
 	return map[string]any{
 		"file":            res.FilePath,
 		"strategy":        res.Strategy,
@@ -905,31 +892,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	q := stringArg(args, "query", "")
 	limit := intArg(args, "limit", 25)
 
-	// Attempt semantic re-ranking via TF-IDF if the corpus is ready.
-	// Falls back to Grove substring results if embeddings are unavailable.
-	if q != "" {
-		if err := h.ensureEmbeddings(ctx); err == nil {
-			h.embMu.Lock()
-			tf, corpus := h.emb, h.corpus
-			h.embMu.Unlock()
-			if tf != nil && len(corpus) > 0 {
-				if tfidf, ok := tf.(*embeddings.TFIDF); ok {
-					hits := tfidf.Query(q, corpus, limit)
-					out := make([]grove.SymbolRecord, 0, len(hits))
-					for _, h := range hits {
-						if !isGeneratedPrismContext(h.Symbol) {
-							out = append(out, h.Symbol)
-						}
-					}
-					if len(out) > 0 {
-						return map[string]any{"symbols": out}, nil
-					}
-				}
-			}
-		}
-	}
-
-	// Fallback: Grove substring match.
+	// Grove's symbol search is ranked (exact name > prefix > substring,
+	// v0.6.0) — deliver it directly, matching this tool's contract of
+	// searching symbol names rather than re-ranking semantically.
 	syms, err := h.Grove.SearchSymbols(ctx, q, limit)
 	if err != nil {
 		return nil, err
@@ -989,7 +954,22 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 		}
 	}
 	if len(syms) > 0 {
-		return map[string]any{"symbol": syms[0], "content": syms[0].RawText}, nil
+		// No exact match — returning the closest hit silently would hand the
+		// agent the wrong symbol body. Flag it and list the alternatives.
+		candidates := make([]string, 0, minInt(5, len(syms)))
+		for _, s := range syms[:minInt(5, len(syms))] {
+			n := s.QualifiedName
+			if n == "" {
+				n = s.Name
+			}
+			candidates = append(candidates, n+" ("+s.FilePath+")")
+		}
+		return map[string]any{
+			"symbol":     syms[0],
+			"content":    syms[0].RawText,
+			"matched":    false,
+			"candidates": candidates,
+		}, nil
 	}
 	return map[string]any{"symbol": nil}, nil
 }
@@ -1004,7 +984,6 @@ func (h *Handler) toolIndex(_ context.Context, args map[string]any) (any, error)
 	if err != nil {
 		return nil, err
 	}
-	h.MarkCorpusStale()
 	return res, nil
 }
 
@@ -1373,23 +1352,9 @@ func normalizePath(p string) string {
 	return filepath.ToSlash(p)
 }
 
-func baseName(p string) string {
-	if i := strings.LastIndex(p, "/"); i >= 0 {
-		return p[i+1:]
-	}
-	return p
-}
-
 func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
 }
-
-// sortSymbolsByName is a stable helper used by tests.
-func sortSymbolsByName(syms []grove.SymbolRecord) {
-	sort.SliceStable(syms, func(i, j int) bool { return syms[i].Name < syms[j].Name })
-}
-
-var _ = sortSymbolsByName // keep helper for tests if added later

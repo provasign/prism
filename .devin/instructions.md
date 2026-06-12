@@ -50,3 +50,4 @@ Use the prism CLI with --format text instead of MCP tools:
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
 - Do NOT re-run prism_index / prism index on every step — delta indexing is automatic
 - Do NOT manually cross-reference coverage_gaps output — treat it as authoritative and use it as the terminal step, not the start of a manual verification chain
+- For coverage audits, use 1-2 terms per query and union the results — each query audits only its seeds + blast radius

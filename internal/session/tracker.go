@@ -15,9 +15,10 @@ type Entry struct {
 	FilePath            string
 	ContentHash         string // SHA-256 of source content
 	TokenDistanceAtSend int64  // cumulative tokens delivered when this was sent
+	ContextUsedAtSend   int64  // agent-reported context size at send time (0 = not reported)
 	DisclosureLevel     string
 	AccessCount         int
-	SymbolSHAs          map[string]string // symbolName → sha(RawText); used for semantic delta encoding
+	SymbolSHAs          map[string]string // symbol key → sha(RawText); used for semantic delta encoding
 }
 
 // Tracker is an O(1) LRU cache keyed by file path.
@@ -123,7 +124,7 @@ func (t *Tracker) Reset() {
 	t.lru = list.New()
 }
 
-// UpdateSymbolSHAs stores a symbolName→sha map for a file that has already
+// UpdateSymbolSHAs stores a symbol-key→sha map for a file that has already
 // been tracked. Called after delivering a semantic delta so future re-reads
 // can diff at symbol granularity. No-op if the file isn't tracked.
 func (t *Tracker) UpdateSymbolSHAs(filePath string, shas map[string]string) {
@@ -132,6 +133,22 @@ func (t *Tracker) UpdateSymbolSHAs(filePath string, shas map[string]string) {
 	defer t.mu.Unlock()
 	if el, ok := t.entries[filePath]; ok {
 		el.Value.(*Entry).SymbolSHAs = shas
+	}
+}
+
+// RecordContextUsed stores the agent-reported context size for a file that
+// has already been tracked, so the next read can estimate confidence from
+// the agent's own token count rather than Prism's ledger alone. No-op if
+// the file isn't tracked or v is not positive.
+func (t *Tracker) RecordContextUsed(filePath string, v int64) {
+	if v <= 0 {
+		return
+	}
+	filePath = normalizeFilePath(filePath)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if el, ok := t.entries[filePath]; ok {
+		el.Value.(*Entry).ContextUsedAtSend = v
 	}
 }
 

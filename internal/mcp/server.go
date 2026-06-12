@@ -1,8 +1,11 @@
-// Package mcp implements Prism's JSON-RPC 2.0 server (stdio transport) exposing
-// the 8 prism_* tools. The on-the-wire format is the Model Context Protocol
-// stdio transport: newline-delimited JSON (one compact JSON object per line).
-// The reader additionally tolerates legacy "Content-Length: N\r\n\r\n{json}"
-// framing for backward compatibility with older test harnesses.
+// Package mcp implements Prism's JSON-RPC 2.0 server (stdio transport)
+// exposing the prism_* tools (six advertised via tools/list; the auxiliary
+// compact/savings/feedback/evidence tools stay dispatchable for the CLI and
+// HTTP surfaces without spending schema tokens in every MCP session). The
+// on-the-wire format is the Model Context Protocol stdio transport:
+// newline-delimited JSON (one compact JSON object per line). The reader
+// additionally tolerates legacy "Content-Length: N\r\n\r\n{json}" framing
+// for backward compatibility with older test harnesses.
 package mcp
 
 import (

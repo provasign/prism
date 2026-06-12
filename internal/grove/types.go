@@ -1,27 +1,28 @@
-// Package grove holds typed mirrors of Grove API response shapes used by the
-// Prism client. We intentionally keep these as plain structs (no Grove import)
-// so Prism does not depend on Grove's Go module — only its HTTP wire format.
+// Package grove holds typed mirrors of Grove's result shapes used by the
+// Prism client. They are plain structs sharing Grove's JSON wire tags so the
+// rest of Prism (ranking, MCP, CLI) never touches engine types directly, and
+// records can round-trip back into the engine (see toEngineSymbol).
 package grove
 
 // SymbolRecord mirrors grove/internal/core.SymbolRecord.
 type SymbolRecord struct {
-	ID             string    `json:"id"`
-	FilePath       string    `json:"filePath"`
-	BlobSha        string    `json:"blobSha"`
-	Language       string    `json:"language"`
-	Kind           string    `json:"kind"`
-	Name           string    `json:"name"`
-	QualifiedName  string    `json:"qualifiedName"`
-	Signature      string    `json:"signature"`
-	Docstring      string    `json:"docstring,omitempty"`
-	Span           SpanInfo  `json:"span"`
-	ParentSymbol   string    `json:"parentSymbol,omitempty"`
-	Imports        []string  `json:"imports,omitempty"`
-	Exports        bool      `json:"exports"`
-	RawText        string    `json:"rawText,omitempty"`
-	Modifiers      []string  `json:"modifiers,omitempty"`
-	TypeParameters []string  `json:"typeParameters,omitempty"`
-	Annotations    []string  `json:"annotations,omitempty"`
+	ID             string     `json:"id"`
+	FilePath       string     `json:"filePath"`
+	BlobSha        string     `json:"blobSha"`
+	Language       string     `json:"language"`
+	Kind           string     `json:"kind"`
+	Name           string     `json:"name"`
+	QualifiedName  string     `json:"qualifiedName"`
+	Signature      string     `json:"signature"`
+	Docstring      string     `json:"docstring,omitempty"`
+	Span           SpanInfo   `json:"span"`
+	ParentSymbol   string     `json:"parentSymbol,omitempty"`
+	Imports        []string   `json:"imports,omitempty"`
+	Exports        bool       `json:"exports"`
+	RawText        string     `json:"rawText,omitempty"`
+	Modifiers      []string   `json:"modifiers,omitempty"`
+	TypeParameters []string   `json:"typeParameters,omitempty"`
+	Annotations    []string   `json:"annotations,omitempty"`
 	CallSites      []CallSite `json:"callSites,omitempty"`
 }
 
@@ -68,6 +69,26 @@ type ImpactNode = SymbolRecord
 
 // SemanticResult mirrors Grove's /semantic response entry.
 type SemanticResult struct {
-	Score  float64       `json:"score"`
-	Symbol SymbolRecord  `json:"symbol"`
+	Score  float64      `json:"score"`
+	Symbol SymbolRecord `json:"symbol"`
+}
+
+// SymbolChange mirrors grove's core.SymbolChange: one symbol's before/after
+// pair in a structural diff.
+type SymbolChange struct {
+	Before           *SymbolRecord `json:"before,omitempty"`
+	After            *SymbolRecord `json:"after,omitempty"`
+	SignatureChanged bool          `json:"signatureChanged"`
+	BodyChanged      bool          `json:"bodyChanged"`
+}
+
+// FileGraphDiff mirrors grove's core.GraphDiff scoped to one file: the
+// structural delta between a delivered symbol snapshot and the current
+// index, with renames paired and breaking changes classified.
+type FileGraphDiff struct {
+	Added    []SymbolRecord `json:"added"`
+	Removed  []SymbolRecord `json:"removed"`
+	Changed  []SymbolChange `json:"changed"`
+	Renamed  []SymbolChange `json:"renamed,omitempty"`
+	Breaking []SymbolChange `json:"breakingChanges"`
 }

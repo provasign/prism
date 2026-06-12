@@ -49,6 +49,7 @@ type Options struct {
 	Ledger          *session.Ledger
 	TokenLedgerName string // tool name to bill ledger ("prism_read")
 	Confidence      session.Confidence
+	ContextUsed     int64                   // agent-reported context size at this call (0 = not reported)
 	Embeddings      ranking.SemanticBackend // unused by file-read compression (see above)
 }
 
@@ -64,10 +65,18 @@ func CompressFileRead(filePath, content string, opts Options) Result {
 	// Re-read of unchanged file → use session-aware strategy.
 	if seen && sameHash {
 		switch {
+		case entry.AccessCount >= 3 && opts.Confidence == session.High:
+			// 4th+ read but the prior delivery is still demonstrably within
+			// the attention window — re-sending the full file would spend
+			// tokens fighting a problem that isn't present.
+			r.Strategy = "sha-pointer"
+			r.Content = renderSHAPointer(filePath, hash, entry.AccessCount)
+			r.DeliveredTokens = ranking.EstimateTokens(r.Content)
+
 		case entry.AccessCount >= 3:
-			// 4th+ read: force full re-delivery regardless of confidence.
-			// The original content has almost certainly scrolled out of the
-			// model's effective attention window.
+			// 4th+ read at medium/low confidence: force full re-delivery.
+			// The original content has likely scrolled out of the model's
+			// effective attention window.
 			r.Strategy = "escalated-full"
 			r.Content = content
 			r.DeliveredTokens = originalTokens
@@ -151,6 +160,7 @@ func CompressFileRead(filePath, content string, opts Options) Result {
 	// Record in session + ledger.
 	if opts.Session != nil {
 		opts.Session.Record(filePath, hash, int64(r.DeliveredTokens), r.Strategy)
+		opts.Session.RecordContextUsed(filePath, opts.ContextUsed)
 		// Keep symbol-level SHAs up-to-date so the next read can delta-encode.
 		if len(opts.Symbols) > 0 {
 			opts.Session.UpdateSymbolSHAs(filePath, computeSymbolSHAs(opts.Symbols))
@@ -191,17 +201,43 @@ func renderSHAPointer(filePath, contentHash string, accessCount int) string {
 		filePath, short, accessCount)
 }
 
-// computeSymbolSHAs returns a map of symbolName → SHA-256(RawText) for each
+// SymbolKey is the identity a symbol's SHA is stored under: the qualified
+// name when present (unique within a file since Grove v0.6.0 qualifies
+// members by parent), else the bare name. Keying by bare name alone made
+// same-named members in one file (two receivers' Close()) collide, which
+// could pointer a changed body inside a "lossless" delta.
+func SymbolKey(s grove.SymbolRecord) string {
+	if s.QualifiedName != "" {
+		return s.QualifiedName
+	}
+	return s.Name
+}
+
+// computeSymbolSHAs returns a map of SymbolKey → SHA-256(RawText) for each
 // symbol. BlobSha is used if RawText is empty (Grove may populate either).
+// Keys that collide within the file are dropped entirely: a SHA whose
+// identity is ambiguous cannot be trusted for delta encoding.
 func computeSymbolSHAs(syms []grove.SymbolRecord) map[string]string {
 	m := make(map[string]string, len(syms))
+	dup := map[string]bool{}
 	for _, s := range syms {
+		key := SymbolKey(s)
+		if key == "" {
+			continue
+		}
+		if _, exists := m[key]; exists {
+			dup[key] = true
+			continue
+		}
 		switch {
 		case s.RawText != "":
-			m[s.Name] = Hash(s.RawText)
+			m[key] = Hash(s.RawText)
 		case s.BlobSha != "":
-			m[s.Name] = s.BlobSha
+			m[key] = s.BlobSha
 		}
+	}
+	for key := range dup {
+		delete(m, key)
 	}
 	return m
 }
@@ -266,8 +302,8 @@ func renderSemanticDelta(symbols []grove.SymbolRecord, content string, prevSHAs 
 		if sp.start > cursor {
 			emit(cursor, sp.start-1) // gap before this symbol — verbatim
 		}
-		cur := currentSHAs[sp.sym.Name]
-		prev := prevSHAs[sp.sym.Name]
+		cur := currentSHAs[SymbolKey(sp.sym)]
+		prev := prevSHAs[SymbolKey(sp.sym)]
 		if cur != "" && prev != "" && cur == prev {
 			// Body unchanged: the agent already has it from the first faithful
 			// read. Emit a pointer. Any surrounding edit (a new comment, a moved

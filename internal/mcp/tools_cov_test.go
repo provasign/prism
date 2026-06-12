@@ -455,8 +455,8 @@ func TestBuildCoverageGaps_Seeds(t *testing.T) {
 		Kind:     "function",
 	}
 
-	// code symbol not in seedCoverage → gap; test symbol skipped (isCodeSym false)
-	gaps := buildCoverageGaps(ctx, h.Grove, []grove.SymbolRecord{codeSym, testSym}, nil, map[string]bool{})
+	// code symbol with no tests edge → gap; test symbol skipped (isCodeSym false)
+	gaps := buildCoverageGaps(ctx, h.Grove, []grove.SymbolRecord{codeSym, testSym}, nil)
 	if len(gaps) != 1 {
 		t.Errorf("expected 1 gap, got %d", len(gaps))
 	}
@@ -467,19 +467,28 @@ func TestBuildCoverageGaps_Seeds(t *testing.T) {
 
 func TestBuildCoverageGaps_SeedCovered(t *testing.T) {
 	h := newHWithGrove(t, nil)
-	codeSym := grove.SymbolRecord{ID: "c1", Name: "Fn", FilePath: "x.go", Kind: "function"}
-	// Symbol is in seedCoverage → no gap
-	gaps := buildCoverageGaps(t.Context(), h.Grove, []grove.SymbolRecord{codeSym}, nil, map[string]bool{"c1": true})
+	// A seed with a real `tests` edge in the graph is not a gap.
+	if err := os.WriteFile(h.Root+"/x.go", []byte("package x\n\nfunc Fn() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(h.Root+"/x_test.go", []byte("package x\n\nfunc TestFn(t interface{}) { Fn() }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Grove.Index(t.Context(), h.Root); err != nil {
+		t.Fatal(err)
+	}
+	codeSym := grove.SymbolRecord{ID: "x.go::Fn@", Name: "Fn", FilePath: "x.go", Kind: "function"}
+	gaps := buildCoverageGaps(t.Context(), h.Grove, []grove.SymbolRecord{codeSym}, nil)
 	if len(gaps) != 0 {
-		t.Errorf("covered symbol should not be a gap, got %d", len(gaps))
+		t.Errorf("covered symbol should not be a gap, got %+v", gaps)
 	}
 }
 
 func TestBuildCoverageGaps_BlastRadius(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	codeSym := grove.SymbolRecord{ID: "br1", Name: "BrFunc", FilePath: "br.go", Kind: "function"}
-	// blastRadius sym not in seeds → g.Tests called (empty index = no tests) → gap
-	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{codeSym}, map[string]bool{})
+	// blastRadius sym in an empty index → no tests edge → gap
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{codeSym})
 	if len(gaps) != 1 {
 		t.Errorf("expected 1 blast-radius gap, got %d", len(gaps))
 	}
@@ -509,7 +518,7 @@ func TestRefundPayment(t interface{}) {
 	}
 
 	update := grove.SymbolRecord{ID: "payment.go::UpdatePayment@", Name: "UpdatePayment", FilePath: "payment.go", Kind: "function"}
-	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{update}, map[string]bool{})
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{update})
 	if len(gaps) != 1 || gaps[0].Name != "UpdatePayment" {
 		t.Fatalf("indirectly reached test should not cover UpdatePayment, got %+v", gaps)
 	}
@@ -538,7 +547,7 @@ func TestRefundPayment(t interface{}) {
 	}
 
 	refund := grove.SymbolRecord{ID: "payment.go::RefundPayment@", Name: "RefundPayment", FilePath: "payment.go", Kind: "function"}
-	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{refund}, map[string]bool{})
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{refund})
 	if len(gaps) != 0 {
 		t.Fatalf("direct test should cover RefundPayment, got %+v", gaps)
 	}
@@ -567,13 +576,16 @@ func TestBuildCoverageGaps_DirectTestRequiresSamePackageDir(t *testing.T) {
 
 	paymentList := grove.SymbolRecord{ID: "payment/service.go::ListPayments@", Name: "ListPayments", FilePath: "payment/service.go", Kind: "function"}
 	storageList := grove.SymbolRecord{ID: "storage/memory.go::ListPayments@", Name: "ListPayments", FilePath: "storage/memory.go", Kind: "function"}
-	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{paymentList, storageList}, map[string]bool{})
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{paymentList, storageList})
 	if len(gaps) != 1 || gaps[0].FilePath != "payment/service.go" {
 		t.Fatalf("same-name test in another package should not cover payment ListPayments, got %+v", gaps)
 	}
 }
 
-func TestBuildCoverageGaps_SkipsConstructorsAndAcceptsDomainStemTests(t *testing.T) {
+// Constructors (New*) are skipped, and a test that exercises a symbol by
+// calling it (call-site evidence edge) covers it even when the test's name
+// doesn't mention the symbol.
+func TestBuildCoverageGaps_SkipsConstructorsAndAcceptsCallEvidencedTests(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	if err := os.WriteFile(h.Root+"/memory.go", []byte("package storage\n\nfunc NewMemoryStore() {}\nfunc SavePayment() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -587,13 +599,15 @@ func TestBuildCoverageGaps_SkipsConstructorsAndAcceptsDomainStemTests(t *testing
 
 	constructor := grove.SymbolRecord{ID: "memory.go::NewMemoryStore@", Name: "NewMemoryStore", FilePath: "memory.go", Kind: "function"}
 	save := grove.SymbolRecord{ID: "memory.go::SavePayment@", Name: "SavePayment", FilePath: "memory.go", Kind: "function"}
-	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{constructor, save}, map[string]bool{})
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{constructor, save})
 	if len(gaps) != 0 {
-		t.Fatalf("constructor and domain-stem-covered SavePayment should not be gaps, got %+v", gaps)
+		t.Fatalf("constructor and call-evidenced SavePayment should not be gaps, got %+v", gaps)
 	}
 }
 
-func TestBuildCoverageGaps_DomainStemDoesNotCrossDifferentConcepts(t *testing.T) {
+// A test edge to one symbol must not bleed coverage onto an uncalled
+// neighbour in the same file.
+func TestBuildCoverageGaps_CallEvidenceDoesNotCrossSymbols(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	if err := os.WriteFile(h.Root+"/validator.go", []byte("package payment\n\nfunc ValidateCurrency() {}\nfunc ValidateAmount() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -606,7 +620,7 @@ func TestBuildCoverageGaps_DomainStemDoesNotCrossDifferentConcepts(t *testing.T)
 	}
 
 	currency := grove.SymbolRecord{ID: "validator.go::ValidateCurrency@", Name: "ValidateCurrency", FilePath: "validator.go", Kind: "function"}
-	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{currency}, map[string]bool{})
+	gaps := buildCoverageGaps(t.Context(), h.Grove, nil, []grove.SymbolRecord{currency})
 	if len(gaps) != 1 || gaps[0].Name != "ValidateCurrency" {
 		t.Fatalf("TestValidateAmount should not cover ValidateCurrency, got %+v", gaps)
 	}
@@ -616,7 +630,7 @@ func TestBuildCoverageGaps_Dedup(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	sym := grove.SymbolRecord{ID: "d1", Name: "DupFn", FilePath: "dup.go", Kind: "function"}
 	// same sym in both seeds and blastRadius → only 1 gap (dedup via seen map)
-	gaps := buildCoverageGaps(t.Context(), h.Grove, []grove.SymbolRecord{sym}, []grove.SymbolRecord{sym}, map[string]bool{})
+	gaps := buildCoverageGaps(t.Context(), h.Grove, []grove.SymbolRecord{sym}, []grove.SymbolRecord{sym})
 	if len(gaps) != 1 {
 		t.Errorf("expected 1 gap (dedup), got %d", len(gaps))
 	}

@@ -10,6 +10,7 @@ package grove
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -101,13 +102,73 @@ func (c *Client) requireEngine() (*groveeng.Engine, error) {
 }
 
 // FileSymbols returns the symbols currently indexed for one repo-relative
-// file path. Used by working-set drift checks.
+// file path. Used by file reads and working-set drift checks.
 func (c *Client) FileSymbols(ctx context.Context, relPath string) ([]SymbolRecord, error) {
 	e, err := c.requireEngine()
 	if err != nil {
 		return nil, err
 	}
 	return convertSymbols(e.FileSymbols(ctx, relPath)), nil
+}
+
+// DiffFile diffs the symbols delivered earlier (before) against the file's
+// current indexed symbols using Grove's GraphDiff, so renames are paired and
+// breaking changes classified instead of appearing as remove+add churn.
+func (c *Client) DiffFile(ctx context.Context, before []SymbolRecord, relPath string) (*FileGraphDiff, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	beforeEng := make([]groveeng.Symbol, 0, len(before))
+	for _, s := range before {
+		es, err := toEngineSymbol(s)
+		if err != nil {
+			return nil, fmt.Errorf("convert symbol %s: %w", s.ID, err)
+		}
+		beforeEng = append(beforeEng, es)
+	}
+	d := groveeng.Diff(beforeEng, e.FileSymbols(ctx, relPath))
+	return &FileGraphDiff{
+		Added:    convertSymbols(d.Added),
+		Removed:  convertSymbols(d.Removed),
+		Changed:  convertChanges(d.Changed),
+		Renamed:  convertChanges(d.Renamed),
+		Breaking: convertChanges(d.BreakingChanges),
+	}, nil
+}
+
+func convertChanges(in []groveeng.SymbolChange) []SymbolChange {
+	out := make([]SymbolChange, 0, len(in))
+	for _, c := range in {
+		sc := SymbolChange{SignatureChanged: c.SignatureChanged, BodyChanged: c.BodyChanged}
+		if c.Before != nil {
+			b := convertSymbol(*c.Before)
+			sc.Before = &b
+		}
+		if c.After != nil {
+			a := convertSymbol(*c.After)
+			sc.After = &a
+		}
+		out = append(out, sc)
+	}
+	return out
+}
+
+// toEngineSymbol converts Prism's wire-format record back into the engine
+// shape for GraphDiff via the shared JSON tags. The nested field types
+// (SymbolKind, LineRange) live in grove/internal/core and are not
+// re-exported, so a JSON round-trip is the supported conversion path; both
+// structs mirror the same wire format by construction.
+func toEngineSymbol(s SymbolRecord) (groveeng.Symbol, error) {
+	var out groveeng.Symbol
+	b, err := json.Marshal(s)
+	if err != nil {
+		return out, err
+	}
+	if err := json.Unmarshal(b, &out); err != nil {
+		return out, err
+	}
+	return out, nil
 }
 
 // Status returns the persisted index summary.

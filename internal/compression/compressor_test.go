@@ -136,8 +136,32 @@ func TestThirdReadMediumConf(t *testing.T) {
 	}
 }
 
-// TestFourthReadEscalated verifies that the 4th read always forces full delivery.
+// TestFourthReadEscalated verifies that the 4th read forces full delivery
+// when confidence has degraded (medium/low).
 func TestFourthReadEscalated(t *testing.T) {
+	content := strings.Repeat("// line\n", 50)
+	syms := makeSymbols("pkg/big.go", 4)
+	tracker := session.NewTracker(100)
+	opts := freshOpts(tracker, syms)
+
+	for i := 0; i < 3; i++ {
+		CompressFileRead("pkg/big.go", content, opts)
+	}
+	opts.Confidence = session.Medium
+	r4 := CompressFileRead("pkg/big.go", content, opts)
+
+	if r4.Strategy != "escalated-full" {
+		t.Errorf("4th read at medium confidence: want escalated-full, got %s", r4.Strategy)
+	}
+	if r4.DeliveredTokens != r4.OriginalTokens {
+		t.Errorf("escalated-full must deliver all tokens: %d vs %d", r4.DeliveredTokens, r4.OriginalTokens)
+	}
+}
+
+// TestFourthReadHighConfidenceStaysPointer verifies that a 4th read does NOT
+// escalate while the prior delivery is demonstrably still in the attention
+// window — re-sending the full file there would be pure token waste.
+func TestFourthReadHighConfidenceStaysPointer(t *testing.T) {
 	content := strings.Repeat("// line\n", 50)
 	syms := makeSymbols("pkg/big.go", 4)
 	tracker := session.NewTracker(100)
@@ -149,11 +173,8 @@ func TestFourthReadEscalated(t *testing.T) {
 	opts.Confidence = session.High
 	r4 := CompressFileRead("pkg/big.go", content, opts)
 
-	if r4.Strategy != "escalated-full" {
-		t.Errorf("4th read: want escalated-full, got %s", r4.Strategy)
-	}
-	if r4.DeliveredTokens != r4.OriginalTokens {
-		t.Errorf("escalated-full must deliver all tokens: %d vs %d", r4.DeliveredTokens, r4.OriginalTokens)
+	if r4.Strategy != "sha-pointer" {
+		t.Errorf("4th read at high confidence: want sha-pointer, got %s", r4.Strategy)
 	}
 }
 

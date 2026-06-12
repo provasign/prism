@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/provasign/prism/internal/compression"
+	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/session"
 )
 
@@ -32,8 +33,14 @@ const maxWarningFiles = 50
 // DriftSymbol is one symbol-level change under the agent's feet.
 type DriftSymbol struct {
 	Name         string `json:"name"`
-	Change       string `json:"change"` // added | removed | changed
+	Change       string `json:"change"` // added | removed | changed | renamed
 	NewSignature string `json:"newSignature,omitempty"`
+	// RenamedTo carries the new name when Change is "renamed" (Grove pairs a
+	// removed symbol with an added one whose body matches modulo its name).
+	RenamedTo string `json:"renamedTo,omitempty"`
+	// Breaking marks exported symbols that were removed, renamed, or
+	// re-signatured — the changes that break callers of the old contract.
+	Breaking bool `json:"breaking,omitempty"`
 }
 
 // FileDrift reports one tracked file that no longer matches what was
@@ -109,16 +116,31 @@ func (h *Handler) fileDrift(ctx context.Context, entry session.Entry, fuseByFile
 		Origin:       driftOrigin(entry.FilePath, fuseByFile),
 		MergeDetails: fuseByFile[entry.FilePath],
 	}
-	// Symbol-level detail needs the delivered symbol SHAs (recorded by the
-	// read path) and the current graph.
-	if len(entry.SymbolSHAs) == 0 || h.Grove == nil {
+	if h.Grove == nil {
+		return drift, true
+	}
+
+	// Preferred path: structural diff via Grove's GraphDiff against the
+	// symbols delivered this session — pairs renames and classifies
+	// breaking changes instead of reporting remove+add churn.
+	if base := h.driftBaseFor(entry.FilePath); len(base) > 0 {
+		if d, err := h.Grove.DiffFile(ctx, base, entry.FilePath); err == nil {
+			drift.Symbols = driftSymbolsFromGraphDiff(d)
+			return drift, true
+		}
+	}
+
+	// Fallback (warm cache from a previous session, or query-only files):
+	// compare the persisted per-symbol SHAs. No rename pairing here — only
+	// the structural path has the body text needed to match renames.
+	if len(entry.SymbolSHAs) == 0 {
 		return drift, true
 	}
 	current, err := h.Grove.FileSymbols(ctx, entry.FilePath)
 	if err != nil {
 		return drift, true
 	}
-	currentByName := map[string]struct {
+	currentByKey := map[string]struct {
 		sha string
 		sig string
 	}{}
@@ -127,34 +149,98 @@ func (h *Handler) fileDrift(ctx context.Context, entry session.Entry, fuseByFile
 		if body == "" {
 			body = sym.BlobSha
 		}
-		currentByName[sym.Name] = struct {
+		currentByKey[compression.SymbolKey(sym)] = struct {
 			sha string
 			sig string
 		}{sha: compression.Hash(body), sig: sym.Signature}
 	}
-	for name, deliveredSHA := range entry.SymbolSHAs {
-		cur, ok := currentByName[name]
+	for key, deliveredSHA := range entry.SymbolSHAs {
+		cur, ok := currentByKey[key]
 		if !ok {
-			drift.Symbols = append(drift.Symbols, DriftSymbol{Name: name, Change: "removed"})
+			drift.Symbols = append(drift.Symbols, DriftSymbol{Name: key, Change: "removed"})
 			continue
 		}
 		if cur.sha != deliveredSHA {
-			drift.Symbols = append(drift.Symbols, DriftSymbol{Name: name, Change: "changed", NewSignature: cur.sig})
+			drift.Symbols = append(drift.Symbols, DriftSymbol{Name: key, Change: "changed", NewSignature: cur.sig})
 		}
 	}
-	for name := range currentByName {
-		if _, delivered := entry.SymbolSHAs[name]; !delivered {
-			cur := currentByName[name]
-			drift.Symbols = append(drift.Symbols, DriftSymbol{Name: name, Change: "added", NewSignature: cur.sig})
+	for key := range currentByKey {
+		if _, delivered := entry.SymbolSHAs[key]; !delivered {
+			cur := currentByKey[key]
+			drift.Symbols = append(drift.Symbols, DriftSymbol{Name: key, Change: "added", NewSignature: cur.sig})
 		}
 	}
-	sort.Slice(drift.Symbols, func(i, j int) bool {
-		if drift.Symbols[i].Change == drift.Symbols[j].Change {
-			return drift.Symbols[i].Name < drift.Symbols[j].Name
-		}
-		return drift.Symbols[i].Change < drift.Symbols[j].Change
-	})
+	sortDriftSymbols(drift.Symbols)
 	return drift, true
+}
+
+// driftSymbolsFromGraphDiff flattens Grove's GraphDiff into the drift report
+// shape. Renamed pairs surface once (old name → new name), and members of
+// BreakingChanges carry the breaking flag.
+func driftSymbolsFromGraphDiff(d *grove.FileGraphDiff) []DriftSymbol {
+	breaking := map[string]bool{}
+	for _, c := range d.Breaking {
+		if c.Before != nil {
+			breaking[c.Before.QualifiedName] = true
+		} else if c.After != nil {
+			breaking[c.After.QualifiedName] = true
+		}
+	}
+	isBreaking := func(before, after *grove.SymbolRecord) bool {
+		if before != nil && breaking[before.QualifiedName] {
+			return true
+		}
+		return after != nil && breaking[after.QualifiedName]
+	}
+
+	var out []DriftSymbol
+	for _, s := range d.Added {
+		out = append(out, DriftSymbol{
+			Name: s.QualifiedName, Change: "added", NewSignature: s.Signature,
+			Breaking: breaking[s.QualifiedName],
+		})
+	}
+	for _, s := range d.Removed {
+		out = append(out, DriftSymbol{
+			Name: s.QualifiedName, Change: "removed",
+			Breaking: breaking[s.QualifiedName],
+		})
+	}
+	for _, c := range d.Changed {
+		ds := DriftSymbol{Change: "changed", Breaking: isBreaking(c.Before, c.After)}
+		if c.Before != nil {
+			ds.Name = c.Before.QualifiedName
+		}
+		if c.After != nil {
+			if ds.Name == "" {
+				ds.Name = c.After.QualifiedName
+			}
+			ds.NewSignature = c.After.Signature
+		}
+		out = append(out, ds)
+	}
+	for _, c := range d.Renamed {
+		ds := DriftSymbol{Change: "renamed", Breaking: isBreaking(c.Before, c.After)}
+		if c.Before != nil {
+			ds.Name = c.Before.QualifiedName
+		}
+		if c.After != nil {
+			ds.RenamedTo = c.After.QualifiedName
+			ds.NewSignature = c.After.Signature
+		}
+		out = append(out, ds)
+	}
+	sortDriftSymbols(out)
+	return out
+}
+
+func sortDriftSymbols(syms []DriftSymbol) {
+	sort.Slice(syms, func(i, j int) bool {
+		if syms[i].Change == syms[j].Change {
+			return syms[i].Name < syms[j].Name
+		}
+		return syms[i].Change < syms[j].Change
+	})
 }
 
 // StaleContextWarning is the cheap per-call probe: hash-compare the most

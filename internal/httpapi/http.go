@@ -26,8 +26,8 @@ func (s *Server) Handler() http.Handler {
 
 	for _, name := range []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_index", "prism_compact", "prism_savings", "prism_feedback",
-		"prism_evidence",
+		"prism_index", "prism_drift", "prism_compact", "prism_savings",
+		"prism_feedback", "prism_evidence",
 	} {
 		n := name
 		mux.HandleFunc("POST /"+n, func(w http.ResponseWriter, r *http.Request) {

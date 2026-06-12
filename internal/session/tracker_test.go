@@ -66,3 +66,18 @@ func TestTrackerRecordUpdatesExistingEntry(t *testing.T) {
 		t.Fatalf("should still be 1 entry after update, got %d", tr.Len())
 	}
 }
+
+func TestRecordContextUsed(t *testing.T) {
+	tr := NewTracker(10)
+	// No-op when the file isn't tracked or the value isn't positive.
+	tr.RecordContextUsed("untracked.go", 500)
+	tr.Record("a.go", "h1", 100, "full-fresh")
+	tr.RecordContextUsed("a.go", 0)
+	if e, ok, _ := tr.Lookup("a.go", "h1"); !ok || e.ContextUsedAtSend != 0 {
+		t.Fatalf("non-positive value must not record, got %+v", e)
+	}
+	tr.RecordContextUsed("a.go", 12345)
+	if e, ok, _ := tr.Lookup("a.go", "h1"); !ok || e.ContextUsedAtSend != 12345 {
+		t.Fatalf("want 12345, got %+v", e)
+	}
+}
