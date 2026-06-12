@@ -113,8 +113,10 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if err != nil {
 			return nil, &rpcError{Code: -32000, Message: err.Error()}
 		}
-		// MCP expects content array with text parts.
-		encoded, _ := json.MarshalIndent(out, "", "  ")
+		// MCP expects content array with text parts. Compact JSON: results
+		// land in an agent's context window, and indentation is pure token
+		// overhead.
+		encoded, _ := json.Marshal(out)
 		content := []map[string]string{{"type": "text", "text": string(encoded)}}
 		// Stale-context delivery: when any recently delivered file changed
 		// on disk, every context-bearing response carries the warning, so
