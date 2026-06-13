@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -64,6 +65,76 @@ func TestInvoke_Savings(t *testing.T) {
 	}
 	if out == nil {
 		t.Error("nil out")
+	}
+}
+
+func TestInvoke_DirMismatchRejected(t *testing.T) {
+	h := newH(t)
+	other := t.TempDir()
+	_, err := h.Invoke("prism_query", map[string]any{"task": "x", "dir": other})
+	if err == nil {
+		t.Fatal("expected error for dir outside server root")
+	}
+	if !strings.Contains(err.Error(), h.Root) || !strings.Contains(err.Error(), other) {
+		t.Errorf("error must name both roots, got: %v", err)
+	}
+}
+
+func TestInvoke_DirMatchingRootAccepted(t *testing.T) {
+	h := newH(t)
+	if _, err := h.Invoke("prism_query", map[string]any{"task": "x", "dir": h.Root}); err != nil {
+		t.Errorf("dir equal to server root must pass, got: %v", err)
+	}
+	// prism_index keeps its own dir semantics and is exempt from the guard.
+	if _, err := h.Invoke("prism_index", map[string]any{"dir": h.Root}); err != nil {
+		t.Errorf("prism_index with dir must pass, got: %v", err)
+	}
+}
+
+func TestSameRoot(t *testing.T) {
+	dir := t.TempDir()
+	if !sameRoot(dir, dir+string(filepath.Separator)) {
+		t.Error("trailing separator must not break equality")
+	}
+	if sameRoot(dir, t.TempDir()) {
+		t.Error("distinct dirs must not compare equal")
+	}
+}
+
+func TestQueryEmptyResultCarriesNote(t *testing.T) {
+	h := newH(t)
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task":  "find callers",
+		"terms": []any{"noSuchSymbolAnywhere"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, ok := out.(queryResult)
+	if !ok {
+		t.Fatalf("want queryResult, got %T", out)
+	}
+	if len(res.Symbols) != 0 {
+		t.Fatalf("expected no symbols, got %d", len(res.Symbols))
+	}
+	if res.Note == "" {
+		t.Error("empty result must carry a diagnostic note")
+	}
+	if !strings.Contains(res.Note, "noSuchSymbolAnywhere") || !strings.Contains(res.Note, h.Root) {
+		t.Errorf("note must name the terms and the root, got: %q", res.Note)
+	}
+}
+
+func TestDirRemovedFromNonIndexSchemas(t *testing.T) {
+	for _, name := range []string{"prism_query", "prism_read", "prism_search", "prism_lookup"} {
+		props := toolSchema(name)["properties"].(map[string]any)
+		if _, has := props["dir"]; has {
+			t.Errorf("%s schema must not advertise dir; only prism_index honors it", name)
+		}
+	}
+	props := toolSchema("prism_index")["properties"].(map[string]any)
+	if _, has := props["dir"]; !has {
+		t.Error("prism_index schema must keep dir")
 	}
 }
 

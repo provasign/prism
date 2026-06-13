@@ -489,6 +489,11 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 	var written []string
 
 	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
+	// Claude Code launches project-scope MCP servers with cwd at the project
+	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
+	// portable and correct after the repo moves. The IDE writers below keep
+	// the explicit dir because their launch cwd is not guaranteed.
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
 
 	// Wrap in the per-tool envelope format and write.
 	type writer struct {
@@ -512,7 +517,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 				return filepath.Join(projectDir, ".mcp.json")
 			},
 			build: func() []byte {
-				return buildMCPConfig("prism", entry)
+				return buildMCPConfig("prism", claudeEntry)
 			},
 		},
 		{
@@ -586,7 +591,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 		// Skip writing .mcp.json if the prism entry is already correct.
 		// Writing the file resets Claude Code's MCP approval state, which
 		// forces the user to re-approve on every `prism init` run.
-		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", entry) {
+		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", claudeEntry) {
 			fmt.Printf("already registered with %s: %s\n", w.name, p)
 			written = append(written, p)
 			ensureClaudeCodeApproval("prism")

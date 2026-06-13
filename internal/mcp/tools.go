@@ -176,6 +176,14 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 			return nil, errors.New("timed out waiting for Grove to become ready")
 		}
 	}
+	// Every tool except prism_index resolves against the root the server was
+	// started with; the Grove client is bound to it. A different "dir" used to
+	// be silently ignored, producing empty results — reject it loudly instead.
+	if name != "prism_index" {
+		if dir := stringArg(args, "dir", ""); dir != "" && !sameRoot(dir, h.Root) {
+			return nil, fmt.Errorf("server is rooted at %s and cannot serve dir %s; restart with `prism mcp %s` or run the prism CLI from that directory", h.Root, dir, dir)
+		}
+	}
 	switch name {
 	case "prism_query":
 		return h.toolQuery(ctx, args)
@@ -200,6 +208,27 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
+}
+
+// sameRoot reports whether dir and root name the same directory once both are
+// absolute, cleaned, and symlink-resolved (macOS aliases /var to /private/var,
+// which must not read as a mismatch).
+func sameRoot(dir, root string) bool {
+	a, err := filepath.Abs(dir)
+	if err != nil {
+		return false
+	}
+	b, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	if r, err := filepath.EvalSymlinks(a); err == nil {
+		a = r
+	}
+	if r, err := filepath.EvalSymlinks(b); err == nil {
+		b = r
+	}
+	return a == b
 }
 
 // ToolSchemas returns the schema list for tools/list.
@@ -264,7 +293,6 @@ func toolSchema(name string) map[string]any {
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"dir":          map[string]any{"type": "string", "description": "Project root (optional)."},
 				"profile":      map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
 				"budget":       map[string]any{"type": "integer", "description": "Token budget. Explicit values are honored exactly; default 8000."},
 			},
@@ -281,7 +309,6 @@ func toolSchema(name string) map[string]any {
 				"model":        modelProp,
 				"context_used": contextUsedProp,
 				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
-				"dir":          map[string]any{"type": "string", "description": "Project root (optional)."},
 			},
 		}
 	case "prism_search":
@@ -294,7 +321,6 @@ func toolSchema(name string) map[string]any {
 					"description": "Substring matched against symbol names, signatures, and docstrings.",
 				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
-				"dir":   map[string]any{"type": "string", "description": "Project root (optional)."},
 			},
 		}
 	case "prism_lookup":
@@ -306,7 +332,6 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Symbol name, optionally package-qualified ('internal/cli.Run' or bare 'Run').",
 				},
-				"dir": map[string]any{"type": "string", "description": "Project root (optional)."},
 			},
 		}
 	case "prism_index":
@@ -400,6 +425,9 @@ type queryResult struct {
 	BudgetUsed   int            `json:"budgetUsed"`
 	Symbols      []rankedSymbol `json:"symbols"`
 	CoverageGaps []coverageGap  `json:"coverageGaps,omitempty"`
+	// Note explains an empty result so agents can tell "wrong root" or
+	// "term typo" apart from "genuinely no matches" without guessing.
+	Note string `json:"note,omitempty"`
 }
 
 // coverageGap is a code symbol in the query blast radius that has no test
@@ -702,6 +730,17 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
+
+	if len(out.Symbols) == 0 {
+		switch {
+		case len(seeds) == 0 && len(terms) > 0:
+			out.Note = fmt.Sprintf("no symbols matched terms %v under project root %s; check term spelling and that the code lives under this root", terms, h.Root)
+		case len(seeds) == 0:
+			out.Note = fmt.Sprintf("no symbols matched this task under project root %s", h.Root)
+		default:
+			out.Note = "seeds matched but nothing fit the requested include categories/budget; try include=[\"graph\",\"tests\"] or a larger budget"
+		}
+	}
 
 	// Coverage gaps: code symbols in the blast radius with no test edges.
 	// Only computed when the agent explicitly requests include=["coverage_gaps"].

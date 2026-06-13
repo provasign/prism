@@ -12,6 +12,7 @@ import (
 // absent (e.g. first-time init in a fresh repo) and write a valid prism
 // mcpServers entry into each one.
 func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // keep global writers (Codex, Zed, Claude) off the real user configs
 	projectDir := t.TempDir()
 	prismBin := "/fake/prism"
 
@@ -37,9 +38,11 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 	}
 }
 
-// The written config must contain a valid mcpServers entry pointing to the
-// given prism binary with "mcp" + projectDir as args.
+// The written .mcp.json must contain a valid mcpServers entry pointing to the
+// given prism binary with cwd-rooted args (["mcp"], no pinned project path) —
+// Claude Code launches project-scope servers with cwd at the project root.
 func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	projectDir := t.TempDir()
 	prismBin := "/usr/local/bin/prism"
 
@@ -66,17 +69,32 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	if entry.Command != prismBin {
 		t.Errorf("command: got %q want %q", entry.Command, prismBin)
 	}
-	if len(entry.Args) < 2 || entry.Args[0] != "mcp" {
-		t.Errorf("args: got %v, want [\"mcp\", ...]", entry.Args)
+	if len(entry.Args) != 1 || entry.Args[0] != "mcp" {
+		t.Errorf("args: got %v, want [\"mcp\"] (cwd-rooted, no pinned path)", entry.Args)
 	}
-	if entry.Args[1] != projectDir {
-		t.Errorf("args[1]: got %q want %q", entry.Args[1], projectDir)
+
+	// IDE configs keep the explicit project dir: their launch cwd is not guaranteed.
+	cursorRaw, err := os.ReadFile(filepath.Join(projectDir, ".cursor", "mcp.json"))
+	if err != nil {
+		t.Fatalf("read cursor config: %v", err)
+	}
+	var cursorCfg struct {
+		MCPServers map[string]struct {
+			Args []string `json:"args"`
+		} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(cursorRaw, &cursorCfg); err != nil {
+		t.Fatalf("unmarshal cursor config: %v", err)
+	}
+	if got := cursorCfg.MCPServers["prism"].Args; len(got) != 2 || got[1] != projectDir {
+		t.Errorf("cursor args: got %v, want [\"mcp\", %q]", got, projectDir)
 	}
 }
 
 // An existing config must be merged rather than overwritten — pre-existing
 // mcpServers entries must survive alongside the new prism entry.
 func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	projectDir := t.TempDir()
 	existing := `{"mcpServers":{"other-tool":{"command":"/bin/other","args":[]}}}`
 	if err := os.WriteFile(filepath.Join(projectDir, ".mcp.json"), []byte(existing), 0o644); err != nil {
@@ -103,6 +121,7 @@ func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 // Global user-level config dirs that don't exist on this machine must be
 // skipped; only project-local dirs should be created.
 func TestInitRegisterMCPToolsSkipsAbsentGlobalDirs(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	projectDir := t.TempDir()
 	written := initRegisterMCPTools(projectDir, "/bin/prism", false)
 
@@ -136,9 +155,9 @@ func TestPruneOldLedgers(t *testing.T) {
 		}
 	}
 
-	write("old.json", now.Add(-40*24*time.Hour))   // 40 days ago — should be pruned
-	write("recent.json", now.Add(-5*24*time.Hour))  // 5 days ago  — must survive
-	write("fresh.json", now.Add(-1*time.Hour))      // 1 hour ago  — must survive
+	write("old.json", now.Add(-40*24*time.Hour))      // 40 days ago — should be pruned
+	write("recent.json", now.Add(-5*24*time.Hour))    // 5 days ago  — must survive
+	write("fresh.json", now.Add(-1*time.Hour))        // 1 hour ago  — must survive
 	write("unrelated.txt", now.Add(-50*24*time.Hour)) // wrong ext — must survive
 
 	pruneOldLedgers(dir, 30*24*time.Hour)

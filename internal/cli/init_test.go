@@ -8,6 +8,7 @@ import (
 )
 
 func TestCmdInit(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // keep global writers (Codex, Zed, Claude) off the real user configs
 	dir := t.TempDir()
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
@@ -30,6 +31,7 @@ func TestCmdInit_GlobalFlag(t *testing.T) {
 }
 
 func TestCmdInit_BadDir(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	// trigger write error by passing a path under a read-only parent
 	parent := t.TempDir()
 	ro := filepath.Join(parent, "ro")
@@ -197,6 +199,7 @@ func TestWritePrismCodexConfig(t *testing.T) {
 }
 
 func TestInitRegisterMCPTools_WritesVSCode(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
 	written := initRegisterMCPTools(dir, "/x/prism", false)
 	var sawVSCode bool
@@ -211,6 +214,7 @@ func TestInitRegisterMCPTools_WritesVSCode(t *testing.T) {
 }
 
 func TestCmdInit_InstallAlias(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	// `prism install` must behave identically to `prism init`.
 	dir := t.TempDir()
 	rc := Run([]string{"install", dir})
@@ -291,6 +295,7 @@ func TestSteeringBlockForMode(t *testing.T) {
 func TestCmdInit_ModeFlag(t *testing.T) {
 	for _, mode := range []string{"mcp", "cli", "both"} {
 		t.Run(mode, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
 			dir := t.TempDir()
 			if rc := cmdInit([]string{dir, "--mode", mode}); rc != 0 {
 				t.Fatalf("rc %d", rc)
