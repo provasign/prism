@@ -1,0 +1,47 @@
+shale_version: "0"
+id: f0c293f6-c719-4909-9c8f-d0c8b7e41213
+created_at: 2026-06-13T05:28:35.358052Z
+finalized_at: 2026-06-13T13:21:01.158554Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd /tmp/eval-corpus/php-parser
+        echo "=== InterfaceTest.testAddMethod (FP: ->Enum_.addStmt, ->Namespace_.getNode) ==="; sed -n '44,60p' test/PhpParser/Builder/InterfaceTest.php
+        echo; echo "=== ClassConst.addConst (FP: ->Const_.__construct) ==="; sed -n '40,55p' lib/PhpParser/Builder/ClassConst.php
+        echo; echo "=== how do these tests get their builder? (createInterfaceBuilder / factory) ==="; rg -n 'function createInterfaceBuilder|protected function create|new Interface_|\$this->builder' test/PhpParser/Builder/InterfaceTest.php | head
+      at: 2026-06-13T06:50:58.444056Z
+      classified: other
+    - cmd: |-
+        cd /tmp/eval-corpus/newtonsoft
+        echo "=== DeserializeObject overloads in JsonConvert.cs ==="
+        rg -n 'public static .* DeserializeObject' Src/Newtonsoft.Json/JsonConvert.cs | head -20
+        echo; echo "=== SerializeObject overloads ==="
+        rg -n 'public static .* SerializeObject' Src/Newtonsoft.Json/JsonConvert.cs | head -20
+      at: 2026-06-13T07:05:50.50917Z
+      classified: other
+    - cmd: |-
+        cd /tmp/eval-corpus/jansson
+        echo "=== where is json_decref defined? ==="; rg -n 'json_decref' --type-add 'hdr:*.h' -thdr src/ | grep -iE 'define|static inline' | head
+        echo "=== jansson.h location + json_decref ==="; find . -name 'jansson.h' | head; rg -n '#define json_decref|void json_decref|json_decref\(' $(find . -name 'jansson.h' | head -1) | head
+        echo "=== json_integer definition ==="; rg -n 'json_integer\b' $(find . -name 'jansson.h' | head -1) | head -3
+      at: 2026-06-13T11:42:54.947646Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        ls go.work 2>/dev/null && echo "HAS go.work" || echo "no go.work"
+        git pull --ff-only origin main 2>&1 | tail -2
+        echo "=== bump grove→v0.9.0 + astkit→v0.4.15 ==="
+        GOWORK=off go get github.com/provasign/grove@v0.9.0 github.com/provasign/astkit@v0.4.15 2>&1 | tail -4
+        GOWORK=off go mod tidy 2>&1 | tail -3
+        echo "=== resulting refs ==="; grep -E 'provasign/(grove|astkit)' go.mod
+        echo "=== build + test ==="; GOWORK=off go build ./... 2>&1 | tail -3 && GOWORK=off go test ./... 2>&1 | grep -E 'FAIL|panic' || echo "PRISM TESTS PASS"
+      at: 2026-06-13T13:20:51.398127Z
+      classified: test
+notes: []
+redactions: 0

@@ -1,0 +1,79 @@
+shale_version: "0"
+id: 6c7e9292-3725-4f56-8052-046f3dfafa0f-c2
+created_at: 2026-06-13T05:20:46.677937Z
+finalized_at: 2026-06-13T13:21:01.158554Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism && git add go.mod go.sum && git commit -q -m "Upgrade grove to v0.8.0 and astkit to v0.4.14
+
+        Picks up the 10-language measured-accuracy call graph (Rust/C#/PHP/C/C++
+        added; native text-matched call edges retired for narrowed call-site
+        resolution).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git tag -a v0.9.0 -m "v0.9.0: grove v0.8.0 (10-language call graph) + portable Claude .mcp.json
+
+        - grove v0.8.0 / astkit v0.4.14: calls-edge accuracy across 10 languages
+        - Claude Code .mcp.json entry is now cwd-portable; mismatched MCP dir args
+          are rejected loudly; empty query results carry a diagnostic Note" && git push -q origin main v0.9.0 2>&1 | tail -2; echo "prism v0.9.0 pushed: $(git rev-parse --short HEAD)"
+      at: 2026-06-13T05:20:46.677937Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/fuse && GOWORK=off go get github.com/provasign/grove@v0.8.0 github.com/provasign/astkit@v0.4.14 2>&1 | tail -3 && GOWORK=off go mod tidy 2>&1 | tail -1 && grep -E "provasign/(grove|astkit)" go.mod && echo "=== build+test ===" && GOWORK=off go build ./... 2>&1 | head && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head
+      at: 2026-06-13T05:21:06.837413Z
+      classified: test
+    - cmd: cd /tmp && rm -rf homebrew-shale && git clone --quiet https://github.com/provasign/homebrew-shale.git && cd homebrew-shale && echo "=== layout ===" && ls -R . | head -30; echo "=== prism formula ==="; find . -iname "prism*.rb" -exec cat {} \;
+      at: 2026-06-13T05:25:52.600521Z
+      classified: other
+    - cmd: cd /tmp; echo "=== prism v0.9.0 checksums ==="; gh -R provasign/prism release download v0.9.0 -p checksums.txt -O - 2>/dev/null | grep -E "darwin|linux"; echo "=== fuse v0.10.0 checksums ==="; gh -R provasign/fuse release download v0.10.0 -p checksums.txt -O - 2>/dev/null | grep -E "darwin|linux"; echo "=== current fuse.rb version line ==="; grep -E "version|fuse-v" /tmp/homebrew-shale/Formula/fuse.rb | head -6
+      at: 2026-06-13T05:26:20.581976Z
+      classified: other
+    - cmd: |-
+        cd /tmp/homebrew-shale && python3 - <<'EOF'
+        import re
+
+        def bump(path, old_ver, new_ver, shas):
+            s = open(path).read()
+            s = s.replace(old_ver, new_ver)            # version line, urls, install names
+            # shas: dict platform-suffix -> sha. Replace the sha256 line following each url.
+            for plat, sha in shas.items():
+                # find the url line for this platform, replace the next sha256 "..."
+                pat = re.compile(r'(url "[^"]*'+re.escape(plat)+r'"\n\s*sha256 ")[0-9a-f]{64}(")')
+                s, n = pat.subn(r'\g<1>'+sha+r'\g<2>', s)
+                assert n == 1, f"{path}: {plat} matched {n} times"
+            open(path,'w').write(s)
+            print(f"updated {path}")
+
+        prism_shas = {
+         "darwin-amd64":"896f1f34edbc0a8ac2eee9ea51d9286b0f89ca88ba2e03509d0ed7b8b7b89388",
+         "darwin-arm64":"55eadfda99512462cd98939f03d116307882f47bbc22e6ec5338767a7f6aaf0e",
+         "linux-amd64":"fe59042907af2c25a769fdff6a7576d915b07d42a778ab864d110d2b3a2d32b7",
+         "linux-arm64":"55f47593e59031ffb5d0788d3c26d3d9d4fd2f2204456847d22af23037d7ce6e",
+        }
+        fuse_shas = {
+         "darwin-amd64":"4e557f3ffb776e3b36bc73b58f0b083cfa58c3832028ce40b7c5075f17cfaf1e",
+         "darwin-arm64":"73d8a04ed293dcedd179aa878caf337da9c5f25d765accc3d9c1778e687698af",
+         "linux-amd64":"683921234e02e37c2c206afaf01eec1c0d95d4222afadd005d2a0798244cc498",
+         "linux-arm64":"2f3f431333e9967bafeca2b9f4001f1a18bcade88e8780febb32d894b3cd9923",
+        }
+        bump("Formula/prism.rb","0.8.0","0.9.0",prism_shas)
+        bump("Formula/fuse.rb","0.9.0","0.10.0",fuse_shas)
+        EOF
+        echo "=== verify prism ==="; grep -E 'version|arm64"|sha256' Formula/prism.rb | head -6; echo "=== verify fuse ==="; grep -E 'version "' Formula/fuse.rb
+      at: 2026-06-13T05:26:47.06891Z
+      classified: other
+    - cmd: |-
+        cd /tmp/homebrew-shale; echo "stale prism 0.8.0:"; grep -c "0.8.0" Formula/prism.rb; echo "stale fuse 0.9.0:"; grep -c "0.9.0" Formula/fuse.rb; echo "linux-arm64 shas:"; grep -A1 "linux-arm64\"" Formula/prism.rb | grep sha256; grep -A1 "linux-arm64\"" Formula/fuse.rb | grep sha256; echo "=== commit ==="; git add Formula/prism.rb Formula/fuse.rb && git commit -q -m "prism 0.9.0, fuse 0.10.0 (grove v0.8.0 10-language call graph)
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push -q origin main 2>&1 | tail -2; echo "tap pushed: $(git rev-parse --short HEAD)"
+      at: 2026-06-13T05:27:12.723879Z
+      classified: other
+notes:
+    - text: continuation of session 6c7e9292-3725-4f56-8052-046f3dfafa0f — events captured after its evidence was finalized
+      at: 2026-06-13T05:20:46.677937Z
+redactions: 0
