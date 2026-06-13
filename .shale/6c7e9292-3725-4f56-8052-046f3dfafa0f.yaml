@@ -1,0 +1,379 @@
+shale_version: "0"
+id: 6c7e9292-3725-4f56-8052-046f3dfafa0f
+created_at: 2026-06-13T00:03:33.275106Z
+finalized_at: 2026-06-13T05:17:23.65019Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: which rustc cargo rust-analyzer dotnet php clang clangd; echo ---; ls /Users/tapabratapal/Projects/provasign
+      at: 2026-06-13T00:03:53.488491Z
+      classified: other
+    - cmd: brew install rustup dotnet-sdk php 2>&1 | tail -20
+      at: 2026-06-13T00:04:23.365981Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/grove/eval/ && echo --- && grep -n "astCallSiteLanguages" -A 15 /Users/tapabratapal/Projects/provasign/grove/internal/graph/edges.go | head -30
+      at: 2026-06-13T00:04:23.417377Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/test-fixtures/corpora/fuse-corpus.yaml; echo ---; ls /Users/tapabratapal/Projects/provasign/grove/eval/cmd/grove-eval/; echo ---; ls /tmp/eval-corpus 2>/dev/null
+      at: 2026-06-13T00:04:52.799496Z
+      classified: other
+    - cmd: export PATH="/opt/homebrew/opt/rustup/bin:$PATH" && rustup default stable 2>&1 | tail -3 && rustup component add rust-analyzer 2>&1 | tail -2 && rustup which rust-analyzer
+      at: 2026-06-13T00:06:26.704484Z
+      classified: other
+    - cmd: grep -n "lang\|truth" /Users/tapabratapal/Projects/provasign/grove/eval/cmd/grove-eval/main.go | head -40
+      at: 2026-06-13T00:06:26.751724Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus && git clone --quiet https://github.com/BurntSushi/ripgrep.git ripgrep && cd ripgrep && git rev-parse --short HEAD && export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:/opt/homebrew/opt/rustup/bin:$PATH" && cargo fetch --quiet 2>&1 | tail -2 && time rust-analyzer scip . 2>&1 | tail -5 && ls -la index.scip
+      at: 2026-06-13T00:07:50.3368Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/grove/eval/go.mod
+      at: 2026-06-13T00:07:58.891907Z
+      classified: other
+    - cmd: |-
+        mkdir -p /tmp/scipprobe && cd /tmp/scipprobe && cat > go.mod <<'EOF'
+        module scipprobe
+
+        go 1.26
+        EOF
+        cat > main.go <<'EOF'
+        package main
+
+        import (
+        	"fmt"
+        	"os"
+
+        	"github.com/sourcegraph/scip/bindings/go/scip"
+        	"google.golang.org/protobuf/proto"
+        )
+
+        func main() {
+        	b, err := os.ReadFile(os.Args[1])
+        	if err != nil { panic(err) }
+        	var idx scip.Index
+        	if err := proto.Unmarshal(b, &idx); err != nil { panic(err) }
+        	fmt.Println("docs:", len(idx.Documents))
+        	defsWithEncl, defsTotal, refsTotal := 0, 0, 0
+        	shown := 0
+        	for _, d := range idx.Documents {
+        		for _, o := range d.Occurrences {
+        			isDef := o.SymbolRoles&int32(scip.SymbolRole_Definition) != 0
+        			if isDef {
+        				defsTotal++
+        				if len(o.EnclosingRange) > 0 { defsWithEncl++ }
+        				if shown < 15 && len(o.EnclosingRange) > 0 {
+        					fmt.Printf("DEF %s range=%v encl=%v sym=%s\n", d.RelativePath, o.Range, o.EnclosingRange, o.Symbol)
+        					shown++
+        				}
+        			} else {
+        				refsTotal++
+        			}
+        		}
+        	}
+        	fmt.Printf("defs=%d defsWithEnclosing=%d refs=%d\n", defsTotal, defsWithEncl, refsTotal)
+        	// sample symbol info kinds
+        	kinds := map[string]int{}
+        	for _, d := range idx.Documents {
+        		for _, si := range d.Symbols {
+        			kinds[si.Kind.String()]++
+        		}
+        	}
+        	fmt.Println("symbolinfo kinds:", kinds)
+        }
+        EOF
+        GOWORK=off go mod tidy >/dev/null 2>&1; GOWORK=off go run . /tmp/eval-corpus/ripgrep/index.scip 2>&1 | head -40
+      at: 2026-06-13T00:08:25.188632Z
+      classified: other
+    - cmd: cd /tmp/scipprobe && GOWORK=off go get github.com/sourcegraph/scip/bindings/go/scip google.golang.org/protobuf/proto 2>&1 | tail -3 && GOWORK=off go run . /tmp/eval-corpus/ripgrep/index.scip 2>&1 | head -40
+      at: 2026-06-13T00:08:35.323284Z
+      classified: other
+    - cmd: cd /tmp/scipprobe && sed -i '' 's#sourcegraph/scip#scip-code/scip#' main.go && GOWORK=off go get github.com/scip-code/scip/bindings/go/scip google.golang.org/protobuf/proto 2>&1 | tail -2 && GOWORK=off go run . /tmp/eval-corpus/ripgrep/index.scip 2>&1 | head -40
+      at: 2026-06-13T00:08:57.820844Z
+      classified: other
+    - cmd: ~/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rust-analyzer help scip 2>&1 | head -30; echo ---; grep -rln "\"rust\"\|rust:" /Users/tapabratapal/Projects/provasign/grove/internal/core/*.go | head; echo ---; grep -rn "rust" /Users/tapabratapal/Projects/provasign/grove/internal/core/types.go | head
+      at: 2026-06-13T00:11:12.044746Z
+      classified: other
+    - cmd: ~/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rust-analyzer scip 2>&1 | head -25; echo ---; grep -rn "rust" /Users/tapabratapal/Projects/provasign/grove/internal/parser/*.go | grep -i "rust" | head -10
+      at: 2026-06-13T00:11:16.621442Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus/ripgrep && ~/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rust-analyzer scip . --output /tmp/ra-test.scip 2>&1 | head -30
+      at: 2026-06-13T00:11:37.152124Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus/ripgrep && export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:/opt/homebrew/opt/rustup/bin:$PATH" && rust-analyzer scip . --output /tmp/ra-test.scip 2>&1 | tail -1 && ls -la /tmp/ra-test.scip
+      at: 2026-06-13T00:12:12.746901Z
+      classified: other
+    - cmd: |-
+        mkdir -p /tmp/groveprobe && cd /tmp/groveprobe && cat > go.mod <<'EOF'
+        module groveprobe
+
+        go 1.26
+
+        require github.com/provasign/grove v0.0.0
+
+        replace github.com/provasign/grove => /Users/tapabratapal/Projects/provasign/grove
+
+        replace github.com/provasign/astkit => /Users/tapabratapal/Projects/provasign/astkit
+        EOF
+        cat > main.go <<'EOF'
+        package main
+
+        import (
+        	"context"
+        	"fmt"
+        	"os"
+        	"strings"
+
+        	"github.com/provasign/grove/internal/store"
+        )
+
+        func main() {
+        	repo, needle := os.Args[1], os.Args[2]
+        	st, err := store.Open(repo)
+        	if err != nil { panic(err) }
+        	defer st.Close()
+        	ctx := context.Background()
+        	syms, _ := st.AllSymbols(ctx)
+        	edges, _ := st.AllEdges(ctx)
+        	id2 := map[string]string{}
+        	for i := range syms {
+        		s := &syms[i]
+        		id2[s.ID] = fmt.Sprintf("%s:%d %s (parent=%q kind=%s)", s.FilePath, s.Span.Start, s.Name, s.ParentSymbol, s.Kind)
+        	}
+        	for i := range syms {
+        		s := &syms[i]
+        		if s.Name != needle { continue }
+        		fmt.Printf("SYM %s:%d-%d %s kind=%s parent=%q ann=%v tp=%v\n", s.FilePath, s.Span.Start, s.Span.End, s.Name, s.Kind, s.ParentSymbol, s.Annotations, s.TypeParameters)
+        		for _, cs := range s.CallSites {
+        			fmt.Printf("  CS line=%d callee=%q\n", cs.Line, cs.Callee)
+        		}
+        		n := 0
+        		for _, e := range edges {
+        			if e.From == s.ID && e.Type == "calls" {
+        				fmt.Printf("  EDGE -> %s (conf %.2f)\n", id2[e.To], e.Confidence)
+        				n++
+        			}
+        		}
+        		fmt.Println("  edges:", n)
+        		if strings.Contains(s.FilePath, "glue") { break }
+        	}
+        }
+        EOF
+        GOWORK=off go mod tidy >/dev/null 2>&1; GOWORK=off go run . /tmp/eval-corpus/ripgrep basic4 2>&1 | head -30
+      at: 2026-06-13T01:36:32.254579Z
+      classified: other
+    - cmd: cd /tmp && rm -rf rust-scorecard && gh run download 27453120897 -R provasign/grove -n rust-scorecard -D /tmp/rust-scorecard 2>&1 | tail -2; echo "==="; sed -n '/## False positives/,/## False negatives/p' /tmp/rust-scorecard/scorecard.md 2>/dev/null | sed -n '2,20p'
+      at: 2026-06-13T02:05:49.791276Z
+      classified: other
+    - cmd: "cd /tmp/rust-scorecard; python3 -c \"\nimport json\nc=json.load(open('scorecard.json'))\nprint('universe',c['matchedUniverse'],'P',c['precision'],'R',c['recall'],'edges',c['groveEdges'],'truth',c['truthEdges'],'tp',c['truePositives'])\nfp=c.get('falsePositives',[]); \nfrom collections import Counter\n# callee name distribution in FPs\ndef nm(s): return s.split()[-1]\nprint('FP count shown',len(fp))\nprint('FP callee names:',Counter(nm(e['callee']) for e in fp).most_common(10))\nprint('FP caller files:',Counter(e['caller'].split(':')[0] for e in fp).most_common(6))\n\""
+      at: 2026-06-13T02:08:58.598072Z
+      classified: other
+    - cmd: CACHE=$(go env GOMODCACHE)/github.com/provasign/astkit@v0.4.11; echo "=== rustPathQualifier + scoped qualifier in cache? ==="; grep -c "rustPathQualifier\|scoped_identifier.*name\|impl_trait:" "$CACHE/strategies/metadata.go" "$CACHE/strategies/extractors.go"; echo "=== diff cache vs working tree (should be empty) ==="; diff "$CACHE/strategies/metadata.go" /Users/tapabratapal/Projects/provasign/astkit/strategies/metadata.go && echo "metadata IDENTICAL"; diff "$CACHE/strategies/extractors.go" /Users/tapabratapal/Projects/provasign/astkit/strategies/extractors.go && echo "extractors IDENTICAL"
+      at: 2026-06-13T02:09:27.189483Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus && git clone --quiet --depth 1 --branch 13.0.3 https://github.com/JamesNK/Newtonsoft.Json.git newtonsoft 2>&1 | tail -2; cd newtonsoft && git rev-parse --short HEAD && find . -name "*.cs" -not -path "*/obj/*" -not -path "*/bin/*" -not -path "*Test*" | wc -l && echo "--- src layout ---" && ls src/
+      at: 2026-06-13T02:45:03.560324Z
+      classified: other
+    - cmd: sleep 5; tail -8 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/b390wue9t.output
+      at: 2026-06-13T02:45:20.761659Z
+      classified: other
+    - cmd: export DOTNET_ROOT="$HOME/.dotnet"; export PATH="$HOME/.dotnet:$PATH"; cd /Users/tapabratapal/Projects/provasign/grove/eval/cstruth && dotnet bin/cstruth.dll /tmp/eval-corpus/newtonsoft /tmp/newtonsoft-truth.jsonl 0a2e291 2>&1 | tail -3; echo "--- header ---"; head -1 /tmp/newtonsoft-truth.jsonl; head -4 /tmp/newtonsoft-truth.jsonl | tail -3
+      at: 2026-06-13T02:45:35.999137Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=off go build -o grove-eval ./cmd/grove-eval && rm -rf /tmp/eval-corpus/newtonsoft/.grove && ./grove-eval score --repo /tmp/eval-corpus/newtonsoft --truth /tmp/newtonsoft-truth.jsonl --out-dir /tmp/cs-out 2>&1 | tail -2
+      at: 2026-06-13T02:46:24.770077Z
+      classified: build
+    - cmd: |-
+        cd /tmp/cs-out; python3 -c "
+        import json
+        from collections import Counter
+        c=json.load(open('scorecard.json'))
+        print('P',c['precision'],'R',c['recall'],'edges',c['groveEdges'],'tp',c['truePositives'])
+        fp=c['falsePositives']
+        def nm(s):return s.split()[-1]
+        print('FP callees:',Counter(nm(e['callee']) for e in fp).most_common(8))
+        " ; echo "--- FP sample ---"; sed -n '/## False positives/,/## False negatives/p' /tmp/cs-out/scorecard.md | sed -n '2,14p'
+      at: 2026-06-13T03:04:15.611085Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build ./... 2>&1 | head && GOWORK=off go test ./internal/graph/ 2>&1 | tail -3 && cd eval && GOWORK=off go build -o grove-eval ./cmd/grove-eval && rm -rf /tmp/eval-corpus/newtonsoft/.grove && ./grove-eval score --repo /tmp/eval-corpus/newtonsoft --truth /tmp/newtonsoft-truth.jsonl --out-dir /tmp/cs-out 2>&1 | tail -2
+      at: 2026-06-13T03:05:41.39847Z
+      classified: test
+    - cmd: |-
+        cd /tmp/cs-out; python3 -c "
+        import json
+        from collections import Counter
+        c=json.load(open('scorecard.json'))
+        fp=c['falsePositives']
+        def nm(s):return s.split()[-1]
+        def cls(s):
+          n=nm(s); return n.split('.')[0] if '.' in n else '?'
+        print('FP callee methods:',Counter(nm(e['callee']).split('.')[-1] for e in fp).most_common(10))
+        "; echo "=== FP sample ==="; sed -n '/## False positives/,/## False negatives/p' /tmp/cs-out/scorecard.md | sed -n '2,16p'
+      at: 2026-06-13T03:19:11.582842Z
+      classified: other
+    - cmd: |-
+        cd /tmp/cs-out; python3 -c "
+        import json
+        from collections import Counter
+        c=json.load(open('scorecard.json'))
+        fp=c['falsePositives']
+        print('FP callee methods:',Counter(e['callee'].split()[-1].split('.')[-1] for e in fp).most_common(10))
+        samefile=sum(1 for e in fp if e['caller'].split(':')[0]==e['callee'].split(':')[0])
+        print('same-file FPs:',samefile,'/',len(fp))
+        "; echo "=== FP ==="; sed -n '/## False positives/,/## False negatives/p' /tmp/cs-out/scorecard.md | sed -n '2,12p'
+      at: 2026-06-13T03:23:44.46893Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build ./... 2>&1 | head && cd eval && GOWORK=off go build -o grove-eval ./cmd/grove-eval && rm -rf /tmp/eval-corpus/newtonsoft/.grove && ./grove-eval score --repo /tmp/eval-corpus/newtonsoft --truth /tmp/newtonsoft-truth.jsonl --out-dir /tmp/cs-out 2>&1 | tail -1; python3 -c "import json;c=json.load(open('/tmp/cs-out/scorecard.json'));print('P',c['precision'],'R',c['recall'],'F1',c['f1'],'edges',c['groveEdges'])"
+      at: 2026-06-13T03:25:02.378801Z
+      classified: build
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/astkit && go test ./... 2>&1 | grep -v "^ok\|no test" | head; cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build ./... && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "=== regression: other langs ==="; cd eval && GOWORK=off go build -o grove-eval ./cmd/grove-eval && for r in gin:/tmp/eval-corpus/gin:/tmp/gin-truth.jsonl flask:/tmp/eval-corpus/flask:testdata/flask@36e4a824/calls-truth.jsonl.gz "socket.io:/tmp/eval-corpus/socket.io:testdata/socket.io@3ad4e1f2/calls-truth.jsonl.gz" commons-lang:/tmp/eval-corpus/commons-lang:testdata/commons-lang@44298fe/calls-truth.jsonl.gz ripgrep:/tmp/eval-corpus/ripgrep:testdata/ripgrep@82313cf/calls-truth.jsonl.gz; do name=${r%%:*}; rest=${r#*:}; repo=${rest%%:*}; truth=${rest#*:}; rm -rf $repo/.grove; ./grove-eval score --repo $repo --truth $truth --out-dir /tmp/reg-$name 2>&1 | grep "^score:" | sed "s/^/[$name] /"; done'
+      at: 2026-06-13T03:28:16.804675Z
+      classified: test
+    - cmd: cd /tmp/eval-corpus/gin && /Users/tapabratapal/Projects/provasign/grove/eval/grove-eval truth --repo /tmp/eval-corpus/gin --commit d75fcd4 --out /tmp/gin-truth.jsonl 2>/dev/null | tail -1 || echo "gin truth exists?"
+      at: 2026-06-13T03:28:29.561906Z
+      classified: other
+    - cmd: export PATH="/opt/homebrew/opt/php/bin:$PATH"; php -m 2>/dev/null | grep -i xdebug; composer --version 2>&1 | head -1; echo "--- clone pin ---"; cd /tmp/eval-corpus && rm -rf php-parser && git clone --quiet --depth 1 --branch v5.3.1 https://github.com/nikic/PHP-Parser.git php-parser 2>&1 | tail -1; cd php-parser && git rev-parse --short HEAD && find lib -name "*.php" | wc -l && find test -name "*.php" | wc -l && ls
+      at: 2026-06-13T03:52:59.7859Z
+      classified: other
+    - cmd: export PATH="/opt/homebrew/opt/php/bin:$PATH"; cd /tmp/eval-corpus/php-parser && php -dxdebug.mode=off /opt/homebrew/opt/php/bin/composer install --no-interaction --quiet 2>&1 | tail -8; echo "exit $?"; ls vendor/bin/ 2>/dev/null | head; php -dxdebug.mode=off vendor/bin/phpunit --version 2>&1 | head -1
+      at: 2026-06-13T03:53:20.543503Z
+      classified: other
+    - cmd: mkdir -p /Users/tapabratapal/Projects/provasign/grove/eval/phptruth
+      at: 2026-06-13T03:54:48.993497Z
+      classified: other
+    - cmd: |-
+        export PATH="/opt/homebrew/opt/php/bin:$PATH"; cd /tmp/eval-corpus/php-parser; rm -rf /tmp/phptrace; mkdir -p /tmp/phptrace; PHPTRUTH_ROOT=/tmp/eval-corpus/php-parser PHPTRUTH_REFL=/tmp/phptrace/refl.json php \
+          -dxdebug.mode=trace -dxdebug.start_with_request=yes -dxdebug.trace_format=1 \
+          -dxdebug.trace_output_dir=/tmp/phptrace -dxdebug.trace_output_name=trace -dxdebug.use_compression=0 \
+          -dauto_prepend_file=/Users/tapabratapal/Projects/provasign/grove/eval/phptruth/boot.php \
+          vendor/bin/phpunit --no-coverage test/PhpParser/Lexer/ 2>&1 | tail -6; echo "=== trace files ==="; ls -la /tmp/phptrace/; echo "=== trace head ==="; head -8 /tmp/phptrace/trace*.xt 2>/dev/null; echo "=== refl sample ==="; head -c 400 /tmp/phptrace/refl.json
+      at: 2026-06-13T03:55:30.489732Z
+      classified: other
+    - cmd: ls -la /tmp/eval-corpus/php-parser/*.xt /private/tmp/*.xt 2>/dev/null | head; find /tmp /private/tmp -maxdepth 2 -name "*.xt" -newermt "-3 minutes" 2>/dev/null | head; echo "--- realpath check ---"; php -r 'echo realpath("/tmp/eval-corpus/php-parser"),"\n";'
+      at: 2026-06-13T03:55:56.0026Z
+      classified: other
+    - cmd: |-
+        export PATH="/opt/homebrew/opt/php/bin:$PATH"; cd /tmp/eval-corpus/php-parser; rm -rf /tmp/phptrace; mkdir -p /tmp/phptrace; PHPTRUTH_ROOT=/tmp/eval-corpus/php-parser PHPTRUTH_REFL=/tmp/phptrace/refl.json php \
+          -dxdebug.mode=trace -dxdebug.start_with_request=yes -dxdebug.trace_format=1 \
+          -dxdebug.output_dir=/tmp/phptrace -dxdebug.trace_output_name=trace -dxdebug.use_compression=0 \
+          -dauto_prepend_file=/Users/tapabratapal/Projects/provasign/grove/eval/phptruth/boot.php \
+          vendor/bin/phpunit --no-coverage test/PhpParser/Lexer/ >/dev/null 2>&1; echo "exit $?"; ls -la /tmp/phptrace/; echo "=== trace head ==="; head -10 /tmp/phptrace/trace.xt 2>/dev/null; echo "=== refl entries ==="; php -r '$m=json_decode(file_get_contents("/tmp/phptrace/refl.json"),true); echo count($m)," entries\n"; $i=0; foreach($m as $k=>$v){echo "$k => {$v["file"]}:{$v["line"]} {$v["name"]}\n"; if(++$i>=4)break;}'
+      at: 2026-06-13T03:56:35.295736Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=off go build -o grove-eval ./cmd/grove-eval 2>&1 | head && export PATH="/opt/homebrew/opt/php/bin:$PATH" && ./grove-eval truth --lang php --repo /tmp/eval-corpus/php-parser --commit 8eea230 --out /tmp/php-truth.jsonl 2>&1 | tail -3; echo "--- head ---"; head -1 /tmp/php-truth.jsonl; head -4 /tmp/php-truth.jsonl | tail -3
+      at: 2026-06-13T03:59:00.148081Z
+      classified: build
+    - cmd: cd /tmp/eval-corpus && rm -rf php-score && git clone --quiet --depth 1 --branch v5.3.1 https://github.com/nikic/PHP-Parser.git php-score 2>&1 | tail -1; cd /Users/tapabratapal/Projects/provasign/grove/eval && rm -rf /tmp/eval-corpus/php-score/.grove && ./grove-eval score --repo /tmp/eval-corpus/php-score --truth /tmp/php-truth.jsonl --out-dir /tmp/php-out 2>&1 | tail -2
+      at: 2026-06-13T03:59:50.454107Z
+      classified: other
+    - cmd: |-
+        cd /tmp/php-out; python3 -c "
+        import json
+        from collections import Counter
+        c=json.load(open('scorecard.json'))
+        print('P',c['precision'],'R',c['recall'],'edges',c['groveEdges'],'truth',c['truthEdges'],'tp',c['truePositives'])
+        fp=c['falsePositives']; fn=c['falseNegatives']
+        print('FP callee methods:',Counter(e['callee'].split()[-1].split('.')[-1] for e in fp).most_common(8))
+        print('FN callee methods:',Counter(e['callee'].split()[-1].split('.')[-1] for e in fn).most_common(8))
+        "; echo "=== FP ==="; sed -n '/## False positives/,/## False negatives/p' /tmp/php-out/scorecard.md | sed -n '2,9p'; echo "=== FN ==="; sed -n '/## False negatives/,$p' /tmp/php-out/scorecard.md | sed -n '2,9p'
+      at: 2026-06-13T04:03:49.256988Z
+      classified: other
+    - cmd: export PATH="/opt/homebrew/bin:$PATH"; cd /tmp/eval-corpus/jansson && rm -rf build && cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DJANSSON_BUILD_DOCS=OFF -DJANSSON_EXAMPLES=OFF 2>&1 | tail -3; ls build/compile_commands.json && python3 -c "import json;d=json.load(open('build/compile_commands.json'));print(len(d),'entries'); print(d[0]['file'])"
+      at: 2026-06-13T04:26:21.752853Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus/jansson && time ~/bin/scip-clang --compdb-path=build/compile_commands.json --index-output-path=/tmp/jansson-index.scip 2>&1 | tail -10; ls -la /tmp/jansson-index.scip 2>&1
+      at: 2026-06-13T04:28:11.467397Z
+      classified: other
+    - cmd: cd /tmp/scipprobe && GOWORK=off go run . /tmp/jansson-index.scip 2>&1 | head -25
+      at: 2026-06-13T04:28:27.259644Z
+      classified: other
+    - cmd: |-
+        cd /tmp/scipprobe && cat > probe2.go <<'EOF'
+        //go:build ignore
+        EOF
+        cat > main2.go <<'EOF'
+        package main
+        import ("fmt";"os";"sort";"strings"
+         "github.com/scip-code/scip/bindings/go/scip"
+         "google.golang.org/protobuf/proto")
+        func main(){
+         b,_:=os.ReadFile(os.Args[1]); var idx scip.Index; proto.Unmarshal(b,&idx)
+         for _,d:=range idx.Documents{
+          if !strings.HasSuffix(d.RelativePath,"src/value.c") && !strings.HasSuffix(d.RelativePath,"value.c"){continue}
+          fmt.Println("DOC",d.RelativePath)
+          type occ struct{line int32; sym string; def bool}
+          var os_[]occ
+          for _,o:=range d.Occurrences{
+           r:=o.Range; if len(r)<3{continue}
+           os_=append(os_,occ{r[0],o.Symbol,o.SymbolRoles&int32(scip.SymbolRole_Definition)!=0})
+          }
+          sort.Slice(os_,func(i,j int)bool{return os_[i].line<os_[j].line})
+          n:=0
+          for _,o:=range os_{ if o.def { fmt.Printf("  DEF L%d %s\n",o.line,o.sym); n++; if n>10{break} } }
+          break
+         }
+        }
+        EOF
+        mkdir -p /tmp/scipprobe2 && mv main2.go /tmp/scipprobe2/main.go && cp go.mod go.sum /tmp/scipprobe2/ 2>/dev/null; cd /tmp/scipprobe2 && sed -i '' 's/module scipprobe/module scipprobe2/' go.mod 2>/dev/null; GOWORK=off go run . /tmp/jansson-index.scip 2>&1 | head -16
+      at: 2026-06-13T04:32:31.584576Z
+      classified: other
+    - cmd: |-
+        cd /tmp/jansson-out; python3 -c "
+        import json
+        from collections import Counter
+        c=json.load(open('scorecard.json'))
+        print('P',c['precision'],'R',c['recall'],'edges',c['groveEdges'],'truth',c['truthEdges'],'tp',c['truePositives'])
+        fn=c['falseNegatives']
+        print('FN callees:',Counter(e['callee'].split()[-1] for e in fn).most_common(8))
+        print('FN callers files:',Counter(e['caller'].split(':')[0].split('/')[0] for e in fn).most_common())
+        "; echo "=== FN ==="; sed -n '/## False negatives/,$p' /tmp/jansson-out/scorecard.md | sed -n '2,9p'
+      at: 2026-06-13T04:45:19.44202Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=off go build -o grove-eval ./cmd/grove-eval && GROVE_EVAL_CFAMILY_SCIP=/tmp/jansson-index.scip ./grove-eval truth --lang cfamily --repo /tmp/eval-corpus/jansson --commit 684e18c --out /tmp/jansson-truth.jsonl 2>&1 | tail -1; rm -rf /tmp/eval-corpus/jansson-score/.grove && ./grove-eval score --repo /tmp/eval-corpus/jansson-score --truth /tmp/jansson-truth.jsonl --out-dir /tmp/jansson-out 2>&1 | tail -1; python3 -c "import json;c=json.load(open('/tmp/jansson-out/scorecard.json'));print('universe',round(c['symbolMatchRate'],4),'P',c['precision'],'R',c['recall'],'F1',c['f1'],'edges',c['groveEdges'])"
+      at: 2026-06-13T04:47:02.065586Z
+      classified: build
+    - cmd: cd /tmp/jansson-out; sed -n '/## False negatives/,$p' scorecard.md | sed -n '2,12p'; echo "=== FP sample ==="; sed -n '/## False positives/,/## False negatives/p' scorecard.md | sed -n '2,7p'
+      at: 2026-06-13T04:47:34.538205Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "=== regression ==="; cd eval && for r in gin:/tmp/eval-corpus/gin:/tmp/gin-truth.jsonl flask:/tmp/eval-corpus/flask:testdata/flask@36e4a824/calls-truth.jsonl.gz "socket.io:/tmp/eval-corpus/socket.io:testdata/socket.io@3ad4e1f2/calls-truth.jsonl.gz" commons-lang:/tmp/eval-corpus/commons-lang:testdata/commons-lang@44298fe/calls-truth.jsonl.gz ripgrep:/tmp/eval-corpus/ripgrep:testdata/ripgrep@82313cf/calls-truth.jsonl.gz newtonsoft:/tmp/eval-corpus/newtonsoft:testdata/newtonsoft@0a2e291/calls-truth.jsonl.gz php-parser:/tmp/eval-corpus/php-score:testdata/php-parser@8eea230/calls-truth.jsonl.gz; do name=${r%%:*}; rest=${r#*:}; repo=${rest%%:*}; truth=${rest#*:}; rm -rf $repo/.grove; ./grove-eval score --repo $repo --truth $truth --out-dir /tmp/reg-$name 2>&1 | grep "^score:" | sed "s/^/[$name] /"; done
+      at: 2026-06-13T04:48:15.491969Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; echo "=== diffstat ==="; git diff --stat; echo; echo "=== untracked ==="; git status --short | grep '^??'
+      at: 2026-06-13T05:11:03.788987Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; echo "=== agent-config change (all 7 identical hunk; show one) ==="; git diff .clinerules; echo "=== internal/cli/commands.go ==="; git diff internal/cli/commands.go
+      at: 2026-06-13T05:11:10.795494Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; echo "=== internal/mcp/tools.go ==="; git diff internal/mcp/tools.go; echo "=== test files (stat only) ==="; git diff --stat internal/cli/commands_test.go internal/cli/init_test.go internal/mcp/coverage_test.go
+      at: 2026-06-13T05:11:25.40033Z
+      classified: other
+    - cmd: GOWORK=off go build ./... 2>&1 | head && GOWORK=off go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -5
+      at: 2026-06-13T05:16:14.858107Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; git add internal/cli/commands.go internal/cli/commands_test.go internal/cli/init_test.go internal/mcp/tools.go internal/mcp/coverage_test.go && git commit -q -m "mcp: portable Claude .mcp.json entry + reject mismatched dir loudly
+
+        - Claude Code launches project-scope MCP servers with cwd at the project
+          root, so its .mcp.json entry drops the pinned absolute dir (\`prism mcp\`)
+          and stays portable when the repo moves; IDE writers keep the explicit dir
+          since their launch cwd isn't guaranteed
+        - every tool except prism_index is bound to the server's root; a mismatched
+          \`dir\` arg was silently ignored (empty results) — now rejected with a
+          restart hint, via a symlink-resolving sameRoot() helper
+        - drop the misleading \`dir\` property from prism_query/read/search/lookup
+          schemas; add a Note on empty query results (wrong root vs typo vs budget)
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && echo "commit 1 done"; git add .clinerules .cursorrules .github/copilot-instructions.md .windsurfrules AGENTS.md CLAUDE.md GEMINI.md && git commit -q -m "Remove shale evidence block from committed agent configs
+
+        The shale intent/done mandate is local dev tooling, not repo guidance every
+        contributor/agent must follow; keep the prism MCP-tooling instructions, drop
+        the shale-managed block. (shale init may re-inject it locally.)
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && echo "commit 2 done"; git status --short | grep -vE '^\?\?'; echo "--- untracked (NOT pushed) ---"; git status --short | grep '^??'
+      at: 2026-06-13T05:16:37.003057Z
+      classified: other
+notes: []
+redactions: 0
