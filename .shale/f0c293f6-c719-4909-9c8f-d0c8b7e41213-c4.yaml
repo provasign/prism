@@ -1,0 +1,216 @@
+shale_version: "0"
+id: f0c293f6-c719-4909-9c8f-d0c8b7e41213-c4
+created_at: 2026-06-14T00:57:55.976977Z
+finalized_at: 2026-06-14T01:34:18.918014Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T01:21:43.417912Z
+    - path: internal/cli/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T01:33:47.514259Z
+commands:
+    - cmd: |-
+        git tag -a v0.13.1 -m "prism: close grove engine in references e2e test (Windows cleanup)
+
+        Test-only fix over v0.13.0: the references e2e test left a grove.db handle open,
+        failing Windows CI cleanup after the assertion passed. Product unchanged
+        (prism_references works as in v0.13.0)." && git push origin v0.13.1 && git tag --sort=-v:refname | head -3
+      at: 2026-06-14T00:57:55.976977Z
+      classified: other
+    - cmd: gh run list --limit 2 --workflow=Release 2>&1 | head -2
+      at: 2026-06-14T00:57:59.519652Z
+      classified: other
+    - cmd: gh run watch 27484105076 --exit-status 2>&1 | tail -3; echo "EXIT=$?"
+      at: 2026-06-14T00:59:40.540652Z
+      classified: other
+    - cmd: grep -in "homebrew\|tap\|formula\|provasign/shale" .github/workflows/release.yml 2>/dev/null || echo "(no homebrew references in release.yml)"
+      at: 2026-06-14T00:59:51.019972Z
+      classified: other
+    - cmd: |-
+        echo "=== tap locally? ===" && ls -d /Users/tapabratapal/Projects/provasign/homebrew-shale 2>/dev/null || find /Users/tapabratapal/Projects -maxdepth 2 -name "homebrew-shale" -type d 2>/dev/null || echo "(not found locally)"
+        echo "=== brew tap installed? ===" && brew tap 2>/dev/null | grep -i provasign
+        echo "=== current installs ===" && brew list 2>/dev/null | grep -iE "prism|grove|astkit|fuse|shale" || echo "(none via brew)"
+      at: 2026-06-14T01:17:28.044669Z
+      classified: other
+    - cmd: |-
+        TAP=$(brew --repository provasign/shale 2>/dev/null); echo "TAP=$TAP"; ls -la "$TAP"/Formula/ 2>/dev/null || ls -la "$TAP" 2>/dev/null
+        echo "=== installed prism version ==="; prism --version 2>/dev/null || /opt/homebrew/bin/prism --version 2>/dev/null || echo "(prism not on PATH)"
+      at: 2026-06-14T01:17:37.460965Z
+      classified: other
+    - cmd: ls -la /opt/homebrew/Library/Taps/provasign/homebrew-shale/Formula/ 2>/dev/null; echo "---"; find /opt/homebrew/Library/Taps/provasign -name "prism.rb" 2>/dev/null
+      at: 2026-06-14T01:17:57.876322Z
+      classified: other
+    - cmd: gh release view v0.13.1 --json assets --jq '.assets[].name' 2>&1
+      at: 2026-06-14T01:18:12.60356Z
+      classified: other
+    - cmd: cd /tmp && gh release download v0.13.1 --repo provasign/prism --pattern checksums.txt --clobber -O /tmp/prism-checksums.txt && cat /tmp/prism-checksums.txt
+      at: 2026-06-14T01:18:19.176434Z
+      classified: other
+    - cmd: cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git add Formula/prism.rb && git status --short && git log --oneline -2
+      at: 2026-06-14T01:18:49.511311Z
+      classified: other
+    - cmd: |-
+        cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git -c commit.gpgsign=false commit -q -m "prism 0.13.1 — references layer (prism_references), grove v0.12.0 embedded
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" && git push origin HEAD 2>&1 | tail -3
+      at: 2026-06-14T01:19:09.565275Z
+      classified: other
+    - cmd: cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git pull --rebase origin HEAD 2>&1 | tail -5 && git push origin HEAD 2>&1 | tail -3
+      at: 2026-06-14T01:19:28.788242Z
+      classified: other
+    - cmd: cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git add Formula/prism.rb && git -c commit.gpgsign=false rebase --continue 2>&1 | tail -3 && git push origin HEAD 2>&1 | tail -3
+      at: 2026-06-14T01:20:00.53552Z
+      classified: other
+    - cmd: brew update 2>&1 | tail -3; echo "=== upgrade prism ==="; brew upgrade prism 2>&1 | tail -15 || brew reinstall prism 2>&1 | tail -15
+      at: 2026-06-14T01:20:12.501223Z
+      classified: other
+    - cmd: brew upgrade provasign/shale/prism 2>&1 | tail -15
+      at: 2026-06-14T01:20:24.098209Z
+      classified: other
+    - cmd: echo "=== which prism (PATH) ===" && which prism && echo "=== brew binary version ===" && /opt/homebrew/bin/prism version 2>&1 | head -3 && echo "=== ~/bin/prism version ===" && ~/bin/prism version 2>&1 | head -3
+      at: 2026-06-14T01:20:35.58036Z
+      classified: other
+    - cmd: echo "=== project .mcp.json ===" && cat /Users/tapabratapal/Projects/provasign/prism/.mcp.json 2>/dev/null; echo "=== parent .mcp.json ==="; cat /Users/tapabratapal/Projects/provasign/.mcp.json 2>/dev/null; echo "=== global claude mcp ==="; grep -rl "prism" ~/.claude*/*.json ~/.claude.json 2>/dev/null | head
+      at: 2026-06-14T01:20:50.245877Z
+      classified: other
+    - cmd: |-
+        cd ~/bin && ls -la prism && file prism
+        echo "=== backing up local build ==="
+        cp -p prism prism.local-build-v0.7.0-dev 2>&1 && echo "backed up to ~/bin/prism.local-build-v0.7.0-dev"
+        echo "=== symlink to brew v0.13.1 ==="
+        ln -sf /opt/homebrew/bin/prism ~/bin/prism
+        ls -la ~/bin/prism
+        echo "=== verify ==="
+        prism version 2>&1 | head -1
+      at: 2026-06-14T01:21:10.539009Z
+      classified: other
+    - cmd: grep -rn "\"lookup\"\|\"search\"\|case \"lookup\"\|cmdLookup\|func.*[Ll]ookup" internal/cli/*.go | head -20
+      at: 2026-06-14T01:21:27.021774Z
+      classified: other
+    - cmd: grep -n "func printOutput\|func printJSON\|func printText" internal/cli/*.go
+      at: 2026-06-14T01:21:55.091722Z
+      classified: other
+    - cmd: head -20 internal/cli/commands.go | grep -n "sort\|import\|\"" ; echo "=== build ===" && go build ./... 2>&1 | tail -10 && echo "BUILD_OK"
+      at: 2026-06-14T01:22:22.573024Z
+      classified: build
+    - cmd: grep -n "lookup <name>\|Show full source for a symbol\|search <keyword>" internal/cli/*.go | head
+      at: 2026-06-14T01:22:31.397528Z
+      classified: other
+    - cmd: go build ./... && echo "BUILD_OK" && go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -6
+      at: 2026-06-14T01:22:53.245262Z
+      classified: test
+    - cmd: |-
+        go build -o /tmp/prism-dev ./cmd/prism && echo "BUILT"
+        cd /Users/tapabratapal/Projects/provasign/grove
+        /tmp/prism-dev index . >/dev/null 2>&1
+        echo "=== references for 'Engine' (text) ==="
+        /tmp/prism-dev references Engine . --format text 2>&1 | head -20
+      at: 2026-06-14T01:25:00.462349Z
+      classified: build
+    - cmd: sleep 1; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/bm4sxs1it.output 2>/dev/null | head -25
+      at: 2026-06-14T01:25:06.97841Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/bm4sxs1it.output 2>/dev/null
+      at: 2026-06-14T01:25:16.012382Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && /tmp/prism-dev references Engine . --format json 2>&1 | head -30
+      at: 2026-06-14T01:27:23.944632Z
+      classified: other
+    - cmd: sleep 8; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/bj05yqoz5.output 2>/dev/null | head -40
+      at: 2026-06-14T01:27:39.629614Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/bj05yqoz5.output 2>/dev/null
+      at: 2026-06-14T01:27:42.539495Z
+      classified: other
+    - cmd: |-
+        D=$(mktemp -d); printf 'package p\ntype Foo struct{}\nfunc run(){ var x Foo; _ = x }\n' > $D/a.go
+        cd $D && /tmp/prism-dev index . >/dev/null 2>&1; echo "index rc=$?"
+        /tmp/prism-dev references Foo . --format json; echo "refs rc=$?"
+      at: 2026-06-14T01:27:51.669119Z
+      classified: other
+    - cmd: |-
+        /tmp/prism-dev index . >/dev/null 2>&1
+        echo "=== text output for 'Handler' (timed) ==="
+        time /tmp/prism-dev references Handler . --format text 2>&1 | head -25
+      at: 2026-06-14T01:30:01.968456Z
+      classified: other
+    - cmd: sleep 3; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/btbk85oiy.output 2>/dev/null
+      at: 2026-06-14T01:30:08.575884Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== file count by ext ==="; find . -name '.git' -prune -o -type f -name '*.go' -print | wc -l
+        echo "=== any huge dirs? ==="; du -sh .grove node_modules vendor 2>/dev/null
+        echo "=== run with 30s timeout, stderr ==="
+        ( timeout 30 /tmp/prism-dev references Handler . --format json 2>&1; echo "EXIT=$?" ) | tail -8
+      at: 2026-06-14T01:30:28.192946Z
+      classified: other
+    - cmd: |-
+        echo "=== grove Engine refs (bj05yqoz5) ==="; head -15 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/bj05yqoz5.output 2>/dev/null
+        echo "..."; tail -5 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/bj05yqoz5.output 2>/dev/null
+        echo "=== where do 4323 go files live? ==="; find . -name '.git' -prune -o -type f -name '*.go' -print | sed 's:/[^/]*$::' | sort | uniq -c | sort -rn | head -8
+      at: 2026-06-14T01:30:43.850036Z
+      classified: other
+    - cmd: |-
+        go build ./... 2>&1 | tail -3 && echo "GROVE_OK"
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go mod edit -replace github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove
+        go build -o /tmp/prism-dev2 ./cmd/prism 2>&1 | tail -3 && echo "PRISM_DEV_OK"
+      at: 2026-06-14T01:32:23.139071Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== references Handler on prism repo (timed, text) ==="
+        ( time /tmp/prism-dev2 references Handler . --format text ) 2>&1 | head -30
+      at: 2026-06-14T01:32:29.641567Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        ( time /tmp/prism-dev2 references Handler . --format json >/dev/null ) 2>&1 | tail -4
+      at: 2026-06-14T01:32:37.367005Z
+      classified: other
+    - cmd: go mod edit -dropreplace github.com/provasign/grove && grep -c "replace.*grove" go.mod || echo "0 replaces (clean)"
+      at: 2026-06-14T01:32:45.751313Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        GOPROXY=proxy.golang.org,direct go get github.com/provasign/grove@v0.12.1 2>&1 | tail -3
+        go mod tidy && go build ./... && echo "BUILD_OK" && go test ./... 2>&1 | tail -6
+      at: 2026-06-14T01:33:34.550497Z
+      classified: test
+    - cmd: go test ./internal/cli/ -run 'TestCmdQueryAndSearchAndLookup_Smoke|TestCmdUsageErrors' -count=1 2>&1 | tail -4
+      at: 2026-06-14T01:33:57.226149Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout -b prism-references-cli && git add go.mod go.sum internal/cli/commands.go internal/cli/coverage_test.go && git status --short | grep -v '^??'
+        git commit -q -m "prism: add 'prism references' CLI command + grove v0.12.1
+
+        CLI parity for the references layer: 'prism references <name> [dir]' (alias
+        'refs') prints every code occurrence of a symbol grouped by file with the
+        enclosing symbol, mirroring the prism_references MCP tool. Text renderer added
+        for the grouped shape; --format text|lean|json supported like the other commands.
+
+        Bumps grove to v0.12.1, which makes References skip dependency/cache/VCS dirs
+        (query-time walk now matches the indexer; ~0.2s instead of parsing a vendored
+        module cache).
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" && git log --oneline -1
+      at: 2026-06-14T01:34:10.614365Z
+      classified: other
+notes:
+    - text: continuation of session f0c293f6-c719-4909-9c8f-d0c8b7e41213 — events captured after its evidence was finalized
+      at: 2026-06-14T00:57:55.976977Z
+redactions: 0
