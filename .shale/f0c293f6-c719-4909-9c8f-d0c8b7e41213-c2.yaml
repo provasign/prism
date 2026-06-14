@@ -1,0 +1,302 @@
+shale_version: "0"
+id: f0c293f6-c719-4909-9c8f-d0c8b7e41213-c2
+created_at: 2026-06-13T15:52:38.971882Z
+finalized_at: 2026-06-14T00:51:29.060313Z
+agent:
+    tool: claude-code
+    model: claude-opus-4-8
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/grove/client.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T00:25:05.383331Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T00:25:40.597009Z
+    - path: internal/mcp/zz_refs_e2e_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-06-14T00:29:56.401328Z
+    - path: internal/mcp/mcp_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T00:30:28.337371Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git pull --ff-only origin main 2>&1 | tail -1
+        GOPROXY=direct GOWORK=off go get github.com/provasign/grove@v0.11.0 2>&1 | tail -1
+        GOWORK=off go mod tidy 2>&1 | tail -1
+        GOWORK=off go build ./... 2>&1 | tail -2 && GOWORK=off go test ./... 2>&1 | grep -E 'FAIL|panic' || echo "PRISM PASS"
+        git add go.mod go.sum
+        git commit -m "deps: grove v0.11.0 (Wave 4 traversal confidence policy)
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" 2>&1 | tail -1
+        git push origin main 2>&1 | tail -1
+        git tag -a v0.12.0 -m "v0.12.0: grove v0.11.0 (traversal confidence policy)" && git push origin v0.12.0 2>&1 | tail -2
+      at: 2026-06-13T15:52:38.971882Z
+      classified: test
+    - cmd: |-
+        cd /tmp/homebrew-shale && git pull -q origin main 2>&1 | tail -1
+        python3 - <<'PY'
+        p="Formula/prism.rb"; s=open(p).read(); assert s.count("0.11.0")>=8; s=s.replace("0.11.0","0.12.0")
+        prism={
+         "82ffbba619a9dc1bc136e8a9399b2c206a3829fe49971b600cfbef387b96bd4f":"de0a44c0b2727b230c8d302c3259d6d8c033a8b6c1407d9f9abb8f9773d1a3f6",
+         "97f53eb122c1433f494acaa3bc17216e41d570bb27e8a22ba7e3cd641ea49ca2":"37a751a799e6b346fd5b3a0e4452ebb43c060675100f5b167406e113131ddb18",
+         "9495b24c06d70856f3997633eaed63ab6fc9c46058205040baa34f224a94ade8":"c20fb30dc906e2c6935ab79f4d872f80aba74924cfb3b24ee9b56af0cdb5dbbd",
+         "a04653754b63c44fce112d00da94a9ed8add669a56a70a346861bf8fdb81b51a":"fe71a46ffabca532a248e8bfc66b16adfb9bca01ca82a017842f2bf7b9444172",
+        }
+        for o,n in prism.items(): assert s.count(o)==1,o; s=s.replace(o,n)
+        open(p,"w").write(s)
+        p="Formula/fuse.rb"; s=open(p).read(); assert s.count("0.12.0")>=8; s=s.replace("0.12.0","0.13.0")
+        fuse={
+         "2acbe23e8ea4533d498c5154c09ed2bd0b83bbbaa1c473460d17a402aa19223d":"659efe9c4319041dac4ca18b9d42f99fcd626018021ff5b8d5b736e28f0d3325",
+         "61a7abac8e77062e02321ff2e0ea7fe953de848545f7e1045b8e423bef1b7031":"82fe5ed66fa03193f09705b8f36655ec609b6323adf4e5d911fc2fa3cfe78df5",
+         "4d597f092a89ca06637763e3f3924df50184a8cf6fca74e350c002afbc217f02":"254e43392df5d69848bd53f0483049bc5569956220c1eaf757e3d3a928d3ecc1",
+         "9482ce929994961280ebab8dd9b53be36c93f79356cf1bf06692829527c98105":"11920aac197673bc3caa749217aa4c00f9be4fddcadd4e119e0b61b227d36a52",
+        }
+        for o,n in fuse.items(): assert s.count(o)==1,o; s=s.replace(o,n)
+        open(p,"w").write(s)
+        print("formulas updated")
+        PY
+        for plat in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64; do
+          grep -q "$(grep $plat /tmp/p3/checksums.txt|grep -vE '\.(ps1|sh|exe)'|awk '{print $1}')" Formula/prism.rb && echo "prism $plat OK" || echo "prism $plat BAD"
+          grep -q "$(grep $plat /tmp/f3/checksums.txt|grep -vE '\.(ps1|sh|exe)'|awk '{print $1}')" Formula/fuse.rb && echo "fuse  $plat OK" || echo "fuse  $plat BAD"
+        done
+        grep -h version Formula/prism.rb Formula/fuse.rb | grep -E '0\.1[23]'
+      at: 2026-06-13T15:55:44.72789Z
+      classified: other
+    - cmd: |-
+        cd /tmp/homebrew-shale
+        git add Formula/prism.rb Formula/fuse.rb
+        git commit -q -F - <<'EOF'
+        prism 0.12.0, fuse 0.13.0
+
+        grove v0.11.0: traversal confidence policy (Wave 4) — TraversalPolicy profiles,
+        reason-aware TestsFor gating + excluded-evidence stats, PolicyCertification.
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+        EOF
+        git push -q origin HEAD 2>&1 | tail -2; echo "tap pushed"
+        echo "=== release runs ==="
+        gh run list --repo provasign/prism --workflow Release --limit 2 2>/dev/null | grep v0.12.0
+        gh run list --repo provasign/fuse --workflow Release --limit 2 2>/dev/null | grep v0.13.0
+      at: 2026-06-13T15:55:56.480756Z
+      classified: other
+    - cmd: |-
+        cd /tmp/eval-corpus/commons-lang
+        mkdir -p /tmp/cl-out
+        files=$(find src/main/java -name '*.java')
+        echo "compiling $(echo "$files" | wc -l | tr -d ' ') files…"
+        /usr/bin/time -l /opt/homebrew/opt/openjdk/bin/javac -d /tmp/cl-out $files 2>/tmp/javac-time.txt
+        echo "exit=$?  (warnings about Java version are fine)"
+        grep -iE 'maximum resident set size|real|user' /tmp/javac-time.txt | head
+        echo "=== peak RSS in MB ==="; awk '/maximum resident set size/{printf "%.1f MB\n",$1/1048576}' /tmp/javac-time.txt
+      at: 2026-06-13T17:05:48.686325Z
+      classified: other
+    - cmd: head -15 /tmp/javac-time.txt
+      at: 2026-06-13T17:06:01.543292Z
+      classified: other
+    - cmd: |-
+        files=$(find /tmp/eval-corpus/commons-lang/src/main/java -name '*.java')
+        mkdir -p /tmp/cl-out
+        /usr/bin/time -l /opt/homebrew/opt/openjdk/bin/javac -nowarn -d /tmp/cl-out $files 2>/tmp/javac-time.txt
+        echo "exit=$?"
+        echo "--- errors (if any, first 4) ---"; grep -E 'error:' /tmp/javac-time.txt | head -4
+        echo "--- timing + peak ---"; grep -iE 'real|maximum resident' /tmp/javac-time.txt | head
+        awk '/maximum resident set size/{printf "PEAK RSS: %.1f MB\n",$1/1048576}' /tmp/javac-time.txt
+      at: 2026-06-13T17:06:25.508037Z
+      classified: other
+    - cmd: |-
+        F=/tmp/eval-corpus/commons-lang/src/main/java/org/apache/commons/lang3/LocaleUtils.java
+        ls -la "$F" 2>&1
+        echo "--- count via absolute find ---"; find /tmp/eval-corpus/commons-lang/src/main/java -name '*.java' | wc -l
+        echo "--- compile just one file, measured ---"
+        /usr/bin/time -l /opt/homebrew/opt/openjdk/bin/javac -nowarn -d /tmp/cl-out "$F" 2>/tmp/one.txt; echo "exit=$?"
+        grep -E 'error:|maximum resident' /tmp/one.txt | head -3
+      at: 2026-06-13T17:06:44.457409Z
+      classified: other
+    - cmd: |-
+        find /tmp/eval-corpus/commons-lang/src/main/java -name '*.java' > /tmp/cl-files.txt
+        echo "files: $(wc -l < /tmp/cl-files.txt)"
+        rm -rf /tmp/cl-out; mkdir -p /tmp/cl-out
+        /usr/bin/time -l /opt/homebrew/opt/openjdk/bin/javac -nowarn --release 17 -d /tmp/cl-out @/tmp/cl-files.txt 2>/tmp/javac-full.txt
+        echo "exit=$?"
+        echo "--- errors? ---"; grep -cE 'error:' /tmp/javac-full.txt
+        echo "--- timing + peak ---"; grep -iE 'real|maximum resident' /tmp/javac-full.txt | head -2
+        awk '/maximum resident set size/{printf "PEAK RSS: %.1f MB\n",$1/1048576}' /tmp/javac-full.txt
+        echo "--- class files produced ---"; find /tmp/cl-out -name '*.class' | wc -l
+      at: 2026-06-13T17:07:19.057044Z
+      classified: other
+    - cmd: |-
+        cd /tmp/eval-corpus/express
+        echo "=== how router/index.js defines its functions (first ~40 structural lines) ==="
+        grep -nE 'module.exports|proto\.|Router\.|function |exports\.|= function|prototype' lib/router/index.js | head -25
+      at: 2026-06-13T18:48:42.807125Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== what grove APIs does prism call? ==="
+        grep -rhoE '\b(eng|engine|grove|g)\.(Query|Symbols|Semantic|Impact|Tests|Deps|ICR|FileSymbols|Read|Lookup|CertifyDiff)\(' prism/internal/ 2>/dev/null | sed -E 's/.*\.//' | sort | uniq -c | sort -rn | head
+        echo "=== prism_query: what does it assemble (include options)? ==="
+        grep -rniE 'include|"graph"|"tests"|"docs"|"coverage|callers|callees|graph_depth' prism/internal/mcp/*.go prism/internal/ranking/*.go 2>/dev/null | grep -iE 'graph|caller|callee|include|tests' | head -15
+      at: 2026-06-13T19:22:31.962856Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== prism layout ==="; ls; echo "--- internal ---"; ls internal/ 2>/dev/null
+        echo "=== grove API calls in prism ==="
+        grep -rhoE '\.(Query|Symbols|Semantic|Impact|Tests|TestsWithEvidence|Deps|ICR|FileSymbols|CertifyDiff)\(' internal/ cmd/ 2>/dev/null | sed -E 's/[(].*//;s/^\.//' | sort | uniq -c | sort -rn | head
+        echo "=== graph/callers/callees/include in prism query assembly ==="
+        grep -rniE '"graph"|callers|callees|graph_depth|include.*graph|neighbors' internal/ 2>/dev/null | head -12
+      at: 2026-06-13T19:22:43.645871Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== how prism wraps grove (client) ==="; grep -nE 'grove\.|func.*Engine|pkg/grove|\.Symbols\(|\.Impact\(|\.Semantic\(' internal/grove/client.go | head -20
+        echo "=== how an MCP tool is registered (search/lookup) ==="; grep -nE 'prism_search|prism_lookup|registerTool|"prism_|func.*[Ss]earch|RegisterTool|AddTool' internal/mcp/*.go | grep -v _test | head -20
+      at: 2026-06-14T00:22:24.972882Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        GOWORK=off go mod edit -replace github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove
+        echo "=== prism_search handler (template) ==="; sed -n '314,340p' internal/mcp/tools.go
+        echo "=== Client.Symbols/Impact (to add References) ==="; sed -n '225,280p' internal/grove/client.go
+      at: 2026-06-14T00:23:58.007874Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== where SearchSymbols/Impact get called (the exec handlers) ==="
+        grep -rnE 'SearchSymbols\(|\.Impact\(|case "prism_search"|case "prism_lookup"|func.*handle' internal/mcp/*.go | grep -v _test | grep -v schema | head
+        echo "=== the dispatch/exec switch (server.go ~140) ==="; sed -n '130,175p' internal/mcp/server.go
+      at: 2026-06-14T00:24:12.172787Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== 182-210 dispatch ==="; sed -n '182,210p' internal/mcp/tools.go
+        echo "=== 233-245 tool list ==="; sed -n '233,245p' internal/mcp/tools.go
+        echo "=== 382-400 (descriptions?) ==="; sed -n '382,400p' internal/mcp/tools.go
+        echo "=== 935-965 search exec handler ==="; sed -n '935,965p' internal/mcp/tools.go
+      at: 2026-06-14T00:24:23.511753Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        GOPROXY=direct GOWORK=off go mod tidy 2>&1 | tail -3
+        GOWORK=off go build ./... 2>&1 | tail -8 && echo PRISM_BUILD_OK
+      at: 2026-06-14T00:26:51.655707Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -nE 'func newTestHandler|func.*[Hh]andler.*test|Handler\{|Grove:|func setup|indexRepo|writeRepo|toolSearch\(|\.Dispatch\(|func TestToolSearch' internal/mcp/tools_cov_test.go internal/mcp/*_test.go 2>/dev/null | grep -iE 'handler|setup|grove:|index|testhandler' | head
+      at: 2026-06-14T00:27:11.804886Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n '17,55p' internal/mcp/mcp_test.go
+      at: 2026-06-14T00:27:18.501486Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cat > internal/mcp/zz_refs_e2e_test.go <<'EOF'
+        package mcp
+        import ("os";"path/filepath";"testing"
+         "github.com/provasign/prism/internal/config";"github.com/provasign/prism/internal/session")
+        func TestToolReferences_E2E(t *testing.T){
+         dir:=t.TempDir()
+         os.WriteFile(filepath.Join(dir,"util.go"),[]byte("package p\n\ntype StringUtils struct{}\n\nfunc (StringUtils) IsEmpty() bool { return true }\n"),0o644)
+         os.WriteFile(filepath.Join(dir,"app.go"),[]byte("package p\n\n// StringUtils note\nfunc run(){\n\tvar u StringUtils\n\t_ = u.IsEmpty()\n\t_ = StringUtils{}\n}\n"),0o644)
+         h:=NewHandlerWithLedger(config.Default(),dir,nil,session.NewLedger("t"))
+         h.Invoke("prism_index",map[string]any{})
+         out,err:=h.Invoke("prism_references",map[string]any{"name":"StringUtils"})
+         if err!=nil{t.Fatal(err)}
+         m:=out.(map[string]any)
+         t.Logf("prism_references(StringUtils) => count=%v definitions=%v ambiguous=%v byFile=%v",m["count"],m["definitions"],m["ambiguous"],m["byFile"])
+         if c,_:=m["count"].(int); c<2 {t.Fatalf("expected >=2 references (var type + composite lit in app.go), got %v",m["count"])}
+        }
+        EOF
+        GOWORK=off go test ./internal/mcp/ -run TestToolReferences_E2E -v 2>&1 | grep -E 'prism_references|PASS|FAIL|count' | head
+      at: 2026-06-14T00:27:49.92439Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run TestToolReferences_E2E -v 2>&1 | tail -40
+      at: 2026-06-14T00:29:34.923117Z
+      classified: test
+    - cmd: grep -rln "NewHandlerWithLedger\|EnsureRunning\|prism_index" internal/mcp/*_test.go | head
+      at: 2026-06-14T00:29:42.916526Z
+      classified: other
+    - cmd: grep -n "NewHandler\|EnsureRunning\|grove\|Index\|func Test" internal/mcp/coverage_test.go | head -40
+      at: 2026-06-14T00:29:46.08915Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run TestToolReferences_E2E -v 2>&1 | tail -20
+      at: 2026-06-14T00:30:01.614806Z
+      classified: test
+    - cmd: git mv internal/mcp/zz_refs_e2e_test.go internal/mcp/references_e2e_test.go 2>/dev/null || mv internal/mcp/zz_refs_e2e_test.go internal/mcp/references_e2e_test.go; go test ./internal/mcp/ 2>&1 | tail -5
+      at: 2026-06-14T00:30:13.197986Z
+      classified: test
+    - cmd: grep -n "got 7\|want 6\|got %d tools\|tools, want\|len(.*[Tt]ool" internal/mcp/mcp_test.go | head
+      at: 2026-06-14T00:30:16.397516Z
+      classified: other
+    - cmd: go test ./internal/mcp/ 2>&1 | tail -5
+      at: 2026-06-14T00:30:48.340831Z
+      classified: test
+    - cmd: go build ./... 2>&1 | tail -5 && echo "BUILD_OK" && go test ./... 2>&1 | tail -25
+      at: 2026-06-14T00:30:55.854447Z
+      classified: test
+    - cmd: |-
+        echo "=== PRISM ===" && git -C /Users/tapabratapal/Projects/provasign/prism status --short && git -C /Users/tapabratapal/Projects/provasign/prism branch --show-current
+        echo "=== GROVE ===" && git -C /Users/tapabratapal/Projects/provasign/grove status --short && git -C /Users/tapabratapal/Projects/provasign/grove branch --show-current
+        echo "=== ASTKIT ===" && git -C /Users/tapabratapal/Projects/provasign/astkit status --short && git -C /Users/tapabratapal/Projects/provasign/astkit branch --show-current
+      at: 2026-06-14T00:31:05.090782Z
+      classified: other
+    - cmd: |-
+        echo "=== PRISM go.mod diff ===" && git -C /Users/tapabratapal/Projects/provasign/prism diff go.mod
+        echo "=== GROVE go.mod diff ===" && git -C /Users/tapabratapal/Projects/provasign/grove diff go.mod eval/go.mod
+        echo "=== GROVE refs-branch log ===" && git -C /Users/tapabratapal/Projects/provasign/grove log --oneline main..grove-references-layer 2>/dev/null | head
+      at: 2026-06-14T00:31:13.713905Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism && git checkout go.mod go.sum 2>/dev/null; grep -n "replace\|provasign/grove" go.mod; echo "=== now bump ===" && GOPROXY=proxy.golang.org,direct go get github.com/provasign/grove@v0.12.0 2>&1 | tail -5
+      at: 2026-06-14T00:46:43.923526Z
+      classified: other
+    - cmd: go mod tidy && go build ./... && echo "BUILD_OK" && go test ./... 2>&1 | tail -12
+      at: 2026-06-14T00:46:55.557383Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run 'TestToolReferences_E2E|TestToolSchemas|TestServerToolsList' -count=1 -v 2>&1 | tail -15 && echo "=== no replace in go.mod ===" && grep -c replace go.mod || echo "0 replaces (clean)"
+      at: 2026-06-14T00:47:02.209219Z
+      classified: test
+    - cmd: git diff --stat && echo "=== tools.go diff ===" && git diff internal/mcp/tools.go
+      at: 2026-06-14T00:47:10.084267Z
+      classified: other
+    - cmd: git rev-parse --short main; git rev-parse --short origin/main 2>&1 | tail -1; echo "=== prism release trigger ==="; head -8 .github/workflows/release.yml
+      at: 2026-06-14T00:47:18.497835Z
+      classified: other
+    - cmd: git checkout -b prism-references-tool && git add go.mod go.sum internal/grove/client.go internal/mcp/tools.go internal/mcp/mcp_test.go internal/mcp/references_e2e_test.go && git status --short
+      at: 2026-06-14T00:47:25.704445Z
+      classified: other
+    - cmd: |-
+        git commit -q -m "prism: add prism_references tool — 'where is X used'
+
+        Surface Grove's new reference layer as an MCP tool. Given a symbol name it
+        returns every code occurrence (comments/strings excluded), grouped by file with
+        the enclosing symbol, plus a definition count and ambiguity flag. Answers the
+        'where is X used' / 'safe to delete' questions the resolved call graph misses
+        for types/classes/constants (a class is referenced, not called).
+
+        Bumps grove to v0.12.0 (the published References API). End-to-end covered by
+        TestToolReferences_E2E.
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" && git log --oneline -1
+      at: 2026-06-14T00:47:32.879417Z
+      classified: other
+notes:
+    - text: continuation of session f0c293f6-c719-4909-9c8f-d0c8b7e41213 — events captured after its evidence was finalized
+      at: 2026-06-13T15:52:38.971882Z
+redactions: 0
