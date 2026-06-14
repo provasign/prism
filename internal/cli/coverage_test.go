@@ -56,6 +56,12 @@ func TestCmdQueryAndSearchAndLookup_Smoke(t *testing.T) {
 	if got := cmdLookup([]string{"Main", dir}); got != 0 {
 		t.Fatalf("cmdLookup=%d", got)
 	}
+	if got := cmdReferences([]string{"Main", dir}); got != 0 {
+		t.Fatalf("cmdReferences=%d", got)
+	}
+	if got := cmdReferences([]string{"Main", "--format", "json", dir}); got != 0 {
+		t.Fatalf("cmdReferences --format json=%d", got)
+	}
 }
 
 func TestCmdRead_Smoke(t *testing.T) {
@@ -77,6 +83,9 @@ func TestCmdUsageErrors(t *testing.T) {
 	}
 	if got := cmdLookup([]string{}); got != 2 {
 		t.Fatalf("cmdLookup usage=%d", got)
+	}
+	if got := cmdReferences([]string{}); got != 2 {
+		t.Fatalf("cmdReferences usage=%d", got)
 	}
 }
 

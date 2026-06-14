@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +52,9 @@ Usage:
   prism search <keyword> [dir]    Search symbols by keyword
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
+                                  --format text|lean|json  Output format (default: text)
+  prism references <name> [dir]   Find where a symbol is USED (every code occurrence,
+                                  comments/strings excluded), grouped by file
                                   --format text|lean|json  Output format (default: text)
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
@@ -103,6 +107,8 @@ func Run(args []string) int {
 		return cmdSearch(rest)
 	case "lookup":
 		return cmdLookup(rest)
+	case "references", "refs":
+		return cmdReferences(rest)
 	case "compact":
 		return cmdCompact(rest)
 	case "feedback":
@@ -1101,6 +1107,40 @@ func cmdLookup(args []string) int {
 	return 0
 }
 
+func cmdReferences(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism references <name> [dir]")
+		return 2
+	}
+	name := args[0]
+	dir := "."
+	format := formatText
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_references", map[string]any{"name": name})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "references:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
 func cmdCompact(args []string) int {
 	dir := dirArg(args, 0, ".")
 	var turns []map[string]any
@@ -1534,8 +1574,55 @@ func printTextOutput(m map[string]any) {
 		}
 		return
 	}
+	// prism_references: "byFile" map of file -> [{line, in}]
+	if rawByFile, ok := m["byFile"].(map[string]any); ok {
+		name, _ := m["name"].(string)
+		count := jsonInt(m["count"])
+		defs := jsonInt(m["definitions"])
+		ambiguous, _ := m["ambiguous"].(bool)
+		tier := "unambiguous"
+		if ambiguous {
+			tier = fmt.Sprintf("ambiguous — %d definitions share this name", defs)
+		}
+		fmt.Printf("// %s — %d references (%s)\n", name, count, tier)
+		files := make([]string, 0, len(rawByFile))
+		for f := range rawByFile {
+			files = append(files, f)
+		}
+		sort.Strings(files)
+		for _, f := range files {
+			refs, _ := rawByFile[f].([]any)
+			fmt.Printf("%s\n", f)
+			for _, r := range refs {
+				ref, ok := r.(map[string]any)
+				if !ok {
+					continue
+				}
+				line := jsonInt(ref["line"])
+				if in, ok := ref["in"].(string); ok && in != "" {
+					fmt.Printf("  %d  in %s\n", line, in)
+				} else {
+					fmt.Printf("  %d\n", line)
+				}
+			}
+		}
+		return
+	}
 	// Fallback: JSON
 	printJSON(m)
+}
+
+// jsonInt coerces a JSON number (float64 after round-trip) or int to int.
+func jsonInt(v any) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	}
+	return 0
 }
 
 // printLeanOutput strips metadata fields (scores, spans, IDs, timing) and
