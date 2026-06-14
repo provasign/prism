@@ -996,6 +996,31 @@ func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any,
 	}, nil
 }
 
+// dedupeSymbolsByID drops duplicate symbols (same ID) while preserving order,
+// used after merging two symbol searches into one candidate pool.
+func dedupeSymbolsByID(syms []grove.SymbolRecord) []grove.SymbolRecord {
+	seen := make(map[string]bool, len(syms))
+	out := syms[:0]
+	for _, s := range syms {
+		if s.ID != "" && seen[s.ID] {
+			continue
+		}
+		seen[s.ID] = true
+		out = append(out, s)
+	}
+	return out
+}
+
+// isTestDouble reports whether a file path looks like a test double (mock/fake/
+// stub) or a test file, so lookup can prefer the real implementation when
+// several symbols share a name.
+func isTestDouble(path string) bool {
+	lp := strings.ToLower(filepath.ToSlash(path))
+	return strings.HasSuffix(lp, "_test.go") ||
+		strings.Contains(lp, "mock") || strings.Contains(lp, "fake") ||
+		strings.Contains(lp, "stub") || strings.Contains(lp, "/testdata/")
+}
+
 func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, error) {
 	name := stringArg(args, "name", stringArg(args, "qualifiedName", ""))
 	if name == "" {
@@ -1017,11 +1042,33 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 		}
 	}
 
+	// typeQualified is the last two dotted segments ("Service.DecryptedValues"),
+	// matched against Grove's Type.Method QualifiedName. This lets a caller pass
+	// a type-qualified name (pkg.Type.Method) and still hit the right method when
+	// several types in the repo declare a method of the same bare name.
+	typeQualified := ""
+	if parts := strings.Split(name, "."); len(parts) >= 2 {
+		last := parts[len(parts)-1]
+		if !strings.Contains(last, "/") {
+			typeQualified = parts[len(parts)-2] + "." + last
+		}
+	}
+
 	syms, err := h.Grove.SearchSymbols(ctx, searchName, 25)
 	if err != nil {
 		return nil, err
 	}
-	syms = filterGeneratedPrismContext(syms)
+	// A bare-name search ("Get") caps at 25 alphabetically-early hits, which can
+	// exclude the intended Type.Method entirely. When a Type.Method hint is
+	// present, search Grove for that qualified form too (its searchRank matches
+	// qualified_name exactly) and prepend it so the precise method is in the
+	// candidate pool before ranking.
+	if typeQualified != "" {
+		if extra, qerr := h.Grove.SearchSymbols(ctx, typeQualified, 25); qerr == nil {
+			syms = append(extra, syms...)
+		}
+	}
+	syms = dedupeSymbolsByID(filterGeneratedPrismContext(syms))
 
 	// pkgMatches returns true when s lives in the package identified by pkgHint.
 	// pkgHint may be a short path ("internal/cli") or a full module path
@@ -1035,16 +1082,64 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 		return dir == pkgHint || strings.HasSuffix(pkgHint, "/"+dir)
 	}
 
-	// Prefer: exact name match AND package match, then exact name, then first result.
-	for _, s := range syms {
-		if (s.QualifiedName == searchName || s.Name == searchName) && pkgMatches(s) {
-			return map[string]any{"symbol": s, "content": s.RawText}, nil
+	// Rank the candidates. A precise Type.Method (typeQualified) match dominates a
+	// bare-name match, so "kvstore.SecretsKVStoreSQL.Get" resolves to that exact
+	// method and not one of the thousands of other Get's. Package-hint and
+	// real-vs-test-double then break ties, so a name still lands on the
+	// production symbol rather than a mock that shares it.
+	score := func(s grove.SymbolRecord) int {
+		sc := 0
+		switch {
+		case typeQualified != "" && s.QualifiedName == typeQualified:
+			sc += 1000
+		case s.QualifiedName == searchName:
+			sc += 500
+		case s.Name == searchName:
+			sc += 1
+		default:
+			return -1 // not an exact match at all
+		}
+		if pkgMatches(s) {
+			sc += 100
+		}
+		if isTestDouble(s.FilePath) {
+			sc -= 10
+		}
+		return sc
+	}
+	bestIdx, bestScore, tied := -1, 0, 0
+	for i := range syms {
+		sc := score(syms[i])
+		if sc < 0 {
+			continue
+		}
+		switch {
+		case bestIdx == -1 || sc > bestScore:
+			bestIdx, bestScore, tied = i, sc, 1
+		case sc == bestScore:
+			tied++
 		}
 	}
-	for _, s := range syms {
-		if s.QualifiedName == searchName || s.Name == searchName {
-			return map[string]any{"symbol": s, "content": s.RawText}, nil
+	if bestIdx >= 0 {
+		out := map[string]any{"symbol": syms[bestIdx], "content": syms[bestIdx].RawText}
+		// A real tie at the top (same score, different symbols sharing the name)
+		// is genuine ambiguity the qualifier couldn't resolve — surface it with
+		// candidates rather than silently picking one.
+		if tied > 1 {
+			cands := make([]string, 0, tied)
+			for i := range syms {
+				if score(syms[i]) == bestScore {
+					n := syms[i].QualifiedName
+					if n == "" {
+						n = syms[i].Name
+					}
+					cands = append(cands, n+" ("+syms[i].FilePath+")")
+				}
+			}
+			out["ambiguous"] = true
+			out["candidates"] = cands
 		}
+		return out, nil
 	}
 	if len(syms) > 0 {
 		// No exact match — returning the closest hit silently would hand the
