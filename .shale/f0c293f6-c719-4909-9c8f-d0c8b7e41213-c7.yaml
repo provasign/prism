@@ -1,0 +1,236 @@
+shale_version: "0"
+id: f0c293f6-c719-4909-9c8f-d0c8b7e41213-c7
+created_at: 2026-06-14T03:24:40.860043Z
+finalized_at: 2026-06-14T04:20:33.799914Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/grove/client.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T03:51:35.016275Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T03:51:49.049217Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git fetch origin -q && git reset --hard origin/main 2>&1 | tail -1
+        git tag -a v0.14.2 -m "prism: lookup resolves Type.Method to the exact method, not a same-named mock
+
+        Bug fix only (grove unchanged at v0.12.2). Type-qualified lookups now rank an
+        exact Type.Method match above bare-name matches, prefer real impls over test
+        doubles, and flag genuine ties." && git push origin v0.14.2 2>&1 | tail -1
+        sleep 4; RUNID=$(gh run list --limit 6 --workflow=Release --json databaseId,headBranch --jq '.[] | select(.headBranch=="v0.14.2") | .databaseId' | head -1); echo "release run: $RUNID"; gh run watch $RUNID --exit-status 2>&1 | tail -2; echo "EXIT=$?"
+      at: 2026-06-14T03:24:40.860043Z
+      classified: other
+    - cmd: |-
+        cd /tmp && gh release download v0.14.2 --repo provasign/prism --pattern checksums.txt --clobber -O /tmp/ck-0142.txt && cat /tmp/ck-0142.txt
+        cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git pull --rebase origin main 2>&1 | tail -1
+      at: 2026-06-14T03:24:51.101649Z
+      classified: other
+    - cmd: |-
+        cd /opt/homebrew/Library/Taps/provasign/homebrew-shale
+        python3 - <<'PY'
+        import re
+        p="Formula/prism.rb"
+        s=open(p).read()
+        ck={"darwin-amd64":"24be734d23e00a423f79b3c5b4bb61e80933f2e5820d742c706ae333329f7d36",
+        "darwin-arm64":"a5073b2ddd5ed1bb69605d49ffb5a48a27a60fa9f74f297df0a188b9e48366b2",
+        "linux-amd64":"5cbbf140689e5a8127347c3e22db6f2a67a904419f184a6d60935565443eed9a",
+        "linux-arm64":"b5fbe8457d52b37e567ccb9a284ad296e12d4cc39a911c55ef3bca529de17a64"}
+        s=s.replace('version "0.14.1"','version "0.14.2"')
+        s=s.replace("v0.14.1","v0.14.2")
+        for plat,h in ck.items():
+            s=re.sub(r'(prism-v0\.14\.2-%s"\n\s*sha256 ")[0-9a-f]{64}'%plat, r'\g<1>'+h, s)
+        open(p,"w").write(s)
+        print("version:", re.search(r'version "([^"]+)"',s).group(1))
+        print("sha lines:", s.count("sha256"))
+        PY
+        grep -E 'version|sha256' Formula/prism.rb | head
+      at: 2026-06-14T03:25:01.07925Z
+      classified: other
+    - cmd: |-
+        cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git add Formula/prism.rb && git -c commit.gpgsign=false commit -q -m "prism 0.14.2 — lookup Type.Method disambiguation fix
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" && git push origin main 2>&1 | tail -1
+        brew update >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -2; echo "=== verify ==="; prism version
+      at: 2026-06-14T03:25:16.950839Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "released binary, type-qualified lookups:"
+        echo -n "SecretsKVStoreSQL.Get -> "; prism lookup kvstore.SecretsKVStoreSQL.Get . --format text 2>/dev/null | head -1
+        echo -n "CachedKVStore.Get     -> "; prism lookup kvstore.CachedKVStore.Get . --format text 2>/dev/null | head -1
+      at: 2026-06-14T03:25:43.627309Z
+      classified: other
+    - cmd: find /tmp/fuse-corpus/grafana/pkg/services/datasources -maxdepth 2 -type f -name "*.go" | head -30
+      at: 2026-06-14T03:29:36.429345Z
+      classified: other
+    - cmd: grep -n "\.Get\|secrets\|SecretValue\|secret" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -60
+      at: 2026-06-14T03:29:42.332516Z
+      classified: other
+    - cmd: find /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore -type f -name "*.go" | sort
+      at: 2026-06-14T03:29:53.222309Z
+      classified: other
+    - cmd: grep -n "func.*Get\|func.*get" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T03:29:57.547513Z
+      classified: other
+    - cmd: grep -n "func.*Get\|type.*struct\|SecretsKVStore" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/cache.go | head -30
+      at: 2026-06-14T03:30:02.743961Z
+      classified: other
+    - cmd: grep -n "func Test\|func Benchmark\|integration\|t\.Run\|TestGet\|TestSQL" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql_test.go | head -40
+      at: 2026-06-14T03:30:15.387094Z
+      classified: other
+    - cmd: grep -n "type SecretsKVStore\|Get\|SecretsKVStoreSQL\|DataSourceSecretType\|CachedKVStore" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/kvstore.go | head -20
+      at: 2026-06-14T03:30:29.812747Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== Baseline walked: DecryptedValues -> SecretsStore.Get -> SQL impl -> cache wrapper -> test (≈12 grep+read calls)"
+        echo "=== Does ONE prism query on the anchor return that neighborhood? ==="
+        echo "--- prism query --terms DecryptedValues --include graph,tests ---"
+        prism query "datasource secret read path" --terms DecryptedValues --include graph,tests --format text . 2>/dev/null | head -40
+      at: 2026-06-14T03:32:20.866415Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== Does Grove link the REAL DecryptedValues to SecretsStore.Get? (callees) ==="
+        prism query "x" --terms "Service.DecryptedValues" --include graph --format text . 2>/dev/null | grep -E "\[(target|dependency|caller)\]|func " | head -12
+        echo
+        echo "=== Does Grove know who calls SecretsKVStoreSQL.Get? (interface->impl + real callers) ==="
+        prism query "x" --terms "SecretsKVStoreSQL.Get" --include graph --format text . 2>/dev/null | grep -E "\[(target|dependency|caller)\]" | head -12
+        echo
+        echo "=== Impact/callers of the concrete Get ==="
+        prism lookup kvstore.SecretsKVStoreSQL.Get . --format text 2>/dev/null | head -1
+      at: 2026-06-14T03:33:12.31966Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        DB=.grove/grove.db
+        echo "=== schema of edges ==="; sqlite3 $DB ".schema edges" 2>/dev/null | head -5
+        echo "=== real DecryptedValues symbol id + its OUTGOING edges (callees) ==="
+        sqlite3 $DB "SELECT id FROM symbols WHERE qualified_name='Service.DecryptedValues' AND file_path LIKE '%datasources/service/datasource.go%';" 2>/dev/null
+        RID=$(sqlite3 $DB "SELECT id FROM symbols WHERE qualified_name='Service.DecryptedValues' AND file_path LIKE '%datasources/service/datasource.go%';" 2>/dev/null)
+        echo "outgoing edges from real DecryptedValues:"
+        sqlite3 $DB "SELECT edge_type, to_node FROM edges WHERE from_node='$RID' LIMIT 20;" 2>/dev/null | head -20
+        echo "=== does ANY edge point to SecretsStore.Get or SecretsKVStoreSQL.Get? ==="
+        sqlite3 $DB "SELECT edge_type, from_node FROM edges WHERE to_node LIKE '%SecretsKVStoreSQL%Get%' OR to_node LIKE '%SecretsStore%Get%' LIMIT 10;" 2>/dev/null | head
+      at: 2026-06-14T03:34:01.081759Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== toolQuery handler ==="; rg -n "func.*toolQuery|\"graph\"|include|dependency|target|expandGraph|neighbors|Deps\(" internal/mcp/tools.go | head -25
+      at: 2026-06-14T03:46:01.450209Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        rg -n "provasign/grove|grove\." internal/mcp/tools.go | head -3
+        echo "--- the graph branch ---"; sed -n '627,639p' internal/mcp/tools.go
+      at: 2026-06-14T03:50:52.577264Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go mod edit -replace github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove
+        go build ./... 2>&1 | tail -10 && echo BUILD_OK
+      at: 2026-06-14T03:51:59.512045Z
+      classified: build
+    - cmd: |-
+        go build -o /tmp/prism-graph ./cmd/prism
+        cd /tmp/fuse-corpus/grafana
+        echo "=== BEFORE was: 5 name-matches + uses-type noise, NO call chain ==="
+        echo "=== NOW: prism query --terms DecryptedValues --include graph,tests ==="
+        /tmp/prism-graph query "datasource secret read path" --terms DecryptedValues --include graph,tests --format text . 2>/dev/null | grep -E "^// " | head -20
+      at: 2026-06-14T03:52:21.742812Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        rg -n "seedSyms|seeds :=|seeds =|--terms|termArg|stringSliceArg.*term|anchorSeeds|func.*seed" internal/mcp/tools.go | head -20
+      at: 2026-06-14T03:52:54.129549Z
+      classified: other
+    - cmd: |-
+        go build -o /tmp/prism-graph ./cmd/prism 2>&1 | tail -3 && echo OK
+        cd /tmp/fuse-corpus/grafana
+        echo "=== prism query --terms DecryptedValues --include graph,tests (after seed fix) ==="
+        /tmp/prism-graph query "datasource secret read path" --terms DecryptedValues --include graph,tests --format text . 2>/dev/null | grep -E "^// " | head -16
+      at: 2026-06-14T03:53:41.740537Z
+      classified: build
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== full output, grep for the expected chain ==="
+        /tmp/prism-graph query "datasource secret read path" --terms DecryptedValues --include graph,tests --format text . 2>/dev/null | grep -iE "kvstore|SecretsKVStoreSQL|CachedKVStore|\.Get " | head
+        echo "=== count total symbols returned ==="
+        /tmp/prism-graph query "datasource secret read path" --terms DecryptedValues --include graph,tests --format text . 2>/dev/null | grep -cE "^// "
+        echo "=== does grove Neighbors directly return the chain for the real symbol? (raw check via a 1-term query on the qualified name) ==="
+        /tmp/prism-graph query "x" --terms "Service.DecryptedValues" --include graph --format text . 2>/dev/null | grep -iE "kvstore|SecretsKVStoreSQL|CachedKVStore" | head
+      at: 2026-06-14T03:54:36.844644Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        DB=.grove/grove.db
+        RID=$(sqlite3 $DB "SELECT id FROM symbols WHERE qualified_name='Service.DecryptedValues' AND file_path LIKE '%datasources/service/datasource.go%';")
+        echo "real symbol id: $RID"
+        echo "=== its outgoing CALLS edges (to_node) ==="
+        sqlite3 $DB "SELECT to_node FROM edges WHERE from_node='$RID' AND edge_type='calls';"
+        echo "=== how many symbols share qualified_name 'Service.DecryptedValues'? ==="
+        sqlite3 $DB "SELECT file_path FROM symbols WHERE qualified_name='Service.DecryptedValues';"
+      at: 2026-06-14T03:55:29.160152Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        DB=.grove/grove.db
+        RID="pkg/services/datasources/service/datasource.go::Service.DecryptedValues@8bf2f214054a2b1608b48466a14e658763086a19"
+        echo "=== confidence of the 3 CORRECT secrets-kvstore Get edges ==="
+        sqlite3 $DB "SELECT round(confidence,3), substr(to_node,1,55) FROM edges WHERE from_node='$RID' AND edge_type='calls' AND to_node LIKE '%secrets/kvstore%Get%';"
+        echo "=== confidence of a sample of the WRONG client_gen / infra Get edges ==="
+        sqlite3 $DB "SELECT round(confidence,3), substr(to_node,1,55) FROM edges WHERE from_node='$RID' AND edge_type='calls' AND (to_node LIKE '%client_gen%Get%' OR to_node LIKE '%infra/kvstore%Get%') LIMIT 6;"
+        echo "=== distinct confidence values across all 45 Get edges ==="
+        sqlite3 $DB "SELECT round(confidence,3) c, count(*) FROM edges WHERE from_node='$RID' AND edge_type='calls' GROUP BY c;"
+      at: 2026-06-14T03:56:06.620098Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-graph ./cmd/prism 2>&1 | tail -2 && echo BUILT
+        cd /tmp/fuse-corpus/grafana && rm -rf .grove && time /tmp/prism-graph index . >/tmp/reindex.log 2>&1; tail -2 /tmp/reindex.log
+      at: 2026-06-14T04:02:55.240569Z
+      classified: build
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        DB=.grove/grove.db
+        RID=$(sqlite3 $DB "SELECT id FROM symbols WHERE qualified_name='Service.DecryptedValues' AND file_path LIKE '%datasources/service/datasource.go%';")
+        echo "=== outgoing 'calls' edges to a Get (was 45) ==="
+        sqlite3 $DB "SELECT count(*) FROM edges WHERE from_node='$RID' AND edge_type='calls' AND to_node LIKE '%.Get@%';"
+        echo "=== which ones now? ==="
+        sqlite3 $DB "SELECT round(confidence,2), substr(to_node,1,60) FROM edges WHERE from_node='$RID' AND edge_type='calls' AND to_node LIKE '%.Get@%';"
+      at: 2026-06-14T04:03:09.219456Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== prism query --terms DecryptedValues --include graph,tests (THE chain) ==="
+        /tmp/prism-graph query "datasource secret read path" --terms DecryptedValues --include graph,tests --format text . 2>/dev/null | grep -E "kvstore.*(Get|target)|datasource.go.*DecryptedValues" | grep -iE "secretskvstore|cachedkvstore|service.go — DecryptedValues|datasource.go — Decrypt" | head
+      at: 2026-06-14T04:03:56.863842Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        /tmp/prism-graph query "datasource secret read path" --terms DecryptedValues --include graph,tests --format text . 2>/dev/null | grep -E "^// " | grep -iE "kvstore|DecryptedValues" | head -15
+      at: 2026-06-14T04:04:13.393901Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go mod edit -dropreplace github.com/provasign/grove
+        GOPROXY=proxy.golang.org,direct go get github.com/provasign/grove@v0.13.0 2>&1 | tail -2
+        go mod tidy && go build ./... && echo BUILD_OK && go test ./internal/mcp/ ./internal/grove/ ./internal/cli/ -count=1 2>&1 | tail -4
+        grep -c replace go.mod || echo "0 replaces"
+      at: 2026-06-14T04:20:21.329824Z
+      classified: test
+notes:
+    - text: continuation of session f0c293f6-c719-4909-9c8f-d0c8b7e41213 — events captured after its evidence was finalized
+      at: 2026-06-14T03:24:40.860043Z
+redactions: 0
