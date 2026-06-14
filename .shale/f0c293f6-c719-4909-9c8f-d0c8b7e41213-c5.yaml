@@ -1,0 +1,566 @@
+shale_version: "0"
+id: f0c293f6-c719-4909-9c8f-d0c8b7e41213-c5
+created_at: 2026-06-14T01:36:53.833382Z
+finalized_at: 2026-06-14T02:18:59.369209Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git fetch origin -q && git reset --hard origin/main 2>&1 | tail -1 && git log --oneline -1
+        git tag -a v0.14.0 -m "prism: 'prism references' CLI command + grove v0.12.1
+
+        CLI parity for the references layer (prism references / refs <name>), grouped
+        text/lean/json output. grove v0.12.1 makes References skip dependency/cache dirs
+        (query-time walk matches the indexer; ~0.2s, no vendored-code noise)." && git push origin v0.14.0 2>&1 | tail -2
+      at: 2026-06-14T01:36:53.833382Z
+      classified: other
+    - cmd: |-
+        gh run list --limit 1 --workflow=Release 2>&1 | head -1; echo "waiting..."
+        RUNID=$(gh run list --limit 1 --workflow=Release --json databaseId --jq '.[0].databaseId'); gh run watch $RUNID --exit-status 2>&1 | tail -3; echo "EXIT=$?"
+      at: 2026-06-14T01:38:41.168607Z
+      classified: other
+    - cmd: cd /tmp && gh release download v0.14.0 --repo provasign/prism --pattern checksums.txt --clobber -O /tmp/prism-checksums-014.txt && cat /tmp/prism-checksums-014.txt
+      at: 2026-06-14T01:38:50.690998Z
+      classified: other
+    - cmd: cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git pull --rebase origin main 2>&1 | tail -2
+      at: 2026-06-14T01:38:57.304495Z
+      classified: other
+    - cmd: |-
+        cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git add Formula/prism.rb && git -c commit.gpgsign=false commit -q -m "prism 0.14.0 — references CLI command + grove v0.12.1 (skip vendor dirs)
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" && git push origin main 2>&1 | tail -2
+      at: 2026-06-14T01:39:22.316679Z
+      classified: other
+    - cmd: |-
+        brew update >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -4
+        echo "=== verify ==="; prism version; echo "--- references in help? ---"; prism 2>&1 | grep -i "references"
+      at: 2026-06-14T01:39:38.465033Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== benchmark-related files ==="
+        rg -l -i "benchmark|token.?saving|a/b test|payflow" --glob '!*.git*' 2>/dev/null | head -30
+        echo "=== dirs named bench/eval ==="
+        find . -path ./.git -prune -o -type d \( -iname '*bench*' -o -iname 'eval' -o -iname 'results' \) -print 2>/dev/null | grep -v '.cache' | head
+      at: 2026-06-14T01:47:42.001356Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== AB-Test doc ==="; cat docs/AB-Test-Payflow-2026-06-12.md
+        echo "=== README benchmark mentions ==="; rg -n -i "benchmark|token|saving|payflow|%" README.md | head -30
+      at: 2026-06-14T01:47:48.222085Z
+      classified: other
+    - cmd: |-
+        cat /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_prism_ab_benchmark_2026_06_12.md 2>/dev/null
+        echo "=== fixture on disk? ==="
+        ls -la /tmp/prism-ab-bench/ 2>/dev/null && echo "--- payflow ---" && ls /tmp/prism-ab-bench/payflow/ 2>/dev/null || echo "(prism-ab-bench GONE)"
+        echo "=== grafana corpus? ==="; ls -d /tmp/fuse-corpus/grafana 2>/dev/null || echo "(grafana GONE)"
+        echo "=== any harness scripts committed? ==="; rg -l "payflow|mcp_scenarios|ab-bench" --glob '!docs/*' --glob '!*.git*' 2>/dev/null | head
+      at: 2026-06-14T01:48:02.901232Z
+      classified: other
+    - cmd: |-
+        echo "=== mcp_scenarios.py ==="; cat /tmp/prism-ab-bench/mcp_scenarios.py
+        echo "=== payflow builds + tests? ==="; cd /tmp/prism-ab-bench/payflow && go build ./... 2>&1 | tail -3 && go test ./... 2>&1 | tail -8
+      at: 2026-06-14T01:48:25.272427Z
+      classified: test
+    - cmd: |-
+        cd /tmp/prism-ab-bench/payflow && rm -rf .grove && prism index . 2>&1 | tail -3
+        echo "=== version check ==="; prism version
+        echo "=== run scripted MCP scenarios ==="; python3 /tmp/prism-ab-bench/mcp_scenarios.py 2>&1 | tail -50
+      at: 2026-06-14T01:48:54.715639Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-ab-bench/payflow
+        echo "=== one focused coverage query ==="
+        prism query "untested handler methods" --terms Handler --include graph,coverage_gaps --format json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print('coverageGaps:'); [print(' ', g.get('name'), '—', g.get('filePath')) for g in d.get('coverageGaps',[])]"
+      at: 2026-06-14T01:49:23.407248Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-ab-bench/payflow
+        echo "=== all Handler methods (to confirm the 5) ==="
+        prism search Handler --format json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(s['qualifiedName'], s.get('filePath')) for s in d.get('symbols',[]) if 'Handler' in s.get('qualifiedName','')]" 2>/dev/null | head
+        echo "--- methods on Handler receiver ---"
+        rg -n "func \(h \*?Handler\)" internal/api/ 2>/dev/null
+      at: 2026-06-14T01:49:44.027661Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/prism-ab-bench/score_coverage.py <<'PY'
+        #!/usr/bin/env python3
+        """Result 1 rerun: union coverage_gaps over focused queries, score vs ground truth."""
+        import json, subprocess
+
+        ROOT = "/tmp/prism-ab-bench/payflow"
+        BIN = "/Users/tapabratapal/bin/prism"
+
+        # Ground truth from AB-Test-Payflow-2026-06-12.md, keyed by (name, file-substr).
+        DESIGNED = {
+            ("CreatePayment", "api/handler.go"), ("GetPayment", "api/handler.go"),
+            ("ListPayments", "api/handler.go"), ("RefundPayment", "api/handler.go"),
+            ("CompletePayment", "api/handler.go"), ("RequireScope", "api/middleware.go"),
+            ("Register", "api/router.go"), ("CompletePayment", "payment/service.go"),
+            ("ListPayments", "payment/service.go"), ("ValidateCurrency", "payment"),
+            ("RequireScope", "auth"), ("UpdatePayment", "storage"),
+        }
+        # Tested — must NEVER appear as a gap (the old run's 2 false positives + more).
+        TESTED = {
+            ("RevokeToken", "payment/service.go"), ("RefundPayment", "payment/service.go"),
+            ("ProcessPayment", "payment/service.go"),
+        }
+
+        # 1 term per query, spanning every subsystem AND each tested function (to expose FPs).
+        TERMS = ["Handler", "Middleware", "Register", "CompletePayment", "ListPayments",
+                 "ValidateCurrency", "RequireScope", "UpdatePayment", "RefundPayment",
+                 "RevokeToken", "ProcessPayment", "Service"]
+
+        union = {}  # (name, file) -> file
+        for t in TERMS:
+            out = subprocess.run([BIN, "query", f"audit {t}", "--terms", t,
+                                  "--include", "graph,coverage_gaps", "--format", "json", ROOT],
+                                 capture_output=True, text=True)
+            try:
+                d = json.loads(out.stdout)
+            except json.JSONDecodeError:
+                continue
+            for g in d.get("coverageGaps", []):
+                union[(g.get("name"), g.get("filePath"))] = g.get("filePath")
+
+        def matches(gapname, gapfile, key):
+            n, f = key
+            return gapname == n and f in (gapfile or "")
+
+        found = set()
+        for (gn, gf) in union:
+            for key in DESIGNED:
+                if matches(gn, gf, key):
+                    found.add(key)
+
+        false_positives = []
+        for (gn, gf) in union:
+            for key in TESTED:
+                if matches(gn, gf, key):
+                    false_positives.append((gn, gf))
+
+        print(f"queries run            : {len(TERMS)}")
+        print(f"unique gaps in union   : {len(union)}")
+        print(f"designed gaps found    : {len(found)}/{len(DESIGNED)}")
+        missing = DESIGNED - found
+        if missing:
+            print(f"  MISSED               : {sorted(missing)}")
+        print(f"false positives        : {len(false_positives)}  {false_positives if false_positives else '(none — RevokeToken/RefundPayment/ProcessPayment correctly NOT flagged)'}")
+        print("--- full union ---")
+        for (n, f) in sorted(union):
+            print(f"  {n} — {f}")
+        PY
+        cd /tmp/prism-ab-bench/payflow && python3 /tmp/prism-ab-bench/score_coverage.py
+      at: 2026-06-14T01:50:18.091613Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana 2>/dev/null && echo "grafana present" && du -sh . 2>/dev/null | tail -1
+        echo "=== .grove index state ==="; ls -la .grove/ 2>/dev/null | head -3; du -sh .grove 2>/dev/null
+        echo "=== file count ==="; git rev-parse --short HEAD 2>/dev/null; find . -name '.git' -prune -o -type f -name '*.go' -print 2>/dev/null | wc -l
+      at: 2026-06-14T01:50:37.50177Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rm -rf .grove && echo "cleared stale index, starting fresh index with prism v0.14.0..." && time prism index . > /tmp/grafana-index.log 2>&1; echo "INDEX_DONE rc=$?"; tail -5 /tmp/grafana-index.log
+      at: 2026-06-14T01:50:55.774108Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/bi80op2cz.output 2>/dev/null | tail -12
+        echo "=== index size ==="; du -sh /tmp/fuse-corpus/grafana/.grove 2>/dev/null
+      at: 2026-06-14T01:52:07.679982Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== symbol present? ==="; prism search SecretsKVStoreSQL --format json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(s['qualifiedName'], s.get('filePath')) for s in d.get('symbols',[])][:6]" 2>/dev/null | head -6
+        echo "=== prism caller-trace query (timed, CLI cold) ==="
+        ( time prism query "who calls SecretsKVStoreSQL.Get and which tests cover it" --terms SecretsKVStoreSQL.Get --include graph,tests --format text > /tmp/grafana-q.txt 2>/dev/null ) 2>&1 | tail -3
+        qb=$(wc -c < /tmp/grafana-q.txt); echo "prism query output: $((qb/4)) tokens ($qb bytes)"
+      at: 2026-06-14T01:52:35.880375Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== NEW: references layer at scale (timed) ==="
+        ( time prism references SecretsKVStoreSQL . --format text > /tmp/g-refs.txt 2>/dev/null ) 2>&1 | tail -2
+        rb=$(wc -c < /tmp/g-refs.txt); rl=$(grep -c "  " /tmp/g-refs.txt); echo "references output: $((rb/4)) tokens ($rb bytes), $(head -1 /tmp/g-refs.txt)"
+        echo
+        echo "=== thorough baseline: read every file that mentions the type ==="
+        FILES=$(rg -l "SecretsKVStoreSQL" -g '!.grove' 2>/dev/null)
+        nf=$(echo "$FILES" | grep -c .); wf=$(echo "$FILES" | xargs cat 2>/dev/null | wc -c)
+        echo "read $nf whole files = $((wf/4)) tokens ($wf bytes)"
+        echo
+        echo "=== naive grep precision (doc claim: finds 11 of 58 .Get call sites) ==="
+        echo "rg '\.Get\(ctx' in the package:"; rg -c "\.Get\(ctx" pkg/services/secrets/kvstore/ 2>/dev/null | head
+      at: 2026-06-14T01:54:57.899176Z
+      classified: other
+    - cmd: sleep 5; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/b0e82qib6.output 2>/dev/null
+      at: 2026-06-14T01:55:08.442324Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/cbdd4dba-d2f4-4134-97f1-ba4d0bed410a/tasks/b0e82qib6.output 2>/dev/null | tail -10
+      at: 2026-06-14T01:55:16.330438Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        FILES=$(rg -l "SecretsKVStoreSQL" --glob '*.go' 2>/dev/null)
+        nf=$(printf '%s\n' "$FILES" | grep -c .)
+        wf=$(printf '%s\n' "$FILES" | xargs cat 2>/dev/null | wc -c)
+        echo "thorough baseline: read $nf whole .go files = $((wf/4)) tokens ($wf bytes)"
+        echo "=== naive grep precision ==="
+        echo -n "rg '\.Get\(ctx' in kvstore pkg: "; rg "\.Get\(ctx" pkg/services/secrets/kvstore/ 2>/dev/null | wc -l
+        echo -n "total .Get( call sites repo-wide (rough): "; rg "\.Get\(" --glob '*.go' 2>/dev/null | wc -l
+      at: 2026-06-14T01:55:30.965958Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/g-read.py <<'PY'
+        import json, subprocess, time
+        ROOT="/tmp/fuse-corpus/grafana"; BIN="/Users/tapabratapal/bin/prism"
+        T="pkg/services/secrets/kvstore/sql.go"
+        p=subprocess.Popen([BIN,"mcp",ROOT],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+        i=0
+        def call(m,pr):
+            global i; i+=1
+            p.stdin.write(json.dumps({"jsonrpc":"2.0","id":i,"method":m,"params":pr})+"\n"); p.stdin.flush()
+            return json.loads(p.stdout.readline())
+        def tool(n,a):
+            r=call("tools/call",{"name":n,"arguments":a}); return json.loads(r["result"]["content"][0]["text"])
+        call("initialize",{"protocolVersion":"2025-03-26","capabilities":{}}); time.sleep(1.0)
+        t0=time.time(); q1=tool("prism_query",{"task":"secrets kvstore get","terms":["SecretsKVStoreSQL"]}); t1=time.time()
+        q2=tool("prism_query",{"task":"secrets kvstore set","terms":["SecretsKVStoreSQL"]}); t2=time.time()
+        r1=tool("prism_read",{"file":T}); r2=tool("prism_read",{"file":T})
+        print(json.dumps({
+         "query_first_sec":round(t1-t0,2),"query_second_sec":round(t2-t1,2),
+         "read_first":{"strategy":r1["strategy"],"tokens":r1["deliveredTokens"]},
+         "read_second":{"strategy":r2["strategy"],"tokens":r2["deliveredTokens"],"savedPct":round(r2.get("savingsPercent",0),1)},
+        },indent=2))
+        p.stdin.close(); p.wait(timeout=15)
+        PY
+        python3 /tmp/g-read.py 2>&1 | tail -20
+      at: 2026-06-14T01:56:13.520597Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-ab-bench/payflow
+        echo "=== fixture clean? (RefundPayment restored, not ReversePayment) ==="
+        grep -rn "ReversePayment" internal/ 2>/dev/null && echo "WARN: ReversePayment leftover" || echo "OK: no ReversePayment leftover"
+        grep -c "RefundPayment" internal/payment/service.go
+        echo "=== re-index clean ==="; rm -rf .grove && prism index . 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); print('symbols',d['symbolCount'],'edges',d['edgeCount'])"
+        echo "=== ground truth anchors present ==="
+        echo -n "auth.ValidateToken call sites (rg): "; rg -n "ValidateToken\(" --glob '*.go' | grep -v "_test\|func.*ValidateToken" | wc -l
+      at: 2026-06-14T01:58:42.318113Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-ab-bench/payflow
+        echo "=== T4 ground truth: all auth.ValidateToken references ==="
+        rg -n "ValidateToken" --glob '*.go'
+        echo
+        echo "=== T1 ground truth: CreatePayment chain ==="
+        rg -n "func.*CreatePayment|CreatePayment\(|ProcessPayment\(" --glob '*.go' | grep -v _test | head
+      at: 2026-06-14T01:58:49.562035Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-ab-bench/payflow
+        echo "=== T2 ground truth: where payment Status is defined + used ==="
+        rg -ln "Status" --glob '*.go' | grep -v _test
+        echo "--- status constant def ---"; rg -n "Status[A-Z]" internal/model/ | head
+        echo
+        echo "=== T3 ground truth (12 untested exported) — established already ==="
+        echo "Handler.{CreatePayment,GetPayment,ListPayments,RefundPayment,CompletePayment}, Middleware.RequireScope, Register, Service.{CompletePayment,ListPayments}(payment), ValidateCurrency, Service.RequireScope(auth), MemoryStore.UpdatePayment"
+      at: 2026-06-14T01:59:25.26687Z
+      classified: other
+    - cmd: find /tmp/prism-ab-bench/payflow -type f -name "*.go" | head -50
+      at: 2026-06-14T01:59:43.185133Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup Handler.CreatePayment --format text 2>&1
+      at: 2026-06-14T01:59:46.783489Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "ProcessPayment call chain" --terms ProcessPayment --include graph,tests --format text 2>&1
+      at: 2026-06-14T01:59:50.08861Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup payment.ValidatePayment --format text 2>&1
+      at: 2026-06-14T01:59:53.831407Z
+      classified: other
+    - cmd: find /tmp/prism-ab-bench/payflow -type f -name "*.go" | sort
+      at: 2026-06-14T01:59:57.624155Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "SavePayment storage layer" --terms SavePayment --include graph,tests --format text 2>&1
+      at: 2026-06-14T01:59:58.524794Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && rg --type go "PaymentStatus|StatusPending|StatusCompleted|StatusFailed" --files-with-matches 2>/dev/null | head -20
+      at: 2026-06-14T02:00:00.380138Z
+      classified: other
+    - cmd: grep -rn "Status" /tmp/prism-ab-bench/payflow/internal/model/payment.go
+      at: 2026-06-14T02:00:01.309315Z
+      classified: other
+    - cmd: grep -n "TokenFromContext\|ProcessPayment\|ValidatePayment\|ValidateAmount\|ValidateCurrency\|SavePayment\|rand.Read\|hex.EncodeToString" /tmp/prism-ab-bench/payflow/internal/api/handler.go /tmp/prism-ab-bench/payflow/internal/payment/service.go /tmp/prism-ab-bench/payflow/internal/payment/validator.go /tmp/prism-ab-bench/payflow/internal/storage/memory.go /tmp/prism-ab-bench/payflow/internal/api/middleware.go
+      at: 2026-06-14T02:00:01.363608Z
+      classified: other
+    - cmd: find /tmp/prism-ab-bench/payflow -type f -name "*.go" | sort
+      at: 2026-06-14T02:00:01.874318Z
+      classified: other
+    - cmd: grep -rn "Status\|switch.*status\|case Status" /tmp/prism-ab-bench/payflow --include="*.go" -l
+      at: 2026-06-14T02:00:01.954392Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup payment.ValidateAmount --format text 2>&1 && prism lookup payment.ValidateCurrency --format text 2>&1
+      at: 2026-06-14T02:00:03.748242Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup model.PaymentStatus --format text 2>/dev/null
+      at: 2026-06-14T02:00:04.19611Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && find . -name "*.go" | head -30 && echo "---" && ls
+      at: 2026-06-14T02:00:04.442276Z
+      classified: other
+    - cmd: grep -n "switch\|case Status\|Status" /tmp/prism-ab-bench/payflow/internal/payment/service.go
+      at: 2026-06-14T02:00:04.544109Z
+      classified: other
+    - cmd: grep -n "switch\|case Status\|Status" /tmp/prism-ab-bench/payflow/internal/payment/validator.go
+      at: 2026-06-14T02:00:04.921437Z
+      classified: other
+    - cmd: grep -n "^func [A-Z]" /tmp/prism-ab-bench/payflow/internal/api/handler.go /tmp/prism-ab-bench/payflow/internal/api/middleware.go /tmp/prism-ab-bench/payflow/internal/api/router.go /tmp/prism-ab-bench/payflow/internal/auth/service.go /tmp/prism-ab-bench/payflow/internal/auth/token_store.go /tmp/prism-ab-bench/payflow/internal/model/payment.go /tmp/prism-ab-bench/payflow/internal/model/token.go /tmp/prism-ab-bench/payflow/internal/payment/service.go /tmp/prism-ab-bench/payflow/internal/payment/validator.go /tmp/prism-ab-bench/payflow/internal/storage/memory.go /tmp/prism-ab-bench/payflow/internal/storage/store.go /tmp/prism-ab-bench/payflow/cmd/server/main.go
+      at: 2026-06-14T02:00:05.533394Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup api.writeJSON --format text 2>&1 && prism lookup api.TokenFromContext --format text 2>&1
+      at: 2026-06-14T02:00:05.704929Z
+      classified: other
+    - cmd: grep -n "switch\|case Status\|Status" /tmp/prism-ab-bench/payflow/internal/api/handler.go
+      at: 2026-06-14T02:00:07.072902Z
+      classified: other
+    - cmd: grep -n "switch\|case Status\|Status" /tmp/prism-ab-bench/payflow/internal/api/middleware.go
+      at: 2026-06-14T02:00:07.499687Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "payment status constants switch handling" --terms PaymentStatus --include graph,tests --format text 2>/dev/null
+      at: 2026-06-14T02:00:08.877367Z
+      classified: other
+    - cmd: grep -n "^func (.*) [A-Z]" /tmp/prism-ab-bench/payflow/internal/api/handler.go /tmp/prism-ab-bench/payflow/internal/api/middleware.go /tmp/prism-ab-bench/payflow/internal/api/router.go /tmp/prism-ab-bench/payflow/internal/auth/service.go /tmp/prism-ab-bench/payflow/internal/auth/token_store.go /tmp/prism-ab-bench/payflow/internal/model/payment.go /tmp/prism-ab-bench/payflow/internal/model/token.go /tmp/prism-ab-bench/payflow/internal/payment/service.go /tmp/prism-ab-bench/payflow/internal/payment/validator.go /tmp/prism-ab-bench/payflow/internal/storage/memory.go /tmp/prism-ab-bench/payflow/internal/storage/store.go /tmp/prism-ab-bench/payflow/cmd/server/main.go
+      at: 2026-06-14T02:00:09.039584Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms auth,payment --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:09.274024Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "CreatePayment handler test" --terms CreatePayment --include graph,tests --format text 2>&1
+      at: 2026-06-14T02:00:09.455204Z
+      classified: other
+    - cmd: grep -n "switch\|case Status\|PaymentStatus\|model\.Status" /tmp/prism-ab-bench/payflow/internal/api/middleware_test.go /tmp/prism-ab-bench/payflow/internal/payment/service_test.go
+      at: 2026-06-14T02:00:10.834237Z
+      classified: other
+    - cmd: rg -rn "ValidateToken" /tmp/prism-ab-bench/payflow --with-filename 2>/dev/null
+      at: 2026-06-14T02:00:11.445663Z
+      classified: other
+    - cmd: grep -n "^func New[A-Z]" /tmp/prism-ab-bench/payflow/internal/api/handler.go /tmp/prism-ab-bench/payflow/internal/api/middleware.go
+      at: 2026-06-14T02:00:11.835145Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism read internal/model/payment.go --format text 2>/dev/null
+      at: 2026-06-14T02:00:12.629281Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && rg -rn "TestCreatePayment\|CreatePayment" -g "*_test.go" . 2>&1
+      at: 2026-06-14T02:00:14.61804Z
+      classified: other
+    - cmd: rg -n "ValidateToken\|func.*Service.*Token\|\.ValidateToken\b" /tmp/prism-ab-bench/payflow --with-filename 2>/dev/null
+      at: 2026-06-14T02:00:14.836659Z
+      classified: other
+    - cmd: grep -rn "ValidateToken" /tmp/prism-ab-bench/payflow 2>/dev/null
+      at: 2026-06-14T02:00:15.394938Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism references auth.Service.ValidateToken --format text 2>&1
+      at: 2026-06-14T02:00:15.778888Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms storage,handler --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:15.892443Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && find . -name "*_test.go" | xargs grep -ln "CreatePayment\|handler" 2>&1
+      at: 2026-06-14T02:00:16.624393Z
+      classified: other
+    - cmd: grep -rn "\.ValidateToken(" /tmp/prism-ab-bench/payflow 2>/dev/null
+      at: 2026-06-14T02:00:19.004816Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && cat internal/model/payment.go
+      at: 2026-06-14T02:00:19.159282Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms model,token --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:19.474502Z
+      classified: other
+    - cmd: grep -rn "ValidateToken" /tmp/prism-ab-bench/payflow 2>/dev/null | grep -v "^Binary"
+      at: 2026-06-14T02:00:21.979608Z
+      classified: other
+    - cmd: grep -rn "StatusFailed\|StatusCancelled\|StatusPending\|StatusCompleted\|StatusRefunded" /tmp/prism-ab-bench/payflow --include="*.go"
+      at: 2026-06-14T02:00:22.730926Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "switch on payment status handle StatusPending StatusCompleted StatusFailed StatusRefunded" --terms StatusPending,StatusCompleted,StatusFailed,StatusRefunded --include graph,tests --format text 2>/dev/null
+      at: 2026-06-14T02:00:23.343856Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms RevokeToken,TokenStore --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:24.796178Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism read internal/api/handler_test.go --format text 2>&1
+      at: 2026-06-14T02:00:24.905508Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism search ValidateToken --format text 2>&1
+      at: 2026-06-14T02:00:25.058446Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism references StatusPending --format text 2>/dev/null
+      at: 2026-06-14T02:00:26.88309Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup payment.Service --format text 2>&1
+      at: 2026-06-14T02:00:28.825986Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "ValidateToken call sites" --terms ValidateToken --include graph,tests --format text 2>&1
+      at: 2026-06-14T02:00:28.923162Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms MemoryStore,SavePayment --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:29.505615Z
+      classified: other
+    - cmd: grep -rn "PaymentStatus\|payment.Status\|\.Status" /tmp/prism-ab-bench/payflow --include="*.go" | grep -v "_test.go"
+      at: 2026-06-14T02:00:29.816209Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup payment.newSvc --format text 2>&1
+      at: 2026-06-14T02:00:30.637045Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism references StatusCompleted --format text 2>/dev/null && prism references StatusFailed --format text 2>/dev/null && prism references StatusRefunded --format text 2>/dev/null
+      at: 2026-06-14T02:00:30.696098Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup payment.ValidatePayment --format text 2>/dev/null
+      at: 2026-06-14T02:00:35.10331Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms UpdatePayment,DeletePayment --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:35.488931Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && rg "ValidateToken" --with-filename --line-number 2>&1
+      at: 2026-06-14T02:00:36.471954Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup auth.Service.ValidateToken --format text 2>&1
+      at: 2026-06-14T02:00:40.562402Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms NotFoundError,validator --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:41.187587Z
+      classified: other
+    - cmd: grep -n "CompletePayment\|ListPayments\|ValidateCurrency\|UpdatePayment" /tmp/prism-ab-bench/payflow/internal/payment/service_test.go
+      at: 2026-06-14T02:00:41.531499Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup payment.Service.ProcessPayment --format text 2>/dev/null && prism lookup payment.Service.CompletePayment --format text 2>/dev/null && prism lookup payment.Service.RefundPayment --format text 2>/dev/null
+      at: 2026-06-14T02:00:41.858713Z
+      classified: other
+    - cmd: grep -rn "CompletePayment\|ListPayments\|ValidateCurrency\|UpdatePayment" /tmp/prism-ab-bench/payflow/
+      at: 2026-06-14T02:00:44.604138Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism lookup payment.CompletePayment --format text 2>/dev/null
+      at: 2026-06-14T02:00:46.09925Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms HasScope,IsExpired --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:46.957862Z
+      classified: other
+    - cmd: grep -n "Register\|TokenFromContext\|RequireScope" /tmp/prism-ab-bench/payflow/internal/api/middleware_test.go /tmp/prism-ab-bench/payflow/internal/api/handler_test.go
+      at: 2026-06-14T02:00:48.312122Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism read internal/payment/service.go --format text 2>/dev/null
+      at: 2026-06-14T02:00:49.891698Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && cat internal/payment/service.go
+      at: 2026-06-14T02:00:51.636614Z
+      classified: other
+    - cmd: grep -rn "RequireScope\|api\.Register\|\.Register(" /tmp/prism-ab-bench/payflow/
+      at: 2026-06-14T02:00:51.844555Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism query "exported functions coverage" --terms ValidateAmount,ValidatePayment --include graph,coverage_gaps --format text 2>&1
+      at: 2026-06-14T02:00:56.861825Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && cat internal/payment/service_test.go
+      at: 2026-06-14T02:00:58.532888Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && find . -type f -name "*.go" | sort
+      at: 2026-06-14T02:01:01.242706Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && grep -n "ValidateAmount\|ValidateCurrency\|ValidatePayment" internal/payment/service_test.go internal/payment/validator.go 2>&1
+      at: 2026-06-14T02:01:04.158847Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && prism read internal/api/handler.go --format text 2>/dev/null
+      at: 2026-06-14T02:01:05.519867Z
+      classified: other
+    - cmd: grep -n "ValidateCurrency" /tmp/prism-ab-bench/payflow/internal/payment/service_test.go
+      at: 2026-06-14T02:01:06.691558Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && cat internal/api/handler.go && cat internal/api/handler_test.go
+      at: 2026-06-14T02:01:07.406313Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && grep -n "TokenFromContext\|Register\b" internal/api/middleware_test.go internal/api/handler_test.go 2>&1
+      at: 2026-06-14T02:01:08.200277Z
+      classified: other
+    - cmd: grep -rn "ValidateCurrency" /tmp/prism-ab-bench/payflow/
+      at: 2026-06-14T02:01:08.763851Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && cat internal/payment/validator.go
+      at: 2026-06-14T02:01:09.475346Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && grep -n "GetPayment\|RefundPayment\|CompletePayment\|ListPayments" internal/payment/service_test.go 2>&1
+      at: 2026-06-14T02:01:12.188166Z
+      classified: other
+    - cmd: grep -A5 "TestProcessPayment_Valid\|TestRefundPayment\|TestGetPayment" /tmp/prism-ab-bench/payflow/internal/payment/service_test.go | head -40
+      at: 2026-06-14T02:01:13.416715Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && grep -n "CompletePayment" internal/payment/service_test.go internal/api/handler_test.go 2>&1
+      at: 2026-06-14T02:01:16.91743Z
+      classified: other
+    - cmd: grep -n "RequireScope" /tmp/prism-ab-bench/payflow/internal/api/middleware_test.go /tmp/prism-ab-bench/payflow/internal/auth/service_test.go
+      at: 2026-06-14T02:01:18.776225Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && grep -n "func Test" internal/api/handler_test.go internal/api/middleware_test.go internal/auth/service_test.go internal/payment/service_test.go internal/storage/memory_test.go 2>&1
+      at: 2026-06-14T02:01:19.896001Z
+      classified: other
+    - cmd: grep -rn "\.ListPayments\b" /tmp/prism-ab-bench/payflow/ --include="*_test.go"
+      at: 2026-06-14T02:01:22.151777Z
+      classified: other
+    - cmd: grep -rn "\.CompletePayment\b" /tmp/prism-ab-bench/payflow/ --include="*_test.go"
+      at: 2026-06-14T02:01:24.118142Z
+      classified: other
+    - cmd: cd /tmp/prism-ab-bench/payflow && cat internal/api/handler_test.go 2>&1
+      at: 2026-06-14T02:01:24.577799Z
+      classified: other
+    - cmd: grep -rn "\.UpdatePayment\b" /tmp/prism-ab-bench/payflow/ --include="*_test.go"
+      at: 2026-06-14T02:01:26.737449Z
+      classified: other
+    - cmd: grep -rn "api\.Register\|Register(" /tmp/prism-ab-bench/payflow/ --include="*_test.go"
+      at: 2026-06-14T02:01:31.84962Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-ab-bench/payflow
+        echo "=== Is MemoryStore.UpdatePayment actually called by any test? ==="
+        rg -n "UpdatePayment" --glob '*.go'
+        echo
+        echo "=== Is ValidateCurrency reached by tests? (does any test use a path through it / valid currency) ==="
+        rg -n "ValidateCurrency|ValidatePayment" internal/payment/
+        echo
+        echo "=== T4: prism references bare name vs qualified ==="
+        echo -n "references ValidateToken (bare): "; prism references ValidateToken . --format text 2>/dev/null | head -1
+        echo -n "references auth.Service.ValidateToken (qualified): "; prism references auth.Service.ValidateToken . --format text 2>/dev/null | head -1
+      at: 2026-06-14T02:02:50.131305Z
+      classified: other
+    - cmd: |-
+        go test ./internal/parser/ ./pkg/grove/ 2>&1 | tail -3
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go mod edit -replace github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove
+        go build -o /tmp/prism-dev3 ./cmd/prism && echo "BUILT"
+        cd /tmp/fuse-corpus/grafana
+        echo "=== bare name (timed) ==="; ( time /tmp/prism-dev3 references SecretsKVStoreSQL . --format text >/tmp/r1.txt 2>/dev/null ) 2>&1 | tail -2; head -1 /tmp/r1.txt
+        echo "=== qualified name (timed) ==="; ( time /tmp/prism-dev3 references SecretsKVStoreSQL.Get . --format text >/tmp/r2.txt 2>/dev/null ) 2>&1 | tail -2; head -1 /tmp/r2.txt
+      at: 2026-06-14T02:13:43.19576Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism && go build -o /tmp/prism-dev4 ./cmd/prism && echo "BUILT (replace still active)"
+        cd /tmp/fuse-corpus/grafana
+        echo "=== bare SecretsKVStoreSQL (timed) ==="; ( time /tmp/prism-dev4 references SecretsKVStoreSQL . --format text >/tmp/r1.txt 2>/dev/null ) 2>&1 | tail -2; head -1 /tmp/r1.txt
+        echo "=== rare leaf via qualified (auth.Service.ValidateToken style) — use a real rare grafana method ==="
+        ( time /tmp/prism-dev4 references SecretsKVStoreSQL.Get . --format text >/tmp/r2.txt 2>/dev/null ) 2>&1 | tail -2; head -1 /tmp/r2.txt
+      at: 2026-06-14T02:17:14.090038Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go mod edit -dropreplace github.com/provasign/grove
+        GOPROXY=proxy.golang.org,direct go get github.com/provasign/grove@v0.12.2 2>&1 | tail -2
+        go mod tidy && go build ./... && echo BUILD_OK && go test ./internal/cli/ ./internal/mcp/ -count=1 2>&1 | tail -4
+        grep -c replace go.mod || echo "0 replaces"
+      at: 2026-06-14T02:18:51.647709Z
+      classified: test
+notes:
+    - text: continuation of session f0c293f6-c719-4909-9c8f-d0c8b7e41213 — events captured after its evidence was finalized
+      at: 2026-06-14T01:36:53.833382Z
+redactions: 0
