@@ -205,6 +205,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolEvidence(ctx, args)
 	case "prism_drift":
 		return h.toolDrift(ctx, args)
+	case "prism_references":
+		return h.toolReferences(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -235,7 +237,7 @@ func sameRoot(dir, root string) bool {
 func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_index", "prism_drift",
+		"prism_references", "prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
@@ -334,6 +336,17 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
+	case "prism_references":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"name"},
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type":        "string",
+					"description": "Symbol name to find usages of (a class/type/function/constant).",
+				},
+			},
+		}
 	case "prism_index":
 		return map[string]any{
 			"type": "object",
@@ -391,6 +404,13 @@ func toolDescription(name string) string {
 			"(e.g. 'ranking.Select' or 'mcp.Handler'). " +
 			"Use this instead of prism_read when you want one function body — " +
 			"costs ~5× fewer tokens than reading the whole file."
+	case "prism_references":
+		return "Find where a symbol (class/type/function/constant) is USED across the codebase — " +
+			"every code occurrence of the name, grouped by file, excluding comments and strings. " +
+			"Use for 'where is X used' and 'is X still used / safe to delete'. " +
+			"Reports 'ambiguous' when several definitions share the name. " +
+			"Catches syntactic uses only — reflection/dynamic usage is not seen, so an empty " +
+			"result is best-effort, not proof of dead code."
 	case "prism_index":
 		return "Delta-index the workspace through Grove. " +
 			"Call once at session start or after significant file changes. " +
@@ -947,6 +967,33 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	}
 	syms = filterGeneratedPrismContext(syms)
 	return map[string]any{"symbols": syms}, nil
+}
+
+func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any, error) {
+	name := stringArg(args, "name", "")
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+	res, err := h.Grove.References(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	// Group by file for a compact, agent-friendly shape.
+	byFile := map[string][]map[string]any{}
+	for _, r := range res.Refs {
+		entry := map[string]any{"line": r.Line}
+		if r.Enclosing != "" {
+			entry["in"] = r.Enclosing
+		}
+		byFile[r.File] = append(byFile[r.File], entry)
+	}
+	return map[string]any{
+		"name":        res.Name,
+		"count":       len(res.Refs),
+		"definitions": res.DefCount,
+		"ambiguous":   res.Ambiguous,
+		"byFile":      byFile,
+	}, nil
 }
 
 func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, error) {

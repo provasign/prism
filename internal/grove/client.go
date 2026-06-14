@@ -266,6 +266,16 @@ func (c *Client) Impact(ctx context.Context, query string, maxDepth int) ([]Symb
 	return convertSymbols(syms), nil
 }
 
+// References returns code occurrences of a symbol name — the reference layer
+// ("where is X used"), near-complete for types/classes the call graph misses.
+func (c *Client) References(ctx context.Context, name string) (groveeng.ReferenceResult, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return groveeng.ReferenceResult{}, err
+	}
+	return e.References(ctx, name)
+}
+
 // Semantic returns TF-IDF-ranked symbols with cosine-similarity scores.
 func (c *Client) Semantic(ctx context.Context, query string, limit int) ([]SemanticResult, error) {
 	e, err := c.requireEngine()
