@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	groveeng "github.com/provasign/grove/pkg/grove"
@@ -264,6 +265,39 @@ func (c *Client) Impact(ctx context.Context, query string, maxDepth int) ([]Symb
 		return nil, err
 	}
 	return convertSymbols(syms), nil
+}
+
+// CallNeighbors returns a symbol's direct call neighbors — callees (out) and
+// callers (in) — as wire symbols, excluding test doubles. Edge types other than
+// `calls` (e.g. uses-type) are deliberately dropped: this is the precise
+// call-chain neighborhood for prism_query's graph include, not the flat,
+// type-erased Impact blast radius.
+func (c *Client) CallNeighbors(ctx context.Context, query string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	ns, err := e.Neighbors(ctx, query, "both", groveeng.EdgeCalls)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SymbolRecord, 0, len(ns))
+	for _, n := range ns {
+		if isCallNeighborTestDouble(n.Symbol.FilePath) {
+			continue
+		}
+		out = append(out, convertSymbol(n.Symbol))
+	}
+	return out, nil
+}
+
+// isCallNeighborTestDouble drops mock/fake/stub/test files from call neighbors so
+// the chain shows real implementations, not test doubles that share a name.
+func isCallNeighborTestDouble(path string) bool {
+	p := strings.ToLower(path)
+	return strings.HasSuffix(p, "_test.go") ||
+		strings.Contains(p, "mock") || strings.Contains(p, "fake") ||
+		strings.Contains(p, "stub") || strings.Contains(p, "/testdata/")
 }
 
 // References returns code occurrences of a symbol name — the reference layer

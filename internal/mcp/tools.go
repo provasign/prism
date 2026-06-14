@@ -574,6 +574,19 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			if len(contentHits) > 3 {
 				contentHits = contentHits[:3]
 			}
+			// Prefer real implementations over test doubles among name hits, so a
+			// term like "DecryptedValues" seeds the graph on the real Service
+			// method (and expands its call chain) rather than on a mock that
+			// shares the name — which would leave the real chain out of reach.
+			var realHits, doubleHits []grove.SymbolRecord
+			for _, m := range nameHits {
+				if isTestDouble(m.FilePath) {
+					doubleHits = append(doubleHits, m)
+				} else {
+					realHits = append(realHits, m)
+				}
+			}
+			nameHits = append(realHits, doubleHits...)
 			for _, m := range append(nameHits, contentHits...) {
 				if !seenTermSeeds[m.ID] {
 					seenTermSeeds[m.ID] = true
@@ -625,14 +638,19 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			seedQuery = seed.Name
 		}
 		if includeSet["graph"] {
-			if impacted, err := h.Grove.Impact(ctx, seedQuery, graphDepth); err == nil {
-				for _, imp := range impacted {
-					if _, exists := graphDist[imp.ID]; !exists {
-						graphDist[imp.ID] = 1
+			// Use the typed call neighborhood (callees + callers, test doubles
+			// excluded) rather than Grove.Impact's flat blast radius. Impact
+			// traverses calls AND uses-type together and erases edge types, which
+			// floods the result with type-mention noise and buries the actual
+			// call chain; CallNeighbors returns exactly the resolved calls edges.
+			if neighbors, err := h.Grove.CallNeighbors(ctx, seedQuery); err == nil {
+				for _, nb := range neighbors {
+					if _, exists := graphDist[nb.ID]; !exists {
+						graphDist[nb.ID] = 1
 					}
-					if !seenIDs[imp.ID] {
-						seenIDs[imp.ID] = true
-						graphExtra = append(graphExtra, imp)
+					if !seenIDs[nb.ID] {
+						seenIDs[nb.ID] = true
+						graphExtra = append(graphExtra, nb)
 					}
 				}
 			}
