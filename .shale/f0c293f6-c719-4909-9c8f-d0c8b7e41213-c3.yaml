@@ -1,0 +1,45 @@
+shale_version: "0"
+id: f0c293f6-c719-4909-9c8f-d0c8b7e41213-c3
+created_at: 2026-06-14T00:52:37.715004Z
+finalized_at: 2026-06-14T00:55:22.348013Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/references_e2e_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T00:54:57.808381Z
+commands:
+    - cmd: git push origin main 2>&1 | tail -3 && echo "=== synced ===" && git log --oneline -1 origin/main
+      at: 2026-06-14T00:52:37.715004Z
+      classified: other
+    - cmd: gh run watch 27483973624 --exit-status 2>&1 | tail -4; echo "=== final ==="; gh run list --limit 3 2>&1 | head -3
+      at: 2026-06-14T00:54:20.293152Z
+      classified: other
+    - cmd: gh run view 27483971311 --log-failed 2>&1 | tail -40
+      at: 2026-06-14T00:54:26.263632Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run TestToolReferences_E2E -count=1 2>&1 | tail -4
+      at: 2026-06-14T00:55:03.348829Z
+      classified: test
+    - cmd: |-
+        git checkout -b prism-e2e-windows-fix && git add internal/mcp/references_e2e_test.go && git commit -q -m "prism: close grove engine in references e2e test (Windows cleanup)
+
+        The test opened a grove engine but never closed it; the open grove.db handle
+        blocked t.TempDir() RemoveAll on Windows (POSIX unlinks open files silently,
+        Windows does not), failing CI after the assertion already passed. Add
+        defer gc.Shutdown(). Product unchanged.
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" && git checkout main && git merge --ff-only prism-e2e-windows-fix && git branch -d prism-e2e-windows-fix && git log --oneline -1
+      at: 2026-06-14T00:55:18.182583Z
+      classified: other
+notes:
+    - text: continuation of session f0c293f6-c719-4909-9c8f-d0c8b7e41213 — events captured after its evidence was finalized
+      at: 2026-06-14T00:52:37.715004Z
+redactions: 0
