@@ -23,6 +23,10 @@ func TestToolReferences_E2E(t *testing.T) {
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
 	}
+	// Close the engine before t.TempDir() cleanup runs: an open grove.db handle
+	// blocks RemoveAll on Windows (POSIX silently unlinks open files; Windows
+	// does not).
+	defer gc.Shutdown()
 	h := NewHandler(config.Default(), dir, gc)
 
 	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
