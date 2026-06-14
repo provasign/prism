@@ -1,0 +1,773 @@
+shale_version: "0"
+id: f0c293f6-c719-4909-9c8f-d0c8b7e41213-c6
+created_at: 2026-06-14T02:21:41.468726Z
+finalized_at: 2026-06-14T03:20:52.21352Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-06-14T03:13:09.943636Z
+    - path: internal/mcp/lookup_disambig_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-06-14T03:17:30.234748Z
+commands:
+    - cmd: |-
+        git fetch origin -q && git reset --hard origin/main 2>&1 | tail -1
+        git tag -a v0.14.1 -m "prism: grove v0.12.2 — fast references (~45s→~9s at scale) + qualified-name handling" && git push origin v0.14.1 2>&1 | tail -1
+        RUNID=$(gh run list --limit 1 --workflow=Release --json databaseId --jq '.[0].databaseId'); echo "release run $RUNID"; gh run watch $RUNID --exit-status 2>&1 | tail -2; echo "EXIT=$?"
+      at: 2026-06-14T02:21:41.468726Z
+      classified: other
+    - cmd: 'sleep 5; RUNID=$(gh run list --limit 5 --workflow=Release --json databaseId,headBranch --jq ''.[] | select(.headBranch=="v0.14.1") | .databaseId'' | head -1); echo "v0.14.1 release run: $RUNID"; gh run watch $RUNID --exit-status 2>&1 | tail -2; echo "EXIT=$?"'
+      at: 2026-06-14T02:23:25.314687Z
+      classified: other
+    - cmd: |-
+        cd /tmp && gh release download v0.14.1 --repo provasign/prism --pattern checksums.txt --clobber -O /tmp/ck-0141.txt && cat /tmp/ck-0141.txt
+        cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git pull --rebase origin main 2>&1 | tail -1
+      at: 2026-06-14T02:23:32.883444Z
+      classified: other
+    - cmd: |-
+        cd /opt/homebrew/Library/Taps/provasign/homebrew-shale && git add Formula/prism.rb && git -c commit.gpgsign=false commit -q -m "prism 0.14.1 — fast references at scale + qualified-name handling (grove v0.12.2)
+
+        Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" && git push origin main 2>&1 | tail -1
+        brew update >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -3; echo "=== verify ==="; prism version
+      at: 2026-06-14T02:24:01.341345Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== released binary references (timed) ==="
+        ( time prism references SecretsKVStoreSQL . --format text >/tmp/v.txt 2>/dev/null ) 2>&1 | tail -2; head -1 /tmp/v.txt
+        echo "=== qualified name resolves (not 0) ==="
+        prism references SecretsKVStoreSQL.Get . --format text 2>/dev/null | head -1
+      at: 2026-06-14T02:24:29.503095Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== GA ground truth: SecretsKVStoreSQL references (the type) ==="
+        prism references SecretsKVStoreSQL . --format text 2>/dev/null
+        echo
+        echo "=== GB ground truth: who references/constructs SecretsKVStoreSQL + its test ==="
+        rg -n "SecretsKVStoreSQL\b" --glob '*.go' | grep -iv "func (.*SecretsKVStoreSQL)" | head -20
+      at: 2026-06-14T02:25:14.874177Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== GB candidate: NewSQLSecretsKVStore call sites (verifiable) ==="
+        rg -n "NewSQLSecretsKVStore" --glob '*.go'
+        echo "=== references for it (tool) ==="
+        prism references NewSQLSecretsKVStore . --format text 2>/dev/null | head -1
+      at: 2026-06-14T02:25:38.476728Z
+      classified: other
+    - cmd: rg -n "SecretsKVStoreSQL" /tmp/fuse-corpus/grafana --type go 2>/dev/null | grep -v "^\s*//" | head -200
+      at: 2026-06-14T02:26:34.557114Z
+      classified: other
+    - cmd: rg -n "SecretsKVStoreSQL" /tmp/fuse-corpus/grafana --type go 2>/dev/null | grep -v "//.*SecretsKVStoreSQL" | grep -v "^\s*//"
+      at: 2026-06-14T02:26:37.06757Z
+      classified: other
+    - cmd: rg -n "SecretsKVStoreSQL" /tmp/fuse-corpus/grafana --type go 2>/dev/null | wc -l
+      at: 2026-06-14T02:26:40.070011Z
+      classified: other
+    - cmd: rg -l "SecretsKVStoreSQL" /tmp/fuse-corpus/grafana --type go 2>/dev/null
+      at: 2026-06-14T02:26:41.999544Z
+      classified: other
+    - cmd: rg -n "SecretsKVStoreSQL" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/ --type go -l
+      at: 2026-06-14T02:26:43.913642Z
+      classified: other
+    - cmd: cat -n /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/test_helpers.go
+      at: 2026-06-14T02:26:46.064383Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism references SecretsKVStoreSQL --format text 2>&1
+      at: 2026-06-14T02:26:46.442477Z
+      classified: other
+    - cmd: rg -n "func.*SecretsKVStoreSQL.*Get\|func.*Get.*SecretsKVStoreSQL" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T02:26:46.561843Z
+      classified: other
+    - cmd: rg -n "func (s \*SecretsKVStoreSQL)" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T02:26:47.052683Z
+      classified: other
+    - cmd: grep -n "func " /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T02:26:48.919815Z
+      classified: other
+    - cmd: cat -n /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql_test.go
+      at: 2026-06-14T02:26:49.127175Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg --type go -n "SecretsKVStoreSQL" --no-heading 2>&1 | head -80
+      at: 2026-06-14T02:26:49.344646Z
+      classified: other
+    - cmd: grep -n "func Test\|SecretsKVStoreSQL" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql_test.go | head -60
+      at: 2026-06-14T02:26:51.240648Z
+      classified: other
+    - cmd: cat -n /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T02:26:51.471022Z
+      classified: other
+    - cmd: grep -n "SecretsKVStoreSQL\|func Test" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/test_helpers.go | head -40
+      at: 2026-06-14T02:26:51.776128Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup "pkg/services/secrets/kvstore.SecretsKVStoreSQL.Get" --format text 2>&1 | head -80
+      at: 2026-06-14T02:26:52.052409Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "func.*SecretsKVStoreSQL.*Get" --type go -n 2>&1 | head -20
+      at: 2026-06-14T02:26:54.347636Z
+      classified: other
+    - cmd: grep -n "TestIntegrationSecretsKVStoreSQL\|SecretsKVStoreSQL\|\.Get(" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql_test.go | head -60
+      at: 2026-06-14T02:26:55.91703Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup SecretsKVStoreSQL --format text 2>&1 | head -30
+      at: 2026-06-14T02:26:56.991991Z
+      classified: other
+    - cmd: sed -n '14p' /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T02:26:59.079532Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg --type go -n "SecretsKVStoreSQL" pkg/services/secrets/kvstore/sql_test.go 2>&1
+      at: 2026-06-14T02:26:59.180673Z
+      classified: other
+    - cmd: rg -rn "\.Get(" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/ --type go | grep -v "_test.go"
+      at: 2026-06-14T02:27:02.111695Z
+      classified: other
+    - cmd: rg -rn "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/ --type go | grep -v "_test.go"
+      at: 2026-06-14T02:27:04.119484Z
+      classified: other
+    - cmd: sed -n '34p' /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql_test.go
+      at: 2026-06-14T02:27:05.789236Z
+      classified: other
+    - cmd: cat /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/kvstore.go | grep -n "\.Get\|Get\b" | head -30
+      at: 2026-06-14T02:27:06.866912Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "SecretsKVStoreSQL tests and callers" --terms "SecretsKVStoreSQL,SecretsKVStoreSQL.Get" --include graph,tests --format text 2>&1 | head -150
+      at: 2026-06-14T02:27:07.560969Z
+      classified: other
+    - cmd: rg -rn "kvStore\.Get\|secrets.*kvstore.*\.Get\|SecretsKVStore.*\.Get\|\.kvStore\.Get" /tmp/fuse-corpus/grafana --type go -l | grep -v "_test.go" | head -30
+      at: 2026-06-14T02:27:09.907249Z
+      classified: other
+    - cmd: rg -rn "secrets/kvstore" /tmp/fuse-corpus/grafana --type go -l | grep -v "_test.go" | head -30
+      at: 2026-06-14T02:27:11.998675Z
+      classified: other
+    - cmd: grep -n "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -20
+      at: 2026-06-14T02:27:15.715991Z
+      classified: other
+    - cmd: grep -n "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/serviceaccounts/extsvcaccounts/service.go | head -20
+      at: 2026-06-14T02:27:16.627266Z
+      classified: other
+    - cmd: grep -n "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/cloudmigration.go | head -20
+      at: 2026-06-14T02:27:16.805698Z
+      classified: other
+    - cmd: rg -n "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -20
+      at: 2026-06-14T02:27:19.210417Z
+      classified: other
+    - cmd: rg -n "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/serviceaccounts/extsvcaccounts/service.go | head -20
+      at: 2026-06-14T02:27:19.536207Z
+      classified: other
+    - cmd: rg -n "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/cloudmigration.go | head -20
+      at: 2026-06-14T02:27:20.098198Z
+      classified: other
+    - cmd: rg -n "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/xorm_store.go | head -20
+      at: 2026-06-14T02:27:22.274459Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "callers of SecretsKVStore Get method" --terms "SecretsKVStore.Get,kvstore.Get" --include graph --format text 2>&1 | head -200
+      at: 2026-06-14T02:27:22.775841Z
+      classified: other
+    - cmd: rg -rn "SecretsStore\.Get\|secretsStore\.Get\|SecretsKVStore\.Get\|skvStore\.Get\|kvStore\.Get\|\.kvStore\.Get" /tmp/fuse-corpus/grafana --type go | grep -v "_test.go" | head -30
+      at: 2026-06-14T02:27:25.47672Z
+      classified: other
+    - cmd: rg -n "kvstore\|kvStore\|SecretsStore" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -20
+      at: 2026-06-14T02:27:28.219425Z
+      classified: other
+    - cmd: rg -n "kvstore\|kvStore\|skvStore\|secretsStore" /tmp/fuse-corpus/grafana/pkg/services/serviceaccounts/extsvcaccounts/service.go | head -20
+      at: 2026-06-14T02:27:29.43262Z
+      classified: other
+    - cmd: rg -n "kvstore\|kvStore\|SecretsStore\|secretsKv" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -20
+      at: 2026-06-14T02:27:31.819919Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism references "SecretsKVStoreSQL.Get" --format text 2>&1 | head -100
+      at: 2026-06-14T02:27:35.484184Z
+      classified: other
+    - cmd: rg -n "SecretsStore\|secrets/kvstore" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -20
+      at: 2026-06-14T02:27:37.241003Z
+      classified: other
+    - cmd: head -60 /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go
+      at: 2026-06-14T02:27:39.277059Z
+      classified: other
+    - cmd: rg -n "SecretsStore\.Get" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -10
+      at: 2026-06-14T02:27:41.782689Z
+      classified: other
+    - cmd: sed -n '750,770p' /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go
+      at: 2026-06-14T02:27:44.197255Z
+      classified: other
+    - cmd: sed -n '470,485p' /tmp/fuse-corpus/grafana/pkg/services/serviceaccounts/extsvcaccounts/service.go
+      at: 2026-06-14T02:27:47.249029Z
+      classified: other
+    - cmd: sed -n '280,300p' /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/xorm_store.go
+      at: 2026-06-14T02:27:49.50207Z
+      classified: other
+    - cmd: rg -n "secretsStore\.Get\|\.secretsStore\.Get" /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/xorm_store.go | head -10
+      at: 2026-06-14T02:27:52.268848Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "callers of secrets kvstore Get to read a secret" --terms "SecretsKVStore,SecretsKVStoreSQL" --include graph --format text 2>&1 | grep -A5 "\.Get(" | grep -v "^--$" | head -100
+      at: 2026-06-14T02:27:52.740862Z
+      classified: other
+    - cmd: rg -n "secretsStore" /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/xorm_store.go | head -10
+      at: 2026-06-14T02:27:56.911487Z
+      classified: other
+    - cmd: sed -n '383,395p' /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/xorm_store.go
+      at: 2026-06-14T02:27:59.533766Z
+      classified: other
+    - cmd: sed -n '433,445p' /tmp/fuse-corpus/grafana/pkg/services/cloudmigration/cloudmigrationimpl/xorm_store.go
+      at: 2026-06-14T02:28:00.151003Z
+      classified: other
+    - cmd: rg -rn "\.Get\(" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/migrations/datasource_mig.go | head -10
+      at: 2026-06-14T02:28:02.522492Z
+      classified: other
+    - cmd: rg -n "kvStore" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/migrations/datasource_mig.go | head -20
+      at: 2026-06-14T02:28:04.868387Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "production callers reading secrets from kvstore" --terms "SecretsKVStore,GetAll,FixedKVStore" --include graph --format text 2>&1 | grep -E "^(//|func|->)" | head -60
+      at: 2026-06-14T02:28:06.838335Z
+      classified: other
+    - cmd: rg -rn "FixedKVStore\|\.kvStore\.Get\b" /tmp/fuse-corpus/grafana --type go | grep -v "_test.go" | head -20
+      at: 2026-06-14T02:28:08.639035Z
+      classified: other
+    - cmd: rg -rn "FixedKVStore" /tmp/fuse-corpus/grafana --type go | grep -v "_test.go" | head -20
+      at: 2026-06-14T02:28:10.924824Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup "pkg/services/cloudmigration/cloudmigrationimpl/cloudmigration.CreateToken" --format text 2>&1 | head -50
+      at: 2026-06-14T02:28:13.48572Z
+      classified: other
+    - cmd: rg -rn "kvstore\.With\b\|\"secrets/kvstore\"\|secretskvs\." /tmp/fuse-corpus/grafana --type go | grep -v "_test.go" | grep "\.Get\|With(" | head -20
+      at: 2026-06-14T02:28:17.053495Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "\.Get\(ctx" pkg/services/secrets/kvstore/ --type go -n 2>&1 | grep -v "_test.go" | head -30
+      at: 2026-06-14T02:28:17.888857Z
+      classified: other
+    - cmd: rg -n "func\|Get\|store\." /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/cache.go | head -30
+      at: 2026-06-14T02:28:20.310907Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "\.Get\(ctx" pkg/services/datasources/ --type go -n 2>&1 | grep -v "_test.go" | grep -i "secret\|kvstore\|kv\." | head -20
+      at: 2026-06-14T02:28:20.833685Z
+      classified: other
+    - cmd: rg -n "." /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/cache.go | head -60
+      at: 2026-06-14T02:28:22.162529Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "SecretsStore\.Get\|kvStore\.Get\|secrets.*\.Get\|\.kvstore.*\.Get" --type go -n -l 2>&1 | grep -v "_test.go" | head -20
+      at: 2026-06-14T02:28:23.853837Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "SecretsStore\.Get\|secretsStore\.Get\|secretStore\.Get\|SecretsKVStore.*\.Get" --type go -n 2>&1 | grep -v "_test.go" | head -30
+      at: 2026-06-14T02:28:26.390758Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "\.Get\(ctx.*orgId\|\.Get\(ctx.*OrgId\|\.Get\(ctx.*orgID\|\.Get\(ctx.*OrgID" --type go -n 2>&1 | grep -v "_test.go" | grep -i "secret\|kv" | head -30
+      at: 2026-06-14T02:28:30.391803Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "SecretsStore" pkg/services/datasources/ --type go -n 2>&1 | grep -v "_test.go" | head -20
+      at: 2026-06-14T02:28:34.056746Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "\.Get\(ctx" --type go -n 2>&1 | grep -v "_test.go" | grep "kvstore\|secrets" | grep -v "^Binary" | head -30
+      at: 2026-06-14T02:28:42.026743Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup "pkg/services/secrets/kvstore/migrations.datasourceMigration.migrate" --format text 2>&1 | head -30
+      at: 2026-06-14T02:28:49.476918Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && grep -n "kvStore.Get\|secretsStore.Get" pkg/services/secrets/kvstore/migrations/datasource_mig.go 2>&1 | head -20
+      at: 2026-06-14T02:28:52.393727Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && grep -n "kvStore\b" pkg/services/secrets/kvstore/migrations/datasource_mig.go 2>&1 | head -10
+      at: 2026-06-14T02:28:54.637833Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && grep -n "^func.*SecretsKVStoreSQL.*Get\|^func.*TestIntegration.*SQL" pkg/services/secrets/kvstore/sql.go pkg/services/secrets/kvstore/sql_test.go 2>&1
+      at: 2026-06-14T02:29:02.343628Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/g-mcp-vs-cli.py <<'PY'
+        import json, subprocess, time
+        ROOT="/tmp/fuse-corpus/grafana"; BIN="/Users/tapabratapal/bin/prism"
+        p=subprocess.Popen([BIN,"mcp",ROOT],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+        i=0
+        def call(m,pr):
+            global i; i+=1
+            p.stdin.write(json.dumps({"jsonrpc":"2.0","id":i,"method":m,"params":pr})+"\n"); p.stdin.flush()
+            return json.loads(p.stdout.readline())
+        def tool(n,a):
+            t0=time.time(); r=call("tools/call",{"name":n,"arguments":a}); return round(time.time()-t0,2)
+        call("initialize",{"protocolVersion":"2025-03-26","capabilities":{}}); time.sleep(1.0)
+        out={}
+        out["query_1"]=tool("prism_query",{"task":"secrets kvstore get callers","terms":["SecretsKVStoreSQL"],"include":["graph","tests"]})
+        out["query_2"]=tool("prism_query",{"task":"secrets kvstore set","terms":["SecretsKVStoreSQL"],"include":["graph"]})
+        out["lookup_1"]=tool("prism_lookup",{"name":"kvstore.SecretsKVStoreSQL.Get"})
+        out["references_1"]=tool("prism_references",{"name":"SecretsKVStoreSQL"})
+        out["references_2"]=tool("prism_references",{"name":"NewSQLSecretsKVStore"})
+        print(json.dumps(out,indent=2))
+        p.stdin.close(); p.wait(timeout=15)
+        PY
+        echo "=== MCP session (one persistent process) — seconds per call ==="
+        python3 /tmp/g-mcp-vs-cli.py
+        echo
+        echo "=== CLI cold (separate process each) — seconds per call ==="
+        cd /tmp/fuse-corpus/grafana
+        for c in "query secrets --terms SecretsKVStoreSQL --include graph,tests" "lookup kvstore.SecretsKVStoreSQL.Get" "references SecretsKVStoreSQL"; do
+          ( /usr/bin/time -p prism $c . --format text >/dev/null 2>/tmp/t.txt ) 2>/dev/null; echo "$c -> $(grep real /tmp/t.txt | awk '{print $2}')s"
+        done
+      at: 2026-06-14T02:41:46.264577Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== CLI cold (separate process, proper timing) ==="
+        for desc in "references SecretsKVStoreSQL" "lookup kvstore.SecretsKVStoreSQL.Get" "query|secretsget"; do :; done
+        ( time prism references SecretsKVStoreSQL . --format text >/dev/null 2>&1 ) 2>&1 | grep -E "real|cpu|total" | head -1
+        ( time prism lookup kvstore.SecretsKVStoreSQL.Get . --format text >/dev/null 2>&1 ) 2>&1 | grep -E "total" | head -1
+        ( time prism query "secrets get callers" --terms SecretsKVStoreSQL --include graph,tests . --format text >/dev/null 2>&1 ) 2>&1 | grep -E "total" | head -1
+
+        echo "=== MCP: references as the FIRST tool call (cold engine), then warm ==="
+        cat > /tmp/g-mcp-refs.py <<'PY'
+        import json, subprocess, time
+        ROOT="/tmp/fuse-corpus/grafana"; BIN="/Users/tapabratapal/bin/prism"
+        p=subprocess.Popen([BIN,"mcp",ROOT],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+        i=0
+        def call(m,pr):
+            global i; i+=1
+            p.stdin.write(json.dumps({"jsonrpc":"2.0","id":i,"method":m,"params":pr})+"\n"); p.stdin.flush()
+            return json.loads(p.stdout.readline())
+        def tool(n,a):
+            t0=time.time(); call("tools/call",{"name":n,"arguments":a}); return round(time.time()-t0,2)
+        call("initialize",{"protocolVersion":"2025-03-26","capabilities":{}}); time.sleep(1.0)
+        print(json.dumps({
+         "references_FIRST_cold": tool("prism_references",{"name":"SecretsKVStoreSQL"}),
+         "references_2_warm":     tool("prism_references",{"name":"NewSQLSecretsKVStore"}),
+         "query_FIRST":           tool("prism_query",{"task":"x","terms":["SecretsKVStoreSQL"],"include":["graph"]}),
+         "query_2_warm":          tool("prism_query",{"task":"y","terms":["SecretsKVStoreSQL"],"include":["graph"]}),
+        },indent=2))
+        p.stdin.close(); p.wait(timeout=20)
+        PY
+        python3 /tmp/g-mcp-refs.py
+      at: 2026-06-14T02:43:08.745125Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== pinned at ==="; git rev-parse --short HEAD
+        echo "=== bug-fix commits shortly AFTER the pin (ground-truth candidates) ==="
+        git log --oneline fe60132d..fe60132d~0 2>/dev/null | head -1
+        git log --all --oneline --since="2022-01-01" 2>/dev/null | head -3
+        echo "--- commits that descend from pin (fix-style, small file count) ---"
+        git log --oneline HEAD..origin/main 2>/dev/null | head -5 || echo "(no origin/main ahead locally)"
+        echo "=== what branches/refs exist ==="; git branch -a 2>/dev/null | head; git log --oneline -1 --all 2>/dev/null
+      at: 2026-06-14T02:52:40.511796Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "=== recent commits touching 3-7 Go files with tests (good localization tasks) ==="
+        git log --oneline -40 --no-merges 2>/dev/null | while read sha rest; do
+          files=$(git show --name-only --pretty=format: $sha 2>/dev/null | grep '\.go$' | grep -v '\.pb\.go')
+          n=$(echo "$files" | grep -c .)
+          hastest=$(echo "$files" | grep -c '_test\.go')
+          if [ "$n" -ge 3 ] && [ "$n" -le 7 ] && [ "$hastest" -ge 1 ]; then
+            echo "## $sha $rest  [${n} go files, ${hastest} test]"
+          fi
+        done 2>/dev/null | head -12
+      at: 2026-06-14T02:53:17.67659Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        git log --oneline -25 --no-merges 2>/dev/null | head -25
+      at: 2026-06-14T02:53:23.745011Z
+      classified: other
+    - cmd: which prism
+      at: 2026-06-14T02:54:38.278509Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "########## TICKET A: datasource secret read path ##########"
+        echo "--- A1: SecretsKVStoreSQL.Get def ---"; rg -n "func \(kv \*SecretsKVStoreSQL\) Get\(" pkg/services/secrets/kvstore/sql.go
+        echo "--- A2: datasource service reads a secret (SecretsStore.Get) ---"; rg -n "SecretsStore\.Get\(|secretsStore\.Get\(" pkg/services/datasources/service/datasource.go
+        echo "--- A3: cache wrapper delegating Get ---"; rg -n "func \(.*CachedKVStore\) Get|store\.Get\(ctx" pkg/services/secrets/kvstore/cache.go
+        echo "--- A4: integration test ---"; rg -n "func TestIntegrationSecretsKVStoreSQL" pkg/services/secrets/kvstore/sql_test.go
+
+        echo
+        echo "########## TICKET B candidate: datasource HTTP proxy ##########"
+        echo "--- proxy type + key methods ---"; rg -n "type DataSourceProxy struct|func \(proxy \*DataSourceProxy\)" pkg/api/pluginproxy/ds_proxy.go | head
+        echo "--- proxy test ---"; rg -ln "func Test" pkg/api/pluginproxy/ds_proxy_test.go | head
+      at: 2026-06-14T02:55:34.71487Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        echo "--- B5: DataSourceProxy constructor + HandleRequest callers ---"
+        rg -n "func NewDataSourceProxy" pkg/api/pluginproxy/ds_proxy.go
+        rg -rn "NewDataSourceProxy\(|\.HandleRequest\(\)" --glob '*.go' | grep -v "func (proxy" | grep -v _test | head
+        echo "--- A2b: the enclosing function at datasource.go:757 ---"
+        sed -n '745,760p' pkg/services/datasources/service/datasource.go | grep -n "func\|SecretsStore.Get"
+      at: 2026-06-14T02:56:00.960379Z
+      classified: other
+    - cmd: rg -n "GetDecryptedValues\|DecryptedValues\|secret.*Get\|GetSecret\|ReadSecret" /tmp/fuse-corpus/grafana/pkg/services/datasources/ -l 2>/dev/null | head -20
+      at: 2026-06-14T02:56:30.348029Z
+      classified: other
+    - cmd: find /tmp/fuse-corpus/grafana/pkg/services/datasources -type f -name "*.go" | head -30
+      at: 2026-06-14T02:56:32.589538Z
+      classified: other
+    - cmd: grep -n "secret\|Secret\|secureJson\|SecureJson\|SecureSettings\|GetByName\|\.Get(" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go | head -60
+      at: 2026-06-14T02:56:35.625619Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg -n "GetDecryptedValue\|secretsStore\|secrets.*Get\|GetSecret" --type go -l | head -20
+      at: 2026-06-14T02:56:36.505229Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg -rn "datasource" --type go -l | head -20
+      at: 2026-06-14T02:56:38.454903Z
+      classified: other
+    - cmd: sed -n '750,780p' /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go
+      at: 2026-06-14T02:56:38.744192Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && find . -type d -name "datasources" | head -20
+      at: 2026-06-14T02:56:41.019534Z
+      classified: other
+    - cmd: find /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore -type f -name "*.go" | sort
+      at: 2026-06-14T02:56:41.602444Z
+      classified: other
+    - cmd: rg -rn "DataSourceProxy\|datasourceProxy\|DSProxy" /tmp/fuse-corpus/grafana --include="*.go" -l 2>/dev/null | head -30
+      at: 2026-06-14T02:56:42.729024Z
+      classified: other
+    - cmd: grep -n "func.*Get\|SecretsKVStore\|interface" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/kvstore.go | head -30
+      at: 2026-06-14T02:56:43.988682Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && ls pkg/services/datasources/
+      at: 2026-06-14T02:56:44.349751Z
+      classified: other
+    - cmd: find /tmp/fuse-corpus/grafana -name "*.go" 2>/dev/null | head -5
+      at: 2026-06-14T02:56:45.118053Z
+      classified: other
+    - cmd: ls /tmp/fuse-corpus/grafana 2>/dev/null | head -20
+      at: 2026-06-14T02:56:45.548194Z
+      classified: other
+    - cmd: grep -n "func.*Get\b" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T02:56:45.722156Z
+      classified: other
+    - cmd: rg -l "DataSourceProxy\|datasource.*proxy\|DataSourceHTTPProxy" /tmp/fuse-corpus/grafana --include="*.go" -l | head -20
+      at: 2026-06-14T02:56:46.435854Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && ls pkg/services/datasources/service/
+      at: 2026-06-14T02:56:46.976952Z
+      classified: other
+    - cmd: rg -rn "DataSourceProxy\|datasourceProxy\|DSProxy" /tmp/fuse-corpus/grafana/pkg --include="*.go" -l 2>/dev/null | head -30
+      at: 2026-06-14T02:56:47.577842Z
+      classified: other
+    - cmd: sed -n '49,90p' /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go
+      at: 2026-06-14T02:56:47.779763Z
+      classified: other
+    - cmd: rg -l "DataSourceProxy" /tmp/fuse-corpus/grafana | grep "\.go$" | head -20
+      at: 2026-06-14T02:56:49.058627Z
+      classified: other
+    - cmd: find /tmp/fuse-corpus/grafana/pkg -name "*.go" 2>/dev/null | head -10
+      at: 2026-06-14T02:56:49.827231Z
+      classified: other
+    - cmd: ls /tmp/fuse-corpus/grafana/pkg 2>/dev/null | head -20
+      at: 2026-06-14T02:56:50.222572Z
+      classified: other
+    - cmd: grep -n "func.*Get\b\|cache\|Cache\|struct\|SecretsKVStore" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/cache.go | head -40
+      at: 2026-06-14T02:56:51.145176Z
+      classified: other
+    - cmd: find /tmp/fuse-corpus/grafana -type d -name "*proxy*" -o -type d -name "*datasource*" 2>/dev/null | head -20
+      at: 2026-06-14T02:56:52.32588Z
+      classified: other
+    - cmd: sed -n '29,44p' /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/cache.go
+      at: 2026-06-14T02:56:53.084175Z
+      classified: other
+    - cmd: prism read /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy.go --format text 2>&1 | head -150
+      at: 2026-06-14T02:56:54.192292Z
+      classified: other
+    - cmd: ls /tmp/fuse-corpus/grafana/pkg/services/datasourceproxy/ 2>/dev/null
+      at: 2026-06-14T02:56:54.390873Z
+      classified: other
+    - cmd: ls /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ 2>/dev/null
+      at: 2026-06-14T02:56:55.024752Z
+      classified: other
+    - cmd: grep -n "func Test\|SecretsKVStoreSQL\|integration\|Integration" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql_test.go | head -30
+      at: 2026-06-14T02:56:56.667595Z
+      classified: other
+    - cmd: grep -n "type.*struct\|func.*ServeHTTP\|func.*Proxy\|func.*proxy\|func.*Handle" /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy.go 2>/dev/null | head -40
+      at: 2026-06-14T02:56:58.183198Z
+      classified: other
+    - cmd: sed -n '34,80p' /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql_test.go
+      at: 2026-06-14T02:56:58.901849Z
+      classified: other
+    - cmd: grep -n "type.*struct\|func.*ServeHTTP\|func.*Proxy\|func.*proxy\|func.*Handle" /tmp/fuse-corpus/grafana/pkg/services/datasourceproxy/datasourceproxy.go 2>/dev/null | head -40
+      at: 2026-06-14T02:56:59.083752Z
+      classified: other
+    - cmd: grep -n "^type DataSourceProxy struct\|^func.*HandleRequest\|^func.*validateRequest\|^func.*hasAccessToRoute\|^func NewDataSourceProxy" /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy.go 2>/dev/null
+      at: 2026-06-14T02:57:02.395374Z
+      classified: other
+    - cmd: grep -n "func.*DecryptedValues\|func.*decryptSecureJsonDataFn\|func.*DecryptedValue\b" /tmp/fuse-corpus/grafana/pkg/services/datasources/service/datasource.go
+      at: 2026-06-14T02:57:02.57685Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism search "secret" --format text 2>/dev/null | head -40
+      at: 2026-06-14T02:57:04.684887Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism read pkg/api/pluginproxy/ds_proxy.go --format text 2>&1 | head -200
+      at: 2026-06-14T02:57:04.71141Z
+      classified: other
+    - cmd: head -120 /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy.go 2>/dev/null | tail -80
+      at: 2026-06-14T02:57:04.745895Z
+      classified: other
+    - cmd: grep -n "^func\|SecretsKVStoreSQL\b" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/sql.go | head -20
+      at: 2026-06-14T02:57:05.141538Z
+      classified: other
+    - cmd: sed -n '331,420p' /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy.go 2>/dev/null
+      at: 2026-06-14T02:57:05.331482Z
+      classified: other
+    - cmd: grep -n "^func\|CachedKVStore\b" /tmp/fuse-corpus/grafana/pkg/services/secrets/kvstore/cache.go | head -20
+      at: 2026-06-14T02:57:07.329503Z
+      classified: other
+    - cmd: ls /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy_test.go 2>/dev/null && head -10 /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy_test.go
+      at: 2026-06-14T02:57:08.361988Z
+      classified: other
+    - cmd: grep -rn "NewDataSourceProxy" /tmp/fuse-corpus/grafana --include="*.go" 2>/dev/null | grep -v "_test.go" | head -20
+      at: 2026-06-14T02:57:10.80997Z
+      classified: other
+    - cmd: grep -n "NewDataSourceProxy" /tmp/fuse-corpus/grafana/pkg/services/datasourceproxy/datasourceproxy.go 2>/dev/null
+      at: 2026-06-14T02:57:13.042483Z
+      classified: other
+    - cmd: grep -n "NewDataSourceProxy" /tmp/fuse-corpus/grafana/pkg/registry/apis/datasource/sub_proxy.go 2>/dev/null
+      at: 2026-06-14T02:57:13.46286Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism read pkg/api/pluginproxy/ds_proxy.go --format text 2>&1 | grep -n "func " | head -40
+      at: 2026-06-14T02:57:14.053967Z
+      classified: other
+    - cmd: sed -n '110,145p' /tmp/fuse-corpus/grafana/pkg/services/datasourceproxy/datasourceproxy.go 2>/dev/null
+      at: 2026-06-14T02:57:15.909839Z
+      classified: other
+    - cmd: sed -n '108,135p' /tmp/fuse-corpus/grafana/pkg/registry/apis/datasource/sub_proxy.go 2>/dev/null
+      at: 2026-06-14T02:57:16.243712Z
+      classified: other
+    - cmd: grep -n "func.*proxyDatasourceRequest\|func.*validateDataSourceRequest" /tmp/fuse-corpus/grafana/pkg/services/datasourceproxy/datasourceproxy.go 2>/dev/null
+      at: 2026-06-14T02:57:18.700046Z
+      classified: other
+    - cmd: grep -n "func.*Connect\|func.*ServeHTTP\|func.*Handler\|func.*proxy\|func.*Proxy" /tmp/fuse-corpus/grafana/pkg/registry/apis/datasource/sub_proxy.go 2>/dev/null | head -20
+      at: 2026-06-14T02:57:19.62541Z
+      classified: other
+    - cmd: grep -rn "NewDataSourceProxy" /tmp/fuse-corpus/grafana --include="*_test.go" 2>/dev/null | head -10
+      at: 2026-06-14T02:57:22.398882Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "datasource secret read store Get" --terms "GetDecryptedValues,DecryptedValues,secretsStore" --include graph,tests --format text 2>/dev/null | head -80
+      at: 2026-06-14T02:57:23.076475Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism read pkg/api/pluginproxy/ds_proxy.go --format text 2>&1 | grep -n "^func\|^// func" | head -40
+      at: 2026-06-14T02:57:25.271852Z
+      classified: other
+    - cmd: grep -n "^func (proxy \*DataSourceProxy) hasAccessToRoute\|^func (proxy \*DataSourceProxy) validateRequest\|^func (proxy \*DataSourceProxy) HandleRequest\|^func NewDataSourceProxy\|^type DataSourceProxy struct" /tmp/fuse-corpus/grafana/pkg/api/pluginproxy/ds_proxy.go 2>/dev/null
+      at: 2026-06-14T02:57:26.469788Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/api/pluginproxy/ds_proxy.go | grep "func " | head -40
+      at: 2026-06-14T02:57:27.283011Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/api/pluginproxy/ds_proxy.go | sed -n '331,430p'
+      at: 2026-06-14T02:57:30.348787Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup "service.Service.DecryptedValues" --format text 2>/dev/null
+      at: 2026-06-14T02:57:31.49224Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg -n "DecryptedValues\|secretsStore.*Get\|GetSecureJsonData" pkg/services/datasources/service/datasource.go | head -30
+      at: 2026-06-14T02:57:34.901828Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && grep -n "DecryptedValues\|secretsStore\|SecretsStore\|\.Get(" pkg/services/datasources/service/datasource.go | head -40
+      at: 2026-06-14T02:57:37.92651Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "DataSourceProxy callers tests" --terms "NewDataSourceProxy,HandleRequest,validateRequest,hasAccessToRoute" --include graph,tests --format text 2>&1 | head -200
+      at: 2026-06-14T02:57:47.482746Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism read pkg/services/datasources/service/datasource.go --format text 2>/dev/null | sed -n '750,790p'
+      at: 2026-06-14T02:57:47.818086Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg -rn "SecretsKVStore\|type.*KVStore" --type go -l | grep -i secret | head -20
+      at: 2026-06-14T02:57:51.196964Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && find . -type f -name "*.go" | xargs grep -l "SecretsKVStore" 2>/dev/null | head -20
+      at: 2026-06-14T02:57:55.416022Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "callers of NewDataSourceProxy" --terms "NewDataSourceProxy" --include graph --format text 2>&1 | grep -A5 "caller\|callee\|ref\|->.*NewDataSourceProxy\|NewDataSourceProxy.*<-" | head -80
+      at: 2026-06-14T02:58:02.308463Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism read pkg/services/secrets/kvstore/kvstore.go --format text 2>/dev/null
+      at: 2026-06-14T02:58:02.313582Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism query "all callers of NewDataSourceProxy constructor entry points" --terms "NewDataSourceProxy" --include graph --format text 2>&1 | grep "pkg/" | grep -v "_test.go" | sort -u | head -30
+      at: 2026-06-14T02:58:17.609783Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "NewDataSourceProxy\(" pkg/ --include="*.go" -l | grep -v "_test.go"
+      at: 2026-06-14T02:58:21.363638Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && rg "NewDataSourceProxy\(" pkg/ | grep -v "_test.go"
+      at: 2026-06-14T02:58:23.597842Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup "SQLSecretsKVStore.Get" --format text 2>/dev/null
+      at: 2026-06-14T02:58:27.195989Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup pluginproxy.DataSourceProxy --format text 2>&1 | head -40
+      at: 2026-06-14T02:58:29.17024Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/services/secrets/kvstore/sql.go | head -100
+      at: 2026-06-14T02:58:29.260564Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/services/secrets/kvstore/cache.go
+      at: 2026-06-14T02:58:31.998071Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup pluginproxy.DataSourceProxy.HandleRequest --format text 2>&1 | head -10
+      at: 2026-06-14T02:58:34.773188Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/services/secrets/kvstore/sql_test.go | head -80
+      at: 2026-06-14T02:58:35.524971Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/services/secrets/kvstore/sql_test.go | wc -l && grep -n "func Test" pkg/services/secrets/kvstore/sql_test.go
+      at: 2026-06-14T02:58:38.676597Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup pluginproxy.DataSourceProxy.validateRequest --format text 2>&1 | head -10
+      at: 2026-06-14T02:58:40.132351Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana && grep -n "func (s \*Service) DecryptedValues\|func (kv \*SecretsKVStoreSQL) Get\|func (kv \*CachedKVStore) Get\|func TestIntegrationSecretsKVStoreSQL" \
+          pkg/services/datasources/service/datasource.go \
+          pkg/services/secrets/kvstore/sql.go \
+          pkg/services/secrets/kvstore/cache.go \
+          pkg/services/secrets/kvstore/sql_test.go
+      at: 2026-06-14T02:58:42.963209Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && grep -n "s.SecretsStore.Get" pkg/services/datasources/service/datasource.go
+      at: 2026-06-14T02:58:45.260475Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism lookup "pluginproxy.DataSourceProxy.hasAccessToRoute" --format text 2>&1 | head -20
+      at: 2026-06-14T02:58:45.398223Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/api/pluginproxy/ds_proxy.go | grep -E "^[[:space:]]*(74|118|331|400)[[:space:]]"
+      at: 2026-06-14T02:58:49.016705Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism read pkg/services/datasourceproxy/datasourceproxy.go --format text 2>&1 | grep -n "func \|NewDataSourceProxy" | head -20
+      at: 2026-06-14T02:58:56.567404Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/services/datasourceproxy/datasourceproxy.go | sed -n '140,150p'
+      at: 2026-06-14T02:58:58.822792Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && prism read pkg/registry/apis/datasource/sub_proxy.go --format text 2>&1 | grep -n "func \|NewDataSourceProxy" | head -20
+      at: 2026-06-14T02:59:05.402349Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/registry/apis/datasource/sub_proxy.go | sed -n '115,130p'
+      at: 2026-06-14T02:59:07.340582Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/api/pluginproxy/ds_proxy_test.go | head -10
+      at: 2026-06-14T02:59:09.893854Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && cat -n pkg/api/pluginproxy/ds_proxy_test.go | grep "^.*func Test" | head -20
+      at: 2026-06-14T02:59:12.258791Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/replay.py <<'PY'
+        import json, subprocess, time
+        ROOT="/tmp/fuse-corpus/grafana"; BIN="/Users/tapabratapal/bin/prism"
+        # A representative prism-arm call sequence (mix of search/query/lookup/read/references)
+        SEQ=[
+         ("prism_search",{"query":"SecretsKVStore"}),
+         ("prism_query",{"task":"datasource secret read","terms":["SecretsKVStoreSQL"],"include":["graph","tests"]}),
+         ("prism_lookup",{"name":"kvstore.SecretsKVStoreSQL.Get"}),
+         ("prism_read",{"file":"pkg/services/secrets/kvstore/sql.go"}),
+         ("prism_query",{"task":"datasource proxy callers","terms":["NewDataSourceProxy"],"include":["graph"]}),
+         ("prism_lookup",{"name":"pluginproxy.DataSourceProxy.HandleRequest"}),
+         ("prism_references",{"name":"DataSourceProxy"}),
+        ]
+        p=subprocess.Popen([BIN,"mcp",ROOT],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+        i=0
+        def call(m,pr):
+            global i; i+=1
+            p.stdin.write(json.dumps({"jsonrpc":"2.0","id":i,"method":m,"params":pr})+"\n"); p.stdin.flush()
+            return p.stdout.readline()
+        call("initialize",{"protocolVersion":"2025-03-26","capabilities":{}}); time.sleep(1.0)
+        total=0; per=[]
+        for name,args in SEQ:
+            t0=time.time(); call("tools/call",{"name":name,"arguments":args}); dt=time.time()-t0
+            per.append((name,round(dt,2))); total+=dt
+        print("MCP warm session:")
+        for n,d in per: print(f"  {n:18s} {d}s")
+        print(f"  TOTAL {round(total,2)}s for {len(SEQ)} calls")
+        p.stdin.close(); p.wait(timeout=20)
+        PY
+        echo "=== MCP (one warm session) ==="
+        python3 /tmp/replay.py
+      at: 2026-06-14T03:00:47.960522Z
+      classified: other
+    - cmd: |-
+        cd /tmp/fuse-corpus/grafana
+        total=0
+        run(){ s=$( { /usr/bin/time -p "$@" >/dev/null 2>/dev/null; } 2>&1 | awk '/real/{print $2}' ); echo "$s"; }
+        declare -a cmds
+        t1=$( { /usr/bin/time -p prism search SecretsKVStore . --format text >/dev/null; } 2>&1 | awk '/real/{print $2}')
+        t2=$( { /usr/bin/time -p prism query "ds secret" --terms SecretsKVStoreSQL --include graph,tests . --format text >/dev/null; } 2>&1 | awk '/real/{print $2}')
+        t3=$( { /usr/bin/time -p prism lookup kvstore.SecretsKVStoreSQL.Get . --format text >/dev/null; } 2>&1 | awk '/real/{print $2}')
+        t4=$( { /usr/bin/time -p prism read pkg/services/secrets/kvstore/sql.go . --format text >/dev/null; } 2>&1 | awk '/real/{print $2}')
+        t5=$( { /usr/bin/time -p prism query "proxy callers" --terms NewDataSourceProxy --include graph . --format text >/dev/null; } 2>&1 | awk '/real/{print $2}')
+        t6=$( { /usr/bin/time -p prism lookup pluginproxy.DataSourceProxy.HandleRequest . --format text >/dev/null; } 2>&1 | awk '/real/{print $2}')
+        t7=$( { /usr/bin/time -p prism references DataSourceProxy . --format text >/dev/null; } 2>&1 | awk '/real/{print $2}')
+        echo "CLI cold (separate processes):"
+        echo "  search=$t1 query=$t2 lookup=$t3 read=$t4 query=$t5 lookup=$t6 references=$t7"
+        python3 -c "v=[$t1,$t2,$t3,$t4,$t5,$t6,$t7]; print('  TOTAL %.2fs for 7 calls'%sum(v))"
+      at: 2026-06-14T03:01:41.645598Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== prism toolLookup ==="; sed -n '/func (h \*Handler) toolLookup/,/^}/p' internal/mcp/tools.go | head -70
+      at: 2026-06-14T03:12:11.622172Z
+      classified: other
+    - cmd: go build ./... 2>&1 | tail -5 && echo BUILD_OK && go test ./internal/mcp/ -run 'Lookup|Tool' -count=1 2>&1 | tail -6
+      at: 2026-06-14T03:13:41.547643Z
+      classified: test
+    - cmd: |-
+        go build -o /tmp/prism-fix ./cmd/prism
+        echo "=== where are the DecryptedValues symbols? ==="
+        cd /tmp/fuse-corpus/grafana
+        rg -n "func.*DecryptedValues\(" --glob '*.go' | head
+        echo "=== lookup BEFORE-style (type-qualified) with fix ==="
+        /tmp/prism-fix lookup service.Service.DecryptedValues . --format text 2>/dev/null | head -3
+        echo "=== lookup SecretsKVStoreSQL.Get with fix ==="
+        /tmp/prism-fix lookup kvstore.SecretsKVStoreSQL.Get . --format text 2>/dev/null | head -3
+      at: 2026-06-14T03:14:08.698924Z
+      classified: build
+    - cmd: |-
+        go build -o /tmp/prism-fix ./cmd/prism 2>&1 | tail -3 && echo BUILD_OK
+        cd /tmp/fuse-corpus/grafana
+        echo "=== lookup SecretsKVStoreSQL.Get (expect sql.go:49) ==="
+        /tmp/prism-fix lookup kvstore.SecretsKVStoreSQL.Get . --format text 2>/dev/null | head -2
+        echo "=== lookup DataSourceProxy.HandleRequest (expect ds_proxy.go) ==="
+        /tmp/prism-fix lookup pluginproxy.DataSourceProxy.HandleRequest . --format text 2>/dev/null | head -2
+        echo "=== lookup Service.DecryptedValues (ambiguous: 2 real Services) ==="
+        /tmp/prism-fix lookup datasources.Service.DecryptedValues . --format json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); s=d.get('symbol',{}); print('picked:', s.get('filePath')); print('ambiguous:', d.get('ambiguous'), '| candidates:', d.get('candidates'))" 2>/dev/null
+      at: 2026-06-14T03:15:20.492223Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism && rg -n "func dedupeSymbolsByID" internal/mcp/ || echo "NOT FOUND — need to add"
+      at: 2026-06-14T03:16:33.842632Z
+      classified: other
+    - cmd: |-
+        go build -o /tmp/prism-fix ./cmd/prism 2>&1 | tail -3 && echo BUILD_OK
+        cd /tmp/fuse-corpus/grafana
+        echo "=== SecretsKVStoreSQL.Get (expect sql.go:49) ==="; /tmp/prism-fix lookup kvstore.SecretsKVStoreSQL.Get . --format text 2>/dev/null | head -2
+        echo "=== DataSourceProxy.HandleRequest (expect ds_proxy.go) ==="; /tmp/prism-fix lookup pluginproxy.DataSourceProxy.HandleRequest . --format text 2>/dev/null | head -2
+        echo "=== CachedKVStore.Get (expect cache.go) ==="; /tmp/prism-fix lookup kvstore.CachedKVStore.Get . --format text 2>/dev/null | head -2
+        echo "=== bare Get still works (no crash) ==="; /tmp/prism-fix lookup Get . --format json 2>/dev/null | python3 -c "import json,sys;d=json.load(sys.stdin);print('symbol:',d.get('symbol',{}).get('qualifiedName'))" 2>/dev/null
+      at: 2026-06-14T03:17:12.507867Z
+      classified: build
+    - cmd: go test ./internal/mcp/ -run 'Lookup|TestToolLookup' -count=1 -v 2>&1 | tail -12 && echo "=== full mcp suite ===" && go test ./internal/mcp/ -count=1 2>&1 | tail -2
+      at: 2026-06-14T03:17:38.701124Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run TestToolLookup_TypeMethodDisambiguation -count=1 -v 2>&1 | tail -6
+      at: 2026-06-14T03:17:46.813751Z
+      classified: test
+    - cmd: |-
+        echo "=== GROVE (should be clean, no source changes) ==="; git -C /Users/tapabratapal/Projects/provasign/grove status --short | grep -vE '^\?\?' || echo "(no tracked changes)"
+        echo "=== PRISM (lookup fix) ==="; git -C /Users/tapabratapal/Projects/provasign/prism status --short | grep -vE '^\?\?'
+        echo "=== PRISM untracked ==="; git -C /Users/tapabratapal/Projects/provasign/prism status --short | grep -E '^\?\?'
+      at: 2026-06-14T03:20:23.615611Z
+      classified: other
+    - cmd: go build ./... && echo BUILD_OK && go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -8; go test ./... 2>&1 | tail -1
+      at: 2026-06-14T03:20:38.452178Z
+      classified: test
+notes:
+    - text: continuation of session f0c293f6-c719-4909-9c8f-d0c8b7e41213 — events captured after its evidence was finalized
+      at: 2026-06-14T02:21:41.468726Z
+redactions: 0
