@@ -56,6 +56,11 @@ Usage:
   prism references <name> [dir]   Find where a symbol is USED (every code occurrence,
                                   comments/strings excluded), grouped by file
                                   --format text|lean|json  Output format (default: text)
+  prism change-impact <query> [dir]  Deterministic change-set for a method signature change:
+                                  declaration(s), override/implementation family (subtype
+                                  closure), super-declarations, and all resolved callers.
+                                  query format: Type.method or Type.method(ParamType, ...)
+                                  --format text|lean|json  Output format (default: json)
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Submit quality feedback for a Prism result
@@ -113,6 +118,8 @@ func Run(args []string) int {
 		return cmdResolve(rest)
 	case "edges":
 		return cmdEdges(rest)
+	case "change-impact":
+		return cmdChangeImpact(rest)
 	case "compact":
 		return cmdCompact(rest)
 	case "feedback":
@@ -1245,6 +1252,41 @@ func cmdReferences(args []string) int {
 	out, err := invokeWithPersistentLedger(dir, "prism_references", map[string]any{"name": name})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "references:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+func cmdChangeImpact(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism change-impact <query> [dir]")
+		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
+		return 2
+	}
+	query := args[0]
+	dir := "."
+	format := formatJSON
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_change_impact", map[string]any{"query": query})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "change-impact:", err)
 		return 1
 	}
 	printOutput(out, format)
