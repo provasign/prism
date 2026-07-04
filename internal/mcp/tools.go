@@ -207,6 +207,12 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolDrift(ctx, args)
 	case "prism_references":
 		return h.toolReferences(ctx, args)
+	case "prism_resolve":
+		return h.toolResolve(ctx, args)
+	case "prism_edges":
+		return h.toolEdges(ctx, args)
+	case "prism_change_impact":
+		return h.toolChangeImpact(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -237,7 +243,8 @@ func sameRoot(dir, root string) bool {
 func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_references", "prism_index", "prism_drift",
+		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
+		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
@@ -334,6 +341,15 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Symbol name, optionally package-qualified ('internal/cli.Run' or bare 'Run').",
 				},
+				"fields": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}},
+					"description": "Which columns to read. Omit for the full body. e.g. [signature] for just the contract.",
+				},
+				"file": map[string]any{
+					"type":        "string",
+					"description": "Disambiguate a name shared across packages: file path (or substring, as shown by prism_resolve).",
+				},
 			},
 		}
 	case "prism_references":
@@ -345,6 +361,27 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Symbol name to find usages of (a class/type/function/constant).",
 				},
+			},
+		}
+	case "prism_resolve":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"name"},
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type":        "string",
+					"description": "Bare or qualified name (e.g. \"Get\" or \"SecretsKVStoreSQL.Get\").",
+				},
+			},
+		}
+	case "prism_edges":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"name"},
+			"properties": map[string]any{
+				"name":      map[string]any{"type": "string", "description": "Seed symbol (bare or Type.Method)."},
+				"direction": map[string]any{"type": "string", "enum": []string{"out", "in", "both"}, "description": "out = edges from the seed (callees, uses-type); in = edges into it (callers, tests). Default both."},
+				"kinds":     map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": []string{"calls", "tests", "uses-type", "implements", "extends", "overrides", "contains", "defines", "imports"}}, "description": "Edge kinds to return. Default [calls,tests]."},
 			},
 		}
 	case "prism_index":
@@ -380,6 +417,17 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
+	case "prism_change_impact":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"query"},
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\".",
+				},
+			},
+		}
 	default:
 		return open
 	}
@@ -396,14 +444,35 @@ func toolDescription(name string) string {
 		return "Whole-file read with session compression: full on first read, SHA-pointer on repeats. " +
 			"For a single function use prism_lookup (~5× cheaper)."
 	case "prism_search":
-		return "Substring search over indexed symbol names, signatures, and docstrings. " +
-			"Use when you know a symbol's name but not which file it lives in. " +
-			"Does NOT search source code text — for that, use grep."
+		return "DISCOVERY: substring search over indexed symbol names, signatures, and docstrings — " +
+			"the on-ramp when you only have a concept and need to FIND an anchor symbol. " +
+			"Does NOT search source code text — for that, use grep (also fine for discovery). " +
+			"Workflow: search/grep to FIND an anchor, then prism_resolve/prism_edges/prism_lookup to TRAVERSE " +
+			"and READ from it. Don't guess names with resolve when you haven't searched yet."
 	case "prism_lookup":
-		return "Retrieve the complete source of one symbol by qualified name " +
-			"(e.g. 'ranking.Select' or 'mcp.Handler'). " +
-			"Use this instead of prism_read when you want one function body — " +
-			"costs ~5× fewer tokens than reading the whole file."
+		return "Read one symbol by qualified name (e.g. 'ranking.Select', " +
+			"'kvstore.SecretsKVStoreSQL.Get'). Choose which COLUMNS to read with fields=[...]: " +
+			"signature (the contract, cheap), doc, body (full source), kind, parent, modifiers — " +
+			"omit fields to get the whole body. Every result includes the exact file:line, which is " +
+			"AUTHORITATIVE: navigate straight to it, do not re-confirm with grep. ~5× cheaper than " +
+			"reading the whole file; fields=[signature] is cheaper still."
+	case "prism_resolve":
+		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
+			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
+			"The file:line is AUTHORITATIVE — trust it, don't re-grep to verify. " +
+			"NOTE: resolve does not DISCOVER. If you don't yet know a symbol name (you only have a concept, " +
+			"like 'where a secret is read'), first FIND the anchor with grep/prism_search/prism_references, " +
+			"then resolve/traverse from it. Never guess names by trying resolve repeatedly."
+	case "prism_edges":
+		return "Walk the code graph one hop from a symbol. The graph has these edge kinds: " +
+			"calls (X calls Y), tests (a test exercises Y), uses-type (X mentions a type), " +
+			"implements/extends/overrides, contains, defines, imports. direction=out gives edges FROM " +
+			"the seed (its callees, the types it uses); direction=in gives edges INTO it (its callers, " +
+			"its tests). Recipes: what does X call → (out, [calls]); who calls X → (in, [calls]); " +
+			"what tests X → (in, [tests]); interface dispatch resolves: (out, [calls]) returns the " +
+			"implementors actually called. Results are grouped by '<kind> <direction>' and capped with a " +
+			"true total. Each neighbor's file:line is AUTHORITATIVE — trust it, don't re-grep to verify. " +
+			"This is the precise primitive — prefer it over prism_query when you know the anchor."
 	case "prism_references":
 		return "Find where a symbol (class/type/function/constant) is USED across the codebase — " +
 			"every code occurrence of the name, grouped by file, excluding comments and strings. " +
@@ -435,6 +504,15 @@ func toolDescription(name string) string {
 	case "prism_evidence":
 		return "Convert a sub-agent prose summary into typed {claim, file, line} citations. " +
 			"Send to parent agent instead of prose. Each claim is dereferenceable via prism_lookup."
+	case "prism_change_impact":
+		return "Deterministic change-set for a method signature change: pass 'Type.method' or " +
+			"'Type.method(ParamType, ...)' and get back the exact declaration(s), every " +
+			"override/implementation in the subtype closure (family), super-declarations, and " +
+			"all resolved callers — in one engine call, milliseconds, no token cost. " +
+			"Use this instead of prism_references + manual override hunting when you need to " +
+			"find every site affected by a method signature change. Result groups: declarations " +
+			"(the method itself), family (overrides + implementations), supers (supertype decls, " +
+			"informational), callers (call sites into the set)."
 	}
 	return "Prism tool: " + name
 }
@@ -1014,6 +1092,81 @@ func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any,
 	}, nil
 }
 
+func (h *Handler) toolResolve(ctx context.Context, args map[string]any) (any, error) {
+	name := stringArg(args, "name", "")
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+	cands, err := h.Grove.Resolve(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]map[string]any, 0, len(cands))
+	for _, c := range cands {
+		entry := map[string]any{"name": c.Name, "kind": c.Kind, "file": c.File, "line": c.Line}
+		if c.TestDouble {
+			entry["testDouble"] = true
+		}
+		out = append(out, entry)
+	}
+	return map[string]any{"name": name, "count": len(out), "candidates": out}, nil
+}
+
+func (h *Handler) toolEdges(ctx context.Context, args map[string]any) (any, error) {
+	name := stringArg(args, "name", "")
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+	direction := stringArg(args, "direction", "both")
+	var kinds []string
+	if raw, ok := args["kinds"]; ok {
+		if arr, ok := raw.([]any); ok {
+			for _, v := range arr {
+				if s, ok := v.(string); ok {
+					kinds = append(kinds, s)
+				}
+			}
+		}
+	}
+	edges, err := h.Grove.Edges(ctx, name, direction, kinds)
+	if err != nil {
+		return nil, err
+	}
+	// Group by "<edgeType> <direction>" (e.g. "calls out") and cap each group,
+	// reporting the true total so a hot symbol can't dump 300 callers.
+	const cap = 50
+	type group struct {
+		shown []map[string]any
+		total int
+	}
+	groups := map[string]*group{}
+	order := []string{}
+	for _, e := range edges {
+		key := e.EdgeType + " " + e.Direction
+		g, ok := groups[key]
+		if !ok {
+			g = &group{}
+			groups[key] = g
+			order = append(order, key)
+		}
+		g.total++
+		if len(g.shown) < cap {
+			entry := map[string]any{"name": e.Name, "file": e.File, "line": e.Line, "kind": e.Kind}
+			if e.TestDouble {
+				entry["testDouble"] = true
+			}
+			g.shown = append(g.shown, entry)
+		}
+	}
+	rel := map[string]any{}
+	for _, key := range order {
+		g := groups[key]
+		m := map[string]any{"shown": len(g.shown), "total": g.total, "symbols": g.shown}
+		rel[key] = m
+	}
+	return map[string]any{"name": name, "direction": direction, "edges": rel}, nil
+}
+
 // dedupeSymbolsByID drops duplicate symbols (same ID) while preserving order,
 // used after merging two symbol searches into one candidate pool.
 func dedupeSymbolsByID(syms []grove.SymbolRecord) []grove.SymbolRecord {
@@ -1039,11 +1192,57 @@ func isTestDouble(path string) bool {
 		strings.Contains(lp, "stub") || strings.Contains(lp, "/testdata/")
 }
 
+// projectSymbol returns only the requested columns of a symbol. file, line and
+// name are always included as identity. Recognized fields: signature, doc, body,
+// kind, parent, modifiers. An empty list means "default" (caller adds the body).
+func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
+	qn := s.QualifiedName
+	if qn == "" {
+		qn = s.Name
+	}
+	out := map[string]any{"name": qn, "file": s.FilePath, "line": s.Span.Start}
+	for _, f := range fields {
+		switch strings.ToLower(f) {
+		case "signature", "sig":
+			out["signature"] = s.Signature
+		case "doc", "docstring":
+			out["doc"] = s.Docstring
+		case "body", "source":
+			out["body"] = s.RawText
+		case "kind":
+			out["kind"] = string(s.Kind)
+		case "parent":
+			out["parent"] = s.ParentSymbol
+		case "modifiers":
+			out["modifiers"] = s.Modifiers
+		case "name", "file", "line":
+			// already included as identity
+		}
+	}
+	return out
+}
+
 func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, error) {
 	name := stringArg(args, "name", stringArg(args, "qualifiedName", ""))
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
+	// Optional column projection: return only the requested fields (signature,
+	// doc, body, kind, parent, modifiers) instead of the full source body.
+	var fields []string
+	if raw, ok := args["fields"]; ok {
+		if arr, ok := raw.([]any); ok {
+			for _, v := range arr {
+				if sv, ok := v.(string); ok {
+					fields = append(fields, sv)
+				}
+			}
+		}
+	}
+	// Optional file disambiguator: when several symbols share a qualified name
+	// (e.g. two packages with a Service.DecryptedValues), pass the file path (or
+	// any substring of it, as shown by prism_resolve) to pick the right one.
+	fileHint := strings.ToLower(stringArg(args, "file", ""))
 
 	// Accept "pkg/path.SymbolName" and "github.com/mod/pkg/path.SymbolName".
 	// Split on the last '.' whose right side contains no '/' (i.e. is a symbol
@@ -1087,6 +1286,21 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 		}
 	}
 	syms = dedupeSymbolsByID(filterGeneratedPrismContext(syms))
+
+	// File disambiguator: restrict to candidates whose path contains the hint, so
+	// a name shared across packages resolves to the one the agent means. Ignored
+	// if it would empty the set (a stale/typo'd hint shouldn't lose the symbol).
+	if fileHint != "" {
+		var kept []grove.SymbolRecord
+		for _, s := range syms {
+			if strings.Contains(strings.ToLower(s.FilePath), fileHint) {
+				kept = append(kept, s)
+			}
+		}
+		if len(kept) > 0 {
+			syms = kept
+		}
+	}
 
 	// pkgMatches returns true when s lives in the package identified by pkgHint.
 	// pkgHint may be a short path ("internal/cli") or a full module path
@@ -1139,7 +1353,13 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 		}
 	}
 	if bestIdx >= 0 {
-		out := map[string]any{"symbol": syms[bestIdx], "content": syms[bestIdx].RawText}
+		var out map[string]any
+		if len(fields) > 0 {
+			// Column projection requested: return just those fields.
+			out = projectSymbol(syms[bestIdx], fields)
+		} else {
+			out = map[string]any{"symbol": syms[bestIdx], "content": syms[bestIdx].RawText}
+		}
 		// A real tie at the top (same score, different symbols sharing the name)
 		// is genuine ambiguity the qualifier couldn't resolve — surface it with
 		// candidates rather than silently picking one.
@@ -1369,6 +1589,43 @@ func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, err
 	}
 
 	return map[string]any{"recorded": entry, "totalRatings": len(h.feedback)}, nil
+}
+
+func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (any, error) {
+	query := stringArg(args, "query", "")
+	if query == "" {
+		return nil, errors.New("query is required")
+	}
+	r, err := h.Grove.ChangeImpact(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("change-impact: %w", err)
+	}
+	compact := func(syms []grove.SymbolRecord) []map[string]any {
+		out := make([]map[string]any, 0, len(syms))
+		for _, s := range syms {
+			qn := s.QualifiedName
+			if qn == "" {
+				qn = s.Name
+			}
+			out = append(out, map[string]any{
+				"name":          s.Name,
+				"qualifiedName": qn,
+				"filePath":      s.FilePath,
+				"line":          s.Span.Start,
+				"kind":          s.Kind,
+				"signature":     s.Signature,
+			})
+		}
+		return out
+	}
+	return map[string]any{
+		"query":        r.Query,
+		"declarations": compact(r.Declarations),
+		"supers":       compact(r.Supers),
+		"family":       compact(r.Family),
+		"callers":      compact(r.Callers),
+		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers),
+	}, nil
 }
 
 // --- helpers -------------------------------------------------------------

@@ -92,3 +92,15 @@ type FileGraphDiff struct {
 	Renamed  []SymbolChange `json:"renamed,omitempty"`
 	Breaking []SymbolChange `json:"breakingChanges"`
 }
+
+// ChangeImpactResult is the deterministic change-set for a method signature
+// change: the declaration(s), the override/implementation family in the
+// subtype closure, super-declarations up the hierarchy, and every method
+// with a resolved call edge into the set.
+type ChangeImpactResult struct {
+	Query        string         `json:"query"`
+	Declarations []SymbolRecord `json:"declarations"`
+	Supers       []SymbolRecord `json:"supers"`
+	Family       []SymbolRecord `json:"family"`
+	Callers      []SymbolRecord `json:"callers"`
+}

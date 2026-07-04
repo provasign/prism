@@ -300,6 +300,160 @@ func isCallNeighborTestDouble(path string) bool {
 		strings.Contains(p, "stub") || strings.Contains(p, "/testdata/")
 }
 
+// EdgeRecord is one typed graph edge from a resolved seed to a neighbor symbol.
+type EdgeRecord struct {
+	Name       string  `json:"name"`     // neighbor's qualified name
+	File       string  `json:"file"`     // neighbor's file path
+	Line       int     `json:"line"`     // neighbor's start line
+	Kind       string  `json:"kind"`     // symbol kind of the neighbor
+	EdgeType   string  `json:"edgeType"` // calls, tests, uses-type, implements…
+	Direction  string  `json:"direction"`
+	Confidence float64 `json:"confidence"`
+	TestDouble bool    `json:"testDouble,omitempty"`
+}
+
+// ResolvedSymbol is a candidate the agent can anchor a graph query on.
+type ResolvedSymbol struct {
+	Name       string `json:"name"` // qualified name
+	Kind       string `json:"kind"`
+	File       string `json:"file"`
+	Line       int    `json:"line"`
+	TestDouble bool   `json:"testDouble,omitempty"`
+}
+
+// edgeKindByName maps the public edge-kind strings (the schema the agent is told)
+// to Grove's edge types.
+var edgeKindByName = map[string]groveeng.EdgeType{
+	"calls":      groveeng.EdgeCalls,
+	"tests":      groveeng.EdgeTests,
+	"uses-type":  groveeng.EdgeUsesType,
+	"implements": groveeng.EdgeImplements,
+	"extends":    groveeng.EdgeExtends,
+	"overrides":  groveeng.EdgeOverrides,
+	"contains":   groveeng.EdgeContains,
+	"defines":    groveeng.EdgeDefines,
+	"imports":    groveeng.EdgeImports,
+}
+
+// Edges returns a seed symbol's direct typed graph neighbors. direction is
+// "out", "in", or "both"; kinds filters by edge-kind name (empty = calls+tests).
+// This is the primitive the agent drives: "what does X call" is
+// (direction=out, kinds=[calls]); "who calls X" is (in, [calls]); "what tests X"
+// is (in, [tests]).
+func (c *Client) Edges(ctx context.Context, name, direction string, kinds []string) ([]EdgeRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	if len(kinds) == 0 {
+		kinds = []string{"calls", "tests"}
+	}
+	var types []groveeng.EdgeType
+	for _, k := range kinds {
+		if t, ok := edgeKindByName[strings.ToLower(k)]; ok {
+			types = append(types, t)
+		}
+	}
+	ns, err := e.Neighbors(ctx, name, direction, types...)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]EdgeRecord, 0, len(ns))
+	for _, n := range ns {
+		qn := n.Symbol.QualifiedName
+		if qn == "" {
+			qn = n.Symbol.Name
+		}
+		out = append(out, EdgeRecord{
+			Name:       qn,
+			File:       n.Symbol.FilePath,
+			Line:       n.Symbol.Span.Start,
+			Kind:       string(n.Symbol.Kind),
+			EdgeType:   string(n.EdgeType),
+			Direction:  n.Direction,
+			Confidence: n.Confidence,
+			TestDouble: isCallNeighborTestDouble(n.Symbol.FilePath),
+		})
+	}
+	return out, nil
+}
+
+// Resolve returns the symbols a name could anchor on — exact name or qualified
+// (including Type.Method) matches — each tagged with kind, location, and whether
+// it's a test double, so the agent can pick the right seed before asking Edges.
+func (c *Client) Resolve(ctx context.Context, name string) ([]ResolvedSymbol, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	leaf := name
+	if i := strings.LastIndexByte(name, '.'); i >= 0 && i+1 < len(name) {
+		leaf = name[i+1:]
+	}
+	syms, err := e.Symbols(ctx, leaf, 50)
+	if err != nil {
+		return nil, err
+	}
+	qualified := name != leaf // input carried a Type./pkg. qualifier
+	if qualified {
+		// A bare-leaf search caps before the intended Type.Method; also search the
+		// qualified form (searchRank matches qualified_name exactly) so the exact
+		// symbol is in the pool. Prepend so it leads.
+		if extra, qerr := e.Symbols(ctx, name, 25); qerr == nil {
+			syms = append(extra, syms...)
+		}
+	}
+	var exact, real, doubles []ResolvedSymbol
+	for _, s := range syms {
+		isExact := qualified && s.QualifiedName == name
+		match := isExact || s.Name == leaf || s.QualifiedName == leaf ||
+			strings.HasSuffix(s.QualifiedName, "."+leaf)
+		if !match {
+			continue
+		}
+		rs := ResolvedSymbol{Name: s.QualifiedName, Kind: string(s.Kind), File: s.FilePath, Line: s.Span.Start}
+		if rs.Name == "" {
+			rs.Name = s.Name
+		}
+		switch {
+		case isExact:
+			exact = append(exact, rs)
+		case isCallNeighborTestDouble(s.FilePath):
+			rs.TestDouble = true
+			doubles = append(doubles, rs)
+		default:
+			real = append(real, rs)
+		}
+	}
+	// A qualified input names one symbol — return just the exact match(es). For a
+	// bare name, return all candidates: real implementations first, doubles last.
+	if qualified && len(exact) > 0 {
+		return exact, nil
+	}
+	return append(append(exact, real...), doubles...), nil
+}
+
+// ChangeImpact resolves a "Type.method" or "Type.method(ParamType, ...)"
+// query to the exact change-set: declaration(s), override/implementation
+// family in the subtype closure, super-declarations, and callers.
+func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactResult, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	r, err := e.ChangeImpact(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return &ChangeImpactResult{
+		Query:        r.Query,
+		Declarations: convertSymbols(r.Declarations),
+		Supers:       convertSymbols(r.Supers),
+		Family:       convertSymbols(r.Family),
+		Callers:      convertSymbols(r.Callers),
+	}, nil
+}
+
 // References returns code occurrences of a symbol name — the reference layer
 // ("where is X used"), near-complete for types/classes the call graph misses.
 func (c *Client) References(ctx context.Context, name string) (groveeng.ReferenceResult, error) {

@@ -109,6 +109,10 @@ func Run(args []string) int {
 		return cmdLookup(rest)
 	case "references", "refs":
 		return cmdReferences(rest)
+	case "resolve":
+		return cmdResolve(rest)
+	case "edges":
+		return cmdEdges(rest)
 	case "compact":
 		return cmdCompact(rest)
 	case "feedback":
@@ -1081,9 +1085,25 @@ func cmdLookup(args []string) int {
 	name := args[0]
 	dir := "."
 	format := formatText
+	fileHint := ""
+	var fields []any
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--fields":
+			if i+1 < len(args) {
+				for _, f := range strings.Split(args[i+1], ",") {
+					if f = strings.TrimSpace(f); f != "" {
+						fields = append(fields, f)
+					}
+				}
+				i++
+			}
+		case "--file":
+			if i+1 < len(args) {
+				fileHint = args[i+1]
+				i++
+			}
 		case "--format":
 			if i+1 < len(args) {
 				switch outputFormat(args[i+1]) {
@@ -1098,9 +1118,99 @@ func cmdLookup(args []string) int {
 			}
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_lookup", map[string]any{"name": name})
+	callArgs := map[string]any{"name": name}
+	if len(fields) > 0 {
+		callArgs["fields"] = fields
+	}
+	if fileHint != "" {
+		callArgs["file"] = fileHint
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_lookup", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+func cmdResolve(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism resolve <name> [dir]")
+		return 2
+	}
+	name := args[0]
+	dir := "."
+	format := formatText
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		if a == "--format" && i+1 < len(args) {
+			switch outputFormat(args[i+1]) {
+			case formatText, formatLean, formatJSON:
+				format = outputFormat(args[i+1])
+			}
+			i++
+		} else if !strings.HasPrefix(a, "-") {
+			dir = a
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_resolve", map[string]any{"name": name})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "resolve:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+func cmdEdges(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism edges <name> [--dir out|in|both] [--kinds calls,tests,...] [dir]")
+		return 2
+	}
+	name := args[0]
+	dir := "."
+	direction := "both"
+	var kinds []any
+	format := formatText
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--dir", "--direction":
+			if i+1 < len(args) {
+				direction = args[i+1]
+				i++
+			}
+		case "--kinds":
+			if i+1 < len(args) {
+				for _, k := range strings.Split(args[i+1], ",") {
+					if k = strings.TrimSpace(k); k != "" {
+						kinds = append(kinds, k)
+					}
+				}
+				i++
+			}
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	callArgs := map[string]any{"name": name, "direction": direction}
+	if len(kinds) > 0 {
+		callArgs["kinds"] = kinds
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_edges", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "edges:", err)
 		return 1
 	}
 	printOutput(out, format)
@@ -1570,6 +1680,74 @@ func printTextOutput(m map[string]any) {
 						fmt.Printf("//   %s (%s)\n", name, fp)
 					}
 				}
+			}
+		}
+		return
+	}
+	// prism_lookup with --fields: projected columns (name/file/line + selected),
+	// no "content"/"symbol". Render the requested columns compactly.
+	if _, hasContent := m["content"]; !hasContent {
+		if _, hasSymbols := m["symbols"]; !hasSymbols {
+			if _, hasCands := m["candidates"]; !hasCands {
+				if file, ok := m["file"].(string); ok {
+					if _, hasName := m["name"]; hasName {
+						fmt.Printf("// %v — %s:%d\n", m["name"], file, jsonInt(m["line"]))
+						for _, col := range []string{"kind", "signature", "doc", "modifiers", "parent", "body"} {
+							if v, ok := m[col]; ok {
+								fmt.Printf("%s: %v\n", col, v)
+							}
+						}
+						return
+					}
+				}
+			}
+		}
+	}
+	// prism_resolve: "candidates" list of {name, kind, file, line, testDouble}
+	if rawCands, ok := m["candidates"].([]any); ok {
+		name, _ := m["name"].(string)
+		fmt.Printf("// %s — %d candidate(s)\n", name, len(rawCands))
+		for _, c := range rawCands {
+			cm, ok := c.(map[string]any)
+			if !ok {
+				continue
+			}
+			tag := ""
+			if td, _ := cm["testDouble"].(bool); td {
+				tag = "  [test double]"
+			}
+			fmt.Printf("  %v  %v  %v:%v%s\n", cm["name"], cm["kind"], cm["file"], jsonInt(cm["line"]), tag)
+		}
+		return
+	}
+	// prism_edges: "edges" map of "<kind> <direction>" -> {shown, total, symbols}
+	if rawEdges, ok := m["edges"].(map[string]any); ok {
+		name, _ := m["name"].(string)
+		fmt.Printf("// %s — graph edges\n", name)
+		rels := make([]string, 0, len(rawEdges))
+		for r := range rawEdges {
+			rels = append(rels, r)
+		}
+		sort.Strings(rels)
+		for _, r := range rels {
+			g, _ := rawEdges[r].(map[string]any)
+			shown, total := jsonInt(g["shown"]), jsonInt(g["total"])
+			cap := ""
+			if total > shown {
+				cap = fmt.Sprintf(" (showing %d of %d)", shown, total)
+			}
+			fmt.Printf("%s%s:\n", r, cap)
+			syms, _ := g["symbols"].([]any)
+			for _, s := range syms {
+				sm, ok := s.(map[string]any)
+				if !ok {
+					continue
+				}
+				tag := ""
+				if td, _ := sm["testDouble"].(bool); td {
+					tag = "  [test double]"
+				}
+				fmt.Printf("  %v  %v:%v%s\n", sm["name"], sm["file"], jsonInt(sm["line"]), tag)
 			}
 		}
 		return
