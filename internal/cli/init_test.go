@@ -63,9 +63,65 @@ func TestWriteSteeringInstructions(t *testing.T) {
 }
 
 func TestBuildZedConfig(t *testing.T) {
-	cfg := buildZedConfig("/x/prism", "/y/root")
+	cfg := buildZedConfig("/x/prism")
+	s := string(cfg)
 	if len(cfg) == 0 {
-		t.Error("empty")
+		t.Fatal("empty")
+	}
+	// User-global entry: no pinned project dir (prism mcp serves launch cwd).
+	for _, want := range []string{`"context_servers"`, `"prism"`, `"/x/prism"`, `"mcp"`} {
+		if !contains(s, want) {
+			t.Errorf("expected %q in %s", want, s)
+		}
+	}
+	if contains(s, "/y/root") {
+		t.Errorf("zed config must not pin a project dir: %s", s)
+	}
+}
+
+// TestInitProjectLevelSkipsGlobalConfigs guards the multi-project footgun:
+// a project-level init must not touch user-global configs (Zed, Codex) —
+// doing so re-points every other project's editor at this one.
+func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	codexPath := filepath.Join(home, ".codex", "config.toml")
+	zedPath := filepath.Join(home, ".config", "zed", "settings.json")
+	const codexBefore = "[mcp_servers.other]\ncommand = \"x\"\n"
+	const zedBefore = `{"context_servers":{"other":{"command":"x","args":[]}}}`
+	os.MkdirAll(filepath.Dir(codexPath), 0o755)
+	os.MkdirAll(filepath.Dir(zedPath), 0o755)
+	os.WriteFile(codexPath, []byte(codexBefore), 0o644)
+	os.WriteFile(zedPath, []byte(zedBefore), 0o644)
+
+	dir := t.TempDir()
+	initRegisterMCPTools(dir, "/x/prism", false)
+
+	if got, _ := os.ReadFile(codexPath); string(got) != codexBefore {
+		t.Errorf("project-level init modified global Codex config:\n%s", got)
+	}
+	if got, _ := os.ReadFile(zedPath); string(got) != zedBefore {
+		t.Errorf("project-level init modified global Zed config:\n%s", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".mcp.json")); err != nil {
+		t.Errorf("project-level init should still write .mcp.json: %v", err)
+	}
+
+	// --global registers both, without a pinned project dir.
+	initRegisterMCPTools(dir, "/x/prism", true)
+	codexAfter, _ := os.ReadFile(codexPath)
+	if !strings.Contains(string(codexAfter), "[mcp_servers.prism]") {
+		t.Errorf("--global init did not register Codex:\n%s", codexAfter)
+	}
+	if strings.Contains(string(codexAfter), dir) {
+		t.Errorf("--global Codex entry must not pin a project dir:\n%s", codexAfter)
+	}
+	zedAfter, _ := os.ReadFile(zedPath)
+	if !strings.Contains(string(zedAfter), `"prism"`) {
+		t.Errorf("--global init did not register Zed:\n%s", zedAfter)
+	}
+	if strings.Contains(string(zedAfter), dir) {
+		t.Errorf("--global Zed entry must not pin a project dir:\n%s", zedAfter)
 	}
 }
 

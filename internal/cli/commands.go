@@ -655,16 +655,6 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 			},
 		},
 		{
-			// Zed: ~/.config/zed/settings.json — patch "context_servers" key
-			name: "Zed",
-			path: func() string {
-				return filepath.Join(home, ".config", "zed", "settings.json")
-			},
-			build: func() []byte {
-				return buildZedConfig(prismBin, projectDir)
-			},
-		},
-		{
 			// VS Code (GitHub Copilot Chat / Continue): .vscode/mcp.json
 			// VS Code natively reads workspace-scoped MCP servers from this file.
 			name: "VS Code",
@@ -719,17 +709,38 @@ func initRegisterMCPTools(projectDir, prismBin string, global bool) []string {
 		}
 	}
 
-	// Codex CLI (~/.codex/config.toml) uses TOML, not JSON.
-	// Only write when ~/.codex/ already exists (i.e. Codex CLI is installed).
-	codexPath := filepath.Join(home, ".codex", "config.toml")
-	if _, err := os.Stat(filepath.Dir(codexPath)); err == nil {
-		codexArgs := []string{"mcp", projectDir}
-		if err := writePrismCodexConfig(codexPath, prismBin, codexArgs); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not write Codex CLI config: %v\n", err)
-		} else {
-			fmt.Printf("registered with Codex CLI: %s\n", codexPath)
-			written = append(written, codexPath)
+	// Zed and Codex CLI keep their MCP registrations in USER-GLOBAL config
+	// files (~/.config/zed/settings.json, ~/.codex/config.toml). A
+	// project-level init must not touch them: writing this project's path
+	// there would silently re-point every other project's Zed/Codex at this
+	// one. Register them only with --global, and without a pinned project
+	// dir — `prism mcp` serves the editor's launch cwd, so one global entry
+	// is correct in every project.
+	if global {
+		zedPath := filepath.Join(home, ".config", "zed", "settings.json")
+		if _, err := os.Stat(filepath.Dir(zedPath)); err == nil {
+			merged := mergeOrCreate(zedPath, buildZedConfig(prismBin))
+			if err := os.WriteFile(zedPath, merged, 0o644); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not write Zed config (%s): %v\n", zedPath, err)
+			} else {
+				fmt.Printf("registered with Zed: %s\n", zedPath)
+				written = append(written, zedPath)
+			}
 		}
+
+		// Codex CLI (~/.codex/config.toml) uses TOML, not JSON.
+		// Only write when ~/.codex/ already exists (i.e. Codex CLI is installed).
+		codexPath := filepath.Join(home, ".codex", "config.toml")
+		if _, err := os.Stat(filepath.Dir(codexPath)); err == nil {
+			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp"}); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not write Codex CLI config: %v\n", err)
+			} else {
+				fmt.Printf("registered with Codex CLI: %s\n", codexPath)
+				written = append(written, codexPath)
+			}
+		}
+	} else {
+		fmt.Println("note: Zed and Codex CLI use user-global configs — run `prism init --global` to register them")
 	}
 
 	return written
@@ -775,7 +786,7 @@ func mcpEntryAlreadyPresent(path string, name string, want mcpEntry) bool {
 }
 
 // buildZedConfig returns the minimal Zed context_servers stanza.
-func buildZedConfig(prismBin, projectDir string) []byte {
+func buildZedConfig(prismBin string) []byte {
 	type zedServer struct {
 		Command string   `json:"command"`
 		Args    []string `json:"args"`
@@ -783,8 +794,10 @@ func buildZedConfig(prismBin, projectDir string) []byte {
 	type zedSettings struct {
 		ContextServers map[string]zedServer `json:"context_servers"`
 	}
+	// No pinned project dir: the entry lives in Zed's user-global settings,
+	// and `prism mcp` serves the launch cwd (the open worktree).
 	s := zedSettings{ContextServers: map[string]zedServer{
-		"prism": {Command: prismBin, Args: []string{"mcp", projectDir}},
+		"prism": {Command: prismBin, Args: []string{"mcp"}},
 	}}
 	b, _ := json.MarshalIndent(s, "", "  ")
 	return b
