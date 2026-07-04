@@ -28,6 +28,13 @@ renaming an existing symbol, call prism_change_impact FIRST — even if the chan
 looks small. Small changes can have large blast radii through inheritance and
 indirect callers that grep will not find.
 
+Check the result's completeness field. "closed" means the set is authoritative.
+"project-local" with overridesExternal means the method belongs to an external
+(JDK/dependency) contract: do NOT change its signature — that breaks a contract
+this project does not own — and the set covers project code only. To sweep every
+project implementation of an external interface (migration/deprecation), query
+the external type directly (e.g. "Iterator.next").
+
 Canonical workflow (non-refactor tasks):
 
     grep/find/rg <terms>                 <- locate anchor first; shell tools always win here
