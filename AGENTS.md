@@ -35,6 +35,11 @@ this project does not own — and the set covers project code only. To sweep eve
 project implementation of an external interface (migration/deprecation), query
 the external type directly (e.g. "Iterator.next").
 
+Relay rule: the result is deterministic and type-resolved. Do NOT re-verify,
+re-filter, dedup, or transform it through grep/sed/awk/scripts — re-processing
+a solved traversal drops real sites and adds spurious ones (measured). Use the
+returned sites as-is; read individual sites only to make the edits.
+
 Canonical workflow (non-refactor tasks):
 
     grep/find/rg <terms>                 <- locate anchor first; shell tools always win here

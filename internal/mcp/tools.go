@@ -517,7 +517,10 @@ func toolDescription(name string) string {
 			"method belongs to an external (JDK/dependency) contract — its signature cannot " +
 			"safely change, and calls typed against the external supertype are not included. " +
 			"Querying an external type directly (e.g. 'Iterator.next') returns the project's " +
-			"implementation closure of that contract — use for deprecation/migration sweeps."
+			"implementation closure of that contract — use for deprecation/migration sweeps. " +
+			"RELAY the returned set as-is: do not re-verify, re-filter, or transform it " +
+			"through shell pipelines — re-processing a solved traversal measurably drops " +
+			"real sites and adds spurious ones."
 	}
 	return "Prism tool: " + name
 }
