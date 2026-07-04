@@ -10,6 +10,7 @@ Use the registered prism_* MCP tools:
 
 | Situation | Tool |
 |---|---|
+| Changing/renaming a method signature — need EVERY affected site | prism_change_impact(query="Type.method(ParamType, ...)") — ONE call returns declaration + all overrides/implementations + all resolved callers. Do not enumerate manually. |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
 | Callers/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
@@ -36,6 +37,7 @@ Use the prism CLI with --format text instead of MCP tools:
 
 | Situation | Command |
 |---|---|
+| Changing/renaming a method signature | `prism change-impact 'Type.method(ParamType, ...)'` — the complete change-set in ONE call |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/tests for a symbol just found | `prism query "<task>" --terms a,b --include graph,tests --format text` |
 | Read a whole file | `prism read <file> --format text` |
@@ -46,6 +48,7 @@ Use the prism CLI with --format text instead of MCP tools:
 ### Do NOT
 
 - Do NOT call prism_query (or prism query) before searching — use shell tools first; prism expands from the anchor
+- Do NOT manually chain references + edges + lookup to enumerate a signature change's impact — prism_change_impact / prism change-impact computes the complete set in one call
 - Do NOT use prism_search / prism search as a search replacement — it searches symbol names only, not source text
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
 - Do NOT re-run prism_index / prism index on every step — delta indexing is automatic
