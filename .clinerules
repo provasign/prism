@@ -10,7 +10,11 @@ Use the registered prism_* MCP tools:
 
 | Situation | Tool |
 |---|---|
-| Changing/renaming a method signature — need EVERY affected site | prism_change_impact(query="Type.method(ParamType, ...)") — ONE call returns declaration + all overrides/implementations + all resolved callers. Do not enumerate manually. |
+| Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — declaration + overrides + callers |
+| Adding/changing a method on an interface or base class | prism_change_impact — override family + all callers |
+| Renaming a class, struct, or type | prism_change_impact for each public method — all usages |
+| Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete caller list |
+| ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
 | Callers/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
@@ -19,7 +23,12 @@ Use the registered prism_* MCP tools:
 | Blast radius of a change | prism_query(terms=[...], graph_depth=3) |
 | Symbols with no tests (before writing/fixing) | prism_query(terms=[...], include=["graph","coverage_gaps"]) |
 
-Canonical workflow:
+**Pre-task rule:** before writing any code on a task that involves changing or
+renaming an existing symbol, call prism_change_impact FIRST — even if the change
+looks small. Small changes can have large blast radii through inheritance and
+indirect callers that grep will not find.
+
+Canonical workflow (non-refactor tasks):
 
     grep/find/rg <terms>                 <- locate anchor first; shell tools always win here
       -> prism_query(                    <- expand from anchor: callers, callees, tests
@@ -37,7 +46,10 @@ Use the prism CLI with --format text instead of MCP tools:
 
 | Situation | Command |
 |---|---|
-| Changing/renaming a method signature | `prism change-impact 'Type.method(ParamType, ...)'` — the complete change-set in ONE call |
+| Renaming/changing a method signature | `prism change-impact 'Type.method(ParamType, ...)'` — declaration + overrides + callers |
+| Adding/changing a method on an interface or base class | `prism change-impact 'Type.method'` — override family + callers |
+| Renaming a class, struct, or type | `prism change-impact 'Type.method'` for each public method |
+| Deprecating a symbol (need all callers to migrate) | `prism change-impact 'Type.method'` — complete caller list |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/tests for a symbol just found | `prism query "<task>" --terms a,b --include graph,tests --format text` |
 | Read a whole file | `prism read <file> --format text` |
