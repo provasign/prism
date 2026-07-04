@@ -1,0 +1,389 @@
+shale_version: "0"
+id: 1b2027ef-4070-492d-b779-13aae3dd9f21
+created_at: 2026-06-14T17:43:21.024915Z
+finalized_at: 2026-07-04T23:00:19.318712Z
+agent:
+    tool: claude-code
+    model: claude-opus-4-8
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: cd /Users/tapabratapal/Projects/provasign && echo "===top level===" && ls -la && echo "===is git?===" && git rev-parse --show-toplevel 2>&1 | head -1 && echo "===grove eval dir===" && ls grove/eval/ 2>/dev/null && echo "===research tracked?===" && git -C /Users/tapabratapal/Projects/provasign status 2>&1 | head -5
+      at: 2026-06-14T17:45:08.525699Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && echo "===README===" && cat README.md && echo "===cmd tree===" && find cmd -type f | head -50
+      at: 2026-06-14T17:45:20.094785Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && echo "===grafana corpus?===" && ls -la /tmp/fuse-corpus/grafana 2>&1 | head -3; ls -la /tmp/eval-corpus 2>&1 | head -3 && echo "===api key?===" && [ -n "$ANTHROPIC_API_KEY" ] && echo "ANTHROPIC_API_KEY set" || echo "no ANTHROPIC_API_KEY in env"; echo "===prism binary===" && which prism && readlink $(which prism); echo "===grove-eval built?===" && ls grove/eval/grove-eval 2>&1; echo "===claude CLI?===" && which claude 2>&1; echo "===research subfiles===" && find research -type f
+      at: 2026-06-14T17:46:07.098398Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign && echo "===grafana pin===" && git -C /tmp/fuse-corpus/grafana log --oneline -1 2>&1; echo "===gh?===" && which gh && gh auth status 2>&1 | head -2; echo "===claude headless test===" && timeout 60 claude -p "reply with exactly: PONG" --output-format text 2>&1 | head -5; echo "exit=$?"'
+      at: 2026-06-14T17:47:18.339006Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && echo "test" | claude -p "reply with exactly the word PONG and nothing else" --output-format text 2>&1 | head -20; echo "---exit=$?---"
+      at: 2026-06-14T17:47:33.454123Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && echo "===eval-corpus===" && ls /tmp/eval-corpus/ 2>&1; echo "===gin?===" && ls -d /tmp/eval-corpus/gin 2>&1 && git -C /tmp/eval-corpus/gin log --oneline -1 2>&1; echo "===restore-corpus script head===" && sed -n '1,40p' grove/eval/restore-corpus.sh
+      at: 2026-06-14T17:48:18.332718Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus/gin && echo "===PR commit meta===" && git log -1 --format='%H%n%s%n%n%b' d75fcd4 | head -30; echo "===changed files+funcs===" && git show d75fcd4 --stat --format="" ; echo "===function-level diff (names)===" && git show d75fcd4 --format="" -W | grep -E '^@@' | head -40
+      at: 2026-06-14T17:48:50.088812Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus/gin && git show d75fcd4 -- response_writer.go
+      at: 2026-06-14T17:49:03.298453Z
+      classified: other
+    - cmd: cd /tmp/eval-corpus/gin && echo "parent=$(git rev-parse d75fcd4^)"; echo "parent-short=$(git rev-parse --short d75fcd4^)"; echo "===confirm funcs exist at parent===" && git grep -n "func (w \*responseWriter) Hijack\|func (w \*responseWriter) CloseNotify" d75fcd4^ -- response_writer.go
+      at: 2026-06-14T17:49:36.598876Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== shallow? ===" && git rev-parse --is-shallow-repository; echo "=== commit count ===" && git rev-list --count HEAD 2>&1 | head -1; echo "=== remote ===" && git remote -v | head -2; echo "=== go module? ===" && head -1 go.mod 2>&1
+      at: 2026-06-14T18:01:20.754069Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== candidate merged Go bug-fix PRs (small, with linked issue) ===" && gh pr list --repo grafana/grafana --state merged --label "type/bug" --limit 40 --json number,title,mergeCommit,closingIssuesReferences,files --jq '.[] | select((.files|map(select(.path|endswith(".go")))|length) > 0) | select((.files|length) <= 6) | select((.closingIssuesReferences|length) > 0) | {n:.number, title:.title, go:(.files|map(select(.path|endswith(".go")))|length), files:(.files|length), issue:(.closingIssuesReferences[0].number)}' 2>&1 | head -60
+      at: 2026-06-14T18:04:03.410796Z
+      classified: other
+    - cmd: "cd /tmp/fuse-corpus/grafana && echo \"=== broader pool: merged Go PRs, <=8 files ===\" && for lbl in \"type/bug\" \"area/backend\"; do gh pr list --repo grafana/grafana --state merged --label \"$lbl\" --limit 80 --json number,title,mergeCommit,closingIssuesReferences,files,labels --jq '.[] | (.files|map(select(.path|endswith(\".go\") and (.path|endswith(\"_test.go\")|not)))) as $go | select(($go|length) > 0) | select((.files|length) <= 8) | {n:.number, go:($go|length), f:(.files|length), iss:((.closingIssuesReferences|map(.number))), labels:((.labels|map(.name)|map(select(startswith(\"area\")))) ), t:.title}' ; done 2>&1 | python3 -c \"import sys,json; seen=set(); \n[ (lambda d: (seen.add(d['n']), print(json.dumps(d))) )(json.loads(l)) for l in sys.stdin if l.strip() and (json.loads(l)['n'] not in seen)]\" 2>&1 | head -50"
+      at: 2026-06-14T18:05:12.702208Z
+      classified: other
+    - cmd: 'cd /tmp/fuse-corpus/grafana && : > /tmp/gvg-cands.jsonl && for lbl in "type/bug" "area/backend" "type/poor-ux"; do gh pr list --repo grafana/grafana --state merged --label "$lbl" --limit 80 --json number,title,mergeCommit,closingIssuesReferences,files,labels --jq ''.[] | (.files|map(select(.path|endswith(".go") and (.path|endswith("_test.go")|not)))) as $go | select(($go|length) > 0) | select((.files|length) <= 8) | {n:.number, go:($go|length), f:(.files|length), iss:((.closingIssuesReferences|map(.number))), areas:((.labels|map(.name)|map(select(startswith("area")))) ), t:.title}'' >> /tmp/gvg-cands.jsonl ; done; echo "raw=$(wc -l < /tmp/gvg-cands.jsonl)"; jq -s ''unique_by(.n) | sort_by(.go) | reverse'' /tmp/gvg-cands.jsonl > /tmp/gvg-cands.json; echo "unique=$(jq length /tmp/gvg-cands.json)"; jq -r ''.[] | "\(.n)\tgo=\(.go) f=\(.f) iss=\(.iss|join(","))\t\(.t[0:80])"'' /tmp/gvg-cands.json | head -40'
+      at: 2026-06-14T18:05:37.516359Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== files field shape ===" && gh pr view 124935 --repo grafana/grafana --json files --jq '.files[0]' 2>&1; echo "=== as list ===" && gh pr list --repo grafana/grafana --state merged --limit 1 --json number,files --jq '.[0].files[0]' 2>&1
+      at: 2026-06-14T18:06:04.951893Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && gh pr list --repo grafana/grafana --state merged --label "type/bug" --limit 5 --json number,title,closingIssuesReferences,files,labels --jq '.[] | (.files|map(select(.path|endswith(".go") and (.path|endswith("_test.go")|not)))) as $go | {n:.number, go:($go|length), f:(.files|length), iss:(.closingIssuesReferences|map(.number)), t:.title}' 2>&1 | head -20
+      at: 2026-06-14T18:06:19.090443Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && gh pr list --repo grafana/grafana --state merged --label "type/bug" --limit 3 --json number,files --jq '.[] | {n:.number, files_type:(.files|type), first:(.files[0])}' 2>&1 | head -10
+      at: 2026-06-14T18:06:26.865793Z
+      classified: other
+    - cmd: 'cd /tmp/fuse-corpus/grafana && : > /tmp/gvg-cands.jsonl && for lbl in "type/bug" "area/backend"; do gh pr list --repo grafana/grafana --state merged --label "$lbl" --limit 100 --json number,title,closingIssuesReferences,files,labels --jq ''.[] | (.files|map(select((.path|endswith(".go")) and (.path|endswith("_test.go")|not)))) as $go | select(($go|length) > 0) | select((.files|length) <= 8) | {n:.number, go:($go|length), f:(.files|length), gofiles:($go|map(.path)), iss:(.closingIssuesReferences|map(.number)), t:.title}'' >> /tmp/gvg-cands.jsonl ; done; jq -s ''unique_by(.n) | sort_by(.go)'' /tmp/gvg-cands.jsonl > /tmp/gvg-cands.json; echo "unique candidates=$(jq length /tmp/gvg-cands.json)"; echo "=== single-go-file (clean localization), with linked issue ==="; jq -r ''.[] | select(.go==1) | select((.iss|length)>0) | "\(.n)\tgo=\(.go) f=\(.f) iss=\(.iss|join(","))\t\(.t[0:75])"'' /tmp/gvg-cands.json | head -20; echo "=== multi-go-file (impact candidates) ==="; jq -r ''.[] | select(.go>=2) | "\(.n)\tgo=\(.go) f=\(.f) iss=\(.iss|join(","))\t\(.t[0:70])"'' /tmp/gvg-cands.json | head -25'
+      at: 2026-06-14T18:07:10.348887Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== PR 120266 merge + parent ===" && MC=$(gh pr view 120266 --repo grafana/grafana --json mergeCommit --jq '.mergeCommit.oid'); echo "merge=$MC"; echo "=== fetch merge commit (depth 2 for parent) ===" && time git fetch --depth=2 origin "$MC" 2>&1 | tail -3; echo "parent=$(git rev-parse $MC^ 2>&1)"; echo "=== changed go (non-test) files in PR ===" && git show --stat --format= "$MC" -- '*.go' 2>&1 | grep -v _test | head
+      at: 2026-06-14T18:08:46.313259Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== diff (prod go) ===" && git show ba53eec4 -- pkg/tsdb/jaeger/client.go | head -60
+      at: 2026-06-14T18:09:04.162907Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== issue 119439 ===" && gh issue view 119439 --repo grafana/grafana --json title,body --jq '.title + "\n\n" + (.body[0:900])' 2>&1
+      at: 2026-06-14T18:09:19.541474Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && WT=/tmp/gvg-corpus/grafana-120266 && git worktree prune && (git worktree add --detach "$WT" b1286d485020cac5a23c4339bcd885ec36446fda 2>&1 | tail -2) && echo "=== worktree size ===" && du -sh "$WT" 2>/dev/null && echo "=== go file count ===" && find "$WT" -name '*.go' -not -name '*_test.go' | wc -l && echo "=== TIMING prism index (full grafana) ===" && cd "$WT" && time /Users/tapabratapal/bin/prism index "$WT" 2>&1 | tail -8
+      at: 2026-06-14T18:10:39.25008Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && for n in 125987 126004 122866 126184 126126 121498 125398 126280; do MC=$(gh pr view $n --repo grafana/grafana --json mergeCommit --jq '.mergeCommit.oid' 2>/dev/null); git fetch -q --depth=2 origin "$MC" 2>/dev/null; nf=$(git show --stat --format= "$MC" -- '*.go' 2>/dev/null | grep -c '\.go ' ); funcs=$(git show "$MC" -W -- '*.go' 2>/dev/null | grep -v '_test.go' | grep -cE '^[+-].*func '); echo "PR $n  merge=${MC:0:8}  goFilesChanged=$nf"; git show --stat --format= "$MC" -- '*.go' 2>/dev/null | grep -vE '_test|locales' | sed 's/|.*//' | sed 's/^ */    /' | head -6; done 2>&1 | head -70
+      at: 2026-06-14T18:14:23.800842Z
+      classified: other
+    - cmd: 'cd /tmp/fuse-corpus/grafana && echo "############ PR 126004 (export ToSnowflakeRV / SubtractDurationFromSnowflake) ############" && git show 68c7a5ac --format= -- ''*.go'' | grep -vE ''^(\+\+\+|---)'' | grep -E ''^(@@|diff --git|[+-].*func |[+-].*Snowflake)'' | head -40'
+      at: 2026-06-14T18:14:52.985726Z
+      classified: other
+    - cmd: 'python3 extract_task.py --repo /tmp/fuse-corpus/grafana --commit 68c7a5ac --id grafana-126004 --type impact --pr "grafana#126004" --prompt "We are exporting two internal helpers in the unified resource storage backend: toSnowflakeRV becomes ToSnowflakeRV and subtractDurationFromSnowflake becomes SubtractDurationFromSnowflake, so other packages can reuse them. Identify every function that must change so the codebase still compiles and behaves identically after the rename (the definitions and all of their call sites)." --out tasks/grafana-126004.json 2>&1 | sed ''s/sites=/\nsites=/''; echo "=== cross-check: real callers of toSnowflakeRV/subtractDurationFromSnowflake in parent (prod only) ===" && cd /tmp/fuse-corpus/grafana && git grep -n -E ''toSnowflakeRV\(|subtractDurationFromSnowflake\('' abf364c9b4 -- ''pkg/storage/unified/resource/*.go'' '':!*_test.go'' | sed ''s/abf364c9b4://'''
+      at: 2026-06-14T18:17:32.310248Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== 124935 diff (prod go) ===" && git show 124935 2>/dev/null || (MC=$(gh pr view 124935 --repo grafana/grafana --json mergeCommit --jq '.mergeCommit.oid'); git fetch -q --depth=2 origin "$MC"; git show "$MC" --format= -- '*.go' ':!*_test.go' | grep -vE '^(\+\+\+|---)' | grep -E '^(@@|diff --git|[+-])' | head -30; echo "MERGE=$MC")
+      at: 2026-06-14T18:18:18.298511Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== Go-heavy merged PRs (interface/signature/method changes), 4-20 go files ===" && for q in "interface" "signature" "add method" "refactor" "rename"; do gh pr list --repo grafana/grafana --state merged --search "$q in:title" --limit 30 --json number,title,files --jq '.[] | (.files|map(select((.path|endswith(".go")) and (.path|endswith("_test.go")|not)))) as $go | select(($go|length) >= 4 and ($go|length) <= 20) | {n:.number, go:($go|length), t:.title}' 2>/dev/null; done | jq -s 'unique_by(.n) | sort_by(.go) | reverse' | jq -r '.[] | "\(.n)\tgo=\(.go)\t\(.t[0:72])"' | head -30
+      at: 2026-06-15T23:50:14.399015Z
+      classified: other
+    - cmd: 'cd /tmp/fuse-corpus/grafana && for n in 79392 122750 120119 121838; do MC=$(gh pr view $n --repo grafana/grafana --json mergeCommit --jq ''.mergeCommit.oid'' 2>/dev/null); git fetch -q --depth=2 origin "$MC" 2>/dev/null; echo "######## PR $n  merge=${MC:0:8} ########"; echo "  changed prod-go files:"; git show --stat --format= "$MC" -- ''*.go'' '':!*_test.go'' 2>/dev/null | grep ''\.go'' | sed ''s/|.*//;s/^/    /'' | head -16; done 2>&1 | head -70'
+      at: 2026-06-15T23:57:03.318701Z
+      classified: other
+    - cmd: 'cd /tmp/fuse-corpus/grafana && echo "######## 122750 DEK signature change — method names + are they common? ########" && git show 9e531001 --format= -- ''*.go'' '':!*_test.go'' | grep -E ''^[+-].*func '' | grep -vE ''^[+-]\s*//'' | head -25; echo; echo "=== how common is each changed method name across grafana (grep count of ''func.*Name('') ==="; for m in $(git show 9e531001 --format= -- ''*.go'' '':!*_test.go'' | grep -oE ''^\-.*func \([^)]*\) [A-Z][A-Za-z0-9]+'' | grep -oE ''[A-Z][A-Za-z0-9]+$'' | sort -u); do c=$(git grep -hE "func \([^)]*\) $m\(" 9e531001 -- ''*.go'' 2>/dev/null | wc -l | tr -d '' ''); echo "  $m : $c same-named method defs in repo"; done'
+      at: 2026-06-15T23:58:00.123861Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && python3 extract_task.py --repo /tmp/fuse-corpus/grafana --commit 9e531001 --id grafana-122750 --type impact --pr "grafana#122750" --prompt "The DataKeyCache interface in the secret encryption package is getting a context.Context as the first parameter on every one of its methods (GetById, GetByLabel, Set, RemoveExpired, Flush). Identify every function that must change for this signature change to compile and work: the interface declaration, all of its implementations, and all call sites that invoke these methods on a DataKeyCache. Do not include unrelated same-named methods on other types." --out tasks/grafana-122750.json 2>&1 | sed ''s/sites=/\nsites=/''; echo; echo "=== verify against diff: enclosing prod funcs actually changed ==="; cd /tmp/fuse-corpus/grafana && git show 9e531001 --format= -- ''*.go'' '':!*_test.go'' -W 2>/dev/null | grep -E ''^(diff --git|@@.*func)'' | sed -E ''s/@@.*@@ *//'' | head -40'
+      at: 2026-06-16T00:05:28.826153Z
+      classified: other
+    - cmd: 'cd /tmp/fuse-corpus/grafana && echo "=== 120119: packages touched ===" && git show 492eb9d5 --stat --format= -- ''*.go'' '':!*_test.go'' | sed ''s/|.*//'' | xargs -n1 dirname 2>/dev/null | sort -u; echo "=== changed funcs/signatures ==="; git show 492eb9d5 --format= -- ''*.go'' '':!*_test.go'' | grep -E ''^[+-].*func '' | head -20; echo "=== is it codegen/mock? ==="; git show 492eb9d5 --stat --format= -- ''*.go'' | grep -iE ''mock|gen'' | head'
+      at: 2026-06-16T00:19:45.936737Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && MC=492eb9d5; python3 extract_task.py --repo /tmp/fuse-corpus/grafana --commit $MC --id grafana-120119 --type impact --pr "grafana#120119" --prompt "The managed-routes service methods (GetManagedRoute, GetManagedRoutes, CreateManagedRoute, UpdateManagedRoute, DeleteManagedRoute) are gaining a new parameter: ''user identity.Requester''. Identify every function that must change for this signature change to compile and work across the codebase: the service interface, all implementations and fakes, and all call sites that invoke these methods." --out tasks/grafana-120119.json 2>&1 | head -1; python3 -c "import json;d=json.load(open(''tasks/grafana-120119.json''));print(''pin'',d[''pin''][:8],''sites:'',len(d[''ground_truth'']));[print(''  '',s) for s in d[''ground_truth'']]"; echo "=== probe T/G/V x1 ==="; python3 run.py --task tasks/grafana-120119.json --arms T G V --trials 1 2>&1 | tail -8'
+      at: 2026-06-16T00:23:14.5191Z
+      classified: other
+    - cmd: cd /tmp/fuse-corpus/grafana && echo "=== RouteService in legacy_storage.go ===" && git show 492eb9d5 -- '*routingtree/legacy_storage.go' | grep -nE '^[+-]|^@@' | grep -iE 'RouteService|@@|func|interface' | head -15; echo; echo "=== routeService in api_provisioning.go ===" && git show 492eb9d5 -- '*api_provisioning.go' | grep -nE '^@@|^[+-]' | grep -iE 'routeService|@@|func|interface|struct' | head -15
+      at: 2026-06-16T11:06:14.89914Z
+      classified: other
+    - cmd: git -C /tmp/fuse-corpus/grafana show 492eb9d5 -- pkg/registry/apps/alerting/notifications/routingtree/legacy_storage.go | grep -nE '^@@|RouteService' | head -12; echo "=== api_provisioning routeService context ==="; git -C /tmp/fuse-corpus/grafana show 492eb9d5 -- pkg/services/ngalert/api/api_provisioning.go | grep -nE '^@@|routeService' | head -12
+      at: 2026-06-16T11:06:22.52152Z
+      classified: other
+    - cmd: file /tmp/fuse-corpus/grafana/.git; echo "--- is it a dir? ---"; ls -la /tmp/fuse-corpus/grafana/.git 2>&1 | head -8
+      at: 2026-06-16T11:06:41.476382Z
+      classified: other
+    - cmd: WT=/tmp/gvg-corpus/grafana-120119; echo "=== RouteService def (legacy_storage.go) ==="; grep -nE 'RouteService' $WT/pkg/registry/apps/alerting/notifications/routingtree/legacy_storage.go 2>/dev/null | head -6; echo "=== routeService (api_provisioning.go) ==="; grep -nE 'routeService' $WT/pkg/services/ngalert/api/api_provisioning.go 2>/dev/null | head -6
+      at: 2026-06-16T11:07:03.245429Z
+      classified: other
+    - cmd: |-
+        echo "=== proc? ===" && pgrep -fl "run.py --task tasks/gin-render" | grep -c run.py; echo "=== opus render files: $(ls runs/gin-render-impact/*.json 2>/dev/null|grep -v summary|wc -l|tr -d ' ')/15  haiku: $(ls runs/gin-render-impact/haiku/*.json 2>/dev/null|grep -v summary|wc -l|tr -d ' ')/15 ==="; python3 -c "
+        import json
+        from pathlib import Path
+        for model in ['opus','haiku']:
+          base=Path('runs/gin-render-impact')/('' if model=='opus' else 'haiku')
+          files=sorted(base.glob('?.t?.json'))
+          if not files: continue
+          print(f'== {model} ({len(files)} runs) ==')
+          for f in files:
+            d=json.load(open(f))
+            if d.get('status')!='ok': print(f'  {f.stem}: {d.get(\"status\")}'); continue
+            print(f\"  {f.stem}: recall={d['recall']} prec={d['precision']} graph={d.get('graph_used')} oc={d['overconfident']} missed={len(d['missed'])}\")
+        " 2>&1
+      at: 2026-06-16T11:07:47.666635Z
+      classified: other
+    - cmd: ls -la runs/gin-render-impact/ 2>&1; echo "=== full log ==="; cat /tmp/gvg-render.log 2>&1 | tail -25
+      at: 2026-06-16T11:08:05.345778Z
+      classified: other
+    - cmd: echo "=== runs/ contents ==="; ls -la runs/ 2>&1; echo "=== gin-render worktree ok? ==="; ls /tmp/gvg-corpus/gin-render-impact/ 2>&1 | head -2; echo "=== gin corpus ok? ==="; git -C /tmp/eval-corpus/gin rev-parse --short HEAD 2>&1; echo "=== procs detail ==="; ps -o pid,etime,command -p $(pgrep -f "run.py --task tasks/gin-render" | tr '\n' ',' | sed 's/,$//') 2>&1 | head
+      at: 2026-06-16T11:08:26.25636Z
+      classified: other
+    - cmd: cd /tmp && gh repo view chopratejas/headroom 2>&1 | head -120
+      at: 2026-06-19T20:53:32.369114Z
+      classified: other
+    - cmd: cd /tmp && gh repo view chopratejas/headroom 2>&1 | sed -n '120,230p'
+      at: 2026-06-19T20:53:38.651707Z
+      classified: other
+    - cmd: cd /tmp && rm -rf headroom-src && git clone -q --depth 1 https://github.com/chopratejas/headroom.git headroom-src 2>&1 | tail -2; echo "=== eval-related files ==="; find headroom-src -path '*/evals/*' -name '*.py' -o -path '*eval*' -name '*.py' 2>/dev/null | grep -iE 'eval' | head -20; echo "=== benchmark docs ==="; find headroom-src -iname '*benchmark*' -o -iname '*proof*' 2>/dev/null | head
+      at: 2026-06-20T11:54:00.479173Z
+      classified: other
+    - cmd: 'cd /tmp/headroom-src && echo "######## evals/suite_runner.py ########" && sed -n ''1,90p'' headroom/evals/suite_runner.py 2>/dev/null; echo "######## evals/metrics.py (head) ########" && sed -n ''1,60p'' headroom/evals/metrics.py 2>/dev/null'
+      at: 2026-06-20T11:54:12.870009Z
+      classified: other
+    - cmd: |-
+        cd /tmp/headroom-src
+        echo "######## benchmarks/compression_benchmark.py — does it check ANSWER quality or just ratio? ########"
+        grep -nE 'accuracy|answer|correct|f1|recall|llm|complete|ratio|savings|reduction|def ' benchmarks/compression_benchmark.py 2>/dev/null | head -30
+        echo "######## the 'Proof' workloads (code search / SRE) — where defined ########"
+        grep -rnE 'code.search|SRE|incident|54,?174|17,?765|65,?694|92%|triage' benchmarks/ headroom/ 2>/dev/null | grep -iv test | head -10
+      at: 2026-06-20T11:54:36.694751Z
+      classified: other
+    - cmd: |-
+        cd /tmp/headroom-src && echo "######## real_world_agent_benchmark.py — questions asked of the code-search/SRE workloads ########"
+        grep -nE 'question|query|expected|answer|"text"|correct|accuracy|find all|every|complete|count' benchmarks/real_world_agent_benchmark.py 2>/dev/null | head -30
+        echo "######## sample question text ########"
+        grep -nE '"(What|Which|How|Where|Why|Find|List)' benchmarks/real_world_agent_benchmark.py 2>/dev/null | head -15
+      at: 2026-06-20T11:54:54.824007Z
+      classified: other
+    - cmd: cd /tmp/headroom-src && grep -nE 'expected_answer_contains|in answer|in response|\.lower\(\)|sum\(|/ len|accuracy =|correct =|pass' benchmarks/real_world_agent_benchmark.py 2>/dev/null | head -20; echo "=== how github code search results are generated (redundancy?) ==="; sed -n '188,236p' benchmarks/real_world_agent_benchmark.py
+      at: 2026-06-20T11:55:30.385126Z
+      classified: other
+    - cmd: cd /tmp && /tmp/hr-venv/bin/pip install -q "headroom-ai" 2>&1 | tail -6; echo "exit=$?"; /tmp/hr-venv/bin/python -c "import headroom; print('version', getattr(headroom,'__version__','?')); from headroom import compress; print('compress OK')" 2>&1 | head
+      at: 2026-06-20T11:56:56.818935Z
+      classified: other
+    - cmd: python3 -m venv ~/hr-venv && ~/hr-venv/bin/pip install -q --upgrade pip 2>&1 | tail -1; echo "venv ready"; ~/hr-venv/bin/pip install -q "headroom-ai" 2>&1 | tail -8; echo "install exit=$?"
+      at: 2026-06-20T11:57:58.631689Z
+      classified: other
+    - cmd: ~/hr-venv/bin/python --version; ~/hr-venv/bin/pip install "headroom-ai" 2>&1 | grep -iE 'error|fail|requires|python_requires|no matching|tokenizers|rust|cargo|maturin|building wheel for [a-z]' | head -20
+      at: 2026-06-20T11:58:29.167072Z
+      classified: other
+    - cmd: echo "=== available pythons ==="; for v in 3.10 3.11 3.12 3.13; do which python$v 2>/dev/null && python$v --version 2>&1; done; echo "=== full rust build error tail ==="; ~/hr-venv/bin/pip install "headroom-ai" 2>&1 | grep -iE 'error|cargo|rustc|failed|panic|cannot|denied|maturin' | tail -15
+      at: 2026-06-20T11:59:09.067334Z
+      classified: other
+    - cmd: PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 ~/hr-venv/bin/pip install -q "headroom-ai" 2>&1 | grep -iE 'error|success|built|installed headroom|abi3|3.13|fail' | tail -8; echo "check:"; ~/hr-venv/bin/python -c "from headroom import compress; print('compress import OK')" 2>&1 | head -3
+      at: 2026-06-20T12:00:31.955418Z
+      classified: other
+    - cmd: |-
+        ~/hr-venv/bin/python -c "
+        from headroom import compress
+        import inspect
+        print('signature:', inspect.signature(compress))
+        print(compress.__doc__[:600] if compress.__doc__ else 'no docstring')
+        " 2>&1 | head -30
+      at: 2026-06-20T12:00:42.274193Z
+      classified: other
+    - cmd: |-
+        cat > ~/hr-test.py <<'PY'
+        import json, random
+        from headroom import compress
+        random.seed(7)
+
+        SERVICES = [f"svc-{name}" for name in
+          ["auth","billing","cart","search","email","push","ledger","inventory","price",
+           "recs","feed","upload","render","index","cache","router","gateway","scheduler",
+           "worker","ingest","export","audit","webhook","session","profile","catalog",
+           "payments","fraud","notify","geo"]]  # 30 DISTINCT services
+        assert len(SERVICES)==30
+
+        # Realistic heterogeneous log: 30 distinct ERROR lines among ~220 varied INFO lines
+        lines=[]
+        for s in SERVICES:
+            lines.append({"level":"ERROR","service":s,"msg":f"{s} failed: upstream timeout after {random.randint(100,900)}ms","trace_id":hex(random.getrandbits(48))})
+        for i in range(220):
+            s=random.choice(SERVICES)
+            lines.append({"level":random.choice(["INFO","DEBUG","WARN"]),"service":s,"msg":random.choice(["request handled","cache hit","healthcheck ok","retry scheduled","config reloaded","connection pooled"]),"trace_id":hex(random.getrandbits(48))})
+        random.shuffle(lines)
+        blob="\n".join(json.dumps(l) for l in lines)
+
+        question=("Below is a JSON-lines log dump from a tool. List EVERY distinct service "
+         "name that logged at least one ERROR-level line. Output ONLY a JSON array of the "
+         "service names, nothing else.\n\nLOG:\n")
+        messages=[{"role":"user","content":question+blob}]
+
+        res=compress(messages, model="claude-sonnet-4-5-20250929", model_limit=200000)
+        # inspect result attributes
+        attrs=[a for a in dir(res) if not a.startswith('_')]
+        print("CompressResult attrs:", attrs)
+        for a in ["tokens_before","tokens_after","original_tokens","compressed_tokens","savings","ratio","compression_ratio"]:
+            if hasattr(res,a): print(f"  {a} = {getattr(res,a)}")
+        comp_msgs=res.messages if hasattr(res,"messages") else None
+        orig_text=messages[0]["content"]
+        comp_text=comp_msgs[0]["content"] if comp_msgs else "?"
+        print("orig chars:", len(orig_text), "compressed chars:", len(comp_text))
+        print("ground truth services:", len(SERVICES))
+        open("/Users/tapabratapal/hr-orig.txt","w").write(orig_text)
+        open("/Users/tapabratapal/hr-comp.txt","w").write(comp_text if isinstance(comp_text,str) else json.dumps(comp_text))
+        open("/Users/tapabratapal/hr-truth.json","w").write(json.dumps(sorted(SERVICES)))
+        print("=== compressed preview (first 600 chars) ===")
+        print(comp_text[:600] if isinstance(comp_text,str) else comp_text)
+        PY
+        ~/hr-venv/bin/python ~/hr-test.py 2>&1 | head -40
+      at: 2026-06-20T12:01:23.049448Z
+      classified: other
+    - cmd: |-
+        cat > ~/hr-test2.py <<'PY'
+        import json, random
+        from headroom import compress
+        random.seed(7)
+        SERVICES=[f"svc-{n}" for n in ["auth","billing","cart","search","email","push","ledger","inventory","price","recs","feed","upload","render","index","cache","router","gateway","scheduler","worker","ingest","export","audit","webhook","session","profile","catalog","payments","fraud","notify","geo"]]
+        errs=[{"level":"ERROR","service":s,"msg":f"{s} failed: upstream timeout {random.randint(100,900)}ms","trace_id":hex(random.getrandbits(48))} for s in SERVICES]
+        noise=[{"level":random.choice(["INFO","DEBUG","WARN"]),"service":random.choice(SERVICES),"msg":random.choice(["request handled","cache hit","healthcheck ok","retry scheduled"]),"trace_id":hex(random.getrandbits(48))} for _ in range(220)]
+        allrows=errs+noise; random.shuffle(allrows)
+
+        def try_compress(label, content, **kw):
+            msgs=[{"role":"user","content":content}]
+            r=compress(msgs, **kw)
+            print(f"[{label}] before={r.tokens_before} after={r.tokens_after} ratio={r.compression_ratio:.3f} transforms={r.transforms_applied}")
+
+        q="List every distinct service that logged an ERROR. JSON array only.\n\n"
+        # 1: newline JSON, default 200k
+        try_compress("nljson/200k", q+"\n".join(json.dumps(x) for x in allrows), model_limit=200000)
+        # 2: newline JSON, tight limit (budget pressure)
+        try_compress("nljson/2k",   q+"\n".join(json.dumps(x) for x in allrows), model_limit=2000)
+        # 3: proper JSON array (SmartCrusher target)
+        try_compress("jsonarray/200k", q+json.dumps(allrows), model_limit=200000)
+        try_compress("jsonarray/2k",   q+json.dumps(allrows), model_limit=2000)
+        # 4: as a tool result message shape
+        msgs=[{"role":"user","content":"find errors"},{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"logs","input":{}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":json.dumps(allrows)}]}]
+        r=compress(msgs, model_limit=2000); print(f"[toolresult/2k] before={r.tokens_before} after={r.tokens_after} ratio={r.compression_ratio:.3f} transforms={r.transforms_applied}")
+        # config options?
+        try:
+          from headroom import CompressConfig
+          import inspect
+          print("CompressConfig fields:", [f for f in dir(CompressConfig) if not f.startswith('_')][:25])
+        except Exception as e: print("CompressConfig:", e)
+        PY
+        ~/hr-venv/bin/python ~/hr-test2.py 2>&1 | head -30
+      at: 2026-06-20T12:01:52.784124Z
+      classified: other
+    - cmd: |-
+        cat > ~/hr-complete.py <<'PY'
+        import json, random
+        from headroom import compress, CompressConfig
+        random.seed(7)
+        SERVICES=[f"svc-{n}" for n in ["auth","billing","cart","search","email","push","ledger","inventory","price","recs","feed","upload","render","index","cache","router","gateway","scheduler","worker","ingest","export","audit","webhook","session","profile","catalog","payments","fraud","notify","geo"]]
+        errs=[{"level":"ERROR","service":s,"msg":f"{s} failed: upstream timeout {random.randint(100,900)}ms","trace_id":hex(random.getrandbits(48))} for s in SERVICES]
+        noise=[{"level":random.choice(["INFO","DEBUG","WARN"]),"service":random.choice(SERVICES),"msg":random.choice(["request handled","cache hit","healthcheck ok","retry scheduled"]),"trace_id":hex(random.getrandbits(48))} for _ in range(220)]
+        rows=errs+noise; random.shuffle(rows)
+        payload=json.dumps(rows)
+
+        def run(label, cfg=None, **kw):
+            msgs=[{"role":"user","content":"search logs for errors"},
+                  {"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"log_search","input":{}}]},
+                  {"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":payload}]}]
+            r=compress(msgs, model_limit=4000, config=cfg, **kw)
+            comp=r.messages[-1]["content"]
+            ctext=comp if isinstance(comp,str) else json.dumps(comp)
+            # completeness: how many of the 30 ERROR services survive in compressed text
+            survived=[s for s in SERVICES if s in ctext]
+            print(f"[{label}] ratio={r.compression_ratio:.2f} ({r.tokens_before}->{r.tokens_after} tok)  ERROR-services retained: {len(survived)}/30")
+            missing=[s for s in SERVICES if s not in survived]
+            if missing: print(f"         DROPPED ({len(missing)}): {missing[:12]}{'...' if len(missing)>12 else ''}")
+
+        run("default")
+        for tr in [0.5,0.7,0.9]:
+            run(f"target_ratio={tr}", cfg=CompressConfig(target_ratio=tr, min_tokens_to_compress=100))
+        PY
+        ~/hr-venv/bin/python ~/hr-complete.py 2>&1 | head -30
+      at: 2026-06-20T12:02:22.292444Z
+      classified: other
+    - cmd: |-
+        cat > ~/hr-inspect.py <<'PY'
+        import json,random
+        from headroom import compress
+        random.seed(7)
+        SERVICES=[f"svc-{n}" for n in ["auth","billing","cart","search"]]
+        rows=[{"level":"ERROR","service":s,"msg":f"{s} failed","trace_id":hex(random.getrandbits(48))} for s in SERVICES]+[{"level":"INFO","service":"svc-auth","msg":"ok","trace_id":hex(random.getrandbits(48))} for _ in range(6)]
+        msgs=[{"role":"user","content":"x"},{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"log_search","input":{}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":json.dumps(rows)}]}]
+        r=compress(msgs, model_limit=2000)
+        c=r.messages[-1]["content"]
+        print("=== compressed tool_result content ===")
+        print(c if isinstance(c,str) else json.dumps(c,indent=1)[:1500])
+        PY
+        ~/hr-venv/bin/python ~/hr-inspect.py 2>&1 | head -40
+        echo "=== is the lossy text/summarizer path available without [ml]? ==="
+        ~/hr-venv/bin/python -c "
+        import headroom, pkgutil
+        mods=[m.name for m in pkgutil.iter_modules(headroom.__path__)]
+        print('submodules:', mods)
+        try:
+          from headroom.compression import smart_crusher
+          print('smart_crusher ok')
+        except Exception as e: print('sc:',e)
+        " 2>&1 | head
+      at: 2026-06-20T12:02:53.479735Z
+      classified: other
+    - cmd: |-
+        cat > ~/hr-final.py <<'PY'
+        import json,random,subprocess
+        from headroom import compress
+        random.seed(7)
+        SERVICES=[f"svc-{n}" for n in ["auth","billing","cart","search","email","push","ledger","inventory","price","recs","feed","upload","render","index","cache","router","gateway","scheduler","worker","ingest","export","audit","webhook","session","profile","catalog","payments","fraud","notify","geo"]]
+
+        def comp(rows):
+            msgs=[{"role":"user","content":"x"},{"role":"assistant","content":[{"type":"tool_use","id":"t","name":"log","input":{}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"t","content":json.dumps(rows)}]}]
+            r=compress(msgs, model_limit=4000)
+            c=r.messages[-1]["content"]; return r.compression_ratio, (c if isinstance(c,str) else json.dumps(c))
+
+        # A) REDUNDANT (their benchmark style: near-identical rows)
+        red=[{"repo":"grafana/grafana","path":"src/handler.py","fragment":"def handler(request):\n  return response","score":90,"sha":hex(random.getrandbits(80))} for _ in range(100)]
+        ratio_r,_=comp(red); print(f"A) redundant 100 near-identical results: ratio={ratio_r:.2f}")
+
+        # B) HETEROGENEOUS completeness, end-to-end with Claude
+        errs=[{"level":"ERROR","service":s,"msg":f"{s}: timeout {random.randint(100,900)}ms","trace_id":hex(random.getrandbits(48))} for s in SERVICES]
+        noise=[{"level":random.choice(["INFO","WARN"]),"service":random.choice(SERVICES),"msg":"ok","trace_id":hex(random.getrandbits(48))} for _ in range(220)]
+        rows=errs+noise; random.shuffle(rows)
+        ratio_h,ctext=comp(rows)
+        print(f"B) heterogeneous 30-error log: ratio={ratio_h:.2f}")
+        open("/Users/tapabratapal/hr-compblob.txt","w").write(ctext)
+        def ask(blob):
+            p=("This is a tool log result. List EVERY distinct service that logged an ERROR line. "
+               "Reply ONLY a JSON array of service names.\n\n"+blob)
+            out=subprocess.run(["claude","-p",p,"--output-format","text"],capture_output=True,text=True,timeout=180).stdout
+            import re
+            m=re.findall(r'svc-[a-z]+',out)
+            return set(m)
+        found=ask(ctext)
+        recall=len(found & set(SERVICES))/30
+        print(f"   Claude on COMPRESSED blob: recovered {len(found & set(SERVICES))}/30 ERROR services (recall={recall:.2f})")
+        missing=sorted(set(SERVICES)-found)
+        if missing: print(f"   MISSED: {missing}")
+        PY
+        ~/hr-venv/bin/python ~/hr-final.py 2>&1 | tail -15
+      at: 2026-06-20T12:04:03.260574Z
+      classified: other
+    - cmd: |-
+        cd /tmp/headroom-src; ~/hr-venv/bin/python -c "
+        import headroom.ccr as ccr, inspect
+        print('ccr exports:', [x for x in dir(ccr) if not x.startswith('_')][:20])
+        " 2>&1 | head
+        echo "=== CCR enable knobs in config / compress ==="
+        grep -rniE 'ccr|reversible|retrieve' /Users/tapabratapal/hr-venv/lib/python3.14/site-packages/headroom/config.py 2>/dev/null | head -8
+        echo "=== does CCR need the summarizer/ML or proxy? ==="
+        grep -rniE 'kompress|\[ml\]|summari|onnx|model' /tmp/headroom-src/headroom/ccr/*.py 2>/dev/null | head -6
+        echo "=== docs mention of enabling CCR ==="
+        grep -rniE 'ccr|HEADROOM_CCR|enable.*retriev' /tmp/headroom-src/*.md /tmp/headroom-src/wiki/*.md 2>/dev/null | head -6
+      at: 2026-06-20T12:19:22.526098Z
+      classified: other
+notes: []
+redactions: 0

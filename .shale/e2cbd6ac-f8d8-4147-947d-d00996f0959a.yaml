@@ -1,0 +1,108 @@
+shale_version: "0"
+id: e2cbd6ac-f8d8-4147-947d-d00996f0959a
+created_at: 2026-06-20T12:29:47.443383Z
+finalized_at: 2026-07-04T23:00:19.318712Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: find /Users/tapabratapal/Projects/provasign -maxdepth 2 -iname "handoff*" 2>/dev/null
+      at: 2026-06-20T12:30:10.450085Z
+      classified: other
+    - cmd: |-
+        cd /tmp && echo "=== lines ===" && wc -l grafana-truth.jsonl && echo "=== first 2 records (pretty) ===" && head -2 grafana-truth.jsonl | python3 -c "import sys,json
+        for l in sys.stdin:
+            print(json.dumps(json.loads(l), indent=2)[:600]); print('---')"
+      at: 2026-06-20T13:26:16.872075Z
+      classified: other
+    - cmd: |-
+        cd /tmp && python3 - <<'EOF'
+        import json, re, collections
+        GEN = re.compile(r'(_gen|\.pb|mock|generated|\.gen)\.go$|/mocks?/|_test\.go$', re.I)
+        impls = collections.defaultdict(set)      # name -> {(file,line)} distinct def sites (callees)
+        callers = collections.defaultdict(set)    # name -> {(callerfile,callerline)} distinct callers
+        caller_files = collections.defaultdict(set)
+        with open('grafana-truth.jsonl') as f:
+            next(f)  # header
+            for l in f:
+                e = json.loads(l)
+                ce, ca = e['callee'], e['caller']
+                n = ce['name']
+                if GEN.search(ce['file']):     # skip generated/mock/test *implementations*
+                    continue
+                impls[n].add((ce['file'], ce['line']))
+                callers[n].add((ca['file'], ca['line']))
+                caller_files[n].add(ca['file'].split('/')[0:3] and '/'.join(ca['file'].split('/')[:3]))
+
+        # adversarial = many distinct impls sharing a name + many callers across packages
+        rows = []
+        for n, defs in impls.items():
+            nd, nc = len(defs), len(callers[n])
+            if nd >= 4 and nc >= 8 and not n[0].isupper()*0:   # keep all; rank below
+                pkgs = len(caller_files[n])
+                rows.append((nd, nc, pkgs, n))
+        rows.sort(reverse=True)
+        print(f"{'impls':>5} {'callers':>7} {'callerpkgs':>10}  name")
+        for nd, nc, pk, n in rows[:30]:
+            print(f"{nd:>5} {nc:>7} {pk:>10}  {n}")
+        EOF
+      at: 2026-06-20T13:26:41.117783Z
+      classified: other
+    - cmd: |-
+        cd /tmp && python3 - <<'EOF'
+        import json, re, collections
+        GEN = re.compile(r'(_gen|\.pb|mock|generated|\.gen)\.go$|/mocks?/|_test\.go$', re.I)
+        # bare name -> set of distinct qualified receiver-names (ambiguity), + callers, + pkgs
+        recv = collections.defaultdict(set)
+        callers = collections.defaultdict(set)
+        pkgs = collections.defaultdict(set)
+        for l in open('grafana-truth.jsonl'):
+            o=json.loads(l)
+            if 'callee' not in o: continue
+            ce,ca=o['callee'],o['caller']
+            if GEN.search(ce['file']): continue
+            n=ce['name']; bare=n.rsplit('.',1)[-1]
+            if '.' in n: recv[bare].add(n.rsplit('.',1)[0])     # distinct receiver TYPE
+            callers[bare].add((ca['file'],ca['line']))
+            pkgs[bare].add('/'.join(ce['file'].split('/')[:3]))
+        NOISE={'New','newMetrics','newInstanceSettings'}
+        rows=[]
+        for bare,types in recv.items():
+            if bare in NOISE: continue
+            nt=len(types); nc=len(callers[bare]); npk=len(pkgs[bare])
+            # ambiguous = many DISTINCT receiver types share the name AND impls span many pkgs
+            if nt>=6 and nc>=12:
+                rows.append((nt,nc,npk,bare))
+        rows.sort(reverse=True)
+        print(f"{'recvTypes':>9} {'callers':>7} {'implPkgs':>8}  bare-name (grep over-matches these)")
+        for nt,nc,npk,bare in rows[:25]:
+            print(f"{nt:>9} {nc:>7} {npk:>8}  {bare}")
+        EOF
+      at: 2026-06-21T12:41:43.72034Z
+      classified: other
+    - cmd: |-
+        set -e
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== prism worktree @ v0.15.0 (clean released code, no primitives) ==="
+        rm -rf /tmp/prism-v15
+        git worktree add -q --detach /tmp/prism-v15 v0.15.0 2>&1 | tail -2 || git worktree add -q --detach /tmp/prism-v15 v0.15.0
+        cd /tmp/prism-v15
+        echo "replace github.com/provasign/grove => /tmp/grove-prefix" >> go.mod
+        go mod tidy 2>&1 | tail -3
+        echo "=== build /tmp/prism-prefix ==="
+        GOFLAGS=-mod=mod go build -o /tmp/prism-prefix ./cmd/prism 2>&1 | tail -5 && echo "BUILD OK" || echo "BUILD FAILED"
+        ls -la /tmp/prism-prefix 2>/dev/null && /tmp/prism-prefix version 2>/dev/null | head -1
+      at: 2026-06-22T23:39:55.985223Z
+      classified: build
+    - cmd: |-
+        cd /tmp/grove-prefix
+        echo "=== grove dispatch-fanout regression test on the REVERTED grove (should FAIL if bug restored) ==="
+        go test ./internal/graph/ -run 'TestBuildCalls_ResolvedInterfaceDoesNotFanOut' 2>&1 | tail -15
+      at: 2026-06-22T23:44:50.79861Z
+      classified: test
+notes: []
+redactions: 0
