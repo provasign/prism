@@ -103,4 +103,14 @@ type ChangeImpactResult struct {
 	Supers       []SymbolRecord `json:"supers"`
 	Family       []SymbolRecord `json:"family"`
 	Callers      []SymbolRecord `json:"callers"`
+
+	// ExternalSupers: supertype names declared in the hierarchy that resolve
+	// to no indexed type (JDK / dependency types). Informational.
+	ExternalSupers []string `json:"externalSupers,omitempty"`
+	// OverridesExternal: "Type#method" when the queried method belongs to an
+	// external supertype's contract — a signature change breaks a contract
+	// the project does not own; the change-set is project-local only.
+	OverridesExternal []string `json:"overridesExternal,omitempty"`
+	// Completeness: "closed" or "project-local".
+	Completeness string `json:"completeness,omitempty"`
 }

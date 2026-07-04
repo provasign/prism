@@ -512,7 +512,12 @@ func toolDescription(name string) string {
 			"Use this instead of prism_references + manual override hunting when you need to " +
 			"find every site affected by a method signature change. Result groups: declarations " +
 			"(the method itself), family (overrides + implementations), supers (supertype decls, " +
-			"informational), callers (call sites into the set)."
+			"informational), callers (call sites into the set). Check 'completeness': 'closed' " +
+			"means the set is authoritative; 'project-local' + 'overridesExternal' means the " +
+			"method belongs to an external (JDK/dependency) contract — its signature cannot " +
+			"safely change, and calls typed against the external supertype are not included. " +
+			"Querying an external type directly (e.g. 'Iterator.next') returns the project's " +
+			"implementation closure of that contract — use for deprecation/migration sweeps."
 	}
 	return "Prism tool: " + name
 }
@@ -1618,14 +1623,28 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		}
 		return out
 	}
-	return map[string]any{
+	out := map[string]any{
 		"query":        r.Query,
 		"declarations": compact(r.Declarations),
 		"supers":       compact(r.Supers),
 		"family":       compact(r.Family),
 		"callers":      compact(r.Callers),
 		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers),
-	}, nil
+	}
+	if r.Completeness != "" {
+		out["completeness"] = r.Completeness
+	}
+	if len(r.ExternalSupers) > 0 {
+		out["externalSupers"] = r.ExternalSupers
+	}
+	if len(r.OverridesExternal) > 0 {
+		out["overridesExternal"] = r.OverridesExternal
+		out["warning"] = "the queried method belongs to an external supertype's contract (" +
+			strings.Join(r.OverridesExternal, ", ") + "); changing its signature breaks that " +
+			"contract, and this change-set is the project-local closure only — call sites " +
+			"typed against the external supertype are not included"
+	}
+	return out, nil
 }
 
 // --- helpers -------------------------------------------------------------

@@ -446,11 +446,14 @@ func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactR
 		return nil, err
 	}
 	return &ChangeImpactResult{
-		Query:        r.Query,
-		Declarations: convertSymbols(r.Declarations),
-		Supers:       convertSymbols(r.Supers),
-		Family:       convertSymbols(r.Family),
-		Callers:      convertSymbols(r.Callers),
+		Query:             r.Query,
+		Declarations:      convertSymbols(r.Declarations),
+		Supers:            convertSymbols(r.Supers),
+		Family:            convertSymbols(r.Family),
+		Callers:           convertSymbols(r.Callers),
+		ExternalSupers:    r.ExternalSupers,
+		OverridesExternal: r.OverridesExternal,
+		Completeness:      r.Completeness,
 	}, nil
 }
 
