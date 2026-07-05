@@ -8,7 +8,7 @@ import (
 )
 
 func TestCmdInit(t *testing.T) {
-	t.Setenv("HOME", t.TempDir()) // keep global writers (Codex, Zed, Claude) off the real user configs
+	setHome(t, t.TempDir()) // keep global writers (Codex, Zed, Claude) off the real user configs
 	dir := t.TempDir()
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
@@ -24,14 +24,14 @@ func TestCmdInit(t *testing.T) {
 func TestCmdInit_GlobalFlag(t *testing.T) {
 	dir := t.TempDir()
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	setHome(t, home)
 	if rc := cmdInit([]string{dir, "--global"}); rc != 0 {
 		t.Errorf("rc %d", rc)
 	}
 }
 
 func TestCmdInit_BadDir(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setHome(t, t.TempDir())
 	// trigger write error by passing a path under a read-only parent
 	parent := t.TempDir()
 	ro := filepath.Join(parent, "ro")
@@ -84,7 +84,7 @@ func TestBuildZedConfig(t *testing.T) {
 // doing so re-points every other project's editor at this one.
 func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	setHome(t, home)
 	codexPath := filepath.Join(home, ".codex", "config.toml")
 	zedPath := filepath.Join(home, ".config", "zed", "settings.json")
 	const codexBefore = "[mcp_servers.other]\ncommand = \"x\"\n"
@@ -255,7 +255,7 @@ func TestWritePrismCodexConfig(t *testing.T) {
 }
 
 func TestInitRegisterMCPTools_WritesVSCode(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setHome(t, t.TempDir())
 	dir := t.TempDir()
 	written := initRegisterMCPTools(dir, "/x/prism", false)
 	var sawVSCode bool
@@ -270,7 +270,7 @@ func TestInitRegisterMCPTools_WritesVSCode(t *testing.T) {
 }
 
 func TestCmdInit_InstallAlias(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setHome(t, t.TempDir())
 	// `prism install` must behave identically to `prism init`.
 	dir := t.TempDir()
 	rc := Run([]string{"install", dir})
@@ -351,7 +351,7 @@ func TestSteeringBlockForMode(t *testing.T) {
 func TestCmdInit_ModeFlag(t *testing.T) {
 	for _, mode := range []string{"mcp", "cli", "both"} {
 		t.Run(mode, func(t *testing.T) {
-			t.Setenv("HOME", t.TempDir())
+			setHome(t, t.TempDir())
 			dir := t.TempDir()
 			if rc := cmdInit([]string{dir, "--mode", mode}); rc != 0 {
 				t.Fatalf("rc %d", rc)

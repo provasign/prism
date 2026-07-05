@@ -12,7 +12,7 @@ import (
 // absent (e.g. first-time init in a fresh repo) and write a valid prism
 // mcpServers entry into each one.
 func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
-	t.Setenv("HOME", t.TempDir()) // keep global writers (Codex, Zed, Claude) off the real user configs
+	setHome(t, t.TempDir()) // keep global writers (Codex, Zed, Claude) off the real user configs
 	projectDir := t.TempDir()
 	prismBin := "/fake/prism"
 
@@ -42,7 +42,7 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 // given prism binary with cwd-rooted args (["mcp"], no pinned project path) —
 // Claude Code launches project-scope servers with cwd at the project root.
 func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setHome(t, t.TempDir())
 	projectDir := t.TempDir()
 	prismBin := "/usr/local/bin/prism"
 
@@ -94,7 +94,7 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 // An existing config must be merged rather than overwritten — pre-existing
 // mcpServers entries must survive alongside the new prism entry.
 func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setHome(t, t.TempDir())
 	projectDir := t.TempDir()
 	existing := `{"mcpServers":{"other-tool":{"command":"/bin/other","args":[]}}}`
 	if err := os.WriteFile(filepath.Join(projectDir, ".mcp.json"), []byte(existing), 0o644); err != nil {
@@ -121,7 +121,7 @@ func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 // Global user-level config dirs that don't exist on this machine must be
 // skipped; only project-local dirs should be created.
 func TestInitRegisterMCPToolsSkipsAbsentGlobalDirs(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	setHome(t, t.TempDir())
 	projectDir := t.TempDir()
 	written := initRegisterMCPTools(projectDir, "/bin/prism", false)
 

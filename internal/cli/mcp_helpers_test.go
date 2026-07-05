@@ -68,7 +68,7 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	home := t.TempDir()
 	// os.UserHomeDir reads $HOME on Unix and %USERPROFILE% on Windows — set both
 	// so the test redirects to the temp dir on every platform.
-	t.Setenv("HOME", home)
+	setHome(t, home)
 	t.Setenv("USERPROFILE", home)
 
 	settings := filepath.Join(home, ".claude", "settings.json")

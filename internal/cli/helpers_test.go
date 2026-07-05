@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+// setHome points both HOME (unix) and USERPROFILE (what os.UserHomeDir reads
+// on Windows) at dir, keeping global writers (Codex, Zed, Claude) off the
+// real user configs on every platform.
+func setHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
+}
+
 func TestRun_Help(t *testing.T) {
 	if Run([]string{}) != 0 {
 		t.Error("no args")
