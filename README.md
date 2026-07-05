@@ -203,11 +203,14 @@ prism init . --mode cli   # CLI only: for environments without MCP support
 
 ### MCP
 
-MCP advertises six tools: `prism_query`, `prism_read`, `prism_search`,
-`prism_lookup`, `prism_index`, and `prism_drift`. The auxiliary tools
-(`prism_savings`, `prism_feedback`, `prism_compact`, `prism_evidence`) stay
-available through the CLI and HTTP server without spending schema tokens in
-every MCP session. Use MCP when the client has first-class MCP support and
+MCP advertises thirteen tools: the context surface (`prism_query`,
+`prism_read`, `prism_search`, `prism_lookup`, `prism_references`,
+`prism_resolve`, `prism_edges`), the task-shaped graph operations
+(`prism_change_impact`, `prism_missing_implementations`,
+`prism_untested_surface`, `prism_dead_code`), and session upkeep
+(`prism_index`, `prism_drift`). The auxiliary tools (`prism_savings`,
+`prism_feedback`, `prism_compact`, `prism_evidence`) stay available through
+the CLI and HTTP server without spending schema tokens in every MCP session. Use MCP when the client has first-class MCP support and
 you want persistent session deduplication.
 
 ### HTTP Server
@@ -239,6 +242,15 @@ prism query <task> [dir] \
 prism read <file> [dir] --format text
 prism lookup <name> [dir] --format text
 prism search <keyword> [dir] --format text
+prism references <name> [dir] --format text
+
+# Task-shaped graph operations — one deterministic call each
+prism change-impact 'Type.method(ParamType, ...)' [dir]   # declaration + override family + all resolved callers
+prism missing-implementations 'Type.method' [dir]         # types claiming the contract that do not implement it
+prism untested-surface 'Type.method' [dir]                # the change-set split covered/untested by test evidence
+prism dead-code [dir] [--roots a,b]                       # unreachable production symbols (precision-first)
+
+prism drift [dir]
 prism savings [dir]
 prism compact [dir]
 prism feedback --tool <name> --rating <0-5> [dir]

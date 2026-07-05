@@ -2,7 +2,7 @@ module github.com/provasign/prism
 
 go 1.26
 
-require github.com/provasign/grove v0.14.1
+require github.com/provasign/grove v0.15.0
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
