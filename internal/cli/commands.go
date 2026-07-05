@@ -452,6 +452,9 @@ Use the registered prism_* MCP tools:
 |---|---|
 | Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | prism_change_impact — override family + all callers |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every closure type with no implementation |
+| "What should I test before changing X?" / test-gap audit of a change-set | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
+| Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
 | Renaming a class, struct, or type | prism_change_impact for each public method — all usages |
 | Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete caller list |
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |

@@ -549,7 +549,8 @@ func toolDescription(name string) string {
 			"— each is a compile error), abstractMissing (abstract classes, informational), " +
 			"unverifiable (superclass chain leaves the index; an external base may provide " +
 			"it — verify before treating as broken), implementedCount (coverage evidence). " +
-			"defaultProvided=true means the contract ships a body and nothing can be missing. " +
+			"defaultProvided=true means the contract ships a body: nothing is broken today, and " +
+			"'missing' reads as 'inherits the default — breaks if the member becomes required'. " +
 			"Same completeness reporting as change_impact. RELAY the result as-is: do not " +
 			"re-verify through grep — the closure and inheritance walk are already solved."
 	case "prism_untested_surface":
@@ -1746,8 +1747,9 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	}
 	if r.DefaultProvided {
 		out["defaultProvided"] = true
-		out["note"] = "the contract supplies a body every subtype inherits (default/concrete " +
-			"method) — no type can be missing"
+		out["note"] = "the contract supplies a body every subtype inherits, so nothing is " +
+			"compile-broken today — 'missing' lists the types that inherit the default and " +
+			"would break if the member became abstract/required"
 	}
 	if r.Completeness != "" {
 		out["completeness"] = r.Completeness
