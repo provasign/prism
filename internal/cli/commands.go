@@ -253,35 +253,29 @@ func promptAgentMode() string {
 const steeringInstructionsMCP = `
 ## Prism — context delivery (ALWAYS use these tools)
 
-Prism is a call-graph oracle. Its value is surfacing callers, callees, and test
-contracts the agent would not find by grep+read alone.
+Prism answers whole-task questions (change impact, missing implementations,
+test gaps, dead code) in ONE deterministic call, and delivers code context
+cheaply. Three layers, in priority order.
 
-### Decision tree
+### 1. Changing or auditing code? One call answers the whole task
 
 | Situation | Tool |
 |---|---|
 | Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — ONE call: declaration + all overrides + all resolved callers |
 | Adding/changing a method on an interface or base class | prism_change_impact — finds the complete override family + every caller |
-| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every type in the closure with no implementation |
-| "What should I test before changing X?" / test-gap audit of a change-set | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
-| Cleanups, library extraction, "is X still used / can I delete it?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
 | Renaming a class, struct, or type | prism_change_impact(query="Type.method") for each public method — finds all usages |
 | Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete call-site list in one call |
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
-| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
-| Callers/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
-| Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
-| Read one function body | prism_lookup(name="pkg.FuncName") |
-| Find docs about a topic | prism_query(task=..., include=["docs"]) — filenames only |
-| Blast radius of a change | prism_query(terms=[...], graph_depth=3) |
-| Symbols with no tests (before writing/fixing) | prism_query(terms=[...], include=["graph","coverage_gaps"]) |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every type in the closure with no implementation |
+| "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
+| Cleanups, library extraction, "is X still used / can I delete it?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
 
-### Pre-task rule for any refactor
-
-Before writing any code on a task that involves changing or renaming an existing
-symbol: call prism_change_impact FIRST to establish the complete change-set — even
-if the change looks small. Small changes can have large blast radii through
-inheritance and indirect callers that grep will not find.
+**Pre-task rule:** before writing any code on a task that involves changing or
+renaming an existing symbol, call prism_change_impact FIRST — even if the change
+looks small. Small changes can have large blast radii through inheritance and
+indirect callers that grep will not find. Result groups: declarations + family
+(every override/implementation) + callers = every site that must change. Param
+types are optional ("Type.method" works) but improve precision on overloaded names.
 
 Check the result's completeness field. "closed" means the set is authoritative.
 "project-local" with overridesExternal means the method belongs to an external
@@ -295,7 +289,21 @@ re-filter, dedup, or transform it through grep/sed/awk/scripts — re-processing
 a solved traversal drops real sites and adds spurious ones (measured). Use the
 returned sites as-is; read individual sites only to make the edits.
 
-### Canonical workflow (non-refactor tasks)
+### 2. Reading code? Prism reads are cheaper than shell reads
+
+| Situation | Tool |
+|---|---|
+| Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
+| Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
+
+### 3. Exploring? Shell finds the anchor, one prism_query expands it
+
+| Situation | Tool |
+|---|---|
+| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
+| Callers/callees/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
+
+Canonical workflow (non-refactor tasks):
 
     grep/find/rg <terms>                 <- locate anchor first; shell tools always win here
       -> prism_query(                    <- expand from anchor: callers, callees, tests
@@ -307,46 +315,14 @@ returned sites as-is; read individual sites only to make the edits.
       -> prism_read(file=...)            <- whole file, session-compressed
       -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
 
-### Refactor / signature-change workflow
-
-    identify the target method from the task     <- prism_search only if unsure of type name
-      -> prism_change_impact(                    <- the COMPLETE change-set, one deterministic call
-           query="JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)"
-         )
-    Result groups: declarations (the method itself), family (every override/
-    implementation in the subtype closure), callers (every resolved call site),
-    supers (supertype declarations). Union declarations + family + callers =
-    every site that must change. Do NOT re-verify with grep — the traversal is
-    type-resolved and authoritative. Param types are optional ("Type.method"
-    works) but improve precision on overloaded names.
-
-### prism_query parameters
-
-| Parameter | Default | Purpose |
-|---|---|---|
-| task | required | What you are doing |
-| terms | — | Search terms — same precision as shell search tools, plus graph expansion |
-| include | ["graph","tests"] | "graph" (callers/callees), "tests", "docs" (filenames only), "coverage_gaps" (untested symbols — use when writing/fixing code) |
-| graph_depth | 2 | BFS hops: 1 = immediate callers, 3+ = blast radius |
-| budget | 8000 | Token ceiling. Increase for large refactors. |
-
-### Other tools
-
-| Tool | When |
-|---|---|
-| prism_index | Once at session start — not on every step |
-| prism_search | Find a symbol by name when file is unknown (not a grep replacement) |
-| prism_drift | When a stale-context warning appears, or before editing files read a while ago |
+Housekeeping: prism_index once at session start (delta indexing is automatic —
+never re-run per step); prism_drift if a stale-context warning appears.
 
 ### Do NOT
 
 - Do NOT call prism_query before searching — use shell tools (grep, find, rg) to find the anchor first; prism expands from it
-- Do NOT manually chain prism_references + prism_edges + prism_lookup to enumerate a signature change's impact — prism_change_impact computes the complete set in one call
-- Do NOT use prism_search as a search replacement — it searches symbol names only, not source text
+- Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact computes the complete set in one call
 - Do NOT use prism_read for a single function — use prism_lookup instead
-- Do NOT re-run prism_index on every step — delta indexing is automatic
-- Do NOT manually cross-reference coverage_gaps output with prism_search — treat coverage_gaps as authoritative and use it as the terminal step, not the start of a manual verification chain
-- For coverage audits, use 1-2 terms per prism_query and union the results — each query audits only its seeds + blast radius, so packing many terms into one call narrows the audit
 `
 
 // steeringInstructionsCLI is injected when agent_mode is "cli".
@@ -354,35 +330,30 @@ returned sites as-is; read individual sites only to make the edits.
 const steeringInstructionsCLI = `
 ## Prism — context delivery (ALWAYS use these tools)
 
-Prism is a call-graph oracle available as a CLI. Use it via Bash to get
-callers, callees, and test contracts the agent would not find by grep+read alone.
+Prism is available as a CLI (use via Bash, --format text). It answers
+whole-task questions (change impact, missing implementations, test gaps, dead
+code) in ONE deterministic call, and delivers code context cheaply. Three
+layers, in priority order.
 
-### Decision tree
+### 1. Changing or auditing code? One call answers the whole task
 
 | Situation | Command |
 |---|---|
 | Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
-| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
-| "What should I test before changing X?" | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
-| Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
 | Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
 | ANY task that says "find all X" for a specific method | ` + "`" + `prism change-impact` + "`" + ` first, before any grep |
-| Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
-| Callers/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
-| Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
-| Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
-| Find docs about a topic | ` + "`" + `prism query "<task>" --include docs --format text` + "`" + ` |
-| Blast radius of a change | ` + "`" + `prism query "<task>" --terms a,b --depth 3 --format text` + "`" + ` |
-| Symbols with no tests (before writing/fixing) | ` + "`" + `prism query "<task>" --terms a,b --include graph,coverage_gaps --format text` + "`" + ` |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
+| "What should I test before changing X?" / test-gap audit / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
+| Cleanups / "is X still used / can I delete it?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 
-### Pre-task rule for any refactor
-
-Before writing any code on a task that involves changing or renaming an existing
-symbol: run prism change-impact first — even if the change looks small. Small
-changes can have large blast radii through inheritance and indirect callers that
-grep will not find.
+**Pre-task rule:** before writing any code on a task that involves changing or
+renaming an existing symbol, run prism change-impact first — even if the change
+looks small. Small changes can have large blast radii through inheritance and
+indirect callers that grep will not find. Result groups: declarations + family
+(every override/implementation) + callers = every site that must change. Param
+types are optional ('Type.method' works) but improve precision on overloaded names.
 
 Check the completeness field in the output. "closed" means the set is
 authoritative. "project-local" with overridesExternal means the method belongs
@@ -397,7 +368,21 @@ re-filter, dedup, or transform it through grep/sed/awk/scripts — re-processing
 a solved traversal drops real sites and adds spurious ones (measured). Use the
 returned sites as-is; read individual sites only to make the edits.
 
-### Canonical workflow (non-refactor tasks)
+### 2. Reading code? Prism reads are cheaper than shell reads
+
+| Situation | Command |
+|---|---|
+| Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` — session-compressed on repeat reads |
+| Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` — ~5x cheaper than read |
+
+### 3. Exploring? Shell finds the anchor, one prism query expands it
+
+| Situation | Command |
+|---|---|
+| Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
+| Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
+
+Canonical workflow (non-refactor tasks):
 
     grep/find/rg <terms>                      <- locate anchor first; shell tools always win here
       -> prism query "<task>" \               <- expand from anchor: callers, callees, tests
@@ -408,31 +393,14 @@ returned sites as-is; read individual sites only to make the edits.
       -> prism read <file> --format text      <- whole file, session-compressed
       -> prism lookup <pkg.FuncName> --format text  <- one function (~5x cheaper than read)
 
-### prism query flags
-
-| Flag | Default | Purpose |
-|---|---|---|
-| --terms a,b | — | Anchor on specific symbol names (grep-precision + graph expansion) |
-| --include a,b | graph,tests | graph (callers/callees), tests, docs (filenames only), coverage_gaps |
-| --depth N | 2 | BFS hops: 1 = immediate callers, 3+ = blast radius |
-| --format | text | text (default), lean (compact JSON), json (full metadata) |
-
-### Other commands
-
-| Command | When |
-|---|---|
-| prism index [dir] | Once at session start — not on every step |
-| prism search <keyword> --format text | Find a symbol by name when file is unknown |
+Housekeeping: prism index [dir] once at session start (delta indexing is
+automatic — never re-run per step).
 
 ### Do NOT
 
 - Do NOT call prism query before searching — use shell tools (grep, find, rg) to find the anchor first; prism expands from it
-- Do NOT manually chain references + edges + lookup to enumerate a signature change's impact — ` + "`" + `prism change-impact` + "`" + ` computes the complete set in one call
-- Do NOT use prism search as a search replacement — it searches symbol names only, not source text
+- Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — ` + "`" + `prism change-impact` + "`" + ` computes the complete set in one call
 - Do NOT use prism read for a single function — use prism lookup instead
-- Do NOT re-run prism index on every step — delta indexing is automatic
-- Do NOT manually cross-reference coverage_gaps output — treat it as authoritative and use it as the terminal step, not the start of a manual verification chain
-- For coverage audits, use 1-2 terms per query and union the results — each query audits only its seeds + blast radius
 `
 
 // steeringInstructionsBoth is injected when agent_mode is "both" (default).
@@ -441,35 +409,46 @@ returned sites as-is; read individual sites only to make the edits.
 const steeringInstructionsBoth = `
 ## Prism — context delivery (ALWAYS use these tools)
 
-Prism is a call-graph oracle. Its value is surfacing callers, callees, and test
-contracts the agent would not find by grep+read alone.
+Prism answers whole-task questions (change impact, missing implementations,
+test gaps, dead code) in ONE deterministic call, and delivers code context
+cheaply. Three layers, in priority order.
 
 ### When MCP tools are available
 
-Use the registered prism_* MCP tools:
+Use the registered prism_* MCP tools.
+
+**1. Changing or auditing code? One call answers the whole task:**
 
 | Situation | Tool |
 |---|---|
 | Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | prism_change_impact — override family + all callers |
-| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every closure type with no implementation |
-| "What should I test before changing X?" / test-gap audit of a change-set | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
-| Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
 | Renaming a class, struct, or type | prism_change_impact for each public method — all usages |
 | Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete caller list |
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
-| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
-| Callers/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every closure type with no implementation |
+| "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
+| Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
+
+**2. Reading code? Prism reads are cheaper than shell reads:**
+
+| Situation | Tool |
+|---|---|
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
-| Read one function body | prism_lookup(name="pkg.FuncName") |
-| Find docs about a topic | prism_query(task=..., include=["docs"]) — filenames only |
-| Blast radius of a change | prism_query(terms=[...], graph_depth=3) |
-| Symbols with no tests (before writing/fixing) | prism_query(terms=[...], include=["graph","coverage_gaps"]) |
+| Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
+
+**3. Exploring? Shell finds the anchor, one prism_query expands it:**
+
+| Situation | Tool |
+|---|---|
+| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
+| Callers/callees/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, call prism_change_impact FIRST — even if the change
 looks small. Small changes can have large blast radii through inheritance and
-indirect callers that grep will not find.
+indirect callers that grep will not find. Result groups: declarations + family
+(every override/implementation) + callers = every site that must change.
 
 Check the result's completeness field. "closed" means the set is authoritative.
 "project-local" with overridesExternal means the method belongs to an external
@@ -495,6 +474,9 @@ Canonical workflow (non-refactor tasks):
       -> prism_read(file=...)            <- whole file, session-compressed
       -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
 
+Housekeeping: prism_index once at session start (delta indexing is automatic —
+never re-run per step); prism_drift if a stale-context warning appears.
+
 ### When only Bash is available (subagents, CI)
 
 Use the prism CLI with --format text instead of MCP tools:
@@ -503,27 +485,21 @@ Use the prism CLI with --format text instead of MCP tools:
 |---|---|
 | Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
-| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
-| "What should I test before changing X?" | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
-| Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
 | Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
+| "What should I test before changing X?" / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
+| Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
-| Callers/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
+| Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
 | Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
-| Blast radius of a change | ` + "`" + `prism query "<task>" --terms a,b --depth 3 --format text` + "`" + ` |
-| Symbols with no tests | ` + "`" + `prism query "<task>" --terms a,b --include graph,coverage_gaps --format text` + "`" + ` |
 
 ### Do NOT
 
 - Do NOT call prism_query (or prism query) before searching — use shell tools first; prism expands from the anchor
-- Do NOT manually chain references + edges + lookup to enumerate a signature change's impact — prism_change_impact / prism change-impact computes the complete set in one call
-- Do NOT use prism_search / prism search as a search replacement — it searches symbol names only, not source text
+- Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact / prism change-impact computes the complete set in one call
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
-- Do NOT re-run prism_index / prism index on every step — delta indexing is automatic
-- Do NOT manually cross-reference coverage_gaps output — treat it as authoritative and use it as the terminal step, not the start of a manual verification chain
-- For coverage audits, use 1-2 terms per query and union the results — each query audits only its seeds + blast radius
 `
 
 // writeSteeringInstructions writes per-tool instruction files into the project
