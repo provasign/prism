@@ -213,6 +213,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolEdges(ctx, args)
 	case "prism_change_impact":
 		return h.toolChangeImpact(ctx, args)
+	case "prism_missing_implementations":
+		return h.toolMissingImplementations(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -244,6 +246,7 @@ func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
+		"prism_missing_implementations",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -417,7 +420,7 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
-	case "prism_change_impact":
+	case "prism_change_impact", "prism_missing_implementations":
 		return map[string]any{
 			"type":     "object",
 			"required": []string{"query"},
@@ -521,6 +524,19 @@ func toolDescription(name string) string {
 			"RELAY the returned set as-is: do not re-verify, re-filter, or transform it " +
 			"through shell pipelines — re-processing a solved traversal measurably drops " +
 			"real sites and adds spurious ones."
+	case "prism_missing_implementations":
+		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
+			"and get every type in the subtype closure that FAILS to implement the member — " +
+			"the types the compiler will reject once the member is required. Use when adding " +
+			"a method to an interface/base class ('which implementors are now broken?'), " +
+			"auditing a contract, or after change_impact to plan the implementation work. " +
+			"Result groups: missing (concrete types with no implementation, own or inherited " +
+			"— each is a compile error), abstractMissing (abstract classes, informational), " +
+			"unverifiable (superclass chain leaves the index; an external base may provide " +
+			"it — verify before treating as broken), implementedCount (coverage evidence). " +
+			"defaultProvided=true means the contract ships a body and nothing can be missing. " +
+			"Same completeness reporting as change_impact. RELAY the result as-is: do not " +
+			"re-verify through grep — the closure and inheritance walk are already solved."
 	}
 	return "Prism tool: " + name
 }
@@ -1646,6 +1662,65 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			strings.Join(r.OverridesExternal, ", ") + "); changing its signature breaks that " +
 			"contract, and this change-set is the project-local closure only — call sites " +
 			"typed against the external supertype are not included"
+	}
+	return out, nil
+}
+
+func (h *Handler) toolMissingImplementations(ctx context.Context, args map[string]any) (any, error) {
+	query := stringArg(args, "query", "")
+	if query == "" {
+		return nil, errors.New("query is required")
+	}
+	r, err := h.Grove.MissingImplementations(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("missing-implementations: %w", err)
+	}
+	compact := func(syms []grove.SymbolRecord) []map[string]any {
+		out := make([]map[string]any, 0, len(syms))
+		for _, s := range syms {
+			qn := s.QualifiedName
+			if qn == "" {
+				qn = s.Name
+			}
+			out = append(out, map[string]any{
+				"name":          s.Name,
+				"qualifiedName": qn,
+				"filePath":      s.FilePath,
+				"line":          s.Span.Start,
+				"kind":          s.Kind,
+				"signature":     s.Signature,
+			})
+		}
+		return out
+	}
+	out := map[string]any{
+		"query":            r.Query,
+		"contract":         compact(r.Contract),
+		"missing":          compact(r.Missing),
+		"implementedCount": r.ImplementedCount,
+	}
+	if len(r.AbstractMissing) > 0 {
+		out["abstractMissing"] = compact(r.AbstractMissing)
+	}
+	if len(r.Unverifiable) > 0 {
+		out["unverifiable"] = compact(r.Unverifiable)
+		out["unverifiableNote"] = "these types have no visible implementation but their " +
+			"superclass chain leaves the index — an external base class may provide the " +
+			"member; verify before treating them as broken"
+	}
+	if r.DefaultProvided {
+		out["defaultProvided"] = true
+		out["note"] = "the contract supplies a body every subtype inherits (default/concrete " +
+			"method) — no type can be missing"
+	}
+	if r.Completeness != "" {
+		out["completeness"] = r.Completeness
+	}
+	if len(r.ExternalSupers) > 0 {
+		out["externalSupers"] = r.ExternalSupers
+	}
+	if len(r.OverridesExternal) > 0 {
+		out["overridesExternal"] = r.OverridesExternal
 	}
 	return out, nil
 }

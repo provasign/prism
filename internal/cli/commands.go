@@ -61,6 +61,10 @@ Usage:
                                   closure), super-declarations, and all resolved callers.
                                   query format: Type.method or Type.method(ParamType, ...)
                                   --format text|lean|json  Output format (default: json)
+  prism missing-implementations <query> [dir]  Types claiming the contract that do NOT
+                                  implement Type.method (missing / abstract / unverifiable)
+                                  — the interface-evolution companion to change-impact
+                                  --format text|lean|json  Output format (default: json)
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Submit quality feedback for a Prism result
@@ -120,6 +124,8 @@ func Run(args []string) int {
 		return cmdEdges(rest)
 	case "change-impact":
 		return cmdChangeImpact(rest)
+	case "missing-implementations":
+		return cmdMissingImplementations(rest)
 	case "compact":
 		return cmdCompact(rest)
 	case "feedback":
@@ -246,6 +252,7 @@ contracts the agent would not find by grep+read alone.
 |---|---|
 | Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — ONE call: declaration + all overrides + all resolved callers |
 | Adding/changing a method on an interface or base class | prism_change_impact — finds the complete override family + every caller |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every type in the closure with no implementation |
 | Renaming a class, struct, or type | prism_change_impact(query="Type.method") for each public method — finds all usages |
 | Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete call-site list in one call |
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
@@ -344,6 +351,7 @@ callers, callees, and test contracts the agent would not find by grep+read alone
 |---|---|
 | Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
 | Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
 | Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
 | ANY task that says "find all X" for a specific method | ` + "`" + `prism change-impact` + "`" + ` first, before any grep |
@@ -478,6 +486,7 @@ Use the prism CLI with --format text instead of MCP tools:
 |---|---|
 | Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
 | Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
 | Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
@@ -1391,6 +1400,41 @@ func cmdChangeImpact(args []string) int {
 	out, err := invokeWithPersistentLedger(dir, "prism_change_impact", map[string]any{"query": query})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "change-impact:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+func cmdMissingImplementations(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism missing-implementations <query> [dir]")
+		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
+		return 2
+	}
+	query := args[0]
+	dir := "."
+	format := formatJSON
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_missing_implementations", map[string]any{"query": query})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "missing-implementations:", err)
 		return 1
 	}
 	printOutput(out, format)

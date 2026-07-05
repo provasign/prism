@@ -457,6 +457,31 @@ func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactR
 	}, nil
 }
 
+// MissingImplementations resolves a "Type.method" query to every type in the
+// subtype closure that fails to implement the member.
+func (c *Client) MissingImplementations(ctx context.Context, query string) (*MissingImplementationsResult, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	r, err := e.MissingImplementations(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return &MissingImplementationsResult{
+		Query:             r.Query,
+		Contract:          convertSymbols(r.Contract),
+		Missing:           convertSymbols(r.Missing),
+		AbstractMissing:   convertSymbols(r.AbstractMissing),
+		Unverifiable:      convertSymbols(r.Unverifiable),
+		ImplementedCount:  r.ImplementedCount,
+		DefaultProvided:   r.DefaultProvided,
+		ExternalSupers:    r.ExternalSupers,
+		OverridesExternal: r.OverridesExternal,
+		Completeness:      r.Completeness,
+	}, nil
+}
+
 // References returns code occurrences of a symbol name — the reference layer
 // ("where is X used"), near-complete for types/classes the call graph misses.
 func (c *Client) References(ctx context.Context, name string) (groveeng.ReferenceResult, error) {

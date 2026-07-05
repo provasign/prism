@@ -114,3 +114,30 @@ type ChangeImpactResult struct {
 	// Completeness: "closed" or "project-local".
 	Completeness string `json:"completeness,omitempty"`
 }
+
+// MissingImplementationsResult answers "which types claiming this contract do
+// not implement Type.method" — the interface-evolution companion to
+// ChangeImpactResult: what must change vs. who is broken once the member is
+// required.
+type MissingImplementationsResult struct {
+	Query    string         `json:"query"`
+	Contract []SymbolRecord `json:"contract"`
+
+	// Missing: concrete closure types with no implementation, own or
+	// inherited through the class-extends chain — compile errors once the
+	// member is required.
+	Missing []SymbolRecord `json:"missing"`
+	// AbstractMissing: abstract classes without an implementation.
+	// Informational — their concrete subtypes appear in Missing.
+	AbstractMissing []SymbolRecord `json:"abstractMissing,omitempty"`
+	// Unverifiable: no visible implementation, but the class-extends chain
+	// leaves the index — an external base may provide the member.
+	Unverifiable []SymbolRecord `json:"unverifiable,omitempty"`
+
+	ImplementedCount int  `json:"implementedCount"`
+	DefaultProvided  bool `json:"defaultProvided,omitempty"`
+
+	ExternalSupers    []string `json:"externalSupers,omitempty"`
+	OverridesExternal []string `json:"overridesExternal,omitempty"`
+	Completeness      string   `json:"completeness,omitempty"`
+}
