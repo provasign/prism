@@ -1808,6 +1808,9 @@ func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, err
 		return nil, err
 	}
 	defer client.Shutdown()
+	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
+		return nil, err
+	}
 
 	ledgerFile := ledgerPathForRoot(root)
 	var out any

@@ -124,6 +124,45 @@ func TestClient_EndToEndEmbedded(t *testing.T) {
 	c.Shutdown()
 }
 
+func TestClient_EnsureRunningDoesNotIndex(t *testing.T) {
+	dir := t.TempDir()
+	_ = writePrismFile(t, dir, "main.go", "package main\n\nfunc Main() {}\n")
+
+	c := NewClient("", "").WithTokenFromDir(dir)
+	ctx := context.Background()
+	if err := c.EnsureRunning(ctx); err != nil {
+		t.Fatalf("ensure running: %v", err)
+	}
+	defer c.Shutdown()
+
+	// Open must stay cheap: the MCP handshake gates on it and `prism index`
+	// indexes right after. A never-indexed repo stays empty here.
+	st, err := c.Status(ctx)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if st.FilesIndexed != 0 {
+		t.Fatalf("EnsureRunning indexed the repo: %+v", st)
+	}
+
+	// Query paths call AutoIndexIfEmpty, which builds the one-time index.
+	if err := c.AutoIndexIfEmpty(ctx); err != nil {
+		t.Fatalf("auto-index: %v", err)
+	}
+	st, err = c.Status(ctx)
+	if err != nil {
+		t.Fatalf("status after auto-index: %v", err)
+	}
+	if st.FilesIndexed == 0 {
+		t.Fatalf("AutoIndexIfEmpty did not index: %+v", st)
+	}
+
+	// Already-indexed repos are left alone.
+	if err := c.AutoIndexIfEmpty(ctx); err != nil {
+		t.Fatalf("auto-index (2nd): %v", err)
+	}
+}
+
 func TestConvertSymbol(t *testing.T) {
 	in := groveeng.Symbol{
 		ID:            "id-1",

@@ -62,7 +62,10 @@ func (c *Client) Health(ctx context.Context) error {
 }
 
 // EnsureRunning opens the embedded Grove engine if it has not been opened yet.
-// Replaces the old HTTP probe + auto-spawn of `grove serve`.
+// Replaces the old HTTP probe + auto-spawn of `grove serve`. It must stay
+// cheap — no indexing: the MCP handshake gates on it, and `prism index`
+// callers run their own index right after (query paths that need a populated
+// graph call AutoIndexIfEmpty).
 func (c *Client) EnsureRunning(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -76,17 +79,25 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("grove open: %w", err)
 	}
-	// A never-indexed repo used to answer queries against an empty graph
-	// ("no type named X" — indistinguishable from a typo). Index once here;
-	// subsequent opens rehydrate from the store.
-	if st, serr := eng.Status(ctx); serr == nil && st.SymbolCount == 0 {
+	c.eng = eng
+	return nil
+}
+
+// AutoIndexIfEmpty builds the index once for a never-indexed repo. Without
+// it, queries against such a repo answer from an empty graph ("no type named
+// X" — indistinguishable from a typo). Query paths call this after
+// EnsureRunning; index paths skip it and index explicitly.
+func (c *Client) AutoIndexIfEmpty(ctx context.Context) error {
+	e, err := c.requireEngine()
+	if err != nil {
+		return err
+	}
+	if st, err := e.Status(ctx); err == nil && st.SymbolCount == 0 {
 		fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
-		if _, ierr := eng.Index(ctx, c.root); ierr != nil {
-			_ = eng.Close()
-			return fmt.Errorf("initial index failed: %w", ierr)
+		if _, err := e.Index(ctx, c.root); err != nil {
+			return fmt.Errorf("initial index failed: %w", err)
 		}
 	}
-	c.eng = eng
 	return nil
 }
 
