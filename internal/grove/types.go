@@ -141,3 +141,36 @@ type MissingImplementationsResult struct {
 	OverridesExternal []string `json:"overridesExternal,omitempty"`
 	Completeness      string   `json:"completeness,omitempty"`
 }
+
+// CoverageSite pairs a change-set site with the tests that reach it within
+// the engine's bounded caller-hop horizon.
+type CoverageSite struct {
+	Symbol    SymbolRecord   `json:"symbol"`
+	TestCount int            `json:"testCount"`
+	Tests     []SymbolRecord `json:"tests"` // capped; testCount carries the truth
+}
+
+// UntestedSurfaceResult partitions a method's change-set by covering-test
+// evidence: "before I change Type.method, what in its blast radius has no
+// test pinning it?"
+type UntestedSurfaceResult struct {
+	Query      string         `json:"query"`
+	Untested   []SymbolRecord `json:"untested"`
+	Covered    []CoverageSite `json:"covered"`
+	TotalSites int            `json:"totalSites"`
+
+	ExternalSupers    []string `json:"externalSupers,omitempty"`
+	OverridesExternal []string `json:"overridesExternal,omitempty"`
+	Completeness      string   `json:"completeness,omitempty"`
+}
+
+// DeadCodeResult reports production functions/methods nothing reaches.
+// Precision-first; Caveats are part of the answer, not documentation.
+type DeadCodeResult struct {
+	RootCount            int            `json:"rootCount"`
+	ReachableCount       int            `json:"reachableCount"`
+	Considered           int            `json:"considered"`
+	Dead                 []SymbolRecord `json:"dead"`
+	ExportedUnreferenced []SymbolRecord `json:"exportedUnreferenced"`
+	Caveats              []string       `json:"caveats"`
+}

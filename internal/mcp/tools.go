@@ -215,6 +215,10 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolChangeImpact(ctx, args)
 	case "prism_missing_implementations":
 		return h.toolMissingImplementations(ctx, args)
+	case "prism_untested_surface":
+		return h.toolUntestedSurface(ctx, args)
+	case "prism_dead_code":
+		return h.toolDeadCode(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -246,7 +250,7 @@ func ToolSchemas() []map[string]any {
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
-		"prism_missing_implementations",
+		"prism_missing_implementations", "prism_untested_surface", "prism_dead_code",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -420,7 +424,7 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
-	case "prism_change_impact", "prism_missing_implementations":
+	case "prism_change_impact", "prism_missing_implementations", "prism_untested_surface":
 		return map[string]any{
 			"type":     "object",
 			"required": []string{"query"},
@@ -428,6 +432,17 @@ func toolSchema(name string) map[string]any {
 				"query": map[string]any{
 					"type":        "string",
 					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\".",
+				},
+			},
+		}
+	case "prism_dead_code":
+		return map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"roots": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "Extra entry-point symbol names beyond the defaults (main/init, tests, exported symbols) — e.g. framework hooks registered by name.",
 				},
 			},
 		}
@@ -537,6 +552,27 @@ func toolDescription(name string) string {
 			"defaultProvided=true means the contract ships a body and nothing can be missing. " +
 			"Same completeness reporting as change_impact. RELAY the result as-is: do not " +
 			"re-verify through grep — the closure and inheritance walk are already solved."
+	case "prism_untested_surface":
+		return "Coverage partition of a change-set: pass 'Type.method' and get the same " +
+			"change-set as prism_change_impact, split into covered (a test reaches the site " +
+			"within 3 resolved caller hops; up to 3 example tests + true count) and untested " +
+			"(no such test — the sites a signature change can break silently). THE pre-refactor " +
+			"pipeline: change_impact to see the blast radius, untested_surface to know which of " +
+			"those sites to write tests for FIRST. 'untested' means no test within the resolved " +
+			"caller horizon — dynamic dispatch the graph cannot see (reflection, framework " +
+			"executors) may still exercise the site, so treat it as a work list, not proof. " +
+			"RELAY the partition as-is; do not re-derive coverage via grep."
+	case "prism_dead_code":
+		return "Deletion-candidate list: production functions/methods unreachable from every " +
+			"entry point (main/init, tests, exported symbols, plus optional roots=[...] for " +
+			"framework hooks registered by name). Precision-first: a symbol is 'dead' only if " +
+			"it is unreachable AND non-exported AND its name appears nowhere else in the " +
+			"codebase text — so callbacks passed as values are never flagged, and every entry " +
+			"is safe to delete without breaking compilation (transitively-dead clusters " +
+			"surface top-down across re-runs). exportedUnreferenced lists public API with " +
+			"zero in-project references — dead only if nothing external links against it; " +
+			"do not delete those without checking consumers. ALWAYS relay the caveats field: " +
+			"reflection, DI, serialization hooks, and codegen call symbols invisibly."
 	}
 	return "Prism tool: " + name
 }
@@ -1723,6 +1759,100 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 		out["overridesExternal"] = r.OverridesExternal
 	}
 	return out, nil
+}
+
+func (h *Handler) toolUntestedSurface(ctx context.Context, args map[string]any) (any, error) {
+	query := stringArg(args, "query", "")
+	if query == "" {
+		return nil, errors.New("query is required")
+	}
+	r, err := h.Grove.UntestedSurface(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("untested-surface: %w", err)
+	}
+	site := func(s grove.SymbolRecord) map[string]any {
+		qn := s.QualifiedName
+		if qn == "" {
+			qn = s.Name
+		}
+		return map[string]any{
+			"name": s.Name, "qualifiedName": qn, "filePath": s.FilePath,
+			"line": s.Span.Start, "kind": s.Kind,
+		}
+	}
+	untested := make([]map[string]any, 0, len(r.Untested))
+	for _, s := range r.Untested {
+		untested = append(untested, site(s))
+	}
+	covered := make([]map[string]any, 0, len(r.Covered))
+	for _, c := range r.Covered {
+		entry := site(c.Symbol)
+		entry["testCount"] = c.TestCount
+		tests := make([]map[string]any, 0, len(c.Tests))
+		for _, t := range c.Tests {
+			tests = append(tests, site(t))
+		}
+		entry["tests"] = tests
+		covered = append(covered, entry)
+	}
+	out := map[string]any{
+		"query":      r.Query,
+		"totalSites": r.TotalSites,
+		"untested":   untested,
+		"covered":    covered,
+		"note": "covered = a test reaches the site within 3 resolved caller hops; " +
+			"untested = no such test. Dynamic dispatch the graph cannot resolve " +
+			"(reflection, framework executors) is not seen — untested is a " +
+			"write-tests-here work list, not proof of zero coverage",
+	}
+	if r.Completeness != "" {
+		out["completeness"] = r.Completeness
+	}
+	if len(r.OverridesExternal) > 0 {
+		out["overridesExternal"] = r.OverridesExternal
+	}
+	return out, nil
+}
+
+func (h *Handler) toolDeadCode(ctx context.Context, args map[string]any) (any, error) {
+	var roots []string
+	if raw, ok := args["roots"].([]any); ok {
+		for _, v := range raw {
+			if sv, ok := v.(string); ok && sv != "" {
+				roots = append(roots, sv)
+			}
+		}
+	}
+	r, err := h.Grove.DeadCode(ctx, roots)
+	if err != nil {
+		return nil, fmt.Errorf("dead-code: %w", err)
+	}
+	site := func(s grove.SymbolRecord) map[string]any {
+		qn := s.QualifiedName
+		if qn == "" {
+			qn = s.Name
+		}
+		return map[string]any{
+			"name": s.Name, "qualifiedName": qn, "filePath": s.FilePath,
+			"line": s.Span.Start, "kind": s.Kind,
+		}
+	}
+	dead := make([]map[string]any, 0, len(r.Dead))
+	for _, s := range r.Dead {
+		dead = append(dead, site(s))
+	}
+	exported := make([]map[string]any, 0, len(r.ExportedUnreferenced))
+	for _, s := range r.ExportedUnreferenced {
+		exported = append(exported, site(s))
+	}
+	return map[string]any{
+		"rootCount":            r.RootCount,
+		"reachableCount":       r.ReachableCount,
+		"considered":           r.Considered,
+		"dead":                 dead,
+		"exportedUnreferenced": exported,
+		"caveats":              r.Caveats,
+	}, nil
 }
 
 // --- helpers -------------------------------------------------------------

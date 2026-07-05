@@ -65,6 +65,12 @@ Usage:
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
                                   --format text|lean|json  Output format (default: json)
+  prism untested-surface <query> [dir]  Change-set partitioned by covering-test
+                                  evidence: covered (test within 3 caller hops) vs untested
+                                  --format text|lean|json  Output format (default: json)
+  prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
+                                  (precision-first; relay the caveats)
+                                  --format text|lean|json  Output format (default: json)
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Submit quality feedback for a Prism result
@@ -126,6 +132,10 @@ func Run(args []string) int {
 		return cmdChangeImpact(rest)
 	case "missing-implementations":
 		return cmdMissingImplementations(rest)
+	case "untested-surface":
+		return cmdUntestedSurface(rest)
+	case "dead-code":
+		return cmdDeadCode(rest)
 	case "compact":
 		return cmdCompact(rest)
 	case "feedback":
@@ -253,6 +263,8 @@ contracts the agent would not find by grep+read alone.
 | Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — ONE call: declaration + all overrides + all resolved callers |
 | Adding/changing a method on an interface or base class | prism_change_impact — finds the complete override family + every caller |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every type in the closure with no implementation |
+| "What should I test before changing X?" / test-gap audit of a change-set | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
+| Cleanups, library extraction, "is X still used / can I delete it?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
 | Renaming a class, struct, or type | prism_change_impact(query="Type.method") for each public method — finds all usages |
 | Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete call-site list in one call |
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
@@ -352,6 +364,8 @@ callers, callees, and test contracts the agent would not find by grep+read alone
 | Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
+| "What should I test before changing X?" | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
+| Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
 | Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
 | ANY task that says "find all X" for a specific method | ` + "`" + `prism change-impact` + "`" + ` first, before any grep |
@@ -487,6 +501,8 @@ Use the prism CLI with --format text instead of MCP tools:
 | Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
 | Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
+| "What should I test before changing X?" | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
+| Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
 | Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
@@ -1435,6 +1451,84 @@ func cmdMissingImplementations(args []string) int {
 	out, err := invokeWithPersistentLedger(dir, "prism_missing_implementations", map[string]any{"query": query})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "missing-implementations:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+func cmdUntestedSurface(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism untested-surface <query> [dir]")
+		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
+		return 2
+	}
+	query := args[0]
+	dir := "."
+	format := formatJSON
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_untested_surface", map[string]any{"query": query})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "untested-surface:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+func cmdDeadCode(args []string) int {
+	dir := "."
+	format := formatJSON
+	var roots []any
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--roots":
+			if i+1 < len(args) {
+				for _, r := range strings.Split(args[i+1], ",") {
+					if r = strings.TrimSpace(r); r != "" {
+						roots = append(roots, r)
+					}
+				}
+				i++
+			}
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	callArgs := map[string]any{}
+	if len(roots) > 0 {
+		callArgs["roots"] = roots
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_dead_code", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "dead-code:", err)
 		return 1
 	}
 	printOutput(out, format)

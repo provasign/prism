@@ -482,6 +482,56 @@ func (c *Client) MissingImplementations(ctx context.Context, query string) (*Mis
 	}, nil
 }
 
+// UntestedSurface partitions a method's change-set by covering-test evidence.
+func (c *Client) UntestedSurface(ctx context.Context, query string) (*UntestedSurfaceResult, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	r, err := e.UntestedSurface(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	covered := make([]CoverageSite, 0, len(r.Covered))
+	for _, cs := range r.Covered {
+		covered = append(covered, CoverageSite{
+			Symbol:    convertSymbol(cs.Symbol),
+			TestCount: cs.TestCount,
+			Tests:     convertSymbols(cs.Tests),
+		})
+	}
+	return &UntestedSurfaceResult{
+		Query:             r.Query,
+		Untested:          convertSymbols(r.Untested),
+		Covered:           covered,
+		TotalSites:        r.TotalSites,
+		ExternalSupers:    r.ExternalSupers,
+		OverridesExternal: r.OverridesExternal,
+		Completeness:      r.Completeness,
+	}, nil
+}
+
+// DeadCode reports production functions/methods unreachable from every entry
+// point.
+func (c *Client) DeadCode(ctx context.Context, extraRoots []string) (*DeadCodeResult, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	r, err := e.DeadCode(ctx, extraRoots)
+	if err != nil {
+		return nil, err
+	}
+	return &DeadCodeResult{
+		RootCount:            r.RootCount,
+		ReachableCount:       r.ReachableCount,
+		Considered:           r.Considered,
+		Dead:                 convertSymbols(r.Dead),
+		ExportedUnreferenced: convertSymbols(r.ExportedUnreferenced),
+		Caveats:              r.Caveats,
+	}, nil
+}
+
 // References returns code occurrences of a symbol name — the reference layer
 // ("where is X used"), near-complete for types/classes the call graph misses.
 func (c *Client) References(ctx context.Context, name string) (groveeng.ReferenceResult, error) {
