@@ -178,8 +178,9 @@ type RenamePlanResult struct {
 	Query   string `json:"query"`
 	NewName string `json:"newName"`
 
-	Edits     []RenameEdit `json:"edits"`
-	Ambiguous []RenameEdit `json:"ambiguous,omitempty"`
+	Edits      []RenameEdit `json:"edits"`
+	Ambiguous  []RenameEdit `json:"ambiguous,omitempty"`
+	Unresolved []string     `json:"unresolved,omitempty"`
 
 	SitesTotal        int      `json:"sitesTotal"`
 	ExternalSupers    []string `json:"externalSupers,omitempty"`

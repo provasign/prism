@@ -16,6 +16,7 @@ import (
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/session"
+	"regexp"
 )
 
 // Handler holds the shared backend state used by the prism_* tools.
@@ -1845,11 +1846,19 @@ func (h *Handler) toolUntestedSurface(ctx context.Context, args map[string]any) 
 	return out, nil
 }
 
+// identRe: rename targets must be bare identifiers — a path or expression
+// in the newName slot produces garbage edits framed as authoritative.
+var identRe = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
+
 func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any, error) {
 	query := stringArg(args, "query", "")
 	newName := stringArg(args, "newName", "")
 	if query == "" || newName == "" {
 		return nil, errors.New("query and newName are required")
+	}
+	if !identRe.MatchString(newName) {
+		return nil, fmt.Errorf("newName must be a bare identifier, got %q "+
+			"(did a directory path land in the newName position?)", newName)
 	}
 	r, err := h.Grove.RenamePlan(ctx, query, newName)
 	if err != nil {
@@ -1858,8 +1867,14 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 	out := map[string]any{
 		"query":      r.Query,
 		"newName":    r.NewName,
-		"sitesTotal": r.SitesTotal,
+		"totalSites": r.SitesTotal,
 		"edits":      r.Edits,
+	}
+	if len(r.Unresolved) > 0 {
+		out["unresolved"] = r.Unresolved
+		out["unresolvedNote"] = "no line edit could be derived for these " +
+			"change-set sites — handle them manually; totalSites = edit sites " +
+			"+ ambiguous sites + unresolved"
 	}
 	if len(r.Ambiguous) > 0 {
 		out["ambiguous"] = r.Ambiguous

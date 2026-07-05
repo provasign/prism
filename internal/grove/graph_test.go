@@ -127,19 +127,19 @@ func TestGraphRecall(t *testing.T) {
 	}
 
 	type recallCheck struct {
-		seed            string
-		samePkgFiles    []string // always required
-		crossPkgFiles   []string // required when crossPkg=true
-		noiseFiles      []string // must never appear
+		seed          string
+		samePkgFiles  []string // always required
+		crossPkgFiles []string // required when crossPkg=true
+		noiseFiles    []string // must never appear
 	}
 	checks := []recallCheck{
 		{
-			seed:          "Add",
-			samePkgFiles:  []string{"internal/calc/calc_test.go"},
+			seed:         "Add",
+			samePkgFiles: []string{"internal/calc/calc_test.go"},
 			crossPkgFiles: []string{
 				"internal/render/render.go", // Format → calc.Add
-				"cmd/direct.go",            // Direct → calc.Add
-				"cmd/main.go",             // Run → Format → Add (depth 2)
+				"cmd/direct.go",             // Direct → calc.Add
+				"cmd/main.go",               // Run → Format → Add (depth 2)
 			},
 			noiseFiles: []string{"noise/noise.go", "internal/calc/mul.go"},
 		},
@@ -210,7 +210,7 @@ func TestGraphPrecision(t *testing.T) {
 
 	// Files legitimately reachable from Add — always allowed.
 	addAllowed := map[string]bool{
-		"internal/calc/add.go":      true, // definition file — allowed if present
+		"internal/calc/add.go":       true, // definition file — allowed if present
 		"internal/calc/calc_test.go": true, // TestAdd calls Add (same-package)
 	}
 	if crossPkg {

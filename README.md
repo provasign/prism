@@ -203,11 +203,11 @@ prism init . --mode cli   # CLI only: for environments without MCP support
 
 ### MCP
 
-MCP advertises thirteen tools: the context surface (`prism_query`,
+MCP advertises fourteen tools: the context surface (`prism_query`,
 `prism_read`, `prism_search`, `prism_lookup`, `prism_references`,
 `prism_resolve`, `prism_edges`), the task-shaped graph operations
 (`prism_change_impact`, `prism_missing_implementations`,
-`prism_untested_surface`, `prism_dead_code`), and session upkeep
+`prism_untested_surface`, `prism_dead_code`, `prism_rename_plan`), and session upkeep
 (`prism_index`, `prism_drift`). The auxiliary tools (`prism_savings`,
 `prism_feedback`, `prism_compact`, `prism_evidence`) stay available through
 the CLI and HTTP server without spending schema tokens in every MCP session. Use MCP when the client has first-class MCP support and

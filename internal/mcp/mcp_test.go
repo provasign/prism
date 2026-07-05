@@ -318,6 +318,8 @@ func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	}
 	for _, want := range []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
+		"prism_change_impact", "prism_missing_implementations",
+		"prism_untested_surface", "prism_dead_code", "prism_rename_plan",
 		"prism_index", "prism_drift", "prism_references", "prism_resolve", "prism_edges",
 		"prism_change_impact",
 	} {

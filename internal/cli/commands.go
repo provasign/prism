@@ -2112,6 +2112,23 @@ func jsonInt(v any) int {
 // printLeanOutput strips metadata fields (scores, spans, IDs, timing) and
 // emits compact JSON with only the fields agents actually use.
 func printLeanOutput(m map[string]any) {
+	// Task-shaped ops (change-impact, rename-plan, missing-implementations,
+	// untested-surface, dead-code) return purpose-built maps with no
+	// metadata to strip; lean used to reduce them to {} — pass them through.
+	known := false
+	for _, k := range []string{"symbols", "symbol", "file", "content"} {
+		if _, ok := m[k]; ok {
+			known = true
+			break
+		}
+	}
+	if !known {
+		b, err := json.Marshal(m)
+		if err == nil {
+			fmt.Println(string(b))
+			return
+		}
+	}
 	lean := map[string]any{}
 	if _, hasSyms := m["symbols"]; !hasSyms {
 		// prism_read: keep content + identity fields

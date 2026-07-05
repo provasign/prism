@@ -121,4 +121,3 @@ func TestRunDispatchSafeSubcommands(t *testing.T) {
 		_ = Run(args)
 	}
 }
-

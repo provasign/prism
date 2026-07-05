@@ -537,6 +537,7 @@ func (c *Client) RenamePlan(ctx context.Context, query, newName string) (*Rename
 		NewName:           r.NewName,
 		Edits:             conv(r.Edits),
 		Ambiguous:         conv(r.Ambiguous),
+		Unresolved:        r.Unresolved,
 		SitesTotal:        r.SitesTotal,
 		ExternalSupers:    r.ExternalSupers,
 		OverridesExternal: r.OverridesExternal,
