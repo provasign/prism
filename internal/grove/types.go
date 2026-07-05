@@ -164,6 +164,29 @@ type UntestedSurfaceResult struct {
 	Completeness      string   `json:"completeness,omitempty"`
 }
 
+// RenameEdit is one suggested line edit in a rename plan.
+type RenameEdit struct {
+	FilePath string `json:"filePath"`
+	Line     int    `json:"line"`
+	Before   string `json:"before"`
+	After    string `json:"after"`
+	Site     string `json:"site"`
+}
+
+// RenamePlanResult converts a change-impact set into concrete line edits.
+type RenamePlanResult struct {
+	Query   string `json:"query"`
+	NewName string `json:"newName"`
+
+	Edits     []RenameEdit `json:"edits"`
+	Ambiguous []RenameEdit `json:"ambiguous,omitempty"`
+
+	SitesTotal        int      `json:"sitesTotal"`
+	ExternalSupers    []string `json:"externalSupers,omitempty"`
+	OverridesExternal []string `json:"overridesExternal,omitempty"`
+	Completeness      string   `json:"completeness,omitempty"`
+}
+
 // DeadCodeResult reports production functions/methods nothing reaches.
 // Precision-first; Caveats are part of the answer, not documentation.
 type DeadCodeResult struct {

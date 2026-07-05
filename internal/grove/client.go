@@ -511,6 +511,39 @@ func (c *Client) UntestedSurface(ctx context.Context, query string) (*UntestedSu
 	}, nil
 }
 
+// RenamePlan converts the change-impact set for query into concrete line
+// edits renaming the member to newName.
+func (c *Client) RenamePlan(ctx context.Context, query, newName string) (*RenamePlanResult, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	r, err := e.RenamePlan(ctx, query, newName)
+	if err != nil {
+		return nil, err
+	}
+	conv := func(in []groveeng.RenameEdit) []RenameEdit {
+		out := make([]RenameEdit, 0, len(in))
+		for _, e := range in {
+			out = append(out, RenameEdit{
+				FilePath: e.FilePath, Line: e.Line,
+				Before: e.Before, After: e.After, Site: e.Site,
+			})
+		}
+		return out
+	}
+	return &RenamePlanResult{
+		Query:             r.Query,
+		NewName:           r.NewName,
+		Edits:             conv(r.Edits),
+		Ambiguous:         conv(r.Ambiguous),
+		SitesTotal:        r.SitesTotal,
+		ExternalSupers:    r.ExternalSupers,
+		OverridesExternal: r.OverridesExternal,
+		Completeness:      r.Completeness,
+	}, nil
+}
+
 // DeadCode reports production functions/methods unreachable from every entry
 // point.
 func (c *Client) DeadCode(ctx context.Context, extraRoots []string) (*DeadCodeResult, error) {

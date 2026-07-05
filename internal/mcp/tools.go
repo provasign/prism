@@ -219,6 +219,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolUntestedSurface(ctx, args)
 	case "prism_dead_code":
 		return h.toolDeadCode(ctx, args)
+	case "prism_rename_plan":
+		return h.toolRenamePlan(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -251,6 +253,7 @@ func ToolSchemas() []map[string]any {
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
 		"prism_missing_implementations", "prism_untested_surface", "prism_dead_code",
+		"prism_rename_plan",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -435,6 +438,21 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
+	case "prism_rename_plan":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"query", "newName"},
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "Type.method or Type.method(ParamType, ...) — the member being renamed.",
+				},
+				"newName": map[string]any{
+					"type":        "string",
+					"description": "The new member name (bare identifier).",
+				},
+			},
+		}
 	case "prism_dead_code":
 		return map[string]any{
 			"type": "object",
@@ -563,6 +581,17 @@ func toolDescription(name string) string {
 			"caller horizon — dynamic dispatch the graph cannot see (reflection, framework " +
 			"executors) may still exercise the site, so treat it as a work list, not proof. " +
 			"RELAY the partition as-is; do not re-derive coverage via grep."
+	case "prism_rename_plan":
+		return "The rename executed as a plan: pass 'Type.method' and newName, get the " +
+			"complete change-impact set converted to concrete line edits — file, line, " +
+			"before, after — for every declaration, override, and resolved call site. " +
+			"Your job becomes review-and-apply, not discover: apply 'edits' as-is, then " +
+			"check 'ambiguous' (lines in methods that ALSO call a same-named method on an " +
+			"unrelated type — verify the receiver type before editing those). Same " +
+			"completeness reporting as change_impact; if completeness is 'project-local' " +
+			"the member overrides an external contract and must NOT be renamed. RELAY and " +
+			"apply the edits as given: do not re-derive the set through grep — the " +
+			"traversal is already solved and re-processing measurably corrupts it."
 	case "prism_dead_code":
 		return "Deletion-candidate list: production functions/methods unreachable from every " +
 			"entry point (main/init, tests, exported symbols, plus optional roots=[...] for " +
@@ -1812,6 +1841,42 @@ func (h *Handler) toolUntestedSurface(ctx context.Context, args map[string]any) 
 	}
 	if len(r.OverridesExternal) > 0 {
 		out["overridesExternal"] = r.OverridesExternal
+	}
+	return out, nil
+}
+
+func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any, error) {
+	query := stringArg(args, "query", "")
+	newName := stringArg(args, "newName", "")
+	if query == "" || newName == "" {
+		return nil, errors.New("query and newName are required")
+	}
+	r, err := h.Grove.RenamePlan(ctx, query, newName)
+	if err != nil {
+		return nil, fmt.Errorf("rename-plan: %w", err)
+	}
+	out := map[string]any{
+		"query":      r.Query,
+		"newName":    r.NewName,
+		"sitesTotal": r.SitesTotal,
+		"edits":      r.Edits,
+	}
+	if len(r.Ambiguous) > 0 {
+		out["ambiguous"] = r.Ambiguous
+		out["ambiguousNote"] = "these lines sit in methods that also call a same-named " +
+			"method on an unrelated type — verify the receiver resolves to the renamed " +
+			"member before applying"
+	}
+	if r.Completeness != "" {
+		out["completeness"] = r.Completeness
+	}
+	if len(r.ExternalSupers) > 0 {
+		out["externalSupers"] = r.ExternalSupers
+	}
+	if len(r.OverridesExternal) > 0 {
+		out["overridesExternal"] = r.OverridesExternal
+		out["warning"] = "the member overrides an external contract — renaming it breaks " +
+			"that contract; do not proceed"
 	}
 	return out, nil
 }
