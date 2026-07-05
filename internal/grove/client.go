@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	groveeng "github.com/provasign/grove/pkg/grove"
+	"os"
 )
 
 // Client wraps an embedded Grove engine. baseURL/groveBin are ignored in the
@@ -74,6 +75,16 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root})
 	if err != nil {
 		return fmt.Errorf("grove open: %w", err)
+	}
+	// A never-indexed repo used to answer queries against an empty graph
+	// ("no type named X" — indistinguishable from a typo). Index once here;
+	// subsequent opens rehydrate from the store.
+	if st, serr := eng.Status(ctx); serr == nil && st.SymbolCount == 0 {
+		fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
+		if _, ierr := eng.Index(ctx, c.root); ierr != nil {
+			_ = eng.Close()
+			return fmt.Errorf("initial index failed: %w", ierr)
+		}
 	}
 	c.eng = eng
 	return nil

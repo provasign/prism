@@ -62,6 +62,7 @@ Usage:
                                   query format: Type.method or Type.method(ParamType, ...)
                                   --format text|lean|json  Output format (default: json)
   prism rename-plan <query> <NewName> [dir]     Change-set as line edits with substitutions
+                                                (--format text|lean|json; query: Type.method or Type.method(ParamType, ...))
   prism missing-implementations <query> [dir]  Types claiming the contract that do NOT
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
