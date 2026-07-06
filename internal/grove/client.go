@@ -473,6 +473,7 @@ func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactR
 		Supers:            convertSymbols(r.Supers),
 		Family:            convertSymbols(r.Family),
 		Callers:           convertSymbols(r.Callers),
+		DeclaringTypes:    convertSymbols(r.DeclaringTypes),
 		ExternalSupers:    r.ExternalSupers,
 		OverridesExternal: r.OverridesExternal,
 		Completeness:      r.Completeness,

@@ -548,8 +548,12 @@ func toolDescription(name string) string {
 			"all resolved callers — in one engine call, milliseconds, no token cost. " +
 			"Use this instead of prism_references + manual override hunting when you need to " +
 			"find every site affected by a method signature change. Result groups: declarations " +
-			"(the method itself), family (overrides + implementations), supers (supertype decls, " +
-			"informational), callers (call sites into the set). Check 'completeness': 'closed' " +
+			"(the method itself), family (overrides + implementations), supers (same-member " +
+			"declarations on other contracts — sibling interfaces satisfied by the same " +
+			"implementations break under the change too), callers (call sites into the set), " +
+			"declaringTypes (the interface/type declaration blocks that textually change " +
+			"because their member specs are not separate symbols — Go/TS; ALWAYS include " +
+			"these as change sites). Check 'completeness': 'closed' " +
 			"means the set is authoritative; 'project-local' + 'overridesExternal' means the " +
 			"method belongs to an external (JDK/dependency) contract — its signature cannot " +
 			"safely change, and calls typed against the external supertype are not included. " +
@@ -1716,7 +1720,14 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"supers":       compact(r.Supers),
 		"family":       compact(r.Family),
 		"callers":      compact(r.Callers),
-		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers),
+		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
+	}
+	if len(r.DeclaringTypes) > 0 {
+		out["declaringTypes"] = compact(r.DeclaringTypes)
+		out["declaringTypesNote"] = "these type declaration blocks contain member " +
+			"signatures that must change (Go/TS interface members are not separate " +
+			"symbols, so the type itself is the change site) — include each as a " +
+			"site in your answer"
 	}
 	if r.Completeness != "" {
 		out["completeness"] = r.Completeness

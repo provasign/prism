@@ -104,6 +104,13 @@ type ChangeImpactResult struct {
 	Family       []SymbolRecord `json:"family"`
 	Callers      []SymbolRecord `json:"callers"`
 
+	// DeclaringTypes: type declarations whose bodies contain a change-set
+	// member signature that is not indexed as its own symbol (Go and TS
+	// interface members) — the type's declaration block is itself a change
+	// site and must be relayed as one. Empty for languages whose member
+	// declarations are real symbols (Java, Python).
+	DeclaringTypes []SymbolRecord `json:"declaringTypes,omitempty"`
+
 	// ExternalSupers: supertype names declared in the hierarchy that resolve
 	// to no indexed type (JDK / dependency types). Informational.
 	ExternalSupers []string `json:"externalSupers,omitempty"`

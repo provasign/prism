@@ -279,8 +279,10 @@ cheaply. Three layers, in priority order.
 renaming an existing symbol, call prism_change_impact FIRST — even if the change
 looks small. Small changes can have large blast radii through inheritance and
 indirect callers that grep will not find. Result groups: declarations + family
-(every override/implementation) + callers = every site that must change. Param
-types are optional ("Type.method" works) but improve precision on overloaded names.
+(every override/implementation) + callers + declaringTypes (interface/type blocks
+whose member specs are not separate symbols — Go/TS; always sites) = every site
+that must change. Param types are optional ("Type.method" works) but improve
+precision on overloaded names.
 
 Check the result's completeness field. "closed" means the set is authoritative.
 "project-local" with overridesExternal means the method belongs to an external
@@ -358,7 +360,9 @@ layers, in priority order.
 renaming an existing symbol, run prism change-impact first — even if the change
 looks small. Small changes can have large blast radii through inheritance and
 indirect callers that grep will not find. Result groups: declarations + family
-(every override/implementation) + callers = every site that must change. Param
+(every override/implementation) + callers + declaringTypes (interface/type blocks
+whose member specs are not separate symbols — Go/TS; always sites) = every site
+that must change. Param
 types are optional ('Type.method' works) but improve precision on overloaded names.
 
 Check the completeness field in the output. "closed" means the set is
@@ -455,7 +459,9 @@ Use the registered prism_* MCP tools.
 renaming an existing symbol, call prism_change_impact FIRST — even if the change
 looks small. Small changes can have large blast radii through inheritance and
 indirect callers that grep will not find. Result groups: declarations + family
-(every override/implementation) + callers = every site that must change.
+(every override/implementation) + callers + declaringTypes (interface/type blocks
+whose member specs are not separate symbols — Go/TS; always sites) = every site
+that must change.
 
 Check the result's completeness field. "closed" means the set is authoritative.
 "project-local" with overridesExternal means the method belongs to an external
