@@ -26,6 +26,27 @@ func TestLedgerSavings(t *testing.T) {
 	}
 }
 
+func TestLedgerRecordCall(t *testing.T) {
+	l := NewLedger("s2")
+	l.Record("prism_read", 1000, 250)
+	l.RecordCall("prism_change_impact")
+	l.RecordCall("prism_change_impact")
+
+	if got := l.ByTool["prism_change_impact"].Calls; got != 2 {
+		t.Fatalf("prism_change_impact.Calls: got %d want 2", got)
+	}
+	// RecordCall must not touch tokens or dilute savings — it has no baseline.
+	if got := l.ByTool["prism_change_impact"].Original; got != 0 {
+		t.Fatalf("prism_change_impact.Original: got %d want 0", got)
+	}
+	if got := l.TotalDeliveredTokens(); got != 250 {
+		t.Fatalf("delivered: got %d want 250 (RecordCall must not add to totals)", got)
+	}
+	if got, want := l.SavingsPercent(), 75.0; math.Abs(got-want) > 1e-9 {
+		t.Fatalf("savings: got %v want %v (RecordCall must not change it)", got, want)
+	}
+}
+
 func TestLedgerEmpty(t *testing.T) {
 	l := NewLedger("e")
 	if l.SavingsPercent() != 0 {

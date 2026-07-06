@@ -50,6 +50,23 @@ func (l *Ledger) Record(tool string, originalTokens, deliveredTokens int) {
 	l.TotalDelivered += int64(deliveredTokens)
 }
 
+// RecordCall counts an invocation of a tool that has no token-savings
+// baseline (e.g. a deterministic task op like change-impact, where the
+// value is completeness, not cheaper delivery of the same context). Unlike
+// Record, it leaves Original/Delivered and the ledger totals untouched, so
+// it cannot dilute SavingsPercent — it only makes the tool's call count
+// visible in ByTool.
+func (l *Ledger) RecordCall(tool string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	stats, ok := l.ByTool[tool]
+	if !ok {
+		stats = &ToolStats{}
+		l.ByTool[tool] = stats
+	}
+	stats.Calls++
+}
+
 // TotalDeliveredTokens returns running total of delivered tokens.
 func (l *Ledger) TotalDeliveredTokens() int64 {
 	l.mu.Lock()

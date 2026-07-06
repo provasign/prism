@@ -1691,6 +1691,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if err != nil {
 		return nil, fmt.Errorf("change-impact: %w", err)
 	}
+	h.Ledger.RecordCall("prism_change_impact")
 	compact := func(syms []grove.SymbolRecord) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
 		for _, s := range syms {
@@ -1742,6 +1743,7 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	if err != nil {
 		return nil, fmt.Errorf("missing-implementations: %w", err)
 	}
+	h.Ledger.RecordCall("prism_missing_implementations")
 	compact := func(syms []grove.SymbolRecord) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
 		for _, s := range syms {
@@ -1802,6 +1804,7 @@ func (h *Handler) toolUntestedSurface(ctx context.Context, args map[string]any) 
 	if err != nil {
 		return nil, fmt.Errorf("untested-surface: %w", err)
 	}
+	h.Ledger.RecordCall("prism_untested_surface")
 	site := func(s grove.SymbolRecord) map[string]any {
 		qn := s.QualifiedName
 		if qn == "" {
@@ -1864,6 +1867,7 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 	if err != nil {
 		return nil, fmt.Errorf("rename-plan: %w", err)
 	}
+	h.Ledger.RecordCall("prism_rename_plan")
 	out := map[string]any{
 		"query":      r.Query,
 		"newName":    r.NewName,
@@ -1909,6 +1913,7 @@ func (h *Handler) toolDeadCode(ctx context.Context, args map[string]any) (any, e
 	if err != nil {
 		return nil, fmt.Errorf("dead-code: %w", err)
 	}
+	h.Ledger.RecordCall("prism_dead_code")
 	site := func(s grove.SymbolRecord) map[string]any {
 		qn := s.QualifiedName
 		if qn == "" {
