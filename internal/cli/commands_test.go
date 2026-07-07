@@ -196,3 +196,18 @@ func TestCmdFeedbackValidation(t *testing.T) {
 		})
 	}
 }
+
+// A nonexistent path in the dir position must error, not be created: opening
+// the engine mkdirs <root>/.grove, so a mistyped argument (`prism edges
+// --name routeService` put "routeService" in the dir slot) used to create
+// and auto-index a stray directory.
+func TestNewClientRejectsNonexistentDir(t *testing.T) {
+	ghost := filepath.Join(t.TempDir(), "routeService")
+	_, _, err := newClient(ghost)
+	if err == nil {
+		t.Fatal("expected error for nonexistent dir")
+	}
+	if _, statErr := os.Stat(ghost); !os.IsNotExist(statErr) {
+		t.Fatalf("dir was created as a side effect: %v", statErr)
+	}
+}

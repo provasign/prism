@@ -1784,8 +1784,26 @@ func cmdMCP(args []string) int {
 
 // --- shared helpers ------------------------------------------------------
 
+// requireDir rejects roots that do not exist as directories. Opening the
+// engine creates <root>/.grove, so a mistyped CLI argument in the dir
+// position (`prism edges --name routeService` put "routeService" there)
+// used to CREATE and auto-index a stray directory instead of erroring.
+func requireDir(root string) error {
+	info, err := os.Stat(root)
+	if err != nil {
+		return fmt.Errorf("directory does not exist: %s (a flag or symbol name in the dir position?)", root)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("not a directory: %s", root)
+	}
+	return nil
+}
+
 func newClient(dir string) (*config.Config, *grove.Client, error) {
 	root := mustAbs(dir)
+	if err := requireDir(root); err != nil {
+		return nil, nil, err
+	}
 	cfg, err := config.LoadFromDir(root)
 	if err != nil {
 		return nil, nil, fmt.Errorf("config: %w", err)
