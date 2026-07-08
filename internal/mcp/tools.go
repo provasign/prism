@@ -478,7 +478,10 @@ func toolDescription(name string) string {
 			"Use include=[\"coverage_gaps\"] when writing or fixing code. " +
 			"Use include=[\"docs\"] for doc filenames only."
 	case "prism_read":
-		return "Whole-file read with session compression: full on first read, SHA-pointer on repeats. " +
+		return "Whole-file read with session compression: full content on first read; a repeat read of " +
+			"an UNCHANGED file returns a one-line `// [prism:cached] <file> @sha:… (prior delivery still " +
+			"in context)` pointer INSTEAD of the body — this is not an error or an empty file: you already " +
+			"received this file earlier in the session, so use that copy and do NOT re-fetch. " +
 			"For a single function use prism_lookup (~5× cheaper)."
 	case "prism_search":
 		return "DISCOVERY: substring search over indexed symbol names, signatures, and docstrings — " +

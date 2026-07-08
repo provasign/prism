@@ -303,6 +303,12 @@ returned sites as-is; read individual sites only to make the edits.
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
 
+A repeat read of an unchanged file returns a one-line
+` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
+instead of the body. This is NOT an error or an empty file — you already
+received that file earlier this session; use the copy you have and do not
+re-fetch it.
+
 ### 3. Exploring? Shell finds the anchor, one prism_query expands it
 
 | Situation | Tool |
@@ -385,6 +391,12 @@ returned sites as-is; read individual sites only to make the edits.
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` — session-compressed on repeat reads |
 | Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` — ~5x cheaper than read |
 
+A repeat read of an unchanged file returns a one-line
+` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
+instead of the body. This is NOT an error or an empty file — you already
+received that file earlier this session; use the copy you have and do not
+re-fetch it.
+
 ### 3. Exploring? Shell finds the anchor, one prism query expands it
 
 | Situation | Command |
@@ -447,6 +459,11 @@ Use the registered prism_* MCP tools.
 |---|---|
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
+
+A repeat read of an unchanged file returns a one-line
+` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
+instead of the body — NOT an error or an empty file: you already received it
+earlier this session, so use the copy you have and do not re-fetch.
 
 **3. Exploring? Shell finds the anchor, one prism_query expands it:**
 
