@@ -113,3 +113,31 @@ func ledgerPath(root string) string {
 	}
 	return filepath.Join(cacheDir, "prism", "ledger", key+".json")
 }
+
+// FileSymbol is one indexed symbol in a file, as plain data.
+type FileSymbol struct {
+	Name          string
+	QualifiedName string
+	Kind          string // "function", "method", "class", ...
+	Line          int
+}
+
+// FileSymbols returns the engine's indexed symbols for one repo-relative
+// file — the hook downstream agents use to ask "what did this task create"
+// and then interrogate the graph about each symbol.
+func (k *Kit) FileSymbols(ctx context.Context, relPath string) ([]FileSymbol, error) {
+	syms, err := k.client.FileSymbols(ctx, relPath)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FileSymbol, 0, len(syms))
+	for _, s := range syms {
+		out = append(out, FileSymbol{
+			Name:          s.Name,
+			QualifiedName: s.QualifiedName,
+			Kind:          s.Kind,
+			Line:          s.Span.Start,
+		})
+	}
+	return out, nil
+}
