@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/provasign/prism/internal/assist"
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/httpapi"
@@ -71,6 +72,8 @@ Usage:
                                   evidence: covered (test within 3 caller hops) vs untested
                                   --format text|lean|json  Output format (default: json)
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
+  prism assist [--model <spec>] [--apply|--apply-ambiguous] [--verify "<cmd>"] "<task>"
+                                     NL task -> deterministic ops via any model (ollama:/claude:/openai:)
                                   (precision-first; relay the caveats)
                                   --format text|lean|json  Output format (default: json)
   prism compact [dir]             Compress conversation JSON from stdin
@@ -140,6 +143,8 @@ func Run(args []string) int {
 		return cmdUntestedSurface(rest)
 	case "dead-code":
 		return cmdDeadCode(rest)
+	case "assist":
+		return cmdAssist(rest)
 	case "compact":
 		return cmdCompact(rest)
 	case "feedback":
@@ -2225,4 +2230,99 @@ func printLeanOutput(m map[string]any) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(lean)
+}
+
+// cmdAssist runs the model-agnostic harness: a natural-language task routed by
+// any chat model (local Ollama / Anthropic / OpenAI) to the deterministic task
+// ops. No steering files: the harness owns tool exposure, renders every result
+// itself (the model never relays payloads — relay fidelity by construction),
+// and optionally applies rename edits + runs a verify command. If a `shale`
+// binary is present, the session emits an evidence trail (intent/note/done).
+func cmdAssist(args []string) int {
+	dir := "."
+	model := ""
+	apply := false
+	applyAmbiguous := false
+	verify := ""
+	var taskParts []string
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; a {
+		case "--model":
+			if i+1 < len(args) {
+				model = args[i+1]
+				i++
+			}
+		case "--apply":
+			apply = true
+		case "--apply-ambiguous":
+			apply = true
+			applyAmbiguous = true
+		case "--verify":
+			if i+1 < len(args) {
+				verify = args[i+1]
+				i++
+			}
+		case "--dir":
+			if i+1 < len(args) {
+				dir = args[i+1]
+				i++
+			}
+		default:
+			taskParts = append(taskParts, a)
+		}
+	}
+	task := strings.TrimSpace(strings.Join(taskParts, " "))
+	if task == "" {
+		fmt.Fprintln(os.Stderr, `usage: prism assist [--model <spec>] [--apply] [--verify "<cmd>"] [--dir <root>] "<task>"
+  model specs: ollama:<tag> | claude:<model> | openai:<model>  (default: auto-detect)`)
+		return 2
+	}
+	if model == "" {
+		detected, err := assist.DetectDefaultModel()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "assist:", err)
+			return 1
+		}
+		model = detected
+	}
+	provider, err := assist.NewProvider(model)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "assist:", err)
+		return 1
+	}
+
+	root := mustAbs(dir)
+	cfg, client, err := newClient(root)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "assist:", err)
+		return 1
+	}
+	defer client.Shutdown()
+	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, "assist:", err)
+		return 1
+	}
+
+	// One handler for the whole session: ops record into the persistent
+	// ledger exactly as individual CLI invocations do.
+	ledgerFile := ledgerPathForRoot(root)
+	ledger, lerr := session.LoadLedger(ledgerFile)
+	if lerr != nil {
+		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
+	}
+	h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
+	defer func() {
+		h.SaveSessionCache()
+		_ = h.Ledger.Save(ledgerFile)
+	}()
+
+	fmt.Printf("assist: %s @ %s\n", provider.Name(), root)
+	_, err = assist.Run(task, provider, h.Invoke, assist.Options{
+		Model: model, Apply: apply, ApplyAmbiguous: applyAmbiguous, Verify: verify, Root: root,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "assist:", err)
+		return 1
+	}
+	return 0
 }
