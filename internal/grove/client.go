@@ -632,6 +632,21 @@ func (c *Client) Tests(ctx context.Context, query string) ([]SymbolRecord, error
 	return convertSymbols(syms), nil
 }
 
+// AffectedTests returns the tests covering any symbol defined in the given
+// repo-relative files — the file-diff form of Tests, for "run only affected
+// tests" from a `git diff --name-only`.
+func (c *Client) AffectedTests(ctx context.Context, files []string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	syms, err := e.AffectedTests(ctx, files)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
+}
+
 // convertSymbols maps grove engine symbols to Prism's wire-format type.
 func convertSymbols(in []groveeng.Symbol) []SymbolRecord {
 	out := make([]SymbolRecord, 0, len(in))

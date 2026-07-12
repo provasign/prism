@@ -218,6 +218,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolMissingImplementations(ctx, args)
 	case "prism_untested_surface":
 		return h.toolUntestedSurface(ctx, args)
+	case "prism_affected":
+		return h.toolAffected(ctx, args)
 	case "prism_dead_code":
 		return h.toolDeadCode(ctx, args)
 	case "prism_rename_plan":
@@ -254,7 +256,7 @@ func ToolSchemas() []map[string]any {
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
 		"prism_missing_implementations", "prism_untested_surface", "prism_dead_code",
-		"prism_rename_plan",
+		"prism_rename_plan", "prism_affected",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -439,6 +441,18 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
+	case "prism_affected":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"files"},
+			"properties": map[string]any{
+				"files": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "Repo-relative changed files (e.g. from `git diff --name-only`).",
+				},
+			},
+		}
 	case "prism_rename_plan":
 		return map[string]any{
 			"type":     "object",
@@ -589,6 +603,16 @@ func toolDescription(name string) string {
 			"caller horizon — dynamic dispatch the graph cannot see (reflection, framework " +
 			"executors) may still exercise the site, so treat it as a work list, not proof. " +
 			"RELAY the partition as-is; do not re-derive coverage via grep."
+	case "prism_affected":
+		return "The file-diff form of test selection: pass the CHANGED FILES (repo-relative, " +
+			"e.g. `git diff --name-only`) and get back exactly the tests that cover any symbol " +
+			"defined in them — grouped by test file, so a CI step can run ONLY the affected " +
+			"tests instead of the whole suite. Coverage follows the same evidence-backed graph " +
+			"traversal as untested_surface (a test reaches a changed symbol within the resolved " +
+			"caller horizon); low-confidence edges are excluded so unrelated tests are not swept " +
+			"in. Dynamic dispatch the graph cannot see (reflection, framework executors) may " +
+			"still exercise a site, so treat the set as a high-signal selection, not a proof of " +
+			"total isolation. RELAY the result as-is."
 	case "prism_rename_plan":
 		return "The rename executed as a plan: pass 'Type.method' and newName, get the " +
 			"complete change-impact set converted to concrete line edits — file, line, " +
@@ -1861,6 +1885,51 @@ func (h *Handler) toolUntestedSurface(ctx context.Context, args map[string]any) 
 		out["overridesExternal"] = r.OverridesExternal
 	}
 	return out, nil
+}
+
+// toolAffected maps a set of CHANGED FILES to the tests that cover them —
+// the file-diff form of test selection for CI ("run only the affected tests").
+func (h *Handler) toolAffected(ctx context.Context, args map[string]any) (any, error) {
+	var files []string
+	if raw, ok := args["files"].([]any); ok {
+		for _, x := range raw {
+			if s, ok := x.(string); ok && strings.TrimSpace(s) != "" {
+				files = append(files, strings.TrimSpace(s))
+			}
+		}
+	}
+	if len(files) == 0 {
+		return nil, errors.New("files is required (repo-relative paths, e.g. from `git diff --name-only`)")
+	}
+	tests, err := h.Grove.AffectedTests(ctx, files)
+	if err != nil {
+		return nil, fmt.Errorf("affected: %w", err)
+	}
+	h.Ledger.RecordCall("prism_affected")
+	byFile := map[string][]map[string]any{}
+	order := []string{}
+	for _, s := range tests {
+		if _, seen := byFile[s.FilePath]; !seen {
+			order = append(order, s.FilePath)
+		}
+		qn := s.QualifiedName
+		if qn == "" {
+			qn = s.Name
+		}
+		byFile[s.FilePath] = append(byFile[s.FilePath], map[string]any{
+			"name": s.Name, "qualifiedName": qn, "line": s.Span.Start, "kind": s.Kind,
+		})
+	}
+	testFiles := make([]map[string]any, 0, len(order))
+	for _, f := range order {
+		testFiles = append(testFiles, map[string]any{"filePath": f, "tests": byFile[f]})
+	}
+	return map[string]any{
+		"changedFiles":  files,
+		"testFiles":     testFiles, // grouped by test file — the CI unit
+		"testCount":     len(tests),
+		"testFileCount": len(order),
+	}, nil
 }
 
 // identRe: rename targets must be bare identifiers — a path or expression

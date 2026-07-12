@@ -42,6 +42,8 @@ Usage:
                                   --global writes to user-level config (~/.claude, ~/.cursor, etc.)
   prism install [--global] [dir]  Alias for 'prism init'
   prism index [dir]               Index codebase via Grove (delta-aware)
+  prism watch [dir]               Keep the index warm: delta-reindex on file save
+                                  (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove
   prism query <task> [dir]        Find ranked context for a task
                                   --terms a,b,c      Anchor on specific symbol names (grep-precision)
@@ -71,6 +73,9 @@ Usage:
   prism untested-surface <query> [dir]  Change-set partitioned by covering-test
                                   evidence: covered (test within 3 caller hops) vs untested
                                   --format text|lean|json  Output format (default: json)
+  prism affected <file> [file ...]  Tests covering the changed files (CI test selection):
+                                  git diff --name-only | xargs prism affected  → run only those tests
+                                  [--dir <path>] [--format text|json]
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
   prism assist [--model <spec>] [--apply|--apply-ambiguous] [--verify "<cmd>"] "<task>"
                                      NL task -> deterministic ops via any model (ollama:/claude:/openai:)
@@ -115,6 +120,8 @@ func Run(args []string) int {
 		return 0
 	case "init", "install":
 		return cmdInit(rest)
+	case "watch":
+		return cmdWatch(rest)
 	case "index":
 		return cmdIndex(rest)
 	case "status":
@@ -141,6 +148,8 @@ func Run(args []string) int {
 		return cmdRenamePlan(rest)
 	case "untested-surface":
 		return cmdUntestedSurface(rest)
+	case "affected":
+		return cmdAffected(rest)
 	case "dead-code":
 		return cmdDeadCode(rest)
 	case "assist":
@@ -1537,6 +1546,59 @@ func cmdUntestedSurface(args []string) int {
 	out, err := invokeWithPersistentLedger(dir, "prism_untested_surface", map[string]any{"query": query})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "untested-surface:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+func cmdAffected(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism affected <file> [file ...] [dir] [--format text|json]")
+		fmt.Fprintln(os.Stderr, "  files: repo-relative changed files, e.g.  git diff --name-only | xargs prism affected")
+		return 2
+	}
+	dir := "."
+	format := formatJSON
+	var files []any
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		case a == "--dir":
+			if i+1 < len(args) {
+				dir = args[i+1]
+				i++
+			}
+		default:
+			if strings.HasPrefix(a, "-") {
+				break
+			}
+			// A positional arg that is an existing directory (or "."/"..") is
+			// the run root; everything else is a changed file (repo-relative).
+			if a == "." || a == ".." {
+				dir = a
+			} else if fi, err := os.Stat(a); err == nil && fi.IsDir() {
+				dir = a
+			} else {
+				files = append(files, a)
+			}
+		}
+	}
+	if len(files) == 0 {
+		fmt.Fprintln(os.Stderr, "affected: no changed files given")
+		return 2
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_affected", map[string]any{"files": files})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "affected:", err)
 		return 1
 	}
 	printOutput(out, format)
