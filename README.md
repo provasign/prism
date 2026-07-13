@@ -5,6 +5,63 @@
 > Prism turns a task plus a few precise anchors into the code, callers, callees,
 > tests, docs, and coverage gaps an agent needs to make a change safely.
 
+## What Prism is
+
+Prism is a **type-resolved code-graph engine for coding agents**. It indexes a
+repository into a compiler-grade graph (symbols, calls, overrides, implements,
+test edges — via the embedded [Grove](https://github.com/provasign/grove)
+engine) and exposes that graph at **task altitude**: one deterministic call
+answers a whole question an agent would otherwise spend dozens of turns
+approximating.
+
+**The need.** Agents gather context with text search and file reads. That works
+for locating things, but it fails exactly where the stakes are highest:
+enumerating everything a change touches. Overridden methods, interface
+implementations, overload-specific callers, and indirect call chains are
+invisible to `grep` — and an agent that misses one site ships a broken build.
+Measured across 4 languages and blast radii of 1–310 sites, text-search agents
+top out at 0.62–0.75 recall on change-impact tasks even on frontier models
+(see [provasign/research](https://github.com/provasign/research)).
+
+**The principles.**
+
+1. **Correctness and completeness first.** A faster or cheaper *incomplete*
+   answer is a faster broken build. Every design choice is subordinate to
+   returning the complete, type-resolved answer.
+2. **Task altitude, not primitives.** The graph is exposed as whole-task
+   operations (`change_impact`, `rename_plan`, `untested_surface`, …), not as
+   node/edge primitives the agent must orchestrate. Orchestrating traversals
+   is itself a frontier-model skill; a task-level call works on any model.
+3. **Determinism.** The engine solves the traversal; the agent relays the
+   result. Same query, same index, same answer — testable without an LLM, and
+   never re-filtered through grep/sed (measured to drop real sites).
+4. **Tier invariance.** Because the hard part is done by the engine, the same
+   completeness holds from a free local 30B model to a frontier model —
+   measured at recall 1.00 on both, where orchestration-based approaches
+   collapse on cheap models.
+5. **Each layer does what it's best at.** Shell tools find the first anchor
+   (they win at string location — Prism does not replace `grep`). Prism
+   answers relationship and whole-task questions. The model reasons and edits.
+
+**Use cases** — the questions Prism answers in one call:
+
+| You are about to… | One call |
+|---|---|
+| Change or rename a method signature | `change-impact` — declaration + override family + every resolved caller |
+| Apply a rename, not just find it | `rename-plan` — every edit line, before/after, review-and-apply |
+| Make an interface method required | `missing-implementations` — every type that breaks |
+| Refactor safely | `untested-surface` — the change-set split covered/untested |
+| Delete or extract code | `dead-code` — unreachable production symbols |
+| Commit / select CI tests | `affected` — every test covering the changed files |
+| Read code cheaply | `read` / `lookup` — session-deduped, ~10-token repeat reads |
+| Expand from a grep hit | `query` — callers, callees, tests around an anchor |
+
+**Where Prism is the wrong tool** (honesty is a feature): locating a string or
+file (`rg` wins), languages outside the supported set below, dispatch wired at
+runtime through frameworks/reflection/DI (Prism's edges are static and
+type-resolved — it will show you *nothing* rather than a guess), and one-line
+greppable changes where any approach ties.
+
 Prism is not a better `grep`. Use `rg`/`grep` to find the first anchor. Use
 Prism to answer the follow-up questions that usually cost several file reads:
 
@@ -203,11 +260,12 @@ prism init . --mode cli   # CLI only: for environments without MCP support
 
 ### MCP
 
-MCP advertises fourteen tools: the context surface (`prism_query`,
+MCP advertises fifteen tools: the context surface (`prism_query`,
 `prism_read`, `prism_search`, `prism_lookup`, `prism_references`,
 `prism_resolve`, `prism_edges`), the task-shaped graph operations
 (`prism_change_impact`, `prism_missing_implementations`,
-`prism_untested_surface`, `prism_dead_code`, `prism_rename_plan`), and session upkeep
+`prism_untested_surface`, `prism_dead_code`, `prism_rename_plan`,
+`prism_affected`), and session upkeep
 (`prism_index`, `prism_drift`). The auxiliary tools (`prism_savings`,
 `prism_feedback`, `prism_compact`, `prism_evidence`) stay available through
 the CLI and HTTP server without spending schema tokens in every MCP session. Use MCP when the client has first-class MCP support and
@@ -246,10 +304,14 @@ prism references <name> [dir] --format text
 
 # Task-shaped graph operations — one deterministic call each
 prism change-impact 'Type.method(ParamType, ...)' [dir]   # declaration + override family + all resolved callers
+prism rename-plan 'Type.method' NewName [dir]              # every concrete edit line, review-and-apply
 prism missing-implementations 'Type.method' [dir]         # types claiming the contract that do not implement it
 prism untested-surface 'Type.method' [dir]                # the change-set split covered/untested by test evidence
 prism dead-code [dir] [--roots a,b]                       # unreachable production symbols (precision-first)
+prism affected <file> [file ...] [dir]                    # tests covering the changed files (CI selection):
+                                                          #   git diff --name-only | xargs prism affected
 
+prism watch [dir]      # background file-watcher: delta-reindex on save, index always warm
 prism drift [dir]
 prism savings [dir]
 prism compact [dir]

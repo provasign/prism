@@ -288,6 +288,7 @@ cheaply. Three layers, in priority order.
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every type in the closure with no implementation |
 | "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
 | Cleanups, library extraction, "is X still used / can I delete it?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
+| "Which tests should run for these changed files?" (pre-commit, CI selection, post-edit) | prism_affected(files=[...]) — every test covering the changed files, via graph test edges |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, call prism_change_impact FIRST — even if the change
@@ -343,7 +344,9 @@ Canonical workflow (non-refactor tasks):
       -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
 
 Housekeeping: prism_index once at session start (delta indexing is automatic —
-never re-run per step); prism_drift if a stale-context warning appears.
+never re-run per step); prism_drift if a stale-context warning appears. If
+` + "`" + `prism watch` + "`" + ` is running in this project, the index is already warm — skip
+prism_index entirely.
 
 ### Do NOT
 
@@ -375,6 +378,7 @@ layers, in priority order.
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
 | "What should I test before changing X?" / test-gap audit / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
 | Cleanups / "is X still used / can I delete it?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
+| "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, run prism change-impact first — even if the change
@@ -430,7 +434,8 @@ Canonical workflow (non-refactor tasks):
       -> prism lookup <pkg.FuncName> --format text  <- one function (~5x cheaper than read)
 
 Housekeeping: prism index [dir] once at session start (delta indexing is
-automatic — never re-run per step).
+automatic — never re-run per step). If ` + "`" + `prism watch` + "`" + ` is running in this
+project, the index is already warm — skip prism index entirely.
 
 ### Do NOT
 
@@ -466,6 +471,7 @@ Use the registered prism_* MCP tools.
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every closure type with no implementation |
 | "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
 | Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
+| "Which tests should run for these changed files?" (pre-commit, CI selection, post-edit) | prism_affected(files=[...]) — every test covering the changed files, via graph test edges |
 
 **2. Reading code? Prism reads are cheaper than shell reads:**
 
@@ -519,7 +525,9 @@ Canonical workflow (non-refactor tasks):
       -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
 
 Housekeeping: prism_index once at session start (delta indexing is automatic —
-never re-run per step); prism_drift if a stale-context warning appears.
+never re-run per step); prism_drift if a stale-context warning appears. If
+` + "`" + `prism watch` + "`" + ` is running in this project, the index is already warm — skip
+prism_index entirely.
 
 ### When only Bash is available (subagents, CI)
 
@@ -535,6 +543,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
 | "What should I test before changing X?" / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
 | Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
+| "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
