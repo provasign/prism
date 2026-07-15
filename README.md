@@ -12,7 +12,10 @@ repository into a compiler-grade graph (symbols, calls, overrides, implements,
 test edges — via the embedded [Grove](https://github.com/provasign/grove)
 engine) and exposes that graph at **task altitude**: one deterministic call
 answers a whole question an agent would otherwise spend dozens of turns
-approximating.
+approximating. For bug-fix and implement tasks it delivers the answer as
+**edit-ready, line-numbered source** — verbatim windows plus each anchor's
+callers and covering tests — so the model edits without a second read
+(`prism_query`, phase-aware; `delivery="symbols"` for the compact list).
 
 **The need.** Agents gather context with text search and file reads. That works
 for locating things, but it fails exactly where the stakes are highest:
