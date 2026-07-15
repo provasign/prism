@@ -188,6 +188,13 @@ func renderSignatures(syms []grove.SymbolRecord) string {
 	return sb.String()
 }
 
+// SHAPointer is the exported form of renderSHAPointer for delivery surfaces
+// outside the compressor (prism_explore emits the same cache pointer when a
+// file's full content was already delivered this session).
+func SHAPointer(filePath, contentHash string, accessCount int) string {
+	return renderSHAPointer(filePath, contentHash, accessCount)
+}
+
 // renderSHAPointer emits a single-line cache reference that costs ~10 tokens.
 // The model already has the file content from the prior delivery; this line
 // confirms the content is unchanged and suppresses a full resend.

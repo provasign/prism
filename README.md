@@ -79,7 +79,10 @@ prism init . --mode both
 ```
 
 Agents with an active MCP session call `prism_query`, `prism_read`, and
-`prism_lookup` directly. Subagents and CI scripts fall back to the CLI:
+`prism_lookup` directly. For bug-fix and implement tasks `prism_query`
+delivers verbatim line-numbered source windows plus each anchor's callers and
+covering tests (edit-ready, phase-aware; `--delivery symbols` forces the
+compact list). Subagents and CI scripts fall back to the CLI:
 
 ```bash
 prism query "fix direct coverage gaps" --terms buildCoverageGaps --include graph,tests,coverage_gaps --format text
@@ -294,6 +297,8 @@ prism status [dir]
 prism query <task> [dir] \
   --terms a,b,c \
   --include graph,tests,docs,coverage_gaps \
+  --delivery source|symbols \
+  --max-files 5 \
   --depth 2 \
   --format text
 

@@ -45,9 +45,13 @@ Usage:
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove
-  prism query <task> [dir]        Find ranked context for a task
+  prism query <task> [dir]        Find ranked context for a task; bug-fix/implement
+                                  tasks get line-numbered source windows + per-anchor
+                                  callers/covering tests (edit-ready)
                                   --terms a,b,c      Anchor on specific symbol names (grep-precision)
                                   --include a,b      Categories: graph,tests,docs,coverage_gaps (default: graph,tests)
+                                  --delivery source|symbols  Force delivery shape (default: phase-aware)
+                                  --max-files N      source delivery: max files shown (default: 5)
                                   --depth N          BFS hops for graph expansion (default: 2)
                                   --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
@@ -324,20 +328,22 @@ instead of the body. This is NOT an error or an empty file — you already
 received that file earlier this session; use the copy you have and do not
 re-fetch it.
 
-### 3. Exploring? Shell finds the anchor, one prism_query expands it
+### 3. Fixing a bug or exploring an unfamiliar area? ONE prism_query call
 
 | Situation | Tool |
 |---|---|
+| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers/covering tests |
+| You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
-| Callers/callees/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
 
 Canonical workflow (non-refactor tasks):
 
-    grep/find/rg <terms>                 <- locate anchor first; shell tools always win here
+    prism_query(task="<bug symptom or task>")   <- start here; often the ONLY context call needed
+      still missing an anchor?
+      -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
       -> prism_query(                    <- expand from anchor: callers, callees, tests
            terms=["same-grep-terms"],
-           include=["graph","tests"],
-           graph_depth=2
+           include=["graph","tests"]
          )
       then selectively:
       -> prism_read(file=...)            <- whole file, session-compressed
@@ -350,7 +356,8 @@ prism_index entirely.
 
 ### Do NOT
 
-- Do NOT call prism_query before searching — use shell tools (grep, find, rg) to find the anchor first; prism expands from it
+- Do NOT re-read files prism_query just delivered as source windows — they are verbatim, current, line-numbered; go straight to the edit
+- Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact computes the complete set in one call
 - Do NOT use prism_read for a single function — use prism_lookup instead
 `
@@ -415,16 +422,19 @@ instead of the body. This is NOT an error or an empty file — you already
 received that file earlier this session; use the copy you have and do not
 re-fetch it.
 
-### 3. Exploring? Shell finds the anchor, one prism query expands it
+### 3. Fixing a bug or exploring an unfamiliar area? ONE query call
 
 | Situation | Command |
 |---|---|
+| Bug report, error message, or unfamiliar feature area | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers/covering tests |
+| You already grepped an anchor | ` + "`" + `prism query "<symptom>" --terms <anchor> --format text` + "`" + ` — same delivery, grep-precision seeding |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
-| Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
 
 Canonical workflow (non-refactor tasks):
 
-    grep/find/rg <terms>                      <- locate anchor first; shell tools always win here
+    prism query "<bug symptom or task>" --format text   <- start here; often the ONLY context call needed
+      still missing an anchor?
+      -> grep/find/rg <terms>                 <- locate it; shell tools always win at locating
       -> prism query "<task>" \               <- expand from anchor: callers, callees, tests
            --terms <same-terms> \
            --include graph,tests \
@@ -439,7 +449,8 @@ project, the index is already warm — skip prism index entirely.
 
 ### Do NOT
 
-- Do NOT call prism query before searching — use shell tools (grep, find, rg) to find the anchor first; prism expands from it
+- Do NOT re-read files prism query just delivered as source windows — they are verbatim, current, line-numbered; go straight to the edit
+- Do NOT grep for what prism query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — ` + "`" + `prism change-impact` + "`" + ` computes the complete set in one call
 - Do NOT use prism read for a single function — use prism lookup instead
 `
@@ -485,12 +496,13 @@ A repeat read of an unchanged file returns a one-line
 instead of the body — NOT an error or an empty file: you already received it
 earlier this session, so use the copy you have and do not re-fetch.
 
-**3. Exploring? Shell finds the anchor, one prism_query expands it:**
+**3. Fixing a bug or exploring an unfamiliar area? ONE prism_query call:**
 
 | Situation | Tool |
 |---|---|
+| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers/covering tests |
+| You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
-| Callers/callees/tests for a symbol just found | prism_query(terms=[...], include=["graph","tests"]) |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, call prism_change_impact FIRST — even if the change
@@ -514,11 +526,12 @@ returned sites as-is; read individual sites only to make the edits.
 
 Canonical workflow (non-refactor tasks):
 
-    grep/find/rg <terms>                 <- locate anchor first; shell tools always win here
+    prism_query(task="<bug symptom or task>")   <- start here; often the ONLY context call needed
+      still missing an anchor?
+      -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
       -> prism_query(                    <- expand from anchor: callers, callees, tests
            terms=["same-grep-terms"],
-           include=["graph","tests"],
-           graph_depth=2
+           include=["graph","tests"]
          )
       then selectively:
       -> prism_read(file=...)            <- whole file, session-compressed
@@ -544,6 +557,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | "What should I test before changing X?" / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
 | Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
+| Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — line-numbered windows + per-anchor callers/tests |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
@@ -551,7 +565,8 @@ Use the prism CLI with --format text instead of MCP tools:
 
 ### Do NOT
 
-- Do NOT call prism_query (or prism query) before searching — use shell tools first; prism expands from the anchor
+- Do NOT re-read files prism_query / prism query just delivered as source windows — they are verbatim, current, line-numbered; go straight to the edit
+- Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact / prism change-impact computes the complete set in one call
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
 `
@@ -1091,6 +1106,8 @@ func cmdQuery(args []string) int {
 	profile := ""
 	limit := 50
 	depth := 0
+	maxFiles := 0
+	delivery := ""
 	format := formatText
 	var terms []string
 	var include []string
@@ -1134,6 +1151,21 @@ func cmdQuery(args []string) int {
 				}
 				i++
 			}
+		case "--delivery":
+			if i+1 < len(args) {
+				switch args[i+1] {
+				case "source", "symbols":
+					delivery = args[i+1]
+				}
+				i++
+			}
+		case "--max-files":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+					maxFiles = n
+				}
+				i++
+			}
 		case "--format":
 			if i+1 < len(args) {
 				switch outputFormat(args[i+1]) {
@@ -1149,6 +1181,12 @@ func cmdQuery(args []string) int {
 		}
 	}
 	invokeArgs := map[string]any{"task": task, "limit": limit}
+	if delivery != "" {
+		invokeArgs["delivery"] = delivery
+	}
+	if maxFiles > 0 {
+		invokeArgs["max_files"] = maxFiles
+	}
 	if profile != "" {
 		invokeArgs["profile"] = profile
 	}

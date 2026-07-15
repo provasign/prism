@@ -174,7 +174,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 		t.Error("stale instructions not replaced")
 	}
 	// New guidance must be present.
-	if !strings.Contains(s, "shell tools always win here") {
+	if !strings.Contains(s, "line-numbered source windows") {
 		t.Error("new instructions not written")
 	}
 	// Content before the Prism section must be preserved.
