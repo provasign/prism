@@ -1,0 +1,42 @@
+shale_version: "0"
+id: 019f7206-a81d-73e2-9185-4569eee93e6d
+created_at: 2026-07-17T21:42:34.31327Z
+finalized_at: 2026-07-18T19:11:06.577132Z
+agent:
+    tool: codex
+    model: gpt-5.5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git status --short
+      at: 2026-07-17T21:42:40.124999Z
+      classified: other
+    - cmd: prism query "Summarize this project's purpose, architecture, public CLI/MCP surface, and how it delivers code context for software engineering tasks" --format text
+      at: 2026-07-17T21:42:40.375939Z
+      classified: other
+    - cmd: rg --files
+      at: 2026-07-17T21:42:40.791571Z
+      classified: other
+    - cmd: prism read README.md --format text
+      at: 2026-07-17T21:42:59.315346Z
+      classified: other
+    - cmd: prism read docs/AB-Test-Payflow-2026-06-12.md --format text
+      at: 2026-07-17T21:42:59.31535Z
+      classified: other
+    - cmd: prism read internal/assist/assist.go --format text
+      at: 2026-07-17T21:42:59.519904Z
+      classified: other
+    - cmd: prism read internal/assist/assist.go --format text
+      at: 2026-07-17T21:43:13.317129Z
+      classified: other
+    - cmd: prism read docs/AB-Test-Payflow-2026-06-12.md --format text
+      at: 2026-07-17T21:43:13.317168Z
+      classified: other
+    - cmd: prism read README.md --format text
+      at: 2026-07-17T21:43:13.392857Z
+      classified: other
+notes: []
+redactions: 0
