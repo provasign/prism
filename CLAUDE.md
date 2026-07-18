@@ -1,4 +1,18 @@
 
+## Before you commit or release — run the regression suite
+
+CI runs these on push (`.github/workflows/ci.yml`; engine quality via
+`provasign/research/.github/workflows/engine-invariants.yml`). Run them locally
+before tagging a release:
+
+- `go test ./...` — unit suite; must be green.
+- Engine ceiling regression (no LLM): from the research repo,
+  `python3 harness/ci_invariants.py --prism ~/bin/prism` — asserts change-impact
+  recall/precision, missing-implementations==[], and index determinism against
+  committed ground truth. A drop here is a real completeness regression.
+
+Do NOT tag a release with either red.
+
 ## Prism — context delivery (ALWAYS use these tools)
 
 Prism answers whole-task questions (change impact, missing implementations,
