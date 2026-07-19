@@ -1,0 +1,835 @@
+shale_version: "0"
+id: 019f76aa-6cd1-73b2-bd6f-e1b22a985a0e
+created_at: 2026-07-18T19:21:21.705723Z
+finalized_at: 2026-07-19T02:22:34.360967Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-07-18T19:35:39.199427Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T19:51:56.057757Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T19:52:09.027951Z
+    - path: internal/cli/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T19:52:47.83144Z
+    - path: internal/cli/helpers_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T19:52:47.83144Z
+    - path: install.sh
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T19:53:06.638672Z
+    - path: install.ps1
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T19:53:06.638672Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T20:03:47.920388Z
+    - path: CONTRIBUTING.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: SECURITY.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: GOVERNANCE.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: SUPPORT.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: CODE_OF_CONDUCT.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: THREAT_MODEL.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: .github/ISSUE_TEMPLATE/bug.yml
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: .github/ISSUE_TEMPLATE/feature.yml
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: .github/ISSUE_TEMPLATE/config.yml
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: .github/PULL_REQUEST_TEMPLATE.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: .github/dependabot.yml
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-07-18T20:04:20.500318Z
+    - path: .github/workflows/release.yml
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T20:09:43.700508Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T20:30:08.057194Z
+    - path: pkg/kit/kit.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-07-18T20:30:08.057194Z
+commands:
+    - cmd: pwd; printf '\nSibling directories:\n'; find .. -maxdepth 1 -type d -print | sort; printf '\nPrism status:\n'; git status --short --branch; printf '\nPrism guidance files:\n'; find .. -name AGENTS.md -print
+      at: 2026-07-18T19:21:34.888611Z
+      classified: other
+    - cmd: printf '%s\n' '--- ../AGENTS.md ---'; sed -n '1,240p' ../AGENTS.md; printf '%s\n' '--- prism/AGENTS.md ---'; sed -n '1,260p' AGENTS.md; printf '%s\n' '--- grove/AGENTS.md ---'; sed -n '1,260p' ../grove/AGENTS.md; printf '%s\n' '--- mason/AGENTS.md ---'; sed -n '1,260p' ../mason/AGENTS.md
+      at: 2026-07-18T19:21:39.809117Z
+      classified: other
+    - cmd: printf '%s\n' 'Prism executable:'; command -v prism; prism --version 2>/dev/null || true; printf '%s\n' 'Watch processes:'; pgrep -af 'prism.*watch' || true; printf '%s\n' 'Top-level files:'; rg --files -g '!vendor' -g '!node_modules' -g '!*\.sum' | sed -n '1,220p'; printf '%s\n' 'Metadata:'; find . -maxdepth 2 -type f \( -name 'README*' -o -name 'LICENSE*' -o -name 'CONTRIBUTING*' -o -name 'SECURITY*' -o -name 'CODE_OF_CONDUCT*' -o -name 'CHANGELOG*' -o -name 'go.mod' -o -name 'package.json' -o -name 'Cargo.toml' -o -path './.github/*' \) -print | sort
+      at: 2026-07-18T19:21:51.235374Z
+      classified: other
+    - cmd: prism status .; prism query "Assess Prism's architecture, differentiators, user-facing workflow, implementation maturity, reliability, test coverage, open-source readiness, and gaps preventing default adoption by software developers and AI coding agents" . --include graph,tests,docs,coverage_gaps --delivery source --max-files 8 --depth 3 --format text
+      at: 2026-07-18T19:21:55.994436Z
+      classified: other
+    - cmd: prism query "Assess Prism's architecture, differentiators, user-facing workflow, implementation maturity, reliability, test coverage, open-source readiness, and gaps preventing default adoption by software developers and AI coding agents" . --include graph,tests,docs,coverage_gaps --delivery source --max-files 8 --depth 3 --format text
+      at: 2026-07-18T19:22:00.616953Z
+      classified: other
+    - cmd: prism read README.md . --format text; prism read prism.yaml . --format text; prism read go.mod . --format text; prism read install.sh . --format text; prism read Makefile . --format text
+      at: 2026-07-18T19:22:05.785911Z
+      classified: other
+    - cmd: 'printf ''%s\n'' ''--- README at HEAD ---''; git show HEAD:README.md; printf ''%s\n'' ''--- LICENSE ---''; git show HEAD:LICENSE; printf ''%s\n'' ''--- Git history/tags/remotes ---''; git log --oneline --decorate -20; git tag --sort=-version:refname | sed -n ''1,30p''; git remote -v; printf ''%s\n'' ''--- Repository counts ---''; printf ''tracked files: ''; git ls-files | wc -l; printf ''Go source lines: ''; git ls-files ''*.go'' | xargs wc -l | tail -1; printf ''test files: ''; git ls-files ''*_test.go'' | wc -l; printf ''GitHub files:\n''; find .github -maxdepth 3 -type f -print | sort'
+      at: 2026-07-18T19:22:19.557051Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1 -coverprofile=/private/tmp/prism-cover.out; go tool cover -func=/private/tmp/prism-cover.out | tail -1; GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go vet ./...
+      at: 2026-07-18T19:22:27.980149Z
+      classified: lint
+    - cmd: printf '%s\n' '--- Go workspace ---'; go env GOWORK GOMOD GOPATH GOMODCACHE; if test -f ../go.work; then sed -n '1,200p' ../go.work; fi; printf '%s\n' '--- CI ---'; git show HEAD:.github/workflows/ci.yml; printf '%s\n' '--- Release ---'; git show HEAD:.github/workflows/release.yml; printf '%s\n' '--- Release docs references ---'; rg -n "(CONTRIBUT|SECURITY|CODE_OF_CONDUCT|roadmap|Roadmap|issue template|discussion|support policy|compatib|telemetry|privacy|SBOM|SLSA|cosign|goreleaser)" README.md .github docs Makefile install.sh install.ps1 NOTICE go.mod
+      at: 2026-07-18T19:22:38.894109Z
+      classified: other
+    - cmd: /bin/zsh -lc 'GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./...'
+      at: 2026-07-18T19:22:53.180745Z
+      classified: test
+    - cmd: 'printf ''%s\n'' ''--- Grove status ---''; git status --short --branch; prism status .; printf ''%s\n'' ''--- Top-level and metadata ---''; find . -maxdepth 2 -type f \( -name ''README*'' -o -name ''LICENSE*'' -o -name ''CONTRIBUTING*'' -o -name ''SECURITY*'' -o -name ''CODE_OF_CONDUCT*'' -o -name ''CHANGELOG*'' -o -name ''go.mod'' -o -name ''Makefile'' -o -path ''./.github/*'' \) -print | sort; printf ''%s\n'' ''--- File inventory ---''; rg --files -g ''!vendor'' -g ''!node_modules'' | sed -n ''1,260p''; printf ''%s\n'' ''--- Counts/history/tags ---''; printf ''tracked files: ''; git ls-files | wc -l; printf ''Go source lines: ''; git ls-files ''*.go'' | xargs wc -l | tail -1; printf ''test files: ''; git ls-files ''*_test.go'' | wc -l; git log --oneline --decorate -18; git tag --sort=-version:refname | sed -n ''1,25p''; git remote -v'
+      at: 2026-07-18T19:23:07.686904Z
+      classified: other
+    - cmd: prism index .
+      at: 2026-07-18T19:23:13.428659Z
+      classified: other
+    - cmd: ls -ld . .grove 2>/dev/null || true; find .grove -maxdepth 2 -ls 2>/dev/null | sed -n '1,80p'; prism config .; go env GOCACHE HOME
+      at: 2026-07-18T19:23:20.358496Z
+      classified: other
+    - cmd: prism index .
+      at: 2026-07-18T19:23:29.329403Z
+      classified: other
+    - cmd: prism query "Assess Grove's architecture, graph correctness, language analyzers, indexing performance, public APIs, evaluation evidence, operational reliability, open-source readiness, and gaps preventing it from becoming a frontier code intelligence engine" . --include graph,tests,docs,coverage_gaps --delivery source --max-files 10 --depth 3 --format text
+      at: 2026-07-18T19:23:34.649343Z
+      classified: other
+    - cmd: prism status .; prism query "Assess Grove frontier code intelligence readiness" . --include graph,tests,docs,coverage_gaps --delivery source --max-files 10 --depth 3 --format text
+      at: 2026-07-18T19:23:40.997015Z
+      classified: other
+    - cmd: prism lookup github.com/provasign/prism/internal/cli.cmdQuery ../prism --format text
+      at: 2026-07-18T19:23:48.971653Z
+      classified: other
+    - cmd: prism query "Assess Grove's architecture graph correctness language analyzers indexing performance public APIs evaluation evidence operational reliability open-source readiness and frontier code intelligence gaps" --include graph,tests,docs,coverage_gaps --delivery source --max-files 10 --depth 3 --format text /Users/tapabratapal/Projects/provasign/grove
+      at: 2026-07-18T19:23:54.070439Z
+      classified: other
+    - cmd: prism read README.md --format text /Users/tapabratapal/Projects/provasign/grove; prism read go.mod --format text /Users/tapabratapal/Projects/provasign/grove; prism read Makefile --format text /Users/tapabratapal/Projects/provasign/grove; prism read eval/README.md --format text /Users/tapabratapal/Projects/provasign/grove; prism read CHANGELOG.md --format text /Users/tapabratapal/Projects/provasign/grove
+      at: 2026-07-18T19:23:59.444019Z
+      classified: other
+    - cmd: printf '%s\n' '--- go.mod ---'; git show HEAD:go.mod; printf '%s\n' '--- Makefile ---'; git show HEAD:Makefile; printf '%s\n' '--- GitHub files ---'; git ls-files '.github/**' | sort; printf '%s\n' '--- CI workflow ---'; git show HEAD:.github/workflows/ci.yml; printf '%s\n' '--- Eval workflow ---'; git show HEAD:.github/workflows/eval.yml; printf '%s\n' '--- Release workflow ---'; git show HEAD:.github/workflows/release.yml; printf '%s\n' '--- Baseline summary ---'; git show HEAD:eval/baseline.json | sed -n '1,260p'; printf '%s\n' '--- Governance/security references ---'; rg -n "(CONTRIBUT|SECURITY|CODE_OF_CONDUCT|support policy|compatib|telemetry|privacy|SBOM|SLSA|cosign|goreleaser|fuzz|race)" README.md CHANGELOG.md docs .github Makefile go.mod
+      at: 2026-07-18T19:24:08.873707Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -short -count=1 -coverprofile=/private/tmp/grove-cover.out; go tool cover -func=/private/tmp/grove-cover.out | tail -1; GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go vet ./...
+      at: 2026-07-18T19:24:21.517531Z
+      classified: lint
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-07-18T19:24:27.155856Z
+      classified: test
+    - cmd: GOWORK=off GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-07-18T19:24:30.016284Z
+      classified: test
+    - cmd: GOWORK=off GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-07-18T19:25:05.487718Z
+      classified: test
+    - cmd: git show HEAD:eval/go.mod; printf '%s\n' '--- eval module status without edits ---'; GOWORK=off go mod tidy -diff; printf '%s\n' '--- current worktree status ---'; git status --short --branch
+      at: 2026-07-18T19:25:13.023525Z
+      classified: other
+    - cmd: GOWORK=off GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go mod tidy -diff
+      at: 2026-07-18T19:25:22.379535Z
+      classified: other
+    - cmd: GOWORK=off GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go mod tidy -diff
+      at: 2026-07-18T19:25:32.436645Z
+      classified: other
+    - cmd: 'printf ''%s\n'' ''--- Mason status ---''; git status --short --branch; prism status . || true; printf ''%s\n'' ''--- Top-level and metadata ---''; find . -maxdepth 2 -type f \( -name ''README*'' -o -name ''LICENSE*'' -o -name ''CONTRIBUTING*'' -o -name ''SECURITY*'' -o -name ''CODE_OF_CONDUCT*'' -o -name ''CHANGELOG*'' -o -name ''go.mod'' -o -name ''package.json'' -o -name ''Cargo.toml'' -o -name ''Makefile'' -o -path ''./.github/*'' \) -print | sort; printf ''%s\n'' ''--- File inventory ---''; rg --files -g ''!vendor'' -g ''!node_modules'' | sed -n ''1,300p''; printf ''%s\n'' ''--- Counts/history/tags ---''; printf ''tracked files: ''; git ls-files | wc -l; printf ''source lines: ''; git ls-files ''*.go'' ''*.ts'' ''*.tsx'' ''*.js'' ''*.py'' ''*.rs'' | xargs wc -l | tail -1; printf ''test files: ''; git ls-files | rg ''(_test\.go|\.test\.|\.spec\.|test_)'' | wc -l; git log --oneline --decorate -20; git tag --sort=-version:refname | sed -n ''1,25p''; git remote -v'
+      at: 2026-07-18T19:25:44.515267Z
+      classified: other
+    - cmd: prism query "Assess Mason's agent architecture provider support tool loop code editing safety user experience local-model strategy evaluation evidence operational reliability open-source readiness and potential as a frontier or second-line coding agent" --include graph,tests,docs,coverage_gaps --delivery source --max-files 10 --depth 3 --format text /Users/tapabratapal/Projects/provasign/mason
+      at: 2026-07-18T19:25:48.388938Z
+      classified: other
+    - cmd: prism read README.md --format text /Users/tapabratapal/Projects/provasign/mason; prism read ROADMAP.md --format text /Users/tapabratapal/Projects/provasign/mason; prism read go.mod --format text /Users/tapabratapal/Projects/provasign/mason; prism read MASON.md --format text /Users/tapabratapal/Projects/provasign/mason
+      at: 2026-07-18T19:25:53.79297Z
+      classified: other
+    - cmd: printf '%s\n' '--- README at HEAD ---'; git show HEAD:README.md; printf '%s\n' '--- GitHub files ---'; git ls-files '.github/**' | sort; printf '%s\n' '--- CI ---'; git show HEAD:.github/workflows/ci.yml; printf '%s\n' '--- Release ---'; git show HEAD:.github/workflows/release.yml; printf '%s\n' '--- Governance/security/bench references ---'; rg -n "(CONTRIBUT|SECURITY|CODE_OF_CONDUCT|support policy|compatib|telemetry|privacy|SBOM|SLSA|cosign|benchmark|eval|race|fuzz|sandbox|threat model)" README.md ROADMAP.md MASON.md .github internal go.mod
+      at: 2026-07-18T19:26:02.993248Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1 -race -timeout 300s
+      at: 2026-07-18T19:26:25.510263Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1 -race -timeout 300s
+      at: 2026-07-18T19:28:38.797588Z
+      classified: test
+    - cmd: sed -n '1,260p' AGENTS.md; printf '%s\n' '--- Research top-level ---'; find . -maxdepth 2 -type f \( -name 'README*' -o -name 'RESULTS*' -o -name '*METHODOLOGY*' -o -name 'go.mod' -o -name 'requirements*.txt' -o -name 'pyproject.toml' \) -print | sort; printf '%s\n' '--- Research status/history ---'; git status --short --branch; git log --oneline --decorate -12; printf '%s\n' '--- Key evidence terms ---'; rg -n "(0\.997|3/3|212 runs|coin-flip|multi-trial|confidence interval|statistical|baseline|oracle|Claude Code|Mason|Prism|Grove)" README.md RESULTS.md . 2>/dev/null | sed -n '1,300p'
+      at: 2026-07-18T19:29:07.494534Z
+      classified: other
+    - cmd: prism status .; prism query "Audit whether Prism and Mason headline benchmark claims are statistically robust reproducible representative and suitable for open-source positioning" --terms "0.997,3/3,coin-flips,multiple trials,oracle" --include graph,tests,docs --delivery source --max-files 8 --depth 2 --format text /Users/tapabratapal/Projects/provasign/research
+      at: 2026-07-18T19:29:16.867412Z
+      classified: other
+    - cmd: gh repo view provasign/prism --json stargazerCount,forkCount,issues,pullRequests,latestRelease,licenseInfo 2>/dev/null || true; gh repo view provasign/grove --json stargazerCount,forkCount,issues,pullRequests,latestRelease,licenseInfo 2>/dev/null || true; gh repo view provasign/mason --json stargazerCount,forkCount,issues,pullRequests,latestRelease,licenseInfo 2>/dev/null || true
+      at: 2026-07-18T19:30:19.780981Z
+      classified: other
+    - cmd: rg -n "^func |checkpoint|untracked|git hash-object|read-tree|write-tree|commit-tree" internal/agent/checkpoint.go internal/agent/checkpoint_test.go internal/agent/policy.go internal/agent/policy_test.go; rg -n "chatgpt|auto =|tier routing|shale|baked in|newly unreachable|review capped|20 symbols|covered = true" README.md ROADMAP.md cmd internal
+      at: 2026-07-18T19:31:17.022305Z
+      classified: other
+    - cmd: prism lookup github.com/provasign/mason/internal/agent.snapshotTree --format text /Users/tapabratapal/Projects/provasign/mason; prism lookup github.com/provasign/mason/cmd/mason.detectModel --format text /Users/tapabratapal/Projects/provasign/mason
+      at: 2026-07-18T19:31:22.496658Z
+      classified: other
+    - cmd: git diff --check; printf '%s\n' '--- diff stat ---'; git diff --stat; printf '%s\n' '--- status ---'; git status --short; printf '%s\n' '--- report structure ---'; rg -n '^#{1,3} ' docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md; printf '%s\n' '--- non-ASCII ---'; LC_ALL=C rg -n '[^ -~]' docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md || true; printf '%s\n' '--- size ---'; wc -l -w -c docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md; printf '%s\n' '--- affected tests ---'; prism affected docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md --dir . --format text
+      at: 2026-07-18T19:35:49.659299Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-review-home /private/tmp/prism-review-cache; HOME=/private/tmp/prism-review-home XDG_CACHE_HOME=/private/tmp/prism-review-cache prism affected docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md --dir . --format text
+      at: 2026-07-18T19:35:57.401817Z
+      classified: other
+    - cmd: printf '%s\n' '--- prism ---'; git -C ../prism status --short --branch; printf '%s\n' '--- grove ---'; git -C ../grove status --short --branch; printf '%s\n' '--- mason ---'; git -C ../mason status --short --branch; printf '%s\n' '--- report opening ---'; sed -n '1,110p' docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md; printf '%s\n' '--- report conclusion ---'; sed -n '957,1005p' docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md
+      at: 2026-07-18T19:36:05.291685Z
+      classified: other
+    - cmd: rg -n "cached|invokeWithPersistentLedger|ledgerPathForRoot|cmdRead|cmdQuery|case \"version\"|--version|func Run|mustAbs|checksum|checksums.txt|doctor" internal cmd install.sh install.ps1 README.md
+      at: 2026-07-18T19:49:33.36029Z
+      classified: other
+    - cmd: prism query "Fix CLI cached-read under-delivery across separate conversations, inconsistent relative repository root query behavior, conventional --version support, add a doctor command, and make installers fail when release checksums are unavailable" --terms "invokeWithPersistentLedger,cmdRead,cmdQuery,Run,mustAbs,ledgerPathForRoot" --include graph,tests,docs --delivery source --max-files 8 --depth 3 --format text /Users/tapabratapal/Projects/provasign/prism
+      at: 2026-07-18T19:49:37.637085Z
+      classified: other
+    - cmd: prism change-impact 'Run' --format text /Users/tapabratapal/Projects/provasign/prism; prism change-impact 'invokeWithPersistentLedger' --format text /Users/tapabratapal/Projects/provasign/prism; prism change-impact 'NewHandlerWithLedger' --format text /Users/tapabratapal/Projects/provasign/prism; prism change-impact 'cmdQuery' --format text /Users/tapabratapal/Projects/provasign/prism; prism change-impact 'cmdRead' --format text /Users/tapabratapal/Projects/provasign/prism
+      at: 2026-07-18T19:49:48.999501Z
+      classified: other
+    - cmd: prism lookup 'Client.Status' --format text
+      at: 2026-07-18T19:50:42.664158Z
+      classified: other
+    - cmd: prism lookup 'StatusResult' --format text
+      at: 2026-07-18T19:50:44.690069Z
+      classified: other
+    - cmd: rg -n 'func NewHandlerWithLedger|func \(h \*Handler\) SaveSessionCache|LoadCache' internal/mcp/tools.go
+      at: 2026-07-18T19:50:50.262914Z
+      classified: other
+    - cmd: rg -n 'case "version"|case "config"|func mustAbs|func invokeWithPersistentLedger|func helpText|prism status|Usage:' internal/cli/commands.go internal/cli/*_test.go
+      at: 2026-07-18T19:50:50.263318Z
+      classified: other
+    - cmd: rg -n 'checksum|SHA256|checksums' install.sh
+      at: 2026-07-18T19:50:50.264861Z
+      classified: other
+    - cmd: prism read install.ps1 --format text
+      at: 2026-07-18T19:50:50.277881Z
+      classified: other
+    - cmd: prism lookup 'cmdStatus' --format text
+      at: 2026-07-18T19:50:57.551949Z
+      classified: other
+    - cmd: prism lookup 'Config' --format text
+      at: 2026-07-18T19:51:00.282251Z
+      classified: other
+    - cmd: rg -n 'Version|version =' internal/cli cmd internal | head -40
+      at: 2026-07-18T19:51:03.316443Z
+      classified: other
+    - cmd: prism lookup 'invokeWithPersistentLedger' --format text
+      at: 2026-07-18T19:51:37.51929Z
+      classified: other
+    - cmd: prism lookup 'Run' --format text
+      at: 2026-07-18T19:51:37.522219Z
+      classified: other
+    - cmd: prism lookup 'NewHandlerWithLedger' --format text
+      at: 2026-07-18T19:51:37.527121Z
+      classified: other
+    - cmd: prism lookup 'mustAbs' --format text
+      at: 2026-07-18T19:51:37.531798Z
+      classified: other
+    - cmd: rg -n -C 3 'case "status"|case "version"|case "config"' internal/cli/commands.go
+      at: 2026-07-18T19:51:50.416518Z
+      classified: other
+    - cmd: rg -n -C 8 'PersistsSessionCache|sha-pointer|DispatchSmoke|version' internal/cli/coverage_test.go internal/cli/helpers_test.go
+      at: 2026-07-18T19:52:22.51268Z
+      classified: other
+    - cmd: rg -n -C 12 'checksums.txt' install.sh
+      at: 2026-07-18T19:52:49.575495Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/coverage_test.go internal/cli/helpers_test.go internal/mcp/tools.go
+      at: 2026-07-18T19:53:09.26817Z
+      classified: other
+    - cmd: prism affected internal/cli/commands.go internal/cli/coverage_test.go internal/cli/helpers_test.go internal/mcp/tools.go install.sh install.ps1 --format text
+      at: 2026-07-18T19:53:18.20332Z
+      classified: other
+    - cmd: HOME=/private/tmp/prism-fix-home XDG_CACHE_HOME=/private/tmp/prism-fix-cache prism affected internal/cli/commands.go internal/cli/coverage_test.go internal/cli/helpers_test.go internal/mcp/tools.go install.sh install.ps1 --format text
+      at: 2026-07-18T19:53:22.471572Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/cli ./internal/mcp -count=1
+      at: 2026-07-18T19:53:34.314614Z
+      classified: test
+    - cmd: rg -n '^## |^### |^- \[ \]' docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md
+      at: 2026-07-18T19:53:46.230241Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-07-18T19:53:46.260442Z
+      classified: other
+    - cmd: prism query "Fix Grove eval module dependency drift, architecture edge-count inconsistency, and add an explicit capability/doctor contract" --terms "astkit,EdgeType,Status,Capabilities" --include graph,tests --delivery full --max-files 12 --depth 3 --format text /Users/tapabratapal/Projects/provasign/grove
+      at: 2026-07-18T19:53:46.502811Z
+      classified: other
+    - cmd: rg --files | rg '^(SECURITY|CONTRIBUTING|GOVERNANCE|SUPPORT|CODE_OF_CONDUCT|THREAT_MODEL|\.github/)'
+      at: 2026-07-18T19:53:57.640273Z
+      classified: other
+    - cmd: rg -n 'astkit' go.mod eval/go.mod go.sum eval/go.sum
+      at: 2026-07-18T19:53:57.640247Z
+      classified: other
+    - cmd: rg -n -C 4 '8 edge|nine edge|Edge Types|overrides|Usage:|case "version"|case "status"' README.md internal/cli/commands.go internal/cli/commands_test.go
+      at: 2026-07-18T19:53:57.645502Z
+      classified: other
+    - cmd: prism read eval/go.mod --format text
+      at: 2026-07-18T19:53:57.676155Z
+      classified: other
+    - cmd: prism lookup 'GraphStats' --format text
+      at: 2026-07-18T19:54:02.71027Z
+      classified: other
+    - cmd: prism lookup 'Run' --format text
+      at: 2026-07-18T19:54:02.710454Z
+      classified: other
+    - cmd: prism lookup 'status' --format text
+      at: 2026-07-18T19:54:02.718059Z
+      classified: other
+    - cmd: prism lookup 'usage' --format text
+      at: 2026-07-18T19:54:02.722122Z
+      classified: other
+    - cmd: rg -n 'type Status|type Config|Native.*Enabled|SupportedLanguages|languages' internal/core internal/config internal/native internal/parser | head -100
+      at: 2026-07-18T19:54:09.93503Z
+      classified: other
+    - cmd: prism lookup 'NativeOptions' --format text
+      at: 2026-07-18T19:54:09.970178Z
+      classified: other
+    - cmd: prism lookup 'Config' --format text
+      at: 2026-07-18T19:54:09.996354Z
+      classified: other
+    - cmd: prism lookup 'core.Status' --format text
+      at: 2026-07-18T19:54:10.000491Z
+      classified: other
+    - cmd: prism read internal/parser/languages.go --format text
+      at: 2026-07-18T19:54:13.061388Z
+      classified: other
+    - cmd: prism change-impact 'Run' /Users/tapabratapal/Projects/provasign/grove --format text
+      at: 2026-07-18T19:55:03.175047Z
+      classified: other
+    - cmd: rg -n -A 55 '^### Required technical changes$' docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md
+      at: 2026-07-18T19:55:12.186704Z
+      classified: other
+    - cmd: prism lookup 'TestRun_Status' --format text
+      at: 2026-07-18T19:55:21.812492Z
+      classified: other
+    - cmd: rg -n '^## |grove status|grove version|Capabilities|Quality' README.md | head -80
+      at: 2026-07-18T19:56:17.971902Z
+      classified: other
+    - cmd: rg -n -A 65 '^## Language Support' README.md
+      at: 2026-07-18T19:56:21.910651Z
+      classified: other
+    - cmd: gofmt -w internal/core/capabilities.go internal/cli/commands.go internal/cli/commands_test.go
+      at: 2026-07-18T19:56:26.463351Z
+      classified: other
+    - cmd: GOWORK=off go mod tidy
+      at: 2026-07-18T19:56:26.470366Z
+      classified: other
+    - cmd: gofmt -d internal/core/capabilities.go internal/cli/commands.go internal/cli/commands_test.go
+      at: 2026-07-18T19:56:35.131188Z
+      classified: other
+    - cmd: git diff -- eval/go.mod eval/go.sum README.md internal/core/capabilities.go internal/cli/commands.go internal/cli/commands_test.go
+      at: 2026-07-18T19:56:35.150655Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/grove-fix-gocache HOME=/private/tmp/grove-fix-home go test ./internal/cli ./internal/core -count=1
+      at: 2026-07-18T19:57:29.688207Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/grove-fix-gocache go test ./internal/cli ./internal/core -count=1
+      at: 2026-07-18T19:57:44.402464Z
+      classified: test
+    - cmd: GOWORK=off GOCACHE=/private/tmp/grove-fix-gocache go mod tidy -diff
+      at: 2026-07-18T19:57:50.607113Z
+      classified: other
+    - cmd: prism query "Fix Mason model:auto claims versus detectModel behavior, experimental ChatGPT OAuth and optional Shale documentation, review fail-open reindex and coverage handling, newly-unreachable claims without a base graph, and checkpoint capture of sensitive untracked files" --terms "detectModel,MASON_CHATGPT_BASE,reindex,strict,snapshotTree,git add -A,shale,unreachable" --include graph,tests --delivery full --max-files 20 --depth 4 --format text /Users/tapabratapal/Projects/provasign/mason
+      at: 2026-07-18T19:57:56.048166Z
+      classified: other
+    - cmd: rg -n 'Review\(|reindex|newly unreachable|unreachable|strict|20|coverage' internal cmd README.md ROADMAP.md docs 2>/dev/null
+      at: 2026-07-18T19:58:02.695581Z
+      classified: other
+    - cmd: rg -n 'MASON_CHATGPT_BASE|OAuth|ChatGPT|Shale|shale|baked in|model:auto|tier routing|task-aware|auto =' README.md ROADMAP.md docs cmd internal 2>/dev/null
+      at: 2026-07-18T19:58:02.695549Z
+      classified: other
+    - cmd: rg --files | rg 'checkpoint|review|SECURITY|CONTRIBUTING|GOVERNANCE|SUPPORT|CODE_OF_CONDUCT|THREAT|\.github/'
+      at: 2026-07-18T19:58:02.695592Z
+      classified: other
+    - cmd: git status --short && git branch --show-current
+      at: 2026-07-18T19:58:02.707669Z
+      classified: other
+    - cmd: prism query "Correct Mason review safety and public claims after locating review and routing implementation" --terms "Session.Review,runEngineChecks,Router,snapshotTree,ReviewReport.Render" --include graph,tests --delivery full --max-files 12 --depth 4 --format text /Users/tapabratapal/Projects/provasign/mason
+      at: 2026-07-18T19:58:07.032576Z
+      classified: other
+    - cmd: rg -n -C 8 'Router:|NewRouter|route|ModelRouter|modelAuto|autoModel|TaskRouter' cmd/mason internal/agent internal/provider
+      at: 2026-07-18T19:58:11.764629Z
+      classified: other
+    - cmd: prism lookup 'ReviewReport' --format text
+      at: 2026-07-18T19:58:26.246853Z
+      classified: other
+    - cmd: prism lookup 'TestEngineChecks' --format text
+      at: 2026-07-18T19:58:26.271434Z
+      classified: other
+    - cmd: prism lookup 'reviewBase' --format text
+      at: 2026-07-18T19:58:26.301878Z
+      classified: other
+    - cmd: prism read internal/agent/checkpoint_test.go --format text
+      at: 2026-07-18T19:58:26.304493Z
+      classified: other
+    - cmd: prism lookup 'restoreSnapshot' --format text
+      at: 2026-07-18T19:58:31.452634Z
+      classified: other
+    - cmd: prism change-impact 'ReviewReport.Render' /Users/tapabratapal/Projects/provasign/mason --format text
+      at: 2026-07-18T19:58:42.83125Z
+      classified: other
+    - cmd: prism change-impact 'Session.Review' /Users/tapabratapal/Projects/provasign/mason --format text
+      at: 2026-07-18T19:58:42.853878Z
+      classified: other
+    - cmd: git diff -- internal/agent/review.go internal/agent/checkpoint.go internal/agent/checkpoint_test.go && git status --short
+      at: 2026-07-18T19:59:45.102084Z
+      classified: other
+    - cmd: gofmt -d internal/agent/review.go internal/agent/checkpoint.go internal/agent/checkpoint_test.go
+      at: 2026-07-18T20:01:37.655558Z
+      classified: other
+    - cmd: git diff --check && git diff --stat && git status --short
+      at: 2026-07-18T20:01:37.704917Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/mason-fix-gocache go test ./internal/agent -count=1
+      at: 2026-07-18T20:01:55.642223Z
+      classified: test
+    - cmd: rg --files | rg '^(README|LICENSE|SECURITY|CONTRIBUTING|GOVERNANCE|SUPPORT|CODE_OF_CONDUCT|THREAT_MODEL|\.github/|docs/)' | sort
+      at: 2026-07-18T20:02:07.540544Z
+      classified: other
+    - cmd: rg -n 'MIT|Apache|license|checksums|goreleaser|cosign|sbom|provenance|MCP Registry|mcp registry|semantic|context' README.md .github docs 2>/dev/null | head -160
+      at: 2026-07-18T20:02:07.540514Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/mason-fix-gocache go test ./internal/agent -run 'TestCheckpoint|TestUndoOutsideGit' -count=1
+      at: 2026-07-18T20:02:11.698712Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/mason-fix-gocache go test ./internal/agent -run '^TestNonexistent$' -count=1
+      at: 2026-07-18T20:02:11.738571Z
+      classified: test
+    - cmd: prism read .github/workflows/release.yml --format text
+      at: 2026-07-18T20:02:23.879136Z
+      classified: other
+    - cmd: rg --files .github | sort
+      at: 2026-07-18T20:02:37.440579Z
+      classified: other
+    - cmd: HOME=/private/tmp/prism-doc-home XDG_CACHE_HOME=/private/tmp/prism-doc-cache prism read README.md --format text
+      at: 2026-07-18T20:02:44.536633Z
+      classified: other
+    - cmd: prism lookup 'TestMustAbs' --format text
+      at: 2026-07-18T20:09:48.597281Z
+      classified: other
+    - cmd: prism lookup 'TestCmdIndexAndStatus_Smoke' --format text
+      at: 2026-07-18T20:09:48.602234Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-07-18T20:09:48.613409Z
+      classified: other
+    - cmd: rg -n -A 14 '^import \(' internal/cli/helpers_test.go internal/cli/coverage_test.go
+      at: 2026-07-18T20:09:53.670588Z
+      classified: other
+    - cmd: rg -n -A 12 '^// Package|^package' internal/agent/agent.go cmd/mason/main.go internal/trail/trail.go
+      at: 2026-07-18T20:10:16.313113Z
+      classified: other
+    - cmd: HOME=/private/tmp/mason-doc-home XDG_CACHE_HOME=/private/tmp/mason-doc-cache prism read ROADMAP.md --format text
+      at: 2026-07-18T20:10:16.377032Z
+      classified: other
+    - cmd: HOME=/private/tmp/mason-doc-home XDG_CACHE_HOME=/private/tmp/mason-doc-cache prism read README.md --format text
+      at: 2026-07-18T20:10:16.401713Z
+      classified: other
+    - cmd: rg --files .github | sort && rg -n 'checksums|release|softprops|upload-artifact|permissions:' .github/workflows -g '*.yml'
+      at: 2026-07-18T20:14:27.618469Z
+      classified: other
+    - cmd: rg --files .github | sort && rg -n 'checksums|release|softprops|upload-artifact|permissions:' .github/workflows -g '*.yml'
+      at: 2026-07-18T20:14:27.626508Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-07-18T20:14:27.633983Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-07-18T20:14:27.649871Z
+      classified: other
+    - cmd: rg -n 'MIT|Apache-2.0|License' README.md go.mod .goreleaser.yml 2>/dev/null
+      at: 2026-07-18T20:18:13.966484Z
+      classified: other
+    - cmd: rg -n -C 8 'checksums.txt' install.sh install.ps1 2>/dev/null
+      at: 2026-07-18T20:18:13.968703Z
+      classified: other
+    - cmd: rg -n -C 8 'checksums.txt' install.sh install.ps1 2>/dev/null
+      at: 2026-07-18T20:18:13.969093Z
+      classified: other
+    - cmd: rg -n 'MIT|Apache-2.0|License' README.md go.mod .goreleaser.yml 2>/dev/null
+      at: 2026-07-18T20:18:13.968931Z
+      classified: other
+    - cmd: rg --files | rg '(^|/)install'
+      at: 2026-07-18T20:18:46.579574Z
+      classified: other
+    - cmd: rg --files | rg '(^|/)install'
+      at: 2026-07-18T20:18:46.57956Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/coverage_test.go internal/cli/helpers_test.go internal/mcp/tools.go
+      at: 2026-07-18T20:28:36.95128Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-07-18T20:28:36.980929Z
+      classified: other
+    - cmd: git diff --stat && git status --short
+      at: 2026-07-18T20:28:36.991617Z
+      classified: other
+    - cmd: git diff --stat && git status --short
+      at: 2026-07-18T20:28:37.002175Z
+      classified: other
+    - cmd: git diff -- internal/cli/commands.go internal/mcp/tools.go internal/cli/coverage_test.go internal/cli/helpers_test.go install.sh install.ps1 .github/workflows/release.yml README.md
+      at: 2026-07-18T20:28:53.442798Z
+      classified: other
+    - cmd: git diff -- internal/cli/commands.go internal/core/capabilities.go .github/workflows/release.yml README.md eval/go.mod eval/go.sum
+      at: 2026-07-18T20:28:53.465397Z
+      classified: other
+    - cmd: git diff -- internal/agent/review.go internal/agent/checkpoint.go internal/agent/checkpoint_test.go cmd/mason/main.go README.md ROADMAP.md .github/workflows/release.yml
+      at: 2026-07-18T20:28:53.470209Z
+      classified: other
+    - cmd: prism change-impact 'Handler.SaveSessionCache' --format text /Users/tapabratapal/Projects/provasign/prism
+      at: 2026-07-18T20:29:12.731589Z
+      classified: other
+    - cmd: rg -n 'SaveSessionCache|LoadCache\(' internal pkg
+      at: 2026-07-18T20:29:17.906853Z
+      classified: other
+    - cmd: prism lookup 'SaveCache' --format text
+      at: 2026-07-18T20:29:20.474918Z
+      classified: other
+    - cmd: prism lookup 'Handler.SaveSessionCache' --format text
+      at: 2026-07-18T20:29:41.070003Z
+      classified: other
+    - cmd: rg -n -C 3 'SaveSessionCache|LoadCache' internal/mcp/tools.go internal/mcp/server.go pkg/kit/kit.go internal/cli/commands.go
+      at: 2026-07-18T20:29:54.214495Z
+      classified: other
+    - cmd: rg -n -C 3 'session cache|warm LRU|next session|Close persists' internal/mcp/tools.go internal/mcp/server.go pkg/kit/kit.go
+      at: 2026-07-18T20:30:14.018522Z
+      classified: other
+    - cmd: prism lookup 'TestNewHandler' --format text
+      at: 2026-07-18T20:30:27.896028Z
+      classified: other
+    - cmd: prism lookup 'newH' --format text
+      at: 2026-07-18T20:30:32.52708Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/coverage_test.go internal/cli/helpers_test.go internal/mcp/tools.go internal/mcp/server.go pkg/kit/kit.go
+      at: 2026-07-18T20:30:41.00031Z
+      classified: other
+    - cmd: /bin/zsh -lc 'GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1'
+      at: 2026-07-18T20:30:58.098934Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/cli -count=1
+      at: 2026-07-18T20:31:08.42555Z
+      classified: test
+    - cmd: gofmt -w internal/cli/helpers_test.go && GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/cli -count=1
+      at: 2026-07-18T20:31:24.634484Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/grove-fix-gocache go test ./... -short -count=1
+      at: 2026-07-18T20:31:48.847065Z
+      classified: test
+    - cmd: GOWORK=off GOCACHE=/private/tmp/grove-fix-gocache go test ./... -count=1
+      at: 2026-07-18T20:31:48.880059Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/mason-fix-gocache go test ./... -run '^$' -count=1
+      at: 2026-07-18T20:31:51.419074Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -run '^$' -count=1
+      at: 2026-07-18T20:32:03.223266Z
+      classified: test
+    - cmd: 'ruby -e ''require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }'' /Users/tapabratapal/Projects/provasign/prism/.github/workflows/release.yml /Users/tapabratapal/Projects/provasign/grove/.github/workflows/release.yml /Users/tapabratapal/Projects/provasign/mason/.github/workflows/release.yml && sh -n install.sh && git diff --check'
+      at: 2026-07-18T20:32:51.849137Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/mcp -run '^(TestNewHandler|TestNewHandlerWithReady|TestSameRoot)$' -count=1 && go vet ./...
+      at: 2026-07-18T20:32:55.467661Z
+      classified: lint
+    - cmd: GOCACHE=/private/tmp/grove-fix-gocache go vet ./... && GOWORK=off GOCACHE=/private/tmp/grove-fix-gocache go mod tidy -diff
+      at: 2026-07-18T20:32:55.530157Z
+      classified: lint
+    - cmd: GOCACHE=/private/tmp/mason-fix-gocache go vet ./... && GOCACHE=/private/tmp/mason-fix-gocache go test ./internal/agent -run '^(TestCheckpointUndo|TestCheckpointRefusesSensitiveUntrackedFiles|TestUndoOutsideGit)$' -count=1
+      at: 2026-07-18T20:32:57.486902Z
+      classified: lint
+    - cmd: git diff --check && gofmt -d internal/core/capabilities.go internal/cli/commands.go internal/cli/commands_test.go
+      at: 2026-07-18T20:33:06.765207Z
+      classified: other
+    - cmd: git diff --check && gofmt -d cmd/mason/main.go internal/agent/agent.go internal/agent/checkpoint.go internal/agent/checkpoint_test.go internal/agent/review.go
+      at: 2026-07-18T20:33:06.766439Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go vet ./...
+      at: 2026-07-18T20:33:07.620835Z
+      classified: lint
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go run ./cmd/prism --version
+      at: 2026-07-18T20:33:17.975709Z
+      classified: other
+    - cmd: HOME=/private/tmp/prism-final-home XDG_CACHE_HOME=/private/tmp/prism-final-cache prism affected internal/cli/commands.go internal/cli/coverage_test.go internal/cli/helpers_test.go internal/mcp/tools.go internal/mcp/server.go pkg/kit/kit.go --format text
+      at: 2026-07-18T20:34:00.218282Z
+      classified: other
+    - cmd: git diff --check && sh -n install.sh && git status --short
+      at: 2026-07-18T20:34:00.243549Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-07-18T20:34:00.25463Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/helpers_test.go internal/mcp/tools.go internal/mcp/server.go pkg/kit/kit.go && GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/cli ./pkg/kit -count=1
+      at: 2026-07-18T20:34:04.684111Z
+      classified: test
+    - cmd: rg -n 'func cmdDoctor|func mustAbs|func invokeWithPersistentLedger|func NewHandlerWithLedger|const helpText' internal/cli/commands.go internal/mcp/tools.go && rg -n '^### Implementation status|^### Prism next release|^## Final recommendation' docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md && git diff --stat
+      at: 2026-07-18T20:34:45.823342Z
+      classified: other
+    - cmd: rg -n 'func doctor|func CurrentCapabilities' internal/cli/commands.go internal/core/capabilities.go && git diff --stat
+      at: 2026-07-18T20:34:45.83328Z
+      classified: other
+    - cmd: rg -n 'func \(s \*Session\) Review|func snapshotTree|func checkpointSensitivePath|ChatGPT OAuth is experimental|When `--model` is omitted' internal/agent/review.go internal/agent/checkpoint.go README.md && git diff --stat
+      at: 2026-07-18T20:34:45.833418Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign -maxdepth 2 -type d -name .git -print | sort && printf '\nPrism:\n' && git status --short && printf '\nGrove:\n' && git -C /Users/tapabratapal/Projects/provasign/grove status --short && printf '\nMason:\n' && git -C /Users/tapabratapal/Projects/provasign/mason status --short
+      at: 2026-07-18T20:48:17.050694Z
+      classified: other
+    - cmd: git status --short; git log -1 --oneline --decorate
+      at: 2026-07-18T20:48:52.123866Z
+      classified: other
+    - cmd: git status --short; git remote -v; printf '\n--FILES--\n'; rg --files -g 'AGENTS.md' -g 'README*' -g 'docs/**' | sed -n '1,160p'; printf '\n--HEADINGS--\n'; rg -n '^(#|##|###) ' README.md docs -g '*.md' 2>/dev/null | sed -n '1,220p'
+      at: 2026-07-18T20:48:52.160543Z
+      classified: other
+    - cmd: pwd; git status --short; git remote -v; rg --files -g 'AGENTS.md' -g '!node_modules' -g '!dist'; printf '\n--FILES--\n'; rg --files -g '!node_modules' -g '!dist' | sed -n '1,220p'; printf '\n--PRODUCT TERMS--\n'; rg -n -i 'prism|shale|mason|grove|fuse|product|portfolio' . -g '!node_modules' -g '!dist' -g '!package-lock.json' -g '!*.map'
+      at: 2026-07-18T20:48:52.160515Z
+      classified: other
+    - cmd: prism query "Align the GitHub Pages product marketing around Prism and Shale as frontier products, Mason as the second-line reference agent, Grove as shared engine infrastructure, and remove Fuse from the primary product hierarchy" --terms Prism,Shale,Mason,Grove,Fuse --include graph,tests --format text
+      at: 2026-07-18T20:49:06.521585Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/.codex/plugins/cache/openai-bundled/browser/26.602.40724/skills/control-in-app-browser/SKILL.md
+      at: 2026-07-18T20:49:36.540348Z
+      classified: other
+    - cmd: prism read _sass/custom/custom.scss --format text
+      at: 2026-07-18T20:49:36.565163Z
+      classified: other
+    - cmd: for f in grove.md fuse.md benchmarks.md vision.html; do printf '%s\n' "-- $f --"; sed -n '1,18p' "$f"; done; printf '\n--GEM--\n'; sed -n '1,160p' Gemfile
+      at: 2026-07-18T20:49:36.577033Z
+      classified: other
+    - cmd: prism read index.html --format text
+      at: 2026-07-18T20:49:36.594381Z
+      classified: other
+    - cmd: rg -n 'Provasign|core project|reference agent|Fuse|Grove|primary product|secondary product|Vision|letter-spacing' index.html; sed -n '1,45p' vision.html
+      at: 2026-07-19T01:30:05.343461Z
+      classified: other
+    - cmd: git status --short; git diff --stat; git diff --check; git diff -- _config.yml README.md prism.md shale.md mason.md grove.md fuse.md benchmarks.md | sed -n '1,260p'
+      at: 2026-07-19T01:30:05.411218Z
+      classified: other
+    - cmd: bundle check; bundle exec jekyll build --destination /private/tmp/provasign-site --disable-disk-cache
+      at: 2026-07-19T01:32:57.889347Z
+      classified: other
+    - cmd: ruby --version; gem list --local | rg 'jekyll|github-pages|just-the-docs|liquid|bundler'; bundle install --local --path /private/tmp/provasign-bundle
+      at: 2026-07-19T01:33:06.642146Z
+      classified: other
+    - cmd: BUNDLE_APP_CONFIG=/private/tmp/provasign-bundle-config BUNDLE_PATH=/private/tmp/provasign-bundle HOME=/private/tmp/provasign-home bundle install --local
+      at: 2026-07-19T01:33:12.814283Z
+      classified: other
+    - cmd: 'ruby -ryaml -rfileutils -e ''Dir["*.md","*.html"].each do |f|; s=File.read(f); next unless s.start_with?("---\n"); y=s.split(/^---\s*$\n?/,3)[1]; YAML.safe_load(y, [], [], true); end; src=File.read("index.html").sub(/\A---\s*\n.*?\n---\s*\n/m, ""); src.gsub!(/\{\% include install-widget-assets\.html \%\}/, ""); src.gsub!(/\{\% include install\.html .*? \%\}/, ""); src.gsub!(/\{\{ \''([^\'']+)\'' \| relative_url \}\}/, "\\1"); src.gsub!(/\{\{ \''([^\'']+)\'' \| absolute_url \}\}/, "http://127.0.0.1:4100\\1"); FileUtils.mkdir_p("/private/tmp/provasign-preview"); File.write("/private/tmp/provasign-preview/index.html", src); target="/private/tmp/provasign-preview/assets"; FileUtils.rm_f(target); File.symlink(File.expand_path("assets"), target); puts "front matter: ok"; puts "preview: /private/tmp/provasign-preview/index.html"'''
+      at: 2026-07-19T01:33:31.192303Z
+      classified: other
+    - cmd: 'ruby -e ''require "yaml"; require "fileutils"; Dir["*.md", "*.html"].each do |f|; s=File.read(f); next unless s.start_with?("---\n"); y=s.split(/^---\s*$\n?/, 3)[1]; YAML.load(y); end; src=File.read("index.html").sub(/\A---\s*\n.*?\n---\s*\n/m, ""); src.gsub!(/\{% include install-widget-assets\.html %\}/, ""); src.gsub!(/\{% include install\.html .*? %\}/, ""); q=39.chr; src.gsub!(/\{\{ ([^}]+) \| relative_url \}\}/) { $1.strip.delete(q) }; src.gsub!(/\{\{ ([^}]+) \| absolute_url \}\}/) { "http://127.0.0.1:4100" + $1.strip.delete(q) }; FileUtils.mkdir_p("/private/tmp/provasign-preview"); File.write("/private/tmp/provasign-preview/index.html", src); target="/private/tmp/provasign-preview/assets"; File.unlink(target) if File.symlink?(target) || File.exist?(target); File.symlink(File.expand_path("assets"), target); puts "front matter: ok"; puts "preview: /private/tmp/provasign-preview/index.html"'''
+      at: 2026-07-19T01:33:44.980286Z
+      classified: other
+    - cmd: ruby -run -e httpd /private/tmp/provasign-preview -p 4100
+      at: 2026-07-19T01:33:47.380724Z
+      classified: other
+    - cmd: sed -n '1,240p' AGENTS.md
+      at: 2026-07-19T01:34:13.266728Z
+      classified: other
+    - cmd: for d in prism grove mason shale provasign.github.io; do printf '\n-- %s --\n' "$d"; rg -n -i 'primary product|secondary product|core project|reference agent|product line|where it fits|related projects|Fuse|Grove' "/Users/tapabratapal/Projects/provasign/$d/README.md" 2>/dev/null | sed -n '1,120p'; done
+      at: 2026-07-19T01:34:13.283336Z
+      classified: other
+    - cmd: prism read README.md --format text
+      at: 2026-07-19T01:34:13.313092Z
+      classified: other
+    - cmd: sed -n '1,14p' LICENSE 2>/dev/null; git status --short | sed -n '1,80p'
+      at: 2026-07-19T01:34:17.616411Z
+      classified: other
+    - cmd: sed -n '1,14p' LICENSE 2>/dev/null; git status --short | sed -n '1,80p'
+      at: 2026-07-19T01:34:17.639081Z
+      classified: other
+    - cmd: sed -n '1,14p' LICENSE 2>/dev/null; git status --short | sed -n '1,80p'
+      at: 2026-07-19T01:34:17.643428Z
+      classified: other
+    - cmd: sed -n '1,14p' LICENSE 2>/dev/null; git status --short | sed -n '1,80p'
+      at: 2026-07-19T01:34:17.648285Z
+      classified: other
+    - cmd: rg --files | rg '(^|/)(Formula|Casks)/|mason|prism|fuse|grove' | sed -n '1,200p'; rg -n 'brew tap|one tap|family' README.md
+      at: 2026-07-19T01:34:21.680978Z
+      classified: other
+    - cmd: sed -n '1,24p' README.md
+      at: 2026-07-19T01:34:54.44337Z
+      classified: other
+    - cmd: sed -n '1,28p' README.md
+      at: 2026-07-19T01:34:54.443358Z
+      classified: other
+    - cmd: git diff -- README.md | sed -n '1,160p'
+      at: 2026-07-19T01:34:54.454673Z
+      classified: other
+    - cmd: git diff --check; git status --short; git diff --stat
+      at: 2026-07-19T01:37:30.408756Z
+      classified: other
+    - cmd: git diff --check; git status --short; git diff --stat
+      at: 2026-07-19T01:37:30.42122Z
+      classified: other
+    - cmd: printf '%s\n' '--mason--'; git -C /Users/tapabratapal/Projects/provasign/mason diff --check; git -C /Users/tapabratapal/Projects/provasign/mason status --short; printf '%s\n' '--shale--'; git -C /Users/tapabratapal/Projects/provasign/shale diff --check; git -C /Users/tapabratapal/Projects/provasign/shale status --short; printf '%s\n' '--positions--'; rg -n 'core open-source|incubating reference|semantic change intelligence|shared semantic graph' /Users/tapabratapal/Projects/provasign/{shale,grove,mason}/README.md
+      at: 2026-07-19T01:37:30.421198Z
+      classified: other
+    - cmd: 'git status --short; git diff --check; ruby -e ''s=File.read("index.html"); abort "wrong card count" unless s.scan(/<article class="card/).length == 3; abort "Fuse still in nav/home" if s.match?(/>Fuse<|\/fuse\//); abort "old ranking remains" if s.match?(/primary product|secondary product/); %w[prism shale mason].each { |p| abort "missing #{p}" unless File.exist?("#{p}.md") }; puts "homepage hierarchy: 3 product cards"''; if command -v xmllint >/dev/null 2>&1; then xmllint --html --noout /private/tmp/provasign-preview/index.html 2>&1 | sed -n ''1,120p''; fi'
+      at: 2026-07-19T01:37:30.458585Z
+      classified: other
+    - cmd: git diff -- .gitignore; find .provasign -maxdepth 2 -type f -print -exec sed -n '1,40p' {} \; 2>/dev/null | sed -n '1,120p'
+      at: 2026-07-19T01:37:35.534247Z
+      classified: other
+    - cmd: git log -1 --format='%h %s'; git status --short; git diff --check
+      at: 2026-07-19T01:37:59.69429Z
+      classified: other
+    - cmd: git log -1 --format='%h %s'; git status --short; git diff --check
+      at: 2026-07-19T01:37:59.717221Z
+      classified: other
+    - cmd: git log -1 --format='%h %s'; git status --short; git diff --check
+      at: 2026-07-19T01:37:59.716068Z
+      classified: other
+    - cmd: git log -1 --format='%h %s'; git status --short; git diff --check
+      at: 2026-07-19T01:37:59.716194Z
+      classified: other
+    - cmd: git log -1 --format='%h %s'; git status --short; git diff --check
+      at: 2026-07-19T01:37:59.719546Z
+      classified: other
+    - cmd: git status -sb; git diff -- internal/mcp/mcp_test.go internal/session/bench_test.go internal/session/cache.go internal/session/cache_test.go | sed -n '1,320p'
+      at: 2026-07-19T02:21:01.674462Z
+      classified: other
+    - cmd: git status -sb; git diff --check; git diff --stat
+      at: 2026-07-19T02:21:01.720974Z
+      classified: other
+    - cmd: git status -sb; git diff --check; git diff --stat
+      at: 2026-07-19T02:21:01.722616Z
+      classified: other
+    - cmd: printf '%s\n' '--shale--'; git -C /Users/tapabratapal/Projects/provasign/shale status -sb; git -C /Users/tapabratapal/Projects/provasign/shale diff --check; printf '%s\n' '--pages--'; git -C /Users/tapabratapal/Projects/provasign/provasign.github.io status -sb; git -C /Users/tapabratapal/Projects/provasign/provasign.github.io diff --check; git -C /Users/tapabratapal/Projects/provasign/provasign.github.io diff --stat
+      at: 2026-07-19T02:21:01.735106Z
+      classified: other
+    - cmd: GOWORK=off GOCACHE=/private/tmp/grove-publish-cache HOME=/private/tmp/grove-publish-home go test ./... -short -count=1
+      at: 2026-07-19T02:21:25.166616Z
+      classified: test
+    - cmd: GOWORK=off GOCACHE=/private/tmp/mason-publish-cache HOME=/private/tmp/mason-publish-home go test ./... -run '^$' -count=1
+      at: 2026-07-19T02:21:26.327902Z
+      classified: test
+    - cmd: GOWORK=off GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-07-19T02:21:33.148735Z
+      classified: test
+    - cmd: find .cache -maxdepth 4 -type d \( -name 'pkg' -o -name 'mod' -o -name 'go-build' \) -print 2>/dev/null | sed -n '1,80p'; printf '\nHOME MODS\n'; find "$HOME/go/pkg/mod" -maxdepth 3 -type d -path '*provasign*' -o -path '*charmbracelet*' 2>/dev/null | sed -n '1,40p'
+      at: 2026-07-19T02:21:41.233035Z
+      classified: other
+    - cmd: find .cache -maxdepth 4 -type d \( -name 'pkg' -o -name 'mod' -o -name 'go-build' \) -print 2>/dev/null | sed -n '1,80p'; printf '\nHOME MODS\n'; find "$HOME/go/pkg/mod" -maxdepth 3 -type d -path '*provasign*' -o -path '*charmbracelet*' 2>/dev/null | sed -n '1,40p'
+      at: 2026-07-19T02:21:41.232962Z
+      classified: other
+    - cmd: GOWORK=off GOPROXY=off GOMODCACHE=/Users/tapabratapal/go/pkg/mod GOCACHE=/private/tmp/grove-publish-cache HOME=/private/tmp/grove-publish-home go test ./... -short -count=1
+      at: 2026-07-19T02:22:05.664977Z
+      classified: test
+    - cmd: GOWORK=off GOPROXY=off GOMODCACHE=/Users/tapabratapal/go/pkg/mod GOCACHE=/private/tmp/mason-publish-cache HOME=/private/tmp/mason-publish-home go test ./... -run '^$' -count=1
+      at: 2026-07-19T02:22:08.251412Z
+      classified: test
+    - cmd: git add README.md
+      at: 2026-07-19T02:22:19.850353Z
+      classified: other
+    - cmd: git add .gitignore README.md _config.yml benchmarks.md fuse.md grove.md index.html mason.md prism.md shale.md vision.html
+      at: 2026-07-19T02:22:19.871325Z
+      classified: other
+    - cmd: git add -u; git add .github/ISSUE_TEMPLATE .github/PULL_REQUEST_TEMPLATE.md .github/dependabot.yml CODE_OF_CONDUCT.md CONTRIBUTING.md GOVERNANCE.md SECURITY.md SUPPORT.md THREAT_MODEL.md docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md
+      at: 2026-07-19T02:22:19.871284Z
+      classified: other
+    - cmd: git add -u; git add CODE_OF_CONDUCT.md CONTRIBUTING.md GOVERNANCE.md SECURITY.md SUPPORT.md THREAT_MODEL.md internal/core/capabilities.go
+      at: 2026-07-19T02:22:19.8863Z
+      classified: other
+    - cmd: git add -u; git add CODE_OF_CONDUCT.md CONTRIBUTING.md GOVERNANCE.md SECURITY.md SUPPORT.md THREAT_MODEL.md
+      at: 2026-07-19T02:22:19.886375Z
+      classified: other
+    - cmd: git status --short; git diff --cached --check; git diff --cached --stat
+      at: 2026-07-19T02:22:22.843566Z
+      classified: other
+    - cmd: git status --short; git diff --cached --check; git diff --cached --stat
+      at: 2026-07-19T02:22:22.857277Z
+      classified: other
+    - cmd: git status --short; git diff --cached --check; git diff --cached --stat
+      at: 2026-07-19T02:22:22.85633Z
+      classified: other
+    - cmd: git status --short; git diff --cached --check; git diff --cached --stat
+      at: 2026-07-19T02:22:22.856739Z
+      classified: other
+    - cmd: git status --short; git diff --cached --check; git diff --cached --stat
+      at: 2026-07-19T02:22:22.866193Z
+      classified: other
+    - cmd: 'git commit -m "feat: harden Prism for frontier open source"'
+      at: 2026-07-19T02:22:30.144643Z
+      classified: other
+    - cmd: 'git commit -m "docs: align Provasign product portfolio"'
+      at: 2026-07-19T02:22:30.157588Z
+      classified: other
+    - cmd: 'git commit -m "site: position Prism, Shale, and Mason"'
+      at: 2026-07-19T02:22:30.159838Z
+      classified: other
+    - cmd: 'git commit -m "feat: publish capability diagnostics and governance"'
+      at: 2026-07-19T02:22:30.161273Z
+      classified: other
+    - cmd: 'git commit -m "feat: harden agent safety and governance"'
+      at: 2026-07-19T02:22:30.167816Z
+      classified: other
+notes: []
+redactions: 0
