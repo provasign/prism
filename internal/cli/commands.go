@@ -35,7 +35,7 @@ const (
 	formatJSON outputFormat = "json"
 )
 
-const helpText = `prism - token-optimized context delivery for AI agents (requires Grove)
+const helpText = `prism - semantic change intelligence for coding agents (embedded Grove)
 
 Usage:
   prism init [--global] [dir]     Write prism.yaml + register MCP with detected AI tools
@@ -45,6 +45,7 @@ Usage:
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove
+  prism doctor [dir]              Diagnose engine, index, and capabilities
   prism query <task> [dir]        Find ranked context for a task; bug-fix/implement
                                   tasks get line-numbered source windows + per-anchor
                                   callers/covering tests (edit-ready)
@@ -119,7 +120,7 @@ func Run(args []string) int {
 	case "-h", "--help", "help":
 		fmt.Print(helpText)
 		return 0
-	case "version":
+	case "version", "--version", "-version":
 		fmt.Println("prism " + version.Version)
 		return 0
 	case "init", "install":
@@ -130,6 +131,8 @@ func Run(args []string) int {
 		return cmdIndex(rest)
 	case "status":
 		return cmdStatus(rest)
+	case "doctor":
+		return cmdDoctor(rest)
 	case "query":
 		return cmdQuery(rest)
 	case "read":
@@ -1096,6 +1099,59 @@ func cmdStatus(args []string) int {
 	return 0
 }
 
+func cmdDoctor(args []string) int {
+	dir := dirArg(args, 0, ".")
+	root := mustAbs(dir)
+	cfg, client, err := newClient(root)
+	if err != nil {
+		printJSON(map[string]any{
+			"status":  "error",
+			"version": version.Version,
+			"root":    root,
+			"error":   err.Error(),
+		})
+		return 1
+	}
+	defer client.Shutdown()
+
+	graph, err := client.Status(context.Background())
+	if err != nil {
+		printJSON(map[string]any{
+			"status":  "error",
+			"version": version.Version,
+			"root":    root,
+			"engine":  "grove",
+			"error":   err.Error(),
+		})
+		return 1
+	}
+
+	state := "ok"
+	warnings := []string{}
+	if graph.FilesIndexed == 0 {
+		state = "warning"
+		warnings = append(warnings, "repository is not indexed; run prism index")
+	}
+	printJSON(map[string]any{
+		"status":   state,
+		"version":  version.Version,
+		"root":     root,
+		"engine":   "grove",
+		"index":    graph,
+		"warnings": warnings,
+		"capabilities": map[string]any{
+			"semanticGraph":      true,
+			"changeImpact":       true,
+			"testSelection":      true,
+			"sessionDelivery":    true,
+			"deliveryCacheScope": "process",
+			"qualityContract":    "operation-reported",
+			"embeddingBackend":   cfg.EmbeddingsBackend,
+		},
+	})
+	return 0
+}
+
 func cmdQuery(args []string) int {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "usage: prism query <task> [dir]")
@@ -1980,12 +2036,10 @@ func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, err
 			ledger = session.NewLedger(time.Now().Format("20060102-150405"))
 		}
 
-		// The handler warm-loads the session.Tracker from disk and we flush it
-		// after each CLI invocation. The lock serializes standalone CLI processes
-		// that share the same repo/home cache files.
+		// The lock serializes standalone CLI processes that share the savings
+		// ledger. Delivery caches remain scoped to real MCP conversations.
 		h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
 		out, invokeErr = h.Invoke(tool, args)
-		h.SaveSessionCache()
 		if saveErr := h.Ledger.Save(ledgerFile); saveErr != nil {
 			fmt.Fprintln(os.Stderr, "warning: could not persist savings ledger:", saveErr)
 		}
@@ -2024,6 +2078,10 @@ func mustAbs(p string) string {
 	abs, err := filepath.Abs(p)
 	if err != nil {
 		return p
+	}
+	abs = filepath.Clean(abs)
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return filepath.Clean(resolved)
 	}
 	return abs
 }
@@ -2421,7 +2479,6 @@ func cmdAssist(args []string) int {
 	}
 	h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
 	defer func() {
-		h.SaveSessionCache()
 		_ = h.Ledger.Save(ledgerFile)
 	}()
 

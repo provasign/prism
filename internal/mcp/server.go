@@ -40,10 +40,9 @@ type rpcError struct {
 }
 
 // Serve reads framed JSON-RPC messages from r and writes responses to w.
-// Returns on EOF or fatal IO error. On return, the warm LRU cache is flushed
-// to disk so the next session starts with sha-pointer-level deduplication.
+// Returns on EOF or fatal IO error. Delivery state stays in this process
+// because MCP does not provide a stable conversation identifier.
 func (s *Server) Serve(r io.Reader, w io.Writer) error {
-	defer s.handler.SaveSessionCache()
 	reader := bufio.NewReader(r)
 	for {
 		msg, err := readMessage(reader)

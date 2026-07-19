@@ -66,9 +66,6 @@ func NewHandlerWithReady(cfg *config.Config, root string, client *grove.Client, 
 // NewHandlerWithLedger constructs a handler and optionally reuses an existing ledger.
 func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client, ledger *session.Ledger) *Handler {
 	tr := session.NewTracker(cfg.MaxCacheFiles)
-	// H: warm-load the persisted LRU so this session starts at sha-pointer
-	// level for files the agent has seen recently and that haven't changed.
-	session.LoadCache(tr, root, 0 /* default 7 days */)
 	if ledger == nil {
 		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
 	}
@@ -83,12 +80,6 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 	}
 	h.Signals = ranking.NewSignalComputer(root, semanticAdapter{h: h})
 	return h
-}
-
-// SaveSessionCache flushes the LRU tracker to disk. Called by the MCP server
-// on shutdown so the next session opens warm.
-func (h *Handler) SaveSessionCache() {
-	session.SaveCache(h.Session, h.Root, 500)
 }
 
 // loadSemanticScores fetches Grove's semantic ranking for task and caches

@@ -1,0 +1,24 @@
+name: Feature proposal
+description: Propose a measured capability or workflow
+title: "[proposal] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use case
+      description: What developer decision or workflow should improve?
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed contract
+      description: Describe inputs, outputs, completeness, and degraded behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evaluation
+      description: How can precision, recall, latency, or adoption value be measured?

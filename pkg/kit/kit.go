@@ -2,9 +2,9 @@
 // downstream agents (e.g. provasign/mason).
 //
 // It is a thin facade over the same internals the CLI uses: one Kit is one
-// prism session against one repo root, with the grove client, session cache,
-// and persistent ledger wired exactly as `prism <op>` CLI invocations wire
-// them. Nothing in this package changes existing prism behavior; it only
+// prism session against one repo root, with the Grove client, in-process
+// delivery cache, and persistent savings ledger. Nothing in this package
+// changes existing Prism behavior; it only
 // re-exposes it across the module boundary.
 package kit
 
@@ -94,9 +94,8 @@ func (k *Kit) Savings() Savings {
 	}
 }
 
-// Close persists the session cache and ledger and shuts down the client.
+// Close persists the savings ledger and shuts down the client.
 func (k *Kit) Close() error {
-	k.handler.SaveSessionCache()
 	err := k.handler.Ledger.Save(k.ledgerFile)
 	k.client.Shutdown()
 	return err

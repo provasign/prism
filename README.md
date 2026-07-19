@@ -1,14 +1,14 @@
 # Prism
 
-> **Graph-ranked code context for AI coding agents.**
+> **Semantic change intelligence for every coding agent.**
 >
-> Prism turns a task plus a few precise anchors into the code, callers, callees,
-> tests, docs, and coverage gaps an agent needs to make a change safely.
+> Prism computes change impact, contract closure, test gaps, dead code, and
+> edit-ready context as deterministic operations over your local code graph.
 
 ## What Prism is
 
-Prism is a **type-resolved code-graph engine for coding agents**. It indexes a
-repository into a compiler-grade graph (symbols, calls, overrides, implements,
+Prism is an **agent-neutral semantic safety layer for code changes**. It indexes a
+repository into a measured semantic graph (symbols, calls, overrides, implements,
 test edges — via the embedded [Grove](https://github.com/provasign/grove)
 engine) and exposes that graph at **task altitude**: one deterministic call
 answers a whole question an agent would otherwise spend dozens of turns
@@ -16,6 +16,12 @@ approximating. For bug-fix and implement tasks it delivers the answer as
 **edit-ready, line-numbered source** — verbatim windows plus each anchor's
 callers and covering tests — so the model edits without a second read
 (`prism_query`, phase-aware; `delivery="symbols"` for the compact list).
+
+Prism does not claim uniform compiler completeness across every language or
+runtime dispatch pattern. Run `prism doctor [dir]` to inspect the active engine,
+index readiness, and capability mode. Authoritative operations report their own
+completeness; stale, unsupported, or heuristic evidence must be treated as
+degraded rather than silently promoted to certainty.
 
 **The need.** Agents gather context with text search and file reads. That works
 for locating things, but it fails exactly where the stakes are highest:
@@ -191,7 +197,7 @@ context gathering and output wrapper size, not same-session re-read dedupe.
 ## Installation
 
 ```bash
-# Homebrew (macOS / Linux) — one tap for the family (prism, fuse, shale)
+# Homebrew (macOS / Linux)
 brew install provasign/shale/prism
 
 # macOS / Linux script
@@ -296,6 +302,7 @@ It binds to `127.0.0.1`.
 prism init [--global] [--mode cli|mcp|both] [dir]
 prism index [dir]
 prism status [dir]
+prism doctor [dir]
 
 prism query <task> [dir] \
   --terms a,b,c \
@@ -327,6 +334,7 @@ prism feedback --tool <name> --rating <0-5> [dir]
 prism mcp [dir]
 prism serve [--port 8888] [dir]
 prism version
+prism --version
 ```
 
 Output formats:

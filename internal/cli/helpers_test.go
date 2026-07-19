@@ -36,18 +36,33 @@ func TestRun_Help(t *testing.T) {
 	if Run([]string{"version"}) != 0 {
 		t.Error("version")
 	}
+	if Run([]string{"--version"}) != 0 {
+		t.Error("--version")
+	}
 	if Run([]string{"nonsense-cmd"}) != 2 {
 		t.Error("unknown")
 	}
 }
 
 func TestMustAbs(t *testing.T) {
-	absIn := filepath.Join(t.TempDir(), "x")
+	root := t.TempDir()
+	absIn := filepath.Join(root, "x")
 	if got := mustAbs(absIn); got != absIn {
 		t.Errorf("abs: got %q want %q", got, absIn)
 	}
 	if !filepath.IsAbs(mustAbs("rel")) {
 		t.Error("rel→abs")
+	}
+	link := filepath.Join(t.TempDir(), "root-link")
+	if err := os.Symlink(root, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	want, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := mustAbs(link); got != want {
+		t.Errorf("symlink root: got %q want %q", got, want)
 	}
 }
 

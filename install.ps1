@@ -49,17 +49,14 @@ Invoke-WebRequest "$BASE/$FILE" -OutFile $tmpFile
 $actual = (Get-FileHash $tmpFile -Algorithm SHA256).Hash.ToLower()
 try {
   Invoke-WebRequest "$BASE/checksums.txt" -OutFile "$TMP\provasign-checksums.txt" -ErrorAction Stop
-  $lines    = Get-Content "$TMP\provasign-checksums.txt"
-  $expected = ($lines | Where-Object { $_ -match [regex]::Escape($FILE) }) -split '\s+' | Select-Object -First 1
-  if ($expected) {
-    if ($expected -ne $actual) { die "CHECKSUM MISMATCH`n  expected: $expected`n  actual:   $actual" }
-    ok "Checksum verified"
-  } else {
-    ok "SHA256: $actual"
-  }
 } catch {
-  ok "SHA256: $actual  (no checksums.txt in this release)"
+  die "Could not download checksums.txt; refusing an unverified install"
 }
+$lines    = Get-Content "$TMP\provasign-checksums.txt"
+$expected = ($lines | Where-Object { $_ -match "\s(\./)?$([regex]::Escape($FILE))$" }) -split '\s+' | Select-Object -First 1
+if (-not $expected) { die "checksums.txt has no entry for $FILE" }
+if ($expected.ToLower() -ne $actual) { die "CHECKSUM MISMATCH`n  expected: $expected`n  actual:   $actual" }
+ok "Checksum verified"
 
 # ── Install ──────────────────────────────────────────────────────────────────
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null

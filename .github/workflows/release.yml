@@ -4,6 +4,9 @@ on:
     tags: ["v*.*.*"]
 permissions:
   contents: write
+  actions: read
+  id-token: write
+  attestations: write
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GO_VERSION: "1.26.3"
@@ -102,12 +105,26 @@ jobs:
         with:
           merge-multiple: true
           path: dist/
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: dist/
+          format: spdx-json
+          output-file: dist/prism-${{ github.ref_name }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
       - name: Generate checksums
-        run: cd dist && sha256sum * | tee checksums.txt
+        run: |
+          cd dist
+          find . -maxdepth 1 -type f ! -name checksums.txt -print0 | sort -z | xargs -0 sha256sum > checksums.txt
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/*
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/checksums.txt
+            dist/*
             install.sh
             install.ps1
             uninstall.sh

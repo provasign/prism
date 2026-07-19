@@ -36,6 +36,9 @@ func TestCmdIndexAndStatus_Smoke(t *testing.T) {
 	if got := cmdStatus([]string{dir}); got != 0 {
 		t.Fatalf("cmdStatus=%d", got)
 	}
+	if got := cmdDoctor([]string{dir}); got != 0 {
+		t.Fatalf("cmdDoctor=%d", got)
+	}
 }
 
 func TestCmdQueryAndSearchAndLookup_Smoke(t *testing.T) {
@@ -157,7 +160,7 @@ func TestInvokeWithPersistentLedger_Smoke(t *testing.T) {
 	}
 }
 
-func TestInvokeWithPersistentLedger_PersistsSessionCache(t *testing.T) {
+func TestInvokeWithPersistentLedger_DoesNotReuseConversationCache(t *testing.T) {
 	dir := setupCLIProject(t)
 	if _, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": "main.go"}); err != nil {
 		t.Fatalf("first prism_read: %v", err)
@@ -170,8 +173,8 @@ func TestInvokeWithPersistentLedger_PersistsSessionCache(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected output type %T", out)
 	}
-	if got["strategy"] != "sha-pointer" {
-		t.Fatalf("expected second CLI read to use persisted sha-pointer cache, got %v", got["strategy"])
+	if got["strategy"] == "sha-pointer" {
+		t.Fatal("standalone CLI read returned a conversation-only SHA pointer")
 	}
 }
 
@@ -184,6 +187,9 @@ func TestRun_DispatchSmoke(t *testing.T) {
 	}
 	if got := Run([]string{"version"}); got != 0 {
 		t.Fatalf("Run version=%d", got)
+	}
+	if got := Run([]string{"--version"}); got != 0 {
+		t.Fatalf("Run --version=%d", got)
 	}
 	if got := Run([]string{"unknown-subcmd"}); got != 2 {
 		t.Fatalf("Run unknown=%d", got)

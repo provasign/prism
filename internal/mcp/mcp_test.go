@@ -175,10 +175,10 @@ func TestToolEvidenceReturnsTypedPackets(t *testing.T) {
 	out, err := h.Invoke("prism_evidence", map[string]any{
 		"claims": []map[string]any{
 			{
-				"claim":     "SaveCache skips empty ContentHash entries",
-				"file":      "internal/session/cache.go",
-				"lineStart": 67,
-				"lineEnd":   71,
+				"claim":     "negotiateProtocolVersion echoes a supported client version",
+				"file":      "internal/mcp/server.go",
+				"lineStart": 84,
+				"lineEnd":   92,
 			},
 		},
 	})
@@ -209,7 +209,7 @@ func TestToolEvidenceTokenSavingsCrossover(t *testing.T) {
 		for i := 0; i < n; i++ {
 			claims = append(claims, map[string]any{
 				"claim":     strings.Repeat("evidence detail ", claimLen) + "#" + string(rune('A'+(i%26))),
-				"file":      "internal/session/cache.go",
+				"file":      "internal/mcp/server.go",
 				"lineStart": 60 + i,
 				"lineEnd":   61 + i,
 			})

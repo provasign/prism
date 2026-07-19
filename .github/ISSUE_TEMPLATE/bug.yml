@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a reproducible Prism defect
+title: "[bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the observed and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include a minimal repository or fixture and exact commands.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Doctor output
+      description: Paste redacted prism doctor output.
+      render: shell
+    validations:
+      required: true

@@ -68,18 +68,13 @@ sha256() {
   else shasum -a 256 "$1" | awk '{print $1}'; fi
 }
 ACTUAL="$(sha256 "${TMP}/${FILE}")"
-if curl -fsSL "${BASE}/checksums.txt" -o "${TMP}/checksums.txt" 2>/dev/null; then
-  EXPECTED="$(grep -E "  (\./)?${FILE}\$" "${TMP}/checksums.txt" | awk '{print $1}' | head -1)"
-  if [ -n "$EXPECTED" ]; then
-    [ "$EXPECTED" = "$ACTUAL" ] \
-      || die "CHECKSUM MISMATCH — refusing to install\n  expected: $EXPECTED\n  actual:   $ACTUAL"
-    ok "${FILE}: checksum verified"
-  else
-    ok "SHA256: ${ACTUAL}"
-  fi
-else
-  ok "SHA256: ${ACTUAL}  (no checksums.txt in this release)"
-fi
+curl -fsSL "${BASE}/checksums.txt" -o "${TMP}/checksums.txt" \
+  || die "could not download checksums.txt; refusing an unverified install"
+EXPECTED="$(grep -E "  (\./)?${FILE}\$" "${TMP}/checksums.txt" | awk '{print $1}' | head -1)"
+[ -n "$EXPECTED" ] || die "checksums.txt has no entry for ${FILE}"
+[ "$EXPECTED" = "$ACTUAL" ] \
+  || die "CHECKSUM MISMATCH — refusing to install\n  expected: $EXPECTED\n  actual:   $ACTUAL"
+ok "${FILE}: checksum verified"
 
 # ── Install ──────────────────────────────────────────────────────────────────
 mkdir -p "$INSTALL_DIR"
