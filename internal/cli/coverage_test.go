@@ -39,6 +39,15 @@ func TestCmdIndexAndStatus_Smoke(t *testing.T) {
 	if got := cmdDoctor([]string{dir}); got != 0 {
 		t.Fatalf("cmdDoctor=%d", got)
 	}
+	if got := cmdMap([]string{dir}); got != 0 {
+		t.Fatalf("cmdMap=%d", got)
+	}
+	if got := cmdMap([]string{dir, "--json", "--depth", "1"}); got != 0 {
+		t.Fatalf("cmdMap json=%d", got)
+	}
+	if got := cmdCycles([]string{dir}); got != 0 {
+		t.Fatalf("cmdCycles=%d", got)
+	}
 }
 
 func TestCmdQueryAndSearchAndLookup_Smoke(t *testing.T) {

@@ -44,6 +44,10 @@ type Edge struct {
 	To         string  `json:"to"`
 	Type       string  `json:"type"`
 	Confidence float64 `json:"confidence"`
+	// Source is the evidence layer that produced the edge (astkit, native,
+	// tree_sitter, heuristic, regex). Derived views map it to a capability
+	// tier so aggregated results can report their weakest constituent.
+	Source string `json:"source,omitempty"`
 }
 
 // StatusResult mirrors Grove's /status response.

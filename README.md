@@ -51,6 +51,14 @@ top out at 0.62–0.75 recall on change-impact tasks even on frontier models
 5. **Each layer does what it's best at.** Shell tools find the first anchor
    (they win at string location — Prism does not replace `grep`). Prism
    answers relationship and whole-task questions. The model reasons and edits.
+6. **Evidence-backed abstraction.** Above the task ops sits a component-level
+   view (`prism map` / `prism cycles`): directories as components, dependency
+   edges induced from the real call/import/type edges crossing between them,
+   with weights, dependency cycles, and the evidence tier of every claim.
+   Every abstract edge expands back to its concrete `file:line` sites — an
+   architecture *proof surface*, not a narrative repo map. View results claim
+   `complete-at-tier`, never `closed` (see
+   `docs/DESIGN_LAYERED_INTELLIGENCE.md`).
 
 **Use cases** — the questions Prism answers in one call:
 
@@ -303,6 +311,9 @@ prism init [--global] [--mode cli|mcp|both] [dir]
 prism index [dir]
 prism status [dir]
 prism doctor [dir]
+
+prism map [dir] [--depth N] [--component X] [--expand 'from->to'] [--json]
+prism cycles [dir] [--depth N] [--json]
 
 prism query <task> [dir] \
   --terms a,b,c \

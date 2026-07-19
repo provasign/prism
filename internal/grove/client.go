@@ -647,6 +647,26 @@ func (c *Client) AffectedTests(ctx context.Context, files []string) ([]SymbolRec
 	return convertSymbols(syms), nil
 }
 
+// SnapshotGraph returns every symbol and edge in the current graph. This is
+// the bulk export the view layer builds component projections from; edges
+// carry their evidence source so induced results can report the tier of
+// their constituent evidence.
+func (c *Client) SnapshotGraph(ctx context.Context) ([]SymbolRecord, []Edge, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, nil, err
+	}
+	syms, edges := e.SnapshotGraph(ctx)
+	out := make([]Edge, 0, len(edges))
+	for _, ed := range edges {
+		out = append(out, Edge{
+			From: ed.From, To: ed.To, Type: string(ed.Type),
+			Confidence: ed.Confidence, Source: string(ed.Source),
+		})
+	}
+	return convertSymbols(syms), out, nil
+}
+
 // convertSymbols maps grove engine symbols to Prism's wire-format type.
 func convertSymbols(in []groveeng.Symbol) []SymbolRecord {
 	out := make([]SymbolRecord, 0, len(in))

@@ -215,6 +215,10 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolDeadCode(ctx, args)
 	case "prism_rename_plan":
 		return h.toolRenamePlan(ctx, args)
+	case "prism_map":
+		return h.toolMap(ctx, args)
+	case "prism_cycles":
+		return h.toolCycles(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}
@@ -247,7 +251,7 @@ func ToolSchemas() []map[string]any {
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
 		"prism_missing_implementations", "prism_untested_surface", "prism_dead_code",
-		"prism_rename_plan", "prism_affected",
+		"prism_rename_plan", "prism_affected", "prism_map",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -479,6 +483,36 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
+	case "prism_map":
+		return map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"depth": map[string]any{
+					"type":        "integer",
+					"description": "Truncate components to the first N path segments (0 = one component per directory).",
+				},
+				"max_sites": map[string]any{
+					"type":        "integer",
+					"description": "Constituent sites kept per induced edge (default 5); weight always carries the full count.",
+				},
+				"component": map[string]any{
+					"type":        "string",
+					"description": "Only return edges touching this component.",
+				},
+				"include_tests": map[string]any{
+					"type":        "boolean",
+					"description": "Include test files (excluded by default — the map shows the production shape; the result reports how many were excluded).",
+				},
+				"from": map[string]any{
+					"type":        "string",
+					"description": "With to: expand one induced edge into its FULL constituent site list.",
+				},
+				"to": map[string]any{
+					"type":        "string",
+					"description": "With from: the target component of the edge to expand.",
+				},
+			},
+		}
 	default:
 		return open
 	}
@@ -639,6 +673,16 @@ func toolDescription(name string) string {
 			"zero in-project references — dead only if nothing external links against it; " +
 			"do not delete those without checking consumers. ALWAYS relay the caveats field: " +
 			"reflection, DI, serialization hooks, and codegen call symbols invisibly."
+	case "prism_map":
+		return "Architecture map in ONE call: the repository's components (directories) and " +
+			"every component-level dependency, aggregated from the real call/import/type edges " +
+			"crossing between them — with weights, per-kind breakdown, dependency cycles, and " +
+			"the evidence tier of every claim. Use for: 'map/explain this repo', refactor and " +
+			"extraction planning, layering questions, 'what depends on X'. Every edge is " +
+			"evidence-backed, not narrative: pass from+to to expand one edge into the full " +
+			"list of concrete crossing sites (file:line). depth=1 gives the top-level view of " +
+			"a large repo. The result is complete over indexed project edges at the reported " +
+			"tier; external dependencies are excluded — this is the project's internal shape."
 	}
 	return "Prism tool: " + name
 }

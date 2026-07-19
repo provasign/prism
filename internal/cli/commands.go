@@ -46,6 +46,13 @@ Usage:
                                   (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove
   prism doctor [dir]              Diagnose engine, index, and capabilities
+  prism map [dir]                 Component-level architecture map: directories,
+                                  induced dependency edges (weights + evidence
+                                  tiers), cycles. Production shape by default
+                                  ([--depth N] [--component X] [--tests]
+                                  [--expand 'A->B'] [--json])
+  prism cycles [dir]              Dependency cycles with per-edge evidence
+                                  ([--depth N] [--tests] [--json])
   prism query <task> [dir]        Find ranked context for a task; bug-fix/implement
                                   tasks get line-numbered source windows + per-anchor
                                   callers/covering tests (edit-ready)
@@ -133,6 +140,10 @@ func Run(args []string) int {
 		return cmdStatus(rest)
 	case "doctor":
 		return cmdDoctor(rest)
+	case "map":
+		return cmdMap(rest)
+	case "cycles":
+		return cmdCycles(rest)
 	case "query":
 		return cmdQuery(rest)
 	case "read":
@@ -296,6 +307,7 @@ cheaply. Three layers, in priority order.
 | "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
 | Cleanups, library extraction, "is X still used / can I delete it?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
 | "Which tests should run for these changed files?" (pre-commit, CI selection, post-edit) | prism_affected(files=[...]) — every test covering the changed files, via graph test edges |
+| "How is this repo structured?" / onboarding / refactor-extraction planning / dependency cycles / "what depends on component X?" | prism_map — components + induced dependency edges (weights, evidence tiers, cycles); pass from+to to expand any edge into concrete file:line sites |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, call prism_change_impact FIRST — even if the change
@@ -389,6 +401,7 @@ layers, in priority order.
 | "What should I test before changing X?" / test-gap audit / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
 | Cleanups / "is X still used / can I delete it?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
+| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, run prism change-impact first — even if the change
@@ -486,6 +499,7 @@ Use the registered prism_* MCP tools.
 | "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
 | Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
 | "Which tests should run for these changed files?" (pre-commit, CI selection, post-edit) | prism_affected(files=[...]) — every test covering the changed files, via graph test edges |
+| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | prism_map — components + induced dependency edges (weights, tiers, cycles); from+to expands any edge to file:line sites |
 
 **2. Reading code? Prism reads are cheaper than shell reads:**
 
@@ -560,6 +574,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | "What should I test before changing X?" / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
 | Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
+| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — line-numbered windows + per-anchor callers/tests |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
