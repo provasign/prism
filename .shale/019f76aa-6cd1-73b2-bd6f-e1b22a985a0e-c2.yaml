@@ -1,0 +1,142 @@
+shale_version: "0"
+id: 019f76aa-6cd1-73b2-bd6f-e1b22a985a0e-c2
+created_at: 2026-07-19T02:22:42.919961Z
+finalized_at: 2026-07-19T23:48:17.634647Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git push origin main
+      at: 2026-07-19T02:22:42.919961Z
+      classified: other
+    - cmd: git rev-parse HEAD; git rev-parse origin/main; git rev-list --left-right --count origin/main...HEAD; git show -1 --stat --oneline; git push origin HEAD:main
+      at: 2026-07-19T02:22:53.248653Z
+      classified: other
+    - cmd: gh run list --repo provasign/mason --limit 5
+      at: 2026-07-19T02:23:06.761493Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 5
+      at: 2026-07-19T02:23:06.763909Z
+      classified: other
+    - cmd: gh run list --repo provasign/provasign.github.io --limit 5
+      at: 2026-07-19T02:23:06.765976Z
+      classified: other
+    - cmd: gh run list --repo provasign/grove --limit 5
+      at: 2026-07-19T02:23:06.779152Z
+      classified: other
+    - cmd: gh run watch 29670097190 --repo provasign/provasign.github.io --exit-status
+      at: 2026-07-19T02:23:11.529111Z
+      classified: other
+    - cmd: gh run view 29670097190 --repo provasign/provasign.github.io --log-failed
+      at: 2026-07-19T02:23:15.097474Z
+      classified: other
+    - cmd: 'ruby -ryaml -e ''YAML.load_file("_config.yml"); puts "_config.yml: valid"''; git diff --check; git add _config.yml; git commit -m "fix(site): quote Pages description metadata"; git push origin main'
+      at: 2026-07-19T02:23:33.94218Z
+      classified: other
+    - cmd: git add _config.yml
+      at: 2026-07-19T02:23:38.588507Z
+      classified: other
+    - cmd: 'git commit -m "fix(site): quote Pages description metadata"'
+      at: 2026-07-19T02:23:40.745551Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-07-19T02:23:44.59684Z
+      classified: other
+    - cmd: gh run list --repo provasign/provasign.github.io --limit 3
+      at: 2026-07-19T02:23:48.382119Z
+      classified: other
+    - cmd: gh run watch 29670127258 --repo provasign/provasign.github.io --exit-status
+      at: 2026-07-19T02:24:28.524373Z
+      classified: other
+    - cmd: gh run list --repo provasign/mason --limit 2
+      at: 2026-07-19T02:24:48.038132Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 3
+      at: 2026-07-19T02:24:48.038125Z
+      classified: other
+    - cmd: gh run list --repo provasign/provasign.github.io --limit 2
+      at: 2026-07-19T02:24:48.053378Z
+      classified: other
+    - cmd: gh run list --repo provasign/grove --limit 3
+      at: 2026-07-19T02:24:48.055029Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --branch main --workflow CI --limit 3
+      at: 2026-07-19T02:24:52.074014Z
+      classified: other
+    - cmd: git status -sb; git log -1 --oneline --decorate
+      at: 2026-07-19T02:24:55.357523Z
+      classified: other
+    - cmd: git status -sb; git log -1 --oneline --decorate
+      at: 2026-07-19T02:24:55.374415Z
+      classified: other
+    - cmd: git status -sb; git log -1 --oneline --decorate
+      at: 2026-07-19T02:24:55.378913Z
+      classified: other
+    - cmd: git status -sb; git log -1 --oneline --decorate
+      at: 2026-07-19T02:24:55.380638Z
+      classified: other
+    - cmd: git status -sb; git log -1 --oneline --decorate
+      at: 2026-07-19T02:24:55.380763Z
+      classified: other
+    - cmd: 'prism query "Fix confusing product marketing and navigation: replace the infrastructure headline, simplify homepage flow around Prism before the edit and Shale after it, present Mason as the reference agent, and replace Just the Docs side navigation with one consistent top navigation on every page" --terms index.html,_config.yml,layout,nav,Prism,Shale,Mason --include graph,tests --format text'
+      at: 2026-07-19T02:31:22.970264Z
+      classified: other
+    - cmd: prism read _includes/install-widget-assets.html --format text
+      at: 2026-07-19T02:31:34.929325Z
+      classified: other
+    - cmd: rg -n '<section|</section>|<nav|</nav>|<article|foundation|<h1>|<h2>|Open-source|Infrastructure|Shale makes|One product|Why these' index.html
+      at: 2026-07-19T02:31:34.940374Z
+      classified: other
+    - cmd: git status -sb; rg --files _layouts _includes assets 2>/dev/null | sort; rg -n -i 'infrastructure for trustworthy|open-source infrastructure|trustworthy AI coding|primary product|secondary product' . -g '!vision.html' -g '!assets/**' -g '!.grove/**'
+      at: 2026-07-19T02:31:34.958849Z
+      classified: other
+    - cmd: sed -n '1,270p' index.html
+      at: 2026-07-19T02:31:40.279214Z
+      classified: other
+    - cmd: rg -n '<h1>|section-title|core-grid|reference-row|site-nav|site-footer|Prism before|Shale after|Mason' index.html _layouts/default.html _includes/site-nav.html | sed -n '1,220p'
+      at: 2026-07-19T02:38:56.065997Z
+      classified: other
+    - cmd: git status --short; git diff --check; git diff --stat; git diff -- _config.yml _layouts/default.html _includes/site-nav.html assets/css/site.css | sed -n '1,360p'
+      at: 2026-07-19T02:38:56.126798Z
+      classified: other
+    - cmd: 'ruby -ryaml -e ''YAML.load_file("_config.yml"); Dir["*.md", "*.html", "_layouts/*.html"].each do |f|; s=File.read(f); next unless s.start_with?("---\n"); YAML.load(s.split(/^---\\s*$\\n?/,3)[1]); end; puts "yaml: valid"''; rg -n -i ''infrastructure for trustworthy|open-source infrastructure for trustworthy|primary product|secondary product|<aside|side-bar|site-header'' . -g ''!.grove/**'' -g ''!vision.html'' -g ''!assets/images/**''; printf ''\n--nav include count--\n''; rg -l ''include site-nav.html'' index.html _layouts/default.html | wc -l; printf ''\n--head custom--\n''; sed -n ''1,160p'' _includes/head_custom.html'
+      at: 2026-07-19T02:38:56.158685Z
+      classified: other
+    - cmd: 'ruby -ryaml -e ''YAML.load_file("_config.yml"); Dir["*.md", "*.html", "_layouts/*.html"].each do |f|; s=File.read(f); m=s.match(/\A---\s*\n(.*?)\n---\s*\n/m); YAML.load(m[1]) if m; end; puts "yaml: valid"''; git diff --check; ruby -e ''s=File.read("index.html"); abort "headline missing" unless s.include?("Every AI-written change should explain itself."); abort "wrong core product count" unless s.scan(/<article class="product/).length == 2; abort "Mason hierarchy missing" unless s.scan(/class="reference-row"/).length == 1; l=File.read("_layouts/default.html"); abort "shared nav missing" unless l.include?("include site-nav.html"); puts "homepage hierarchy: valid"''; rg -n -i ''infrastructure for trustworthy|open-source infrastructure for trustworthy|side-bar|sidebar|site-header|nav-list'' . -g ''!.grove/**'' -g ''!vision.html'' -g ''!assets/images/**'' || true; git status --short; git diff --stat'
+      at: 2026-07-19T02:44:04.711458Z
+      classified: other
+    - cmd: git add _config.yml _includes/head_custom.html _includes/site-nav.html _layouts/default.html _sass/custom/custom.scss assets/css/site.css index.html vision.html
+      at: 2026-07-19T02:44:10.814225Z
+      classified: other
+    - cmd: 'git diff --cached --check; git diff --cached --stat; git commit -m "fix(site): clarify product story and unify navigation"'
+      at: 2026-07-19T02:44:17.750967Z
+      classified: other
+    - cmd: 'git commit -m "fix(site): clarify product story and unify navigation"'
+      at: 2026-07-19T02:44:20.429128Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-07-19T02:44:30.71726Z
+      classified: other
+    - cmd: gh run list --repo provasign/provasign.github.io --limit 2
+      at: 2026-07-19T02:44:33.887619Z
+      classified: other
+    - cmd: gh run list --repo provasign/provasign.github.io --limit 5
+      at: 2026-07-19T02:44:37.390318Z
+      classified: other
+    - cmd: gh run list --repo provasign/provasign.github.io --limit 3
+      at: 2026-07-19T02:44:46.996999Z
+      classified: other
+    - cmd: gh run watch 29670662890 --repo provasign/provasign.github.io --exit-status
+      at: 2026-07-19T02:45:17.310759Z
+      classified: other
+    - cmd: git status -sb; git log -1 --oneline --decorate; gh run list --repo provasign/provasign.github.io --limit 2
+      at: 2026-07-19T02:45:38.980421Z
+      classified: other
+notes:
+    - text: continuation of session 019f76aa-6cd1-73b2-bd6f-e1b22a985a0e — events captured after its evidence was finalized
+      at: 2026-07-19T02:22:42.919961Z
+redactions: 0
