@@ -1,9 +1,26 @@
 # Prism
 
-> **Semantic change intelligence for every coding agent.**
+> **The complete picture for your coding agent — in one call, at a tenth of
+> the tokens.**
 >
-> Prism computes change impact, contract closure, test gaps, dead code, and
-> edit-ready context as deterministic operations over your local code graph.
+> Give Prism the task. It returns the edit-ready context and the complete,
+> type-resolved change set — every override, implementation, and caller —
+> as ONE deterministic call over your local code graph.
+
+**Measured** (oracle-scored, 4 languages, blast radii 8–310 sites — see
+[provasign/research](https://github.com/provasign/research)):
+
+- Engine completeness: **0.997 recall** on change-impact closure vs a
+  compiler-grade oracle; same answer every run.
+- Agent-level (identical agent, only the tool differs): **0.896 mean recall
+  with the `prism` task call vs 0.721 with grep — at 12× fewer input tokens**
+  (131k vs 1,592k per task, 27 trials).
+- Grep-invisible sites are why: text-search agents top out at 0.62–0.75
+  recall on frontier models; overrides, interface implementations, and
+  overload-specific callers don't contain the string you searched for.
+- Tier invariance: a free local 30B model with Prism reaches the same
+  completeness as a frontier model — the engine solves the traversal, the
+  model relays it.
 
 ## What Prism is
 
@@ -68,20 +85,33 @@ top out at 0.62–0.75 recall on change-impact tasks even on frontier models
    reported for review, not auto-failed (`--strict` escalates). Measured at
    the engine ceiling on injected Go violations: 10/10 detected, 0 false
    positives (see the injection benchmark in the test suite).
-8. **Verify the diff, not the vibes.** `prism verify` is the deterministic
-   check of a change's completeness — built for agent-authored diffs. It
-   detects the contract changes in a diff (signature changes, renames),
-   computes each one's required change set through the graph, and reports
-   every required site the diff did not touch — line-precise where the AST
-   records the call. Plus: the affected tests to run, cross-component
-   dependency candidates, and introduced arch violations. Fail-closed: a
-   contract change whose blast radius cannot be computed yields `review`,
-   never a silent pass. Exit 1 on incomplete — the CI gate for the agentic
-   era, and the piece no compiler covers in dynamic languages (measured: a
-   Python signature change with a forgotten caller passes `py_compile`
-   everywhere; `prism verify` reports the exact missed line). Engine
-   ceiling on seeded incomplete changes: 32/32 missed sites caught across
-   10 trials, 0 false accusations, ~45 ms per verification.
+8. **A fail-safe gate on the diff (experimental site listing).**
+   `prism verify` deterministically checks an agent-authored diff: it
+   detects contract changes, computes required sites, and reports what the
+   diff did not touch. Its **verdict is fail-closed and measured**: across
+   36 seeded incomplete-edit runs on 9 real corpora it never once said
+   "complete" on an incomplete change (verdicts: 28 incomplete, 8 review,
+   0 false passes) — so it is safe as a CI gate today. Its **missed-site
+   list is complete only where the edit does not sever old-signature
+   binding**: measured file-level catch ranges from 100% (django) and 89%
+   (guava) down to 9% (Java overload families), because the post-edit
+   graph cannot always enumerate dependents of the *old* contract.
+   Base-contract enumeration is the open engineering item; until it lands,
+   trust the verdict, treat the site list as a head start rather than the
+   whole answer (see `docs/DESIGN_LAYERED_INTELLIGENCE.md`, Phase 3).
+
+**The front door — one tool, two moments.** Agents don't route well across a
+tool menu (measured), so the primary surface is a single call:
+
+```
+prism(task="Allow users to revoke an active API token")
+```
+
+Before editing, it returns edit-ready line-numbered source, each anchor's
+callers and covering tests, and the **change obligations** — every site that
+must be handled if those contracts change, completeness-tagged. After
+editing, the same call with `changed_files=[...]` runs the verify gate. The
+specialized tools below remain the advanced surface it orchestrates.
 
 **Use cases** — the questions Prism answers in one call:
 
