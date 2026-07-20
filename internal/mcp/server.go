@@ -140,7 +140,8 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 // may go on to rely on — the calls worth annotating with staleness warnings.
 func contextBearingTool(name string) bool {
 	switch name {
-	case "prism_query", "prism_read", "prism_search", "prism_lookup",
+	case "prism", // prepare delivers edit-ready source windows
+		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_rename_plan", // its edits carry index-derived line numbers — stale index means wrong-line edits applied verbatim
 		"prism_map", "prism_cycles": // their sites carry index-derived file:line evidence
 		return true

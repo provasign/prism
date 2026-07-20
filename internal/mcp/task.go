@@ -1,0 +1,483 @@
+package mcp
+
+// prism — the unified task tool (task compiler). One tool, two moments:
+//
+//   prism(task="...")                        prepare: anchors -> edit-ready
+//                                            source -> change obligations ->
+//                                            tests/coverage gaps; obligations
+//                                            persisted for the verify moment.
+//   prism(task="...", changed_files=[...])   verify: the shipped prism_verify
+//                                            pipeline + the stored obligations
+//                                            checked against the diff.
+//
+// Design: docs/DESIGN_TASK_COMPILER.md. The agent describes its task; Prism
+// selects the internal operators. Existing tools remain the advanced surface.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"github.com/provasign/prism/internal/grove"
+)
+
+// obligationSite is one site in a recorded obligation's required set.
+type obligationSite struct {
+	Symbol string `json:"symbol"`
+	File   string `json:"file"`
+	Line   int    `json:"line"`
+	Kind   string `json:"kind"`
+}
+
+// taskObligation is one anticipated change obligation, recorded at prepare
+// time. Completeness is an evidence tier ("closed", "project-local",
+// "callers-only"), never an editorial class — see design doc correction 3.
+type taskObligation struct {
+	Symbol        string           `json:"symbol"`
+	QualifiedName string           `json:"qualifiedName"`
+	File          string           `json:"file"`
+	Line          int              `json:"line"`
+	Kind          string           `json:"kind"`
+	Completeness  string           `json:"completeness"`
+	SiteCount     int              `json:"siteCount"`
+	Sites         []obligationSite `json:"sites"`
+}
+
+// taskPackage is what prepare persists and verify loads. Stored in the
+// .grove state dir so a later process (CLI verify, a hook, CI) can compare.
+type taskPackage struct {
+	Task        string           `json:"task"`
+	Base        string           `json:"base"` // HEAD at prepare time
+	Obligations []taskObligation `json:"obligations"`
+}
+
+// maxObligationAnchors bounds how many anchor symbols get a full impact
+// computation at prepare time; maxObligationSites bounds recorded sites per
+// obligation (the count is always exact even when sites are truncated).
+const (
+	maxObligationAnchors = 5
+	// maxObligationSites must comfortably exceed real blast radii: the
+	// benchmark corpus tops out at 310 required sites, and a truncated
+	// obligation list silently caps an agent's achievable recall (measured:
+	// a 60-site cap held Haiku to 0.65 recall on a 108-site change that the
+	// direct change_impact arm completed at 0.98).
+	maxObligationSites   = 500
+)
+
+func (h *Handler) taskPackagePath() string {
+	return filepath.Join(h.Root, ".grove", "task-package.json")
+}
+
+func (h *Handler) toolTask(ctx context.Context, args map[string]any) (any, error) {
+	task := stringArg(args, "task", "")
+	if task == "" {
+		return nil, errors.New("task is required — describe what you are trying to do")
+	}
+	changed := stringListArg(args, "changed_files")
+	mode := stringArg(args, "mode", "")
+	if mode == "" {
+		if len(changed) > 0 {
+			mode = "verify"
+		} else {
+			mode = "prepare"
+		}
+	}
+	switch mode {
+	case "prepare":
+		return h.taskPrepare(ctx, task, args)
+	case "verify":
+		return h.taskVerify(ctx, task, changed, args)
+	default:
+		return nil, fmt.Errorf("mode must be \"prepare\" or \"verify\", got %q", mode)
+	}
+}
+
+func (h *Handler) taskPrepare(ctx context.Context, task string, args map[string]any) (any, error) {
+	var terms []string
+	if raw, ok := args["terms"]; ok {
+		terms = anyToStrings(raw)
+	}
+	sel, err := h.selectContext(ctx, selectParams{
+		task:        task,
+		terms:       terms,
+		includeSet:  map[string]bool{"graph": true, "tests": true},
+		limit:       intArg(args, "limit", 50),
+		contextUsed: int64(intArg(args, "context_used", 0)),
+		model:       stringArg(args, "model", ""),
+		budgetArg:   intArg(args, "budget", 0),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Edit-ready delivery: verbatim line-numbered source windows + per-anchor
+	// callers and covering tests — the existing prism_query source path.
+	read := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
+
+	// Change obligations: for each anchor with a call-shaped contract,
+	// compute the required set now, so the agent edits with the blast radius
+	// in hand and verify can hold the diff against it later.
+	var obligations []taskObligation
+	var obligationNotes []string
+	seen := map[string]bool{}
+	for _, sym := range sel.seedSyms {
+		if len(obligations) >= maxObligationAnchors {
+			obligationNotes = append(obligationNotes,
+				fmt.Sprintf("obligations computed for the top %d anchors only; call prism_change_impact directly for others", maxObligationAnchors))
+			break
+		}
+		switch sym.Kind {
+		case "function", "method", "constructor":
+		default:
+			continue
+		}
+		anchorSym, impact, err := h.obligationImpact(ctx, sym)
+		if err != nil {
+			obligationNotes = append(obligationNotes,
+				displayQN(sym)+": impact not computable ("+err.Error()+")")
+			continue
+		}
+		// Dedup by the resolved anchor's qualified name — retrieval surfaces
+		// the same interface method under several concrete receivers, and
+		// obligationImpact folds them onto one interface anchor; without this
+		// they burn distinct slots on identical blast radii.
+		key := displayQN(anchorSym)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		ob := taskObligation{
+			Symbol:        anchorSym.Name,
+			QualifiedName: displayQN(anchorSym),
+			File:          anchorSym.FilePath,
+			Line:          anchorSym.Span.Start,
+			Kind:          anchorSym.Kind,
+			Completeness:  impact.Completeness,
+		}
+		if ob.Completeness == "" {
+			ob.Completeness = "closed"
+		}
+		required := make([]grove.SymbolRecord, 0,
+			len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes))
+		required = append(required, impact.Family...)
+		required = append(required, impact.Callers...)
+		required = append(required, impact.DeclaringTypes...)
+		for _, site := range required {
+			if site.FilePath == anchorSym.FilePath && site.Span.Start == anchorSym.Span.Start {
+				continue // the anchor itself
+			}
+			ob.SiteCount++
+			if len(ob.Sites) < maxObligationSites {
+				ob.Sites = append(ob.Sites, obligationSite{
+					Symbol: displayQN(site), File: site.FilePath,
+					Line: site.Span.Start, Kind: site.Kind,
+				})
+			}
+		}
+		obligations = append(obligations, ob)
+	}
+
+	gaps := buildCoverageGaps(ctx, h.Grove, sel.seedSyms, sel.graphExtra)
+
+	// Persist the package for the verify moment (best-effort: a read-only
+	// checkout must not fail the prepare call).
+	pkg := taskPackage{Task: task, Base: gitHead(h.Root), Obligations: obligations}
+	if data, err := json.MarshalIndent(pkg, "", " "); err == nil {
+		if err := os.MkdirAll(filepath.Dir(h.taskPackagePath()), 0o755); err == nil {
+			_ = os.WriteFile(h.taskPackagePath(), data, 0o644)
+		}
+	}
+
+	h.Ledger.RecordCall("prism")
+	out := map[string]any{
+		"mode":        "prepare",
+		"task":        task,
+		"read":        read,
+		"obligations": obligations,
+		"next": "make the edits, then call prism again with the same task and " +
+			"changed_files=[...] to verify the change is complete",
+	}
+	if len(gaps) > 0 {
+		out["coverageGaps"] = gaps
+	}
+	if len(obligationNotes) > 0 {
+		out["notes"] = obligationNotes
+	}
+	if len(obligations) == 0 && len(sel.seedSyms) > 0 {
+		out["obligationsNote"] = "no call-shaped anchors in the top selection; " +
+			"if you end up changing a signature, verify will compute the impact from the diff"
+	}
+	return out, nil
+}
+
+func (h *Handler) taskVerify(ctx context.Context, task string, changed []string, args map[string]any) (any, error) {
+	base := stringArg(args, "base", "HEAD")
+	out, err := h.toolVerify(ctx, map[string]any{"base": base})
+	if err != nil {
+		return nil, err
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		return out, nil
+	}
+	m["mode"] = "verify"
+	m["task"] = task
+
+	// Cross-check the claimed changed_files against the authoritative diff.
+	changedRanges, rerr := gitChangedRanges(h.Root, base)
+	if rerr == nil && len(changed) > 0 {
+		var notInDiff []string
+		for _, f := range changed {
+			if _, ok := changedRanges[filepath.ToSlash(f)]; !ok {
+				notInDiff = append(notInDiff, f)
+			}
+		}
+		if len(notInDiff) > 0 {
+			m["changedFilesNote"] = fmt.Sprintf(
+				"claimed as changed but not in the diff vs %s: %s (the git diff is authoritative)",
+				base, strings.Join(notInDiff, ", "))
+		}
+	}
+
+	// Stored obligations from the prepare moment: anticipated sites the diff
+	// did not touch are reported with a caveat, never as accusations — the
+	// implementation may legitimately have left that contract unchanged
+	// (design doc correction 4). The verdict stays diff-driven.
+	pkg := h.loadTaskPackage()
+	if pkg != nil && rerr == nil {
+		if pkg.Task != task {
+			m["obligationsNote"] = "stored obligations were recorded for a different task (" +
+				truncate(pkg.Task, 80) + "); skipping obligation comparison"
+		} else {
+			satisfied := 0
+			var unaddressed []obligationSite
+			for _, ob := range pkg.Obligations {
+				for _, s := range ob.Sites {
+					// File-level granularity: the recorded line is the
+					// symbol's span start, which an edit inside the body
+					// will not hit exactly. Anticipated obligations get the
+					// benefit of the doubt; line-precise accusation is the
+					// diff-driven pipeline's job.
+					if spanFileTouched(changedRanges, s.File) {
+						satisfied++
+					} else {
+						unaddressed = append(unaddressed, s)
+					}
+				}
+			}
+			m["obligationsSatisfied"] = satisfied
+			if len(unaddressed) > 0 {
+				m["unaddressedObligations"] = unaddressed
+				m["unaddressedCaveat"] = "anticipated at prepare time but untouched by the diff — " +
+					"fine if the chosen implementation did not change that contract; " +
+					"review any that correspond to a contract you DID change"
+			}
+		}
+	}
+	h.Ledger.RecordCall("prism")
+	return m, nil
+}
+
+// spanFileTouched reports whether any hunk touched the file at all — the
+// obligation site line recorded at prepare time is the symbol's span start,
+// which an edit inside the symbol body will not hit exactly.
+func spanFileTouched(changed map[string][]lineRange, file string) bool {
+	return len(changed[file]) > 0
+}
+
+// obligationSiteCount is the blast-radius size of a change_impact result:
+// override/implementation family + callers + declaring-type sites.
+func obligationSiteCount(r *grove.ChangeImpactResult) int {
+	if r == nil {
+		return 0
+	}
+	return len(r.Family) + len(r.Callers) + len(r.DeclaringTypes)
+}
+
+// maxAnchorCandidates bounds how many same-named receiver types
+// obligationImpact will probe when hunting the family-maximal anchor.
+const maxAnchorCandidates = 8
+
+// obligationImpact resolves the best obligation anchor for a seed method at
+// PREPARE time. Retrieval surfaces concrete implementations (e.g.
+// DataSourceHandler.QueryData, whose change_impact is only its own few
+// callers), but the contract that actually fans out is the interface method
+// (Service.QueryData, whose change_impact walks down to every implementer).
+// Go's structural typing leaves no override edge from the concrete method up
+// to the interface, so we cannot follow a graph edge; instead, among all
+// symbols sharing the method's leaf name, we pick the one with the largest
+// CLOSED blast radius — which is the interface by construction. This runs
+// only for prepare's anticipatory obligations; verify stays pinned to the
+// exact changed symbol (changeImpactFor), never redirected.
+func (h *Handler) obligationImpact(ctx context.Context, sym grove.SymbolRecord) (grove.SymbolRecord, *grove.ChangeImpactResult, error) {
+	base, err := h.changeImpactFor(ctx, sym)
+	if err != nil {
+		return sym, nil, err
+	}
+	bestSym, best := sym, base
+
+	// Only hunt for a wider anchor when the seed shares its name with several
+	// receiver types — the signature of an interface family or an overloaded
+	// name. A unique method name has nothing to fold onto.
+	cands, rerr := h.Grove.Resolve(ctx, sym.Name)
+	if rerr != nil || len(cands) < 3 {
+		return bestSym, best, nil
+	}
+	tried := map[string]bool{displayQN(sym): true}
+	probes := 0
+	for _, c := range cands {
+		if probes >= maxAnchorCandidates {
+			break
+		}
+		qn := c.Name
+		if qn == "" || tried[qn] || c.TestDouble {
+			continue
+		}
+		// Same method leaf only — never fold onto an unrelated symbol that
+		// merely shares a substring.
+		if leafName(qn) != sym.Name {
+			continue
+		}
+		tried[qn] = true
+		probes++
+		r, err := h.Grove.ChangeImpact(ctx, qn)
+		if err != nil || len(r.Declarations) == 0 {
+			continue
+		}
+		// Prefer a strictly larger CLOSED family; a heuristic or open set
+		// never displaces a smaller closed one (tier honesty).
+		if r.Completeness == "closed" && obligationSiteCount(r) > obligationSiteCount(best) {
+			best, bestSym = r, r.Declarations[0]
+		}
+	}
+	return bestSym, best, nil
+}
+
+// widerAnchorHint reports a same-leaf-named symbol whose CLOSED change-impact
+// family is strictly larger than the given result's — the signature of having
+// queried a concrete implementation when the contract that fans out is the
+// interface method (measured: the direct change_impact arm scored 0.333 on
+// grafana-querydata by anchoring a concrete QueryData with 4 callers while
+// Service.QueryData held the 50-site closed family). Deterministic: pure graph
+// probes, no redirection — the result still answers exactly what was asked,
+// and the hint tells the agent what else to check. Returns nil when the
+// queried anchor is already the widest.
+func (h *Handler) widerAnchorHint(ctx context.Context, r *grove.ChangeImpactResult) map[string]any {
+	// No declarations guard: a Go/TS interface member is not a separate
+	// symbol, so its impact result carries declaringTypes and an EMPTY
+	// Declarations list — exactly the queries that most need this hint.
+	if r == nil || r.Query == "" {
+		return nil
+	}
+	leaf := leafName(r.Query)
+	cands, err := h.Grove.Resolve(ctx, leaf)
+	if err != nil || len(cands) < 3 {
+		return nil
+	}
+	tried := map[string]bool{r.Query: true}
+	for _, d := range r.Declarations {
+		tried[displayQN(d)] = true
+	}
+	baseline := obligationSiteCount(r)
+	var bestQN string
+	var best *grove.ChangeImpactResult
+	probes := 0
+	for _, c := range cands {
+		if probes >= maxAnchorCandidates {
+			break
+		}
+		qn := c.Name
+		if qn == "" || tried[qn] || c.TestDouble || leafName(qn) != leaf {
+			continue
+		}
+		tried[qn] = true
+		probes++
+		alt, err := h.Grove.ChangeImpact(ctx, qn)
+		if err != nil || len(alt.Declarations) == 0 || alt.Completeness != "closed" {
+			continue
+		}
+		if n := obligationSiteCount(alt); n > baseline && (best == nil || n > obligationSiteCount(best)) {
+			best, bestQN = alt, qn
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	return map[string]any{
+		"qualifiedName": bestQN,
+		"totalSites":    obligationSiteCount(best) + len(best.Declarations),
+		"completeness":  best.Completeness,
+		"note": fmt.Sprintf("%s has a larger CLOSED change set (%d sites vs %d for the queried anchor). "+
+			"If the contract being changed is the interface/base declaration rather than this one "+
+			"implementation, query %s instead — its family covers every implementation.",
+			bestQN, obligationSiteCount(best), baseline, bestQN),
+	}
+}
+
+func leafName(qn string) string {
+	if i := strings.LastIndexByte(qn, '.'); i >= 0 && i+1 < len(qn) {
+		return qn[i+1:]
+	}
+	return qn
+}
+
+func (h *Handler) loadTaskPackage() *taskPackage {
+	data, err := os.ReadFile(h.taskPackagePath())
+	if err != nil {
+		return nil
+	}
+	var pkg taskPackage
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return nil
+	}
+	return &pkg
+}
+
+func gitHead(root string) string {
+	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func stringListArg(args map[string]any, key string) []string {
+	raw, ok := args[key]
+	if !ok {
+		return nil
+	}
+	return anyToStrings(raw)
+}
+
+func anyToStrings(raw any) []string {
+	switch v := raw.(type) {
+	case []any:
+		var out []string
+		for _, t := range v {
+			if s, ok := t.(string); ok && s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	case []string:
+		return v
+	case string:
+		if v == "" {
+			return nil
+		}
+		return []string{v}
+	}
+	return nil
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
+}

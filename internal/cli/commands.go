@@ -303,7 +303,35 @@ func promptAgentMode() string {
 
 // steeringInstructionsMCP is injected when agent_mode is "mcp" or "both".
 const steeringInstructionsMCP = `
-## Prism — context delivery (ALWAYS use these tools)
+## Prism — the task workflow (ALWAYS)
+
+Before working on any codebase task — fixing, implementing, refactoring,
+explaining — call the prism tool with the complete task:
+
+    prism(task="<the full task, in the user's words>")
+
+It returns edit-ready line-numbered source, each anchor's callers and tests,
+and the CHANGE OBLIGATIONS: every site that must be handled if you change
+those contracts, type-resolved and completeness-tagged. Treat returned
+source as already read. If the task does not already name the target
+symbol, locate it first (grep/prism_search) and pass that CONFIRMED name as
+terms=[...] — retrieval keys on the anchor. Do not pass a guessed term for a
+common name (e.g. "serialize", "get"); a wrong term is worse than none.
+
+After editing, call the SAME tool again with the changed files:
+
+    prism(task="<same task>", changed_files=[...])
+
+It verifies the diff deterministically: contract changes detected, missed
+call sites reported line-precisely, affected tests listed, verdict
+fail-closed (clean|complete|review|incomplete). Resolve everything it
+reports missing before declaring the task done. "I updated all the callers"
+is a guess; this is the check of it.
+
+The tools below are the advanced surface the prism tool orchestrates — use
+them directly when you know exactly which question you are asking.
+
+## Prism — advanced tools
 
 Prism answers whole-task questions (change impact, missing implementations,
 test gaps, dead code) in ONE deterministic call, and delivers code context

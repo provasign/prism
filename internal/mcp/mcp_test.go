@@ -299,8 +299,8 @@ func TestSafePathWithinRoot_EquivalentSymlinkRoots(t *testing.T) {
 
 func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	schemas := ToolSchemas()
-	if len(schemas) != 16 {
-		t.Fatalf("want 16 tool schemas, got %d", len(schemas))
+	if len(schemas) != 17 {
+		t.Fatalf("want 17 tool schemas, got %d", len(schemas))
 	}
 	names := make(map[string]bool)
 	for _, s := range schemas {
@@ -392,8 +392,8 @@ func TestServerToolsList(t *testing.T) {
 	if !ok {
 		t.Fatalf("tools field missing or wrong type: %T", result["tools"])
 	}
-	if len(tools) != 16 {
-		t.Errorf("tools/list: got %d tools, want 16", len(tools))
+	if len(tools) != 17 {
+		t.Errorf("tools/list: got %d tools, want 17", len(tools))
 	}
 }
 
