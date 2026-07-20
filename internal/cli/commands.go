@@ -58,6 +58,13 @@ Usage:
                                   against the component view; violations cite
                                   file:line sites; exit 1 on violation — a CI
                                   gate ([--deny 'A -> B'] [--depth N] [--json])
+  prism verify [dir]              Verify a diff's completeness (working tree vs
+                                  --base, default HEAD): missed change-impact
+                                  sites (line-precise), affected tests, new
+                                  cross-component deps, introduced arch
+                                  violations; exit 1 if incomplete — the CI
+                                  gate for agent-authored changes
+                                  ([--base REF] [--json])
   prism query <task> [dir]        Find ranked context for a task; bug-fix/implement
                                   tasks get line-numbered source windows + per-anchor
                                   callers/covering tests (edit-ready)
@@ -151,6 +158,8 @@ func Run(args []string) int {
 		return cmdCycles(rest)
 	case "arch", "arch-check":
 		return cmdArch(rest)
+	case "verify":
+		return cmdVerify(rest)
 	case "query":
 		return cmdQuery(rest)
 	case "read":
@@ -410,6 +419,7 @@ layers, in priority order.
 | "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
+| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), affected tests, introduced arch violations; exit 1 if incomplete |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, run prism change-impact first — even if the change
@@ -584,6 +594,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
+| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), affected tests, introduced arch violations; exit 1 if incomplete |
 | Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — line-numbered windows + per-anchor callers/tests |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |

@@ -210,6 +210,147 @@ func renderViolations(list []any, label string) {
 	}
 }
 
+// cmdVerify checks a diff (working tree vs --base, default HEAD) for
+// completeness: missed change-impact sites, affected tests, new
+// cross-component dependencies, introduced arch violations.
+// Exit codes: 0 = complete/clean, 1 = incomplete (CI-gateable), 2 = error.
+func cmdVerify(args []string) int {
+	dir := "."
+	jsonOut := false
+	callArgs := map[string]any{}
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; a {
+		case "--base":
+			if i+1 < len(args) {
+				callArgs["base"] = args[i+1]
+				i++
+			}
+		case "--json":
+			jsonOut = true
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_verify", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "verify:", err)
+		return 2
+	}
+	m := toMap(out)
+	if jsonOut {
+		printJSON(out)
+	} else {
+		renderVerifyText(m)
+	}
+	switch v, _ := m["verdict"].(string); v {
+	case "incomplete":
+		return 1
+	case "review":
+		if hasFlag(args, "--strict") {
+			return 1
+		}
+	}
+	return 0
+}
+
+func hasFlag(args []string, flag string) bool {
+	for _, a := range args {
+		if a == flag {
+			return true
+		}
+	}
+	return false
+}
+
+func renderVerifyText(m map[string]any) {
+	if m == nil {
+		fmt.Println("verify: empty result")
+		return
+	}
+	verdict, _ := m["verdict"].(string)
+	if verdict == "clean" {
+		fmt.Printf("verify: clean — %v\n", m["note"])
+		return
+	}
+	changed := asSliceAny(m["changedFiles"])
+	fmt.Printf("verify: %s — %d changed files vs %v\n", verdict, len(changed), m["base"])
+
+	if sigs := asSliceAny(m["signatureChanges"]); len(sigs) > 0 {
+		fmt.Println("\ncontract changes detected:")
+		for _, s := range sigs {
+			sm, _ := s.(map[string]any)
+			if sm == nil {
+				continue
+			}
+			fmt.Printf("  %s:%v  %v\n", sm["file"], sm["line"], sm["reason"])
+		}
+	}
+
+	missedList := asSliceAny(m["missedSites"])
+	if len(missedList) > 0 {
+		fmt.Printf("\nMISSED SITES (%d) — required by the change, not touched by the diff:\n", len(missedList))
+		for _, ms := range missedList {
+			mm, _ := ms.(map[string]any)
+			if mm == nil {
+				continue
+			}
+			fmt.Printf("  %s:%v  %v — %v\n", mm["file"], mm["line"], mm["qualifiedName"], mm["detail"])
+		}
+	}
+
+	if unv := asSliceAny(m["unverifiedSeeds"]); len(unv) > 0 {
+		fmt.Printf("\nUNVERIFIED contract changes (%d) — fail-closed, review these:\n", len(unv))
+		for _, u := range unv {
+			fmt.Printf("  %v\n", u)
+		}
+	}
+
+	if deps := asSliceAny(m["newDependencies"]); len(deps) > 0 {
+		fmt.Println("\ncross-component dependency candidates (all evidence in changed code; no base-graph comparison):")
+		for _, d := range deps {
+			dm, _ := d.(map[string]any)
+			if dm == nil {
+				continue
+			}
+			fmt.Printf("  %v -> %v  %v crossing(s)  [tier: %v]\n",
+				dm["from"], dm["to"], dm["weight"], dm["minTier"])
+		}
+	}
+	if as, _ := m["archStatus"].(string); as == "fail" || as == "review" {
+		fmt.Printf("\narch rules touched by this diff: %s\n", as)
+		renderViolations(asSliceAny(m["archIntroduced"]), "ARCH")
+	}
+
+	if tests := asSliceAny(m["affectedTests"]); len(tests) > 0 {
+		fmt.Printf("\naffected tests to run (%d):\n", len(tests))
+		max := len(tests)
+		if max > 15 {
+			max = 15
+		}
+		for _, tv := range tests[:max] {
+			tm, _ := tv.(map[string]any)
+			if tm == nil {
+				continue
+			}
+			fmt.Printf("  %v  (%s)\n", tm["name"], tm["file"])
+		}
+		if len(tests) > 15 {
+			fmt.Printf("  … and %d more\n", len(tests)-15)
+		}
+	}
+	for _, n := range asSliceAny(m["notes"]) {
+		fmt.Printf("note: %v\n", n)
+	}
+	switch verdict {
+	case "complete":
+		fmt.Println("\nno missed sites — the diff covers its own blast radius")
+	case "review":
+		fmt.Println("\nverdict: review — some contract changes could not be verified (--strict exits 1)")
+	}
+}
+
 // toMap round-trips a tool result through JSON into a generic map so the
 // renderers below work on the same shape the MCP surface serves.
 func toMap(v any) map[string]any {

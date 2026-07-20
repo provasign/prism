@@ -160,6 +160,41 @@ func (c *Client) DiffFile(ctx context.Context, before []SymbolRecord, relPath st
 	}, nil
 }
 
+// Callers returns the full symbol records of everything with a calls edge
+// INTO name — the required-update set for a bare function's signature
+// change. Unlike CallNeighbors, test callers are NOT filtered: a test that
+// calls a changed function must be updated too.
+func (c *Client) Callers(ctx context.Context, name string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	ns, err := e.Neighbors(ctx, name, "in", groveeng.EdgeCalls)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SymbolRecord, 0, len(ns))
+	for _, n := range ns {
+		out = append(out, convertSymbol(n.Symbol))
+	}
+	return out, nil
+}
+
+// PreviewFileSymbols parses in-memory content as if it lived at relPath and
+// returns the symbols Grove would index for it — the "before" side for
+// diffing a git base version that is not on disk (verify, merge drivers).
+func (c *Client) PreviewFileSymbols(relPath string, content []byte) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	syms, err := e.PreviewFileSymbols(relPath, content)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
+}
+
 func convertChanges(in []groveeng.SymbolChange) []SymbolChange {
 	out := make([]SymbolChange, 0, len(in))
 	for _, c := range in {

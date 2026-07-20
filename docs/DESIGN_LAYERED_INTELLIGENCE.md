@@ -169,10 +169,25 @@ rule import from import-linter / dependency-cruiser / ArchUnit,
 `prism_query` routing for map-shaped tasks; Mason: render views to the
 user (payload isolation), teach `graphIntent` the new shapes.
 
-**Phase 3 — diff intelligence.** View-level projection of `change_impact`
-over a diff; wire into Mason `/review` and a `prism affected`-style CI
-surface. Then, and only then, evaluate whether L4 flows graduate from
-research track.
+**Phase 3 — diff intelligence. [prism verify SHIPPED]** `prism_verify` /
+`prism verify [--base REF]`: detects contract changes in a diff (signature
+changes, renames via base-content preview against the live index), computes
+each one's required change set (change_impact for methods; resolved-callers
+fallback for bare functions, reported as completeness "callers-only"), and
+reports every required site the diff did not touch — line-precise where the
+AST records the call, span-level otherwise. Also: affected tests,
+cross-component dependency CANDIDATES (all evidence inside changed code; no
+base-graph comparison, labeled as such), introduced arch violations with
+the same tier gating as arch_check. FAIL-CLOSED: a contract change whose
+blast radius cannot be computed (interface/struct/class kinds, resolution
+failures) yields verdict "review", never a silent pass — this rule was
+added after the first live run produced a false "complete" on a
+bare-function change. Verdicts: clean | complete | review | incomplete;
+CLI exit 1 on incomplete (--strict escalates review). Engine-ceiling
+benchmark in-suite: 10 seeded incomplete-agent trials, 32/32 missed sites
+caught, 0 false accusations, ~45ms mean; plus a Python fixture proving the
+no-compiler case (missed caller passes py_compile, verify reports the
+exact line). Mason `/review` integration and L4 flows remain open.
 
 Each phase gates on its oracle, not on feature completeness. No op ships
 authoritative language before its oracle runs on at least the existing eval

@@ -68,6 +68,20 @@ top out at 0.62–0.75 recall on change-impact tasks even on frontier models
    reported for review, not auto-failed (`--strict` escalates). Measured at
    the engine ceiling on injected Go violations: 10/10 detected, 0 false
    positives (see the injection benchmark in the test suite).
+8. **Verify the diff, not the vibes.** `prism verify` is the deterministic
+   check of a change's completeness — built for agent-authored diffs. It
+   detects the contract changes in a diff (signature changes, renames),
+   computes each one's required change set through the graph, and reports
+   every required site the diff did not touch — line-precise where the AST
+   records the call. Plus: the affected tests to run, cross-component
+   dependency candidates, and introduced arch violations. Fail-closed: a
+   contract change whose blast radius cannot be computed yields `review`,
+   never a silent pass. Exit 1 on incomplete — the CI gate for the agentic
+   era, and the piece no compiler covers in dynamic languages (measured: a
+   Python signature change with a forgotten caller passes `py_compile`
+   everywhere; `prism verify` reports the exact missed line). Engine
+   ceiling on seeded incomplete changes: 32/32 missed sites caught across
+   10 trials, 0 false accusations, ~45 ms per verification.
 
 **Use cases** — the questions Prism answers in one call:
 
@@ -324,6 +338,7 @@ prism doctor [dir]
 prism map [dir] [--depth N] [--component X] [--expand 'from->to'] [--json]
 prism cycles [dir] [--depth N] [--json]
 prism arch [dir] [--deny 'from -> to'] [--strict] [--json]   # exit 1 on violation
+prism verify [dir] [--base REF] [--strict] [--json]          # exit 1 if incomplete
 
 prism query <task> [dir] \
   --terms a,b,c \
