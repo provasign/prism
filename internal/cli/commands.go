@@ -53,6 +53,11 @@ Usage:
                                   [--expand 'A->B'] [--json])
   prism cycles [dir]              Dependency cycles with per-edge evidence
                                   ([--depth N] [--tests] [--json])
+  prism arch [dir]                Validate declared architecture rules
+                                  (arch_deny: "<from> -> <to>" in prism.yaml)
+                                  against the component view; violations cite
+                                  file:line sites; exit 1 on violation — a CI
+                                  gate ([--deny 'A -> B'] [--depth N] [--json])
   prism query <task> [dir]        Find ranked context for a task; bug-fix/implement
                                   tasks get line-numbered source windows + per-anchor
                                   callers/covering tests (edit-ready)
@@ -144,6 +149,8 @@ func Run(args []string) int {
 		return cmdMap(rest)
 	case "cycles":
 		return cmdCycles(rest)
+	case "arch", "arch-check":
+		return cmdArch(rest)
 	case "query":
 		return cmdQuery(rest)
 	case "read":
@@ -402,6 +409,7 @@ layers, in priority order.
 | Cleanups / "is X still used / can I delete it?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
+| Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, run prism change-impact first — even if the change
@@ -575,6 +583,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
+| Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 | Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — line-numbered windows + per-anchor callers/tests |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |

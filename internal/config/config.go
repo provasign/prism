@@ -30,6 +30,12 @@ type Config struct {
 	// AgentMode controls which steering instructions are written by prism init.
 	// Valid values: "mcp", "cli", "both" (default).
 	AgentMode string
+	// ArchDeny holds declared architecture rules, one per `arch_deny:` line
+	// in prism.yaml: "<from> -> <to>" where each side is a component name
+	// (directory), a prefix (covers subdirectories), a glob, or "*".
+	// Validated by prism arch / prism_arch_check against the induced
+	// component view; every violation cites concrete file:line sites.
+	ArchDeny []string
 }
 
 // Default returns config values with environment overrides applied.
@@ -87,6 +93,14 @@ func LoadFromDir(dir string) (*Config, error) {
 			switch v {
 			case AgentModeMCP, AgentModeCLI, AgentModeBoth:
 				c.AgentMode = v
+			}
+		case "arch_deny":
+			// Repeatable. Inline comments allowed after '#'.
+			if j := strings.IndexByte(v, '#'); j >= 0 {
+				v = strings.TrimSpace(v[:j])
+			}
+			if v != "" {
+				c.ArchDeny = append(c.ArchDeny, v)
 			}
 		}
 	}

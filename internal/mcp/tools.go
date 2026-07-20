@@ -219,6 +219,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolMap(ctx, args)
 	case "prism_cycles":
 		return h.toolCycles(ctx, args)
+	case "prism_arch_check":
+		return h.toolArchCheck(ctx, args)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", name)
 	}

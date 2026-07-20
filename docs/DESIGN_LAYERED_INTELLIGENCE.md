@@ -153,9 +153,20 @@ poisoned test file the default view must exclude). Corpus-level oracle runs
 on the eval repositories remain open — no public accuracy claim for views
 until they exist.
 
-**Phase 2 — boundary + rules.** `prism_api_surface` (Go precise oracle
-first), `prism_arch_check` with rule import; `prism_query` routing for
-"map/architecture/structure/cycle"-shaped tasks; Mason: render views to the
+**Phase 2 — boundary + rules. [arch_check SHIPPED]** `prism_arch_check` /
+`prism arch`: `arch_deny: "<from> -> <to>"` rules in prism.yaml (component
+name, prefix, glob, or `*` per side) validated against the induced view;
+every violation cites concrete file:line sites; exit 1 = CI gate. Tier-aware
+gating shipped after the first live run: an interface-dispatch call
+attributed across a boundary (dependency inversion read backwards, exactly
+the ranking->mcp semanticAdapter case in this repo) produced a
+heuristic-tier violation — those are now `needsReview` (status `review`,
+exit 0) rather than build breaks; `--strict` escalates. Engine-ceiling
+injection benchmark in-suite: layered Go module, 10 seeded upward
+violations — 10/10 detected, 0 false positives, sub-millisecond check.
+Still open in Phase 2: `prism_api_surface` (Go precise oracle first),
+rule import from import-linter / dependency-cruiser / ArchUnit,
+`prism_query` routing for map-shaped tasks; Mason: render views to the
 user (payload isolation), teach `graphIntent` the new shapes.
 
 **Phase 3 — diff intelligence.** View-level projection of `change_impact`

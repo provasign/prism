@@ -59,6 +59,15 @@ top out at 0.62–0.75 recall on change-impact tasks even on frontier models
    architecture *proof surface*, not a narrative repo map. View results claim
    `complete-at-tier`, never `closed` (see
    `docs/DESIGN_LAYERED_INTELLIGENCE.md`).
+7. **Declared architecture, enforced.** `prism arch` validates `arch_deny:
+   "<from> -> <to>"` rules from prism.yaml against the induced view — every
+   violation cites the exact `file:line` crossings, and exit 1 makes it a CI
+   gate. Tier-aware by design: violations backed by structural-or-stronger
+   evidence fail the build; heuristic-only evidence (e.g. interface dispatch
+   attributed across a boundary — dependency inversion read backwards) is
+   reported for review, not auto-failed (`--strict` escalates). Measured at
+   the engine ceiling on injected Go violations: 10/10 detected, 0 false
+   positives (see the injection benchmark in the test suite).
 
 **Use cases** — the questions Prism answers in one call:
 
@@ -314,6 +323,7 @@ prism doctor [dir]
 
 prism map [dir] [--depth N] [--component X] [--expand 'from->to'] [--json]
 prism cycles [dir] [--depth N] [--json]
+prism arch [dir] [--deny 'from -> to'] [--strict] [--json]   # exit 1 on violation
 
 prism query <task> [dir] \
   --terms a,b,c \

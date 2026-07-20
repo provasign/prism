@@ -118,6 +118,74 @@ func (h *Handler) toolCycles(ctx context.Context, args map[string]any) (any, err
 	}, nil
 }
 
+// toolArchCheck validates declared architecture rules (arch_deny lines in
+// prism.yaml, optionally extended with a deny=[...] arg) against the induced
+// component view. Deterministic; every violation cites concrete file:line
+// sites and the tier of its weakest evidence. Dispatchable (CLI/CI/direct
+// invoke), not advertised in tools/list.
+func (h *Handler) toolArchCheck(ctx context.Context, args map[string]any) (any, error) {
+	raw := append([]string(nil), h.Cfg.ArchDeny...)
+	if extra, ok := args["deny"].([]any); ok {
+		for _, r := range extra {
+			if s, ok := r.(string); ok && s != "" {
+				raw = append(raw, s)
+			}
+		}
+	}
+	if len(raw) == 0 {
+		return map[string]any{
+			"status": "no-rules",
+			"note":   "no architecture rules declared — add arch_deny: \"<from> -> <to>\" lines to prism.yaml",
+		}, nil
+	}
+	rules, err := view.ParseRules(raw)
+	if err != nil {
+		return nil, fmt.Errorf("arch rules: %w", err)
+	}
+	v, err := h.buildView(ctx, intArg(args, "depth", 0), intArg(args, "max_sites", 5),
+		boolArg(args, "include_tests"))
+	if err != nil {
+		return nil, err
+	}
+	all := v.CheckRules(rules)
+	h.Ledger.RecordCall("prism_arch_check")
+
+	// Tier-aware gating: a violation whose ONLY evidence is heuristic-tier
+	// (e.g. an interface-dispatch call attributed to a concrete type across
+	// the boundary — the dependency-inversion pattern read backwards) is a
+	// review item, not an automatic build break. Structural or stronger
+	// evidence fails the gate. strict=true escalates review items to fail.
+	strict := boolArg(args, "strict")
+	var violations, needsReview []view.Violation
+	for _, viol := range all {
+		if viol.MinTier == "heuristic" && !strict {
+			needsReview = append(needsReview, viol)
+		} else {
+			violations = append(violations, viol)
+		}
+	}
+	status := "pass"
+	switch {
+	case len(violations) > 0:
+		status = "fail"
+	case len(needsReview) > 0:
+		status = "review"
+	}
+	ruleStrs := make([]string, 0, len(rules))
+	for _, r := range rules {
+		ruleStrs = append(ruleStrs, r.Raw)
+	}
+	return map[string]any{
+		"status":       status,
+		"rules":        ruleStrs,
+		"violations":   violations,
+		"needsReview":  needsReview,
+		"checkedEdges": len(v.Edges),
+		"scope":        scopeLine(v),
+		"completeness": completenessAtTier(v.TierSummary),
+	}, nil
+}
+
 func (h *Handler) buildView(ctx context.Context, depth, maxSites int, includeTests bool) (*view.View, error) {
 	symbols, edges, err := h.Grove.SnapshotGraph(ctx)
 	if err != nil {

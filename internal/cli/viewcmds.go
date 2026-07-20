@@ -101,6 +101,115 @@ func cmdCycles(args []string) int {
 	return 0
 }
 
+// cmdArch validates declared architecture rules against the component view.
+// Exit codes: 0 = pass (or no rules), 1 = violations found (CI-gateable),
+// 2 = usage/config error.
+func cmdArch(args []string) int {
+	dir := "."
+	jsonOut := false
+	callArgs := map[string]any{}
+	var extraDeny []any
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; a {
+		case "--depth":
+			if i+1 < len(args) {
+				var n int
+				fmt.Sscanf(args[i+1], "%d", &n)
+				callArgs["depth"] = n
+				i++
+			}
+		case "--deny":
+			if i+1 < len(args) {
+				extraDeny = append(extraDeny, args[i+1])
+				i++
+			}
+		case "--tests":
+			callArgs["include_tests"] = true
+		case "--strict":
+			callArgs["strict"] = true
+		case "--json":
+			jsonOut = true
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	if len(extraDeny) > 0 {
+		callArgs["deny"] = extraDeny
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_arch_check", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "arch:", err)
+		return 2
+	}
+	m := toMap(out)
+	if jsonOut {
+		printJSON(out)
+	} else {
+		renderArchText(m)
+	}
+	if s, _ := m["status"].(string); s == "fail" {
+		return 1
+	}
+	return 0
+}
+
+func renderArchText(m map[string]any) {
+	if m == nil {
+		fmt.Println("arch: empty result")
+		return
+	}
+	status, _ := m["status"].(string)
+	if status == "no-rules" {
+		fmt.Println(m["note"])
+		return
+	}
+	rules := asSliceAny(m["rules"])
+	fmt.Printf("arch: %s — %d rules checked against %v induced edges\n",
+		status, len(rules), m["checkedEdges"])
+	if s, _ := m["scope"].(string); s != "" {
+		fmt.Printf("scope: %s\n", s)
+	}
+	renderViolations(asSliceAny(m["violations"]), "VIOLATION")
+	review := asSliceAny(m["needsReview"])
+	if len(review) > 0 {
+		fmt.Println("\nheuristic-tier evidence — review, not an automatic failure" +
+			" (interface dispatch can attribute a call across the boundary;" +
+			" --strict escalates):")
+		renderViolations(review, "NEEDS REVIEW")
+	}
+	if status == "pass" {
+		fmt.Println("no violations")
+	}
+	fmt.Println(m["completeness"])
+}
+
+func renderViolations(list []any, label string) {
+	for _, viol := range list {
+		vm, _ := viol.(map[string]any)
+		if vm == nil {
+			continue
+		}
+		em, _ := vm["edge"].(map[string]any)
+		if em == nil {
+			continue
+		}
+		fmt.Printf("\n%s of \"%v\"  [tier: %v]\n", label, vm["rule"], vm["minTier"])
+		fmt.Printf("  %v -> %v  %v crossing(s) (%s)\n", em["from"], em["to"],
+			em["weight"], kindLine(em["kinds"]))
+		for _, s := range asSliceAny(em["sites"]) {
+			sm, _ := s.(map[string]any)
+			if sm == nil {
+				continue
+			}
+			fmt.Printf("    %s:%v  %s -> %s  (%s, %s)\n", sm["fromFile"],
+				sm["fromLine"], sm["fromSymbol"], sm["toSymbol"],
+				sm["kind"], sm["tier"])
+		}
+	}
+}
+
 // toMap round-trips a tool result through JSON into a generic map so the
 // renderers below work on the same shape the MCP surface serves.
 func toMap(v any) map[string]any {

@@ -4,3 +4,11 @@ version: 1
 #               # model: "claude-sonnet-4-6"
 profile: "default"
 agent_mode: "both"
+
+# Declared architecture — enforced by `prism arch` (exit 1 on violation).
+# Each violation cites the exact file:line crossings.
+arch_deny: internal/grove -> internal/*    # engine wrapper is a leaf
+arch_deny: internal/session -> internal/*  # session tracking is a leaf
+arch_deny: internal/config -> internal/*   # config is a leaf
+arch_deny: internal/ranking -> internal/mcp  # ranking must not know the server
+arch_deny: internal/* -> internal/cli      # nothing imports the CLI
