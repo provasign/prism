@@ -1679,6 +1679,12 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			"contract, and this change-set is the project-local closure only — call sites " +
 			"typed against the external supertype are not included"
 	}
+	// Anchor-selection guard: a precisely-computed answer to the wrong anchor
+	// is still wrong. If a same-named symbol holds a strictly larger closed
+	// family (interface vs concrete implementation), say so.
+	if hint := h.widerAnchorHint(ctx, r); hint != nil {
+		out["widerAnchor"] = hint
+	}
 	return out, nil
 }
 
