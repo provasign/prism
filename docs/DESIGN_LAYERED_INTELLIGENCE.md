@@ -187,7 +187,26 @@ CLI exit 1 on incomplete (--strict escalates review). Engine-ceiling
 benchmark in-suite: 10 seeded incomplete-agent trials, 32/32 missed sites
 caught, 0 false accusations, ~45ms mean; plus a Python fixture proving the
 no-compiler case (missed caller passes py_compile, verify reports the
-exact line). Mason `/review` integration and L4 flows remain open.
+exact line).
+
+Corpus-scale measurement (2026-07-20, 9 real corpora x 3 seeded
+incomplete-edit trials + complete-update control each): the first run
+exposed three fail-open holes, all fixed — (1) empty post-edit blast
+radius read as "complete" (signature-sensitive binding severs the very
+links verify needs; now -> review), (2) work-roots inside a git repo
+silently path-mismatched every site (guava; now prefix-normalized),
+(3) declaration-block member changes (TS/Go interface bodies) were never
+seeded (now -> review). Post-fix: verdict-level fail-closed is 36/36 —
+zero false "complete" — but site-level catch is 137/420 forgotten files
+(guava 89%, django 100%, jackson-serialize 9%): where the edit severs
+old-contract binding, the post-edit graph cannot enumerate the old
+contract's dependents, so verify under-lists (or honestly reviews). The
+open engineering item is BASE-CONTRACT enumeration: compute the required
+set from the base-side symbol (preview parse + signature-matched family
+over unchanged files), not from the mutated declaration. Until it lands,
+verify's contract is: verdicts are trustworthy (fail-closed, measured);
+missed-site LISTS are complete only where binding survives the edit.
+Mason `/review` integration and L4 flows remain open.
 
 Each phase gates on its oracle, not on feature completeness. No op ships
 authoritative language before its oracle runs on at least the existing eval
