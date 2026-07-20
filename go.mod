@@ -3,7 +3,7 @@ module github.com/provasign/prism
 go 1.26
 
 require (
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/provasign/grove v0.21.0
 )
 
