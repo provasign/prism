@@ -136,23 +136,27 @@ func (h *Handler) taskPrepare(ctx context.Context, task string, args map[string]
 		default:
 			continue
 		}
-		key := sym.FilePath + ":" + sym.Name
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		impact, err := h.changeImpactFor(ctx, sym)
+		anchorSym, impact, err := h.obligationImpact(ctx, sym)
 		if err != nil {
 			obligationNotes = append(obligationNotes,
 				displayQN(sym)+": impact not computable ("+err.Error()+")")
 			continue
 		}
+		// Dedup by the resolved anchor's qualified name — retrieval surfaces
+		// the same interface method under several concrete receivers, and
+		// obligationImpact folds them onto one interface anchor; without this
+		// they burn distinct slots on identical blast radii.
+		key := displayQN(anchorSym)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		ob := taskObligation{
-			Symbol:        sym.Name,
-			QualifiedName: displayQN(sym),
-			File:          sym.FilePath,
-			Line:          sym.Span.Start,
-			Kind:          sym.Kind,
+			Symbol:        anchorSym.Name,
+			QualifiedName: displayQN(anchorSym),
+			File:          anchorSym.FilePath,
+			Line:          anchorSym.Span.Start,
+			Kind:          anchorSym.Kind,
 			Completeness:  impact.Completeness,
 		}
 		if ob.Completeness == "" {
@@ -164,7 +168,7 @@ func (h *Handler) taskPrepare(ctx context.Context, task string, args map[string]
 		required = append(required, impact.Callers...)
 		required = append(required, impact.DeclaringTypes...)
 		for _, site := range required {
-			if site.FilePath == sym.FilePath && site.Span.Start == sym.Span.Start {
+			if site.FilePath == anchorSym.FilePath && site.Span.Start == anchorSym.Span.Start {
 				continue // the anchor itself
 			}
 			ob.SiteCount++
@@ -284,6 +288,81 @@ func (h *Handler) taskVerify(ctx context.Context, task string, changed []string,
 // which an edit inside the symbol body will not hit exactly.
 func spanFileTouched(changed map[string][]lineRange, file string) bool {
 	return len(changed[file]) > 0
+}
+
+// obligationSiteCount is the blast-radius size of a change_impact result:
+// override/implementation family + callers + declaring-type sites.
+func obligationSiteCount(r *grove.ChangeImpactResult) int {
+	if r == nil {
+		return 0
+	}
+	return len(r.Family) + len(r.Callers) + len(r.DeclaringTypes)
+}
+
+// maxAnchorCandidates bounds how many same-named receiver types
+// obligationImpact will probe when hunting the family-maximal anchor.
+const maxAnchorCandidates = 8
+
+// obligationImpact resolves the best obligation anchor for a seed method at
+// PREPARE time. Retrieval surfaces concrete implementations (e.g.
+// DataSourceHandler.QueryData, whose change_impact is only its own few
+// callers), but the contract that actually fans out is the interface method
+// (Service.QueryData, whose change_impact walks down to every implementer).
+// Go's structural typing leaves no override edge from the concrete method up
+// to the interface, so we cannot follow a graph edge; instead, among all
+// symbols sharing the method's leaf name, we pick the one with the largest
+// CLOSED blast radius — which is the interface by construction. This runs
+// only for prepare's anticipatory obligations; verify stays pinned to the
+// exact changed symbol (changeImpactFor), never redirected.
+func (h *Handler) obligationImpact(ctx context.Context, sym grove.SymbolRecord) (grove.SymbolRecord, *grove.ChangeImpactResult, error) {
+	base, err := h.changeImpactFor(ctx, sym)
+	if err != nil {
+		return sym, nil, err
+	}
+	bestSym, best := sym, base
+
+	// Only hunt for a wider anchor when the seed shares its name with several
+	// receiver types — the signature of an interface family or an overloaded
+	// name. A unique method name has nothing to fold onto.
+	cands, rerr := h.Grove.Resolve(ctx, sym.Name)
+	if rerr != nil || len(cands) < 3 {
+		return bestSym, best, nil
+	}
+	tried := map[string]bool{displayQN(sym): true}
+	probes := 0
+	for _, c := range cands {
+		if probes >= maxAnchorCandidates {
+			break
+		}
+		qn := c.Name
+		if qn == "" || tried[qn] || c.TestDouble {
+			continue
+		}
+		// Same method leaf only — never fold onto an unrelated symbol that
+		// merely shares a substring.
+		if leafName(qn) != sym.Name {
+			continue
+		}
+		tried[qn] = true
+		probes++
+		r, err := h.Grove.ChangeImpact(ctx, qn)
+		if err != nil || len(r.Declarations) == 0 {
+			continue
+		}
+		// Prefer a strictly larger CLOSED family; a heuristic or open set
+		// never displaces a smaller closed one (tier honesty).
+		if r.Completeness == "closed" && obligationSiteCount(r) > obligationSiteCount(best) {
+			best, bestSym = r, r.Declarations[0]
+		}
+	}
+	return bestSym, best, nil
+}
+
+func leafName(qn string) string {
+	if i := strings.LastIndexByte(qn, '.'); i >= 0 && i+1 < len(qn) {
+		return qn[i+1:]
+	}
+	return qn
 }
 
 func (h *Handler) loadTaskPackage() *taskPackage {
