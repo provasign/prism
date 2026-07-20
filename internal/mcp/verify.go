@@ -200,6 +200,22 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 				displayQN(sd.sym)+" — impact could not be computed: "+err.Error())
 			continue
 		}
+		if len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes) == 0 {
+			// FAIL CLOSED: an EMPTY blast radius for a signature change is
+			// almost always the edit itself severing resolution — under
+			// signature-sensitive binding (Java/TS), overrides and callers of
+			// the OLD contract no longer match the NEW signature, so the
+			// post-edit graph honestly reports nobody depending on it
+			// (measured: a mutated SettableBeanProperty.set returned
+			// family=0 callers=0 while 22 real sites depended on the old
+			// contract). A genuinely uncalled method lands here too; review
+			// is the honest verdict for both.
+			unverifiedSeeds = append(unverifiedSeeds,
+				displayQN(sd.sym)+" — the post-edit graph shows no overrides, callers, or declaring "+
+					"types for the NEW signature; dependents of the OLD signature cannot be enumerated "+
+					"from this graph (or the method is uncalled) — review its old-contract dependents manually")
+			continue
+		}
 		if impact.Completeness != "" && impact.Completeness != "closed" {
 			notes = append(notes, displayQN(sd.sym)+": impact completeness is "+impact.Completeness)
 		}
