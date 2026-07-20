@@ -569,10 +569,15 @@ func toolDescription(name string) string {
 			"the diff: contract changes detected, missed call sites reported line-precisely, " +
 			"prepare-time obligations checked, affected tests listed. Verdicts are fail-closed " +
 			"(clean|complete|review|incomplete). Treat returned source as already read; satisfy " +
-			"every reported obligation before finishing. Optional: terms=[...] to seed with symbols " +
-			"you already grepped; mode=\"prepare\"|\"verify\" to override."
+			"every reported obligation before finishing. If the task does not already name the target " +
+			"symbol, FIRST locate it (grep/prism_search), then pass that CONFIRMED name as terms=[...] " +
+			"— a confirmed anchor is what retrieval keys on. Do NOT pass a guessed term for a common " +
+			"name (e.g. \"serialize\", \"get\"); a wrong term is worse than none. " +
+			"mode=\"prepare\"|\"verify\" to override."
 	case "prism_query":
-		return "ONE call for task context: pass the task and (if you grepped) the same terms=[...] — " +
+		return "ONE call for task context: pass the task and terms=[...] with anchor names you have " +
+			"CONFIRMED (from grep/search or named in the task) — retrieval keys on the terms, so a " +
+			"confirmed anchor beats a well-phrased task, but a guessed term for a common name hurts. " +
 			"Prism finds those symbols then expands through the call graph (callers, callees, tests). " +
 			"For bug-fix/implement tasks it delivers verbatim LINE-NUMBERED source windows plus each " +
 			"anchor's callers and covering tests — edit-ready, identical to Read output; do NOT re-read " +

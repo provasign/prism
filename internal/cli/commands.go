@@ -313,8 +313,10 @@ explaining — call the prism tool with the complete task:
 It returns edit-ready line-numbered source, each anchor's callers and tests,
 and the CHANGE OBLIGATIONS: every site that must be handled if you change
 those contracts, type-resolved and completeness-tagged. Treat returned
-source as already read. If you already grepped an anchor, pass
-terms=["<anchor>"] for grep-precision seeding.
+source as already read. If the task does not already name the target
+symbol, locate it first (grep/prism_search) and pass that CONFIRMED name as
+terms=[...] — retrieval keys on the anchor. Do not pass a guessed term for a
+common name (e.g. "serialize", "get"); a wrong term is worse than none.
 
 After editing, call the SAME tool again with the changed files:
 
