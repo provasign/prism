@@ -31,15 +31,30 @@ import (
 
 type lineRange struct{ start, end int }
 
+// gitPrefix returns the work-root's path relative to the git repository root
+// ("" when they coincide). Diff and show paths are repo-root-relative; every
+// symbol path Prism holds is work-root-relative — a corpus rooted in a
+// subdirectory (guava/guava) silently mismatches every path without this
+// (measured: verify passed "complete" on guava with 38 forgotten files
+// because gitShow returned nil for every changed file).
+func gitPrefix(root string) string {
+	out, err := exec.Command("git", "-C", root, "rev-parse", "--show-prefix").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // gitChangedRanges parses `git diff --unified=0 <base>` into after-side
-// changed line ranges per file. A pure deletion is recorded as a one-line
-// touch marker at its after-side position.
+// changed line ranges per file (work-root-relative paths). A pure deletion
+// is recorded as a one-line touch marker at its after-side position.
 func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 	cmd := exec.Command("git", "-C", root, "diff", "--unified=0", "--no-color", base, "--", ".")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("git diff %s: %w", base, err)
 	}
+	prefix := gitPrefix(root)
 	changed := map[string][]lineRange{}
 	var cur string
 	sc := bufio.NewScanner(strings.NewReader(string(out)))
@@ -48,7 +63,7 @@ func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 		line := sc.Text()
 		switch {
 		case strings.HasPrefix(line, "+++ b/"):
-			cur = strings.TrimPrefix(line, "+++ b/")
+			cur = strings.TrimPrefix(strings.TrimPrefix(line, "+++ b/"), prefix)
 		case strings.HasPrefix(line, "+++ /dev/null"):
 			cur = "" // deleted file: no after side to touch-check
 		case strings.HasPrefix(line, "@@ ") && cur != "":
@@ -80,7 +95,7 @@ func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 }
 
 func gitShow(root, base, relPath string) []byte {
-	out, err := exec.Command("git", "-C", root, "show", base+":"+relPath).Output()
+	out, err := exec.Command("git", "-C", root, "show", base+":"+gitPrefix(root)+relPath).Output()
 	if err != nil {
 		return nil // new file at base, or not tracked
 	}
@@ -171,6 +186,21 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		for _, c := range fd.Changed {
 			if c.SignatureChanged && c.After != nil {
 				addSeed(*c.After, "signature of "+displayQN(*c.After)+" changed")
+				continue
+			}
+			// A pure declaration block (Go/TS interface, type alias) holds
+			// member SIGNATURES as its body — its members are not separate
+			// symbols, so a member's signature change surfaces only as a
+			// body change on the block. That IS a contract change; routing
+			// it through addSeed lands it in unverifiedSeeds -> "review"
+			// (measured: a mutated Driver.ts interface member passed
+			// verify as "complete" without this — every implementation of
+			// the member was a required site, none flagged).
+			if c.BodyChanged && c.After != nil {
+				switch c.After.Kind {
+				case "interface", "type", "trait", "protocol":
+					addSeed(*c.After, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
+				}
 			}
 		}
 		for _, c := range fd.Renamed {
