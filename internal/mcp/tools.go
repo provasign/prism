@@ -177,6 +177,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		}
 	}
 	switch name {
+	case "prism":
+		return h.toolTask(ctx, args)
 	case "prism_query":
 		return h.toolQuery(ctx, args)
 	case "prism_read":
@@ -252,6 +254,7 @@ func sameRoot(dir, root string) bool {
 // ToolSchemas returns the schema list for tools/list.
 func ToolSchemas() []map[string]any {
 	names := []string{
+		"prism",
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
 		"prism_missing_implementations", "prism_untested_surface", "prism_dead_code",
@@ -289,6 +292,39 @@ var contextUsedProp = map[string]any{
 func toolSchema(name string) map[string]any {
 	open := map[string]any{"type": "object", "additionalProperties": true}
 	switch name {
+	case "prism":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"task"},
+			"properties": map[string]any{
+				"task": map[string]any{
+					"type":        "string",
+					"description": "The complete task, in the user's terms (e.g. \"Allow users to revoke an active API token\"). Same string before and after editing.",
+				},
+				"changed_files": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "AFTER editing: the files you changed (repo-relative). Presence switches to verify; the git diff is authoritative, this is a hint.",
+				},
+				"mode": map[string]any{
+					"type":        "string",
+					"enum":        []string{"prepare", "verify"},
+					"description": "Override auto mode resolution (changed_files present = verify, else prepare).",
+				},
+				"terms": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "Optional: symbols/terms you already located (grep-precision seeding).",
+				},
+				"base": map[string]any{
+					"type":        "string",
+					"description": "verify: git base to diff against. Default HEAD.",
+				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
+				"budget":       map[string]any{"type": "integer", "description": "Token budget for prepare delivery. Default 8000."},
+			},
+		}
 	case "prism_query":
 		return map[string]any{
 			"type":     "object",
@@ -524,6 +560,17 @@ func toolSchema(name string) map[string]any {
 
 func toolDescription(name string) string {
 	switch name {
+	case "prism":
+		return "THE default tool for any codebase task — call it FIRST, before grep or file reads. " +
+			"Two moments: (1) BEFORE editing, prism(task=\"<the full task>\") returns edit-ready " +
+			"line-numbered source, each anchor's callers/tests, and the CHANGE OBLIGATIONS — every " +
+			"site that must be handled if you change those contracts, type-resolved and " +
+			"completeness-tagged. (2) AFTER editing, prism(task=..., changed_files=[...]) verifies " +
+			"the diff: contract changes detected, missed call sites reported line-precisely, " +
+			"prepare-time obligations checked, affected tests listed. Verdicts are fail-closed " +
+			"(clean|complete|review|incomplete). Treat returned source as already read; satisfy " +
+			"every reported obligation before finishing. Optional: terms=[...] to seed with symbols " +
+			"you already grepped; mode=\"prepare\"|\"verify\" to override."
 	case "prism_query":
 		return "ONE call for task context: pass the task and (if you grepped) the same terms=[...] — " +
 			"Prism finds those symbols then expands through the call graph (callers, callees, tests). " +
