@@ -61,7 +61,12 @@ type taskPackage struct {
 // obligation (the count is always exact even when sites are truncated).
 const (
 	maxObligationAnchors = 5
-	maxObligationSites   = 60
+	// maxObligationSites must comfortably exceed real blast radii: the
+	// benchmark corpus tops out at 310 required sites, and a truncated
+	// obligation list silently caps an agent's achievable recall (measured:
+	// a 60-site cap held Haiku to 0.65 recall on a 108-site change that the
+	// direct change_impact arm completed at 0.98).
+	maxObligationSites   = 500
 )
 
 func (h *Handler) taskPackagePath() string {
