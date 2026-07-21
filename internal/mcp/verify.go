@@ -433,6 +433,15 @@ func (h *Handler) baseContractImpact(ctx context.Context, sym grove.SymbolRecord
 	if baseParams == "" || baseParams == paramListNamed(sym.Signature, sym.Name) {
 		return nil // no signature to match, or the params did not actually change
 	}
+	// Type variables of the base declaration (Java/TS generics): a base
+	// parameter that references one matches ANY concrete type at that
+	// position in an override — `serialize(T value, ...)` must match
+	// `serialize(String value, ...)` (measured: verbatim matching held
+	// jackson-serialize to a 12% catch; every override binds T).
+	typeVars := before.TypeParameters
+	if len(typeVars) == 0 {
+		typeVars = sym.TypeParameters
+	}
 	cands, err := h.Grove.SearchSymbols(ctx, sym.Name, 200)
 	if err != nil {
 		return nil
@@ -452,7 +461,7 @@ func (h *Handler) baseContractImpact(ctx context.Context, sym grove.SymbolRecord
 		if c.FilePath == sym.FilePath && c.Span.Start == sym.Span.Start {
 			continue // the mutated seed itself
 		}
-		if paramListNamed(c.Signature, sym.Name) != baseParams {
+		if !paramsMatch(baseParams, paramListNamed(c.Signature, sym.Name), sym.Language, typeVars) {
 			continue
 		}
 		key := c.FilePath + ":" + fmt.Sprint(c.Span.Start)
@@ -566,6 +575,106 @@ func methodLeafInSig(sig string) string {
 		}
 	}
 	return ""
+}
+
+// paramsMatch compares two normalized parameter lists position-by-position.
+// Exact string equality passes; otherwise both lists must have the same
+// arity and each position must match, where a base parameter that
+// references one of the declaration's type variables (or, absent declared
+// ones, a lone single-uppercase-letter token — the T/K/V convention) is a
+// wildcard for that position.
+func paramsMatch(base, cand, lang string, typeVars []string) bool {
+	if base == cand {
+		return true
+	}
+	if cand == "" {
+		return false
+	}
+	bp, cp := splitParams(base), splitParams(cand)
+	if len(bp) != len(cp) {
+		return false
+	}
+	isVar := func(tok string) bool {
+		for _, tv := range typeVars {
+			if tok == tv {
+				return true
+			}
+		}
+		return len(typeVars) == 0 && len(tok) == 1 && tok[0] >= 'A' && tok[0] <= 'Z'
+	}
+	for i := range bp {
+		if bp[i] == cp[i] {
+			continue
+		}
+		// Parameter NAMES differ freely across an override family
+		// (`SerializerProvider serializers` vs `SerializerProvider
+		// provider` — measured to exclude every jackson-serialize
+		// override); compare the TYPE portion only.
+		if paramType(bp[i], lang) == paramType(cp[i], lang) {
+			continue
+		}
+		wild := false
+		for _, tok := range strings.FieldsFunc(bp[i], func(r rune) bool {
+			return !(r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+		}) {
+			if isVar(tok) {
+				wild = true
+				break
+			}
+		}
+		if !wild {
+			return false
+		}
+	}
+	return true
+}
+
+// paramType reduces one normalized parameter to its type portion, by
+// language convention: Java/C-family "Type name" -> drop the trailing
+// identifier; Go "name Type" -> drop the leading identifier; TS/Swift
+// "name: Type" -> the text after the colon; otherwise the parameter as-is
+// (Python parameters carry no types worth comparing).
+func paramType(p, lang string) string {
+	p = strings.TrimSpace(p)
+	if i := strings.Index(p, ":"); i >= 0 {
+		return strings.TrimSpace(p[i+1:])
+	}
+	fields := strings.Fields(p)
+	if len(fields) < 2 {
+		return p
+	}
+	switch lang {
+	case "go":
+		return strings.Join(fields[1:], " ")
+	case "java", "kotlin", "csharp", "cpp", "c":
+		return strings.Join(fields[:len(fields)-1], " ")
+	}
+	return p
+}
+
+// splitParams splits a normalized parameter list on top-level commas
+// (generics <>, nested parens, and brackets do not split).
+func splitParams(list string) []string {
+	if strings.TrimSpace(list) == "" {
+		return nil
+	}
+	var out []string
+	depth, start := 0, 0
+	for i := 0; i < len(list); i++ {
+		switch list[i] {
+		case '<', '(', '[':
+			depth++
+		case '>', ')', ']':
+			depth--
+		case ',':
+			if depth == 0 {
+				out = append(out, strings.TrimSpace(list[start:i]))
+				start = i + 1
+			}
+		}
+	}
+	out = append(out, strings.TrimSpace(list[start:]))
+	return out
 }
 
 func isIdentByte(b byte) bool {
