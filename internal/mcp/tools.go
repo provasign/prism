@@ -569,7 +569,10 @@ func toolDescription(name string) string {
 			"the diff: contract changes detected, missed call sites reported line-precisely, " +
 			"prepare-time obligations checked, affected tests listed. Verdicts are fail-closed " +
 			"(clean|complete|review|incomplete). Treat returned source as already read; satisfy " +
-			"every reported obligation before finishing. If the task does not already name the target " +
+			"every reported obligation before finishing. NEVER answer a completeness or change-set " +
+			"question from memory or a quick read — an answer not backed by this tool's result on the " +
+			"current index is a guess (measured: un-tooled answers fabricate plausible sites). " +
+			"If the task does not already name the target " +
 			"symbol, FIRST locate it (grep/prism_search), then pass that CONFIRMED name as terms=[...] " +
 			"— a confirmed anchor is what retrieval keys on. Do NOT pass a guessed term for a common " +
 			"name (e.g. \"serialize\", \"get\"); a wrong term is worse than none. " +

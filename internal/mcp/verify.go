@@ -151,14 +151,15 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	// file's base version (parsed in memory) against the current index.
 	type seed struct {
 		sym    grove.SymbolRecord
+		before *grove.SymbolRecord // base-side symbol (old contract), when known
 		reason string
 	}
 	var seeds []seed
 	var unverifiedSeeds []string
-	addSeed := func(sym grove.SymbolRecord, reason string) {
+	addSeed := func(sym grove.SymbolRecord, before *grove.SymbolRecord, reason string) {
 		switch sym.Kind {
 		case "function", "method", "constructor":
-			seeds = append(seeds, seed{sym, reason})
+			seeds = append(seeds, seed{sym, before, reason})
 		case "const", "variable", "field", "document", "file",
 			"decorator", "annotation":
 			// No call-shaped blast radius; renames are rename_plan's job.
@@ -185,7 +186,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		}
 		for _, c := range fd.Changed {
 			if c.SignatureChanged && c.After != nil {
-				addSeed(*c.After, "signature of "+displayQN(*c.After)+" changed")
+				addSeed(*c.After, c.Before, "signature of "+displayQN(*c.After)+" changed")
 				continue
 			}
 			// A pure declaration block (Go/TS interface, type alias) holds
@@ -199,13 +200,13 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			if c.BodyChanged && c.After != nil {
 				switch c.After.Kind {
 				case "interface", "type", "trait", "protocol":
-					addSeed(*c.After, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
+					addSeed(*c.After, c.Before, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
 				}
 			}
 		}
 		for _, c := range fd.Renamed {
 			if c.After != nil {
-				addSeed(*c.After, displayQN(*c.After)+" renamed")
+				addSeed(*c.After, c.Before, displayQN(*c.After)+" renamed")
 			}
 		}
 	}
@@ -223,28 +224,40 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			"reason": sd.reason,
 		})
 		impact, err := h.changeImpactFor(ctx, sd.sym)
+		// BASE-CONTRACT ENUMERATION: the post-edit graph answers "who depends
+		// on the NEW signature" — but the question is who depended on the OLD
+		// one, and the edit itself severs that binding under
+		// signature-sensitive resolution (Java/TS: measured, a mutated
+		// SettableBeanProperty.set returned family=0 callers=0 while 22 real
+		// sites depended on the old contract). The old contract's family
+		// members live in UNCHANGED files and still carry the old signature
+		// in the live index, so they are recoverable: same leaf name + same
+		// base-signature parameter list, plus their (still correctly
+		// resolved) callers.
+		bc := h.baseContractImpact(ctx, sd.sym, sd.before)
 		if err != nil {
-			// FAIL CLOSED: a contract change whose blast radius could not be
-			// computed must not read as "complete".
-			unverifiedSeeds = append(unverifiedSeeds,
-				displayQN(sd.sym)+" — impact could not be computed: "+err.Error())
-			continue
-		}
-		if len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes) == 0 {
-			// FAIL CLOSED: an EMPTY blast radius for a signature change is
-			// almost always the edit itself severing resolution — under
-			// signature-sensitive binding (Java/TS), overrides and callers of
-			// the OLD contract no longer match the NEW signature, so the
-			// post-edit graph honestly reports nobody depending on it
-			// (measured: a mutated SettableBeanProperty.set returned
-			// family=0 callers=0 while 22 real sites depended on the old
-			// contract). A genuinely uncalled method lands here too; review
-			// is the honest verdict for both.
-			unverifiedSeeds = append(unverifiedSeeds,
-				displayQN(sd.sym)+" — the post-edit graph shows no overrides, callers, or declaring "+
-					"types for the NEW signature; dependents of the OLD signature cannot be enumerated "+
-					"from this graph (or the method is uncalled) — review its old-contract dependents manually")
-			continue
+			if bc == nil {
+				// FAIL CLOSED: a contract change whose blast radius could not
+				// be computed must not read as "complete".
+				unverifiedSeeds = append(unverifiedSeeds,
+					displayQN(sd.sym)+" — impact could not be computed: "+err.Error())
+				continue
+			}
+			impact = bc
+			notes = append(notes, displayQN(sd.sym)+": required set enumerated from the BASE contract (old-signature family + callers)")
+		} else if len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes) == 0 {
+			if bc == nil {
+				// FAIL CLOSED: empty blast radius, and the base contract was
+				// not recoverable either (no before-symbol, unparsable
+				// signature, or genuinely uncalled) — review, never a pass.
+				unverifiedSeeds = append(unverifiedSeeds,
+					displayQN(sd.sym)+" — the post-edit graph shows no overrides, callers, or declaring "+
+						"types for the NEW signature; dependents of the OLD signature cannot be enumerated "+
+						"from this graph (or the method is uncalled) — review its old-contract dependents manually")
+				continue
+			}
+			impact = bc
+			notes = append(notes, displayQN(sd.sym)+": required set enumerated from the BASE contract (old-signature family + callers)")
 		}
 		if impact.Completeness != "" && impact.Completeness != "closed" {
 			notes = append(notes, displayQN(sd.sym)+": impact completeness is "+impact.Completeness)
@@ -254,6 +267,13 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		required = append(required, impact.Family...)
 		required = append(required, impact.Callers...)
 		required = append(required, impact.DeclaringTypes...)
+		// Augment a non-empty post-edit set with base-contract survivors the
+		// severed graph no longer links to the seed (Java overload families:
+		// measured 3/30 file catch on jackson-serialize without this).
+		if bc != nil && bc != impact {
+			required = append(required, bc.Family...)
+			required = append(required, bc.Callers...)
+		}
 		for _, site := range required {
 			if site.FilePath == sd.sym.FilePath && site.Span.Start == sd.sym.Span.Start {
 				continue // the seed itself
@@ -395,6 +415,161 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		"archIntroduced":   archIntroduced,
 		"notes":            notes,
 	}, nil
+}
+
+// baseContractImpact enumerates dependents of the OLD contract after a
+// signature change: symbols sharing the seed's leaf name whose signature
+// parameter list still matches the BASE side (the family members in
+// unchanged files kept the old signature), plus each one's callers — both
+// still correctly type-resolved in the live index because their files did
+// not change. Returns nil when the base signature is unknown/unparsable or
+// no old-signature survivor exists. Completeness "base-contract": a
+// signature-matched enumeration, not a closed type-resolved traversal.
+func (h *Handler) baseContractImpact(ctx context.Context, sym grove.SymbolRecord, before *grove.SymbolRecord) *grove.ChangeImpactResult {
+	if before == nil {
+		return nil
+	}
+	baseParams := paramListNamed(before.Signature, sym.Name)
+	if baseParams == "" || baseParams == paramListNamed(sym.Signature, sym.Name) {
+		return nil // no signature to match, or the params did not actually change
+	}
+	cands, err := h.Grove.SearchSymbols(ctx, sym.Name, 200)
+	if err != nil {
+		return nil
+	}
+	const maxFamilyCallers = 60
+	var family []grove.SymbolRecord
+	seenSite := map[string]bool{}
+	for _, c := range cands {
+		if c.Name != sym.Name {
+			continue
+		}
+		switch c.Kind {
+		case "function", "method", "constructor":
+		default:
+			continue
+		}
+		if c.FilePath == sym.FilePath && c.Span.Start == sym.Span.Start {
+			continue // the mutated seed itself
+		}
+		if paramListNamed(c.Signature, sym.Name) != baseParams {
+			continue
+		}
+		key := c.FilePath + ":" + fmt.Sprint(c.Span.Start)
+		if seenSite[key] {
+			continue
+		}
+		seenSite[key] = true
+		family = append(family, c)
+	}
+	if len(family) == 0 {
+		return nil
+	}
+	var callers []grove.SymbolRecord
+	for i, m := range family {
+		if i >= maxFamilyCallers {
+			break
+		}
+		cs, err := h.Grove.Callers(ctx, displayQN(m))
+		if err != nil {
+			continue
+		}
+		for _, c := range cs {
+			key := c.FilePath + ":" + fmt.Sprint(c.Span.Start)
+			if seenSite[key] {
+				continue
+			}
+			seenSite[key] = true
+			callers = append(callers, c)
+		}
+	}
+	return &grove.ChangeImpactResult{
+		Query:        displayQN(sym),
+		Declarations: []grove.SymbolRecord{sym},
+		Family:       family,
+		Callers:      callers,
+		Completeness: "base-contract",
+	}
+}
+
+// paramList extracts a normalized parameter-list string from a signature:
+// the parenthesized list that FOLLOWS the method name where the name is
+// present (Go method signatures put the RECEIVER in the first parens —
+// "func (p *Plugin) QueryData(ctx ...)" — so first-paren extraction compares
+// receivers, which differ across every family member; measured: it zeroed
+// the base-contract family on grafana-querydata), else the first-paren list.
+// Whitespace-collapsed. Family members of one contract share it verbatim
+// across modifiers and receivers; overloads differ in it.
+func paramList(sig string) string {
+	return paramListAfter(sig, methodLeafInSig(sig))
+}
+
+// paramListNamed is paramList anchored on a known method name — preferred
+// when the caller has the symbol (immune to name-detection ambiguity).
+func paramListNamed(sig, name string) string {
+	if p := paramListAfter(sig, name); p != "" || name == "" {
+		return p
+	}
+	return paramList(sig)
+}
+
+func paramListAfter(sig, name string) string {
+	start := 0
+	if name != "" {
+		if k := strings.Index(sig, name+"("); k >= 0 {
+			start = k + len(name)
+		} else if k := strings.Index(sig, name+" ("); k >= 0 {
+			start = k + len(name) + 1
+		}
+	}
+	i := strings.Index(sig[start:], "(")
+	if i < 0 {
+		return ""
+	}
+	i += start
+	// Match the closing paren of THIS list, not the last ')' in the
+	// signature (Go return tuples, TS return types add later parens).
+	depth := 0
+	for j := i; j < len(sig); j++ {
+		switch sig[j] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return strings.Join(strings.Fields(sig[i+1:j]), " ")
+			}
+		}
+	}
+	return ""
+}
+
+// methodLeafInSig makes a best-effort guess at the identifier immediately
+// preceding a '(' that is not the receiver: the LAST "ident(" occurrence
+// wins for Go ("func (p *Plugin) Name(..."), and is simply the name for
+// Java/TS/Python.
+func methodLeafInSig(sig string) string {
+	// The FIRST paren group directly preceded by an identifier is the
+	// parameter list in every language; Go receiver parens are preceded by
+	// "func " (a space), so they are skipped naturally.
+	for k := 0; k < len(sig); k++ {
+		if sig[k] != '(' {
+			continue
+		}
+		e := k
+		s := e
+		for s > 0 && isIdentByte(sig[s-1]) {
+			s--
+		}
+		if s < e {
+			return sig[s:e]
+		}
+	}
+	return ""
+}
+
+func isIdentByte(b byte) bool {
+	return b == '_' || ('a' <= b && b <= 'z') || ('A' <= b && b <= 'Z') || ('0' <= b && b <= '9')
 }
 
 // changeImpactFor resolves the required change set for a symbol. Methods go
