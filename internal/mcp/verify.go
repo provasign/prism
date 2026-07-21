@@ -200,7 +200,32 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			if c.BodyChanged && c.After != nil {
 				switch c.After.Kind {
 				case "interface", "type", "trait", "protocol":
-					addSeed(*c.After, c.Before, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
+					// Member-level extraction: line-diff the block's before/
+					// after text and turn each member whose parameter list
+					// changed into a synthesized method seed — the normal
+					// pipeline (base-contract enumeration) then finds every
+					// implementation and caller of the OLD member contract.
+					// Falls back to the unverified-block seed when nothing
+					// extractable changed (fail-closed, measured: typeorm
+					// held at review/0% without this).
+					members := memberContractChanges(
+						blockText(h.Root, base, f, c.Before, true),
+						blockText(h.Root, "", f, c.After, false))
+					if len(members) == 0 {
+						addSeed(*c.After, c.Before, "declaration block "+displayQN(*c.After)+" changed (member contracts live in its body)")
+						break
+					}
+					for _, m := range members {
+						after := *c.After
+						after.Name = m.name
+						after.QualifiedName = displayQN(*c.After) + "." + m.name
+						after.Kind = "method"
+						after.Signature = m.afterSig
+						beforeSym := after
+						beforeSym.Signature = m.beforeSig
+						addSeed(after, &beforeSym,
+							"member "+after.QualifiedName+" of declaration block changed")
+					}
 				}
 			}
 		}
@@ -575,6 +600,91 @@ func methodLeafInSig(sig string) string {
 		}
 	}
 	return ""
+}
+
+// blockText returns a declaration block's source text: the symbol's RawText
+// when the record carries it, else the span lines sliced from the base
+// version (git show) or the working tree.
+func blockText(root, base, relPath string, sym *grove.SymbolRecord, fromBase bool) string {
+	if sym == nil {
+		return ""
+	}
+	if sym.RawText != "" {
+		return sym.RawText
+	}
+	var content []byte
+	if fromBase {
+		content = gitShow(root, base, relPath)
+	} else {
+		out, err := exec.Command("cat", root+"/"+relPath).Output()
+		if err == nil {
+			content = out
+		}
+	}
+	if content == nil {
+		return ""
+	}
+	lines := strings.Split(string(content), "\n")
+	s, e := sym.Span.Start-1, sym.Span.End
+	if s < 0 || s >= len(lines) {
+		return ""
+	}
+	if e > len(lines) {
+		e = len(lines)
+	}
+	return strings.Join(lines[s:e], "\n")
+}
+
+type memberChange struct {
+	name      string
+	beforeSig string
+	afterSig  string
+}
+
+// memberContractChanges line-diffs two declaration-block bodies and returns
+// the members whose parameter lists changed: lines shaped like a member
+// signature ("ident(") that appear on one side but not the other, paired by
+// leaf name. Additions and removals without a pair are ignored — a NEW
+// member has no dependents yet, and a REMOVED one is a rename_plan concern.
+func memberContractChanges(beforeText, afterText string) []memberChange {
+	if beforeText == "" || afterText == "" {
+		return nil
+	}
+	sigLines := func(text string) map[string]string { // leaf -> normalized line
+		out := map[string]string{}
+		for _, ln := range strings.Split(text, "\n") {
+			t := strings.TrimSpace(ln)
+			if t == "" || strings.HasPrefix(t, "//") || strings.HasPrefix(t, "*") || strings.HasPrefix(t, "/*") || strings.HasPrefix(t, "#") {
+				continue
+			}
+			leaf := methodLeafInSig(t)
+			if leaf == "" || !strings.Contains(t, leaf+"(") {
+				continue
+			}
+			// One line per leaf: overloaded members inside one block would
+			// collide — keep the first and let the paramList comparison
+			// decide; a mismatch still seeds the member, which is safe
+			// (base-contract match filters by the OLD list).
+			if _, dup := out[leaf]; !dup {
+				out[leaf] = strings.Join(strings.Fields(t), " ")
+			}
+		}
+		return out
+	}
+	b, a := sigLines(beforeText), sigLines(afterText)
+	var out []memberChange
+	for leaf, bl := range b {
+		al, ok := a[leaf]
+		if !ok || bl == al {
+			continue
+		}
+		bp, ap := paramListNamed(bl, leaf), paramListNamed(al, leaf)
+		if bp == "" || bp == ap {
+			continue
+		}
+		out = append(out, memberChange{name: leaf, beforeSig: bl, afterSig: al})
+	}
+	return out
 }
 
 // paramsMatch compares two normalized parameter lists position-by-position.
