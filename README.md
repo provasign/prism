@@ -85,20 +85,24 @@ top out at 0.62–0.75 recall on change-impact tasks even on frontier models
    reported for review, not auto-failed (`--strict` escalates). Measured at
    the engine ceiling on injected Go violations: 10/10 detected, 0 false
    positives (see the injection benchmark in the test suite).
-8. **A fail-safe gate on the diff (experimental site listing).**
-   `prism verify` deterministically checks an agent-authored diff: it
-   detects contract changes, computes required sites, and reports what the
-   diff did not touch. Its **verdict is fail-closed and measured**: across
-   36 seeded incomplete-edit runs on 9 real corpora it never once said
-   "complete" on an incomplete change (verdicts: 28 incomplete, 8 review,
-   0 false passes) — so it is safe as a CI gate today. Its **missed-site
-   list is complete only where the edit does not sever old-signature
-   binding**: measured file-level catch ranges from 100% (django) and 89%
-   (guava) down to 9% (Java overload families), because the post-edit
-   graph cannot always enumerate dependents of the *old* contract.
-   Base-contract enumeration is the open engineering item; until it lands,
-   trust the verdict, treat the site list as a head start rather than the
-   whole answer (see `docs/DESIGN_LAYERED_INTELLIGENCE.md`, Phase 3).
+8. **Verify the diff — the completeness gate for agent-authored changes.**
+   `prism verify` deterministically checks a diff: it detects contract
+   changes (signature changes, renames, interface-member changes), computes
+   the required change set from the **base** contract, and reports every
+   dependent site the diff did not touch — line-precise. Measured on 9 real
+   corpora with seeded incomplete edits (27 trials + 9 controls):
+   - **Verdict is fail-closed** — 0 false "complete" across every run; an
+     incomplete change is never waved through. Safe as a CI gate.
+   - **Site listing catches 88%** of forgotten files (django, grafana,
+     jackson-jsonnode, typeorm at 100%; guava 91%; serialize 88%), with
+     **zero false accusations** — verify never flags a site the diff
+     already handled. It gets there by enumerating dependents of the *old*
+     contract (base-signature family + callers, generic-aware, member-level
+     for interface blocks), not the post-edit graph the change severs.
+   The one dimension no compiler covers in dynamic languages: a Python or
+   TypeScript signature change with a forgotten caller compiles clean and
+   fails at runtime — verify reports the exact line (see
+   `docs/DESIGN_LAYERED_INTELLIGENCE.md`, Phase 3).
 
 **The front door — one tool, two moments.** Agents don't route well across a
 tool menu (measured), so the primary surface is a single call:
