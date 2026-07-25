@@ -2076,15 +2076,24 @@ func ledgerPathForRoot(root string) string {
 }
 
 func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, error) {
+	timing := os.Getenv("PRISM_TIMING") != ""
+	tInv := time.Now()
+	stamp := func(stage string) {
+		if timing {
+			fmt.Fprintf(os.Stderr, "[prism-timing] cli:%-19s %8.0fms\n", stage, float64(time.Since(tInv).Milliseconds()))
+		}
+	}
 	root := mustAbs(dir)
 	cfg, client, err := newClient(root)
 	if err != nil {
 		return nil, err
 	}
+	stamp("newClient")
 	defer client.Shutdown()
 	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
 		return nil, err
 	}
+	stamp("autoIndex")
 
 	ledgerFile := ledgerPathForRoot(root)
 	var out any

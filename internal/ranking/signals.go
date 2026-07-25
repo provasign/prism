@@ -103,28 +103,23 @@ func (c *SignalComputer) gitStats(filePath string) gitFileStats {
 		return s
 	}
 
-	// Not edited in the last 90 days: EditFrequency is 0 by definition; one
-	// cheap per-file lookup (no --follow) resolves recency.
+	// Not edited in the last 365 days: EditFrequency is 0 by definition and
+	// the recency signal has saturated (1/(1+365/30) ≈ 0.08), so the neutral
+	// default is returned without any per-file git subprocess. The previous
+	// per-file `git log -1` fallback spawned one subprocess per stale file —
+	// on a repo with no recent commits (e.g. a pinned corpus clone) that was
+	// ~30ms × every candidate file, dominating query latency (measured ~10s
+	// of a 10.4s prism_query on jackson-databind).
 	s := gitFileStats{LastEditDays: 365, CommitCount90d: 0}
-	if c.WorkspaceRoot != "" {
-		out, err := runGit(c.WorkspaceRoot, "log", "-1", "--format=%ct", "--", rel)
-		if err == nil {
-			ts, perr := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
-			if perr == nil && ts > 0 {
-				s.LastEditDays = int(time.Since(time.Unix(ts, 0)).Hours() / 24)
-				if s.LastEditDays < 0 {
-					s.LastEditDays = 0
-				}
-			}
-		}
-	}
 	c.gitCache[filePath] = s
 	return s
 }
 
 // loadRecentLocked runs the single batched history pass: every commit of the
-// last 90 days with the files it touched. One subprocess for the whole
-// ranking pass instead of two per candidate file.
+// last 365 days with the files it touched. One subprocess for the whole
+// ranking pass — the 365-day horizon covers the full recency signal range
+// (it saturates at a year), so files absent from this pass need no per-file
+// follow-up. CommitCount90d only counts commits inside the 90-day window.
 func (c *SignalComputer) loadRecentLocked() {
 	if c.gitLoaded {
 		return
@@ -134,7 +129,7 @@ func (c *SignalComputer) loadRecentLocked() {
 	if c.WorkspaceRoot == "" {
 		return
 	}
-	out, err := runGit(c.WorkspaceRoot, "log", "--since=90.days", "--format=@%ct", "--name-only")
+	out, err := runGit(c.WorkspaceRoot, "log", "--since=365.days", "--format=@%ct", "--name-only")
 	if err != nil {
 		return
 	}
@@ -155,7 +150,9 @@ func (c *SignalComputer) loadRecentLocked() {
 			}
 		}
 		s, seen := c.recent[line]
-		s.CommitCount90d++
+		if commitDays <= 90 {
+			s.CommitCount90d++
+		}
 		// Output is newest-first, so the first sighting carries the most
 		// recent edit; keep the minimum to be safe against ordering changes.
 		if !seen || commitDays < s.LastEditDays {

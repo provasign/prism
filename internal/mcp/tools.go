@@ -782,6 +782,14 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	if task == "" {
 		return nil, errors.New("task is required")
 	}
+	timing := os.Getenv("PRISM_TIMING") != ""
+	tQuery := time.Now()
+	stamp := func(stage string) {
+		if timing {
+			fmt.Fprintf(os.Stderr, "[prism-timing] %-22s %8.0fms\n", stage, float64(time.Since(tQuery).Milliseconds()))
+		}
+	}
+	defer stamp("toolQuery total")
 
 	// --- Agent-directed parameters ---
 
@@ -827,6 +835,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 
 	// graph_depth is accepted for backward compatibility but expansion is a
 	// fixed one-hop typed call neighborhood (see selectContext).
+	stamp("pre-selectContext")
 	sel, err := h.selectContext(ctx, selectParams{
 		task:            task,
 		terms:           terms,
@@ -840,6 +849,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	if err != nil {
 		return nil, err
 	}
+	stamp("post-selectContext")
 
 	// Delivery: "source" = verbatim line-numbered windows + anchor summary
 	// (edit-ready); "symbols" = the compact per-symbol list. Explicit arg wins;

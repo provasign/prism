@@ -3,7 +3,9 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
@@ -57,7 +59,15 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 
 	// Semantic similarity scores for this task, served from Grove's cached
 	// embedding index (one engine call; no corpus rebuild in Prism).
+	timing := os.Getenv("PRISM_TIMING") != ""
+	tSel := time.Now()
+	stamp := func(stage string) {
+		if timing {
+			fmt.Fprintf(os.Stderr, "[prism-timing]   sel:%-18s %8.0fms\n", stage, float64(time.Since(tSel).Milliseconds()))
+		}
+	}
 	h.loadSemanticScores(ctx, p.task)
+	stamp("semantic")
 	var seeds []grove.SymbolRecord
 
 	if len(p.terms) > 0 {
@@ -116,6 +126,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		seeds = filterGeneratedPrismContext(seeds)
 		seeds = filterDocSeeds(seeds)
 	}
+	stamp("seeds")
 	// Build candidates: treat first 5 as seeds (distance 0), remainder as candidates.
 	seedCount := minInt(5, len(seeds))
 	seedSyms := seeds[:seedCount]
@@ -183,6 +194,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 	}
 
+	stamp("graph-expand")
 	// Merge candidates and graph-enriched symbols, then filter by include set.
 	merged := make([]grove.SymbolRecord, 0, len(candidateSyms)+len(graphExtra))
 	merged = append(merged, candidateSyms...)
@@ -259,6 +271,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 	}
 	picked := ranking.Select(seedSyms, candidates, budget)
+	stamp("rank+budget")
 
 	return &selection{
 		picked:      picked,
