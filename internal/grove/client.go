@@ -246,6 +246,24 @@ func (c *Client) Status(ctx context.Context) (*StatusResult, error) {
 	}, nil
 }
 
+// QuickStatus reports the persisted index summary without booting the full
+// engine. Engine open rehydrates every stored symbol and edge into the
+// in-memory graph — work status never reads (it is three live COUNT(*)
+// queries). Store-only open returns byte-identical counts in ~5ms instead of
+// ~1.3s on a 500k-edge index (measured, netty). Counts only — no freshness
+// claim, same as Status.
+func (c *Client) QuickStatus(ctx context.Context) (*StatusResult, error) {
+	st, err := groveeng.QuickStatus(ctx, c.root)
+	if err != nil {
+		return nil, err
+	}
+	return &StatusResult{
+		FilesIndexed: st.FilesIndexed,
+		SymbolCount:  st.SymbolCount,
+		EdgeCount:    st.EdgeCount,
+	}, nil
+}
+
 // Index indexes dir (defaults to the project root) and returns a result
 // summary in the wire-format shape Prism's callers expect.
 func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {

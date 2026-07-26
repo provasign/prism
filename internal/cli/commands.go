@@ -1147,13 +1147,17 @@ func cmdIndex(args []string) int {
 
 func cmdStatus(args []string) int {
 	dir := dirArg(args, 0, ".")
-	_, client, err := newClient(dir)
-	if err != nil {
+	root := mustAbs(dir)
+	if err := requireDir(root); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	defer client.Shutdown()
-	res, err := client.Status(context.Background())
+	// Store-only fast path: status is three COUNT(*) queries; booting the full
+	// engine (newClient -> EnsureRunning) rehydrates the whole graph first —
+	// ~1.3s of work on a 500k-edge index that status never reads. Same counts,
+	// same output shape, ~5ms.
+	client := grove.NewClient("", "").WithTokenFromDir(root)
+	res, err := client.QuickStatus(context.Background())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "status:", err)
 		return 1
