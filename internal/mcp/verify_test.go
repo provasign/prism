@@ -384,3 +384,20 @@ func TestToolVerify_BareFunctionFallback(t *testing.T) {
 }
 
 var _ = sort.Strings // keep sort import if assertions change
+
+func TestValidGitBase_BlocksOptionInjection(t *testing.T) {
+	// Real refs must pass.
+	for _, ok := range []string{"HEAD", "origin/main", "v1.2.3^{commit}", "HEAD~3", "abc123def", "release/1.0"} {
+		if !validGitBase(ok) {
+			t.Errorf("validGitBase(%q) = false, want true (real ref rejected)", ok)
+		}
+	}
+	// Option-injection payloads must be rejected — the arbitrary-file-write
+	// primitive (git diff --output=<path> truncates an arbitrary file) needs a
+	// leading '-'; anything starting with '-' or carrying '=' must not pass.
+	for _, bad := range []string{"--output=/tmp/x", "-O/tmp/y", "--ext-diff", "-", "--", "HEAD;rm -rf", "a b", ""} {
+		if validGitBase(bad) {
+			t.Errorf("validGitBase(%q) = true, want false (injection payload accepted)", bad)
+		}
+	}
+}

@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,6 +31,22 @@ import (
 )
 
 type lineRange struct{ start, end int }
+
+// gitRefRe constrains a caller-supplied git base to characters that appear in
+// real revision specifiers (branches, tags, SHAs, HEAD~3, origin/main,
+// v1.2.3^{commit}). It deliberately EXCLUDES a leading '-' and the '=' and
+// whitespace that git-diff option injection needs.
+var gitRefRe = regexp.MustCompile(`^[A-Za-z0-9_./^~@{}:-]+$`)
+
+// validGitBase rejects a base ref before it is placed on a git command line.
+// `base` is an agent/MCP-controlled parameter (prism_verify / prism_prepare);
+// without this, a value like "--output=/path" is parsed by `git diff` as an
+// option (it sits before the "--" separator) and truncates/overwrites an
+// arbitrary file — an arbitrary-write primitive from untrusted input. The
+// leading-'-' rejection is the load-bearing check; the charset is hardening.
+func validGitBase(base string) bool {
+	return base != "" && !strings.HasPrefix(base, "-") && gitRefRe.MatchString(base)
+}
 
 // gitPrefix returns the work-root's path relative to the git repository root
 // ("" when they coincide). Diff and show paths are repo-root-relative; every
@@ -49,7 +66,13 @@ func gitPrefix(root string) string {
 // changed line ranges per file (work-root-relative paths). A pure deletion
 // is recorded as a one-line touch marker at its after-side position.
 func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
-	cmd := exec.Command("git", "-C", root, "diff", "--unified=0", "--no-color", base, "--", ".")
+	if !validGitBase(base) {
+		return nil, fmt.Errorf("invalid git base ref")
+	}
+	// --end-of-options: belt-and-suspenders so a ref that slipped the charset
+	// check can never be parsed as a git-diff option (arbitrary-write via
+	// --output=). validGitBase is the primary guard; this is defense in depth.
+	cmd := exec.Command("git", "-C", root, "diff", "--unified=0", "--no-color", "--end-of-options", base, "--", ".")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("git diff %s: %w", base, err)
@@ -95,7 +118,10 @@ func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 }
 
 func gitShow(root, base, relPath string) []byte {
-	out, err := exec.Command("git", "-C", root, "show", base+":"+gitPrefix(root)+relPath).Output()
+	if !validGitBase(base) {
+		return nil
+	}
+	out, err := exec.Command("git", "-C", root, "show", "--end-of-options", base+":"+gitPrefix(root)+relPath).Output()
 	if err != nil {
 		return nil // new file at base, or not tracked
 	}
