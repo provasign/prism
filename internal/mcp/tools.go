@@ -2116,12 +2116,19 @@ func safePathWithinRoot(root, p string) (abs string, sessionPath string, err err
 	var candidate string
 	if filepath.IsAbs(p) {
 		candidate = filepath.Clean(p)
-		// Resolve symlinks in caller-supplied absolute paths too.
-		if resolved, e := filepath.EvalSymlinks(candidate); e == nil {
-			candidate = resolved
-		}
 	} else {
 		candidate = filepath.Clean(filepath.Join(rootAbs, p))
+	}
+	// Resolve symlinks on the FINAL joined path, not just absolute inputs —
+	// a relative path like "leak.go" that is itself a symlink to outside
+	// root joined to a containment check on the unresolved join, then
+	// os.ReadFile followed the link at read time, serving the external
+	// file's content under the in-repo name. EvalSymlinks fails harmlessly
+	// for a not-yet-existing path; the unresolved candidate falls through
+	// to the containment check below and then to a normal "not found" at
+	// the read site, so this changes no behavior for missing files.
+	if resolved, e := filepath.EvalSymlinks(candidate); e == nil {
+		candidate = resolved
 	}
 
 	rel, err := filepath.Rel(rootAbs, candidate)

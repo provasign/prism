@@ -295,6 +295,32 @@ func TestSafePathWithinRoot_EquivalentSymlinkRoots(t *testing.T) {
 	}
 }
 
+// TestSafePathWithinRoot_RelativeSymlinkEscape guards the security-review
+// finding: a RELATIVE path (the shape prism_read/CLI callers actually pass,
+// e.g. "leak.go") that is itself a symlink whose target resolves outside
+// root previously skipped EvalSymlinks entirely — only the filepath.IsAbs
+// branch resolved symlinks, so the join-then-containment-check saw the
+// unresolved in-root path, passed, and os.ReadFile then followed the link
+// at read time, serving the external file's content under the in-repo
+// name (same failure class as codegraph's Medium symlink-escape finding,
+// github.com/colbymchenry/codegraph#1367 — attacker-controlled repo content
+// could leak signatures/source from outside the indexed tree).
+func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
+	outsideDir := t.TempDir()
+	secret := filepath.Join(outsideDir, "secret.go")
+	if err := os.WriteFile(secret, []byte("package secret\n\nfunc TopSecret() int { return 1 }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	link := filepath.Join(root, "leak.go")
+	if err := os.Symlink(secret, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, _, err := safePathWithinRoot(root, "leak.go"); err == nil {
+		t.Fatal("relative path to a symlink escaping root was accepted; expected rejection")
+	}
+}
+
 // ─── ToolSchemas ──────────────────────────────────────────────────────────
 
 func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
