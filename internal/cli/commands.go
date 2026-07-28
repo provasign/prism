@@ -1134,7 +1134,15 @@ func cmdIndex(args []string) int {
 	}
 	defer client.Shutdown()
 	_ = cfg
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// Match the MCP path's 10-minute budget (a large monorepo cold index
+	// legitimately exceeds 5); PRISM_INDEX_TIMEOUT overrides for bigger repos.
+	timeout := 10 * time.Minute
+	if v := os.Getenv("PRISM_INDEX_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			timeout = d
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	res, err := client.Index(ctx, mustAbs(dir))
 	if err != nil {
