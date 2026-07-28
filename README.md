@@ -7,6 +7,9 @@
 > type-resolved change set — every override, implementation, and caller —
 > as ONE deterministic call over your local code graph.
 
+**Full benchmark harness, raw results, and every task file are public:
+[provasign/research](https://github.com/provasign/research).**
+
 **Measured** (oracle-scored, 4 languages, blast radii 8–310 sites — see
 [provasign/research](https://github.com/provasign/research)):
 
