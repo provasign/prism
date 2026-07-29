@@ -275,7 +275,7 @@ curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | b
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin a version
-VERSION=v0.7.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v0.33.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes `prism` to `~/bin` by default. Set
@@ -433,7 +433,7 @@ agent_mode: "cli"
 Optional keys:
 
 ```yaml
-model: "claude-sonnet-4-6"
+model: "claude-sonnet-5"
 grove_binary: "grove"
 embeddings_backend: "tfidf"
 ```
