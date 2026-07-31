@@ -698,8 +698,13 @@ func toolDescription(name string) string {
 			"pipeline: change_impact to see the blast radius, untested_surface to know which of " +
 			"those sites to write tests for FIRST. 'untested' means no test within the resolved " +
 			"caller horizon — dynamic dispatch the graph cannot see (reflection, framework " +
-			"executors) may still exercise the site, so treat it as a work list, not proof. " +
-			"RELAY the partition as-is; do not re-derive coverage via grep."
+			"executors, CLI runners, fixtures, proxy globals) may still exercise the site, so it " +
+			"is a work list, NOT proof. Coverage edges are heuristic: before you report a site as " +
+			"an untested gap, CONFIRM by grepping the test suite for the symbol, its class, and " +
+			"its callers — this is the one traversal where grep legitimately COMPLETES the graph " +
+			"answer. (Grep-completion is for coverage only: change_impact / rename_plan / " +
+			"missing_implementations return the closed set — relay those as-is, never re-derive " +
+			"them via grep.)"
 	case "prism_affected":
 		return "The file-diff form of test selection: pass the CHANGED FILES (repo-relative, " +
 			"e.g. `git diff --name-only`) and get back exactly the tests that cover any symbol " +
