@@ -1660,30 +1660,50 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_change_impact")
-	compact := func(syms []grove.SymbolRecord) []map[string]any {
+	// The member being changed, used to locate its call sites inside callers.
+	targetLeaf := r.Query
+	if i := strings.IndexByte(targetLeaf, '('); i >= 0 {
+		targetLeaf = targetLeaf[:i]
+	}
+	targetLeaf = leafOf(strings.TrimSpace(targetLeaf))
+
+	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
 		for _, s := range syms {
 			qn := s.QualifiedName
 			if qn == "" {
 				qn = s.Name
 			}
-			out = append(out, map[string]any{
+			entry := map[string]any{
 				"name":          s.Name,
 				"qualifiedName": qn,
 				"filePath":      s.FilePath,
 				"line":          s.Span.Start,
 				"kind":          s.Kind,
 				"signature":     s.Signature,
-			})
+			}
+			// Locality hint: grove attributes a call made inside a closure to
+			// the enclosing declaration, so name the nested scope that
+			// actually holds it. Absent for the common non-nested case, which
+			// therefore renders exactly as before.
+			if annotate {
+				if via := nestedScopeFor(s, targetLeaf); via != "" {
+					entry["via"] = via
+				}
+			}
+			out = append(out, entry)
 		}
 		return out
+	}
+	compact := func(syms []grove.SymbolRecord) []map[string]any {
+		return compactWithScope(syms, false)
 	}
 	out := map[string]any{
 		"query":        r.Query,
 		"declarations": compact(r.Declarations),
 		"supers":       compact(r.Supers),
 		"family":       compact(r.Family),
-		"callers":      compact(r.Callers),
+		"callers":      compactWithScope(r.Callers, true),
 		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
 	}
 	if len(r.DeclaringTypes) > 0 {
