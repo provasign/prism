@@ -38,7 +38,7 @@ jobs:
         with:
           name: prism-linux-${{ matrix.goarch }}
           path: dist/
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
 
@@ -66,7 +66,7 @@ jobs:
         with:
           name: prism-darwin-${{ matrix.goarch }}
           path: dist/
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
 
@@ -91,7 +91,7 @@ jobs:
         with:
           name: prism-windows-amd64
           path: dist/
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
 
@@ -121,7 +121,7 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: dist/*
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*
