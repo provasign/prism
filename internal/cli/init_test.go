@@ -95,7 +95,7 @@ func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	os.WriteFile(zedPath, []byte(zedBefore), 0o644)
 
 	dir := t.TempDir()
-	initRegisterMCPTools(dir, "/x/prism", false)
+	initRegisterMCPTools(dir, "/x/prism", false, true, false)
 
 	if got, _ := os.ReadFile(codexPath); string(got) != codexBefore {
 		t.Errorf("project-level init modified global Codex config:\n%s", got)
@@ -108,7 +108,7 @@ func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	}
 
 	// --global registers both, without a pinned project dir.
-	initRegisterMCPTools(dir, "/x/prism", true)
+	initRegisterMCPTools(dir, "/x/prism", true, true, false)
 	codexAfter, _ := os.ReadFile(codexPath)
 	if !strings.Contains(string(codexAfter), "[mcp_servers.prism]") {
 		t.Errorf("--global init did not register Codex:\n%s", codexAfter)
@@ -257,7 +257,7 @@ func TestWritePrismCodexConfig(t *testing.T) {
 func TestInitRegisterMCPTools_WritesVSCode(t *testing.T) {
 	setHome(t, t.TempDir())
 	dir := t.TempDir()
-	written := initRegisterMCPTools(dir, "/x/prism", false)
+	written := initRegisterMCPTools(dir, "/x/prism", false, true, false)
 	var sawVSCode bool
 	for _, p := range written {
 		if filepath.Base(filepath.Dir(p)) == ".vscode" && filepath.Base(p) == "mcp.json" {
@@ -400,4 +400,145 @@ func indexOf(s, sub string) int {
 		}
 	}
 	return -1
+}
+
+// ─── Item 1: permissions auto-allow, --print-config, --refresh, opencode ────
+
+// The Claude Code tool auto-allow must be written alongside server trust, and
+// must survive re-runs without duplicating (and without clobbering unrelated
+// settings).
+func TestEnsureClaudeCodeApproval_WritesPermissionsAllow(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	settings := filepath.Join(home, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(settings), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settings, []byte(`{"theme":"dark"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	ensureClaudeCodeApproval("prism", true)
+	ensureClaudeCodeApproval("prism", true) // idempotence
+
+	raw, err := os.ReadFile(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(raw)
+	if !strings.Contains(got, `"mcp__prism"`) {
+		t.Errorf("permissions.allow missing mcp__prism: %s", got)
+	}
+	if strings.Count(got, `"mcp__prism"`) != 1 {
+		t.Errorf("mcp__prism duplicated on re-run: %s", got)
+	}
+	if !strings.Contains(got, `"theme"`) {
+		t.Errorf("unrelated setting clobbered: %s", got)
+	}
+	if !strings.Contains(got, `"enabledMcpjsonServers"`) {
+		t.Errorf("server trust missing: %s", got)
+	}
+}
+
+// --no-permissions must still establish server trust but write no allow rule.
+func TestEnsureClaudeCodeApproval_NoPermissions(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	ensureClaudeCodeApproval("prism", false)
+
+	raw, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(raw)
+	if strings.Contains(got, "mcp__prism") {
+		t.Errorf("--no-permissions wrote an allow rule: %s", got)
+	}
+	if !strings.Contains(got, `"enabledMcpjsonServers"`) {
+		t.Errorf("server trust missing: %s", got)
+	}
+}
+
+// A previously-trusted server must still gain the allow rule: the two settings
+// are independent and older prism versions wrote only the trust entry.
+func TestEnsureClaudeCodeApproval_UpgradesTrustOnlyConfig(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	settings := filepath.Join(home, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(settings), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settings, []byte(`{"enabledMcpjsonServers":["prism"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ensureClaudeCodeApproval("prism", true)
+	raw, _ := os.ReadFile(settings)
+	if !strings.Contains(string(raw), "mcp__prism") {
+		t.Errorf("allow rule not added to a trust-only config: %s", raw)
+	}
+}
+
+// --print-config must render each agent and write nothing at all.
+func TestPrintAgentConfig_WritesNothing(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	dir := t.TempDir()
+	for _, id := range []string{"claude", "cursor", "windsurf", "vscode", "zed", "codex", "opencode", "hermes"} {
+		if rc := printAgentConfig(id, dir, "/x/prism", false); rc != 0 {
+			t.Errorf("%s: rc %d", id, rc)
+		}
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("--print-config wrote %d entries into the project dir", len(entries))
+	}
+	if entries, _ := os.ReadDir(home); len(entries) != 0 {
+		t.Errorf("--print-config wrote %d entries into HOME", len(entries))
+	}
+	if rc := printAgentConfig("bogus", dir, "/x/prism", false); rc != 2 {
+		t.Errorf("unknown agent should exit 2, got %d", rc)
+	}
+}
+
+// --refresh must never introduce a config for a tool that was not already set up.
+func TestInitRegisterMCPTools_RefreshSkipsUnconfigured(t *testing.T) {
+	setHome(t, t.TempDir())
+	dir := t.TempDir()
+	written := initRegisterMCPTools(dir, "/x/prism", false, true, true)
+	if len(written) != 0 {
+		t.Errorf("--refresh added configs to a fresh project: %v", written)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".mcp.json")); err == nil {
+		t.Error("--refresh created .mcp.json")
+	}
+}
+
+// ...but it must rewrite the ones that DO exist.
+func TestInitRegisterMCPTools_RefreshRewritesConfigured(t *testing.T) {
+	setHome(t, t.TempDir())
+	dir := t.TempDir()
+	initRegisterMCPTools(dir, "/old/prism", false, true, false) // first install
+	written := initRegisterMCPTools(dir, "/new/prism", false, true, true)
+	if len(written) == 0 {
+		t.Fatal("--refresh rewrote nothing on a configured project")
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, ".cursor", "mcp.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "/new/prism") {
+		t.Errorf("--refresh did not update the binary path: %s", raw)
+	}
+}
+
+func TestBuildOpencodeConfig(t *testing.T) {
+	got := string(buildOpencodeConfig("/x/prism"))
+	for _, want := range []string{`"$schema"`, `"mcp"`, `"prism"`, `"local"`, "/x/prism", `"enabled": true`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("opencode config missing %s: %s", want, got)
+		}
+	}
 }

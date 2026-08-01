@@ -74,7 +74,7 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	settings := filepath.Join(home, ".claude", "settings.json")
 
 	// First call creates the file and adds the server.
-	ensureClaudeCodeApproval("prism")
+	ensureClaudeCodeApproval("prism", true)
 	raw, err := os.ReadFile(settings)
 	if err != nil {
 		t.Fatalf("settings not written: %v", err)
@@ -89,7 +89,7 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	}
 
 	// Second call for same server is idempotent (no duplicate).
-	ensureClaudeCodeApproval("prism")
+	ensureClaudeCodeApproval("prism", true)
 	raw, _ = os.ReadFile(settings)
 	json.Unmarshal(raw, &doc)
 	servers, _ = doc["enabledMcpjsonServers"].([]any)
@@ -98,7 +98,7 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	}
 
 	// A different server is appended alongside the first.
-	ensureClaudeCodeApproval("relay")
+	ensureClaudeCodeApproval("relay", true)
 	raw, _ = os.ReadFile(settings)
 	json.Unmarshal(raw, &doc)
 	servers, _ = doc["enabledMcpjsonServers"].([]any)

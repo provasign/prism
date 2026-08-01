@@ -16,7 +16,7 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 	projectDir := t.TempDir()
 	prismBin := "/fake/prism"
 
-	written := initRegisterMCPTools(projectDir, prismBin, false)
+	written := initRegisterMCPTools(projectDir, prismBin, false, true, false)
 
 	// All three project-local configs must be written.
 	wantPaths := []string{
@@ -46,7 +46,7 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	projectDir := t.TempDir()
 	prismBin := "/usr/local/bin/prism"
 
-	initRegisterMCPTools(projectDir, prismBin, false)
+	initRegisterMCPTools(projectDir, prismBin, false, true, false)
 
 	cfgPath := filepath.Join(projectDir, ".mcp.json")
 	raw, err := os.ReadFile(cfgPath)
@@ -101,7 +101,7 @@ func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	initRegisterMCPTools(projectDir, "/bin/prism", false)
+	initRegisterMCPTools(projectDir, "/bin/prism", false, true, false)
 
 	raw, _ := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))
 	var cfg struct {
@@ -123,7 +123,7 @@ func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 func TestInitRegisterMCPToolsSkipsAbsentGlobalDirs(t *testing.T) {
 	setHome(t, t.TempDir())
 	projectDir := t.TempDir()
-	written := initRegisterMCPTools(projectDir, "/bin/prism", false)
+	written := initRegisterMCPTools(projectDir, "/bin/prism", false, true, false)
 
 	home, _ := os.UserHomeDir()
 	for _, p := range written {
