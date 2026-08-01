@@ -30,11 +30,6 @@ type Handler struct {
 	Signals *ranking.SignalComputer
 	Weights *ranking.LearnedWeights // A: per-repo outcome-conditioned weights
 
-	// semScores holds the current query's semantic similarity scores from
-	// Grove (model2vec, vectors cached by symbol ID inside the engine).
-	semMu     sync.Mutex
-	semScores map[string]float64
-
 	// driftBase records the symbols delivered with each full file read this
 	// session, so prism_drift can diff structurally (renames, breaking
 	// changes) via Grove's GraphDiff instead of comparing hashes.
@@ -79,36 +74,8 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		driftBase: map[string][]grove.SymbolRecord{},
 		Weights:   ranking.LoadLearnedWeights(root), // A: load per-repo learned weights
 	}
-	h.Signals = ranking.NewSignalComputer(root, semanticAdapter{h: h})
+	h.Signals = ranking.NewSignalComputer(root)
 	return h
-}
-
-// loadSemanticScores fetches Grove's semantic ranking for task and caches
-// the scores by symbol ID for this query's signal computation. The engine
-// caches embedding vectors by symbol ID across index rebuilds, so only
-// changed files' symbols are re-embedded — Prism keeps no corpus of its own.
-func (h *Handler) loadSemanticScores(ctx context.Context, task string) {
-	scored, err := h.Grove.Semantic(ctx, task, 200)
-	h.semMu.Lock()
-	defer h.semMu.Unlock()
-	h.semScores = map[string]float64{}
-	if err != nil {
-		return
-	}
-	for _, sc := range scored {
-		h.semScores[sc.Symbol.ID] = sc.Score
-	}
-}
-
-// semanticAdapter exposes the per-query Grove semantic scores to the ranker.
-// Symbols outside the fetched top-N score 0 (graph distance and the other
-// signals still rank them).
-type semanticAdapter struct{ h *Handler }
-
-func (a semanticAdapter) Similarity(_ string, sym grove.SymbolRecord) float64 {
-	a.h.semMu.Lock()
-	defer a.h.semMu.Unlock()
-	return a.h.semScores[sym.ID]
 }
 
 // confidenceFor estimates whether previously delivered content for entry is
@@ -326,7 +293,10 @@ func toolSchema(name string) map[string]any {
 				"terms": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "Optional: symbols/terms you already located (grep-precision seeding).",
+					"description": "REQUIRED for prepare mode (ignored/unused for verify): symbols or keyword " +
+						"anchors you already located, e.g. [\"AccessCount\"] — guess ONE from the task if you " +
+						"don't have a name yet (a class/function fragment, a domain term); prepare fails closed " +
+						"with guidance if this is empty.",
 				},
 				"base": map[string]any{
 					"type":        "string",
@@ -340,7 +310,7 @@ func toolSchema(name string) map[string]any {
 	case "prism_query":
 		return map[string]any{
 			"type":     "object",
-			"required": []string{"task"},
+			"required": []string{"task", "terms"},
 			"properties": map[string]any{
 				"task": map[string]any{
 					"type":        "string",
@@ -349,7 +319,11 @@ func toolSchema(name string) map[string]any {
 				"terms": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "Your grep/rg search terms (e.g. [\"AccessCount\"]). Prism searches these then expands via call graph.",
+					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]) — prism searches " +
+						"these then expands via call graph. Guess ONE keyword from the task if you don't have a " +
+						"name yet (a class/function fragment, a domain term); measured, an agent's own guess beats " +
+						"a no-terms fallback in most cases, so there is no longer one — this call errors with " +
+						"guidance instead of guessing for you.",
 				},
 				"include": map[string]any{
 					"type":        "array",

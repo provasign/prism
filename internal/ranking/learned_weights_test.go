@@ -20,7 +20,6 @@ func TestApply_NoWeights_ReturnsBaseUnchanged(t *testing.T) {
 	got := lw.Apply(base)
 
 	if got.GraphDistance != base.GraphDistance ||
-		got.SemanticSimilarity != base.SemanticSimilarity ||
 		got.Recency != base.Recency ||
 		got.TestRelevance != base.TestRelevance ||
 		got.EditFrequency != base.EditFrequency {
@@ -34,23 +33,23 @@ func TestApply_NudgesSignals(t *testing.T) {
 
 	// Inject an adjustment directly so we don't depend on RecordOutcome maths.
 	lw.mu.Lock()
-	lw.weights["fix_bug"] = SignalValues{SemanticSimilarity: 0.10, TestRelevance: 0.05}
+	lw.weights["fix_bug"] = SignalValues{GraphDistance: 0.10, TestRelevance: 0.05}
 	lw.mu.Unlock()
 
 	base := SelectProfile("fix_bug")
 	got := lw.Apply(base)
 
-	want := base.SemanticSimilarity + 0.10
-	if got.SemanticSimilarity != want {
-		t.Errorf("SemanticSimilarity: got %.4f want %.4f", got.SemanticSimilarity, want)
+	want := base.GraphDistance + 0.10
+	if got.GraphDistance != want {
+		t.Errorf("GraphDistance: got %.4f want %.4f", got.GraphDistance, want)
 	}
 	want2 := base.TestRelevance + 0.05
 	if got.TestRelevance != want2 {
 		t.Errorf("TestRelevance: got %.4f want %.4f", got.TestRelevance, want2)
 	}
 	// Unmodified signals must be unchanged.
-	if got.GraphDistance != base.GraphDistance {
-		t.Errorf("GraphDistance should be unchanged: got %.4f", got.GraphDistance)
+	if got.Recency != base.Recency {
+		t.Errorf("Recency should be unchanged: got %.4f", got.Recency)
 	}
 }
 
@@ -60,13 +59,13 @@ func TestApply_ClampsToMinimum(t *testing.T) {
 
 	// Large negative nudge — should be clamped to 0.05.
 	lw.mu.Lock()
-	lw.weights["default"] = SignalValues{SemanticSimilarity: -0.99}
+	lw.weights["default"] = SignalValues{GraphDistance: -0.99}
 	lw.mu.Unlock()
 
 	base := SelectProfile("default")
 	got := lw.Apply(base)
-	if got.SemanticSimilarity < 0.05 {
-		t.Errorf("SemanticSimilarity clamped below 0.05: got %.4f", got.SemanticSimilarity)
+	if got.GraphDistance < 0.05 {
+		t.Errorf("GraphDistance clamped below 0.05: got %.4f", got.GraphDistance)
 	}
 }
 
@@ -75,47 +74,47 @@ func TestApply_ClampsToMaximum(t *testing.T) {
 	lw := LoadLearnedWeights(root)
 
 	lw.mu.Lock()
-	lw.weights["default"] = SignalValues{SemanticSimilarity: 99.0}
+	lw.weights["default"] = SignalValues{GraphDistance: 99.0}
 	lw.mu.Unlock()
 
 	base := SelectProfile("default")
 	got := lw.Apply(base)
-	if got.SemanticSimilarity > 1.0 {
-		t.Errorf("SemanticSimilarity clamped above 1.0: got %.4f", got.SemanticSimilarity)
+	if got.GraphDistance > 1.0 {
+		t.Errorf("GraphDistance clamped above 1.0: got %.4f", got.GraphDistance)
 	}
 }
 
 // ── RecordOutcome ────────────────────────────────────────────────────────────
 
-func TestRecordOutcome_CitedBoostsSemanticSimilarity(t *testing.T) {
+func TestRecordOutcome_CitedBoostsGraphDistance(t *testing.T) {
 	root := makeTempRepoRanking(t)
 	lw := LoadLearnedWeights(root)
 
-	before := lw.weights["fix_bug"].SemanticSimilarity
+	before := lw.weights["fix_bug"].GraphDistance
 	lw.RecordOutcome("fix_bug",
 		[]string{"pkg/foo.go"},           // cited
 		[]string{"pkg/foo.go", "bar.go"}, // delivered
 		false)
 
-	after := lw.weights["fix_bug"].SemanticSimilarity
+	after := lw.weights["fix_bug"].GraphDistance
 	if after <= before {
-		t.Errorf("cited file should boost SemanticSimilarity: before=%.4f after=%.4f", before, after)
+		t.Errorf("cited file should boost GraphDistance: before=%.4f after=%.4f", before, after)
 	}
 }
 
-func TestRecordOutcome_UncitedSuppressesSemanticSimilarity(t *testing.T) {
+func TestRecordOutcome_UncitedSuppressesGraphDistance(t *testing.T) {
 	root := makeTempRepoRanking(t)
 	lw := LoadLearnedWeights(root)
 
-	before := lw.weights["fix_bug"].SemanticSimilarity
+	before := lw.weights["fix_bug"].GraphDistance
 	lw.RecordOutcome("fix_bug",
 		[]string{},           // nothing cited
 		[]string{"noise.go"}, // delivered but unused
 		false)
 
-	after := lw.weights["fix_bug"].SemanticSimilarity
+	after := lw.weights["fix_bug"].GraphDistance
 	if after >= before {
-		t.Errorf("uncited file should suppress SemanticSimilarity: before=%.4f after=%.4f", before, after)
+		t.Errorf("uncited file should suppress GraphDistance: before=%.4f after=%.4f", before, after)
 	}
 }
 
@@ -145,10 +144,8 @@ func TestRecordOutcome_Persists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("weight file not written: %v", err)
 	}
+	_ = lw2
 	_ = b
-	if lw2.weights["default"].SemanticSimilarity != 0 {
-		// lw2 wasn't loaded — just confirm the file exists (non-empty).
-	}
 	if len(b) == 0 {
 		t.Error("weight file is empty")
 	}

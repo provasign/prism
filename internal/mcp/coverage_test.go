@@ -30,26 +30,6 @@ func TestNewHandler(t *testing.T) {
 	}
 }
 
-func TestSemanticAdapter_NoScoresLoaded(t *testing.T) {
-	h := newH(t)
-	a := semanticAdapter{h: h}
-	if got := a.Similarity("q", grove.SymbolRecord{ID: "x"}); got != 0 {
-		t.Errorf("got %v", got)
-	}
-}
-
-func TestSemanticAdapter_LoadedScores(t *testing.T) {
-	h := newH(t)
-	h.semScores = map[string]float64{"sym1": 0.7}
-	a := semanticAdapter{h: h}
-	if got := a.Similarity("q", grove.SymbolRecord{ID: "sym1"}); got != 0.7 {
-		t.Errorf("want 0.7, got %v", got)
-	}
-	if got := a.Similarity("q", grove.SymbolRecord{ID: "other"}); got != 0 {
-		t.Errorf("unscored symbol must be 0, got %v", got)
-	}
-}
-
 func TestInvoke_UnknownTool(t *testing.T) {
 	h := newH(t)
 	if _, err := h.Invoke("nope", nil); err == nil {
@@ -82,7 +62,7 @@ func TestInvoke_DirMismatchRejected(t *testing.T) {
 
 func TestInvoke_DirMatchingRootAccepted(t *testing.T) {
 	h := newH(t)
-	if _, err := h.Invoke("prism_query", map[string]any{"task": "x", "dir": h.Root}); err != nil {
+	if _, err := h.Invoke("prism_query", map[string]any{"task": "x", "terms": []string{"x"}, "dir": h.Root}); err != nil {
 		t.Errorf("dir equal to server root must pass, got: %v", err)
 	}
 	// prism_index keeps its own dir semantics and is exempt from the guard.

@@ -17,19 +17,11 @@ import (
 // a task and a workspace root.
 type SignalComputer struct {
 	WorkspaceRoot string
-	Embeddings    SemanticBackend // optional; if nil, similarity is 0
 
 	gitMu     sync.Mutex
 	gitLoaded bool
 	recent    map[string]gitFileStats // per-file stats from the batched 90-day pass
 	gitCache  map[string]gitFileStats // resolved per-path stats (incl. out-of-window fallback)
-}
-
-// SemanticBackend computes similarity between a task and a symbol's
-// descriptive text. Grove's semantic index (via the MCP handler's adapter)
-// satisfies this.
-type SemanticBackend interface {
-	Similarity(task string, sym grove.SymbolRecord) float64
 }
 
 type gitFileStats struct {
@@ -38,10 +30,9 @@ type gitFileStats struct {
 }
 
 // NewSignalComputer constructs a computer rooted at workspaceRoot.
-func NewSignalComputer(workspaceRoot string, embeddings SemanticBackend) *SignalComputer {
+func NewSignalComputer(workspaceRoot string) *SignalComputer {
 	return &SignalComputer{
 		WorkspaceRoot: workspaceRoot,
-		Embeddings:    embeddings,
 		gitCache:      make(map[string]gitFileStats),
 	}
 }
@@ -58,18 +49,13 @@ func (c *SignalComputer) Compute(ctx context.Context, task string, sym grove.Sym
 		gv.GraphDistance = 1.0 / (1.0 + float64(bfsDistance))
 	}
 
-	// Signal 2 — Semantic similarity
-	if c.Embeddings != nil && task != "" {
-		gv.SemanticSimilarity = clamp01(c.Embeddings.Similarity(task, sym))
-	}
-
-	// Signal 3 — Recency (git mtime)
-	// Signal 5 — Edit frequency
+	// Signal 2 — Recency (git mtime)
+	// Signal 4 — Edit frequency
 	stats := c.gitStats(sym.FilePath)
 	gv.Recency = 1.0 / (1.0 + float64(stats.LastEditDays)/30.0)
 	gv.EditFrequency = clamp01(float64(stats.CommitCount90d) / 20.0)
 
-	// Signal 4 — Test relevance
+	// Signal 3 — Test relevance
 	switch {
 	case hasTestEdgeToSeed:
 		gv.TestRelevance = 1.0

@@ -18,8 +18,6 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/provasign/astkit v0.4.21 h1:bzrABedknsyFtPduuZ37cDnNmzvOvGY1goGQvAQlXJQ=
 github.com/provasign/astkit v0.4.21/go.mod h1:uSQxIxw3dVpK/6KmHvqIE8+DK/nhxDuPklKv7g96Jr4=
-github.com/provasign/grove v0.25.0 h1:iFlDQ/GaOF+oFDO0fzT2i/r3izvgwUtfdvOUjezF7WU=
-github.com/provasign/grove v0.25.0/go.mod h1:UILXWhSbD382hxBGngntO2lO0UuxJfzEoizlXu+rwHk=
 github.com/provasign/grove v0.26.0 h1:M4p81vEMD0yQwJhtgi6jChKqcbv2/8j63YsSBsIDMD4=
 github.com/provasign/grove v0.26.0/go.mod h1:UILXWhSbD382hxBGngntO2lO0UuxJfzEoizlXu+rwHk=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=

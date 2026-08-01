@@ -273,6 +273,7 @@ func TestToolQuery_IncludeGraphOnly(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	out, err := h.Invoke("prism_query", map[string]any{
 		"task":    "compression",
+		"terms":   []any{"compress"},
 		"include": []any{"graph"},
 	})
 	if err != nil {
@@ -293,6 +294,7 @@ func TestToolQuery_IncludeDocsOnly(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	out, err := h.Invoke("prism_query", map[string]any{
 		"task":    "architecture",
+		"terms":   []any{"arch"},
 		"include": []any{"docs"},
 	})
 	if err != nil {
@@ -312,6 +314,7 @@ func TestToolQuery_GraphDepthClamped(t *testing.T) {
 	for _, depth := range []int{0, 1, 5, 99} {
 		_, err := h.Invoke("prism_query", map[string]any{
 			"task":        "find symbols",
+			"terms":       []any{"Symbol"},
 			"graph_depth": depth,
 		})
 		if err != nil {
@@ -366,7 +369,8 @@ func TestToolQuery_TestWritingTask(t *testing.T) {
 	// A test-writing task should trigger the TestRelevance boost and budget expansion
 	// without error.
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task": "write tests for toolQuery",
+		"task":  "write tests for toolQuery",
+		"terms": []any{"toolQuery"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error for test-writing task: %v", err)

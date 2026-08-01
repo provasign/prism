@@ -22,11 +22,10 @@ type Config struct {
 	// will use whatever is reported by the MCP client at initialize time or
 	// passed per-call. When empty, ContextWindow() returns a safe 200k
 	// default that covers all current production models.
-	Model             string
-	Profile           string
-	EmbeddingsBackend string // "tfidf" (only backend implemented today)
-	MaxCacheFiles     int
-	Port              int
+	Model         string
+	Profile       string
+	MaxCacheFiles int
+	Port          int
 	// AgentMode controls which steering instructions are written by prism init.
 	// Valid values: "mcp", "cli", "both" (default).
 	AgentMode string
@@ -44,14 +43,13 @@ func Default() *Config {
 	c := &Config{
 		// Grove is embedded in-process; the URL is a legacy field kept for
 		// compatibility and shown in config output. No daemon, no port.
-		GroveURL:          envOr("PRISM_GROVE_URL", "embedded://grove"),
-		GroveBinary:       envOr("PRISM_GROVE_BINARY", "grove"),
-		Model:             envOr("PRISM_MODEL", ""), // "" = auto
-		Profile:           envOr("PRISM_PROFILE", "default"),
-		EmbeddingsBackend: envOr("PRISM_EMBEDDINGS_BACKEND", "tfidf"),
-		MaxCacheFiles:     50000,
-		Port:              8888,
-		AgentMode:         AgentModeBoth,
+		GroveURL:      envOr("PRISM_GROVE_URL", "embedded://grove"),
+		GroveBinary:   envOr("PRISM_GROVE_BINARY", "grove"),
+		Model:         envOr("PRISM_MODEL", ""), // "" = auto
+		Profile:       envOr("PRISM_PROFILE", "default"),
+		MaxCacheFiles: 50000,
+		Port:          8888,
+		AgentMode:     AgentModeBoth,
 	}
 	return c
 }

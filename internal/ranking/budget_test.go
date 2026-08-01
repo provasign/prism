@@ -8,8 +8,8 @@ import (
 )
 
 func TestScore_LinearCombination(t *testing.T) {
-	p := Profile{GraphDistance: 0.5, SemanticSimilarity: 0.5}
-	got := Score(SignalValues{GraphDistance: 1, SemanticSimilarity: 0.5}, p)
+	p := Profile{GraphDistance: 0.5, Recency: 0.5}
+	got := Score(SignalValues{GraphDistance: 1, Recency: 0.5}, p)
 	if math.Abs(got-0.75) > 1e-9 {
 		t.Fatalf("score: want 0.75, got %v", got)
 	}

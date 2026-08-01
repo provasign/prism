@@ -58,13 +58,6 @@ func sqlSymbols() []grove.SymbolRecord {
 	}
 }
 
-// lowSimBackend returns a low score for everything — typical for SQL, whose DDL
-// keywords rarely lexically match a natural-language task. This is exactly the
-// condition under which the old ranker gutted SQL bodies to signatures.
-type lowSimBackend struct{}
-
-func (lowSimBackend) Similarity(task string, sym grove.SymbolRecord) float64 { return 0.03 }
-
 // TestSQL_FirstReadIsFaithful is the regression guard for the reported
 // "Prism compressed the SQL too much that it is not readable" failure. A first
 // read must return the file byte-for-byte regardless of symbol relevance.
@@ -76,7 +69,6 @@ func TestSQL_FirstReadIsFaithful(t *testing.T) {
 		Ledger:          session.NewLedger("sql"),
 		TokenLedgerName: "prism_read",
 		Confidence:      session.High,
-		Embeddings:      lowSimBackend{},
 	}
 
 	r := CompressFileRead("migrations/0007_create_orders.sql", sqlMigration, opts)

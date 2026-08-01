@@ -36,10 +36,10 @@ func Hash(content string) string {
 
 // Options configures CompressFileRead.
 //
-// Task and Embeddings are retained for API compatibility and potential future
-// use, but they intentionally do NOT influence a first read: Prism delivers the
-// complete file on first read and never trims symbol bodies by relevance, since
-// a lossy first-read reconstruction silently drops content the model has never
+// Task is retained for API compatibility and potential future use, but it
+// intentionally does NOT influence a first read: Prism delivers the complete
+// file on first read and never trims symbol bodies by relevance, since a
+// lossy first-read reconstruction silently drops content the model has never
 // seen. All compression happens on the safe re-read paths (sha-pointer and the
 // lossless semantic delta), which key off Session state, not relevance.
 type Options struct {
@@ -49,8 +49,7 @@ type Options struct {
 	Ledger          *session.Ledger
 	TokenLedgerName string // tool name to bill ledger ("prism_read")
 	Confidence      session.Confidence
-	ContextUsed     int64                   // agent-reported context size at this call (0 = not reported)
-	Embeddings      ranking.SemanticBackend // unused by file-read compression (see above)
+	ContextUsed     int64 // agent-reported context size at this call (0 = not reported)
 }
 
 // CompressFileRead returns the rendered output and ledger metadata.

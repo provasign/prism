@@ -286,19 +286,6 @@ func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {
 	}, nil
 }
 
-// QueryByIntent resolves an intent string into ranked symbols.
-func (c *Client) QueryByIntent(ctx context.Context, intent string, limit int) ([]SymbolRecord, error) {
-	e, err := c.requireEngine()
-	if err != nil {
-		return nil, err
-	}
-	syms, err := e.Query(ctx, intent, limit)
-	if err != nil {
-		return nil, err
-	}
-	return convertSymbols(syms), nil
-}
-
 // SearchSymbols returns symbols matching query (substring).
 func (c *Client) SearchSymbols(ctx context.Context, query string, limit int) ([]SymbolRecord, error) {
 	e, err := c.requireEngine()
@@ -627,26 +614,6 @@ func (c *Client) References(ctx context.Context, name string) (groveeng.Referenc
 		return groveeng.ReferenceResult{}, err
 	}
 	return e.References(ctx, name)
-}
-
-// Semantic returns TF-IDF-ranked symbols with cosine-similarity scores.
-func (c *Client) Semantic(ctx context.Context, query string, limit int) ([]SemanticResult, error) {
-	e, err := c.requireEngine()
-	if err != nil {
-		return nil, err
-	}
-	scored, err := e.Semantic(ctx, query, limit)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]SemanticResult, 0, len(scored))
-	for _, sc := range scored {
-		if sc.Symbol == nil {
-			continue
-		}
-		out = append(out, SemanticResult{Score: sc.Score, Symbol: convertSymbol(*sc.Symbol)})
-	}
-	return out, nil
 }
 
 // SnapshotGraph returns every symbol and edge in the current graph. This is

@@ -76,7 +76,6 @@ func (lw *LearnedWeights) Apply(base Profile) Profile {
 	}
 	p := base
 	p.GraphDistance = clamp(base.GraphDistance+adj.GraphDistance, 0.05, 1.0)
-	p.SemanticSimilarity = clamp(base.SemanticSimilarity+adj.SemanticSimilarity, 0.05, 1.0)
 	p.Recency = clamp(base.Recency+adj.Recency, 0.05, 1.0)
 	p.TestRelevance = clamp(base.TestRelevance+adj.TestRelevance, 0.05, 1.0)
 	p.EditFrequency = clamp(base.EditFrequency+adj.EditFrequency, 0.05, 1.0)
@@ -103,13 +102,13 @@ func (lw *LearnedWeights) RecordOutcome(profileName string, citedPaths, delivere
 	var adj SignalValues
 	for _, p := range deliveredPaths {
 		if cited[p] {
-			// Delivered AND used → reinforce SemanticSimilarity (most direct proxy
-			// for "was this the right content") and GraphDistance.
-			adj.SemanticSimilarity += lr
-			adj.GraphDistance += lr * 0.5
+			// Delivered AND used → reinforce GraphDistance, now the most
+			// direct proxy for "was this the right content" (SemanticSimilarity
+			// filled this role until 2026-08-01; removed — see profiles.go).
+			adj.GraphDistance += lr
 		} else {
 			// Delivered but NOT used → suppress.
-			adj.SemanticSimilarity -= lr * 0.5
+			adj.GraphDistance -= lr * 0.5
 		}
 	}
 	if missingTestSignal {
@@ -121,7 +120,6 @@ func (lw *LearnedWeights) RecordOutcome(profileName string, citedPaths, delivere
 	lw.mu.Lock()
 	cur := lw.weights[profileName]
 	cur.GraphDistance = clamp(cur.GraphDistance+adj.GraphDistance, -maxAdj, maxAdj)
-	cur.SemanticSimilarity = clamp(cur.SemanticSimilarity+adj.SemanticSimilarity, -maxAdj, maxAdj)
 	cur.Recency = clamp(cur.Recency+adj.Recency, -maxAdj, maxAdj)
 	cur.TestRelevance = clamp(cur.TestRelevance+adj.TestRelevance, -maxAdj, maxAdj)
 	cur.EditFrequency = clamp(cur.EditFrequency+adj.EditFrequency, -maxAdj, maxAdj)

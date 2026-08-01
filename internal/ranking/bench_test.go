@@ -52,7 +52,7 @@ func BenchmarkLearnedWeights_Apply_NoWeights(b *testing.B) {
 
 func BenchmarkLearnedWeights_Apply_WithWeights(b *testing.B) {
 	lw := &LearnedWeights{weights: map[string]SignalValues{
-		"fix_bug": {SemanticSimilarity: 0.08, TestRelevance: 0.12, GraphDistance: -0.05},
+		"fix_bug": {TestRelevance: 0.12, GraphDistance: -0.05},
 	}}
 	base := SelectProfile("fix_bug")
 	b.ReportAllocs()

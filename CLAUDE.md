@@ -52,10 +52,15 @@ earlier this session, so use the copy you have and do not re-fetch.
 
 **3. Fixing a bug or exploring an unfamiliar area? ONE prism_query call:**
 
+prism_query REQUIRES terms — guess ONE keyword from the task first (a
+class/function name fragment, a domain term); there is no task-alone
+fallback, a call with no terms errors with this guidance.
+
 | Situation | Tool |
 |---|---|
-| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
+| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>", terms=["<your best guess>"]) — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
+| No plausible guess at all | grep/prism_search a domain term first, THEN prism_query with that term |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
@@ -80,11 +85,12 @@ returned sites as-is; read individual sites only to make the edits.
 
 Canonical workflow (non-refactor tasks):
 
-    prism_query(task="<bug symptom or task>")   <- start here; often the ONLY context call needed
-      still missing an anchor?
+    guess ONE keyword from the task (a class/function fragment, a domain term)
+      -> prism_query(task="<bug symptom or task>", terms=["<guess>"])   <- start here; often the ONLY context call needed
+      wrong guess / still missing an anchor?
       -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
-      -> prism_query(                    <- expand from anchor: callers, callees, tests
-           terms=["same-grep-terms"],
+      -> prism_query(                    <- retry with a real anchor: callers, callees
+           task="...", terms=["same-grep-terms"],
            include=["graph"]
          )
       then selectively:
@@ -112,7 +118,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | `prism map [--depth N]` — components + induced dependency edges (weights, tiers, cycles); `--expand 'A->B'` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | `prism arch` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 | Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | `prism verify [--base REF]` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
-| Bug report / unfamiliar area (one-call context) | `prism query "<the symptom>" --format text` — line-numbered windows + per-anchor callers |
+| Bug report / unfamiliar area (one-call context) | `prism query "<the symptom>" --terms <your best guess> --format text` — ONE call; --terms is REQUIRED, guess a keyword from the task |
 | A whole task, end to end (context + the obligations it implies) | `prism task "<task>" --format text`; after editing, `prism task "<same task>" --changed a.go,b.go` for the completeness verdict (exit 1 if incomplete) |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/callees for a symbol just found | `prism query "<task>" --terms a,b --include graph --format text` |

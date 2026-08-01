@@ -71,12 +71,6 @@ type IndexResult struct {
 // ImpactNode is one entry returned by Grove's /impact endpoint.
 type ImpactNode = SymbolRecord
 
-// SemanticResult mirrors Grove's /semantic response entry.
-type SemanticResult struct {
-	Score  float64      `json:"score"`
-	Symbol SymbolRecord `json:"symbol"`
-}
-
 // SymbolChange mirrors grove's core.SymbolChange: one symbol's before/after
 // pair in a structural diff.
 type SymbolChange struct {

@@ -54,8 +54,6 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	}
 	callCfg := h.Cfg.WithModel(p.model)
 
-	// Semantic similarity scores for this task, served from Grove's cached
-	// embedding index (one engine call; no corpus rebuild in Prism).
 	timing := os.Getenv("PRISM_TIMING") != ""
 	tSel := time.Now()
 	stamp := func(stage string) {
@@ -63,8 +61,6 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			fmt.Fprintf(os.Stderr, "[prism-timing]   sel:%-18s %8.0fms\n", stage, float64(time.Since(tSel).Milliseconds()))
 		}
 	}
-	h.loadSemanticScores(ctx, p.task)
-	stamp("semantic")
 	var seeds []grove.SymbolRecord
 
 	if len(p.terms) > 0 {
@@ -121,14 +117,20 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 		seeds = filterGeneratedPrismContext(seeds)
 	} else {
-		// Intent-ranked fallback (Grove Query) when no terms provided.
-		var err error
-		seeds, err = h.Grove.QueryByIntent(ctx, p.task, p.limit)
-		if err != nil {
-			return nil, fmt.Errorf("grove query: %w", err)
-		}
-		seeds = filterGeneratedPrismContext(seeds)
-		seeds = filterDocSeeds(seeds)
+		// No terms: fail closed with guidance rather than guess. This used
+		// to fall back to embedding-based intent ranking; measured
+		// (2026-08-01, 15 hand-verified concept queries, 5 real corpora) an
+		// agent guessing ONE keyword through lexical search already wins or
+		// ties that fallback in 12/15 cases, often by a wide margin — so the
+		// fallback was adding an unreliable extra hop, not covering a real
+        // gap. The actual fix for "I don't know any names yet" is doing what
+		// the agent would do anyway: grep or prism_search a guessed term,
+		// THEN call this with terms. Same discipline mason's own harness
+		// already enforces (code_context requires both task and terms).
+		return nil, fmt.Errorf(
+			"no terms given — guess ONE keyword from the task (a class/function name fragment, " +
+				"a domain term) and call this again with terms=[\"<guess>\"]. If you are not sure what " +
+				"to guess, use prism_search or grep first to find an anchor, then retry with terms")
 	}
 	stamp("seeds")
 	// Build candidates: treat first 5 as seeds (distance 0), remainder as candidates.

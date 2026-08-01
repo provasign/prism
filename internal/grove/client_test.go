@@ -31,9 +31,6 @@ func TestClient_RequiresEnsureRunning(t *testing.T) {
 	if _, err := c.Index(ctx, ""); err == nil {
 		t.Fatal("expected index error before EnsureRunning")
 	}
-	if _, err := c.QueryByIntent(ctx, "x", 1); err == nil {
-		t.Fatal("expected query error before EnsureRunning")
-	}
 	if _, err := c.SearchSymbols(ctx, "x", 1); err == nil {
 		t.Fatal("expected symbols error before EnsureRunning")
 	}
@@ -42,9 +39,6 @@ func TestClient_RequiresEnsureRunning(t *testing.T) {
 	}
 	if _, err := c.Impact(ctx, "x", 1); err == nil {
 		t.Fatal("expected impact error before EnsureRunning")
-	}
-	if _, err := c.Semantic(ctx, "x", 1); err == nil {
-		t.Fatal("expected semantic error before EnsureRunning")
 	}
 }
 
@@ -97,19 +91,12 @@ func TestClient_EndToEndEmbedded(t *testing.T) {
 		t.Fatal("expected Main symbol")
 	}
 
-	if _, err := c.QueryByIntent(ctx, "main entry point", 10); err != nil {
-		t.Fatalf("query: %v", err)
-	}
 	if _, err := c.Deps(ctx, syms[0].FilePath); err != nil {
 		t.Fatalf("deps: %v", err)
 	}
 	if _, err := c.Impact(ctx, "Main", 3); err != nil {
 		t.Fatalf("impact: %v", err)
 	}
-	if _, err := c.Semantic(ctx, "main entry", 5); err != nil {
-		t.Fatalf("semantic: %v", err)
-	}
-
 	c.Shutdown()
 	if err := c.Health(ctx); err == nil {
 		t.Fatal("expected health error after shutdown")

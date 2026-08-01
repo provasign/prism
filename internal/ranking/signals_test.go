@@ -11,12 +11,8 @@ import (
 	"github.com/provasign/prism/internal/grove"
 )
 
-type fakeEmb struct{ v float64 }
-
-func (f fakeEmb) Similarity(_ string, _ grove.SymbolRecord) float64 { return f.v }
-
 func TestNewSignalComputer(t *testing.T) {
-	c := NewSignalComputer("/tmp", nil)
+	c := NewSignalComputer("/tmp")
 	if c.WorkspaceRoot != "/tmp" {
 		t.Error("root")
 	}
@@ -25,26 +21,16 @@ func TestNewSignalComputer(t *testing.T) {
 	}
 }
 
-func TestCompute_NoEmbeddings(t *testing.T) {
-	c := NewSignalComputer("", nil)
+func TestCompute(t *testing.T) {
+	c := NewSignalComputer("")
 	v := c.Compute(context.Background(), "task", grove.SymbolRecord{FilePath: "x.go"}, 2, true, false)
 	if v.GraphDistance == 0 {
 		t.Error("graph dist")
 	}
-	if v.SemanticSimilarity != 0 {
-		t.Error("sem should be 0")
-	}
 	if v.TestRelevance != 1.0 {
 		t.Error("test rel")
 	}
-}
-
-func TestCompute_Embeddings(t *testing.T) {
-	c := NewSignalComputer("", fakeEmb{v: 0.42})
-	v := c.Compute(context.Background(), "task", grove.SymbolRecord{}, 0, false, true)
-	if v.SemanticSimilarity != 0.42 {
-		t.Errorf("got %v", v.SemanticSimilarity)
-	}
+	v = c.Compute(context.Background(), "task", grove.SymbolRecord{}, 0, false, true)
 	if v.TestRelevance != 0.5 {
 		t.Error("test rel sameFile")
 	}
@@ -59,7 +45,7 @@ func TestCompute_Embeddings(t *testing.T) {
 }
 
 func TestGitStats_NoRepo(t *testing.T) {
-	c := NewSignalComputer(t.TempDir(), nil)
+	c := NewSignalComputer(t.TempDir())
 	s := c.gitStats("x.go")
 	if s.LastEditDays != 365 {
 		t.Errorf("got %d", s.LastEditDays)
@@ -69,7 +55,7 @@ func TestGitStats_NoRepo(t *testing.T) {
 }
 
 func TestGitStats_EmptyRoot(t *testing.T) {
-	c := NewSignalComputer("", nil)
+	c := NewSignalComputer("")
 	s := c.gitStats("x.go")
 	if s.LastEditDays != 365 {
 		t.Errorf("got %d", s.LastEditDays)
@@ -96,7 +82,7 @@ func TestGitStats_RealRepo(t *testing.T) {
 		cmd.Dir = dir
 		_ = cmd.Run()
 	}
-	c := NewSignalComputer(dir, nil)
+	c := NewSignalComputer(dir)
 	s := c.gitStats("f.go")
 	if s.CommitCount90d < 1 {
 		t.Errorf("commits %d", s.CommitCount90d)
