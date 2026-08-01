@@ -1841,7 +1841,7 @@ func cmdReferences(args []string) int {
 
 func cmdChangeImpact(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism change-impact <query> [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism change-impact <Type.method | bare-name | file:line> [dir]")
 		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
 		return 2
 	}
@@ -1867,7 +1867,7 @@ func cmdChangeImpact(args []string) int {
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_change_impact", map[string]any{"query": query})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "change-impact:", err)
+		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
 		return 1
 	}
 	printOutput(out, format)
@@ -1876,7 +1876,7 @@ func cmdChangeImpact(args []string) int {
 
 func cmdRenamePlan(args []string) int {
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: prism rename-plan <query> <NewName> [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism rename-plan <Type.method | bare-name | file:line> <NewName> [dir]")
 		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
 		return 2
 	}
@@ -1903,7 +1903,7 @@ func cmdRenamePlan(args []string) int {
 	out, err := invokeWithPersistentLedger(dir, "prism_rename_plan",
 		map[string]any{"query": query, "newName": newName})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "rename-plan:", err)
+		fmt.Fprintln(os.Stderr, prefixOnce("rename-plan", err))
 		return 1
 	}
 	printOutput(out, format)
@@ -1912,7 +1912,7 @@ func cmdRenamePlan(args []string) int {
 
 func cmdMissingImplementations(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism missing-implementations <query> [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism missing-implementations <Type.method | bare-name | file:line> [dir]")
 		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
 		return 2
 	}
@@ -1938,7 +1938,7 @@ func cmdMissingImplementations(args []string) int {
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_missing_implementations", map[string]any{"query": query})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "missing-implementations:", err)
+		fmt.Fprintln(os.Stderr, prefixOnce("missing-implementations", err))
 		return 1
 	}
 	printOutput(out, format)
@@ -2725,4 +2725,16 @@ func cmdAssist(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// prefixOnce labels an error with its operation without stuttering. Grove
+// already prefixes these errors ("change-impact: query must be…"), so the
+// naive `Fprintln("change-impact:", err)` printed the label twice — three
+// times before the MCP layer stopped re-wrapping too.
+func prefixOnce(op string, err error) string {
+	msg := err.Error()
+	if strings.HasPrefix(msg, op+":") {
+		return msg
+	}
+	return op + ": " + msg
 }

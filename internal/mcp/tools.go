@@ -495,7 +495,7 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"query": map[string]any{
 					"type":        "string",
-					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\".",
+					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\". A bare member name (\"serialize\") or file:line (\"src/Foo.java:120\") also works when it resolves to exactly one symbol; if several match, the error lists the candidates.",
 				},
 			},
 		}
@@ -1657,7 +1657,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	r, err := h.Grove.ChangeImpact(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("change-impact: %w", err)
+		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_change_impact")
 	compact := func(syms []grove.SymbolRecord) []map[string]any {
@@ -1722,7 +1722,7 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 	}
 	r, err := h.Grove.MissingImplementations(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("missing-implementations: %w", err)
+		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_missing_implementations")
 	compact := func(syms []grove.SymbolRecord) []map[string]any {
@@ -1792,7 +1792,7 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 	}
 	r, err := h.Grove.RenamePlan(ctx, query, newName)
 	if err != nil {
-		return nil, fmt.Errorf("rename-plan: %w", err)
+		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_rename_plan")
 	out := map[string]any{
