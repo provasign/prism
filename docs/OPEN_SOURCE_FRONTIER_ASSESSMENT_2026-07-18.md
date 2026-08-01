@@ -280,7 +280,7 @@ Prism is not entering an empty category.
 | Serena | Broad LSP/JetBrains semantic retrieval and refactoring, mature MCP packaging, large community | Deterministic closure operations, independent oracle benchmarks, explicit completeness contracts |
 | Aider | Mature coding agent, graph-ranked repository map, broad model support, established UX | Precise impact and contract operations rather than context ranking alone |
 | Cursor/Copilot/Codex/Claude Code | Owned UX, built-in indexing/search, massive distribution | Neutral layer that makes the same correctness operation available in every host |
-| CodeGraph-style MCP projects | Easy local graph setup, semantic search, impact tools | Higher measured precision/recall, task altitude, deterministic edit plans, published evaluation |
+| Local code-graph MCP projects | Easy local graph setup, semantic search, impact tools | Higher measured precision/recall, task altitude, deterministic edit plans, published evaluation |
 | Language servers/SCIP | Compiler-grade definitions and references in supported ecosystems | Uniform cross-language task API, test relationships, agent delivery, degraded-mode behavior |
 
 Sourcegraph already documents mixed keyword, search, and code-graph context,
@@ -291,7 +291,7 @@ The official MCP Registry lists Serena but not Prism. "We have a graph" or "we
 reduce context" will not be enough.
 
 Prism should openly benchmark the exact operations competitors expose. The
-current CodeGraph comparison is a start. Add Serena/LSP, SCIP, Aider repo-map,
+current local code-graph engine comparison is a start. Add Serena/LSP, SCIP, Aider repo-map,
 and built-in agent search baselines where a fair adapter exists. Publish cases
 where competitors win.
 

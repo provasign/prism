@@ -302,9 +302,9 @@ func TestSafePathWithinRoot_EquivalentSymlinkRoots(t *testing.T) {
 // branch resolved symlinks, so the join-then-containment-check saw the
 // unresolved in-root path, passed, and os.ReadFile then followed the link
 // at read time, serving the external file's content under the in-repo
-// name (same failure class as codegraph's Medium symlink-escape finding,
-// github.com/colbymchenry/codegraph#1367 — attacker-controlled repo content
-// could leak signatures/source from outside the indexed tree).
+// name (the same symlink-escape failure class reported against other
+// code-indexing tools — attacker-controlled repo content could leak
+// signatures/source from outside the indexed tree).
 func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
 	outsideDir := t.TempDir()
 	secret := filepath.Join(outsideDir, "secret.go")

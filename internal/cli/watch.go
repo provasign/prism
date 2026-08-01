@@ -14,12 +14,23 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// watchIgnoreDirs are never watched or reindexed — build output, VCS, vendored
-// trees, and other engines' index dirs. Matched by base name at any depth.
+// watchIgnoreDirs are never watched or reindexed — build output, vendored
+// trees, and caches. Matched by base name at any depth. Hidden directories
+// are excluded separately by watchIgnoreDir: they hold tool state (VCS
+// metadata, index caches, editor config), and a watcher that follows them
+// spins on another tool's own writes.
 var watchIgnoreDirs = map[string]bool{
-	".git": true, ".grove": true, ".codegraph": true, ".hg": true, ".svn": true,
 	"node_modules": true, "vendor": true, "dist": true, "build": true,
-	"target": true, ".next": true, ".venv": true, "__pycache__": true,
+	"target": true, "__pycache__": true,
+}
+
+// watchIgnoreDir reports whether a directory should never be watched. Any
+// dot-directory qualifies: watching exists to catch SOURCE edits, and every
+// dev tool — ours included — keeps its index and metadata in a hidden dir,
+// whose write traffic would otherwise trigger endless reindex churn. Source
+// kept in a hidden directory is still indexed by an explicit `prism index`.
+func watchIgnoreDir(name string) bool {
+	return strings.HasPrefix(name, ".") || watchIgnoreDirs[name]
 }
 
 // cmdWatch keeps the Grove index warm by PUSH: it watches the working tree and
@@ -76,7 +87,7 @@ func cmdWatch(args []string) int {
 				return nil
 			}
 			if d.IsDir() {
-				if p != base && watchIgnoreDirs[d.Name()] {
+				if p != base && watchIgnoreDir(d.Name()) {
 					return filepath.SkipDir
 				}
 				_ = w.Add(p)
@@ -118,7 +129,7 @@ func cmdWatch(args []string) int {
 			// new package) — fsnotify does not recurse on its own.
 			if ev.Op&fsnotify.Create != 0 {
 				if fi, err := os.Stat(ev.Name); err == nil && fi.IsDir() {
-					if !watchIgnoreDirs[filepath.Base(ev.Name)] {
+					if !watchIgnoreDir(filepath.Base(ev.Name)) {
 						addTree(ev.Name)
 					}
 					continue
@@ -147,7 +158,7 @@ func watchIgnorePath(root, path string) bool {
 		return false
 	}
 	for _, part := range strings.Split(rel, string(filepath.Separator)) {
-		if watchIgnoreDirs[part] {
+		if watchIgnoreDir(part) {
 			return true
 		}
 	}

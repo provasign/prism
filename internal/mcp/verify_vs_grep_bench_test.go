@@ -5,7 +5,7 @@ package mcp
 // a grep baseline (the realistic non-graph check: flag every call site
 // naming the changed method that the diff did not touch). No LLM in the
 // loop — this isolates the mechanism (type resolution vs name matching),
-// matching the standing methodology in provasign/research/harness/AB-CODEGRAPH.md.
+// matching the standing methodology in provasign/research/harness/AB-ENGINE-COMPARISON.md.
 //
 // The fixture is built so the two arms are told apart by the ONE thing a
 // graph has that grep does not: type information. Two unrelated types share
