@@ -57,7 +57,6 @@ func TestRun(t interface{}) {
 	}{
 		{"prism_change_impact", map[string]any{"query": "Doer.Do"}},
 		{"prism_missing_implementations", map[string]any{"query": "Doer.Do"}},
-		{"prism_untested_surface", map[string]any{"query": "Doer.Do"}},
 		{"prism_rename_plan", map[string]any{"query": "Doer.Do", "newName": "Execute"}},
 		{"prism_dead_code", map[string]any{}},
 	}

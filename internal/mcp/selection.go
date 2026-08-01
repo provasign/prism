@@ -34,9 +34,6 @@ type selection struct {
 	graphExtra []grove.SymbolRecord
 	seeds      []grove.SymbolRecord
 	budget     int
-	// testEdgeIDs marks test symbols connected to a seed by a real tests edge,
-	// as opposed to tests that merely matched the task text lexically.
-	testEdgeIDs map[string]bool
 }
 
 // selectContext runs retrieval (term-seeded or intent-ranked), graph and test
@@ -177,21 +174,6 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 				}
 			}
 		}
-		if p.includeSet["tests"] {
-			if tests, err := h.Grove.Tests(ctx, seedQuery); err == nil {
-				for _, tst := range tests {
-					hasTestEdgeID[tst.ID] = true
-					testFilePaths[tst.FilePath] = true
-					if _, exists := graphDist[tst.ID]; !exists {
-						graphDist[tst.ID] = 1
-					}
-					if !seenIDs[tst.ID] {
-						seenIDs[tst.ID] = true
-						graphExtra = append(graphExtra, tst)
-					}
-				}
-			}
-		}
 	}
 
 	stamp("graph-expand")
@@ -206,7 +188,10 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		for _, sym := range merged {
 			cat := string(categorize(sym))
 			switch {
-			case cat == string(ranking.CategoryTest) && !p.includeSet["tests"]:
+			case cat == string(ranking.CategoryTest):
+				// Test-coverage edges were removed; a lexically task-matched
+				// test carries no verified relation to the anchor, so it is
+				// never delivered.
 				continue
 			case cat == string(ranking.CategoryDoc) && !p.includeSet["docs"]:
 				continue
@@ -274,11 +259,10 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	stamp("rank+budget")
 
 	return &selection{
-		picked:      picked,
-		seedSyms:    seedSyms,
-		graphExtra:  graphExtra,
-		seeds:       seeds,
-		budget:      budget,
-		testEdgeIDs: hasTestEdgeID,
+		picked:     picked,
+		seedSyms:   seedSyms,
+		graphExtra: graphExtra,
+		seeds:      seeds,
+		budget:     budget,
 	}, nil
 }

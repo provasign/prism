@@ -209,10 +209,6 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolChangeImpact(ctx, args)
 	case "prism_missing_implementations":
 		return h.toolMissingImplementations(ctx, args)
-	case "prism_untested_surface":
-		return h.toolUntestedSurface(ctx, args)
-	case "prism_affected":
-		return h.toolAffected(ctx, args)
 	case "prism_dead_code":
 		return h.toolDeadCode(ctx, args)
 	case "prism_rename_plan":
@@ -257,8 +253,8 @@ func ToolSchemas() []map[string]any {
 		"prism",
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
-		"prism_missing_implementations", "prism_untested_surface", "prism_dead_code",
-		"prism_rename_plan", "prism_affected", "prism_map",
+		"prism_missing_implementations", "prism_dead_code",
+		"prism_rename_plan", "prism_map",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -341,8 +337,8 @@ func toolSchema(name string) map[string]any {
 				},
 				"include": map[string]any{
 					"type":        "array",
-					"items":       map[string]any{"type": "string", "enum": []string{"graph", "tests", "docs", "coverage_gaps"}},
-					"description": "Categories: graph (callers/callees), tests, docs (filenames only), coverage_gaps (untested symbols; audits only the seeds + blast radius, so use 1-2 terms per query and union results). Default: [\"graph\",\"tests\"].",
+					"items":       map[string]any{"type": "string", "enum": []string{"graph", "docs"}},
+					"description": "Categories: graph (callers/callees), docs (filenames only). Default: [\"graph\"].",
 				},
 				"graph_depth": map[string]any{
 					"type":        "integer",
@@ -474,7 +470,7 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
-	case "prism_change_impact", "prism_missing_implementations", "prism_untested_surface":
+	case "prism_change_impact", "prism_missing_implementations":
 		return map[string]any{
 			"type":     "object",
 			"required": []string{"query"},
@@ -482,18 +478,6 @@ func toolSchema(name string) map[string]any {
 				"query": map[string]any{
 					"type":        "string",
 					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\".",
-				},
-			},
-		}
-	case "prism_affected":
-		return map[string]any{
-			"type":     "object",
-			"required": []string{"files"},
-			"properties": map[string]any{
-				"files": map[string]any{
-					"type":        "array",
-					"items":       map[string]any{"type": "string"},
-					"description": "Repo-relative changed files (e.g. from `git diff --name-only`).",
 				},
 			},
 		}
@@ -581,12 +565,11 @@ func toolDescription(name string) string {
 		return "ONE call for task context: pass the task and terms=[...] with anchor names you have " +
 			"CONFIRMED (from grep/search or named in the task) — retrieval keys on the terms, so a " +
 			"confirmed anchor beats a well-phrased task, but a guessed term for a common name hurts. " +
-			"Prism finds those symbols then expands through the call graph (callers, callees, tests). " +
+			"Prism finds those symbols then expands through the call graph (callers, callees). " +
 			"For bug-fix/implement tasks it delivers verbatim LINE-NUMBERED source windows plus each " +
-			"anchor's callers and covering tests — edit-ready, identical to Read output; do NOT re-read " +
+			"anchor's callers — edit-ready, identical to Read output; do NOT re-read " +
 			"the files it shows. Unchanged files already delivered this session come back as one-line " +
 			"cached pointers. delivery=\"symbols\" forces the compact per-symbol list. " +
-			"Use include=[\"coverage_gaps\"] when writing or fixing code. " +
 			"Use include=[\"docs\"] for doc filenames only."
 	case "prism_read":
 		return "Whole-file read with session compression: full content on first read; a repeat read of " +
@@ -690,31 +673,6 @@ func toolDescription(name string) string {
 			"'missing' reads as 'inherits the default — breaks if the member becomes required'. " +
 			"Same completeness reporting as change_impact. RELAY the result as-is: do not " +
 			"re-verify through grep — the closure and inheritance walk are already solved."
-	case "prism_untested_surface":
-		return "Coverage partition of a change-set: pass 'Type.method' and get the same " +
-			"change-set as prism_change_impact, split into covered (a test reaches the site " +
-			"within 3 resolved caller hops; up to 3 example tests + true count) and untested " +
-			"(no such test — the sites a signature change can break silently). THE pre-refactor " +
-			"pipeline: change_impact to see the blast radius, untested_surface to know which of " +
-			"those sites to write tests for FIRST. 'untested' means no test within the resolved " +
-			"caller horizon — dynamic dispatch the graph cannot see (reflection, framework " +
-			"executors, CLI runners, fixtures, proxy globals) may still exercise the site, so it " +
-			"is a work list, NOT proof. Coverage edges are heuristic: before you report a site as " +
-			"an untested gap, CONFIRM by grepping the test suite for the symbol, its class, and " +
-			"its callers — this is the one traversal where grep legitimately COMPLETES the graph " +
-			"answer. (Grep-completion is for coverage only: change_impact / rename_plan / " +
-			"missing_implementations return the closed set — relay those as-is, never re-derive " +
-			"them via grep.)"
-	case "prism_affected":
-		return "The file-diff form of test selection: pass the CHANGED FILES (repo-relative, " +
-			"e.g. `git diff --name-only`) and get back exactly the tests that cover any symbol " +
-			"defined in them — grouped by test file, so a CI step can run ONLY the affected " +
-			"tests instead of the whole suite. Coverage follows the same evidence-backed graph " +
-			"traversal as untested_surface (a test reaches a changed symbol within the resolved " +
-			"caller horizon); low-confidence edges are excluded so unrelated tests are not swept " +
-			"in. Dynamic dispatch the graph cannot see (reflection, framework executors) may " +
-			"still exercise a site, so treat the set as a high-signal selection, not a proof of " +
-			"total isolation. RELAY the result as-is."
 	case "prism_rename_plan":
 		return "The rename executed as a plan: pass 'Type.method' and newName, get the " +
 			"complete change-impact set converted to concrete line edits — file, line, " +
@@ -754,22 +712,11 @@ func toolDescription(name string) string {
 // --- Tool implementations -----------------------------------------------
 
 type queryResult struct {
-	BudgetUsed   int            `json:"budgetUsed"`
-	Symbols      []rankedSymbol `json:"symbols"`
-	CoverageGaps []coverageGap  `json:"coverageGaps,omitempty"`
+	BudgetUsed int            `json:"budgetUsed"`
+	Symbols    []rankedSymbol `json:"symbols"`
 	// Note explains an empty result so agents can tell "wrong root" or
 	// "term typo" apart from "genuinely no matches" without guessing.
 	Note string `json:"note,omitempty"`
-}
-
-// coverageGap is a code symbol in the query blast radius that has no test
-// edges in the graph. Returned only when include contains "coverage_gaps".
-type coverageGap struct {
-	Name     string         `json:"name"`
-	QualName string         `json:"qualifiedName,omitempty"`
-	FilePath string         `json:"filePath"`
-	Kind     string         `json:"kind"`
-	Span     grove.SpanInfo `json:"span,omitempty"`
 }
 
 type rankedSymbol struct {
@@ -817,8 +764,8 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 
 	// include: controls which result categories are returned.
-	// Accepted values: "graph" (code + callers/callees), "tests", "docs".
-	// Default when omitted: ["graph", "tests"].
+	// Accepted values: "graph" (code + callers/callees), "docs".
+	// Default when omitted: ["graph"].
 	includeSet := map[string]bool{}
 	if raw, ok := args["include"]; ok {
 		switch v := raw.(type) {
@@ -835,7 +782,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		}
 	}
 	if len(includeSet) == 0 {
-		includeSet = map[string]bool{"graph": true, "tests": true}
+		includeSet = map[string]bool{"graph": true}
 	}
 
 	// graph_depth is accepted for backward compatibility but expansion is a
@@ -869,9 +816,6 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if includeSet["coverage_gaps"] {
-			out["coverageGaps"] = buildCoverageGaps(ctx, h.Grove, sel.seedSyms, sel.graphExtra)
-		}
 		delivered, _ := out["deliveredTokens"].(int)
 		h.Ledger.Record("prism_query", h.queryBaselineTokens(sel.picked, delivered), delivered)
 		return out, nil
@@ -904,14 +848,8 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		case len(sel.seeds) == 0:
 			out.Note = fmt.Sprintf("no symbols matched this task under project root %s", h.Root)
 		default:
-			out.Note = "seeds matched but nothing fit the requested include categories/budget; try include=[\"graph\",\"tests\"] or a larger budget"
+			out.Note = "seeds matched but nothing fit the requested include categories/budget; try include=[\"graph\"] or a larger budget"
 		}
-	}
-
-	// Coverage gaps: code symbols in the blast radius with no test edges.
-	// Only computed when the agent explicitly requests include=["coverage_gaps"].
-	if includeSet["coverage_gaps"] {
-		out.CoverageGaps = buildCoverageGaps(ctx, h.Grove, sel.seedSyms, sel.graphExtra)
 	}
 
 	// Baseline for the savings ledger: the token cost of reading each
@@ -944,97 +882,6 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 	}
 	return total
 }
-
-// buildCoverageGaps returns code symbols (seeds + blast-radius) that have no
-// direct `tests` edge pointing at them in Grove's graph. Grove scopes test
-// edges through the import graph and backs them with call-site evidence
-// (v0.6.0), so the edge itself is the authority — no name heuristics. Cost is
-// one Deps() call per distinct file.
-func buildCoverageGaps(ctx context.Context, g *grove.Client, seeds []grove.SymbolRecord, blastRadius []grove.SymbolRecord) []coverageGap {
-	var gaps []coverageGap
-	seen := make(map[string]bool)
-	tested := newTestedChecker(g)
-
-	isCodeSym := func(s grove.SymbolRecord) bool {
-		cat := categorize(s)
-		if cat == ranking.CategoryTest || cat == ranking.CategoryDoc {
-			return false
-		}
-		if s.Kind != "function" && s.Kind != "method" {
-			return false
-		}
-		if strings.HasPrefix(s.Name, "New") {
-			return false
-		}
-		return isExportedName(s.Name)
-	}
-
-	for _, group := range [][]grove.SymbolRecord{seeds, blastRadius} {
-		for _, s := range group {
-			if seen[s.ID] || !isCodeSym(s) {
-				continue
-			}
-			seen[s.ID] = true
-			if !tested.covered(ctx, s) {
-				gaps = append(gaps, coverageGap{
-					Name:     s.Name,
-					QualName: s.QualifiedName,
-					FilePath: s.FilePath,
-					Kind:     s.Kind,
-					Span:     s.Span,
-				})
-			}
-		}
-	}
-
-	return gaps
-}
-
-// testedChecker answers "does a direct tests edge point at this symbol?"
-// with a per-file edge cache so each file's edges are fetched once.
-type testedChecker struct {
-	g      *grove.Client
-	byFile map[string]map[string]bool // file → set of tested edge-target keys
-}
-
-func newTestedChecker(g *grove.Client) *testedChecker {
-	return &testedChecker{g: g, byFile: map[string]map[string]bool{}}
-}
-
-func (t *testedChecker) covered(ctx context.Context, sym grove.SymbolRecord) bool {
-	targets, ok := t.byFile[sym.FilePath]
-	if !ok {
-		targets = map[string]bool{}
-		if edges, err := t.g.Deps(ctx, sym.FilePath); err == nil {
-			for _, e := range edges {
-				if e.Type != "tests" {
-					continue
-				}
-				// Grove v0.7.0 tiers tests edges by confidence: ≥0.8 is a
-				// direct relation; lower tiers (helper-transitive 0.6–0.75,
-				// one-hop-past-entry 0.55) mean "possibly related" and must
-				// not silence a coverage gap.
-				if e.Confidence < 0.8 {
-					continue
-				}
-				targets[e.To] = true
-				// Also key by the SHA-independent form so a record from an
-				// older snapshot still matches after the blob hash moved.
-				targets[trimSymbolID(e.To)] = true
-			}
-		}
-		t.byFile[sym.FilePath] = targets
-	}
-	if targets[sym.ID] {
-		return true
-	}
-	if sym.QualifiedName != "" && targets[sym.FilePath+"::"+sym.QualifiedName] {
-		return true
-	}
-	return targets[sym.FilePath+"::"+sym.Name]
-}
-
-// trimSymbolID strips the trailing "@<blobSHA>[#n]" from a Grove symbol ID
 // ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
 func trimSymbolID(id string) string {
 	if i := strings.LastIndex(id, "@"); i > 0 {
@@ -1765,105 +1612,6 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 		out["overridesExternal"] = r.OverridesExternal
 	}
 	return out, nil
-}
-
-func (h *Handler) toolUntestedSurface(ctx context.Context, args map[string]any) (any, error) {
-	query := stringArg(args, "query", "")
-	if query == "" {
-		return nil, errors.New("query is required")
-	}
-	r, err := h.Grove.UntestedSurface(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("untested-surface: %w", err)
-	}
-	h.Ledger.RecordCall("prism_untested_surface")
-	site := func(s grove.SymbolRecord) map[string]any {
-		qn := s.QualifiedName
-		if qn == "" {
-			qn = s.Name
-		}
-		return map[string]any{
-			"name": s.Name, "qualifiedName": qn, "filePath": s.FilePath,
-			"line": s.Span.Start, "kind": s.Kind,
-		}
-	}
-	untested := make([]map[string]any, 0, len(r.Untested))
-	for _, s := range r.Untested {
-		untested = append(untested, site(s))
-	}
-	covered := make([]map[string]any, 0, len(r.Covered))
-	for _, c := range r.Covered {
-		entry := site(c.Symbol)
-		entry["testCount"] = c.TestCount
-		tests := make([]map[string]any, 0, len(c.Tests))
-		for _, t := range c.Tests {
-			tests = append(tests, site(t))
-		}
-		entry["tests"] = tests
-		covered = append(covered, entry)
-	}
-	out := map[string]any{
-		"query":      r.Query,
-		"totalSites": r.TotalSites,
-		"untested":   untested,
-		"covered":    covered,
-		"note": "covered = a test reaches the site within 3 resolved caller hops; " +
-			"untested = no such test. Dynamic dispatch the graph cannot resolve " +
-			"(reflection, framework executors) is not seen — untested is a " +
-			"write-tests-here work list, not proof of zero coverage",
-	}
-	if r.Completeness != "" {
-		out["completeness"] = r.Completeness
-	}
-	if len(r.OverridesExternal) > 0 {
-		out["overridesExternal"] = r.OverridesExternal
-	}
-	return out, nil
-}
-
-// toolAffected maps a set of CHANGED FILES to the tests that cover them —
-// the file-diff form of test selection for CI ("run only the affected tests").
-func (h *Handler) toolAffected(ctx context.Context, args map[string]any) (any, error) {
-	var files []string
-	if raw, ok := args["files"].([]any); ok {
-		for _, x := range raw {
-			if s, ok := x.(string); ok && strings.TrimSpace(s) != "" {
-				files = append(files, strings.TrimSpace(s))
-			}
-		}
-	}
-	if len(files) == 0 {
-		return nil, errors.New("files is required (repo-relative paths, e.g. from `git diff --name-only`)")
-	}
-	tests, err := h.Grove.AffectedTests(ctx, files)
-	if err != nil {
-		return nil, fmt.Errorf("affected: %w", err)
-	}
-	h.Ledger.RecordCall("prism_affected")
-	byFile := map[string][]map[string]any{}
-	order := []string{}
-	for _, s := range tests {
-		if _, seen := byFile[s.FilePath]; !seen {
-			order = append(order, s.FilePath)
-		}
-		qn := s.QualifiedName
-		if qn == "" {
-			qn = s.Name
-		}
-		byFile[s.FilePath] = append(byFile[s.FilePath], map[string]any{
-			"name": s.Name, "qualifiedName": qn, "line": s.Span.Start, "kind": s.Kind,
-		})
-	}
-	testFiles := make([]map[string]any, 0, len(order))
-	for _, f := range order {
-		testFiles = append(testFiles, map[string]any{"filePath": f, "tests": byFile[f]})
-	}
-	return map[string]any{
-		"changedFiles":  files,
-		"testFiles":     testFiles, // grouped by test file — the CI unit
-		"testCount":     len(tests),
-		"testFileCount": len(order),
-	}, nil
 }
 
 // identRe: rename targets must be bare identifiers — a path or expression

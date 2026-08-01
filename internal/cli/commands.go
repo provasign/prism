@@ -69,7 +69,7 @@ Usage:
                                   tasks get line-numbered source windows + per-anchor
                                   callers/covering tests (edit-ready)
                                   --terms a,b,c      Anchor on specific symbol names (grep-precision)
-                                  --include a,b      Categories: graph,tests,docs,coverage_gaps (default: graph,tests)
+                                  --include a,b      Categories: graph,docs (default: graph)
                                   --delivery source|symbols  Force delivery shape (default: phase-aware)
                                   --max-files N      source delivery: max files shown (default: 5)
                                   --depth N          BFS hops for graph expansion (default: 2)
@@ -93,9 +93,6 @@ Usage:
   prism missing-implementations <query> [dir]  Types claiming the contract that do NOT
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
-                                  --format text|lean|json  Output format (default: json)
-  prism untested-surface <query> [dir]  Change-set partitioned by covering-test
-                                  evidence: covered (test within 3 caller hops) vs untested
                                   --format text|lean|json  Output format (default: json)
   prism affected <file> [file ...]  Tests covering the changed files (CI test selection):
                                   git diff --name-only | xargs prism affected  → run only those tests
@@ -180,10 +177,6 @@ func Run(args []string) int {
 		return cmdMissingImplementations(rest)
 	case "rename-plan":
 		return cmdRenamePlan(rest)
-	case "untested-surface":
-		return cmdUntestedSurface(rest)
-	case "affected":
-		return cmdAffected(rest)
 	case "dead-code":
 		return cmdDeadCode(rest)
 	case "assist":
@@ -348,9 +341,7 @@ cheaply. Three layers, in priority order.
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
 | Renaming a method and you want the edits, not just the sites | prism_rename_plan(query="Type.method", newName="newName") — every edit line with before/after; review and apply |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every type in the closure with no implementation |
-| "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
 | Cleanups, library extraction, "is X still used / can I delete it?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
-| "Which tests should run for these changed files?" (pre-commit, CI selection, post-edit) | prism_affected(files=[...]) — every test covering the changed files, via graph test edges |
 | "How is this repo structured?" / onboarding / refactor-extraction planning / dependency cycles / "what depends on component X?" | prism_map — components + induced dependency edges (weights, evidence tiers, cycles); pass from+to to expand any edge into concrete file:line sites |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
@@ -442,9 +433,7 @@ layers, in priority order.
 | ANY task that says "find all X" for a specific method | ` + "`" + `prism change-impact` + "`" + ` first, before any grep |
 | Renaming a method and you want the edits, not just the sites | ` + "`" + `prism rename-plan 'Type.method' NewName` + "`" + ` — every edit line with before/after; review and apply |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
-| "What should I test before changing X?" / test-gap audit / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
 | Cleanups / "is X still used / can I delete it?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
-| "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 | Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), affected tests, introduced arch violations; exit 1 if incomplete |
@@ -542,9 +531,7 @@ Use the registered prism_* MCP tools.
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
 | Renaming a method and you want the edits, not just the sites | prism_rename_plan(query="Type.method", newName="newName") — every edit line with before/after; review and apply |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every closure type with no implementation |
-| "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
 | Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
-| "Which tests should run for these changed files?" (pre-commit, CI selection, post-edit) | prism_affected(files=[...]) — every test covering the changed files, via graph test edges |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | prism_map — components + induced dependency edges (weights, tiers, cycles); from+to expands any edge to file:line sites |
 
 **2. Reading code? Prism reads are cheaper than shell reads:**
@@ -617,9 +604,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
 | Renaming a method and you want the edits, not just the sites | ` + "`" + `prism rename-plan 'Type.method' NewName` + "`" + ` — every edit line with before/after; review and apply |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
-| "What should I test before changing X?" / symbols with no tests | ` + "`" + `prism untested-surface 'Type.method'` + "`" + ` — change-set split covered/untested |
 | Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
-| "Which tests should run for these changed files?" (pre-commit, CI selection) | ` + "`" + `git diff --name-only | xargs prism affected` + "`" + ` — every test covering the changed files |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 | Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), affected tests, introduced arch violations; exit 1 if incomplete |
@@ -1695,94 +1680,6 @@ func cmdMissingImplementations(args []string) int {
 	return 0
 }
 
-func cmdUntestedSurface(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism untested-surface <query> [dir]")
-		fmt.Fprintln(os.Stderr, "  query: Type.method or Type.method(ParamType, ...)")
-		return 2
-	}
-	query := args[0]
-	dir := "."
-	format := formatJSON
-	for i := 1; i < len(args); i++ {
-		a := args[i]
-		switch a {
-		case "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
-			}
-		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
-			}
-		}
-	}
-	out, err := invokeWithPersistentLedger(dir, "prism_untested_surface", map[string]any{"query": query})
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "untested-surface:", err)
-		return 1
-	}
-	printOutput(out, format)
-	return 0
-}
-
-func cmdAffected(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism affected <file> [file ...] [dir] [--format text|json]")
-		fmt.Fprintln(os.Stderr, "  files: repo-relative changed files, e.g.  git diff --name-only | xargs prism affected")
-		return 2
-	}
-	dir := "."
-	format := formatJSON
-	var files []any
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch {
-		case a == "--format":
-			if i+1 < len(args) {
-				switch outputFormat(args[i+1]) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(args[i+1])
-				}
-				i++
-			}
-		case a == "--dir":
-			if i+1 < len(args) {
-				dir = args[i+1]
-				i++
-			}
-		default:
-			if strings.HasPrefix(a, "-") {
-				break
-			}
-			// A positional arg that is an existing directory (or "."/"..") is
-			// the run root; everything else is a changed file (repo-relative).
-			if a == "." || a == ".." {
-				dir = a
-			} else if fi, err := os.Stat(a); err == nil && fi.IsDir() {
-				dir = a
-			} else {
-				files = append(files, a)
-			}
-		}
-	}
-	if len(files) == 0 {
-		fmt.Fprintln(os.Stderr, "affected: no changed files given")
-		return 2
-	}
-	out, err := invokeWithPersistentLedger(dir, "prism_affected", map[string]any{"files": files})
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "affected:", err)
-		return 1
-	}
-	printOutput(out, format)
-	return 0
-}
-
 func cmdDeadCode(args []string) int {
 	dir := "."
 	format := formatJSON
@@ -2277,18 +2174,6 @@ func printTextOutput(m map[string]any) {
 				fmt.Println()
 			}
 		}
-		if rawGaps, ok := m["coverageGaps"]; ok {
-			if gaps, ok := rawGaps.([]any); ok && len(gaps) > 0 {
-				fmt.Println("// coverage_gaps:")
-				for _, g := range gaps {
-					if gap, ok := g.(map[string]any); ok {
-						name, _ := gap["name"].(string)
-						fp, _ := gap["filePath"].(string)
-						fmt.Printf("//   %s (%s)\n", name, fp)
-					}
-				}
-			}
-		}
 		return
 	}
 	// prism_lookup with --fields: projected columns (name/file/line + selected),
@@ -2414,8 +2299,8 @@ func jsonInt(v any) int {
 // emits compact JSON with only the fields agents actually use.
 func printLeanOutput(m map[string]any) {
 	// Task-shaped ops (change-impact, rename-plan, missing-implementations,
-	// untested-surface, dead-code) return purpose-built maps with no
-	// metadata to strip; lean used to reduce them to {} — pass them through.
+	// dead-code) return purpose-built maps with no metadata to strip; lean
+	// used to reduce them to {} — pass them through.
 	known := false
 	for _, k := range []string{"symbols", "symbol", "file", "content"} {
 		if _, ok := m[k]; ok {

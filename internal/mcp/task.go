@@ -182,8 +182,6 @@ func (h *Handler) taskPrepare(ctx context.Context, task string, args map[string]
 		obligations = append(obligations, ob)
 	}
 
-	gaps := buildCoverageGaps(ctx, h.Grove, sel.seedSyms, sel.graphExtra)
-
 	// Persist the package for the verify moment (best-effort: a read-only
 	// checkout must not fail the prepare call).
 	pkg := taskPackage{Task: task, Base: gitHead(h.Root), Obligations: obligations}
@@ -201,9 +199,6 @@ func (h *Handler) taskPrepare(ctx context.Context, task string, args map[string]
 		"obligations": obligations,
 		"next": "make the edits, then call prism again with the same task and " +
 			"changed_files=[...] to verify the change is complete",
-	}
-	if len(gaps) > 0 {
-		out["coverageGaps"] = gaps
 	}
 	if len(obligationNotes) > 0 {
 		out["notes"] = obligationNotes

@@ -29,7 +29,7 @@ func (s *Server) Handler() http.Handler {
 		"prism_index", "prism_drift", "prism_compact", "prism_savings",
 		"prism_feedback", "prism_evidence",
 		"prism_change_impact", "prism_missing_implementations",
-		"prism_untested_surface", "prism_dead_code", "prism_rename_plan",
+		"prism_dead_code", "prism_rename_plan",
 	} {
 		n := name
 		mux.HandleFunc("POST /"+n, func(w http.ResponseWriter, r *http.Request) {

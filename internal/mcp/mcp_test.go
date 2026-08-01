@@ -325,8 +325,8 @@ func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
 
 func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	schemas := ToolSchemas()
-	if len(schemas) != 17 {
-		t.Fatalf("want 17 tool schemas, got %d", len(schemas))
+	if len(schemas) != 15 {
+		t.Fatalf("want 15 tool schemas, got %d", len(schemas))
 	}
 	names := make(map[string]bool)
 	for _, s := range schemas {
@@ -345,7 +345,7 @@ func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	for _, want := range []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_change_impact", "prism_missing_implementations",
-		"prism_untested_surface", "prism_dead_code", "prism_rename_plan",
+		"prism_dead_code", "prism_rename_plan",
 		"prism_index", "prism_drift", "prism_references", "prism_resolve", "prism_edges",
 		"prism_change_impact", "prism_map",
 	} {
@@ -418,8 +418,8 @@ func TestServerToolsList(t *testing.T) {
 	if !ok {
 		t.Fatalf("tools field missing or wrong type: %T", result["tools"])
 	}
-	if len(tools) != 17 {
-		t.Errorf("tools/list: got %d tools, want 17", len(tools))
+	if len(tools) != 15 {
+		t.Errorf("tools/list: got %d tools, want 15", len(tools))
 	}
 }
 

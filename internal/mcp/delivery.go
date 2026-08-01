@@ -58,19 +58,19 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 	// ── Anchor summary ────────────────────────────────────────────────────
 	anchors := h.renderAnchorSummary(ctx, sel.seedSyms)
 	if anchors != "" {
-		b.WriteString("**Anchors — callers and covering tests (verify before editing)**\n\n")
+		b.WriteString("**Anchors — callers (verify before editing)**\n\n")
 		b.WriteString(anchors)
 		b.WriteString("\n")
 	}
 
 	// ── Source windows, grouped by file, ranked ──────────────────────────
-	// Keep only tests that exercise an anchor via a real tests edge; tests
-	// that merely matched the task text lexically dilute an edit-ready
+	// Drop test symbols from the source windows: without an edge tying a test
+	// to an anchor, a lexically task-matched test dilutes an edit-ready
 	// delivery with noise (measured on the pr3493 probe: unrelated help-
 	// rendering tests earned whole windows).
 	picked := make([]ranking.BudgetedSymbol, 0, len(sel.picked))
 	for _, p := range sel.picked {
-		if p.Category == ranking.CategoryTest && !sel.testEdgeIDs[p.Symbol.ID] {
+		if p.Category == ranking.CategoryTest {
 			continue
 		}
 		picked = append(picked, p)
@@ -159,27 +159,11 @@ func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.Symbo
 				}
 			}
 		}
-		testFiles := []string{}
-		if tests, err := h.Grove.Tests(ctx, q); err == nil {
-			seenFile := map[string]bool{}
-			for _, t := range tests {
-				if !seenFile[t.FilePath] {
-					seenFile[t.FilePath] = true
-					testFiles = append(testFiles, t.FilePath)
-				}
-			}
-		}
-
 		fmt.Fprintf(&b, "- `%s` (%s:%d)", a.Name, a.FilePath, a.Span.Start)
 		if callerN > 0 {
 			fmt.Fprintf(&b, " — %d caller%s in %s", callerN, plural(callerN), joinCapped(callerFiles, 3))
 		} else {
 			b.WriteString(" — no resolved callers")
-		}
-		if len(testFiles) > 0 {
-			fmt.Fprintf(&b, "; tests: %s", joinCapped(testFiles, 2))
-		} else {
-			b.WriteString("; ⚠️ no covering tests")
 		}
 		b.WriteString("\n")
 	}

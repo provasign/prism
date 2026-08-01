@@ -400,7 +400,6 @@ type ResolvedSymbol struct {
 // to Grove's edge types.
 var edgeKindByName = map[string]groveeng.EdgeType{
 	"calls":      groveeng.EdgeCalls,
-	"tests":      groveeng.EdgeTests,
 	"uses-type":  groveeng.EdgeUsesType,
 	"implements": groveeng.EdgeImplements,
 	"extends":    groveeng.EdgeExtends,
@@ -558,35 +557,6 @@ func (c *Client) MissingImplementations(ctx context.Context, query string) (*Mis
 	}, nil
 }
 
-// UntestedSurface partitions a method's change-set by covering-test evidence.
-func (c *Client) UntestedSurface(ctx context.Context, query string) (*UntestedSurfaceResult, error) {
-	e, err := c.requireEngine()
-	if err != nil {
-		return nil, err
-	}
-	r, err := e.UntestedSurface(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	covered := make([]CoverageSite, 0, len(r.Covered))
-	for _, cs := range r.Covered {
-		covered = append(covered, CoverageSite{
-			Symbol:    convertSymbol(cs.Symbol),
-			TestCount: cs.TestCount,
-			Tests:     convertSymbols(cs.Tests),
-		})
-	}
-	return &UntestedSurfaceResult{
-		Query:             r.Query,
-		Untested:          convertSymbols(r.Untested),
-		Covered:           covered,
-		TotalSites:        r.TotalSites,
-		ExternalSupers:    r.ExternalSupers,
-		OverridesExternal: r.OverridesExternal,
-		Completeness:      r.Completeness,
-	}, nil
-}
-
 // RenamePlan converts the change-impact set for query into concrete line
 // edits renaming the member to newName.
 func (c *Client) RenamePlan(ctx context.Context, query, newName string) (*RenamePlanResult, error) {
@@ -670,34 +640,6 @@ func (c *Client) Semantic(ctx context.Context, query string, limit int) ([]Seman
 		out = append(out, SemanticResult{Score: sc.Score, Symbol: convertSymbol(*sc.Symbol)})
 	}
 	return out, nil
-}
-
-// Tests returns the tests covering query.
-func (c *Client) Tests(ctx context.Context, query string) ([]SymbolRecord, error) {
-	e, err := c.requireEngine()
-	if err != nil {
-		return nil, err
-	}
-	syms, err := e.Tests(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	return convertSymbols(syms), nil
-}
-
-// AffectedTests returns the tests covering any symbol defined in the given
-// repo-relative files — the file-diff form of Tests, for "run only affected
-// tests" from a `git diff --name-only`.
-func (c *Client) AffectedTests(ctx context.Context, files []string) ([]SymbolRecord, error) {
-	e, err := c.requireEngine()
-	if err != nil {
-		return nil, err
-	}
-	syms, err := e.AffectedTests(ctx, files)
-	if err != nil {
-		return nil, err
-	}
-	return convertSymbols(syms), nil
 }
 
 // SnapshotGraph returns every symbol and edge in the current graph. This is

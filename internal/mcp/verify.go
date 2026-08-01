@@ -377,16 +377,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		return missed[i].Line < missed[j].Line
 	})
 
-	// 3) Tests that must run for this diff.
-	var affectedTests []map[string]any
-	if tests, err := h.Grove.AffectedTests(ctx, changedFiles); err == nil {
-		for _, t := range tests {
-			affectedTests = append(affectedTests, map[string]any{
-				"name": displayQN(t), "file": t.FilePath, "line": t.Span.Start})
-		}
-	}
-
-	// 4) Cross-component dependency CANDIDATES: induced edges whose every
+	// 3) Cross-component dependency CANDIDATES: induced edges whose every
 	// evidence site sits inside code this diff touched (line-level, not
 	// file-level — a pre-existing edge elsewhere in a touched file must not
 	// fire). No base-graph comparison is performed, so these are candidates
@@ -460,7 +451,6 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		"signatureChanges": sigChanges,
 		"missedSites":      missed,
 		"unverifiedSeeds":  unverifiedSeeds,
-		"affectedTests":    affectedTests,
 		"newDependencies":  newDeps,
 		"archStatus":       archStatus,
 		"archIntroduced":   archIntroduced,

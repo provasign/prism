@@ -243,23 +243,6 @@ func TestPrintOutput_Text_Query(t *testing.T) {
 	}
 }
 
-func TestPrintOutput_Text_Query_CoverageGaps(t *testing.T) {
-	input := map[string]any{
-		"budgetUsed": 50,
-		"symbols":    []any{},
-		"coverageGaps": []any{
-			map[string]any{"name": "UntestedFn", "filePath": "pkg/b.go"},
-		},
-	}
-	got := captureStdout(func() { printOutput(input, formatText) })
-	if !strings.Contains(got, "coverage_gaps") {
-		t.Errorf("missing coverage_gaps header: %q", got)
-	}
-	if !strings.Contains(got, "UntestedFn") {
-		t.Errorf("missing gap name: %q", got)
-	}
-}
-
 func TestPrintOutput_Lean_Query(t *testing.T) {
 	input := map[string]any{
 		"budgetUsed": 200,

@@ -46,9 +46,6 @@ func TestClient_RequiresEnsureRunning(t *testing.T) {
 	if _, err := c.Semantic(ctx, "x", 1); err == nil {
 		t.Fatal("expected semantic error before EnsureRunning")
 	}
-	if _, err := c.Tests(ctx, "x"); err == nil {
-		t.Fatal("expected tests error before EnsureRunning")
-	}
 }
 
 func TestClient_EnsureRunningRequiresRoot(t *testing.T) {
@@ -111,9 +108,6 @@ func TestClient_EndToEndEmbedded(t *testing.T) {
 	}
 	if _, err := c.Semantic(ctx, "main entry", 5); err != nil {
 		t.Fatalf("semantic: %v", err)
-	}
-	if _, err := c.Tests(ctx, "Main"); err != nil {
-		t.Fatalf("tests: %v", err)
 	}
 
 	c.Shutdown()

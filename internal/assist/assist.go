@@ -67,7 +67,6 @@ Rules:
   * change_impact     — a method/interface signature changes, a deprecation, or "find every site that must change / every caller"
   * rename_plan       — a rename where the user wants the concrete edits
   * missing_implementations — "who fails to implement X / who breaks if X becomes required"
-  * untested_surface  — "what should I test before changing X / which sites lack tests"
   * dead_code         — unused/unreachable code cleanup
 - For a multi-method interface change, call change_impact once per method.
 - Symbols are written Type.method (parameter types optional).
@@ -95,8 +94,6 @@ func toolDefs() []ToolDef {
 					"newName": map[string]any{"type": "string"}},
 				"required": []string{"symbol", "newName"}}},
 		{Name: "missing_implementations", Description: "Every type in the contract's closure lacking an implementation.",
-			Parameters: sym},
-		{Name: "untested_surface", Description: "The change-set split into test-covered and untested sites.",
 			Parameters: sym},
 		{Name: "dead_code", Description: "Unreachable production symbols, safe-to-delete list with caveats.",
 			Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
@@ -221,9 +218,6 @@ func runOp(call ToolCall, invoke Invoker) (string, map[string]any, error) {
 		args["newName"], _ = call.Args["newName"].(string)
 	case "missing_implementations":
 		tool = "prism_missing_implementations"
-		args["query"], _ = call.Args["symbol"].(string)
-	case "untested_surface":
-		tool = "prism_untested_surface"
 		args["query"], _ = call.Args["symbol"].(string)
 	case "dead_code":
 		tool = "prism_dead_code"
