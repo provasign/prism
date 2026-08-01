@@ -79,6 +79,9 @@ Usage:
   prism search <keyword> [dir]    Search symbols by keyword
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
+  prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
+                                  its neighbours, or a file's source + the
+                                  symbols it defines + the files depending on it
                                   --format text|lean|json  Output format (default: text)
   prism references <name> [dir]   Find where a symbol is USED (every code occurrence,
                                   comments/strings excluded), grouped by file
@@ -173,6 +176,8 @@ func Run(args []string) int {
 		return cmdRead(rest)
 	case "search":
 		return cmdSearch(rest)
+	case "node":
+		return cmdNode(rest)
 	case "lookup":
 		return cmdLookup(rest)
 	case "references", "refs":
@@ -1665,6 +1670,52 @@ func cmdLookup(args []string) int {
 	out, err := invokeWithPersistentLedger(dir, "prism_lookup", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
+		return 1
+	}
+	printOutput(out, format)
+	return 0
+}
+
+// cmdNode is the one-shot orientation view — a symbol's source + neighbours,
+// or a file's source + defined symbols + dependents.
+func cmdNode(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism node <symbol-or-file> [dir] [--file <path>] [--format text|lean|json]")
+		return 2
+	}
+	name := args[0]
+	dir := "."
+	format := formatText
+	fileHint := ""
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "--file":
+			if i+1 < len(args) {
+				fileHint = args[i+1]
+				i++
+			}
+		case "--format":
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(args[i+1])
+				}
+				i++
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	callArgs := map[string]any{"name": name}
+	if fileHint != "" {
+		callArgs["file"] = fileHint
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_node", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "node:", err)
 		return 1
 	}
 	printOutput(out, format)

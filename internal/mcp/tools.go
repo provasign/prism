@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -209,6 +210,8 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolChangeImpact(ctx, args)
 	case "prism_missing_implementations":
 		return h.toolMissingImplementations(ctx, args)
+	case "prism_node":
+		return h.toolNode(ctx, args)
 	case "prism_dead_code":
 		return h.toolDeadCode(ctx, args)
 	case "prism_rename_plan":
@@ -254,7 +257,7 @@ func ToolSchemas() []map[string]any {
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
 		"prism_missing_implementations", "prism_dead_code",
-		"prism_rename_plan", "prism_map",
+		"prism_rename_plan", "prism_map", "prism_node",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -470,6 +473,21 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
+	case "prism_node":
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"name"},
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type":        "string",
+					"description": "A symbol name (e.g. \"JsonNode.get\") OR a repo-relative file path (e.g. \"internal/store/store.go\").",
+				},
+				"file": map[string]any{
+					"type":        "string",
+					"description": "Optional disambiguator when several symbols share the name: the file path the intended one lives in.",
+				},
+			},
+		}
 	case "prism_change_impact", "prism_missing_implementations":
 		return map[string]any{
 			"type":     "object",
@@ -673,6 +691,14 @@ func toolDescription(name string) string {
 			"'missing' reads as 'inherits the default — breaks if the member becomes required'. " +
 			"Same completeness reporting as change_impact. RELAY the result as-is: do not " +
 			"re-verify through grep — the closure and inheritance walk are already solved."
+	case "prism_node":
+		return "One-shot orientation on a single thing. Pass a SYMBOL name and get its source " +
+			"plus its immediate graph neighbours (callers, callees, implementors) in one call — " +
+			"the 'what is this and what touches it' view, without a lookup-then-edges round-trip. " +
+			"Pass a repo-relative FILE PATH instead and get the file's source, the symbols it " +
+			"defines, and the files that DEPEND on it. Ambiguous symbol names return the candidate " +
+			"list unchanged rather than guessing. Use this to orient; use change_impact when you " +
+			"need the complete set of sites a signature change must touch."
 	case "prism_rename_plan":
 		return "The rename executed as a plan: pass 'Type.method' and newName, get the " +
 			"complete change-impact set converted to concrete line edits — file, line, " +
@@ -1117,6 +1143,142 @@ func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
 		}
 	}
 	return out
+}
+
+// toolNode is the one-shot orientation view: everything you need about ONE
+// symbol (or ONE file) without a chain of round-trips. Composed entirely from
+// existing primitives — lookup + edges for a symbol, read + file symbols +
+// dependents for a file. No new graph machinery, no stored state.
+//
+// The argument is a symbol name OR a repo-relative file path; a path that the
+// index knows takes the file branch.
+func (h *Handler) toolNode(ctx context.Context, args map[string]any) (any, error) {
+	name := stringArg(args, "name", stringArg(args, "symbol", stringArg(args, "file", "")))
+	if name == "" {
+		return nil, errors.New("name is required (a symbol name or a repo-relative file path)")
+	}
+	// File branch: only when the index actually knows this path, so a symbol
+	// that happens to contain a dot is never misread as a file.
+	if syms, err := h.Grove.FileSymbols(ctx, name); err == nil && len(syms) > 0 {
+		return h.nodeFile(ctx, name, syms)
+	}
+	return h.nodeSymbol(ctx, name, args)
+}
+
+// nodeSymbol renders a symbol's source plus its immediate graph neighbours.
+func (h *Handler) nodeSymbol(ctx context.Context, name string, args map[string]any) (any, error) {
+	lookupArgs := map[string]any{"name": name}
+	if f, ok := args["file"]; ok {
+		lookupArgs["file"] = f
+	}
+	looked, err := h.toolLookup(ctx, lookupArgs)
+	if err != nil {
+		return nil, err
+	}
+	out, _ := looked.(map[string]any)
+	if out == nil {
+		out = map[string]any{}
+	}
+	// Ambiguous or unmatched: relay lookup's candidate list untouched rather
+	// than guessing which symbol the caller meant.
+	if amb, _ := out["ambiguous"].(bool); amb {
+		return out, nil
+	}
+	if matched, present := out["matched"].(bool); present && !matched {
+		return out, nil
+	}
+	// Nothing resolved at all: say so instead of returning an empty shell the
+	// caller has to interpret.
+	if sym, present := out["symbol"]; !present || sym == nil {
+		return map[string]any{
+			"view":    "symbol",
+			"name":    name,
+			"matched": false,
+			"note": fmt.Sprintf("no symbol or indexed file named %q — try prism_search for a name fragment, "+
+				"or pass a repo-relative file path for the file view", name),
+		}, nil
+	}
+	out["view"] = "symbol"
+
+	// Neighbours in both directions — the "where do I go next" menu. Feed
+	// edges the RESOLVED symbol's bare name: lookup accepts qualified names
+	// ("Render.Render") but edges resolves bare ones ("Render"), so passing
+	// the caller's string through would silently return nothing.
+	edgeName := name
+	if sym, ok := out["symbol"].(grove.SymbolRecord); ok && sym.Name != "" {
+		edgeName = sym.Name
+	} else if sm, ok := out["symbol"].(map[string]any); ok {
+		if n, _ := sm["name"].(string); n != "" {
+			edgeName = n
+		}
+	}
+	// Orientation wants the relationship kinds, not the structural ones
+	// (contains/defines/imports would bury the signal).
+	kinds := []any{"calls", "implements", "extends", "overrides", "uses-type"}
+	if edges, err := h.toolEdges(ctx, map[string]any{
+		"name": edgeName, "direction": "both", "kinds": kinds,
+	}); err == nil {
+		if em, ok := edges.(map[string]any); ok {
+			out["edges"] = em["edges"]
+		}
+	}
+	h.Ledger.RecordCall("prism_node")
+	return out, nil
+}
+
+// nodeFile renders a file's source, the symbols it defines, and the files that
+// depend on it.
+func (h *Handler) nodeFile(ctx context.Context, path string, syms []grove.SymbolRecord) (any, error) {
+	out := map[string]any{"view": "file", "file": path}
+
+	read, err := h.toolRead(ctx, map[string]any{"file": path})
+	if err != nil {
+		return nil, err
+	}
+	if rm, ok := read.(map[string]any); ok {
+		for _, k := range []string{"content", "strategy", "deliveredTokens", "originalTokens", "savingsPercent"} {
+			if v, ok := rm[k]; ok {
+				out[k] = v
+			}
+		}
+	}
+
+	defined := make([]map[string]any, 0, len(syms))
+	for _, s := range syms {
+		defined = append(defined, map[string]any{
+			"name": displayQN(s), "kind": s.Kind, "line": s.Span.Start,
+		})
+	}
+	out["defines"] = defined
+
+	// Dependents: edges whose TO side is a symbol in this file, grouped by the
+	// depending file. Deps returns every edge touching the path in either
+	// direction, so the To-side filter is what isolates "who needs me".
+	if edges, err := h.Grove.Deps(ctx, path); err == nil {
+		prefix := path + "::"
+		seen := map[string]bool{}
+		dependents := []string{}
+		for _, e := range edges {
+			if !strings.HasPrefix(e.To, prefix) {
+				continue
+			}
+			from := e.From
+			if i := strings.Index(from, "::"); i >= 0 {
+				from = from[:i]
+			}
+			from = strings.TrimPrefix(from, "file:")
+			if from == "" || from == path || seen[from] {
+				continue
+			}
+			seen[from] = true
+			dependents = append(dependents, from)
+		}
+		sort.Strings(dependents)
+		out["dependents"] = dependents
+		out["dependentCount"] = len(dependents)
+	}
+	h.Ledger.RecordCall("prism_node")
+	return out, nil
 }
 
 func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, error) {
