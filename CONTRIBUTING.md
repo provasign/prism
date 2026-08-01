@@ -24,7 +24,7 @@ go vet ./...
 
 Changes to public operations must document completeness semantics and add tests
 for success, degraded, and error paths. Changes to existing symbols should use
-`prism change-impact` before editing and `prism affected` after editing.
+`prism change-impact` before editing and `prism verify` after editing.
 
 ## Pull requests
 
