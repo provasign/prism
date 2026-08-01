@@ -72,7 +72,14 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// the results. This gives grep-level precision as the entry point.
 		seenTermSeeds := map[string]bool{}
 		for _, term := range p.terms {
-			matches, err := h.Grove.SearchSymbols(ctx, term, 10)
+			// Honor --limit here too. This path hardcoded 10, so
+			// `--limit 50 --terms Foo` silently capped at 10 per term — and
+			// terms is the RECOMMENDED entry point in prism's own guidance.
+			perTerm := p.limit
+			if perTerm <= 0 {
+				perTerm = 10
+			}
+			matches, err := h.Grove.SearchSymbols(ctx, term, perTerm)
 			if err != nil {
 				continue
 			}

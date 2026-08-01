@@ -446,6 +446,8 @@ prism_index entirely.
 - Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact computes the complete set in one call
 - Do NOT use prism_read for a single function — use prism_lookup instead
+
+<!-- prism:end -->
 `
 
 // steeringInstructionsCLI is injected when agent_mode is "cli".
@@ -540,6 +542,8 @@ project, the index is already warm — skip prism index entirely.
 - Do NOT grep for what prism query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — ` + "`" + `prism change-impact` + "`" + ` computes the complete set in one call
 - Do NOT use prism read for a single function — use prism lookup instead
+
+<!-- prism:end -->
 `
 
 // steeringInstructionsBoth is injected when agent_mode is "both" (default).
@@ -656,6 +660,8 @@ Use the prism CLI with --format text instead of MCP tools:
 - Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact / prism change-impact computes the complete set in one call
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
+
+<!-- prism:end -->
 `
 
 // writeSteeringInstructions writes per-tool instruction files into the project
@@ -721,18 +727,50 @@ func steeringBlockForMode(mode string) string {
 	}
 }
 
-// injectPrismSection replaces the existing Prism steering section in content
-// with block, or appends block if no section is present. This allows re-init
-// to upgrade stale instructions rather than leaving old guidance in place.
+// injectPrismSection replaces the Prism steering section in content, or
+// appends it when absent.
+//
+// The section is delimited by a start marker AND an end marker. Before the
+// end marker existed this returned content[:idx]+block — silently DELETING
+// everything after the Prism section on every re-init. Reproduced: a
+// CLAUDE.md with "## Build / ## Prism… / ## MY IMPORTANT RULES / ## Deploy"
+// lost both trailing user sections. `--refresh` makes re-running routine, so
+// the section has to be bounded.
+//
+// A legacy section written before the end marker existed has no terminator;
+// those are replaced up to the next top-level "## " heading, which preserves
+// the user's following sections instead of eating them.
 func injectPrismSection(content, block string) string {
 	const marker = "## Prism — context delivery"
-	if idx := strings.Index(content, "\n"+marker); idx >= 0 {
-		return content[:idx] + block
+	const endMarker = "<!-- prism:end -->"
+
+	start := strings.Index(content, "\n"+marker)
+	prefixLen := 1 // the leading newline belongs to the preceding content
+	if start < 0 && strings.HasPrefix(content, marker) {
+		start, prefixLen = 0, 0
 	}
-	if strings.HasPrefix(content, marker) {
-		return block
+	if start < 0 {
+		return strings.TrimRight(content, "\n") + block
 	}
-	return strings.TrimRight(content, "\n") + block
+	head := content[:start]
+	rest := content[start+prefixLen:]
+
+	// Bounded section: everything through the end marker is ours. Trim ALL
+	// leading newlines off the tail and re-join with exactly one blank line,
+	// so repeated re-init is byte-stable instead of accreting whitespace.
+	if e := strings.Index(rest, endMarker); e >= 0 {
+		tail := strings.TrimLeft(rest[e+len(endMarker):], "\n")
+		if tail == "" {
+			return head + block
+		}
+		return head + block + "\n" + tail
+	}
+	// Legacy unbounded section: end it at the next top-level heading so the
+	// user's later sections survive the upgrade.
+	if n := strings.Index(rest, "\n## "); n >= 0 {
+		return head + block + "\n" + strings.TrimLeft(rest[n+1:], "\n")
+	}
+	return head + block
 }
 
 // detectSelfPath returns the absolute path to the running prism binary, or
@@ -2379,6 +2417,14 @@ func printOutput(v any, format outputFormat) {
 // printTextOutput renders a Prism response as plain text for agent consumption.
 // Handles prism_query, prism_read, prism_search, and prism_lookup responses.
 func printTextOutput(m map[string]any) {
+	// prism_node: source PLUS the orientation payload. Must come first — its
+	// shape overlaps prism_lookup's (symbol+content) and prism_read's
+	// (file+content), so without this branch both node views fell through and
+	// the edges / defines / dependents were silently discarded.
+	if view, ok := m["view"].(string); ok && (view == "symbol" || view == "file") {
+		printNodeText(m, view)
+		return
+	}
 	// prism_lookup: top-level "content" + "symbol" subkey
 	if sym, hasSym := m["symbol"].(map[string]any); hasSym && sym != nil {
 		if content, ok := m["content"].(string); ok {
@@ -2737,4 +2783,112 @@ func prefixOnce(op string, err error) string {
 		return msg
 	}
 	return op + ": " + msg
+}
+
+// printNodeText renders `prism node` in text form: the source, then the
+// orientation payload the JSON carries. Without this the node views matched
+// prism_lookup's and prism_read's branches and their whole point — neighbours
+// for a symbol, defines/dependents for a file — was dropped.
+func printNodeText(m map[string]any, view string) {
+	if note, _ := m["note"].(string); note != "" {
+		fmt.Printf("// %s\n", note)
+	}
+	if cands := asSliceAny(m["candidates"]); len(cands) > 0 {
+		fmt.Println("// ambiguous — candidates:")
+		for _, c := range cands {
+			fmt.Printf("//   %v\n", c)
+		}
+		return
+	}
+
+	if view == "symbol" {
+		if sym, ok := m["symbol"].(map[string]any); ok && sym != nil {
+			name, _ := sym["name"].(string)
+			fp, _ := sym["filePath"].(string)
+			fmt.Printf("// %s — %s\n", fp, name)
+		}
+		if content, ok := m["content"].(string); ok && content != "" {
+			fmt.Print(content)
+			if !strings.HasSuffix(content, "\n") {
+				fmt.Println()
+			}
+		}
+		printNodeEdges(m)
+		return
+	}
+
+	// File view.
+	file, _ := m["file"].(string)
+	if strategy, _ := m["strategy"].(string); strategy == "sha-pointer" {
+		fmt.Printf("// %s [cached — use previous read]\n", file)
+	} else {
+		if file != "" {
+			fmt.Printf("// %s\n", file)
+		}
+		if content, ok := m["content"].(string); ok && content != "" {
+			fmt.Print(content)
+			if !strings.HasSuffix(content, "\n") {
+				fmt.Println()
+			}
+		}
+	}
+	if defs := asSliceAny(m["defines"]); len(defs) > 0 {
+		fmt.Printf("\n// defines (%d):\n", len(defs))
+		for _, d := range defs {
+			dm, _ := d.(map[string]any)
+			if dm == nil {
+				continue
+			}
+			fmt.Printf("//   %v  (%v:%v)\n", dm["name"], file, dm["line"])
+		}
+	}
+	deps := asSliceAny(m["dependents"])
+	fmt.Printf("\n// dependents (%d):\n", len(deps))
+	if len(deps) == 0 {
+		fmt.Println("//   (none — no indexed file references this one)")
+	}
+	for _, d := range deps {
+		fmt.Printf("//   %v\n", d)
+	}
+}
+
+// printNodeEdges renders the neighbour menu of a symbol node view.
+func printNodeEdges(m map[string]any) {
+	edges, _ := m["edges"].(map[string]any)
+	if len(edges) == 0 {
+		fmt.Println("\n// neighbours: (none — a leaf in the current graph)")
+		return
+	}
+	groups := make([]string, 0, len(edges))
+	for k := range edges {
+		groups = append(groups, k)
+	}
+	sort.Strings(groups)
+	fmt.Println("\n// neighbours:")
+	for _, g := range groups {
+		gm, _ := edges[g].(map[string]any)
+		if gm == nil {
+			continue
+		}
+		syms := asSliceAny(gm["symbols"])
+		names := make([]string, 0, len(syms))
+		for _, s := range syms {
+			sm, _ := s.(map[string]any)
+			if sm == nil {
+				continue
+			}
+			names = append(names, fmt.Sprintf("%v", sm["name"]))
+		}
+		total := gm["total"]
+		shown := len(names)
+		const cap = 12
+		if shown > cap {
+			names = names[:cap]
+		}
+		line := strings.Join(names, ", ")
+		if tn, ok := total.(float64); ok && int(tn) > len(names) {
+			line += fmt.Sprintf(", … (+%d more)", int(tn)-len(names))
+		}
+		fmt.Printf("//   %s (%v): %s\n", g, total, line)
+	}
 }

@@ -157,7 +157,19 @@ type FeedbackEntry struct {
 
 // Invoke routes a tools/call to the right handler.
 func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	// Most tools are interactive-latency operations; 60s is a generous cap.
+	// The whole-repo operations need the same headroom prism_index already
+	// got: verify now delta-reindexes first and then runs a per-seed impact
+	// walk, and the unified task tool does prepare+verify in one call, so on
+	// a monorepo both can exceed a minute legitimately. Timing out mid-verify
+	// surfaces as a tool error, which is the CI gate failing for the wrong
+	// reason.
+	timeout := 60 * time.Second
+	switch name {
+	case "prism_verify", "prism", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
+		timeout = 10 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	// In MCP mode, Grove connection and initial index run in the background so
 	// the MCP handshake (initialize / tools/list) can complete immediately.
@@ -258,6 +270,7 @@ func ToolSchemas() []map[string]any {
 		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
 		"prism_missing_implementations", "prism_dead_code",
 		"prism_rename_plan", "prism_map", "prism_node",
+		"prism_verify", "prism_arch_check", "prism_cycles",
 		"prism_index", "prism_drift",
 	}
 	out := make([]map[string]any, 0, len(names))
@@ -522,6 +535,36 @@ func toolSchema(name string) map[string]any {
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
 					"description": "Extra entry-point symbol names beyond the defaults (main/init, tests, exported symbols) — e.g. framework hooks registered by name.",
+				},
+			},
+		}
+	case "prism_verify":
+		return map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"base": map[string]any{
+					"type":        "string",
+					"description": "Git ref to diff the working tree against (default \"HEAD\"). The change-set is computed relative to this.",
+				},
+			},
+		}
+	case "prism_arch_check":
+		return map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"base": map[string]any{
+					"type":        "string",
+					"description": "Optional git ref: report only violations INTRODUCED since it, instead of every current violation.",
+				},
+			},
+		}
+	case "prism_cycles":
+		return map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"depth": map[string]any{
+					"type":        "integer",
+					"description": "Truncate components to the first N path segments before cycle detection (0 = one component per directory).",
 				},
 			},
 		}
@@ -975,6 +1018,11 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
 	q := stringArg(args, "query", "")
+	if strings.TrimSpace(q) == "" {
+		// The schema declares query required; without this an empty string
+		// returned an arbitrary slice of the index as if it were a result.
+		return nil, errors.New("query is required (a name or name fragment to search for)")
+	}
 	limit := intArg(args, "limit", 25)
 
 	// Grove's symbol search is ranked (exact name > prefix > substring,

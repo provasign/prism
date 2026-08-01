@@ -542,3 +542,46 @@ func TestBuildOpencodeConfig(t *testing.T) {
 		}
 	}
 }
+
+// prism init must NEVER delete user content. Before the Prism block gained an
+// end marker, injectPrismSection returned content[:idx]+block and silently
+// dropped every section after it — on every re-init, and --refresh makes
+// re-running routine.
+func TestInjectPrismSection_PreservesTrailingUserContent(t *testing.T) {
+	block := "\n## Prism — context delivery (ALWAYS use these tools)\nNEW\n\n<!-- prism:end -->\n"
+
+	t.Run("legacy section without end marker", func(t *testing.T) {
+		content := "# P\n\n## Build\nmake\n\n## Prism — context delivery (ALWAYS use these tools)\nOLD\n\n## MY RULES\nkeep me\n\n## Deploy\nkeep me too\n"
+		got := injectPrismSection(content, block)
+		for _, want := range []string{"## Build", "## MY RULES", "keep me", "## Deploy", "keep me too", "NEW"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("lost %q:\n%s", want, got)
+			}
+		}
+		if strings.Contains(got, "OLD") {
+			t.Errorf("stale guidance not replaced:\n%s", got)
+		}
+	})
+
+	t.Run("bounded section is replaced in place and is idempotent", func(t *testing.T) {
+		content := "# P\n\n## Build\nmake\n" + block + "\n## MY RULES\nkeep me\n"
+		got := injectPrismSection(content, block)
+		again := injectPrismSection(got, block)
+		if got != again {
+			t.Errorf("not idempotent:\nfirst:\n%s\nsecond:\n%s", got, again)
+		}
+		if !strings.Contains(again, "## MY RULES") || !strings.Contains(again, "## Build") {
+			t.Errorf("lost user sections:\n%s", again)
+		}
+		if n := strings.Count(again, "## Prism — context delivery"); n != 1 {
+			t.Errorf("prism section count = %d, want 1:\n%s", n, again)
+		}
+	})
+
+	t.Run("absent section appends", func(t *testing.T) {
+		got := injectPrismSection("# P\n\n## Build\nmake\n", block)
+		if !strings.Contains(got, "## Build") || !strings.Contains(got, "NEW") {
+			t.Errorf("append failed:\n%s", got)
+		}
+	})
+}
