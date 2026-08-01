@@ -41,6 +41,12 @@ Usage:
   prism init [--global] [dir]     Write prism.yaml + register MCP with detected AI tools
                                   --global writes to user-level config (~/.claude, ~/.cursor, etc.)
   prism install [--global] [dir]  Alias for 'prism init'
+  prism task "<task>" [dir]       One call for a whole task: context + the
+                                  obligations it implies. After editing, re-run
+                                  with --changed a.go,b.go for the completeness
+                                  verdict (exit 1 if incomplete)
+                                  ([--terms x,y] [--base REF] [--budget N]
+                                  [--mode prepare|verify] [--format text|json])
   prism index [dir]               Index codebase via Grove (delta-aware)
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
@@ -64,6 +70,7 @@ Usage:
                                   cross-component deps, introduced arch
                                   violations; exit 1 if incomplete — the CI
                                   gate for agent-authored changes
+                                  [--base REF] [--strict] [--format text|json]
                                   ([--base REF] [--json])
   prism query <task> [dir]        Find ranked context for a task; bug-fix/implement
                                   tasks get line-numbered source windows + per-anchor
@@ -178,6 +185,8 @@ func Run(args []string) int {
 		return cmdSearch(rest)
 	case "node":
 		return cmdNode(rest)
+	case "task":
+		return cmdTask(rest)
 	case "lookup":
 		return cmdLookup(rest)
 	case "references", "refs":
@@ -1716,6 +1725,93 @@ func cmdLookup(args []string) int {
 
 // cmdNode is the one-shot orientation view — a symbol's source + neighbours,
 // or a file's source + defined symbols + dependents.
+// cmdTask exposes the unified prepare/verify tool on the CLI. It was MCP-only,
+// so the Bash-only surface — subagents, CI, hooks — could reach every
+// individual op but not the one-call task workflow the playbook leads with.
+func cmdTask(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism task \"<task in your own words>\" [dir]")
+		fmt.Fprintln(os.Stderr, "  prepare (default): context + the obligations this task implies")
+		fmt.Fprintln(os.Stderr, "  --changed a.go,b.go   switch to verify: is the diff complete?")
+		fmt.Fprintln(os.Stderr, "  --terms x,y           symbols you already located (grep-precision seeding)")
+		fmt.Fprintln(os.Stderr, "  --base REF            verify: git base to diff against (default HEAD)")
+		fmt.Fprintln(os.Stderr, "  --mode prepare|verify --budget N --format text|lean|json")
+		return 2
+	}
+	task := args[0]
+	dir := "."
+	format := formatText
+	callArgs := map[string]any{"task": task}
+	csv := func(v string) []any {
+		var out []any
+		for _, p := range strings.Split(v, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	for i := 1; i < len(args); i++ {
+		a := args[i]
+		next := func() (string, bool) {
+			if i+1 < len(args) {
+				i++
+				return args[i], true
+			}
+			return "", false
+		}
+		switch a {
+		case "--changed", "--changed-files":
+			if v, ok := next(); ok {
+				callArgs["changed_files"] = csv(v)
+			}
+		case "--terms":
+			if v, ok := next(); ok {
+				callArgs["terms"] = csv(v)
+			}
+		case "--base":
+			if v, ok := next(); ok {
+				callArgs["base"] = v
+			}
+		case "--mode":
+			if v, ok := next(); ok && (v == "prepare" || v == "verify") {
+				callArgs["mode"] = v
+			}
+		case "--budget":
+			if v, ok := next(); ok {
+				if n, err := strconv.Atoi(v); err == nil && n > 0 {
+					callArgs["budget"] = n
+				}
+			}
+		case "--format":
+			if v, ok := next(); ok {
+				switch outputFormat(v) {
+				case formatText, formatLean, formatJSON:
+					format = outputFormat(v)
+				}
+			}
+		default:
+			if !strings.HasPrefix(a, "-") {
+				dir = a
+			}
+		}
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism", callArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "task:", err)
+		return 1
+	}
+	printOutput(out, format)
+	// verify mode carries a verdict; mirror `prism verify`'s exit contract so
+	// the CLI is usable as a gate.
+	if m, ok := out.(map[string]any); ok {
+		if v, _ := m["verdict"].(string); v == "incomplete" {
+			return 1
+		}
+	}
+	return 0
+}
+
 func cmdNode(args []string) int {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "usage: prism node <symbol-or-file> [dir] [--file <path>] [--format text|lean|json]")
@@ -2425,6 +2521,21 @@ func printTextOutput(m map[string]any) {
 		printNodeText(m, view)
 		return
 	}
+	// Unmatched lookup/node: a bare {"symbol": null} rendered as JSON told
+	// the caller nothing. Print the note and the "did you mean" list.
+	if matched, present := m["matched"].(bool); present && !matched {
+		if _, hasContent := m["content"]; !hasContent {
+			if note, _ := m["note"].(string); note != "" {
+				fmt.Println("// " + note)
+			} else {
+				fmt.Printf("// no match for %v\n", m["name"])
+			}
+			for _, c := range asSliceAny(m["candidates"]) {
+				fmt.Printf("  %v\n", c)
+			}
+			return
+		}
+	}
 	// prism_lookup: top-level "content" + "symbol" subkey
 	if sym, hasSym := m["symbol"].(map[string]any); hasSym && sym != nil {
 		if content, ok := m["content"].(string); ok {
@@ -2555,6 +2666,34 @@ func printTextOutput(m map[string]any) {
 		}
 		return
 	}
+	// The four task-shaped ops. Their responses have no "content"/"symbols"
+	// key, so they used to fall straight through to printJSON — meaning
+	// `--format text` was a documented no-op on exactly the commands the
+	// Bash-only playbook tells agents to run that way.
+	if _, ok := m["declarations"]; ok {
+		printChangeImpactText(m)
+		return
+	}
+	if _, ok := m["edits"]; ok {
+		printRenamePlanText(m)
+		return
+	}
+	if _, ok := m["missing"]; ok {
+		printMissingImplText(m)
+		return
+	}
+	if _, ok := m["dead"]; ok {
+		printDeadCodeText(m)
+		return
+	}
+	// The unified task op (prepare/verify). Its prepare shape carries the
+	// whole context payload under "read", which is already markdown — text
+	// mode should print it, not re-encode it as a JSON string with escaped
+	// newlines.
+	if mode, ok := m["mode"].(string); ok && (mode == "prepare" || mode == "verify") {
+		printTaskText(m, mode)
+		return
+	}
 	// prism_references: "byFile" map of file -> [{line, in}]
 	if rawByFile, ok := m["byFile"].(map[string]any); ok {
 		name, _ := m["name"].(string)
@@ -2591,6 +2730,169 @@ func printTextOutput(m map[string]any) {
 	}
 	// Fallback: JSON
 	printJSON(m)
+}
+
+// ─── task-shaped renderers ───────────────────────────────────────────────────
+//
+// These render the complete set, never a truncated one: the whole point of
+// change-impact and friends is that the returned sites ARE every site, so an
+// elided text view would misrepresent the one property the command sells.
+
+// siteLine renders one change-set entry as "qualifiedName  file:line".
+func siteLine(v any) string {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	name, _ := m["qualifiedName"].(string)
+	if name == "" {
+		name, _ = m["name"].(string)
+	}
+	line := fmt.Sprintf("  %s  %v:%d", name, m["filePath"], jsonInt(m["line"]))
+	if via, _ := m["via"].(string); via != "" {
+		line += "  (via " + via + ")"
+	}
+	return line
+}
+
+// printSiteGroup prints a labelled group, skipping empty ones.
+func printSiteGroup(label string, v any) {
+	items, _ := v.([]any)
+	if len(items) == 0 {
+		return
+	}
+	fmt.Printf("%s (%d):\n", label, len(items))
+	for _, it := range items {
+		if l := siteLine(it); l != "" {
+			fmt.Println(l)
+		}
+	}
+}
+
+// printNotes emits the advisory keys (completeness, warnings, notes) that
+// carry the caveats a caller must not silently drop.
+func printNotes(m map[string]any, keys ...string) {
+	for _, k := range keys {
+		switch v := m[k].(type) {
+		case string:
+			if v != "" {
+				fmt.Printf("%s: %s\n", k, v)
+			}
+		case bool:
+			if v {
+				fmt.Printf("%s: true\n", k)
+			}
+		case []any:
+			if len(v) > 0 {
+				parts := make([]string, 0, len(v))
+				for _, e := range v {
+					parts = append(parts, fmt.Sprint(e))
+				}
+				fmt.Printf("%s: %s\n", k, strings.Join(parts, ", "))
+			}
+		}
+	}
+}
+
+func printChangeImpactText(m map[string]any) {
+	fmt.Printf("// %v — change-impact: %d site(s)\n", m["query"], jsonInt(m["totalSites"]))
+	printNotes(m, "completeness")
+	printSiteGroup("declarations", m["declarations"])
+	printSiteGroup("supers", m["supers"])
+	printSiteGroup("family", m["family"])
+	printSiteGroup("declaringTypes", m["declaringTypes"])
+	printSiteGroup("callers", m["callers"])
+	printNotes(m, "declaringTypesNote", "externalSupers", "overridesExternal", "warning")
+	if hint, ok := m["widerAnchor"].(map[string]any); ok {
+		fmt.Printf("widerAnchor: %v\n", hint["message"])
+	}
+}
+
+func printRenamePlanText(m map[string]any) {
+	fmt.Printf("// %v → %v — rename-plan: %d site(s)\n", m["query"], m["newName"], jsonInt(m["totalSites"]))
+	printNotes(m, "completeness")
+	printEditGroup("edits", m["edits"])
+	printEditGroup("ambiguous", m["ambiguous"])
+	printSiteGroup("unresolved", m["unresolved"])
+	printNotes(m, "ambiguousNote", "unresolvedNote", "externalSupers", "overridesExternal", "warning")
+}
+
+// printEditGroup renders rename edits as file:line with the before/after
+// pair, which is what makes the plan reviewable without re-reading the JSON.
+func printEditGroup(label string, v any) {
+	items, _ := v.([]any)
+	if len(items) == 0 {
+		return
+	}
+	fmt.Printf("%s (%d):\n", label, len(items))
+	for _, it := range items {
+		e, ok := it.(map[string]any)
+		if !ok {
+			continue
+		}
+		fmt.Printf("  %v:%d\n", e["filePath"], jsonInt(e["line"]))
+		if before, ok := e["before"].(string); ok {
+			fmt.Printf("    - %s\n", before)
+		}
+		if after, ok := e["after"].(string); ok {
+			fmt.Printf("    + %s\n", after)
+		}
+	}
+}
+
+func printMissingImplText(m map[string]any) {
+	fmt.Printf("// %v — missing-implementations (%d type(s) already implement)\n",
+		m["query"], jsonInt(m["implementedCount"]))
+	printSiteGroup("contract", m["contract"])
+	printSiteGroup("missing", m["missing"])
+	printSiteGroup("abstractMissing", m["abstractMissing"])
+	printSiteGroup("unverifiable", m["unverifiable"])
+	printNotes(m, "unverifiableNote", "defaultProvided", "note")
+}
+
+func printDeadCodeText(m map[string]any) {
+	fmt.Printf("// dead-code — %d considered, %d reachable from %d root(s)\n",
+		jsonInt(m["considered"]), jsonInt(m["reachableCount"]), jsonInt(m["rootCount"]))
+	printSiteGroup("dead", m["dead"])
+	printSiteGroup("exportedUnreferenced", m["exportedUnreferenced"])
+	printNotes(m, "caveats")
+}
+
+func printTaskText(m map[string]any, mode string) {
+	fmt.Printf("// %v — %s\n", m["task"], mode)
+	if read, ok := m["read"].(map[string]any); ok {
+		if c, _ := read["content"].(string); c != "" {
+			fmt.Println(c)
+			if !strings.HasSuffix(c, "\n") {
+				fmt.Println()
+			}
+		}
+	}
+	if obs, _ := m["obligations"].([]any); len(obs) > 0 {
+		fmt.Printf("obligations (%d):\n", len(obs))
+		for _, raw := range obs {
+			ob, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			fmt.Printf("  %v  %v:%d  — %d site(s), completeness %v\n",
+				ob["qualifiedName"], ob["file"], jsonInt(ob["line"]),
+				jsonInt(ob["siteCount"]), ob["completeness"])
+			for _, s := range asSliceAny(ob["sites"]) {
+				site, ok := s.(map[string]any)
+				if !ok {
+					continue
+				}
+				fmt.Printf("      %v  %v:%d\n", site["symbol"], site["file"], jsonInt(site["line"]))
+			}
+		}
+	}
+	// verify carries the gate's own findings; reuse the verify renderer so
+	// the two commands do not drift into two descriptions of one verdict.
+	if _, ok := m["verdict"]; ok {
+		renderVerifyText(m)
+	}
+	printNotes(m, "obligationsNote", "obligationsBaseNote", "unaddressedCaveat", "changedFilesNote", "next")
 }
 
 // jsonInt coerces a JSON number (float64 after round-trip) or int to int.

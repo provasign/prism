@@ -1205,12 +1205,38 @@ func (h *Handler) toolNode(ctx context.Context, args map[string]any) (any, error
 	if name == "" {
 		return nil, errors.New("name is required (a symbol name or a repo-relative file path)")
 	}
-	// File branch: only when the index actually knows this path, so a symbol
-	// that happens to contain a dot is never misread as a file.
+	// File branch: when the index knows this path, OR the path exists on
+	// disk inside the root. Requiring indexed SYMBOLS meant every file the
+	// extractor produces none for — configs, markdown, data fixtures,
+	// sources in an unsupported language — fell through to the symbol
+	// branch and came back "no symbol or indexed file named X" for a file
+	// sitting right there. Its content and dependents are exactly what the
+	// file view is for, and neither needs the file to define anything.
 	if syms, err := h.Grove.FileSymbols(ctx, name); err == nil && len(syms) > 0 {
 		return h.nodeFile(ctx, name, syms)
 	}
+	if h.fileExists(name) {
+		return h.nodeFile(ctx, name, nil)
+	}
 	return h.nodeSymbol(ctx, name, args)
+}
+
+// fileExists reports whether name is a regular file inside the root. Used to
+// decide the node file branch, so it must refuse paths that escape the root:
+// prism_node is a read tool, and a read tool that will open ../../.ssh/id_rsa
+// on request is an exfiltration primitive.
+func (h *Handler) fileExists(name string) bool {
+	if name == "" || filepath.IsAbs(name) {
+		return false
+	}
+	root := filepath.Clean(h.Root)
+	full := filepath.Clean(filepath.Join(root, name))
+	rel, err := filepath.Rel(root, full)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return false
+	}
+	fi, err := os.Stat(full)
+	return err == nil && fi.Mode().IsRegular()
 }
 
 // nodeSymbol renders a symbol's source plus its immediate graph neighbours.
@@ -1504,7 +1530,44 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 			"candidates": candidates,
 		}, nil
 	}
-	return map[string]any{"symbol": nil}, nil
+	// Nothing matched at all. A bare {"symbol": null} tells the caller
+	// nothing about WHY or where to go next, so offer the nearest names the
+	// search index does know — the common cause is a typo or a qualified
+	// name that does not exist in this repo.
+	out := map[string]any{
+		"symbol":  nil,
+		"name":    name,
+		"matched": false,
+		"note": fmt.Sprintf("no symbol named %q in the index — check the spelling, "+
+			"or use prism_search for a name fragment", name),
+	}
+	if near := h.nearbyNames(ctx, searchName); len(near) > 0 {
+		out["candidates"] = near
+		out["note"] = fmt.Sprintf("no symbol named %q in the index — did you mean one of the candidates?", name)
+	}
+	return out, nil
+}
+
+// nearbyNames returns up to five indexed symbols whose names look like term,
+// for the "did you mean" list on a failed lookup. Best-effort: a search error
+// just means no suggestions.
+func (h *Handler) nearbyNames(ctx context.Context, term string) []string {
+	if len(term) < 3 {
+		return nil
+	}
+	syms, err := h.Grove.SearchSymbols(ctx, term, 5)
+	if err != nil || len(syms) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(syms))
+	for _, s := range syms {
+		n := s.QualifiedName
+		if n == "" {
+			n = s.Name
+		}
+		out = append(out, fmt.Sprintf("%s (%s:%d)", n, s.FilePath, s.Span.Start))
+	}
+	return out
 }
 
 func (h *Handler) toolIndex(_ context.Context, args map[string]any) (any, error) {

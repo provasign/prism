@@ -227,6 +227,19 @@ func cmdVerify(args []string) int {
 			}
 		case "--json":
 			jsonOut = true
+		case "--format":
+			// Every other prism command spells this --format; verify only
+			// understood --json, so the documented flag silently produced
+			// the text view and a script asking for JSON parsed prose.
+			if i+1 < len(args) {
+				switch outputFormat(args[i+1]) {
+				case formatJSON, formatLean:
+					jsonOut = true
+				case formatText:
+					jsonOut = false
+				}
+				i++
+			}
 		default:
 			if !strings.HasPrefix(a, "-") {
 				dir = a

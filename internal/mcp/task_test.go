@@ -65,7 +65,10 @@ func TestToolTask_PrepareRecordsObligations(t *testing.T) {
 		t.Errorf("Do obligation siteCount = %v, want 6 callers", doOb["siteCount"])
 	}
 
-	pkg := h.loadTaskPackage()
+	pkg, pkgErr := h.loadTaskPackage()
+	if pkgErr != "" {
+		t.Fatalf("task package unreadable: %s", pkgErr)
+	}
 	if pkg == nil {
 		t.Fatal("task package not persisted")
 	}

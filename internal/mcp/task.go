@@ -243,8 +243,23 @@ func (h *Handler) taskVerify(ctx context.Context, task string, changed []string,
 	// did not touch are reported with a caveat, never as accusations — the
 	// implementation may legitimately have left that contract unchanged
 	// (design doc correction 4). The verdict stays diff-driven.
-	pkg := h.loadTaskPackage()
+	pkg, pkgErr := h.loadTaskPackage()
+	if pkgErr != "" {
+		m["obligationsNote"] = pkgErr
+	}
 	if pkg != nil && rerr == nil {
+		// Base drift: obligations were computed against the HEAD that was
+		// current at prepare time. If commits have landed since, the sites
+		// recorded then are not the sites this diff is being judged against,
+		// and "unaddressed" would be measured from the wrong starting point.
+		if pkg.Base != "" {
+			if now := resolveRef(h.Root, base); now != "" && now != pkg.Base {
+				m["obligationsBaseNote"] = fmt.Sprintf(
+					"obligations were recorded against %s but this verify runs against %s (%s) — "+
+						"treat the obligation comparison as advisory only",
+					shortSHA(pkg.Base), shortSHA(now), base)
+			}
+		}
 		if pkg.Task != task {
 			m["obligationsNote"] = "stored obligations were recorded for a different task (" +
 				truncate(pkg.Task, 80) + "); skipping obligation comparison"
@@ -421,16 +436,40 @@ func leafName(qn string) string {
 	return qn
 }
 
-func (h *Handler) loadTaskPackage() *taskPackage {
+// loadTaskPackage returns the stored package, or nil with a reason. The two
+// nil cases are NOT the same: "no prepare ran" is the normal path, while a
+// corrupt file means the obligation cross-check silently stopped running on
+// a repo where someone believes it is running. The caller surfaces the
+// second one.
+func (h *Handler) loadTaskPackage() (*taskPackage, string) {
 	data, err := os.ReadFile(h.taskPackagePath())
 	if err != nil {
-		return nil
+		return nil, "" // no package: prepare was never called here
 	}
 	var pkg taskPackage
 	if err := json.Unmarshal(data, &pkg); err != nil {
-		return nil
+		return nil, fmt.Sprintf(
+			"stored task package at %s is unreadable (%v); the obligation cross-check "+
+				"did NOT run — delete it and re-run prepare", h.taskPackagePath(), err)
 	}
-	return &pkg
+	return &pkg, ""
+}
+
+// resolveRef resolves a git ref (or "HEAD") to a full SHA; "" if it cannot.
+func resolveRef(root, ref string) string {
+	out, err := exec.Command("git", "-C", root, "rev-parse", ref).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// shortSHA abbreviates a SHA for human-readable notes.
+func shortSHA(sha string) string {
+	if len(sha) > 8 {
+		return sha[:8]
+	}
+	return sha
 }
 
 func gitHead(root string) string {
