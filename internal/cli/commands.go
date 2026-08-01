@@ -293,6 +293,14 @@ profile: "%s"
 agent_mode: "%s"
 `, cfg.Profile, mode)
 	prismYAML := filepath.Join(abs, "prism.yaml")
+	// NEVER clobber an existing prism.yaml. It holds user content init knows
+	// nothing about — arch_deny rules above all, which are the CI gate for
+	// declared architecture. A plain WriteFile deleted them on every re-init,
+	// silently turning the arch check into a no-op. Only the three keys init
+	// manages are rewritten; every other line survives byte-for-byte.
+	if existing, err := os.ReadFile(prismYAML); err == nil {
+		yaml = mergePrismYAML(string(existing), cfg.Profile, mode)
+	}
 	if err := os.WriteFile(prismYAML, []byte(yaml), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)
 		return 1
@@ -311,6 +319,48 @@ agent_mode: "%s"
 		fmt.Println("tip: add prism to your AI tool's MCP config (see README)")
 	}
 	return 0
+}
+
+// mergePrismYAML rewrites only the keys init manages (version, profile,
+// agent_mode) and preserves every other line — comments, arch_deny rules,
+// anything a user or a later prism version put there. Keys init manages but
+// the file lacks are appended.
+func mergePrismYAML(existing, profile, mode string) string {
+	managed := []struct{ key, val string }{
+		{"version", "1"},
+		{"profile", strconv.Quote(profile)},
+		{"agent_mode", strconv.Quote(mode)},
+	}
+	seen := map[string]bool{}
+	lines := strings.Split(existing, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		for _, m := range managed {
+			// Top-level key only: an indented line belongs to a nested block
+			// this function must not touch.
+			if line == trimmed && strings.HasPrefix(trimmed, m.key+":") {
+				lines[i] = m.key + ": " + m.val
+				seen[m.key] = true
+			}
+		}
+	}
+	out := strings.Join(lines, "\n")
+	var missing []string
+	for _, m := range managed {
+		if !seen[m.key] {
+			missing = append(missing, m.key+": "+m.val)
+		}
+	}
+	if len(missing) > 0 {
+		if !strings.HasSuffix(out, "\n") {
+			out += "\n"
+		}
+		out += strings.Join(missing, "\n") + "\n"
+	}
+	return out
 }
 
 // promptAgentMode asks the user which agent interface to use.
@@ -416,6 +466,7 @@ returned sites as-is; read individual sites only to make the edits.
 |---|---|
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
+| Orient on ONE symbol or file before deciding where to go | prism_node(name="Type.method" or "path/to/file.go") — the source plus a names-only menu of its graph neighbours (symbol) or its definitions and dependents (file) |
 
 A repeat read of an unchanged file returns a one-line
 ` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
@@ -513,6 +564,7 @@ returned sites as-is; read individual sites only to make the edits.
 |---|---|
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` — session-compressed on repeat reads |
 | Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` — ~5x cheaper than read |
+| Orient on ONE symbol or file before deciding where to go | ` + "`" + `prism node <symbol-or-file> --format text` + "`" + ` — source plus neighbours (symbol) or definitions + dependents (file) |
 
 A repeat read of an unchanged file returns a one-line
 ` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
@@ -589,6 +641,7 @@ Use the registered prism_* MCP tools.
 |---|---|
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
+| Orient on ONE symbol or file before deciding where to go | prism_node(name="Type.method" or "path/to/file.go") — source plus a names-only neighbour menu (symbol), or definitions + dependents (file) |
 
 A repeat read of an unchanged file returns a one-line
 ` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
@@ -657,11 +710,13 @@ Use the prism CLI with --format text instead of MCP tools:
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 | Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
-| Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — line-numbered windows + per-anchor callers/tests |
+| Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — line-numbered windows + per-anchor callers |
+| A whole task, end to end (context + the obligations it implies) | ` + "`" + `prism task "<task>" --format text` + "`" + `; after editing, ` + "`" + `prism task "<same task>" --changed a.go,b.go` + "`" + ` for the completeness verdict (exit 1 if incomplete) |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 | Callers/callees for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph --format text` + "`" + ` |
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
 | Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
+| Orient on ONE symbol or file before deciding where to go | ` + "`" + `prism node <symbol-or-file> --format text` + "`" + ` — source plus neighbours, or definitions + dependents |
 
 ### Do NOT
 

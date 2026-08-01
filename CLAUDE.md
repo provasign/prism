@@ -34,9 +34,8 @@ Use the registered prism_* MCP tools.
 | ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
 | Renaming a method and you want the edits, not just the sites | prism_rename_plan(query="Type.method", newName="newName") — every edit line with before/after; review and apply |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every closure type with no implementation |
-| "What should I test before changing X?" / test-gap audit / symbols with no tests | prism_untested_surface(query="Type.method") — the change-set split covered/untested |
 | Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
-| "Which tests should run for these changed files?" (pre-commit, CI selection, post-edit) | prism_affected(files=[...]) — every test covering the changed files, via graph test edges |
+| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | prism_map — components + induced dependency edges (weights, tiers, cycles); from+to expands any edge to file:line sites |
 
 **2. Reading code? Prism reads are cheaper than shell reads:**
 
@@ -44,6 +43,7 @@ Use the registered prism_* MCP tools.
 |---|---|
 | Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
+| Orient on ONE symbol or file before deciding where to go | prism_node(name="Type.method" or "path/to/file.go") — source plus a names-only neighbour menu (symbol), or definitions + dependents (file) |
 
 A repeat read of an unchanged file returns a one-line
 `// [prism:cached] <file> @sha:… (prior delivery still in context)` pointer
@@ -54,7 +54,7 @@ earlier this session, so use the copy you have and do not re-fetch.
 
 | Situation | Tool |
 |---|---|
-| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers/covering tests |
+| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
 
@@ -85,7 +85,7 @@ Canonical workflow (non-refactor tasks):
       -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
       -> prism_query(                    <- expand from anchor: callers, callees, tests
            terms=["same-grep-terms"],
-           include=["graph","tests"]
+           include=["graph"]
          )
       then selectively:
       -> prism_read(file=...)            <- whole file, session-compressed
@@ -108,14 +108,17 @@ Use the prism CLI with --format text instead of MCP tools:
 | Deprecating a symbol (need all callers to migrate) | `prism change-impact 'Type.method'` — complete caller list |
 | Renaming a method and you want the edits, not just the sites | `prism rename-plan 'Type.method' NewName` — every edit line with before/after; review and apply |
 | Adding a REQUIRED method to an interface/base class ("who is now broken?") | `prism missing-implementations 'Type.method'` — every closure type with no implementation |
-| "What should I test before changing X?" / symbols with no tests | `prism untested-surface 'Type.method'` — change-set split covered/untested |
 | Cleanups / "can I delete this?" at scale | `prism dead-code` — unreachable production symbols + caveats |
-| "Which tests should run for these changed files?" (pre-commit, CI selection) | `git diff --name-only | xargs prism affected` — every test covering the changed files |
-| Bug report / unfamiliar area (one-call context) | `prism query "<the symptom>" --format text` — line-numbered windows + per-anchor callers/tests |
+| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | `prism map [--depth N]` — components + induced dependency edges (weights, tiers, cycles); `--expand 'A->B'` shows concrete file:line sites |
+| Enforcing declared architecture (pre-commit, CI) | `prism arch` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
+| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | `prism verify [--base REF]` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
+| Bug report / unfamiliar area (one-call context) | `prism query "<the symptom>" --format text` — line-numbered windows + per-anchor callers |
+| A whole task, end to end (context + the obligations it implies) | `prism task "<task>" --format text`; after editing, `prism task "<same task>" --changed a.go,b.go` for the completeness verdict (exit 1 if incomplete) |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
-| Callers/callees/tests for a symbol just found | `prism query "<task>" --terms a,b --include graph,tests --format text` |
+| Callers/callees for a symbol just found | `prism query "<task>" --terms a,b --include graph --format text` |
 | Read a whole file | `prism read <file> --format text` |
 | Read one function body | `prism lookup <pkg.FuncName> --format text` |
+| Orient on ONE symbol or file before deciding where to go | `prism node <symbol-or-file> --format text` — source plus neighbours, or definitions + dependents |
 
 ### Do NOT
 
@@ -123,3 +126,5 @@ Use the prism CLI with --format text instead of MCP tools:
 - Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact / prism change-impact computes the complete set in one call
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
+
+<!-- prism:end -->
