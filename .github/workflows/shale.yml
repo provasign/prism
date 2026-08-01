@@ -10,4 +10,10 @@ jobs:
   card:
     runs-on: ubuntu-latest
     steps:
-      - uses: provasign/shale-action@v1   # no actions/checkout — everything via API
+      # Pinned to a SHA, not the mutable v1 tag. This job runs on
+      # pull_request_target, so the action gets a write-capable token on FORK
+      # pull requests — whatever v1 happens to point at that day executes with
+      # permission to write to this repo. v1 is ours, but "ours" is not the
+      # property that matters when a tag can be moved.
+      # v1 = 058e7e22496beb5d32214ec27e30ca043ce3a945
+      - uses: provasign/shale-action@058e7e22496beb5d32214ec27e30ca043ce3a945   # no actions/checkout — everything via API
