@@ -420,13 +420,20 @@ func (c *Client) Edges(ctx context.Context, name, direction string, kinds []stri
 		return nil, err
 	}
 	if len(kinds) == 0 {
-		kinds = []string{"calls", "tests"}
+		kinds = []string{"calls"}
 	}
 	var types []groveeng.EdgeType
 	for _, k := range kinds {
-		if t, ok := edgeKindByName[strings.ToLower(k)]; ok {
-			types = append(types, t)
+		t, ok := edgeKindByName[strings.ToLower(k)]
+		if !ok {
+			// An unknown kind must FAIL, not fall through: with every
+			// requested kind unknown, the empty type set would make grove's
+			// Neighbors return EVERY edge kind — the agent asked for a
+			// filter and would silently get the whole neighborhood
+			// (observed with the removed "tests" kind).
+			return nil, fmt.Errorf("unknown edge kind %q (valid: calls, uses-type, implements, extends, overrides, contains, defines, imports)", k)
 		}
+		types = append(types, t)
 	}
 	ns, err := e.Neighbors(ctx, name, direction, types...)
 	if err != nil {

@@ -58,7 +58,7 @@ top out at 0.62–0.75 recall on change-impact tasks even on frontier models
    answer is a faster broken build. Every design choice is subordinate to
    returning the complete, type-resolved answer.
 2. **Task altitude, not primitives.** The graph is exposed as whole-task
-   operations (`change_impact`, `rename_plan`, `untested_surface`, …), not as
+   operations (`change_impact`, `rename_plan`, `missing_implementations`, …), not as
    node/edge primitives the agent must orchestrate. Orchestrating traversals
    is itself a frontier-model skill; a task-level call works on any model.
 3. **Determinism.** The engine solves the traversal; the agent relays the
@@ -127,7 +127,6 @@ specialized tools below remain the advanced surface it orchestrates.
 | Change or rename a method signature | `change-impact` — declaration + override family + every resolved caller |
 | Apply a rename, not just find it | `rename-plan` — every edit line, before/after, review-and-apply |
 | Make an interface method required | `missing-implementations` — every type that breaks |
-| Refactor safely | `untested-surface` — the change-set split covered/untested |
 | Delete or extract code | `dead-code` — unreachable production symbols |
 | Commit / select CI tests | `affected` — every test covering the changed files |
 | Read code cheaply | `read` / `lookup` — session-deduped, ~10-token repeat reads |
@@ -146,7 +145,6 @@ Prism to answer the follow-up questions that usually cost several file reads:
 - What does this call?
 - Which tests define the contract?
 - What else is in the blast radius?
-- Which nearby exported functions have no direct test coverage?
 
 The recommended agent mode is **both** (MCP tools as primary surface, CLI
 fallback for subagents that don't inherit the MCP session):
@@ -162,7 +160,7 @@ covering tests (edit-ready, phase-aware; `--delivery symbols` forces the
 compact list). Subagents and CI scripts fall back to the CLI:
 
 ```bash
-prism query "fix direct coverage gaps" --terms buildCoverageGaps --include graph,tests,coverage_gaps --format text
+prism query "fix the coverage-gap builder" --terms buildCoverageGaps --include graph --format text
 prism read internal/mcp/tools.go --format text
 prism lookup github.com/provasign/prism/internal/mcp.buildCoverageGaps --format text
 ```
@@ -187,7 +185,7 @@ Prism precomputes the project graph and lets the agent ask for relationships:
 rg buildCoverageGaps internal/
   -> prism query "write tests for buildCoverageGaps" \
        --terms buildCoverageGaps \
-       --include graph,tests,coverage_gaps \
+       --include graph \
        --format text
 ```
 
@@ -204,16 +202,15 @@ one CLI text command per scenario.
 | Release/version/install wiring | 21,246 | 12,157 | 42.8% |
 
 The average reduction was **29.6%** with one Prism command instead of 5-6 shell
-commands. The bigger correctness win is that Prism surfaces tests and coverage
-gaps proactively; shell-only workflows often discover those after CI fails.
+commands. (The `coverage_gaps` scenario refers to a since-removed feature:
+heuristic test-coverage edges measured 4–12% recall against real runtime
+coverage and were removed rather than shipped.)
 
 A controlled A/B re-run (2026-06-12, post Grove-v0.6.2 fixes) on the payflow
-ground-truth project: zero coverage false positives at the tool level, total
-agent-token parity with the shell baseline (the 2026-06-07 run had +27–147%
-overhead), 47 vs 84 tool calls, and the baseline agent missing 3 of 12
-designed coverage gaps that `coverage_gaps` reports mechanically. Repeat
-reads cost 29 tokens (95% saved); a rename under the agent's feet is reported
-as one breaking `renamed` entry for ~130 tokens. Full report:
+ground-truth project: total agent-token parity with the shell baseline (the
+2026-06-07 run had +27–147% overhead) and 47 vs 84 tool calls. Repeat reads
+cost 29 tokens (95% saved); a rename under the agent's feet is reported as
+one breaking `renamed` entry for ~130 tokens. Full report:
 [docs/AB-Test-Payflow-2026-06-12.md](docs/AB-Test-Payflow-2026-06-12.md).
 
 More detail, including repeat-read savings: [provasign.dev/prism](https://provasign.dev/prism/).
@@ -246,7 +243,6 @@ Budgeted text context
   - callers/callees
   - tests
   - docs
-  - coverage_gaps
 ```
 
 Prism supports two distinct saving mechanisms:
@@ -312,7 +308,7 @@ The generated agent instructions tell agents to use commands like:
 
 ```bash
 prism query "trace the payment refund flow" --terms RefundPayment --include graph,tests --format text
-prism query "find direct coverage gaps" --terms UpdatePayment,RequireScope --include graph,coverage_gaps --format text
+prism query "audit UpdatePayment auth" --terms UpdatePayment,RequireScope --include graph --format text
 prism read internal/payment/service.go --format text
 prism lookup github.com/example/payflow/internal/payment.(*Service).RefundPayment --format text
 ```
@@ -323,7 +319,7 @@ Recommended agent workflow:
 2. Run `prism query` with the same anchor terms.
 3. Use `prism read` for whole files only when needed.
 4. Use `prism lookup` for one known function or method.
-5. Treat `coverage_gaps` as a terminal structured output, not the start of
+5. Treat task-op outputs as terminal structured results, not the start of
    manual cross-referencing.
 
 ---
@@ -344,8 +340,7 @@ MCP advertises fifteen tools: the context surface (`prism_query`,
 `prism_read`, `prism_search`, `prism_lookup`, `prism_references`,
 `prism_resolve`, `prism_edges`), the task-shaped graph operations
 (`prism_change_impact`, `prism_missing_implementations`,
-`prism_untested_surface`, `prism_dead_code`, `prism_rename_plan`,
-`prism_affected`), and session upkeep
+`prism_dead_code`, `prism_rename_plan`), and session upkeep
 (`prism_index`, `prism_drift`). The auxiliary tools (`prism_savings`,
 `prism_feedback`, `prism_compact`, `prism_evidence`) stay available through
 the CLI and HTTP server without spending schema tokens in every MCP session. Use MCP when the client has first-class MCP support and
@@ -379,7 +374,7 @@ prism verify [dir] [--base REF] [--strict] [--json]          # exit 1 if incompl
 
 prism query <task> [dir] \
   --terms a,b,c \
-  --include graph,tests,docs,coverage_gaps \
+  --include graph,docs \
   --delivery source|symbols \
   --max-files 5 \
   --depth 2 \
@@ -394,10 +389,7 @@ prism references <name> [dir] --format text
 prism change-impact 'Type.method(ParamType, ...)' [dir]   # declaration + override family + all resolved callers
 prism rename-plan 'Type.method' NewName [dir]              # every concrete edit line, review-and-apply
 prism missing-implementations 'Type.method' [dir]         # types claiming the contract that do not implement it
-prism untested-surface 'Type.method' [dir]                # the change-set split covered/untested by test evidence
 prism dead-code [dir] [--roots a,b]                       # unreachable production symbols (precision-first)
-prism affected <file> [file ...] [dir]                    # tests covering the changed files (CI selection):
-                                                          #   git diff --name-only | xargs prism affected
 
 prism watch [dir]      # background file-watcher: delta-reindex on save, index always warm
 prism drift [dir]
@@ -493,7 +485,7 @@ available in git history (`git log --diff-filter=D -- docs/` to locate them).
 Current practical summary:
 
 - CLI `--format text` is the recommended default for shell-capable agents.
-- Prism is strongest on graph/blast-radius/test/coverage-gap questions.
+- Prism is strongest on graph/blast-radius questions.
 - Shell tools remain best for locating exact strings or filenames.
 - MCP persistent transports add repeated-read deduplication that direct CLI
   invocations do not fully exercise.

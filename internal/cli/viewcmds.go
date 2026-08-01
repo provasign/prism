@@ -211,7 +211,7 @@ func renderViolations(list []any, label string) {
 }
 
 // cmdVerify checks a diff (working tree vs --base, default HEAD) for
-// completeness: missed change-impact sites, affected tests, new
+// completeness: missed change-impact sites, new
 // cross-component dependencies, introduced arch violations.
 // Exit codes: 0 = complete/clean, 1 = incomplete (CI-gateable), 2 = error.
 func cmdVerify(args []string) int {
@@ -323,7 +323,7 @@ func renderVerifyText(m map[string]any) {
 		renderViolations(asSliceAny(m["archIntroduced"]), "ARCH")
 	}
 
-	if tests := asSliceAny(m["affectedTests"]); len(tests) > 0 {
+	if tests := asSliceAny(m["affectedTests"]); len(tests) > 0 { // legacy servers only
 		fmt.Printf("\naffected tests to run (%d):\n", len(tests))
 		max := len(tests)
 		if max > 15 {

@@ -60,14 +60,14 @@ Usage:
                                   gate ([--deny 'A -> B'] [--depth N] [--json])
   prism verify [dir]              Verify a diff's completeness (working tree vs
                                   --base, default HEAD): missed change-impact
-                                  sites (line-precise), affected tests, new
+                                  sites (line-precise), new
                                   cross-component deps, introduced arch
                                   violations; exit 1 if incomplete — the CI
                                   gate for agent-authored changes
                                   ([--base REF] [--json])
   prism query <task> [dir]        Find ranked context for a task; bug-fix/implement
                                   tasks get line-numbered source windows + per-anchor
-                                  callers/covering tests (edit-ready)
+                                  callers (edit-ready)
                                   --terms a,b,c      Anchor on specific symbol names (grep-precision)
                                   --include a,b      Categories: graph,docs (default: graph)
                                   --delivery source|symbols  Force delivery shape (default: phase-aware)
@@ -94,8 +94,6 @@ Usage:
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
                                   --format text|lean|json  Output format (default: json)
-  prism affected <file> [file ...]  Tests covering the changed files (CI test selection):
-                                  git diff --name-only | xargs prism affected  → run only those tests
                                   [--dir <path>] [--format text|json]
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
   prism assist [--model <spec>] [--apply|--apply-ambiguous] [--verify "<cmd>"] "<task>"
@@ -316,7 +314,7 @@ After editing, call the SAME tool again with the changed files:
     prism(task="<same task>", changed_files=[...])
 
 It verifies the diff deterministically: contract changes detected, missed
-call sites reported line-precisely, affected tests listed, verdict
+call sites reported line-precisely, verdict
 fail-closed (clean|complete|review|incomplete). Resolve everything it
 reports missing before declaring the task done. "I updated all the callers"
 is a guess; this is the check of it.
@@ -382,7 +380,7 @@ re-fetch it.
 
 | Situation | Tool |
 |---|---|
-| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers/covering tests |
+| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
 
@@ -393,7 +391,7 @@ Canonical workflow (non-refactor tasks):
       -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
       -> prism_query(                    <- expand from anchor: callers, callees, tests
            terms=["same-grep-terms"],
-           include=["graph","tests"]
+           include=["graph"]
          )
       then selectively:
       -> prism_read(file=...)            <- whole file, session-compressed
@@ -436,7 +434,7 @@ layers, in priority order.
 | Cleanups / "is X still used / can I delete it?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
-| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), affected tests, introduced arch violations; exit 1 if incomplete |
+| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, run prism change-impact first — even if the change
@@ -477,7 +475,7 @@ re-fetch it.
 
 | Situation | Command |
 |---|---|
-| Bug report, error message, or unfamiliar feature area | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers/covering tests |
+| Bug report, error message, or unfamiliar feature area | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | ` + "`" + `prism query "<symptom>" --terms <anchor> --format text` + "`" + ` — same delivery, grep-precision seeding |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
 
@@ -488,7 +486,7 @@ Canonical workflow (non-refactor tasks):
       -> grep/find/rg <terms>                 <- locate it; shell tools always win at locating
       -> prism query "<task>" \               <- expand from anchor: callers, callees, tests
            --terms <same-terms> \
-           --include graph,tests \
+           --include graph \
            --format text
       then selectively:
       -> prism read <file> --format text      <- whole file, session-compressed
@@ -550,7 +548,7 @@ earlier this session, so use the copy you have and do not re-fetch.
 
 | Situation | Tool |
 |---|---|
-| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers/covering tests |
+| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>") — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
 | Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
 
@@ -581,7 +579,7 @@ Canonical workflow (non-refactor tasks):
       -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
       -> prism_query(                    <- expand from anchor: callers, callees, tests
            terms=["same-grep-terms"],
-           include=["graph","tests"]
+           include=["graph"]
          )
       then selectively:
       -> prism_read(file=...)            <- whole file, session-compressed
@@ -607,10 +605,10 @@ Use the prism CLI with --format text instead of MCP tools:
 | Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
 | "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
-| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), affected tests, introduced arch violations; exit 1 if incomplete |
+| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
 | Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --format text` + "`" + ` — line-numbered windows + per-anchor callers/tests |
 | Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
-| Callers/callees/tests for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph,tests --format text` + "`" + ` |
+| Callers/callees for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph --format text` + "`" + ` |
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
 | Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
 

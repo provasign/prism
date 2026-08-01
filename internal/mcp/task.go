@@ -3,9 +3,9 @@ package mcp
 // prism — the unified task tool (task compiler). One tool, two moments:
 //
 //   prism(task="...")                        prepare: anchors -> edit-ready
-//                                            source -> change obligations ->
-//                                            tests/coverage gaps; obligations
-//                                            persisted for the verify moment.
+//                                            source -> change obligations;
+//                                            obligations persisted for the
+//                                            verify moment.
 //   prism(task="...", changed_files=[...])   verify: the shipped prism_verify
 //                                            pipeline + the stored obligations
 //                                            checked against the diff.
@@ -105,7 +105,7 @@ func (h *Handler) taskPrepare(ctx context.Context, task string, args map[string]
 	sel, err := h.selectContext(ctx, selectParams{
 		task:        task,
 		terms:       terms,
-		includeSet:  map[string]bool{"graph": true, "tests": true},
+		includeSet:  map[string]bool{"graph": true},
 		limit:       intArg(args, "limit", 50),
 		contextUsed: int64(intArg(args, "context_used", 0)),
 		model:       stringArg(args, "model", ""),
@@ -116,7 +116,7 @@ func (h *Handler) taskPrepare(ctx context.Context, task string, args map[string]
 	}
 
 	// Edit-ready delivery: verbatim line-numbered source windows + per-anchor
-	// callers and covering tests — the existing prism_query source path.
+	// callers — the existing prism_query source path.
 	read := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
 
 	// Change obligations: for each anchor with a call-shaped contract,

@@ -434,7 +434,7 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"name":      map[string]any{"type": "string", "description": "Seed symbol (bare or Type.Method)."},
 				"direction": map[string]any{"type": "string", "enum": []string{"out", "in", "both"}, "description": "out = edges from the seed (callees, uses-type); in = edges into it (callers, tests). Default both."},
-				"kinds":     map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": []string{"calls", "tests", "uses-type", "implements", "extends", "overrides", "contains", "defines", "imports"}}, "description": "Edge kinds to return. Default [calls,tests]."},
+				"kinds":     map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": []string{"calls", "uses-type", "implements", "extends", "overrides", "contains", "defines", "imports"}}, "description": "Edge kinds to return. Default [calls]."},
 			},
 		}
 	case "prism_index":
@@ -551,7 +551,7 @@ func toolDescription(name string) string {
 			"site that must be handled if you change those contracts, type-resolved and " +
 			"completeness-tagged. (2) AFTER editing, prism(task=..., changed_files=[...]) verifies " +
 			"the diff: contract changes detected, missed call sites reported line-precisely, " +
-			"prepare-time obligations checked, affected tests listed. Verdicts are fail-closed " +
+			"prepare-time obligations checked. Verdicts are fail-closed " +
 			"(clean|complete|review|incomplete). Treat returned source as already read; satisfy " +
 			"every reported obligation before finishing. NEVER answer a completeness or change-set " +
 			"question from memory or a quick read — an answer not backed by this tool's result on the " +
@@ -599,11 +599,11 @@ func toolDescription(name string) string {
 			"then resolve/traverse from it. Never guess names by trying resolve repeatedly."
 	case "prism_edges":
 		return "Walk the code graph one hop from a symbol. The graph has these edge kinds: " +
-			"calls (X calls Y), tests (a test exercises Y), uses-type (X mentions a type), " +
+			"calls (X calls Y), uses-type (X mentions a type), " +
 			"implements/extends/overrides, contains, defines, imports. direction=out gives edges FROM " +
-			"the seed (its callees, the types it uses); direction=in gives edges INTO it (its callers, " +
-			"its tests). Recipes: what does X call → (out, [calls]); who calls X → (in, [calls]); " +
-			"what tests X → (in, [tests]); interface dispatch resolves: (out, [calls]) returns the " +
+			"the seed (its callees, the types it uses); direction=in gives edges INTO it (its " +
+			"callers). Recipes: what does X call → (out, [calls]); who calls X → (in, [calls]); " +
+			"interface dispatch resolves: (out, [calls]) returns the " +
 			"implementors actually called. Results are grouped by '<kind> <direction>' and capped with a " +
 			"true total. Each neighbor's file:line is AUTHORITATIVE — trust it, don't re-grep to verify. " +
 			"This is the precise primitive — prefer it over prism_query when you know the anchor."

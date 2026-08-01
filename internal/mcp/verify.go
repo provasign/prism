@@ -7,7 +7,6 @@ package mcp
 //   - signature-changed / renamed symbols -> change_impact -> required
 //     sites; required sites the diff did not touch are MISSED SITES,
 //     line-precise where the graph has AST call sites.
-//   - affected tests for the changed files (what must run).
 //   - component dependencies whose entire evidence originates in changed
 //     files (NEW cross-component dependencies introduced by this diff),
 //     plus declared arch rules with the same tier-aware gating as
