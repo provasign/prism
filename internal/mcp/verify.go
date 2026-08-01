@@ -116,6 +116,33 @@ func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 	return changed, nil
 }
 
+// gitDeletedFiles lists files removed relative to base (work-root-relative).
+//
+// gitChangedRanges cannot see them: a deletion's after-side is /dev/null, so
+// the file never becomes a key in its map. That made a deletion-only change
+// read as verdict "clean" with exit 0 (measured: deleting a file whose
+// functions were still called verified clean), and it hid the old path of a
+// moved file, so `git mv` + a signature change was entirely unverified.
+func gitDeletedFiles(root, base string) []string {
+	if !validGitBase(base) {
+		return nil
+	}
+	out, err := exec.Command("git", "-C", root, "diff", "--name-only",
+		"--diff-filter=D", "--no-color", "--end-of-options", base, "--", ".").Output()
+	if err != nil {
+		return nil
+	}
+	prefix := gitPrefix(root)
+	var files []string
+	for _, l := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			files = append(files, strings.TrimPrefix(l, prefix))
+		}
+	}
+	sort.Strings(files)
+	return files
+}
+
 func gitShow(root, base, relPath string) []byte {
 	if !validGitBase(base) {
 		return nil
@@ -158,11 +185,25 @@ type missedSite struct {
 
 func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, error) {
 	base := stringArg(args, "base", "HEAD")
+
+	// Refresh the index FIRST (delta — cheap). Verify compares each changed
+	// file's base version against the live index, so a stale index shows no
+	// contract change and the gate returns "complete" on genuinely broken
+	// code (measured: a signature change without a reindex verified clean,
+	// exit 0). prism_drift already refreshes for exactly this reason; verify
+	// — the CI gate — must not be the one surface that trusts stale data.
+	var staleNote string
+	if _, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
+		staleNote = "index refresh failed (" + ierr.Error() +
+			"); results computed against a possibly stale index"
+	}
+
 	changed, err := gitChangedRanges(h.Root, base)
 	if err != nil {
 		return nil, err
 	}
-	if len(changed) == 0 {
+	deletedFiles := gitDeletedFiles(h.Root, base)
+	if len(changed) == 0 && len(deletedFiles) == 0 {
 		return map[string]any{"verdict": "clean", "base": base,
 			"note": "no changes vs " + base}, nil
 	}
@@ -185,9 +226,18 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		switch sym.Kind {
 		case "function", "method", "constructor":
 			seeds = append(seeds, seed{sym, before, reason})
-		case "const", "variable", "field", "document", "file",
-			"decorator", "annotation":
-			// No call-shaped blast radius; renames are rename_plan's job.
+		case "document", "file":
+			// Not code; no contract to break.
+		case "const", "variable", "field", "decorator", "annotation":
+			// No call-shaped blast radius, so change_impact cannot compute a
+			// required set — but a renamed/removed exported const or field
+			// DOES break its references. Silently dropping these produced a
+			// false "complete" (measured: renaming an exported const with a
+			// stale reference left behind verified clean, exit 0). Surface
+			// them as unverified so the verdict degrades to "review".
+			unverifiedSeeds = append(unverifiedSeeds,
+				fmt.Sprintf("%s %s (%s) — no call-shaped blast radius to verify; check its references (prism_references %s)",
+					sym.Kind, displayQN(sym), reason, sym.Name))
 		default:
 			// interface/struct/class/type contract changes: real blast
 			// radius, no automated per-member verification yet — surfaced
@@ -259,6 +309,39 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 				addSeed(*c.After, c.Before, displayQN(*c.After)+" renamed")
 			}
 		}
+		// REMOVED symbols are contract changes too — the strongest kind. A
+		// deleted method breaks every caller, yet fd.Removed was never read,
+		// so deleting a called method verified "complete" with exit 0
+		// (measured). The removed symbol carries the OLD contract, so it is
+		// its own "before": change_impact resolves the callers that must
+		// change.
+		for _, rem := range fd.Removed {
+			removed := rem
+			addSeed(removed, &removed, displayQN(removed)+" removed")
+		}
+	}
+
+	// Deleted files: every symbol they declared is a removed contract. These
+	// files never appear in `changed` (their after-side is /dev/null), so
+	// without this a deletion — the most destructive contract change there
+	// is — was invisible to the gate. Also covers the old path of a move.
+	for _, f := range deletedFiles {
+		baseContent := gitShow(h.Root, base, f)
+		if baseContent == nil {
+			continue
+		}
+		gone, err := h.Grove.PreviewFileSymbols(f, baseContent)
+		if err != nil {
+			// Unsupported file type: nothing to parse, but a deletion we
+			// could not analyze must not read as verified.
+			unverifiedSeeds = append(unverifiedSeeds,
+				f+" was deleted and could not be parsed — review its references manually")
+			continue
+		}
+		for _, sym := range gone {
+			s := sym
+			addSeed(s, &s, displayQN(s)+" removed with file "+f)
+		}
 	}
 
 	// 2) For each contract change, the engine computes the required set;
@@ -267,6 +350,9 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	var missed []missedSite
 	var sigChanges []map[string]any
 	var notes []string
+	if staleNote != "" {
+		notes = append(notes, staleNote)
+	}
 	seen := map[string]bool{}
 	for _, sd := range seeds {
 		sigChanges = append(sigChanges, map[string]any{
@@ -385,6 +471,14 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	var newDeps []map[string]any
 	archStatus := "no-rules"
 	var archIntroduced []view.Violation
+	if err != nil {
+		// FAIL CLOSED: without the graph, neither new cross-component
+		// dependencies nor arch rules were checked. Silently reporting
+		// "no-rules" and an empty dependency list read as a pass.
+		archStatus = "unchecked"
+		unverifiedSeeds = append(unverifiedSeeds,
+			"dependency and architecture checks did not run: "+err.Error())
+	}
 	if err == nil {
 		v := view.Build(symbols, edges, view.Options{MaxSites: 1 << 30})
 		for _, e := range v.Edges {
