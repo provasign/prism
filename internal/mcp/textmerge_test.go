@@ -1,0 +1,137 @@
+package mcp
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/provasign/prism/internal/compression"
+	"github.com/provasign/prism/internal/textsearch"
+)
+
+// TestMergeTextSearchNoGroveDeliversRawHits: with no Grove client every hit
+// is undeliverable as a symbol promotion and must surface raw — text search
+// keeps working even when the graph is down.
+func TestMergeTextSearchNoGroveDeliversRawHits(t *testing.T) {
+	h := newTestHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "notes.md"),
+		[]byte("the frobnicate flag controls retries\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res := h.mergeTextSearch(context.Background(), []string{"frobnicate"}, map[string]bool{})
+	if len(res.rawHits) != 1 {
+		t.Fatalf("rawHits = %v, want exactly the notes.md line", res.rawHits)
+	}
+	if res.rawHits[0].File != "notes.md" || res.rawHits[0].Line != 1 {
+		t.Errorf("hit = %+v", res.rawHits[0])
+	}
+	if len(res.extraSeeds) != 0 {
+		t.Errorf("no Grove: extraSeeds should be empty, got %v", res.extraSeeds)
+	}
+}
+
+// TestRenderTextMatchesUsesSessionSHA: hits in a file already delivered this
+// session (same content hash) are rendered as line numbers only — never a
+// re-send of text the agent already has.
+func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
+	h := newTestHandler(t)
+	content := "alpha needle\nbeta\ngamma needle\n"
+	if err := os.WriteFile(filepath.Join(h.Root, "seen.txt"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "fresh.txt"), []byte("delta needle\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a prior full delivery of seen.txt.
+	h.Session.Record("seen.txt", compression.Hash(content), 10, "full-fresh")
+
+	out := h.renderTextMatches([]textsearch.Hit{
+		{File: "seen.txt", Line: 1, Text: "alpha needle"},
+		{File: "seen.txt", Line: 3, Text: "gamma needle"},
+		{File: "fresh.txt", Line: 1, Text: "delta needle"},
+	})
+	if len(out) != 2 {
+		t.Fatalf("got %d file groups, want 2: %v", len(out), out)
+	}
+	seen, fresh := out[0], out[1]
+	if seen["file"] != "seen.txt" || seen["cached"] != true {
+		t.Errorf("seen.txt entry should be cached: %v", seen)
+	}
+	if _, hasText := seen["hits"]; hasText {
+		t.Errorf("cached entry must not re-send text: %v", seen)
+	}
+	if lines, ok := seen["lines"].([]int); !ok || len(lines) != 2 {
+		t.Errorf("cached entry should list both lines: %v", seen)
+	}
+	hits, ok := fresh["hits"].([]map[string]any)
+	if fresh["file"] != "fresh.txt" || !ok || len(hits) != 1 || hits[0]["text"] != "delta needle" {
+		t.Errorf("fresh.txt should carry verbatim text: %v", fresh)
+	}
+}
+
+// TestRenderTextMatchesCapsFilesAndHits: the delivered section is bounded so
+// a broad term cannot crowd out the source windows.
+func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
+	h := newTestHandler(t)
+	var hits []textsearch.Hit
+	for f := 0; f < textRenderFileCap+3; f++ {
+		name := "f" + string(rune('a'+f)) + ".txt"
+		for l := 1; l <= textRenderHitsPerFile+2; l++ {
+			hits = append(hits, textsearch.Hit{File: name, Line: l, Text: "x"})
+		}
+	}
+	out := h.renderTextMatches(hits)
+	if len(out) != textRenderFileCap+1 { // cap + omission note
+		t.Fatalf("got %d entries, want %d", len(out), textRenderFileCap+1)
+	}
+	last := out[len(out)-1]
+	if _, ok := last["note"]; !ok {
+		t.Errorf("final entry should be the omission note: %v", last)
+	}
+	first := out[0]
+	if more, ok := first["moreHits"].(int); !ok || more != 2 {
+		t.Errorf("per-file overflow should be counted: %v", first)
+	}
+}
+
+// TestSearchScopeTextIsPureGrep: scope="text" must return only text hits —
+// no symbol search (works with nil Grove), minimal envelope.
+func TestSearchScopeTextIsPureGrep(t *testing.T) {
+	h := newTestHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "cfg.yaml"),
+		[]byte("retry_budget: 42\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := h.Invoke("prism_search", map[string]any{"query": "retry_budget", "scope": "text"})
+	if err != nil {
+		t.Fatalf("scope=text should not need Grove: %v", err)
+	}
+	m := out.(map[string]any)
+	if _, hasSyms := m["symbols"]; hasSyms {
+		t.Errorf("pure grep must not carry a symbols section: %v", m)
+	}
+	hits, ok := m["textHits"].([]map[string]any)
+	if !ok || len(hits) != 1 || hits[0]["file"] != "cfg.yaml" {
+		t.Errorf("expected exactly the cfg.yaml hit, got %v", m)
+	}
+}
+
+// TestResolvedRefNoteSilentWithoutGrove: the note is advisory and must never
+// error or fire when the graph cannot back it up.
+func TestResolvedRefNoteSilentWithoutGrove(t *testing.T) {
+	h := newTestHandler(t) // no Grove client
+	hits := make([]textsearch.Hit, 20)
+	if n := h.resolvedRefNote(context.Background(), "anything", hits); n != "" {
+		t.Errorf("note must be silent without a graph, got %q", n)
+	}
+}
+
+// TestResolvedRefNoteSilentOnSmallResult: below the hit floor there is
+// nothing worth annotating.
+func TestResolvedRefNoteSilentOnSmallResult(t *testing.T) {
+	h := newTestHandler(t)
+	if n := h.resolvedRefNote(context.Background(), "x", make([]textsearch.Hit, 3)); n != "" {
+		t.Errorf("note must be silent on tiny results, got %q", n)
+	}
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/session"
+	"github.com/provasign/prism/internal/textsearch"
 	"regexp"
 )
 
@@ -175,8 +176,6 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolSavings(ctx, args)
 	case "prism_feedback":
 		return h.toolFeedback(ctx, args)
-	case "prism_evidence":
-		return h.toolEvidence(ctx, args)
 	case "prism_drift":
 		return h.toolDrift(ctx, args)
 	case "prism_references":
@@ -185,20 +184,32 @@ func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
 		return h.toolResolve(ctx, args)
 	case "prism_edges":
 		return h.toolEdges(ctx, args)
+	// The whole-repo graph tools delta-reindex FIRST, for the same reason
+	// toolVerify does: a stale index silently computes yesterday's blast
+	// radius (measured live: an added caller was invisible to change_impact
+	// until reindex — and the delivery dedupe then pointered the stale
+	// result as "recomputed"). Delta indexing is cheap; trusting stale data
+	// on the tools agents PLAN edits with is not.
 	case "prism_change_impact":
-		return h.toolChangeImpact(ctx, args)
+		h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args)(h.toolChangeImpact(ctx, args))
 	case "prism_missing_implementations":
-		return h.toolMissingImplementations(ctx, args)
+		h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args)(h.toolMissingImplementations(ctx, args))
 	case "prism_node":
 		return h.toolNode(ctx, args)
 	case "prism_dead_code":
-		return h.toolDeadCode(ctx, args)
+		h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args)(h.toolDeadCode(ctx, args))
 	case "prism_rename_plan":
-		return h.toolRenamePlan(ctx, args)
+		h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args)(h.toolRenamePlan(ctx, args))
 	case "prism_map":
-		return h.toolMap(ctx, args)
+		h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args)(h.toolMap(ctx, args))
 	case "prism_cycles":
-		return h.toolCycles(ctx, args)
+		h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args)(h.toolCycles(ctx, args))
 	case "prism_arch_check":
 		return h.toolArchCheck(ctx, args)
 	case "prism_verify":
@@ -231,14 +242,20 @@ func sameRoot(dir, root string) bool {
 
 // ToolSchemas returns the schema list for tools/list.
 func ToolSchemas() []map[string]any {
+	// The agent-facing surface, kept deliberately small: every extra tool is
+	// a routing error waiting to happen (measured: agents mis-route when the
+	// menu is long). resolve/edges/cycles/drift remain CLI commands and
+	// Invoke-able, but are not offered to agents — their jobs are covered by
+	// search (locate, with test doubles tagged), node (orient), map (cycles
+	// are a field of its result), and the gates' own delta-reindexing.
 	names := []string{
 		"prism",
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_references", "prism_resolve", "prism_edges", "prism_change_impact",
+		"prism_references", "prism_change_impact",
 		"prism_missing_implementations", "prism_dead_code",
 		"prism_rename_plan", "prism_map", "prism_node",
-		"prism_verify", "prism_arch_check", "prism_cycles",
-		"prism_index", "prism_drift",
+		"prism_verify", "prism_arch_check",
+		"prism_index",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
@@ -370,7 +387,16 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"query": map[string]any{
 					"type":        "string",
-					"description": "Substring matched against symbol names, signatures, and docstrings.",
+					"description": "Substring matched against symbol names, signatures, and docstrings — AND against raw source text (a real rg/grep pass). With regex=true, a regular expression for the text pass.",
+				},
+				"scope": map[string]any{
+					"type": "string",
+					"enum": []string{"both", "text", "symbols"},
+					"description": "What you want back. \"text\" = a PURE grep: exactly the rg hits, no symbol search, no graph, cheapest — use when you would have run grep/rg. \"symbols\" = indexed symbols only. Default \"both\" merges the two.",
+				},
+				"regex": map[string]any{
+					"type":        "boolean",
+					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
 				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 			},
@@ -391,7 +417,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"file": map[string]any{
 					"type":        "string",
-					"description": "Disambiguate a name shared across packages: file path (or substring, as shown by prism_resolve).",
+					"description": "Disambiguate a name shared across packages: file path (or substring, as shown in prism_search results).",
 				},
 			},
 		}
@@ -439,27 +465,6 @@ func toolSchema(name string) map[string]any {
 			"type":       "object",
 			"properties": map[string]any{},
 		}
-	case "prism_evidence":
-		return map[string]any{
-			"type":     "object",
-			"required": []string{"claims"},
-			"properties": map[string]any{
-				"claims": map[string]any{
-					"type":        "array",
-					"description": "Array of {claim, file, lineStart?, lineEnd?, symbolName?} objects.",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"claim":      map[string]any{"type": "string"},
-							"file":       map[string]any{"type": "string"},
-							"lineStart":  map[string]any{"type": "integer"},
-							"lineEnd":    map[string]any{"type": "integer"},
-							"symbolName": map[string]any{"type": "string"},
-						},
-					},
-				},
-			},
-		}
 	case "prism_node":
 		return map[string]any{
 			"type":     "object",
@@ -484,6 +489,8 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\". A bare member name (\"serialize\") or file:line (\"src/Foo.java:120\") also works when it resolves to exactly one symbol; if several match, the error lists the candidates.",
 				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
 			},
 		}
 	case "prism_rename_plan":
@@ -499,6 +506,8 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "The new member name (bare identifier).",
 				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
 			},
 		}
 	case "prism_dead_code":
@@ -510,6 +519,8 @@ func toolSchema(name string) map[string]any {
 					"items":       map[string]any{"type": "string"},
 					"description": "Extra entry-point symbol names beyond the defaults (main/init, tests, exported symbols) — e.g. framework hooks registered by name.",
 				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
 			},
 		}
 	case "prism_verify":
@@ -540,6 +551,8 @@ func toolSchema(name string) map[string]any {
 					"type":        "integer",
 					"description": "Truncate components to the first N path segments before cycle detection (0 = one component per directory).",
 				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
 			},
 		}
 	case "prism_map":
@@ -562,6 +575,8 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "Include test files (excluded by default — the map shows the production shape; the result reports how many were excluded).",
 				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
 				"from": map[string]any{
 					"type":        "string",
 					"description": "With to: expand one induced edge into its FULL constituent site list.",
@@ -597,10 +612,13 @@ func toolDescription(name string) string {
 			"name (e.g. \"serialize\", \"get\"); a wrong term is worse than none. " +
 			"mode=\"prepare\"|\"verify\" to override."
 	case "prism_query":
-		return "ONE call for task context: pass the task and terms=[...] with anchor names you have " +
+		return "DELIVER (this tool answers \"give me what I need to do this task\" — to merely locate " +
+			"something, use prism_search): pass the task and terms=[...] with anchor names you have " +
 			"CONFIRMED (from grep/search or named in the task) — retrieval keys on the terms, so a " +
 			"confirmed anchor beats a well-phrased task, but a guessed term for a common name hurts. " +
-			"Prism finds those symbols then expands through the call graph (callers, callees). " +
+			"Prism finds those symbols then expands through the call graph (callers, callees), AND runs a " +
+			"real full-text search (rg/grep) for each term in the same call — matches outside any symbol " +
+			"(comments, configs, docs) arrive as textMatches, so a separate grep call is never needed. " +
 			"For bug-fix/implement tasks it delivers verbatim LINE-NUMBERED source windows plus each " +
 			"anchor's callers — edit-ready, identical to Read output; do NOT re-read " +
 			"the files it shows. Unchanged files already delivered this session come back as one-line " +
@@ -613,11 +631,15 @@ func toolDescription(name string) string {
 			"received this file earlier in the session, so use that copy and do NOT re-fetch. " +
 			"For a single function use prism_lookup (~5× cheaper)."
 	case "prism_search":
-		return "DISCOVERY: substring search over indexed symbol names, signatures, and docstrings — " +
-			"the on-ramp when you only have a concept and need to FIND an anchor symbol. " +
-			"Does NOT search source code text — for that, use grep (also fine for discovery). " +
-			"Workflow: search/grep to FIND an anchor, then prism_resolve/prism_edges/prism_lookup to TRAVERSE " +
-			"and READ from it. Don't guess names with resolve when you haven't searched yet."
+		return "LOCATE (this tool answers \"where is X?\"): one call searches BOTH indexed symbol " +
+			"names/signatures/docstrings AND the raw source text (a real rg/grep full-text pass, results " +
+			"in textHits) — the on-ramp when you only have a concept, an error message, or a config key " +
+			"and need to FIND an anchor. A separate grep call is never needed. YOU price the request: " +
+			"scope=\"text\" is a pure grep (exactly the rg hits, cheapest — say this whenever you would " +
+			"have run grep/rg and want nothing else; regex=true for patterns); scope=\"symbols\" for " +
+			"names only; default \"both\" merges the two. Test doubles are tagged and listed last. " +
+			"Returns locations, not context: once you have the anchor, prism_query delivers the " +
+			"edit-ready context for your task (or prism_node/prism_lookup to orient and read piecewise)."
 	case "prism_lookup":
 		return "Read one symbol by qualified name (e.g. 'ranking.Select', " +
 			"'kvstore.SecretsKVStoreSQL.Get'). Choose which COLUMNS to read with fields=[...]: " +
@@ -670,9 +692,6 @@ func toolDescription(name string) string {
 	case "prism_feedback":
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
-	case "prism_evidence":
-		return "Convert a sub-agent prose summary into typed {claim, file, line} citations. " +
-			"Send to parent agent instead of prose. Each claim is dereferenceable via prism_lookup."
 	case "prism_change_impact":
 		return "Deterministic change-set for a method signature change: pass 'Type.method' or " +
 			"'Type.method(ParamType, ...)' and get back the exact declaration(s), every " +
@@ -693,7 +712,10 @@ func toolDescription(name string) string {
 			"implementation closure of that contract — use for deprecation/migration sweeps. " +
 			"RELAY the returned set as-is: do not re-verify, re-filter, or transform it " +
 			"through shell pipelines — re-processing a solved traversal measurably drops " +
-			"real sites and adds spurious ones."
+			"real sites and adds spurious ones. A repeat call whose freshly recomputed " +
+			"result is IDENTICAL to one already delivered this session returns a one-line " +
+			"[prism:cached] pointer with group counts — not an error, not empty: use the " +
+			"prior delivery."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
 			"and get every type in the subtype closure that FAILS to implement the member — " +
@@ -747,7 +769,9 @@ func toolDescription(name string) string {
 			"evidence-backed, not narrative: pass from+to to expand one edge into the full " +
 			"list of concrete crossing sites (file:line). depth=1 gives the top-level view of " +
 			"a large repo. The result is complete over indexed project edges at the reported " +
-			"tier; external dependencies are excluded — this is the project's internal shape."
+			"tier; external dependencies are excluded — this is the project's internal shape. " +
+			"A repeat call whose recomputed result is IDENTICAL to one already delivered this " +
+			"session returns a one-line [prism:cached] pointer — use the prior delivery."
 	}
 	return "Prism tool: " + name
 }
@@ -757,6 +781,10 @@ func toolDescription(name string) string {
 type queryResult struct {
 	BudgetUsed int            `json:"budgetUsed"`
 	Symbols    []rankedSymbol `json:"symbols"`
+	// TextMatches are full-text hits outside any indexed symbol (comments,
+	// configs, docs) — the grep half of the merged search.
+	TextMatches []map[string]any `json:"textMatches,omitempty"`
+	TextBackend string           `json:"textBackend,omitempty"`
 	// Note explains an empty result so agents can tell "wrong root" or
 	// "term typo" apart from "genuinely no matches" without guessing.
 	Note string `json:"note,omitempty"`
@@ -859,6 +887,10 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
+		if tm := h.renderTextMatches(sel.textHits); tm != nil {
+			out["textMatches"] = tm
+			out["textBackend"] = sel.textBackend
+		}
 		delivered, _ := out["deliveredTokens"].(int)
 		h.Ledger.Record("prism_query", h.queryBaselineTokens(sel.picked, delivered), delivered)
 		return out, nil
@@ -883,8 +915,12 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
+	if tm := h.renderTextMatches(sel.textHits); tm != nil {
+		out.TextMatches = tm
+		out.TextBackend = sel.textBackend
+	}
 
-	if len(out.Symbols) == 0 {
+	if len(out.Symbols) == 0 && len(out.TextMatches) == 0 {
 		switch {
 		case len(sel.seeds) == 0 && len(terms) > 0:
 			out.Note = fmt.Sprintf("no symbols matched terms %v under project root %s; check term spelling and that the code lives under this root", terms, h.Root)
@@ -998,6 +1034,27 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		return nil, errors.New("query is required (a name or name fragment to search for)")
 	}
 	limit := intArg(args, "limit", 25)
+	scope := stringArg(args, "scope", "both")
+	regex := boolArg(args, "regex")
+
+	// scope="text": the agent asked for a PURE grep — exactly what rg
+	// returns, no symbol search, no graph, minimal envelope. This is the
+	// agent pricing its own request (measured: routing every locate through
+	// the enriched path cost ~1.5× on ordinary bug fixes for zero benefit).
+	if scope == "text" {
+		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+			MaxHits: limit * 2, Timeout: textSearchTimeout, Regex: regex,
+		})
+		out := map[string]any{
+			"textHits":    h.renderTextMatches(r.Hits),
+			"textBackend": r.Backend,
+			"truncated":   r.Truncated,
+		}
+		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
+			out["resolvedNote"] = n
+		}
+		return out, nil
+	}
 
 	// Grove's symbol search is ranked (exact name > prefix > substring,
 	// v0.6.0) — deliver it directly, matching this tool's contract of
@@ -1007,7 +1064,40 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		return nil, err
 	}
 	syms = filterGeneratedPrismContext(syms)
-	return map[string]any{"symbols": syms}, nil
+	// Real implementations first, test doubles tagged and last — the
+	// disambiguation prism_resolve used to provide, folded into the one
+	// locate tool so agents never need a second call to tell them apart.
+	annotated := make([]map[string]any, 0, len(syms))
+	var doubles []map[string]any
+	for _, s := range syms {
+		var m map[string]any
+		if b, err := json.Marshal(s); err == nil {
+			_ = json.Unmarshal(b, &m)
+		}
+		if m == nil {
+			continue
+		}
+		if isTestDouble(s.FilePath) {
+			m["testDouble"] = true
+			doubles = append(doubles, m)
+		} else {
+			annotated = append(annotated, m)
+		}
+	}
+	annotated = append(annotated, doubles...)
+	out := map[string]any{"symbols": annotated}
+	// Merged full-text search: the same query as a literal, so a string
+	// that names no symbol (an error message, a config key) still lands.
+	// scope="symbols" skips it on request.
+	if scope != "symbols" {
+		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
+		}); len(r.Hits) > 0 {
+			out["textHits"] = h.renderTextMatches(r.Hits)
+			out["textBackend"] = r.Backend
+		}
+	}
+	return out, nil
 }
 
 func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any, error) {
@@ -1348,7 +1438,7 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	}
 	// Optional file disambiguator: when several symbols share a qualified name
 	// (e.g. two packages with a Service.DecryptedValues), pass the file path (or
-	// any substring of it, as shown by prism_resolve) to pick the right one.
+	// any substring of it, as shown in prism_search results) to pick the right one.
 	fileHint := strings.ToLower(stringArg(args, "file", ""))
 
 	// Accept "pkg/path.SymbolName" and "github.com/mod/pkg/path.SymbolName".
@@ -1624,83 +1714,6 @@ func (h *Handler) toolCompact(_ context.Context, args map[string]any) (any, erro
 
 func (h *Handler) toolSavings(_ context.Context, _ map[string]any) (any, error) {
 	return h.Ledger.Snapshot(), nil
-}
-
-// EvidencePacket is the G: sub-agent evidence response.
-// An array of these replaces a prose sub-agent summary in the parent context.
-type EvidencePacket struct {
-	Claim      string `json:"claim"`
-	File       string `json:"file,omitempty"`
-	LineStart  int    `json:"lineStart,omitempty"`
-	LineEnd    int    `json:"lineEnd,omitempty"`
-	SymbolName string `json:"symbolName,omitempty"`
-	SHA        string `json:"sha,omitempty"`        // content SHA of the file at delivery time
-	LookupHint string `json:"lookupHint,omitempty"` // prism_lookup key if symbol is known
-}
-
-// toolEvidence compiles a typed evidence packet from an array of caller-supplied
-// claim objects. For each claim that references a file, it resolves the content
-// SHA from the session tracker (if available) so the parent can verify staleness.
-func (h *Handler) toolEvidence(_ context.Context, args map[string]any) (any, error) {
-	rawClaims, ok := args["claims"]
-	if !ok {
-		return nil, errors.New("claims is required")
-	}
-	buf, _ := json.Marshal(rawClaims)
-	var claims []map[string]any
-	if err := json.Unmarshal(buf, &claims); err != nil {
-		return nil, fmt.Errorf("claims: %w", err)
-	}
-
-	packets := make([]EvidencePacket, 0, len(claims))
-	originalTokens := 0
-	for _, c := range claims {
-		// Estimate tokens the prose claim would have cost if passed verbatim.
-		rawJSON, _ := json.Marshal(c)
-		originalTokens += ranking.EstimateTokens(string(rawJSON))
-
-		p := EvidencePacket{
-			Claim:      stringArg(c, "claim", ""),
-			File:       normalizePath(stringArg(c, "file", "")),
-			LineStart:  intArg(c, "lineStart", 0),
-			LineEnd:    intArg(c, "lineEnd", 0),
-			SymbolName: stringArg(c, "symbolName", ""),
-		}
-		// Resolve SHA from session tracker so the parent can detect if the
-		// file changed since the sub-agent read it.
-		if p.File != "" {
-			if entry, seen, _ := h.Session.Lookup(p.File, ""); seen && entry.ContentHash != "" {
-				short := entry.ContentHash
-				if len(short) > 8 {
-					short = short[:8]
-				}
-				p.SHA = short
-			}
-		}
-		if p.SymbolName != "" {
-			p.LookupHint = p.SymbolName
-		}
-		if p.Claim != "" {
-			packets = append(packets, p)
-		}
-	}
-
-	// Measure delivered tokens (the typed packet JSON).
-	deliveredBuf, _ := json.Marshal(packets)
-	deliveredTokens := ranking.EstimateTokens(string(deliveredBuf))
-	h.Ledger.Record("prism_evidence", originalTokens, deliveredTokens)
-
-	savings := 0.0
-	if originalTokens > 0 {
-		savings = (1.0 - float64(deliveredTokens)/float64(originalTokens)) * 100.0
-	}
-	return map[string]any{
-		"evidence":        packets,
-		"claimCount":      len(packets),
-		"originalTokens":  originalTokens,
-		"deliveredTokens": deliveredTokens,
-		"savingsPercent":  savings,
-	}, nil
 }
 
 func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, error) {

@@ -23,6 +23,7 @@ import (
 	"github.com/provasign/prism/internal/httpapi"
 	"github.com/provasign/prism/internal/mcp"
 	"github.com/provasign/prism/internal/session"
+	"github.com/provasign/prism/internal/textsearch"
 	"github.com/provasign/prism/internal/version"
 )
 
@@ -490,14 +491,14 @@ fallback anymore — a call with no terms errors with this same guidance.
 | Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>", terms=["<your best guess>"]) — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
 | No plausible guess at all | grep/prism_search a domain term first, THEN prism_query with that term |
-| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
+| Locate a string, symbol, or file | prism_search — searches symbol names AND raw source text (a real rg/grep pass). scope="text" for a PURE grep (cheapest, use it exactly as you would grep; regex=true for patterns) |
 
 Canonical workflow (non-refactor tasks):
 
     guess ONE keyword from the task (a class/function fragment, a domain term)
       -> prism_query(task="<bug symptom or task>", terms=["<guess>"])   <- start here; often the ONLY context call needed
       wrong guess / still missing an anchor?
-      -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
+      -> prism_search(query=..., scope="text")   <- locate it: real rg/grep inside prism
       -> prism_query(                    <- retry with a real anchor: callers, callees
            task="...", terms=["same-grep-terms"],
            include=["graph"]
@@ -507,7 +508,8 @@ Canonical workflow (non-refactor tasks):
       -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
 
 Housekeeping: prism_index once at session start (delta indexing is automatic —
-never re-run per step); prism_drift if a stale-context warning appears. If
+never re-run per step); a stale-context warning names the changed files — re-read
+them (prism_read returns the changed content) before relying on them. If
 ` + "`" + `prism watch` + "`" + ` is running in this project, the index is already warm — skip
 prism_index entirely.
 
@@ -517,6 +519,16 @@ prism_index entirely.
 - Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact computes the complete set in one call
 - Do NOT use prism_read for a single function — use prism_lookup instead
+- Do NOT reach for a separate grep/rg tool: prism_search and prism_query run a
+  real ripgrep pass internally, so text matches outside any symbol (comments,
+  configs, docs, string literals) come back as textMatches/textHits. Pay only
+  for what you need: scope="text" is a pure grep (regex=true for patterns),
+  scope="both" (default) merges symbol and text results
+- A repeat call to a whole-repo graph op (change_impact, map, dead_code,
+  rename_plan, missing_implementations) whose freshly recomputed result is
+  IDENTICAL to one already delivered this session returns a one-line
+  [prism:cached] pointer plus group counts — NOT an error, NOT an empty
+  result: use the delivery you already have
 
 <!-- prism:end -->
 `
@@ -594,14 +606,14 @@ task-alone fallback, a call with no ` + "`" + `--terms` + "`" + ` errors with th
 | Bug report, error message, or unfamiliar feature area | ` + "`" + `prism query "<the symptom>" --terms <your best guess> --format text` + "`" + ` — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | ` + "`" + `prism query "<symptom>" --terms <anchor> --format text` + "`" + ` — same delivery, grep-precision seeding |
 | No plausible guess at all | grep a domain term first, THEN ` + "`" + `prism query` + "`" + ` with that term |
-| Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
+| Locate a string, symbol, or file | prism search <term> — symbol names AND raw source text (real rg/grep inside). Pure grep: prism search <term> --scope text [--regex] |
 
 Canonical workflow (non-refactor tasks):
 
     guess ONE keyword from the task (a class/function fragment, a domain term)
       -> prism query "<bug symptom or task>" --terms <guess> --format text   <- start here; often the ONLY context call needed
       wrong guess / still missing an anchor?
-      -> grep/find/rg <terms>                 <- locate it; shell tools always win at locating
+      -> prism search <term> --scope text      <- locate it: real rg/grep inside prism
       -> prism query "<task>" \               <- retry with a real anchor: callers, callees
            --terms <same-terms> \
            --include graph \
@@ -620,6 +632,14 @@ project, the index is already warm — skip prism index entirely.
 - Do NOT grep for what prism query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — ` + "`" + `prism change-impact` + "`" + ` computes the complete set in one call
 - Do NOT use prism read for a single function — use prism lookup instead
+- Do NOT reach for grep/rg separately: prism search and prism query run a real
+  ripgrep pass internally, so text matches outside any symbol (comments,
+  configs, docs, string literals) are included. Pure grep: prism search <term>
+  --scope text [--regex]
+- A repeat whole-repo graph op (change-impact, map, dead-code, rename-plan,
+  missing-implementations) whose recomputed result is IDENTICAL to one already
+  delivered this session returns a one-line [prism:cached] pointer plus group
+  counts — NOT an error, NOT an empty result
 
 <!-- prism:end -->
 `
@@ -676,7 +696,7 @@ fallback, a call with no terms errors with this guidance.
 | Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>", terms=["<your best guess>"]) — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
 | You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
 | No plausible guess at all | grep/prism_search a domain term first, THEN prism_query with that term |
-| Locate a string, symbol, or file | shell tools (grep, find, rg, etc.) — not Prism |
+| Locate a string, symbol, or file | prism_search — searches symbol names AND raw source text (a real rg/grep pass). scope="text" for a PURE grep (cheapest, use it exactly as you would grep; regex=true for patterns) |
 
 **Pre-task rule:** before writing any code on a task that involves changing or
 renaming an existing symbol, call prism_change_impact FIRST — even if the change
@@ -703,7 +723,7 @@ Canonical workflow (non-refactor tasks):
     guess ONE keyword from the task (a class/function fragment, a domain term)
       -> prism_query(task="<bug symptom or task>", terms=["<guess>"])   <- start here; often the ONLY context call needed
       wrong guess / still missing an anchor?
-      -> grep/find/rg <terms>            <- locate it; shell tools always win at locating
+      -> prism_search(query=..., scope="text")   <- locate it: real rg/grep inside prism
       -> prism_query(                    <- retry with a real anchor: callers, callees
            task="...", terms=["same-grep-terms"],
            include=["graph"]
@@ -713,7 +733,8 @@ Canonical workflow (non-refactor tasks):
       -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
 
 Housekeeping: prism_index once at session start (delta indexing is automatic —
-never re-run per step); prism_drift if a stale-context warning appears. If
+never re-run per step); a stale-context warning names the changed files — re-read
+them (prism_read returns the changed content) before relying on them. If
 ` + "`" + `prism watch` + "`" + ` is running in this project, the index is already warm — skip
 prism_index entirely.
 
@@ -735,7 +756,7 @@ Use the prism CLI with --format text instead of MCP tools:
 | Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
 | Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --terms <your best guess> --format text` + "`" + ` — ONE call; --terms is REQUIRED, guess a keyword from the task |
 | A whole task, end to end (context + the obligations it implies) | ` + "`" + `prism task "<task>" --format text` + "`" + `; after editing, ` + "`" + `prism task "<same task>" --changed a.go,b.go` + "`" + ` for the completeness verdict (exit 1 if incomplete) |
-| Locate a string, symbol, or file | shell tools (grep, find, rg) — not Prism |
+| Locate a string, symbol, or file | prism search <term> — symbol names AND raw source text (real rg/grep inside). Pure grep: prism search <term> --scope text [--regex] |
 | Callers/callees for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph --format text` + "`" + ` |
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
 | Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
@@ -747,6 +768,16 @@ Use the prism CLI with --format text instead of MCP tools:
 - Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact / prism change-impact computes the complete set in one call
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
+- Do NOT reach for a separate grep/rg tool: prism_search and prism_query run a
+  real ripgrep pass internally, so text matches outside any symbol (comments,
+  configs, docs, string literals) come back as textMatches/textHits. Pay only
+  for what you need: scope="text" is a pure grep, scope="both" (default) merges
+  symbol and text results
+- A repeat call to a whole-repo graph op (change_impact, map, dead_code,
+  rename_plan, missing_implementations) whose freshly recomputed result is
+  IDENTICAL to one already delivered this session returns a one-line
+  [prism:cached] pointer plus group counts — NOT an error, NOT an empty
+  result: use the delivery you already have
 
 <!-- prism:end -->
 `
@@ -1549,6 +1580,11 @@ func cmdDoctor(args []string) int {
 			"sessionDelivery":    true,
 			"deliveryCacheScope": "process",
 			"qualityContract":    "operation-reported",
+			// Which engine backs the merged full-text search (prism_query /
+			// prism_search): rg > grep > the built-in scanner. "native" means
+			// no external searcher was found — correct everywhere, slower on
+			// large repos; install ripgrep to upgrade it.
+			"textSearch": textsearch.Backend(),
 		},
 	})
 	return 0
@@ -2561,6 +2597,51 @@ func printJSON(v any) {
 // printOutput prints v in the requested format.
 // JSON round-trips through map[string]any so both typed structs (queryResult)
 // and plain maps are handled uniformly by the text/lean formatters.
+// printTextMatches renders the merged full-text section of a prism_query /
+// prism_search response: per-file matched lines, cached files as line
+// numbers only.
+func printTextMatches(m map[string]any) {
+	groups := asSliceAny(m["textMatches"])
+	if groups == nil {
+		groups = asSliceAny(m["textHits"])
+	}
+	if len(groups) == 0 {
+		return
+	}
+	backend, _ := m["textBackend"].(string)
+	fmt.Printf("// text matches (%s):\n", backend)
+	for _, g := range groups {
+		gm, ok := g.(map[string]any)
+		if !ok {
+			continue
+		}
+		if note, _ := gm["note"].(string); note != "" && gm["file"] == nil {
+			fmt.Printf("//   %s\n", note)
+			continue
+		}
+		file, _ := gm["file"].(string)
+		if cached, _ := gm["cached"].(bool); cached {
+			var lines []string
+			for _, l := range asSliceAny(gm["lines"]) {
+				lines = append(lines, fmt.Sprint(jsonInt(l)))
+			}
+			fmt.Printf("//   %s:%s [cached — content already delivered this session]\n",
+				file, strings.Join(lines, ","))
+			continue
+		}
+		for _, h := range asSliceAny(gm["hits"]) {
+			hm, ok := h.(map[string]any)
+			if !ok {
+				continue
+			}
+			fmt.Printf("//   %s:%d: %v\n", file, jsonInt(hm["line"]), hm["text"])
+		}
+		if more := jsonInt(gm["moreHits"]); more > 0 {
+			fmt.Printf("//   %s: +%d more matches\n", file, more)
+		}
+	}
+}
+
 func printOutput(v any, format outputFormat) {
 	if format == formatJSON || format == "" {
 		printJSON(v)
@@ -2671,6 +2752,12 @@ func printTextOutput(m map[string]any) {
 				}
 				fmt.Println()
 			}
+		}
+		// Merged full-text hits (prism_query: "textMatches"; prism_search:
+		// "textHits") — matches outside any indexed symbol.
+		printTextMatches(m)
+		if note, _ := m["note"].(string); note != "" {
+			fmt.Println("// " + note)
 		}
 		return
 	}

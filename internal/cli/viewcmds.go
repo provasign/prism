@@ -46,6 +46,12 @@ func cmdMap(args []string) int {
 			callArgs["include_tests"] = true
 		case "--json":
 			jsonOut = true
+		case "--format":
+			// Accept the flag every other command uses; "text" is the default.
+			if i+1 < len(args) {
+				jsonOut = args[i+1] == "json"
+				i++
+			}
 		default:
 			if !strings.HasPrefix(a, "-") {
 				dir = a
@@ -82,6 +88,12 @@ func cmdCycles(args []string) int {
 			callArgs["include_tests"] = true
 		case "--json":
 			jsonOut = true
+		case "--format":
+			// Accept the flag every other command uses; "text" is the default.
+			if i+1 < len(args) {
+				jsonOut = args[i+1] == "json"
+				i++
+			}
 		default:
 			if !strings.HasPrefix(a, "-") {
 				dir = a
@@ -129,6 +141,12 @@ func cmdArch(args []string) int {
 			callArgs["strict"] = true
 		case "--json":
 			jsonOut = true
+		case "--format":
+			// Accept the flag every other command uses; "text" is the default.
+			if i+1 < len(args) {
+				jsonOut = args[i+1] == "json"
+				i++
+			}
 		default:
 			if !strings.HasPrefix(a, "-") {
 				dir = a

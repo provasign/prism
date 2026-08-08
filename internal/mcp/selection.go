@@ -10,6 +10,7 @@ import (
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/session"
+	"github.com/provasign/prism/internal/textsearch"
 )
 
 // selectParams are the inputs to the shared retrieve→expand→rank→budget
@@ -34,6 +35,11 @@ type selection struct {
 	graphExtra []grove.SymbolRecord
 	seeds      []grove.SymbolRecord
 	budget     int
+	// textHits are full-text matches no indexed symbol encloses (comments,
+	// configs, docs) — the grep half of the merged search; textBackend
+	// records which engine produced them (rg/grep/native).
+	textHits    []textsearch.Hit
+	textBackend string
 }
 
 // selectContext runs retrieval (term-seeded or intent-ranked), graph and test
@@ -62,6 +68,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 	}
 	var seeds []grove.SymbolRecord
+	var textMerge textMergeResult
 
 	if len(p.terms) > 0 {
 		// Term-seeded retrieval: search for each agent-supplied term and union
@@ -116,6 +123,35 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			}
 		}
 		seeds = filterGeneratedPrismContext(seeds)
+
+		// Full-text merge: run the real grep (rg/grep/native) for the same
+		// terms. Hits inside indexed symbols promote or confirm seeds; hits
+		// the graph cannot see (comments, configs, docs) are delivered raw.
+		// This is why the agent needs no separate grep tool.
+		seededIDs := make(map[string]bool, len(seeds))
+		for _, s := range seeds {
+			seededIDs[s.ID] = true
+		}
+		textMerge = h.mergeTextSearch(ctx, p.terms, seededIDs)
+		if len(textMerge.extraSeeds) > 0 {
+			seeds = append(seeds, filterGeneratedPrismContext(textMerge.extraSeeds)...)
+		}
+		if len(textMerge.confirmed) > 0 {
+			// Two independent signals (symbol match + text hit) beat one:
+			// stable-reorder confirmed seeds to the front so they land in
+			// the seed set that gets graph expansion.
+			confirmed := make([]grove.SymbolRecord, 0, len(seeds))
+			var rest []grove.SymbolRecord
+			for _, s := range seeds {
+				if textMerge.confirmed[s.ID] {
+					confirmed = append(confirmed, s)
+				} else {
+					rest = append(rest, s)
+				}
+			}
+			seeds = append(confirmed, rest...)
+		}
+		stamp("text-merge")
 	} else {
 		// No terms: fail closed with guidance rather than guess. This used
 		// to fall back to embedding-based intent ranking; measured
@@ -268,10 +304,12 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	stamp("rank+budget")
 
 	return &selection{
-		picked:     picked,
-		seedSyms:   seedSyms,
-		graphExtra: graphExtra,
-		seeds:      seeds,
-		budget:     budget,
+		picked:      picked,
+		seedSyms:    seedSyms,
+		graphExtra:  graphExtra,
+		seeds:       seeds,
+		budget:      budget,
+		textHits:    textMerge.rawHits,
+		textBackend: textMerge.backend,
 	}, nil
 }
