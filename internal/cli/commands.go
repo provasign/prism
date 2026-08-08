@@ -127,6 +127,10 @@ prism init [dir] flags:
   --global            register in user-global configs (unlocks Zed, Codex, opencode)
   --mode mcp|cli|both which steering block to write (default: prompt, else both)
   --no-permissions    skip the Claude Code tool auto-allow entry
+  --deny-builtin-search
+                      deny Claude Code's Grep/Bash(grep|rg) so agents actually
+                      reach prism (asked interactively; Claude Code only —
+                      no other agent exposes a tool-denial setting)
   --refresh           rewrite ONLY agents already configured (never adds new ones)
   --print-config <id> print one agent's snippet and exit, writing nothing
                       ids: claude, cursor, windsurf, vscode, zed, codex, opencode, hermes
@@ -240,6 +244,7 @@ func cmdInit(args []string) int {
 	permissions := true
 	printConfig := ""
 	refresh := false
+	denyBuiltinSearch := false
 	filtered := args[:0]
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -248,6 +253,8 @@ func cmdInit(args []string) int {
 			global = true
 		case "--no-permissions":
 			permissions = false
+		case "--deny-builtin-search":
+			denyBuiltinSearch = true
 		case "--refresh":
 			refresh = true
 		case "--print-config":
@@ -313,8 +320,18 @@ profile: "%s"
 	// 3. Write steering instructions matching the chosen mode.
 	writeSteeringInstructions(abs)
 
+	// Routing is the one thing steering cannot do. Measured at 12:1 in the
+	// benchmark and observed live: an agent listed prism's connected tools,
+	// said its CLAUDE.md directed it to use them, then ran Bash(grep) on the
+	// next task. Denying the built-in search is the only reliable fix — but
+	// it edits the user's own Claude Code settings, so ASK rather than assume.
+	// Never prompt non-interactively (CI gets the safe default: no change).
+	if !denyBuiltinSearch && permissions && printConfig == "" && isInteractive() {
+		denyBuiltinSearch = promptDenyBuiltinSearch()
+	}
+
 	// 4. Register with every detected AI coding tool.
-	registered := initRegisterMCPTools(abs, prismBin, global, permissions, refresh)
+	registered := initRegisterMCPTools(abs, prismBin, global, permissions, refresh, denyBuiltinSearch)
 	if len(registered) == 0 {
 		fmt.Println("tip: add prism to your AI tool's MCP config (see README)")
 	}
@@ -640,7 +657,7 @@ type mcpEntry struct {
 // tool's config. permissions=false skips Claude Code's tool auto-allow;
 // refresh=true rewrites ONLY tools already configured (never adds a new one),
 // which is what an upgrade wants.
-func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refresh bool) []string {
+func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refresh, denyBuiltinSearch bool) []string {
 	var written []string
 
 	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
@@ -758,7 +775,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", claudeEntry) {
 			fmt.Printf("already registered with %s: %s\n", w.name, p)
 			written = append(written, p)
-			ensureClaudeCodeApproval("prism", permissions)
+			ensureClaudeCodeApproval("prism", permissions, denyBuiltinSearch)
 			continue
 		}
 		content := w.build()
@@ -771,7 +788,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		fmt.Printf("registered with %s: %s\n", w.name, p)
 		written = append(written, p)
 		if filepath.Base(p) == ".mcp.json" {
-			ensureClaudeCodeApproval("prism", permissions)
+			ensureClaudeCodeApproval("prism", permissions, denyBuiltinSearch)
 		}
 	}
 
@@ -1135,7 +1152,36 @@ func mergeOrCreate(path string, content []byte) []byte {
 // allowTools=false writes only the trust entry (`prism init --no-permissions`).
 // Both edits merge into the existing document, so unrelated settings and
 // unrelated permission rules survive.
-func ensureClaudeCodeApproval(serverName string, allowTools bool) {
+// isInteractive reports whether stdin is a terminal — a pipe, file or CI run
+// must never block on a prompt.
+func isInteractive() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
+}
+
+// promptDenyBuiltinSearch offers the one change that actually routes agents
+// through prism, and explains the trade honestly. Default is NO: this edits
+// settings the user owns.
+func promptDenyBuiltinSearch() bool {
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Agents usually ignore steering and use their own grep — measured 12:1,")
+	fmt.Fprintln(os.Stderr, "and reproduced on a machine where prism was installed and connected.")
+	fmt.Fprintln(os.Stderr, "Deny Claude Code's built-in search so prism is actually reached?")
+	fmt.Fprintln(os.Stderr, "  Adds Grep, Bash(grep:*), Bash(rg:*) to permissions.deny in")
+	fmt.Fprintln(os.Stderr, "  ~/.claude/settings.json. Nothing becomes unfindable —")
+	fmt.Fprintln(os.Stderr, "  prism_search(scope=\"text\") is a ripgrep passthrough. Reversible:")
+	fmt.Fprintln(os.Stderr, "  delete those lines. Only affects Claude Code.")
+	fmt.Fprint(os.Stderr, "Deny built-in search? [y/N]: ")
+	var line string
+	fmt.Scanln(&line)
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "y", "yes":
+		return true
+	}
+	return false
+}
+
+func ensureClaudeCodeApproval(serverName string, allowTools, denyBuiltinSearch bool) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
@@ -1186,7 +1232,7 @@ func ensureClaudeCodeApproval(serverName string, allowTools bool) {
 		//
 		// --no-permissions skips this along with the auto-allow, and the
 		// entries are plain settings.json lines a user can delete.
-		if !containsString(allow, "Grep") { // never deny what the user allowed
+		if denyBuiltinSearch && !containsString(allow, "Grep") { // never deny what the user allowed
 			deny, _ := perms["deny"].([]any)
 			for _, d := range []string{"Grep", "Bash(grep:*)", "Bash(rg:*)"} {
 				if !containsString(deny, d) {

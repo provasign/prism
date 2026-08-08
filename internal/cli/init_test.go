@@ -95,7 +95,7 @@ func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	os.WriteFile(zedPath, []byte(zedBefore), 0o644)
 
 	dir := t.TempDir()
-	initRegisterMCPTools(dir, "/x/prism", false, true, false)
+	initRegisterMCPTools(dir, "/x/prism", false, true, false, false)
 
 	if got, _ := os.ReadFile(codexPath); string(got) != codexBefore {
 		t.Errorf("project-level init modified global Codex config:\n%s", got)
@@ -108,7 +108,7 @@ func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	}
 
 	// --global registers both, without a pinned project dir.
-	initRegisterMCPTools(dir, "/x/prism", true, true, false)
+	initRegisterMCPTools(dir, "/x/prism", true, true, false, false)
 	codexAfter, _ := os.ReadFile(codexPath)
 	if !strings.Contains(string(codexAfter), "[mcp_servers.prism]") {
 		t.Errorf("--global init did not register Codex:\n%s", codexAfter)
@@ -257,7 +257,7 @@ func TestWritePrismCodexConfig(t *testing.T) {
 func TestInitRegisterMCPTools_WritesVSCode(t *testing.T) {
 	setHome(t, t.TempDir())
 	dir := t.TempDir()
-	written := initRegisterMCPTools(dir, "/x/prism", false, true, false)
+	written := initRegisterMCPTools(dir, "/x/prism", false, true, false, false)
 	var sawVSCode bool
 	for _, p := range written {
 		if filepath.Base(filepath.Dir(p)) == ".vscode" && filepath.Base(p) == "mcp.json" {
@@ -390,8 +390,8 @@ func TestEnsureClaudeCodeApproval_WritesPermissionsAllow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ensureClaudeCodeApproval("prism", true)
-	ensureClaudeCodeApproval("prism", true) // idempotence
+	ensureClaudeCodeApproval("prism", true, false)
+	ensureClaudeCodeApproval("prism", true, false) // idempotence
 
 	raw, err := os.ReadFile(settings)
 	if err != nil {
@@ -416,7 +416,7 @@ func TestEnsureClaudeCodeApproval_WritesPermissionsAllow(t *testing.T) {
 func TestEnsureClaudeCodeApproval_NoPermissions(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
-	ensureClaudeCodeApproval("prism", false)
+	ensureClaudeCodeApproval("prism", false, false)
 
 	raw, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
 	if err != nil {
@@ -443,7 +443,7 @@ func TestEnsureClaudeCodeApproval_UpgradesTrustOnlyConfig(t *testing.T) {
 	if err := os.WriteFile(settings, []byte(`{"enabledMcpjsonServers":["prism"]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	ensureClaudeCodeApproval("prism", true)
+	ensureClaudeCodeApproval("prism", true, false)
 	raw, _ := os.ReadFile(settings)
 	if !strings.Contains(string(raw), "mcp__prism") {
 		t.Errorf("allow rule not added to a trust-only config: %s", raw)
@@ -479,7 +479,7 @@ func TestPrintAgentConfig_WritesNothing(t *testing.T) {
 func TestInitRegisterMCPTools_RefreshSkipsUnconfigured(t *testing.T) {
 	setHome(t, t.TempDir())
 	dir := t.TempDir()
-	written := initRegisterMCPTools(dir, "/x/prism", false, true, true)
+	written := initRegisterMCPTools(dir, "/x/prism", false, true, true, false)
 	if len(written) != 0 {
 		t.Errorf("--refresh added configs to a fresh project: %v", written)
 	}
@@ -492,8 +492,8 @@ func TestInitRegisterMCPTools_RefreshSkipsUnconfigured(t *testing.T) {
 func TestInitRegisterMCPTools_RefreshRewritesConfigured(t *testing.T) {
 	setHome(t, t.TempDir())
 	dir := t.TempDir()
-	initRegisterMCPTools(dir, "/old/prism", false, true, false) // first install
-	written := initRegisterMCPTools(dir, "/new/prism", false, true, true)
+	initRegisterMCPTools(dir, "/old/prism", false, true, false, false) // first install
+	written := initRegisterMCPTools(dir, "/new/prism", false, true, true, false)
 	if len(written) == 0 {
 		t.Fatal("--refresh rewrote nothing on a configured project")
 	}
