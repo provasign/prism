@@ -15,15 +15,20 @@
 
 - Engine completeness: **0.997 recall** on change-impact closure vs a
   compiler-grade oracle; same answer every run.
-- Agent-level (identical agent, only the tool differs): **0.896 mean recall
-  with the `prism` task call vs 0.721 with grep — at 12× fewer input tokens**
-  (131k vs 1,592k per task, 27 trials).
-- Grep-invisible sites are why: text-search agents top out at 0.62–0.75
-  recall on frontier models; overrides, interface implementations, and
-  overload-specific callers don't contain the string you searched for.
-- Tier invariance: a free local 30B model with Prism reaches the same
-  completeness as a frontier model — the engine solves the traversal, the
-  model relays it.
+- Agent-level, current frontier model (Opus, 6 change-impact tasks, 8–310
+  sites, 2026-08-08): **the same answer for ~1/6th the cost.** Recall 0.987
+  with Prism vs 1.000 with grep and file reads — a frontier model gets there
+  either way — but **6.4× fewer turns, 9.3× fewer input tokens, 6.1× cheaper,
+  6.7× faster** (4.2 vs 26.8 turns; 90k vs 836k tokens; $0.27 vs $1.66;
+  40s vs 271s per task).
+- On weaker and cheaper models the gap is capability, not just cost: recall
+  0.758 → 0.997 at the Haiku tier in the 2026-07 grid, where a text-search
+  agent could not reliably reach a complete change-set at all.
+- What the graph actually contributes is precision, not discovery: measured
+  over 127 symbols in 6 repositories, a whole-word grep misses **no** resolved
+  reference — but ~30% of its hits are not references at all (98% in one
+  typeorm case: 372 hits, 1 real). Against compiler oracles, file-level
+  precision goes 0.51 (grep) → 0.91 (change-impact) at comparable recall.
 
 ## What Prism is
 
@@ -48,9 +53,12 @@ for locating things, but it fails exactly where the stakes are highest:
 enumerating everything a change touches. Overridden methods, interface
 implementations, overload-specific callers, and indirect call chains are
 invisible to `grep` — and an agent that misses one site ships a broken build.
-Measured across 4 languages and blast radii of 1–310 sites, text-search agents
-top out at 0.62–0.75 recall on change-impact tasks even on frontier models
-(see [provasign/research](https://github.com/provasign/research)).
+How much that costs depends on the model. A 2026-08 frontier model (Opus)
+does reach a complete change-set from grep alone on 8–310-site tasks — in
+26.8 turns and 836k tokens per task, against 4.2 turns and 90k with Prism.
+Cheaper models do not get there at all: 0.758 recall at the Haiku tier in the
+2026-07 grid. See [provasign/research](https://github.com/provasign/research)
+for both.
 
 **The principles.**
 
