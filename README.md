@@ -158,7 +158,7 @@ The recommended agent mode is **both** (MCP tools as primary surface, CLI
 fallback for subagents that don't inherit the MCP session):
 
 ```bash
-prism init . --mode both
+prism init .
 ```
 
 Agents with an active MCP session call `prism_query`, `prism_read`, and
@@ -300,7 +300,7 @@ make install
 Run this once at the project root:
 
 ```bash
-prism init . --mode both
+prism init .
 prism index .
 ```
 
@@ -337,9 +337,9 @@ Recommended agent workflow:
 `prism init` supports three modes:
 
 ```bash
-prism init . --mode both  # recommended: MCP primary + CLI fallback for subagents
-prism init . --mode mcp   # MCP tools only: prism_query, prism_read, ...
-prism init . --mode cli   # CLI only: for environments without MCP support
+prism init .              # non-interactive; registers MCP servers and writes
+                          # one steering block covering MCP tools and the CLI
+                          # (--mode is accepted and ignored since v0.38.0)
 ```
 
 ### MCP
@@ -375,7 +375,7 @@ It binds to `127.0.0.1`.
 ## CLI Reference
 
 ```bash
-prism init [--global] [--mode cli|mcp|both] [dir]
+prism init [--global] [dir]
 prism index [dir]
 prism status [dir]
 prism doctor [dir]
@@ -509,7 +509,7 @@ Current practical summary:
 
 **`prism query` returns nothing**: run `prism index .` from the project root.
 
-**Agent uses wrong steering**: run `prism init . --mode both` (or your chosen mode) and verify `prism.yaml` has the correct `agent_mode`.
+**Agent uses wrong steering**: re-run `prism init .` — it rewrites the block between the `<!-- prism:start -->` markers in CLAUDE.md/AGENTS.md and leaves everything else untouched.
 
 **Wrong Prism binary**: run `command -v prism` and `prism version`. Reinstall if
 the version is old.

@@ -237,7 +237,6 @@ func cmdInit(args []string) int {
 	// --print-config <id>  (print one agent's snippet, write nothing, exit)
 	// --refresh            (rewrite ONLY agents already configured)
 	global := false
-	mode := ""
 	permissions := true
 	printConfig := ""
 	refresh := false
@@ -257,11 +256,14 @@ func cmdInit(args []string) int {
 				i++
 			}
 		case "--mode":
+			// Accepted and ignored since v0.38.0. The three modes only ever
+			// chose which steering text was written: they gated no tool, and
+			// "cli" registered the MCP servers anyway, so the flag described
+			// what the agent was TOLD rather than what it was given. One
+			// template now covers both surfaces.
 			if i+1 < len(args) {
-				switch args[i+1] {
-				case config.AgentModeMCP, config.AgentModeCLI, config.AgentModeBoth:
-					mode = args[i+1]
-				}
+				fmt.Fprintln(os.Stderr, "note: --mode is no longer needed and is ignored; "+
+					"steering now covers MCP tools and the CLI together")
 				i++
 			}
 		default:
@@ -282,10 +284,6 @@ func cmdInit(args []string) int {
 
 	// If mode not set by flag, prompt interactively (or default to "both" if
 	// stdin is not a terminal, e.g. in CI or when piped).
-	if mode == "" {
-		mode = promptAgentMode()
-	}
-
 	// 1. Write prism.yaml into the project. Grove is embedded in-process now,
 	// so the file no longer needs grove_url / grove_binary.
 	yaml := fmt.Sprintf(`version: 1
@@ -293,8 +291,7 @@ func cmdInit(args []string) int {
 #               # Override here only if auto-detection fails, e.g.:
 #               # model: "claude-sonnet-4-6"
 profile: "%s"
-agent_mode: "%s"
-`, cfg.Profile, mode)
+`, cfg.Profile)
 	prismYAML := filepath.Join(abs, "prism.yaml")
 	// NEVER clobber an existing prism.yaml. It holds user content init knows
 	// nothing about — arch_deny rules above all, which are the CI gate for
@@ -302,7 +299,7 @@ agent_mode: "%s"
 	// silently turning the arch check into a no-op. Only the three keys init
 	// manages are rewritten; every other line survives byte-for-byte.
 	if existing, err := os.ReadFile(prismYAML); err == nil {
-		yaml = mergePrismYAML(string(existing), cfg.Profile, mode)
+		yaml = mergePrismYAML(string(existing), cfg.Profile)
 	}
 	if err := os.WriteFile(prismYAML, []byte(yaml), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)
@@ -314,7 +311,7 @@ agent_mode: "%s"
 	prismBin := detectSelfPath()
 
 	// 3. Write steering instructions matching the chosen mode.
-	writeSteeringInstructions(abs, mode)
+	writeSteeringInstructions(abs)
 
 	// 4. Register with every detected AI coding tool.
 	registered := initRegisterMCPTools(abs, prismBin, global, permissions, refresh)
@@ -328,11 +325,10 @@ agent_mode: "%s"
 // agent_mode) and preserves every other line — comments, arch_deny rules,
 // anything a user or a later prism version put there. Keys init manages but
 // the file lacks are appended.
-func mergePrismYAML(existing, profile, mode string) string {
+func mergePrismYAML(existing, profile string) string {
 	managed := []struct{ key, val string }{
 		{"version", "1"},
 		{"profile", strconv.Quote(profile)},
-		{"agent_mode", strconv.Quote(mode)},
 	}
 	seen := map[string]bool{}
 	lines := strings.Split(existing, "\n")
@@ -366,288 +362,10 @@ func mergePrismYAML(existing, profile, mode string) string {
 	return out
 }
 
-// promptAgentMode asks the user which agent interface to use.
-// Returns "both" if stdin is not a terminal or the user presses Enter.
-func promptAgentMode() string {
-	// Detect non-interactive stdin (pipe, file, CI).
-	fi, err := os.Stdin.Stat()
-	if err != nil || (fi.Mode()&os.ModeCharDevice) == 0 {
-		return config.AgentModeBoth
-	}
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "How will agents access Prism?")
-	fmt.Fprintln(os.Stderr, "  [1] both  — MCP tools (primary) + CLI fallback for subagents  (default)")
-	fmt.Fprintln(os.Stderr, "  [2] mcp   — MCP tools only  (prism_query, prism_read, …)")
-	fmt.Fprintln(os.Stderr, "  [3] cli   — CLI via Bash only  (prism query --format text, …)")
-	fmt.Fprint(os.Stderr, "Choice [1]: ")
-	var line string
-	fmt.Scanln(&line)
-	switch strings.TrimSpace(line) {
-	case "2", "mcp":
-		return config.AgentModeMCP
-	case "3", "cli":
-		return config.AgentModeCLI
-	default:
-		return config.AgentModeBoth
-	}
-}
-
-// steeringInstructionsMCP is injected when agent_mode is "mcp" or "both".
-const steeringInstructionsMCP = `
-## Prism — the task workflow (ALWAYS)
-
-Before working on any codebase task — fixing, implementing, refactoring,
-explaining — call the prism tool with the complete task:
-
-    prism(task="<the full task, in the user's words>")
-
-It returns edit-ready line-numbered source, each anchor's callers and tests,
-and the CHANGE OBLIGATIONS: every site that must be handled if you change
-those contracts, type-resolved and completeness-tagged. Treat returned
-source as already read. If the task does not already name the target
-symbol, locate it first (grep/prism_search) and pass that CONFIRMED name as
-terms=[...] — retrieval keys on the anchor. Do not pass a guessed term for a
-common name (e.g. "serialize", "get"); a wrong term is worse than none.
-
-After editing, call the SAME tool again with the changed files:
-
-    prism(task="<same task>", changed_files=[...])
-
-It verifies the diff deterministically: contract changes detected, missed
-call sites reported line-precisely, verdict
-fail-closed (clean|complete|review|incomplete). Resolve everything it
-reports missing before declaring the task done. "I updated all the callers"
-is a guess; this is the check of it.
-
-The tools below are the advanced surface the prism tool orchestrates — use
-them directly when you know exactly which question you are asking.
-
-## Prism — advanced tools
-
-Prism answers whole-task questions (change impact, missing implementations,
-test gaps, dead code) in ONE deterministic call, and delivers code context
-cheaply. Three layers, in priority order.
-
-### 1. Changing or auditing code? One call answers the whole task
-
-| Situation | Tool |
-|---|---|
-| Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — ONE call: declaration + all overrides + all resolved callers |
-| Adding/changing a method on an interface or base class | prism_change_impact — finds the complete override family + every caller |
-| Renaming a class, struct, or type | prism_change_impact(query="Type.method") for each public method — finds all usages |
-| Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete call-site list in one call |
-| ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
-| Renaming a method and you want the edits, not just the sites | prism_rename_plan(query="Type.method", newName="newName") — every edit line with before/after; review and apply |
-| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every type in the closure with no implementation |
-| Cleanups, library extraction, "is X still used / can I delete it?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
-| "How is this repo structured?" / onboarding / refactor-extraction planning / dependency cycles / "what depends on component X?" | prism_map — components + induced dependency edges (weights, evidence tiers, cycles); pass from+to to expand any edge into concrete file:line sites |
-
-**Pre-task rule:** before writing any code on a task that involves changing or
-renaming an existing symbol, call prism_change_impact FIRST — even if the change
-looks small. Small changes can have large blast radii through inheritance and
-indirect callers that grep will not find. Result groups: declarations + family
-(every override/implementation) + callers + declaringTypes (interface/type blocks
-whose member specs are not separate symbols — Go/TS; always sites) = every site
-that must change. Param types are optional ("Type.method" works) but improve
-precision on overloaded names.
-
-Check the result's completeness field. "closed" means the set is authoritative.
-"project-local" with overridesExternal means the method belongs to an external
-(JDK/dependency) contract: do NOT change its signature — that breaks a contract
-this project does not own — and the set covers project code only. To sweep every
-project implementation of an external interface (migration/deprecation), query
-the external type directly: prism_change_impact(query="Iterator.next").
-
-Relay rule: the result is deterministic and type-resolved. Do NOT re-verify,
-re-filter, dedup, or transform it through grep/sed/awk/scripts — re-processing
-a solved traversal drops real sites and adds spurious ones (measured). Use the
-returned sites as-is; read individual sites only to make the edits.
-
-### 2. Reading code? Prism reads are cheaper than shell reads
-
-| Situation | Tool |
-|---|---|
-| Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
-| Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
-| Orient on ONE symbol or file before deciding where to go | prism_node(name="Type.method" or "path/to/file.go") — the source plus a names-only menu of its graph neighbours (symbol) or its definitions and dependents (file) |
-
-A repeat read of an unchanged file returns a one-line
-` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
-instead of the body. This is NOT an error or an empty file — you already
-received that file earlier this session; use the copy you have and do not
-re-fetch it.
-
-### 3. Fixing a bug or exploring an unfamiliar area? ONE prism_query call
-
-prism_query REQUIRES terms — guess ONE keyword from the task first (a
-class/function name fragment, a domain term). Measured (2026-08-01, 15
-hand-verified concept queries across 5 real corpora): an agent guessing one
-keyword through lexical search already wins or ties embedding-based
-discovery in 12/15 cases, often by a wide margin. There is no task-alone
-fallback anymore — a call with no terms errors with this same guidance.
-
-| Situation | Tool |
-|---|---|
-| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>", terms=["<your best guess>"]) — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
-| You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
-| No plausible guess at all | grep/prism_search a domain term first, THEN prism_query with that term |
-| Locate a string, symbol, or file | prism_search — searches symbol names AND raw source text (a real rg/grep pass). scope="text" for a PURE grep (cheapest, use it exactly as you would grep; regex=true for patterns) |
-
-Canonical workflow (non-refactor tasks):
-
-    guess ONE keyword from the task (a class/function fragment, a domain term)
-      -> prism_query(task="<bug symptom or task>", terms=["<guess>"])   <- start here; often the ONLY context call needed
-      wrong guess / still missing an anchor?
-      -> prism_search(query=..., scope="text")   <- locate it: real rg/grep inside prism
-      -> prism_query(                    <- retry with a real anchor: callers, callees
-           task="...", terms=["same-grep-terms"],
-           include=["graph"]
-         )
-      then selectively:
-      -> prism_read(file=...)            <- whole file, session-compressed
-      -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
-
-Housekeeping: prism_index once at session start (delta indexing is automatic —
-never re-run per step); a stale-context warning names the changed files — re-read
-them (prism_read returns the changed content) before relying on them. If
-` + "`" + `prism watch` + "`" + ` is running in this project, the index is already warm — skip
-prism_index entirely.
-
-### Do NOT
-
-- Do NOT re-read files prism_query just delivered as source windows — they are verbatim, current, line-numbered; go straight to the edit
-- Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
-- Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact computes the complete set in one call
-- Do NOT use prism_read for a single function — use prism_lookup instead
-- Do NOT reach for a separate grep/rg tool: prism_search and prism_query run a
-  real ripgrep pass internally, so text matches outside any symbol (comments,
-  configs, docs, string literals) come back as textMatches/textHits. Pay only
-  for what you need: scope="text" is a pure grep (regex=true for patterns),
-  scope="both" (default) merges symbol and text results
-- A repeat call to a whole-repo graph op (change_impact, map, dead_code,
-  rename_plan, missing_implementations) whose freshly recomputed result is
-  IDENTICAL to one already delivered this session returns a one-line
-  [prism:cached] pointer plus group counts — NOT an error, NOT an empty
-  result: use the delivery you already have
-
-<!-- prism:end -->
-`
-
-// steeringInstructionsCLI is injected when agent_mode is "cli".
-// Agents that only have Bash access use the prism CLI with --format text.
-const steeringInstructionsCLI = `
-## Prism — context delivery (ALWAYS use these tools)
-
-Prism is available as a CLI (use via Bash, --format text). It answers
-whole-task questions (change impact, missing implementations, test gaps, dead
-code) in ONE deterministic call, and delivers code context cheaply. Three
-layers, in priority order.
-
-### 1. Changing or auditing code? One call answers the whole task
-
-| Situation | Command |
-|---|---|
-| Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
-| Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
-| Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
-| Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
-| ANY task that says "find all X" for a specific method | ` + "`" + `prism change-impact` + "`" + ` first, before any grep |
-| Renaming a method and you want the edits, not just the sites | ` + "`" + `prism rename-plan 'Type.method' NewName` + "`" + ` — every edit line with before/after; review and apply |
-| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
-| Cleanups / "is X still used / can I delete it?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
-| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
-| Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
-| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
-
-**Pre-task rule:** before writing any code on a task that involves changing or
-renaming an existing symbol, run prism change-impact first — even if the change
-looks small. Small changes can have large blast radii through inheritance and
-indirect callers that grep will not find. Result groups: declarations + family
-(every override/implementation) + callers + declaringTypes (interface/type blocks
-whose member specs are not separate symbols — Go/TS; always sites) = every site
-that must change. Param
-types are optional ('Type.method' works) but improve precision on overloaded names.
-
-Check the completeness field in the output. "closed" means the set is
-authoritative. "project-local" with overridesExternal means the method belongs
-to an external (JDK/dependency) contract: do NOT change its signature — that
-breaks a contract this project does not own — and the set covers project code
-only. To sweep every project implementation of an external interface
-(migration/deprecation), query the external type directly:
-prism change-impact 'Iterator.next'.
-
-Relay rule: the result is deterministic and type-resolved. Do NOT re-verify,
-re-filter, dedup, or transform it through grep/sed/awk/scripts — re-processing
-a solved traversal drops real sites and adds spurious ones (measured). Use the
-returned sites as-is; read individual sites only to make the edits.
-
-### 2. Reading code? Prism reads are cheaper than shell reads
-
-| Situation | Command |
-|---|---|
-| Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` — session-compressed on repeat reads |
-| Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` — ~5x cheaper than read |
-| Orient on ONE symbol or file before deciding where to go | ` + "`" + `prism node <symbol-or-file> --format text` + "`" + ` — source plus neighbours (symbol) or definitions + dependents (file) |
-
-A repeat read of an unchanged file returns a one-line
-` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
-instead of the body. This is NOT an error or an empty file — you already
-received that file earlier this session; use the copy you have and do not
-re-fetch it.
-
-### 3. Fixing a bug or exploring an unfamiliar area? ONE query call
-
-` + "`" + `prism query` + "`" + ` REQUIRES ` + "`" + `--terms` + "`" + ` — guess ONE keyword from the
-task first (a class/function name fragment, a domain term); there is no
-task-alone fallback, a call with no ` + "`" + `--terms` + "`" + ` errors with this guidance.
-
-| Situation | Command |
-|---|---|
-| Bug report, error message, or unfamiliar feature area | ` + "`" + `prism query "<the symptom>" --terms <your best guess> --format text` + "`" + ` — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
-| You already grepped an anchor | ` + "`" + `prism query "<symptom>" --terms <anchor> --format text` + "`" + ` — same delivery, grep-precision seeding |
-| No plausible guess at all | grep a domain term first, THEN ` + "`" + `prism query` + "`" + ` with that term |
-| Locate a string, symbol, or file | prism search <term> — symbol names AND raw source text (real rg/grep inside). Pure grep: prism search <term> --scope text [--regex] |
-
-Canonical workflow (non-refactor tasks):
-
-    guess ONE keyword from the task (a class/function fragment, a domain term)
-      -> prism query "<bug symptom or task>" --terms <guess> --format text   <- start here; often the ONLY context call needed
-      wrong guess / still missing an anchor?
-      -> prism search <term> --scope text      <- locate it: real rg/grep inside prism
-      -> prism query "<task>" \               <- retry with a real anchor: callers, callees
-           --terms <same-terms> \
-           --include graph \
-           --format text
-      then selectively:
-      -> prism read <file> --format text      <- whole file, session-compressed
-      -> prism lookup <pkg.FuncName> --format text  <- one function (~5x cheaper than read)
-
-Housekeeping: prism index [dir] once at session start (delta indexing is
-automatic — never re-run per step). If ` + "`" + `prism watch` + "`" + ` is running in this
-project, the index is already warm — skip prism index entirely.
-
-### Do NOT
-
-- Do NOT re-read files prism query just delivered as source windows — they are verbatim, current, line-numbered; go straight to the edit
-- Do NOT grep for what prism query already returned — grep is for locating anchors it missed
-- Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — ` + "`" + `prism change-impact` + "`" + ` computes the complete set in one call
-- Do NOT use prism read for a single function — use prism lookup instead
-- Do NOT reach for grep/rg separately: prism search and prism query run a real
-  ripgrep pass internally, so text matches outside any symbol (comments,
-  configs, docs, string literals) are included. Pure grep: prism search <term>
-  --scope text [--regex]
-- A repeat whole-repo graph op (change-impact, map, dead-code, rename-plan,
-  missing-implementations) whose recomputed result is IDENTICAL to one already
-  delivered this session returns a one-line [prism:cached] pointer plus group
-  counts — NOT an error, NOT an empty result
-
-<!-- prism:end -->
-`
-
-// steeringInstructionsBoth is injected when agent_mode is "both" (default).
+// steeringInstructions is injected when agent_mode is "both" (default).
 // MCP tools are primary; the CLI section serves as fallback for subagents
 // that only have Bash access.
-const steeringInstructionsBoth = `
+const steeringInstructions = `
 ## Prism — context delivery (ALWAYS use these tools)
 
 Prism answers whole-task questions (change impact, missing implementations,
@@ -785,7 +503,7 @@ Use the prism CLI with --format text instead of MCP tools:
 // writeSteeringInstructions writes per-tool instruction files into the project
 // so agents know how to use Prism tools correctly.
 // On re-init it replaces a stale Prism section rather than skipping.
-func writeSteeringInstructions(projectDir, mode string) {
+func writeSteeringInstructions(projectDir string) {
 	type instrFile struct {
 		name    string // description for log
 		relPath string // path relative to projectDir
@@ -808,7 +526,7 @@ func writeSteeringInstructions(projectDir, mode string) {
 		{name: "Kiro", relPath: ".kiro/steering/prism.md"},
 	}
 
-	block := steeringBlockForMode(mode)
+	block := steeringBlock()
 
 	for _, t := range targets {
 		path := filepath.Join(projectDir, t.relPath)
@@ -833,17 +551,14 @@ func writeSteeringInstructions(projectDir, mode string) {
 	}
 }
 
-// steeringBlockForMode returns the steering instructions for the given mode.
-func steeringBlockForMode(mode string) string {
-	switch mode {
-	case config.AgentModeMCP:
-		return steeringInstructionsMCP
-	case config.AgentModeCLI:
-		return steeringInstructionsCLI
-	default:
-		return steeringInstructionsBoth
-	}
-}
+// steeringBlock returns the one steering block prism writes. There were
+// three (mcp / cli / both), chosen by a prompt at init — but they gated
+// nothing (every tool worked in every mode, and "cli" registered the MCP
+// servers regardless), so the choice only changed which documentation the
+// agent read, for a 317-token difference. Three copies of the same prose
+// also drifted: a steering edit landed in one of three variants before this
+// collapsed them.
+func steeringBlock() string { return steeringInstructions }
 
 // injectPrismSection replaces the Prism steering section in content, or
 // appends it when absent.

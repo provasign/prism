@@ -54,7 +54,7 @@ func TestDetectSelfPath(t *testing.T) {
 
 func TestWriteSteeringInstructions(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir, "both")
+	writeSteeringInstructions(dir)
 	// Should have written at least one instruction file
 	entries, _ := os.ReadDir(dir)
 	if len(entries) == 0 {
@@ -140,7 +140,7 @@ func TestBuildVSCodeConfig(t *testing.T) {
 
 func TestWriteSteeringInstructions_AllTargets(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir, "both")
+	writeSteeringInstructions(dir)
 	for _, want := range []string{
 		"CLAUDE.md",
 		"AGENTS.md",
@@ -166,7 +166,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 	if err := os.WriteFile(path, []byte(stale), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	writeSteeringInstructions(dir, "both")
+	writeSteeringInstructions(dir)
 	raw, _ := os.ReadFile(path)
 	s := string(raw)
 	// Old guidance must be gone.
@@ -323,32 +323,22 @@ func TestWritePrismCodexConfig_ExistingOtherContent(t *testing.T) {
 	}
 }
 
-func TestSteeringBlockForMode(t *testing.T) {
-	cases := []struct {
-		mode    string
-		wantStr string
-	}{
-		{"mcp", "prism_query"},
-		{"cli", "prism query"},
-		{"both", "prism_query"},
-		{"both", "prism query"},
-		{"unknown", "prism query"}, // unknown → both
-	}
-	seen := map[string]string{}
-	for _, tc := range cases {
-		got := steeringBlockForMode(tc.mode)
-		if !strings.Contains(got, tc.wantStr) {
-			t.Errorf("mode %q: expected %q in block", tc.mode, tc.wantStr)
+func TestSteeringBlock_CoversBothSurfaces(t *testing.T) {
+	// One block since v0.38.0: the mcp/cli/both split gated no tool and only
+	// changed which documentation the agent read, so it collapsed. The single
+	// block must still carry BOTH surfaces — MCP tool names for the primary
+	// path and CLI invocations for Bash-only subagents.
+	got := steeringBlock()
+	for _, want := range []string{"prism_query", "prism query", "prism_change_impact", "change-impact"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("steering block missing %q — it must cover MCP and CLI together", want)
 		}
-		seen[tc.mode] = got
-	}
-	// MCP and CLI modes must produce distinct content.
-	if seen["mcp"] == seen["cli"] {
-		t.Error("mcp and cli produced identical steering blocks")
 	}
 }
 
-func TestCmdInit_ModeFlag(t *testing.T) {
+func TestCmdInit_ModeFlagAcceptedAndIgnored(t *testing.T) {
+	// --mode is kept for one release so existing scripts do not break; it must
+	// not fail, and must not write an agent_mode key back into prism.yaml.
 	for _, mode := range []string{"mcp", "cli", "both"} {
 		t.Run(mode, func(t *testing.T) {
 			setHome(t, t.TempDir())
@@ -357,34 +347,16 @@ func TestCmdInit_ModeFlag(t *testing.T) {
 				t.Fatalf("rc %d", rc)
 			}
 			raw, _ := os.ReadFile(filepath.Join(dir, "prism.yaml"))
-			if !strings.Contains(string(raw), `agent_mode: "`+mode+`"`) {
-				t.Errorf("agent_mode %q not in prism.yaml: %s", mode, raw)
+			if strings.Contains(string(raw), "agent_mode") {
+				t.Errorf("prism.yaml still carries agent_mode: %s", raw)
 			}
 			claudeMD, _ := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
-			block := steeringBlockForMode(mode)
-			// Pick a distinctive string from each mode's block.
-			var mustContain string
-			switch mode {
-			case "mcp":
-				mustContain = "prism_query"
-			case "cli":
-				mustContain = "prism query"
-			case "both":
-				mustContain = "prism_query"
+			for _, want := range []string{"prism_query", "prism query"} {
+				if !strings.Contains(string(claudeMD), want) {
+					t.Errorf("CLAUDE.md missing %q regardless of --mode %q", want, mode)
+				}
 			}
-			if !strings.Contains(string(claudeMD), mustContain) {
-				t.Errorf("CLAUDE.md missing %q for mode %q", mustContain, mode)
-			}
-			_ = block
 		})
-	}
-}
-
-func TestPromptAgentMode_NonInteractive(t *testing.T) {
-	// In tests stdin is a pipe, not a terminal — must return "both" without blocking.
-	got := promptAgentMode()
-	if got != "both" {
-		t.Errorf("non-interactive mode: got %q, want both", got)
 	}
 }
 
