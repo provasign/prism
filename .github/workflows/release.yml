@@ -129,3 +129,31 @@ jobs:
             install.ps1
             uninstall.sh
             uninstall.ps1
+
+      # The tap drifted 15 releases behind (0.23.0 while v0.38.0 shipped)
+      # because nothing here updated it — prism builds its assets by hand
+      # rather than through GoReleaser, so it never had the publish step
+      # shale has. Without a token the step is a no-op, never a failed release.
+      - name: Publish Homebrew formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN not set — tap NOT updated; brew will keep serving the previous version"
+            exit 0
+          fi
+          scripts/gen-homebrew-formula.sh "${GITHUB_REF_NAME}" dist/checksums.txt > /tmp/prism.rb
+          tap="$(mktemp -d)"
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/provasign/homebrew-shale.git" "${tap}"
+          mkdir -p "${tap}/Formula"
+          cp /tmp/prism.rb "${tap}/Formula/prism.rb"
+          git -C "${tap}" config user.name "github-actions[bot]"
+          git -C "${tap}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git -C "${tap}" status --porcelain -- Formula/prism.rb)" ]; then
+            echo "Homebrew formula already current."
+            exit 0
+          fi
+          git -C "${tap}" add Formula/prism.rb
+          git -C "${tap}" commit -m "Brew formula update for prism ${GITHUB_REF_NAME}"
+          git -C "${tap}" push origin HEAD:main
