@@ -376,6 +376,18 @@ cheaply. Three layers, in priority order.
 
 Use the registered prism_* MCP tools.
 
+**If you do not see prism_* in your tool list, they are DEFERRED, not absent.**
+Some harnesses (Claude Code among them) do not load MCP tool schemas up front;
+they are discoverable on demand. Load them BEFORE concluding Prism is
+unavailable and falling back to grep:
+
+    ToolSearch("select:prism_query,prism_search,prism_change_impact")
+
+or search by keyword: ToolSearch("prism"). This is a one-time call per
+session. An agent that skips it will grep for everything and never touch the
+graph — measured, that is the single most common reason Prism goes unused on
+a machine where it is correctly installed and connected.
+
 **1. Changing or auditing code? One call answers the whole task:**
 
 | Situation | Tool |
