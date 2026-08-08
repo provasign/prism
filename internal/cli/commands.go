@@ -1176,6 +1176,27 @@ func ensureClaudeCodeApproval(serverName string, allowTools bool) {
 			doc["permissions"] = perms
 			changed = true
 		}
+		// Deny the built-in text search. Steering does not route tool
+		// selection: observed on a correctly installed machine, an agent
+		// listed prism's tools, said its CLAUDE.md directed it to use them,
+		// and then ran Bash(grep) on the next task. The benchmark said the
+		// same at 12:1. The only reliable route is removing the alternative,
+		// and it costs nothing: prism_search(scope="text") is a ripgrep
+		// passthrough over the whole tree, so nothing becomes unfindable.
+		//
+		// --no-permissions skips this along with the auto-allow, and the
+		// entries are plain settings.json lines a user can delete.
+		if !containsString(allow, "Grep") { // never deny what the user allowed
+			deny, _ := perms["deny"].([]any)
+			for _, d := range []string{"Grep", "Bash(grep:*)", "Bash(rg:*)"} {
+				if !containsString(deny, d) {
+					deny = append(deny, d)
+					changed = true
+				}
+			}
+			perms["deny"] = deny
+			doc["permissions"] = perms
+		}
 	}
 
 	if !changed {
