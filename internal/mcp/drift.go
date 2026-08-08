@@ -267,7 +267,7 @@ func (h *Handler) StaleContextWarning() string {
 	if len(preview) > 5 {
 		preview = preview[:5]
 	}
-	return fmt.Sprintf("⚠ stale context: %d file(s) you received have changed since delivery (%s). Call prism_drift for symbol-level details before relying on them.",
+	return fmt.Sprintf("⚠ stale context: %d file(s) you received have changed since delivery (%s). Re-read them (prism_read returns the changed content) before relying on them.",
 		len(changed), strings.Join(preview, ", "))
 }
 

@@ -94,8 +94,20 @@ func (c *Client) AutoIndexIfEmpty(ctx context.Context) error {
 	}
 	if st, err := e.Status(ctx); err == nil && st.SymbolCount == 0 {
 		fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
-		if _, err := e.Index(ctx, c.root); err != nil {
+		res, err := e.Index(ctx, c.root)
+		if err != nil {
 			return fmt.Errorf("initial index failed: %w", err)
+		}
+		// An index that came back EMPTY is the real problem, and saying so
+		// here saves the caller from a downstream "no type named X in the
+		// graph" — which reads like a wrong query when the truth is there is
+		// nothing indexed under this root (measured: a truncated corpus
+		// checkout cost 10 minutes of misdiagnosis).
+		if res.SymbolCount == 0 {
+			fmt.Fprintf(os.Stderr,
+				"prism: WARNING index is empty — no supported source files found under %s. "+
+					"Every lookup will come back empty; check the path and that the "+
+					"repository actually contains code prism can parse.\n", c.root)
 		}
 	}
 	return nil
