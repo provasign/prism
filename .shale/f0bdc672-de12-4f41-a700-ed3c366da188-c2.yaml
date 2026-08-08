@@ -1,0 +1,327 @@
+shale_version: "0"
+id: f0bdc672-de12-4f41-a700-ed3c366da188-c2
+created_at: 2026-08-08T12:56:40.190773Z
+finalized_at: 2026-08-08T15:36:09.645469Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/graphcache.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-08T15:24:13.220235Z
+commands:
+    - cmd: |-
+        git tag -a v0.37.0 -m "v0.37.0 — text search inside prism, narrower tool surface, delivery dedup
+
+        Text search moves inside prism: prism_search and prism_query run a real
+        ripgrep pass (falling back to grep, then a built-in scanner), so an agent
+        needs no separate grep tool. scope=\"text\" is a pure grep and the agent
+        prices each request itself — measured, that took prism-as-only-tool from +46%
+        to +2% cost over a grep/read baseline at identical results. Noisy searches
+        are annotated with how many hits are real references.
+
+        Tool surface 19 -> 15: prism_evidence removed; resolve/edges/cycles/drift are
+        CLI-only. Repeat whole-repo graph deliveries recompute and then collapse to a
+        [prism:cached] pointer when byte-identical; those ops now delta-reindex first.
+
+        Fixes: httpapi had drifted and 404'd six tools including prism and verify;
+        map/cycles ignored --format json; an empty index gave a misleading error." && git push origin main --follow-tags 2>&1 | tail -4
+      at: 2026-08-08T12:56:40.190773Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/provasign.github.io && git checkout main -q && git merge --no-ff docs/prism-surface-refresh -m "merge: refresh documented prism tool surface" -q && git push origin main 2>&1 | tail -2; echo "=== research ==="; cd /Users/tapabratapal/Projects/provasign/research && git push origin main 2>&1 | tail -2'
+      at: 2026-08-08T12:56:52.032091Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 4 --json name,status,conclusion,headBranch,event --jq '.[] | "\(.name) [\(.event)] \(.status) \(.conclusion // "-")"'
+      at: 2026-08-08T12:57:01.032833Z
+      classified: other
+    - cmd: 'gh release view v0.37.0 --repo provasign/prism --json assets,url,isDraft --jq ''"draft: \(.isDraft)\nassets: \(.assets|length)\n\(.url)"'' 2>&1; echo "--- asset names ---"; gh release view v0.37.0 --repo provasign/prism --json assets --jq ''.assets[].name'' 2>&1 | head -8'
+      at: 2026-08-08T12:59:19.630109Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && git log --oneline -3 && echo "--- tags ---" && git tag --sort=-v:refname | head -3 && echo "--- status ---" && git status --short | head -5 && echo "--- prism dep ---" && grep -n "provasign/prism\|provasign/grove" go.mod
+      at: 2026-08-08T13:06:51.204549Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && grep -rn "prism_evidence\|prism_resolve\|prism_edges\|prism_cycles\|prism_drift" --include="*.go" . | grep -v "_test" | head -5; echo "--- prism API used ---"; grep -rhn "prism/pkg/kit\|kit\.\|Invoke(" --include="*.go" . | grep -v "_test" | head -8
+      at: 2026-08-08T13:07:00.005179Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && GOFLAGS=-mod=mod go get github.com/provasign/prism@v0.37.0 2>&1 | tail -3 && go mod tidy 2>&1 | tail -2 && grep -n "provasign/prism\|provasign/grove" go.mod && go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "mason build+tests clean"
+      at: 2026-08-08T13:07:36.608178Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/mason && git checkout -b deps/prism-v0.37.0 -q && git add -A && git commit -q -F - <<'EOF'
+        deps: prism v0.36.0 -> v0.37.0
+
+        Picks up text search inside prism (prism_search/prism_query run a real
+        ripgrep pass), the scope knob, and graph-delivery dedup.
+
+        No API break for mason: prism trimmed its ADVERTISED tools/list from 19 to
+        15, but every tool remains dispatchable through Handler.Invoke, which is what
+        kit.Invoke calls — including prism_edges, used by the symbol-neighbour walk.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo
+        EOF
+        git checkout main -q && git merge --no-ff deps/prism-v0.37.0 -m "merge: prism v0.37.0" -q && git tag -a v0.31.0 -m "v0.31.0 — prism v0.37.0
+
+        Text search inside prism, agent-priced scope knob, graph-delivery dedup." && git push origin main --follow-tags 2>&1 | tail -3
+      at: 2026-08-08T13:07:47.157172Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls tasks/ | grep -E "jackson|guava|gin-render|django-quotename|typeorm" | head -12; echo "--- existing opus ab cells ---"; ls runs/ab-agentic/*.opus.*.json 2>/dev/null | head -5
+      at: 2026-08-08T13:07:57.138978Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p runs/ab-agentic/archive-pre-v0.37 && mv runs/ab-agentic/*.opus.baseline.json runs/ab-agentic/*.opus.prism.json runs/ab-agentic/archive-pre-v0.37/ 2>/dev/null; ls runs/ab-agentic/archive-pre-v0.37/ | wc -l; python3 ab_agentic_mcp.py --model opus --arms baseline,prism tasks/jackson-jsonnode-get.json tasks/jackson-settable-set.json tasks/jackson-serialize.json tasks/guava-forwarding-delegate.json tasks/django-quotename.json tasks/typeorm-driver-escape.json 2>&1
+      at: 2026-08-08T13:08:05.359134Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/tasks/b9c85z6ly.output
+      at: 2026-08-08T13:20:12.431856Z
+      classified: other
+    - cmd: ps aux | grep -c "[a]b_agentic_mcp"; ps aux | grep "[c]laude -p" | wc -l; ls /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-agentic/*.opus.*.json 2>/dev/null | grep -v archive | wc -l
+      at: 2026-08-08T13:20:18.848006Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-agentic && python3 -c "
+        import json,glob
+        for f in sorted(glob.glob('*.opus.*.json')):
+            if 'archive' in f or 'summary' in f: continue
+            d=json.load(open(f))
+            print(f\"{d.get('task','?'):28} {d.get('arm'):9} recall={d.get('recall')} prec={d.get('precision')} turns={d.get('turns')} tok={d.get('tokens_in',0)//1000}k \${d.get('cost_usd',0):.2f} {d.get('wall_s')}s\")
+        "
+      at: 2026-08-08T13:20:24.416502Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-agentic && python3 - <<'EOF'
+        import json
+        d=json.load(open("summary.opus.json"))
+        rows={}
+        for r in d:
+            if r.get("arm") not in ("baseline","prism"): continue
+            rows.setdefault(r["arm"],[]).append(r)
+        print(f"{'arm':10}{'recall':>8}{'turns':>8}{'tok_in':>10}{'cost':>9}{'wall':>8}")
+        for a in ("baseline","prism"):
+            v=rows[a]; n=len(v)
+            print(f"{a:10}{sum(x['recall'] for x in v)/n:>8.3f}{sum(x['turns'] for x in v)/n:>8.1f}"
+                  f"{sum(x['tokens_in'] for x in v)/n/1000:>9.0f}k{sum(x['cost_usd'] for x in v)/n:>9.2f}{sum(x['wall_s'] for x in v)/n:>7.0f}s")
+        b,p=rows["baseline"],rows["prism"]
+        print(f"\nratios (baseline/prism): turns {sum(x['turns'] for x in b)/sum(x['turns'] for x in p):.1f}x  "
+              f"tokens {sum(x['tokens_in'] for x in b)/sum(x['tokens_in'] for x in p):.1f}x  "
+              f"cost {sum(x['cost_usd'] for x in b)/sum(x['cost_usd'] for x in p):.1f}x  "
+              f"wall {sum(x['wall_s'] for x in b)/sum(x['wall_s'] for x in p):.1f}x")
+        print(f"total spend: baseline ${sum(x['cost_usd'] for x in b):.2f}  prism ${sum(x['cost_usd'] for x in p):.2f}")
+        EOF
+      at: 2026-08-08T13:39:31.591532Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,40p' mason_bench.py | head -35; echo "--- ollama up? ---"; curl -s --max-time 5 localhost:11434/api/tags 2>/dev/null | python3 -c "import json,sys; print([m['name'] for m in json.load(sys.stdin).get('models',[])][:6])" 2>/dev/null || echo "ollama not responding"; which mason; mason --version 2>&1 | head -1
+      at: 2026-08-08T13:40:19.723725Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && go build -ldflags="-X main.version=v0.31.0" -o /tmp/mason-bench ./cmd/mason 2>/dev/null || go build -o /tmp/mason-bench ./cmd/mason; cp /tmp/mason-bench ~/bin/mason && /tmp/mason-bench --version 2>&1 | head -1; echo "--- prism dep in this build ---"; grep "provasign/prism" go.mod
+      at: 2026-08-08T13:40:32.742385Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p runs/mason-bench/archive-pre-v0.31 && mv runs/mason-bench/*.json runs/mason-bench/archive-pre-v0.31/ 2>/dev/null; ls runs/mason-bench/archive-pre-v0.31 | wc -l; python3 mason_bench.py "ollama:qwen3-coder:30b" 2>&1
+      at: 2026-08-08T13:40:41.499962Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/tasks/ba15blwmv.output | grep -E "t1:|t2:"
+      at: 2026-08-08T13:42:26.725666Z
+      classified: other
+    - cmd: tail -6 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/tasks/ba15blwmv.output; echo "--- still running? ---"; pgrep -f "mason_bench.py" | wc -l; pgrep -f "mason-bench" | wc -l; ls /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench/*.json 2>/dev/null | grep -v archive | wc -l
+      at: 2026-08-08T13:44:08.164734Z
+      classified: other
+    - cmd: ps aux | grep "[m]ason_bench" | awk '{print $2, $11, $12}' | head -3; echo "--- monitor self-match? ---"; pgrep -f "mason_bench.py" | while read p; do ps -p $p -o command= | cut -c1-70; done
+      at: 2026-08-08T13:44:20.33584Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "if f.exists()\|f.exists()" mason_bench.py | head -3; ls runs/mason-bench/*.json | grep -v archive
+      at: 2026-08-08T13:44:34.111069Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 mason_bench.py "ollama:qwen3-coder:30b" > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/scratchpad/mason-bench.log 2>&1 &
+        sleep 5; echo "started, pid $(pgrep -f 'python3 mason_bench' | head -1)"; tail -2 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/scratchpad/mason-bench.log
+      at: 2026-08-08T13:44:46.18992Z
+      classified: other
+    - cmd: tail -12 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/scratchpad/mason-bench.log; echo "--- exit? ---"; wc -l /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/scratchpad/mason-bench.log
+      at: 2026-08-08T13:45:03.520583Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && echo "tasks/jackson-writetypeprefix.json" > /tmp/one-task.txt && MASON_TASKS=/tmp/one-task.txt timeout 900 python3 mason_bench.py "ollama:qwen3-coder:30b" 2>&1 | tail -6 || MASON_TASKS=/tmp/one-task.txt python3 mason_bench.py "ollama:qwen3-coder:30b" 2>&1 | tail -6
+      at: 2026-08-08T13:45:20.20166Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && MASON_TASKS=/tmp/one-task.txt python3 mason_bench.py "ollama:qwen3-coder:30b" 2>&1 | tail -6
+      at: 2026-08-08T13:55:25.03081Z
+      classified: other
+    - cmd: ps aux | grep -c "[p]ython3 mason_bench"; ls /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench/*.json | grep -v archive | wc -l
+      at: 2026-08-08T14:05:53.125171Z
+      classified: other
+    - cmd: ps aux | grep "[p]ython3 mason_bench" | awk '{print $2, $10}'; tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/tasks/bmrez43o3.output 2>/dev/null
+      at: 2026-08-08T14:06:04.09747Z
+      classified: other
+    - cmd: ls -la /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/tasks/bmrez43o3.output; ps -p 77588 -o command= | cut -c1-90; pgrep -f "ollama runner" | wc -l
+      at: 2026-08-08T14:06:14.330667Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && PYTHONUNBUFFERED=1 python3 mason_bench.py "ollama:qwen3-coder:30b"
+      at: 2026-08-08T14:06:26.512056Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench/*.json | grep -v archive | wc -l; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/tasks/bmha1dwlx.output 2>/dev/null | tail -5; echo "--- memory ---"; vm_stat | head -4; echo "free pages x4096:"; vm_stat | awk '/free/{print $3*4096/1073741824" GB free"}' | head -1; sysctl -n hw.memsize | awk '{print $1/1073741824" GB total"}'
+      at: 2026-08-08T14:14:18.190227Z
+      classified: other
+    - cmd: ps aux | sort -k6 -rn | head -8 | awk '{printf "%6.1f GB  %s\n", $6/1048576, substr($0, index($0,$11), 60)}'; echo "--- docker ---"; docker ps -q 2>/dev/null | wc -l; docker ps -a -q 2>/dev/null | wc -l; echo "--- ollama models loaded ---"; curl -s --max-time 5 localhost:11434/api/ps 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print([(m['name'], round(m['size']/1e9,1)) for m in d.get('models',[])])" 2>/dev/null
+      at: 2026-08-08T14:14:30.795162Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench && python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+        by=defaultdict(list)
+        for f in sorted(glob.glob("*.json")):
+            if "archive" in f: continue
+            d=json.load(open(f))
+            by[d.get("task","?")].append(d)
+        print(f"{'task':32}{'recall':>16}{'prec':>14}{'tok_in':>9}{'wall':>10}")
+        R=[];P=[];T=[];W=[]
+        for t,v in sorted(by.items()):
+            r=[x.get('recall',0) for x in v]; p=[x.get('precision',0) for x in v]
+            tk=[x.get('tokens_in',0) for x in v]; w=[x.get('wall_s',0) for x in v]
+            R+=r;P+=p;T+=tk;W+=w
+            print(f"{t:32}{'/'.join(f'{x:.3f}' for x in r):>16}{'/'.join(f'{x:.2f}' for x in p):>14}{sum(tk)/len(tk)/1000:>8.0f}k{sum(w)/len(w):>9.0f}s")
+        n=len(R)
+        print(f"\n{'MEAN (n=%d cells)'%n:32}{sum(R)/n:>16.3f}{sum(P)/n:>14.2f}{sum(T)/n/1000:>8.1f}k{sum(W)/n:>9.0f}s")
+        print(f"median recall: {sorted(R)[n//2]:.3f}   perfect-recall cells: {sum(1 for x in R if x>=0.999)}/{n}")
+        EOF
+      at: 2026-08-08T15:19:50.680455Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench && python3 -c "
+        import json,glob
+        for f in glob.glob('jackson-writetypeprefix*.json'):
+            d=json.load(open(f))
+            print(f.split('.')[-2], 'recall',d.get('recall'),'sites',d.get('n_sites'),'err:',repr(d.get('err'))[:120],'wall',d.get('wall_s'))
+        "; echo "--- july baseline for comparison ---"; python3 -c "
+        import json,glob
+        R=[];T=[]
+        for f in glob.glob('archive-pre-v0.31/*.json'):
+            d=json.load(open(f)); R.append(d.get('recall',0)); T.append(d.get('tokens_in',0))
+        print(f'july: n={len(R)} mean recall {sum(R)/len(R):.3f} mean tok {sum(T)/len(T)/1000:.1f}k' if R else 'no archive')
+        "
+      at: 2026-08-08T15:20:06.156825Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && rm -f runs/mason-bench/jackson-writetypeprefix.ollama_qwen3-coder_30b.t1.json && echo "tasks/jackson-writetypeprefix.json" > /tmp/one-task.txt && MASON_TASKS=/tmp/one-task.txt PYTHONUNBUFFERED=1 python3 mason_bench.py "ollama:qwen3-coder:30b" 2>&1 | tail -3
+      at: 2026-08-08T15:20:17.258891Z
+      classified: other
+    - cmd: |-
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench/jackson-writetypeprefix* 2>/dev/null; echo "--- token comparison per task: july vs now ---"; cd /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench && python3 - <<'EOF'
+        import json,glob
+        from collections import defaultdict
+        old=defaultdict(list); new=defaultdict(list)
+        for f in glob.glob("archive-pre-v0.31/*.json"):
+            d=json.load(open(f)); old[d.get("task")].append(d.get("tokens_in",0))
+        for f in glob.glob("*.json"):
+            d=json.load(open(f)); new[d.get("task")].append(d.get("tokens_in",0))
+        print(f"{'task':32}{'july':>10}{'now':>10}{'ratio':>8}")
+        for t in sorted(set(old)|set(new)):
+            o=sum(old[t])/len(old[t])/1000 if old.get(t) else 0
+            n=sum(new[t])/len(new[t])/1000 if new.get(t) else 0
+            print(f"{t:32}{o:>9.0f}k{n:>9.0f}k{(n/o if o else 0):>8.1f}x")
+        EOF
+      at: 2026-08-08T15:22:13.209585Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/mason-bench && python3 -c "
+        import json,glob
+        for tag,pat in (('JULY','archive-pre-v0.31/guava*'),('NOW','guava*.json')):
+            for f in sorted(glob.glob(pat))[:2]:
+                d=json.load(open(f))
+                print(tag, f.split('/')[-1].split('.')[-2], 'recall',d.get('recall'),'sites',d.get('n_sites'),'tok_in',d.get('tokens_in'),'tok_out',d.get('tokens_out'),'wall',d.get('wall_s'))
+        "
+      at: 2026-08-08T15:22:31.270638Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && grep -rn "isolat\|payload\|Payload" --include="*.go" internal/ | grep -v "_test" | head -10
+      at: 2026-08-08T15:22:46.242035Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && grep -rn "change_impact" --include="*.go" internal/ | grep -v "_test" | head -8
+      at: 2026-08-08T15:22:50.214785Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && sed -n '15,35p' internal/agent/tools.go; echo "=== render/isolation ==="; grep -n "renderGraph\|GRAPH ops\|func.*render\|toUser\|userVisible" internal/agent/tools.go | head -10
+      at: 2026-08-08T15:22:56.08659Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && grep -rn "GRAPH_TOOLS\|graphTools\|isGraph\|counts only\|summari" --include="*.go" internal/agent/*.go | grep -v "_test" | head -8
+      at: 2026-08-08T15:23:00.271231Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/mason && grep -rn "func summarizeGraph\|func graphSummary\|modelSees\|func summarize" --include="*.go" internal/agent/ | grep -v _test | head; echo "=== where invoke result is turned into model-visible text ==="; grep -n "invoke(\|result\b.*Content\|Role: \"tool\"" internal/agent/agent.go | sed -n ''1,12p'''
+      at: 2026-08-08T15:23:06.011808Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && sed -n '715,755p' internal/agent/agent.go
+      at: 2026-08-08T15:23:09.687512Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && grep -n "func (s \*session) dispatch" -A 45 internal/agent/tools.go | grep -n "change_impact\|graph\|counts\|renderTo\|s.out\|Fprint" | head -12
+      at: 2026-08-08T15:23:16.060653Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && grep -rn "func (s \*session) dispatch" --include="*.go" internal/agent/ ; grep -rn "prismGraphOps\|graphOps\|userRender\|renderToUser" --include="*.go" internal/agent/ | head -6
+      at: 2026-08-08T15:23:20.543791Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && sed -n '150,215p' internal/agent/tools.go
+      at: 2026-08-08T15:23:25.176298Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/mason && grep -n "func compactMeta" -A 40 internal/agent/*.go | head -50
+      at: 2026-08-08T15:23:39.525193Z
+      classified: other
+    - cmd: |-
+        cat >> internal/mcp/graphcache_test.go <<'EOF'
+
+        // TestPointerKeepsTopLevelCountsForProgrammaticCallers: library consumers
+        // (mason's compactMeta) read the response by KEY. A pointer that replaced
+        // declarations/family/callers with a nested summary read as an empty result
+        // and sent the agent back to grep — measured, guava went 1.7k -> 91-186k
+        // input tokens for an identical answer.
+        func TestPointerKeepsTopLevelCountsForProgrammaticCallers(t *testing.T) {
+        	h := newTestHandler(t)
+        	args := map[string]any{"query": "Service.QueryData"}
+        	h.graphDedupe("prism_change_impact", args, fatResult(80))
+        	out := h.graphDedupe("prism_change_impact", args, fatResult(80))
+        	m, ok := out.(map[string]any)
+        	if !ok || m["cached"] != true {
+        		t.Fatalf("expected a cached pointer, got %v", out)
+        	}
+        	for _, k := range []string{"callers", "declarations", "completeness"} {
+        		if _, present := m[k]; !present {
+        			t.Errorf("pointer dropped top-level %q — key-matching consumers see an empty result", k)
+        		}
+        	}
+        	if m["callers"] != 80 {
+        		t.Errorf("callers count = %v, want 80", m["callers"])
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run "GraphDedupe|Pointer" 2>&1 | tail -3 && go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "suite clean"
+      at: 2026-08-08T15:24:37.213814Z
+      classified: test
+    - cmd: |-
+        go build -o ~/bin/prism ./cmd/prism && git add -A && git commit -q -F - <<'EOF'
+        fix: cached graph deliveries keep their top-level counts
+
+        The delivery pointer replaced a result's group keys with a nested summary.
+        Agents read the accompanying prose and cope; library callers do not. mason's
+        compactMeta whitelists declarations/family/callers/... to build the model's
+        view of a graph op, so a repeat change_impact returned what looked like an
+        empty result — the model concluded the tool had failed and fell back to grep
+        and file reads.
+
+        Measured on guava-forwarding-delegate (310 sites), mason + qwen3-coder:30b:
+        1.7k input tokens in July against 91-186k now, for an identical answer
+        (recall 0.997 both, because scoring captures the engine's relay rather than
+        the model's recitation). The payload-isolation property mason exists to
+        provide was silently gone.
+
+        Mirror the summary counts at top level so key-matching consumers keep
+        working. The pointer stays compact; only its shape becomes compatible again.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo
+        EOF
+        git log --oneline -1
+      at: 2026-08-08T15:24:51.194353Z
+      classified: build
+notes:
+    - text: continuation of session f0bdc672-de12-4f41-a700-ed3c366da188 — events captured after its evidence was finalized
+      at: 2026-08-08T12:56:40.190773Z
+redactions: 0
