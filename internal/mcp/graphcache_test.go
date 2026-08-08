@@ -125,3 +125,27 @@ func TestGateToolsAreNotWiredThroughDedupe(t *testing.T) {
 		}
 	}
 }
+
+// TestPointerKeepsTopLevelCountsForProgrammaticCallers: library consumers
+// (mason's compactMeta) read the response by KEY. A pointer that replaced
+// declarations/family/callers with a nested summary read as an empty result
+// and sent the agent back to grep — measured, guava went 1.7k -> 91-186k
+// input tokens for an identical answer.
+func TestPointerKeepsTopLevelCountsForProgrammaticCallers(t *testing.T) {
+	h := newTestHandler(t)
+	args := map[string]any{"query": "Service.QueryData"}
+	h.graphDedupe("prism_change_impact", args, fatResult(80))
+	out := h.graphDedupe("prism_change_impact", args, fatResult(80))
+	m, ok := out.(map[string]any)
+	if !ok || m["cached"] != true {
+		t.Fatalf("expected a cached pointer, got %v", out)
+	}
+	for _, k := range []string{"callers", "declarations", "completeness"} {
+		if _, present := m[k]; !present {
+			t.Errorf("pointer dropped top-level %q — key-matching consumers see an empty result", k)
+		}
+	}
+	if m["callers"] != 80 {
+		t.Errorf("callers count = %v, want 80", m["callers"])
+	}
+}

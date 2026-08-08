@@ -173,6 +173,19 @@ func graphPointerResponse(name, hash string, seenCount int, out any) map[string]
 		}
 		if len(summary) > 0 {
 			resp["summary"] = summary
+			// Programmatic callers read the response by KEY, not by prose.
+			// mason's compactMeta whitelists declarations/family/callers/...
+			// to build the model's view; when a repeat delivery replaced
+			// those keys with a nested summary it saw an empty result,
+			// concluded the tool had failed, and fell back to grep — guava
+			// went from 1.7k to 91-186k input tokens for the same answer.
+			// Mirror the counts at top level so key-matching consumers keep
+			// working; the pointer stays compact either way.
+			for k, v := range summary {
+				if _, taken := resp[k]; !taken {
+					resp[k] = v
+				}
+			}
 		}
 	}
 	return resp
