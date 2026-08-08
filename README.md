@@ -336,15 +336,20 @@ prism init . --mode cli   # CLI only: for environments without MCP support
 
 ### MCP
 
-MCP advertises fifteen tools: the context surface (`prism_query`,
-`prism_read`, `prism_search`, `prism_lookup`, `prism_references`,
-`prism_resolve`, `prism_edges`), the task-shaped graph operations
-(`prism_change_impact`, `prism_missing_implementations`,
-`prism_dead_code`, `prism_rename_plan`), and session upkeep
-(`prism_index`, `prism_drift`). The auxiliary tools (`prism_savings`,
-`prism_feedback`, `prism_compact`, `prism_evidence`) stay available through
-the CLI and HTTP server without spending schema tokens in every MCP session. Use MCP when the client has first-class MCP support and
-you want persistent session deduplication.
+MCP advertises fifteen tools, kept deliberately small (every extra tool is
+a routing error waiting to happen): the unified task tool (`prism`), the
+context surface (`prism_query`, `prism_read`, `prism_search`,
+`prism_lookup`, `prism_node`, `prism_references`), the task-shaped graph
+operations (`prism_change_impact`, `prism_missing_implementations`,
+`prism_dead_code`, `prism_rename_plan`, `prism_map`), the gates
+(`prism_verify`, `prism_arch_check`), and `prism_index`. Search runs a real
+full-text pass (rg/grep/built-in) alongside symbol search, so agents never
+need a separate grep tool. `prism resolve`, `prism edges`, `prism cycles`
+(a field of `prism map`'s result), `prism drift`, and the telemetry
+commands (`prism savings`, `prism feedback`, `prism compact`) remain CLI
+commands without spending schema tokens in every MCP session. Use MCP when
+the client has first-class MCP support and you want persistent session
+deduplication.
 
 ### HTTP Server
 
