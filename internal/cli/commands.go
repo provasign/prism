@@ -1395,7 +1395,6 @@ func cmdQuery(args []string) int {
 	dir := "."
 	profile := ""
 	limit := 50
-	depth := 0
 	maxFiles := 0
 	delivery := ""
 	format := formatText
@@ -1435,12 +1434,10 @@ func cmdQuery(args []string) int {
 				i++
 			}
 		case "--depth", "--graph-depth":
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					depth = n
-				}
-				i++
-			}
+			// graph_depth has never been read by any handler; sending it was
+			// a silent no-op. Say so instead of pretending it tunes anything.
+			fmt.Fprintln(os.Stderr, "query: --depth/--graph-depth has no effect and was removed; expansion is a fixed one-hop call neighborhood")
+			return 2
 		case "--delivery":
 			if i+1 < len(args) {
 				switch args[i+1] {
@@ -1486,9 +1483,6 @@ func cmdQuery(args []string) int {
 	}
 	if len(include) > 0 {
 		invokeArgs["include"] = include
-	}
-	if depth > 0 {
-		invokeArgs["graph_depth"] = depth
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_query", invokeArgs)
 	if err != nil {
@@ -2187,7 +2181,7 @@ func cmdConfig(args []string) int {
 }
 
 func cmdServe(args []string) int {
-	port := 8888
+	port := 0 // resolved after config load: flag > prism.yaml port > 8888
 	rest := args
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--port" && i+1 < len(args) {
