@@ -47,6 +47,27 @@ type lineWindow struct{ start, end int }
 
 // deliverSource renders a selection as the source-window delivery and returns
 // the full tool response map.
+// truncateSection clips a single file's rendering to a token ceiling, saying
+// so in-band. Silently returning a too-large payload is worse than a short
+// one: the host rejects the entire tool result, so the agent gets NOTHING and
+// is told to fall back to grep.
+func truncateSection(section string, maxTokens int, path string) string {
+	if maxTokens < 200 {
+		maxTokens = 200
+	}
+	maxBytes := maxTokens * 4
+	if len(section) <= maxBytes {
+		return section
+	}
+	cut := strings.LastIndexByte(section[:maxBytes], '\n')
+	if cut < 0 {
+		cut = maxBytes
+	}
+	return section[:cut] + fmt.Sprintf(
+		"\n… [prism truncated %s here to stay within the response budget — "+
+			"Read the file directly for the remainder]\n\n", path)
+}
+
 func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection, maxFiles, budget int) map[string]any {
 	if maxFiles < 1 {
 		maxFiles = sourceDeliveryMaxFiles
@@ -96,8 +117,21 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 			skipped = append(skipped, fg)
 			continue
 		}
+		// A section is measured BEFORE it is committed. The old code checked
+		// the running total on entry only, so one oversized file could
+		// overshoot the budget by its entire length — and the first file was
+		// exempt outright, which is how a single 89KB section got emitted and
+		// the host rejected the whole response.
+		cost := ranking.EstimateTokens(section)
+		if hard := budget * 2; delivered+cost > hard && len(shown) > 0 {
+			skipped = append(skipped, files[i:]...)
+			break
+		} else if delivered+cost > hard {
+			section = truncateSection(section, hard-delivered, fg.path)
+			cost = ranking.EstimateTokens(section)
+		}
 		b.WriteString(section)
-		delivered += ranking.EstimateTokens(section)
+		delivered += cost
 		shown = append(shown, fg.path)
 	}
 	if len(skipped) > 0 {
@@ -209,6 +243,12 @@ func groupPickedByFile(picked []ranking.BudgetedSymbol) []fileGroup {
 // renderFileSection renders one file's contribution: a sha pointer when the
 // full file is already in the agent's context, the whole file when windows
 // would cover most of it, or merged line-numbered windows otherwise.
+// Both delivery paths clamp through the same helper: the symbols path renders
+// via ranking.Render, the source path here. Fixing only one left the other
+// able to emit an 85KB line and have the host reject the whole response.
+
+func clampSourceLine(l string) string { return ranking.ClampLines(l) }
+
 func (h *Handler) renderFileSection(fg fileGroup) (string, bool) {
 	abs := filepath.Join(h.Root, filepath.FromSlash(fg.path))
 	data, err := os.ReadFile(abs)
@@ -247,7 +287,7 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, bool) {
 			fmt.Fprintf(&b, "… [lines %d–%d omitted] …\n", prevEnd+1, w.start-1)
 		}
 		for n := w.start; n <= w.end && n <= len(lines); n++ {
-			fmt.Fprintf(&b, "%d\t%s\n", n, lines[n-1])
+			fmt.Fprintf(&b, "%d\t%s\n", n, clampSourceLine(lines[n-1]))
 		}
 		prevEnd = w.end
 	}

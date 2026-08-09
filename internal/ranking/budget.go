@@ -1,7 +1,9 @@
 package ranking
 
 import (
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/provasign/prism/internal/grove"
 )
@@ -195,11 +197,41 @@ func chooseDisclosure(c Candidate) DisclosureLevel {
 
 // Render returns the textual representation of a symbol at the given level.
 // Used by both the selector (cost estimate) and the compressor (output).
+// MaxRenderedLineChars bounds ONE line of rendered symbol source. Generated
+// files embed whole stylesheets or bundles as a single string literal; a
+// symbol containing an 85,462-char line was emitted verbatim and the host
+// rejected the entire tool response. Seeds bypass the token budget by design,
+// so the budget alone cannot prevent this — the clamp has to live at the
+// point of rendering.
+const MaxRenderedLineChars = 1200
+
+// ClampLines truncates pathologically long lines, saying so in-band. Normal
+// source passes through byte-for-byte: the verbatim contract holds for every
+// line a human would actually read.
+func ClampLines(src string) string {
+	if len(src) <= MaxRenderedLineChars {
+		return src // fast path: nothing can be over the limit
+	}
+	lines := strings.Split(src, "\n")
+	changed := false
+	for i, l := range lines {
+		if len(l) > MaxRenderedLineChars {
+			lines[i] = l[:MaxRenderedLineChars] + fmt.Sprintf(
+				"… [line truncated by prism: %d chars — Read the file at this line for the rest]", len(l))
+			changed = true
+		}
+	}
+	if !changed {
+		return src
+	}
+	return strings.Join(lines, "\n")
+}
+
 func Render(sym grove.SymbolRecord, lvl DisclosureLevel) string {
 	switch lvl {
 	case DisclosureFull:
 		if sym.RawText != "" {
-			return sym.RawText
+			return ClampLines(sym.RawText)
 		}
 		return sym.Signature
 	case DisclosureSignature:

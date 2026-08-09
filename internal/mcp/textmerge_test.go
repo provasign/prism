@@ -4,9 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/provasign/prism/internal/compression"
+	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/textsearch"
 )
 
@@ -133,5 +135,31 @@ func TestResolvedRefNoteSilentOnSmallResult(t *testing.T) {
 	h := newTestHandler(t)
 	if n := h.resolvedRefNote(context.Background(), "x", make([]textsearch.Hit, 3)); n != "" {
 		t.Errorf("note must be silent on tiny results, got %q", n)
+	}
+}
+
+// TestSourceDeliveryBoundedByGiantLine: generated dashboards embed a whole
+// stylesheet as one string literal. A single 85,462-char line made a
+// prism_query response 89KB; the host rejected the entire tool result and
+// told the agent to "use grep on the file directly" — prism training agents
+// away from itself. Both guards are load-bearing: clamp the line, and never
+// let one file section blow the response budget.
+func TestSourceDeliveryBoundedByGiantLine(t *testing.T) {
+	long := strings.Repeat("div[data-testid=\"x\"] p { font-size: 1rem; } ", 2000)
+	if got := clampSourceLine(long); len(got) > ranking.MaxRenderedLineChars+200 {
+		t.Errorf("clampSourceLine left %d chars", len(got))
+	} else if !strings.Contains(got, "line truncated by prism") {
+		t.Error("truncation must be stated in-band, not silent")
+	}
+	if short := "a normal line"; clampSourceLine(short) != short {
+		t.Error("normal lines must pass through byte-for-byte")
+	}
+	big := strings.Repeat("x\n", 60_000) // ~120KB section
+	out := truncateSection(big, 500, "dashboard.py")
+	if n := len(out); n > 500*4+300 {
+		t.Errorf("truncateSection returned %d bytes for a 500-token ceiling", n)
+	}
+	if !strings.Contains(out, "dashboard.py") || !strings.Contains(out, "truncated") {
+		t.Error("truncation must name the file and say it happened")
 	}
 }
