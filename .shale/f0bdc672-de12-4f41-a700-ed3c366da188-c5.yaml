@@ -1,0 +1,100 @@
+shale_version: "0"
+id: f0bdc672-de12-4f41-a700-ed3c366da188-c5
+created_at: 2026-08-09T22:17:35.476582Z
+finalized_at: 2026-08-09T22:19:30.205116Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/drift.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:18:33.852871Z
+commands:
+    - cmd: |-
+        git add go.mod go.sum && git commit -q -m "deps: grove v0.28.0 -> v0.28.1 (actionable store-open errors)
+
+        An unwritable .grove surfaced as sqlite's bare \"unable to open database
+        file (14)\" — no path, no cause. grove now names the db path and the fix.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo" && git tag v0.39.2 && git push -q origin main v0.39.2 && echo pushed
+      at: 2026-08-09T22:17:35.476582Z
+      classified: other
+    - cmd: 'until [ -n "$(gh run list -R provasign/prism --workflow release.yml --limit 1 --json conclusion --jq ''.[0].conclusion // empty'')" ]; do sleep 20; done; gh run list -R provasign/prism --workflow release.yml --limit 1 --json conclusion,displayTitle --jq ''.[0] | "\(.displayTitle): \(.conclusion)"''; gh run list -R provasign/grove --limit 2 --json conclusion,displayTitle,status --jq ''.[] | "\(.displayTitle): \(.status) \(.conclusion)"'''
+      at: 2026-08-09T22:17:46.309812Z
+      classified: other
+    - cmd: ~/bin/prism search "have changed since delivery" --scope text --format text . 2>&1 | head -8
+      at: 2026-08-09T22:18:20.050004Z
+      classified: other
+    - cmd: sed -n '220,300p' internal/mcp/drift.go
+      at: 2026-08-09T22:18:22.618516Z
+      classified: other
+    - cmd: |-
+        cat > internal/mcp/drift_graphkey_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"strings"
+        	"testing"
+        )
+
+        // Graph deliveries live in the same session LRU as file deliveries, keyed
+        // under a "graph://" scheme. StaleContextWarning used to ReadFile those keys,
+        // fail forever, and warn on every call that a "file" had changed — advising
+        // prism_read on an unreadable key. Graph entries must be skipped.
+        func TestStaleContextWarningSkipsGraphDeliveries(t *testing.T) {
+        	h := newTestHandler(t)
+        	h.Session.Record(`graph://prism_map?{"depth":2}`, "abc123", 5000, "full")
+        	if w := h.StaleContextWarning(); w != "" {
+        		t.Errorf("graph delivery flagged as stale file: %q", w)
+        	}
+        	// A genuinely missing tracked FILE still warns.
+        	h.Session.Record("no/such/file.go", "def456", 100, "full")
+        	w := h.StaleContextWarning()
+        	if !strings.Contains(w, "no/such/file.go") {
+        		t.Errorf("missing file not flagged: %q", w)
+        	}
+        	if strings.Contains(w, "graph://") {
+        		t.Errorf("graph key leaked into warning: %q", w)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run TestStaleContextWarningSkipsGraphDeliveries 2>&1 | tail -3
+      at: 2026-08-09T22:18:43.707782Z
+      classified: test
+    - cmd: ~/bin/prism search "RecentEntries" --scope text --format text . 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], hh['line']) for h in d.get('textHits',[]) for hh in h['hits']]"
+      at: 2026-08-09T22:18:52.400203Z
+      classified: other
+    - cmd: sed -n '60,100p' internal/mcp/drift.go
+      at: 2026-08-09T22:18:55.582893Z
+      classified: other
+    - cmd: |-
+        cat >> internal/mcp/drift_graphkey_test.go <<'EOF'
+
+        // prism_drift shares the LRU sweep and had the same defect.
+        func TestToolDriftSkipsGraphDeliveries(t *testing.T) {
+        	h := newTestHandler(t)
+        	h.Session.Record(`graph://prism_dead_code?{}`, "abc123", 5000, "full")
+        	out, err := h.toolDrift(t.Context(), nil)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	report := out.(DriftReport)
+        	if report.CheckedFiles != 0 || report.ChangedFiles != 0 {
+        		t.Errorf("graph delivery counted as drifted file: %+v", report)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ 2>&1 | tail -2
+      at: 2026-08-09T22:19:18.485116Z
+      classified: test
+notes:
+    - text: continuation of session f0bdc672-de12-4f41-a700-ed3c366da188 — events captured after its evidence was finalized
+      at: 2026-08-09T22:17:35.476582Z
+redactions: 0
