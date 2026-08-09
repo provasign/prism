@@ -97,6 +97,9 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 	wg.Wait()
 
 	// Deterministic output: walk order, not goroutine completion order.
+	if ctx.Err() != nil {
+		res.TimedOut = true
+	}
 	sortFileHits(results)
 	for _, fh := range results {
 		for _, h := range fh.hits {

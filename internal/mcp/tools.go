@@ -1050,6 +1050,14 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
 		}
+		if r.TimedOut {
+			out["timedOut"] = true
+			out["warning"] = "the text search hit its deadline before finishing — " +
+				"these results are INCOMPLETE and an empty list does NOT mean the " +
+				"string is absent. The built-in scanner is in use because neither " +
+				"ripgrep nor grep was found on this server's PATH; installing " +
+				"ripgrep fixes both the speed and this warning."
+		}
 		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
 			out["resolvedNote"] = n
 		}

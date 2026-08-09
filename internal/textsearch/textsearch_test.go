@@ -211,3 +211,49 @@ func TestInvalidRegexFallsBackToLiteral(t *testing.T) {
 		t.Errorf("invalid regex must degrade to literal match, got %v (backend %s)", r.Hits, r.Backend)
 	}
 }
+
+// TestVenvDirectoriesAreExcluded: a virtualenv named "env" or "venv" has no
+// leading dot, so the hidden-directory rule misses it. Walking one made the
+// native scanner blow its deadline and return NOTHING for a string that was
+// in the project's own source — indistinguishable from "no matches".
+func TestVenvDirectoriesAreExcluded(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x = st.checkbox(\"hi\")\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("dashboard.py")
+	for _, junk := range []string{
+		"env/lib/python3.9/site-packages/streamlit/app.py",
+		"venv/lib/python3.11/site-packages/pkg/mod.py",
+		".venv/lib/x.py", ".tox/py39/lib/y.py",
+	} {
+		write(junk)
+	}
+	for _, r := range []Result{
+		nativeSearch(context.Background(), dir, "st.checkbox", Options{}.withDefaults()),
+		Search(context.Background(), dir, "st.checkbox", Options{}),
+	} {
+		if len(r.Hits) != 1 || r.Hits[0].File != "dashboard.py" {
+			t.Errorf("backend %s: want exactly dashboard.py, got %v", r.Backend, r.Hits)
+		}
+	}
+}
+
+// TestBinResolvesOnlyItsOwnBackend: bin() must not hand one engine's path to
+// another — grep and rg take different flags, so the call just fails.
+func TestBinResolvesOnlyItsOwnBackend(t *testing.T) {
+	other := "grep"
+	if Backend() == "grep" {
+		other = "rg"
+	}
+	if got := bin(other); got != other {
+		t.Errorf("bin(%q) = %q — returned the detected backend's path", other, got)
+	}
+}

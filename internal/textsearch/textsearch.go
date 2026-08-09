@@ -15,6 +15,7 @@ package textsearch
 import (
 	"bufio"
 	"context"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -33,9 +34,16 @@ type Hit struct {
 
 // Result is the outcome of one search.
 type Result struct {
-	Hits      []Hit  `json:"hits"`
-	Backend   string `json:"backend"` // "rg" | "grep" | "native"
-	Truncated bool   `json:"truncated,omitempty"`
+	Hits    []Hit  `json:"hits"`
+	Backend string `json:"backend"` // "rg" | "grep" | "native"
+	// Truncated: hit caps were reached. TimedOut: the deadline fired before
+	// the search finished — the distinction matters because an empty result
+	// from a timeout is indistinguishable from "no matches" to a caller, and
+	// silently reads as "that string is not in the repo" (measured: a native
+	// scan of an unexcluded virtualenv returned nothing for a string in the
+	// project's own source).
+	Truncated bool `json:"truncated,omitempty"`
+	TimedOut  bool `json:"timedOut,omitempty"`
 }
 
 // Options bound a search. Zero values get safe defaults.
@@ -67,6 +75,13 @@ func (o Options) withDefaults() Options {
 var excludeDirs = []string{
 	".git", ".grove", ".cache", "node_modules", "vendor",
 	"dist", "build", "target", "__pycache__",
+	// Virtualenvs and dependency trees. A venv named "env" or "venv" has no
+	// leading dot, so the hidden-directory rule does not catch it — measured:
+	// a Streamlit project with env/lib/python3.9/site-packages made the native
+	// scanner walk thousands of minified bundles, blow its deadline, and
+	// return NOTHING for a string that was in the repo's own source.
+	"env", "venv", "site-packages", ".venv", ".tox", ".mypy_cache",
+	".pytest_cache", ".ruff_cache", ".gradle", ".terraform", "Pods",
 }
 
 // maxLineLen truncates pathological lines (minified JS) so one hit cannot
@@ -74,20 +89,49 @@ var excludeDirs = []string{
 const maxLineLen = 250
 
 var (
-	detectOnce sync.Once
-	backend    string
+	detectOnce  sync.Once
+	backend     string
+	backendPath string // absolute path when PATH lookup failed but the binary exists
 )
+
+// lookup finds a binary on PATH, then at known absolute locations.
+func lookup(name string, fallbacks ...string) string {
+	if p, err := exec.LookPath(name); err == nil {
+		return p
+	}
+	for _, p := range fallbacks {
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+			return p
+		}
+	}
+	return ""
+}
+
+// bin returns the executable to run for name: the resolved absolute path when
+// name IS the detected backend, else name itself. Returning backendPath
+// unconditionally made runGrep execute ripgrep whenever rg was the detected
+// backend — the two take different flags, so the call simply failed.
+func bin(name string) string {
+	if name == Backend() && backendPath != "" {
+		return backendPath
+	}
+	return name
+}
 
 // Backend reports which engine this process will use: "rg", "grep", or
 // "native". Detected once; the answer never changes within a process.
 func Backend() string {
 	detectOnce.Do(func() {
-		if _, err := exec.LookPath("rg"); err == nil {
-			backend = "rg"
+		// An MCP server is spawned by the editor, not by a login shell, so its
+		// PATH can be minimal or empty — measured: a server reporting backend
+		// "native" on a machine whose shell found grep fine. Fall back to the
+		// usual absolute locations before giving up on the fast engines.
+		if p := lookup("rg", "/opt/homebrew/bin/rg", "/usr/local/bin/rg", "/usr/bin/rg"); p != "" {
+			backend, backendPath = "rg", p
 			return
 		}
-		if _, err := exec.LookPath("grep"); err == nil {
-			backend = "grep"
+		if p := lookup("grep", "/usr/bin/grep", "/bin/grep", "/opt/homebrew/bin/grep"); p != "" {
+			backend, backendPath = "grep", p
 			return
 		}
 		backend = "native"
@@ -139,7 +183,7 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		args = append(args, "--glob", "!"+d+"/")
 	}
 	args = append(args, "-e", pattern, "--", ".")
-	return runLineTool(ctx, root, "rg", args, nil, opts)
+	return runLineTool(ctx, root, bin("rg"), args, nil, opts)
 }
 
 // runGrep shells out to grep, pinned to the C locale — under a UTF-8 locale
@@ -155,7 +199,7 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 		args = append(args, "--exclude-dir="+d)
 	}
 	args = append(args, "-e", pattern, "--", ".")
-	return runLineTool(ctx, root, "grep", args, []string{"LC_ALL=C"}, opts)
+	return runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)
 }
 
 // runLineTool runs an external searcher emitting `path:line:text` lines and
@@ -169,7 +213,7 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		cmd.Env = append(cmd.Environ(), extraEnv...)
 	}
 	out, err := cmd.Output()
-	res := Result{Backend: bin}
+	res := Result{Backend: filepath.Base(bin)}
 	sc := bufio.NewScanner(strings.NewReader(string(out)))
 	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
 	for sc.Scan() {

@@ -1539,9 +1539,29 @@ func cmdSearch(args []string) int {
 	limit := 25
 	dir := "."
 	format := formatText
+	scope := ""
+	regex := false
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--scope":
+			// The steering has documented `prism search <t> --scope text` since
+			// v0.37.0 while this parser knew only --limit and --format, so the
+			// flag was dropped and every CLI text search silently returned the
+			// merged symbol view instead. A Bash-only subagent following its own
+			// instructions got the wrong answer shape and no indication why.
+			if i+1 < len(args) {
+				switch args[i+1] {
+				case "text", "symbols", "both":
+					scope = args[i+1]
+				default:
+					fmt.Fprintf(os.Stderr, "search: --scope wants text|symbols|both, got %q\n", args[i+1])
+					return 2
+				}
+				i++
+			}
+		case "--regex":
+			regex = true
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1558,12 +1578,23 @@ func cmdSearch(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			// An unknown flag used to be dropped in silence — the mechanism
+			// behind this whole class of bug. Fail loudly instead.
+			if strings.HasPrefix(a, "-") {
+				fmt.Fprintf(os.Stderr, "search: unknown flag %q\n", a)
+				return 2
 			}
+			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_search", map[string]any{"query": query, "limit": limit})
+	callArgs := map[string]any{"query": query, "limit": limit}
+	if scope != "" {
+		callArgs["scope"] = scope
+	}
+	if regex {
+		callArgs["regex"] = true
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
