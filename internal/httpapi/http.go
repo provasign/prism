@@ -24,22 +24,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /status", s.savings) // alias
 
-	// Every tool Handler.Invoke dispatches. This list drifted badly — the
-	// unified task tool, node, references, map, verify and arch_check were all
-	// unreachable over HTTP (404) because they were added to Invoke and never
-	// here. Keep it in sync with the Invoke switch.
-	for _, name := range []string{
-		"prism",
-		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_node", "prism_references",
-		"prism_change_impact", "prism_missing_implementations",
-		"prism_dead_code", "prism_rename_plan",
-		"prism_map", "prism_verify", "prism_arch_check",
-		"prism_index",
-		// CLI-only for agents, but still Invoke-able and useful over HTTP.
-		"prism_resolve", "prism_edges", "prism_cycles", "prism_drift",
-		"prism_compact", "prism_savings", "prism_feedback",
-	} {
+	// Routes derive from mcp.DispatchableTools — the hand-maintained list
+	// drifted until six tools 404'd. One source of truth, one test pinning it.
+	for _, name := range mcp.DispatchableTools() {
 		n := name
 		mux.HandleFunc("POST /"+n, func(w http.ResponseWriter, r *http.Request) {
 			s.callTool(w, r, n)

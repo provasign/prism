@@ -222,7 +222,15 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	}
 	var seeds []seed
 	var unverifiedSeeds []string
+	// Symbols in test files are NOT contracts: a deleted test function has no
+	// callers that must migrate, yet each one used to surface as "review its
+	// old-contract dependents manually" — measured on a real diff, 3 deleted
+	// test funcs produced 3 of 7 flags with zero actionable content. A gate
+	// that mostly cries wolf gets clicked past.
 	addSeed := func(sym grove.SymbolRecord, before *grove.SymbolRecord, reason string) {
+		if isTestFilePath(sym.FilePath) {
+			return
+		}
 		switch sym.Kind {
 		case "function", "method", "constructor":
 			seeds = append(seeds, seed{sym, before, reason})
@@ -261,7 +269,14 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		}
 		for _, c := range fd.Changed {
 			if c.SignatureChanged && c.After != nil {
-				addSeed(*c.After, c.Before, "signature of "+displayQN(*c.After)+" changed")
+				// "signature of X changed" is wrong for a const whose VALUE
+				// changed; say what actually happened per kind.
+				word := "signature"
+				switch c.After.Kind {
+				case "const", "variable", "field":
+					word = "declaration"
+				}
+				addSeed(*c.After, c.Before, word+" of "+displayQN(*c.After)+" changed")
 				continue
 			}
 			// A pure declaration block (Go/TS interface, type alias) holds
@@ -371,6 +386,14 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		// base-signature parameter list, plus their (still correctly
 		// resolved) callers.
 		bc := h.baseContractImpact(ctx, sd.sym, sd.before)
+		if bc != nil && strings.HasPrefix(bc.Completeness, "base-contract-error") {
+			// Engine failure during enumeration: fail closed and SAY so.
+			unverifiedSeeds = append(unverifiedSeeds,
+				displayQN(sd.sym)+" — base-contract enumeration failed ("+
+					strings.TrimPrefix(bc.Completeness, "base-contract-error: ")+
+					"); dependents of the old signature were NOT checked")
+			bc = nil
+		}
 		if err != nil {
 			if bc == nil {
 				// FAIL CLOSED: a contract change whose blast radius could not
@@ -578,7 +601,13 @@ func (h *Handler) baseContractImpact(ctx context.Context, sym grove.SymbolRecord
 	}
 	cands, err := h.Grove.SearchSymbols(ctx, sym.Name, 200)
 	if err != nil {
-		return nil
+		// An engine failure here must not read as "no old-signature
+		// survivors": the caller treats nil as a normal empty enumeration
+		// and the catch rate silently drops. Report it as its own failure.
+		return &grove.ChangeImpactResult{
+			Query:        displayQN(sym),
+			Completeness: "base-contract-error: " + err.Error(),
+		}
 	}
 	const maxFamilyCallers = 60
 	var family []grove.SymbolRecord
@@ -939,6 +968,19 @@ func (h *Handler) changeImpactFor(ctx context.Context, sym grove.SymbolRecord) (
 		lastErr = err
 	}
 	return nil, lastErr
+}
+
+// isTestFilePath matches test files across the supported languages.
+func isTestFilePath(p string) bool {
+	base := p
+	if i := strings.LastIndexByte(p, '/'); i >= 0 {
+		base = p[i+1:]
+	}
+	return strings.HasSuffix(base, "_test.go") ||
+		strings.HasPrefix(base, "test_") ||
+		strings.Contains(base, ".test.") || strings.Contains(base, ".spec.") ||
+		strings.Contains(p, "/test/") || strings.Contains(p, "/tests/") ||
+		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/")
 }
 
 func displayQN(s grove.SymbolRecord) string {

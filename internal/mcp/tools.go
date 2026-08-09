@@ -123,8 +123,34 @@ type FeedbackEntry struct {
 
 // --- Tool dispatch -------------------------------------------------------
 
+// DispatchableTools returns every tool name Invoke can route — the single
+// source of truth for surfaces that expose tools by name (the HTTP server).
+// The httpapi route list was maintained by hand and drifted so far that six
+// tools 404'd for months; anything that needs "all tools" derives from this.
+func DispatchableTools() []string {
+	return []string{
+		"prism",
+		"prism_query", "prism_read", "prism_search", "prism_lookup",
+		"prism_node", "prism_references", "prism_resolve", "prism_edges",
+		"prism_change_impact", "prism_missing_implementations",
+		"prism_dead_code", "prism_rename_plan",
+		"prism_map", "prism_cycles", "prism_verify", "prism_arch_check",
+		"prism_index", "prism_drift",
+		"prism_compact", "prism_savings", "prism_feedback",
+	}
+}
+
 // Invoke routes a tools/call to the right handler.
-func (h *Handler) Invoke(name string, args map[string]any) (any, error) {
+func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) {
+	// A panicking tool must fail THAT CALL, not the process: the stdio MCP
+	// server is the agent's whole session, and one nil-pointer in one tool
+	// killed all of it (found by the dispatch-pinning test — toolDeadCode
+	// panics on a Grove-less handler rather than erroring).
+	defer func() {
+		if r := recover(); r != nil {
+			out, err = nil, fmt.Errorf("%s: internal error: %v", name, r)
+		}
+	}()
 	// Most tools are interactive-latency operations; 60s is a generous cap.
 	// The whole-repo operations need the same headroom prism_index already
 	// got: verify now delta-reindexes first and then runs a per-seed impact
@@ -398,7 +424,7 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
 				},
-				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
+				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},
 			},
 		}
 	case "prism_lookup":
@@ -619,9 +645,10 @@ func toolDescription(name string) string {
 			"Prism finds those symbols then expands through the call graph (callers, callees), AND runs a " +
 			"real full-text search (rg/grep) for each term in the same call — matches outside any symbol " +
 			"(comments, configs, docs) arrive as textMatches, so a separate grep call is never needed. " +
-			"For bug-fix/implement tasks it delivers verbatim LINE-NUMBERED source windows plus each " +
-			"anchor's callers — edit-ready, identical to Read output; do NOT re-read " +
-			"the files it shows. Unchanged files already delivered this session come back as one-line " +
+			"For bug-fix/implement tasks it delivers LINE-NUMBERED source windows plus each " +
+			"anchor's callers — edit-ready; lines under 1200 chars are byte-for-byte verbatim, " +
+			"longer ones carry an in-band truncation marker (Read the file before editing those). " +
+			"Do NOT re-read the files it shows. Unchanged files already delivered this session come back as one-line " +
 			"cached pointers. delivery=\"symbols\" forces the compact per-symbol list. " +
 			"Use include=[\"docs\"] for doc filenames only."
 	case "prism_read":
@@ -1043,7 +1070,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	// the enriched path cost ~1.5× on ordinary bug fixes for zero benefit).
 	if scope == "text" {
 		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
-			MaxHits: limit * 2, Timeout: textSearchTimeout, Regex: regex,
+			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 		})
 		out := map[string]any{
 			"textHits":    h.renderTextMatches(r.Hits),
@@ -1126,13 +1153,19 @@ func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any,
 		}
 		byFile[r.File] = append(byFile[r.File], entry)
 	}
-	return map[string]any{
+	out := map[string]any{
 		"name":        res.Name,
 		"count":       len(res.Refs),
 		"definitions": res.DefCount,
 		"ambiguous":   res.Ambiguous,
 		"byFile":      byFile,
-	}, nil
+	}
+	if res.SkippedFiles > 0 {
+		out["skippedFiles"] = res.SkippedFiles
+		out["warning"] = fmt.Sprintf("%d file(s) could not be read — this reference "+
+			"set may be incomplete", res.SkippedFiles)
+	}
+	return out, nil
 }
 
 func (h *Handler) toolResolve(ctx context.Context, args map[string]any) (any, error) {

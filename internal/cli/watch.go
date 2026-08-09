@@ -51,9 +51,10 @@ func cmdWatch(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("watch", a)
 			}
+			dir = a
 		}
 	}
 

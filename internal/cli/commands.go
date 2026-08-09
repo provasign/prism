@@ -294,9 +294,11 @@ func cmdInit(args []string) int {
 	// 1. Write prism.yaml into the project. Grove is embedded in-process now,
 	// so the file no longer needs grove_url / grove_binary.
 	yaml := fmt.Sprintf(`version: 1
-# model: auto  # Prism detects the active model from the MCP initialize handshake.
-#               # Override here only if auto-detection fails, e.g.:
-#               # model: "claude-sonnet-4-6"
+# model: ""    # Optional: name the model driving this repo (e.g. "claude-sonnet-4-6")
+#               # to size context budgets. There is NO auto-detection — the MCP
+#               # initialize handshake does not carry the model — so unset means
+#               # the default 200k-token window. Agents can also pass model= per
+#               # call, which overrides this.
 profile: "%s"
 `, cfg.Profile)
 	prismYAML := filepath.Join(abs, "prism.yaml")
@@ -1463,9 +1465,10 @@ func cmdQuery(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("query", a)
 			}
+			dir = a
 		}
 	}
 	invokeArgs := map[string]any{"task": task, "limit": limit}
@@ -1516,9 +1519,10 @@ func cmdRead(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("read", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": file})
@@ -1639,9 +1643,10 @@ func cmdLookup(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("lookup", a)
 			}
+			dir = a
 		}
 	}
 	callArgs := map[string]any{"name": name}
@@ -1728,9 +1733,10 @@ func cmdTask(args []string) int {
 				}
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("task", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism", callArgs)
@@ -1775,9 +1781,10 @@ func cmdNode(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("node", a)
 			}
+			dir = a
 		}
 	}
 	callArgs := map[string]any{"name": name}
@@ -1809,7 +1816,9 @@ func cmdResolve(args []string) int {
 				format = outputFormat(args[i+1])
 			}
 			i++
-		} else if !strings.HasPrefix(a, "-") {
+		} else if strings.HasPrefix(a, "-") {
+			return rejectUnknownFlag("resolve", a)
+		} else {
 			dir = a
 		}
 	}
@@ -1858,9 +1867,10 @@ func cmdEdges(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("edges", a)
 			}
+			dir = a
 		}
 	}
 	callArgs := map[string]any{"name": name, "direction": direction}
@@ -1896,9 +1906,10 @@ func cmdReferences(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("references", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_references", map[string]any{"name": name})
@@ -1931,9 +1942,10 @@ func cmdChangeImpact(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("change-impact", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_change_impact", map[string]any{"query": query})
@@ -1966,9 +1978,10 @@ func cmdRenamePlan(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("rename-plan", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_rename_plan",
@@ -2002,9 +2015,10 @@ func cmdMissingImplementations(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("missing-implementations", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_missing_implementations", map[string]any{"query": query})
@@ -2041,9 +2055,10 @@ func cmdDeadCode(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("dead-code", a)
 			}
+			dir = a
 		}
 	}
 	callArgs := map[string]any{}
@@ -2109,9 +2124,10 @@ func cmdFeedback(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("feedback", a)
 			}
+			dir = a
 		}
 	}
 
@@ -3181,4 +3197,15 @@ func printNodeEdges(m map[string]any) {
 		}
 		fmt.Printf("//   %s (%v): %s\n", g, total, line)
 	}
+}
+
+// rejectUnknownFlag is the shared guard every command parser calls from its
+// default case. Silently dropping an unrecognized flag is the mechanism
+// behind two shipped bugs (`--format` ignored by map/cycles, `--scope`
+// ignored by search): the command runs, does something other than what was
+// asked, and gives no indication why. 18 of 19 parsers still did this after
+// the audit; now none do.
+func rejectUnknownFlag(cmd, flag string) int {
+	fmt.Fprintf(os.Stderr, "%s: unknown flag %q (see prism help)\n", cmd, flag)
+	return 2
 }

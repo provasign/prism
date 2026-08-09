@@ -379,3 +379,17 @@ func TestServerNotificationNoResponse(t *testing.T) {
 		t.Errorf("server sent response to notification: %q", out.String())
 	}
 }
+
+// TestDispatchableToolsAllDispatch pins DispatchableTools to Invoke: every
+// listed name must route somewhere (any error but "unknown tool" is fine —
+// most tools need Grove), and dispatchable-but-unlisted names cannot happen
+// silently because the HTTP server derives its routes from this list.
+func TestDispatchableToolsAllDispatch(t *testing.T) {
+	h := newTestHandler(t)
+	for _, name := range DispatchableTools() {
+		_, err := h.Invoke(name, map[string]any{})
+		if err != nil && strings.Contains(err.Error(), "unknown tool") {
+			t.Errorf("%s is listed as dispatchable but Invoke does not know it", name)
+		}
+	}
+}

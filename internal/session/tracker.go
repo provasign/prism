@@ -70,9 +70,16 @@ func (t *Tracker) Record(filePath, contentHash string, tokensDelivered int64, le
 	}
 }
 
-// Lookup returns the entry for filePath if it exists. The second return
-// value matches whether the stored contentHash is the same as the supplied
-// one — false means the file changed since last seen.
+// Lookup returns a COPY of the entry for filePath if it exists. The second
+// return value reports presence; the third whether the stored contentHash
+// matches the supplied one.
+//
+// A copy, not the live pointer: five call sites read entry fields after this
+// mutex is released, and under `prism serve` requests run concurrently on one
+// shared Handler — a concurrent Record mutated the same struct mid-read
+// (this exact aliasing already produced the graphcache seen-count bug, single-
+// threaded). SymbolSHAs is deep-copied for the same reason RecentEntries does
+// it: the compressor reads that map while the indexer may replace it.
 func (t *Tracker) Lookup(filePath, contentHash string) (*Entry, bool, bool) {
 	filePath = normalizeFilePath(filePath)
 	t.mu.Lock()
@@ -83,7 +90,15 @@ func (t *Tracker) Lookup(filePath, contentHash string) (*Entry, bool, bool) {
 	}
 	e := el.Value.(*Entry)
 	t.lru.MoveToFront(el)
-	return e, true, e.ContentHash == contentHash
+	cp := *e
+	if e.SymbolSHAs != nil {
+		shas := make(map[string]string, len(e.SymbolSHAs))
+		for k, v := range e.SymbolSHAs {
+			shas[k] = v
+		}
+		cp.SymbolSHAs = shas
+	}
+	return &cp, true, e.ContentHash == contentHash
 }
 
 // RecentEntries returns copies of up to n entries, most recently used first.

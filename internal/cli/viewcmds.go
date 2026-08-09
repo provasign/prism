@@ -53,9 +53,10 @@ func cmdMap(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("map", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_map", callArgs)
@@ -95,9 +96,10 @@ func cmdCycles(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("cycles", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_cycles", callArgs)
@@ -148,9 +150,10 @@ func cmdArch(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("arch", a)
 			}
+			dir = a
 		}
 	}
 	if len(extraDeny) > 0 {
@@ -259,9 +262,10 @@ func cmdVerify(args []string) int {
 				i++
 			}
 		default:
-			if !strings.HasPrefix(a, "-") {
-				dir = a
+			if strings.HasPrefix(a, "-") {
+				return rejectUnknownFlag("verify", a)
 			}
+			dir = a
 		}
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_verify", callArgs)
