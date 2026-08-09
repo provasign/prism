@@ -74,7 +74,15 @@ func (h *Handler) toolDrift(ctx context.Context, _ map[string]any) (any, error) 
 			fmt.Fprintf(os.Stderr, "prism_drift: index refresh failed (%v); symbol detail degraded\n", err)
 		}
 	}
-	entries := h.Session.RecentEntries(maxDriftFiles)
+	all := h.Session.RecentEntries(maxDriftFiles)
+	// Drop graph:// delivery entries — not files; recomputed fresh on every
+	// call (see StaleContextWarning for the failure this caused).
+	entries := all[:0]
+	for _, e := range all {
+		if !strings.HasPrefix(e.FilePath, "graph://") {
+			entries = append(entries, e)
+		}
+	}
 	fuseByFile := loadFuseDrift(h.Root)
 
 	report := DriftReport{CheckedFiles: len(entries)}
@@ -253,6 +261,14 @@ func (h *Handler) StaleContextWarning() string {
 	}
 	var changed []string
 	for _, entry := range h.Session.RecentEntries(maxWarningFiles) {
+		// The LRU also tracks graph deliveries under a "graph://" scheme
+		// (see graphDeliveryKey). Those are not files: ReadFile always
+		// fails, which flagged every graph delivery as permanently stale
+		// and told the agent to prism_read an unreadable key. Graph
+		// freshness is proven by recomputation on every call — skip.
+		if strings.HasPrefix(entry.FilePath, "graph://") {
+			continue
+		}
 		abs := filepath.Join(h.Root, filepath.FromSlash(entry.FilePath))
 		content, err := os.ReadFile(abs)
 		if err != nil || compression.Hash(string(content)) != entry.ContentHash {
