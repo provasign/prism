@@ -7,13 +7,6 @@ import (
 	"strings"
 )
 
-// AgentMode controls which steering instructions prism init writes.
-const (
-	AgentModeMCP  = "mcp"  // MCP tools only (prism_query, prism_read, …)
-	AgentModeCLI  = "cli"  // CLI via Bash only (prism query --format text, …)
-	AgentModeBoth = "both" // MCP primary + CLI fallback (default)
-)
-
 // Config holds the resolved Prism configuration.
 type Config struct {
 	GroveURL    string
@@ -26,9 +19,6 @@ type Config struct {
 	Profile       string
 	MaxCacheFiles int
 	Port          int
-	// AgentMode controls which steering instructions are written by prism init.
-	// Valid values: "mcp", "cli", "both" (default).
-	AgentMode string
 	// ArchDeny holds declared architecture rules, one per `arch_deny:` line
 	// in prism.yaml: "<from> -> <to>" where each side is a component name
 	// (directory), a prefix (covers subdirectories), a glob, or "*".
@@ -49,8 +39,7 @@ func Default() *Config {
 		Profile:       envOr("PRISM_PROFILE", "default"),
 		MaxCacheFiles: 50000,
 		Port:          8888,
-		AgentMode:     AgentModeBoth,
-	}
+		}
 	return c
 }
 
@@ -88,10 +77,9 @@ func LoadFromDir(dir string) (*Config, error) {
 		case "profile":
 			c.Profile = v
 		case "agent_mode":
-			switch v {
-			case AgentModeMCP, AgentModeCLI, AgentModeBoth:
-				c.AgentMode = v
-			}
+			// Vestigial: init stopped writing this in v0.38.0 and nothing has
+			// ever consumed it at runtime. Accepted and discarded so existing
+			// prism.yaml files stay loadable; not stored.
 		case "arch_deny":
 			// Repeatable. Inline comments allowed after '#'.
 			if j := strings.IndexByte(v, '#'); j >= 0 {

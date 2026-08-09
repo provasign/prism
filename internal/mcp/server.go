@@ -10,6 +10,7 @@
 package mcp
 
 import (
+	"os"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -78,6 +79,44 @@ var supportedProtocolVersions = map[string]bool{
 	"2025-06-18": true,
 }
 
+// startupBinaryModTime is the mtime of the executable when this process
+// started; a later mtime on disk means the binary was replaced (brew
+// upgrade, go build) and this server is running superseded behavior.
+var startupBinaryModTime = func() int64 {
+	exe, err := os.Executable()
+	if err != nil {
+		return 0
+	}
+	fi, err := os.Stat(exe)
+	if err != nil {
+		return 0
+	}
+	return fi.ModTime().Unix()
+}()
+
+var staleBinaryWarned bool
+
+// staleBinaryNote reports once per session when the on-disk binary is newer
+// than the running server.
+func staleBinaryNote() string {
+	if staleBinaryWarned || startupBinaryModTime == 0 {
+		return ""
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	fi, err := os.Stat(exe)
+	if err != nil || fi.ModTime().Unix() <= startupBinaryModTime {
+		return ""
+	}
+	staleBinaryWarned = true
+	return "⚠ prism was upgraded on disk after this MCP server started (running " +
+		version.Version + "). This server keeps serving the OLD behavior — " +
+		"including any bugs fixed since — until the session restarts. " +
+		"Tell the user to restart their agent to pick up the new binary."
+}
+
 // negotiateProtocolVersion echoes the client's requested protocolVersion when
 // it is one we support (required by the MCP spec), otherwise falls back to our
 // latest. Maximizes compatibility across clients (Claude Code, Cursor, VS Code,
@@ -129,6 +168,14 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			if warning := s.handler.StaleContextWarning(); warning != "" {
 				content = append(content, map[string]string{"type": "text", "text": warning})
 			}
+		}
+		// Stale-SERVER delivery: an MCP server outlives upgrades. During one
+		// audit, the session's server silently dropped a parameter added two
+		// releases earlier and emitted warnings pointing at a tool that no
+		// longer existed — fixed on disk, live in the process, with nothing
+		// anywhere saying so. One stat per call is the price of saying it.
+		if note := staleBinaryNote(); note != "" {
+			content = append(content, map[string]string{"type": "text", "text": note})
 		}
 		return map[string]any{"content": content}, nil
 	default:

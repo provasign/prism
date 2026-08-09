@@ -373,10 +373,6 @@ func toolSchema(name string) map[string]any {
 					"items":       map[string]any{"type": "string", "enum": []string{"graph", "docs"}},
 					"description": "Categories: graph (callers/callees), docs (filenames only). Default: [\"graph\"].",
 				},
-				"graph_depth": map[string]any{
-					"type":        "integer",
-					"description": "BFS hops: 1=immediate callers, 2=default, 3+=blast radius.",
-				},
 				"delivery": map[string]any{
 					"type":        "string",
 					"enum":        []string{"source", "symbols"},
@@ -883,8 +879,9 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		includeSet = map[string]bool{"graph": true}
 	}
 
-	// graph_depth is accepted for backward compatibility but expansion is a
-	// fixed one-hop typed call neighborhood (see selectContext).
+	// Note: graph_depth was removed from the schema — it was advertised for
+	// months while no code path read it, so tuning it silently did nothing.
+	// Expansion is a fixed one-hop typed call neighborhood (selectContext).
 	stamp("pre-selectContext")
 	sel, err := h.selectContext(ctx, selectParams{
 		task:            task,
@@ -989,20 +986,6 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 	return total
 }
 // ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
-func trimSymbolID(id string) string {
-	if i := strings.LastIndex(id, "@"); i > 0 {
-		return id[:i]
-	}
-	return id
-}
-
-func isExportedName(name string) bool {
-	if name == "" {
-		return false
-	}
-	ch := name[0]
-	return ch >= 'A' && ch <= 'Z'
-}
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
 	path := stringArg(args, "file", stringArg(args, "path", ""))

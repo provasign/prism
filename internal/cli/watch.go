@@ -130,8 +130,18 @@ func cmdWatch(args []string) int {
 			// new package) — fsnotify does not recurse on its own.
 			if ev.Op&fsnotify.Create != 0 {
 				if fi, err := os.Stat(ev.Name); err == nil && fi.IsDir() {
-					if !watchIgnoreDir(filepath.Base(ev.Name)) {
+					// Full-path check, not basename: a dir created UNDER
+					// node_modules/vendor has an innocent basename and was
+					// getting its whole tree watched — an npm install wired
+					// the watcher into thousands of dependency dirs.
+					if !watchIgnorePath(root, ev.Name) && !watchIgnoreDir(filepath.Base(ev.Name)) {
 						addTree(ev.Name)
+						// The files inside arrived before their watch existed,
+						// so they will never produce events of their own. The
+						// old `continue` skipped scheduling here, which left a
+						// checked-out or generated package unindexed until
+						// some unrelated edit happened.
+						scheduleReindex()
 					}
 					continue
 				}
