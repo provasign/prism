@@ -70,18 +70,41 @@ func (o Options) withDefaults() Options {
 	return o
 }
 
-// excludeDirs are pruned by the grep and native backends. ripgrep prunes
-// hidden dirs and .gitignore'd trees itself, which covers the same set.
-var excludeDirs = []string{
-	".git", ".grove", ".cache", "node_modules", "vendor",
-	"dist", "build", "target", "__pycache__",
-	// Virtualenvs and dependency trees. A venv named "env" or "venv" has no
-	// leading dot, so the hidden-directory rule does not catch it — measured:
-	// a Streamlit project with env/lib/python3.9/site-packages made the native
-	// scanner walk thousands of minified bundles, blow its deadline, and
-	// return NOTHING for a string that was in the repo's own source.
-	"env", "venv", "site-packages", ".venv", ".tox", ".mypy_cache",
-	".pytest_cache", ".ruff_cache", ".gradle", ".terraform", "Pods",
+// When an agent asks for a text search it is asking for ripgrep's semantics,
+// not prism's opinion of what it meant. Prism does NOT add its own exclusion
+// list: rg already skips .gitignore'd trees, hidden directories and binaries,
+// and a virtualenv is normally gitignored — so the case that motivated an
+// exclusion list is handled by the engine the agent expected. Overriding that
+// made prism silently unable to answer "where does this library define X",
+// which is a legitimate question about code that is really there.
+//
+// excludeDirs is therefore only what rg itself would skip and the fallbacks
+// cannot infer: prism's own state and the VCS directory. Everything else is
+// the agent's call.
+var excludeDirs = []string{".git", ".grove"}
+
+// gitignoreDirs approximates rg's .gitignore handling for the grep and native
+// fallbacks, which have none. Read from the repo's own .gitignore rather than
+// hardcoded, so prism skips exactly what the project says to skip — no more.
+func gitignoreDirs(root string) []string {
+	data, err := os.ReadFile(filepath.Join(root, ".gitignore"))
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, l := range strings.Split(string(data), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "#") || strings.HasPrefix(l, "!") {
+			continue
+		}
+		l = strings.TrimSuffix(strings.TrimPrefix(l, "/"), "/")
+		// Only plain directory names: a real glob needs a matcher, and
+		// guessing at one would skip files the agent asked about.
+		if l != "" && !strings.ContainsAny(l, "*?[]") {
+			out = append(out, l)
+		}
+	}
+	return out
 }
 
 // maxLineLen truncates pathological lines (minified JS) so one hit cannot
@@ -170,6 +193,11 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	args := []string{
 		"--no-config", "--line-number", "--no-heading", "--color=never",
 		"--ignore-case",
+		// rg honors .gitignore only INSIDE a git repository. A worktree, an
+		// unpacked tarball or a subdirectory checkout has the ignore file but
+		// no .git, and rg would then search everything the project asked it
+		// not to — including the venv that started all of this.
+		"--no-require-git",
 		"--max-count", strconv.Itoa(opts.MaxPerFile),
 		"--max-columns", strconv.Itoa(maxLineLen), "--max-columns-preview",
 		"--max-filesize", "2M",
@@ -177,12 +205,8 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")
 	}
-	// Explicit prunes: rg's own ignore logic needs a .gitignore to skip
-	// node_modules etc.; a repo without one must not behave differently.
-	for _, d := range excludeDirs {
-		args = append(args, "--glob", "!"+d+"/")
-	}
-	args = append(args, "-e", pattern, "--", ".")
+	// No prism-authored globs: rg's defaults ARE the requested semantics.
+	args = append(args, "--glob", "!.grove/", "-e", pattern, "--", ".")
 	return runLineTool(ctx, root, bin("rg"), args, nil, opts)
 }
 
@@ -195,7 +219,7 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 		mode = "-E"
 	}
 	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
-	for _, d := range excludeDirs {
+	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
 	args = append(args, "-e", pattern, "--", ".")

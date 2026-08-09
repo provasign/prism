@@ -36,8 +36,10 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 		return strings.Contains(strings.ToLower(line), needle)
 	}
 
-	skip := make(map[string]bool, len(excludeDirs))
-	for _, d := range excludeDirs {
+	// Same rule as the shelled-out engines: skip what the PROJECT says to
+	// skip, not what prism assumes. Hidden directories still go, matching rg.
+	skip := map[string]bool{}
+	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		skip[d] = true
 	}
 

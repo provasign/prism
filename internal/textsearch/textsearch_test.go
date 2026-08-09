@@ -25,6 +25,7 @@ func fixture(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
+	write(".gitignore", "node_modules/\n")
 	write("a.go", "package a\n\n// NeedleOne appears here\nfunc NeedleOne() {}\n")
 	write("sub/b.txt", "plain text with needleone lowercase\nno match line\n")
 	write("node_modules/dep/c.js", "needleone should be excluded\n")
@@ -212,11 +213,11 @@ func TestInvalidRegexFallsBackToLiteral(t *testing.T) {
 	}
 }
 
-// TestVenvDirectoriesAreExcluded: a virtualenv named "env" or "venv" has no
-// leading dot, so the hidden-directory rule misses it. Walking one made the
-// native scanner blow its deadline and return NOTHING for a string that was
-// in the project's own source — indistinguishable from "no matches".
-func TestVenvDirectoriesAreExcluded(t *testing.T) {
+// TestGitignoreIsHonoredNotPrismOpinion: an agent asking for a text search is
+// asking for ripgrep's semantics. Prism skips what the PROJECT gitignores —
+// not a hardcoded list of its own. A hardcoded list made prism unable to
+// answer "where does this library define X" about code that is really there.
+func TestGitignoreIsHonoredNotPrismOpinion(t *testing.T) {
 	dir := t.TempDir()
 	write := func(rel string) {
 		t.Helper()
@@ -229,20 +230,43 @@ func TestVenvDirectoriesAreExcluded(t *testing.T) {
 		}
 	}
 	write("dashboard.py")
-	for _, junk := range []string{
-		"env/lib/python3.9/site-packages/streamlit/app.py",
-		"venv/lib/python3.11/site-packages/pkg/mod.py",
-		".venv/lib/x.py", ".tox/py39/lib/y.py",
-	} {
-		write(junk)
+	write("env/lib/python3.9/site-packages/streamlit/app.py")
+	write("lib/helper.py") // NOT ignored: must remain searchable
+
+	// gitignored -> skipped, exactly as ripgrep would.
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("env/\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	for _, r := range []Result{
 		nativeSearch(context.Background(), dir, "st.checkbox", Options{}.withDefaults()),
 		Search(context.Background(), dir, "st.checkbox", Options{}),
 	} {
-		if len(r.Hits) != 1 || r.Hits[0].File != "dashboard.py" {
-			t.Errorf("backend %s: want exactly dashboard.py, got %v", r.Backend, r.Hits)
+		files := map[string]bool{}
+		for _, h := range r.Hits {
+			files[h.File] = true
 		}
+		if files["env/lib/python3.9/site-packages/streamlit/app.py"] {
+			t.Errorf("backend %s searched a gitignored tree", r.Backend)
+		}
+		if !files["dashboard.py"] || !files["lib/helper.py"] {
+			t.Errorf("backend %s missed project source: %v", r.Backend, r.Hits)
+		}
+	}
+
+	// NOT gitignored -> searched. The agent asked; prism does not second-guess.
+	if err := os.Remove(filepath.Join(dir, ".gitignore")); err != nil {
+		t.Fatal(err)
+	}
+	r := nativeSearch(context.Background(), dir, "st.checkbox", Options{}.withDefaults())
+	found := false
+	for _, h := range r.Hits {
+		if strings.Contains(h.File, "site-packages") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("a tree the project does NOT ignore must be searched — prism may not " +
+			"substitute its own exclusion policy for the agent's request")
 	}
 }
 
