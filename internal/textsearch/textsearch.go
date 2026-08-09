@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -84,8 +85,15 @@ func (o Options) withDefaults() Options {
 var excludeDirs = []string{".git", ".grove"}
 
 // gitignoreDirs approximates rg's .gitignore handling for the grep and native
-// fallbacks, which have none. Read from the repo's own .gitignore rather than
-// hardcoded, so prism skips exactly what the project says to skip — no more.
+// fallbacks, which have none. Read from the repo's own .gitignore so prism
+// skips what the project says to skip — no prism-authored policy.
+//
+// Known divergence from rg, stated rather than implied: only the ROOT
+// .gitignore is read, only plain directory names are honored (no globs, no
+// negations, no nested ignore files). On a repo that leans on those, the
+// grep/native fallbacks search MORE than rg would — never less — so the
+// failure mode is extra hits, not silent absence. `prism doctor` reports
+// which backend is active.
 func gitignoreDirs(root string) []string {
 	data, err := os.ReadFile(filepath.Join(root, ".gitignore"))
 	if err != nil {
@@ -210,6 +218,34 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	return runLineTool(ctx, root, bin("rg"), args, nil, opts)
 }
 
+// hiddenDirNames walks root (directories only, bounded) and returns the
+// distinct basenames of hidden directories, for literal --exclude-dir flags.
+// Literal names because "grep" may be GNU, BSD or ugrep and their glob
+// semantics for --exclude-dir disagree.
+func hiddenDirNames(root string, cap int) []string {
+	seen := map[string]bool{}
+	var out []string
+	_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || !d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if p != root && strings.HasPrefix(name, ".") {
+			if !seen[name] {
+				seen[name] = true
+				out = append(out, name)
+			}
+			return filepath.SkipDir // no need to walk inside what we exclude
+		}
+		if len(out) >= cap {
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	sort.Strings(out)
+	return out
+}
+
 // runGrep shells out to grep, pinned to the C locale — under a UTF-8 locale
 // GNU grep's multibyte path is several times slower, and byte-oriented
 // matching is exactly right for fixed-string code search.
@@ -218,7 +254,17 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	if regexUsable(pattern, opts) {
 		mode = "-E"
 	}
+	// Backend parity: rg skips hidden directories by default and the native
+	// scanner mirrors that; grep alone would crawl .venv/.tox/.idea, giving
+	// the machine that lacks rg a DIFFERENT corpus for the same query.
+	// LITERAL names, not a glob: "grep" may be GNU, BSD or ugrep, and their
+	// --exclude-dir glob semantics disagree (measured: ugrep's ".?*"
+	// excluded a plain "sub/"). Enumerating the hidden dirs that actually
+	// exist sidesteps every implementation.
 	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+	for _, d := range hiddenDirNames(root, 64) {
+		args = append(args, "--exclude-dir="+d)
+	}
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}

@@ -98,11 +98,14 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 	}
 	files := groupPickedByFile(picked)
 
-	b.WriteString("**Source** — verbatim, current on-disk, line-numbered exactly like the " +
-		"Read tool (re-read from disk on this call; NOT a summary or stale cache). " +
-		"Treat each block as a Read you have already performed: do not re-read these " +
-		"files, go straight to the edit. A `[prism:cached]` line means the full file " +
-		"was already delivered earlier this session — use the copy in context.\n\n")
+	b.WriteString("**Source** — current on-disk, line-numbered like the Read tool " +
+		"(re-read from disk on this call; NOT a summary or stale cache). Every line " +
+		"under 1200 chars is byte-for-byte verbatim; longer lines (generated/minified) " +
+		"are cut with an in-band `[line truncated by prism: N chars]` marker — Read the " +
+		"file before editing THOSE lines. Treat everything else as a Read you have " +
+		"already performed: do not re-read, go straight to the edit. A `[prism:cached]` " +
+		"line means the full file was already delivered this session — use the copy in " +
+		"context.\n\n")
 
 	delivered := ranking.EstimateTokens(b.String())
 	shown := make([]string, 0, maxFiles)
