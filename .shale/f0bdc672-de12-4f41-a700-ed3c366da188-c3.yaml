@@ -1,0 +1,960 @@
+shale_version: "0"
+id: f0bdc672-de12-4f41-a700-ed3c366da188-c3
+created_at: 2026-08-09T18:22:39.518845Z
+finalized_at: 2026-08-09T18:52:13.364889Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        go test ./... 2>&1 | grep -E "^FAIL" | head -2; echo "suite clean"; git add -A && git commit -q -F - <<'EOF'
+        fix: honor the agent's search request instead of overriding it
+
+        v0.38.4 stopped a venv timeout by adding env/venv/site-packages/node_modules/
+        vendor to a prism-authored exclusion list. That was the wrong fix. An agent
+        asking for a text search is asking for ripgrep's semantics; prism substituted
+        its own policy and became unable to answer "where does this library define X"
+        about code that is really present — a silent empty result, the same failure
+        class it was trying to remove.
+
+        The engine the agent expects already solves this: rg skips .gitignore'd trees,
+        and a virtualenv is normally gitignored. So prism now adds no globs of its
+        own beyond .grove (its own state). grep and the built-in scanner, which have
+        no ignore logic, read the repo's .gitignore and skip exactly what the PROJECT
+        listed — no more.
+
+        Found while fixing: rg honors .gitignore only INSIDE a git repository. A
+        worktree, an unpacked tarball or a subdirectory checkout has the ignore file
+        but no .git, and rg searched everything the project asked it not to.
+        --no-require-git makes the behaviour match the expectation everywhere.
+
+        The rule, stated once: prism may add information to an answer, never remove
+        the question. Skipping something it was asked to search must be the project's
+        decision, not prism's.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo
+        EOF
+        git tag -a v0.38.6 -m "v0.38.6 — honor the agent's search request
+
+        Prism no longer applies its own exclusion list to text search. It honors the
+        project's .gitignore (via rg, or by reading it for the grep/native
+        fallbacks), so a dependency tree the project does not ignore stays
+        searchable. rg gets --no-require-git so ignore files work in worktrees and
+        unpacked checkouts too." && git push origin main --follow-tags 2>&1 | tail -2
+      at: 2026-08-09T18:22:39.518845Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 -c "
+        s=open('MEMORY.md').read()
+        line='- [Honor the ask](feedback_honor_the_ask.md) — do what the agent requested; the graph is additive, never narrows the question\n'
+        if 'honor_the_ask' not in s: open('MEMORY.md','w').write(s.rstrip()+'\n'+line)
+        print('indexed')"
+      at: 2026-08-09T18:22:57.819389Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && for r in prism grove astkit; do echo "== $r =="; find $r -name "*.go" -not -path "*/.cache/*" -not -name "*_test.go" | xargs wc -l | tail -1; done
+      at: 2026-08-09T18:27:23.9757Z
+      classified: other
+    - cmd: grep -n "func cmd" internal/cli/*.go | awk '{print $1}' | head -30
+      at: 2026-08-09T18:27:46.884433Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        # find every arg-parse loop that silently ignores unknown "-" args
+        import re, glob
+        for f in glob.glob("internal/cli/*.go"):
+            if "_test" in f: continue
+            s=open(f).read()
+            for m in re.finditer(r'func (cmd\w+)\(', s):
+                name=m.group(1); start=m.start()
+                end=s.find("\nfunc ", start+5)
+                body=s[start:end if end>0 else len(s)]
+                has_loop = "for i" in body and 'strings.HasPrefix(a, "-")' in body
+                rejects = 'unknown flag' in body or 'unknown option' in body
+                if has_loop:
+                    print(f"{f}:{name}: parses flags, {'REJECTS unknown' if rejects else 'SILENTLY DROPS unknown'}")
+        PY
+      at: 2026-08-09T18:28:05.25918Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rn "if err != nil {$" -A 1 prism/internal grove/internal grove/pkg astkit --include="*.go" 2>/dev/null | grep -B 1 "return nil$" | grep "if err" | grep -v "_test" | head -20
+      at: 2026-08-09T18:28:14.11486Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && sed -n '318,330p' prism/internal/mcp/drift.go; echo "==="; sed -n '576,586p' prism/internal/mcp/verify.go; echo "==="; sed -n '68,78p' grove/internal/parser/references.go
+      at: 2026-08-09T18:28:20.563456Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PY'
+        import re, glob
+        # find `for k := range m` or `for k, v := range m` whose body appends to a slice
+        # that is later returned, without a sort nearby — determinism hazards
+        for f in glob.glob("internal/**/*.go", recursive=True) + glob.glob("pkg/**/*.go", recursive=True):
+            if "_test" in f: continue
+            s=open(f).read()
+            lines=s.split("\n")
+            for i,l in enumerate(lines):
+                m=re.search(r'for\s+\w+(,\s*\w+)?\s*:?=\s*range\s+(\w+)', l)
+                if not m: continue
+                var=m.group(2)
+                # is var a map? crude: declared as map[ nearby
+                if not re.search(rf'{var}\s*(:=|=)\s*(make\()?map\[', s): continue
+                # does the next ~8 lines append?
+                window="\n".join(lines[i:i+8])
+                if "append(" in window and "sort." not in "\n".join(lines[max(0,i-5):i+15]):
+                    print(f"{f}:{i+1}: range over map '{var}' with append, no sort nearby")
+        PY
+      at: 2026-08-09T18:28:46.826679Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '300,312p' internal/graph/changeimpact.go; echo "==="; sed -n '378,398p' internal/graph/changeimpact.go; echo "=== does ChangeImpact sort its result groups anywhere? ==="; grep -n "sort\." internal/graph/changeimpact.go | head -6
+      at: 2026-08-09T18:28:54.161673Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '392,420p' internal/graph/changeimpact.go
+      at: 2026-08-09T18:29:01.792688Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func (g \*Graph) externalContract" -A 25 internal/graph/changeimpact.go | grep -n "sort\|append\|range" | head -8; echo "=== graph.go:585 ==="; sed -n '578,600p' internal/graph/graph.go
+      at: 2026-08-09T18:29:11.252751Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '600,640p' internal/graph/graph.go | grep -n "sort\|append\|return" | head -6; echo "=== who calls this func, is result sorted downstream? ==="; sed -n '560,578p' internal/graph/graph.go
+      at: 2026-08-09T18:29:18.028333Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '620,632p' internal/graph/graph.go
+      at: 2026-08-09T18:29:33.057036Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rn "// .*\b\(always\|never\|guarantee[ds]*\|byte-identical\|deterministic\|complete set\|cannot\)\b" grove/internal grove/pkg astkit --include="*.go" 2>/dev/null | grep -v "_test" | head -25
+      at: 2026-08-09T18:29:42.588963Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '950,965p' internal/native/go.go; echo "=== is the write actually temp+rename? ==="; sed -n '965,985p' internal/native/go.go
+      at: 2026-08-09T18:29:48.785986Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && ls internal/graph/ && wc -l internal/graph/*.go | tail -1 && ls ../astkit/
+      at: 2026-08-09T18:30:05.033475Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn "Span\|StartLine\|EndLine\|StartPoint\|EndPoint" symbol.go strategies/*.go 2>/dev/null | grep -v "_test" | grep -iE "row|line|\+ ?1|point" | head -12
+      at: 2026-08-09T18:30:11.408913Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn "Span = \|Span:\|Span{" strategies/*.go symbol.go engine.go 2>/dev/null | grep -v "_test\|//" | head -8; echo "==="; grep -rn "EndPoint().Row" strategies/*.go | head -5
+      at: 2026-08-09T18:30:18.540079Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn "func NodeSpan" -A 12 internalast/*.go
+      at: 2026-08-09T18:30:23.985752Z
+      classified: other
+    - cmd: |-
+        cd /tmp && rm -rf spancheck && mkdir spancheck && cd spancheck && git init -q . && printf 'def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n' > m.py && cat -n m.py && ~/bin/prism index . >/dev/null 2>&1 && ~/bin/prism search "alpha" --format json . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for s in d.get('symbols',[]):
+            print(s['name'], 'span', s['span'])"
+      at: 2026-08-09T18:30:45.523943Z
+      classified: other
+    - cmd: |-
+        cd /tmp/spancheck && printf 'func a() {\n\treturn\n}\n\nfunc b() {\n\treturn\n}\n' > m.go && printf 'export function alpha() {\n  return 1;\n}\n\nexport function beta() {\n  return 2;\n}\n' > m.ts && ~/bin/prism index . >/dev/null 2>&1 && for q in a alpha; do ~/bin/prism search "$q" --format json . 2>/dev/null | python3 -c "
+        import json,sys
+        for s in json.load(sys.stdin).get('symbols',[]):
+            if s['name'] in ('a','b','alpha','beta'): print(s['filePath'], s['name'], s['span'])"; done
+      at: 2026-08-09T18:30:56.907531Z
+      classified: other
+    - cmd: grep -n "mu sync\|sync.Mutex\|sync.RWMutex" internal/session/*.go | head; echo "=== Ledger methods locked? ==="; grep -n "func (l \*Ledger)" -A 2 internal/session/ledger.go | grep -E "func|l.mu" | head -12; echo "=== native.go hidden-dir skip vs grep fallback ==="; grep -n "HasPrefix(name" internal/textsearch/native.go
+      at: 2026-08-09T18:31:25.9478Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && sed -n ''354,368p'' internal/store/store.go; echo "==="; sed -n ''205,218p'' internal/parser/engine.go; echo "=== prism: does anything mutate the *Entry returned by Lookup outside the tracker mutex? ==="; grep -rn "\.Lookup(" ../prism/internal --include="*.go" | grep -v _test | head -6'
+      at: 2026-08-09T18:31:34.316715Z
+      classified: other
+    - cmd: 'grep -n "initialize" -A 6 internal/mcp/server.go | grep -n "model\|clientInfo" | head -4; grep -rn "WithModel\|DetectModel\|clientInfo" internal/mcp/server.go internal/config/config.go | grep -v _test | head -8; echo "=== prism.yaml claim ==="; grep -n "model: auto" internal/cli/commands.go | head -2'
+      at: 2026-08-09T18:31:54.08788Z
+      classified: other
+    - cmd: grep -rn "clientInfo\|initialize" internal/mcp/server.go | head -6; grep -rn "detect" internal/mcp/server.go | head -3
+      at: 2026-08-09T18:31:59.803061Z
+      classified: other
+    - cmd: sed -n '97,125p' internal/mcp/server.go
+      at: 2026-08-09T18:32:07.06235Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -n "_ = \|err != nil {" engine.go strategies/registry.go | grep -v "return" | head -6; echo "=== grove public API doc spot-check ==="; cd ../grove && grep -n "// Impact\b\|// Callers\b\|// References\b" -A 3 pkg/grove/*.go | head -14
+      at: 2026-08-09T18:32:19.059937Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "comment\|string" internal/parser/references.go | head -8
+      at: 2026-08-09T18:32:32.681065Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '40,58p' internal/parser/references.go
+      at: 2026-08-09T18:32:37.79704Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && git status --short | head -3 && git tag --sort=-v:refname | head -2 && python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internalast/helpers.go"); s=p.read_text()
+        s=s.replace('''func NodeSpan(n *sitter.Node) astkit.LineRange {
+        	if n == nil {
+        		return astkit.LineRange{}
+        	}
+        	return astkit.LineRange{
+        		Start: int(n.StartPoint().Row) + 1,
+        		End:   int(n.EndPoint().Row) + 1,
+        	}
+        }''','''func NodeSpan(n *sitter.Node) astkit.LineRange {
+        	if n == nil {
+        		return astkit.LineRange{}
+        	}
+        	start := int(n.StartPoint().Row) + 1
+        	end := int(n.EndPoint().Row) + 1
+        	// Tree-sitter's EndPoint is the position AFTER the node's last byte. When
+        	// a grammar makes a node consume its trailing newline, EndPoint sits at
+        	// column 0 of the NEXT line, and +1 marks the node as ending one line too
+        	// far. Downstream this is not cosmetic: prism's lossless-delta rendering
+        	// substitutes span line ranges for unchanged bodies, so an over-long span
+        	// can swallow a changed line into a "[prism:cached]" pointer. Its
+        	// overlap guard only fails closed when the next symbol starts on that
+        	// exact line — a blank line between symbols defeats it.
+        	if end > start && n.EndPoint().Column == 0 {
+        		end--
+        	}
+        	return astkit.LineRange{Start: start, End: end}
+        }''')
+        p.write_text(s); print("patched")
+        PY
+        go test ./... 2>&1 | grep -E "^(FAIL|ok)" | head -4
+      at: 2026-08-09T18:42:02.743255Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && git checkout -b fix/span-trailing-newline -q && git add -A && git commit -q -m "fix: NodeSpan ended one line too far when a node consumed its newline
+
+        Tree-sitter's EndPoint is the position after the node's last byte; a grammar
+        that includes the trailing newline puts it at column 0 of the next line, and
+        the naive +1 conversion marked the node as ending there. prism's lossless
+        delta substitutes span ranges for unchanged bodies, so an over-long span can
+        swallow a changed line into a cached pointer — its overlap guard only
+        catches the case where the next symbol starts on the stolen line.
+
+        Verified correct-on-common-cases first (Go/Python/TS blocks end mid-line at
+        the closing token); the guard only fires on the column-0 shape.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo" && git checkout main -q && git merge --no-ff fix/span-trailing-newline -m "merge: span trailing-newline guard" -q && git tag v0.4.22 && git push origin main --follow-tags 2>&1 | tail -1
+      at: 2026-08-09T18:42:20.907022Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '58,100p' internal/parser/references.go
+      at: 2026-08-09T18:42:27.519615Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "type ReferenceResult" -A 10 internal/parser/references.go && grep -n "res.refs\|res.Refs\|readFile\|os.ReadFile" internal/parser/references.go | head -6
+      at: 2026-08-09T18:42:33.876192Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '108,125p' internal/parser/references.go
+      at: 2026-08-09T18:42:41.652468Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/parser/references.go"); s=p.read_text()
+
+        s=s.replace('''type ReferenceResult struct {
+        	Name      string      `json:"name"`
+        	DefCount  int         `json:"defCount"`
+        	Ambiguous bool        `json:"ambiguous"`
+        	Refs      []Reference `json:"refs"`
+        }''','''type ReferenceResult struct {
+        	Name      string      `json:"name"`
+        	DefCount  int         `json:"defCount"`
+        	Ambiguous bool        `json:"ambiguous"`
+        	Refs      []Reference `json:"refs"`
+        	// SkippedFiles counts files that could not be walked or read. A result
+        	// that quietly omitted unreadable files reported the same completeness
+        	// as one that read everything — "I could not look" must be visible,
+        	// never folded into "nothing there".
+        	SkippedFiles int `json:"skippedFiles,omitempty"`
+        }''')
+
+        s=s.replace('''	var tasks []task
+        	err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+        		if err != nil {
+        			return nil
+        		}''','''	var tasks []task
+        	var skipped atomic.Int64
+        	err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+        		if err != nil {
+        			skipped.Add(1) // unreadable dir/file: count it, never silently absent
+        			return nil
+        		}''')
+
+        s=s.replace('''					src, rerr := os.ReadFile(t.abs)
+        					if rerr != nil || !bytes.Contains(src, leafBytes) {
+        						continue
+        					}''','''					src, rerr := os.ReadFile(t.abs)
+        					if rerr != nil {
+        						skipped.Add(1)
+        						continue
+        					}
+        					if !bytes.Contains(src, leafBytes) {
+        						continue
+        					}''')
+
+        s=s.replace('''		res.Refs = append(res.Refs, o.refs...)''','''		res.Refs = append(res.Refs, o.refs...)''')
+        # set the field before returning — find the return
+        import re
+        s=re.sub(r'(\n\treturn res, err\n\})', r'\n\tres.SkippedFiles = int(skipped.Load())\1', s, count=1)
+        if '"sync/atomic"' not in s:
+            s=s.replace('\t"sync"','\t"sync"\n\t"sync/atomic"')
+        p.write_text(s); print("references patched")
+        PY
+        grep -n "return res" internal/parser/references.go | head -3; go build ./... 2>&1 | head -3
+      at: 2026-08-09T18:42:57.701061Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '156,164p' internal/parser/references.go
+      at: 2026-08-09T18:43:05.099691Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/native/go.go"); s=p.read_text()
+        s=s.replace('''	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+        	// temp+rename: a concurrent reader must never see torn JSON.
+        	tmp := path + ".tmp"
+        	if os.WriteFile(tmp, b, 0o644) == nil {
+        		_ = os.Rename(tmp, path)
+        	}''','''	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+        	// temp+rename keeps READERS safe from torn JSON; a unique temp name keeps
+        	// concurrent WRITERS from truncating each other's file mid-rename (the
+        	// fixed path+".tmp" name was a writer/writer race).
+        	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp*")
+        	if err != nil {
+        		return
+        	}
+        	name := tmp.Name()
+        	if _, werr := tmp.Write(b); werr != nil {
+        		_ = tmp.Close()
+        		_ = os.Remove(name)
+        		return
+        	}
+        	if cerr := tmp.Close(); cerr != nil {
+        		_ = os.Remove(name)
+        		return
+        	}
+        	if os.Rename(name, path) != nil {
+        		_ = os.Remove(name)
+        	}''')
+        p.write_text(s); print("go.go patched")
+        PY
+        GOFLAGS=-mod=mod go get github.com/provasign/astkit@v0.4.22 2>&1 | tail -1 && go mod tidy 2>&1 | tail -1 && go build ./... 2>&1|head -3 && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head -4; echo "grove suite clean"
+      at: 2026-08-09T18:43:23.292013Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && git ls-remote --tags origin | grep -c "v0.4.22"; git push origin v0.4.22 2>&1 | tail -1; cd ../grove && GOFLAGS=-mod=mod GOPROXY=direct go get github.com/provasign/astkit@v0.4.22 2>&1 | tail -1 && go mod tidy 2>&1|tail -1 && grep astkit go.mod
+      at: 2026-08-09T18:43:33.75455Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go env GOPRIVATE GONOSUMCHECK GOFLAGS 2>/dev/null | head -3; GOFLAGS=-mod=mod GOPRIVATE=github.com/provasign GOPROXY=direct go get github.com/provasign/astkit@v0.4.22 2>&1 | tail -1 && grep astkit go.mod
+      at: 2026-08-09T18:43:45.41862Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && go mod tidy 2>&1|tail -1 && go build ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head -3; echo "clean"; git checkout -b audit/fixes -q && git add -A && git commit -q -F - <<'EOF'
+        audit: references reports skipped files; cache writer race; astkit v0.4.22
+
+        From the 2026-08-09 full audit (prism/grove/astkit):
+
+        References silently skipped unreadable dirs and files — a result advertising
+        "completeness with an ambiguity flag" was quietly incomplete under permission
+        errors, with no signal. It now counts every file it could not walk or read
+        and reports SkippedFiles; "I could not look" is never folded into "nothing
+        there".
+
+        The go-list cache writer used a fixed path+".tmp": temp+rename kept readers
+        safe from torn JSON, but two concurrent writers could truncate each other's
+        temp file mid-rename. Unique temp names via CreateTemp.
+
+        astkit v0.4.22 guards NodeSpan's end line: a grammar that makes a node
+        consume its trailing newline put EndPoint at column 0 of the next line, and
+        the +1 conversion marked the span one line too long — downstream, prism's
+        lossless delta substitutes span ranges for unchanged bodies, so an over-long
+        span can swallow a changed line into a cached pointer.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo
+        EOF
+        git checkout main -q && git merge --no-ff audit/fixes -m "merge: audit fixes" -q && git tag v0.28.0 && git push origin main v0.28.0 2>&1 | tail -1
+      at: 2026-08-09T18:44:02.954442Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        import re
+        from pathlib import Path
+
+        helper = '''
+        // rejectUnknownFlag is the shared guard every command parser calls from its
+        // default case. Silently dropping an unrecognized flag is the mechanism
+        // behind two shipped bugs (`--format` ignored by map/cycles, `--scope`
+        // ignored by search): the command runs, does something other than what was
+        // asked, and gives no indication why. 18 of 19 parsers still did this after
+        // the audit; now none do.
+        func rejectUnknownFlag(cmd, flag string) int {
+        	fmt.Fprintf(os.Stderr, "%s: unknown flag %q (see prism help)\\n", cmd, flag)
+        	return 2
+        }
+        '''
+
+        for fname in ("internal/cli/commands.go", "internal/cli/viewcmds.go", "internal/cli/watch.go"):
+            p=Path(fname); s=p.read_text()
+            # canonical default block: only-positional-arg fallthrough
+            pat = re.compile(
+                r'(func (cmd\w+)\(.*?\n)(.*?)(\t\tdefault:\n\t\t\tif !strings\.HasPrefix\(a, "-"\) \{\n\t\t\t\tdir = a\n\t\t\t\}\n)',
+                re.S)
+            def fix(m):
+                return (m.group(1)+m.group(3)+
+                    '\t\tdefault:\n'
+                    '\t\t\tif strings.HasPrefix(a, "-") {\n'
+                    f'\t\t\t\treturn rejectUnknownFlag("{m.group(2)[3:].lower()}", a)\n'
+                    '\t\t\t}\n\t\t\tdir = a\n')
+            n=0
+            while True:
+                s2 = pat.sub(fix, s, count=1)
+                if s2 == s: break
+                s = s2; n += 1
+            print(fname, "canonical blocks fixed:", n)
+            p.write_text(s)
+
+        # append helper once
+        p=Path("internal/cli/commands.go"); s=p.read_text()
+        if "rejectUnknownFlag" not in s.split("func rejectUnknownFlag")[0][-200:]:
+            s += helper
+        p.write_text(s)
+        PY
+        go build ./... 2>&1 | head -5
+      at: 2026-08-09T18:44:27.172156Z
+      classified: build
+    - cmd: |-
+        python3 - <<'PY'
+        # find the remaining non-canonical default blocks
+        import re, glob
+        for f in glob.glob("internal/cli/*.go"):
+            if "_test" in f: continue
+            s=open(f).read()
+            for m in re.finditer(r'func (cmd\w+)\(', s):
+                name=m.group(1); start=m.start()
+                end=s.find("\nfunc ", start+5)
+                body=s[start:end if end>0 else len(s)]
+                if "for i" in body and 'strings.HasPrefix(a, "-")' in body and "rejectUnknownFlag" not in body and "unknown flag" not in body:
+                    # show its default block
+                    d=body.find("\t\tdefault:")
+                    print(f"{f}:{name}:")
+                    print(body[d:d+220])
+        PY
+      at: 2026-08-09T18:44:35.749226Z
+      classified: other
+    - cmd: grep -n "func cmdResolve" -A 25 internal/cli/commands.go | sed -n '1,26p'
+      at: 2026-08-09T18:44:40.748041Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/cli/commands.go"); s=p.read_text()
+        s=s.replace('''		if a == "--format" && i+1 < len(args) {
+        			switch outputFormat(args[i+1]) {
+        			case formatText, formatLean, formatJSON:
+        				format = outputFormat(args[i+1])
+        			}
+        			i++
+        		} else if !strings.HasPrefix(a, "-") {
+        			dir = a
+        		}
+        	}
+        	out, err := invokeWithPersistentLedger(dir, "prism_resolve", map[string]any{"name": name})''','''		if a == "--format" && i+1 < len(args) {
+        			switch outputFormat(args[i+1]) {
+        			case formatText, formatLean, formatJSON:
+        				format = outputFormat(args[i+1])
+        			}
+        			i++
+        		} else if strings.HasPrefix(a, "-") {
+        			return rejectUnknownFlag("resolve", a)
+        		} else {
+        			dir = a
+        		}
+        	}
+        	out, err := invokeWithPersistentLedger(dir, "prism_resolve", map[string]any{"name": name})''')
+        p.write_text(s)
+        PY
+        go build ./... 2>&1|head -3 && go test ./internal/cli/ 2>&1 | grep -E "FAIL" | head -3; echo "cli tests pass"; go build -o /tmp/p ./cmd/prism && for c in "query x --bogus" "read f --bogus" "map --bogus" "verify --bogus" "resolve n --bogus"; do /tmp/p $c . 2>&1 | head -1; done
+      at: 2026-08-09T18:44:56.720184Z
+      classified: test
+    - cmd: for c in query read map verify resolve change-impact task; do case $c in query) /tmp/p query "x" --bogus . ;; read) /tmp/p read f.go --bogus . ;; resolve) /tmp/p resolve n --bogus . ;; change-impact) /tmp/p change-impact T.m --bogus . ;; task) /tmp/p task "x" --bogus . ;; *) /tmp/p $c --bogus . ;; esac 2>&1 | head -1; done
+      at: 2026-08-09T18:45:04.081872Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import re
+        from pathlib import Path
+        for fname in ("internal/cli/commands.go","internal/cli/viewcmds.go","internal/cli/watch.go"):
+            p=Path(fname); s=p.read_text()
+            # index of each function start
+            funcs=[(m.start(), m.group(1)) for m in re.finditer(r'func (cmd\w+)\(', s)]
+            out=[]; last=0
+            for m in re.finditer(r'return rejectUnknownFlag\("([a-z-]+)", a\)', s):
+                # enclosing function = last func start before this call
+                enc=[name for start,name in funcs if start < m.start()][-1]
+                label=re.sub(r'([A-Z])', lambda g:'-'+g.group(1).lower(), enc[3:]).lstrip('-')
+                out.append(s[last:m.start()] + f'return rejectUnknownFlag("{label}", a)')
+                last=m.end()
+            out.append(s[last:])
+            s="".join(out)
+            p.write_text(s)
+            print(fname, "labels fixed")
+        PY
+        go build -o /tmp/p ./cmd/prism && /tmp/p query "x" --bogus . 2>&1|head -1; /tmp/p verify --bogus . 2>&1|head -1; /tmp/p read f --bogus . 2>&1|head -1; /tmp/p task "x" --bogus . 2>&1|head -1
+      at: 2026-08-09T18:45:21.860028Z
+      classified: build
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+
+        # H2: delivery header + tool description tell the truth about the clamp
+        p=Path("internal/mcp/delivery.go"); s=p.read_text()
+        s=s.replace('''	b.WriteString("**Source** — verbatim, current on-disk, line-numbered exactly like the " +
+        		"Read tool (re-read from disk on this call; NOT a summary or stale cache). " +
+        		"Treat each block as a Read you have already performed: do not re-read these " +
+        		"files, go straight to the edit. A `[prism:cached]` line means the full file " +
+        		"was already delivered earlier this session — use the copy in context.\\n\\n")''','''	b.WriteString("**Source** — current on-disk, line-numbered like the Read tool " +
+        		"(re-read from disk on this call; NOT a summary or stale cache). Every line " +
+        		"under 1200 chars is byte-for-byte verbatim; longer lines (generated/minified) " +
+        		"are cut with an in-band `[line truncated by prism: N chars]` marker — Read the " +
+        		"file before editing THOSE lines. Treat everything else as a Read you have " +
+        		"already performed: do not re-read, go straight to the edit. A `[prism:cached]` " +
+        		"line means the full file was already delivered this session — use the copy in " +
+        		"context.\\n\\n")''')
+        p.write_text(s)
+
+        p=Path("internal/mcp/tools.go"); s=p.read_text()
+        s=s.replace('''			"For bug-fix/implement tasks it delivers verbatim LINE-NUMBERED source windows plus each " +
+        			"anchor's callers — edit-ready, identical to Read output; do NOT re-read " +
+        			"the files it shows. ''','''			"For bug-fix/implement tasks it delivers LINE-NUMBERED source windows plus each " +
+        			"anchor's callers — edit-ready; lines under 1200 chars are byte-for-byte verbatim, " +
+        			"longer ones carry an in-band truncation marker (Read the file before editing those). " +
+        			"Do NOT re-read the files it shows. ''')
+
+        # H3: prism.yaml comment stops claiming detection that does not exist
+        s2=Path("internal/cli/commands.go").read_text()
+        s2=s2.replace('''# model: auto  # Prism detects the active model from the MCP initialize handshake.
+        #               # Override here only if auto-detection fails, e.g.:
+        #               # model: "claude-sonnet-4-6"''','''# model: ""    # Optional: name the model driving this repo (e.g. "claude-sonnet-4-6")
+        #               # to size context budgets. There is NO auto-detection — the MCP
+        #               # initialize handshake does not carry the model — so unset means
+        #               # the default 200k-token window. Agents can also pass model= per
+        #               # call, which overrides this.''')
+        Path("internal/cli/commands.go").write_text(s2)
+
+        # L4: scope=text respects limit exactly, and the schema says what limit means
+        s=s.replace('''		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: limit * 2, Timeout: textSearchTimeout, Regex: regex,
+        		})''','''		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+        		})''')
+        s=s.replace('''				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},''','''				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},''')
+        Path("internal/mcp/tools.go").write_text(s)
+        print("H2 H3 L4 patched")
+        PY
+        go build ./... 2>&1|head -3 && echo OK
+      at: 2026-08-09T18:45:44.042448Z
+      classified: build
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/session/tracker.go"); s=p.read_text()
+        s=s.replace('''// Lookup returns the entry for filePath if it exists. The second return
+        // value matches whether the stored contentHash is the same as the supplied
+        // one — false means the file changed since last seen.
+        func (t *Tracker) Lookup(filePath, contentHash string) (*Entry, bool, bool) {
+        	filePath = normalizeFilePath(filePath)
+        	t.mu.Lock()
+        	defer t.mu.Unlock()
+        	el, ok := t.entries[filePath]
+        	if !ok {
+        		return nil, false, false
+        	}
+        	e := el.Value.(*Entry)
+        	t.lru.MoveToFront(el)
+        	return e, true, e.ContentHash == contentHash
+        }''','''// Lookup returns a COPY of the entry for filePath if it exists. The second
+        // return value reports presence; the third whether the stored contentHash
+        // matches the supplied one.
+        //
+        // A copy, not the live pointer: five call sites read entry fields after this
+        // mutex is released, and under `prism serve` requests run concurrently on one
+        // shared Handler — a concurrent Record mutated the same struct mid-read
+        // (this exact aliasing already produced the graphcache seen-count bug, single-
+        // threaded). SymbolSHAs is deep-copied for the same reason RecentEntries does
+        // it: the compressor reads that map while the indexer may replace it.
+        func (t *Tracker) Lookup(filePath, contentHash string) (*Entry, bool, bool) {
+        	filePath = normalizeFilePath(filePath)
+        	t.mu.Lock()
+        	defer t.mu.Unlock()
+        	el, ok := t.entries[filePath]
+        	if !ok {
+        		return nil, false, false
+        	}
+        	e := el.Value.(*Entry)
+        	t.lru.MoveToFront(el)
+        	cp := *e
+        	if e.SymbolSHAs != nil {
+        		shas := make(map[string]string, len(e.SymbolSHAs))
+        		for k, v := range e.SymbolSHAs {
+        			shas[k] = v
+        		}
+        		cp.SymbolSHAs = shas
+        	}
+        	return &cp, true, e.ContentHash == contentHash
+        }''')
+        p.write_text(s); print("Lookup returns a copy")
+        PY
+        go build ./... && go test ./internal/session/ ./internal/mcp/ ./internal/compression/ 2>&1 | grep -E "^(ok|FAIL)" | head -4
+      at: 2026-08-09T18:46:10.152105Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+
+        # M1: grep fallback skips hidden dirs like rg and the native scanner do
+        p=Path("internal/textsearch/textsearch.go"); s=p.read_text()
+        s=s.replace('''	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+        	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+        		args = append(args, "--exclude-dir="+d)
+        	}''','''	// Backend parity: rg skips hidden directories by default and the native
+        	// scanner mirrors that; grep alone would crawl .venv/.tox/.idea, giving
+        	// the machine that lacks rg a DIFFERENT corpus for the same query.
+        	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile),
+        		"--exclude-dir=.*"}
+        	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+        		args = append(args, "--exclude-dir="+d)
+        	}''')
+        # M2: make the comment state the real limitation
+        s=s.replace('''// gitignoreDirs approximates rg's .gitignore handling for the grep and native
+        // fallbacks, which have none. Read from the repo's own .gitignore rather than
+        // hardcoded, so prism skips exactly what the project says to skip — no more.''','''// gitignoreDirs approximates rg's .gitignore handling for the grep and native
+        // fallbacks, which have none. Read from the repo's own .gitignore so prism
+        // skips what the project says to skip — no prism-authored policy.
+        //
+        // Known divergence from rg, stated rather than implied: only the ROOT
+        // .gitignore is read, only plain directory names are honored (no globs, no
+        // negations, no nested ignore files). On a repo that leans on those, the
+        // grep/native fallbacks search MORE than rg would — never less — so the
+        // failure mode is extra hits, not silent absence. `prism doctor` reports
+        // which backend is active.''')
+        p.write_text(s)
+
+        # M3: verify surfaces base-contract engine failures instead of nil-swallowing
+        p=Path("internal/mcp/verify.go"); s=p.read_text()
+        s=s.replace('''	cands, err := h.Grove.SearchSymbols(ctx, sym.Name, 200)
+        	if err != nil {
+        		return nil
+        	}''','''	cands, err := h.Grove.SearchSymbols(ctx, sym.Name, 200)
+        	if err != nil {
+        		// An engine failure here must not read as "no old-signature
+        		// survivors": the caller treats nil as a normal empty enumeration
+        		// and the catch rate silently drops. Report it as its own failure.
+        		return &grove.ChangeImpactResult{
+        			Query:        displayQN(sym),
+        			Completeness: "base-contract-error: " + err.Error(),
+        		}
+        	}''')
+        s=s.replace('''		bc := h.baseContractImpact(ctx, sd.sym, sd.before)''','''		bc := h.baseContractImpact(ctx, sd.sym, sd.before)
+        		if bc != nil && strings.HasPrefix(bc.Completeness, "base-contract-error") {
+        			// Engine failure during enumeration: fail closed and SAY so.
+        			unverifiedSeeds = append(unverifiedSeeds,
+        				displayQN(sd.sym)+" — base-contract enumeration failed ("+
+        					strings.TrimPrefix(bc.Completeness, "base-contract-error: ")+
+        					"); dependents of the old signature were NOT checked")
+        			bc = nil
+        		}''')
+        p.write_text(s)
+        print("M1 M2 M3 patched")
+        PY
+        go build ./... 2>&1|head -3 && go test ./internal/textsearch/ ./internal/mcp/ 2>&1 | grep -E "^(ok|FAIL)"
+      at: 2026-08-09T18:46:41.043439Z
+      classified: test
+    - cmd: go test ./internal/textsearch/ 2>&1 | grep -E "FAIL:|_test.go:" | head -4
+      at: 2026-08-09T18:46:47.255347Z
+      classified: test
+    - cmd: |-
+        python3 -c "
+        from pathlib import Path
+        p=Path('internal/textsearch/textsearch.go'); s=p.read_text()
+        s=s.replace('\"--exclude-dir=.*\"','\"--exclude-dir=.?*\"')
+        s=s.replace('// scanner mirrors that; grep alone would crawl .venv/.tox/.idea, giving','// scanner mirrors that; grep alone would crawl .venv/.tox/.idea, giving')
+        p.write_text(s)"; go test ./internal/textsearch/ 2>&1 | grep -E "^(ok|FAIL)"
+      at: 2026-08-09T18:47:01.892331Z
+      classified: test
+    - cmd: 'go test ./internal/textsearch/ 2>&1 | grep -E "FAIL:|_test.go:" | head -4; echo "--- manual: does macOS grep support exclude-dir glob? ---"; cd /tmp && rm -rf g && mkdir -p g/.hidden g/sub && echo needle > g/.hidden/x.txt && echo needle > g/sub/y.txt && grep -rn --exclude-dir=''.?*'' needle g/ 2>&1'
+      at: 2026-08-09T18:47:08.58237Z
+      classified: test
+    - cmd: cd /tmp && rm -rf fx && mkdir -p fx/sub fx/node_modules/dep fx/.grove && printf 'package a\n\n// NeedleOne appears here\nfunc NeedleOne() {}\n' > fx/a.go && printf 'plain text with needleone lowercase\nno match line\n' > fx/sub/b.txt && echo "node_modules/" > fx/.gitignore && cd fx && env LC_ALL=C grep -rnI -F -i --max-count 20 --exclude-dir='.?*' --exclude-dir=.git --exclude-dir=.grove --exclude-dir=node_modules -e "NeedleOne" -- . 2>&1
+      at: 2026-08-09T18:47:20.495604Z
+      classified: other
+    - cmd: cd /tmp/fx && grep -F -i "NeedleOne" sub/b.txt; echo "rc=$?"; grep -rnI -F -i "NeedleOne" . | head -3; echo "---with LC_ALL=C---"; env LC_ALL=C grep -rnI -F -i "NeedleOne" . | head -3
+      at: 2026-08-09T18:47:29.529318Z
+      classified: other
+    - cmd: cd /tmp/fx && env LC_ALL=C grep -rnI -F -i --exclude-dir='.?*' -e "NeedleOne" -- . | head -3; echo "--- without the glob ---"; env LC_ALL=C grep -rnI -F -i -e "NeedleOne" -- . | head -4
+      at: 2026-08-09T18:47:40.592871Z
+      classified: other
+    - cmd: cd /tmp/fx && env LC_ALL=C grep -rn --exclude-dir='?ub' -e "needleone" -- . ; echo "rc=$?"; env LC_ALL=C grep -rn --exclude-dir='.zzz*' -e "needleone" -- . | head -2; grep --version | head -1
+      at: 2026-08-09T18:47:56.763432Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/textsearch/textsearch.go"); s=p.read_text()
+        s=s.replace('''	// Backend parity: rg skips hidden directories by default and the native
+        	// scanner mirrors that; grep alone would crawl .venv/.tox/.idea, giving
+        	// the machine that lacks rg a DIFFERENT corpus for the same query.
+        	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile),
+        		"--exclude-dir=.?*"}''','''	// Backend parity: rg skips hidden directories by default and the native
+        	// scanner mirrors that; grep alone would crawl .venv/.tox/.idea, giving
+        	// the machine that lacks rg a DIFFERENT corpus for the same query.
+        	// LITERAL names, not a glob: "grep" may be GNU, BSD or ugrep, and their
+        	// --exclude-dir glob semantics disagree (measured: ugrep's ".?*"
+        	// excluded a plain "sub/"). Enumerating the hidden dirs that actually
+        	// exist sidesteps every implementation.
+        	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+        	for _, d := range hiddenDirNames(root, 64) {
+        		args = append(args, "--exclude-dir="+d)
+        	}''')
+        s=s.replace('''// excludedFor''','''// hiddenDirNames walks root (directories only, bounded) and returns the
+        // distinct basenames of hidden directories, for literal --exclude-dir flags.
+        func hiddenDirNames(root string, cap int) []string {
+        	seen := map[string]bool{}
+        	var out []string
+        	_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+        		if err != nil || !d.IsDir() {
+        			return nil
+        		}
+        		name := d.Name()
+        		if p != root && strings.HasPrefix(name, ".") {
+        			if !seen[name] {
+        				seen[name] = true
+        				out = append(out, name)
+        			}
+        			return filepath.SkipDir // no need to walk inside what we exclude
+        		}
+        		if len(out) >= cap {
+        			return filepath.SkipAll
+        		}
+        		return nil
+        	})
+        	sort.Strings(out)
+        	return out
+        }
+
+        // excludedFor''')
+        if '"sort"' not in s: s=s.replace('\t"strconv"','\t"sort"\n\t"strconv"')
+        if '"io/fs"' in s: pass
+        p.write_text(s); print("patched")
+        PY
+        grep -n "excludedFor" internal/textsearch/textsearch.go | head -2; go build ./internal/textsearch/ 2>&1 | head -4
+      at: 2026-08-09T18:48:21.425928Z
+      classified: build
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/textsearch/textsearch.go"); s=p.read_text()
+        s=s.replace('''// runGrep shells out to grep, pinned to the C locale''','''// hiddenDirNames walks root (directories only, bounded) and returns the
+        // distinct basenames of hidden directories, for literal --exclude-dir flags.
+        // Literal names because "grep" may be GNU, BSD or ugrep and their glob
+        // semantics for --exclude-dir disagree.
+        func hiddenDirNames(root string, cap int) []string {
+        	seen := map[string]bool{}
+        	var out []string
+        	_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+        		if err != nil || !d.IsDir() {
+        			return nil
+        		}
+        		name := d.Name()
+        		if p != root && strings.HasPrefix(name, ".") {
+        			if !seen[name] {
+        				seen[name] = true
+        				out = append(out, name)
+        			}
+        			return filepath.SkipDir // no need to walk inside what we exclude
+        		}
+        		if len(out) >= cap {
+        			return filepath.SkipAll
+        		}
+        		return nil
+        	})
+        	sort.Strings(out)
+        	return out
+        }
+
+        // runGrep shells out to grep, pinned to the C locale''')
+        p.write_text(s)
+        PY
+        go build ./internal/textsearch/ 2>&1|head -3 && go test ./internal/textsearch/ 2>&1 | grep -E "^(ok|FAIL)"
+      at: 2026-08-09T18:48:33.680882Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        # single source of truth in mcp
+        p=Path("internal/mcp/tools.go"); s=p.read_text()
+        s=s.replace('''// Invoke routes a tools/call to the right handler.''','''// DispatchableTools returns every tool name Invoke can route — the single
+        // source of truth for surfaces that expose tools by name (the HTTP server).
+        // The httpapi route list was maintained by hand and drifted so far that six
+        // tools 404'd for months; anything that needs "all tools" derives from this.
+        func DispatchableTools() []string {
+        	return []string{
+        		"prism",
+        		"prism_query", "prism_read", "prism_search", "prism_lookup",
+        		"prism_node", "prism_references", "prism_resolve", "prism_edges",
+        		"prism_change_impact", "prism_missing_implementations",
+        		"prism_dead_code", "prism_rename_plan",
+        		"prism_map", "prism_cycles", "prism_verify", "prism_arch_check",
+        		"prism_index", "prism_drift",
+        		"prism_compact", "prism_savings", "prism_feedback",
+        	}
+        }
+
+        // Invoke routes a tools/call to the right handler.''')
+        p.write_text(s)
+
+        # httpapi derives its routes
+        p=Path("internal/httpapi/http.go"); s=p.read_text()
+        import re
+        s=re.sub(r'''\t// Every tool Handler\.Invoke dispatches.*?\tfor _, name := range \[\]string\{.*?\n\t\} \{''','''	// Routes derive from mcp.DispatchableTools — the hand-maintained list
+        	// drifted until six tools 404'd. One source of truth, one test pinning it.
+        	for _, name := range mcp.DispatchableTools() {''', s, flags=re.S)
+        p.write_text(s)
+        print("routes derived")
+        PY
+        go build ./... 2>&1|head -3 && cat >> internal/mcp/mcp_test.go <<'EOF'
+
+        // TestDispatchableToolsAllDispatch pins DispatchableTools to Invoke: every
+        // listed name must route somewhere (any error but "unknown tool" is fine —
+        // most tools need Grove), and dispatchable-but-unlisted names cannot happen
+        // silently because the HTTP server derives its routes from this list.
+        func TestDispatchableToolsAllDispatch(t *testing.T) {
+        	h := newTestHandler(t)
+        	for _, name := range DispatchableTools() {
+        		_, err := h.Invoke(name, map[string]any{})
+        		if err != nil && strings.Contains(err.Error(), "unknown tool") {
+        			t.Errorf("%s is listed as dispatchable but Invoke does not know it", name)
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run Dispatchable 2>&1 | tail -2
+      at: 2026-08-09T18:48:53.52348Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run Dispatchable -v 2>&1 | grep -E "mcp_test.go|FAIL:" | head -4
+      at: 2026-08-09T18:48:59.93285Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run Dispatchable -v 2>&1 | grep -B 3 "0xf8" | head -8
+      at: 2026-08-09T18:49:06.201435Z
+      classified: test
+    - cmd: sed -n '216,224p' internal/mcp/tools.go
+      at: 2026-08-09T18:49:15.905867Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/mcp/tools.go"); s=p.read_text()
+        s=s.replace('''// Invoke routes a tools/call to the right handler.
+        func (h *Handler) Invoke(name string, args map[string]any) (any, error) {''','''// Invoke routes a tools/call to the right handler.
+        func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) {
+        	// A panicking tool must fail THAT CALL, not the process: the stdio MCP
+        	// server is the agent's whole session, and one nil-pointer in one tool
+        	// killed all of it (found by the dispatch-pinning test — toolDeadCode
+        	// panics on a Grove-less handler rather than erroring).
+        	defer func() {
+        		if r := recover(); r != nil {
+        			out, err = nil, fmt.Errorf("%s: internal error: %v", name, r)
+        		}
+        	}()''')
+        p.write_text(s)
+        PY
+        go build ./... 2>&1|head -3 && go test ./internal/mcp/ -run Dispatchable 2>&1 | tail -1 && go test ./... 2>&1 | grep -E "^FAIL"; echo "suite clean"
+      at: 2026-08-09T18:49:43.459895Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path("internal/mcp/verify.go"); s=p.read_text()
+
+        # M6a: deleted/changed TEST functions are not contract changes
+        s=s.replace('''	var seeds []seed
+        	var unverifiedSeeds []string
+        	addSeed := func(sym grove.SymbolRecord, before *grove.SymbolRecord, reason string) {''','''	var seeds []seed
+        	var unverifiedSeeds []string
+        	// Symbols in test files are NOT contracts: a deleted test function has no
+        	// callers that must migrate, yet each one used to surface as "review its
+        	// old-contract dependents manually" — measured on a real diff, 3 deleted
+        	// test funcs produced 3 of 7 flags with zero actionable content. A gate
+        	// that mostly cries wolf gets clicked past.
+        	addSeed := func(sym grove.SymbolRecord, before *grove.SymbolRecord, reason string) {
+        		if isTestFilePath(sym.FilePath) {
+        			return
+        		}''')
+
+        # M6b: kind-aware wording for consts/vars
+        s=s.replace('''			if c.SignatureChanged && c.After != nil {
+        				addSeed(*c.After, c.Before, "signature of "+displayQN(*c.After)+" changed")
+        				continue
+        			}''','''			if c.SignatureChanged && c.After != nil {
+        				// "signature of X changed" is wrong for a const whose VALUE
+        				// changed; say what actually happened per kind.
+        				word := "signature"
+        				switch c.After.Kind {
+        				case "const", "variable", "field":
+        					word = "declaration"
+        				}
+        				addSeed(*c.After, c.Before, word+" of "+displayQN(*c.After)+" changed")
+        				continue
+        			}''')
+
+        s=s.replace('''func displayQN(s grove.SymbolRecord) string {''','''// isTestFilePath matches test files across the supported languages.
+        func isTestFilePath(p string) bool {
+        	base := p
+        	if i := strings.LastIndexByte(p, '/'); i >= 0 {
+        		base = p[i+1:]
+        	}
+        	return strings.HasSuffix(base, "_test.go") ||
+        		strings.HasPrefix(base, "test_") ||
+        		strings.Contains(base, ".test.") || strings.Contains(base, ".spec.") ||
+        		strings.Contains(p, "/test/") || strings.Contains(p, "/tests/") ||
+        		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/")
+        }
+
+        func displayQN(s grove.SymbolRecord) string {''')
+        p.write_text(s)
+
+        # M4 surfacing: pass grove's skippedFiles through prism_references
+        p=Path("internal/mcp/tools.go"); s=p.read_text()
+        s=s.replace('''	return map[string]any{
+        		"name":        res.Name,
+        		"count":       len(res.Refs),
+        		"definitions": res.DefCount,
+        		"ambiguous":   res.Ambiguous,
+        		"byFile":      byFile,
+        	}, nil''','''	out := map[string]any{
+        		"name":        res.Name,
+        		"count":       len(res.Refs),
+        		"definitions": res.DefCount,
+        		"ambiguous":   res.Ambiguous,
+        		"byFile":      byFile,
+        	}
+        	if res.SkippedFiles > 0 {
+        		out["skippedFiles"] = res.SkippedFiles
+        		out["warning"] = fmt.Sprintf("%d file(s) could not be read — this reference "+
+        			"set may be incomplete", res.SkippedFiles)
+        	}
+        	return out, nil''')
+        p.write_text(s)
+        print("M6 + M4 surfacing patched")
+        PY
+        go build ./... 2>&1 | head -4
+      at: 2026-08-09T18:50:04.588258Z
+      classified: build
+    - cmd: grep -n "SkippedFiles" internal/grove/client.go | head -2; grep -n "type ReferenceResult" -A 8 internal/grove/client.go 2>/dev/null || grep -rn "res.SkippedFiles" internal/mcp/tools.go | head -1; go build ./... 2>&1 | head -3
+      at: 2026-08-09T18:50:12.170513Z
+      classified: build
+    - cmd: GOFLAGS=-mod=mod GOPRIVATE=github.com/provasign GOPROXY=direct go get github.com/provasign/grove@v0.28.0 github.com/provasign/astkit@v0.4.22 2>&1 | tail -2 && go mod tidy 2>&1 | tail -1 && grep -E "grove|astkit" go.mod && go build ./... && go test ./... 2>&1 | grep -E "^FAIL"; echo "suite clean"
+      at: 2026-08-09T18:50:33.107043Z
+      classified: test
+    - cmd: go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init --refresh >/dev/null 2>&1 && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0bdc672-de12-4f41-a700-ed3c366da188/scratchpad/smoke.py 2>&1 | tail -2 && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism --corpus-root ~/gvg-corpus/ci-corpus 2>&1 | tail -3
+      at: 2026-08-09T18:51:47.891526Z
+      classified: build
+notes:
+    - text: continuation of session f0bdc672-de12-4f41-a700-ed3c366da188 — events captured after its evidence was finalized
+      at: 2026-08-09T18:22:39.518845Z
+redactions: 0
