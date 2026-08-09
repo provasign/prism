@@ -1,0 +1,176 @@
+shale_version: "0"
+id: f0bdc672-de12-4f41-a700-ed3c366da188-c4
+created_at: 2026-08-09T22:03:52.644483Z
+finalized_at: 2026-08-09T22:17:34.345281Z
+agent:
+    tool: claude-code
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git checkout -b audit/code-only-fixes -q && git add -A && git commit -q -F - <<'EOF'
+        audit: fix every finding from the code-only pass
+
+        D1 watch: a directory created in one burst (git checkout, generated package)
+           got its watches added and then `continue` skipped scheduling — the files
+           inside arrived before their watch existed, produce no events, and were
+           never indexed until an unrelated edit. Reindex now scheduled on add.
+
+        D2 watch: the Create-dir branch checked only the basename, so a dir created
+           UNDER node_modules/vendor was watched wholesale (an npm install wired the
+           watcher into the dependency tree). Full-path check first.
+
+        D3 serve: Config.Port was parsed from prism.yaml and consumed by nothing —
+           a `port:` line silently did zero while cmdServe used its own hardcoded
+           8888. Honored now; the --port flag still wins.
+
+        D4 config: AgentMode field and constants removed. Parsed since the init
+           simplification with zero consumers; the yaml key is accepted and
+           discarded so existing files stay loadable.
+
+        D5 query: graph_depth removed from the schema — advertised for months while
+           no code path read it, so tuning it silently did nothing. The CLI's
+           --depth/--graph-depth now says so and exits instead of sending a dead
+           parameter.
+
+        D6 dead code: trimSymbolID and isExportedName deleted (prism's own
+           dead-code op found them).
+
+        D7 stale server: an MCP server outlives upgrades — this session's server
+           silently dropped a parameter added two releases earlier and pointed
+           agents at a removed tool, with nothing anywhere saying so. Context-
+           bearing responses now carry a once-per-session note when the binary on
+           disk is newer than the running process, telling the agent to have the
+           user restart.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo
+        EOF
+        git checkout main -q && git merge --no-ff audit/code-only-fixes -m "merge: code-only audit fixes" -q && git tag -a v0.39.1 -m "v0.39.1 — code-only audit fixes
+
+        watch indexes newly created directories and stops following dependency
+        trees; prism.yaml port honored; vestigial agent_mode and dead graph_depth
+        removed; dead functions deleted; MCP responses warn once when the on-disk
+        binary is newer than the running server." && git push origin main --follow-tags 2>&1 | tail -2
+      at: 2026-08-09T22:03:52.644483Z
+      classified: other
+    - cmd: cd /tmp && rm -rf cantopen && mkdir cantopen && cd cantopen && ~/bin/prism map --depth 2 --format text . 2>&1 | head -3; echo "rc=$?"; echo "--- read-only dir ---"; mkdir -p /tmp/ro && chmod 555 /tmp/ro && cd /tmp/ro && ~/bin/prism map --format text . 2>&1 | head -2; chmod 755 /tmp/ro; echo "--- where does grove open the db? ---"; grep -rn "grove open" /Users/tapabratapal/Projects/provasign/grove --include="*.go" | grep -v _test | head -3
+      at: 2026-08-09T22:10:31.216074Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "func Open\|sql.Open\|OpenStore" internal/store/store.go pkg/grove/grove.go | head -6; grep -rn "grove.db" internal/ pkg/ --include="*.go" | grep -v _test | head -5
+      at: 2026-08-09T22:10:55.836226Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '23,55p' internal/store/store.go
+      at: 2026-08-09T22:11:05.188633Z
+      classified: other
+    - cmd: cd /tmp && rm -rf cg14 && mkdir -p cg14/.grove && echo 'package m' > cg14/m.go && cd cg14 && git init -q . 2>/dev/null; chmod 555 .grove && ~/bin/prism map --format text . 2>&1 | head -2; chmod 755 .grove; echo "=== and with a pre-existing db but unwritable dir ==="; ~/bin/prism index . >/dev/null 2>&1; chmod 555 .grove && ~/bin/prism map --format text . 2>&1 | head -2; chmod 755 .grove
+      at: 2026-08-09T22:11:23.236866Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '1,22p' internal/store/store.go
+      at: 2026-08-09T22:14:02.78589Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat > internal/store/openerr_test.go <<'EOF'
+        package store
+
+        import (
+        	"os"
+        	"path/filepath"
+        	"strings"
+        	"testing"
+        )
+
+        // A .grove directory that exists but is not writable used to surface as
+        // sqlite's bare "unable to open database file (14)" — no path, no cause.
+        // (WAL mode needs to create -wal/-shm sidecars next to the db.) The error
+        // must now name the path and the fix.
+        func TestOpenReadOnlyGroveDirIsActionable(t *testing.T) {
+        	root := t.TempDir()
+        	groveDir := filepath.Join(root, ".grove")
+        	if err := os.MkdirAll(groveDir, 0o555); err != nil {
+        		t.Fatal(err)
+        	}
+        	t.Cleanup(func() { _ = os.Chmod(groveDir, 0o755) })
+
+        	_, err := Open(root)
+        	if err == nil {
+        		t.Skip("running as root: read-only dir is still writable")
+        	}
+        	for _, want := range []string{groveDir, "not writable", "chmod"} {
+        		if !strings.Contains(err.Error(), want) {
+        			t.Errorf("error %q missing %q", err, want)
+        		}
+        	}
+        }
+
+        // A read-only db file inside a writable dir gets the file-specific hint.
+        func TestOpenReadOnlyDBFileIsActionable(t *testing.T) {
+        	root := t.TempDir()
+        	groveDir := filepath.Join(root, ".grove")
+        	if err := os.MkdirAll(groveDir, 0o755); err != nil {
+        		t.Fatal(err)
+        	}
+        	dbPath := filepath.Join(groveDir, "grove.db")
+        	if err := os.WriteFile(dbPath, nil, 0o444); err != nil {
+        		t.Fatal(err)
+        	}
+        	t.Cleanup(func() { _ = os.Chmod(dbPath, 0o644) })
+
+        	_, err := Open(root)
+        	if err == nil {
+        		t.Skip("running as root: read-only file is still writable")
+        	}
+        	for _, want := range []string{dbPath, "read-only"} {
+        		if !strings.Contains(err.Error(), want) {
+        			t.Errorf("error %q missing %q", err, want)
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/store/ 2>&1 | tail -3
+      at: 2026-08-09T22:14:35.003325Z
+      classified: test
+    - cmd: go build -o /tmp/prism-test ./cmd/prism && chmod 555 /tmp/cg14/.grove && /tmp/prism-test map --format text /tmp/cg14 2>&1 | head -3; chmod 755 /tmp/cg14/.grove
+      at: 2026-08-09T22:14:55.938962Z
+      classified: build
+    - cmd: rm -f /tmp/cg14/.grove/grove.db* 2>/dev/null; chmod 755 /tmp/cg14/.grove && rm -f /tmp/cg14/.grove/grove.db* && chmod 555 /tmp/cg14/.grove && /tmp/prism-test map --format text /tmp/cg14 2>&1 | head -3; chmod 755 /tmp/cg14/.grove; rm -rf /tmp/cg14
+      at: 2026-08-09T22:15:01.00941Z
+      classified: other
+    - cmd: rm -rf /tmp/cg14 && mkdir -p /tmp/cg14/.grove && echo 'package m' > /tmp/cg14/m.go && chmod 555 /tmp/cg14/.grove && /tmp/prism-test map --format text /tmp/cg14 2>&1 | head -3; chmod -R 755 /tmp/cg14 && rm -rf /tmp/cg14
+      at: 2026-08-09T22:15:04.859045Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git add internal/store/store.go internal/store/openerr_test.go && git commit -q -m "store: diagnose CANTOPEN — name the db path and the unwritable-.grove cause
+
+        sqlite's open error was passed through bare (\"unable to open database
+        file (14)\"): no path, no cause. Field case: .grove exists but is not
+        writable by the process, so WAL sidecar creation fails. Probe the
+        directory and file, name the path, and state the fix.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01691ToJfcPN6AqbodemXRTo" && git tag v0.27.1 && git push -q origin main v0.27.1 && echo pushed
+      at: 2026-08-09T22:15:15.630684Z
+      classified: other
+    - cmd: GOPRIVATE=github.com/provasign GOPROXY=direct go get github.com/provasign/grove@v0.27.1 && go mod tidy && go test ./... 2>&1 | grep -v "^ok" | head -8
+      at: 2026-08-09T22:15:34.596479Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git tag --sort=-v:refname | head -4 && git log --oneline -3
+      at: 2026-08-09T22:15:39.896556Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git tag v0.28.1 ad32a70b && git tag -d v0.27.1 && git push -q origin v0.28.1 :refs/tags/v0.27.1 && echo retagged
+      at: 2026-08-09T22:15:51.670918Z
+      classified: other
+    - cmd: GOPRIVATE=github.com/provasign GOPROXY=direct go get github.com/provasign/grove@v0.28.1 && go mod tidy && go test ./... 2>&1 | tail -25
+      at: 2026-08-09T22:15:56.992002Z
+      classified: test
+    - cmd: go build -o ~/bin/prism ./cmd/prism && python3 /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py --prism ~/bin/prism --corpus-root ~/gvg-corpus/ci-corpus 2>&1 | tail -6
+      at: 2026-08-09T22:17:29.211481Z
+      classified: build
+notes:
+    - text: continuation of session f0bdc672-de12-4f41-a700-ed3c366da188 — events captured after its evidence was finalized
+      at: 2026-08-09T22:03:52.644483Z
+redactions: 0

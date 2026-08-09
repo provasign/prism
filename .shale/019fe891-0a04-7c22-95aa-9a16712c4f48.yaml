@@ -1,0 +1,147 @@
+shale_version: "0"
+id: 019fe891-0a04-7c22-95aa-9a16712c4f48
+created_at: 2026-08-09T22:08:36.172267Z
+finalized_at: 2026-08-09T22:17:34.345281Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git status --short && go env GOWORK && go list -m -json
+      at: 2026-08-09T22:09:15.290308Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-09T22:09:30.155302Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-09T22:09:30.155327Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-09T22:09:30.153893Z
+      classified: other
+    - cmd: go test ./... -count=1
+      at: 2026-08-09T22:09:34.876846Z
+      classified: test
+    - cmd: go test ./... -count=1
+      at: 2026-08-09T22:09:37.548489Z
+      classified: test
+    - cmd: go test ./... -count=1
+      at: 2026-08-09T22:09:48.762625Z
+      classified: test
+    - cmd: prism status .
+      at: 2026-08-09T22:09:52.975579Z
+      classified: other
+    - cmd: prism status .
+      at: 2026-08-09T22:09:53.048981Z
+      classified: other
+    - cmd: prism index .
+      at: 2026-08-09T22:09:56.385527Z
+      classified: other
+    - cmd: prism map --depth 2 --format text
+      at: 2026-08-09T22:10:03.20072Z
+      classified: other
+    - cmd: prism map --depth 2 --format text
+      at: 2026-08-09T22:10:03.200738Z
+      classified: other
+    - cmd: prism dead-code --format text
+      at: 2026-08-09T22:10:03.308084Z
+      classified: other
+    - cmd: prism dead-code --format text
+      at: 2026-08-09T22:10:03.312954Z
+      classified: other
+    - cmd: prism map --depth 2 --format text
+      at: 2026-08-09T22:10:26.577626Z
+      classified: other
+    - cmd: prism map --depth 2 --format text
+      at: 2026-08-09T22:10:44.027752Z
+      classified: other
+    - cmd: prism dead-code --format text
+      at: 2026-08-09T22:10:44.171578Z
+      classified: other
+    - cmd: prism dead-code --format text
+      at: 2026-08-09T22:10:48.64062Z
+      classified: other
+    - cmd: go vet ./...
+      at: 2026-08-09T22:10:54.909929Z
+      classified: lint
+    - cmd: go vet ./...
+      at: 2026-08-09T22:10:55.246341Z
+      classified: lint
+    - cmd: go vet ./...
+      at: 2026-08-09T22:10:55.598537Z
+      classified: lint
+    - cmd: go test -race ./... -count=1
+      at: 2026-08-09T22:11:21.248442Z
+      classified: test
+    - cmd: go test -race ./... -count=1
+      at: 2026-08-09T22:11:36.991597Z
+      classified: test
+    - cmd: go test -race ./... -count=1
+      at: 2026-08-09T22:11:49.155959Z
+      classified: test
+    - cmd: prism search Index --scope symbols --format text
+      at: 2026-08-09T22:12:54.832492Z
+      classified: other
+    - cmd: prism search PreviewFileSymbols --scope symbols --format text
+      at: 2026-08-09T22:12:54.832544Z
+      classified: other
+    - cmd: prism search Impact --scope symbols --format text
+      at: 2026-08-09T22:12:54.832506Z
+      classified: other
+    - cmd: prism search Parse --scope symbols --format text
+      at: 2026-08-09T22:12:54.948528Z
+      classified: other
+    - cmd: prism search Strategy --scope symbols --format text
+      at: 2026-08-09T22:12:54.951054Z
+      classified: other
+    - cmd: prism search Language --scope symbols --format text
+      at: 2026-08-09T22:12:54.95177Z
+      classified: other
+    - cmd: prism search Impact --scope=symbols --format=text
+      at: 2026-08-09T22:12:59.094127Z
+      classified: other
+    - cmd: prism search Index --scope=symbols --format=text
+      at: 2026-08-09T22:12:59.094118Z
+      classified: other
+    - cmd: prism search PreviewFileSymbols --scope=symbols --format=text
+      at: 2026-08-09T22:12:59.094201Z
+      classified: other
+    - cmd: prism search Language --scope=symbols --format=text
+      at: 2026-08-09T22:12:59.210765Z
+      classified: other
+    - cmd: prism search Strategy --scope=symbols --format=text
+      at: 2026-08-09T22:12:59.211298Z
+      classified: other
+    - cmd: prism search Parse --scope=symbols --format=text
+      at: 2026-08-09T22:12:59.215639Z
+      classified: other
+    - cmd: prism search Impact --scope=symbols --format=text
+      at: 2026-08-09T22:13:12.753581Z
+      classified: other
+    - cmd: prism query "Code-only correctness review of Grove graph change-impact, index lifecycle, parser preview, and incremental updates. Find concrete bugs, unsafe edge cases, incomplete implementations, and test gaps. Exclude documentation." --terms=ChangeImpact,Index,PreviewFileSymbols,Replace --include=graph --format=text
+      at: 2026-08-09T22:13:27.083415Z
+      classified: other
+    - cmd: prism query --help
+      at: 2026-08-09T22:13:30.528504Z
+      classified: other
+    - cmd: prism query "Code-only correctness review of Grove graph change-impact, index lifecycle, parser preview, and incremental updates. Find concrete bugs, unsafe edge cases, incomplete implementations, and test gaps. Exclude documentation." --terms ChangeImpact,Index,PreviewFileSymbols,Replace --include graph --delivery source --max-files 12 --format text
+      at: 2026-08-09T22:13:39.787794Z
+      classified: other
+    - cmd: prism search Parse --scope=symbols --format=text
+      at: 2026-08-09T22:13:48.034037Z
+      classified: other
+    - cmd: prism search Language --scope=symbols --format=text
+      at: 2026-08-09T22:13:48.056331Z
+      classified: other
+    - cmd: prism search Strategy --scope=symbols --format=text
+      at: 2026-08-09T22:13:48.078377Z
+      classified: other
+    - cmd: prism search Validate --scope=symbols --format=text
+      at: 2026-08-09T22:13:56.379901Z
+      classified: other
+notes: []
+redactions: 0
