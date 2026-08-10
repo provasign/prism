@@ -1,0 +1,304 @@
+shale_version: "0"
+id: 67308dac-fc6a-41ac-9402-b97cf92e71e5
+created_at: 2026-08-09T22:31:14.148311Z
+finalized_at: 2026-08-10T01:12:48.448323Z
+agent:
+    tool: claude-code
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/compression/compressor.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:41:55.725948Z
+    - path: internal/compression/symbol_key_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:42:07.645937Z
+    - path: internal/grove/client.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:42:21.360193Z
+    - path: internal/compression/staledelta_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-09T22:43:38.778295Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:44:02.962124Z
+    - path: internal/mcp/verify.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:45:03.983964Z
+    - path: internal/mcp/graphcache.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:45:46.198873Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:46:53.424802Z
+    - path: internal/textsearch/native.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:47:19.520128Z
+    - path: internal/textsearch/symlink_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-09T22:47:39.790781Z
+    - path: AGENTS.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:57:54.016663Z
+    - path: GEMINI.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:58:10.067903Z
+    - path: CLAUDE.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-09T22:58:22.358578Z
+commands:
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'currentGraph' --scope text --format text
+      at: 2026-08-09T22:33:40.887043Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'SnapshotSymbols|SnapshotGraph|FileSymbols|\.ICR\(' --scope text --regex --format text 2>&1 | head -80
+      at: 2026-08-09T22:34:34.521616Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'SnapshotSymbols|SnapshotGraph|ComputeICR|\.ICR\(|DiffSince' --scope text --regex --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d['textHits'] for x in h['hits']]"
+      at: 2026-08-09T22:34:39.445868Z
+      classified: other
+    - cmd: prism search 'SnapshotGraph|SnapshotSymbols|FileSymbols|ComputeICR|\.ICR\(' --scope text --regex --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d['textHits'] for x in h['hits']]"
+      at: 2026-08-09T22:34:48.831581Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'FilesNotIn' --scope text --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]"
+      at: 2026-08-09T22:35:09.08521Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go build ./... 2>&1 | head -40
+      at: 2026-08-09T22:37:46.514683Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go vet ./... 2>&1 | head -40
+      at: 2026-08-09T22:38:18.797739Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'eng\.FileSymbols|eng2\.FileSymbols|\.SnapshotSymbols\(|\.SnapshotGraph\(|\.DiffSince\(|\.ICR\(' --scope text --regex --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or [] if h['file'].endswith('.go')]"
+      at: 2026-08-09T22:38:24.594095Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go vet ./... 2>&1 | head -30
+      at: 2026-08-09T22:39:30.7339Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go vet ./... 2>&1 | head -30 && go test ./... 2>&1 | tail -25
+      at: 2026-08-09T22:39:42.539139Z
+      classified: lint
+    - cmd: ls /Users/tapabratapal/Projects/provasign/grove/internal/index/ && head -60 /Users/tapabratapal/Projects/provasign/grove/internal/index/indexer_test.go 2>/dev/null
+      at: 2026-08-09T22:39:54.203659Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./internal/index/ ./internal/store/ 2>&1 | tail -10
+      at: 2026-08-09T22:40:18.553554Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'type Status struct' --scope text --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]" && prism lookup core.Status --format text 2>/dev/null | head -20
+      at: 2026-08-09T22:40:23.300307Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./internal/index/ 2>&1 | tail -6
+      at: 2026-08-09T22:40:30.875381Z
+      classified: test
+    - cmd: go test ./internal/compression/ 2>&1 | tail -20
+      at: 2026-08-09T22:42:11.790434Z
+      classified: test
+    - cmd: go build ./... 2>&1 | head -20 && go test ./internal/compression/ ./internal/grove/ 2>&1 | tail -12
+      at: 2026-08-09T22:42:33.143462Z
+      classified: test
+    - cmd: prism search 'Span ' --scope text --format text 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or [] if 'types' in h['file'] or 'record' in h['file']]" ; prism lookup SymbolRecord --format text 2>/dev/null | head -30
+      at: 2026-08-09T22:42:38.516337Z
+      classified: other
+    - cmd: sed -i '' 's/grove.LineRange/grove.SpanInfo/g' internal/compression/symbol_key_test.go && go test ./internal/compression/ 2>&1 | tail -8
+      at: 2026-08-09T22:43:23.967357Z
+      classified: test
+    - cmd: go test ./internal/compression/ -run Stale -v 2>&1 | tail -6
+      at: 2026-08-09T22:43:42.652693Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'func (e \*Engine) ExtractContent|unsupported' --scope text --regex --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]" | head -20
+      at: 2026-08-09T22:44:41.121839Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'func (e \*Engine) ExtractContent' --scope text --regex --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]"
+      at: 2026-08-09T22:44:46.046235Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'ExtractContent' --scope text --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]" | head
+      at: 2026-08-09T22:44:49.731472Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -20 && go test ./internal/mcp/ ./internal/grove/ 2>&1 | tail -8
+      at: 2026-08-09T22:46:18.134697Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search 'EdgeTests|EdgeType = ' --scope text --regex --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]" | head -20
+      at: 2026-08-09T22:46:28.136633Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '60,90p' internal/core/types.go && prism search 'EdgeTests' --scope text --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]" | head -30
+      at: 2026-08-09T22:46:32.404339Z
+      classified: other
+    - cmd: sed -n '1815,1845p' internal/cli/commands.go
+      at: 2026-08-09T22:46:47.563716Z
+      classified: other
+    - cmd: go test ./internal/textsearch/ -v -run Symlink 2>&1 | tail -5 && go build ./... && go test ./... 2>&1 | tail -20
+      at: 2026-08-09T22:48:03.210205Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && prism search 'func WalkChildren|type ImportStatement struct' --scope text --regex --format text 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'].strip()) for h in d.get('textHits') or [] for x in h.get('hits') or []]"
+      at: 2026-08-09T22:48:57.499393Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && prism search 'ExtractImports' --scope text --format text 2>&1 | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits') or []:
+                print(h['file'], x['line'], x['text'].strip())"
+      at: 2026-08-09T22:50:20.756448Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && go test ./strategies/ -run Imports -v 2>&1 | tail -15
+      at: 2026-08-09T22:50:41.741093Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && go vet ./... && go test ./... 2>&1 | tail -8
+      at: 2026-08-09T22:50:53.6394Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go vet ./... && go test ./... 2>&1 | tail -6
+      at: 2026-08-09T22:51:02.852753Z
+      classified: lint
+    - cmd: go vet ./... 2>&1 | head -5
+      at: 2026-08-09T22:51:03.408855Z
+      classified: lint
+    - cmd: go test -race ./internal/compression/ ./internal/textsearch/ ./internal/grove/ ./internal/mcp/ 2>&1 | tail -6
+      at: 2026-08-09T22:51:26.171291Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test -race ./internal/index/ ./internal/store/ ./pkg/grove/ 2>&1 | tail -5
+      at: 2026-08-09T22:51:30.104962Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && go test -race ./... 2>&1 | tail -4
+      at: 2026-08-09T22:51:40.431561Z
+      classified: test
+    - cmd: head -30 /Users/tapabratapal/Projects/provasign/grove/CHANGELOG.md
+      at: 2026-08-09T22:51:40.511256Z
+      classified: other
+    - cmd: prism verify 2>&1 | tail -30
+      at: 2026-08-09T22:52:54.171536Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism verify 2>&1 | tail -15; cd /Users/tapabratapal/Projects/provasign/astkit && prism verify 2>&1 | tail -8
+      at: 2026-08-09T22:53:02.434429Z
+      classified: other
+    - cmd: |-
+        prism search 'Canonical workflow (non-refactor tasks)' --scope text --format text 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits') or []:
+                print(h['file'], x['line'])"
+      at: 2026-08-09T22:57:28.380559Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/cli/ 2>&1 | tail -5
+      at: 2026-08-09T22:59:43.990431Z
+      classified: test
+    - cmd: for r in astkit grove prism; do cd /Users/tapabratapal/Projects/provasign/$r; echo "=== $r ==="; git status --short | head -20; git describe --tags --abbrev=0 2>/dev/null; git log --oneline -2; done
+      at: 2026-08-09T23:55:41.01911Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/grove/go.mod /Users/tapabratapal/Projects/provasign/prism/go.mod
+      at: 2026-08-09T23:55:41.083405Z
+      classified: other
+    - cmd: for r in astkit grove prism; do echo "=== $r ==="; ls -a /Users/tapabratapal/Projects/provasign/$r/.github/workflows/ 2>/dev/null; ls /Users/tapabratapal/Projects/provasign/$r/ | tail -5; done; ls /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py 2>/dev/null && echo harness-present
+      at: 2026-08-09T23:56:16.955231Z
+      classified: other
+    - cmd: head -40 /Users/tapabratapal/Projects/provasign/prism/.github/workflows/release.yml; echo ---; head -25 /Users/tapabratapal/Projects/provasign/grove/.github/workflows/release.yml
+      at: 2026-08-09T23:56:21.31373Z
+      classified: other
+    - cmd: head -60 /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py
+      at: 2026-08-09T23:56:38.044858Z
+      classified: other
+    - cmd: go build -o ~/bin/prism ./cmd/prism && ~/bin/prism --version 2>/dev/null || ~/bin/prism version 2>/dev/null || echo built
+      at: 2026-08-09T23:56:45.654866Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/67308dac-fc6a-41ac-9402-b97cf92e71e5/scratchpad/ci-corpus --prism ~/bin/prism 2>&1 | tail -30
+      at: 2026-08-09T23:57:04.274317Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && git add engine.go internalast/helpers.go strategies/registry.go strategies/imports_test.go && git commit -m "$(cat <<'EOF'
+        fix: import extraction correctness + eager parser release
+
+        - Python: `import x as y` stores Path=x / Alias=y instead of the raw
+          "x as y" text, and imports are found at any nesting depth (if
+          TYPE_CHECKING:, function bodies) via new internalast.WalkTree.
+        - PHP: use clauses store the qualified name per clause with any `as`
+          alias split out; require/include store the file argument with quotes
+          stripped — consumers resolve Path verbatim, so it must never be the
+          whole statement.
+        - Engine.Parse closes the tree-sitter parser eagerly (returned trees do
+          not depend on it); waiting for the finalizer accumulated native memory
+          on large indexes.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-09T23:57:24.816151Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        import re, datetime
+        p = "CHANGELOG.md"
+        s = open(p).read()
+        s = s.replace("## Unreleased\n\nRobustness fixes from the 2026-08-09 cross-repo audit.",
+                      "## v0.29.0 - 2026-08-09\n\nRobustness fixes from the 2026-08-09 cross-repo audit.")
+        open(p, "w").write(s)
+        EOF
+        git diff --stat CHANGELOG.md
+      at: 2026-08-10T01:06:55.874544Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && git tag v0.4.23 && git push origin main v0.4.23 2>&1 | tail -3
+      at: 2026-08-10T01:08:20.955745Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off GOPROXY=direct go get github.com/provasign/astkit@v0.4.23 && GOWORK=off go mod tidy && GOWORK=off go build ./... && git diff --stat go.mod go.sum
+      at: 2026-08-10T01:08:40.693275Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go test ./... 2>&1 | tail -4 && git add -A CHANGELOG.md eval/match.go internal/index/ internal/store/ pkg/grove/ go.mod go.sum && git commit -m "$(cat <<'EOF'
+        fix: surface store failures, never prune unseen files, private index perms (v0.29.0)
+
+        Robustness fixes from the 2026-08-09 cross-repo audit:
+
+        - BREAKING: Engine.ICR/FileSymbols/SnapshotSymbols/SnapshotGraph/DiffSince
+          return errors; all graph-backed methods propagate rehydration/database
+          failures instead of answering with an empty graph.
+        - Indexer: nonexistent/unreadable root aborts the run; files under an
+          unreadable subtree are shielded from the prune pass; a changed file that
+          fails to parse has its stale stored symbols pruned.
+        - Store: .grove created/tightened to 0700, grove.db + WAL/SHM to 0600.
+        - deps: astkit v0.4.22 -> v0.4.23 (import extraction correctness).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-10T01:09:28.39566Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git tag v0.29.0 && git push origin main v0.29.0 2>&1 | tail -3
+      at: 2026-08-10T01:10:09.90669Z
+      classified: other
+    - cmd: GOWORK=off GOPROXY=direct go get github.com/provasign/grove@v0.29.0 && GOWORK=off go mod tidy && GOWORK=off go build ./... && GOWORK=off go test ./... 2>&1 | tail -5
+      at: 2026-08-10T01:11:21.239757Z
+      classified: test
+    - cmd: git add -A AGENTS.md CLAUDE.md GEMINI.md internal/ go.mod go.sum && git status --short | head -20
+      at: 2026-08-10T01:11:25.134188Z
+      classified: other
+notes: []
+redactions: 0

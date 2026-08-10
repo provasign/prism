@@ -1,0 +1,21 @@
+shale_version: "0"
+id: 019fe8a7-b7ba-76e2-b31b-90c32e04f00f
+created_at: 2026-08-09T22:33:36.947955Z
+finalized_at: 2026-08-10T01:12:48.448323Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: prism savings . --format text
+      at: 2026-08-09T22:37:38.290698Z
+      classified: other
+    - cmd: prism savings . --format text
+      at: 2026-08-09T22:37:47.11498Z
+      classified: other
+notes: []
+redactions: 0
