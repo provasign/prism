@@ -1,0 +1,64 @@
+shale_version: "0"
+id: 019fe976-c9e6-7b52-aad1-4c026b0c4793-c3
+created_at: 2026-08-10T04:04:54.73776Z
+finalized_at: 2026-08-10T12:16:05.060284Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: gofmt -w internal/graph/fable_fresh_eval_test.go
+      at: 2026-08-10T04:04:57.072885Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/graph -run '^TestFreshEval' -count=1
+      at: 2026-08-10T04:05:02.513823Z
+      classified: test
+    - cmd: gofmt -w internal/graph/fable_fresh_eval_test.go
+      at: 2026-08-10T04:05:49.634578Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/graph -run '^TestFreshEvalJavaParameterInheritedFieldChainResolves$' -count=1
+      at: 2026-08-10T04:05:53.342699Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go vet ./...
+      at: 2026-08-10T04:05:58.670074Z
+      classified: lint
+    - cmd: HOME=/private/tmp/grove-fable-prism-home XDG_CACHE_HOME=/private/tmp/grove-fable-prism-cache prism search 'return anywhere' --scope text /private/tmp/grove-fable-eval.CwUBQD/repo
+      at: 2026-08-10T04:06:02.446671Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-08-10T04:06:07.39092Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-10T04:06:07.400441Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-08-10T04:07:27.012677Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-08-10T04:07:27.042964Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/grove-signature-fix.XXXXXX
+      at: 2026-08-10T04:30:56.446544Z
+      classified: other
+    - cmd: cp -R /Users/tapabratapal/Projects/provasign/grove/. /private/tmp/grove-signature-fix.z91AER
+      at: 2026-08-10T04:31:07.775025Z
+      classified: other
+    - cmd: HOME=/private/tmp/grove-signature-prism-home XDG_CACHE_HOME=/private/tmp/grove-signature-prism-cache prism query 'Fix case-fold method collision in signature-aware interface satisfaction and harden Go grouped and inline-function parameter parsing' --terms buildInterfaceSatisfaction --delivery source --max-files 3 --format text /private/tmp/grove-signature-fix.z91AER
+      at: 2026-08-10T04:31:11.31674Z
+      classified: other
+    - cmd: HOME=/private/tmp/grove-signature-prism-home XDG_CACHE_HOME=/private/tmp/grove-signature-prism-cache prism change-impact 'buildInterfaceSatisfaction' --format text /private/tmp/grove-signature-fix.z91AER
+      at: 2026-08-10T04:31:15.018926Z
+      classified: other
+    - cmd: HOME=/private/tmp/grove-signature-prism-home XDG_CACHE_HOME=/private/tmp/grove-signature-prism-cache prism change-impact 'goParamTypeToken' --format text /private/tmp/grove-signature-fix.z91AER
+      at: 2026-08-10T04:31:15.19115Z
+      classified: other
+    - cmd: HOME=/private/tmp/grove-signature-prism-home XDG_CACHE_HOME=/private/tmp/grove-signature-prism-cache prism change-impact 'paramTypesOf' --format text /private/tmp/grove-signature-fix.z91AER
+      at: 2026-08-10T04:31:15.371418Z
+      classified: other
+notes:
+    - text: continuation of session 019fe976-c9e6-7b52-aad1-4c026b0c4793 — events captured after its evidence was finalized
+      at: 2026-08-10T04:04:54.73776Z
+redactions: 0

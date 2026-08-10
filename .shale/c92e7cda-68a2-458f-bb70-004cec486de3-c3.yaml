@@ -1,0 +1,410 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c3
+created_at: 2026-08-10T04:04:27.738038Z
+finalized_at: 2026-08-10T12:16:05.060284Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: 'cd ~/Projects/provasign/prism && gh run view 31354239395 --json headSha --jq .headSha && git rev-parse HEAD && git tag -a v0.42.0 -m "v0.42.0: grove v0.30.0 — multi-hop receiver chain resolution (typeorm ceiling 1.000/0.974, jackson-serialize 1.000)" && git push origin v0.42.0'
+      at: 2026-08-10T04:04:27.738038Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId'); gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN || echo RELEASE-FAILED; gh release view v0.42.0 --json assets --jq '[.assets[].name] | length'
+      at: 2026-08-10T04:06:14.847592Z
+      classified: other
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.42.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.42.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.42.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && git log --oneline -1'
+      at: 2026-08-10T04:06:25.091953Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.42.0 -R provasign/prism -p 'prism-v0.42.0-darwin-arm64' --clobber && chmod +x prism-v0.42.0-darwin-arm64 && ./prism-v0.42.0-darwin-arm64 version && for d in /tmp/ci-corpus/*/; do rm -rf "${d}.grove"; done; rm -rf /tmp/ci-corpus/guava/guava/.grove; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/prism-v0.42.0-darwin-arm64 2>&1 | tail -6
+      at: 2026-08-10T04:06:48.219641Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git status --short | head -30
+      at: 2026-08-10T04:10:31.413557Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git ls-files harness/runs/e2e/ | tail -3; git check-ignore -v harness/runs/e2e/pydantic__pydantic__pr13516.opus.prism_priced_v2.t2.json 2>/dev/null; ls harness/runs/e2e/*.t2.json 2>/dev/null | tail -3
+      at: 2026-08-10T04:10:41.43653Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && ls harness/runs/e2e/ | rev | cut -c1-30 | rev | head -0; ls harness/runs/e2e/ > /tmp/e2e-ls.txt; python3 -c "
+        lines=open('/tmp/e2e-ls.txt').read().split()
+        t2=[l for l in lines if 'prism_priced_v2.t2' in l]
+        print('\n'.join(t2))
+        "; git status --porcelain harness/runs/e2e/ | python3 -c "import sys; print(sum(1 for _ in sys.stdin),'untracked entries')"
+      at: 2026-08-10T04:10:48.410619Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git add harness/ci_baseline.json .github/workflows/engine-invariants.yml harness/runs/e2e/ && git commit -m "$(cat <<'EOF'
+        baseline: rebase ceilings on grove v0.30.0 / prism v0.42.0 chain fix; pin CI to v0.42.0
+
+        Multi-hop receiver-chain fix (grove 74382a3d): typeorm-driver-escape
+        0.946→1.000 recall / 0.745→0.974 precision, jackson-serialize 0.981→1.000
+        recall. 12 of 13 corpora now at recall 1.000; the one residual is guava
+        MutableClassToInstanceMap.spliterator (delegate() inside an anonymous inner
+        class — astkit-layer attribution). Floors verified against the released
+        v0.42.0 binary (all invariants held, fresh stores).
+
+        Also: fresh-trial re-run evidence for the 11 opus.prism_priced_v2 e2e cells
+        that had failed (10/11 still fail; model-limited per §8.1 — .diff files +
+        RERUN-2026-08-09 summary; per-cell JSONs absent, see summary _comment).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push origin main 2>&1 | tail -2
+      at: 2026-08-10T04:11:20.911759Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && sleep 15 && run=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo INVARIANTS-CI-GREEN || echo INVARIANTS-CI-FAILED
+      at: 2026-08-10T04:11:26.148188Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git worktree remove --force /tmp/grove-bisect && rm -f /tmp/prism-bisect /tmp/prism-foreign /tmp/prism-mine /tmp/go.work.bisect /tmp/e2e-ls.txt && git status --short && git worktree list
+      at: 2026-08-10T04:11:31.276635Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git diff internal/graph/changeimpact.go | sed -n 100,200p
+      at: 2026-08-10T04:19:51.521043Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git diff internal/graph/interfaces.go | head -110 && wc -l internal/graph/changeimpact_signatures_test.go
+      at: 2026-08-10T04:19:55.749106Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'Signatures|ChangeImpact' -count=1 2>&1 | tail -4 && go test ./... -count=1 -timeout 300s 2>&1 | tail -4
+      at: 2026-08-10T04:20:17.768688Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && go build -o /tmp/prism-codex ./cmd/prism && for d in /tmp/ci-corpus/*/; do rm -rf "${d}.grove"; done; rm -rf /tmp/ci-corpus/guava/guava/.grove; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-codex 2>&1 | sed -n '1,16p;/FAILED\|All invariants/p'
+      at: 2026-08-10T04:20:25.279135Z
+      classified: build
+    - cmd: |-
+        cd /tmp/ci-corpus/grafana-122750 && /tmp/prism-codex change-impact 'SQLStore.WithTransactionalDbSession' . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for g in ('declarations','family','supers','callers','declaringTypes'):
+            xs=d.get(g) or []
+            print(g, len(xs))
+            for x in xs[:4]: print('  ', x.get('filePath'), x.get('name'), '|', (x.get('signature') or '')[:100])
+        print('completeness', d.get('completeness'))
+        "
+      at: 2026-08-10T04:24:35.350928Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        src=open('internal/graph/changeimpact.go').read()
+        i=src.find('anchors := []signatureAnchor')
+        print(src[i-200:i+2400])
+        EOF
+      at: 2026-08-10T04:24:48.461857Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/grafana-122750 && rm -rf .grove && /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/prism-v0.42.0-darwin-arm64 change-impact 'SQLStore.WithTransactionalDbSession' . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for g in ('declarations','family','supers','callers','declaringTypes'):
+            xs=d.get(g) or []
+            print(g, len(xs))
+            if g=='family':
+                for x in xs: print('  ', x.get('filePath'), '|', (x.get('signature') or '')[:110])
+        "
+      at: 2026-08-10T04:25:52.944051Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        src=open('internal/graph/changeimpact.go').read()
+        i=src.find('// 5. Supers')
+        print("=== PATCHED ===")
+        print(src[i:i+2600])
+        EOF
+      at: 2026-08-10T04:26:11.239109Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        src=open('internal/graph/changeimpact.go').read()
+        i=src.find('if len(g.containedMet')
+        print(src[i:i+1500])
+        EOF
+      at: 2026-08-10T04:26:16.225901Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run TestDebugSigTokens -count=1 -v 2>&1 | tail -9
+      at: 2026-08-10T04:26:48.376445Z
+      classified: test
+    - cmd: |-
+        cd /tmp/ci-corpus/grafana-122750 && /tmp/prism-codex search 'WithTransactionalDbSession' --scope symbols --limit 20 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for s in d.get('symbols') or []:
+            print(s.get('kind'), s.get('parentSymbol'), '|', s.get('filePath'), '|', repr((s.get('signature') or ''))[:130])
+        "
+      at: 2026-08-10T04:27:08.070522Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/grafana-122750 && python3 - <<'EOF'
+        import re
+        src=open('pkg/infra/db/db.go').read()
+        m=re.search(r'type DB interface \{(.*?)\n\}', src, re.S)
+        print(m.group(1) if m else src[:800])
+        EOF
+      at: 2026-08-10T04:27:35.201434Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run TestDebugDBSatisfaction -count=1 -v 2>&1 | tail -18
+      at: 2026-08-10T04:28:03.101591Z
+      classified: test
+    - cmd: |-
+        cd /tmp/ci-corpus/grafana-122750 && python3 - <<'EOF'
+        import re
+        src=open('pkg/services/sqlstore/session.go').read() if False else None
+        import glob
+        for f in glob.glob('pkg/services/sqlstore/*.go'):
+            for m in re.finditer(r'func \(ss \*SQLStore\) (withDbSession|WithDbSession)\([^)]*\)', open(f).read()):
+                print(f, '|', m.group(0)[:110])
+        EOF
+      at: 2026-08-10T04:28:32.196289Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && rm internal/graph/debug_sig_test.go internal/graph/debug_sat_test.go && git status --short
+      at: 2026-08-10T04:28:39.726839Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        src=open('internal/graph/interfaces.go').read()
+        i=src.find('methodsByType')
+        print(src[max(0,i-400):i+400])
+        j=src.find('satisfied := true')
+        print('=====')
+        print(src[j-600:j+900])
+        EOF
+      at: 2026-08-10T10:46:39.573177Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        src=open('internal/graph/interfaces.go').read()
+        i=src.find('case core.KindMethod:')
+        print(src[i:i+500])
+        EOF
+      at: 2026-08-10T10:46:44.827461Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        src=open('internal/graph/interfaces.go').read()
+        j=src.find('if !satisfied {')
+        print(src[j:j+1800])
+        EOF
+      at: 2026-08-10T10:46:52.627634Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'CaseFoldTwin|GoParamTokens|Signatures|ChangeImpact' -count=1 2>&1 | tail -8
+      at: 2026-08-10T10:49:00.528332Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'CaseFoldTwin|GoParamTokens|Signatures|ChangeImpact' -count=1 2>&1 | tail -3 && go vet ./... && go test ./... -count=1 -timeout 300s 2>&1 | tail -5
+      at: 2026-08-10T10:49:17.416972Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign/prism && go build -o /tmp/prism-codex-fixed ./cmd/prism && for d in /tmp/ci-corpus/*/; do rm -rf "${d}.grove"; done; rm -rf /tmp/ci-corpus/guava/guava/.grove; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-codex-fixed 2>&1 | sed -n '/Ceiling/,/^$/p;/All invariants\|FAILED/p'
+      at: 2026-08-10T10:49:23.495451Z
+      classified: build
+    - cmd: tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/byjz5iql5.output; rm -f /tmp/prism-codex /tmp/prism-codex-fixed
+      at: 2026-08-10T10:52:01.745627Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go build -o /tmp/prism-check ./cmd/prism && cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-check > /tmp/ci-check.log 2>&1; echo "exit=$?"; tail -4 /tmp/ci-check.log; rm -f /tmp/prism-check
+      at: 2026-08-10T10:53:15.090693Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/research && ls harness/runs/ab-agentic/ 2>/dev/null | head; python3 - <<'EOF'
+        import glob, re
+        for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/*.py'):
+            src=open(f).read()
+            if 'ab-agentic' in src:
+                print(f.split('/')[-1])
+        EOF
+      at: 2026-08-10T11:12:21.089771Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        src=open('harness/ab_agentic_mcp.py').read()
+        print(src[:src.find('"""',3)+3][:2200])
+        import re
+        for m in re.finditer(r'add_argument\((.*?)\)\n', src, re.S):
+            print(re.sub(r'\s+',' ',m.group(0))[:130])
+        EOF
+      at: 2026-08-10T11:12:26.152053Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/research/harness/runs/ab-agentic/*.opus.prism.json | python3 -c "import sys; [print(l.rsplit('/',1)[1]) for l in sys.stdin]"
+      at: 2026-08-10T11:12:32.633032Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        src=open('harness/ab_agentic_mcp.py').read()
+        import re
+        for pat in ['exists', 'OUT', 'bin/prism', 'mcp', 'skip']:
+            for m in list(re.finditer(pat, src))[:4]:
+                s=max(0,m.start()-150); print(repr(re.sub(r'\s+',' ',src[s:m.end()+150])[:260])); print('---')
+        EOF
+      at: 2026-08-10T11:12:48.424275Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 -c "
+        import json
+        for t in ['django-quotename','guava-forwarding-delegate','jackson-jsonnode-get','jackson-serialize','jackson-settable-set','typeorm-driver-escape']:
+            d=json.load(open(f'harness/tasks/{t}.json'))
+            print(t, '|', d.get('workdir') or d.get('repo'))
+        "
+      at: 2026-08-10T11:13:00.417765Z
+      classified: other
+    - cmd: ls ~/gvg-corpus/ 2>/dev/null && cd ~/Projects/provasign/prism && go build -o ~/bin/prism ./cmd/prism && ~/bin/prism version; for r in django guava jackson-databind typeorm; do rm -rf ~/gvg-corpus/$r/.grove ~/gvg-corpus/guava/guava/.grove 2>/dev/null; done; echo stores-cleared
+      at: 2026-08-10T11:13:08.955961Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research/harness && mkdir -p runs/ab-agentic/archive-v0.42.0-prechain && for t in django-quotename guava-forwarding-delegate jackson-jsonnode-get jackson-serialize jackson-settable-set typeorm-driver-escape; do mv runs/ab-agentic/$t.opus.prism.json runs/ab-agentic/archive-v0.42.0-prechain/; done && ls runs/ab-agentic/archive-v0.42.0-prechain/
+      at: 2026-08-10T11:13:15.584018Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 ab_agentic_mcp.py --model opus --arms prism tasks/django-quotename.json tasks/guava-forwarding-delegate.json tasks/jackson-jsonnode-get.json tasks/jackson-serialize.json tasks/jackson-settable-set.json tasks/typeorm-driver-escape.json 2>&1 | tail -40
+      at: 2026-08-10T11:13:24.291914Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/ab-agentic && python3 - <<'EOF'
+        import json, glob
+        tasks=['django-quotename','guava-forwarding-delegate','jackson-jsonnode-get','jackson-serialize','jackson-settable-set','typeorm-driver-escape']
+        print(f"{'task':<28} {'old':>6} {'new':>6}   old$   new$")
+        o_r=n_r=o_c=n_c=0
+        for t in tasks:
+            old=json.load(open(f'archive-v0.42.0-prechain/{t}.opus.prism.json'))
+            new=json.load(open(f'{t}.opus.prism.json'))
+            print(f"{t:<28} {old['recall']:>6} {new['recall']:>6}   {old.get('cost_usd',0):.2f}   {new.get('cost_usd',0):.2f}")
+            o_r+=old['recall']; n_r+=new['recall']; o_c+=old.get('cost_usd',0); n_c+=new.get('cost_usd',0)
+        print(f"{'MEAN':<28} {o_r/6:>6.4f} {n_r/6:>6.4f}   {o_c/6:.2f}   {n_c/6:.2f}")
+        EOF
+      at: 2026-08-10T11:18:24.634644Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research && git add RESULTS.md harness/runs/ab-agentic/ && git commit -m "$(printf ''ab-agentic: re-run prism arm on v0.42.0 — mean recall 0.987 -> 0.9995 (serialize + typeorm residuals closed); prior cells archived\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push origin main 2>&1 | tail -1'
+      at: 2026-08-10T11:18:49.541316Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/rerun_probe.py 2>&1
+      at: 2026-08-10T11:45:15.300542Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research && git add harness/runs/e2e/ && git commit -m "$(printf ''e2e probe: 3 still-failing prism_priced_v2 cells on the v0.42 chain-fix engine — 0/3, model-limited boundary holds (json + diff persisted this time)\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push origin main 2>&1 | tail -1'
+      at: 2026-08-10T11:54:32.599826Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for t in ['pallets__click__pr3228','pallets__werkzeug__pr3081','urllib3__urllib3__pr5093']:
+            d=json.load(open(f'tasks-e2e/{t}.json'))
+            print('='*80)
+            print(t, '| keys:', sorted(d.keys()))
+            print('PROBLEM:', (d.get('problem_statement') or d.get('prompt') or '')[:500].replace('\n',' '))
+            print('F2P:', d.get('fail_to_pass'))
+        EOF
+      at: 2026-08-10T12:08:37.892257Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for t in ['pallets__click__pr3228','pallets__werkzeug__pr3081','urllib3__urllib3__pr5093']:
+            d=json.load(open(f'tasks-e2e/{t}.json'))
+            print('='*90)
+            print(t)
+            gold=d['patch']
+            files=[l[6:] for l in gold.split('\n') if l.startswith('+++ b/')]
+            print('GOLD files:', files, f'({gold.count(chr(10))} lines)')
+            tp=d['test_patch']
+            tpf=[l[6:] for l in tp.split('\n') if l.startswith('+++ b/')]
+            print('TEST patch files:', tpf)
+            try:
+                diff=open(f'runs/e2e/{t}.opus.baseline.diff').read()
+                bfiles=[l[6:] for l in diff.split('\n') if l.startswith('+++ b/')]
+                print('BASELINE t1 diff files:', bfiles, f'({diff.count(chr(10))} lines)')
+            except FileNotFoundError:
+                print('no baseline t1 diff')
+            try:
+                rec=json.load(open(f'runs/e2e/{t}.opus.baseline.json'))
+                sc=rec.get('score') or {}
+                print('baseline t1 resolved:', rec.get('resolved'), '| score keys:', {k:v for k,v in sc.items() if k in ('f2p_pass','f2p_total','p2p_regress','error','note')})
+            except FileNotFoundError:
+                pass
+        EOF
+      at: 2026-08-10T12:08:51.67831Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for t in ['pallets__click__pr3228','pallets__werkzeug__pr3081','urllib3__urllib3__pr5093']:
+            rec=json.load(open(f'runs/e2e/{t}.opus.baseline.json'))
+            print('='*90)
+            print(t, '| resolved:', rec.get('resolved'))
+            sc=rec.get('score') or {}
+            print('score:', json.dumps({k:(v[:300] if isinstance(v,str) else v) for k,v in sc.items()}, indent=1)[:900])
+        EOF
+      at: 2026-08-10T12:08:57.108456Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open('tasks-e2e/pallets__click__pr3228.json'))
+        tp=d['test_patch']
+        i=tp.find('test_unknown_options')
+        print('--- test_patch around test_unknown_options:')
+        print(tp[max(0,i-500):i+900])
+        EOF
+      at: 2026-08-10T12:09:09.924623Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open('tasks-e2e/pallets__werkzeug__pr3081.json'))
+        gold=d['patch']
+        i=gold.find('multipart.py')
+        seg=gold[i:i+2600]
+        print('--- GOLD multipart.py hunks:')
+        print(seg)
+        EOF
+      at: 2026-08-10T12:09:18.515756Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        d=json.load(open('tasks-e2e/urllib3__urllib3__pr5093.json'))
+        gold=d['patch']
+        i=gold.find('b/src/urllib3/poolmanager.py')
+        print(gold[i:i+1400])
+        EOF
+      at: 2026-08-10T12:09:33.972593Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go vet ./... && go test ./... -count=1 -timeout 300s 2>&1 | tail -3 && git add internal/graph/changeimpact.go internal/graph/interfaces.go internal/graph/changeimpact_signatures_test.go && git status --short
+      at: 2026-08-10T12:15:22.469426Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git commit -m "$(cat <<'EOF'
+        feat: signature-aware interface satisfaction and change-impact anchoring
+
+        Interface satisfaction and change-impact family/supers matching now compare
+        parameter signatures, not names alone: per-language param tokenizers
+        (goParamTokens, tsParamTypeToken), interface member signatures recovered
+        from source (interfaceMemberSignatures), synthesized member declarations
+        carrying signatures, and a parameterized query (Type.method(Params))
+        anchoring exclusively on the query's own parameter list.
+
+        Two corrections applied on top of the original draft (found by the ceiling
+        bench — unit tests alone were green through both):
+
+        1. Case-fold twins must not fail the interface. The satisfaction map kept
+           ONE method per lowercase name, so an exported/unexported pair with
+           different arity (grafana's WithDbSession / withDbSession(engine)) made
+           the signature check read the wrong twin, fail the whole interface, and
+           sever every dispatch edge through it (grafana-bigblast recall
+           1.00 -> 0.02). All case-fold candidates are now kept and each member
+           picks exact-name-first, any-compatible-second; the picked method — not
+           an arbitrary map entry — is recorded as the implementor and carries the
+           overrides edge (the old single-entry map could attribute both to the
+           wrong twin even before this change).
+
+        2. Go parameter tokenization handles real Go shapes: grouped parameters
+           share the trailing type ("a, b string" -> [string string]), func-typed
+           parameters reduce to the canonical "func" token (strings.Fields took
+           "error"), and unnamed interface-spec lists tokenize as bare types.
+
+        Ceiling: all 13 corpora byte-identical to the v0.42.0 baselines with the
+        signature matching active (harness/ci_invariants.py, fresh stores, exit 0).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.31.0 -m "v0.31.0: signature-aware interface satisfaction + change-impact anchoring (case-fold-safe, Go-shape-aware tokenization; ceiling invariants held)" && git push origin v0.31.0 2>&1 | tail -1
+      at: 2026-08-10T12:15:37.500103Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-10T04:04:27.738038Z
+redactions: 0
