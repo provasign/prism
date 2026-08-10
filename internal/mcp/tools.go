@@ -129,7 +129,6 @@ type FeedbackEntry struct {
 // tools 404'd for months; anything that needs "all tools" derives from this.
 func DispatchableTools() []string {
 	return []string{
-		"prism",
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_node", "prism_references", "prism_resolve", "prism_edges",
 		"prism_change_impact", "prism_missing_implementations",
@@ -160,7 +159,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	// reason.
 	timeout := 60 * time.Second
 	switch name {
-	case "prism_verify", "prism", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
+	case "prism_verify", "prism_index", "prism_map", "prism_cycles", "prism_dead_code":
 		timeout = 10 * time.Minute
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -185,8 +184,6 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		return nil, fmt.Errorf("server is rooted at %s and cannot serve dir %s; restart with `prism mcp %s` or run the prism CLI from that directory", h.Root, dir, dir)
 	}
 	switch name {
-	case "prism":
-		return h.toolTask(ctx, args)
 	case "prism_query":
 		return h.toolQuery(ctx, args)
 	case "prism_read":
@@ -283,7 +280,6 @@ func ToolSchemas() []map[string]any {
 	// search (locate, with test doubles tagged), node (orient), map (cycles
 	// are a field of its result), and the gates' own delta-reindexing.
 	names := []string{
-		"prism",
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_references", "prism_change_impact",
 		"prism_missing_implementations", "prism_dead_code",
@@ -322,42 +318,6 @@ var contextUsedProp = map[string]any{
 func toolSchema(name string) map[string]any {
 	open := map[string]any{"type": "object", "additionalProperties": true}
 	switch name {
-	case "prism":
-		return map[string]any{
-			"type":     "object",
-			"required": []string{"task"},
-			"properties": map[string]any{
-				"task": map[string]any{
-					"type":        "string",
-					"description": "The complete task, in the user's terms (e.g. \"Allow users to revoke an active API token\"). Same string before and after editing.",
-				},
-				"changed_files": map[string]any{
-					"type":        "array",
-					"items":       map[string]any{"type": "string"},
-					"description": "AFTER editing: the files you changed (repo-relative). Presence switches to verify; the git diff is authoritative, this is a hint.",
-				},
-				"mode": map[string]any{
-					"type":        "string",
-					"enum":        []string{"prepare", "verify"},
-					"description": "Override auto mode resolution (changed_files present = verify, else prepare).",
-				},
-				"terms": map[string]any{
-					"type":        "array",
-					"items":       map[string]any{"type": "string"},
-					"description": "REQUIRED for prepare mode (ignored/unused for verify): symbols or keyword " +
-						"anchors you already located, e.g. [\"AccessCount\"] — guess ONE from the task if you " +
-						"don't have a name yet (a class/function fragment, a domain term); prepare fails closed " +
-						"with guidance if this is empty.",
-				},
-				"base": map[string]any{
-					"type":        "string",
-					"description": "verify: git base to diff against. Default HEAD.",
-				},
-				"model":        modelProp,
-				"context_used": contextUsedProp,
-				"budget":       map[string]any{"type": "integer", "description": "Token budget for prepare delivery. Default 8000."},
-			},
-		}
 	case "prism_query":
 		return map[string]any{
 			"type":     "object",
@@ -624,23 +584,6 @@ func toolSchema(name string) map[string]any {
 
 func toolDescription(name string) string {
 	switch name {
-	case "prism":
-		return "THE default tool for any codebase task — call it FIRST, before grep or file reads. " +
-			"Two moments: (1) BEFORE editing, prism(task=\"<the full task>\") returns edit-ready " +
-			"line-numbered source, each anchor's callers/tests, and the CHANGE OBLIGATIONS — every " +
-			"site that must be handled if you change those contracts, type-resolved and " +
-			"completeness-tagged. (2) AFTER editing, prism(task=..., changed_files=[...]) verifies " +
-			"the diff: contract changes detected, missed call sites reported line-precisely, " +
-			"prepare-time obligations checked. Verdicts are fail-closed " +
-			"(clean|complete|review|incomplete). Treat returned source as already read; satisfy " +
-			"every reported obligation before finishing. NEVER answer a completeness or change-set " +
-			"question from memory or a quick read — an answer not backed by this tool's result on the " +
-			"current index is a guess (measured: un-tooled answers fabricate plausible sites). " +
-			"If the task does not already name the target " +
-			"symbol, FIRST locate it (grep/prism_search), then pass that CONFIRMED name as terms=[...] " +
-			"— a confirmed anchor is what retrieval keys on. Do NOT pass a guessed term for a common " +
-			"name (e.g. \"serialize\", \"get\"); a wrong term is worse than none. " +
-			"mode=\"prepare\"|\"verify\" to override."
 	case "prism_query":
 		return "DELIVER (this tool answers \"give me what I need to do this task\" — to merely locate " +
 			"something, use prism_search): pass the task and terms=[...] with anchor names you have " +

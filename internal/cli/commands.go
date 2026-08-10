@@ -42,12 +42,6 @@ Usage:
   prism init [--global] [dir]     Write prism.yaml + register MCP with detected AI tools
                                   --global writes to user-level config (~/.claude, ~/.cursor, etc.)
   prism install [--global] [dir]  Alias for 'prism init'
-  prism task "<task>" [dir]       One call for a whole task: context + the
-                                  obligations it implies. After editing, re-run
-                                  with --changed a.go,b.go for the completeness
-                                  verdict (exit 1 if incomplete)
-                                  ([--terms x,y] [--base REF] [--budget N]
-                                  [--mode prepare|verify] [--format text|json])
   prism index [dir]               Index codebase via Grove (delta-aware)
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
@@ -192,8 +186,6 @@ func Run(args []string) int {
 		return cmdSearch(rest)
 	case "node":
 		return cmdNode(rest)
-	case "task":
-		return cmdTask(rest)
 	case "lookup":
 		return cmdLookup(rest)
 	case "references", "refs":
@@ -526,7 +518,6 @@ Use the prism CLI with --format text instead of MCP tools:
 | Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 | Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
 | Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --terms <your best guess> --format text` + "`" + ` — ONE call; --terms is REQUIRED, guess a keyword from the task |
-| A whole task, end to end (context + the obligations it implies) | ` + "`" + `prism task "<task>" --format text` + "`" + `; after editing, ` + "`" + `prism task "<same task>" --changed a.go,b.go` + "`" + ` for the completeness verdict (exit 1 if incomplete) |
 | Locate a string, symbol, or file | prism search <term> — symbol names AND raw source text (real rg/grep inside). Pure grep: prism search <term> --scope text [--regex] |
 | Callers/callees for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph --format text` + "`" + ` |
 | Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
@@ -1685,94 +1676,6 @@ func cmdLookup(args []string) int {
 
 // cmdNode is the one-shot orientation view — a symbol's source + neighbours,
 // or a file's source + defined symbols + dependents.
-// cmdTask exposes the unified prepare/verify tool on the CLI. It was MCP-only,
-// so the Bash-only surface — subagents, CI, hooks — could reach every
-// individual op but not the one-call task workflow the playbook leads with.
-func cmdTask(args []string) int {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism task \"<task in your own words>\" [dir]")
-		fmt.Fprintln(os.Stderr, "  prepare (default): context + the obligations this task implies")
-		fmt.Fprintln(os.Stderr, "  --changed a.go,b.go   switch to verify: is the diff complete?")
-		fmt.Fprintln(os.Stderr, "  --terms x,y           symbols you already located (grep-precision seeding)")
-		fmt.Fprintln(os.Stderr, "  --base REF            verify: git base to diff against (default HEAD)")
-		fmt.Fprintln(os.Stderr, "  --mode prepare|verify --budget N --format text|lean|json")
-		return 2
-	}
-	task := args[0]
-	dir := "."
-	format := formatText
-	callArgs := map[string]any{"task": task}
-	csv := func(v string) []any {
-		var out []any
-		for _, p := range strings.Split(v, ",") {
-			if p = strings.TrimSpace(p); p != "" {
-				out = append(out, p)
-			}
-		}
-		return out
-	}
-	for i := 1; i < len(args); i++ {
-		a := args[i]
-		next := func() (string, bool) {
-			if i+1 < len(args) {
-				i++
-				return args[i], true
-			}
-			return "", false
-		}
-		switch a {
-		case "--changed", "--changed-files":
-			if v, ok := next(); ok {
-				callArgs["changed_files"] = csv(v)
-			}
-		case "--terms":
-			if v, ok := next(); ok {
-				callArgs["terms"] = csv(v)
-			}
-		case "--base":
-			if v, ok := next(); ok {
-				callArgs["base"] = v
-			}
-		case "--mode":
-			if v, ok := next(); ok && (v == "prepare" || v == "verify") {
-				callArgs["mode"] = v
-			}
-		case "--budget":
-			if v, ok := next(); ok {
-				if n, err := strconv.Atoi(v); err == nil && n > 0 {
-					callArgs["budget"] = n
-				}
-			}
-		case "--format":
-			if v, ok := next(); ok {
-				switch outputFormat(v) {
-				case formatText, formatLean, formatJSON:
-					format = outputFormat(v)
-				}
-			}
-		default:
-			if strings.HasPrefix(a, "-") {
-				return rejectUnknownFlag("task", a)
-			}
-			dir = a
-		}
-	}
-	out, err := invokeWithPersistentLedger(dir, "prism", callArgs)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "task:", err)
-		return 1
-	}
-	printOutput(out, format)
-	// verify mode carries a verdict; mirror `prism verify`'s exit contract so
-	// the CLI is usable as a gate.
-	if m, ok := out.(map[string]any); ok {
-		if v, _ := m["verdict"].(string); v == "incomplete" {
-			return 1
-		}
-	}
-	return 0
-}
-
 func cmdNode(args []string) int {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "usage: prism node <symbol-or-file> [dir] [--file <path>] [--format text|lean|json]")

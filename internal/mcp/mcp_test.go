@@ -239,8 +239,8 @@ func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
 
 func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	schemas := ToolSchemas()
-	if len(schemas) != 15 {
-		t.Fatalf("want 15 tool schemas, got %d", len(schemas))
+	if len(schemas) != 14 {
+		t.Fatalf("want 14 tool schemas, got %d", len(schemas))
 	}
 	names := make(map[string]bool)
 	for _, s := range schemas {
@@ -257,7 +257,7 @@ func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 		names[name] = true
 	}
 	for _, want := range []string{
-		"prism", "prism_query", "prism_read", "prism_search", "prism_lookup",
+		"prism_query", "prism_read", "prism_search", "prism_lookup",
 		"prism_change_impact", "prism_missing_implementations",
 		"prism_dead_code", "prism_rename_plan", "prism_node",
 		"prism_verify", "prism_arch_check",
@@ -272,6 +272,10 @@ func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	for _, gone := range []string{
 		"prism_resolve", "prism_edges", "prism_cycles", "prism_drift",
 		"prism_compact", "prism_savings", "prism_feedback", "prism_evidence",
+		// The unified prism(task) tool was REMOVED (2026-08-09): natural
+		// language was its sole retrieval key, which contradicts the
+		// deterministic-anchor contract every other surface honors.
+		"prism",
 	} {
 		if names[gone] {
 			t.Errorf("ToolSchemas advertises %q, which was removed from the agent surface", gone)
@@ -342,8 +346,8 @@ func TestServerToolsList(t *testing.T) {
 	if !ok {
 		t.Fatalf("tools field missing or wrong type: %T", result["tools"])
 	}
-	if len(tools) != 15 {
-		t.Errorf("tools/list: got %d tools, want 15", len(tools))
+	if len(tools) != 14 {
+		t.Errorf("tools/list: got %d tools, want 14", len(tools))
 	}
 }
 

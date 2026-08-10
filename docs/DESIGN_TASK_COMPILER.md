@@ -1,6 +1,17 @@
 # The Task Compiler: `prism(task)` — One Tool, Two Moments
 
-Status: v1 in progress (branch task-compiler) · Date: 2026-07-19
+Status: **RETIRED 2026-08-09** (shipped v0.30.0–v0.40.1, removed in v0.41.0) ·
+originally v1 on branch task-compiler · Date: 2026-07-19
+
+> Retirement rationale: the tool's sole retrieval key was the natural-language
+> task string, which contradicts the deterministic-anchor contract every other
+> surface honors (prism_query requires terms; verify keys on the diff). The
+> phrasing-sensitivity studies (research: ab_phrasing, ab_phrasing2) measured
+> the instability directly. Its two halves live on in stronger, anchored form:
+> context delivery = prism_query(terms=[...]); completeness = prism verify.
+> The widerAnchorHint machinery it introduced survives on prism_change_impact
+> (internal/mcp/wideranchor.go). Research arms that exercised the tool
+> (ab_unified, greenfield_bench_cloud) must pin prism ≤ v0.40.1.
 
 ## Thesis
 
