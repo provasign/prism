@@ -1,0 +1,60 @@
+shale_version: "0"
+id: 67308dac-fc6a-41ac-9402-b97cf92e71e5-c4
+created_at: 2026-08-10T02:11:52.054771Z
+finalized_at: 2026-08-10T02:15:11.691414Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/textsearch/textsearch.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T02:13:38.40923Z
+    - path: internal/textsearch/native.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T02:13:56.058551Z
+    - path: internal/textsearch/textsearch_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T02:14:17.677739Z
+commands:
+    - cmd: |-
+        git add -A && git commit -m "$(cat <<'EOF'
+        docs: refresh generated steering variants — prism task row removed (init --refresh)
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push origin main 2>&1 | tail -1
+      at: 2026-08-10T02:11:52.054771Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/67308dac-fc6a-41ac-9402-b97cf92e71e5/scratchpad
+        ./scripts/gen-homebrew-formula.sh v0.41.0 > $SCRATCH/homebrew-shale/Formula/prism.rb && cd $SCRATCH/homebrew-shale && git add Formula/prism.rb && git commit -m "$(cat <<'EOF'
+        prism 0.41.0
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push origin HEAD 2>&1 | tail -1
+      at: 2026-08-10T02:11:55.62357Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -5; go test ./internal/textsearch/ -v 2>&1 | tail -20
+      at: 2026-08-10T02:14:22.1136Z
+      classified: test
+    - cmd: go test ./internal/textsearch/ -v 2>&1 | tail -14
+      at: 2026-08-10T02:14:29.092057Z
+      classified: test
+    - cmd: go vet ./... && go test ./... 2>&1 | tail -6
+      at: 2026-08-10T02:14:44.948607Z
+      classified: lint
+notes:
+    - text: continuation of session 67308dac-fc6a-41ac-9402-b97cf92e71e5 — events captured after its evidence was finalized
+      at: 2026-08-10T02:11:52.054771Z
+redactions: 0
