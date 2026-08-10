@@ -1,0 +1,170 @@
+shale_version: "0"
+id: 019fe976-c9e6-7b52-aad1-4c026b0c4793
+created_at: 2026-08-10T02:28:49.935754Z
+finalized_at: 2026-08-10T03:23:13.043328Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: .tmp_independent_eval/main.go
+      ops:
+        - write
+        - edit
+        - delete
+      via: hook
+      first_touched: 2026-08-10T03:19:22.725901Z
+commands:
+    - cmd: git ls-files
+      at: 2026-08-10T02:29:11.080145Z
+      classified: other
+    - cmd: wc -l internal/cli/commands.go internal/cli/viewcmds.go internal/cli/watch.go internal/mcp/tools.go internal/mcp/viewtools.go internal/mcp/server.go internal/httpapi/http.go pkg/kit/kit.go internal/config/config.go install.sh install.ps1 uninstall.sh uninstall.ps1 AGENT_SETUP_PROMPT.md CONTRIBUTING.md SECURITY.md SUPPORT.md THREAT_MODEL.md docs/*.md
+      at: 2026-08-10T02:29:17.590891Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go run ./cmd/prism --help
+      at: 2026-08-10T02:29:27.539547Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-08-10T02:30:08.583705Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go build -o /private/tmp/prism-doc-audit ./cmd/prism
+      at: 2026-08-10T02:30:48.70405Z
+      classified: build
+    - cmd: /private/tmp/prism-doc-audit lookup
+      at: 2026-08-10T02:30:55.261893Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit change-impact
+      at: 2026-08-10T02:30:55.262018Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit edges
+      at: 2026-08-10T02:30:55.262247Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit feedback
+      at: 2026-08-10T02:30:55.261896Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit search
+      at: 2026-08-10T02:30:55.262331Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit references
+      at: 2026-08-10T02:30:55.261866Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit resolve
+      at: 2026-08-10T02:30:55.262161Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit assist
+      at: 2026-08-10T02:30:55.262322Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit missing-implementations
+      at: 2026-08-10T02:30:55.262223Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit read
+      at: 2026-08-10T02:30:55.262499Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit rename-plan
+      at: 2026-08-10T02:30:55.262209Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit node
+      at: 2026-08-10T02:30:55.2622Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit query
+      at: 2026-08-10T02:30:55.262193Z
+      classified: other
+    - cmd: /private/tmp/prism-doc-audit query "main entry point" --format text
+      at: 2026-08-10T02:31:20.412512Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-doc-home /private/tmp/prism-doc-cache
+      at: 2026-08-10T02:31:29.438328Z
+      classified: other
+    - cmd: HOME=/private/tmp/prism-doc-home XDG_CACHE_HOME=/private/tmp/prism-doc-cache /private/tmp/prism-doc-audit query "main entry point" --format text
+      at: 2026-08-10T02:31:29.577529Z
+      classified: other
+    - cmd: git tag --sort=-v:refname
+      at: 2026-08-10T02:32:00.425777Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go list -m -f '{{.Dir}}' github.com/provasign/grove
+      at: 2026-08-10T02:32:16.395872Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/.codex/plugins/cache/openai-bundled/browser/26.803.41515/skills/control-in-app-browser/SKILL.md
+      at: 2026-08-10T02:34:26.757224Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/provasign.github.io ls-files
+      at: 2026-08-10T02:35:05.642818Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/provasign.github.io show HEAD:prism.md
+      at: 2026-08-10T02:35:10.939135Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/provasign.github.io show HEAD:index.html
+      at: 2026-08-10T02:35:10.943135Z
+      classified: other
+    - cmd: nl -ba /Users/tapabratapal/Projects/provasign/provasign.github.io/prism.md
+      at: 2026-08-10T02:35:28.627466Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/grove ls-files
+      at: 2026-08-10T02:35:41.074867Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/grove show HEAD:internal/parser/languages.go
+      at: 2026-08-10T02:35:44.255536Z
+      classified: other
+    - cmd: wc -l /Users/tapabratapal/Projects/provasign/provasign.github.io/benchmarks.md /Users/tapabratapal/Projects/provasign/provasign.github.io/index.html /Users/tapabratapal/Projects/provasign/provasign.github.io/mason.md /Users/tapabratapal/Projects/provasign/provasign.github.io/grove.md
+      at: 2026-08-10T02:36:28.306173Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/provasign.github.io show HEAD:mason.md
+      at: 2026-08-10T02:36:34.466849Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/provasign.github.io show HEAD:benchmarks.md
+      at: 2026-08-10T02:36:34.47251Z
+      classified: other
+    - cmd: HOME=/private/tmp/prism-doc-home XDG_CACHE_HOME=/private/tmp/prism-doc-cache /private/tmp/prism-doc-audit serve .
+      at: 2026-08-10T02:37:46.839031Z
+      classified: other
+    - cmd: nl -ba /Users/tapabratapal/Projects/provasign/provasign.github.io/index.html
+      at: 2026-08-10T02:38:09.104062Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-08-10T02:39:01.784358Z
+      classified: test
+    - cmd: git status --short
+      at: 2026-08-10T02:39:06.418645Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go build -o /private/tmp/prism-independent-eval-bin ./cmd/prism
+      at: 2026-08-10T03:16:32.208785Z
+      classified: build
+    - cmd: gofmt -w .tmp_independent_eval/main.go
+      at: 2026-08-10T03:19:25.159964Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go run ./.tmp_independent_eval /private/tmp/prism-independent-eval-bin
+      at: 2026-08-10T03:19:29.390556Z
+      classified: other
+    - cmd: gofmt -w .tmp_independent_eval/main.go
+      at: 2026-08-10T03:20:12.114803Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go run ./.tmp_independent_eval /private/tmp/prism-independent-eval-bin
+      at: 2026-08-10T03:20:15.558741Z
+      classified: other
+    - cmd: gofmt -w .tmp_independent_eval/main.go
+      at: 2026-08-10T03:21:50.49993Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go run ./.tmp_independent_eval /private/tmp/prism-independent-eval-bin
+      at: 2026-08-10T03:21:54.784476Z
+      classified: other
+    - cmd: gofmt -w .tmp_independent_eval/main.go
+      at: 2026-08-10T03:22:24.078189Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go run ./.tmp_independent_eval /private/tmp/prism-independent-eval-bin
+      at: 2026-08-10T03:22:28.14656Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-10T03:22:39.098196Z
+      classified: other
+    - cmd: git rev-parse --short=12 HEAD
+      at: 2026-08-10T03:22:57.74449Z
+      classified: other
+    - cmd: /private/tmp/prism-independent-eval-bin version
+      at: 2026-08-10T03:23:03.154339Z
+      classified: other
+notes: []
+redactions: 0

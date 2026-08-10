@@ -1,0 +1,454 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3
+created_at: 2026-08-10T02:18:52.001727Z
+finalized_at: 2026-08-10T03:23:13.043328Z
+agent:
+    tool: claude-code
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:09:35.236203Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:10:12.444065Z
+    - path: internal/config/config.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:10:40.889905Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:11:50.028707Z
+    - path: prism.yaml
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-10T03:13:57.626274Z
+    - path: AGENT_SETUP_PROMPT.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:14:13.51388Z
+    - path: install.ps1
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:15:04.698107Z
+    - path: docs/DESIGN_LAYERED_INTELLIGENCE.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:15:43.924577Z
+    - path: internal/compression/compressor.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-10T03:16:12.470048Z
+    - path: docs/HTTP_API.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-10T03:20:38.849853Z
+    - path: docs/GO_KIT.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-10T03:21:06.703138Z
+commands:
+    - cmd: ls ~/Projects/provasign/research 2>/dev/null; ls ~/Projects/provasign | head -30
+      at: 2026-08-10T02:19:34.623661Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/research/harness ~/Projects/provasign/research/runs 2>/dev/null | head -60
+      at: 2026-08-10T02:19:37.21598Z
+      classified: other
+    - cmd: ls -t ~/Projects/provasign/research/runs | head -20; echo ---; ls ~/Projects/provasign/research/harness | tail -40
+      at: 2026-08-10T02:19:42.840101Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -30
+      at: 2026-08-10T02:19:46.999715Z
+      classified: other
+    - cmd: ~/bin/prism --version 2>&1; ls -l ~/bin/prism
+      at: 2026-08-10T02:20:27.288725Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        src = open('/Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py').read()
+        for m in re.finditer(r'add_argument\([^)]*\)', src):
+            print(m.group(0))
+        EOF
+      at: 2026-08-10T02:20:34.197481Z
+      classified: other
+    - cmd: ls /tmp/ci-corpus 2>/dev/null; sleep 0; wc -c /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/bsi4hj674.output
+      at: 2026-08-10T02:20:42.266588Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism/.github/workflows/ 2>/dev/null && sed -n 1,60p /Users/tapabratapal/Projects/provasign/prism/.github/workflows/ci.yml
+      at: 2026-08-10T02:24:01.812713Z
+      classified: other
+    - cmd: go vet ./... && go test ./... -count=1 -timeout 120s 2>&1 | tail -40 && go build ./... && echo ALL-GREEN
+      at: 2026-08-10T02:24:25.473044Z
+      classified: lint
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness/runs/e2e/ | head -50; echo ---; ls /Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e-meaningful/
+      at: 2026-08-10T02:27:07.760517Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        rows=[]
+        for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/e2e/*.json'):
+            b=os.path.basename(f)
+            try: d=json.load(open(f))
+            except Exception: continue
+            if not isinstance(d,dict): continue
+            res=d.get('resolved')
+            if res is None: continue
+            rows.append((b, res))
+        prism=[r for r in rows if 'prism' in r[0]]
+        fails=[r for r in prism if r[1] is False]
+        print(f"total cells: {len(rows)}, prism cells: {len(prism)}, prism failed: {len(fails)}")
+        for b,_ in sorted(fails): print("FAIL", b)
+        EOF
+      at: 2026-08-10T02:27:13.393193Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, collections
+        bed = {os.path.splitext(f)[0] for f in os.listdir('/Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e-meaningful') if f.endswith('.json')}
+        cells = collections.defaultdict(list)
+        for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/e2e/*.opus.prism_priced*.json'):
+            b = os.path.basename(f)
+            task = b.split('.opus.')[0]
+            if task not in bed: continue
+            d = json.load(open(f))
+            cells[task].append((b.split('.opus.')[1].removesuffix('.json'), d.get('resolved')))
+        for t in sorted(bed):
+            print(t, sorted(cells.get(t, [])))
+        EOF
+      at: 2026-08-10T02:27:26.76884Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        src=open('/Users/tapabratapal/Projects/provasign/research/harness/run_e2e.py').read()
+        print(src[:40])
+        for m in re.finditer(r'add_argument\((.*?)\)\n', src, re.S):
+            print(re.sub(r'\s+',' ',m.group(0))[:160])
+        # find arm definitions
+        for m in re.finditer(r'prism_priced_v2|ARMS\s*=|def main', src):
+            s=max(0,m.start()-100); print('...', re.sub(r'\s+',' ',src[s:m.end()+200])[:300]); print('---')
+        EOF
+      at: 2026-08-10T02:27:36.354948Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        src=open('/Users/tapabratapal/Projects/provasign/research/harness/run_e2e.py').read()
+        import re
+        # arms dict / how prism_priced_v2 is defined, manifest format, task selection
+        for pat in ['prism_priced', 'manifest', '--tasks', 'def run_cell', 'RUNS_DIR', 'docker']:
+            for m in list(re.finditer(pat, src))[:3]:
+                s=max(0,m.start()-200); print(repr(re.sub(r'\s+',' ',src[s:m.end()+300])[:400])); print('===')
+        EOF
+      at: 2026-08-10T02:27:41.006325Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        from pathlib import Path
+        h=Path('/Users/tapabratapal/Projects/provasign/research/harness')
+        print(json.load(open(h/'manifest-meaningful.json')))
+        print([f for f in os.listdir(h/'tasks-e2e')][:30])
+        src=open(h/'ab_endtoend_arms.py').read()
+        import re
+        i=src.find('prism_priced_v2')
+        print(src[max(0,i-500):i+900])
+        EOF
+      at: 2026-08-10T02:27:47.939211Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        src=open('/Users/tapabratapal/Projects/provasign/research/harness/run_e2e.py').read()
+        import re
+        i=src.find('def main')
+        print(src[i:i+2200])
+        EOF
+      at: 2026-08-10T02:27:55.092917Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        from pathlib import Path
+        import re
+        src=open('/Users/tapabratapal/Projects/provasign/research/harness/ab_endtoend_arms.py').read()
+        i=src.find('CFG_DIR')
+        print(src[i:i+300])
+        EOF
+        ls /Users/tapabratapal/Projects/provasign/research/harness/cfg 2>/dev/null || true
+      at: 2026-08-10T02:28:10.17835Z
+      classified: other
+    - cmd: docker info >/dev/null 2>&1 && echo docker-ok || echo docker-DOWN; which claude; claude --version 2>/dev/null | head -1
+      at: 2026-08-10T02:28:11.63932Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        src=open('/Users/tapabratapal/Projects/provasign/research/harness/ab_endtoend_arms.py').read()
+        i=src.find('"prism.json"')
+        print(src[i:i+400])
+        EOF
+      at: 2026-08-10T02:28:14.859286Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/rerun_prism_failed.py 2>&1
+      at: 2026-08-10T02:28:42.021303Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, collections
+        tasks=["Textualize__rich__pr3938","pallets__click__pr3228","pallets__click__pr3473","pallets__click__pr3637","pallets__werkzeug__pr3006","pallets__werkzeug__pr3038","pallets__werkzeug__pr3081","pydantic__pydantic__pr13516","urllib3__urllib3__pr3786","urllib3__urllib3__pr5020","urllib3__urllib3__pr5093"]
+        base=collections.defaultdict(list)
+        for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/e2e/*.opus.baseline*.json'):
+            b=os.path.basename(f); t=b.split('.opus.')[0]
+            if t in tasks:
+                d=json.load(open(f)); base[t].append(d.get('resolved'))
+        for t in tasks: print(t, base.get(t))
+        EOF
+      at: 2026-08-10T03:06:30.181834Z
+      classified: other
+    - cmd: ~/bin/prism search "func cmdSearch" --scope text --format text 2>/dev/null | head; true
+      at: 2026-08-10T03:09:19.824629Z
+      classified: other
+    - cmd: ~/bin/prism search "func cmdResolve|func cmdEdges|--direction|--kinds" --scope text --regex --format text 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(h['file'], x['line'], x['text'][:80]) for h in d.get('textHits',[]) for x in h['hits']]"
+      at: 2026-08-10T03:10:06.884675Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/cli/ ./internal/mcp/ -count=1 2>&1 | tail -5
+      at: 2026-08-10T03:10:34.319427Z
+      classified: test
+    - cmd: wc -l /Users/tapabratapal/Projects/provasign/prism/README.md /Users/tapabratapal/Projects/provasign/prism/AGENT_SETUP_PROMPT.md
+      at: 2026-08-10T03:10:56.895972Z
+      classified: other
+    - cmd: sed -n '60,90p' /Users/tapabratapal/Projects/provasign/provasign.github.io/prism.md
+      at: 2026-08-10T03:11:34.503682Z
+      classified: other
+    - cmd: ~/bin/prism search buildCoverageGaps --scope text --format text 2>/dev/null | head -20
+      at: 2026-08-10T03:11:35.235272Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism search 'affected|coverage_gaps|~10|agent_mode|fifteen|depth 2|embeddings|prism\(task' --scope text --regex --limit 100 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits',[]):
+            if h.get('file','').endswith('README.md'):
+                for x in h.get('hits') or h.get('matches') or []:
+                    print(x.get('line'), x.get('text','')[:100])
+        "
+      at: 2026-08-10T03:13:30.056583Z
+      classified: other
+    - cmd: ~/bin/prism search 'agent_mode' --scope text --limit 50 --format json 2>/dev/null | head -40
+      at: 2026-08-10T03:13:35.617176Z
+      classified: other
+    - cmd: |-
+        for t in 'affected' 'coverage' '~10' 'fifteen' 'depth' 'embeddings' 'prism(task'; do echo "== $t"; ~/bin/prism search "$t" --scope text --limit 100 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits',[]):
+            if h.get('file')=='README.md':
+                for x in h.get('hits',[]): print(' ', x['line'], x['text'][:100])
+        "; done
+      at: 2026-08-10T03:13:41.689008Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism search '~10' --scope text --limit 100 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits',[]):
+            for x in h.get('hits',[]): print(h['file'], x['line'], x['text'][:90])
+        "; sed -n '1,10p' /Users/tapabratapal/Projects/provasign/prism/docs/DESIGN_LAYERED_INTELLIGENCE.md
+      at: 2026-08-10T03:15:14.345162Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism search 'SHA-pointer' --scope text --limit 100 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits',[]):
+            f=h.get('file','?')
+            for x in h.get('hits',[]): print(f, x.get('line'), x.get('text','')[:90])
+        "
+      at: 2026-08-10T03:15:27.206223Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism search 'repeat reads' --scope text --limit 100 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits',[]):
+            f=h.get('file','?')
+            if f.endswith('.go'):
+                for x in h.get('hits',[]): print(f, x.get('line'), x.get('text','')[:100])
+        "
+      at: 2026-08-10T03:15:32.524641Z
+      classified: other
+    - cmd: go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init . --refresh 2>&1 | tail -15
+      at: 2026-08-10T03:15:53.220472Z
+      classified: build
+    - cmd: |-
+        ~/bin/prism search '~10 tokens' --scope text --limit 50 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        n=0
+        for h in d.get('textHits',[]):
+            for x in h.get('hits',[]): print(h.get('file'), x.get('line')); n+=1
+        print('remaining:', n)
+        "; git -C /Users/tapabratapal/Projects/provasign/prism diff --stat | tail -3; head -8 /Users/tapabratapal/Projects/provasign/prism/prism.yaml
+      at: 2026-08-10T03:15:59.062627Z
+      classified: other
+    - cmd: sed -n '135,170p' /Users/tapabratapal/Projects/provasign/provasign.github.io/index.html
+      at: 2026-08-10T03:18:18.440546Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io && python3 - <<'EOF'
+        import re
+        for f in ['prism.md','index.html']:
+            src=open(f).read()
+            for pat in ['affected','coverage_gaps','prism task','prism(task','fifteen','~10-token','--depth 2','EMBEDDINGS','agent_mode','three modes','Three modes','eight edge']:
+                for m in re.finditer(re.escape(pat), src):
+                    line=src[:m.start()].count('\n')+1
+                    print(f, line, pat)
+        EOF
+      at: 2026-08-10T03:18:33.704282Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/provasign.github.io && sed -n '242,246p' prism.md && sed -n '154,158p' index.html && sed -n '102,112p' prism.md
+      at: 2026-08-10T03:18:36.941539Z
+      classified: other
+    - cmd: go build -o ~/bin/prism ./cmd/prism && go vet ./... && go test ./... -count=1 -timeout 120s 2>&1 | tail -16
+      at: 2026-08-10T03:19:00.986367Z
+      classified: lint
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && mkdir -p servetest && cd servetest && (~/bin/prism serve . > serve.log 2>&1 & echo $! > pid); sleep 3; head -3 serve.log; curl -s -o /dev/null -w "health: %{http_code}\n" http://127.0.0.1:8888/health; kill $(cat pid) 2>/dev/null; true'
+      at: 2026-08-10T03:19:09.609732Z
+      classified: other
+    - cmd: ~/bin/prism query "find the main entry point" --terms main --format text 2>&1 | head -5; echo "exit=$?"
+      at: 2026-08-10T03:19:14.743375Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism search "func DispatchableTools" --scope text --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits',[]):
+            for x in h.get('hits',[]): print(h['file'], x['line'])
+        "
+      at: 2026-08-10T03:20:09.949127Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism search '"prism_verify"' --scope text --limit 20 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits',[]):
+            if h['file'].endswith('tools.go'):
+                for x in h.get('hits',[]): print(x['line'], x['text'][:80])
+        "
+      at: 2026-08-10T03:20:44.811945Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/servetest && (~/bin/prism serve --port 8899 /Users/tapabratapal/Projects/provasign/prism > serve2.log 2>&1 & echo $! > pid2); sleep 4
+        echo "-- bad json:"; curl -s -o /dev/null -w "%{http_code}\n" localhost:8899/prism_search -d 'not-json'
+        echo "-- empty body POST:"; curl -s -X POST localhost:8899/prism_savings | head -c 120; echo
+        echo "-- search:"; curl -s localhost:8899/prism_search -d '{"query":"DispatchableTools","scope":"text","limit":3}' | head -c 200; echo
+        echo "-- tool error:"; curl -s -o /dev/null -w "%{http_code}\n" localhost:8899/prism_query -d '{"task":"x"}'
+        kill $(cat pid2) 2>/dev/null; true
+      at: 2026-08-10T03:21:36.434653Z
+      classified: other
+    - cmd: git -C ~/Projects/provasign/prism status --short | head -30; git -C ~/Projects/provasign/prism log --oneline -3; git tag --sort=-v:refname | head -3; cat internal/version/version.go 2>/dev/null; sed -n '1,30p' .github/workflows/release.yml
+      at: 2026-08-10T03:22:18.478602Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -8
+      at: 2026-08-10T03:22:37.07904Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git add README.md AGENT_SETUP_PROMPT.md install.ps1 prism.yaml docs/ internal/ AGENTS.md CLAUDE.md GEMINI.md .clinerules .cursorrules .devin .github/copilot-instructions.md .kiro .windsurfrules && git status --short | head -25
+      at: 2026-08-10T03:22:38.608978Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git commit -m "$(cat <<'EOF'
+        fix: serve port default + v0.38–v0.41 doc drift sweep (v0.41.2)
+
+        Audit (Codex, 2026-08-09) found 22 items of documentation drift across the
+        CLI help, MCP schemas, README, setup prompt, and generated steering, plus
+        one real behavior bug. All verified against the code and fixed.
+
+        Behavior:
+        - prism serve never applied the documented port default: cmdServe left the
+          port at 0 when --port was absent, and pickPort(0) exits with "invalid
+          port". Now resolves flag > prism.yaml port > 8888 as always documented.
+
+        CLI help / MCP schema:
+        - query --depth removed from help (flag exits 2 by design)
+        - init --mode documented as accepted-and-ignored (since v0.38.0)
+        - serve described as HTTP-only (stdio MCP is 'prism mcp')
+        - search help describes the full-text pass (--scope/--regex/--limit)
+        - resolve/edges/config added to usage; stray missing-implementations
+          [--dir] line removed
+        - prism_index MCP description now matches steering: indexing is automatic,
+          call only on stale-context warning or empty-index failure
+
+        Docs (README / AGENT_SETUP_PROMPT / steering / prism.yaml):
+        - retired unified prism(task) front door replaced with the 14-tool surface
+          and the v0.41.0 rationale; removed affected/coverage_gaps remnants and
+          dead buildCoverageGaps examples; 15 -> 14 tool count
+        - benchmark table updated to the 2026-08-08 re-measure (grep 8/8 @ 32
+          turns; the 5/8 was the 2026-07 model), grep positioning updated to the
+          built-in text pass
+        - setup prompt: smoke test passes required --terms, three-mode ceremony
+          collapsed to one init, MIT -> Apache-2.0, Windows ARM64 note (amd64-only
+          builds; install.ps1 matches)
+        - config docs list only real keys (model, arch_deny); agent_mode /
+          grove_binary / embeddings_backend called out as vestigial; model
+          auto-detection comments corrected (the MCP handshake carries no model)
+        - SHA-pointer repeat-read cost corrected ~10 -> ~30 tokens everywhere
+          (measured 29); steering regenerated via init --refresh
+        - DESIGN_LAYERED_INTELLIGENCE status: Phases 1-3 shipped
+
+        New docs:
+        - docs/HTTP_API.md — the 21 POST /prism_* routes, request/response
+          contract (200/400/500), port resolution, security posture (loopback,
+          no auth); contract smoke-tested live
+        - docs/GO_KIT.md — pkg/kit usage (Open/Invoke/FileSymbols/Savings/Close),
+          ledger sharing with the CLI
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-10T03:22:55.637707Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign.github.io && git status --short && git add prism.md index.html && git commit -m "$(cat <<'EOF'
+        prism: fix v0.38–v0.41 doc drift (audit 2026-08-09)
+
+        - retired unified prism(task) tool and prism task CLI removed; 14-tool
+          surface with the v0.41.0 removal rationale
+        - affected / coverage_gaps operations removed from examples and the
+          homepage cards (homepage change-impact demo shows declaringTypes, not an
+          invented tests group; affected card -> verify)
+        - change-impact documented as five groups: declaringTypes mandatory,
+          supers are breakable sibling contracts, not informational
+        - three init modes removed (one init since v0.38.0); indexing automatic
+        - include categories corrected to graph,docs; --depth removed
+        - 8 -> 9 Grove edge types (overrides); ~10 -> ~30-token repeat-read
+          pointer; savings described as per-repo persistent (~30 days)
+        - prism_compact described correctly (conversation JSON from stdin)
+        - new "Other surfaces" section linking docs/HTTP_API.md and docs/GO_KIT.md
+        - division-of-labor section updated: prism search --scope text is the
+          built-in grep; env overrides trimmed to PRISM_MODEL/PRISM_PROFILE
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-10T03:23:06.262898Z
+      classified: other
+notes: []
+redactions: 0
