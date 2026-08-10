@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/provasign/grove v0.29.0
+	github.com/provasign/grove v0.29.1
 )
 
 require (
