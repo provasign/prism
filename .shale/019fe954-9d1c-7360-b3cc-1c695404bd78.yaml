@@ -1,0 +1,60 @@
+shale_version: "0"
+id: 019fe954-9d1c-7360-b3cc-1c695404bd78
+created_at: 2026-08-10T01:41:12.263447Z
+finalized_at: 2026-08-10T02:04:50.54092Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git status --short --branch
+      at: 2026-08-10T01:41:29.725549Z
+      classified: other
+    - cmd: git diff --stat HEAD
+      at: 2026-08-10T01:41:29.732015Z
+      classified: other
+    - cmd: git diff --name-status HEAD
+      at: 2026-08-10T01:41:29.744504Z
+      classified: other
+    - cmd: git log -5 --oneline --decorate
+      at: 2026-08-10T01:41:29.750148Z
+      classified: other
+    - cmd: git show --stat --summary --format=fuller HEAD
+      at: 2026-08-10T01:41:42.038252Z
+      classified: other
+    - cmd: git diff --check origin/main
+      at: 2026-08-10T01:41:42.059703Z
+      classified: other
+    - cmd: git diff --find-renames origin/main
+      at: 2026-08-10T01:41:42.070518Z
+      classified: other
+    - cmd: shasum -a 256 .clinerules .cursorrules .devin/instructions.md .github/copilot-instructions.md .kiro/steering/prism.md .windsurfrules
+      at: 2026-08-10T01:42:20.292087Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go vet ./...
+      at: 2026-08-10T01:43:26.449859Z
+      classified: lint
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-08-10T01:43:31.697812Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-08-10T01:44:02.324011Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go vet ./...
+      at: 2026-08-10T01:44:07.768574Z
+      classified: lint
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1 -race -timeout 300s
+      at: 2026-08-10T01:44:49.982048Z
+      classified: test
+    - cmd: git diff --unified=0 HEAD -- .clinerules
+      at: 2026-08-10T01:45:28.522802Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-08-10T01:45:28.534937Z
+      classified: other
+notes: []
+redactions: 0
