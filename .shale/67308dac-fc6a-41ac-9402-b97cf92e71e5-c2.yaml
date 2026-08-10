@@ -1,0 +1,68 @@
+shale_version: "0"
+id: 67308dac-fc6a-41ac-9402-b97cf92e71e5-c2
+created_at: 2026-08-10T01:12:49.635219Z
+finalized_at: 2026-08-10T01:19:20.560292Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git commit -m "$(cat <<'EOF'
+        fix: stale-delta honesty, index-root guard, fail-closed verify; route-discipline steering (v0.40.0)
+
+        Fixes from the 2026-08-09 cross-repo audit:
+
+        - prism_read: symbol SHAs are computed from the delivered file's bytes at
+          each span, never the index's RawText — a stale index can no longer mask
+          a fresh edit behind a [prism:cached] pointer.
+        - prism_index: foreign dirs are rejected like every other tool (the engine
+          previously walked the other tree while pruning this root's database).
+        - prism_verify: failed index refresh, unparsable base version, or failed
+          contract diff degrade the verdict to review instead of noting-and-passing.
+        - Freshness: refreshIndexBestEffort failures surface as staleWarning on
+          graph-tool results; prism_arch_check refreshes before validating;
+          AutoIndexIfEmpty fails loudly when Status errors.
+        - Removed the dead "tests" edge kind from every advertised surface.
+        - Native text-search fallback rejects symlinks resolving outside the root.
+        - Steering rewritten for route discipline: one call per need, small
+          results for exploratory work, prism_index only on failure (indexing is
+          now automatic on every whole-repo graph op).
+        - deps: grove v0.28.1 -> v0.29.0 (error propagation — breaking),
+          astkit v0.4.22 -> v0.4.23.
+
+        Engine invariants harness: all corpora at/above baseline.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git tag v0.40.0 && git push origin main v0.40.0 2>&1 | tail -3
+      at: 2026-08-10T01:12:49.635219Z
+      classified: other
+    - cmd: sleep 20; for r in grove prism; do echo "=== $r ==="; gh run list -R provasign/$r --limit 3 2>/dev/null; done; cd /Users/tapabratapal/Projects/provasign && git rev-parse --git-dir 2>/dev/null | head -1
+      at: 2026-08-10T01:13:21.177009Z
+      classified: other
+    - cmd: gh run view 31346381522 -R provasign/grove --log-failed 2>/dev/null | tail -40
+      at: 2026-08-10T01:13:27.488196Z
+      classified: other
+    - cmd: gh run view 31346381520 -R provasign/grove --log-failed 2>/dev/null | tail -15
+      at: 2026-08-10T01:13:41.63982Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/grove/eval/ && head -20 /Users/tapabratapal/Projects/provasign/grove/eval/go.mod 2>/dev/null; head -30 /Users/tapabratapal/Projects/provasign/grove/.github/workflows/eval.yml
+      at: 2026-08-10T01:13:48.332079Z
+      classified: other
+    - cmd: tail -8 /Users/tapabratapal/Projects/provasign/grove/eval/go.mod
+      at: 2026-08-10T01:14:00.81994Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=off go mod tidy && cd .. && GOWORK=off go build ./... && GOWORK=off go test ./internal/store/ ./internal/index/ 2>&1 | tail -4 && git diff --stat
+      at: 2026-08-10T01:16:40.270467Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=off GOPROXY=direct go get github.com/provasign/grove@v0.29.1 && GOWORK=off go mod tidy && GOWORK=off go build ./... && GOWORK=off go test ./internal/grove/ ./internal/mcp/ 2>&1 | tail -3
+      at: 2026-08-10T01:19:02.942006Z
+      classified: test
+notes:
+    - text: continuation of session 67308dac-fc6a-41ac-9402-b97cf92e71e5 — events captured after its evidence was finalized
+      at: 2026-08-10T01:12:49.635219Z
+redactions: 0
