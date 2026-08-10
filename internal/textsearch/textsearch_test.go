@@ -29,8 +29,12 @@ func fixture(t *testing.T) string {
 	write("a.go", "package a\n\n// NeedleOne appears here\nfunc NeedleOne() {}\n")
 	write("sub/b.txt", "plain text with needleone lowercase\nno match line\n")
 	write("node_modules/dep/c.js", "needleone should be excluded\n")
-	write(".grove/state.json", "needleone in hidden dir\n")
+	write(".grove/state.json", "needleone in prism state dir\n")
 	write("bin.dat", "needleone\x00binary\n")
+	// Hidden paths are part of the corpus (grep -r semantics): a dotfile at
+	// root and a file nested under a hidden directory must both be found.
+	write(".clinerules", "steering needleone rule\n")
+	write(".github/workflows/ci.yml", "run: echo needleone\n")
 	return dir
 }
 
@@ -56,6 +60,12 @@ func assertFixtureResult(t *testing.T, r Result) {
 	}
 	if files["sub/b.txt"] != 1 {
 		t.Errorf("sub/b.txt line = %d, want 1 (case-insensitive match)", files["sub/b.txt"])
+	}
+	if files[".clinerules"] == 0 {
+		t.Errorf("hidden dotfile .clinerules not found; hits: %v", hitFiles(r.Hits))
+	}
+	if files[".github/workflows/ci.yml"] == 0 {
+		t.Errorf("file under hidden dir .github not found; hits: %v", hitFiles(r.Hits))
 	}
 	for f := range files {
 		if strings.Contains(f, "node_modules") || strings.HasPrefix(f, ".grove") {

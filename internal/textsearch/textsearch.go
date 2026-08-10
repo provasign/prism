@@ -19,7 +19,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -71,17 +70,14 @@ func (o Options) withDefaults() Options {
 	return o
 }
 
-// When an agent asks for a text search it is asking for ripgrep's semantics,
-// not prism's opinion of what it meant. Prism does NOT add its own exclusion
-// list: rg already skips .gitignore'd trees, hidden directories and binaries,
-// and a virtualenv is normally gitignored — so the case that motivated an
-// exclusion list is handled by the engine the agent expected. Overriding that
-// made prism silently unable to answer "where does this library define X",
-// which is a legitimate question about code that is really there.
-//
-// excludeDirs is therefore only what rg itself would skip and the fallbacks
-// cannot infer: prism's own state and the VCS directory. Everything else is
-// the agent's call.
+// When an agent asks for a text search it is asking for grep's semantics —
+// the steering says "use it exactly as you would grep", and grep -r searches
+// dotfiles. Prism does NOT add its own exclusion list beyond prism state and
+// the VCS dir: .gitignore'd trees are skipped (natively by rg; approximated
+// for the fallbacks by gitignoreDirs), binaries are skipped, and hidden paths
+// ARE searched on every backend (rg gets --hidden) — rg's default hidden-skip
+// made .github/.clinerules-style configs read as "not in the repo", which is
+// silent absence, the one divergence direction this package forbids.
 var excludeDirs = []string{".git", ".grove"}
 
 // gitignoreDirs approximates rg's .gitignore handling for the grep and native
@@ -206,6 +202,13 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		// no .git, and rg would then search everything the project asked it
 		// not to — including the venv that started all of this.
 		"--no-require-git",
+		// The steering promises grep semantics, and grep searches dotfiles.
+		// rg's default hidden-skip made .github/workflows, .clinerules and
+		// every dotfile config read as "not in the repo" — silent absence,
+		// the failure mode this package's own gitignore note forbids
+		// (measured: an agent concluded six hidden configs did not exist).
+		// .gitignore still applies, so ignored venvs stay out.
+		"--hidden",
 		"--max-count", strconv.Itoa(opts.MaxPerFile),
 		"--max-columns", strconv.Itoa(maxLineLen), "--max-columns-preview",
 		"--max-filesize", "2M",
@@ -213,58 +216,27 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")
 	}
-	// No prism-authored globs: rg's defaults ARE the requested semantics.
-	args = append(args, "--glob", "!.grove/", "-e", pattern, "--", ".")
+	// --hidden would otherwise descend into the VCS dir and prism's state.
+	args = append(args, "--glob", "!.git/", "--glob", "!.grove/", "-e", pattern, "--", ".")
 	return runLineTool(ctx, root, bin("rg"), args, nil, opts)
-}
-
-// hiddenDirNames walks root (directories only, bounded) and returns the
-// distinct basenames of hidden directories, for literal --exclude-dir flags.
-// Literal names because "grep" may be GNU, BSD or ugrep and their glob
-// semantics for --exclude-dir disagree.
-func hiddenDirNames(root string, cap int) []string {
-	seen := map[string]bool{}
-	var out []string
-	_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
-		if err != nil || !d.IsDir() {
-			return nil
-		}
-		name := d.Name()
-		if p != root && strings.HasPrefix(name, ".") {
-			if !seen[name] {
-				seen[name] = true
-				out = append(out, name)
-			}
-			return filepath.SkipDir // no need to walk inside what we exclude
-		}
-		if len(out) >= cap {
-			return filepath.SkipAll
-		}
-		return nil
-	})
-	sort.Strings(out)
-	return out
 }
 
 // runGrep shells out to grep, pinned to the C locale — under a UTF-8 locale
 // GNU grep's multibyte path is several times slower, and byte-oriented
 // matching is exactly right for fixed-string code search.
+//
+// Hidden paths are searched (grep's own -r semantics — the contract the
+// steering promises). Backend parity with rg is kept the other way around:
+// runRg passes --hidden. Only prism's state, the VCS dir, and the root
+// .gitignore's plain directory names are excluded; a non-gitignored venv on
+// a grep-only machine therefore surfaces as extra hits — the stated-safe
+// divergence direction (never silent absence).
 func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, bool) {
 	mode := "-F"
 	if regexUsable(pattern, opts) {
 		mode = "-E"
 	}
-	// Backend parity: rg skips hidden directories by default and the native
-	// scanner mirrors that; grep alone would crawl .venv/.tox/.idea, giving
-	// the machine that lacks rg a DIFFERENT corpus for the same query.
-	// LITERAL names, not a glob: "grep" may be GNU, BSD or ugrep, and their
-	// --exclude-dir glob semantics disagree (measured: ugrep's ".?*"
-	// excluded a plain "sub/"). Enumerating the hidden dirs that actually
-	// exist sidesteps every implementation.
 	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
-	for _, d := range hiddenDirNames(root, 64) {
-		args = append(args, "--exclude-dir="+d)
-	}
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}

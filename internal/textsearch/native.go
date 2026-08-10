@@ -37,7 +37,9 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 	}
 
 	// Same rule as the shelled-out engines: skip what the PROJECT says to
-	// skip, not what prism assumes. Hidden directories still go, matching rg.
+	// skip, not what prism assumes. Hidden paths are searched (grep -r
+	// semantics, matching runRg's --hidden); only prism state, the VCS dir,
+	// and root-.gitignore directory names are excluded.
 	skip := map[string]bool{}
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		skip[d] = true
@@ -61,7 +63,7 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 		}
 		name := d.Name()
 		if d.IsDir() {
-			if path != root && (skip[name] || strings.HasPrefix(name, ".")) {
+			if path != root && skip[name] {
 				return filepath.SkipDir
 			}
 			return nil
