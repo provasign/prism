@@ -140,7 +140,6 @@ Use the prism CLI with --format text instead of MCP tools:
 | Enforcing declared architecture (pre-commit, CI) | `prism arch` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
 | Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | `prism verify [--base REF]` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
 | Bug report / unfamiliar area (one-call context) | `prism query "<the symptom>" --terms <your best guess> --format text` — ONE call; --terms is REQUIRED, guess a keyword from the task |
-| A whole task, end to end (context + the obligations it implies) | `prism task "<task>" --format text`; after editing, `prism task "<same task>" --changed a.go,b.go` for the completeness verdict (exit 1 if incomplete) |
 | Locate a string, symbol, or file | prism search <term> — symbol names AND raw source text (real rg/grep inside). Pure grep: prism search <term> --scope text [--regex] |
 | Callers/callees for a symbol just found | `prism query "<task>" --terms a,b --include graph --format text` |
 | Read a whole file | `prism read <file> --format text` |
