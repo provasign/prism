@@ -1,0 +1,163 @@
+shale_version: "0"
+id: 019fe976-c9e6-7b52-aad1-4c026b0c4793-c2
+created_at: 2026-08-10T03:28:06.971979Z
+finalized_at: 2026-08-10T04:01:31.268678Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git tag --sort=-version:refname
+      at: 2026-08-10T03:28:34.214733Z
+      classified: other
+    - cmd: git diff v0.29.1..HEAD --stat
+      at: 2026-08-10T03:28:34.224117Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-08-10T03:28:34.227629Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-08-10T03:28:34.23266Z
+      classified: other
+    - cmd: go env GOWORK
+      at: 2026-08-10T03:28:38.140245Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/grove-fix-review.XXXXXX
+      at: 2026-08-10T03:28:42.254095Z
+      classified: other
+    - cmd: cp -R /Users/tapabratapal/Projects/provasign/grove/. /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:28:53.645412Z
+      classified: other
+    - cmd: prism query 'Fix method-family resolution for signature-qualified Go and TypeScript interface queries and prevent same-named incompatible Go methods from joining the family' --terms ChangeImpact --delivery source --max-files 3 --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:28:56.744983Z
+      classified: other
+    - cmd: prism read internal/graph/changeimpact.go --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:29:00.831697Z
+      classified: other
+    - cmd: prism lookup CodeGraph.RenamePlan --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:29:09.893546Z
+      classified: other
+    - cmd: rg --files -g AGENTS.md
+      at: 2026-08-10T03:29:15.088556Z
+      classified: other
+    - cmd: prism read AGENTS.md --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:29:18.156491Z
+      classified: other
+    - cmd: prism search goIfaceMethodRe --scope text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:29:30.820814Z
+      classified: other
+    - cmd: prism search tsIfaceMethodRe --scope text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:29:33.30747Z
+      classified: other
+    - cmd: prism lookup tsDeclParams --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:29:42.635469Z
+      classified: other
+    - cmd: prism search 'RenamePlan.*typescript|typescript.*RenamePlan|interface.*RenamePlan' --scope text --regex /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:29:57.055934Z
+      classified: other
+    - cmd: prism search 'RenamePlan(' --scope text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:01.512096Z
+      classified: other
+    - cmd: prism read internal/graph/renameplan_test.go --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:04.983405Z
+      classified: other
+    - cmd: prism search receiverType --scope both /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:13.19689Z
+      classified: other
+    - cmd: prism lookup BuildEdges --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:15.628229Z
+      classified: other
+    - cmd: prism query 'Fix Go interface satisfaction that admits same-named methods with incompatible parameter types and TypeScript call attribution that marks an interface-typed rename caller ambiguous' --terms buildInterfaceSatisfaction --delivery source --max-files 3 --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:18.713391Z
+      classified: other
+    - cmd: prism change-impact 'buildInterfaceSatisfaction' --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:26.573959Z
+      classified: other
+    - cmd: prism change-impact 'CodeGraph.ChangeImpact' --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:26.720732Z
+      classified: other
+    - cmd: prism change-impact 'paramTypesOf' --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:26.871429Z
+      classified: other
+    - cmd: prism change-impact 'CodeGraph.RenamePlan' --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:27.023723Z
+      classified: other
+    - cmd: prism read internal/graph/interfaces.go --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:30:42.821174Z
+      classified: other
+    - cmd: gofmt -w internal/graph/changeimpact_signatures_test.go
+      at: 2026-08-10T03:31:52.726011Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/graph -run 'TestChangeImpactGoInterfaceSignatureFiltersSameNamedDecoy|TestChangeImpactTypeScriptPreciseInterfaceSignature|TestRenamePlanTypeScriptInterfaceCallerIsConfirmed' -count=1
+      at: 2026-08-10T03:31:58.142959Z
+      classified: test
+    - cmd: gofmt -w internal/graph/interfaces.go internal/graph/changeimpact.go internal/graph/changeimpact_signatures_test.go
+      at: 2026-08-10T03:33:10.074821Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/graph -run 'TestChangeImpactGoInterfaceSignatureFiltersSameNamedDecoy|TestChangeImpactTypeScriptPreciseInterfaceSignature|TestRenamePlanTypeScriptInterfaceCallerIsConfirmed' -count=1
+      at: 2026-08-10T03:33:13.856314Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-08-10T03:33:26.944137Z
+      classified: test
+    - cmd: cp /private/tmp/grove-fix-review.wZWq6c/internal/graph/interfaces.go /private/tmp/grove-fix-review.wZWq6c/internal/graph/changeimpact.go /private/tmp/grove-fix-review.wZWq6c/internal/graph/changeimpact_signatures_test.go /Users/tapabratapal/Projects/provasign/grove/internal/graph
+      at: 2026-08-10T03:34:11.194524Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-10T03:34:47.129792Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-08-10T03:34:47.136582Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-08-10T03:34:47.136631Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-10T03:34:51.260172Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-10T03:34:55.317145Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-08-10T03:35:06.050681Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/graph -run 'TestChangeImpactGoInterfaceSignatureFiltersSameNamedDecoy|TestChangeImpactTypeScriptPreciseInterfaceSignature|TestRenamePlanTypeScriptInterfaceCallerIsConfirmed' -count=1
+      at: 2026-08-10T03:35:12.180614Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./... -count=1
+      at: 2026-08-10T03:35:27.51829Z
+      classified: test
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go build -o /private/tmp/prism-fixed-eval-bin ./cmd/prism
+      at: 2026-08-10T03:35:37.140761Z
+      classified: build
+    - cmd: gofmt -w /private/tmp/prism_fix_smoke.go
+      at: 2026-08-10T03:58:11.61636Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go run /private/tmp/prism_fix_smoke.go /private/tmp/prism-fixed-eval-bin
+      at: 2026-08-10T03:58:17.03195Z
+      classified: other
+    - cmd: GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build HOME=/Users/tapabratapal/Projects/provasign/prism/.cache/home go test ./internal/graph -race -count=1
+      at: 2026-08-10T03:58:40.989336Z
+      classified: test
+    - cmd: prism verify --base HEAD --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:58:45.995338Z
+      classified: other
+    - cmd: HOME=/private/tmp/prism-verify-home XDG_CACHE_HOME=/private/tmp/prism-verify-cache prism verify --base HEAD --format text /private/tmp/grove-fix-review.wZWq6c
+      at: 2026-08-10T03:58:50.063465Z
+      classified: other
+    - cmd: git diff --check -- internal/graph/changeimpact.go internal/graph/interfaces.go
+      at: 2026-08-10T03:59:08.221294Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-08-10T03:59:08.220743Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-08-10T03:59:08.229932Z
+      classified: other
+notes:
+    - text: continuation of session 019fe976-c9e6-7b52-aad1-4c026b0c4793 — events captured after its evidence was finalized
+      at: 2026-08-10T03:28:06.971979Z
+redactions: 0

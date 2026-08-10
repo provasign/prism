@@ -1,0 +1,554 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c2
+created_at: 2026-08-10T03:28:05.411555Z
+finalized_at: 2026-08-10T04:01:31.268678Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: cd ~/Projects/provasign/prism && git log --oneline -2 && git push origin main 2>&1 | tail -2
+      at: 2026-08-10T03:28:05.411555Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | python3 -c "import sys; [print(l.rstrip()) for l in sys.stdin if 'version' in l or 'url' in l][:4]"
+      at: 2026-08-10T03:28:05.850981Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && git status -sb | head -2; gh api repos/provasign/homebrew-shale/commits --jq ''.[0:3][] | .commit.message'' '
+      at: 2026-08-10T03:28:13.458265Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && gh run view 31352496899 --log 2>/dev/null | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'Homebrew' in l or 'formula' in l.lower() or 'tap' in l.lower(): print(l.rstrip()[:180])
+        " | head -20
+      at: 2026-08-10T03:28:22.586957Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && gh run view 31352496899 --log 2>/dev/null | python3 -c "
+        import sys
+        seen=False
+        for l in sys.stdin:
+            if 'Publish Homebrew formula' in l:
+                if 'warning' in l.lower() or 'current' in l or 'push' in l or 'clone' in l or 'main' in l:
+                    print(l.rstrip()[-120:])
+        " | head -12
+      at: 2026-08-10T03:28:30.042843Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.41.2 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.41.2 checksums.txt > prism.rb && head -8 prism.rb
+      at: 2026-08-10T03:28:42.005318Z
+      classified: other
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && rm -rf tap && gh repo clone provasign/homebrew-shale tap -- --depth 1 -q && cp prism.rb tap/Formula/prism.rb && cd tap && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.41.2\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && git log --oneline -1'
+      at: 2026-08-10T03:28:49.209466Z
+      classified: other
+    - cmd: sed -n 1,80p ~/Projects/provasign/research/harness/score.py; ~/bin/prism search "class Site" --scope text --limit 5 --format json 2>/dev/null | head -5
+      at: 2026-08-10T03:29:28.58527Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import re
+        src=open('schema.py').read()
+        i=src.find('class Scorecard')
+        print(src[i:i+900])
+        EOF
+      at: 2026-08-10T03:29:36.26206Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/enumerate_misses.py 2>&1 | head -80
+      at: 2026-08-10T03:29:55.91598Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/typeorm && python3 - <<'EOF'
+        import re
+        src=open('src/repository/TreeRepository.ts').read()
+        for name in ['createDescendantsQueryBuilder','findRoots']:
+            m=re.search(rf'\b{name}\b', src)
+            seg=src[m.start():m.start()+1400]
+            # print lines containing escape
+            print(f'--- {name}')
+            for l in seg.split('\n'):
+                if 'escape' in l: print('   ', l.strip()[:120])
+        EOF
+      at: 2026-08-10T03:30:10.446571Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/guava/guava && python3 - <<'EOF'
+        src=open('src/com/google/common/collect/MutableClassToInstanceMap.java').read()
+        i=src.find('spliterator')
+        print(src[max(0,i-600):i+400])
+        EOF
+      at: 2026-08-10T03:30:11.276236Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/jackson-databind && python3 - <<'EOF'
+        src=open('src/main/java/com/fasterxml/jackson/databind/ser/impl/WritableObjectId.java').read()
+        for name in ['writeAsField','writeAsId']:
+            i=src.find(name)
+            print(f'--- {name}'); print(src[max(0,i-200):i+700]); print()
+        EOF
+      at: 2026-08-10T03:30:30.930178Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/grove ~/Projects/provasign/grove/pkg 2>/dev/null | head -30; ls ~/Projects/provasign/grove/internal 2>/dev/null | head -20
+      at: 2026-08-10T03:30:45.482384Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'receiverType|inferReceiver|resolveReceiver' --scope text --regex --limit 80 --format json 2>/dev/null | python3 -c "
+        import json,sys,collections
+        d=json.load(sys.stdin)
+        c=collections.Counter()
+        for h in d.get('textHits') or []:
+            f=h.get('file')
+            if f: c[f]+=len(h.get('hits',[]))
+        for f,n in c.most_common(15): print(n,f)
+        "
+      at: 2026-08-10T03:30:58.328862Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && ls internal/graph/ | head -40 && wc -l internal/graph/tslocaltypes.go internal/graph/fieldreceiver_test.go 2>/dev/null
+      at: 2026-08-10T03:31:02.773001Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 1,60p internal/graph/localtypes.go && ls internal/graph | tail -12
+      at: 2026-08-10T03:31:08.586668Z
+      classified: other
+    - cmd: "cd ~/Projects/provasign/grove && ~/bin/prism search 'LocalTypes|localTypesFor' --scope text --regex --limit 100 --format json 2>/dev/null | python3 -c \"\nimport json,sys,collections\nd=json.load(sys.stdin)\nc=collections.Counter()\nfor h in d.get('textHits') or []:\n    f=h.get('file')\n    if f and f.endswith('.go') and not f.endswith('_test.go'): \n        for x in h.get('hits',[]): print(f, x['line'], x['text'][:90])\n\" | head -25"
+      at: 2026-08-10T03:31:16.132751Z
+      classified: other
+    - cmd: "cd /tmp/ci-corpus/typeorm && python3 - <<'EOF'\nimport re\n# 1. TreeRepository class decl + where findRoots sits\nsrc=open('src/repository/TreeRepository.ts').read()\nprint(src[:src.find('{')+1])\ni=src.find('findRoots')\nprint('...findRoots context:'); print(src[i-100:i+520])\n# 2. Repository.manager\nr=open('src/repository/Repository.ts').read()\nfor m in re.finditer(r'manager', r):\n    line=r[:m.start()].count('\\n')+1\n    seg=r.split('\\n')[line-2:line+1]\n    print('Repository.ts', line, ' / '.join(s.strip()[:70] for s in seg)); \n    if line>60: break\nEOF"
+      at: 2026-08-10T03:31:46.410257Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/typeorm && python3 - <<'EOF'
+        import re
+        for f,pat in [('src/repository/TreeRepository.ts', r'class TreeRepository[^{]*'),
+                      ('src/entity-manager/EntityManager.ts', r'class EntityManager[^{]*'),
+                      ('src/entity-manager/EntityManager.ts', r'readonly connection[^\n]*'),
+                      ('src/data-source/DataSource.ts', r'class DataSource[^{]*'),
+                      ('src/data-source/DataSource.ts', r'driver: [^\n]*')]:
+            src=open(f).read()
+            m=re.search(pat, src)
+            print(f, '->', (m.group(0)[:120] if m else 'NO MATCH'))
+        EOF
+      at: 2026-08-10T03:31:54.928075Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'tsBaseClasses' --scope text --limit 30 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            for x in h.get('hits',[]): print(f, x['line'], x['text'][:80])
+        "
+      at: 2026-08-10T03:32:30.908266Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 1,70p internal/graph/php_chain_test.go
+      at: 2026-08-10T03:32:40.681838Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'narrowByChainType|tsReceiverChainAt' --scope text --regex --limit 30 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if not f.endswith('_test.go'):
+                for x in h.get('hits',[]): print(f, x['line'], x['text'][:100])
+        "
+      at: 2026-08-10T03:32:53.698596Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'func New()|buildEdgeIndex|func hasEdge' --scope text --regex --limit 20 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits',[]): print(h.get('file'), x['line'], x['text'][:90])
+        "
+      at: 2026-08-10T03:33:48.779021Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && sed -n 1,40p internal/graph/graph_test.go && ~/bin/prism search 'edgeIndex{' --scope text --limit 10 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits',[]): print(h.get('file'), x['line'], x['text'][:80])
+        "
+      at: 2026-08-10T03:33:53.196897Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'TSGenericConstraint|TSBaseClasses_Generic' -count=1 2>&1 | tail -12
+      at: 2026-08-10T03:34:13.871793Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'Span ' --scope text --limit 10 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            if 'core' in h.get('file',''):
+                for x in h.get('hits',[]): print(h['file'], x['line'], x['text'][:80])
+        " | head -8
+      at: 2026-08-10T03:34:17.902836Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'Span' --scope symbols --limit 15 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for s in d.get('symbols') or []:
+            print(s.get('name'), s.get('kind'), s.get('filePath'), s.get('signature','')[:60])
+        " | head -10
+      at: 2026-08-10T03:34:23.073396Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && ~/bin/prism lookup core.SymbolRecord --format text 2>/dev/null | head -40
+      at: 2026-08-10T03:34:27.12809Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'TSGenericConstraint|TSBaseClasses_Generic' -count=1 2>&1 | tail -12
+      at: 2026-08-10T03:34:36.266854Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'TSGenericConstraint|TSBaseClasses_Generic' -count=1 2>&1 | tail -4 && go test ./... -count=1 -timeout 300s 2>&1 | tail -12
+      at: 2026-08-10T03:35:03.877519Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'cands := ' --scope text --limit 20 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            if h.get('file','').endswith('edges.go'):
+                for x in h.get('hits',[]): print(x['line'], x['text'][:90])
+        "
+      at: 2026-08-10T03:35:31.221792Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        src=open('internal/graph/edges.go').read()
+        lines=src.split('\n')
+        # find candidate collection for callsites around line 1130-1290
+        import re
+        for i,l in enumerate(lines[1125:1290], start=1126):
+            if 'cands' in l and ('=' in l or 'func' in l):
+                print(i, l.strip()[:110])
+        EOF
+      at: 2026-08-10T03:35:39.351822Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run TestDebugChainSteps -count=1 -v 2>&1 | tail -10
+      at: 2026-08-10T03:36:15.0472Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run TestDebugChainSteps -count=1 -v 2>&1 | tail -14
+      at: 2026-08-10T03:36:35.218754Z
+      classified: test
+    - cmd: cd /tmp/ci-corpus/typeorm && sed -n 1,25p src/repository/TreeRepository.ts
+      at: 2026-08-10T03:36:43.04694Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && rm internal/graph/debug_chain_test.go && go test ./internal/graph/ -run 'TSGenericConstraint|TSBaseClasses_Generic' -count=1 2>&1 | tail -4
+      at: 2026-08-10T03:37:54.177798Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./... -count=1 -timeout 300s 2>&1 | tail -12
+      at: 2026-08-10T03:38:02.271895Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        import re
+        mod=open('go.mod').read()
+        print([l for l in mod.split('\n') if 'grove' in l])
+        "; ls ../go.work 2>/dev/null && GOWORK=off echo x; head -12 ~/Projects/provasign/go.work 2>/dev/null
+      at: 2026-08-10T03:38:06.630557Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go build -o ~/bin/prism ./cmd/prism && rm -rf /tmp/ci-corpus/typeorm/.grove && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/enumerate_misses.py 2>&1 | head -30
+      at: 2026-08-10T03:38:29.616659Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/grove && sed -n 340,400p internal/graph/javalocaltypes.go
+      at: 2026-08-10T03:38:44.514933Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'javaFieldRe =' --scope text --limit 5 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits',[]): print(h.get('file'), x['line'], x['text'][:160])
+        "; sed -n '/javaFieldRe/,+6p' internal/graph/javalocaltypes.go | head -10
+      at: 2026-08-10T03:39:10.749356Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'TSGenericConstraint|TSBaseClasses_Generic|JavaFieldOfParameter' -count=1 2>&1 | tail -6
+      at: 2026-08-10T03:40:10.106955Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./... -count=1 -timeout 300s 2>&1 | tail -6 && cd ~/Projects/provasign/prism && go build -o ~/bin/prism ./cmd/prism && for c in jackson-databind guava typeorm django commons-collections grafana-122750 grafana-120119 gin; do rm -rf /tmp/ci-corpus/$c/.grove /tmp/ci-corpus/$c/*/.grove 2>/dev/null; done; echo stores-cleared
+      at: 2026-08-10T03:40:23.960828Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -30
+      at: 2026-08-10T03:40:28.412124Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/jackson-databind && ~/bin/prism lookup WritableObjectId.writeAsId --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print(json.dumps(d, indent=1)[:600])
+        " ; ~/bin/prism search 'writeAsId' --scope symbols --limit 5 --format json 2>/dev/null | head -20
+      at: 2026-08-10T03:42:24.530512Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ci-corpus/jackson-databind && ~/bin/prism search 'ObjectIdWriter' --scope symbols --limit 8 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for s in d.get('symbols') or []:
+            if s.get('name')=='ObjectIdWriter' and s.get('kind') in ('class','struct'):
+                print(s.get('kind'), s.get('filePath'))
+                rt=s.get('rawText','')
+                print('rawText len:', len(rt))
+                for l in rt.split('\n'):
+                    if 'serializer' in l: print('  ', l.strip()[:100])
+        "
+      at: 2026-08-10T03:42:50.901305Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && sed -n 1,50p internal/parser/engine.go | head -50 && ~/bin/prism search 'func (e \*Engine)' --scope text --regex --limit 10 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits',[]): print(h.get('file'), x['line'], x['text'][:90])
+        "
+      at: 2026-08-10T03:43:12.529731Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run TestDebugRealJacksonChain -count=1 -v 2>&1 | tail -14
+      at: 2026-08-10T03:43:29.736659Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism search 'func narrowByReceiver|func narrowByLocalType' --scope text --regex --limit 5 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits',[]): print(h.get('file'), x['line'])
+        "
+      at: 2026-08-10T03:43:37.992846Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run TestDebugRealJacksonChain -count=1 -v 2>&1 | tail -20
+      at: 2026-08-10T03:44:25.231054Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && ~/bin/prism lookup core.Edge --format text 2>/dev/null | head -12; ~/bin/prism search 'func hasEdge' --scope text --limit 3 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits',[]): print(h.get('file'), x['line'])
+        "
+      at: 2026-08-10T03:44:35.846052Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 395,415p internal/graph/edges_test.go
+      at: 2026-08-10T03:44:44.929236Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run TestDebugRealJacksonChain -count=1 -v 2>&1 | tail -20
+      at: 2026-08-10T03:45:01.1668Z
+      classified: test
+    - cmd: |-
+        rm -rf /tmp/ci-corpus/jackson-databind/.grove && python3 - <<'EOF'
+        import sys
+        from pathlib import Path
+        HARNESS = Path.home() / "Projects/provasign/research/harness"
+        sys.path.insert(0, str(HARNESS))
+        import ci_invariants as ci
+        from schema import Answer, Site, Task
+        from score import score
+        PRISM = Path.home() / "bin/prism"
+        task = Task.load(str(HARNESS / "tasks" / "jackson-serialize.json"))
+        workdir = ci.fetch_corpus("jackson-databind", ci.CORPORA["jackson-databind"], Path("/tmp/ci-corpus"))
+        raw, data = ci.engine_sites(PRISM, "JsonSerializer.serialize(T,JsonGenerator,SerializerProvider)", workdir)
+        card = score(task, Answer(sites=[Site.parse(s) for s in raw], complete=True, unresolved=[]), "CI", 0)
+        print("recall", card.recall, "precision", card.precision)
+        for m in card.missed: print("MISSED", m)
+        # is writeAsId anywhere in the result?
+        import json
+        for grp in ("declarations","family","callers","declaringTypes"):
+            for s in data.get(grp, []):
+                if "writeAs" in (s.get("name") or ""): print(grp, s.get("filePath"), s.get("name"))
+        EOF
+      at: 2026-08-10T03:45:37.423906Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && rm internal/graph/debug_real_test.go && go vet ./... && for d in /tmp/ci-corpus/*/; do rm -rf "$d.grove" "$d"guava/.grove 2>/dev/null; done; ls -d /tmp/ci-corpus/*/.grove 2>/dev/null; echo all-stores-cleared
+      at: 2026-08-10T03:46:10.524978Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -28
+      at: 2026-08-10T03:46:14.009463Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import sys
+        from pathlib import Path
+        HARNESS = Path.home() / "Projects/provasign/research/harness"
+        sys.path.insert(0, str(HARNESS))
+        import ci_invariants as ci
+        from schema import Answer, Site, Task
+        from score import score
+        PRISM = Path.home() / "bin/prism"
+        task = Task.load(str(HARNESS / "tasks" / "grafana-bigblast-txsession.json"))
+        workdir = ci.fetch_corpus("grafana-122750", ci.CORPORA["grafana-122750"], Path("/tmp/ci-corpus"))
+        raw, data = ci.engine_sites(PRISM, "SQLStore.WithTransactionalDbSession", workdir)
+        card = score(task, Answer(sites=[Site.parse(s) for s in raw], complete=True, unresolved=[]), "CI", 0)
+        print("recall", card.recall, "precision", card.precision, "sites", len(raw))
+        for g in ("declarations","family","callers","declaringTypes"):
+            print(g, len(data.get(g, [])))
+        EOF
+      at: 2026-08-10T03:50:16.732206Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git stash -u && cd ~/Projects/provasign/prism && go build -o /tmp/prism-bisect ./cmd/prism && rm -rf /tmp/ci-corpus/grafana-122750/.grove && python3 - <<'EOF'
+        import sys
+        from pathlib import Path
+        HARNESS = Path.home() / "Projects/provasign/research/harness"
+        sys.path.insert(0, str(HARNESS))
+        import ci_invariants as ci
+        from schema import Answer, Site, Task
+        from score import score
+        task = Task.load(str(HARNESS / "tasks" / "grafana-bigblast-txsession.json"))
+        workdir = ci.fetch_corpus("grafana-122750", ci.CORPORA["grafana-122750"], Path("/tmp/ci-corpus"))
+        raw, _ = ci.engine_sites(Path("/tmp/prism-bisect"), "SQLStore.WithTransactionalDbSession", workdir)
+        card = score(task, Answer(sites=[Site.parse(s) for s in raw], complete=True, unresolved=[]), "CI", 0)
+        print("STASHED-GROVE recall", card.recall, "sites", len(raw))
+        EOF
+        cd ~/Projects/provasign/grove && git stash pop
+      at: 2026-08-10T03:51:49.299837Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/grove && git diff --stat && git diff internal/graph/changeimpact.go internal/graph/interfaces.go | head -120
+      at: 2026-08-10T03:52:02.858692Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git diff internal/graph/edges.go | head -40
+      at: 2026-08-10T03:52:21.796493Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git diff internal/graph/tslocaltypes.go | python3 -c "
+        import sys
+        hunks=[]
+        cur=[]
+        for l in sys.stdin:
+            if l.startswith('@@'):
+                if cur: hunks.append(cur)
+                cur=[l]
+            elif cur: cur.append(l)
+        if cur: hunks.append(cur)
+        for h in hunks:
+            print(h[0].strip())
+            added=[x for x in h if x.startswith('+')]
+            for a in added[:3]: print('   ', a.rstrip()[:100])
+            print('    ...(+%d lines)' % len(added))
+        "
+      at: 2026-08-10T03:52:27.917137Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git worktree add /tmp/grove-bisect HEAD 2>/dev/null && cp internal/graph/changeimpact.go internal/graph/interfaces.go internal/graph/changeimpact_signatures_test.go /tmp/grove-bisect/internal/graph/ && cd ~/Projects/provasign/prism && GOFLAGS="-mod=mod" go build -o /tmp/prism-foreign -modfile=go.mod ./cmd/prism 2>/dev/null; cd /tmp/grove-bisect && go build ./... && echo foreign-builds
+      at: 2026-08-10T03:52:37.557083Z
+      classified: build
+    - cmd: |-
+        cat > /tmp/go.work.bisect <<'EOF'
+        go 1.26.3
+
+        use (
+        	/Users/tapabratapal/Projects/provasign/astkit
+        	/Users/tapabratapal/Projects/provasign/fuse
+        	/tmp/grove-bisect
+        	/Users/tapabratapal/Projects/provasign/mason
+        	/Users/tapabratapal/Projects/provasign/prism
+        	/Users/tapabratapal/Projects/provasign/provasign
+        	/Users/tapabratapal/Projects/provasign/shale
+        )
+        EOF
+        cd ~/Projects/provasign/prism && GOWORK=/tmp/go.work.bisect go build -o /tmp/prism-foreign ./cmd/prism && rm -rf /tmp/ci-corpus/grafana-122750/.grove && python3 - <<'EOF'
+        import sys
+        from pathlib import Path
+        HARNESS = Path.home() / "Projects/provasign/research/harness"
+        sys.path.insert(0, str(HARNESS))
+        import ci_invariants as ci
+        from schema import Answer, Site, Task
+        from score import score
+        task = Task.load(str(HARNESS / "tasks" / "grafana-bigblast-txsession.json"))
+        workdir = ci.fetch_corpus("grafana-122750", ci.CORPORA["grafana-122750"], Path("/tmp/ci-corpus"))
+        raw, data = ci.engine_sites(Path("/tmp/prism-foreign"), "SQLStore.WithTransactionalDbSession", workdir)
+        card = score(task, Answer(sites=[Site.parse(s) for s in raw], complete=True, unresolved=[]), "CI", 0)
+        print("FOREIGN-ONLY recall", card.recall, "sites", len(raw), "family", len(data.get("family",[])))
+        EOF
+      at: 2026-08-10T03:53:44.488123Z
+      classified: build
+    - cmd: cd /tmp/grove-bisect && git checkout -- internal/graph/changeimpact.go internal/graph/interfaces.go && rm internal/graph/changeimpact_signatures_test.go && cp ~/Projects/provasign/grove/internal/graph/tslocaltypes.go ~/Projects/provasign/grove/internal/graph/edges.go internal/graph/ && cp ~/Projects/provasign/grove/internal/graph/generic_extends_test.go internal/graph/ && go test ./internal/graph/ -count=1 2>&1 | tail -2 && cd ~/Projects/provasign/prism && GOWORK=/tmp/go.work.bisect go build -o /tmp/prism-mine ./cmd/prism && echo mine-built
+      at: 2026-08-10T03:54:11.757284Z
+      classified: test
+    - cmd: for d in /tmp/ci-corpus/*/; do rm -rf "${d}.grove"; done; rm -rf /tmp/ci-corpus/guava/guava/.grove; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-mine 2>&1 | tail -22
+      at: 2026-08-10T03:54:17.324826Z
+      classified: other
+    - cmd: head -12 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/b7gbqb3cv.output
+      at: 2026-08-10T03:58:05.63782Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import sys
+        from pathlib import Path
+        HARNESS = Path.home() / "Projects/provasign/research/harness"
+        sys.path.insert(0, str(HARNESS))
+        import ci_invariants as ci
+        from schema import Answer, Site, Task
+        from score import score
+        P = Path("/tmp/prism-mine")
+        for task_id, corpus, query in [
+            ("typeorm-driver-escape","typeorm","Driver.escape"),
+            ("jackson-serialize","jackson-databind","JsonSerializer.serialize(T,JsonGenerator,SerializerProvider)")]:
+            task = Task.load(str(HARNESS / "tasks" / f"{task_id}.json"))
+            workdir = ci.fetch_corpus(corpus, ci.CORPORA[corpus], Path("/tmp/ci-corpus"))
+            raw, _ = ci.engine_sites(P, query, workdir)
+            card = score(task, Answer(sites=[Site.parse(s) for s in raw], complete=True, unresolved=[]), "CI", 0)
+            print(task_id, "recall", round(card.recall,4), "precision", round(card.precision,4))
+        EOF
+      at: 2026-08-10T03:58:24.87266Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-mine 2>&1 | sed -n '1,16p'
+      at: 2026-08-10T04:00:06.322821Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && ls .github/workflows/ && sed -n 1,60p .github/workflows/engine-invariants.yml 2>/dev/null
+      at: 2026-08-10T04:00:24.744233Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git tag --sort=-v:refname | head -3 && git add internal/graph/tslocaltypes.go internal/graph/edges.go internal/graph/generic_extends_test.go && git status --short
+      at: 2026-08-10T04:00:36.385798Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git commit -m "$(cat <<'EOF'
+        fix: multi-hop receiver chains — generic-constraint extends, Java chains, out-of-scope member binding
+
+        Three residual ceiling misses shared one mechanism: receiver chains longer
+        than one hop dying before the type was reached.
+
+        1. Generic-constraint extends hid the real base class. In
+           `class TreeRepo<Entity extends ObjectLiteral> extends Repo<Entity>` the
+           CONSTRAINT's "extends" won the plain Index search, so base-class parsing
+           returned nothing, the subclass inherited no field types, and every chain
+           starting from an inherited field died at hop 0 (typeorm
+           TreeRepository.findRoots / createDescendantsQueryBuilder →
+           this.manager.connection.driver.escape). stripLeadingGenericParams removes
+           the class's own type-parameter list (arrow-default `>` handled) before
+           locating "extends". Shared by TS/Java/PHP/C#/C-family base parsing.
+
+        2. Chain-resolved types outside import scope had no candidates. Candidate
+           resolution is import-scoped, but a multi-hop chain routinely ends on a
+           type the caller never imports (TreeRepository.ts never imports Driver).
+           narrowByChainType now binds to the resolved type's own declared member
+           from the full index (tsTypeOwnMember, preferring the file the chain
+           resolves the type to) — the chain hops themselves are the evidence.
+
+        3. Java had no chain path at all. jackson's WritableObjectId.writeAsId/
+           writeAsField call w.serializer.serialize(...) — a field-of-parameter
+           chain. Chain recovery and narrowByChainType now include Java, with
+           javaClassFieldTypes (javaFieldRe over the class source, file-scoped like
+           tsClassFieldTypes) as the per-hop parser.
+
+        Ceiling deltas (harness/ci_invariants.py, all other corpora unchanged,
+        full suite green):
+          typeorm-driver-escape   recall 0.946 → 1.000, precision 0.745 → 0.974
+          jackson-serialize       recall 0.981 → 1.000
+        The typeorm precision jump is the same mechanism from the other side:
+        chain resolution now DECIDES, so the blanket dispatch fan-out that
+        produced 12 false callers stays out.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-10T04:00:50.910421Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign/grove && git push origin main && git tag -a v0.30.0 -m "v0.30.0: multi-hop receiver chains — generic-constraint extends fix, Java field chains, out-of-scope member binding (typeorm ceiling 0.946→1.000 recall / 0.745→0.974 precision; jackson-serialize 0.981→1.000)" && git push origin v0.30.0'
+      at: 2026-08-10T04:00:58.116937Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && GOWORK=off GOFLAGS= go get github.com/provasign/grove@v0.30.0 && GOWORK=off go mod tidy && git diff --stat && GOWORK=off go build ./... && GOWORK=off go test ./internal/mcp/ -count=1 2>&1 | tail -2
+      at: 2026-08-10T04:01:26.569576Z
+      classified: test
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-10T03:28:05.411555Z
+redactions: 0
