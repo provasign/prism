@@ -95,25 +95,47 @@ re-filter, dedup, or transform it through grep/sed/awk/scripts — re-processing
 a solved traversal drops real sites and adds spurious ones (measured). Use the
 returned sites as-is; read individual sites only to make the edits.
 
-Canonical workflow (non-refactor tasks):
+Route discipline — optimize total latency and context, not Prism usage.
+Decide what you need, make ONE call, and treat its result as final:
 
-    guess ONE keyword from the task (a class/function fragment, a domain term)
-      -> prism_query(task="<bug symptom or task>", terms=["<guess>"])   <- start here; often the ONLY context call needed
-      wrong guess / still missing an anchor?
-      -> prism_search(query=..., scope="text")   <- locate it: real rg/grep inside prism
-      -> prism_query(                    <- retry with a real anchor: callers, callees
-           task="...", terms=["same-grep-terms"],
-           include=["graph"]
-         )
-      then selectively:
-      -> prism_read(file=...)            <- whole file, session-compressed
-      -> prism_lookup(name=...)          <- one function body (~5x cheaper than prism_read)
+    locate a string/symbol/file         -> prism_search (scope="text" when you would have run grep)
+    read one known function             -> prism_lookup
+    read one known whole file           -> prism_read
+    orient on ONE symbol or file        -> prism_node
+    bug/feature with a plausible anchor -> prism_query, ONE call:
+      guess ONE keyword from the task (a class/function fragment, a domain term)
+        -> prism_query(task="<bug symptom or task>", terms=["<guess>"])   <- often the ONLY context call needed
+        wrong guess / still missing an anchor?
+        -> prism_search(query=..., scope="text")   <- locate it: real rg/grep inside prism
+        -> prism_query(task="...", terms=["same-grep-terms"], include=["graph"])   <- retry with a real anchor
+    signature change / rename / deletion / interface evolution
+                                        -> the whole-task op (change_impact, rename_plan,
+                                           missing_implementations). Its set is terminal —
+                                           never rebuild or re-verify it with searches.
+    broad review / onboarding / "what do you think of this repo"
+                                        -> README + prism_map (depth 1), then at most ~3
+                                           prism_lookup/prism_node probes on representative
+                                           symbols. Do NOT run broad prism_query sweeps,
+                                           prism_dead_code, or prism_arch_check unless the
+                                           user asked about those dimensions.
 
-Housekeeping: prism_index once at session start (delta indexing is automatic —
-never re-run per step); a stale-context warning names the changed files — re-read
-them (prism_read returns the changed content) before relying on them. If
-`prism watch` is running in this project, the index is already warm — skip
-prism_index entirely.
+Redundancy rules:
+- Do not stack prism_query + prism_node + prism_lookup on the same symbol
+  unless the previous result was genuinely insufficient.
+- Do not search broad project-name terms ("Prism") — they match everything
+  and anchor nothing.
+- Exploratory work wants one SMALL result, not one comprehensive one:
+  prism_query with budget=3000-4000 and max_files=3 answers most questions.
+- Stop gathering context the moment the question is answerable with concrete
+  evidence.
+
+Housekeeping: indexing is AUTOMATIC — the MCP server indexes at startup, a
+never-indexed repo indexes itself on first query, and every whole-repo graph
+op (change_impact, map, dead_code, rename_plan, missing_implementations,
+verify, arch) delta-refreshes before it runs. Call prism_index only after a
+stale-context warning or an explicit empty-index failure, never routinely. A
+stale-context warning names the changed files — re-read them (prism_read
+returns the changed content) before relying on them.
 
 ### When only Bash is available (subagents, CI)
 
@@ -145,6 +167,8 @@ Use the prism CLI with --format text instead of MCP tools:
 - Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
 - Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact / prism change-impact computes the complete set in one call
 - Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
+- Do NOT call prism_index "just in case" at session start — indexing is
+  automatic (see Housekeeping); a redundant index call adds seconds for nothing
 - Do NOT reach for a separate grep/rg tool: prism_search and prism_query run a
   real ripgrep pass internally, so text matches outside any symbol (comments,
   configs, docs, string literals) come back as textMatches/textHits. Pay only

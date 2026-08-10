@@ -175,13 +175,14 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 			return nil, errors.New("timed out waiting for Grove to become ready")
 		}
 	}
-	// Every tool except prism_index resolves against the root the server was
-	// started with; the Grove client is bound to it. A different "dir" used to
-	// be silently ignored, producing empty results — reject it loudly instead.
-	if name != "prism_index" {
-		if dir := stringArg(args, "dir", ""); dir != "" && !sameRoot(dir, h.Root) {
-			return nil, fmt.Errorf("server is rooted at %s and cannot serve dir %s; restart with `prism mcp %s` or run the prism CLI from that directory", h.Root, dir, dir)
-		}
+	// Every tool — including prism_index — resolves against the root the
+	// server was started with; the Grove client and its store are bound to it.
+	// A different "dir" used to be silently ignored, producing empty results —
+	// and for prism_index it was worse: the engine walked the foreign tree
+	// while writing into this root's database, pruning every record the other
+	// tree didn't contain. Reject it loudly instead.
+	if dir := stringArg(args, "dir", ""); dir != "" && !sameRoot(dir, h.Root) {
+		return nil, fmt.Errorf("server is rooted at %s and cannot serve dir %s; restart with `prism mcp %s` or run the prism CLI from that directory", h.Root, dir, dir)
 	}
 	switch name {
 	case "prism":
@@ -217,27 +218,34 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	// result as "recomputed"). Delta indexing is cheap; trusting stale data
 	// on the tools agents PLAN edits with is not.
 	case "prism_change_impact":
-		h.refreshIndexBestEffort(ctx)
-		return h.graphDelivery(name, args)(h.toolChangeImpact(ctx, args))
+		stale := h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args, stale)(h.toolChangeImpact(ctx, args))
 	case "prism_missing_implementations":
-		h.refreshIndexBestEffort(ctx)
-		return h.graphDelivery(name, args)(h.toolMissingImplementations(ctx, args))
+		stale := h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args, stale)(h.toolMissingImplementations(ctx, args))
 	case "prism_node":
 		return h.toolNode(ctx, args)
 	case "prism_dead_code":
-		h.refreshIndexBestEffort(ctx)
-		return h.graphDelivery(name, args)(h.toolDeadCode(ctx, args))
+		stale := h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args, stale)(h.toolDeadCode(ctx, args))
 	case "prism_rename_plan":
-		h.refreshIndexBestEffort(ctx)
-		return h.graphDelivery(name, args)(h.toolRenamePlan(ctx, args))
+		stale := h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args, stale)(h.toolRenamePlan(ctx, args))
 	case "prism_map":
-		h.refreshIndexBestEffort(ctx)
-		return h.graphDelivery(name, args)(h.toolMap(ctx, args))
+		stale := h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args, stale)(h.toolMap(ctx, args))
 	case "prism_cycles":
-		h.refreshIndexBestEffort(ctx)
-		return h.graphDelivery(name, args)(h.toolCycles(ctx, args))
+		stale := h.refreshIndexBestEffort(ctx)
+		return h.graphDelivery(name, args, stale)(h.toolCycles(ctx, args))
 	case "prism_arch_check":
-		return h.toolArchCheck(ctx, args)
+		// A gate must not validate rules against yesterday's graph: refresh
+		// first (best-effort) and surface a failed refresh on the verdict.
+		stale := h.refreshIndexBestEffort(ctx)
+		res, err := h.toolArchCheck(ctx, args)
+		if err != nil {
+			return nil, err
+		}
+		return attachStaleWarning(res, stale), nil
 	case "prism_verify":
 		return h.toolVerify(ctx, args)
 	default:
@@ -1658,13 +1666,14 @@ func (h *Handler) nearbyNames(ctx context.Context, term string) []string {
 	return out
 }
 
-func (h *Handler) toolIndex(_ context.Context, args map[string]any) (any, error) {
-	dir := stringArg(args, "dir", h.Root)
+func (h *Handler) toolIndex(_ context.Context, _ map[string]any) (any, error) {
+	// Always index the server's own root: Invoke already rejected any foreign
+	// dir, and the engine's store is bound to h.Root regardless of the arg.
 	// Indexing large codebases can take several minutes; use a fresh context
 	// with an extended deadline instead of the 60-second Invoke-level one.
 	idxCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	res, err := h.Grove.Index(idxCtx, dir)
+	res, err := h.Grove.Index(idxCtx, h.Root)
 	if err != nil {
 		return nil, err
 	}

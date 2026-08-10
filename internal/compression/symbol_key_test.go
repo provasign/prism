@@ -19,13 +19,17 @@ func TestSymbolKey_PrefersQualifiedName(t *testing.T) {
 // entirely: an ambiguous identity could pointer a changed body inside a
 // "lossless" delta.
 func TestComputeSymbolSHAs_DropsCollidingKeys(t *testing.T) {
+	content := "func (a A) Close() { a.x() }\n" +
+		"func (b B) Close() { b.y() }\n" +
+		"func Open() {}\n" +
+		"func Open2() {}\n"
 	syms := []grove.SymbolRecord{
-		{Name: "Close", QualifiedName: "A.Close", RawText: "func (a A) Close() { a.x() }"},
-		{Name: "Close", QualifiedName: "B.Close", RawText: "func (b B) Close() { b.y() }"},
-		{Name: "Open", RawText: "func Open() {}"},  // no qualified name → bare key
-		{Name: "Open", RawText: "func Open2() {}"}, // collides on bare key
+		{Name: "Close", QualifiedName: "A.Close", Span: grove.SpanInfo{Start: 1, End: 1}},
+		{Name: "Close", QualifiedName: "B.Close", Span: grove.SpanInfo{Start: 2, End: 2}},
+		{Name: "Open", Span: grove.SpanInfo{Start: 3, End: 3}},  // no qualified name → bare key
+		{Name: "Open", Span: grove.SpanInfo{Start: 4, End: 4}}, // collides on bare key
 	}
-	m := computeSymbolSHAs(syms)
+	m := computeSymbolSHAs(syms, content)
 	if _, ok := m["A.Close"]; !ok {
 		t.Error("qualified A.Close missing")
 	}

@@ -162,7 +162,7 @@ func CompressFileRead(filePath, content string, opts Options) Result {
 		opts.Session.RecordContextUsed(filePath, opts.ContextUsed)
 		// Keep symbol-level SHAs up-to-date so the next read can delta-encode.
 		if len(opts.Symbols) > 0 {
-			opts.Session.UpdateSymbolSHAs(filePath, computeSymbolSHAs(opts.Symbols))
+			opts.Session.UpdateSymbolSHAs(filePath, computeSymbolSHAs(opts.Symbols, content))
 		}
 	}
 	if opts.Ledger != nil && opts.TokenLedgerName != "" {
@@ -219,11 +219,21 @@ func SymbolKey(s grove.SymbolRecord) string {
 	return s.Name
 }
 
-// computeSymbolSHAs returns a map of SymbolKey → SHA-256(RawText) for each
-// symbol. BlobSha is used if RawText is empty (Grove may populate either).
-// Keys that collide within the file are dropped entirely: a SHA whose
-// identity is ambiguous cannot be trusted for delta encoding.
-func computeSymbolSHAs(syms []grove.SymbolRecord) map[string]string {
+// computeSymbolSHAs returns a map of SymbolKey → SHA-256 of the CURRENT bytes
+// at each symbol's span in content. Hashing delivered bytes rather than the
+// index's RawText keeps delta encoding honest when the index lags the working
+// tree: a fresh edit can never hash-match the previous delivery (the stale
+// RawText would still hold the pre-edit body and match), so it is re-sent
+// verbatim instead of being masked by a [prism:cached] pointer. With a fresh
+// index the two are byte-identical, so nothing is lost. Symbols whose span
+// does not fit content are skipped; keys that collide within the file are
+// dropped entirely: a SHA whose identity is ambiguous cannot be trusted for
+// delta encoding.
+func computeSymbolSHAs(syms []grove.SymbolRecord, content string) map[string]string {
+	lines := strings.Split(content, "\n")
+	if n := len(lines); n > 0 && lines[n-1] == "" {
+		lines = lines[:n-1]
+	}
 	m := make(map[string]string, len(syms))
 	dup := map[string]bool{}
 	for _, s := range syms {
@@ -235,12 +245,11 @@ func computeSymbolSHAs(syms []grove.SymbolRecord) map[string]string {
 			dup[key] = true
 			continue
 		}
-		switch {
-		case s.RawText != "":
-			m[key] = Hash(s.RawText)
-		case s.BlobSha != "":
-			m[key] = s.BlobSha
+		st, en := s.Span.Start, s.Span.End
+		if st < 1 || en < st || en > len(lines) {
+			continue
 		}
+		m[key] = Hash(strings.Join(lines[st-1:en], "\n"))
 	}
 	for key := range dup {
 		delete(m, key)
@@ -293,7 +302,7 @@ func renderSemanticDelta(symbols []grove.SymbolRecord, content string, prevSHAs 
 		}
 	}
 
-	currentSHAs := computeSymbolSHAs(symbols)
+	currentSHAs := computeSymbolSHAs(symbols, content)
 	var sb strings.Builder
 	emit := func(from, to int) { // emit verbatim 1-based inclusive line range
 		for i := from; i <= to; i++ {

@@ -44,6 +44,13 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 	}
 
 	// Collect candidate files first (cheap), then scan in parallel.
+	// Resolve root once so the symlink containment check below compares
+	// against the real tree (macOS: /tmp is itself a symlink to /private/tmp
+	// and would otherwise reject every in-root target).
+	resolvedRoot := root
+	if rr, rerr := filepath.EvalSymlinks(root); rerr == nil {
+		resolvedRoot = rr
+	}
 	var files []string
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -58,6 +65,21 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 				return filepath.SkipDir
 			}
 			return nil
+		}
+		// A symlinked FILE entry can point anywhere; WalkDir already refuses
+		// to descend into symlinked directories, but without this check a
+		// repository symlink would expose external file contents through
+		// search results. Reject any entry whose resolved target escapes root
+		// (same containment rule as Grove's indexer).
+		if d.Type()&fs.ModeSymlink != 0 {
+			resolved, rerr := filepath.EvalSymlinks(path)
+			if rerr != nil {
+				return nil
+			}
+			if r, rerr := filepath.Rel(resolvedRoot, resolved); rerr != nil || r == ".." ||
+				strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+				return nil
+			}
 		}
 		if info, ierr := d.Info(); ierr != nil || info.Size() > 2<<20 {
 			return nil // unreadable or >2MB: same cap as the rg invocation

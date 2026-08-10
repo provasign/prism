@@ -46,24 +46,41 @@ const minGraphPointerTokens = 600
 
 // refreshIndexBestEffort delta-reindexes before a whole-repo graph tool
 // runs. Best-effort: an index failure must not fail the tool — the result
-// is then computed against the existing (possibly stale) index, which is
-// exactly today's behavior without the refresh.
-func (h *Handler) refreshIndexBestEffort(ctx context.Context) {
+// is then computed against the existing (possibly stale) index. The failure
+// is returned as a warning string ("" on success) so the caller can attach
+// it to the result: an authoritative-looking set computed on a stale index
+// must say so, not read as fresh.
+func (h *Handler) refreshIndexBestEffort(ctx context.Context) string {
 	if h.Grove == nil {
-		return
+		return ""
 	}
-	_, _ = h.Grove.Index(ctx, h.Root)
+	if _, err := h.Grove.Index(ctx, h.Root); err != nil {
+		return "index refresh failed (" + err.Error() + "); this result was computed against a possibly stale index"
+	}
+	return ""
+}
+
+// attachStaleWarning adds a refresh-failure warning to a tool's map result.
+// Best-effort: non-map results pass through unchanged.
+func attachStaleWarning(out any, note string) any {
+	if note == "" {
+		return out
+	}
+	if m, ok := out.(map[string]any); ok && m != nil {
+		m["staleWarning"] = note
+	}
+	return out
 }
 
 // graphDelivery adapts graphDedupe to Invoke's (result, error) dispatch
-// shape: errors pass through untouched; successful results go through the
-// delivery dedupe.
-func (h *Handler) graphDelivery(name string, args map[string]any) func(any, error) (any, error) {
+// shape: errors pass through untouched; successful results carry any
+// stale-index warning and go through the delivery dedupe.
+func (h *Handler) graphDelivery(name string, args map[string]any, staleNote string) func(any, error) (any, error) {
 	return func(out any, err error) (any, error) {
 		if err != nil {
 			return out, err
 		}
-		return h.graphDedupe(name, args, out), nil
+		return h.graphDedupe(name, args, attachStaleWarning(out, staleNote)), nil
 	}
 }
 

@@ -259,12 +259,19 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		if baseContent == nil {
 			continue // new file: nothing had callers under the old contract
 		}
+		// Unsupported file types return (nil, nil) from the parser; an error
+		// here is a real analysis failure. A changed file whose contracts
+		// could not be diffed must degrade the verdict, not silently pass.
 		before, err := h.Grove.PreviewFileSymbols(f, baseContent)
 		if err != nil {
-			continue // unsupported file type
+			unverifiedSeeds = append(unverifiedSeeds,
+				f+" — base version could not be parsed ("+err.Error()+"); its contract changes were NOT checked")
+			continue
 		}
 		fd, err := h.Grove.DiffFile(ctx, before, f)
 		if err != nil {
+			unverifiedSeeds = append(unverifiedSeeds,
+				f+" — contract diff failed ("+err.Error()+"); its contract changes were NOT checked")
 			continue
 		}
 		for _, c := range fd.Changed {
@@ -366,7 +373,11 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	var sigChanges []map[string]any
 	var notes []string
 	if staleNote != "" {
+		// A failed refresh means every comparison below ran against a
+		// possibly stale index — the verdict must degrade to "review", not
+		// read as an authoritative "complete" with a footnote.
 		notes = append(notes, staleNote)
+		unverifiedSeeds = append(unverifiedSeeds, staleNote)
 	}
 	seen := map[string]bool{}
 	for _, sd := range seeds {

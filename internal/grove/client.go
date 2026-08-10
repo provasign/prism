@@ -92,7 +92,13 @@ func (c *Client) AutoIndexIfEmpty(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if st, err := e.Status(ctx); err == nil && st.SymbolCount == 0 {
+	st, err := e.Status(ctx)
+	if err != nil {
+		// A store that cannot report status is broken, not empty: every
+		// downstream query would return empty-with-nil-error. Fail loudly.
+		return fmt.Errorf("grove status: %w", err)
+	}
+	if st.SymbolCount == 0 {
 		fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
 		res, err := e.Index(ctx, c.root)
 		if err != nil {
@@ -143,7 +149,11 @@ func (c *Client) FileSymbols(ctx context.Context, relPath string) ([]SymbolRecor
 	if err != nil {
 		return nil, err
 	}
-	return convertSymbols(e.FileSymbols(ctx, relPath)), nil
+	syms, err := e.FileSymbols(ctx, relPath)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
 }
 
 // DiffFile diffs the symbols delivered earlier (before) against the file's
@@ -162,7 +172,11 @@ func (c *Client) DiffFile(ctx context.Context, before []SymbolRecord, relPath st
 		}
 		beforeEng = append(beforeEng, es)
 	}
-	d := groveeng.Diff(beforeEng, e.FileSymbols(ctx, relPath))
+	after, err := e.FileSymbols(ctx, relPath)
+	if err != nil {
+		return nil, err
+	}
+	d := groveeng.Diff(beforeEng, after)
 	return &FileGraphDiff{
 		Added:    convertSymbols(d.Added),
 		Removed:  convertSymbols(d.Removed),
@@ -380,7 +394,7 @@ type EdgeRecord struct {
 	File       string  `json:"file"`     // neighbor's file path
 	Line       int     `json:"line"`     // neighbor's start line
 	Kind       string  `json:"kind"`     // symbol kind of the neighbor
-	EdgeType   string  `json:"edgeType"` // calls, tests, uses-type, implements…
+	EdgeType   string  `json:"edgeType"` // calls, uses-type, implements…
 	Direction  string  `json:"direction"`
 	Confidence float64 `json:"confidence"`
 	TestDouble bool    `json:"testDouble,omitempty"`
@@ -409,10 +423,12 @@ var edgeKindByName = map[string]groveeng.EdgeType{
 }
 
 // Edges returns a seed symbol's direct typed graph neighbors. direction is
-// "out", "in", or "both"; kinds filters by edge-kind name (empty = calls+tests).
+// "out", "in", or "both"; kinds filters by edge-kind name (empty = calls).
 // This is the primitive the agent drives: "what does X call" is
-// (direction=out, kinds=[calls]); "who calls X" is (in, [calls]); "what tests X"
-// is (in, [tests]).
+// (direction=out, kinds=[calls]); "who calls X" is (in, [calls]). There is no
+// "tests" kind (Grove removed the heuristic test-coverage edges): "what tests
+// X" is answered by the (in, [calls]) neighbors that live in test files,
+// which the TestDouble/test-path tagging on each record identifies.
 func (c *Client) Edges(ctx context.Context, name, direction string, kinds []string) ([]EdgeRecord, error) {
 	e, err := c.requireEngine()
 	if err != nil {
@@ -637,7 +653,10 @@ func (c *Client) SnapshotGraph(ctx context.Context) ([]SymbolRecord, []Edge, err
 	if err != nil {
 		return nil, nil, err
 	}
-	syms, edges := e.SnapshotGraph(ctx)
+	syms, edges, err := e.SnapshotGraph(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 	out := make([]Edge, 0, len(edges))
 	for _, ed := range edges {
 		out = append(out, Edge{
