@@ -53,7 +53,7 @@ a machine where it is correctly installed and connected.
 
 | Situation | Tool |
 |---|---|
-| Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
+| Read a whole file | prism_read — SHA-pointer (~30 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
 | Orient on ONE symbol or file before deciding where to go | prism_node(name="Type.method" or "path/to/file.go") — source plus a names-only neighbour menu (symbol), or definitions + dependents (file) |
 

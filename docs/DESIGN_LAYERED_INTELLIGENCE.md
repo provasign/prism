@@ -1,6 +1,7 @@
 # Layered Intelligence: Prism's Graph as Facts, Closures, Views, and Flows
 
-Status: Phase 1 shipped (view kernel + prism_map/prism_cycles) · Date: 2026-07-19
+Status: Phases 1–3 shipped (view kernel + prism_map/prism_cycles; declared-architecture
+checking via prism_arch_check; diff completeness via prism_verify) · Updated: 2026-08-09
 
 ## Thesis
 

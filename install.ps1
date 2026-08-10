@@ -6,7 +6,7 @@
 #   $env:VERSION       release tag to install   (default: latest)
 #   $env:INSTALL_DIR   install directory         (default: $HOME\bin)
 #
-# Supported platforms: windows-amd64
+# Supported platforms: windows-amd64 (ARM64 Windows runs the amd64 build via emulation)
 #
 # Note: Prism embeds Grove as a library — no separate grove installation is
 # required for Prism to function.

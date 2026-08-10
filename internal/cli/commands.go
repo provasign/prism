@@ -76,11 +76,12 @@ Usage:
                                   --include a,b      Categories: graph,docs (default: graph)
                                   --delivery source|symbols  Force delivery shape (default: phase-aware)
                                   --max-files N      source delivery: max files shown (default: 5)
-                                  --depth N          BFS hops for graph expansion (default: 2)
                                   --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
                                   --format text|lean|json  Output format (default: text)
-  prism search <keyword> [dir]    Search symbols by keyword
+  prism search <keyword> [dir]    Search symbol names AND raw source text (a real
+                                  rg/grep pass). --scope text is a pure grep
+                                  ([--scope text|symbols|both] [--regex] [--limit N])
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
@@ -90,6 +91,9 @@ Usage:
   prism references <name> [dir]   Find where a symbol is USED (every code occurrence,
                                   comments/strings excluded), grouped by file
                                   --format text|lean|json  Output format (default: text)
+  prism resolve <name> [dir]      Resolve a name to its definition(s): file:line + kind
+  prism edges <name> [dir]        Walk the graph one hop from a symbol
+                                  ([--direction in|out] [--kinds calls,uses-type,...])
   prism change-impact <query> [dir]  Deterministic change-set for a method signature change:
                                   declaration(s), override/implementation family (subtype
                                   closure), super-declarations, and all resolved callers.
@@ -101,7 +105,6 @@ Usage:
                                   implement Type.method (missing / abstract / unverifiable)
                                   — the interface-evolution companion to change-impact
                                   --format text|lean|json  Output format (default: json)
-                                  [--dir <path>] [--format text|json]
   prism dead-code [dir] [--roots a,b]  Unreachable production functions/methods
   prism assist [--model <spec>] [--apply|--apply-ambiguous] [--verify "<cmd>"] "<task>"
                                      NL task -> deterministic ops via any model (ollama:/claude:/openai:)
@@ -110,7 +113,7 @@ Usage:
   prism compact [dir]             Compress conversation JSON from stdin
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Submit quality feedback for a Prism result
-  prism serve [--port 8888] [dir] Start MCP+HTTP server
+  prism serve [--port 8888] [dir] Start the HTTP API server (stdio MCP is 'prism mcp')
   prism mcp [dir]                 Start MCP server on stdio
   prism savings [dir]             Show session savings dashboard
   prism drift [dir]              Report files/symbols that changed since they were delivered this session
@@ -119,7 +122,8 @@ Usage:
 
 prism init [dir] flags:
   --global            register in user-global configs (unlocks Zed, Codex, opencode)
-  --mode mcp|cli|both which steering block to write (default: prompt, else both)
+  --mode <any>        accepted and IGNORED (since v0.38.0 one steering template
+                      covers MCP tools and the CLI together)
   --no-permissions    skip the Claude Code tool auto-allow entry
   --deny-builtin-search
                       deny Claude Code's Grep/Bash(grep|rg) so agents actually
@@ -417,7 +421,7 @@ a machine where it is correctly installed and connected.
 
 | Situation | Tool |
 |---|---|
-| Read a whole file | prism_read — SHA-pointer (~10 tokens) on repeat reads |
+| Read a whole file | prism_read — SHA-pointer (~30 tokens) on repeat reads |
 | Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
 | Orient on ONE symbol or file before deciding where to go | prism_node(name="Type.method" or "path/to/file.go") — source plus a names-only neighbour menu (symbol), or definitions + dependents (file) |
 
@@ -2127,6 +2131,12 @@ func cmdServe(args []string) int {
 		return 1
 	}
 	defer client.Shutdown()
+	if port == 0 { // no --port flag: prism.yaml port, then the documented 8888
+		port = cfg.Port
+		if port == 0 {
+			port = 8888
+		}
+	}
 	h := mcp.NewHandler(cfg, mustAbs(dir), client)
 
 	// Auto-index on startup so the first query has something to work with.

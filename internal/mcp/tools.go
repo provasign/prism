@@ -646,9 +646,11 @@ func toolDescription(name string) string {
 			"Catches syntactic uses only — reflection/dynamic usage is not seen, so an empty " +
 			"result is best-effort, not proof of dead code."
 	case "prism_index":
-		return "Delta-index the workspace through Grove. " +
-			"Call once at session start or after significant file changes. " +
-			"Do not call on every step — delta indexing runs automatically."
+		return "Delta-index the workspace through Grove. Indexing is AUTOMATIC — " +
+			"the server indexes at startup, a never-indexed repo indexes itself on " +
+			"first query, and whole-repo graph ops delta-refresh before they run. " +
+			"Call this ONLY after a stale-context warning or an explicit " +
+			"empty-index failure, never routinely."
 	case "prism_compact":
 		return "Compress a conversation history JSON array. " +
 			"Call when the context window is near capacity to summarize older turns " +

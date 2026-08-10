@@ -11,10 +11,11 @@ import (
 type Config struct {
 	GroveURL    string
 	GroveBinary string
-	// Model is the active AI model identifier. Empty means "auto" — Prism
-	// will use whatever is reported by the MCP client at initialize time or
-	// passed per-call. When empty, ContextWindow() returns a safe 200k
-	// default that covers all current production models.
+	// Model is the active AI model identifier. There is NO auto-detection —
+	// the MCP initialize handshake does not carry the model — so it is set
+	// only via prism.yaml, PRISM_MODEL, or a per-call model= argument. When
+	// empty, ContextWindow() returns a safe 200k default that covers all
+	// current production models.
 	Model         string
 	Profile       string
 	MaxCacheFiles int
@@ -28,14 +29,14 @@ type Config struct {
 }
 
 // Default returns config values with environment overrides applied.
-// Model intentionally defaults to "" (auto-detect at runtime).
+// Model intentionally defaults to "" (unset — 200k-window default applies).
 func Default() *Config {
 	c := &Config{
 		// Grove is embedded in-process; the URL is a legacy field kept for
 		// compatibility and shown in config output. No daemon, no port.
 		GroveURL:      envOr("PRISM_GROVE_URL", "embedded://grove"),
 		GroveBinary:   envOr("PRISM_GROVE_BINARY", "grove"),
-		Model:         envOr("PRISM_MODEL", ""), // "" = auto
+		Model:         envOr("PRISM_MODEL", ""), // "" = unset (no auto-detection)
 		Profile:       envOr("PRISM_PROFILE", "default"),
 		MaxCacheFiles: 50000,
 		Port:          8888,

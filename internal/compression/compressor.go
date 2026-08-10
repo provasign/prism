@@ -194,7 +194,7 @@ func SHAPointer(filePath, contentHash string, accessCount int) string {
 	return renderSHAPointer(filePath, contentHash, accessCount)
 }
 
-// renderSHAPointer emits a single-line cache reference that costs ~10 tokens.
+// renderSHAPointer emits a single-line cache reference that costs ~30 tokens.
 // The model already has the file content from the prior delivery; this line
 // confirms the content is unchanged and suppresses a full resend.
 // Format: // [prism:cached] path/to/file.go @sha:a1b2c3d4 (seen ×N, no changes)
