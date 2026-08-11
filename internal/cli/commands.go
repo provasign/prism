@@ -898,6 +898,13 @@ func mcpEntryAlreadyPresent(path string, name string, want mcpEntry) bool {
 			return false
 		}
 	}
+	// alwaysLoad participates in "already correct": an entry written before
+	// v0.44.0 lacks it, and skipping the rewrite would leave the server's
+	// schemas deferrable forever. The one-time Claude Code re-approval this
+	// rewrite triggers is the cost of the upgrade.
+	if got.AlwaysLoad != want.AlwaysLoad {
+		return false
+	}
 	return true
 }
 
