@@ -1,0 +1,45 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c8
+created_at: 2026-08-11T20:46:50.589493Z
+finalized_at: 2026-08-11T21:18:48.867418Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./... -count=1 -timeout 180s 2>&1 | tail -1 && git add -A && git commit -q -m "$(cat <<'EOF'
+        fix: steering told agents to ToolSearch bare prism names — stale since alwaysLoad (v0.45.1)
+
+        The generated block still said prism_* tools are DEFERRED and prescribed
+        ToolSearch("select:prism_query,...") — bare names that do not match the
+        registered mcp__prism__* names. Post-v0.44.0 the core tools are already
+        loaded at turn one, so the instructed hop was (a) unnecessary and (b) a
+        trap: cheap-tier agents ran it verbatim, got an empty result for the bare
+        names, concluded prism was absent, and fell back to grep. Instrumented on
+        SWE-bench-Live: all 14 tools loaded at init in every cell, yet haiku
+        adoption flapped 0-7 calls purely on whether its ToolSearch query happened
+        to use full names.
+
+        Steering now says: core tools are already in your tool list, call them
+        directly; the ToolSearch fallback (only for harnesses that defer ALL MCP
+        schemas) uses FULL registered names, with an explicit warning that an
+        empty bare-name result does not mean prism is absent. Regenerated across
+        all family repos. Acceptance: the exact haiku cell that made 0 prism calls
+        now opens with a direct mcp__prism__prism_search, no ToolSearch detour.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && sleep 15 && run=$(gh run list --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo CI-GREEN; git push -q origin main 2>/dev/null; git tag -a v0.45.1 -m "v0.45.1: steering no longer sends agents on a bare-name ToolSearch detour" && git push -q origin v0.45.1 && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN
+      at: 2026-08-11T20:46:50.589493Z
+      classified: test
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.45.1 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.45.1 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.45.1\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && echo tap-0.45.1 && cd ~/Projects/provasign/research && git add harness/swebench_ab.py harness/runs/swebench-live/haiku-adoption-probe harness/runs/swebench-live/haiku-iso-smoke 2>/dev/null; git commit -q -m "$(printf ''harness: prism_used counts MCP calls; capture init tool list + ToolSearch queries; haiku adoption probes\n\nDiagnosis evidence for the v0.45.1 steering fix: all 14 prism tools\nloaded at init in every haiku cell, adoption decided entirely by whether\nthe steering-mandated ToolSearch used full mcp__prism__ names (bare names\n-> empty result -> agent concluded prism absent -> grep). Post-fix: direct\nprism call as first action, no detour, both probe cells.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin main && echo research-pushed'
+      at: 2026-08-11T20:47:05.989764Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-11T20:46:50.589493Z
+redactions: 0
