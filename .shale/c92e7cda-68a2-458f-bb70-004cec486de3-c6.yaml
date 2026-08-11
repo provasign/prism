@@ -1,0 +1,98 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c6
+created_at: 2026-08-11T18:46:49.899368Z
+finalized_at: 2026-08-11T18:48:38.109976Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-11T18:47:44.431186Z
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add internal/mcp/tools.go internal/mcp/mcp_test.go internal/cli/commands.go && git commit -q -m "$(cat <<'EOF'
+        feat: exempt routing-critical tools from client schema deferral (v0.44.0)
+
+        Claude Code defers MCP tool schemas past ~10% of context and gates them
+        behind a ToolSearch hop. Frontier models make the hop; cheap tiers don't —
+        measured on SWE-bench-Live (haiku, same task): 0 prism calls with deferred
+        schemas, 5 with loaded ones, and with this fix haiku opens with
+        prism_query as its second action at 30 turns/$0.30 vs 45/$0.53 without.
+        Deny-builtin-search closes the grep door; this keeps the prism door open
+        on every tier.
+
+        - prism_search/query/read/lookup/change_impact now emit
+          _meta {"anthropic/alwaysLoad": true} in tools/list; the long-tail graph
+          ops stay deferrable to keep the always-on schema cost low. Pinned by
+          test (routing-critical must carry it, everything else must not).
+        - prism init writes alwaysLoad: true on the server entry in every
+          mcp.json it generates (server-level belt to the per-tool _meta;
+          clients that don't know the key ignore it).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && sleep 15 && run=$(gh run list --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo CI-GREEN && git push -q origin main 2>/dev/null; git tag -a v0.44.0 -m "v0.44.0: alwaysLoad on routing-critical MCP tools — cheap-tier adoption fix" && git push -q origin v0.44.0 && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN
+      at: 2026-08-11T18:46:49.899368Z
+      classified: other
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.44.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.44.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.44.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && echo tap-bumped && cd ~/Projects/provasign/research && git add harness/swebench_ab.py harness/runs/swebench-live/smoke-faithful harness/runs/swebench-live/smoke-faithful-haiku harness/runs/swebench-live/haiku-probes harness/runs/swebench-live/slice-flask.json 2>/dev/null; git commit -q -m "$(printf ''swebench-live: faithful-deployment smoke (2x2 flask-5736) + haiku adoption probes\n\nFaithful arm = built-in search denied + real init steering + prism MCP\nattached. Opus: both resolve, prism 30t/1.18 vs 42t/1.71. Haiku: both\nfail 3/6 F2P (model-limited); deferred schemas -> 0 prism calls, loaded\n-> used organically; alwaysLoad fix (prism v0.44.0) verified: haiku opens\nwith prism_query, 30t/0.30 vs 45t/0.53.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin main && echo research-pushed'
+      at: 2026-08-11T18:47:04.674653Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism init . --refresh 2>&1 | tail -3 && python3 -c "
+        import json
+        d=json.load(open('.mcp.json'))
+        print(json.dumps(d['mcpServers'].get('prism'), indent=1))
+        "
+      at: 2026-08-11T18:47:12.789608Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism search 'mergeMCP|writeMCP|existing.*mcpServers|preserve' --scope text --regex --limit 30 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if f=='internal/cli/commands.go':
+                for x in h.get('hits',[]): print(x['line'], x['text'][:100])
+        "
+      at: 2026-08-11T18:47:23.062037Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/cli/commands.go').read()
+        i=src.find('for _, w := range writers')
+        if i<0: i=src.find('range writers')
+        print(src[i:i+1800])
+        EOF
+      at: 2026-08-11T18:47:27.575063Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && ~/bin/prism lookup cli.mcpEntryAlreadyPresent --format text 2>/dev/null | head -30
+      at: 2026-08-11T18:47:34.14232Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./internal/cli/ -count=1 2>&1 | tail -1 && go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init . --refresh 2>&1 | head -2 && python3 -c "
+        import json
+        for p in ('.mcp.json',):
+            d=json.load(open(p))
+            print(p, json.dumps(d['mcpServers'].get('prism')))
+        "
+      at: 2026-08-11T18:47:55.082356Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && ~/bin/prism lookup cli.mergeOrCreate --format text 2>/dev/null | head -40
+      at: 2026-08-11T18:48:01.468895Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism init . --refresh 2>&1 | sed -n '1,12p'; echo ---; python3 -c "
+        import json; print(json.load(open('.mcp.json'))['mcpServers']['prism'])"
+      at: 2026-08-11T18:48:14.274718Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-11T18:46:49.899368Z
+redactions: 0
