@@ -667,9 +667,16 @@ func detectSelfPath() string {
 }
 
 // mcpEntry is the JSON structure every MCP-compatible tool expects.
+// AlwaysLoad exempts the server's tool schemas from client-side deferral
+// (Claude Code's tool-search): without it, cheap-tier models never make the
+// ToolSearch hop and the tools go unused (measured: haiku 0 prism calls
+// deferred vs 5 loaded, same task). Server-level belt to the per-tool
+// anthropic/alwaysLoad _meta the MCP server also emits; clients that don't
+// know the key ignore it.
 type mcpEntry struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
+	Command    string   `json:"command"`
+	Args       []string `json:"args"`
+	AlwaysLoad bool     `json:"alwaysLoad,omitempty"`
 }
 
 // initRegisterMCPTools writes MCP server config for every detected tool.
@@ -681,12 +688,12 @@ type mcpEntry struct {
 func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refresh, denyBuiltinSearch bool) []string {
 	var written []string
 
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
 	// portable and correct after the repo moves. The IDE writers below keep
 	// the explicit dir because their launch cwd is not guaranteed.
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}, AlwaysLoad: true}
 
 	// Wrap in the per-tool envelope format and write.
 	type writer struct {

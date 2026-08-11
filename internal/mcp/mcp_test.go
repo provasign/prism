@@ -237,6 +237,29 @@ func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
 
 // ─── ToolSchemas ──────────────────────────────────────────────────────────
 
+// Routing-critical tools must carry anthropic/alwaysLoad so Claude Code never
+// defers their schemas behind a ToolSearch hop (cheap tiers don't make the
+// hop — measured haiku 0 calls deferred vs 5 loaded). Long-tail graph ops
+// must stay deferrable to keep the always-on schema cost low.
+func TestToolSchemasAlwaysLoadOnRoutingCriticalTools(t *testing.T) {
+	always := map[string]bool{
+		"prism_search": true, "prism_query": true, "prism_read": true,
+		"prism_lookup": true, "prism_change_impact": true,
+	}
+	for _, s := range ToolSchemas() {
+		name := s["name"].(string)
+		meta, hasMeta := s["_meta"].(map[string]any)
+		if always[name] {
+			if !hasMeta || meta["anthropic/alwaysLoad"] != true {
+				t.Errorf("%s must set _meta anthropic/alwaysLoad=true", name)
+			}
+		} else if hasMeta && meta["anthropic/alwaysLoad"] == true {
+			t.Errorf("%s must stay deferrable (unexpected alwaysLoad)", name)
+		}
+	}
+}
+
+
 func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	schemas := ToolSchemas()
 	if len(schemas) != 14 {

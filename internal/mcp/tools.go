@@ -289,11 +289,24 @@ func ToolSchemas() []map[string]any {
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
-		out = append(out, map[string]any{
+		entry := map[string]any{
 			"name":        n,
 			"description": toolDescription(n),
 			"inputSchema": toolSchema(n),
-		})
+		}
+		// Routing-critical tools are exempted from client-side schema
+		// deferral (Claude Code defers MCP schemas past ~10% of context and
+		// gates them behind a ToolSearch hop). Frontier models make that hop;
+		// cheap tiers don't — measured on SWE-bench-Live (haiku: 0 prism
+		// calls deferred vs 5 loaded, same task). Deny-builtin-search closes
+		// the grep door; this keeps the prism door open on every tier. The
+		// long-tail graph ops stay deferrable to keep the always-on cost low.
+		switch n {
+		case "prism_search", "prism_query", "prism_read", "prism_lookup",
+			"prism_change_impact":
+			entry["_meta"] = map[string]any{"anthropic/alwaysLoad": true}
+		}
+		out = append(out, entry)
 	}
 	return out
 }
