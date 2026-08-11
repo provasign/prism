@@ -1,0 +1,399 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c5
+created_at: 2026-08-11T12:52:42.633584Z
+finalized_at: 2026-08-11T18:41:56.681868Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-11T18:35:57.608585Z
+commands:
+    - cmd: 'cd ~/Projects/provasign/prism && git add README.md AGENT_SETUP_PROMPT.md && git commit -q -m "$(printf ''docs: routing is structural — document deny-builtin-search as the deployment model\n\nPrinciple 5 and the practical summary claimed shell tools win at string\nlocation and prism does not replace grep. The code says otherwise:\nprism_search(scope=text) is a ripgrep passthrough and init offers\n(--deny-builtin-search forces) adding Grep/Bash(grep|rg) to\npermissions.deny — steering alone measured 12:1 ignored. README init\nsection, practical summary, and the setup prompt now describe the deny\nflow (incl. the interactive question agents should relay, and the\nnon-interactive safe default).\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin main && cd ~/Projects/provasign/provasign.github.io && git add prism.md && git commit -q -m "$(printf ''prism: document structural routing (deny-builtin-search) in Setup\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin main && echo both-pushed'
+      at: 2026-08-11T12:52:42.633584Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        ids=[r['instance_id'] for r in json.load(open(f'{base}/phase1/valid-instances.json'))]
+        def v(t,a,i):
+            p=f'{base}/{t}/eval-{a}/{i}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else False
+        stable=[]
+        for i in ids:
+            if all(v(t,a,i) for t in ('ab38-t1','ab38-t2') for a in ('baseline','prism')):
+                # attach t1 baseline cost as difficulty proxy
+                c=json.load(open(f'{base}/ab38-t1/{i}.baseline.json'))['cost_usd']
+                stable.append((i,round(c,2)))
+        for i,c in sorted(stable,[REDACTED:env-secret] x:x[1]): print(i,c)
+        EOF
+      at: 2026-08-11T13:11:45.755222Z
+      classified: other
+    - cmd: |-
+        head -4 ~/Projects/provasign/prism/AGENTS.md; python3 -c "
+        s=open('/Users/tapabratapal/Projects/provasign/prism/AGENTS.md').read()
+        print('markers:', '<!-- prism:start -->' in s, '<!-- prism:end -->' in s, '| len', len(s))
+        "
+      at: 2026-08-11T13:11:57.46635Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+        old='''        steer = "\\n" + INVESTIGATION_GUIDANCE
+                tools = list(TOOLS_BASE)
+                if arm == "prism":
+                    sh(prism, "index", ".", cwd=str(wt), timeout=600)
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)"]
+                    steer += "\\n" + PRISM_STEERING'''
+        new='''        steer = "\\n" + INVESTIGATION_GUIDANCE
+                tools = list(TOOLS_BASE)
+                if arm == "prism":
+                    sh(prism, "index", ".", cwd=str(wt), timeout=600)
+                    # Faithful deployment: built-in search denied, prism is the
+                    # search path (scope="text" is the ripgrep passthrough).
+                    tools = [t for t in tools if t not in SEARCH_TOOLS]
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)"]
+                    steer += "\\n" + real_prism_steering()'''
+        assert old in src, 'anchor missing'
+        open('swebench_ab.py','w').write(src.replace(old,new))
+        EOF
+        python3 -c "
+        import sys; sys.path.insert(0,'/Users/tapabratapal/Projects/provasign/research/harness')
+        import swebench_ab as ab
+        s=ab.real_prism_steering()
+        print('steering chars:', len(s), '| starts:', s[:60].replace(chr(10),' '))
+        print('prism tools list ok')
+        "
+      at: 2026-08-11T13:12:21.259508Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        rows=[r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json')) if r['instance_id']=='pallets__flask-5736']
+        json.dump(rows, open('runs/swebench-live/slice-flask.json','w'))
+        print('slice:', rows[0]['instance_id'])
+        " && nohup bash -c "cd ~/Projects/provasign/research/harness && python3 swebench_ab.py --tasks runs/swebench-live/slice-flask.json --limit 1 --arms baseline prism --out runs/swebench-live/smoke-faithful --model opus && python3 swebench_ab.py --tasks runs/swebench-live/slice-flask.json --limit 1 --arms baseline prism --out runs/swebench-live/smoke-faithful --model haiku" > runs/swebench-live/smoke-faithful.log 2>&1 & echo "faithful smoke pid $!"
+      at: 2026-08-11T13:12:33.830449Z
+      classified: other
+    - cmd: until [ $(ls ~/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful 2>/dev/null | wc -l) -ge 6 ] || ! pgrep -f 'swebench_ab.py.*smoke-faithful' >/dev/null; do sleep 30; done; cat ~/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful.log
+      at: 2026-08-11T13:12:38.953421Z
+      classified: other
+    - cmd: cat ~/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful.log
+      at: 2026-08-11T13:19:13.849166Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful/pallets__flask-5736.prism.json'))
+        from collections import Counter
+        c=Counter(t.split()[0] if t and not t.startswith(('Read','Edit','Write','Glob','ToolSearch')) else t.split('(')[0] or t for t in r['tool_trace'])
+        print(dict(c))
+        EOF
+      at: 2026-08-11T13:19:39.903651Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+
+        old='''def real_prism_steering() -> str:'''
+        new='''MCP_CFG = Path("/tmp/ab-swebench")
+        MCP_CFG.mkdir(exist_ok=True)
+        (MCP_CFG / "prism.json").write_text(json.dumps({"mcpServers": {
+            "prism": {"type": "stdio", "command": str(Path.home() / "bin/prism"), "args": ["mcp"]}}}))
+
+
+        def real_prism_steering() -> str:'''
+        assert old in src; src=src.replace(old,new,1)
+
+        old='''def run_agent(prompt: str, tools: list[str], workdir: Path, model: str = "") -> dict:
+            cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
+                   "--strict-mcp-config", "--allowedTools", ",".join(tools)]
+            if model:
+                cmd += ["--model", model]'''
+        new='''def run_agent(prompt: str, tools: list[str], workdir: Path, model: str = "",
+                      mcp: str = "") -> dict:
+            cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
+                   "--strict-mcp-config", "--allowedTools", ",".join(tools)]
+            if mcp:
+                cmd += ["--mcp-config", mcp]
+            if model:
+                cmd += ["--model", model]'''
+        assert old in src; src=src.replace(old,new,1)
+
+        old='''            tools = [t for t in tools if t not in SEARCH_TOOLS]
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)"]
+                    steer += "\\n" + real_prism_steering()
+                prompt = BASE_PROMPT.format(repo=task["repo"], problem=task["problem_statement"],
+                                            steer=steer)
+                env = run_agent(prompt, tools, wt, model)'''
+        new='''            tools = [t for t in tools if t not in SEARCH_TOOLS]
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)", "mcp__prism"]
+                    steer += "\\n" + real_prism_steering()
+                prompt = BASE_PROMPT.format(repo=task["repo"], problem=task["problem_statement"],
+                                            steer=steer)
+                env = run_agent(prompt, tools, wt, model,
+                                mcp=str(MCP_CFG / "prism.json") if arm == "prism" else "")'''
+        assert old in src; src=src.replace(old,new,1)
+        open('swebench_ab.py','w').write(src)
+        EOF
+        python3 -c "import ast; ast.parse(open('swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-11T13:20:02.032821Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && rm runs/swebench-live/smoke-faithful/pallets__flask-5736.prism.json && nohup bash -c "python3 swebench_ab.py --tasks runs/swebench-live/slice-flask.json --limit 1 --arms prism --out runs/swebench-live/smoke-faithful --model opus && python3 swebench_ab.py --tasks runs/swebench-live/slice-flask.json --limit 1 --arms baseline prism --out runs/swebench-live/smoke-faithful-haiku --model haiku" > runs/swebench-live/smoke-faithful2.log 2>&1 & echo "relaunched pid $!"
+      at: 2026-08-11T13:20:14.96897Z
+      classified: other
+    - cmd: until [ -f ~/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful-haiku/pallets__flask-5736.prism.json ] || ! pgrep -f 'swebench_ab.py' >/dev/null; do sleep 30; done; cat ~/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful2.log
+      at: 2026-08-11T13:20:24.762613Z
+      classified: other
+    - cmd: |-
+        cat ~/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful2.log; echo ---; python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        cells=[('smoke-faithful','baseline','opus'),('smoke-faithful','prism','opus'),
+               ('smoke-faithful-haiku','baseline','haiku'),('smoke-faithful-haiku','prism','haiku')]
+        for d,arm,model in cells:
+            try:
+                r=json.load(open(f'{base}/{d}/pallets__flask-5736.{arm}.json'))
+                pc=sum(1 for t in r['tool_trace'] if t.startswith('mcp__prism') or 'prism ' in t)
+                print(f"{model:>6} {arm:<9} turns={r['turns']:>3} ${r['cost_usd']:.2f} empty={r['empty_patch']} prism_calls={pc}")
+            except FileNotFoundError:
+                print(model, arm, 'missing')
+        EOF
+      at: 2026-08-11T13:30:41.600678Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful/pallets__flask-5736.prism.json'))
+        mcp=[t for t in r['tool_trace'] if 'prism' in t.lower()]
+        print('prism-ish trace entries:', mcp if mcp else 'NONE')
+        print('first 8 trace entries:', r['tool_trace'][:8])
+        EOF
+      at: 2026-08-11T13:30:56.636413Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live && for d in smoke-faithful smoke-faithful-haiku; do for arm in baseline prism; do python3 -c "
+        import json
+        r=json.load(open('$d/pallets__flask-5736.$arm.json'))
+        json.dump({r['instance_id']:{'model_patch':r['model_patch']}}, open('$d/$arm.patches.json','w'))
+        "; done; done && LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && for d in smoke-faithful smoke-faithful-haiku; do for arm in baseline prism; do (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/$d/$arm.patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/$d/eval-$arm --workers 1 --overwrite 1 --instance_ids pallets__flask-5736) >/dev/null 2>&1; done; done; python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        for d,model in (('smoke-faithful','opus'),('smoke-faithful-haiku','haiku')):
+            for arm in ('baseline','prism'):
+                try:
+                    r=json.load(open(f'{base}/{d}/eval-{arm}/pallets__flask-5736/report.json'))
+                    f2p=r['FAIL_TO_PASS']; p2p=r['PASS_TO_PASS']
+                    print(f"{model:>6} {arm:<9} resolved={r.get('resolved')} F2P {len(f2p.get('success',[]))}p/{len(f2p.get('failure',[]))}f P2P broken {len(p2p.get('failure',[]))}")
+                except FileNotFoundError:
+                    print(model, arm, 'no report')
+        EOF
+      at: 2026-08-11T13:32:10.939643Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/smoke-faithful-haiku/pallets__flask-5736.prism.json'))
+        print(f"turns={r['turns']}")
+        for i,t in enumerate(r['tool_trace']): print(f'{i:>3} {t[:115]}')
+        EOF
+      at: 2026-08-11T15:39:17.897613Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        # Probe A: explicit full MCP tool names in allowedTools. Probe B adds a
+        # first-action mandate. Both haiku, same instance, isolated worktrees.
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        task=[r for r in json.load(open('runs/swebench-live/slice-flask.json'))][0]
+        out=Path('runs/swebench-live/haiku-probes'); out.mkdir(exist_ok=True)
+
+        EXPLICIT=["mcp__prism__prism_query","mcp__prism__prism_search","mcp__prism__prism_read",
+                  "mcp__prism__prism_lookup","mcp__prism__prism_node","mcp__prism__prism_change_impact"]
+
+        def run(tag, extra_tools, prompt_prefix):
+            ab.WT_ROOT=Path(f'/tmp/swebench-wt-{tag}')
+            repo=ab.ensure_repo(task['repo'])
+            wt=ab.WT_ROOT/f"{task['instance_id']}__prism"
+            ab.WT_ROOT.mkdir(parents=True, exist_ok=True)
+            ab.sh("git","-C",str(repo),"worktree","prune")
+            ab.sh("git","-C",str(repo),"worktree","add","--detach","-f",str(wt),task['base_commit'])
+            try:
+                ab.sh(str(Path.home()/'bin/prism'),"index",".",cwd=str(wt),timeout=600)
+                tools=[t for t in ab.TOOLS_BASE if t not in ab.SEARCH_TOOLS]+["Bash(prism:*)","mcp__prism"]+extra_tools
+                steer="\n"+ab.INVESTIGATION_GUIDANCE+"\n"+ab.real_prism_steering()
+                prompt=prompt_prefix+ab.BASE_PROMPT.format(repo=task['repo'],problem=task['problem_statement'],steer=steer)
+                env=ab.run_agent(prompt,tools,wt,'haiku',mcp=str(ab.MCP_CFG/'prism.json'))
+                trace=env.get('tool_trace',[])
+                mcp_calls=[t for t in trace if t.startswith('mcp__prism')]
+                rec={'tag':tag,'turns':env.get('num_turns'),'cost':env.get('total_cost_usd'),
+                     'mcp_prism_calls':mcp_calls,'first6':trace[:6]}
+                json.dump(rec,open(out/f'{tag}.json','w'))
+                print(tag,'turns',rec['turns'],'cost',round(rec['cost'] or 0,2),'prism MCP calls:',len(mcp_calls), mcp_calls[:3])
+            finally:
+                ab.sh("git","-C",str(repo),"worktree","remove","--force",str(wt))
+
+        run('probeA-explicit-names', EXPLICIT, "")
+        run('probeB-first-action', EXPLICIT,
+            "YOUR FIRST ACTION, before anything else: call the MCP tool mcp__prism__prism_query "
+            "with task=\"<one sentence of the issue>\" and terms=[\"template_filter\"]. "
+            "If it is not in your tool list, first call ToolSearch with query \"select:prism_query\" to load it.\n\n")
+        EOF
+      at: 2026-08-11T18:30:26.889338Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism search 'mcpServers' --scope text --limit 40 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if f.endswith('.go') and not f.endswith('_test.go'):
+                for x in h.get('hits',[]): print(f, x['line'], x['text'][:90])
+        " | head -10
+      at: 2026-08-11T18:36:03.318248Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism search 'mcp.json' --scope text --limit 60 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if f.endswith('.go') and not f.endswith('_test.go'):
+                for x in h.get('hits',[]): print(f, x['line'], x['text'][:95])
+        " | head -12
+      at: 2026-08-11T18:36:08.921435Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && ~/bin/prism lookup cli.buildMCPConfig --format text 2>/dev/null | head -40
+      at: 2026-08-11T18:36:18.080441Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/cli/commands.go').read()
+        old='''// mcpEntry is the JSON structure every MCP-compatible tool expects.
+        type mcpEntry struct {
+        	Command string   `json:"command"`
+        	Args    []string `json:"args"`
+        }'''
+        new='''// mcpEntry is the JSON structure every MCP-compatible tool expects.
+        // AlwaysLoad exempts the server's tool schemas from client-side deferral
+        // (Claude Code's tool-search): without it, cheap-tier models never make the
+        // ToolSearch hop and the tools go unused (measured: haiku 0 prism calls
+        // deferred vs 5 loaded, same task). Server-level belt to the per-tool
+        // anthropic/alwaysLoad _meta the MCP server also emits; clients that don't
+        // know the key ignore it.
+        type mcpEntry struct {
+        	Command    string   `json:"command"`
+        	Args       []string `json:"args"`
+        	AlwaysLoad bool     `json:"alwaysLoad,omitempty"`
+        }'''
+        assert old in src; src=src.replace(old,new,1)
+        old='''	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}'''
+        new='''	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}'''
+        assert old in src; src=src.replace(old,new,1)
+        old='''	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}'''
+        new='''	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}, AlwaysLoad: true}'''
+        assert old in src; src=src.replace(old,new,1)
+        open('internal/cli/commands.go','w').write(src)
+        print('patched')
+        EOF
+        go build ./... && go test ./internal/mcp/ ./internal/cli/ -count=1 2>&1 | tail -3
+      at: 2026-08-11T18:36:46.892215Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/mcp/mcp_test.go').read()
+        i=src.find('ToolSchemas')
+        print(src[max(0,i-300):i+900])
+        EOF
+      at: 2026-08-11T18:36:53.422198Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/mcp/mcp_test.go').read()
+        anchor='''// ─── ToolSchemas ──────────────────────────────────────────────────────────'''
+        add='''// ─── ToolSchemas ──────────────────────────────────────────────────────────
+
+        // Routing-critical tools must carry anthropic/alwaysLoad so Claude Code never
+        // defers their schemas behind a ToolSearch hop (cheap tiers don't make the
+        // hop — measured haiku 0 calls deferred vs 5 loaded). Long-tail graph ops
+        // must stay deferrable to keep the always-on schema cost low.
+        func TestToolSchemasAlwaysLoadOnRoutingCriticalTools(t *testing.T) {
+        	always := map[string]bool{
+        		"prism_search": true, "prism_query": true, "prism_read": true,
+        		"prism_lookup": true, "prism_change_impact": true,
+        	}
+        	for _, s := range ToolSchemas() {
+        		name := s["name"].(string)
+        		meta, hasMeta := s["_meta"].(map[string]any)
+        		if always[name] {
+        			if !hasMeta || meta["anthropic/alwaysLoad"] != true {
+        				t.Errorf("%s must set _meta anthropic/alwaysLoad=true", name)
+        			}
+        		} else if hasMeta && meta["anthropic/alwaysLoad"] == true {
+        			t.Errorf("%s must stay deferrable (unexpected alwaysLoad)", name)
+        		}
+        	}
+        }
+        '''
+        assert anchor in src
+        open('internal/mcp/mcp_test.go','w').write(src.replace(anchor, add, 1))
+        EOF
+        go test ./internal/mcp/ -run 'ToolSchemas' -count=1 2>&1 | tail -2 && go build -o ~/bin/prism ./cmd/prism && echo rebuilt
+      at: 2026-08-11T18:37:06.308537Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        # Acceptance probe: haiku, plain "mcp__prism" allowlist (NO explicit names) —
+        # adoption must now come from the server-emitted alwaysLoad alone.
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+        task=[r for r in json.load(open('runs/swebench-live/slice-flask.json'))][0]
+        out=Path('runs/swebench-live/haiku-probes'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-accept')
+        repo=ab.ensure_repo(task['repo'])
+        wt=ab.WT_ROOT/f"{task['instance_id']}__prism"
+        ab.WT_ROOT.mkdir(parents=True, exist_ok=True)
+        ab.sh("git","-C",str(repo),"worktree","prune")
+        ab.sh("git","-C",str(repo),"worktree","add","--detach","-f",str(wt),task['base_commit'])
+        try:
+            ab.sh(str(Path.home()/'bin/prism'),"index",".",cwd=str(wt),timeout=600)
+            tools=[t for t in ab.TOOLS_BASE if t not in ab.SEARCH_TOOLS]+["Bash(prism:*)","mcp__prism"]
+            steer="\n"+ab.INVESTIGATION_GUIDANCE+"\n"+ab.real_prism_steering()
+            prompt=ab.BASE_PROMPT.format(repo=task['repo'],problem=task['problem_statement'],steer=steer)
+            env=ab.run_agent(prompt,tools,wt,'haiku',mcp=str(ab.MCP_CFG/'prism.json'))
+            trace=env.get('tool_trace',[])
+            mcp=[t for t in trace if t.startswith('mcp__prism')]
+            rec={'tag':'accept-alwaysload','turns':env.get('num_turns'),'cost':env.get('total_cost_usd'),
+                 'mcp_prism_calls':mcp,'first6':trace[:6]}
+            json.dump(rec,open(out/'accept-alwaysload.json','w'))
+            print('turns',rec['turns'],'cost',round(rec['cost'] or 0,2))
+            print('prism MCP calls:',len(mcp), mcp[:5])
+            print('first actions:', trace[:4])
+        finally:
+            ab.sh("git","-C",str(repo),"worktree","remove","--force",str(wt))
+        EOF
+      at: 2026-08-11T18:40:04.446399Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -4
+      at: 2026-08-11T18:40:30.819381Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -3
+      at: 2026-08-11T18:40:35.062585Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-11T12:52:42.633584Z
+redactions: 1
