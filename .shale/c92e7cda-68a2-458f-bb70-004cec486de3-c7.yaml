@@ -1,0 +1,289 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c7
+created_at: 2026-08-11T19:49:50.475649Z
+finalized_at: 2026-08-11T20:43:40.032447Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-11T20:35:26.302542Z
+commands:
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.45.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.45.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.45.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && echo tap-0.45.0 && cd ~/Projects/provasign/provasign.github.io && git add prism.md && git commit -q -m "$(printf ''prism: deny lands in project .claude/settings.json (v0.45.0 scope model)\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin main && echo site-pushed; cd ~/Projects/provasign/prism && git add .cursor .windsurf 2>/dev/null && git commit -q -m "$(printf ''chore: refreshed IDE mcp configs (alwaysLoad)\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin main'
+      at: 2026-08-11T19:49:50.475649Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+
+        old='''def run_arm(task: dict, arm: str, prism: str, model: str = "") -> dict:
+            """Check out the task's repo at base_commit, run the agent, capture the
+            patch (git diff of its edits) + efficiency metrics."""
+            repo_dir = ensure_repo(task["repo"])
+            wt = WT_ROOT / f"{task['instance_id']}__{arm}"
+            WT_ROOT.mkdir(parents=True, exist_ok=True)
+            sh("git", "-C", str(repo_dir), "worktree", "prune")
+            sh("git", "-C", str(repo_dir), "worktree", "add", "--detach", "-f",
+               str(wt), task["base_commit"])
+            try:'''
+        new='''# Files through which a corpus checkout could smuggle steering into a cell.
+        # ARM ISOLATION RULE: the baseline arm must carry ZERO prism steering or
+        # config; the prism arm's deployment comes exclusively from the harness
+        # (prompt-injected generated steering + --mcp-config + tool list), never
+        # from files in the checkout — otherwise a prism-configured corpus repo
+        # double-steers one arm and contaminates the other.
+        STEERING_FILES = ["CLAUDE.md", "AGENTS.md", "GEMINI.md", ".cursorrules",
+                          ".windsurfrules", ".clinerules", ".mcp.json",
+                          ".github/copilot-instructions.md"]
+        STEERING_DIRS = [".claude", ".cursor", ".windsurf", ".grove", ".kiro",
+                         ".devin", ".vscode"]
+
+
+        def sanitize_worktree(wt: Path, arm: str) -> list[str]:
+            """Strip anything prism-related the checkout brought with it, BOTH arms.
+            Returns what was removed so the cell record can prove isolation."""
+            import shutil
+            removed = []
+            for rel in STEERING_FILES:
+                p = wt / rel
+                if p.exists() and "prism" in p.read_text(errors="ignore").lower():
+                    p.unlink()
+                    removed.append(rel)
+            for rel in STEERING_DIRS:
+                p = wt / rel
+                if p.is_dir():
+                    probe = " ".join(str(f) for f in p.rglob("*"))
+                    if "prism" in probe.lower() or rel in (".claude", ".grove"):
+                        shutil.rmtree(p, ignore_errors=True)
+                        removed.append(rel + "/")
+            return removed
+
+
+        def run_arm(task: dict, arm: str, prism: str, model: str = "") -> dict:
+            """Check out the task's repo at base_commit, run the agent, capture the
+            patch (git diff of its edits) + efficiency metrics."""
+            repo_dir = ensure_repo(task["repo"])
+            wt = WT_ROOT / f"{task['instance_id']}__{arm}"
+            WT_ROOT.mkdir(parents=True, exist_ok=True)
+            sh("git", "-C", str(repo_dir), "worktree", "prune")
+            sh("git", "-C", str(repo_dir), "worktree", "add", "--detach", "-f",
+               str(wt), task["base_commit"])
+            isolation_removed = sanitize_worktree(wt, arm)
+            try:'''
+        assert old in src; src=src.replace(old,new,1)
+
+        # prism index runs AFTER sanitize (it recreates .grove for the prism arm) — it
+        # already does, since sanitize runs before the try block. Record the audit.
+        old='''        return {
+                    "instance_id": task["instance_id"], "arm": arm,
+                    "model_patch": patch,'''
+        new='''        return {
+                    "instance_id": task["instance_id"], "arm": arm,
+                    "isolation_removed": isolation_removed,
+                    "model_patch": patch,'''
+        assert old in src; src=src.replace(old,new,1)
+        open('swebench_ab.py','w').write(src)
+        print('patched')
+        EOF
+        python3 - <<'EOF'
+        # Unit check: a worktree seeded with prism steering gets scrubbed; a clean one is untouched.
+        import sys, json
+        from pathlib import Path
+        sys.path.insert(0,'/Users/tapabratapal/Projects/provasign/research/harness')
+        import swebench_ab as ab
+        import tempfile, os
+        wt=Path(tempfile.mkdtemp())
+        (wt/'CLAUDE.md').write_text('## Prism — context delivery\nuse prism_query')
+        (wt/'.claude').mkdir(); (wt/'.claude/settings.json').write_text('{"permissions":{"deny":["Grep"]}}')
+        (wt/'.mcp.json').write_text('{"mcpServers":{"prism":{}}}')
+        (wt/'README.md').write_text('normal repo file mentioning nothing')
+        removed=ab.sanitize_worktree(wt,'baseline')
+        print('removed:', sorted(removed))
+        print('README intact:', (wt/'README.md').exists(), '| CLAUDE.md gone:', not (wt/'CLAUDE.md').exists())
+        wt2=Path(tempfile.mkdtemp())
+        (wt2/'CLAUDE.md').write_text('project notes, no p-word')
+        print('clean worktree untouched:', ab.sanitize_worktree(wt2,'prism')==[] and (wt2/'CLAUDE.md').exists())
+        EOF
+      at: 2026-08-11T19:58:53.517384Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+        s=open(p).read()
+        line='- [A/B arm isolation](feedback_ab_arm_isolation.md) — baseline arm carries zero prism steering/config; prism arm injected by harness only; sanitize worktrees + record isolation_removed\n'
+        if 'ab_arm_isolation' not in s:
+            open(p,'w').write(s.rstrip('\n')+'\n'+line)
+        print('indexed')
+        EOF
+        cd ~/Projects/provasign/research && git add harness/swebench_ab.py && git commit -q -m "$(printf 'swebench_ab: enforce arm isolation — sanitize worktrees of prism steering/config (both arms), record isolation_removed per cell\n\nBaseline must carry zero prism steering; the prism arm deployment is\ninjected exclusively by the harness (generated steering + --mcp-config +\ntool list), never by checkout files — a prism-configured corpus repo\nwould otherwise leak steering into baseline or double-steer the prism\narm. Project-level init (prism v0.45.0) makes this a live hazard for any\nbed that includes provasign repos.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin main && echo pushed
+      at: 2026-08-11T19:59:19.650339Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-flask.json --limit 1 --arms baseline prism --out runs/swebench-live/haiku-iso-smoke --model haiku > runs/swebench-live/haiku-iso-smoke.log 2>&1 & echo "pid $!"
+      at: 2026-08-11T20:13:14.921929Z
+      classified: other
+    - cmd: until [ $(ls ~/Projects/provasign/research/harness/runs/swebench-live/haiku-iso-smoke 2>/dev/null | wc -l) -ge 2 ] || ! pgrep -f 'haiku-iso-smoke' >/dev/null; do sleep 30; done; cat ~/Projects/provasign/research/harness/runs/swebench-live/haiku-iso-smoke.log | head -8
+      at: 2026-08-11T20:13:19.885589Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku-iso-smoke'
+        for arm in ('baseline','prism'):
+            r=json.load(open(f'{d}/pallets__flask-5736.{arm}.json'))
+            mcp=[t for t in r['tool_trace'] if t.startswith('mcp__prism')]
+            grep=[t for t in r['tool_trace'] if t.split(' ')[0] in ('grep','rg')]
+            print(f"{arm}: turns={r['turns']} ${r['cost_usd']:.2f} isolation_removed={r.get('isolation_removed')}")
+            print(f"   prism MCP calls={len(mcp)} {mcp[:4]}")
+            print(f"   grep/rg attempts={len(grep)}")
+            print(f"   first5: {r['tool_trace'][:5]}")
+        EOF
+      at: 2026-08-11T20:21:28.995291Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/haiku-iso-smoke && for arm in baseline prism; do python3 -c "
+        import json
+        r=json.load(open('pallets__flask-5736.$arm.json'))
+        json.dump({r['instance_id']:{'model_patch':r['model_patch']}}, open('$arm.patches.json','w'))
+        "; done && LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && for arm in baseline prism; do (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/haiku-iso-smoke/$arm.patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/haiku-iso-smoke/eval-$arm --workers 1 --overwrite 1 --instance_ids pallets__flask-5736) >/dev/null 2>&1; done; python3 - <<'EOF'
+        import json
+        for arm in ('baseline','prism'):
+            r=json.load(open(f'/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku-iso-smoke/eval-{arm}/pallets__flask-5736/report.json'))
+            f2p=r['FAIL_TO_PASS']
+            print(f"haiku {arm}: resolved={r.get('resolved')} F2P {len(f2p.get('success',[]))}p/{len(f2p.get('failure',[]))}f P2P broken {len(r['PASS_TO_PASS'].get('failure',[]))}")
+        EOF
+      at: 2026-08-11T20:22:23.738908Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+
+        # 1. prism_used counts MCP calls too; capture init tool list + ToolSearch queries.
+        old='''        if obj.get("type") == "assistant":
+                    for b in obj.get("message", {}).get("content", []):
+                        if b.get("type") == "tool_use":
+                            name = b.get("name", "?")
+                            cmd = b.get("input", {}).get("command", "") if name == "Bash" else ""
+                            trace.append(cmd[:120] if cmd else name)
+                elif obj.get("type") == "result":
+                    env.update(obj)
+            env["tool_trace"] = trace
+            # Detect an actual prism INVOCATION (the binary run as a command), not the
+            # substring "prism" anywhere — the worktree path could contain it. Matches
+            # `prism ...` or `/path/to/prism ...`, not an unrelated path segment.
+            env["prism_used"] = any(re.search(r"(?:^|[\s;&|(])(?:[^\s;&|(]*/)?prism\s", t)
+                                    for t in trace)
+            return env'''
+        new='''        if obj.get("type") == "system" and obj.get("subtype") == "init":
+                    # The init event lists the tools ACTUALLY loaded at turn one —
+                    # the ground truth for whether MCP schemas were deferred.
+                    env["init_tools"] = obj.get("tools", [])
+                elif obj.get("type") == "assistant":
+                    for b in obj.get("message", {}).get("content", []):
+                        if b.get("type") == "tool_use":
+                            name = b.get("name", "?")
+                            inp = b.get("input", {})
+                            if name == "Bash":
+                                trace.append(inp.get("command", "")[:120])
+                            elif name == "ToolSearch":
+                                trace.append(f"ToolSearch({inp.get('query','')})"[:120])
+                            else:
+                                trace.append(name)
+                elif obj.get("type") == "result":
+                    env.update(obj)
+            env["tool_trace"] = trace
+            # prism use = MCP tool call OR the CLI binary run as a command (path
+            # segments containing "prism" don't count). The pre-2026-08-11 version
+            # missed MCP calls entirely and under-reported adoption.
+            env["prism_used"] = any(
+                t.startswith("mcp__prism")
+                or re.search(r"(?:^|[\s;&|(])(?:[^\s;&|(]*/)?prism\s", t)
+                for t in trace)
+            return env'''
+        assert old in src; src=src.replace(old,new,1)
+
+        # 2. Persist init_tools presence in the cell record.
+        old='''            "isolation_removed": isolation_removed,
+                    "model_patch": patch,'''
+        new='''            "isolation_removed": isolation_removed,
+                    "prism_tools_loaded_at_init": sorted(
+                        t for t in (env.get("init_tools") or []) if "prism" in t.lower()),
+                    "model_patch": patch,'''
+        assert old in src; src=src.replace(old,new,1)
+        open('swebench_ab.py','w').write(src)
+        print('patched')
+        EOF
+        python3 -c "import ast; ast.parse(open('/Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-11T20:29:15.148652Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        out=Path('runs/swebench-live/haiku-adoption-probe'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-adopt')
+        for iid in ('a2aproject__a2a-python-302','gboeing__osmnx-1334','pipecat-ai__pipecat-2413'):
+            rec=ab.run_arm(valid[iid],'prism',str(Path.home()/'bin/prism'),'haiku')
+            json.dump(rec, open(out/f'{iid}.prism.json','w'))
+            loaded=rec.get('prism_tools_loaded_at_init')
+            mcp=[t for t in rec['tool_trace'] if t.startswith('mcp__prism')]
+            ts=[t for t in rec['tool_trace'] if t.startswith('ToolSearch')]
+            print(f"== {iid}: turns={rec['turns']} ${rec['cost_usd']:.2f}")
+            print(f"   prism tools at init: {len(loaded)} {loaded[:3]}")
+            print(f"   MCP calls: {len(mcp)} {mcp[:3]}")
+            print(f"   ToolSearch: {ts[:3]}")
+            print(f"   first4: {rec['tool_trace'][:4]}")
+        EOF
+      at: 2026-08-11T20:34:51.610097Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/cli/commands.go').read()
+        i=src.find('DEFERRED')
+        print(src[max(0,i-700):i+900])
+        EOF
+      at: 2026-08-11T20:35:15.856719Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./internal/cli/ -count=1 2>&1 | tail -1 && go build -o ~/bin/prism ./cmd/prism && for d in ~/Projects/provasign ~/Projects/provasign/*/; do [ -f "$d/.mcp.json" ] && (cd "$d" && ~/bin/prism init . --refresh >/dev/null 2>&1); done; ~/bin/prism search 'DEFERRED, not absent' --scope text --limit 5 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        hits=[h for h in d.get('textHits') or []]
+        print('stale paragraph remaining in prism repo files:', sum(len(h.get('hits',[])) for h in hits))
+        "
+      at: 2026-08-11T20:35:38.623508Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        out=Path('runs/swebench-live/haiku-adoption-probe'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-adopt2')
+        for iid in ('a2aproject__a2a-python-302','trailofbits__algo-14801'):
+            rec=ab.run_arm(valid[iid],'prism',str(Path.home()/'bin/prism'),'haiku')
+            json.dump(rec, open(out/f'{iid}.prism.fixed.json','w'))
+            mcp=[t for t in rec['tool_trace'] if t.startswith('mcp__prism')]
+            ts=[t for t in rec['tool_trace'] if t.startswith('ToolSearch')]
+            print(f"== {iid}: turns={rec['turns']} ${rec['cost_usd']:.2f} prism_used={rec['prism_used']}")
+            print(f"   MCP calls: {len(mcp)} {mcp[:3]}")
+            print(f"   ToolSearch: {ts if ts else 'none (direct call)'}")
+            print(f"   first3: {rec['tool_trace'][:3]}")
+        EOF
+      at: 2026-08-11T20:43:12.071722Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-11T19:49:50.475649Z
+redactions: 0
