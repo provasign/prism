@@ -168,11 +168,18 @@ prism init .
 agents — measured 12:1, an agent will acknowledge its CLAUDE.md and then run
 `grep` anyway. Interactive `prism init` therefore offers (and
 `--deny-builtin-search` forces) the one change that actually routes: adding
-`Grep`, `Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in
-`~/.claude/settings.json`. Nothing becomes unfindable —
+`Grep`, `Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in the
+PROJECT's `.claude/settings.json` (machine-global only with `--global`).
+Nothing becomes unfindable —
 `prism_search(scope="text")` is a ripgrep passthrough — and it's reversible
 by deleting those lines. Claude Code only; CI and non-interactive runs are
 never prompted and get no settings change.
+
+**Setup is project-level by default.** A plain `prism init` touches only
+files inside the repo (`.mcp.json`, steering files, the project's
+`.claude/settings.json`). Tools whose configs are user-global — Zed, Codex
+CLI, opencode — are registered only when interactive init's *"Register
+user-global tools?"* question is answered yes, or with `--global`.
 
 Agents with an active MCP session call `prism_query`, `prism_read`, and
 `prism_lookup` directly. For bug-fix and implement tasks `prism_query`

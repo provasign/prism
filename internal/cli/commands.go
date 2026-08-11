@@ -688,6 +688,24 @@ type mcpEntry struct {
 func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refresh, denyBuiltinSearch bool) []string {
 	var written []string
 
+	// Scope model: project-level is the default and touches ONLY files inside
+	// the repo. User-global tools (Zed, Codex CLI, opencode) and the global
+	// Claude settings are written only with --global, or after the explicit
+	// interactive question below — never silently.
+	globalTools := global
+	if !globalTools && !refresh && isInteractive() {
+		globalTools = promptGlobalTools()
+	}
+	// Claude Code approval/permissions target: the PROJECT settings file by
+	// default, so allow/deny/trust stay with the repo; machine-global only
+	// under --global.
+	claudeSettings := filepath.Join(projectDir, ".claude", "settings.json")
+	if global {
+		if home, err := os.UserHomeDir(); err == nil {
+			claudeSettings = filepath.Join(home, ".claude", "settings.json")
+		}
+	}
+
 	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
@@ -757,9 +775,13 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 				return buildVSCodeConfig(prismBin, projectDir)
 			},
 		},
-		{
-			// opencode: ~/.config/opencode/opencode.json. User-global only —
-			// the loop below skips it unless that directory already exists.
+	}
+	if globalTools {
+		// opencode: ~/.config/opencode/opencode.json. USER-GLOBAL — written
+		// only when global registration was requested (flag or interactive
+		// consent). A project init must never touch machine-wide configs;
+		// this writer used to sit in the always-on list and leaked.
+		writers = append(writers, writer{
 			name: "opencode",
 			path: func() string {
 				return filepath.Join(home, ".config", "opencode", "opencode.json")
@@ -767,7 +789,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 			build: func() []byte {
 				return buildOpencodeConfig(prismBin)
 			},
-		},
+		})
 	}
 
 	for _, w := range writers {
@@ -803,7 +825,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", claudeEntry) {
 			fmt.Printf("already registered with %s: %s\n", w.name, p)
 			written = append(written, p)
-			ensureClaudeCodeApproval("prism", permissions, denyBuiltinSearch)
+			ensureClaudeCodeApproval(claudeSettings, "prism", permissions, denyBuiltinSearch)
 			continue
 		}
 		content := w.build()
@@ -816,7 +838,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		fmt.Printf("registered with %s: %s\n", w.name, p)
 		written = append(written, p)
 		if filepath.Base(p) == ".mcp.json" {
-			ensureClaudeCodeApproval("prism", permissions, denyBuiltinSearch)
+			ensureClaudeCodeApproval(claudeSettings, "prism", permissions, denyBuiltinSearch)
 		}
 	}
 
@@ -827,7 +849,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 	// one. Register them only with --global, and without a pinned project
 	// dir — `prism mcp` serves the editor's launch cwd, so one global entry
 	// is correct in every project.
-	if global {
+	if globalTools {
 		zedPath := filepath.Join(home, ".config", "zed", "settings.json")
 		if _, err := os.Stat(filepath.Dir(zedPath)); err == nil && !(refresh && !fileExists(zedPath)) {
 			merged := mergeOrCreate(zedPath, buildZedConfig(prismBin))
@@ -1194,6 +1216,25 @@ func isInteractive() bool {
 	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
 }
 
+// promptGlobalTools asks — every interactive project-level init — whether to
+// also register the tools that only have user-global configs. Default NO:
+// a project init keeps the machine untouched.
+func promptGlobalTools() bool {
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Zed, Codex CLI, and opencode keep MCP registrations in USER-GLOBAL")
+	fmt.Fprintln(os.Stderr, "config files (outside this repo). Register prism with them too?")
+	fmt.Fprintln(os.Stderr, "  Default keeps setup project-level: nothing outside this repo is")
+	fmt.Fprintln(os.Stderr, "  touched, and other projects are unaffected.")
+	fmt.Fprint(os.Stderr, "Register user-global tools? [y/N]: ")
+	var line string
+	fmt.Scanln(&line)
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "y", "yes":
+		return true
+	}
+	return false
+}
+
 // promptDenyBuiltinSearch offers the one change that actually routes agents
 // through prism, and explains the trade honestly. Default is NO: this edits
 // settings the user owns.
@@ -1202,8 +1243,9 @@ func promptDenyBuiltinSearch() bool {
 	fmt.Fprintln(os.Stderr, "Agents usually ignore steering and use their own grep — measured 12:1,")
 	fmt.Fprintln(os.Stderr, "and reproduced on a machine where prism was installed and connected.")
 	fmt.Fprintln(os.Stderr, "Deny Claude Code's built-in search so prism is actually reached?")
-	fmt.Fprintln(os.Stderr, "  Adds Grep, Bash(grep:*), Bash(rg:*) to permissions.deny in")
-	fmt.Fprintln(os.Stderr, "  ~/.claude/settings.json. Nothing becomes unfindable —")
+	fmt.Fprintln(os.Stderr, "  Adds Grep, Bash(grep:*), Bash(rg:*) to permissions.deny in the")
+	fmt.Fprintln(os.Stderr, "  PROJECT's .claude/settings.json (machine-global only with")
+	fmt.Fprintln(os.Stderr, "  --global). Nothing becomes unfindable —")
 	fmt.Fprintln(os.Stderr, "  prism_search(scope=\"text\") is a ripgrep passthrough. Reversible:")
 	fmt.Fprintln(os.Stderr, "  delete those lines. Only affects Claude Code.")
 	fmt.Fprint(os.Stderr, "Deny built-in search? [y/N]: ")
@@ -1216,12 +1258,10 @@ func promptDenyBuiltinSearch() bool {
 	return false
 }
 
-func ensureClaudeCodeApproval(serverName string, allowTools, denyBuiltinSearch bool) {
-	home, err := os.UserHomeDir()
-	if err != nil {
+func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSearch bool) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return
 	}
-	path := filepath.Join(home, ".claude", "settings.json")
 	var doc map[string]any
 	if raw, err := os.ReadFile(path); err == nil {
 		json.Unmarshal(raw, &doc) //nolint:errcheck
