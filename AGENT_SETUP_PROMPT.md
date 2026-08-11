@@ -165,6 +165,17 @@ prism index .   # optional warm-up: indexing is automatic (server start /
 echo "Prism initialized. Restart your AI coding tool to activate MCP and reload steering instructions."
 ```
 
+**The routing question.** Interactive `prism init` asks: *"Deny built-in
+search? [y/N]"*. This is the one change that actually routes agents through
+Prism (steering alone is ignored — measured 12:1): it adds `Grep`,
+`Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in
+`~/.claude/settings.json`. Nothing becomes unfindable —
+`prism_search(scope="text")` is a ripgrep passthrough — and it's reversible
+by deleting those lines. Relay this question to the user rather than
+answering it yourself; if you are running non-interactively the prompt is
+skipped and no settings change is made (pass `--deny-builtin-search` to
+opt in explicitly once the user has agreed).
+
 > **Claude Code users:** `prism init` writes `.mcp.json` at the project root. When Claude Code restarts it may prompt "Allow MCP servers from .mcp.json?" — click **Allow**.
 
 ---
