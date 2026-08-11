@@ -21,19 +21,22 @@ cheaply. Three layers, in priority order.
 
 ### When MCP tools are available
 
-Use the registered prism_* MCP tools.
+Use the registered prism MCP tools (their full names are
+mcp__prism__prism_query, mcp__prism__prism_search, and so on). The core
+tools are marked always-load, so they are ALREADY in your tool list —
+call them directly; no ToolSearch step is needed first.
 
-**If you do not see prism_* in your tool list, they are DEFERRED, not absent.**
-Some harnesses (Claude Code among them) do not load MCP tool schemas up front;
-they are discoverable on demand. Load them BEFORE concluding Prism is
-unavailable and falling back to grep:
+Only if a prism tool is genuinely not in your tool list (a harness that
+defers ALL MCP schemas), load it by its FULL registered name before
+concluding Prism is unavailable:
 
-    ToolSearch("select:prism_query,prism_search,prism_change_impact")
+    ToolSearch("select:mcp__prism__prism_query,mcp__prism__prism_search,mcp__prism__prism_change_impact")
 
-or search by keyword: ToolSearch("prism"). This is a one-time call per
-session. An agent that skips it will grep for everything and never touch the
-graph — measured, that is the single most common reason Prism goes unused on
-a machine where it is correctly installed and connected.
+or search by keyword: ToolSearch("prism"). Do NOT use bare names like
+"select:prism_query" — they do not match the registered names, return
+nothing, and an empty result here does NOT mean Prism is absent (measured:
+that exact misread is why cheap-tier agents fell back to grep on machines
+where prism was connected and loaded).
 
 **1. Changing or auditing code? One call answers the whole task:**
 
