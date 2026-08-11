@@ -1,6 +1,16 @@
 
 ## Before you commit or release — run the regression suite
 
+**Behavior change? Sweep the assumption surfaces first.** Any change to
+tool loading, routing, flags, names, or defaults invalidates text that
+DESCRIBES the old behavior elsewhere: the steering const in
+internal/cli/commands.go (and its nine generated files), README,
+AGENT_SETUP_PROMPT.md, the website, research harness arm definitions, and
+metric regexes. Grep them for the old behavior and fix or consciously
+exempt every hit — this is as mandatory as the tests below (v0.44.0
+shipped alwaysLoad while the steering still taught the deferred-tools
+ToolSearch dance; that mismatch became a released bug).
+
 CI runs these on push (`.github/workflows/ci.yml`; engine quality via
 `provasign/research/.github/workflows/engine-invariants.yml`). Run them locally
 before tagging a release:
