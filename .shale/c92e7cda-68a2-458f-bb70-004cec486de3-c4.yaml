@@ -1,0 +1,1167 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c4
+created_at: 2026-08-10T12:19:12.633664Z
+finalized_at: 2026-08-11T12:52:40.12354Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-11T12:50:59.417757Z
+    - path: AGENT_SETUP_PROMPT.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-11T12:51:30.31531Z
+commands:
+    - cmd: 'cd ~/Projects/provasign/prism && git status -sb | head -1 && git log --oneline -2 && git tag -a v0.43.0 -m "v0.43.0: grove v0.31.0 — signature-aware interface satisfaction + change-impact anchoring" && git push origin v0.43.0 2>&1 | tail -1'
+      at: 2026-08-10T12:19:12.633664Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId'); gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN || echo RELEASE-FAILED; gh release view v0.43.0 --json assets --jq '[.assets[].name] | length'
+      at: 2026-08-10T12:25:23.904811Z
+      classified: other
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.43.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.43.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.43.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && git log --oneline -1'
+      at: 2026-08-10T12:25:35.351957Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        import re
+        p='.github/workflows/engine-invariants.yml'
+        s=open(p).read()
+        open(p,'w').write(s.replace('PRISM_VERSION: "v0.42.0"','PRISM_VERSION: "v0.43.0"'))
+        print('pinned v0.43.0')
+        EOF
+        git add .github/workflows/engine-invariants.yml && git commit -m "$(printf 'ci: pin engine invariants to prism v0.43.0 (grove v0.31.0 signature-aware matching; ceilings unchanged)\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push origin main 2>&1 | tail -1 && sleep 15 && run=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo INVARIANTS-CI-GREEN || echo INVARIANTS-CI-FAILED
+      at: 2026-08-10T12:33:33.095842Z
+      classified: other
+    - cmd: 'for r in grove prism research; do echo "== $r: $(git -C ~/Projects/provasign/$r status --porcelain | wc -l | tr -d '' '') dirty, $(git -C ~/Projects/provasign/$r status -sb | head -1)"; done'
+      at: 2026-08-10T12:33:39.171282Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && wc -l swebench_ab.py && sed -n 1,60p swebench_ab.py
+      at: 2026-08-10T18:04:47.616134Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 60,180p swebench_ab.py
+      at: 2026-08-10T18:05:02.360162Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 180,273p swebench_ab.py && python3 -c "import swebench; print('swebench', swebench.__version__)" 2>&1 | tail -1
+      at: 2026-08-10T18:05:06.511504Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json, urllib.request
+        url='https://datasets-server.huggingface.co/splits?dataset=SWE-bench-Live%2FSWE-bench-Live'
+        d=json.load(urllib.request.urlopen(url, timeout=30))
+        print(json.dumps(d, indent=1)[:800])
+        "
+      at: 2026-08-10T18:05:27.275564Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, urllib.request
+        # size + a peek at recent rows in the verified split (human-checked, smaller)
+        url='https://datasets-server.huggingface.co/size?dataset=SWE-bench-Live%2FSWE-bench-Live'
+        d=json.load(urllib.request.urlopen(url, timeout=30))
+        for s in d['size']['splits']: print(s['split'], s['num_rows'])
+        url='https://datasets-server.huggingface.co/rows?dataset=SWE-bench-Live%2FSWE-bench-Live&config=default&split=verified&offset=0&length=2'
+        d=json.load(urllib.request.urlopen(url, timeout=30))
+        r=d['rows'][0]['row']
+        print(sorted(r.keys()))
+        print(r.get('instance_id'), '|', r.get('repo'), '|', r.get('created_at'))
+        EOF
+      at: 2026-08-10T18:05:34.763816Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, urllib.request
+        url='https://datasets-server.huggingface.co/rows?dataset=SWE-bench-Live%2FSWE-bench-Live&config=default&split=verified&offset=490&length=10'
+        d=json.load(urllib.request.urlopen(url, timeout=30))
+        for r in d['rows']:
+            row=r['row']
+            print(row['instance_id'], '|', row['created_at'], '|', row.get('difficulty'))
+        EOF
+      at: 2026-08-10T18:05:44.156704Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, urllib.request
+        for off in (1878, 1600):
+            url=f'https://datasets-server.huggingface.co/rows?dataset=SWE-bench-Live%2FSWE-bench-Live&config=default&split=full&offset={off}&length=10'
+            d=json.load(urllib.request.urlopen(url, timeout=30))
+            for r in d['rows'][:10]:
+                row=r['row']
+                print(off, row['instance_id'], '|', row['created_at'])
+            print()
+        EOF
+      at: 2026-08-10T18:05:52.751368Z
+      classified: other
+    - cmd: for iid in python__mypy-19705 matplotlib__matplotlib-30423 authlib__authlib-802 octodns__octodns-1298 HypothesisWorks__hypothesis-4532; do img="starryzhang/sweb.eval.x86_64.$(echo $iid | sed 's/__/_1776_/' | tr 'A-Z' 'a-z')"; docker manifest inspect "$img" >/dev/null 2>&1 && echo "OK   $img" || echo "MISS $img"; done
+      at: 2026-08-10T18:06:45.210891Z
+      classified: other
+    - cmd: |-
+        mkdir -p ~/Projects/provasign/research/harness/runs/swebench-live && python3 - <<'EOF'
+        import json, urllib.request, time
+        WANT={'python__mypy-19705','matplotlib__matplotlib-30423','authlib__authlib-802','octodns__octodns-1298','HypothesisWorks__hypothesis-4532'}
+        rows={}
+        for off in (1870, 1878):
+            for attempt in range(5):
+                url=f'https://datasets-server.huggingface.co/rows?dataset=SWE-bench-Live%2FSWE-bench-Live&config=default&split=full&offset={off}&length=10'
+                try:
+                    d=json.load(urllib.request.urlopen(url, timeout=30)); break
+                except Exception as e:
+                    print('retry', off, e); time.sleep(10)
+            for r in d['rows']:
+                row=r['row']
+                if row['instance_id'] in WANT:
+                    rows[row['instance_id']]=row
+            time.sleep(3)
+        print('got', sorted(rows))
+        json.dump(list(rows.values()), open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-smoke5.json','w'))
+        EOF
+      at: 2026-08-10T18:08:39.888623Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+        src=src.replace('env = run_agent(prompt, tools, wt)','env = run_agent(prompt, tools, wt, model)')
+        src=src.replace('''    ap.add_argument("--prism", default=str(Path.home() / "bin" / "prism"))''',
+        '''    ap.add_argument("--prism", default=str(Path.home() / "bin" / "prism"))
+            ap.add_argument("--model", default="opus")''')
+        src=src.replace('rec = run_arm(task, arm, args.prism)','rec = run_arm(task, arm, args.prism, args.model)')
+        open('swebench_ab.py','w').write(src)
+        EOF
+        python3 -c "import ast; ast.parse(open('/Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-10T18:09:10.335272Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 swebench_ab.py --tasks runs/swebench-live/slice-smoke5.json --limit 5 --arms baseline prism --out runs/swebench-live/smoke5 --model opus 2>&1
+      at: 2026-08-10T18:09:17.647341Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && git clone -q --depth 1 https://github.com/microsoft/SWE-bench-Live.git && cd SWE-bench-Live && python3 -m venv .venv && ./.venv/bin/pip install -q -e . 2>&1 | tail -3; ls evaluation/ | head
+      at: 2026-08-10T18:09:42.284444Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && sed -n 1,60p evaluation/README.md && ./.venv/bin/python -m evaluation.evaluation --help 2>&1 | head -25
+      at: 2026-08-10T18:09:47.459189Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && ls && ls launch 2>/dev/null | head -5
+      at: 2026-08-10T18:09:53.650631Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live/launch && ls -a | head -15
+      at: 2026-08-10T18:10:08.568481Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && git submodule update --init --depth 1 launch 2>&1 | tail -1 && ls launch | head -5 && (cd launch && [ -f pyproject.toml ] && ../.venv/bin/pip install -q -e . 2>&1 | tail -1); ./.venv/bin/python -m evaluation.evaluation --help 2>&1 | tail -18
+      at: 2026-08-10T18:10:44.91719Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/smoke5 && python3 - <<'EOF'
+        import json
+        for arm in ('baseline','prism'):
+            preds={}
+            for line in open(f'{arm}.predictions.jsonl'):
+                r=json.loads(line)
+                preds[r['instance_id']]={'model_patch': r['model_patch']}
+            json.dump(preds, open(f'{arm}.patches.json','w'))
+            print(arm, len(preds), 'patches')
+        EOF
+      at: 2026-08-10T18:25:25.583737Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/smoke5/baseline.patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/smoke5/eval-baseline --workers 2 --overwrite 1 --instance_ids HypothesisWorks__hypothesis-4532 authlib__authlib-802 python__mypy-19705 octodns__octodns-1298 matplotlib__matplotlib-30423 2>&1 | tail -20
+      at: 2026-08-10T18:25:33.031238Z
+      classified: other
+    - cmd: tail -6 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/b2ycuby28.output 2>/dev/null; docker images 2>/dev/null | head -4; docker ps --format '{{.Image}} {{.Status}}' 2>/dev/null | head -4
+      at: 2026-08-10T18:35:41.85539Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/smoke5 && find eval-baseline -name '*.json' | head -8; python3 - <<'EOF'
+        import json, glob
+        for f in sorted(glob.glob('eval-baseline/**/*.json', recursive=True)):
+            d=json.load(open(f))
+            if isinstance(d,dict) and ('resolved' in d or 'report' in d or 'completed_instances' in str(d)[:200]):
+                print(f, str(d)[:300])
+        EOF
+      at: 2026-08-10T18:44:47.306051Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/smoke5 && python3 - <<'EOF'
+        import json
+        d=json.load(open('eval-baseline/results.json'))
+        print(json.dumps(d, indent=1)[:400])
+        for iid in ['HypothesisWorks__hypothesis-4532','authlib__authlib-802','python__mypy-19705','octodns__octodns-1298','matplotlib__matplotlib-30423']:
+            r=json.load(open(f'eval-baseline/{iid}/report.json'))
+            f2p=r.get('FAIL_TO_PASS',{})
+            print(iid, 'resolved:', r.get('resolved'), '| F2P pass:', len(f2p.get('success',[])), 'fail:', len(f2p.get('failure',[])), '| P2P fail:', len(r.get('PASS_TO_PASS',{}).get('failure',[])))
+        EOF
+      at: 2026-08-10T18:44:53.360591Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/smoke5/prism.patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/smoke5/eval-prism --workers 2 --overwrite 1 --instance_ids HypothesisWorks__hypothesis-4532 authlib__authlib-802 python__mypy-19705 octodns__octodns-1298 matplotlib__matplotlib-30423 > /tmp/eval-prism.log 2>&1; echo "prism eval exit=$?"; ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir gold --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/smoke5/eval-gold --workers 2 --overwrite 1 --instance_ids HypothesisWorks__hypothesis-4532 authlib__authlib-802 python__mypy-19705 octodns__octodns-1298 matplotlib__matplotlib-30423 > /tmp/eval-gold.log 2>&1; echo "gold eval exit=$?"
+      at: 2026-08-10T18:45:06.154292Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/smoke5 && python3 - <<'EOF'
+        import json
+        for iid in ['HypothesisWorks__hypothesis-4532','authlib__authlib-802','python__mypy-19705','octodns__octodns-1298','matplotlib__matplotlib-30423']:
+            try:
+                r=json.load(open(f'eval-prism/{iid}/report.json'))
+                f2p=r.get('FAIL_TO_PASS',{})
+                print(iid, 'resolved:', r.get('resolved'), '| F2P pass:', len(f2p.get('success',[])), 'fail:', len(f2p.get('failure',[])), '| P2P fail:', len(r.get('PASS_TO_PASS',{}).get('failure',[])))
+            except FileNotFoundError:
+                print(iid, 'pending')
+        EOF
+      at: 2026-08-10T19:05:22.82168Z
+      classified: other
+    - cmd: |-
+        tail -12 /tmp/eval-gold.log; cd ~/Projects/provasign/research/harness/runs/swebench-live/smoke5 && python3 - <<'EOF'
+        import json, os
+        for iid in ['HypothesisWorks__hypothesis-4532','authlib__authlib-802','python__mypy-19705','octodns__octodns-1298','matplotlib__matplotlib-30423']:
+            p=f'eval-gold/{iid}/report.json'
+            if os.path.exists(p):
+                r=json.load(open(p))
+                f2p=r.get('FAIL_TO_PASS',{})
+                print(iid, 'GOLD resolved:', r.get('resolved'), '| F2P pass:', len(f2p.get('success',[])), 'fail:', len(f2p.get('failure',[])), '| P2P fail:', len(r.get('PASS_TO_PASS',{}).get('failure',[])))
+            else:
+                print(iid, 'no gold report')
+        EOF
+      at: 2026-08-10T19:23:17.513573Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/smoke5 && python3 - <<'EOF'
+        import json
+        rows=[]
+        for iid in ['HypothesisWorks__hypothesis-4532','authlib__authlib-802','python__mypy-19705','octodns__octodns-1298','matplotlib__matplotlib-30423']:
+            row={'id':iid}
+            for arm in ('gold','baseline','prism'):
+                try:
+                    r=json.load(open(f'eval-{arm}/{iid}/report.json'))
+                    row[arm]=r.get('resolved')
+                except Exception:
+                    row[arm]=None
+            rows.append(row)
+        valid=[r for r in rows if r['gold']]
+        print('valid instances (gold resolves here):', [r['id'] for r in valid])
+        print('on valid bed: baseline', sum(1 for r in valid if r['baseline']), '/', len(valid), '| prism', sum(1 for r in valid if r['prism']), '/', len(valid))
+        json.dump(rows, open('verdicts.json','w'), indent=1)
+        EOF
+      at: 2026-08-10T19:23:36.972076Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/smoke5 && rm -rf eval-baseline/*/[a-z]*.log eval-prism/*/[a-z]*.log 2>/dev/null; cd ~/Projects/provasign/research && du -sh harness/runs/swebench-live/smoke5 && git add harness/runs/swebench-live harness/swebench_ab.py && git commit -m "$(cat <<'EOF'
+        swebench-live: 5-task smoke, Opus ± prism — plumbing works; gold-validation is load-bearing
+
+        First run on SWE-bench-Live (post-cutoff instances, Aug-Sep 2025; prebuilt
+        starryzhang eval images). Runner: swebench_ab.py + --model flag + steering
+        refreshed to the current priced surface (search --scope text; the old block
+        still advertised the removed tests include).
+
+        Agent arms (5 tasks x 2 arms, all patches non-empty):
+          baseline  20.4 turns  $0.949 mean
+          prism     15.2 turns  $0.462 mean   (prism invoked in 3/5 cells)
+
+        Correctness, after gold validation on THIS machine:
+          - gold resolves only 2/5 instances here (authlib-802, octodns-1298) —
+            hypothesis-4532 and mypy-19705 fail gold with the SAME P2P failures both
+            arms show (env instability, exactly as the Live docs warn); matplotlib
+            gold eval errored. The valid bed is n=2.
+          - on the valid bed: baseline 0/2, prism 0/2 — parity, no resolve signal
+            at this n (as §8.1 predicts for this task shape).
+          - hypothesis-4532: BOTH arms pass all F2P and fail the same env-flaky P2P
+            test gold also fails — would count resolved in a stable env.
+
+        Smoke verdict for the 50-task run: (1) pre-filter instances by 3x gold-pass
+        on the eval machine before spending agent dollars; (2) the efficiency
+        signal (2.1x cheaper at parity) matches the ab-agentic expectation;
+        (3) plumbing (fetch -> arms -> Live harness -> gold) is end-to-end sound.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push origin main 2>&1 | tail -1
+      at: 2026-08-10T19:23:58.611182Z
+      classified: other
+    - cmd: df -h / | tail -1; docker system df 2>/dev/null | head -3
+      at: 2026-08-10T20:08:20.00881Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/phase1_gold_filter.py 2>&1
+      at: 2026-08-10T20:09:04.868071Z
+      classified: other
+    - cmd: tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/bmeurfkw9.output; ls ~/Projects/provasign/research/harness/runs/swebench-live/phase1/ 2>/dev/null; pgrep -f phase1_gold_filter | head -2; pgrep -f 'evaluation.evaluation' | head -2
+      at: 2026-08-10T20:25:42.93871Z
+      classified: other
+    - cmd: SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && nohup python3 $SCRATCH/phase1_gold_filter.py > $SCRATCH/phase1.log 2>&1 & echo "detached pid $!"; sleep 5; cat ~/Projects/provasign/research/harness/runs/swebench-live/phase1/STATUS
+      at: 2026-08-10T20:26:03.237206Z
+      classified: other
+    - cmd: |-
+        cat ~/Projects/provasign/research/harness/runs/swebench-live/phase1/STATUS; ls ~/Projects/provasign/research/harness/runs/swebench-live/phase1/eval-gold-r2 2>/dev/null | wc -l; python3 - <<'EOF'
+        import json, glob
+        done=res=0
+        for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/eval-gold-r2/*/report.json'):
+            done+=1
+            if json.load(open(f)).get('resolved'): res+=1
+        print(f'round 2 partial: {done}/40 evaluated, {res} resolved so far')
+        EOF
+      at: 2026-08-10T22:05:19.095669Z
+      classified: other
+    - cmd: |-
+        cat ~/Projects/provasign/research/harness/runs/swebench-live/phase1/STATUS; python3 - <<'EOF'
+        import json, glob
+        done=res=0
+        for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/eval-gold-r3/*/report.json'):
+            done+=1
+            if json.load(open(f)).get('resolved'): res+=1
+        print(f'round 3 partial: {done}/38 evaluated, {res} resolved so far')
+        EOF
+      at: 2026-08-10T22:13:38.169305Z
+      classified: other
+    - cmd: |-
+        cat ~/Projects/provasign/research/harness/runs/swebench-live/phase1/STATUS; python3 - <<'EOF'
+        import json, glob, os
+        p='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1'
+        done=res=0
+        for f in glob.glob(f'{p}/eval-gold-r3/*/report.json'):
+            done+=1
+            if json.load(open(f)).get('resolved'): res+=1
+        print(f'round 3: {done}/38 evaluated, {res} resolved')
+        if os.path.exists(f'{p}/valid-instances.json'):
+            v=json.load(open(f'{p}/valid-instances.json'))
+            print('VALID BED:', len(v), 'instances')
+        EOF
+      at: 2026-08-10T22:23:30.488651Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        rows=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/candidates-with-images.json'))
+        # pick a small, legible one
+        for r in rows:
+            if r['instance_id']=='joke2k__faker-2232' or 'freezegun' in r['instance_id']:
+                print('==', r['instance_id'])
+                print('PROBLEM:', r['problem_statement'][:400].replace('\n',' '))
+                print('F2P:', json.loads(r['FAIL_TO_PASS']) if isinstance(r['FAIL_TO_PASS'],str) else r['FAIL_TO_PASS'])
+                p2p=json.loads(r['PASS_TO_PASS']) if isinstance(r['PASS_TO_PASS'],str) else r['PASS_TO_PASS']
+                print('P2P count:', len(p2p), '| sample:', p2p[:3])
+                print('test_cmds:', r.get('test_cmds'))
+                break
+        EOF
+      at: 2026-08-10T22:27:37.173309Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        rows=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/candidates-with-images.json'))
+        r=min(rows, [REDACTED:env-secret] x: len(str(x.get('PASS_TO_PASS',''))))
+        print('==', r['instance_id'])
+        print('PROBLEM:', r['problem_statement'][:450].replace('\n',' '))
+        f2p=r['FAIL_TO_PASS']; p2p=r['PASS_TO_PASS']
+        if isinstance(f2p,str): f2p=json.loads(f2p)
+        if isinstance(p2p,str): p2p=json.loads(p2p)
+        print('F2P:', f2p[:4])
+        print('P2P count:', len(p2p), '| sample:', p2p[:2])
+        print('test_cmds:', r.get('test_cmds'))
+        tp=r['test_patch']
+        print('--- test_patch excerpt:')
+        print(tp[:700])
+        EOF
+      at: 2026-08-10T22:27:44.927223Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/phase1 && python3 - <<'EOF'
+        import json, glob
+        # compact per-round verdict table (the full eval dirs stay local — logs are bulky)
+        out={}
+        for rnd in (1,2,3):
+            for f in glob.glob(f'eval-gold-r{rnd}/*/report.json'):
+                iid=f.split('/')[-2]
+                out.setdefault(iid,{})[f'r{rnd}']=bool(json.load(open(f)).get('resolved'))
+        json.dump(out, open('gold-verdicts.json','w'), indent=1)
+        v=json.load(open('valid-instances.json'))
+        print(len(v),'valid;', len(out),'evaluated total')
+        EOF
+        du -sh eval-gold-r1 && cd ~/Projects/provasign/research && git add harness/runs/swebench-live/phase1/candidates.json harness/runs/swebench-live/phase1/candidates-with-images.json harness/runs/swebench-live/phase1/valid-instances.json harness/runs/swebench-live/phase1/gold-verdicts.json && git commit -q -m "$(printf 'swebench-live phase 1: 80 mined -> 38 valid (3x gold-validated, 48%% yield); full eval logs kept local\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin main && echo pushed
+      at: 2026-08-10T22:29:41.027164Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && nohup python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 38 --arms baseline prism --out runs/swebench-live/ab38-t1 --model opus > runs/swebench-live/ab38-t1.log 2>&1 & echo "phase2 trial1 detached pid $!"
+      at: 2026-08-10T22:29:46.475411Z
+      classified: other
+    - cmd: tail -3 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t1.log; pgrep -f 'swebench_ab.py.*ab38-t1' >/dev/null && echo driver-alive; ls /tmp/swebench-wt 2>/dev/null | head -2
+      at: 2026-08-10T22:30:10.421294Z
+      classified: other
+    - cmd: |-
+        tail -4 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t1.log; python3 - <<'EOF'
+        import json, glob
+        fs=[f for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1/*.json')]
+        cost=sum(json.load(open(f)).get('cost_usd') or 0 for f in fs)
+        print(f'{len(fs)}/76 cells done, ${cost:.2f} spent')
+        EOF
+      at: 2026-08-10T22:38:09.577057Z
+      classified: other
+    - cmd: |-
+        tail -2 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t1.log; python3 - <<'EOF'
+        import json, glob
+        fs=glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1/*.json')
+        recs=[json.load(open(f)) for f in fs]
+        cost=sum(r.get('cost_usd') or 0 for r in recs)
+        by={'baseline':[], 'prism':[]}
+        for r in recs: by.get(r.get('arm'), []).append(r)
+        print(f"{len(recs)}/76 cells, ${cost:.2f} spent")
+        for arm, rs in by.items():
+            if rs:
+                mt=sum(r['turns'] or 0 for r in rs)/len(rs); mc=sum(r['cost_usd'] or 0 for r in rs)/len(rs)
+                pu=sum(1 for r in rs if r.get('prism_used'))
+                print(f"  {arm}: n={len(rs)} mean_turns={mt:.1f} mean_$={mc:.2f} prism_used={pu}")
+        EOF
+      at: 2026-08-10T22:42:37.789196Z
+      classified: other
+    - cmd: |-
+        tail -2 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t1.log; python3 - <<'EOF'
+        import json, glob
+        fs=glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1/*.json')
+        recs=[json.load(open(f)) for f in fs]
+        cost=sum(r.get('cost_usd') or 0 for r in recs)
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=[i for i in by['baseline'] if i in by['prism']]
+        print(f"{len(recs)}/76 cells, ${cost:.2f} spent, {len(paired)} complete pairs")
+        for i in paired:
+            b,p=by['baseline'][i],by['prism'][i]
+            print(f"  {i[:40]:<42} base {b['turns']:>3}t ${b['cost_usd']:.2f} | prism {p['turns']:>3}t ${p['cost_usd']:.2f} {'(used)' if p['prism_used'] else ''}")
+        EOF
+      at: 2026-08-10T22:45:11.80944Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        fs=glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1/*.json')
+        recs=[json.load(open(f)) for f in fs]
+        cost=sum(r.get('cost_usd') or 0 for r in recs)
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=sorted(i for i in by['baseline'] if i in by['prism'])
+        bw=pw=0
+        for i in paired:
+            b,p=by['baseline'][i],by['prism'][i]
+            if (p['cost_usd'] or 0) < (b['cost_usd'] or 0): pw+=1
+            else: bw+=1
+        bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+        print(f"{len(recs)}/76 cells, ${cost:.2f} total spent")
+        print(f"{len(paired)} complete pairs: prism cheaper on {pw}, baseline cheaper on {bw}")
+        if paired: print(f"paired cost: baseline ${bt:.2f} vs prism ${pt:.2f} ({bt/max(pt,0.01):.2f}x)")
+        pu=sum(1 for i in paired if by['prism'][i].get('prism_used'))
+        print(f"prism invoked in {pu}/{len(paired)} prism cells")
+        EOF
+        tail -1 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t1.log
+      at: 2026-08-10T23:02:57.756348Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        fs=glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1/*.json')
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=sorted(i for i in by['baseline'] if i in by['prism'])
+        pw=sum(1 for i in paired if by['prism'][i]['cost_usd'] < by['baseline'][i]['cost_usd'])
+        bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+        btu=sum(by['baseline'][i]['turns'] for i in paired); ptu=sum(by['prism'][i]['turns'] for i in paired)
+        pu=sum(1 for i in paired if by['prism'][i].get('prism_used'))
+        ne_b=sum(1 for i in paired if not by['baseline'][i]['empty_patch']); ne_p=sum(1 for i in paired if not by['prism'][i]['empty_patch'])
+        print(f"{len(recs)}/76 cells | {len(paired)} pairs")
+        print(f"cost:  baseline ${bt:.2f}  prism ${pt:.2f}  ratio {bt/max(pt,.01):.2f}x  (prism cheaper on {pw}/{len(paired)})")
+        print(f"turns: baseline {btu/len(paired):.1f}  prism {ptu/len(paired):.1f} mean")
+        print(f"prism invoked {pu}/{len(paired)}; non-empty patches: baseline {ne_b}/{len(paired)}, prism {ne_p}/{len(paired)}")
+        EOF
+      at: 2026-08-10T23:20:22.804694Z
+      classified: other
+    - cmd: SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && nohup python3 $SCRATCH/phase2_chain.py > $SCRATCH/phase2_chain.log 2>&1 & echo "chain pid $!"
+      at: 2026-08-10T23:45:22.081951Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        fs=glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1/*.json')
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=sorted(i for i in by['baseline'] if i in by['prism'])
+        pw=sum(1 for i in paired if by['prism'][i]['cost_usd'] < by['baseline'][i]['cost_usd'])
+        bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+        btu=sum(by['baseline'][i]['turns'] for i in paired)/len(paired); ptu=sum(by['prism'][i]['turns'] for i in paired)/len(paired)
+        pu=sum(1 for i in paired if by['prism'][i].get('prism_used'))
+        ep_b=[i for i in paired if by['baseline'][i]['empty_patch']]; ep_p=[i for i in paired if by['prism'][i]['empty_patch']]
+        to_b=sum(1 for i in paired if by['baseline'][i].get('timed_out')); to_p=sum(1 for i in paired if by['prism'][i].get('timed_out'))
+        print(f"{len(recs)}/76 cells | {len(paired)} pairs")
+        print(f"cost ratio {bt/max(pt,.01):.2f}x (${bt:.2f} vs ${pt:.2f}); prism cheaper on {pw}/{len(paired)}")
+        print(f"mean turns {btu:.1f} vs {ptu:.1f}; prism invoked {pu}/{len(paired)}")
+        print(f"empty patches: baseline {len(ep_b)} {ep_b}, prism {len(ep_p)} {ep_p}; timeouts {to_b}/{to_p}")
+        EOF
+      at: 2026-08-11T00:17:36.223221Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        t1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1'
+        fs=[f for f in glob.glob(f'{t1}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=sorted(i for i in by['baseline'] if i in by['prism'])
+        if paired:
+            bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+            print(f"trial1: {len(recs)}/76 cells, {len(paired)} pairs, cost ratio {bt/max(pt,.01):.2f}x")
+        s2='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/STATUS2'
+        if os.path.exists(s2): print('chain:', open(s2).read().strip())
+        EOF
+        tail -1 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t1.log
+      at: 2026-08-11T00:43:23.978955Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        t1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1'
+        fs=[f for f in glob.glob(f'{t1}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=sorted(i for i in by['baseline'] if i in by['prism'])
+        print(f"{'task':<44}{'base $':>8}{'prism $':>9}{'base t':>8}{'prism t':>9}  notes")
+        for i in paired:
+            b,p=by['baseline'][i],by['prism'][i]
+            notes=[]
+            if p.get('prism_used'): notes.append('used')
+            if p.get('empty_patch'): notes.append('EMPTY')
+            if b.get('empty_patch'): notes.append('base-EMPTY')
+            print(f"{i[:43]:<44}{b['cost_usd']:>8.2f}{p['cost_usd']:>9.2f}{b['turns']:>8}{p['turns']:>9}  {','.join(notes)}")
+        bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+        btu=sum(by['baseline'][i]['turns'] for i in paired); ptu=sum(by['prism'][i]['turns'] for i in paired)
+        print('-'*90)
+        print(f"{'TOTAL ('+str(len(paired))+' pairs)':<44}{bt:>8.2f}{pt:>9.2f}{btu:>8}{ptu:>9}   ratio {bt/pt:.2f}x")
+        EOF
+      at: 2026-08-11T00:59:18.385654Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        t1=f'{base}/ab38-t1'
+        fs=[f for f in glob.glob(f'{t1}/*.json') if not f.endswith('patches.json')]
+        print(f"trial1 cells: {len(fs)}/76")
+        if os.path.exists(f'{base}/STATUS2'): print('chain:', open(f'{base}/STATUS2').read().strip())
+        t2=f'{base}/ab38-t2'
+        if os.path.isdir(t2): print('trial2 cells:', len([f for f in glob.glob(f"{t2}/*.json") if not f.endswith('patches.json')]))
+        for arm in ('baseline','prism'):
+            d=f'{t1}/eval-{arm}'
+            if os.path.isdir(d):
+                rep=glob.glob(f'{d}/*/report.json')
+                res=sum(1 for f in rep if json.load(open(f)).get('resolved'))
+                print(f'T1 eval-{arm}: {len(rep)}/38 evaluated, {res} resolved')
+        EOF
+        tail -1 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t1.log 2>/dev/null
+      at: 2026-08-11T01:14:49.603682Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2 && ls | head -5; ls | wc -l; stat -f '%Sm %N' $(ls | head -3) 2>/dev/null; python3 -c "
+        import json,glob
+        fs=glob.glob('*.json')
+        recs=[json.load(open(f)) for f in fs if not f.endswith('predictions.jsonl')]
+        print(len(recs),'records; costs sum', sum(r.get('cost_usd') or 0 for r in recs))
+        print('sample turns:', [r.get('turns') for r in recs[:5]])
+        "; tail -3 ../ab38-t2.log
+      at: 2026-08-11T01:15:02.031071Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t2/a2aproject__a2a-python-219.baseline.json'))
+        print(json.dumps({k:v for k,v in r.items() if k in ('turns','cost_usd','empty_patch','timed_out')}, indent=1))
+        " && rm -rf ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2 && echo t2-cells-purged
+      at: 2026-08-11T01:15:18.993287Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/t2_relaunch.sh <<'EOF'
+        #!/bin/bash
+        # Wait for the session-limit reset (23:09 ET), then run trial 2 with a
+        # sanity gate: one probe call must return >1 turn before the fleet launches.
+        while [ "$(date +%H%M)" -lt 2315 ]; do sleep 60; done
+        cd ~/Projects/provasign/research/harness
+        until claude -p "say ok" --model opus --output-format json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if (d.get('total_cost_usd') or 0)>0 else 1)"; do
+          echo "$(date +%H:%M) probe failed — limit still active; retrying in 10m"
+          sleep 600
+        done
+        echo "$(date +%H:%M) probe ok — launching trial 2"
+        python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 38 --arms baseline prism --out runs/swebench-live/ab38-t2 --model opus
+        EOF
+        chmod +x /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/t2_relaunch.sh
+        nohup /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/t2_relaunch.sh > ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2.log 2>&1 &
+        echo "t2 relauncher armed, pid $!"
+      at: 2026-08-11T01:15:30.808692Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        t1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1'
+        ids=[r['instance_id'] for r in json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/valid-instances.json'))]
+        def verdict(arm,iid):
+            try: return bool(json.load(open(f'{t1}/eval-{arm}/{iid}/report.json')).get('resolved'))
+            except Exception: return None
+        both=b_only=p_only=neither=0
+        disc=[]
+        for iid in ids:
+            b,p=verdict('baseline',iid),verdict('prism',iid)
+            if b and p: both+=1
+            elif b and not p: b_only+=1; disc.append((iid,'baseline-only'))
+            elif p and not b: p_only+=1; disc.append((iid,'prism-only'))
+            else: neither+=1
+        print(f'both resolved: {both} | baseline-only: {b_only} | prism-only: {p_only} | neither: {neither}')
+        for d in disc: print(' ', *d)
+        EOF
+        tail -3 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2.log; ls ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2 2>/dev/null | wc -l
+      at: 2026-08-11T10:37:17.222096Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        t2='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t2'
+        fs=[f for f in glob.glob(f'{t2}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        cost=sum(r.get('cost_usd') or 0 for r in recs)
+        empty=sum(1 for r in recs if r['empty_patch'])
+        t1=sum(1 for r in recs if (r.get('turns') or 0)<=1)
+        print(f'{len(recs)} cells, total ${cost:.2f}, empty patches {empty}, one-turn cells {t1}')
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=[i for i in by['baseline'] if i in by['prism']]
+        bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+        print(f'{len(paired)} pairs, cost ratio {bt/max(pt,.01):.2f}x (${bt:.2f} vs ${pt:.2f})')
+        EOF
+        head -2 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2.log
+      at: 2026-08-11T10:37:28.738196Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2 && python3 - <<'EOF'
+        import json, glob
+        for arm in ('baseline','prism'):
+            preds={}
+            for f in glob.glob('*.json'):
+                if f.endswith('patches.json'): continue
+                r=json.load(open(f))
+                if r.get('arm')==arm: preds[r['instance_id']]={'model_patch':r['model_patch']}
+            json.dump(preds, open(f'{arm}.patches.json','w'))
+            print(arm, len(preds))
+        EOF
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        T2=~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2
+        IDS=$(python3 -c "
+        import json
+        print(' '.join(r['instance_id'] for r in json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/valid-instances.json'))))")
+        nohup bash -c "cd $LIVE && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir $T2/baseline.patches.json --output_dir $T2/eval-baseline --workers 4 --overwrite 0 --instance_ids $IDS && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir $T2/prism.patches.json --output_dir $T2/eval-prism --workers 4 --overwrite 0 --instance_ids $IDS" > /tmp/t2-evals.log 2>&1 &
+        echo "t2 evals detached pid $!"
+      at: 2026-08-11T10:37:41.872881Z
+      classified: other
+    - cmd: tail -5 /tmp/t2-evals.log; pgrep -f evaluation.evaluation >/dev/null && echo eval-running; ls ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2/eval-baseline 2>/dev/null | wc -l
+      at: 2026-08-11T10:38:09.556319Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t1/beetbox__beets-5890.prism.json'))
+        print('turns', r['turns'], 'cost', r['cost_usd'], 'timed_out', r['timed_out'])
+        print('--- tool trace:')
+        for t in r['tool_trace']: print(' ', t[:110])
+        EOF
+      at: 2026-08-11T10:40:12.259703Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, re
+        pat=re.compile(r'gh pr view|refs/pull|pr\d+/head|hub pr|api.github.com.*pull', re.I)
+        for trial in ('ab38-t1','ab38-t2'):
+            hits=[]
+            for f in glob.glob(f'/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/{trial}/*.json'):
+                if f.endswith('patches.json'): continue
+                r=json.load(open(f))
+                bad=[t for t in r.get('tool_trace',[]) if pat.search(t)]
+                if bad: hits.append((r['instance_id'], r['arm'], bad[0][:80]))
+            print(f'== {trial}: {len(hits)} cells with PR-lookup attempts')
+            for h in hits: print('  ', *h)
+        EOF
+      at: 2026-08-11T10:40:33.296982Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, re
+        cells=[('ab38-t1','python-poetry__poetry-10487','prism'),('ab38-t1','beetbox__beets-5890','prism'),
+               ('ab38-t2','astronomer__dag-factory-544','prism'),('ab38-t2','beetbox__beets-5890','baseline'),
+               ('ab38-t2','pybamm-team__PyBaMM-5129','prism'),('ab38-t2','certbot__certbot-10374','prism')]
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        for trial,iid,arm in cells:
+            r=json.load(open(f'{base}/{trial}/{iid}.{arm}.json'))
+            tr=r['tool_trace']
+            fetches=[t for t in tr if re.search(r'git fetch.*refs/pull|checkout pr\d|diff.*pr\d+', t)]
+            print(f'== {trial} {iid} [{arm}] empty={r["empty_patch"]}')
+            print('   git-level PR access:', fetches[:3] if fetches else 'NONE (gh/curl attempt only)')
+        EOF
+      at: 2026-08-11T10:40:56.720149Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        ids=[r['instance_id'] for r in json.load(open(f'{base}/phase1/valid-instances.json'))]
+        EXCLUDE={'beetbox__beets-5890','pybamm-team__PyBaMM-5129'}
+        def verdict(trial,arm,iid):
+            p=f'{base}/{trial}/eval-{arm}/{iid}/report.json'
+            if os.path.exists(p): return bool(json.load(open(p)).get('resolved'))
+            return None
+        for trial in ('ab38-t1','ab38-t2'):
+            done=res_b=res_p=n=0
+            for iid in ids:
+                b,p=verdict(trial,'baseline',iid),verdict(trial,'prism',iid)
+                if b is None or p is None: continue
+                n+=1; res_b+=b; res_p+=p
+            print(f'{trial}: {n}/38 evaluated | baseline {res_b} prism {res_p}')
+            nn=rb=rp=0
+            for iid in ids:
+                if iid in EXCLUDE: continue
+                b,p=verdict(trial,'baseline',iid),verdict(trial,'prism',iid)
+                if b is None or p is None: continue
+                nn+=1; rb+=b; rp+=p
+            print(f'   excl. cheater tasks: n={nn} baseline {rb} prism {rp}')
+        # cost pooled
+        for trial in ('ab38-t1','ab38-t2'):
+            fs=[f for f in glob.glob(f'{base}/{trial}/*.json') if not f.endswith('patches.json')]
+            recs=[json.load(open(f)) for f in fs]
+            by={'baseline':{}, 'prism':{}}
+            for r in recs: by[r['arm']][r['instance_id']]=r
+            paired=[i for i in by['baseline'] if i in by['prism']]
+            bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+            print(f'{trial} cost: ${bt:.2f} vs ${pt:.2f} = {bt/pt:.2f}x over {len(paired)} pairs')
+        EOF
+      at: 2026-08-11T10:48:46.53869Z
+      classified: other
+    - cmd: pgrep -f evaluation.evaluation >/dev/null && echo eval-alive || echo eval-DEAD; ls ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t2/eval-baseline/ 2>/dev/null | head -4; tail -4 /tmp/t2-evals.log
+      at: 2026-08-11T10:48:53.477494Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t2'
+        for arm in ('baseline','prism'):
+            rep=glob.glob(f'{base}/eval-{arm}/*/report.json')
+            res=sum(1 for f in rep if json.load(open(f)).get('resolved'))
+            print(f't2 eval-{arm}: {len(rep)}/38 evaluated, {res} resolved')
+        EOF
+        pgrep -f evaluation.evaluation >/dev/null && echo eval-alive || echo eval-done-or-dead
+      at: 2026-08-11T11:17:23.234817Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        ids=[r['instance_id'] for r in json.load(open(f'{base}/phase1/valid-instances.json'))]
+        for arm in ('baseline','prism'):
+            missing=[i for i in ids if not os.path.exists(f'{base}/ab38-t2/eval-{arm}/{i}/report.json')]
+            print(arm, 'missing:', missing)
+        EOF
+        tail -3 /tmp/t2-evals.log
+      at: 2026-08-11T11:27:58.409082Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        from math import comb
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        ids=[r['instance_id'] for r in json.load(open(f'{base}/phase1/valid-instances.json'))]
+        EXCL={'beetbox__beets-5890','pybamm-team__PyBaMM-5129'}
+        def verdict(trial,arm,iid):
+            p=f'{base}/{trial}/eval-{arm}/{iid}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else False
+        rows=[]
+        for trial in ('ab38-t1','ab38-t2'):
+            for iid in ids:
+                rows.append((trial,iid,verdict(trial,'baseline',iid),verdict(trial,'prism',iid)))
+        def table(rs,label):
+            n=len(rs); b=sum(r[2] for r in rs); p=sum(r[3] for r in rs)
+            bo=sum(1 for r in rs if r[2] and not r[3]); po=sum(1 for r in rs if r[3] and not r[2])
+            # McNemar exact two-sided
+            d=bo+po
+            pval=sum(comb(d,k) for k in range(0,min(bo,po)+1))*2/2**d if d else 1.0
+            pval=min(1.0,pval)
+            print(f'{label}: n={n} | baseline {b} ({b/n:.1%}) prism {p} ({p/n:.1%}) | discordant {bo} vs {po} | McNemar p={pval:.3f}')
+            return [ (r[1]) for r in rs if r[2]!=r[3]]
+        disc=table(rows,'POOLED all 76 cells        ')
+        table([r for r in rows if r[1] not in EXCL],'POOLED excl cheater tasks  ')
+        table([r for r in rows if r[0]=='ab38-t1'],'  trial 1                  ')
+        table([r for r in rows if r[0]=='ab38-t2'],'  trial 2                  ')
+        # do the same tasks flip in both trials?
+        from collections import Counter
+        c=Counter(disc)
+        print('tasks discordant in BOTH trials:', [k for k,v in c.items() if v==2])
+        EOF
+      at: 2026-08-11T11:28:16.403311Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        def v(trial,arm,iid):
+            p=f'{base}/{trial}/eval-{arm}/{iid}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else False
+        for iid in ('sooperset__mcp-atlassian-581','koxudaxi__datamodel-code-generator-2461'):
+            for t in ('ab38-t1','ab38-t2'):
+                print(iid[:40], t, 'baseline', v(t,'baseline',iid), 'prism', v(t,'prism',iid))
+        EOF
+      at: 2026-08-11T11:28:30.327655Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        ids=[r['instance_id'] for r in json.load(open(f'{base}/phase1/valid-instances.json'))]
+        def v(t,a,i):
+            p=f'{base}/{t}/eval-{a}/{i}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else False
+        for t in ('ab38-t1','ab38-t2'):
+            for i in ids:
+                if v(t,'baseline',i) and not v(t,'prism',i):
+                    print(t, i)
+        EOF
+      at: 2026-08-11T11:31:22.192736Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os, re
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        valid={r['instance_id']:r for r in json.load(open(f'{base}/phase1/valid-instances.json'))}
+        cells=[('ab38-t1','sooperset__mcp-atlassian-581'),('ab38-t1','magic-wormhole__magic-wormhole-659'),
+               ('ab38-t1','casbin__pycasbin-392'),('ab38-t2','browser-use__browser-use-2480'),
+               ('ab38-t2','certbot__certbot-10374'),('ab38-t2','sooperset__mcp-atlassian-581'),
+               ('ab38-t2','koxudaxi__datamodel-code-generator-2461'),('ab38-t2','astronomer__dag-factory-544')]
+        def files(patch): return sorted(set(l[6:] for l in patch.split('\n') if l.startswith('+++ b/')))
+        for t,i in cells:
+            pr=json.load(open(f'{base}/{t}/{i}.prism.json'))
+            bl=json.load(open(f'{base}/{t}/{i}.baseline.json'))
+            gold=files(valid[i]['patch'])
+            rep=json.load(open(f'{base}/{t}/eval-prism/{i}/report.json'))
+            f2p=rep.get('FAIL_TO_PASS',{})
+            p2p=rep.get('PASS_TO_PASS',{})
+            print('='*100)
+            print(f'{t} {i}')
+            print(f'  gold files: {gold}')
+            print(f'  prism patch files: {files(pr["model_patch"])} ({len(pr["model_patch"].splitlines())} lines, {pr["turns"]}t)')
+            print(f'  base  patch files: {files(bl["model_patch"])} ({len(bl["model_patch"].splitlines())} lines, {bl["turns"]}t)')
+            print(f'  prism verdict: F2P {len(f2p.get("success",[]))}pass/{len(f2p.get("failure",[]))}fail, P2P {len(p2p.get("failure",[]))} broken')
+            if f2p.get('failure'): print(f'  failed F2P sample: {f2p["failure"][:2]}')
+        EOF
+      at: 2026-08-11T11:31:41.296662Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        for t in ('ab38-t1','ab38-t2'):
+            r=json.load(open(f'{base}/{t}/sooperset__mcp-atlassian-581.prism.json'))
+            print(f'=== {t} prism trace ({r["turns"]}t):')
+            for x in r['tool_trace']: print('  ', x[:120])
+        EOF
+      at: 2026-08-11T11:32:04.228228Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        r=json.load(open(f'{base}/ab38-t2/sooperset__mcp-atlassian-581.baseline.json'))
+        print(f'baseline t2 trace ({r["turns"]}t):')
+        for x in r['tool_trace']: print('  ', x[:120])
+        v=[x for x in json.load(open(f'{base}/phase1/valid-instances.json')) if x['instance_id']=='sooperset__mcp-atlassian-581'][0]
+        print('--- problem statement first 500:')
+        print(v['problem_statement'][:500])
+        EOF
+      at: 2026-08-11T11:32:16.26912Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        src=open('harness/ab_endtoend_arms.py').read()
+        i=src.find('ARMS["prism_priced_v2"]')
+        print(src[i:i+1600])
+        EOF
+      at: 2026-08-11T11:34:44.210293Z
+      classified: other
+    - cmd: |-
+        python3 -c "import ast; ast.parse(open('/Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py').read()); print('syntax ok')" && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/t34_chain.sh <<'EOF'
+        #!/bin/bash
+        # Trials 3+4 with the edit-site-guard steering + git network lockdown,
+        # then correctness evals for both, sequentially. Writes STATUS34.
+        cd ~/Projects/provasign/research/harness
+        S=~/Projects/provasign/research/harness/runs/swebench-live/STATUS34
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        IDS=$(python3 -c "
+        import json
+        print(' '.join(r['instance_id'] for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))))")
+        for T in t3 t4; do
+          echo "$(date +%H:%M) trial $T agents starting" > $S
+          python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 38 \
+            --arms baseline prism --out runs/swebench-live/ab38-$T --model opus \
+            > runs/swebench-live/ab38-$T.log 2>&1
+          echo "$(date +%H:%M) trial $T agents done; building patches" > $S
+          python3 - <<PYEOF
+        import json, glob
+        d='runs/swebench-live/ab38-$T'
+        for arm in ('baseline','prism'):
+            preds={}
+            for f in glob.glob(f'{d}/*.json'):
+                if f.endswith('patches.json'): continue
+                r=json.load(open(f))
+                if r.get('arm')==arm: preds[r['instance_id']]={'model_patch':r['model_patch']}
+            json.dump(preds, open(f'{d}/{arm}.patches.json','w'))
+        PYEOF
+          for ARM in baseline prism; do
+            (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation \
+              --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux \
+              --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/ab38-$T/$ARM.patches.json \
+              --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/ab38-$T/eval-$ARM \
+              --workers 4 --overwrite 0 --instance_ids $IDS) >> /tmp/t34-evals.log 2>&1
+            N=$(python3 -c "
+        import json,glob
+        fs=glob.glob('runs/swebench-live/ab38-$T/eval-$ARM/*/report.json')
+        print(sum(1 for f in fs if json.load(open(f)).get('resolved')), '/', len(fs))")
+            echo "$(date +%H:%M) $T eval-$ARM: $N resolved" > $S
+          done
+        done
+        echo "$(date +%H:%M) T34 ALL DONE" > $S
+        EOF
+        chmod +x /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/t34_chain.sh
+        nohup /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/t34_chain.sh > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/t34_chain.log 2>&1 &
+        echo "t3+t4 chain armed pid $!"
+      at: 2026-08-11T11:35:33.788163Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && du -sh harness/runs/swebench-live/ab38-t1 harness/runs/swebench-live/ab38-t2 | head -2; find harness/runs/swebench-live/ab38-t1 harness/runs/swebench-live/ab38-t2 -name 'post_patch_log.txt' -size +1M | wc -l
+      at: 2026-08-11T11:35:48.407068Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        # Commit metric cells, patches, reports, and a verdict summary; skip bulky test logs.
+        import subprocess, glob
+        keep=[]
+        for t in ('ab38-t1','ab38-t2'):
+            keep+=glob.glob(f'harness/runs/swebench-live/{t}/*.json')
+            keep+=glob.glob(f'harness/runs/swebench-live/{t}/*.jsonl')
+            keep+=glob.glob(f'harness/runs/swebench-live/{t}/eval-*/*/report.json')
+            keep+=glob.glob(f'harness/runs/swebench-live/{t}/eval-*/results.json')
+        subprocess.run(['git','add','harness/swebench_ab.py',*keep], check=True)
+        print(len(keep),'files staged')
+        EOF
+        git commit -q -m "$(cat <<'EOF'
+        swebench-live trials 1-2: resolve parity-not-shown, cost 1.5x — plus the cheat audit and two fixes
+
+        38 gold-validated post-cutoff instances x 2 arms x 2 trials, Opus, identical
+        scaffolds. Raw cells, patches, and per-instance eval reports committed
+        (bulky container test logs kept local).
+
+        RESOLVE (pooled): baseline 38/76 (50.0%), prism 33/76 (43.4%); discordant
+        8 vs 3, McNemar p=0.227 (excl. cheat-tainted tasks: 52.8% vs 44.4%,
+        p=0.109). Not significant, but not the pre-registered parity either — the
+        point estimate is ~7pp against the prism arm.
+
+        COST: prism arm 1.56x (t1) / 1.46x (t2) cheaper, reproduced, invoked in
+        ~95% of cells. Turns near-identical: savings are cheaper context per turn.
+
+        CHEAT AUDIT: 6/152 cells attempted to fetch the gold PR (instance id leaks
+        the PR number). gh/curl attempts died on the allowlist; git fetch succeeded
+        in 3 cells — and all three self-destructed: `git checkout pr<N> -- ...`
+        stages the stolen fix, so the worktree-vs-index diff captured NOTHING and
+        they scored fails. Zero contaminated resolves. Fixed forward with
+        GIT_ALLOW_PROTOCOL=file in the agent env (both arms).
+
+        AUTOPSY of the 8 baseline-only wins: 3 wrong-layer diagnoses where the
+        agent edited where the error string SURFACES, validated against the
+        adjacent tests, and never ran the oracle's suite (mcp-atlassian twice —
+        systematic); 2 F2P-passing fixes that broke neighbors via overreach; 3
+        ordinary near-misses. The wrong-layer cases trace to cheap-first steering
+        without the prism_priced_v2 edit-site guard — the agent edited code it had
+        only seen as slices. Guard ported into PRISM_STEERING (predates this
+        experiment; see ab_endtoend_arms.py prism_priced_v2, 2026-08-07). Trials
+        3-4 run under the guarded steering as a clean pair.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && echo pushed
+      at: 2026-08-11T11:36:15.507382Z
+      classified: other
+    - cmd: |-
+        cat ~/Projects/provasign/research/harness/runs/swebench-live/STATUS34 2>/dev/null; python3 - <<'EOF'
+        import json, glob
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t3'
+        fs=[f for f in glob.glob(f'{d}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        if recs:
+            cost=sum(r.get('cost_usd') or 0 for r in recs)
+            by={'baseline':{}, 'prism':{}}
+            for r in recs: by[r['arm']][r['instance_id']]=r
+            paired=[i for i in by['baseline'] if i in by['prism']]
+            if paired:
+                bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+                print(f"t3: {len(recs)}/76 cells, ${cost:.2f}, ratio so far {bt/max(pt,.01):.2f}x over {len(paired)} pairs")
+            else:
+                print(f"t3: {len(recs)}/76 cells, ${cost:.2f}")
+            # the regression-test cell
+            for arm in ('baseline','prism'):
+                r=by[arm].get('sooperset__mcp-atlassian-581')
+                if r: print(f"  mcp-atlassian {arm}: done, {r['turns']}t")
+        EOF
+        tail -1 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t3.log 2>/dev/null
+      at: 2026-08-11T11:59:57.289158Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-t3'
+        f=f'{d}/sooperset__mcp-atlassian-581.prism.json'
+        if not os.path.exists(f):
+            import glob
+            done=len([x for x in glob.glob(f"{d}/*.json") if not x.endswith('patches.json')])
+            print(f'mcp-atlassian prism cell not reached yet ({done}/76 cells done — alphabetical, s comes late)')
+        else:
+            r=json.load(open(f))
+            files=sorted(set(l[6:] for l in r['model_patch'].split('\n') if l.startswith('+++ b/')))
+            print('files edited:', files)
+            print('turns:', r['turns'], 'empty:', r['empty_patch'])
+            for t in r['tool_trace']:
+                if 'config' in t or 'test' in t: print('  ', t[:110])
+        EOF
+      at: 2026-08-11T12:01:55.521287Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, '.')
+        import swebench_ab as ab
+        ab.WT_ROOT = Path('/tmp/swebench-wt-probe')   # isolate from trial 3's worktrees
+        tasks = {r['instance_id']: r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        out = Path('runs/swebench-live/guard-probe'); out.mkdir(exist_ok=True)
+        iid = 'sooperset__mcp-atlassian-581'
+        rec = ab.run_arm(tasks[iid], 'prism', str(Path.home()/'bin/prism'), 'opus')
+        json.dump(rec, open(out/f'{iid}.prism.json','w'))
+        files = sorted(set(l[6:] for l in rec['model_patch'].split('\n') if l.startswith('+++ b/')))
+        print('EDITED FILES:', files)
+        print('turns', rec['turns'], 'cost', round(rec['cost_usd'] or 0, 2), 'empty', rec['empty_patch'])
+        EOF
+      at: 2026-08-11T12:11:37.141221Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/guard-probe/sooperset__mcp-atlassian-581.prism.json'))
+        for t in r['tool_trace']: print(' ', t[:120])
+        EOF
+      at: 2026-08-11T12:11:50.578894Z
+      classified: other
+    - cmd: pkill -f t34_chain; pkill -f 'swebench_ab.py.*ab38-t3'; sleep 2; pgrep -f 'swebench_ab|t34_chain' || echo all-stopped; rm -rf ~/Projects/provasign/research/harness/runs/swebench-live/ab38-t3 ~/Projects/provasign/research/harness/runs/swebench-live/STATUS34; echo t3-partial-discarded
+      at: 2026-08-11T12:41:23.265529Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+        old='''        steer = ""
+                tools = list(TOOLS_BASE)
+                if arm == "prism":
+                    sh(prism, "index", ".", cwd=str(wt), timeout=600)
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)"]
+                    steer = "\\n" + PRISM_STEERING'''
+        new='''        steer = "\\n" + INVESTIGATION_GUIDANCE
+                tools = list(TOOLS_BASE)
+                if arm == "prism":
+                    sh(prism, "index", ".", cwd=str(wt), timeout=600)
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)"]
+                    steer += "\\n" + PRISM_STEERING'''
+        assert old in src, "anchor not found"
+        open('swebench_ab.py','w').write(src.replace(old,new))
+        EOF
+        python3 -c "import ast; ast.parse(open('swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-11T12:41:54.155517Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && sed 's/t3 t4/m1 m2/; s/ab38-\$T/ab38-$T/g; s/STATUS34/STATUSM/; s/T34 ALL DONE/M12 ALL DONE/' $SCRATCH/t34_chain.sh > $SCRATCH/m12_chain.sh && python3 - <<'EOF'
+        # sed above renamed the trial loop; verify the loop targets m1 m2 and status file
+        src=open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/m12_chain.sh').read()
+        assert 'for T in m1 m2' in src and 'STATUSM' in src and 'M12 ALL DONE' in src
+        print('chain script ok')
+        EOF
+        chmod +x $SCRATCH/m12_chain.sh && nohup $SCRATCH/m12_chain.sh > $SCRATCH/m12_chain.log 2>&1 & echo "matched-design chain pid $!"
+      at: 2026-08-11T12:42:04.526965Z
+      classified: other
+    - cmd: pkill -f m12_chain; pkill -f 'swebench_ab.py.*ab38-m1'; sleep 2; pgrep -f 'm12_chain|swebench_ab' >/dev/null && echo something-still-running || echo paused; ls ~/Projects/provasign/research/harness/runs/swebench-live/ab38-m1 2>/dev/null | wc -l
+      at: 2026-08-11T12:45:26.487153Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism search 'deny-builtin-search|denyBuiltinSearch' --scope text --regex --limit 40 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if f.endswith('.go'):
+                for x in h.get('hits',[]): print(f, x['line'], x['text'][:95])
+        " | head -20
+      at: 2026-08-11T12:49:30.328741Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism search 'promptDenyBuiltinSearch|permissions.deny|denyEntries' --scope text --regex --limit 30 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if f.endswith('.go'):
+                for x in h.get('hits',[]): print(f, x['line'], x['text'][:100])
+        " | head -15
+      at: 2026-08-11T12:49:39.913254Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && for t in 'does not replace' 'replace grep' 'rg wins' 'Shell tools' 'first anchor' 'deny-builtin' 'deny built' 'fallback' 'price' 'priced' 'cheap'; do echo "== $t"; ~/bin/prism search "$t" --scope text --limit 60 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if any(f.endswith(e) for e in ('.md','.rst')) and not f.startswith('.') and 'docs/AB-' not in f and 'token-usage' not in f:
+                for x in h.get('hits',[]): print(f'  {f}:{x[\"line\"]}  {x[\"text\"][:95]}')
+        "; done 2>/dev/null | head -70
+      at: 2026-08-11T12:50:24.256592Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign.github.io && python3 - <<'EOF'
+        import re
+        src=open('prism.md').read()
+        for pat in ['rg','grep','price','deny','division of labor','anchor']:
+            for m in re.finditer(pat, src, re.I):
+                line=src[:m.start()].count('\n')+1
+                text=src.split('\n')[line-1].strip()
+                print(f'{line:>4} [{pat}] {text[:100]}')
+        EOF
+        true
+      at: 2026-08-11T12:50:38.374419Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/.claude/settings.json'))
+        print(json.dumps(d.get('permissions',{}).get('deny',[]), indent=1))
+        "
+      at: 2026-08-11T12:51:47.891633Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+        s=open(p).read()
+        line='- [Prism forced routing deployment](project_prism_forced_routing.md) — Grep/grep/rg DENIED on this machine by design; benchmark prism arms must deny built-in search, not add pricing prose\n'
+        if 'prism_forced_routing' not in s:
+            s=s.rstrip('\n')+'\n'+line
+        open(p,'w').write(s)
+        print('index updated')
+        EOF
+      at: 2026-08-11T12:52:24.35875Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-10T12:19:12.633664Z
+redactions: 1
