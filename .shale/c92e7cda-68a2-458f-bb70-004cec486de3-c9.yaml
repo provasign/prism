@@ -1,0 +1,654 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c9
+created_at: 2026-08-11T21:18:50.089385Z
+finalized_at: 2026-08-12T02:09:28.511194Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-12T02:05:59.074764Z
+    - path: internal/mcp/mcp_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-12T02:06:52.49327Z
+commands:
+    - cmd: |-
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+        s=open(p).read()
+        line='- [Cross-layer sweep before done](feedback_cross_layer_sweep.md) — behavior changes invalidate assumptions in steering/docs/harness/metrics elsewhere; sweep them before declaring done (called sloppy 2026-08-11)\n'
+        if 'cross_layer_sweep' not in s: open(p,'w').write(s.rstrip('\n')+'\n'+line)
+        print('indexed')
+        EOF
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('CLAUDE.md').read()
+        old='''## Before you commit or release — run the regression suite'''
+        new='''## Before you commit or release — run the regression suite
+
+        **Behavior change? Sweep the assumption surfaces first.** Any change to
+        tool loading, routing, flags, names, or defaults invalidates text that
+        DESCRIBES the old behavior elsewhere: the steering const in
+        internal/cli/commands.go (and its nine generated files), README,
+        AGENT_SETUP_PROMPT.md, the website, research harness arm definitions, and
+        metric regexes. Grep them for the old behavior and fix or consciously
+        exempt every hit — this is as mandatory as the tests below (v0.44.0
+        shipped alwaysLoad while the steering still taught the deferred-tools
+        ToolSearch dance; that mismatch became a released bug).'''
+        assert old in src
+        open('CLAUDE.md','w').write(src.replace(old,new,1))
+        print('CLAUDE.md updated')
+        EOF
+        git add CLAUDE.md && git commit -q -m "$(printf 'docs: pre-release rule — sweep assumption surfaces on any behavior change\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin main && echo pushed
+      at: 2026-08-11T21:18:50.089385Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-flask.json --limit 1 --arms baseline prism --out runs/swebench-live/haiku-smoke-v0451 --model haiku > runs/swebench-live/haiku-smoke-v0451.log 2>&1 & echo "pid $!"; until [ $(ls runs/swebench-live/haiku-smoke-v0451 2>/dev/null | wc -l) -ge 2 ] || ! pgrep -f haiku-smoke-v0451 >/dev/null; do sleep 30; done; python3 - <<'EOF'
+        import json
+        d='runs/swebench-live/haiku-smoke-v0451'
+        for arm in ('baseline','prism'):
+            r=json.load(open(f'{d}/pallets__flask-5736.{arm}.json'))
+            mcp=[t for t in r['tool_trace'] if t.startswith('mcp__prism')]
+            print(f"{arm}: turns={r['turns']} ${r['cost_usd']:.2f} prism_used={r['prism_used']} mcp_calls={len(mcp)} isolation={r['isolation_removed']}")
+            print(f"   first4: {r['tool_trace'][:4]}")
+        EOF
+      at: 2026-08-11T21:27:13.449469Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/haiku-smoke-v0451 && for arm in baseline prism; do python3 -c "
+        import json
+        r=json.load(open('pallets__flask-5736.$arm.json'))
+        json.dump({r['instance_id']:{'model_patch':r['model_patch']}}, open('$arm.patches.json','w'))
+        "; done && LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live && for arm in baseline prism; do (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/haiku-smoke-v0451/$arm.patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/haiku-smoke-v0451/eval-$arm --workers 1 --overwrite 1 --instance_ids pallets__flask-5736) >/dev/null 2>&1; done; python3 - <<'EOF'
+        import json
+        for arm in ('baseline','prism'):
+            r=json.load(open(f'/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku-smoke-v0451/eval-{arm}/pallets__flask-5736/report.json'))
+            f2p=r['FAIL_TO_PASS']
+            print(f"haiku {arm}: resolved={r.get('resolved')} F2P {len(f2p.get('success',[]))}p/{len(f2p.get('failure',[]))}f P2P broken {len(r['PASS_TO_PASS'].get('failure',[]))}")
+        EOF
+      at: 2026-08-11T21:27:55.220252Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && sed 's/m1 m2/f1 f2/g; s/STATUSM/STATUSF/; s/M12 ALL DONE/F12 ALL DONE/' $SCRATCH/m12_chain.sh > $SCRATCH/f12_chain.sh && python3 -c "
+        src=open('$SCRATCH/f12_chain.sh'.replace('\$SCRATCH','$SCRATCH')).read()
+        assert 'for T in f1 f2' in src and 'STATUSF' in src
+        print('chain ok')
+        " && chmod +x $SCRATCH/f12_chain.sh && nohup $SCRATCH/f12_chain.sh > $SCRATCH/f12_chain.log 2>&1 & echo "opus faithful pair chain pid $!"
+      at: 2026-08-11T21:42:20.484931Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        fs=[f for f in glob.glob(f'{d}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        pr=[r for r in recs if r['arm']=='prism']
+        bl=[r for r in recs if r['arm']=='baseline']
+        print(f"{len(recs)} cells ({len(bl)} baseline, {len(pr)} prism)")
+        print("prism arm: used in", sum(1 for r in pr if r['prism_used']), "/", len(pr),
+              "| tools at init:", sorted({len(r.get('prism_tools_loaded_at_init',[])) for r in pr}),
+              "| empty:", sum(1 for r in pr if r['empty_patch']))
+        print("baseline:  prism leakage:", sum(1 for r in bl if r['prism_used']),
+              "| empty:", sum(1 for r in bl if r['empty_patch']))
+        iso=[x for r in recs for x in r.get('isolation_removed',[])]
+        print("isolation removals across cells:", iso if iso else "none needed (clean corpus)")
+        import re
+        cheat=[r['instance_id'] for r in recs if any(re.search(r'refs/pull|gh pr view|api.github.com.*pull', t) for t in r['tool_trace'])]
+        print("gold-fetch attempts:", cheat if cheat else "none")
+        EOF
+      at: 2026-08-11T22:07:52.611358Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, re
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        import glob
+        for f in glob.glob(f'{d}/browser-use__browser-use-2480.*.json'):
+            r=json.load(open(f))
+            tr=[t for t in r['tool_trace'] if re.search(r'refs/pull|pr\d+|gh pr', t)]
+            print(r['arm'], '| empty:', r['empty_patch'], '| attempts:', tr[:3])
+        EOF
+      at: 2026-08-11T22:08:06.677982Z
+      classified: other
+    - cmd: |-
+        cat ~/Projects/provasign/research/harness/runs/swebench-live/STATUSF 2>/dev/null; python3 - <<'EOF'
+        import json, glob
+        for t in ('f1','f2'):
+            d=f'/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-{t}'
+            fs=[f for f in glob.glob(f'{d}/*.json') if not f.endswith('patches.json')]
+            if not fs: continue
+            recs=[json.load(open(f)) for f in fs]
+            by={'baseline':{}, 'prism':{}}
+            for r in recs: by[r['arm']][r['instance_id']]=r
+            paired=[i for i in by['baseline'] if i in by['prism']]
+            cost=sum(r.get('cost_usd') or 0 for r in recs)
+            line=f"{t}: {len(recs)}/76 cells ${cost:.0f}"
+            if paired:
+                bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+                pu=sum(1 for i in paired if by['prism'][i]['prism_used'])
+                line+=f" | {len(paired)} pairs, ratio {bt/max(pt,.01):.2f}x, prism used {pu}/{len(paired)}"
+            print(line)
+        EOF
+        tail -1 ~/Projects/provasign/research/harness/runs/swebench-live/ab38-f1.log 2>/dev/null
+      at: 2026-08-11T22:25:13.589122Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        fs=[f for f in glob.glob(f'{d}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=sorted(i for i in by['baseline'] if i in by['prism'])
+        bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+        pw=sum(1 for i in paired if by['prism'][i]['cost_usd']<by['baseline'][i]['cost_usd'])
+        print(f"{len(paired)} pairs | ratio {bt/max(pt,.01):.2f}x | prism cheaper on {pw}")
+        big=[(i, by['baseline'][i]['cost_usd'], by['prism'][i]['cost_usd']) for i in paired if by['baseline'][i]['cost_usd']>1.0]
+        for i,b,p in big: print(f"  big: {i[:38]:<40} base ${b:.2f} prism ${p:.2f}")
+        EOF
+      at: 2026-08-11T22:57:39.530441Z
+      classified: other
+    - cmd: pkill -f f12_chain; sleep 1; pgrep -f 'swebench_ab.py.*ab38-f1' >/dev/null && echo f1-agents-still-running-untouched || echo f1-driver-was-chain-child-relaunching; pgrep -f f12_chain || echo chain-dead
+      at: 2026-08-11T23:47:10.677498Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && cat > $SCRATCH/f1_finish.sh <<'EOF'
+        #!/bin/bash
+        # f1's agent driver (orphaned from the killed chain) keeps running; wait for
+        # its 76 cells, then run ONLY f1's evals. No f2.
+        cd ~/Projects/provasign/research/harness
+        S=~/Projects/provasign/research/harness/runs/swebench-live/STATUSF
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        IDS=$(python3 -c "
+        import json
+        print(' '.join(r['instance_id'] for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))))")
+        while [ $(ls runs/swebench-live/ab38-f1 2>/dev/null | grep -c 'json$') -lt 76 ]; do
+          pgrep -f 'swebench_ab.py.*ab38-f1' >/dev/null || python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 38 --arms baseline prism --out runs/swebench-live/ab38-f1 --model opus >> runs/swebench-live/ab38-f1.log 2>&1
+          sleep 60
+        done
+        echo "$(date +%H:%M) f1 agents done; building patches + evals (f2 CANCELLED)" > $S
+        python3 - <<PYEOF
+        import json, glob
+        d='runs/swebench-live/ab38-f1'
+        for arm in ('baseline','prism'):
+            preds={}
+            for f in glob.glob(f'{d}/*.json'):
+                if f.endswith('patches.json'): continue
+                r=json.load(open(f))
+                if r.get('arm')==arm: preds[r['instance_id']]={'model_patch':r['model_patch']}
+            json.dump(preds, open(f'{d}/{arm}.patches.json','w'))
+        PYEOF
+        for ARM in baseline prism; do
+          (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation \
+            --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux \
+            --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/ab38-f1/$ARM.patches.json \
+            --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/ab38-f1/eval-$ARM \
+            --workers 4 --overwrite 0 --instance_ids $IDS) >> /tmp/f1-evals.log 2>&1
+          N=$(python3 -c "
+        import json,glob
+        fs=glob.glob('runs/swebench-live/ab38-f1/eval-$ARM/*/report.json')
+        print(sum(1 for f in fs if json.load(open(f)).get('resolved')), '/', len(fs))")
+          echo "$(date +%H:%M) f1 eval-$ARM: $N resolved" > $S
+        done
+        echo "$(date +%H:%M) F1 ONLY — ALL DONE" > $S
+        EOF
+        chmod +x $SCRATCH/f1_finish.sh && nohup $SCRATCH/f1_finish.sh > $SCRATCH/f1_finish.log 2>&1 & echo "f1-finisher pid $!"
+      at: 2026-08-11T23:47:26.117541Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        text=open('/Users/tapabratapal/Projects/provasign/prism/AGENTS.md').read()
+        end=text.find('<!-- prism:end -->')
+        block=text[:end]
+        sections=[]
+        cur=['(header)']
+        for line in block.split('\n'):
+            if line.startswith('###') or line.startswith('**1.') or line.startswith('**2.') or line.startswith('**3.') or line.startswith('Route discipline') or line.startswith('Redundancy') or line.startswith('Housekeeping') or line.startswith('### Do NOT'):
+                sections.append(cur); cur=[line]
+            else: cur.append(line)
+        sections.append(cur)
+        total=0
+        for s in sections:
+            chars=len('\n'.join(s)); total+=chars
+            print(f"{chars:>6} chars  {s[0][:70]}")
+        print(f"{total:>6} TOTAL  (~{total//4} tokens)")
+        # schema payload
+        import subprocess, json
+        out=subprocess.run(['/Users/tapabratapal/bin/prism','mcp','--help'],capture_output=True,text=True)
+        import sys
+        sys.path.insert(0,'')
+        EOF
+        python3 - <<'EOF'
+        # Size of the always-loaded tool schemas (descriptions dominate)
+        import subprocess, json
+        # ToolSchemas via a tiny Go run is overkill; measure from tools.go descriptions
+        src=open('/Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go').read()
+        import re
+        i=src.find('func toolDescription')
+        j=src.find('\nfunc ', i+10)
+        desc_block=src[i:j]
+        strings=re.findall(r'"((?:[^"\\]|\\.)*)"', desc_block)
+        total=sum(len(s) for s in strings)
+        print(f"all tool descriptions combined: ~{total} chars (~{total//4} tokens)")
+        for name in ('prism_query','prism_search','prism_change_impact','prism_read','prism_lookup'):
+            k=desc_block.find(f'"{name}"')
+            nxt=desc_block.find('case "', k+5)
+            seg=desc_block[k:nxt if nxt>0 else k+4000]
+            ss=re.findall(r'"((?:[^"\\]|\\.)*)"', seg)
+            print(f"  {name}: ~{sum(len(x) for x in ss)} chars")
+        EOF
+      at: 2026-08-11T23:49:12.23277Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        ids=[r['instance_id'] for r in json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/valid-instances.json'))]
+        import os
+        def v(arm,iid):
+            p=f'{base}/eval-{arm}/{iid}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else None
+        res_b=res_p=n=0
+        both=b_only=p_only=neither=0
+        disc=[]
+        for iid in ids:
+            b,p=v('baseline',iid),v('prism',iid)
+            if b is None or p is None: continue
+            n+=1; res_b+=b; res_p+=p
+            if b and p: both+=1
+            elif b and not p: b_only+=1; disc.append((iid,'baseline-only'))
+            elif p and not b: p_only+=1; disc.append((iid,'prism-only'))
+            else: neither+=1
+        print(f"n={n} | baseline {res_b} ({res_b/n:.1%}) | prism {res_p} ({res_p/n:.1%})")
+        print(f"both={both} baseline-only={b_only} prism-only={p_only} neither={neither}")
+        for d in disc: print(' ', *d)
+
+        # cost
+        fs=[f for f in glob.glob(f'{base}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=[i for i in by['baseline'] if i in by['prism']]
+        bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+        pu=sum(1 for i in paired if by['prism'][i]['prism_used'])
+        print(f"\ncost: baseline ${bt:.2f} prism ${pt:.2f} ratio {bt/pt:.2f}x | prism used {pu}/{len(paired)}")
+        EOF
+      at: 2026-08-12T01:27:49.34269Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        ids=[r['instance_id'] for r in json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/valid-instances.json'))]
+        def v(arm,iid):
+            p=f'{base}/eval-{arm}/{iid}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else None
+        def cost(arm,iid):
+            r=json.load(open(f'{base}/{iid}.{arm}.json'))
+            return r['cost_usd']
+        rows=[]
+        for iid in ids:
+            b,p=v('baseline',iid),v('prism',iid)
+            if b is None or p is None: continue
+            rows.append((iid, cost('prism',iid)))
+        rows.sort([REDACTED:env-secret] x:-x[1])
+        picks=[r[0] for r in rows[:10]]
+        print('\n'.join(picks))
+        json.dump(picks, open('/tmp/short-steering-picks.json','w'))
+        EOF
+      at: 2026-08-12T01:31:49.093556Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+
+        anchor='def real_prism_steering() -> str:'
+        i=src.find(anchor)
+        insert = '''SHORT_PRISM_STEERING = """
+        ## Prism — code intelligence (already in your tool list)
+
+        prism_search/query/read/lookup/change_impact are loaded now; call them
+        directly, no lookup step. Locate a string/symbol -> prism_search(scope="text")
+        (a real ripgrep pass, same cost as grep). Bug/task with an anchor ->
+        prism_query(task=..., terms=[...]) -- terms is required, guess one keyword.
+        Signature change, rename, or "who breaks if I change X" ->
+        prism_change_impact -- returns the complete site set in one call; do not
+        re-verify it with grep, that measurably drops real sites. A repeat
+        prism_read of an unchanged file returns a short cached-pointer line, not
+        the body -- that is not an error.
+        """
+
+
+        '''
+        assert anchor in src
+        src = src[:i] + insert + src[i:]
+        open('swebench_ab.py','w').write(src)
+
+        old = '''            steer += "\\n" + real_prism_steering()'''
+        new = '''            steer += "\\n" + (SHORT_PRISM_STEERING if steering_variant == "short"
+                                       else real_prism_steering())'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('swebench_ab.py','w').write(src)
+
+        old = '''def run_arm(task: dict, arm: str, prism: str, model: str = "") -> dict:'''
+        new = '''def run_arm(task: dict, arm: str, prism: str, model: str = "",
+                    steering_variant: str = "full") -> dict:'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('swebench_ab.py','w').write(src)
+        print("wired")
+        EOF
+        python3 -c "import ast; ast.parse(open('swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-12T01:31:58.333298Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.')
+        import swebench_ab as ab
+        print(len(ab.SHORT_PRISM_STEERING), 'chars', '~', len(ab.SHORT_PRISM_STEERING)//4, 'tokens')
+        "
+      at: 2026-08-12T01:32:04.033858Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        picks=json.load(open('/tmp/short-steering-picks.json'))
+        out=Path('runs/swebench-live/short-steering-probe'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-shortsteer')
+
+        for iid in picks:
+            rec=ab.run_arm(valid[iid],'prism',str(Path.home()/'bin/prism'),'opus',steering_variant='short')
+            json.dump(rec, open(out/f'{iid}.prism.json','w'))
+            mcp=len([t for t in rec['tool_trace'] if t.startswith('mcp__prism')])
+            print(f"{iid[:42]:<44} turns={rec['turns']:>3} ${rec['cost_usd']:.2f} used={rec['prism_used']} mcp={mcp} empty={rec['empty_patch']}", flush=True)
+        EOF
+      at: 2026-08-12T01:32:10.895631Z
+      classified: other
+    - cmd: |-
+        ls ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe 2>/dev/null | wc -l
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/b727w8u3m.output 2>/dev/null
+      at: 2026-08-12T01:37:25.215345Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/b727w8u3m.output 2>/dev/null
+      at: 2026-08-12T01:42:20.960466Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        f1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        for iid in ('browser-use__browser-use-2480','a2aproject__a2a-python-443','pybamm-team__PyBaMM-5129'):
+            r=json.load(open(f'{f1}/{iid}.prism.json'))
+            print(f"{iid[:38]:<40} f1(long): {r['turns']}t ${r['cost_usd']:.2f}")
+        EOF
+      at: 2026-08-12T01:42:25.273449Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/b727w8u3m.output 2>/dev/null; echo ---; python3 - <<'EOF'
+        import json
+        f1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        short='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe'
+        import glob
+        done=[f.split('/')[-1].split('.prism')[0] for f in glob.glob(f'{short}/*.json')]
+        bt=st=0
+        for iid in done:
+            fr=json.load(open(f'{f1}/{iid}.prism.json'))
+            sr=json.load(open(f'{short}/{iid}.prism.json'))
+            bt+=fr['cost_usd']; st+=sr['cost_usd']
+            if not sr['prism_used']: print('!! adoption lost:', iid)
+            if sr['empty_patch']: print('!! empty patch:', iid)
+        print(f"totals so far ({len(done)} cells): long ${bt:.2f} vs short ${st:.2f} -> {bt/st:.2f}x")
+        EOF
+      at: 2026-08-12T01:52:23.738865Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/b727w8u3m.output 2>/dev/null | tail -3
+        echo ---
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        src=open('internal/mcp/tools.go').read()
+        i=src.find('func toolDescription')
+        j=src.find('\nfunc ', i+10)
+        block=src[i:j]
+        # split by case statements
+        cases=re.split(r'\n\tcase ', block)
+        for c in cases[1:]:
+            m=re.match(r'"([a-z_]+)"', c)
+            if not m: continue
+            name=m.group(1)
+            strings=re.findall(r'"((?:[^"\\]|\\.)*)"', c)
+            chars=sum(len(s) for s in strings)
+            always = name in ('prism_search','prism_query','prism_read','prism_lookup','prism_change_impact')
+            print(f"{'[ALWAYS]' if always else '        '} {name:<32} {chars:>5} chars (~{chars//4} tok)")
+        EOF
+      at: 2026-08-12T01:57:33.597925Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        src=open('internal/mcp/tools.go').read()
+        for name in ('prism_change_impact','prism_query','prism_search'):
+            i=src.find(f'case "{name}":')
+            j=src.find('\n\tcase "', i+10)
+            seg=src[i:j]
+            strings=re.findall(r'"((?:[^"\\]|\\.)*)"', seg)
+            text=''.join(s.replace('\\n',' ').replace('\\"','"') for s in strings)
+            print(f"=== {name} ({len(text)} chars) ===")
+            print(text)
+            print()
+        EOF
+      at: 2026-08-12T01:57:41.904194Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        src=open('internal/mcp/tools.go').read()
+        i=src.find('case "prism_change_impact":')
+        print(repr(src[i:i+400]))
+        EOF
+      at: 2026-08-12T01:57:48.724073Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        src=open('internal/mcp/tools.go').read()
+        i=src.find('func toolDescription')
+        j=src.find('\nfunc ', i+10)
+        block=src[i:j]
+        cases=re.split(r'\n\tcase ', block)
+        target={c:'' for c in ('prism_change_impact','prism_query','prism_search')}
+        for c in cases[1:]:
+            m=re.match(r'"([a-z_]+)"', c)
+            if not m: continue
+            name=m.group(1)
+            if name in target:
+                strings=re.findall(r'"((?:[^"\\]|\\.)*)"', c)
+                text=''.join(strings[1:])  # skip the case label itself
+                target[name]=text
+        for name,text in target.items():
+            print(f"=== {name} ({len(text)} chars) ===")
+            print(text)
+            print()
+        EOF
+      at: 2026-08-12T01:57:55.397581Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        src=open('internal/mcp/tools.go').read()
+        i=src.find('func toolDescription')
+        j=src.find('\nfunc ', i+10)
+        block=src[i:j]
+        cases=re.split(r'\n\tcase ', block)
+        for c in cases[1:]:
+            m=re.match(r'"([a-z_]+)"', c)
+            if not m: continue
+            name=m.group(1)
+            if name=='prism_lookup' or name=='prism_read':
+                strings=re.findall(r'"((?:[^"\\]|\\.)*)"', c)
+                text=''.join(strings[1:])
+                print(f"=== {name} ({len(text)}) ===\n{text}\n")
+        EOF
+      at: 2026-08-12T01:58:08.13959Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe && python3 -c "
+        import json, glob
+        preds={}
+        for f in glob.glob('*.json'):
+            r=json.load(open(f))
+            preds[r['instance_id']]={'model_patch':r['model_patch']}
+        json.dump(preds, open('patches.json','w'))
+        print(len(preds),'patches')
+        "
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        IDS=$(python3 -c "import json; print(' '.join(json.load(open('patches.json')).keys()))")
+        (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism --workers 4 --overwrite 1 --instance_ids $IDS) 2>&1 | tail -5
+      at: 2026-08-12T01:59:12.25663Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism/
+      at: 2026-08-12T01:59:23.080597Z
+      classified: other
+    - cmd: cat ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism/results.json | python3 -m json.tool | head -30
+      at: 2026-08-12T01:59:26.982187Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe && python3 -c "
+        import json
+        ids=list(json.load(open('patches.json')).keys())
+        print(len(ids), ids)
+        open('/tmp/short-probe-ids.txt','w').write('\n'.join(ids))
+        "
+      at: 2026-08-12T01:59:44.698433Z
+      classified: other
+    - cmd: |-
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        IDS=$(cat /tmp/short-probe-ids.txt | tr '\n' ' ')
+        echo "IDS: $IDS"
+        (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism --workers 4 --overwrite 1 --instance_ids $IDS) 2>&1 | tail -6
+      at: 2026-08-12T01:59:52.370596Z
+      classified: other
+    - cmd: |-
+        find ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism -type f | head -20
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/patches.json'))
+        print(list(d.items())[0])
+        "
+      at: 2026-08-12T01:59:57.872144Z
+      classified: other
+    - cmd: |-
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        IDS=$(cat /tmp/short-probe-ids.txt | tr '\n' ' ')
+        (cd $LIVE && ./.venv/bin/python -m evaluation.evaluation --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux --patch_dir ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/patches.json --output_dir ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism --workers 4 --overwrite 1 --instance_ids $IDS) 2>&1 | head -40
+      at: 2026-08-12T02:00:09.03879Z
+      classified: other
+    - cmd: |-
+        chmod +x /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_short_probe_eval.sh
+        /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_short_probe_eval.sh 2>&1 | tail -10
+      at: 2026-08-12T02:00:43.20319Z
+      classified: other
+    - cmd: |-
+        echo "=== background procs ==="; pgrep -fl 'swebench_ab|evaluation.evaluation|f1_finish|f12_chain|m12_chain|run_short_probe' 2>/dev/null || echo "none running"
+        echo "=== monitors (from this session) ==="
+        echo "b1l0ctpdn(f12_chain) - killed earlier"
+        echo "bkvj9vxd8(f1-finish) - completed, ALL DONE"
+        echo "bur9r7j4i(short-probe agents) - completed, 10/10"
+        echo "=== last known state ==="
+        ls ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/*.json 2>/dev/null | wc -l
+        echo "prism cells captured (10 expected)"
+        cat ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism/results.json 2>/dev/null
+      at: 2026-08-12T02:04:29.653591Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism search 'func toolDescription' --scope text --limit 5 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            for x in h.get('hits',[]): print(h.get('file'),x['line'])
+        "
+      at: 2026-08-12T02:05:34.41276Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        src=open('internal/mcp/tools.go').read()
+        i=src.find('func toolDescription')
+        j=src.find('\nfunc ', i+10)
+        block=src[i:j]
+        cases=re.split(r'\n\tcase ', block)
+        total=0
+        for c in cases[1:]:
+            m=re.match(r'"([a-z_]+)"', c)
+            if not m: continue
+            name=m.group(1)
+            if name not in ('prism_search','prism_query','prism_read','prism_lookup','prism_change_impact'):
+                continue
+            strings=re.findall(r'"((?:[^"\\]|\\.)*)"', c)
+            chars=sum(len(s) for s in strings[1:])
+            total+=chars
+            print(f"{name:<24} {chars:>5} chars")
+        print("TOTAL always-load:", total, "chars (~", total//4, "tokens)")
+        EOF
+      at: 2026-08-12T02:06:17.410689Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && ~/bin/prism search 'toolDescription\(' --scope text --limit 20 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for h in d.get('textHits') or []:
+            f=h.get('file','')
+            if f.endswith('_test.go'):
+                for x in h.get('hits',[]): print(f, x['line'], x['text'][:90])
+        "
+      at: 2026-08-12T02:06:22.926801Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go build ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -6
+      at: 2026-08-12T02:06:43.059903Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && go test ./internal/mcp/ -run 'TestToolDescriptionsAlwaysLoad|TestToolSchemas' -count=1 -v 2>&1 | tail -10 && go vet ./... && go build -o ~/bin/prism ./cmd/prism
+      at: 2026-08-12T02:07:00.07278Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -4
+      at: 2026-08-12T02:07:04.176421Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        iid='sooperset__mcp-atlassian-581'  # the earlier problem cell, best acceptance test
+        out=Path('runs/swebench-live/tool-diet-smoke'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-tooldiet')
+        rec=ab.run_arm(valid[iid],'prism',str(Path.home()/'bin/prism'),'opus')
+        json.dump(rec, open(out/f'{iid}.prism.json','w'))
+        mcp=[t for t in rec['tool_trace'] if t.startswith('mcp__prism')]
+        print(f"turns={rec['turns']} cost=${rec['cost_usd']:.2f} used={rec['prism_used']} empty={rec['empty_patch']}")
+        print(f"mcp calls: {mcp}")
+        print(f"files edited: {sorted(set(l[6:] for l in rec['model_patch'].split(chr(10)) if l.startswith('+++ b/')))}")
+        EOF
+      at: 2026-08-12T02:09:05.964802Z
+      classified: other
+    - cmd: tail -5 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/bjfp0183q.output
+      at: 2026-08-12T02:09:11.843986Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-11T21:18:50.089385Z
+redactions: 1
