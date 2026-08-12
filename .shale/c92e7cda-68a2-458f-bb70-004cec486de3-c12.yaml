@@ -1,0 +1,252 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c12
+created_at: 2026-08-12T03:43:16.518523Z
+finalized_at: 2026-08-12T12:34:23.754215Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-12T12:32:26.567201Z
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add -A && git commit -q -m "$(cat <<'EOF'
+        perf: ship the short steering (12407->847 chars, 93% cut) (v0.48.0)
+
+        Ported the probe-validated short steering (research/harness/swebench_ab.py
+        SHORT_PRISM_STEERING) into the shipped const, plus a one-line CLI-verb
+        fallback for Bash-only subagents (the dropped surface). Grep-warning
+        insertion (v0.47.0) re-anchored to the new heading.
+
+        Correctness status, stated plainly: an earlier 9-cell SWE-bench-Live probe
+        of this text showed resolve 4/9 -> 2/9 against the long steering -- but
+        that probe ran BEFORE the grep-denial fix (--allowedTools omission does
+        not deny in headless mode), so both arms had silent grep access the whole
+        time and the result does not isolate what changed. Shipping now on: full
+        test suite green, engine invariants held, and live smoke (real denial,
+        this steering) shows clean routing (prism_lookup as the immediate first
+        action, zero grep attempts) and a resolved instance. Not yet re-run at
+        n>1 under the corrected harness -- that comparison is the next real
+        question, not resolved by this commit.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && sleep 15 && run=$(gh run list --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo CI-GREEN; git push -q origin main 2>/dev/null; git tag -a v0.48.0 -m "v0.48.0: ship the short steering, 93% cut" && git push -q origin v0.48.0 && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN
+      at: 2026-08-12T03:43:16.518523Z
+      classified: other
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.48.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.48.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.48.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && echo tap-0.48.0'
+      at: 2026-08-12T03:43:24.91191Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        iid='osmnx__osmnx-1334' if 'osmnx__osmnx-1334' in valid else [k for k in valid if 'osmnx' in k][0]
+        out=Path('runs/swebench-live/smoke-v048'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-smokev048')
+
+        for arm in ('baseline','prism'):
+            rec=ab.run_arm(valid[iid],arm,str(Path.home()/'bin/prism'),'opus')
+            json.dump(rec, open(out/f'{iid}.{arm}.json','w'))
+            print(f"== {arm} == turns={rec['turns']} cost=${rec['cost_usd']:.2f} empty={rec['empty_patch']}")
+            if arm=='prism':
+                print(f"   first3: {rec['tool_trace'][:3]}")
+                print(f"   denied_search_attempts={rec.get('denied_search_attempts')}")
+                print(f"   prism_used={rec['prism_used']}")
+        EOF
+      at: 2026-08-12T03:45:08.372481Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        valid={r['instance_id']:r for r in json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/phase1/valid-instances.json'))}
+        print([k for k in valid if 'osmnx' in k])
+        "
+      at: 2026-08-12T03:45:21.840631Z
+      classified: other
+    - cmd: |-
+        chmod +x /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_smoke_v048_eval.sh
+        export OUT=/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/smoke-v048
+        bash /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_smoke_v048_eval.sh gboeing__osmnx-1334 2>&1 | tail -12
+      at: 2026-08-12T03:46:32.599454Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        for arm in ('baseline','prism'):
+            r=json.load(open(f'/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/smoke-v048/eval-{arm}/gboeing__osmnx-1334/report.json'))
+            print(arm, 'resolved:', r.get('resolved'))
+        "
+      at: 2026-08-12T03:46:39.143874Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        # Post-real-denial-fix smokes (v0.47+): grepfix-smoke, grepwarn-smoke, smoke-v047, smoke-v048
+        dirs=['grepfix-smoke','grepwarn-smoke','smoke-v047','smoke-v048']
+        print(f"{'dir':<16}{'instance':<40}{'arm':<10}{'turns':>6}{'cost':>8}")
+        for d in dirs:
+            for f in sorted(glob.glob(f'{base}/{d}/*.json')):
+                if f.endswith('patches.json'): continue
+                r=json.load(open(f))
+                print(f"{d:<16}{r['instance_id'][:38]:<40}{r['arm']:<10}{r['turns']:>6}{r['cost_usd']:>8.2f}")
+        EOF
+      at: 2026-08-12T04:05:02.60634Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        for d,iid in [('smoke-v047','a2aproject__a2a-python-302'),('smoke-v048','gboeing__osmnx-1334')]:
+            print('='*80)
+            for arm in ('baseline','prism'):
+                r=json.load(open(f'{base}/{d}/{iid}.{arm}.json'))
+                print(f'-- {iid} [{arm}] {r["turns"]} turns --')
+                for i,t in enumerate(r['tool_trace']): print(f'  {i:>2} {t[:95]}')
+        EOF
+      at: 2026-08-12T04:07:12.311672Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        picks = json.load(open('/tmp/short-steering-picks.json'))
+        out=Path('runs/swebench-live/probe2-v048'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-probe2')
+
+        for iid in picks:
+            rec=ab.run_arm(valid[iid],'prism',str(Path.home()/'bin/prism'),'opus')
+            json.dump(rec, open(out/f'{iid}.prism.json','w'))
+            print(f"{iid[:42]:<44} turns={rec['turns']:>3} ${rec['cost_usd']:.2f} used={rec['prism_used']} denied={rec.get('denied_search_attempts')} empty={rec['empty_patch']}", flush=True)
+        EOF
+      at: 2026-08-12T11:47:00.917765Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/bpi8j96wi.output
+      at: 2026-08-12T12:22:39.175282Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/probe2-v048 && python3 -c "
+        import json, glob
+        preds={}
+        for f in glob.glob('*.json'):
+            r=json.load(open(f))
+            preds[r['instance_id']]={'model_patch':r['model_patch']}
+        json.dump(preds, open('patches.json','w'))
+        print(len(preds),'patches')
+        ids=list(preds.keys())
+        open('/tmp/probe2-ids.txt','w').write('\n'.join(ids))
+        "
+      at: 2026-08-12T12:22:46.358023Z
+      classified: other
+    - cmd: |-
+        chmod +x /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_probe2_eval.sh
+        bash /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_probe2_eval.sh 2>&1 | tail -10
+      at: 2026-08-12T12:22:56.96257Z
+      classified: other
+    - cmd: tail -15 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/b4p8k9kom.output 2>/dev/null; pgrep -f evaluation.evaluation >/dev/null && echo eval-still-running || echo eval-not-running
+      at: 2026-08-12T12:27:14.990726Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        probe='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/probe2-v048'
+        f1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        ids=json.load(open(f'{probe}/patches.json')).keys()
+
+        def v(base, arm, iid):
+            p=f'{base}/eval-{arm}/{iid}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else None
+
+        print(f"{'task':<44}{'baseline(f1)':<14}{'prism(v0.48)':<14}")
+        b_r=p_r=n=0
+        for iid in ids:
+            b = v(f1, 'baseline', iid)
+            p = v(probe, 'prism', iid)
+            if b is None or p is None:
+                print(f"{iid[:43]:<44}{'MISSING':<14}{'MISSING' if p is None else p}")
+                continue
+            n+=1; b_r+=b; p_r+=p
+            flag = '  <-- DISCORD' if b!=p else ''
+            print(f"{iid[:43]:<44}{str(b):<14}{str(p):<14}{flag}")
+        print(f"\nn={n} | baseline resolved {b_r}/{n} | prism(v0.48.0) resolved {p_r}/{n}")
+        EOF
+      at: 2026-08-12T12:31:34.009246Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git log --oneline -10
+      at: 2026-08-12T12:32:02.011272Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git show b1fab03:internal/cli/commands.go | python3 -c "
+        import sys
+        src=sys.stdin.read()
+        i=src.find('const steeringInstructions = \`')
+        j=src.find('prism:end -->\n\`', i) + len('prism:end -->\n\`')
+        open('/tmp/long_const.go','w').write(src[i:j])
+        print(j-i, 'chars extracted')
+        "
+      at: 2026-08-12T12:32:07.439476Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src = open('internal/cli/commands.go').read()
+        long_const = open('/tmp/long_const.go').read()
+
+        i = src.find('const steeringInstructions = `')
+        j = src.find('prism:end -->\n`', i) + len('prism:end -->\n`')
+        assert i >= 0 and j > i
+        src = src[:i] + long_const + src[j:]
+        open('internal/cli/commands.go', 'w').write(src)
+        print('restored long const')
+        EOF
+      at: 2026-08-12T12:32:12.345716Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func steeringBlock')
+        j=src.find('\n}', i)
+        print(src[i:j+2])
+        "
+      at: 2026-08-12T12:32:18.073139Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go build ./... 2>&1 | head -10
+      at: 2026-08-12T12:32:34.131699Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'FAIL' in l or l.startswith('ok') or l.startswith('?'): print(l.rstrip())
+        "
+      at: 2026-08-12T12:32:48.109946Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -2 && python3 -c "
+        s=open('AGENTS.md').read()
+        print('chars:', len(s), '| BLOCKED present:', 'BLOCKED' in s)
+        "
+      at: 2026-08-12T12:32:57.353924Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -4
+      at: 2026-08-12T12:33:01.234952Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-12T03:43:16.518523Z
+redactions: 0
