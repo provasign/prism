@@ -1,0 +1,236 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c11
+created_at: 2026-08-12T03:15:57.107184Z
+finalized_at: 2026-08-12T03:39:39.702656Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-12T03:37:05.364748Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-12T03:37:48.243459Z
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git commit -q -m "$(cat <<'EOF'
+        feat: explicit grep/rg-blocked warning in steering when denyBuiltinSearch is active (v0.47.0)
+
+        The deny mechanism (v0.38.0+) stops a grep/rg call from succeeding, but
+        says nothing to the model in advance -- steering never told it the tool
+        was gone. Measured live (2026-08-11): an agent tried grep anyway out of
+        habit, ate a denial, recovered via prism_search -- one wasted turn per
+        occurrence. A second cell with an explicit warning added ran clean: zero
+        grep/rg attempts, zero denials.
+
+        Conditional on denyBuiltinSearch, not unconditional: writeSteeringInstructions
+        previously ran BEFORE the deny-prompt resolved, so the flag wasn't known
+        yet at write time. Reordered cmdInit so the prompt resolves first, then
+        threaded denyBuiltinSearch through to steeringBlock(), which now inserts
+        one paragraph ("grep, rg, and the built-in Grep tool are BLOCKED... any
+        attempt fails and wastes a turn") only for repos where they actually are
+        blocked. Users who decline the deny prompt (most) see no change -- telling
+        them grep is blocked would be false.
+
+        Pinned by TestSteeringBlock_GrepWarningOnlyWhenDenied. Repo steering
+        regenerated (this machine has deny active on all provasign repos).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && sleep 15 && run=$(gh run list --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo CI-GREEN; git push -q origin main 2>/dev/null; git tag -a v0.47.0 -m "v0.47.0: explicit grep-blocked warning in steering (conditional on denyBuiltinSearch)" && git push -q origin v0.47.0 && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN
+      at: 2026-08-12T03:15:57.107184Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.47.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.47.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf 'prism 0.47.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin HEAD:main && echo tap-0.47.0
+        cd ~/Projects/provasign/research && git add harness/swebench_ab.py harness/test_swebench_ab.py harness/runs/swebench-live/grepfix-smoke harness/runs/swebench-live/grepwarn-smoke 2>/dev/null; git commit -q -m "$(printf 'harness: real grep denial (--disallowedTools) + fix denied_search_attempts false-positive on own worktree path\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin main && echo research-pushed
+      at: 2026-08-12T03:16:09.510644Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        iid='a2aproject__a2a-python-302'
+        out=Path('runs/swebench-live/smoke-v047'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-smokev047')
+
+        for arm in ('baseline','prism'):
+            rec=ab.run_arm(valid[iid],arm,str(Path.home()/'bin/prism'),'opus')
+            json.dump(rec, open(out/f'{iid}.{arm}.json','w'))
+            print(f"== {arm} ==")
+            print(f"  turns={rec['turns']} cost=${rec['cost_usd']:.2f} empty={rec['empty_patch']}")
+            if arm=='prism':
+                print(f"  denied_search_attempts={rec.get('denied_search_attempts')}")
+                print(f"  isolation_removed={rec.get('isolation_removed')}")
+                print(f"  prism_used={rec['prism_used']}")
+        EOF
+      at: 2026-08-12T03:20:49.758413Z
+      classified: other
+    - cmd: |-
+        chmod +x /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_smoke_v047_eval.sh
+        bash /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_smoke_v047_eval.sh 2>&1 | tail -20
+      at: 2026-08-12T03:29:00.376791Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('const steeringInstructions')
+        j=src.find('\`\n\n// ', i)
+        if j<0: j = i+13000
+        block = src[i:j]
+        print('chars in shipped const:', len(block))
+        print('contains short-steering marker (already in your tool list, call them directly):', 'already in your tool list' in block)
+        "
+        python3 -c "
+        src=open('/Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py').read()
+        print('SHORT_PRISM_STEERING still only in harness (unshipped probe variant):', 'SHORT_PRISM_STEERING' in src)
+        "
+      at: 2026-08-12T03:32:31.18146Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/smoke-v047/a2aproject__a2a-python-302.prism.json'))
+        for t in r['tool_trace'][:8]: print(t[:90])
+        "
+      at: 2026-08-12T03:34:30.259276Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import sys; sys.path.insert(0,'/Users/tapabratapal/Projects/provasign/research/harness')
+        import swebench_ab as ab
+        print(repr(ab.SHORT_PRISM_STEERING))
+        "
+      at: 2026-08-12T03:36:23.473664Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src = open('internal/cli/commands.go').read()
+        i = src.find('const steeringInstructions = \`')
+        print(src[i-20:i+50])
+        # find the closing backtick that ends the raw string literal
+        j = src.find('\`', i+30)
+        print('close at', j, repr(src[j-40:j+60]))
+        "
+      at: 2026-08-12T03:36:35.295684Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src = open('internal/cli/commands.go').read()
+        i = src.find('func steeringBlock')
+        print(src[i-100:i+50])
+        "
+      at: 2026-08-12T03:36:41.147352Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src = open('internal/cli/commands.go').read()
+        i = src.find('prism:end -->')
+        print(repr(src[i:i+150]))
+        "
+      at: 2026-08-12T03:36:47.065407Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src = open('internal/cli/commands.go').read()
+
+        new_const = '''const steeringInstructions = `
+        ## Prism — code intelligence (ALWAYS use these tools)
+
+        prism_search/query/read/lookup/change_impact are already in your tool list --
+        call them directly, no lookup step. Locate a string/symbol -> prism_search(scope="text")
+        (a real ripgrep pass, same cost as grep). Bug/task with an anchor -> prism_query(task=...,
+        terms=[...]) -- terms is required, guess one keyword. Signature change, rename, or
+        "who breaks if I change X" -> prism_change_impact -- returns the complete site set in
+        one call; do not re-verify it with grep, that measurably drops real sites. A repeat
+        prism_read of an unchanged file returns a short cached-pointer line, not the body --
+        that is not an error. No MCP session (Bash-only subagent)? Same names as CLI verbs:
+        prism query/search/read/lookup/change-impact --format text.
+
+        <!-- prism:end -->
+        `'''
+
+        i = src.find('const steeringInstructions = `')
+        j = src.find('prism:end -->\n`', i) + len('prism:end -->\n`')
+        assert i >= 0 and j > i
+        old_len = j - i
+        src = src[:i] + new_const + src[j:]
+        open('internal/cli/commands.go', 'w').write(src)
+        print('replaced', old_len, 'chars with', len(new_const), 'chars')
+        EOF
+      at: 2026-08-12T03:36:55.102643Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func steeringBlock')
+        j=src.find('\n}', i)
+        print(src[i:j+2])
+        "
+      at: 2026-08-12T03:36:59.265503Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go build ./... 2>&1 | head -20
+      at: 2026-08-12T03:37:11.605114Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/prism && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -25
+      at: 2026-08-12T03:37:24.366468Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./internal/cli/ -count=1 -v 2>&1 | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'FAIL' in l: print(l.rstrip())
+        "
+      at: 2026-08-12T03:37:33.609288Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && go test ./internal/cli/ -run TestWriteSteeringInstructions_UpgradesStaleSection -count=1 -v 2>&1 | tail -20
+      at: 2026-08-12T03:37:39.693734Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/init_test.go').read()
+        i=src.find('func TestWriteSteeringInstructions_UpgradesStaleSection')
+        j=src.find('func Test', i+10)
+        print(src[i:j])
+        "
+      at: 2026-08-12T03:37:43.547599Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./internal/cli/ -run 'TestSteeringBlock|TestWriteSteeringInstructions|TestToolDescriptions' -count=1 -v 2>&1 | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'FAIL' in l or 'PASS' in l or 'RUN' in l: print(l.rstrip())
+        "
+      at: 2026-08-12T03:37:54.027139Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -15
+      at: 2026-08-12T03:38:08.645687Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -3 && python3 -c "
+        s=open('AGENTS.md').read()
+        print('chars:', len(s))
+        print('BLOCKED present:', 'BLOCKED' in s)
+        print(s[:700])
+        "
+      at: 2026-08-12T03:38:16.818756Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -4
+      at: 2026-08-12T03:38:20.390419Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-12T03:15:57.107184Z
+redactions: 0
