@@ -22,7 +22,6 @@ before tagging a release:
   committed ground truth. A drop here is a real completeness regression.
 
 Do NOT tag a release with either red.
-
 ## Prism — code intelligence (ALWAYS use these tools)
 
 grep, rg, and the built-in Grep tool are BLOCKED in this project — any attempt fails and wastes a turn. Do not try them, even out of habit. prism_search(scope="text") is the replacement (a real ripgrep pass); prism_query/prism_read for context. Read/Edit still work for files you already know you're editing.

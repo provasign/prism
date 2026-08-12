@@ -497,40 +497,70 @@ func steeringBlock(denyBuiltinSearch bool) string {
 // those are replaced up to the next top-level "## " heading, which preserves
 // the user's following sections instead of eating them.
 func injectPrismSection(content, block string) string {
-	const marker = "## Prism — context delivery"
+	// Exact-match the headings prism has EVER generated -- not a bare
+	// "## Prism — " prefix. Both failure modes are measured, same day:
+	// a marker pinned to one old heading made upgrades APPEND (duplicated
+	// blocks after the v0.48.0 heading rename), and an over-greedy prefix
+	// marker deleted a USER-authored "## Prism — Context Delivery Layer"
+	// architecture section from provasign/CLAUDE.md (restored from git).
+	// Prism may only ever claim sections it wrote; when the generated
+	// heading changes, ADD the old one here, never widen the match.
+	// Heading STEMS, case-sensitive: early generated headings appeared both
+	// with and without the "(ALWAYS use these tools)" suffix. The user's
+	// clashing section was "## Prism — Context Delivery Layer" — capital C —
+	// so case-sensitive stems distinguish it.
+	generatedHeadings := []string{
+		"## Prism — context delivery",
+		"## Prism — code intelligence",
+	}
 	const endMarker = "<!-- prism:end -->"
 
-	start := strings.Index(content, "\n"+marker)
-	prefixLen := 1 // the leading newline belongs to the preceding content
-	if start < 0 && strings.HasPrefix(content, marker) {
-		start, prefixLen = 0, 0
+	findSection := func(s string) (start, prefixLen int) {
+		start = -1
+		for _, h := range generatedHeadings {
+			if idx := strings.Index(s, "\n" + h); idx >= 0 && (start < 0 || idx < start) {
+				start, prefixLen = idx, 1
+			}
+			if strings.HasPrefix(s, h) {
+				start, prefixLen = 0, 0
+			}
+		}
+		return start, prefixLen
 	}
-	if start < 0 {
+
+	insertAt := -1
+	for {
+		start, prefixLen := findSection(content)
+		if start < 0 {
+			break
+		}
+		if insertAt < 0 {
+			insertAt = start
+		}
+		head := content[:start]
+		rest := content[start+prefixLen:]
+		if e := strings.Index(rest, endMarker); e >= 0 {
+			// Bounded section: everything through the end marker is ours.
+			content = head + "\n" + strings.TrimLeft(rest[e+len(endMarker):], "\n")
+		} else if n := strings.Index(rest, "\n## "); n >= 0 {
+			// Legacy unbounded section: ends at the next top-level heading.
+			content = head + "\n" + strings.TrimLeft(rest[n+1:], "\n")
+		} else {
+			content = head
+		}
+		content = strings.TrimRight(content, "\n") + "\n"
+	}
+
+	if insertAt < 0 || insertAt >= len(content) {
 		return strings.TrimRight(content, "\n") + block
 	}
-	head := content[:start]
-	rest := content[start+prefixLen:]
-
-	// Bounded section: everything through the end marker is ours. Trim ALL
-	// leading newlines off the tail and re-join with exactly one blank line,
-	// so repeated re-init is byte-stable instead of accreting whitespace.
-	if e := strings.Index(rest, endMarker); e >= 0 {
-		tail := strings.TrimLeft(rest[e+len(endMarker):], "\n")
-		if tail == "" {
-			return head + block
-		}
-		return head + block + "\n" + tail
+	head := strings.TrimRight(content[:insertAt], "\n")
+	tail := strings.TrimLeft(content[insertAt:], "\n")
+	if tail == "" {
+		return head + block
 	}
-	// Legacy unbounded section: end it at the next top-level heading so the
-	// user's later sections survive the upgrade.
-	if n := strings.Index(rest, "\n## "); n >= 0 {
-		return head + block + "\n" + strings.TrimLeft(rest[n+1:], "\n")
-	}
-	return head + block
+	return head + block + "\n" + tail
 }
-
-// detectSelfPath returns the absolute path to the running prism binary, or
-// falls back to "prism" (assumes it's on PATH).
 func detectSelfPath() string {
 	exe, err := os.Executable()
 	if err != nil {
