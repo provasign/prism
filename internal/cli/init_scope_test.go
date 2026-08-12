@@ -39,3 +39,21 @@ func TestInitProjectScopeTouchesNothingGlobal(t *testing.T) {
 		}
 	}
 }
+
+// The grep-BLOCKED paragraph must appear ONLY when denyBuiltinSearch is
+// true — telling a user who declined the deny prompt that grep is blocked
+// would be false guidance (most users decline it).
+func TestSteeringBlock_GrepWarningOnlyWhenDenied(t *testing.T) {
+	denied := steeringBlock(true)
+	if !strings.Contains(denied, "grep, rg, and the built-in Grep tool are BLOCKED") {
+		t.Error("deny=true steering must warn that grep/rg are blocked")
+	}
+	allowed := steeringBlock(false)
+	if strings.Contains(allowed, "BLOCKED") {
+		t.Error("deny=false steering must NOT claim grep is blocked (it isn't)")
+	}
+	// The base content must otherwise be identical.
+	if strings.Count(denied, "prism_change_impact") != strings.Count(allowed, "prism_change_impact") {
+		t.Error("deny variants diverged beyond the grep-warning insertion")
+	}
+}

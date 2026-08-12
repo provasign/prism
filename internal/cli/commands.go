@@ -315,18 +315,23 @@ profile: "%s"
 	// 2. Detect the prism binary path for use in MCP configs.
 	prismBin := detectSelfPath()
 
-	// 3. Write steering instructions matching the chosen mode.
-	writeSteeringInstructions(abs)
-
 	// Routing is the one thing steering cannot do. Measured at 12:1 in the
 	// benchmark and observed live: an agent listed prism's connected tools,
 	// said its CLAUDE.md directed it to use them, then ran Bash(grep) on the
 	// next task. Denying the built-in search is the only reliable fix — but
 	// it edits the user's own Claude Code settings, so ASK rather than assume.
 	// Never prompt non-interactively (CI gets the safe default: no change).
+	// This MUST resolve before writeSteeringInstructions: the steering text
+	// itself differs when grep is actually blocked (below) — telling a user
+	// who declined the deny prompt that "grep is BLOCKED" would be false
+	// guidance, so the steering has to know the final answer, not the
+	// pre-prompt default.
 	if !denyBuiltinSearch && permissions && printConfig == "" && isInteractive() {
 		denyBuiltinSearch = promptDenyBuiltinSearch()
 	}
+
+	// 3. Write steering instructions matching the chosen mode.
+	writeSteeringInstructions(abs, denyBuiltinSearch)
 
 	// 4. Register with every detected AI coding tool.
 	registered := initRegisterMCPTools(abs, prismBin, global, permissions, refresh, denyBuiltinSearch)
@@ -556,7 +561,7 @@ Use the prism CLI with --format text instead of MCP tools:
 // writeSteeringInstructions writes per-tool instruction files into the project
 // so agents know how to use Prism tools correctly.
 // On re-init it replaces a stale Prism section rather than skipping.
-func writeSteeringInstructions(projectDir string) {
+func writeSteeringInstructions(projectDir string, denyBuiltinSearch bool) {
 	type instrFile struct {
 		name    string // description for log
 		relPath string // path relative to projectDir
@@ -579,7 +584,7 @@ func writeSteeringInstructions(projectDir string) {
 		{name: "Kiro", relPath: ".kiro/steering/prism.md"},
 	}
 
-	block := steeringBlock()
+	block := steeringBlock(denyBuiltinSearch)
 
 	for _, t := range targets {
 		path := filepath.Join(projectDir, t.relPath)
@@ -611,7 +616,29 @@ func writeSteeringInstructions(projectDir string) {
 // agent read, for a 317-token difference. Three copies of the same prose
 // also drifted: a steering edit landed in one of three variants before this
 // collapsed them.
-func steeringBlock() string { return steeringInstructions }
+// steeringBlock appends a hard-stop paragraph ONLY when grep/rg are actually
+// blocked (denyBuiltinSearch). Saying "grep is BLOCKED" to a user who
+// declined the deny prompt would be false — most users say no, and for them
+// grep is a normal, working fallback. Text, not just structure: the deny
+// mechanism stops a denied call from succeeding, but says nothing to the
+// model in advance — measured live (2026-08-11), an agent tried grep anyway,
+// ate a denial, then recovered via prism. Telling it up front that the
+// attempt will fail should cut that wasted turn without changing anything
+// for users who never opted into the deny.
+func steeringBlock(denyBuiltinSearch bool) string {
+	if !denyBuiltinSearch {
+		return steeringInstructions
+	}
+	return strings.Replace(steeringInstructions,
+		"### When MCP tools are available",
+		"grep, rg, and the built-in Grep tool are BLOCKED in this project — "+
+			"any attempt fails and wastes a turn. Do not try them, even out of "+
+			"habit. prism_search(scope=\"text\") is the replacement (a real "+
+			"ripgrep pass); prism_query/prism_read for context. Read/Edit still "+
+			"work for files you already know you're editing.\n\n"+
+			"### When MCP tools are available",
+		1)
+}
 
 // injectPrismSection replaces the Prism steering section in content, or
 // appends it when absent.

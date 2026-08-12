@@ -54,7 +54,7 @@ func TestDetectSelfPath(t *testing.T) {
 
 func TestWriteSteeringInstructions(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, false)
 	// Should have written at least one instruction file
 	entries, _ := os.ReadDir(dir)
 	if len(entries) == 0 {
@@ -140,7 +140,7 @@ func TestBuildVSCodeConfig(t *testing.T) {
 
 func TestWriteSteeringInstructions_AllTargets(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, false)
 	for _, want := range []string{
 		"CLAUDE.md",
 		"AGENTS.md",
@@ -166,7 +166,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 	if err := os.WriteFile(path, []byte(stale), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, false)
 	raw, _ := os.ReadFile(path)
 	s := string(raw)
 	// Old guidance must be gone.
@@ -328,7 +328,7 @@ func TestSteeringBlock_CoversBothSurfaces(t *testing.T) {
 	// changed which documentation the agent read, so it collapsed. The single
 	// block must still carry BOTH surfaces — MCP tool names for the primary
 	// path and CLI invocations for Bash-only subagents.
-	got := steeringBlock()
+	got := steeringBlock(false)
 	for _, want := range []string{"prism_query", "prism query", "prism_change_impact", "change-impact"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("steering block missing %q — it must cover MCP and CLI together", want)

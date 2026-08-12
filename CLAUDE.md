@@ -29,6 +29,8 @@ Prism answers whole-task questions (change impact, missing implementations,
 test gaps, dead code) in ONE deterministic call, and delivers code context
 cheaply. Three layers, in priority order.
 
+grep, rg, and the built-in Grep tool are BLOCKED in this project — any attempt fails and wastes a turn. Do not try them, even out of habit. prism_search(scope="text") is the replacement (a real ripgrep pass); prism_query/prism_read for context. Read/Edit still work for files you already know you're editing.
+
 ### When MCP tools are available
 
 Use the registered prism MCP tools (their full names are
