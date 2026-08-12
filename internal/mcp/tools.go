@@ -598,19 +598,13 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "DELIVER (this tool answers \"give me what I need to do this task\" — to merely locate " +
-			"something, use prism_search): pass the task and terms=[...] with anchor names you have " +
-			"CONFIRMED (from grep/search or named in the task) — retrieval keys on the terms, so a " +
-			"confirmed anchor beats a well-phrased task, but a guessed term for a common name hurts. " +
-			"Prism finds those symbols then expands through the call graph (callers, callees), AND runs a " +
-			"real full-text search (rg/grep) for each term in the same call — matches outside any symbol " +
-			"(comments, configs, docs) arrive as textMatches, so a separate grep call is never needed. " +
-			"For bug-fix/implement tasks it delivers LINE-NUMBERED source windows plus each " +
-			"anchor's callers — edit-ready; lines under 1200 chars are byte-for-byte verbatim, " +
-			"longer ones carry an in-band truncation marker (Read the file before editing those). " +
-			"Do NOT re-read the files it shows. Unchanged files already delivered this session come back as one-line " +
-			"cached pointers. delivery=\"symbols\" forces the compact per-symbol list. " +
-			"Use include=[\"docs\"] for doc filenames only."
+		return "Give edit-ready context for a task: pass task + terms=[...] — CONFIRMED anchor names " +
+			"(from grep/search or named in the task) beat a guessed term. Expands via the call graph " +
+			"(callers, callees) AND runs a real full-text search on the terms in the same call — no " +
+			"separate grep needed. Bug-fix/implement tasks get LINE-NUMBERED source windows plus each " +
+			"anchor's callers, edit-ready; do not re-read what it shows. Same cached-pointer behavior " +
+			"as prism_read applies to already-delivered files. delivery=\"symbols\" forces the compact " +
+			"list; include=[\"docs\"] for doc filenames only."
 	case "prism_read":
 		return "Whole-file read with session compression: full content on first read; a repeat read of " +
 			"an UNCHANGED file returns a one-line `// [prism:cached] <file> @sha:… (prior delivery still " +
@@ -618,22 +612,18 @@ func toolDescription(name string) string {
 			"received this file earlier in the session, so use that copy and do NOT re-fetch. " +
 			"For a single function use prism_lookup (~5× cheaper)."
 	case "prism_search":
-		return "LOCATE (this tool answers \"where is X?\"): one call searches BOTH indexed symbol " +
-			"names/signatures/docstrings AND the raw source text (a real rg/grep full-text pass, results " +
-			"in textHits) — the on-ramp when you only have a concept, an error message, or a config key " +
-			"and need to FIND an anchor. A separate grep call is never needed. YOU price the request: " +
-			"scope=\"text\" is a pure grep (exactly the rg hits, cheapest — say this whenever you would " +
-			"have run grep/rg and want nothing else; regex=true for patterns); scope=\"symbols\" for " +
-			"names only; default \"both\" merges the two. Test doubles are tagged and listed last. " +
-			"Returns locations, not context: once you have the anchor, prism_query delivers the " +
-			"edit-ready context for your task (or prism_node/prism_lookup to orient and read piecewise)."
+		return "Locate a string, symbol, or file — where is X? One call searches indexed symbol " +
+			"names/docstrings AND raw source text (a real rg/grep pass, results in textHits); no " +
+			"separate grep needed. YOU price it: scope=\"text\" is a pure grep (cheapest, say this " +
+			"whenever you'd have run grep/rg; regex=true for patterns); scope=\"symbols\" for names " +
+			"only; default \"both\" merges the two. Returns locations, not context — once you have the " +
+			"anchor, prism_query delivers the edit-ready context."
 	case "prism_lookup":
 		return "Read one symbol by qualified name (e.g. 'ranking.Select', " +
-			"'kvstore.SecretsKVStoreSQL.Get'). Choose which COLUMNS to read with fields=[...]: " +
-			"signature (the contract, cheap), doc, body (full source), kind, parent, modifiers — " +
-			"omit fields to get the whole body. Every result includes the exact file:line, which is " +
-			"AUTHORITATIVE: navigate straight to it, do not re-confirm with grep. ~5× cheaper than " +
-			"reading the whole file; fields=[signature] is cheaper still."
+			"'kvstore.SecretsKVStoreSQL.Get'). fields=[...] picks columns: signature (cheap), doc, " +
+			"body (full source, default), kind, parent, modifiers. Result file:line is AUTHORITATIVE " +
+			"— navigate straight to it, don't re-confirm with grep. ~5× cheaper than reading the whole " +
+			"file; fields=[signature] cheaper still."
 	case "prism_resolve":
 		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
 			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
@@ -682,29 +672,17 @@ func toolDescription(name string) string {
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_change_impact":
-		return "Deterministic change-set for a method signature change: pass 'Type.method' or " +
-			"'Type.method(ParamType, ...)' and get back the exact declaration(s), every " +
-			"override/implementation in the subtype closure (family), super-declarations, and " +
-			"all resolved callers — in one engine call, milliseconds, no token cost. " +
-			"Use this instead of prism_references + manual override hunting when you need to " +
-			"find every site affected by a method signature change. Result groups: declarations " +
-			"(the method itself), family (overrides + implementations), supers (same-member " +
-			"declarations on other contracts — sibling interfaces satisfied by the same " +
-			"implementations break under the change too), callers (call sites into the set), " +
-			"declaringTypes (the interface/type declaration blocks that textually change " +
-			"because their member specs are not separate symbols — Go/TS; ALWAYS include " +
-			"these as change sites). Check 'completeness': 'closed' " +
-			"means the set is authoritative; 'project-local' + 'overridesExternal' means the " +
-			"method belongs to an external (JDK/dependency) contract — its signature cannot " +
-			"safely change, and calls typed against the external supertype are not included. " +
-			"Querying an external type directly (e.g. 'Iterator.next') returns the project's " +
-			"implementation closure of that contract — use for deprecation/migration sweeps. " +
-			"RELAY the returned set as-is: do not re-verify, re-filter, or transform it " +
-			"through shell pipelines — re-processing a solved traversal measurably drops " +
-			"real sites and adds spurious ones. A repeat call whose freshly recomputed " +
-			"result is IDENTICAL to one already delivered this session returns a one-line " +
-			"[prism:cached] pointer with group counts — not an error, not empty: use the " +
-			"prior delivery."
+		return "Complete change-set for a method signature change: pass 'Type.method' or " +
+			"'Type.method(ParamType, ...)' and get every declaration, override/implementation " +
+			"(family), sibling-contract declaration (supers — same member on another interface, " +
+			"breaks too), resolved caller, and interface/type block whose member spec changes " +
+			"textually (declaringTypes — Go/TS; ALWAYS a change site) — one engine call, no token " +
+			"cost. Check 'completeness': 'closed' = authoritative; 'project-local'+overridesExternal " +
+			"= external (JDK/dependency) contract — don't change its signature; query the external " +
+			"type directly (e.g. 'Iterator.next') for its full project implementation closure " +
+			"(deprecation/migration sweeps). RELAY the set as-is — re-verifying with grep/sed " +
+			"measurably drops real sites and adds spurious ones. Same cached-pointer behavior as " +
+			"prism_read applies when a repeat call's result is identical."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
 			"and get every type in the subtype closure that FAILS to implement the member — " +
