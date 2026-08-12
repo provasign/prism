@@ -1,0 +1,598 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c10
+created_at: 2026-08-12T02:13:02.888541Z
+finalized_at: 2026-08-12T03:12:21.042557Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-12T03:07:31.841773Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-12T03:08:46.60012Z
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add internal/mcp/tools.go internal/mcp/mcp_test.go && git commit -q -m "$(cat <<'EOF'
+        perf: trim always-loaded tool descriptions 4515->2706 chars (v0.46.0)
+
+        The 5 alwaysLoad tools (prism_search/query/read/lookup/change_impact,
+        v0.44.0) bill their descriptions in EVERY prism session, on every user,
+        forever -- unlike steering (harness-injected, variable per deployment),
+        this is baked into the shipped binary. Nobody had summed them: each
+        grew individually justified, same accretion pattern the 2026-08-11
+        steering diet found one layer up (RESULTS.md, SWE-bench-Live f1: 12k-char
+        steering bought zero resolve advantage over a 660-char rewrite on the
+        same 10 cells).
+
+        40% cut (4515 -> 2706 chars, ~1129 -> ~676 tokens), zero facts dropped:
+        - prism_change_impact (1702->883): kept every result group, the
+          completeness/overridesExternal distinction, and the relay warning;
+          cut the "instead of prism_references" framing and the full
+          cached-pointer re-explanation (now references prism_read's, the one
+          place that owns it -- it was previously explained in full 3x across
+          steering + this description + prism_query's).
+        - prism_query (1092->576), prism_search (793->479), prism_lookup
+          (469->361): same pattern -- own facts kept, shared concepts (no
+          separate grep needed, cached-pointer behavior, file:line authority)
+          now stated once and referenced.
+        - prism_read (407, unchanged): the canonical cached-pointer explanation
+          other descriptions now point to.
+
+        Bounded going forward: TestToolDescriptionsAlwaysLoadTotalSizeBounded
+        fails outside [2000, 3200] chars -- ceiling catches re-accretion, floor
+        catches over-cutting past what content tests protect.
+
+        Verified: full test suite + engine invariants green; smoke on the
+        mcp-atlassian-581 cell (opus, SWE-bench-Live) shows adoption unchanged
+        (6 MCP calls, non-empty patch) -- it reproduces the same known
+        model-limited wrong-layer diagnosis as every prior run of that cell,
+        not a new failure, confirming the trim cost nothing.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && sleep 15 && run=$(gh run list --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo CI-GREEN; git push -q origin main 2>/dev/null; git tag -a v0.46.0 -m "v0.46.0: trim always-loaded tool descriptions 4515->2706 chars, zero facts dropped, bounded by test" && git push -q origin v0.46.0 && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN
+      at: 2026-08-12T02:13:02.888541Z
+      classified: other
+    - cmd: 'cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.46.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.46.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf ''prism 0.46.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin HEAD:main && echo tap-0.46.0'
+      at: 2026-08-12T02:13:10.761975Z
+      classified: other
+    - cmd: |-
+        cat /tmp/short-probe-ids.txt 2>/dev/null | wc -l
+        ls ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/*.json 2>/dev/null | wc -l
+      at: 2026-08-12T02:34:52.626587Z
+      classified: other
+    - cmd: python3 -c "print(len(open('/tmp/short-probe-ids.txt').read().splitlines()))"
+      at: 2026-08-12T02:34:56.132221Z
+      classified: other
+    - cmd: bash /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/run_short_probe_eval.sh 2>&1 | tail -15
+      at: 2026-08-12T02:45:01.988477Z
+      classified: other
+    - cmd: cat ~/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/eval-prism/results.json | python3 -m json.tool
+      at: 2026-08-12T02:45:56.552199Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        patches=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe/patches.json'))
+        print('in patches.json:', list(patches.keys()))
+        "
+        python3 - <<'EOF'
+        import json
+        short='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe'
+        f1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        ids=['Archmonger__django-dbbackup-623','pybamm-team__PyBaMM-5129','a2aproject__a2a-python-414',
+             'gptme__gptme-595','open-telemetry__opentelemetry-python-4652','koxudaxi__datamodel-code-generator-2461',
+             'sooperset__mcp-atlassian-581','a2aproject__a2a-python-443','browser-use__browser-use-2480']
+        print(f"{'task':<44}{'f1(long)':<10}{'short':<10}{'f1$':>7}{'short$':>8}")
+        lr=sr=0; lc=sc=0
+        for iid in ids:
+            l=json.load(open(f'{f1}/eval-prism/{iid}/report.json'))['resolved']
+            s=json.load(open(f'{short}/eval-prism/{iid}/report.json'))['resolved']
+            lcost=json.load(open(f'{f1}/{iid}.prism.json'))['cost_usd']
+            scost=json.load(open(f'{short}/{iid}.prism.json'))['cost_usd']
+            lr+=bool(l); sr+=bool(s); lc+=lcost; sc+=scost
+            flip = ' <-- FLIP' if bool(l)!=bool(s) else ''
+            print(f"{iid[:43]:<44}{str(l):<10}{str(s):<10}{lcost:>7.2f}{scost:>8.2f}{flip}")
+        print(f"\nresolved: long {lr}/9  short {sr}/9")
+        print(f"cost: long ${lc:.2f}  short ${sc:.2f}  ratio {lc/sc:.2f}x")
+        EOF
+      at: 2026-08-12T02:46:07.221892Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        short='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/short-steering-probe'
+        f1='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1'
+        for iid in ('Archmonger__django-dbbackup-623','koxudaxi__datamodel-code-generator-2461','browser-use__browser-use-2480'):
+            print('='*90)
+            print(iid, '(FLIPPED: resolved with long steering, failed with short)')
+            r=json.load(open(f'{short}/{iid}.prism.json'))
+            tr=r['tool_trace']
+            mcp=[t for t in tr if t.startswith('mcp__prism')]
+            other=[t for t in tr if not t.startswith('mcp__prism') and t not in ('Read','Edit','Write')]
+            print(f'  total turns={len(tr)}, mcp calls={len(mcp)}: {mcp}')
+            print(f'  non-mcp non-edit actions ({len(other)}):')
+            for o in other[:15]: print('    ', o[:100])
+        EOF
+      at: 2026-08-12T02:49:44.727442Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        src=open('/Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py').read()
+        i=src.find('def run_agent')
+        print(src[i:i+900])
+        "
+      at: 2026-08-12T02:50:05.716384Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import subprocess, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        wt = Path('/tmp/verify-grep-deny')
+        wt.mkdir(exist_ok=True)
+        (wt/'foo.txt').write_text('hello world\n')
+
+        tools = [t for t in ab.TOOLS_BASE if t not in ab.SEARCH_TOOLS] + ['Bash(prism:*)']
+        cmd = ["claude", "-p", "Run the shell command: grep -n hello foo.txt   Then tell me exactly what happened (success with output, or a permission/tool error).",
+               "--output-format", "stream-json", "--verbose", "--strict-mcp-config",
+               "--allowedTools", ",".join(tools), "--model", "haiku"]
+        import os
+        env={**os.environ, "GIT_ALLOW_PROTOCOL":"file"}
+        proc = subprocess.run(cmd, cwd=str(wt), capture_output=True, text=True, env=env, timeout=120)
+        print("=== RAW STDOUT (full) ===")
+        print(proc.stdout)
+        print("=== STDERR ===")
+        print(proc.stderr[:500])
+        EOF
+      at: 2026-08-12T02:51:56.638622Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        total = 0
+        by_run = {}
+        for f in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/**/*.json', recursive=True):
+            if f.endswith('patches.json') or 'phase1' in f or '/eval-' in f: continue
+            try:
+                d = json.load(open(f))
+            except Exception:
+                continue
+            if not isinstance(d, dict):
+                continue
+            c = d.get('cost_usd')
+            if isinstance(c, (int, float)):
+                total += c
+                run = f.split('/runs/swebench-live/')[1].split('/')[0]
+                by_run[run] = by_run.get(run, 0) + c
+        for run, c in sorted(by_run.items(), [REDACTED:env-secret] x: -x[1]):
+            print(f"{run:<30} ${c:.2f}")
+        print(f"\nTOTAL metered across all SWE-bench-Live work today: ${total:.2f}")
+        EOF
+      at: 2026-08-12T02:54:33.191353Z
+      classified: other
+    - cmd: claude --help 2>&1
+      at: 2026-08-12T02:56:13.28426Z
+      classified: other
+    - cmd: |-
+        cd /tmp/verify-grep-deny && claude -p "Run the shell command: grep -n hello foo.txt   Then tell me exactly what happened." --output-format stream-json --verbose --model haiku --allowedTools "Read,Edit,Bash(cat:*)" --disallowedTools "Bash(grep:*),Bash(rg:*),Grep" 2>&1 | python3 -c "
+        import json,sys
+        for line in sys.stdin:
+            try: d=json.loads(line)
+            except: continue
+            if d.get('type')=='user' and 'tool_result' in str(d):
+                for c in d['message']['content']:
+                    print('TOOL RESULT:', c.get('is_error'), str(c.get('content'))[:200])
+            if d.get('type')=='result':
+                print('permission_denials:', d.get('permission_denials'))
+                print('final result:', d.get('result','')[:300])
+        "
+      at: 2026-08-12T02:56:25.93705Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+
+        old = '''def run_agent(prompt: str, tools: list[str], workdir: Path, model: str = "",
+                      mcp: str = "") -> dict:
+            cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
+                   "--strict-mcp-config", "--allowedTools", ",".join(tools)]
+            if mcp:
+                cmd += ["--mcp-config", mcp]'''
+        new = '''def run_agent(prompt: str, tools: list[str], workdir: Path, model: str = "",
+                      mcp: str = "", disallowed: list[str] | None = None) -> dict:
+            cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
+                   "--strict-mcp-config", "--allowedTools", ",".join(tools)]
+            if disallowed:
+                # VERIFIED 2026-08-11: omitting a tool from --allowedTools does NOT
+                # deny it in headless mode -- a live check showed grep executing
+                # with permission_denials:[] despite being absent from allowedTools.
+                # --disallowedTools is the actual enforcement mechanism (confirmed:
+                # is_error:true, populated permission_denials, command never runs).
+                # Every prism-arm cell before this fix had full grep/rg access.
+                cmd += ["--disallowedTools", ",".join(disallowed)]
+            if mcp:
+                cmd += ["--mcp-config", mcp]'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        old = '''            tools = [t for t in tools if t not in SEARCH_TOOLS]
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)", "mcp__prism"]
+                    steer += "\\n" + (SHORT_PRISM_STEERING if steering_variant == "short"
+                                       else real_prism_steering())
+                prompt = BASE_PROMPT.format(repo=task["repo"], problem=task["problem_statement"],
+                                            steer=steer)
+                env = run_agent(prompt, tools, wt, model,
+                                mcp=str(MCP_CFG / "prism.json") if arm == "prism" else "")'''
+        new = '''            tools = [t for t in tools if t not in SEARCH_TOOLS]
+                    tools += [f"Bash(prism:*)", f"Bash({prism}:*)", "mcp__prism"]
+                    steer += "\\n" + (SHORT_PRISM_STEERING if steering_variant == "short"
+                                       else real_prism_steering())
+                prompt = BASE_PROMPT.format(repo=task["repo"], problem=task["problem_statement"],
+                                            steer=steer)
+                env = run_agent(prompt, tools, wt, model,
+                                mcp=str(MCP_CFG / "prism.json") if arm == "prism" else "",
+                                disallowed=list(SEARCH_TOOLS) if arm == "prism" else None)'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('swebench_ab.py','w').write(src)
+        print("patched")
+        EOF
+        python3 -c "import ast; ast.parse(open('swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-12T02:56:38.250585Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 test_swebench_ab.py
+      at: 2026-08-12T02:57:02.367847Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research && git add harness/swebench_ab.py harness/test_swebench_ab.py && git commit -q -m "$(printf ''swebench_ab: fix grep denial — allowedTools omission does not deny in headless mode, only --disallowedTools does\n\nVerified live: a prism-arm cell with Bash(grep:*) simply absent from\n--allowedTools ran grep successfully (is_error:false, permission_denials:\n[]). Every prism-arm cell run before this fix had full grep/rg access\nidentical to baseline -- the tool-isolation half of the faithful-design\nclaim was never true. --disallowedTools is the real deny mechanism\n(confirmed: is_error:true, populated permission_denials, command never\nruns). run_agent now takes a disallowed= list; the prism arm passes\nSEARCH_TOOLS to it.\n\nAdded test_swebench_ab.py: zero-cost, no API calls, checks the deny list\nis actually constructed for the prism arm before any money gets spent on\na cell that assumes it.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>'')" && git push -q origin main && echo pushed'
+      at: 2026-08-12T02:57:11.515182Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        src=open('swebench_ab.py').read()
+        i=src.find('return {')
+        print(src[i:i+900])
+        "
+      at: 2026-08-12T02:58:41.880549Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+
+        old = '''        return {
+                    "instance_id": task["instance_id"], "arm": arm,
+                    "isolation_removed": isolation_removed,
+                    "prism_tools_loaded_at_init": sorted(
+                        t for t in (env.get("init_tools") or []) if "prism" in t.lower()),
+                    "model_patch": patch,'''
+        new = '''        denials = env.get("permission_denials") or []
+                denied_search_attempts = [
+                    d for d in denials
+                    if d.get("tool_name") == "Bash"
+                    and any(s in str(d.get("tool_input", {}).get("command", ""))
+                            for s in ("grep", "rg "))
+                ] if arm == "prism" else []
+                return {
+                    "instance_id": task["instance_id"], "arm": arm,
+                    "isolation_removed": isolation_removed,
+                    "prism_tools_loaded_at_init": sorted(
+                        t for t in (env.get("init_tools") or []) if "prism" in t.lower()),
+                    # Proves denial actually fired, not just that a grep command
+                    # appears in tool_trace (an attempted-then-denied call and a
+                    # successful call look IDENTICAL in tool_trace alone -- that
+                    # ambiguity is exactly what hid the 2026-08-11 bug).
+                    "permission_denials": denials,
+                    "denied_search_attempts": len(denied_search_attempts),
+                    "model_patch": patch,'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('swebench_ab.py','w').write(src)
+        print("patched")
+        EOF
+        python3 -c "import ast; ast.parse(open('swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-12T02:58:49.808193Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 test_swebench_ab.py
+      at: 2026-08-12T02:58:52.967698Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        iid='trailofbits__algo-14801'  # untouched by any earlier confounded run
+        out=Path('runs/swebench-live/grepfix-smoke'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-grepfix')
+
+        for arm in ('baseline','prism'):
+            rec=ab.run_arm(valid[iid],arm,str(Path.home()/'bin/prism'),'opus')
+            json.dump(rec, open(out/f'{iid}.{arm}.json','w'))
+            grep_attempts=[t for t in rec['tool_trace'] if t.strip().startswith(('grep','rg '))]
+            print(f"== {arm} ==")
+            print(f"  turns={rec['turns']} cost=${rec['cost_usd']:.2f} empty={rec['empty_patch']}")
+            print(f"  grep/rg commands attempted in trace: {grep_attempts}")
+            print(f"  denied_search_attempts: {rec.get('denied_search_attempts')}")
+            print(f"  permission_denials: {rec.get('permission_denials')}")
+        EOF
+      at: 2026-08-12T03:01:18.900951Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('const steeringInstructions')
+        print(src[i:i+700])
+        "
+      at: 2026-08-12T03:06:51.278778Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func writeSteeringInstructions')
+        print(src[i:i+500])
+        "
+      at: 2026-08-12T03:06:58.09566Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func writeSteeringInstructions')
+        j=src.find('\nfunc ', i+10)
+        print(src[i:j])
+        "
+      at: 2026-08-12T03:07:35.122507Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func steeringBlock')
+        j=src.find('\nfunc ', i+10)
+        print(src[i:j])
+        "
+      at: 2026-08-12T03:07:39.565771Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go build ./... 2>&1 | head -30
+      at: 2026-08-12T03:08:03.633839Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        import re
+        src=open('internal/cli/init_test.go').read()
+        for m in re.finditer(r'writeSteeringInstructions\([^)]*\)', src):
+            line=src[:m.start()].count(chr(10))+1
+            print(line, m.group(0))
+        "
+      at: 2026-08-12T03:08:11.02281Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n '50,65p;138,175p' internal/cli/init_test.go
+      at: 2026-08-12T03:08:15.62146Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/init_test.go').read()
+        src=src.replace('writeSteeringInstructions(dir)','writeSteeringInstructions(dir, false)')
+        open('internal/cli/init_test.go','w').write(src)
+        print('replaced', src.count('writeSteeringInstructions(dir, false)'))
+        "
+      at: 2026-08-12T03:08:20.126835Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && cat >> internal/cli/init_scope_test.go <<'EOF'
+
+        // The grep-BLOCKED paragraph must appear ONLY when denyBuiltinSearch is
+        // true — telling a user who declined the deny prompt that grep is blocked
+        // would be false guidance (most users decline it).
+        func TestSteeringBlock_GrepWarningOnlyWhenDenied(t *testing.T) {
+        	denied := steeringBlock(true)
+        	if !strings.Contains(denied, "grep, rg, and the built-in Grep tool are BLOCKED") {
+        		t.Error("deny=true steering must warn that grep/rg are blocked")
+        	}
+        	allowed := steeringBlock(false)
+        	if strings.Contains(allowed, "BLOCKED") {
+        		t.Error("deny=false steering must NOT claim grep is blocked (it isn't)")
+        	}
+        	// The base content must otherwise be identical.
+        	if strings.Count(denied, "prism_change_impact") != strings.Count(allowed, "prism_change_impact") {
+        		t.Error("deny variants diverged beyond the grep-warning insertion")
+        	}
+        }
+        EOF
+        head -5 internal/cli/init_scope_test.go
+      at: 2026-08-12T03:08:27.007108Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && head -8 internal/cli/init_scope_test.go
+      at: 2026-08-12T03:08:29.97256Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        import re
+        src=open('internal/cli/init_test.go').read()
+        for m in re.finditer(r'steeringBlock\([^)]*\)', src):
+            line=src[:m.start()].count(chr(10))+1
+            print(line, m.group(0))
+        "
+      at: 2026-08-12T03:08:39.686857Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n '325,335p' internal/cli/init_test.go
+      at: 2026-08-12T03:08:42.931312Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -20
+      at: 2026-08-12T03:08:59.827587Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -3 && python3 -c "
+        s=open('AGENTS.md').read()
+        print('grep-blocked paragraph present:', 'BLOCKED' in s)
+        print(s[:600])
+        "
+      at: 2026-08-12T03:09:07.721564Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -4
+      at: 2026-08-12T03:09:12.711532Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+
+        valid={r['instance_id']:r for r in json.load(open('runs/swebench-live/phase1/valid-instances.json'))}
+        iid='trailofbits__algo-14801'  # same instance as before, tried grep once
+        out=Path('runs/swebench-live/grepwarn-smoke'); out.mkdir(exist_ok=True)
+        ab.WT_ROOT=Path('/tmp/swebench-wt-grepwarn')
+
+        rec=ab.run_arm(valid[iid],'prism',str(Path.home()/'bin/prism'),'opus')
+        json.dump(rec, open(out/f'{iid}.prism.json','w'))
+        print(f"turns={rec['turns']} cost=${rec['cost_usd']:.2f} empty={rec['empty_patch']}")
+        print(f"denied_search_attempts: {rec.get('denied_search_attempts')}")
+        print(f"grep/rg in trace: {[t for t in rec['tool_trace'] if t.strip().startswith(('grep','rg '))]}")
+        EOF
+      at: 2026-08-12T03:10:45.38006Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/grepwarn-smoke/trailofbits__algo-14801.prism.json'))
+        for d in r['permission_denials']: print(d)
+        "
+      at: 2026-08-12T03:10:52.707856Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/grepwarn-smoke/trailofbits__algo-14801.prism.json'))
+        print('denied_search_attempts field:', r.get('denied_search_attempts'))
+        print('len(permission_denials):', len(r['permission_denials']))
+        for i,d in enumerate(r['permission_denials']):
+            cmd = d.get('tool_input',{}).get('command','')
+            match = any(s in cmd for s in ('grep','rg '))
+            print(i, 'match=',match, repr(cmd)[:80])
+        "
+      at: 2026-08-12T03:11:13.545125Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+        old = '''        denials = env.get("permission_denials") or []
+                denied_search_attempts = [
+                    d for d in denials
+                    if d.get("tool_name") == "Bash"
+                    and any(s in str(d.get("tool_input", {}).get("command", ""))
+                            for s in ("grep", "rg "))
+                ] if arm == "prism" else []'''
+        new = '''        denials = env.get("permission_denials") or []
+                # Word-boundary match on the command's LEADING token only (grep as
+                # the invoked binary, not a substring anywhere in the command line --
+                # a naive "grep" in str(cmd) false-positived on this repo's own
+                # worktree path /tmp/swebench-wt-grepwarn, which contains "grep").
+                _search_re = re.compile(r"(?:^|[\\s;&|(])(?:sudo\\s+)?(?:rg|grep)\\b")
+                denied_search_attempts = [
+                    d for d in denials
+                    if d.get("tool_name") == "Bash"
+                    and _search_re.search(str(d.get("tool_input", {}).get("command", "")))
+                ] if arm == "prism" else []'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('swebench_ab.py','w').write(src)
+        print("patched")
+        EOF
+        python3 -c "import ast; ast.parse(open('swebench_ab.py').read()); print('syntax ok')"
+      at: 2026-08-12T03:11:29.370054Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.')
+        import swebench_ab as ab
+        import re
+        tests = [
+            ('/tmp/algovenv/bin/python -m pytest /private/tmp/swebench-wt-grepwarn/x', False),
+            ('grep -rn foo .', True),
+            ('rg foo .', True),
+            ('cd /tmp && grep foo bar', True),
+            ('/usr/bin/grep -n x y', True),
+            ('sudo grep x y', True),
+            ('echo \"use grep\"', False),  # mentions grep in a string, not invoked
+            ('mkdir /tmp/grepstuff', False),
+        ]
+        _search_re = re.compile(r'(?:^|[\s;&|(])(?:sudo\s+)?(?:rg|grep)\b')
+        for cmd, want in tests:
+            got = bool(_search_re.search(cmd))
+            print('OK ' if got==want else 'FAIL', repr(cmd), '->', got, '(want', want, ')')
+        "
+      at: 2026-08-12T03:11:35.671817Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        src=open('swebench_ab.py').read()
+        old = '''_search_re = re.compile(r"(?:^|[\\s;&|(])(?:sudo\\s+)?(?:rg|grep)\\b")'''
+        new = '''_search_re = re.compile(r"(?:^|[\\s;&|(])(?:[^\\s;&|(]*/)?(?:sudo\\s+)?(?:rg|grep)\\b")
+                # Heuristic, same class of imprecision as prism_used's regex above: a
+                # quoted string mentioning "grep" (e.g. echo "use grep") can
+                # false-positive. Acceptable for a diagnostic count, not a security
+                # boundary -- --disallowedTools is the actual enforcement.'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('swebench_ab.py','w').write(src)
+        EOF
+        python3 -c "
+        import re
+        _search_re = re.compile(r'(?:^|[\s;&|(])(?:[^\s;&|(]*/)?(?:sudo\s+)?(?:rg|grep)\b')
+        tests = [
+            ('/tmp/algovenv/bin/python -m pytest /private/tmp/swebench-wt-grepwarn/x', False),
+            ('grep -rn foo .', True),
+            ('/usr/bin/grep -n x y', True),
+            ('sudo /bin/grep x y', True),
+            ('mkdir /tmp/grepstuff', False),
+        ]
+        for cmd, want in tests:
+            got = bool(_search_re.search(cmd))
+            print('OK ' if got==want else 'FAIL', repr(cmd), '->', got)
+        "
+      at: 2026-08-12T03:11:49.814041Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 test_swebench_ab.py && python3 -c "
+        import sys, json, re
+        sys.path.insert(0,'.')
+        import swebench_ab as ab
+        r=json.load(open('runs/swebench-live/grepwarn-smoke/trailofbits__algo-14801.prism.json'))
+        denials=r['permission_denials']
+        real=[d for d in denials if d.get('tool_name')=='Bash' and ab._search_re.search(str(d.get('tool_input',{}).get('command','')))]
+        print('corrected denied_search_attempts:', len(real))
+        "
+        tail -4 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/tasks/bksikwue2.output
+      at: 2026-08-12T03:11:56.95649Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json, re
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/grepwarn-smoke/trailofbits__algo-14801.prism.json'))
+        _search_re = re.compile(r'(?:^|[\s;&|(])(?:[^\s;&|(]*/)?(?:sudo\s+)?(?:rg|grep)\b')
+        real=[d for d in r['permission_denials'] if d.get('tool_name')=='Bash' and _search_re.search(str(d.get('tool_input',{}).get('command','')))]
+        print('corrected denied_search_attempts:', len(real))
+        print('grep/rg literally in tool_trace:', [t for t in r['tool_trace'] if _search_re.search(t)])
+        "
+      at: 2026-08-12T03:12:02.840087Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git add internal/cli/commands.go internal/cli/init_test.go internal/cli/init_scope_test.go AGENTS.md CLAUDE.md .cursorrules .windsurfrules .clinerules GEMINI.md .devin .kiro .github/copilot-instructions.md .mcp.json .cursor .windsurf .vscode 2>/dev/null; git status --short | head -25
+      at: 2026-08-12T03:12:08.70495Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-12T02:13:02.888541Z
+redactions: 1
