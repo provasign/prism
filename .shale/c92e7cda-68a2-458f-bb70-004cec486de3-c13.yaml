@@ -1,0 +1,732 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c13
+created_at: 2026-08-12T12:37:52.57232Z
+finalized_at: 2026-08-12T22:27:21.580479Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add -A && git commit -q -m "$(cat <<'EOF'
+        revert: restore long steering — short version cost real resolve, twice measured (v0.48.1)
+
+        v0.48.0's 93% steering cut looked safe on cost/adoption but resolve was
+        never validated at real sample size before shipping. Corrected that after
+        the fact: 10-cell SWE-bench-Live probe (opus, gold-validated instances,
+        REAL grep denial via --disallowedTools, paired against f1's unaffected
+        baseline) came back baseline 5/9 resolved vs short-steering-prism 3/9 --
+        3 discordant pairs favoring baseline, 1 favoring prism. This replicates
+        an earlier signal on the SAME 10 instances (4/9 vs 2/9) that was
+        dismissed as confounded by the since-fixed grep-leak bug. Same direction,
+        similar magnitude, now on a corrected harness: not noise.
+
+        Restores the long steeringInstructions body verbatim (12408 chars) with
+        v0.47.0's conditional grep-BLOCKED warning re-anchored to it. Every other
+        v0.44-v0.47 fix is kept: alwaysLoad, project-scope default, bare-name
+        ToolSearch fix, tool-description trim (v0.46.0, cost-neutral on resolve
+        in this same probe design), real --disallowedTools denial.
+
+        The tool-description trim was NOT re-tested at this sample size and is
+        kept on the strength of the earlier mcp-atlassian smoke (adoption/patch
+        quality unchanged) -- narrower claim than "verified," noted here
+        explicitly rather than left implicit.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && sleep 15 && run=$(gh run list --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo CI-GREEN; git push -q origin main 2>/dev/null; git tag -a v0.48.1 -m "v0.48.1: revert steering shortening — cost real resolve on a 10-cell probe, replicated" && git push -q origin v0.48.1 && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN
+      at: 2026-08-12T12:37:52.57232Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.48.1 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.48.1 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf 'prism 0.48.1\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin HEAD:main && echo tap-0.48.1
+        cd ~/Projects/provasign/research && git add harness/runs/swebench-live/probe2-v048 2>/dev/null; git commit -q -m "$(printf 'swebench-live: probe2 (v0.48.0, real denial) resolve 5/9->3/9 vs baseline, replicates the invalidated probe -- caused the v0.48.1 revert\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin main && echo research-pushed
+      at: 2026-08-12T12:38:07.1602Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        probe=f'{base}/probe2-v048'; f1=f'{base}/ab38-f1'
+        # The 3 cells where short steering LOST vs baseline
+        losses=['koxudaxi__datamodel-code-generator-2461','sooperset__mcp-atlassian-581','browser-use__browser-use-2480']
+        for iid in losses:
+            print('='*100)
+            print(iid)
+            for label, path, arm in [('BASELINE(f1)', f1, 'baseline'), ('LONG-STEER(f1)', f1, 'prism'), ('SHORT-STEER(probe2)', probe, 'prism')]:
+                p=f'{path}/{iid}.{arm}.json'
+                if not os.path.exists(p): print(f'  {label}: missing'); continue
+                r=json.load(open(p))
+                ev=f'{path}/eval-{arm}/{iid}/report.json'
+                res=json.load(open(ev)).get('resolved') if os.path.exists(ev) else '?'
+                mcp=[t for t in r['tool_trace'] if t.startswith('mcp__prism')]
+                files=sorted(set(l[6:] for l in r['model_patch'].split('\n') if l.startswith('+++ b/')))
+                print(f'  {label:<22} resolved={res} turns={r["turns"]:<3} mcp={len(mcp)} files={files}')
+        EOF
+      at: 2026-08-12T12:51:24.888484Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        for iid, winner_path, winner_arm in [
+            ('browser-use__browser-use-2480', f'{base}/ab38-f1', 'prism'),
+        ]:
+            w=json.load(open(f'{winner_path}/{iid}.{winner_arm}.json'))['model_patch']
+            l=json.load(open(f'{base}/probe2-v048/{iid}.prism.json'))['model_patch']
+            print(f'=== {iid} ===')
+            print(f'--- LONG-STEER (RESOLVED, {len(w.splitlines())} lines) ---')
+            print(w[:2500])
+            print(f'\n--- SHORT-STEER (FAILED, {len(l.splitlines())} lines) ---')
+            print(l[:2500])
+        EOF
+      at: 2026-08-12T12:51:33.755507Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, hashlib
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        iid='browser-use__browser-use-2480'
+        w=json.load(open(f'{base}/ab38-f1/{iid}.prism.json'))['model_patch']
+        l=json.load(open(f'{base}/probe2-v048/{iid}.prism.json'))['model_patch']
+
+        def source_only(patch):
+            # keep only hunks touching real source files (not deleted config/rules)
+            out=[]; keep=False
+            for line in patch.split('\n'):
+                if line.startswith('diff --git'):
+                    keep = ('browser_use/' in line)
+                if keep: out.append(line)
+            return '\n'.join(out)
+
+        ws, ls = source_only(w), source_only(l)
+        print('LONG source-only:', len(ws.splitlines()), 'lines, sha', hashlib.sha1(ws.encode()).hexdigest()[:12])
+        print('SHORT source-only:', len(ls.splitlines()), 'lines, sha', hashlib.sha1(ls.encode()).hexdigest()[:12])
+        print('IDENTICAL:', ws==ls)
+        if ws!=ls:
+            import difflib
+            d=list(difflib.unified_diff(ws.splitlines(), ls.splitlines(), 'LONG','SHORT', lineterm='', n=2))
+            print('\n'.join(d[:80]))
+        EOF
+      at: 2026-08-12T12:51:44.196197Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        iid='browser-use__browser-use-2480'
+        for label, p in [('LONG(f1)', f'{base}/ab38-f1/eval-prism/{iid}/report.json'),
+                         ('SHORT(probe2)', f'{base}/probe2-v048/eval-prism/{iid}/report.json')]:
+            r=json.load(open(p))
+            f2p=r['FAIL_TO_PASS']; p2p=r['PASS_TO_PASS']
+            print(f'{label}: resolved={r["resolved"]}')
+            print(f'   F2P pass={len(f2p.get("success",[]))} fail={len(f2p.get("failure",[]))}')
+            print(f'   P2P pass={len(p2p.get("success",[]))} fail={len(p2p.get("failure",[]))}')
+            if f2p.get('failure'): print(f'   F2P failures: {f2p["failure"][:3]}')
+            if p2p.get('failure'): print(f'   P2P failures: {p2p["failure"][:3]}')
+        EOF
+      at: 2026-08-12T12:51:52.800864Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        ids=json.load(open(f'{base}/probe2-v048/patches.json')).keys()
+        print(f"{'instance':<44}{'F2P p/f':<12}{'P2P p/f':<12}{'resolved'}")
+        for iid in ids:
+            p=f'{base}/probe2-v048/eval-prism/{iid}/report.json'
+            if not os.path.exists(p): continue
+            r=json.load(open(p))
+            f2p=r['FAIL_TO_PASS']; p2p=r['PASS_TO_PASS']
+            fp,ff=len(f2p.get('success',[])),len(f2p.get('failure',[]))
+            pp,pf=len(p2p.get('success',[])),len(p2p.get('failure',[]))
+            print(f"{iid[:43]:<44}{f'{fp}/{ff}':<12}{f'{pp}/{pf}':<12}{r['resolved']}")
+        EOF
+      at: 2026-08-12T12:52:04.267963Z
+      classified: other
+    - cmd: bash /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/recheck_browseruse.sh 2>&1 | tail -8
+      at: 2026-08-12T13:01:26.71198Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        src=open('swebench_ab.py').read()
+        print('workers' in src)
+        " ; ls /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/*.sh
+      at: 2026-08-12T14:09:58.094609Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 -c "import ast; ast.parse(open('score_cells.py').read()); print('syntax ok')" && python3 score_cells.py --help 2>&1 | head -12
+      at: 2026-08-12T14:10:32.813901Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && nohup python3 score_cells.py runs/swebench-live/probe2-v048 --arms prism > /tmp/probe2-rescore.log 2>&1 & echo "rescoring pid $!"
+      at: 2026-08-12T14:10:38.159133Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        v=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/probe2-v048/verdicts.json'))
+        b=v['prism']['browser-use__browser-use-2480']
+        print(json.dumps(b, indent=1))
+        "; ls ~/Projects/provasign/research/harness/runs/swebench-live/probe2-v048/ | head
+      at: 2026-08-12T14:11:00.348783Z
+      classified: other
+    - cmd: |-
+        ls ~/Projects/provasign/research/harness/runs/swebench-live/probe2-v048/ | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'retry' in l: print('retry dir:', l.strip())
+        " ; echo "---"; tail -5 /tmp/probe2-rescore.log
+      at: 2026-08-12T14:11:06.253565Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        src=open('score_cells.py').read()
+        i=src.find('# Retry failures')
+        print(src[i-500:i+700])
+        "
+      at: 2026-08-12T14:11:11.970801Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 -c "import ast; ast.parse(open('score_cells.py').read()); print('syntax ok')" && nohup python3 score_cells.py runs/swebench-live/probe2-v048 --arms prism > /tmp/probe2-rescore2.log 2>&1 & echo "pid $!"
+      at: 2026-08-12T14:11:29.710614Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        iid='sooperset__mcp-atlassian-581'
+        # What did the WINNING baseline do vs the failing prism runs?
+        for label, path, arm in [('BASELINE(f1) RESOLVED', f'{base}/ab38-f1','baseline'),
+                                  ('PRISM long(f1) FAILED', f'{base}/ab38-f1','prism'),
+                                  ('PRISM short(probe2) FAILED', f'{base}/probe2-v048','prism')]:
+            r=json.load(open(f'{path}/{iid}.{arm}.json'))
+            print(f'--- {label} ({r["turns"]} turns) ---')
+            for t in r['tool_trace'][:14]: print('   ', t[:100])
+            print()
+        EOF
+      at: 2026-08-12T14:11:43.922785Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        src=open('score_cells.py').read()
+        i=src.find('def verdict')
+        print(src[i-400:i])
+        "
+      at: 2026-08-12T14:11:59.088748Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && rm -rf runs/swebench-live/probe2-v048/eval-prism runs/swebench-live/probe2-v048/eval-prism-retry runs/swebench-live/probe2-v048/verdicts.json && python3 -c "import ast; ast.parse(open('score_cells.py').read()); print('ok')" && nohup python3 score_cells.py runs/swebench-live/probe2-v048 --arms prism > /tmp/probe2-rescore3.log 2>&1 & echo "pid $!"
+      at: 2026-08-12T14:12:07.984333Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        v=json.load(open(f'{base}/probe2-v048/verdicts.json'))['prism']
+        f1=f'{base}/ab38-f1'
+        def bl(iid):
+            p=f'{f1}/eval-baseline/{iid}/report.json'
+            return bool(json.load(open(p)).get('resolved')) if os.path.exists(p) else None
+        print(f"{'instance':<46}{'baseline(f1,workers4)':<24}{'prism short(serial)':<20}")
+        b=p=n=0
+        disc=[]
+        for iid, val in sorted(v.items()):
+            bb=bl(iid); pp=val.get('resolved')
+            if bb is None or pp is None:
+                print(f"{iid[:45]:<46}{'--':<24}{str(pp):<20}")
+                continue
+            n+=1; b+=bb; p+=pp
+            tag='' if bb==pp else '  <-- DISCORD'
+            if bb!=pp: disc.append((iid, 'baseline' if bb else 'prism'))
+            print(f"{iid[:45]:<46}{str(bb):<24}{str(pp):<20}{tag}")
+        print(f"\nn={n} | baseline {b}/{n} | prism(short steering) {p}/{n}")
+        print("discordant:", disc)
+        print("\nNOTE: baseline numbers come from f1's --workers 4 eval -> same flake risk, NOT yet re-scored serially.")
+        EOF
+      at: 2026-08-12T14:42:35.067744Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls runs/swebench-live/ab38-f1/ | python3 -c "
+        import sys
+        files=[l.strip() for l in sys.stdin]
+        print('baseline cells:', sum(1 for f in files if f.endswith('.baseline.json')))
+        print('prism cells:', sum(1 for f in files if f.endswith('.prism.json')))
+        "
+      at: 2026-08-12T16:54:02.043728Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && rm -rf runs/swebench-live/ab38-f1/eval-baseline runs/swebench-live/ab38-f1/eval-prism runs/swebench-live/ab38-f1/eval-baseline-retry runs/swebench-live/ab38-f1/eval-prism-retry runs/swebench-live/ab38-f1/verdicts.json && nohup python3 score_cells.py runs/swebench-live/ab38-f1 --arms baseline prism > /tmp/f1-rescore.log 2>&1 & echo "f1 serial rescore pid $!"
+      at: 2026-08-12T16:54:07.555495Z
+      classified: other
+    - cmd: |-
+        ls /tmp/swebench-repos/ 2>/dev/null | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'atlassian' in l.lower(): print(l.strip())
+        "
+      at: 2026-08-12T16:54:20.225324Z
+      classified: other
+    - cmd: |-
+        cd /tmp/swebench-repos/sooperset__mcp-atlassian && git log --oneline -1 2>/dev/null; ~/bin/prism search "Multi-Cloud OAuth" --scope text --limit 15 --format json 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        hits=d.get('textHits') or []
+        print('files with hits:', len(hits))
+        for h in hits[:8]:
+            print(' ', h.get('file'), '->', len(h.get('hits',[])), 'lines')
+        "
+      at: 2026-08-12T16:54:29.206291Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        v=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/ab38-f1/verdicts.json'))
+        for arm in ('baseline','prism'):
+            a=v[arm]
+            stable={i:x for i,x in a.items() if not x.get('unstable') and x.get('resolved') is not None}
+            unstable=[i for i,x in a.items() if x.get('unstable')]
+            missing=[i for i,x in a.items() if x.get('resolved') is None]
+            res=sum(1 for x in stable.values() if x['resolved'])
+            print(f"{arm}: {res}/{len(stable)} resolved | unstable(excluded): {unstable} | missing: {missing}")
+        # paired comparison on cells stable+present in BOTH arms
+        b,p=v['baseline'],v['prism']
+        ids=[i for i in b if not b[i].get('unstable') and not p[i].get('unstable')
+             and b[i].get('resolved') is not None and p[i].get('resolved') is not None]
+        bb=sum(1 for i in ids if b[i]['resolved']); pp=sum(1 for i in ids if p[i]['resolved'])
+        disc=[(i,'baseline' if b[i]['resolved'] else 'prism') for i in ids if b[i]['resolved']!=p[i]['resolved']]
+        print(f"\nPAIRED (both arms stable, n={len(ids)}): baseline {bb} vs prism {pp}")
+        print("discordant:", disc)
+        EOF
+      at: 2026-08-12T19:54:25.157703Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        base='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live'
+        f1=json.load(open(f'{base}/ab38-f1/verdicts.json'))
+        p2=json.load(open(f'{base}/probe2-v048/verdicts.json'))['prism']
+        b=f1['baseline']; lp=f1['prism']
+        print(f"{'instance':<46}{'baseline':<10}{'long-steer':<12}{'short-steer':<12}")
+        nb=nl=ns=n=0
+        for iid in sorted(p2):
+            bv=b.get(iid,{}); lv=lp.get(iid,{}); sv=p2[iid]
+            if any(x.get('unstable') or x.get('resolved') is None for x in (bv,lv,sv)):
+                print(f"{iid[:45]:<46}(excluded: unstable/missing)")
+                continue
+            n+=1; nb+=bv['resolved']; nl+=lv['resolved']; ns+=sv['resolved']
+            print(f"{iid[:45]:<46}{str(bv['resolved']):<10}{str(lv['resolved']):<12}{str(sv['resolved']):<12}")
+        print(f"\nn={n}: baseline {nb} | long-steering {nl} | short-steering {ns}")
+        EOF
+      at: 2026-08-12T19:54:49.099768Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 test_swebench_ab.py && nohup python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 38 --arms baseline prism --out runs/swebench-live/haiku38 --model haiku > runs/swebench-live/haiku38.log 2>&1 & echo "haiku38 pid $!"
+      at: 2026-08-12T21:35:07.941774Z
+      classified: other
+    - cmd: |-
+        pkill -f 'swebench_ab.py.*haiku38'; sleep 2; pgrep -f 'swebench_ab.py' >/dev/null && echo still-running || echo stopped
+        python3 - <<'EOF'
+        import json, glob
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38'
+        fs=[f for f in glob.glob(f'{d}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        print(f"cells so far: {len(recs)} (baseline {len(by['baseline'])}, prism {len(by['prism'])})")
+        print(f"{'instance':<46}{'arm':<10}{'turns':>6}{'cost':>7}  notes")
+        for r in sorted(recs, [REDACTED:env-secret] x:(x['instance_id'],x['arm'])):
+            notes=[]
+            if r['arm']=='prism':
+                if r['prism_used']: notes.append('prism-used')
+                if r.get('denied_search_attempts'): notes.append(f"denied:{r['denied_search_attempts']}")
+            if r['empty_patch']: notes.append('EMPTY')
+            print(f"{r['instance_id'][:45]:<46}{r['arm']:<10}{r['turns']:>6}{r['cost_usd']:>7.2f}  {','.join(notes)}")
+        cost=sum(r['cost_usd'] or 0 for r in recs)
+        print(f"\ntotal spent: ${cost:.2f}")
+        EOF
+      at: 2026-08-12T22:21:15.54134Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git log --oneline -5 && git revert --no-edit HEAD~0 2>/dev/null; git log --oneline -1
+      at: 2026-08-12T22:21:32.490807Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git reset --hard HEAD~1 && git log --oneline -1 && git revert --no-edit f13cf4b && git log --oneline -2
+      at: 2026-08-12T22:21:39.033756Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git commit --amend -m "$(cat <<'EOF'
+        perf: re-ship short steering — the resolve-regression evidence was an eval artifact (v0.49.0)
+
+        Reverts the v0.48.1 revert. That revert was justified by two probes
+        showing short steering losing resolve (4/9 vs 2/9, then 5/9 vs 3/9).
+        Both numbers came from evals run with --workers 4, since shown to
+        produce false negatives on concurrency-sensitive test suites (browser-use
+        scored False at workers=4 and True at workers=1 from a byte-identical
+        patch; a second cell flipped the same way). Re-scored serially with
+        flake-retry (research harness score_cells.py): long vs short steering is
+        4 vs 4 on the probe instances, and the full f1 trial is an exact 19-19
+        baseline-prism tie on 35 stable pairs. The steering length does not
+        measurably affect resolve; the short version costs ~3k fewer tokens per
+        session on every user.
+
+        Net state after this commit = v0.48.0's: 847-char steering const, grep
+        warning anchored to it, tests aligned.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -3
+      at: 2026-08-12T22:22:01.004914Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -1 && python3 -c "
+        s=open('AGENTS.md').read()
+        print('AGENTS.md chars:', len(s), '| BLOCKED:', 'BLOCKED' in s, '| short marker:', 'already in your tool list' in s)
+        "
+      at: 2026-08-12T22:22:09.34756Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/prism && cat AGENTS.md
+      at: 2026-08-12T22:22:16.182439Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func injectPrismSection')
+        j=src.find('\nfunc ', i+10)
+        print(src[i:j])
+        "
+      at: 2026-08-12T22:22:32.856556Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func injectPrismSection')
+        j=src.find('\nfunc ', i+10)
+        old=src[i:j]
+
+        new='''func injectPrismSection(content, block string) string {
+        	// Prefix marker, not a full heading: the heading TEXT has changed across
+        	// versions ("context delivery" -> "code intelligence"), and a marker
+        	// pinned to one variant made upgrades APPEND instead of replace --
+        	// duplicating the block in user files on every refresh and leaving the
+        	// stale old-heading section in place forever (found 2026-08-12 when a
+        	// regenerated AGENTS.md came back doubled). Any "## Prism — " heading is
+        	// a prism-owned section, past or present; remove them ALL (also healing
+        	// files already duplicated by the bug) and insert exactly one block at
+        	// the position of the first.
+        	const marker = "## Prism — "
+        	const endMarker = "<!-- prism:end -->"
+
+        	insertAt := -1
+        	for {
+        		start := strings.Index(content, "\\n"+marker)
+        		prefixLen := 1 // the leading newline belongs to the preceding content
+        		if start < 0 && strings.HasPrefix(content, marker) {
+        			start, prefixLen = 0, 0
+        		}
+        		if start < 0 {
+        			break
+        		}
+        		if insertAt < 0 {
+        			insertAt = start
+        		}
+        		head := content[:start]
+        		rest := content[start+prefixLen:]
+        		if e := strings.Index(rest, endMarker); e >= 0 {
+        			// Bounded section: everything through the end marker is ours.
+        			content = head + "\\n" + strings.TrimLeft(rest[e+len(endMarker):], "\\n")
+        		} else if n := strings.Index(rest, "\\n## "); n >= 0 {
+        			// Legacy unbounded section: ends at the next top-level heading.
+        			content = head + "\\n" + strings.TrimLeft(rest[n+1:], "\\n")
+        		} else {
+        			content = head
+        		}
+        		content = strings.TrimRight(content, "\\n")
+        	}
+
+        	if insertAt < 0 || insertAt >= len(content) {
+        		return strings.TrimRight(content, "\\n") + block
+        	}
+        	head := strings.TrimRight(content[:insertAt], "\\n")
+        	tail := strings.TrimLeft(content[insertAt:], "\\n")
+        	if tail == "" {
+        		return head + block
+        	}
+        	return head + block + "\\n" + tail
+        }
+        '''
+        src=src[:i]+new+src[j+1:]
+        open('internal/cli/commands.go','w').write(src)
+        print('replaced injectPrismSection')
+        EOF
+        go build ./... 2>&1 | head -5
+      at: 2026-08-12T22:23:03.064494Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && cat >> internal/cli/init_scope_test.go <<'EOF'
+
+        // The section marker must survive heading renames. v0.48.0 renamed the
+        // heading ("context delivery" -> "code intelligence") while the replacer
+        // was pinned to the old text, so every refresh APPENDED a new block —
+        // doubling user files — and left the stale old-heading section in place
+        // forever. The replacer must (a) replace sections under ANY past heading
+        // and (b) heal files already duplicated by the bug.
+        func TestInjectPrismSection_HeadingRenameAndDedup(t *testing.T) {
+        	block := steeringBlock(false)
+
+        	// (a) old-heading section gets replaced, not appended-to.
+        	old := "# My project\n\n## Prism — context delivery (ALWAYS use these tools)\n\nold guidance\n\n<!-- prism:end -->\n\n## My rules\nkeep me\n"
+        	got := injectPrismSection(old, block)
+        	if strings.Count(got, "## Prism — ") != 1 {
+        		t.Errorf("old-heading upgrade left %d prism sections, want 1", strings.Count(got, "## Prism — "))
+        	}
+        	if !strings.Contains(got, "# My project") || !strings.Contains(got, "keep me") {
+        		t.Error("user content lost during heading-rename upgrade")
+        	}
+        	if strings.Contains(got, "old guidance") {
+        		t.Error("stale section not removed")
+        	}
+
+        	// (b) an already-duplicated file heals to exactly one section.
+        	doubled := injectPrismSection(injectPrismSection("# P\n", block)+"\n"+block, block)
+        	if strings.Count(doubled, "## Prism — ") != 1 {
+        		t.Errorf("duplicated file not healed: %d prism sections, want 1", strings.Count(doubled, "## Prism — "))
+        	}
+
+        	// (c) idempotence: re-running on a clean result is byte-stable.
+        	once := injectPrismSection("# P\n\n## Other\nx\n", block)
+        	twice := injectPrismSection(once, block)
+        	if once != twice {
+        		t.Error("re-init is not byte-stable")
+        	}
+        }
+        EOF
+        go test ./internal/cli/ -run 'InjectPrismSection|SteeringBlock|WriteSteeringInstructions' -count=1 -v 2>&1 | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'PASS' in l or 'FAIL' in l: print(l.rstrip())
+        "
+      at: 2026-08-12T22:23:18.176257Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | python3 -c "
+        import sys
+        bad=[l.rstrip() for l in sys.stdin if 'FAIL' in l]
+        print('\n'.join(bad) if bad else 'ALL GREEN')
+        " && go build -o ~/bin/prism ./cmd/prism && ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -1 && python3 -c "
+        s=open('AGENTS.md').read()
+        import re
+        print('AGENTS.md chars:', len(s), '| prism sections:', s.count('## Prism — '), '| BLOCKED:', 'BLOCKED' in s)
+        "
+      at: 2026-08-12T22:23:37.168574Z
+      classified: lint
+    - cmd: |-
+        for d in ~/Projects/provasign ~/Projects/provasign/astkit ~/Projects/provasign/fuse ~/Projects/provasign/grove ~/Projects/provasign/mason ~/Projects/provasign/provasign ~/Projects/provasign/research ~/Projects/provasign/shale; do (cd "$d" && ~/bin/prism init . --refresh --deny-builtin-search >/dev/null 2>&1 && python3 -c "
+        import os
+        ok=True
+        for f in ('AGENTS.md','CLAUDE.md'):
+            if os.path.exists(f):
+                n=open(f).read().count('## Prism — ')
+                if n!=1: ok=False; print('  !!', f, n, 'sections')
+        print(('OK  ' if ok else 'FAIL'), '$d')
+        "); done
+      at: 2026-08-12T22:23:46.654347Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign && python3 -c "
+        s=open('CLAUDE.md').read()
+        import re
+        for m in re.finditer(r'## Prism — ', s):
+            line=s[:m.start()].count(chr(10))+1
+            print(line, s[m.start():m.start()+60].split(chr(10))[0])
+        "
+      at: 2026-08-12T22:23:52.498593Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/provasign && git diff --stat CLAUDE.md && git diff CLAUDE.md | head -40
+      at: 2026-08-12T22:24:08.127897Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/provasign && git checkout CLAUDE.md && python3 -c "
+        s=open('CLAUDE.md').read()
+        print('restored:', 'certified merge gate' in s, '| chars:', len(s))
+        " && git status --short CLAUDE.md
+      at: 2026-08-12T22:24:31.407077Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/cli/commands.go').read()
+        i=src.find('func injectPrismSection')
+        j=src.find('\nfunc ', i+10)
+
+        new='''func injectPrismSection(content, block string) string {
+        	// Exact-match the headings prism has EVER generated -- not a bare
+        	// "## Prism — " prefix. Both failure modes are measured, same day:
+        	// a marker pinned to one old heading made upgrades APPEND (duplicated
+        	// blocks after the v0.48.0 heading rename), and an over-greedy prefix
+        	// marker deleted a USER-authored "## Prism — Context Delivery Layer"
+        	// architecture section from provasign/CLAUDE.md (restored from git).
+        	// Prism may only ever claim sections it wrote; when the generated
+        	// heading changes, ADD the old one here, never widen the match.
+        	generatedHeadings := []string{
+        		"## Prism — context delivery (ALWAYS use these tools)",
+        		"## Prism — code intelligence (ALWAYS use these tools)",
+        	}
+        	const endMarker = "<!-- prism:end -->"
+
+        	findSection := func(s string) (start, prefixLen int) {
+        		start = -1
+        		for _, h := range generatedHeadings {
+        			if idx := strings.Index(s, "\\n" + h); idx >= 0 && (start < 0 || idx < start) {
+        				start, prefixLen = idx, 1
+        			}
+        			if strings.HasPrefix(s, h) {
+        				start, prefixLen = 0, 0
+        			}
+        		}
+        		return start, prefixLen
+        	}
+
+        	insertAt := -1
+        	for {
+        		start, prefixLen := findSection(content)
+        		if start < 0 {
+        			break
+        		}
+        		if insertAt < 0 {
+        			insertAt = start
+        		}
+        		head := content[:start]
+        		rest := content[start+prefixLen:]
+        		if e := strings.Index(rest, endMarker); e >= 0 {
+        			// Bounded section: everything through the end marker is ours.
+        			content = head + "\\n" + strings.TrimLeft(rest[e+len(endMarker):], "\\n")
+        		} else if n := strings.Index(rest, "\\n## "); n >= 0 {
+        			// Legacy unbounded section: ends at the next top-level heading.
+        			content = head + "\\n" + strings.TrimLeft(rest[n+1:], "\\n")
+        		} else {
+        			content = head
+        		}
+        		content = strings.TrimRight(content, "\\n") + "\\n"
+        	}
+
+        	if insertAt < 0 || insertAt >= len(content) {
+        		return strings.TrimRight(content, "\\n") + block
+        	}
+        	head := strings.TrimRight(content[:insertAt], "\\n")
+        	tail := strings.TrimLeft(content[insertAt:], "\\n")
+        	if tail == "" {
+        		return head + block
+        	}
+        	return head + block + "\\n" + tail
+        }
+        '''
+        src=src[:i]+new+src[j+1:]
+        open('internal/cli/commands.go','w').write(src)
+        print('rewritten')
+        EOF
+        go build ./... 2>&1 | head -5
+      at: 2026-08-12T22:24:49.078454Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && cat >> internal/cli/init_scope_test.go <<'EOF'
+
+        // The provasign/CLAUDE.md incident, pinned: a user-authored section whose
+        // heading merely STARTS with "## Prism — " (e.g. an architecture note titled
+        // "## Prism — Context Delivery Layer") must never be treated as prism-owned.
+        // An over-greedy prefix marker deleted exactly such a section, plus the
+        // unrelated "## Provasign — ..." section beneath it, from a real file on
+        // 2026-08-12 (restored from git). Only exact generated headings may match.
+        func TestInjectPrismSection_NeverTouchesUserAuthoredPrismHeadings(t *testing.T) {
+        	block := steeringBlock(false)
+        	file := "# Repo\n\n" +
+        		"## Prism — Context Delivery Layer\n\nuser's own architecture notes\n\n" +
+        		"## Prism — context delivery (ALWAYS use these tools)\n\nstale generated guidance, June era, no end marker\n\n" +
+        		"## Provasign — certified merge gate (ALWAYS use these tools)\n\ngate workflow the user maintains\n"
+        	got := injectPrismSection(file, block)
+        	for _, want := range []string{
+        		"user's own architecture notes",
+        		"## Prism — Context Delivery Layer",
+        		"gate workflow the user maintains",
+        		"## Provasign — certified merge gate",
+        	} {
+        		if !strings.Contains(got, want) {
+        			t.Errorf("user content lost: %q missing", want)
+        		}
+        	}
+        	if strings.Contains(got, "stale generated guidance") {
+        		t.Error("stale generated section not replaced")
+        	}
+        	if strings.Count(got, "(ALWAYS use these tools)") != 2 { // one generated prism + user's provasign
+        		t.Errorf("wrong section count: %d", strings.Count(got, "(ALWAYS use these tools)"))
+        	}
+        	// idempotent on re-run
+        	if again := injectPrismSection(got, block); again != got {
+        		t.Error("not byte-stable on re-init")
+        	}
+        }
+        EOF
+        go test ./internal/cli/ -run 'InjectPrismSection' -count=1 -v 2>&1 | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if 'PASS' in l or 'FAIL' in l or 'Error' in l: print(l.rstrip())
+        "
+      at: 2026-08-12T22:25:04.574634Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./internal/cli/ -run 'TestInjectPrismSection$' -count=1 -v 2>&1 | python3 -c "
+        import sys
+        show=False
+        for l in sys.stdin:
+            if '--- FAIL' in l or show:
+                show=True
+                print(l.rstrip())
+        " | head -25
+      at: 2026-08-12T22:25:10.843828Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        src=open('internal/cli/init_test.go').read()
+        i=src.find('func TestInjectPrismSection(')
+        j=src.find('func Test', i+10)
+        print(src[i:j][:2000])
+        "
+      at: 2026-08-12T22:25:15.666228Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        src=open('internal/cli/commands.go').read()
+        old='''	generatedHeadings := []string{
+        		"## Prism — context delivery (ALWAYS use these tools)",
+        		"## Prism — code intelligence (ALWAYS use these tools)",
+        	}'''
+        new='''	// Heading STEMS, case-sensitive: early generated headings appeared both
+        	// with and without the "(ALWAYS use these tools)" suffix. The user's
+        	// clashing section was "## Prism — Context Delivery Layer" — capital C —
+        	// so case-sensitive stems distinguish it.
+        	generatedHeadings := []string{
+        		"## Prism — context delivery",
+        		"## Prism — code intelligence",
+        	}'''
+        assert old in src
+        open('internal/cli/commands.go','w').write(src.replace(old,new,1))
+        print('stems')
+        EOF
+        go test ./internal/cli/ -run 'InjectPrismSection' -count=1 2>&1 | tail -2
+      at: 2026-08-12T22:25:31.114118Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | python3 -c "
+        import sys
+        bad=[l.rstrip() for l in sys.stdin if 'FAIL' in l]
+        print('\n'.join(bad) if bad else 'ALL GREEN')
+        " && go build -o ~/bin/prism ./cmd/prism && cd ~/Projects/provasign/provasign && ~/bin/prism init . --refresh --deny-builtin-search >/dev/null 2>&1; python3 -c "
+        s=open('CLAUDE.md').read()
+        print('user Prism section kept:', '## Prism — Context Delivery Layer' in s)
+        print('Provasign gate kept:', 'certified merge gate' in s)
+        print('generated sections:', s.count('## Prism — code intelligence'))
+        print('stale June section gone:', 'Start every task with' not in s)
+        "; git diff --stat CLAUDE.md
+      at: 2026-08-12T22:25:49.881007Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -3
+      at: 2026-08-12T22:25:57.017669Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-12T12:37:52.57232Z
+redactions: 1
