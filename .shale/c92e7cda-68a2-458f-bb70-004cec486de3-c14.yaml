@@ -1,0 +1,1187 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c14
+created_at: 2026-08-12T22:30:57.093344Z
+finalized_at: 2026-08-14T13:31:39.62852Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T10:46:46.168831Z
+    - path: internal/compression/compressor.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T10:46:58.853876Z
+    - path: internal/mcp/textmerge.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T11:38:00.510834Z
+    - path: internal/mcp/textmerge_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T11:38:42.238774Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T11:39:09.033714Z
+    - path: internal/compression/token_savings_sim_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T11:39:47.954496Z
+    - path: internal/cli/mcp_helpers_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T12:17:14.579827Z
+    - path: internal/cli/hook_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-14T12:17:54.402755Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T12:48:08.077225Z
+    - path: AGENT_SETUP_PROMPT.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-14T12:48:25.64916Z
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add -A && git commit -q -m "$(cat <<'EOF'
+        fix: injectPrismSection — exact generated-heading stems, dedup, user-section safety (v0.49.0)
+
+        Three defects in the steering-section replacer, found in sequence today:
+
+        1. Marker pinned to one old heading: v0.48.0 renamed the generated heading
+           (context delivery -> code intelligence) and every refresh APPENDED a
+           duplicate block instead of replacing, leaving the stale section in
+           place forever. Files already doubled by this are now healed (all
+           prism-owned sections removed, exactly one re-inserted).
+        2. The first fix over-corrected to a bare "## Prism — " prefix match,
+           which DELETED a user-authored "## Prism — Context Delivery Layer"
+           architecture section (plus the "## Provasign — ..." section beneath a
+           legacy unbounded block) from provasign/CLAUDE.md. Restored from git.
+           The marker is now an enumerated list of case-sensitive generated
+           heading STEMS — prism claims only sections it wrote; when the heading
+           changes again, ADD the old stem, never widen the match.
+        3. Regression tests pin all of it: heading-rename upgrade, dedup healing,
+           idempotence, and the exact provasign/CLAUDE.md incident shape
+           (user Prism-titled section + stale generated + unrelated section).
+
+        Rides with the short-steering re-ship in the parent commit (same tag):
+        long-vs-short measured resolve-neutral on serial eval (19-19 f1 tie,
+        4-4 probe) after the workers-4 flake artifact was identified.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        EOF
+        )" && git push -q origin main && sleep 15 && run=$(gh run list --workflow CI --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo CI-GREEN; git push -q origin main 2>/dev/null; git tag -a v0.49.0 -m "v0.49.0: short steering re-shipped (eval artifact retraction) + injectPrismSection heading-rename/dedup/user-safety fix" && git push -q origin v0.49.0 && sleep 20 && run=$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $run --exit-status >/dev/null 2>&1 && echo RELEASE-GREEN
+      at: 2026-08-12T22:30:57.093344Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad && gh release download v0.49.0 -R provasign/prism -p checksums.txt --clobber && ~/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.49.0 checksums.txt > prism.rb && cd tap && git pull -q && cp ../prism.rb Formula/prism.rb && git add Formula/prism.rb && git commit -q -m "$(printf 'prism 0.49.0\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>')" && git push -q origin HEAD:main && echo tap-0.49.0
+        # heal remaining family repos under the fixed replacer, verify every one
+        for d in ~/Projects/provasign ~/Projects/provasign/astkit ~/Projects/provasign/fuse ~/Projects/provasign/grove ~/Projects/provasign/mason ~/Projects/provasign/provasign ~/Projects/provasign/research ~/Projects/provasign/shale; do (cd "$d" && ~/bin/prism init . --refresh --deny-builtin-search >/dev/null 2>&1 && python3 -c "
+        import os
+        bad=[]
+        for f in ('AGENTS.md','CLAUDE.md'):
+            if os.path.exists(f):
+                n=open(f).read().count('## Prism — code intelligence')
+                if n!=1: bad.append((f,n))
+        print(('OK  ' if not bad else f'FAIL {bad}'), '$d')
+        "); done
+      at: 2026-08-12T22:31:11.140901Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && rm runs/swebench-live/haiku38/*.prism.json && ls runs/swebench-live/haiku38/ | wc -l && python3 test_swebench_ab.py && python3 -c "
+        import sys; sys.path.insert(0,'.')
+        import swebench_ab as ab
+        s=ab.real_prism_steering()
+        print('steering the run will inject:', len(s), 'chars | short marker:', 'already in your tool list' in s)
+        " && nohup python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 38 --arms baseline prism --out runs/swebench-live/haiku38 --model haiku > runs/swebench-live/haiku38.log 2>&1 & echo "haiku38 relaunched pid $!"
+      at: 2026-08-12T22:31:20.517194Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38'
+        fs=[f for f in glob.glob(f'{d}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        cost=sum(r['cost_usd'] or 0 for r in recs)
+        paired=[i for i in by['baseline'] if i in by['prism']]
+        print(f"cells: {len(recs)}/76 (baseline {len(by['baseline'])}, prism {len(by['prism'])}) | ${cost:.2f} spent")
+        if paired:
+            bt=sum(by['baseline'][i]['cost_usd'] for i in paired); pt=sum(by['prism'][i]['cost_usd'] for i in paired)
+            pu=sum(1 for i in paired if by['prism'][i]['prism_used'])
+            den=sum(by['prism'][i].get('denied_search_attempts',0) for i in paired)
+            print(f"{len(paired)} pairs | cost ratio {bt/max(pt,.01):.2f}x | prism used {pu}/{len(paired)} | denied grep attempts total {den}")
+        EOF
+        tail -1 ~/Projects/provasign/research/harness/runs/swebench-live/haiku38.log
+      at: 2026-08-12T22:40:58.046049Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob
+        d='/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38'
+        fs=[f for f in glob.glob(f'{d}/*.json') if not f.endswith('patches.json')]
+        recs=[json.load(open(f)) for f in fs]
+        by={'baseline':{}, 'prism':{}}
+        for r in recs: by[r['arm']][r['instance_id']]=r
+        paired=sorted(i for i in by['baseline'] if i in by['prism'])
+        cost=sum(r['cost_usd'] or 0 for r in recs)
+        print(f"cells: {len(recs)}/76 | ${cost:.2f} spent | {len(paired)} complete pairs")
+        if paired:
+            print(f"{'instance':<44}{'base t':>7}{'prism t':>8}{'base $':>8}{'prism $':>9}")
+            bt=pt=0
+            for i in paired:
+                b,p=by['baseline'][i],by['prism'][i]
+                bt+=b['cost_usd']; pt+=p['cost_usd']
+                print(f"{i[:43]:<44}{b['turns']:>7}{p['turns']:>8}{b['cost_usd']:>8.2f}{p['cost_usd']:>9.2f}")
+            pu=sum(1 for i in paired if by['prism'][i]['prism_used'])
+            emp=[i for i in paired if by['prism'][i]['empty_patch'] or by['baseline'][i]['empty_patch']]
+            print(f"\ncost ratio {bt/max(pt,.01):.2f}x | prism used {pu}/{len(paired)} | empty patches: {emp if emp else 'none'}")
+        EOF
+      at: 2026-08-12T23:28:36.928479Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/ 2>/dev/null && ls *.baseline.json 2>/dev/null | wc -l && ls *.prism.json 2>/dev/null | wc -l
+      at: 2026-08-12T23:45:28.15613Z
+      classified: other
+    - cmd: 'ps aux -o pid,etime,command | awk ''/swebench_ab|claude -p/ && !/awk/'' '
+      at: 2026-08-12T23:45:38.889482Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/ 2>/dev/null
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+        print(f"{len(rows)} instances with >=1 cell, {len(pairs)} complete pairs\n")
+
+        def cost(r): return r.get("cost_usd") or r.get("total_cost_usd") or 0
+        def turns(r): return r.get("num_turns") or r.get("turns") or 0
+        def used(r): return r.get("prism_used")
+
+        bc = pc = 0
+        bcost = pcost = 0.0
+        bturns = pturns = 0
+        for iid, v in sorted(pairs.items()):
+            b, p = v["baseline"], v["prism"]
+            bc += bool(b.get("resolved")); pc += bool(p.get("resolved"))
+            bcost += cost(b); pcost += cost(p)
+            bturns += turns(b); pturns += turns(p)
+            print(f"{iid[:44]:<45} base={str(b.get('resolved')):<6} prism={str(p.get('resolved')):<6} "
+                  f"base_turns={turns(b):<3} prism_turns={turns(p):<3} used={used(p)}")
+
+        n = len(pairs)
+        print(f"\nraw self-reported resolve: baseline {bc}/{n}, prism {pc}/{n}")
+        print(f"avg cost: baseline ${bcost/n:.2f}, prism ${pcost/n:.2f} (ratio {pcost/bcost:.2f}x)" if n else "")
+        print(f"avg turns: baseline {bturns/n:.1f}, prism {pturns/n:.1f}" if n else "")
+        EOF
+      at: 2026-08-13T00:26:04.552778Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/harness 2>/dev/null || cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 score_cells.py runs/swebench-live/haiku38 --arms baseline prism 2>&1 | tail -60
+      at: 2026-08-13T00:36:14.328189Z
+      classified: other
+    - cmd: |-
+        ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/verdicts.json 2>&1
+        ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/eval-baseline 2>&1 | head -5
+        docker ps --format '{{.Names}} {{.Status}}' 2>&1 | head -20
+      at: 2026-08-13T00:36:33.336131Z
+      classified: other
+    - cmd: ps aux -o pid,etime,command | awk '/score_cells|evaluation.evaluation/ && !/awk/'
+      at: 2026-08-13T00:36:37.845147Z
+      classified: other
+    - cmd: git show a8fce2a --stat | head -30
+      at: 2026-08-13T01:12:37.638655Z
+      classified: other
+    - cmd: prism --version 2>&1; echo "---"; brew info provasign/shale/prism 2>&1 | head -10
+      at: 2026-08-13T01:12:46.466933Z
+      classified: other
+    - cmd: prism mcp --help 2>&1 | head -5; echo "---schema---"; prism --version
+      at: 2026-08-13T01:13:41.457896Z
+      classified: other
+    - cmd: git log -1 && echo "---VERSION---" && find . -iname "VERSION*" -not -path "*/node_modules/*" 2>/dev/null
+      at: 2026-08-13T01:13:48.886477Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism
+      at: 2026-08-13T01:17:48.666874Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/prism -iname "*compress*"
+      at: 2026-08-13T01:17:54.107534Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/prism -iname "*prism_read*" -o -iname "*read*.go" -path "*cmd*" 2>/dev/null | head -30
+      at: 2026-08-13T01:17:58.793186Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/prism -iname "*.go" -path "*prism_read*"; find /Users/tapabratapal/Projects/provasign/prism/internal -maxdepth 1 -type d
+      at: 2026-08-13T01:18:06.635033Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/prism/internal/mcp -iname "*read*"
+      at: 2026-08-13T01:18:08.067649Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism/internal/mcp
+      at: 2026-08-13T01:18:13.974163Z
+      classified: other
+    - cmd: wc -l /Users/tapabratapal/Projects/provasign/prism/internal/mcp/delivery.go /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-08-13T01:18:15.745271Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        path = "/Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go"
+        with open(path) as f:
+            lines = f.readlines()
+        for i, l in enumerate(lines, 1):
+            if "CompressFileRead" in l or "prism_read" in l:
+                print(i, l.rstrip())
+        EOF
+      at: 2026-08-13T01:18:28.224593Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        print(open('/Users/tapabratapal/Projects/provasign/prism/.provasign/.cache/intents/INT-2026-06-06-fix-prism-compression-data-loss-sql-over-compression-product.draft.yaml').read()[:3000])
+        "
+      at: 2026-08-13T01:18:39.129371Z
+      classified: other
+    - cmd: find . -path ./node_modules -prune -o -type d -name mcp -print 2>/dev/null
+      at: 2026-08-13T01:27:54.676274Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism/internal/mcp
+      at: 2026-08-13T01:27:56.869104Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism/internal/textsearch 2>&1
+      at: 2026-08-13T01:28:11.404069Z
+      classified: other
+    - cmd: 'for f in /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go; do awk ''/func.*renderTextMatches/{print FILENAME": "NR": "$0}'' "$f"; done'
+      at: 2026-08-13T01:28:15.925608Z
+      classified: other
+    - cmd: 'for f in /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go; do awk ''/json.Marshal|MarshalIndent|content.*text|CallToolResult/{print FILENAME": "NR": "$0}'' "$f"; done | head -60'
+      at: 2026-08-13T01:28:24.37033Z
+      classified: other
+    - cmd: 'for f in $(find /Users/tapabratapal/Projects/provasign/prism/internal/cli /Users/tapabratapal/Projects/provasign/prism/cmd -name ''*.go'' 2>/dev/null); do awk ''/--format|"format"|FormatText|formatText|"text"/{print FILENAME": "NR": "$0}'' "$f"; done | head -60'
+      at: 2026-08-13T01:28:29.9233Z
+      classified: other
+    - cmd: 'for f in /Users/tapabratapal/Projects/provasign/prism/internal/cli/*.go; do awk ''/func printOutput|textHits/{print FILENAME": "NR": "$0}'' "$f"; done'
+      at: 2026-08-13T01:28:39.0247Z
+      classified: other
+    - cmd: |
+        python3 - <<'EOF'
+        import json
+
+        hits = [
+         (42, 'func (s *SignalComputer) AccessCount(sym string) int {'),
+         (58, '\treturn s.accessCount[sym]'),
+         (91, '\ts.accessCount[sym]++'),
+         (120, '// AccessCount returns how many times sym was read this session.'),
+         (145, '\tcache.AccessCount = 0'),
+        ]
+        file = "internal/ranking/signals.go"
+
+        # MCP JSON shape (compact, as json.Marshal produces)
+        payload = {
+          "textHits": [
+            {"file": file, "hits": [{"line": l, "text": t} for l, t in hits]}
+          ],
+          "textBackend": "rg",
+          "truncated": False,
+        }
+        j = json.dumps(payload, separators=(',', ':'))
+        print("JSON bytes:", len(j))
+        print(j)
+        print()
+
+        # raw grep-style lines
+        lines = [f"{file}:{l}:{t}" for l, t in hits]
+        grep_text = "\n".join(lines)
+        print("grep bytes:", len(grep_text))
+        print(grep_text)
+        print()
+
+        print("overhead bytes:", len(j) - len(grep_text))
+        print("JSON tokens (~/4):", len(j)/4)
+        print("grep tokens (~/4):", len(grep_text)/4)
+        print("overhead tokens (~/4):", (len(j)-len(grep_text))/4)
+        print("overhead per-match bytes:", (len(j)-len(grep_text))/len(hits))
+        EOF
+      at: 2026-08-13T01:28:52.884473Z
+      classified: other
+    - cmd: |
+        python3 - <<'EOF'
+        import json
+
+        hits = [
+         ("internal/ranking/signals.go", 42, 'func (s *SignalComputer) AccessCount(sym string) int {'),
+         ("internal/ranking/signals.go", 58, '\treturn s.accessCount[sym]'),
+         ("internal/mcp/tools.go", 991, '\tscope := stringArg(args, "scope", "both")'),
+         ("internal/mcp/textmerge.go", 165, '\tif h.textFileCached(file) {'),
+         ("internal/cli/commands.go", 2335, '\t\tgroups = asSliceAny(m["textHits"])'),
+        ]
+
+        byFile = {}
+        order = []
+        for f,l,t in hits:
+            if f not in byFile:
+                byFile[f]=[]
+                order.append(f)
+            byFile[f].append({"line": l, "text": t})
+
+        payload = {
+          "textHits": [{"file": f, "hits": byFile[f]} for f in order],
+          "textBackend": "rg",
+          "truncated": False,
+        }
+        j = json.dumps(payload, separators=(',', ':'))
+        print("JSON bytes:", len(j))
+        print(j)
+        print()
+        lines = [f"{f}:{l}:{t}" for f,l,t in hits]
+        grep_text = "\n".join(lines)
+        print("grep bytes:", len(grep_text))
+        print(grep_text)
+        print()
+        print("overhead bytes:", len(j)-len(grep_text))
+        print("overhead tokens (~/4):", (len(j)-len(grep_text))/4)
+        print("overhead per match bytes:", (len(j)-len(grep_text))/len(hits))
+        print("JSON tokens:", len(j)/4, "grep tokens:", len(grep_text)/4)
+        EOF
+      at: 2026-08-13T01:29:01.229079Z
+      classified: build
+    - cmd: "true"
+      at: 2026-08-13T01:29:03.922534Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        ls runs/swebench-live/haiku38/*.jsonl 2>/dev/null | head -3
+        ls runs/swebench-live/haiku38/ 2>/dev/null | awk 'NF' | head -5
+      at: 2026-08-13T01:48:20.636999Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        rec = json.loads(open('runs/swebench-live/haiku38/a2aproject__a2a-python-219.prism.json').read())
+        print(list(rec.keys()))
+        "
+      at: 2026-08-13T01:48:24.04859Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        rec = json.loads(open('runs/swebench-live/haiku38/a2aproject__a2a-python-219.prism.json').read())
+        print(type(rec['tool_trace']), rec['tool_trace'][:10])
+        "
+      at: 2026-08-13T01:48:31.707391Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json, glob
+        from collections import Counter, defaultdict
+
+        by_arm = defaultdict(Counter)
+        cells_by_arm = Counter()
+        for f in glob.glob('runs/swebench-live/haiku38/*.prism.json') + glob.glob('runs/swebench-live/haiku38/*.baseline.json'):
+            rec = json.loads(open(f).read())
+            arm = rec['arm']
+            cells_by_arm[arm] += 1
+            for name in rec.get('tool_trace') or []:
+                by_arm[arm][name] += 1
+
+        for arm in by_arm:
+            total_calls = sum(by_arm[arm].values())
+            n = cells_by_arm[arm]
+            print(f'--- {arm} ({n} cells, {total_calls} total tool calls, {total_calls/n:.1f}/cell) ---')
+            for name, c in by_arm[arm].most_common(15):
+                print(f'  {name:<35} {c:<5} ({c/total_calls*100:.1f}%)')
+            print()
+        "
+      at: 2026-08-13T01:48:38.247361Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json, glob
+
+        for f in sorted(glob.glob('runs/swebench-live/haiku38/*.json')):
+            rec = json.loads(open(f).read())
+            trace = rec.get('tool_trace') or []
+            py_cmds = [t for t in trace if isinstance(t,str) and t.strip().startswith('python') and t not in ('which python3',)]
+            if py_cmds:
+                print(f'=== {rec[\"instance_id\"][:40]} arm={rec[\"arm\"]} ===')
+                for c in py_cmds:
+                    print('  ', c[:160].replace(chr(10),' | '))
+        " 2>&1 | head -150
+      at: 2026-08-13T01:48:45.474134Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/ 2>/dev/null
+        ls *.baseline.json 2>/dev/null | wc -l
+        ls *.prism.json 2>/dev/null | wc -l
+      at: 2026-08-13T02:37:28.515142Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+        n = len(pairs)
+
+        def cost(r): return r.get("cost_usd") or 0
+        def turns(r): return r.get("turns") or 0
+
+        bcost = sum(cost(v["baseline"]) for v in pairs.values())
+        pcost = sum(cost(v["prism"]) for v in pairs.values())
+        bturns = sum(turns(v["baseline"]) for v in pairs.values())
+        pturns = sum(turns(v["prism"]) for v in pairs.values())
+        cheaper = sum(1 for v in pairs.values() if cost(v["prism"]) < cost(v["baseline"]))
+
+        print(f"{n} complete pairs")
+        print(f"total cost: baseline ${bcost:.2f}, prism ${pcost:.2f}")
+        print(f"avg cost:   baseline ${bcost/n:.3f}, prism ${pcost/n:.3f}")
+        print(f"cost ratio: {pcost/bcost:.3f}x  (savings: {(1-pcost/bcost)*100:.1f}%)")
+        print(f"prism cheaper on {cheaper}/{n} pairs")
+        print(f"avg turns:  baseline {bturns/n:.1f}, prism {pturns/n:.1f}")
+        EOF
+      at: 2026-08-13T02:38:28.076679Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 score_cells.py runs/swebench-live/haiku38 --arms baseline prism > /tmp/haiku38_score.log 2>&1 &
+        echo "started pid $!"
+      at: 2026-08-14T02:08:17.140481Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/
+        echo "baseline: $(ls *.baseline.json 2>/dev/null | wc -l)"
+        echo "prism: $(ls *.prism.json 2>/dev/null | wc -l)"
+        echo "---checking each cell for errors/empty---"
+        python3 - <<'EOF'
+        import json, glob
+        bad = []
+        for f in sorted(glob.glob("*.baseline.json") + glob.glob("*.prism.json")):
+            try:
+                rec = json.loads(open(f).read())
+                if rec.get("timed_out"):
+                    bad.append((f, "timed_out"))
+                if not rec.get("model_patch") and not rec.get("empty_patch"):
+                    bad.append((f, "missing model_patch field"))
+            except Exception as e:
+                bad.append((f, f"parse error: {e}"))
+        print(f"{len(bad)} problem cells" if bad else "no parse errors / timeouts flagged")
+        for f, why in bad:
+            print(" ", f, why)
+        EOF
+      at: 2026-08-14T02:21:02.233258Z
+      classified: other
+    - cmd: tail -60 /tmp/haiku38_score.log 2>/dev/null; echo "---pid check---"; kill -0 37106 2>/dev/null && echo "still running" || echo "process ended"
+      at: 2026-08-14T02:21:41.343243Z
+      classified: other
+    - cmd: |-
+        ps -o pid,etime,command -p 37106 2>/dev/null
+        echo "---docker eval containers---"
+        docker ps --format '{{.Names}} {{.Status}}' 2>&1 | awk '/eval|swebench/ {print}'
+        echo "---eval-baseline dir progress---"
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/eval-baseline 2>/dev/null | wc -l
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/eval-prism 2>/dev/null | wc -l
+      at: 2026-08-14T02:21:46.041409Z
+      classified: other
+    - cmd: |-
+        ps -o pid,etime -p 37106 2>/dev/null
+        echo "---baseline---"
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/eval-baseline 2>/dev/null | wc -l
+        echo "---prism---"
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/eval-prism 2>/dev/null | wc -l
+        tail -20 /tmp/haiku38_score.log 2>/dev/null
+      at: 2026-08-14T02:45:15.895946Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/
+        python3 - <<'EOF'
+        import json, glob
+
+        rows = []
+        for f in sorted(glob.glob("*.prism.json")):
+            rec = json.loads(open(f).read())
+            denied = rec.get("denied_search_attempts", 0)
+            used = rec.get("prism_used")
+            perm_denials = rec.get("permission_denials", [])
+            if denied:
+                rows.append((rec["instance_id"], denied, used, len(perm_denials)))
+
+        print(f"{len(rows)}/38 prism-arm cells attempted denied grep/rg at least once")
+        for iid, d, u, pd in rows:
+            print(f"  {iid[:45]:<46} denied_attempts={d}  prism_used={u}  permission_denials_logged={pd}")
+        EOF
+      at: 2026-08-14T02:49:39.92998Z
+      classified: other
+    - cmd: echo hi
+      at: 2026-08-14T02:57:35.448957Z
+      classified: other
+    - cmd: wc -l /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-08-14T02:57:44.687935Z
+      classified: other
+    - cmd: |
+        cat /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/verdicts.json | python3 -c "
+        import json, sys
+        d = json.load(sys.stdin)
+        for arm in d:
+            stable = [v for v in d[arm].values() if not v.get('unstable')]
+            n_res = sum(1 for v in stable if v.get('resolved'))
+            n_uns = sum(1 for v in d[arm].values() if v.get('unstable'))
+            print(f'{arm}: {n_res}/{len(stable)} resolved' + (f'  ({n_uns} UNSTABLE)' if n_uns else ''))
+        print()
+        ids = sorted(set(d.get('baseline',{})) | set(d.get('prism',{})))
+        print(f'{len(ids)} total instances tracked')
+        for i in ids:
+            b = d.get('baseline',{}).get(i,{})
+            p = d.get('prism',{}).get(i,{})
+            bflag = 'UNSTABLE' if b.get('unstable') else b.get('resolved')
+            pflag = 'UNSTABLE' if p.get('unstable') else p.get('resolved')
+            if str(bflag) != str(pflag):
+                print(f'  DIFF {i[:45]:<46} base={bflag}  prism={pflag}')
+        "
+      at: 2026-08-14T04:32:40.850601Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/haiku38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[rec["instance_id"]][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+        n = len(pairs)
+        bcost = sum(v["baseline"].get("cost_usd") or 0 for v in pairs.values())
+        pcost = sum(v["prism"].get("cost_usd") or 0 for v in pairs.values())
+        bturns = sum(v["baseline"].get("turns") or 0 for v in pairs.values())
+        pturns = sum(v["prism"].get("turns") or 0 for v in pairs.values())
+        print(f"n={n}")
+        print(f"total cost: baseline ${bcost:.2f}  prism ${pcost:.2f}  (prism {pcost/bcost*100:.1f}% of baseline, {(1-pcost/bcost)*100:.1f}% cheaper)")
+        print(f"avg turns:  baseline {bturns/n:.1f}  prism {pturns/n:.1f}")
+        EOF
+      at: 2026-08-14T04:32:52.994388Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -50
+      at: 2026-08-14T10:47:08.063511Z
+      classified: build
+    - cmd: go build ./... 2>&1 | head -50
+      at: 2026-08-14T11:38:30.462016Z
+      classified: build
+    - cmd: go build ./... 2>&1 | head -80
+      at: 2026-08-14T11:39:13.986409Z
+      classified: build
+    - cmd: go test ./internal/mcp/... ./internal/compression/... ./internal/cli/... 2>&1 | tail -100
+      at: 2026-08-14T11:39:23.51851Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        awk '/Task:.*,$/{print FILENAME":"FNR": "$0}' internal/compression/bench_test.go internal/compression/compressor_test.go internal/compression/sqlrepro_test.go internal/compression/token_savings_matrix_test.go
+      at: 2026-08-14T11:39:27.959508Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -i '' '/^[[:space:]]*Task:[[:space:]]*".*",$/d' internal/compression/bench_test.go internal/compression/compressor_test.go internal/compression/sqlrepro_test.go internal/compression/token_savings_matrix_test.go
+        go build ./... 2>&1 | head -30
+        go vet ./... 2>&1 | head -30
+      at: 2026-08-14T11:39:33.346434Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+        go vet ./... 2>&1 | head -30
+        go test ./... 2>&1 | tail -80
+      at: 2026-08-14T11:40:07.48682Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        awk 'NR==731 || NR==744 {print NR": "$0}' internal/cli/commands.go
+      at: 2026-08-14T12:15:42.27815Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        awk '/^import \(/{f=1} f{print} /^\)/{if(f)exit}' internal/cli/commands.go
+      at: 2026-08-14T12:16:05.554483Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -60
+      at: 2026-08-14T12:16:49.650465Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go vet ./... 2>&1 | head -60
+      at: 2026-08-14T12:16:53.168259Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -i '' \
+          -e 's/ensureClaudeCodeApproval(settings, "prism", true, false)/ensureClaudeCodeApproval(settings, "prism", "\/fake\/prism", true, false)/g' \
+          -e 's/ensureClaudeCodeApproval(settings, "prism", false, false)/ensureClaudeCodeApproval(settings, "prism", "\/fake\/prism", false, false)/g' \
+          internal/cli/init_test.go
+        awk '/ensureClaudeCodeApproval\(/{print NR": "$0}' internal/cli/init_test.go
+      at: 2026-08-14T12:17:21.464722Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -60
+        echo "--vet--"
+        go vet ./... 2>&1 | head -60
+      at: 2026-08-14T12:17:26.186462Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1
+        echo "--vet--"
+        go vet ./... 2>&1
+        echo "--test--"
+        go test ./internal/cli/... -run 'Hook|EnsureClaudeCode' -v 2>&1 | tail -150
+      at: 2026-08-14T12:18:00.593367Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... 2>&1 | tail -20
+      at: 2026-08-14T12:18:05.002276Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        gofmt -l . 2>&1 | head -20
+      at: 2026-08-14T12:18:11.753849Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        gofmt -l internal/cli/commands.go internal/cli/hook_test.go internal/cli/mcp_helpers_test.go internal/cli/init_test.go internal/mcp/tools.go internal/mcp/textmerge.go internal/mcp/textmerge_test.go internal/compression/compressor.go internal/compression/token_savings_sim_test.go internal/compression/bench_test.go internal/compression/compressor_test.go internal/compression/sqlrepro_test.go internal/compression/token_savings_matrix_test.go 2>&1
+      at: 2026-08-14T12:18:17.066722Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        gofmt -w internal/cli/commands.go internal/mcp/tools.go
+        gofmt -l internal/cli/commands.go internal/mcp/tools.go
+        echo "clean"
+        go build ./... 2>&1 && go test ./... 2>&1 | tail -20
+      at: 2026-08-14T12:18:29.316747Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-hooktest ./cmd/prism
+        echo '{"tool_name":"Bash","tool_input":{"command":"grep -rn foo ."}}' | /tmp/prism-hooktest hook pretooluse
+        echo "---exit: $?---"
+        echo '{"tool_name":"Bash","tool_input":{"command":"python3 -m pytest tests/"}}' | /tmp/prism-hooktest hook pretooluse
+        echo "---exit (expect empty above, then this line): $?---"
+        echo '{"tool_name":"Grep","tool_input":{"pattern":"foo"}}' | /tmp/prism-hooktest hook pretooluse
+        echo "---exit: $?---"
+      at: 2026-08-14T12:18:35.995699Z
+      classified: test
+    - cmd: |-
+        rm -rf /tmp/prism-init-smoke && mkdir -p /tmp/prism-init-smoke && cd /tmp/prism-init-smoke
+        git init -q
+        /tmp/prism-hooktest init --deny-builtin-search --no-permissions=false 2>&1 | tail -20
+        echo "---settings.json---"
+        python3 -m json.tool .claude/settings.json 2>&1
+      at: 2026-08-14T12:18:42.634091Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-init-smoke
+        /tmp/prism-hooktest init --refresh 2>&1 | tail -10
+        echo "---after refresh, hook count---"
+        python3 -c "import json; d=json.load(open('.claude/settings.json')); print(len(d['hooks']['PreToolUse']))"
+        cd /
+        rm -rf /tmp/prism-init-smoke /tmp/prism-hooktest
+      at: 2026-08-14T12:18:47.620206Z
+      classified: other
+    - cmd: |
+        rm -rf /tmp/hook-behavior-smoke && mkdir -p /tmp/hook-behavior-smoke && cd /tmp/hook-behavior-smoke
+        git init -q
+        mkdir -p lib
+        cat > lib/util.py <<'EOF'
+        import os
+
+
+        def normalize_path(p):
+            return os.path.normpath(p)
+
+
+        def frobnicate(value):
+            """Applies the frobnication transform used by the legacy importer."""
+            return value[::-1].upper()
+
+
+        def other_helper():
+            return 42
+        EOF
+        git add -A && git commit -q -m init
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-smokebin ./cmd/prism
+        cd /tmp/hook-behavior-smoke
+        /tmp/prism-smokebin init --deny-builtin-search --no-permissions=false --print-config="" 2>&1 | tail -15 <<< ""
+      at: 2026-08-14T12:23:36.412187Z
+      classified: build
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        cat .claude/settings.json
+        echo "---mcp.json---"
+        cat .mcp.json
+      at: 2026-08-14T12:23:40.531461Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        claude -p "Find the function that reverses and uppercases its input string argument. Report its exact name and the file:line it's defined at. Do not guess — locate it precisely." \
+          --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model haiku \
+          > /tmp/smoke1_hookdeny.jsonl 2>&1
+        echo "exit: $?"
+        wc -l /tmp/smoke1_hookdeny.jsonl
+      at: 2026-08-14T12:23:58.489105Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/smoke1_hookdeny.jsonl'):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                print("RAW:", line[:200]); continue
+            t = rec.get("type")
+            if t == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use":
+                        inp = block.get("input", {})
+                        print(f"TOOL_USE  {block.get('name')}  {json.dumps(inp)[:200]}")
+                    elif block.get("type") == "text":
+                        print(f"TEXT      {block.get('text')[:200]}")
+            elif t == "user":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_result":
+                        content = block.get("content")
+                        if isinstance(content, list):
+                            content = " ".join(c.get("text","") for c in content if isinstance(c, dict))
+                        print(f"TOOL_RES  is_error={block.get('is_error')}  {str(content)[:300]}")
+            elif t == "result":
+                print(f"RESULT    {rec.get('subtype')}  cost=${rec.get('total_cost_usd')}  turns={rec.get('num_turns')}")
+                print(f"          denials={rec.get('permission_denials')}")
+                print(f"          final: {str(rec.get('result'))[:300]}")
+        EOF
+      at: 2026-08-14T12:24:04.199916Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 -c "
+        import re
+        content = open('harness/swebench_ab.py').read()
+        for m in re.finditer(r'.{0,80}(--dangerously|trust|hasTrustDialogAccepted|projects\[).{0,120}', content):
+            print(m.group(0))
+            print('---')
+        "
+      at: 2026-08-14T12:24:16.762564Z
+      classified: other
+    - cmd: head -c 500 /tmp/smoke1_hookdeny.jsonl
+      at: 2026-08-14T12:24:27.364086Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        path = os.path.expanduser("~/.claude.json")
+        doc = json.load(open(path))
+        doc.setdefault("projects", {})
+        doc["projects"]["/private/tmp/hook-behavior-smoke"] = doc["projects"].get("/private/tmp/hook-behavior-smoke", {})
+        doc["projects"]["/private/tmp/hook-behavior-smoke"]["hasTrustDialogAccepted"] = True
+        json.dump(doc, open(path, "w"), indent=2)
+        print("trust set")
+        EOF
+      at: 2026-08-14T12:24:31.279539Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        claude -p "Find the function that reverses and uppercases its input string argument. Report its exact name and the file:line it's defined at. Do not guess — locate it precisely." \
+          --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model haiku \
+          > /tmp/smoke1_hookdeny.jsonl 2>&1
+        echo "exit: $?"
+        head -c 300 /tmp/smoke1_hookdeny.jsonl
+      at: 2026-08-14T12:24:54.40045Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/smoke1_hookdeny.jsonl'):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                print("RAW:", line[:200]); continue
+            t = rec.get("type")
+            if t == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use":
+                        inp = block.get("input", {})
+                        print(f"TOOL_USE  {block.get('name')}  {json.dumps(inp)[:200]}")
+                    elif block.get("type") == "text":
+                        print(f"TEXT      {block.get('text')[:300]}")
+            elif t == "user":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_result":
+                        content = block.get("content")
+                        if isinstance(content, list):
+                            content = " ".join(c.get("text","") for c in content if isinstance(c, dict))
+                        print(f"TOOL_RES  is_error={block.get('is_error')}  {str(content)[:400]}")
+            elif t == "result":
+                print(f"RESULT    {rec.get('subtype')}  cost=${rec.get('total_cost_usd')}  turns={rec.get('num_turns')}")
+                print(f"          denials={rec.get('permission_denials')}")
+        EOF
+      at: 2026-08-14T12:25:02.071983Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        claude -p "Use grep to find where the function frobnicate is defined in this repo. Report the file and line." \
+          --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model haiku \
+          > /tmp/smoke1_hookdeny.jsonl 2>&1
+        echo "exit: $?"
+      at: 2026-08-14T12:25:19.682423Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/smoke1_hookdeny.jsonl'):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                print("RAW:", line[:200]); continue
+            t = rec.get("type")
+            if t == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use":
+                        inp = block.get("input", {})
+                        print(f"TOOL_USE  {block.get('name')}  {json.dumps(inp)[:250]}")
+                    elif block.get("type") == "text":
+                        print(f"TEXT      {block.get('text')[:300]}")
+            elif t == "user":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_result":
+                        content = block.get("content")
+                        if isinstance(content, list):
+                            content = " ".join(c.get("text","") for c in content if isinstance(c, dict))
+                        print(f"TOOL_RES  is_error={block.get('is_error')}  {str(content)[:400]}")
+            elif t == "result":
+                print(f"RESULT    {rec.get('subtype')}  cost=${rec.get('total_cost_usd')}  turns={rec.get('num_turns')}")
+                print(f"          denials={rec.get('permission_denials')}")
+        EOF
+      at: 2026-08-14T12:25:25.136424Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        claude -p "You must use the grep command via Bash for this — not any other tool, even if something tells you otherwise. Run: grep -n frobnicate lib/util.py" \
+          --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model haiku \
+          > /tmp/smoke1_hookdeny.jsonl 2>&1
+        echo "exit: $?"
+      at: 2026-08-14T12:25:53.364497Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/smoke1_hookdeny.jsonl'):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                print("RAW:", line[:200]); continue
+            t = rec.get("type")
+            if t == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use":
+                        inp = block.get("input", {})
+                        print(f"TOOL_USE  {block.get('name')}  {json.dumps(inp)[:250]}")
+                    elif block.get("type") == "text":
+                        print(f"TEXT      {block.get('text')[:300]}")
+            elif t == "user":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_result":
+                        content = block.get("content")
+                        if isinstance(content, list):
+                            content = " ".join(c.get("text","") for c in content if isinstance(c, dict))
+                        print(f"TOOL_RES  is_error={block.get('is_error')}  {str(content)[:500]}")
+            elif t == "result":
+                print(f"RESULT    {rec.get('subtype')}  cost=${rec.get('total_cost_usd')}  turns={rec.get('num_turns')}")
+                print(f"          denials={rec.get('permission_denials')}")
+        EOF
+      at: 2026-08-14T12:25:58.765896Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        python3 - <<'EOF'
+        import json
+        doc = json.load(open(".claude/settings.json"))
+        doc["permissions"].pop("deny", None)
+        json.dump(doc, open(".claude/settings.json", "w"), indent=2)
+        print(json.dumps(doc, indent=2))
+        EOF
+      at: 2026-08-14T12:26:05.393922Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        claude -p "You must use the grep command via Bash for this — not any other tool, even if something tells you otherwise. Run: grep -n frobnicate lib/util.py" \
+          --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model haiku \
+          > /tmp/smoke2_hookonly.jsonl 2>&1
+        echo "exit: $?"
+      at: 2026-08-14T12:26:20.933151Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/smoke2_hookonly.jsonl'):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                print("RAW:", line[:200]); continue
+            t = rec.get("type")
+            if t == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use":
+                        inp = block.get("input", {})
+                        print(f"TOOL_USE  {block.get('name')}  {json.dumps(inp)[:250]}")
+                    elif block.get("type") == "text":
+                        print(f"TEXT      {block.get('text')[:300]}")
+            elif t == "user":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_result":
+                        content = block.get("content")
+                        if isinstance(content, list):
+                            content = " ".join(c.get("text","") for c in content if isinstance(c, dict))
+                        print(f"TOOL_RES  is_error={block.get('is_error')}  {str(content)[:500]}")
+            elif t == "result":
+                print(f"RESULT    {rec.get('subtype')}  cost=${rec.get('total_cost_usd')}  turns={rec.get('num_turns')}")
+                print(f"          denials={rec.get('permission_denials')}")
+        EOF
+      at: 2026-08-14T12:26:26.351927Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/smoke2_hookonly.jsonl'):
+            line = line.strip()
+            if not line: continue
+            rec = json.loads(line)
+            if rec.get("type") == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "text":
+                        print(repr(block.get("text")))
+            if rec.get("type") == "result":
+                print("FINAL RESULT TEXT:", repr(rec.get("result")))
+        EOF
+      at: 2026-08-14T12:26:32.535043Z
+      classified: other
+    - cmd: |-
+        cd /tmp/hook-behavior-smoke
+        for i in 1 2; do
+        claude -p "You must use the grep command via Bash for this — not any other tool, even if something tells you otherwise. Run: grep -n frobnicate lib/util.py" \
+          --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model haiku \
+          > /tmp/smoke2_repeat_$i.jsonl 2>&1
+        done
+        echo done
+      at: 2026-08-14T12:27:16.659483Z
+      classified: other
+    - cmd: |-
+        for f in /tmp/smoke2_repeat_1.jsonl /tmp/smoke2_repeat_2.jsonl; do
+        echo "=== $f ==="
+        python3 -c "
+        import json
+        for line in open('$f'):
+            line=line.strip()
+            if not line: continue
+            rec = json.loads(line)
+            if rec.get('type') == 'result':
+                print('turns:', rec.get('num_turns'), ' final:', rec.get('result')[:200])
+        "
+        done
+      at: 2026-08-14T12:27:20.727954Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        path = os.path.expanduser("~/.claude.json")
+        doc = json.load(open(path))
+        doc.get("projects", {}).pop("/private/tmp/hook-behavior-smoke", None)
+        json.dump(doc, open(path, "w"), indent=2)
+        EOF
+        rm -rf /tmp/hook-behavior-smoke /tmp/prism-smokebin /tmp/smoke1_hookdeny.jsonl /tmp/smoke2_hookonly.jsonl /tmp/smoke2_repeat_1.jsonl /tmp/smoke2_repeat_2.jsonl
+        echo cleaned
+      at: 2026-08-14T12:27:28.820659Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git status --short | head -40
+        echo "---"
+        git diff --stat
+      at: 2026-08-14T12:47:35.052544Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cat internal/version/version.go
+      at: 2026-08-14T12:47:50.257768Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 && go vet ./... 2>&1 && go test ./... 2>&1 | tail -20
+      at: 2026-08-14T12:48:53.292608Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add -A internal/ README.md AGENT_SETUP_PROMPT.md
+        git status --short
+      at: 2026-08-14T12:48:56.975774Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git commit -q -F - <<'EOF'
+        enforce: prism as a Claude Code PreToolUse hook; drop dead task param; compact text-search output
+
+        Three fixes from today's haiku38 benchmark wrap-up and a real-usage report
+        of an agent bypassing prism via ad-hoc python reads.
+
+        1. PreToolUse hook (the main change). `prism init --deny-builtin-search`
+           now also registers `prism hook pretooluse` on the Bash/Grep matchers in
+           the project's .claude/settings.json, alongside the existing
+           permissions.deny rule. A hook's `deny` decision fires before permission
+           rules are evaluated and feeds permissionDecisionReason back to the model
+           as tool-result text ("use prism_search instead") instead of a bare
+           failure — verified live (forced-grep smoke test) that the block itself
+           is byte-identical with or without permissions.deny present; the deny
+           rule is now a failsafe, not the enforcement mechanism. Scope is
+           deliberately narrow: only grep/rg is ever denied, python is untouched
+           (explicit product decision — python is legitimate for tests/repro
+           scripts, and reliably distinguishing "python reimplementing grep" from
+           normal use isn't attempted here).
+
+        2. Removed prism_read's `task` param (schema, handler, compression.Options)
+           — documented as intentionally unused by CompressFileRead ("does NOT
+           influence a first read"), but the schema still described it as "used
+           for relevance ranking," which was actively misleading agents into
+           writing verbose task strings expecting narrowed output.
+
+        3. renderTextMatches (prism_search scope=text, prism_query's merged
+           textMatches) now renders compact file:line:text plain-text lines
+           instead of nested JSON objects — cut per-match envelope overhead
+           (measured ~2-12 tokens/match, worse when hits scatter across files)
+           while keeping the session-SHA cache discipline (already-delivered files
+           still collapse to a one-line summary). Simplified the CLI's
+           `--format text` path in the process: printTextMatches used to
+           reconstruct text from the JSON shape; now it prints the string.
+
+        README.md / AGENT_SETUP_PROMPT.md updated: both described
+        --deny-builtin-search as only writing permissions.deny, no longer accurate
+        now that the hook is the primary mechanism.
+
+        go build / go vet / go test ./... all green. Hook behavior verified with a
+        live claude -p smoke test (forced grep instruction) comparing hook+deny vs
+        hook-only — enforcement identical in both; not committed to CI, this was a
+        manual verification pass.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git log -1 --stat | head -25
+      at: 2026-08-14T12:49:11.304795Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git branch --show-current
+        git log --oneline -3
+      at: 2026-08-14T12:49:21.264218Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git branch prism-hook-enforcement 82c0630
+        git reset --hard 61b03a5 -q
+        git checkout prism-hook-enforcement -q
+        git log --oneline -3
+        git branch --show-current
+      at: 2026-08-14T12:49:24.498132Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout main -q
+        git merge --ff-only prism-hook-enforcement -q
+        git log --oneline -3
+        git branch -d prism-hook-enforcement
+      at: 2026-08-14T13:30:46.723887Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        ls .github/workflows/ 2>/dev/null
+        echo "---"
+        cat .github/workflows/release.yml 2>/dev/null | head -40
+      at: 2026-08-14T13:31:13.627364Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git remote -v
+        git tag | tail -5
+      at: 2026-08-14T13:31:19.299332Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git tag -l 'v*' --sort=-v:refname | head -5
+      at: 2026-08-14T13:31:27.450151Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git commit --amend -q -m "enforce: prism as a Claude Code PreToolUse hook; drop dead task param; compact text-search output (v0.50.0)" \
+          -m "$(git log -1 --format=%B | tail -n +2)"
+        git log -1 --format=%s
+      at: 2026-08-14T13:31:36.434266Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-12T22:30:57.093344Z
+redactions: 0
