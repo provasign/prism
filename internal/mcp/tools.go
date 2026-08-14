@@ -341,8 +341,8 @@ func toolSchema(name string) map[string]any {
 					"description": "What you are trying to do.",
 				},
 				"terms": map[string]any{
-					"type":        "array",
-					"items":       map[string]any{"type": "string"},
+					"type":  "array",
+					"items": map[string]any{"type": "string"},
 					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]) — prism searches " +
 						"these then expands via call graph. Guess ONE keyword from the task if you don't have a " +
 						"name yet (a class/function fragment, a domain term); measured, an agent's own guess beats " +
@@ -380,7 +380,6 @@ func toolSchema(name string) map[string]any {
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
 			},
 		}
 	case "prism_search":
@@ -393,8 +392,8 @@ func toolSchema(name string) map[string]any {
 					"description": "Substring matched against symbol names, signatures, and docstrings — AND against raw source text (a real rg/grep pass). With regex=true, a regular expression for the text pass.",
 				},
 				"scope": map[string]any{
-					"type": "string",
-					"enum": []string{"both", "text", "symbols"},
+					"type":        "string",
+					"enum":        []string{"both", "text", "symbols"},
 					"description": "What you want back. \"text\" = a PURE grep: exactly the rg hits, no symbol search, no graph, cheapest — use when you would have run grep/rg. \"symbols\" = indexed symbols only. Default \"both\" merges the two.",
 				},
 				"regex": map[string]any{
@@ -749,9 +748,10 @@ type queryResult struct {
 	BudgetUsed int            `json:"budgetUsed"`
 	Symbols    []rankedSymbol `json:"symbols"`
 	// TextMatches are full-text hits outside any indexed symbol (comments,
-	// configs, docs) — the grep half of the merged search.
-	TextMatches []map[string]any `json:"textMatches,omitempty"`
-	TextBackend string           `json:"textBackend,omitempty"`
+	// configs, docs) — the grep half of the merged search. Compact plain
+	// text (file:line:text lines), not nested JSON — see renderTextMatches.
+	TextMatches string `json:"textMatches,omitempty"`
+	TextBackend string `json:"textBackend,omitempty"`
 	// Note explains an empty result so agents can tell "wrong root" or
 	// "term typo" apart from "genuinely no matches" without guessing.
 	Note string `json:"note,omitempty"`
@@ -855,7 +855,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if tm := h.renderTextMatches(sel.textHits); tm != nil {
+		if tm := h.renderTextMatches(sel.textHits); tm != "" {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
@@ -883,7 +883,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
-	if tm := h.renderTextMatches(sel.textHits); tm != nil {
+	if tm := h.renderTextMatches(sel.textHits); tm != "" {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
 	}
@@ -929,6 +929,7 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 	}
 	return total
 }
+
 // ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
@@ -936,7 +937,6 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if path == "" {
 		return nil, errors.New("file is required")
 	}
-	task := stringArg(args, "task", "")
 	abs, sessionPath, err := safePathWithinRoot(h.Root, path)
 	if err != nil {
 		return nil, err
@@ -957,7 +957,6 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 		confidence = h.confidenceFor(entry, contextUsed, readCfg.ContextWindow())
 	}
 	res := compression.CompressFileRead(sessionPath, string(data), compression.Options{
-		Task:            task,
 		Symbols:         fileSyms,
 		Session:         h.Session,
 		Ledger:          h.Ledger,

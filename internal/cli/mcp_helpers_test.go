@@ -74,7 +74,7 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	settings := filepath.Join(home, ".claude", "settings.json")
 
 	// First call creates the file and adds the server.
-	ensureClaudeCodeApproval(settings, "prism", true, false)
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false)
 	raw, err := os.ReadFile(settings)
 	if err != nil {
 		t.Fatalf("settings not written: %v", err)
@@ -89,7 +89,7 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	}
 
 	// Second call for same server is idempotent (no duplicate).
-	ensureClaudeCodeApproval(settings, "prism", true, false)
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false)
 	raw, _ = os.ReadFile(settings)
 	json.Unmarshal(raw, &doc)
 	servers, _ = doc["enabledMcpjsonServers"].([]any)
@@ -98,12 +98,58 @@ func TestEnsureClaudeCodeApproval(t *testing.T) {
 	}
 
 	// A different server is appended alongside the first.
-	ensureClaudeCodeApproval(settings, "relay", true, false)
+	ensureClaudeCodeApproval(settings, "relay", "/fake/prism", true, false)
 	raw, _ = os.ReadFile(settings)
 	json.Unmarshal(raw, &doc)
 	servers, _ = doc["enabledMcpjsonServers"].([]any)
 	if len(servers) != 2 {
 		t.Fatalf("expected 2 servers, got %v", servers)
+	}
+}
+
+// TestEnsureClaudeCodeHook: --deny-builtin-search registers a PreToolUse
+// hook for Bash and Grep pointing at `prism hook pretooluse`, idempotently.
+func TestEnsureClaudeCodeHook(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	t.Setenv("USERPROFILE", home)
+
+	settings := filepath.Join(home, ".claude", "settings.json")
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, true) // denyBuiltinSearch=true
+	raw, err := os.ReadFile(settings)
+	if err != nil {
+		t.Fatalf("settings not written: %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("settings not valid json: %v", err)
+	}
+	hooks, _ := doc["hooks"].(map[string]any)
+	pre, _ := hooks["PreToolUse"].([]any)
+	if len(pre) != 2 {
+		t.Fatalf("expected 2 PreToolUse entries (Bash, Grep), got %v", pre)
+	}
+	matchers := map[string]bool{}
+	for _, e := range pre {
+		em := e.(map[string]any)
+		matchers[em["matcher"].(string)] = true
+		hh := em["hooks"].([]any)[0].(map[string]any)
+		if hh["command"] != "/fake/prism hook pretooluse" {
+			t.Errorf("unexpected hook command: %v", hh["command"])
+		}
+	}
+	if !matchers["Bash"] || !matchers["Grep"] {
+		t.Errorf("expected Bash and Grep matchers, got %v", matchers)
+	}
+
+	// Idempotent: a second call must not duplicate entries.
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, true)
+	raw, _ = os.ReadFile(settings)
+	json.Unmarshal(raw, &doc)
+	hooks, _ = doc["hooks"].(map[string]any)
+	pre, _ = hooks["PreToolUse"].([]any)
+	if len(pre) != 2 {
+		t.Fatalf("idempotent call duplicated hook entries: %v", pre)
 	}
 }
 

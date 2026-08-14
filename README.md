@@ -79,10 +79,12 @@ for both.
 5. **One search surface, structurally routed.** `prism_search(scope="text")`
    runs a real ripgrep pass, so Prism subsumes `grep` rather than sitting
    beside it — and routing is enforced structurally, not by persuasion:
-   steering alone is ignored (measured 12:1), so `prism init` offers to deny
-   Claude Code's built-in Grep/`grep`/`rg` (`--deny-builtin-search`), making
-   Prism the search path while nothing becomes unfindable. Prism answers
-   relationship and whole-task questions; the model reasons and edits.
+   steering alone is ignored (measured 12:1), so `prism init` offers
+   (`--deny-builtin-search`) to deny Claude Code's built-in Grep/`grep`/`rg`
+   and register a PreToolUse hook that explains the denial back to the model
+   in-band, making Prism the search path while nothing becomes unfindable.
+   Prism answers relationship and whole-task questions; the model reasons
+   and edits.
 6. **Evidence-backed abstraction.** Above the task ops sits a component-level
    view (`prism map` / `prism cycles`): directories as components, dependency
    edges induced from the real call/import/type edges crossing between them,
@@ -167,13 +169,17 @@ prism init .
 **Routing is structural, not rhetorical.** Steering alone does not route
 agents — measured 12:1, an agent will acknowledge its CLAUDE.md and then run
 `grep` anyway. Interactive `prism init` therefore offers (and
-`--deny-builtin-search` forces) the one change that actually routes: adding
-`Grep`, `Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in the
-PROJECT's `.claude/settings.json` (machine-global only with `--global`).
-Nothing becomes unfindable —
-`prism_search(scope="text")` is a ripgrep passthrough — and it's reversible
-by deleting those lines. Claude Code only; CI and non-interactive runs are
-never prompted and get no settings change.
+`--deny-builtin-search` forces) two changes in the PROJECT's
+`.claude/settings.json` (machine-global only with `--global`):
+`Grep`, `Bash(grep:*)`, `Bash(rg:*)` added to `permissions.deny`, and a
+`PreToolUse` hook (`prism hook pretooluse`) registered on the `Bash`/`Grep`
+matchers. The hook is what actually fires first — it denies the call and
+feeds the reason back to the model as tool-result text ("use prism_search
+instead"), rather than a bare failure; `permissions.deny` stays as a
+failsafe in case the hook binary is ever unreachable. Nothing becomes
+unfindable — `prism_search(scope="text")` is a ripgrep passthrough — and
+it's reversible by deleting those lines. Claude Code only; CI and
+non-interactive runs are never prompted and get no settings change.
 
 **Setup is project-level by default.** A plain `prism init` touches only
 files inside the repo (`.mcp.json`, steering files, the project's

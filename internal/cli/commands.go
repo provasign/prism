@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -118,6 +119,10 @@ Usage:
   prism savings [dir]             Show session savings dashboard
   prism drift [dir]              Report files/symbols that changed since they were delivered this session
   prism config [dir]              Show resolved configuration
+  prism hook pretooluse           Claude Code PreToolUse hook: reads the event JSON
+                                  from stdin, denies grep/rg with a reason fed back to
+                                  the model. Registered automatically by
+                                  --deny-builtin-search; not meant to be run by hand.
   prism version                   Print version
 
 prism init [dir] flags:
@@ -128,7 +133,10 @@ prism init [dir] flags:
   --deny-builtin-search
                       deny Claude Code's Grep/Bash(grep|rg) so agents actually
                       reach prism (asked interactively; Claude Code only —
-                      no other agent exposes a tool-denial setting)
+                      no other agent exposes a tool-denial setting). Also
+                      registers a PreToolUse hook (prism hook pretooluse) that
+                      explains the denial back to the model instead of a bare
+                      failure; the permissions.deny rule stays as a failsafe.
   --refresh           rewrite ONLY agents already configured (never adds new ones)
   --print-config <id> print one agent's snippet and exit, writing nothing
                       ids: claude, cursor, windsurf, vscode, zed, codex, opencode, hermes
@@ -222,6 +230,8 @@ func Run(args []string) int {
 		return cmdDrift(rest)
 	case "config":
 		return cmdConfig(rest)
+	case "hook":
+		return cmdHook(rest)
 	}
 	fmt.Fprintln(os.Stderr, "unknown command:", cmd)
 	fmt.Print(helpText)
@@ -518,7 +528,7 @@ func injectPrismSection(content, block string) string {
 	findSection := func(s string) (start, prefixLen int) {
 		start = -1
 		for _, h := range generatedHeadings {
-			if idx := strings.Index(s, "\n" + h); idx >= 0 && (start < 0 || idx < start) {
+			if idx := strings.Index(s, "\n"+h); idx >= 0 && (start < 0 || idx < start) {
 				start, prefixLen = idx, 1
 			}
 			if strings.HasPrefix(s, h) {
@@ -728,7 +738,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", claudeEntry) {
 			fmt.Printf("already registered with %s: %s\n", w.name, p)
 			written = append(written, p)
-			ensureClaudeCodeApproval(claudeSettings, "prism", permissions, denyBuiltinSearch)
+			ensureClaudeCodeApproval(claudeSettings, "prism", prismBin, permissions, denyBuiltinSearch)
 			continue
 		}
 		content := w.build()
@@ -741,7 +751,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		fmt.Printf("registered with %s: %s\n", w.name, p)
 		written = append(written, p)
 		if filepath.Base(p) == ".mcp.json" {
-			ensureClaudeCodeApproval(claudeSettings, "prism", permissions, denyBuiltinSearch)
+			ensureClaudeCodeApproval(claudeSettings, "prism", prismBin, permissions, denyBuiltinSearch)
 		}
 	}
 
@@ -1161,7 +1171,51 @@ func promptDenyBuiltinSearch() bool {
 	return false
 }
 
-func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSearch bool) {
+// ensureClaudeCodeHook registers `prism hook pretooluse` as a PreToolUse hook
+// for the Bash and Grep matchers, idempotently (safe to call on every
+// `prism init`/`--refresh`). It mutates doc in place and reports whether it
+// changed anything. Scope is deliberately narrow: this hook only ever denies
+// grep/rg — it does not touch Bash otherwise, so python and every other Bash
+// use is unaffected.
+func ensureClaudeCodeHook(doc map[string]any, prismBin string) bool {
+	command := prismBin + " hook pretooluse"
+	hooks, _ := doc["hooks"].(map[string]any)
+	if hooks == nil {
+		hooks = map[string]any{}
+	}
+	changed := false
+	for _, matcher := range []string{"Bash", "Grep"} {
+		entries, _ := hooks["PreToolUse"].([]any)
+		already := false
+		for _, e := range entries {
+			em, ok := e.(map[string]any)
+			if !ok || em["matcher"] != matcher {
+				continue
+			}
+			for _, hh := range asSliceAny(em["hooks"]) {
+				hm, ok := hh.(map[string]any)
+				if ok && hm["command"] == command {
+					already = true
+				}
+			}
+		}
+		if already {
+			continue
+		}
+		entries = append(entries, map[string]any{
+			"matcher": matcher,
+			"hooks":   []any{map[string]any{"type": "command", "command": command}},
+		})
+		hooks["PreToolUse"] = entries
+		changed = true
+	}
+	if changed {
+		doc["hooks"] = hooks
+	}
+	return changed
+}
+
+func ensureClaudeCodeApproval(path, serverName, prismBin string, allowTools, denyBuiltinSearch bool) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return
 	}
@@ -1220,6 +1274,17 @@ func ensureClaudeCodeApproval(path, serverName string, allowTools, denyBuiltinSe
 			}
 			perms["deny"] = deny
 			doc["permissions"] = perms
+
+			// PreToolUse hook: same policy as the deny rule above, but a hook
+			// fires BEFORE permission rules are evaluated and, on deny, feeds
+			// permissionDecisionReason back to the model as feedback instead of
+			// a bare failure — measured (haiku38, 2026-08) that agents recover
+			// to prism reliably once told what to do, not just that grep failed.
+			// permissions.deny stays as a failsafe: a hook that errors or is
+			// unreachable must not silently reopen the gap it exists to close.
+			if ensureClaudeCodeHook(doc, prismBin) {
+				changed = true
+			}
 		}
 	}
 
@@ -1956,6 +2021,73 @@ func cmdDeadCode(args []string) int {
 	return 0
 }
 
+// grepCommandPattern matches a grep/rg invocation as a Bash command: at the
+// start of the string or after a shell separator, an optional path prefix
+// (/usr/bin/grep), an optional sudo, then rg or grep as a whole word. Ported
+// from research/harness/swebench_ab.py's denied_search_attempts pattern,
+// which was tuned twice against real false positives (a bare substring match
+// hit the harness's own /tmp/...grepwarn dir name; a bare word-boundary
+// match missed /usr/bin/grep).
+var grepCommandPattern = regexp.MustCompile(`(?:^|[\s;&|(])(?:[^\s;&|(]*/)?(?:sudo\s+)?(?:rg|grep)\b`)
+
+const grepHookReason = "grep/rg are blocked in this project. Use prism_search(scope=\"text\") " +
+	"(MCP tool, already loaded) for the equivalent ripgrep pass, or if you are already in a " +
+	"shell, `prism search <query> --format text` (CLI, same process, no extra round trip)."
+
+// hookDenyReason returns the permissionDecisionReason for a PreToolUse call,
+// or "" if it should proceed uninterrupted. Scope is deliberately narrow:
+// only grep/rg (the Grep tool, or grep/rg run via Bash) is ever denied here.
+// python and every other Bash use passes through untouched — python is a
+// real, general-purpose tool the agent needs for tests and repro scripts,
+// and pattern-matching "python reimplementing a file read" reliably enough
+// to avoid false-positiving on legitimate scripts is not solved here.
+func hookDenyReason(toolName string, toolInput map[string]any) string {
+	switch toolName {
+	case "Grep":
+		return grepHookReason
+	case "Bash":
+		cmd, _ := toolInput["command"].(string)
+		if grepCommandPattern.MatchString(cmd) {
+			return grepHookReason
+		}
+	}
+	return ""
+}
+
+// cmdHook implements the Claude Code PreToolUse hook protocol: read the
+// event JSON from stdin, and on a match, write a hookSpecificOutput deny
+// decision so Claude Code cancels the call and feeds the reason back to the
+// model as feedback — richer than a bare permissions.deny failure, which
+// remains in place as a failsafe in case this hook is unreachable (binary
+// moved, PATH broken, etc.).
+func cmdHook(args []string) int {
+	if len(args) < 1 || args[0] != "pretooluse" {
+		fmt.Fprintln(os.Stderr, "hook: usage: prism hook pretooluse (reads Claude Code's PreToolUse JSON on stdin)")
+		return 2
+	}
+	var in struct {
+		ToolName  string         `json:"tool_name"`
+		ToolInput map[string]any `json:"tool_input"`
+	}
+	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
+		// Malformed/empty input must not block the tool call it exists to
+		// police — silently allow rather than fail closed on a parse error.
+		return 0
+	}
+	reason := hookDenyReason(in.ToolName, in.ToolInput)
+	if reason == "" {
+		return 0
+	}
+	printJSON(map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName":            "PreToolUse",
+			"permissionDecision":       "deny",
+			"permissionDecisionReason": reason,
+		},
+	})
+	return 0
+}
+
 func cmdCompact(args []string) int {
 	dir := dirArg(args, 0, ".")
 	var turns []map[string]any
@@ -2330,44 +2462,17 @@ func printJSON(v any) {
 // prism_search response: per-file matched lines, cached files as line
 // numbers only.
 func printTextMatches(m map[string]any) {
-	groups := asSliceAny(m["textMatches"])
-	if groups == nil {
-		groups = asSliceAny(m["textHits"])
+	text, _ := m["textMatches"].(string)
+	if text == "" {
+		text, _ = m["textHits"].(string)
 	}
-	if len(groups) == 0 {
+	if text == "" {
 		return
 	}
 	backend, _ := m["textBackend"].(string)
 	fmt.Printf("// text matches (%s):\n", backend)
-	for _, g := range groups {
-		gm, ok := g.(map[string]any)
-		if !ok {
-			continue
-		}
-		if note, _ := gm["note"].(string); note != "" && gm["file"] == nil {
-			fmt.Printf("//   %s\n", note)
-			continue
-		}
-		file, _ := gm["file"].(string)
-		if cached, _ := gm["cached"].(bool); cached {
-			var lines []string
-			for _, l := range asSliceAny(gm["lines"]) {
-				lines = append(lines, fmt.Sprint(jsonInt(l)))
-			}
-			fmt.Printf("//   %s:%s [cached — content already delivered this session]\n",
-				file, strings.Join(lines, ","))
-			continue
-		}
-		for _, h := range asSliceAny(gm["hits"]) {
-			hm, ok := h.(map[string]any)
-			if !ok {
-				continue
-			}
-			fmt.Printf("//   %s:%d: %v\n", file, jsonInt(hm["line"]), hm["text"])
-		}
-		if more := jsonInt(gm["moreHits"]); more > 0 {
-			fmt.Printf("//   %s: +%d more matches\n", file, more)
-		}
+	for _, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
+		fmt.Printf("//   %s\n", line)
 	}
 }
 

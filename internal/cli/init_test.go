@@ -390,8 +390,8 @@ func TestEnsureClaudeCodeApproval_WritesPermissionsAllow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ensureClaudeCodeApproval(settings, "prism", true, false)
-	ensureClaudeCodeApproval(settings, "prism", true, false) // idempotence
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false)
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false) // idempotence
 
 	raw, err := os.ReadFile(settings)
 	if err != nil {
@@ -417,7 +417,7 @@ func TestEnsureClaudeCodeApproval_NoPermissions(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 	settings := filepath.Join(home, ".claude", "settings.json")
-	ensureClaudeCodeApproval(settings, "prism", false, false)
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", false, false)
 
 	raw, err := os.ReadFile(settings)
 	if err != nil {
@@ -444,7 +444,7 @@ func TestEnsureClaudeCodeApproval_UpgradesTrustOnlyConfig(t *testing.T) {
 	if err := os.WriteFile(settings, []byte(`{"enabledMcpjsonServers":["prism"]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	ensureClaudeCodeApproval(settings, "prism", true, false)
+	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false)
 	raw, _ := os.ReadFile(settings)
 	if !strings.Contains(string(raw), "mcp__prism") {
 		t.Errorf("allow rule not added to a trust-only config: %s", raw)

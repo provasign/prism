@@ -53,22 +53,20 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 		{File: "seen.txt", Line: 3, Text: "gamma needle"},
 		{File: "fresh.txt", Line: 1, Text: "delta needle"},
 	})
-	if len(out) != 2 {
-		t.Fatalf("got %d file groups, want 2: %v", len(out), out)
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("got %d lines, want 2 (one cached summary, one verbatim hit): %v", len(lines), lines)
 	}
-	seen, fresh := out[0], out[1]
-	if seen["file"] != "seen.txt" || seen["cached"] != true {
-		t.Errorf("seen.txt entry should be cached: %v", seen)
+	seenLine, freshLine := lines[0], lines[1]
+	if !strings.HasPrefix(seenLine, "seen.txt:") || !strings.Contains(seenLine, "cached") ||
+		!strings.Contains(seenLine, "1,3") {
+		t.Errorf("seen.txt entry should be a cached summary naming both lines: %q", seenLine)
 	}
-	if _, hasText := seen["hits"]; hasText {
-		t.Errorf("cached entry must not re-send text: %v", seen)
+	if strings.Contains(seenLine, "alpha needle") || strings.Contains(seenLine, "gamma needle") {
+		t.Errorf("cached entry must not re-send text: %q", seenLine)
 	}
-	if lines, ok := seen["lines"].([]int); !ok || len(lines) != 2 {
-		t.Errorf("cached entry should list both lines: %v", seen)
-	}
-	hits, ok := fresh["hits"].([]map[string]any)
-	if fresh["file"] != "fresh.txt" || !ok || len(hits) != 1 || hits[0]["text"] != "delta needle" {
-		t.Errorf("fresh.txt should carry verbatim text: %v", fresh)
+	if freshLine != "fresh.txt:1:delta needle" {
+		t.Errorf("fresh.txt should carry verbatim file:line:text, got %q", freshLine)
 	}
 }
 
@@ -84,16 +82,11 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 		}
 	}
 	out := h.renderTextMatches(hits)
-	if len(out) != textRenderFileCap+1 { // cap + omission note
-		t.Fatalf("got %d entries, want %d", len(out), textRenderFileCap+1)
+	if !strings.Contains(out, "3 more files with matches omitted") {
+		t.Errorf("expected an omission note for the 3 files beyond the cap: %q", out)
 	}
-	last := out[len(out)-1]
-	if _, ok := last["note"]; !ok {
-		t.Errorf("final entry should be the omission note: %v", last)
-	}
-	first := out[0]
-	if more, ok := first["moreHits"].(int); !ok || more != 2 {
-		t.Errorf("per-file overflow should be counted: %v", first)
+	if !strings.Contains(out, "2 more matches omitted") {
+		t.Errorf("expected per-file overflow to be counted, got: %q", out)
 	}
 }
 
@@ -113,8 +106,8 @@ func TestSearchScopeTextIsPureGrep(t *testing.T) {
 	if _, hasSyms := m["symbols"]; hasSyms {
 		t.Errorf("pure grep must not carry a symbols section: %v", m)
 	}
-	hits, ok := m["textHits"].([]map[string]any)
-	if !ok || len(hits) != 1 || hits[0]["file"] != "cfg.yaml" {
+	hits, ok := m["textHits"].(string)
+	if !ok || !strings.HasPrefix(hits, "cfg.yaml:1:") {
 		t.Errorf("expected exactly the cfg.yaml hit, got %v", m)
 	}
 }

@@ -168,14 +168,18 @@ echo "Prism initialized. Restart your AI coding tool to activate MCP and reload 
 **The routing question.** Interactive `prism init` asks: *"Deny built-in
 search? [y/N]"*. This is the one change that actually routes agents through
 Prism (steering alone is ignored — measured 12:1): it adds `Grep`,
-`Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in the PROJECT's
-`.claude/settings.json` (machine-global only with `--global`). Nothing
-becomes unfindable —
-`prism_search(scope="text")` is a ripgrep passthrough — and it's reversible
-by deleting those lines. Relay this question to the user rather than
-answering it yourself; if you are running non-interactively the prompt is
-skipped and no settings change is made (pass `--deny-builtin-search` to
-opt in explicitly once the user has agreed).
+`Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` AND registers a
+`PreToolUse` hook (`prism hook pretooluse`) on the `Bash`/`Grep` matchers,
+both in the PROJECT's `.claude/settings.json` (machine-global only with
+`--global`). The hook is what actually fires: it denies the call and feeds
+the reason back to you as tool-result text ("use prism_search instead")
+rather than a bare failure; the `permissions.deny` rule stays as a failsafe.
+Nothing becomes unfindable — `prism_search(scope="text")` is a ripgrep
+passthrough — and it's reversible by deleting those lines. Relay this
+question to the user rather than answering it yourself; if you are running
+non-interactively the prompt is skipped and no settings change is made
+(pass `--deny-builtin-search` to opt in explicitly once the user has
+agreed).
 
 **The scope question.** Interactive `prism init` also asks: *"Register
 user-global tools? [y/N]"* — Zed, Codex CLI, and opencode keep their MCP

@@ -46,7 +46,6 @@ func BenchmarkCompressFileRead_FreshRead_10Symbols(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		tr := session.NewTracker(100)
 		CompressFileRead("pkg/svc.go", content, Options{
-			Task:            "implement caching",
 			Symbols:         syms,
 			Session:         tr,
 			Ledger:          session.NewLedger("bench"),
@@ -64,7 +63,6 @@ func BenchmarkCompressFileRead_FreshRead_50Symbols(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		tr := session.NewTracker(100)
 		CompressFileRead("pkg/svc.go", content, Options{
-			Task:            "implement caching",
 			Symbols:         syms,
 			Session:         tr,
 			Ledger:          session.NewLedger("bench"),
@@ -82,7 +80,6 @@ func BenchmarkCompressFileRead_SHAPointer(b *testing.B) {
 	tr := session.NewTracker(100)
 	ledger := session.NewLedger("bench")
 	opts := Options{
-		Task:            "fix bug",
 		Symbols:         syms,
 		Session:         tr,
 		Ledger:          ledger,
@@ -110,7 +107,6 @@ func BenchmarkCompressFileRead_SemanticDelta(b *testing.B) {
 	tr := session.NewTracker(100)
 	ledger := session.NewLedger("bench")
 	opts := Options{
-		Task:            "fix bug",
 		Symbols:         syms,
 		Session:         tr,
 		Ledger:          ledger,
