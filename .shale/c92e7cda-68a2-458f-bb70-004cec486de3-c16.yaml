@@ -1,0 +1,266 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c16
+created_at: 2026-08-15T03:25:38.891164Z
+finalized_at: 2026-08-15T03:47:30.504404Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T03:46:45.207349Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git tag v0.50.1
+        git push origin v0.50.1 2>&1
+      at: 2026-08-15T03:25:38.891164Z
+      classified: other
+    - cmd: |-
+        sleep 5
+        gh run list --workflow=release.yml --limit 1 2>&1
+      at: 2026-08-15T03:25:47.828384Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        tasks = json.load(open('runs/swebench-live/phase1/valid-instances.json'))
+        for t in tasks[:6]:
+            print(t['instance_id'], '|', t['repo'], '|', t['base_commit'][:10])
+        "
+      at: 2026-08-15T03:31:54.26117Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        tasks = json.load(open('runs/swebench-live/phase1/valid-instances.json'))
+        by_id = {t['instance_id']: t for t in tasks}
+        for iid in ['a2aproject__a2a-python-279', 'certbot__certbot-10374', 'openai__openai-agents-python-1043']:
+            t = by_id[iid]
+            print('='*20, iid, '='*20)
+            print(t['problem_statement'][:600])
+            print()
+        "
+      at: 2026-08-15T03:31:57.902357Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/bench-examples && mkdir -p /tmp/bench-examples
+        cd /tmp/bench-examples
+        for spec in "a2aproject__a2a-python-279:a2aproject/a2a-python:cb0897384d:TaskUpdater" \
+                    "certbot__certbot-10374:certbot/certbot:33d3162c24:ARI" \
+                    "openai__openai-agents-python-1043:openai/openai-agents-python:db85a6d031:ToolContext"; do
+          IFS=: read -r name repo commit term <<< "$spec"
+          cp -r "/tmp/swebench-repos/${repo//\//__}" "./$name"
+          cd "$name"
+          git checkout -q "$commit" 2>&1 | tail -2
+          cd ..
+        done
+        ls
+      at: 2026-08-15T03:32:07.676166Z
+      classified: other
+    - cmd: |-
+        cd /tmp/bench-examples
+        for d in a2aproject__a2a-python-279 certbot__certbot-10374 openai__openai-agents-python-1043; do
+          echo "=== $d ==="
+          cd "$d"
+          git checkout -qf HEAD 2>&1
+          case "$d" in
+            a2aproject__a2a-python-279) git checkout -qf cb0897384d 2>&1 ;;
+            certbot__certbot-10374) git checkout -qf 33d3162c24 2>&1 ;;
+            openai__openai-agents-python-1043) git checkout -qf db85a6d031 2>&1 ;;
+          esac
+          git log -1 --oneline
+          cd ..
+        done
+      at: 2026-08-15T03:32:12.915272Z
+      classified: other
+    - cmd: |-
+        for d in a2aproject__a2a-python-279 certbot__certbot-10374 openai__openai-agents-python-1043; do
+          cd "/tmp/bench-examples/$d"
+          /Users/tapabratapal/bin/prism index . 2>&1 | tail -2
+          cd - > /dev/null
+        done
+      at: 2026-08-15T03:32:18.213583Z
+      classified: other
+    - cmd: |-
+        cd /tmp/bench-examples/a2aproject__a2a-python-279
+        echo "########## a2a-python-279: TaskUpdater (race condition in terminal-state handling) ##########"
+        echo "--- prism_search(scope=text) ---"
+        /Users/tapabratapal/bin/prism search "TaskUpdater" --scope text --format text > /tmp/ex1_text.txt 2>/dev/null
+        wc -c /tmp/ex1_text.txt
+        cat /tmp/ex1_text.txt
+        echo ""
+        echo "--- prism_query (graph) ---"
+        /Users/tapabratapal/bin/prism query "fix race condition in TaskUpdater terminal state handling with a lock" --terms TaskUpdater --format text > /tmp/ex1_graph.txt 2>/dev/null
+        wc -c /tmp/ex1_graph.txt
+      at: 2026-08-15T03:32:23.174287Z
+      classified: other
+    - cmd: head -c 3000 /tmp/ex1_graph.txt
+      at: 2026-08-15T03:32:28.891797Z
+      classified: other
+    - cmd: |-
+        cd /tmp/bench-examples/certbot__certbot-10374
+        echo "########## certbot-10374: ARI fetch failure logging level ##########"
+        echo "--- prism_search(scope=text) ---"
+        /Users/tapabratapal/bin/prism search "ARI" --scope text --format text > /tmp/ex2_text.txt 2>/dev/null
+        wc -c /tmp/ex2_text.txt
+        head -25 /tmp/ex2_text.txt
+        echo ""
+        echo "--- prism_query (graph) ---"
+        /Users/tapabratapal/bin/prism query "change the log level for ARI fetch failures from warning to info" --terms ARI --format text > /tmp/ex2_graph.txt 2>/dev/null
+        wc -c /tmp/ex2_graph.txt
+      at: 2026-08-15T03:32:40.202675Z
+      classified: other
+    - cmd: head -c 2500 /tmp/ex2_graph.txt
+      at: 2026-08-15T03:32:53.299732Z
+      classified: other
+    - cmd: |-
+        cd /tmp/bench-examples/openai__openai-agents-python-1043
+        echo "########## openai-agents-1043: add tool_name to ToolContext ##########"
+        echo "--- prism_search(scope=text) ---"
+        /Users/tapabratapal/bin/prism search "ToolContext" --scope text --format text > /tmp/ex3_text.txt 2>/dev/null
+        wc -c /tmp/ex3_text.txt
+        cat /tmp/ex3_text.txt
+        echo ""
+        echo "--- prism_query (graph) ---"
+        /Users/tapabratapal/bin/prism query "add tool_name field to ToolContext for generic tool handlers" --terms ToolContext --format text > /tmp/ex3_graph.txt 2>/dev/null
+        wc -c /tmp/ex3_graph.txt
+      at: 2026-08-15T03:33:03.573985Z
+      classified: other
+    - cmd: head -c 2500 /tmp/ex3_graph.txt
+      at: 2026-08-15T03:33:08.117151Z
+      classified: other
+    - cmd: rm -rf /tmp/bench-examples /tmp/ex1_text.txt /tmp/ex1_graph.txt /tmp/ex2_text.txt /tmp/ex2_graph.txt /tmp/ex3_text.txt /tmp/ex3_graph.txt
+      at: 2026-08-15T03:33:15.286277Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/bench-examples && mkdir -p /tmp/bench-examples
+        cd /tmp/bench-examples
+        cp -r /tmp/swebench-repos/a2aproject__a2a-python-279 2>/dev/null || cp -r /tmp/swebench-repos/a2aproject__a2a-python a2a
+        cp -r /tmp/swebench-repos/openai__openai-agents-python-1043 2>/dev/null || cp -r /tmp/swebench-repos/openai__openai-agents-python openai-agents
+        cd a2a && git checkout -qf cb0897384d && cd ..
+        cd openai-agents && git checkout -qf db85a6d031 && cd ..
+        /Users/tapabratapal/bin/prism index a2a 2>&1 | tail -2
+        /Users/tapabratapal/bin/prism index openai-agents 2>&1 | tail -2
+      at: 2026-08-15T03:36:34.307362Z
+      classified: other
+    - cmd: |-
+        cd /tmp/bench-examples/a2a
+        echo "=== TaskUpdater: scope=both (symbols + text merged, graph-ranked, no full expansion) ==="
+        /Users/tapabratapal/bin/prism search "TaskUpdater" --scope both --format text > /tmp/both1.txt 2>/dev/null
+        wc -c /tmp/both1.txt
+        cat /tmp/both1.txt
+        cd /tmp/bench-examples/openai-agents
+        echo ""
+        echo "=== ToolContext: scope=both ==="
+        /Users/tapabratapal/bin/prism search "ToolContext" --scope both --format text > /tmp/both2.txt 2>/dev/null
+        wc -c /tmp/both2.txt
+        head -60 /tmp/both2.txt
+      at: 2026-08-15T03:36:38.720696Z
+      classified: other
+    - cmd: rm -rf /tmp/bench-examples /tmp/both1.txt /tmp/both2.txt
+      at: 2026-08-15T03:37:07.205646Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        import json, glob, re
+
+        grep_re = re.compile(r'(?:^|[\s;&|(])(?:[^\s;&|(]*/)?(?:sudo\s+)?(?:rg|grep)\b')
+
+        for run in ["runs/swebench-live/sonnet38", "runs/swebench-live/haiku38"]:
+            for f in sorted(glob.glob(f"{run}/*.baseline.json"))[:8]:
+                rec = json.loads(open(f).read())
+                trace = rec.get("tool_trace") or []
+                # count grep-ish uses
+                greps = [i for i, t in enumerate(trace) if t == "Grep" or (isinstance(t,str) and grep_re.search(t))]
+                if len(greps) >= 2:
+                    print(f"=== {rec['instance_id']} ({run.split('/')[-1]}) — {len(greps)} grep-family calls, {len(trace)} total ===")
+                    for i, t in enumerate(trace[:25]):
+                        marker = " <-- GREP" if i in greps else ""
+                        print(f"  {i:2} {t[:90]}{marker}")
+                    print()
+        EOF
+      at: 2026-08-15T03:40:52.486392Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1
+        echo "--vet--"
+        go vet ./... 2>&1
+        echo "--test--"
+        go test ./... 2>&1 | tail -20
+      at: 2026-08-15T03:46:59.615961Z
+      classified: lint
+    - cmd: |-
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.50.1-dev" -o ~/bin/prism /Users/tapabratapal/Projects/provasign/prism/cmd/prism
+        cd /Users/tapabratapal/Projects/provasign/prism
+        ~/bin/prism init --refresh 2>&1 | tail -15
+        git status --short
+      at: 2026-08-15T03:47:07.164762Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        wc -c CLAUDE.md
+        sed -n '/## Prism/,/prism:end/p' CLAUDE.md
+      at: 2026-08-15T03:47:14.471894Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout -b steering-substitution-rules -q
+        git add -A
+        git commit -q -F - <<'EOF'
+        docs: three concrete grep->prism substitution rules in steering
+
+        Not "prefer prism" (measured 12:1 not to route behavior) -- three specific,
+        mechanical substitutions, found by reading real baseline-arm transcripts
+        (haiku38 + sonnet38) for the actual shapes agents grep in:
+
+        1. grep "a\|b\|c" (unsure which name is right, hedging with alternation) ->
+           prism_query(terms=[a,b,c]) in one call. This was the single most common
+           pattern across every transcript pulled -- agents run 2-5 sequential greps
+           narrowing a guess where one multi-term prism_query call already covers
+           the same ground.
+        2. grep "Name(" to find constructors/callers -> prism_change_impact's or
+           prism_query's resolved caller list, not a paren-guess that also matches
+           definitions/comments/type-annotations.
+        3. grep "def x" -A10 / sed -n 'N,Mp' (guessing a context-line count) ->
+           prism_lookup, whole symbol body regardless of length, no risk of cutting
+           a function off early.
+
+        This differs in kind from the grep-denial problem the PreToolUse hook
+        solves: "don't use grep" is a prohibition that can be enforced (hard deny +
+        hook). "Combine three narrow calls into one multi-term call" cannot be
+        enforced by any mechanism available -- there's no hook for "you used more
+        calls than necessary". Steering is the only lever that applies here. Given
+        tonight's own findings on steering's reliability, this is shipped as a
+        plausible improvement, not a proven one -- effectiveness unmeasured, worth
+        a real before/after comparison (prism_query call frequency, not just
+        presence) next time a benchmark runs.
+
+        Regenerated all 9 committed steering variant files via `prism init
+        --refresh` per this repo's own cross-layer-sweep rule. go build / go vet /
+        go test ./... all green (docs-only change to the steering const, no code
+        path touched).
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git checkout main -q
+        git merge --ff-only steering-substitution-rules -q
+        git branch -d steering-substitution-rules
+        git log --oneline -3
+      at: 2026-08-15T03:47:27.229014Z
+      classified: lint
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-15T03:25:38.891164Z
+redactions: 0
