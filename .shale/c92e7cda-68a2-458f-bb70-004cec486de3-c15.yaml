@@ -1,0 +1,1215 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c15
+created_at: 2026-08-14T13:31:42.522277Z
+finalized_at: 2026-08-15T03:25:33.44377Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T03:12:23.715259Z
+    - path: internal/cli/formattext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T03:13:10.372814Z
+    - path: internal/mcp/textmerge.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T03:21:22.708786Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T03:21:55.388762Z
+    - path: internal/mcp/textmerge_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T03:23:05.42415Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git tag v0.50.0
+        git push origin main 2>&1
+        git push origin v0.50.0 2>&1
+      at: 2026-08-14T13:31:42.522277Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        gh run list --workflow=release.yml --limit 3 2>&1
+      at: 2026-08-14T13:31:47.466358Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        gh run list --workflow=release.yml --limit 2 2>&1
+        echo "---detail---"
+        gh run view --workflow=release.yml 2>&1 | head -40
+      at: 2026-08-14T13:32:03.659754Z
+      classified: other
+    - cmd: gh run list --workflow=release.yml --limit 1 --json status,conclusion,headBranch -q '.[0] | "\(.status) \(.conclusion)"' 2>&1
+      at: 2026-08-14T13:32:08.7859Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import re
+        content = open('swebench_ab.py').read()
+        m = re.search(r'def parse_args.*?(?=\ndef |\Z)', content, re.S)
+        print(m.group(0)[:2500] if m else 'not found')
+        "
+      at: 2026-08-14T14:58:32.57244Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import re
+        content = open('swebench_ab.py').read()
+        m = re.search(r'argparse\.ArgumentParser.*?args\s*=\s*\w*parser\.parse_args\(\)', content, re.S)
+        print(m.group(0)[:3000] if m else 'not found')
+        "
+      at: 2026-08-14T14:58:35.98675Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 /Users/tapabratapal/Projects/provasign/prism/../research/harness/swebench_ab.py --help 2>&1 | head -40
+      at: 2026-08-14T14:58:38.775747Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/tier-smoke && mkdir -p /tmp/tier-smoke/pkg && cd /tmp/tier-smoke
+        git init -q
+        cat > pkg/cache.py <<'EOF'
+        """A tiny LRU-ish cache used by the ingest pipeline."""
+
+
+        class Cache:
+            def __init__(self, capacity):
+                self.capacity = capacity
+                self._store = {}
+                self._order = []
+
+            def get(self, key):
+                if key not in self._store:
+                    return None
+                self._order.remove(key)
+                self._order.append(key)
+                return self._store[key]
+
+            def put(self, key, value):
+                if key in self._store:
+                    self._order.remove(key)
+                elif len(self._store) >= self.capacity:
+                    # BUG: evicts the most-recently-used key instead of the
+                    # least-recently-used one — pops from the wrong end.
+                    oldest = self._order.pop()
+                    del self._store[oldest]
+                self._store[key] = value
+                self._order.append(key)
+        EOF
+        mkdir -p tests
+        cat > tests/test_cache.py <<'EOF'
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from pkg.cache import Cache
+
+
+        def test_evicts_least_recently_used():
+            c = Cache(capacity=2)
+            c.put("a", 1)
+            c.put("b", 2)
+            c.get("a")          # "a" is now most-recently-used
+            c.put("c", 3)        # should evict "b" (least-recently-used), not "a"
+            assert c.get("a") == 1
+            assert c.get("b") is None
+            assert c.get("c") == 3
+
+
+        if __name__ == "__main__":
+            test_evicts_least_recently_used()
+            print("PASS")
+        EOF
+        git add -A && git commit -q -m init
+        python3 tests/test_cache.py 2>&1 || echo "confirmed: bug reproduces before fix"
+      at: 2026-08-14T14:58:59.360621Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-tiersmoke ./cmd/prism
+        cd /tmp/tier-smoke
+        /tmp/prism-tiersmoke init --deny-builtin-search --no-permissions=false <<< "" 2>&1 | tail -6
+        python3 - <<'EOF'
+        import json, os
+        path = os.path.expanduser("~/.claude.json")
+        doc = json.load(open(path))
+        doc.setdefault("projects", {})["/private/tmp/tier-smoke"] = {"hasTrustDialogAccepted": True}
+        json.dump(doc, open(path, "w"), indent=2)
+        EOF
+        cat .claude/settings.json
+      at: 2026-08-14T14:59:08.944825Z
+      classified: build
+    - cmd: |-
+        cd /tmp/tier-smoke
+        PROMPT='There is a bug in pkg/cache.py: tests/test_cache.py fails. Find the cause, fix it with the smallest possible change, and stop once fixed. Do not modify the test file.'
+        for model in haiku sonnet opus; do
+          echo "=== $model ==="
+          git checkout -q -- pkg/cache.py
+          claude -p "$PROMPT" \
+            --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model "$model" \
+            --allowedTools Read,Edit,Write,Glob,Bash,mcp__prism \
+            > "/tmp/tiersmoke_${model}.jsonl" 2>&1
+          echo "exit: $?"
+        done
+      at: 2026-08-14T15:00:04.13448Z
+      classified: other
+    - cmd: |-
+        cd /tmp/tier-smoke
+        for model in haiku sonnet opus; do
+          echo "--- $model: does the fix pass? ---"
+          python3 tests/test_cache.py 2>&1 | tail -3
+          git diff pkg/cache.py | head -20
+          git checkout -q -- pkg/cache.py
+        done 2>&1
+        echo "note: this loop re-tests the CURRENT state, need per-model capture instead — redo below"
+      at: 2026-08-14T15:00:08.441999Z
+      classified: other
+    - cmd: |-
+        cd /tmp/tier-smoke
+        PROMPT='There is a bug in pkg/cache.py: tests/test_cache.py fails. Find the cause, fix it with the smallest possible change, and stop once fixed. Do not modify the test file.'
+        for model in haiku sonnet opus; do
+          echo "=== $model ==="
+          git checkout -q -- pkg/cache.py
+          claude -p "$PROMPT" \
+            --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model "$model" \
+            --allowedTools Read,Edit,Write,Glob,Bash,mcp__prism \
+            > "/tmp/tiersmoke_${model}.jsonl" 2>&1
+          git diff pkg/cache.py > "/tmp/tiersmoke_${model}.diff"
+          python3 tests/test_cache.py > "/tmp/tiersmoke_${model}.testresult" 2>&1
+          echo "  test result: $(tail -1 /tmp/tiersmoke_${model}.testresult)"
+          git checkout -q -- pkg/cache.py
+        done
+      at: 2026-08-14T15:01:09.685301Z
+      classified: other
+    - cmd: |-
+        for model in haiku sonnet opus; do
+        echo "======================= $model ======================="
+        python3 - "$model" <<'EOF'
+        import json, sys
+        model = sys.argv[1]
+        tools = []
+        grep_attempts = 0
+        prism_calls = 0
+        for line in open(f"/tmp/tiersmoke_{model}.jsonl"):
+            line = line.strip()
+            if not line: continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            if rec.get("type") == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use":
+                        name = block.get("name")
+                        tools.append(name)
+                        if name == "Bash" and "grep" in str(block.get("input", {}).get("command","")).lower():
+                            grep_attempts += 1
+                        if name.startswith("mcp__prism"):
+                            prism_calls += 1
+            if rec.get("type") == "result":
+                print(f"turns={rec.get('num_turns')}  cost=${rec.get('total_cost_usd'):.4f}  denials={len(rec.get('permission_denials') or [])}")
+        print("tool sequence:", " -> ".join(tools))
+        print(f"prism calls: {prism_calls}, grep attempts: {grep_attempts}")
+        EOF
+        echo "--- diff ---"
+        cat "/tmp/tiersmoke_${model}.diff"
+        done
+      at: 2026-08-14T15:01:16.062673Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, os
+        path = os.path.expanduser("~/.claude.json")
+        doc = json.load(open(path))
+        doc.get("projects", {}).pop("/private/tmp/tier-smoke", None)
+        json.dump(doc, open(path, "w"), indent=2)
+        EOF
+        rm -rf /tmp/tier-smoke /tmp/prism-tiersmoke /tmp/tiersmoke_*.jsonl /tmp/tiersmoke_*.diff /tmp/tiersmoke_*.testresult
+        echo cleaned
+      at: 2026-08-14T15:01:20.180632Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/tier-smoke2 && mkdir -p /tmp/tier-smoke2/pkg && cd /tmp/tier-smoke2
+        git init -q
+        cat > pkg/cache.py <<'EOF'
+        """A tiny LRU-ish cache used by the ingest pipeline."""
+
+
+        class Cache:
+            def __init__(self, capacity):
+                self.capacity = capacity
+                self._store = {}
+                self._order = []
+
+            def get(self, key):
+                if key not in self._store:
+                    return None
+                self._order.remove(key)
+                self._order.append(key)
+                return self._store[key]
+
+            def put(self, key, value):
+                if key in self._store:
+                    self._order.remove(key)
+                elif len(self._store) >= self.capacity:
+                    # BUG: evicts the most-recently-used key instead of the
+                    # least-recently-used one — pops from the wrong end.
+                    oldest = self._order.pop()
+                    del self._store[oldest]
+                self._store[key] = value
+                self._order.append(key)
+        EOF
+        mkdir -p tests
+        cat > tests/test_cache.py <<'EOF'
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from pkg.cache import Cache
+
+
+        def test_evicts_least_recently_used():
+            c = Cache(capacity=2)
+            c.put("a", 1)
+            c.put("b", 2)
+            c.get("a")
+            c.put("c", 3)
+            assert c.get("a") == 1
+            assert c.get("b") is None
+            assert c.get("c") == 3
+
+
+        if __name__ == "__main__":
+            test_evicts_least_recently_used()
+            print("PASS")
+        EOF
+        git add -A && git commit -q -m init
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-tiersmoke2 ./cmd/prism
+        cd /tmp/tier-smoke2
+        /tmp/prism-tiersmoke2 init --deny-builtin-search --no-permissions=false <<< "" 2>&1 | tail -3
+        python3 - <<'EOF'
+        import json, os
+        path = os.path.expanduser("~/.claude.json")
+        doc = json.load(open(path))
+        doc.setdefault("projects", {})["/private/tmp/tier-smoke2"] = {"hasTrustDialogAccepted": True}
+        json.dump(doc, open(path, "w"), indent=2)
+        EOF
+      at: 2026-08-14T15:20:12.005893Z
+      classified: build
+    - cmd: |-
+        cd /tmp/tier-smoke2
+        claude -p 'There is a bug in pkg/cache.py: tests/test_cache.py fails. Find the cause, fix it with the smallest possible change, and stop once fixed. Do not modify the test file.' \
+          --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model haiku \
+          --allowedTools Read,Edit,Write,Glob,Bash,mcp__prism \
+          > /tmp/haiku_retrace.jsonl 2>&1
+        echo "exit: $?"
+      at: 2026-08-14T15:20:38.959958Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/haiku_retrace.jsonl'):
+            line = line.strip()
+            if not line: continue
+            rec = json.loads(line)
+            if rec.get("type") == "system" and rec.get("subtype") == "init":
+                tools = rec.get("tools", [])
+                prism_tools = [t for t in tools if "prism" in t.lower()]
+                print(f"total tools offered: {len(tools)}")
+                print(f"prism tools offered: {prism_tools}")
+                print(f"mcp_servers: {rec.get('mcp_servers')}")
+                break
+        EOF
+      at: 2026-08-14T15:20:42.893822Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/haiku_retrace.jsonl'):
+            line = line.strip()
+            if not line: continue
+            rec = json.loads(line)
+            t = rec.get("type")
+            if t == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_use":
+                        print(f"TOOL_USE  {block.get('name')}  {json.dumps(block.get('input', {}))[:200]}")
+                    elif block.get("type") == "text":
+                        print(f"TEXT      {block.get('text')}")
+                    elif block.get("type") == "thinking":
+                        print(f"THINKING  {block.get('thinking')[:400]}")
+            elif t == "user":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "tool_result":
+                        content = block.get("content")
+                        if isinstance(content, list):
+                            content = " ".join(c.get("text","") for c in content if isinstance(c, dict))
+                        print(f"TOOL_RES  {str(content)[:150]}")
+            elif t == "result":
+                print(f"RESULT turns={rec.get('num_turns')} cost=${rec.get('total_cost_usd')}")
+        EOF
+      at: 2026-08-14T15:20:49.009436Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        for line in open('/tmp/haiku_retrace.jsonl'):
+            line = line.strip()
+            if not line: continue
+            rec = json.loads(line)
+            if rec.get("type") == "assistant":
+                for block in rec.get("message", {}).get("content", []):
+                    if block.get("type") == "thinking":
+                        print(block.get("thinking"))
+                        print("=====END BLOCK=====")
+        EOF
+      at: 2026-08-14T15:20:56.205799Z
+      classified: other
+    - cmd: |
+        rm -rf /tmp/prism-filetype-check && mkdir -p /tmp/prism-filetype-check && cd /tmp/prism-filetype-check
+        git init -q
+        printf "a,b,c\n1,2,3\n4,5,6\n" > data.csv
+        printf "not code, just prose. plain text file.\n" > notes.txt
+        printf '{"key": "value"}\n' > config.json
+        git add -A && git commit -q -m init
+        /tmp/prism-tiersmoke2 mcp --dir . <<'RPC' 2>&1 | tail -20
+        RPC
+      at: 2026-08-14T15:24:42.185398Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-filetype-check
+        /tmp/prism-tiersmoke2 read data.csv --format text 2>&1
+        echo "---exit: $?---"
+        /tmp/prism-tiersmoke2 read notes.txt --format text 2>&1
+        echo "---exit: $?---"
+        /tmp/prism-tiersmoke2 read config.json --format text 2>&1
+        echo "---exit: $?---"
+      at: 2026-08-14T15:24:46.573555Z
+      classified: other
+    - cmd: |-
+        cd /tmp/prism-filetype-check
+        head -c 200 /bin/ls > binary.bin
+        git add -A && git commit -q -m binary
+        /tmp/prism-tiersmoke2 read binary.bin --format text 2>&1 | head -5
+        echo "---exit: $?---"
+        echo "=== can prism_search find a file BY PATH/NAME rather than content? ==="
+        /tmp/prism-tiersmoke2 search "test_cache" --scope text --format text 2>&1
+        /tmp/prism-tiersmoke2 search "cache.py" --scope both --format text 2>&1 | head -10
+      at: 2026-08-14T15:24:54.520621Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/prism-filetype-check /tmp/tier-smoke2 /tmp/prism-tiersmoke2 /tmp/haiku_retrace.jsonl
+        python3 - <<'EOF'
+        import json, os
+        path = os.path.expanduser("~/.claude.json")
+        doc = json.load(open(path))
+        doc.get("projects", {}).pop("/private/tmp/tier-smoke2", None)
+        json.dump(doc, open(path, "w"), indent=2)
+        EOF
+        echo cleaned
+      at: 2026-08-14T15:25:02.673819Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        wc -l swebench_ab.py
+      at: 2026-08-14T20:56:01.112391Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        content = open('swebench_ab.py').read()
+        print(content.count('MCP_CFG'))
+        "
+      at: 2026-08-14T20:58:03.052225Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 test_swebench_ab.py
+      at: 2026-08-14T20:58:51.289482Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism version 2>&1
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log -1 --format=%H
+        echo "--- rebuilding ~/bin/prism from current main to be certain ---"
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.50.0" -o ~/bin/prism ./cmd/prism
+        ~/bin/prism version
+      at: 2026-08-14T20:59:00.612646Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        rm -rf runs/swebench-live/sonnet-smoke1
+        python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 1 \
+          --arms baseline prism --out runs/swebench-live/sonnet-smoke1 --model sonnet 2>&1 | tail -40
+      at: 2026-08-14T21:01:07.275702Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        rec = json.loads(open('runs/swebench-live/sonnet-smoke1/a2aproject__a2a-python-279.prism.json').read())
+        print('isolation_removed:', rec['isolation_removed'])
+        print('prism_tools_loaded_at_init:', rec['prism_tools_loaded_at_init'])
+        print('permission_denials:', rec['permission_denials'])
+        print('denied_search_attempts:', rec['denied_search_attempts'])
+        print('tool_trace:')
+        for t in rec['tool_trace']:
+            print(' ', t)
+        "
+      at: 2026-08-14T21:01:13.78097Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        rm -rf runs/swebench-live/sonnet-smoke1
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 38 \
+          --arms baseline prism --out runs/swebench-live/sonnet38 --model sonnet \
+          > /tmp/sonnet38_run.log 2>&1 &
+        echo "started pid $!"
+      at: 2026-08-14T21:01:25.419452Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+        n = len(pairs)
+        print(f"{len(rows)} instances touched, {n} complete pairs")
+
+        def cost(r): return r.get("cost_usd") or 0
+        def turns(r): return r.get("turns") or 0
+
+        bcost = sum(cost(v["baseline"]) for v in pairs.values())
+        pcost = sum(cost(v["prism"]) for v in pairs.values())
+        bturns = sum(turns(v["baseline"]) for v in pairs.values())
+        pturns = sum(turns(v["prism"]) for v in pairs.values())
+        prism_used = sum(1 for v in pairs.values() if v["prism"].get("prism_used"))
+        denied_attempts = sum(v["prism"].get("denied_search_attempts", 0) for v in pairs.values())
+        cheaper = sum(1 for v in pairs.values() if cost(v["prism"]) < cost(v["baseline"]))
+
+        if n:
+            print(f"total cost: baseline ${bcost:.2f}, prism ${pcost:.2f}  (prism {pcost/bcost*100:.1f}% of baseline)")
+            print(f"avg turns:  baseline {bturns/n:.1f}, prism {pturns/n:.1f}")
+            print(f"prism cheaper on {cheaper}/{n} pairs")
+            print(f"prism_used: {prism_used}/{n}")
+            print(f"total denied grep/rg attempts (prism arm): {denied_attempts}")
+        EOF
+      at: 2026-08-14T21:57:34.889769Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+        for iid, v in sorted(pairs.items()):
+            b, p = v["baseline"], v["prism"]
+            print(f"{iid[:40]:<41} b_fresh={b['fresh_input_tokens']:>7} p_fresh={p['fresh_input_tokens']:>7}  "
+                  f"b_cache={b['cache_read_tokens']:>8} p_cache={p['cache_read_tokens']:>8}  "
+                  f"b_turns={b['turns']:<3} p_turns={p['turns']:<3}  b_cost=${b['cost_usd']:.3f} p_cost=${p['cost_usd']:.3f}")
+        EOF
+      at: 2026-08-14T22:07:27.744749Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+
+        for label, excl in [("all pairs", set()), ("excl beets-5890 outlier", {"beetbox__beets-5890"})]:
+            keep = {k: v for k, v in pairs.items() if k not in excl}
+            n = len(keep)
+            bcost = sum(v["baseline"]["cost_usd"] for v in keep.values())
+            pcost = sum(v["prism"]["cost_usd"] for v in keep.values())
+            print(f"{label}: n={n}  baseline=${bcost:.2f}  prism=${pcost:.2f}  ratio={pcost/bcost:.2f}x")
+        EOF
+      at: 2026-08-14T22:07:43.858045Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import Counter
+
+        tool_counts = Counter()
+        n_cells = 0
+        for f in glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            n_cells += 1
+            for t in rec.get("tool_trace") or []:
+                if t.startswith("mcp__prism"):
+                    tool_counts[t] += 1
+
+        print(f"across {n_cells} prism-arm cells:")
+        for name, c in tool_counts.most_common():
+            print(f"  {name:<35} {c:<5} ({c/n_cells:.1f}/cell)")
+        EOF
+      at: 2026-08-14T22:07:53.666658Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import Counter, defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+
+        for iid, v in sorted(pairs.items()):
+            b, p = v["baseline"], v["prism"]
+            b_grep = sum(1 for t in b.get("tool_trace",[]) if isinstance(t,str) and (t=="Grep" or t.strip().startswith(("grep","rg "))))
+            p_search = sum(1 for t in p.get("tool_trace",[]) if t == "mcp__prism__prism_search")
+            print(f"{iid[:38]:<39} b_turns={b['turns']:<4} p_turns={p['turns']:<4} "
+                  f"b_grepcalls={b_grep:<3} p_searchcalls={p_search:<3} "
+                  f"turn_delta={p['turns']-b['turns']:+d}")
+        EOF
+      at: 2026-08-14T22:08:10.940507Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 -c "
+        import json
+        rec = json.loads(open('koxudaxi__datamodel-code-generator-2461.prism.json').read())
+        for i, t in enumerate(rec['tool_trace']):
+            print(f'{i:3} {t}')
+        "
+      at: 2026-08-14T22:08:21.659875Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        echo "baseline: $(ls *.baseline.json 2>/dev/null | wc -l)"
+        echo "prism: $(ls *.prism.json 2>/dev/null | wc -l)"
+        python3 - <<'EOF'
+        import json, glob
+        bad = []
+        for f in sorted(glob.glob("*.baseline.json") + glob.glob("*.prism.json")):
+            try:
+                rec = json.loads(open(f).read())
+                if rec.get("timed_out"):
+                    bad.append((f, "timed_out"))
+            except Exception as e:
+                bad.append((f, f"parse error: {e}"))
+        print(f"{len(bad)} problem cells" if bad else "no parse errors / timeouts flagged")
+        for f, why in bad:
+            print(" ", f, why)
+        EOF
+      at: 2026-08-14T23:36:12.476059Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 score_cells.py runs/swebench-live/sonnet38 --arms baseline prism > /tmp/sonnet38_score.log 2>&1 &
+        echo "started pid $!"
+      at: 2026-08-14T23:36:15.67939Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v}
+        n = len(pairs)
+        print(f"n={n} complete pairs (full 38)\n")
+
+        def agg(arm):
+            fresh = sum(v[arm]["fresh_input_tokens"] for v in pairs.values())
+            cache = sum(v[arm]["cache_read_tokens"] for v in pairs.values())
+            out = sum(v[arm]["output_tokens"] for v in pairs.values())
+            turns = sum(v[arm]["turns"] or 0 for v in pairs.values())
+            cost = sum(v[arm]["cost_usd"] or 0 for v in pairs.values())
+            return fresh, cache, out, turns, cost
+
+        bf, bc, bo, bt, bcost = agg("baseline")
+        pf, pc, po, pt, pcost = agg("prism")
+
+        print(f"{'metric':<20}{'baseline':>15}{'prism':>15}{'ratio':>10}")
+        print(f"{'fresh input tok':<20}{bf:>15,}{pf:>15,}{pf/bf:>9.2f}x")
+        print(f"{'cache read tok':<20}{bc:>15,}{pc:>15,}{pc/bc:>9.2f}x")
+        print(f"{'output tok':<20}{bo:>15,}{po:>15,}{po/bo:>9.2f}x")
+        print(f"{'turns':<20}{bt:>15,}{pt:>15,}{pt/bt:>9.2f}x")
+        print(f"{'cost $':<20}{bcost:>15.2f}{pcost:>15.2f}{pcost/bcost:>9.2f}x")
+        print()
+        print(f"avg turns/cell: baseline {bt/n:.1f}, prism {pt/n:.1f}")
+        print(f"avg cost/cell:  baseline ${bcost/n:.3f}, prism ${pcost/n:.3f}")
+        print(f"prism cheaper on {sum(1 for v in pairs.values() if v['prism']['cost_usd']<v['baseline']['cost_usd'])}/{n} pairs")
+        print(f"prism fewer turns on {sum(1 for v in pairs.values() if (v['prism']['turns'] or 0)<(v['baseline']['turns'] or 0))}/{n} pairs")
+
+        print("\n--- excluding beets-5890 runaway outlier ---")
+        keep = {k:v for k,v in pairs.items() if k != "beetbox__beets-5890"}
+        n2 = len(keep)
+        bf2 = sum(v["baseline"]["fresh_input_tokens"] for v in keep.values())
+        pf2 = sum(v["prism"]["fresh_input_tokens"] for v in keep.values())
+        bc2 = sum(v["baseline"]["cache_read_tokens"] for v in keep.values())
+        pc2 = sum(v["prism"]["cache_read_tokens"] for v in keep.values())
+        bt2 = sum(v["baseline"]["turns"] or 0 for v in keep.values())
+        pt2 = sum(v["prism"]["turns"] or 0 for v in keep.values())
+        bcost2 = sum(v["baseline"]["cost_usd"] or 0 for v in keep.values())
+        pcost2 = sum(v["prism"]["cost_usd"] or 0 for v in keep.values())
+        print(f"n={n2}")
+        print(f"fresh input tok: baseline {bf2:,} prism {pf2:,} ({pf2/bf2:.2f}x)")
+        print(f"cache read tok:  baseline {bc2:,} prism {pc2:,} ({pc2/bc2:.2f}x)")
+        print(f"turns:           baseline {bt2} prism {pt2} ({pt2/bt2:.2f}x)  avg {bt2/n2:.1f} vs {pt2/n2:.1f}")
+        print(f"cost:            baseline ${bcost2:.2f} prism ${pcost2:.2f} ({pcost2/bcost2:.2f}x)")
+
+        prism_used = sum(1 for v in pairs.values() if v["prism"]["prism_used"])
+        denied = sum(v["prism"].get("denied_search_attempts",0) for v in pairs.values())
+        print(f"\nprism_used: {prism_used}/{n}")
+        print(f"total denied grep/rg attempts (prism arm): {denied}")
+        EOF
+      at: 2026-08-15T00:17:53.295711Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        rows = defaultdict(dict)
+        for f in glob.glob("*.baseline.json") + glob.glob("*.prism.json"):
+            rec = json.loads(open(f).read())
+            iid = rec["instance_id"]
+            arm = "prism" if f.endswith(".prism.json") else "baseline"
+            rows[iid][arm] = rec
+
+        pairs = {k: v for k, v in rows.items() if "baseline" in v and "prism" in v and k != "beetbox__beets-5890"}
+
+        b_rate, p_rate = [], []
+        for v in pairs.values():
+            bt, pt = v["baseline"]["turns"], v["prism"]["turns"]
+            if bt: b_rate.append(v["baseline"]["cache_read_tokens"] / bt)
+            if pt: p_rate.append(v["prism"]["cache_read_tokens"] / pt)
+
+        print(f"cache-read tokens per turn (excl outlier):")
+        print(f"  baseline: mean {sum(b_rate)/len(b_rate):,.0f}/turn")
+        print(f"  prism:    mean {sum(p_rate)/len(p_rate):,.0f}/turn")
+        print(f"  ratio: {(sum(p_rate)/len(p_rate))/(sum(b_rate)/len(b_rate)):.2f}x")
+
+        # check init_tools count as proxy for tool-schema footprint
+        for f in list(glob.glob("*.prism.json"))[:1]:
+            rec = json.loads(open(f).read())
+        EOF
+      at: 2026-08-15T00:18:20.62127Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        import json, glob
+        from collections import Counter
+
+        usage = Counter()
+        cells = 0
+        for run in ["runs/swebench-live/haiku38", "runs/swebench-live/sonnet38"]:
+            for f in glob.glob(f"{run}/*.prism.json"):
+                rec = json.loads(open(f).read())
+                cells += 1
+                seen_this_cell = set()
+                for t in rec.get("tool_trace") or []:
+                    if isinstance(t, str) and t.startswith("mcp__prism__"):
+                        usage[t] += 1
+                        seen_this_cell.add(t)
+
+        print(f"across {cells} prism-arm cells (haiku38 + sonnet38 combined):\n")
+        for name, c in usage.most_common():
+            print(f"  {name:<35} {c:>4} calls")
+        EOF
+      at: 2026-08-15T01:57:22.404577Z
+      classified: other
+    - cmd: |-
+        cd /tmp/toolsize-check
+        python3 - <<'EOF'
+        import json, subprocess
+
+        proc = subprocess.Popen(["/Users/tapabratapal/bin/prism", "mcp"], cwd=".", stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+
+        def send(obj):
+            proc.stdin.write(json.dumps(obj) + "\n")
+            proc.stdin.flush()
+
+        def recv():
+            line = proc.stdout.readline()
+            return json.loads(line)
+
+        send({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}})
+        recv()
+        send({"jsonrpc":"2.0","method":"notifications/initialized"})
+        send({"jsonrpc":"2.0","id":2,"method":"tools/list"})
+        resp = recv()
+        tools = resp["result"]["tools"]
+
+        total = 0
+        rows = []
+        for t in tools:
+            size = len(json.dumps(t))
+            total += size
+            always = t.get("_meta", {}).get("anthropic/alwaysLoad", False)
+            rows.append((t["name"], size, always))
+
+        rows.sort([REDACTED:env-secret] r: -r[1])
+        for name, size, always in rows:
+            print(f"{name:<32} {size:>6} bytes  alwaysLoad={always}")
+        print(f"\nTOTAL: {total} bytes across {len(tools)} tools (~{total//4} tokens @ 4 bytes/token)")
+        proc.terminate()
+        EOF
+      at: 2026-08-15T01:57:49.581902Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/toolsize-check
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        used = {'prism_search':1488,'prism_read':930,'prism_lookup':1034,'prism_query':2361,'prism_change_impact':1686,'prism_verify':270,'prism_references':658}
+        unused = {'prism_map':2016,'prism_missing_implementations':1796,'prism_rename_plan':1367,'prism_dead_code':1364,'prism_node':973,'prism_index':488,'prism_arch_check':270}
+        print('used total:', sum(used.values()), 'bytes (~', sum(used.values())//4, 'tokens)')
+        print('unused total:', sum(unused.values()), 'bytes (~', sum(unused.values())//4, 'tokens)')
+        "
+      at: 2026-08-15T01:58:04.356142Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        python3 -c "
+        import json
+        rec1 = json.loads(open('runs/swebench-live/sonnet38/astronomer__dag-factory-544.baseline.json').read())
+        rec2 = json.loads(open('runs/swebench-live/sonnet38/browser-use__browser-use-2480.baseline.json').read())
+        patches = {rec1['instance_id']: {'model_patch': rec1['model_patch']}, rec2['instance_id']: {'model_patch': rec2['model_patch']}}
+        json.dump(patches, open('/tmp/retry_missing.patches.json','w'))
+        print('wrote patches for', list(patches))
+        "
+        "$LIVE/.venv/bin/python" -m evaluation.evaluation \
+          --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux \
+          --patch_dir /tmp/retry_missing.patches.json \
+          --output_dir runs/swebench-live/sonnet38/eval-baseline-retry-missing \
+          --workers 1 --overwrite 1 \
+          --instance_ids astronomer__dag-factory-544 browser-use__browser-use-2480 \
+          2>&1 | tail -20
+        cd "$LIVE"
+      at: 2026-08-15T02:01:46.08587Z
+      classified: other
+    - cmd: |-
+        LIVE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/c92e7cda-68a2-458f-bb70-004cec486de3/scratchpad/SWE-bench-Live
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        "$LIVE/.venv/bin/python" -m evaluation.evaluation \
+          --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux \
+          --patch_dir /tmp/retry_missing.patches.json \
+          --output_dir /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/eval-baseline-retry-missing \
+          --workers 1 --overwrite 1 \
+          --instance_ids astronomer__dag-factory-544 browser-use__browser-use-2480 \
+          --cwd_workaround 2>/dev/null; \
+        cd "$LIVE" && "$LIVE/.venv/bin/python" -m evaluation.evaluation \
+          --dataset SWE-bench-Live/SWE-bench-Live --split full --platform linux \
+          --patch_dir /tmp/retry_missing.patches.json \
+          --output_dir /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/eval-baseline-retry-missing \
+          --workers 1 --overwrite 1 \
+          --instance_ids astronomer__dag-factory-544 browser-use__browser-use-2480 \
+          2>&1 | tail -30
+      at: 2026-08-15T02:01:55.269548Z
+      classified: other
+    - cmd: |-
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/eval-baseline-retry-missing/astronomer__dag-factory-544/ 2>&1
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/eval-baseline-retry-missing/browser-use__browser-use-2480/ 2>&1
+        echo "--- check original model_patch content ---"
+        python3 -c "
+        import json
+        rec1 = json.loads(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/astronomer__dag-factory-544.baseline.json').read())
+        rec2 = json.loads(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/browser-use__browser-use-2480.baseline.json').read())
+        print('dag-factory-544 baseline empty_patch:', rec1.get('empty_patch'), 'patch len:', len(rec1.get('model_patch','')))
+        print('browser-use-2480 baseline empty_patch:', rec2.get('empty_patch'), 'patch len:', len(rec2.get('model_patch','')))
+        "
+      at: 2026-08-15T02:02:04.984684Z
+      classified: other
+    - cmd: |-
+        rm -rf /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/sonnet38/eval-baseline-retry-missing /tmp/retry_missing.patches.json
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        d = json.load(open('runs/swebench-live/sonnet38/verdicts.json'))
+        for iid in ['astronomer__dag-factory-544', 'browser-use__browser-use-2480']:
+            d['baseline'][iid] = {'resolved': False, 'note': 'genuinely empty patch (0-byte model_patch); no report.json is expected/correct, not a scoring failure'}
+        json.dump(d, open('runs/swebench-live/sonnet38/verdicts.json', 'w'), indent=1)
+        stable = [v for v in d['baseline'].values() if not v.get('unstable')]
+        n_res = sum(1 for v in stable if v.get('resolved'))
+        print(f'baseline (corrected): {n_res}/{len(stable)} resolved')
+        stable_p = [v for v in d['prism'].values() if not v.get('unstable')]
+        n_res_p = sum(1 for v in stable_p if v.get('resolved'))
+        print(f'prism: {n_res_p}/{len(stable_p)} resolved')
+        "
+      at: 2026-08-15T02:02:32.22216Z
+      classified: other
+    - cmd: ls /tmp/swebench-repos/ 2>/dev/null
+      at: 2026-08-15T03:11:14.399032Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/graphsize-check && mkdir -p /tmp/graphsize-check
+        cp -r /tmp/swebench-repos/a2aproject__a2a-python /tmp/graphsize-check/a2a
+        cp -r /tmp/swebench-repos/pallets__flask /tmp/graphsize-check/flask
+        cd /tmp/graphsize-check/a2a && git checkout -q main 2>/dev/null || git checkout -q master 2>/dev/null || git checkout -q $(git rev-parse HEAD) 2>/dev/null
+        cd /tmp/graphsize-check/flask && git checkout -q main 2>/dev/null || true
+        echo "a2a files: $(find /tmp/graphsize-check/a2a -name '*.py' | wc -l)"
+        echo "flask files: $(find /tmp/graphsize-check/flask -name '*.py' | wc -l)"
+      at: 2026-08-15T03:11:19.92043Z
+      classified: other
+    - cmd: |-
+        cd /tmp/graphsize-check/a2a
+        /Users/tapabratapal/bin/prism index . 2>&1 | tail -5
+        cd /tmp/graphsize-check/flask
+        /Users/tapabratapal/bin/prism index . 2>&1 | tail -5
+      at: 2026-08-15T03:11:24.303097Z
+      classified: other
+    - cmd: |-
+        cd /tmp/graphsize-check/flask
+        echo "=== flask: term 'template_filter' ==="
+        echo "--- raw grep-equivalent (file:line:text) ---"
+        python3 - <<'EOF'
+        import subprocess, os
+        out = []
+        for root, dirs, files in os.walk("."):
+            dirs[:] = [d for d in dirs if d not in (".git",)]
+            for fn in files:
+                if not fn.endswith(".py"): continue
+                p = os.path.join(root, fn)
+                try:
+                    for i, line in enumerate(open(p, errors="ignore"), 1):
+                        if "template_filter" in line:
+                            out.append(f"{p}:{i}:{line.rstrip()}")
+                except Exception:
+                    pass
+        text = "\n".join(out)
+        print(text)
+        print(f"\n--- {len(text)} bytes, {len(out)} hits ---")
+        EOF
+      at: 2026-08-15T03:11:41.645154Z
+      classified: other
+    - cmd: |-
+        cd /tmp/graphsize-check/flask
+        echo "--- prism search scope=text (grep-equivalent, our new compact format) ---"
+        /Users/tapabratapal/bin/prism search "template_filter" --scope text --format text > /tmp/psearch_out.txt 2>/dev/null
+        wc -c /tmp/psearch_out.txt
+        head -15 /tmp/psearch_out.txt
+        echo ""
+        echo "--- prism query (graph-expanded, default budget 8000) ---"
+        /Users/tapabratapal/bin/prism query "fix the template_filter decorator so it works without parens" --terms template_filter --format text > /tmp/pquery_out.txt 2>/dev/null
+        wc -c /tmp/pquery_out.txt
+      at: 2026-08-15T03:11:46.725162Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1
+        echo "--vet--"
+        go vet ./... 2>&1
+        echo "--test--"
+        go test ./... 2>&1 | tail -20
+      at: 2026-08-15T03:12:48.444433Z
+      classified: lint
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism/internal/cli/*_test.go
+      at: 2026-08-15T03:12:55.485181Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/cli/... -run TestFormatText -v 2>&1 | tail -30
+      at: 2026-08-15T03:13:13.94506Z
+      classified: test
+    - cmd: |-
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.50.0-dev" -o ~/bin/prism /Users/tapabratapal/Projects/provasign/prism/cmd/prism
+        cd /tmp/graphsize-check/flask
+        echo "--- prism search scope=text (grep-equivalent, FIXED) ---"
+        /Users/tapabratapal/bin/prism search "template_filter" --scope text --format text > /tmp/psearch_out.txt 2>/dev/null
+        wc -c /tmp/psearch_out.txt
+        cat /tmp/psearch_out.txt
+      at: 2026-08-15T03:13:20.549113Z
+      classified: build
+    - cmd: |-
+        cd /tmp/graphsize-check/flask
+        python3 - <<'EOF'
+        import os
+        out = []
+        for root, dirs, files in os.walk("."):
+            dirs[:] = [d for d in dirs if d not in (".git", ".grove", "node_modules")]
+            for fn in files:
+                p = os.path.join(root, fn)
+                try:
+                    for i, line in enumerate(open(p, errors="ignore"), 1):
+                        if "template_filter" in line:
+                            out.append(f"{p[2:]}:{i}:{line.rstrip()}")
+                except Exception:
+                    pass
+        text = "\n".join(out)
+        print(f"raw grep (whole tree, uncapped): {len(text)} bytes, {len(out)} hits")
+        EOF
+        echo ""
+        echo "prism_search scope=text (capped, our tool):"
+        wc -c < /tmp/psearch_out.txt
+        echo ""
+        echo "prism_query (graph-expanded, budget=8000):"
+        wc -c < /tmp/pquery_out.txt
+      at: 2026-08-15T03:13:29.105003Z
+      classified: other
+    - cmd: |-
+        cd /tmp/graphsize-check/a2a
+        python3 - <<'EOF'
+        import os
+        out = []
+        for root, dirs, files in os.walk("."):
+            dirs[:] = [d for d in dirs if d not in (".git", ".grove")]
+            for fn in files:
+                p = os.path.join(root, fn)
+                try:
+                    for i, line in enumerate(open(p, errors="ignore"), 1):
+                        if "RequestContext" in line:
+                            out.append(f"{p[2:]}:{i}:{line.rstrip()}")
+                except Exception:
+                    pass
+        text = "\n".join(out)
+        print(f"raw grep (whole tree, uncapped): {len(text)} bytes, {len(out)} hits")
+        EOF
+        echo ""
+        echo "--- prism search scope=text ---"
+        /Users/tapabratapal/bin/prism search "RequestContext" --scope text --format text 2>/dev/null | wc -c
+        echo "--- prism query (graph-expanded, edit-ready: source + callers) ---"
+        /Users/tapabratapal/bin/prism query "understand how RequestContext is constructed and used" --terms RequestContext --format text 2>/dev/null | wc -c
+      at: 2026-08-15T03:13:39.048837Z
+      classified: other
+    - cmd: rm -rf /tmp/graphsize-check /tmp/psearch_out.txt /tmp/pquery_out.txt
+      at: 2026-08-15T03:13:41.908166Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/graphsize-check && mkdir -p /tmp/graphsize-check
+        cp -r /tmp/swebench-repos/a2aproject__a2a-python /tmp/graphsize-check/a2a
+        cd /tmp/graphsize-check/a2a
+        /Users/tapabratapal/bin/prism index . 2>&1 | tail -3
+      at: 2026-08-15T03:16:29.851489Z
+      classified: other
+    - cmd: |-
+        cd /tmp/graphsize-check/a2a
+        python3 - <<'EOF'
+        import os
+        raw_files = set()
+        raw_total = 0
+        for root, dirs, files in os.walk("."):
+            dirs[:] = [d for d in dirs if d not in (".git", ".grove")]
+            for fn in files:
+                p = os.path.join(root, fn)
+                try:
+                    hits_here = 0
+                    for i, line in enumerate(open(p, errors="ignore"), 1):
+                        if "RequestContext" in line:
+                            hits_here += 1
+                    if hits_here:
+                        raw_files.add(p[2:])
+                        raw_total += hits_here
+                except Exception:
+                    pass
+        print(f"raw grep: {raw_total} hits across {len(raw_files)} distinct files")
+        import json
+        json.dump(sorted(raw_files), open('/tmp/raw_files.json','w'))
+        EOF
+        echo ""
+        echo "=== prism_search scope=text, JSON to see what it actually decided to show/omit ==="
+        /Users/tapabratapal/bin/prism search "RequestContext" --scope text --format json 2>/dev/null > /tmp/psearch_raw.json
+        python3 -c "
+        import json
+        d = json.load(open('/tmp/psearch_raw.json'))
+        print('truncated flag:', d.get('truncated'))
+        text = d.get('textHits','')
+        shown_files = set()
+        for line in text.splitlines():
+            if line.startswith('#'):
+                print('OMISSION NOTE:', line)
+                continue
+            f = line.split(':')[0]
+            if f: shown_files.add(f)
+        print('files shown at all:', len(shown_files))
+        print(shown_files)
+        "
+      at: 2026-08-15T03:16:37.064759Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1
+        echo "--vet--"
+        go vet ./... 2>&1
+        echo "--test--"
+        go test ./... 2>&1 | tail -20
+      at: 2026-08-15T03:22:10.101245Z
+      classified: lint
+    - cmd: |-
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.50.0-dev" -o ~/bin/prism /Users/tapabratapal/Projects/provasign/prism/cmd/prism
+        cd /tmp/graphsize-check/a2a
+        /Users/tapabratapal/bin/prism search "RequestContext" --scope text --format json 2>/dev/null > /tmp/psearch_fixed.json
+        python3 -c "
+        import json
+        d = json.load(open('/tmp/psearch_fixed.json'))
+        text = d.get('textHits','')
+        shown_files = set()
+        for line in text.splitlines():
+            if line.startswith('#'): continue
+            f = line.split(':')[0]
+            if f: shown_files.add(f)
+        print('files shown:', len(shown_files))
+        for f in sorted(shown_files):
+            print(' ', f)
+        "
+      at: 2026-08-15T03:22:17.377724Z
+      classified: build
+    - cmd: |-
+        cd /tmp/graphsize-check/a2a
+        python3 -c "
+        import os
+        counts = {}
+        for root, dirs, files in os.walk('.'):
+            dirs[:] = [d for d in dirs if d not in ('.git', '.grove')]
+            for fn in files:
+                p = os.path.join(root, fn)
+                try:
+                    n = sum(1 for line in open(p, errors='ignore') if 'RequestContext' in line)
+                    if n: counts[p[2:]] = n
+                except Exception: pass
+        for f, n in sorted(counts.items(), [REDACTED:env-secret] x: -x[1])[:15]:
+            print(f'{n:>4}  {f}')
+        "
+      at: 2026-08-15T03:22:30.338763Z
+      classified: other
+    - cmd: |-
+        cd /tmp/graphsize-check/a2a
+        /Users/tapabratapal/bin/prism search "RequestContext" --scope symbols --format text 2>/dev/null | head -20
+      at: 2026-08-15T03:22:41.84573Z
+      classified: other
+    - cmd: rm -rf /tmp/graphsize-check /tmp/psearch_fixed.json /tmp/psearch_raw.json /tmp/raw_files.json
+      at: 2026-08-15T03:22:48.968329Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/mcp/... -run TestRenderTextMatches -v 2>&1 | tail -30
+      at: 2026-08-15T03:23:10.484769Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 && go vet ./... 2>&1 && go test ./... 2>&1 | tail -20
+      at: 2026-08-15T03:23:22.408468Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git status --short
+        git branch --show-current
+      at: 2026-08-15T03:23:25.48586Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout -b text-search-fixes -q
+        git add -A internal/
+        git commit -q -F - <<'EOF'
+        fix: scope=text CLI --format text fallthrough, rank files before capping
+
+        Two real bugs, both found live during today's grep-vs-graph size
+        comparison, not from routine testing.
+
+        1. printTextOutput never rendered prism_search(scope="text") as text.
+           scope="text" responses have no "symbols" key (only textHits/textBackend/
+           etc), and printTextOutput's text-match branch was nested inside the
+           m["symbols"] check -- so this shape fell through every branch to the
+           JSON fallback, silently, printing an escaped-JSON dump instead of plain
+           lines. This directly contradicts what the steering, README, and the
+           PreToolUse hook's own deny message all promise: "prism search <query>
+           --format text" as the zero-extra-round-trip path when already in a
+           shell. It never worked for exactly the call scope=text is for.
+
+        2. renderTextMatches' file cap (textRenderFileCap=10) operated on raw scan
+           order, not relevance. Reproduced live: prism_search("RequestContext") on
+           a2a-python has 251 real hits across 28 files; the raw collection
+           (MaxHits, defaulting to the requested `limit`=25) stopped after the
+           first 25 lines of rg's stdout, in whatever order rg happened to emit
+           them -- 9 files survived, ZERO of them the actual implementation
+           (tests/samples/CHANGELOG only). Fixed two ways: (a) raw collection now
+           floors at textScanCeiling=300 regardless of the agent's requested
+           `limit` -- `limit` was conflating "how much to scan" with "how much to
+           display", and display is separately bounded by
+           textRenderFileCap/textRenderHitsPerFile regardless; (b) renderTextMatches
+           now ranks files before applying the cap: real implementation files
+           before test doubles (same convention prism_search's symbol results
+           already use), then more hits before fewer within each tier.
+
+        Known, accepted limit of fix (b): pure scope="text" ranking by hit
+        frequency still can't reliably surface a symbol's DEFINITION specifically
+        -- a class definition mentions its own name once or twice; every call site
+        mentions it repeatedly, so frequency-ranking structurally favors usage
+        over definition. Verified this is not a regression: scope="symbols"/"both"
+        (the graph path) already finds the definition correctly and immediately --
+        that's what those modes are for. scope="text" is deliberately pure grep;
+        this fix makes it a better grep, not a symbol resolver.
+
+        Both regression-tested: TestFormatTextRendersScopeTextSearch (bug 1),
+        TestRenderTextMatchesRanksRealFilesBeforeTestDoubles +
+        TestRenderTextMatchesRanksByHitCountWithinTier (bug 2). go build / go vet /
+        go test ./... all green. Verified live against the exact failing case
+        (RequestContext on a real a2a-python checkout) before and after.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git log -1 --stat | head -15
+      at: 2026-08-15T03:23:42.146175Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout main -q
+        git merge --ff-only text-search-fixes -q
+        git branch -d text-search-fixes
+        git log --oneline -3
+      at: 2026-08-15T03:23:46.318571Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-14T13:31:42.522277Z
+redactions: 2
