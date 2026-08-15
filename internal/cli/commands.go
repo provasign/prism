@@ -2619,6 +2619,9 @@ func printTextOutput(m map[string]any) {
 			if n, _ := m["resolvedNote"].(string); n != "" {
 				fmt.Println("// " + n)
 			}
+			if n, _ := m["note"].(string); n != "" {
+				fmt.Println("// " + n)
+			}
 			return
 		}
 	}

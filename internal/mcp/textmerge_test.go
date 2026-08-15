@@ -209,3 +209,38 @@ func TestSourceDeliveryBoundedByGiantLine(t *testing.T) {
 		t.Error("truncation must name the file and say it happened")
 	}
 }
+
+// TestSearchStreakNoteFiresOnThirdDistinctSearch: the in-band consolidation
+// nudge. Delivery-channel finding 2026-08-15: the identical advice as turn-0
+// steering prose was ignored on its first live smoke (nine sequential
+// single-term searches); the hook's deny reason — same kind of instruction,
+// tool-result channel, decision time — steers ~100%. So the advice rides
+// the Nth search result, carrying the agent's own accumulated terms.
+func TestSearchStreakNoteFiresOnThirdDistinctSearch(t *testing.T) {
+	h := newTestHandler(t)
+	if n := h.searchStreakNote("cache_hit"); n != "" {
+		t.Errorf("1st search must be silent, got %q", n)
+	}
+	if n := h.searchStreakNote("cache_miss"); n != "" {
+		t.Errorf("2nd search must be silent, got %q", n)
+	}
+	if n := h.searchStreakNote("cache_hit"); n != "" {
+		t.Errorf("repeat of a prior term is a re-check, must not advance the streak: %q", n)
+	}
+	n := h.searchStreakNote("hit_ratio")
+	if n == "" {
+		t.Fatal("3rd distinct search must carry the consolidation nudge")
+	}
+	for _, want := range []string{"prism_query", `"cache_hit"`, `"cache_miss"`, `"hit_ratio"`} {
+		if !strings.Contains(n, want) {
+			t.Errorf("nudge must carry the agent's own terms ready to paste; missing %s in %q", want, n)
+		}
+	}
+	// A prism_query call resets the streak (wired in Invoke's dispatch).
+	h.streakMu.Lock()
+	h.searchStreak = nil
+	h.streakMu.Unlock()
+	if n := h.searchStreakNote("fresh_term"); n != "" {
+		t.Errorf("streak must reset after prism_query, got %q", n)
+	}
+}

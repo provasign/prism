@@ -44,6 +44,19 @@ type Handler struct {
 	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
+
+	// searchStreak tracks distinct prism_search queries since the last
+	// prism_query. Delivery-channel finding (2026-08-15): the identical
+	// instruction ("use prism_search instead of grep") failed 12:1 as
+	// turn-0 steering prose and succeeded ~100% as a hook deny reason —
+	// steering works when it arrives at decision time in the tool-result
+	// channel, not when it must survive 30 turns of attention decay.
+	// So the "combine your guesses into one prism_query(terms=[...])"
+	// advice lives HERE, appended in-band to the Nth sequential search
+	// result with the agent's own accumulated terms — the same
+	// fires-only-when-the-condition-holds discipline as resolvedRefNote.
+	streakMu     sync.Mutex
+	searchStreak []string
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -185,6 +198,11 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	}
 	switch name {
 	case "prism_query":
+		// The agent took the consolidated route — reset the search streak
+		// regardless of whether the query itself succeeds.
+		h.streakMu.Lock()
+		h.searchStreak = nil
+		h.streakMu.Unlock()
 		return h.toolQuery(ctx, args)
 	case "prism_read":
 		return h.toolRead(ctx, args)
@@ -1020,6 +1038,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
 			out["resolvedNote"] = n
 		}
+		if n := h.searchStreakNote(q); n != "" {
+			out["note"] = n
+		}
 		return out, nil
 	}
 
@@ -1064,7 +1085,54 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			out["textBackend"] = r.Backend
 		}
 	}
+	if n := h.searchStreakNote(q); n != "" {
+		out["note"] = n
+	}
 	return out, nil
+}
+
+// searchStreakNote records q in the sequential-search streak and, from the
+// third distinct search since the last prism_query, returns an in-band nudge
+// carrying the agent's own accumulated terms as a ready-to-use prism_query
+// call. Delivery-channel finding (2026-08-15): this exact advice shipped as
+// turn-0 steering prose and was ignored on the very next smoke test (nine
+// sequential single-term searches); the hook's deny reason — the same kind
+// of instruction, delivered in the tool-result channel at decision time —
+// steers ~100%. Same channel, same moment, so the advice rides the result.
+// Silent below the threshold (resolvedRefNote's anti-wallpaper discipline).
+func (h *Handler) searchStreakNote(q string) string {
+	h.streakMu.Lock()
+	defer h.streakMu.Unlock()
+	for _, prev := range h.searchStreak {
+		if prev == q {
+			return "" // a repeat of the same term is a re-check, not a new guess
+		}
+	}
+	h.searchStreak = append(h.searchStreak, q)
+	if len(h.searchStreak) < 3 {
+		return ""
+	}
+	terms := h.searchStreak
+	if len(terms) > 5 {
+		terms = terms[len(terms)-5:]
+	}
+	quoted := make([]string, len(terms))
+	for i, t := range terms {
+		quoted[i] = fmt.Sprintf("%q", t)
+	}
+	return fmt.Sprintf("this is your %s sequential search — one call covers all these "+
+		"candidates AND expands the call graph from whichever lands: "+
+		"prism_query(task=\"<what you are doing>\", terms=[%s])",
+		ordinal(len(h.searchStreak)), strings.Join(quoted, ", "))
+}
+
+func ordinal(n int) string {
+	switch n {
+	case 3:
+		return "3rd"
+	default:
+		return fmt.Sprintf("%dth", n)
+	}
 }
 
 func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any, error) {
