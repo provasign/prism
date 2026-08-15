@@ -168,6 +168,10 @@ Recorded so they are not rediscovered from scratch:
   overcharge (5,126 vs 1,348 bytes) printed by the product's own
   highest-compliance string.
 - `prism search --help` runs a search for the string `--help`.
+- `prism init --help` runs a **full init** — it writes `prism.yaml`, all nine
+  steering files and every project MCP registration instead of printing usage.
+  Still true on v0.52.0; hit while verifying the install on 2026-08-15. Same
+  family as the `search --help` bug: no flag parsing before the command body.
 - `grepCommandPattern` treats `(` as a command separator, so any Bash command
   whose *text* contains `(grep` is denied — it fired on a Python script
   manipulating a deny list. Fails closed, so a nuisance rather than a hazard.
