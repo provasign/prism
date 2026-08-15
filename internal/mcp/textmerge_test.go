@@ -70,6 +70,59 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 	}
 }
 
+// TestRenderTextMatchesRanksRealFilesBeforeTestDoubles: found live
+// 2026-08-14 (prism_search("RequestContext") on a2a-python, 251 real hits
+// across 28 files) -- with files kept in raw scan order, the file cap
+// showed 9 test/sample files and zero real implementation files, purely
+// because of the order rg's stdout happened to emit them in. Real files
+// must outrank test doubles regardless of encounter order or hit count.
+func TestRenderTextMatchesRanksRealFilesBeforeTestDoubles(t *testing.T) {
+	h := newTestHandler(t)
+	var hits []textsearch.Hit
+	// Encounter order deliberately adversarial: the test double file comes
+	// first AND has more hits than the real file -- both signals point the
+	// wrong way, so only an explicit real-before-test rule survives this.
+	for l := 1; l <= 20; l++ {
+		hits = append(hits, textsearch.Hit{File: "pkg/foo_test.go", Line: l, Text: "x"})
+	}
+	for l := 1; l <= 3; l++ {
+		hits = append(hits, textsearch.Hit{File: "pkg/foo.go", Line: l, Text: "x"})
+	}
+	out := h.renderTextMatches(hits)
+	realIdx := strings.Index(out, "pkg/foo.go:")
+	testIdx := strings.Index(out, "pkg/foo_test.go:")
+	if realIdx < 0 {
+		t.Fatalf("real file missing from output entirely: %q", out)
+	}
+	if testIdx >= 0 && realIdx > testIdx {
+		t.Errorf("test double ranked before the real implementation file: %q", out)
+	}
+}
+
+// TestRenderTextMatchesRanksByHitCountWithinTier: among files of the same
+// tier (both real, or both test doubles), more hits should rank first --
+// a file mentioned 20 times is more likely central to the query than one
+// mentioned once.
+func TestRenderTextMatchesRanksByHitCountWithinTier(t *testing.T) {
+	h := newTestHandler(t)
+	var hits []textsearch.Hit
+	// Low-hit file encountered first; high-hit file second -- only a real
+	// ranking (not scan order) puts the high-hit file first.
+	hits = append(hits, textsearch.Hit{File: "pkg/rare.go", Line: 1, Text: "x"})
+	for l := 1; l <= 10; l++ {
+		hits = append(hits, textsearch.Hit{File: "pkg/central.go", Line: l, Text: "x"})
+	}
+	out := h.renderTextMatches(hits)
+	rareIdx := strings.Index(out, "pkg/rare.go:")
+	centralIdx := strings.Index(out, "pkg/central.go:")
+	if rareIdx < 0 || centralIdx < 0 {
+		t.Fatalf("expected both files present: %q", out)
+	}
+	if centralIdx > rareIdx {
+		t.Errorf("file with more hits (central.go) should rank before file with fewer (rare.go): %q", out)
+	}
+}
+
 // TestRenderTextMatchesCapsFilesAndHits: the delivered section is bounded so
 // a broad term cannot crowd out the source windows.
 func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {

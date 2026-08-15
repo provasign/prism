@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,16 @@ const (
 	// textMatches section so it cannot crowd out the source windows.
 	textRenderFileCap     = 10
 	textRenderHitsPerFile = 5
+	// textScanCeiling is the MINIMUM raw hits collected before ranking picks
+	// which files to show. Found live 2026-08-14: prism_search("RequestContext")
+	// on a2a-python had 251 real hits across 28 files, but the raw scan
+	// stopped at the requested limit (25) in whatever order rg's stdout
+	// happened to emit -- 9 files survived, none of them the actual
+	// implementation (tests/samples/CHANGELOG only). Collecting the full
+	// scan (bounded here, not truly unlimited) before ranking is what makes
+	// "which 10 files get shown" a real decision instead of an artifact of
+	// scan order.
+	textScanCeiling = 300
 )
 
 // textMergeResult is what mergeTextSearch feeds back into selection.
@@ -156,6 +167,24 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) string {
 		}
 		g.hits = append(g.hits, hit)
 	}
+
+	// Rank BEFORE the file cap decides who's cut. Found live 2026-08-14:
+	// leaving `order` in raw scan order meant which files survived
+	// textRenderFileCap was an accident of rg's stdout ordering, not a
+	// decision — a common symbol's real implementation file was silently
+	// dropped in favor of tests/samples/CHANGELOG that happened to be
+	// scanned first. Real implementations before test doubles (same
+	// convention prism_search's symbol results already use), then more
+	// hits before fewer within each tier — a file with 20 matches is more
+	// likely central to the query than one with 1.
+	sort.SliceStable(order, func(i, j int) bool {
+		fi, fj := order[i], order[j]
+		ti, tj := isTestDouble(fi), isTestDouble(fj)
+		if ti != tj {
+			return !ti // non-test-double first
+		}
+		return len(byFile[fi].hits) > len(byFile[fj].hits)
+	})
 
 	var sb strings.Builder
 	for i, file := range order {

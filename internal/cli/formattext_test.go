@@ -86,6 +86,36 @@ func TestFormatTextRendersTaskShapedOps(t *testing.T) {
 	}
 }
 
+// TestFormatTextRendersScopeTextSearch: prism_search scope="text" ("pure
+// grep") has no "symbols" key at all -- only textHits/textBackend/etc -- so
+// it never matched the m["symbols"] branch and fell through all the way to
+// the JSON fallback, silently. --format text is documented (steering,
+// README, the PreToolUse hook's own deny message) as the zero-extra-round-
+// trip path for exactly this call; verify it actually renders as text, not
+// an escaped-JSON dump.
+func TestFormatTextRendersScopeTextSearch(t *testing.T) {
+	var m map[string]any
+	body := `{"textBackend":"rg","truncated":false,
+		"resolvedNote":"3 hits, but 2 symbols share this name",
+		"textHits":"a.go:10:def frobnicate():\nb.go:20:    frobnicate(x)\n"}`
+	if err := json.Unmarshal([]byte(body), &m); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() { printOutput(m, formatText) })
+	if strings.HasPrefix(strings.TrimSpace(out), "{") {
+		t.Fatalf("scope=text --format text fell through to JSON:\n%s", out)
+	}
+	for _, want := range []string{"a.go:10:def frobnicate():", "b.go:20:    frobnicate(x)",
+		"2 symbols share this name"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `\n`) {
+		t.Errorf("literal escaped newline leaked into text output:\n%s", out)
+	}
+}
+
 // Empty groups must not print an empty heading — a "family (0):" line reads
 // as a section the caller should look at.
 func TestFormatTextSkipsEmptyGroups(t *testing.T) {

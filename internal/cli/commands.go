@@ -2595,6 +2595,25 @@ func printTextOutput(m map[string]any) {
 		}
 		return
 	}
+	// prism_search scope="text" ("pure grep"): no "symbols" key at all, just
+	// textHits/textBackend/truncated(/resolvedNote/timedOut) — the branch
+	// above only fires when "symbols" is present, so this shape fell
+	// through all the way to the JSON fallback, silently. --format text
+	// documented (steering, README, the hook's own deny message) as the
+	// zero-extra-round-trip path for exactly this call; it never rendered
+	// as text.
+	if _, hasSymbols := m["symbols"]; !hasSymbols {
+		if _, hasTextHits := m["textHits"]; hasTextHits {
+			printTextMatches(m)
+			if w, _ := m["warning"].(string); w != "" {
+				fmt.Println("// " + w)
+			}
+			if n, _ := m["resolvedNote"].(string); n != "" {
+				fmt.Println("// " + n)
+			}
+			return
+		}
+	}
 	// prism_lookup with --fields: projected columns (name/file/line + selected),
 	// no "content"/"symbol". Render the requested columns compactly.
 	if _, hasContent := m["content"]; !hasContent {

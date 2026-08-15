@@ -995,8 +995,14 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	// agent pricing its own request (measured: routing every locate through
 	// the enriched path cost ~1.5× on ordinary bug fixes for zero benefit).
 	if scope == "text" {
+		// Raw collection floor at textScanCeiling regardless of the
+		// agent's requested `limit`: ranking (renderTextMatches, below)
+		// needs real material to choose the best files from. `limit`
+		// still governs collection when the agent asks for more than the
+		// ceiling; it never governs DISPLAY size — that's
+		// textRenderFileCap/textRenderHitsPerFile, unaffected by this.
 		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
-			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+			MaxHits: max(limit, textScanCeiling), Timeout: textSearchTimeout, Regex: regex,
 		})
 		out := map[string]any{
 			"textHits":    h.renderTextMatches(r.Hits),
