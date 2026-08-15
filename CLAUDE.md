@@ -31,9 +31,10 @@ Route by the question. One call, and treat its result as final:
 | Question | Call |
 |---|---|
 | where is X? | `prism_search` — `scope="text"` is a plain grep and the cheapest option |
+| where are X, Y and Z? | `prism_search(query=["X","Y","Z"])` — one call, up to 10 terms, grouped by term |
 | read one function | `prism_lookup(name="pkg.Func")` |
 | read one file | `prism_read` |
-| bug report / unfamiliar area | `prism_query(task="<symptom>", terms=["<one keyword>"])` |
+| give me the code for X, ready to edit | `prism_query(task="<label>", terms=["X"])` — keys on `terms`; the task wording changes nothing |
 | who breaks if I change X? | `prism_change_impact(query="Type.method")` |
 | is my diff complete? | `prism_verify` (pre-commit gate) |
 
@@ -48,7 +49,7 @@ automatic — you never need to trigger it.
 
 ### Bash-only (subagents, CI)
 
-    prism search <term> --scope text --format text
+    prism search <term> [more terms...] --scope text --format text
     prism query "<task>" --terms X --format text
     prism change-impact 'Type.method' --format text
     prism lookup <pkg.Func> --format text
