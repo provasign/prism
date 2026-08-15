@@ -1,0 +1,263 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4
+created_at: 2026-08-15T20:32:01.035954Z
+finalized_at: 2026-08-15T20:50:19.13955Z
+agent:
+    tool: claude-code
+    model: claude-opus-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:37:01.774171Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:38:16.148523Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:39:39.70578Z
+    - path: internal/mcp/mcp_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:39:44.004891Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:41:20.983027Z
+    - path: HANDOFF.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:43:38.578229Z
+commands:
+    - cmd: ls && echo "---" && find . -name "*.go" -path "*steer*" -o -name "*.go" -path "*init*" | head -50
+      at: 2026-08-15T20:34:38.428955Z
+      classified: other
+    - cmd: ls internal/cli/ && echo "--- MCP ---" && ls internal/mcp/ 2>/dev/null || find internal pkg cmd -type d -name "*mcp*"
+      at: 2026-08-15T20:34:42.552389Z
+      classified: other
+    - cmd: 'wc -l internal/cli/commands.go internal/mcp/tools.go internal/mcp/server.go && echo "--- tool registrations ---" && grep -n ''registerTool\|Name: *"prism_\|"prism_[a-z_]*"'' internal/mcp/*.go | grep -v _test | head -60'
+      at: 2026-08-15T20:34:46.945615Z
+      classified: other
+    - cmd: grep -n 'const .*[Ss]teering\|steeringBlock\|const claudeMd\|= `' internal/cli/commands.go | head -40
+      at: 2026-08-15T20:34:58.851074Z
+      classified: other
+    - cmd: 'grep -rn ''ToolSchemas\|steeringInstructions\|steeringBlock()'' --include=*.go . | grep -v ''\.cache'' '
+      at: 2026-08-15T20:35:26.481025Z
+      classified: other
+    - cmd: grep -rn "ToolSchemas\|steeringInstructions\|steeringBlock" internal cmd pkg docs 2>/dev/null
+      at: 2026-08-15T20:35:30.982678Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/size_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"encoding/json"
+        	"testing"
+        )
+
+        func TestPrintSchemaSizes(t *testing.T) {
+        	total := 0
+        	for _, s := range ToolSchemas() {
+        		b, _ := json.Marshal(s)
+        		t.Logf("%-34s %5d", s["name"], len(b))
+        		total += len(b)
+        	}
+        	t.Logf("TOTAL %d bytes", total)
+        }
+        EOF
+        cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/size_test.go internal/mcp/zz_size_test.go && go test ./internal/mcp -run TestPrintSchemaSizes -v 2>&1 | head -30
+      at: 2026-08-15T20:36:19.885832Z
+      classified: test
+    - cmd: go build ./... && go test ./internal/mcp -run TestPrintSchemaSizes -v 2>&1 | head -20
+      at: 2026-08-15T20:38:06.888189Z
+      classified: test
+    - cmd: grep -n 'steeringInstructionsOld\|prism:end' internal/cli/commands.go
+      at: 2026-08-15T20:38:45.439636Z
+      classified: other
+    - cmd: sed -n '507,509p;653,656p' internal/cli/commands.go
+      at: 2026-08-15T20:38:48.511878Z
+      classified: other
+    - cmd: sed -i '' '508,656d' internal/cli/commands.go && sed -n '500,515p' internal/cli/commands.go && gofmt -l internal/cli/commands.go; go build ./...
+      at: 2026-08-15T20:38:55.621196Z
+      classified: build
+    - cmd: gofmt -w internal/cli/commands.go && go build ./... && echo OK
+      at: 2026-08-15T20:39:01.811006Z
+      classified: build
+    - cmd: rm internal/mcp/zz_size_test.go; go vet ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -60
+      at: 2026-08-15T20:39:13.441551Z
+      classified: lint
+    - cmd: go test ./... 2>&1 | grep -E "^(FAIL|ok|---|\s+---)" | grep -v "^ok" | head -40
+      at: 2026-08-15T20:39:24.077154Z
+      classified: test
+    - cmd: go test ./internal/cli -run TestWriteSteeringInstructions_UpgradesStaleSection 2>&1 | grep -A5 FAIL | head -20; echo "=== server ==="; go test ./internal/mcp -run TestServerToolsList 2>&1 | grep -B2 -A8 "FAIL\|Error" | head -30
+      at: 2026-08-15T20:39:29.726712Z
+      classified: test
+    - cmd: go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head -20; echo "EXIT-DONE"
+      at: 2026-08-15T20:40:14.109073Z
+      classified: lint
+    - cmd: |-
+        cat > /tmp/x_test.go <<'EOF'
+        package cli
+
+        import "testing"
+
+        func TestSteeringLen(t *testing.T) { t.Logf("steering = %d chars", len(steeringBlock())) }
+        EOF
+        cp /tmp/x_test.go internal/cli/zz_len_test.go && go test ./internal/cli -run TestSteeringLen -v 2>&1 | grep chars; rm internal/cli/zz_len_test.go
+      at: 2026-08-15T20:40:23.643733Z
+      classified: test
+    - cmd: go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ./cmd/prism && /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism init --help
+      at: 2026-08-15T20:40:34.768321Z
+      classified: build
+    - cmd: printf 'n\n' | /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism init --refresh . 2>&1 | tail -20 && git status --short
+      at: 2026-08-15T20:40:41.79599Z
+      classified: other
+    - cmd: git diff .mcp.json .cursor/mcp.json prism.yaml
+      at: 2026-08-15T20:40:45.947649Z
+      classified: other
+    - cmd: git checkout -- .mcp.json .cursor/mcp.json .windsurf/mcp.json && git status --short && echo "--- vscode ---" && cat .vscode/mcp.json 2>/dev/null
+      at: 2026-08-15T20:40:58.193056Z
+      classified: other
+    - cmd: sed -i '' 's#/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism#/opt/homebrew/bin/prism#' .vscode/mcp.json && cat .vscode/mcp.json && git status --short --ignored=no .vscode 2>/dev/null
+      at: 2026-08-15T20:41:04.460511Z
+      classified: other
+    - cmd: grep -rn "14 tools\|fourteen\|prism_node\|prism_map\|prism_dead_code\|prism_rename_plan\|prism_missing_implementations\|prism_arch_check\|prism_references\|prism_index" README.md docs/*.md 2>/dev/null | grep -v "prism-review-2026" | head -30
+      at: 2026-08-15T20:41:09.432435Z
+      classified: other
+    - cmd: sed -n '115,130p;360,380p' README.md
+      at: 2026-08-15T20:41:13.086352Z
+      classified: other
+    - cmd: ls CHANGELOG.md 2>/dev/null; go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head; echo "GATE1-DONE"
+      at: 2026-08-15T20:41:42.827795Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism 2>&1 | tail -30
+      at: 2026-08-15T20:43:07.973354Z
+      classified: other
+    - cmd: |-
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        printf '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        d=json.loads(sys.stdin.readline())
+        t=d['result']['tools']
+        print(len(t),'tools:',[x['name'] for x in t])
+        print('schema bytes:',len(json.dumps(t)))
+        "
+        echo "--- demoted tool still on CLI ---"
+        $P dead-code --format text 2>&1 | head -3
+      at: 2026-08-15T20:43:20.498772Z
+      classified: other
+    - cmd: /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism --help 2>&1 | grep -E "map|dead-code|rename-plan|missing-impl|arch|index|node|references" | head
+      at: 2026-08-15T20:43:29.665231Z
+      classified: other
+    - cmd: go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head; echo GREEN; git status --short
+      at: 2026-08-15T20:43:52.283346Z
+      classified: lint
+    - cmd: cp /Users/tapabratapal/Projects/provasign/CLAUDE.md "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/CLAUDE.md.workspace.bak" && wc -c /Users/tapabratapal/Projects/provasign/CLAUDE.md "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/CLAUDE.md.workspace.bak"
+      at: 2026-08-15T20:45:35.664085Z
+      classified: other
+    - cmd: wc -c /Users/tapabratapal/Projects/provasign/CLAUDE.md
+      at: 2026-08-15T20:45:54.258259Z
+      classified: other
+    - cmd: |-
+        printf '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n' | /opt/homebrew/bin/prism mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        t=json.loads(sys.stdin.readline())['result']['tools']
+        print('brew binary advertises', len(t), 'tools')
+        " ; /opt/homebrew/bin/prism version 2>/dev/null || /opt/homebrew/bin/prism --version 2>/dev/null; echo "--- git ---"; git status --short | head -20
+      at: 2026-08-15T20:48:10.160246Z
+      classified: other
+    - cmd: go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head; echo GREEN
+      at: 2026-08-15T20:49:00.644099Z
+      classified: lint
+    - cmd: |-
+        git add internal/mcp/tools.go internal/mcp/mcp_test.go README.md && git commit -q -F - <<'EOF'
+        refactor(mcp): cut the agent tool surface from 14 to 6
+
+        The 190-cell paired A/B in research/harness/runs/swebench-live measured
+        which advertised tools agents actually reach for:
+
+            search 95/190   read 53   query 35   lookup 29   change_impact 2
+            map, dead_code, rename_plan, missing_implementations,
+            arch_check, node, index ....................... 0 calls in all 190
+
+        Eight tools were charging ~9.4 KB of schema per session to never be
+        called, and a long menu measurably mis-routes the ones that are.
+
+        Keep the four measured-routing tools, plus change_impact (rarely reached
+        but carrying the whole concentrated win — 4.2 turns/$0.27 against grep's
+        26.8/$1.66, RESULTS.md §9.1) and verify (the pre-commit completeness
+        gate, 258 bytes).
+
+        Descriptions of the six survivors were trimmed too, without dropping the
+        load-bearing semantics: change_impact keeps its completeness /
+        overridesExternal contract and the relay rule; read keeps the cached-
+        pointer explanation.
+
+            schema total   17,837 -> 6,192 bytes  (-65%)
+
+        Nothing left the product. DispatchableTools and Invoke are untouched, so
+        every demoted tool is still a CLI command and still an HTTP route. This
+        narrows the agent menu only. Do not re-advertise one without call-count
+        evidence that agents reach for it.
+
+        Gate: go vet + go test ./... green; ci_invariants.py against the durable
+        corpus root green (13 ceiling tasks at baseline, missing-implementations
+        0/1 documented, double-cold-index byte-identical). No engine change.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-15T20:49:15.575399Z
+      classified: lint
+    - cmd: |-
+        git add -A && git commit -q -F - <<'EOF'
+        docs(steering): cut the always-loaded block from 11.8k to 1.8k chars
+
+        steeringInstructions had grown into a manual: two nine-row routing
+        tables, a CLI mirror of the same two tables, a "Do NOT" list, redundancy
+        rules and a housekeeping paragraph. Most of it restated the tool schemas
+        in prose, so the same guidance was paid for twice — once always-loaded
+        in nine instruction files, once on demand in the schema. It also
+        documented seven tools that the 190-cell A/B measured at zero calls, and
+        that feff95f has now demoted to CLI-only.
+
+        What survives is what changed behaviour: the ToolSearch deferred-tools
+        line (without it agents conclude prism is absent and grep for
+        everything), one route per question, the change_impact relay rule, and
+        a six-line Bash-only fallback. Add per-tool detail to toolDescription
+        instead of growing this back.
+
+        The "## Prism — context delivery" heading is unchanged on purpose: it is
+        injectPrismSection's start marker, and changing its text would orphan
+        every section already written into a user's files.
+
+        Regenerated this repo's nine steering files with `prism init --refresh`.
+        That also rewrites the four MCP registrations; those were reverted to
+        /opt/homebrew/bin/prism, per 701e099.
+
+        HANDOFF §4 updated (both the steering size and the tool-surface bullets
+        were stale) and §5.4 marked done.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -3 && echo "--- clean? ---" && git status --short
+      at: 2026-08-15T20:49:28.59888Z
+      classified: other
+notes: []
+redactions: 0
