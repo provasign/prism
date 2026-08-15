@@ -1,0 +1,67 @@
+shale_version: "0"
+id: 4678afc5-41b7-4e53-ac34-9f3ed1212962-c4
+created_at: 2026-08-15T20:23:21.581552Z
+finalized_at: 2026-08-15T20:25:36.252939Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: HANDOFF.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:25:29.246351Z
+commands:
+    - cmd: |-
+        git add -A internal/cli && git commit -q -m "$(cat <<'EOF'
+        fix: `prism <cmd> --help` prints usage instead of running the command
+
+        `prism init --help` performed a FULL init — prism.yaml, nine steering
+        files and every project MCP registration — because no handler parsed
+        -h/--help; the flag fell through to the command body. Same mechanism
+        made `prism search --help` search for the string "--help".
+
+        Run() now answers -h/--help once, before dispatch, and prints just that
+        command's block from helpText (plus the flag section for init). Aliases
+        resolve (install→init, refs→references, arch-check→arch); an unknown
+        command falls back to the full help.
+
+        Deliberately narrow: only the flag spellings count, so `prism search
+        help` still searches for the word.
+
+        Tests: help_test.go asserts init --help/-h and install --help leave the
+        working directory EMPTY, that per-command blocks come back rather than
+        the whole help, and that a bare `help` argument is still a query term.
+
+        Gate: go test ./... green (12 packages); ci_invariants.py green
+        (6 corpora — ceiling, compile, rename-plan, determinism).
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01CYfUFhBWrJnDjz7xYyX4Si
+        EOF
+        )" && git push -q origin main && git tag -a v0.52.1 -m "v0.52.1: prism <cmd> --help prints usage instead of running the command" && git push origin v0.52.1
+      at: 2026-08-15T20:23:21.581552Z
+      classified: test
+    - cmd: gh run list -R provasign/prism --limit 2 --json databaseId,name,status --jq '.[] | "\(.name) \(.databaseId) \(.status)"'
+      at: 2026-08-15T20:23:25.801916Z
+      classified: other
+    - cmd: gh run watch 31906553870 -R provasign/prism --exit-status >/dev/null 2>&1; gh run view 31906553870 -R provasign/prism | head -12
+      at: 2026-08-15T20:23:28.311918Z
+      classified: other
+    - cmd: head -12 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/tasks/b7fsz24ed.output
+      at: 2026-08-15T20:25:02.532664Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad && gh release download v0.52.1 -R provasign/prism -p checksums.txt -D . --clobber && /Users/tapabratapal/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.52.1 checksums.txt > tap/Formula/prism.rb && git -C tap add Formula/prism.rb && git -C tap commit -q -m "Brew formula update for prism v0.52.1" && git -C tap push -q origin HEAD:main && echo TAP-PUSHED
+      at: 2026-08-15T20:25:09.248052Z
+      classified: other
+    - cmd: 'brew update >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -3; echo "=== version ==="; /opt/homebrew/bin/prism version; echo "=== the bug, on the installed binary ==="; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/helpcheck && /opt/homebrew/bin/prism init --help | head -3; echo "files written: [$(ls -A)]"'
+      at: 2026-08-15T20:25:21.594937Z
+      classified: other
+notes:
+    - text: continuation of session 4678afc5-41b7-4e53-ac34-9f3ed1212962 — events captured after its evidence was finalized
+      at: 2026-08-15T20:23:21.581552Z
+redactions: 0
