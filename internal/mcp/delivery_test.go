@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -184,18 +185,60 @@ func TestToolQuery_SourceRepeatDeliveryUsesCachedPointer(t *testing.T) {
 	}
 }
 
-func TestToolQuery_SymbolsDeliveryStillDefault(t *testing.T) {
-	// A review-phase task must keep the compact symbols delivery: the
-	// response carries a symbols array, not a rendered content string.
+func TestToolQuery_SymbolsDeliveryIsExplicitOnly(t *testing.T) {
+	// The compact symbols delivery is now something you ASK for. It used to be
+	// inferred from the task reading like review or orientation, which meant
+	// the same seeds returned different shapes depending on wording.
 	h := newDeliveryFixture(t)
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":  "review the greeting code",
-		"terms": []string{"FormatGreeting"},
+		"task":     "review the greeting code",
+		"terms":    []string{"FormatGreeting"},
+		"delivery": "symbols",
 	})
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
 	if _, isMap := out.(map[string]any); isMap {
-		t.Fatalf("review-phase query should return the symbols struct, got map: %v", out)
+		t.Fatalf("delivery=symbols should return the symbols struct, got map: %v", out)
+	}
+}
+
+// The point of the change: phrasing is not a control surface. Same terms,
+// wildly different task wording — including wordings that used to select
+// different phases, profiles and budgets — must produce the same delivery.
+func TestToolQuery_PhrasingDoesNotChangeTheResult(t *testing.T) {
+	h := newDeliveryFixture(t)
+	phrasings := []string{
+		"fix the crash in the greeting code", // was PhaseDebug   -> source
+		"review the greeting code",           // was PhaseReview  -> symbols
+		"write tests for the greeting code",  // was test-writing -> +25% budget
+		"understand how greeting works",      // was orientation
+		"greeting",                           // no phase signal at all
+	}
+	var first map[string]any
+	for _, task := range phrasings {
+		out, err := h.Invoke("prism_query", map[string]any{
+			"task": task, "terms": []string{"FormatGreeting"},
+		})
+		if err != nil {
+			t.Fatalf("query(%q): %v", task, err)
+		}
+		m, ok := out.(map[string]any)
+		if !ok {
+			t.Fatalf("query(%q): want the source delivery for every phrasing, got %T", task, out)
+		}
+		if first == nil {
+			first = m
+			continue
+		}
+		// "content" legitimately differs: its header echoes the task back as
+		// a label. What must not differ is the SELECTION — which files and
+		// how many symbols were chosen.
+		for _, k := range []string{"files", "symbolCount", "delivery"} {
+			if fmt.Sprint(first[k]) != fmt.Sprint(m[k]) {
+				t.Errorf("query(%q): %s = %v, but the first phrasing got %v — the task string is still steering the result",
+					task, k, m[k], first[k])
+			}
+		}
 	}
 }

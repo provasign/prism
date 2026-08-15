@@ -71,6 +71,18 @@ var debugKeywords = []string{
 // DetectPhase infers the agent work phase from a free-text task description.
 // It uses a keyword-voting approach: each list casts votes, the winner wins;
 // ties use action-oriented precedence so mixed tasks still get a useful shape.
+//
+// NOT WIRED IN as of v0.54.0. prism_query used to route the task string
+// through here to pick a ranking profile, a budget multiplier and a delivery
+// mode, which made the phrasing of a request change which files came back.
+// That is a natural-language retrieval key, and this surface does not have
+// one; retrieval keys on terms, sizing on budget, ranking on profile, all
+// caller-set. Nothing in production calls DetectPhase or ShapeForPhase now.
+//
+// Kept, with its tests, because the phase vocabulary is the starting point if
+// the shaping is ever re-introduced as something the CALLER asks for (e.g.
+// profile="fix_bug") rather than something inferred behind their back. Do not
+// re-attach it to a free-text field.
 func DetectPhase(task string) Phase {
 	lower := strings.ToLower(task)
 

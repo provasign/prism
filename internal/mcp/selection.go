@@ -46,15 +46,22 @@ type selection struct {
 // expansion, scoring, and budgeted selection. It is the single pipeline both
 // prism_query and prism_explore deliver from; only the delivery format differs.
 func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection, error) {
-	// B: phase-aware budget shaping — infer the agent work phase from the task
-	// description and auto-select a matching profile + budget multiplier.
-	// An explicit "profile" arg always wins; otherwise let phase detection decide.
-	phase := ranking.DetectPhase(p.task)
-	phaseProfileHint, phaseBudgetMult := ranking.ShapeForPhase(phase)
+	// The task string does NOT choose the profile or the budget.
+	//
+	// It used to: DetectPhase() keyword-matched the English task and picked a
+	// ranking profile plus a budget multiplier from it, so rewording the same
+	// request changed which files came back and how many. That is a natural-
+	// language retrieval key, which is exactly what this surface elsewhere
+	// refuses to have — the v0.41.0 measurement that killed the NL front door
+	// applies with equal force to an NL back door. Measured downstream: agents
+	// called query and then searched anyway in 14 of the 32 cells where they
+	// used both, which is what an unpredictable result looks like from the
+	// outside.
+	//
+	// Retrieval now keys on terms; sizing keys on budget; ranking keys on the
+	// profile. All three are the caller's to set, and identical arguments
+	// produce an identical selection no matter how the task is phrased.
 	profileName := p.explicitProfile
-	if profileName == "" {
-		profileName = phaseProfileHint
-	}
 	if profileName == "" {
 		profileName = h.Cfg.Profile
 	}
@@ -177,11 +184,9 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	profile := ranking.SelectProfile(profileName)
 	profile = h.Weights.Apply(profile)
 
-	// For test-writing tasks, boost TestRelevance so test symbols rank higher
-	// in scoring. The budget expansion happens after callerBudget is parsed.
-	if p.explicitProfile == "" && isTestWritingTask(p.task) && profile.TestRelevance < 0.45 {
-		profile.TestRelevance = minFloat(profile.TestRelevance*2.0, 0.45)
-	}
+	// Test-relevance used to be boosted when the task string looked like it
+	// was about writing tests. Ask for it with profile="code_review" or a
+	// terms list that names the tests; phrasing is not a control surface.
 
 	graphDist := make(map[string]int)
 	hasTestEdgeID := make(map[string]bool)
@@ -284,21 +289,8 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// phase shaping. The caller knows its token constraints best.
 		budget = p.budgetArg
 	} else {
+		// One default, the same for every task. Pass budget= to change it.
 		budget = defaultTaskBudget
-		// B: apply phase-derived budget multiplier (e.g. 0.60 for code_review),
-		// floored so a shaped default never starves the response.
-		if phaseBudgetMult > 0 && phaseBudgetMult != 1.0 {
-			shaped := int(float64(budget) * phaseBudgetMult)
-			if shaped < 4000 {
-				shaped = 4000
-			}
-			budget = shaped
-		}
-		// Expand budget for test-writing tasks so the test category gets more
-		// absolute token room (20% share of a larger total = more test content).
-		if p.explicitProfile == "" && isTestWritingTask(p.task) {
-			budget = int(float64(budget) * 1.25)
-		}
 	}
 	picked := ranking.Select(seedSyms, candidates, budget)
 	stamp("rank+budget")
