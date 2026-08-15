@@ -1,0 +1,85 @@
+shale_version: "0"
+id: 4678afc5-41b7-4e53-ac34-9f3ed1212962-c6
+created_at: 2026-08-15T20:28:01.866094Z
+finalized_at: 2026-08-15T20:30:42.640318Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: HANDOFF.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-15T20:30:33.079386Z
+commands:
+    - cmd: |-
+        python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/release.yml')); print('yaml ok')" && git commit -q -am "$(cat <<'EOF'
+        ci: stop pretending the release publishes the Homebrew formula
+
+        The publish step was guarded on a HOMEBREW_TAP_TOKEN secret that has
+        never been set on this repo, so it warned and no-opped on every release
+        — which reads as "the tap is stale" when the tap has in fact been
+        updating itself daily since the drift was fixed.
+
+        provasign/homebrew-shale owns formula publishing
+        (.github/workflows/refresh-formulae.yml): a workflow in the tap writes
+        to its own repository with the built-in GITHUB_TOKEN, so there is no
+        cross-repo token to provision in each tool repo and forget. That was
+        the whole point of moving it there.
+
+        Consequence, stated in the job: the tap lags a tag by up to a day.
+        `gh workflow run refresh-formulae.yml -R provasign/homebrew-shale`
+        publishes immediately.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01CYfUFhBWrJnDjz7xYyX4Si
+        EOF
+        )" && git push -q origin main && echo PUSHED
+      at: 2026-08-15T20:28:01.866094Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale && echo "dispatched"; sleep 20; gh run list -R provasign/homebrew-shale --limit 2
+      at: 2026-08-15T20:28:28.253425Z
+      classified: other
+    - cmd: gh run view 31906762554 -R provasign/homebrew-shale --log 2>/dev/null | grep -E "current|UPDATED|warning" | head
+      at: 2026-08-15T20:28:31.793384Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_handoff_2026_08_15.md'
+        s=open(p).read()
+        i=s.index('**The tap does NOT update itself.**')
+        j=s.index('\n\n', s.index('clone of `provasign/homebrew-shale`'))
+        new = """**The tap updates ITSELF, in the tap.** `provasign/homebrew-shale` runs
+        `.github/workflows/refresh-formulae.yml` daily (plus `workflow_dispatch`):
+        it regenerates any formula behind its repo's latest release, writing to its
+        own repository with the built-in `GITHUB_TOKEN` — deliberately, so no tool
+        repo needs a cross-repo push token. Covers prism, mason, fuse, shale.
+        So the tap lags a tag by up to a day and needs nothing after a release.
+        For an immediate publish:
+        `gh workflow run refresh-formulae.yml -R provasign/homebrew-shale`.
+        Do NOT add a `HOMEBREW_TAP_TOKEN` publish step back into a tool repo's
+        release workflow — prism's was removed on 2026-08-15 because the secret was
+        never set, so it warned "tap NOT updated" on every release and made the
+        working mechanism look broken."""
+        s = s[:i] + new + s[j:]
+        open(p,'w').write(s)
+        PY
+        python3 - <<'PY'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+        s=open(p).read().replace("tap must be updated BY HAND (no HOMEBREW_TAP_TOKEN)","tap self-refreshes daily in provasign/homebrew-shale (no token needed)")
+        open(p,'w').write(s)
+        PY
+        grep -n "tap" /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_handoff_2026_08_15.md | head
+      at: 2026-08-15T20:28:44.162816Z
+      classified: other
+    - cmd: git log --oneline v0.43.0..HEAD | grep -v "chore(shale)" ; echo "=== tags ==="; git tag --sort=-v:refname | head -3; echo "=== status ==="; git status --short --branch | head -3
+      at: 2026-08-15T20:29:37.749573Z
+      classified: other
+notes:
+    - text: continuation of session 4678afc5-41b7-4e53-ac34-9f3ed1212962 — events captured after its evidence was finalized
+      at: 2026-08-15T20:28:01.866094Z
+redactions: 0
