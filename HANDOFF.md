@@ -167,11 +167,13 @@ Recorded so they are not rediscovered from scratch:
 - The v0.51.0 deny reason's CLI form omitted `--scope text`, a **3.8×**
   overcharge (5,126 vs 1,348 bytes) printed by the product's own
   highest-compliance string.
-- `prism search --help` runs a search for the string `--help`.
-- `prism init --help` runs a **full init** — it writes `prism.yaml`, all nine
-  steering files and every project MCP registration instead of printing usage.
-  Still true on v0.52.0; hit while verifying the install on 2026-08-15. Same
-  family as the `search --help` bug: no flag parsing before the command body.
+- ~~`prism search --help` runs a search for the string `--help`.~~ **FIXED in
+  v0.52.1**, along with the worse sibling found on 2026-08-15: `prism init
+  --help` ran a *full init*, writing `prism.yaml`, all nine steering files and
+  every project MCP registration. One mechanism behind both — nothing parsed
+  `-h`/`--help` before the command body. `Run()` now answers it before
+  dispatch for every subcommand. A bare `help` argument is still a query term,
+  so `prism search help` searches.
 - `grepCommandPattern` treats `(` as a command separator, so any Bash command
   whose *text* contains `(grep` is denied — it fired on a Python script
   manipulating a deny list. Fails closed, so a nuisance rather than a hazard.
