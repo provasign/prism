@@ -2,7 +2,8 @@
 
 The v0.44–v0.51 deployment arc was evaluated, found not to pay for itself, and
 reverted. The revert shipped as **v0.52.0**; **v0.52.1** followed with a CLI
-fix. Read this before touching the steering, the hook, or `prism init`.
+fix, and **v0.53.0** acted on the evaluation's own recommendation by trimming
+the deployment surface. Read this before touching the steering or `prism init`.
 
 **Do not trust the older memory entries or `research/RESULTS.md` §1–§7 as a
 description of current behaviour.** They describe the arc that was reverted.
@@ -23,9 +24,12 @@ description of current behaviour.** They describe the arc that was reverted.
 | `701e099` | chore: point local MCP registrations at the brew-installed prism |
 | `0f042cf` | fix: `prism <cmd> --help` prints usage instead of running the command |
 | `7ea33d5` | ci: stop pretending the release publishes the Homebrew formula |
+| `feff95f` | refactor(mcp): cut the agent tool surface from 14 to 6 |
+| `67114cd` | docs(steering): cut the always-loaded block from 11.8k to 1.8k chars |
 
 Tags: **v0.52.0** = the revert + project-scoped init. **v0.52.1** = the
-`--help` fix.
+`--help` fix. **v0.53.0** = the surface trim (§5.4), installed and verified:
+`brew install provasign/shale/prism`, `tools/list` returns exactly the six.
 
 The product tree is byte-identical to `v0.43.0` except for those feature/fix
 commits and `.shale/` (session evidence, deliberately preserved — it is the
