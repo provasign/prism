@@ -24,8 +24,9 @@ func TestHookDenyReason_GrepAndRgDenied(t *testing.T) {
 		{"bare rg", "Bash", map[string]any{"command": "rg foo ."}},
 		{"path-prefixed grep", "Bash", map[string]any{"command": "/usr/bin/grep foo bar.go"}},
 		{"sudo grep", "Bash", map[string]any{"command": "sudo grep foo bar.go"}},
-		{"grep mid-pipeline", "Bash", map[string]any{"command": "cat bar.go | grep foo"}},
 		{"rg after separator", "Bash", map[string]any{"command": "cd /tmp && rg foo"}},
+		{"grep after logical-or", "Bash", map[string]any{"command": "test -f x || grep foo bar.go"}},
+		{"grep after semicolon", "Bash", map[string]any{"command": "cd src; grep -rn foo ."}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -50,6 +51,15 @@ func TestHookDenyReason_NeverBlocksPython(t *testing.T) {
 		{"plain file read", `python3 -c "print(open('tests/test_foo.py').read())"`},
 		{"grep as a substring of another word", "python3 -c 'x = 1' # not agrep"},
 		{"a path merely containing grep", "python3 /tmp/swebench-wt-grepwarn/run.py"},
+		// grep as a pipe FILTER of another command's stream — 289 of 946
+		// real grep invocations mined 2026-08-15. Prism cannot replace
+		// these (no file to search); denying them only forces awk/python
+		// workarounds.
+		{"git log piped to grep", "git log --oneline -20 | grep -i cache"},
+		{"pip list piped to grep", "pip3 list 2>&1 | grep -i jq"},
+		{"ls piped to grep", "ls -la | grep -E '(setup|tox)'"},
+		{"tight pipe no spaces", "git branch -a|grep feature"},
+		{"grep chain second stage", "git diff | grep '^-' | grep -v '^---'"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -291,3 +291,73 @@ func TestBinResolvesOnlyItsOwnBackend(t *testing.T) {
 		t.Errorf("bin(%q) = %q — returned the detected backend's path", other, got)
 	}
 }
+
+// TestGrepParityOptions: Path / Context / FilesOnly — the three capabilities
+// mined as most-used-and-missing from 946 real agent grep invocations
+// (2026-08-15: 511 path-scoped, 101 context, 66 files-only). Verified on
+// every backend so the fallbacks cannot silently diverge.
+func TestGrepParityOptions(t *testing.T) {
+	dir := t.TempDir()
+	must := func(err error) {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(os.MkdirAll(filepath.Join(dir, "src"), 0o755))
+	must(os.MkdirAll(filepath.Join(dir, "docs"), 0o755))
+	must(os.WriteFile(filepath.Join(dir, "src", "a.py"),
+		[]byte("before\nparityneedle here\nafter\n"), 0o644))
+	must(os.WriteFile(filepath.Join(dir, "docs", "b.md"),
+		[]byte("parityneedle in docs\n"), 0o644))
+
+	backends := map[string]func(Options) Result{
+		"native": func(o Options) Result { return nativeSearch(context.Background(), dir, "parityneedle", o) },
+	}
+	if r, ok := runRg(context.Background(), dir, "parityneedle", Options{}.withDefaults()); ok && r.Backend == "rg" {
+		backends["rg"] = func(o Options) Result {
+			r, _ := runRg(context.Background(), dir, "parityneedle", o)
+			return r
+		}
+	}
+
+	for name, search := range backends {
+		t.Run(name+"/path-scoped", func(t *testing.T) {
+			r := search(Options{Path: "src"}.withDefaults())
+			for _, h := range r.Hits {
+				if !strings.HasPrefix(h.File, "src/") {
+					t.Errorf("path=src must not surface %s", h.File)
+				}
+			}
+			if len(r.Hits) == 0 {
+				t.Error("path=src should still find the src hit")
+			}
+		})
+		t.Run(name+"/context", func(t *testing.T) {
+			o := Options{Context: 1}.withDefaults()
+			r := search(o)
+			var texts []string
+			for _, h := range r.Hits {
+				if h.File == "src/a.py" {
+					texts = append(texts, h.Text)
+				}
+			}
+			joined := strings.Join(texts, "|")
+			if !strings.Contains(joined, "before") || !strings.Contains(joined, "after") {
+				t.Errorf("context=1 should deliver surrounding lines, got %q", joined)
+			}
+		})
+		t.Run(name+"/files-only", func(t *testing.T) {
+			r := search(Options{FilesOnly: true}.withDefaults())
+			files := map[string]bool{}
+			for _, h := range r.Hits {
+				files[h.File] = true
+				if h.Text != "" {
+					t.Errorf("files-only must not carry text: %+v", h)
+				}
+			}
+			if !files["src/a.py"] || !files["docs/b.md"] {
+				t.Errorf("files-only should list both matching files, got %v", files)
+			}
+		})
+	}
+}

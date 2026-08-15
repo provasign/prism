@@ -53,8 +53,13 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 	if rr, rerr := filepath.EvalSymlinks(root); rerr == nil {
 		resolvedRoot = rr
 	}
+	walkRoot := root
+	if opts.Path != "" {
+		// grep's target-path semantics: search one file or subtree only.
+		walkRoot = filepath.Join(root, filepath.FromSlash(opts.Path))
+	}
 	var files []string
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -110,7 +115,7 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 		go func(idx int, path string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			hits := scanFile(path, root, match, opts.MaxPerFile)
+			hits := scanFile(path, root, match, opts.MaxPerFile, opts.Context, opts.FilesOnly)
 			if len(hits) == 0 {
 				return
 			}
@@ -150,7 +155,7 @@ func sortFileHits(fhs []fileHits) {
 
 // scanFile returns up to maxPerFile case-insensitive substring hits in one
 // file, skipping binaries (NUL byte in the first 1KB).
-func scanFile(path, root string, match func(string) bool, maxPerFile int) []Hit {
+func scanFile(path, root string, match func(string) bool, maxPerFile, context int, filesOnly bool) []Hit {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil
@@ -172,18 +177,37 @@ func scanFile(path, root string, match func(string) bool, maxPerFile int) []Hit 
 	}
 	rel = filepath.ToSlash(rel)
 
-	var hits []Hit
+	var lines []string
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
-	ln := 0
 	for sc.Scan() {
-		ln++
-		line := sc.Text()
+		lines = append(lines, sc.Text())
+	}
+	var hits []Hit
+	emitted := map[int]bool{}
+	matches := 0
+	for i, line := range lines {
 		if !match(line) {
 			continue
 		}
-		hits = append(hits, Hit{File: rel, Line: ln, Text: truncateLine(line)})
-		if len(hits) >= maxPerFile {
+		if filesOnly {
+			return []Hit{{File: rel}}
+		}
+		matches++
+		lo, hi := i-context, i+context
+		if lo < 0 {
+			lo = 0
+		}
+		if hi > len(lines)-1 {
+			hi = len(lines) - 1
+		}
+		for j := lo; j <= hi; j++ {
+			if !emitted[j] {
+				emitted[j] = true
+				hits = append(hits, Hit{File: rel, Line: j + 1, Text: truncateLine(lines[j])})
+			}
+		}
+		if matches >= maxPerFile {
 			break
 		}
 	}

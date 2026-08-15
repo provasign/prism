@@ -423,6 +423,18 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
 				},
+				"path": map[string]any{
+					"type":        "string",
+					"description": "Restrict the text pass to one file or directory (repo-relative), like `grep pat src/`. Default: whole tree.",
+				},
+				"context": map[string]any{
+					"type":        "integer",
+					"description": "Include N lines around each text match (grep -C N).",
+				},
+				"files": map[string]any{
+					"type":        "boolean",
+					"description": "Text pass returns matching file paths only, no lines (grep -l).",
+				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},
 			},
 		}
@@ -1012,6 +1024,12 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	limit := intArg(args, "limit", 25)
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
+	tsOpts := textsearch.Options{
+		Timeout: textSearchTimeout, Regex: regex,
+		Path:      stringArg(args, "path", ""),
+		Context:   intArg(args, "context", 0),
+		FilesOnly: boolArg(args, "files"),
+	}
 
 	// scope="text": the agent asked for a PURE grep — exactly what rg
 	// returns, no symbol search, no graph, minimal envelope. This is the
@@ -1024,9 +1042,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		// still governs collection when the agent asks for more than the
 		// ceiling; it never governs DISPLAY size — that's
 		// textRenderFileCap/textRenderHitsPerFile, unaffected by this.
-		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
-			MaxHits: max(limit, textScanCeiling), Timeout: textSearchTimeout, Regex: regex,
-		})
+		o := tsOpts
+		o.MaxHits = max(limit, textScanCeiling)
+		r := textsearch.Search(ctx, h.Root, q, o)
 		out := map[string]any{
 			"textHits":    h.renderTextMatches(r.Hits),
 			"textBackend": r.Backend,
@@ -1083,9 +1101,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.
 	if scope != "symbols" {
-		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
-			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
-		}); len(r.Hits) > 0 {
+		o := tsOpts
+		o.MaxHits = 50
+		if r := textsearch.Search(ctx, h.Root, q, o); len(r.Hits) > 0 {
 			out["textHits"] = h.renderTextMatches(r.Hits)
 			out["textBackend"] = r.Backend
 		}

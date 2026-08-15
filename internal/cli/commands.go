@@ -82,7 +82,8 @@ Usage:
                                   --format text|lean|json  Output format (default: text)
   prism search <keyword> [dir]    Search symbol names AND raw source text (a real
                                   rg/grep pass). --scope text is a pure grep
-                                  ([--scope text|symbols|both] [--regex] [--limit N])
+                                  ([--scope text|symbols|both] [--regex] [--limit N]
+                                   [--path FILE-OR-DIR] [-C N context lines] [-l files only])
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
@@ -398,22 +399,25 @@ func mergePrismYAML(existing, profile string) string {
 const steeringInstructions = `
 ## Prism — code intelligence (ALWAYS use these tools)
 
-prism_search/query/read/lookup/change_impact are already in your tool list --
-call them directly, no lookup step. Locate a string/symbol -> prism_search(scope="text")
-(a real ripgrep pass, same cost as grep). Bug/task with an anchor -> prism_query(task=...,
-terms=[...]) -- terms is required, guess one keyword. Signature change, rename, or
-"who breaks if I change X" -> prism_change_impact -- returns the complete site set in
-one call; do not re-verify it with grep, that measurably drops real sites. A repeat
-prism_read of an unchanged file returns a short cached-pointer line, not the body --
-that is not an error. Three concrete substitutions, not just "prefer prism":
-about to grep several candidate names ("a\|b\|c", unsure which is right)? that is
-prism_query(terms=[a,b,c]) in one call, not several rounds of narrowing. About to
-grep a name followed by "(" to find who constructs/calls it? that is
-prism_change_impact or prism_query's caller list -- resolved call sites, not a
-paren-guess that also matches definitions and comments. About to grep a def line
-then guess how many lines of context to print (-A10, sed -n 'N,Mp')? that is
-prism_lookup -- the whole symbol, no line-count guessing, never cut off early.
-No MCP session (Bash-only subagent)? Same names as CLI verbs:
+Reaching for grep/rg/cat/sed? The prism call is the same request, better answered.
+The translation is mechanical — all of these are already in your tool list:
+
+    grep -rn "foo"                      ->  prism_search(query="foo", scope="text")
+    grep -rn "foo" src/  (or one file)  ->  prism_search(query="foo", scope="text", path="src/")
+    grep -rn "a\|b\|c"  (regex)         ->  prism_search(query="a|b|c", scope="text", regex=true)
+    grep -C 5 / -A 10 (context lines)   ->  prism_search(..., context=5)
+    grep -rl "foo"  (files only)        ->  prism_search(query="foo", scope="text", files=true)
+    guessing names: grep a, grep b, ... ->  prism_query(task="...", terms=["a","b","c"]) -- one call,
+                                            all candidates, graph expands from whichever lands
+    grep "Foo("  (who calls Foo?)       ->  prism_change_impact(query="Foo") -- resolved call sites,
+                                            complete set; do not re-verify with grep, that drops sites
+    grep -A10 "def foo" / sed -n N,Mp   ->  prism_lookup(name="foo") -- whole body, no line guessing
+    cat file / re-reading a file        ->  prism_read(file=...) -- a repeat read returns a one-line
+                                            cached pointer, not the body; that is not an error
+
+Piping ANOTHER command's output through grep (git log | grep x, pip list |
+grep -i y) is fine and stays allowed — prism replaces searching FILES, not
+filtering streams. No MCP session (Bash-only subagent)? Same verbs as CLI:
 prism query/search/read/lookup/change-impact --format text.
 
 <!-- prism:end -->
@@ -1588,6 +1592,9 @@ func cmdSearch(args []string) int {
 	format := formatText
 	scope := ""
 	regex := false
+	pathArg := ""
+	contextN := 0
+	filesOnly := false
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -1609,6 +1616,20 @@ func cmdSearch(args []string) int {
 			}
 		case "--regex":
 			regex = true
+		case "--files", "-l":
+			filesOnly = true
+		case "--path":
+			if i+1 < len(args) {
+				pathArg = args[i+1]
+				i++
+			}
+		case "--context", "-C":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+					contextN = n
+				}
+				i++
+			}
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1640,6 +1661,15 @@ func cmdSearch(args []string) int {
 	}
 	if regex {
 		callArgs["regex"] = true
+	}
+	if pathArg != "" {
+		callArgs["path"] = pathArg
+	}
+	if contextN > 0 {
+		callArgs["context"] = contextN
+	}
+	if filesOnly {
+		callArgs["files"] = true
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
 	if err != nil {
@@ -2035,8 +2065,9 @@ func cmdDeadCode(args []string) int {
 // from research/harness/swebench_ab.py's denied_search_attempts pattern,
 // which was tuned twice against real false positives (a bare substring match
 // hit the harness's own /tmp/...grepwarn dir name; a bare word-boundary
-// match missed /usr/bin/grep).
-var grepCommandPattern = regexp.MustCompile(`(?:^|[\s;&|(])(?:[^\s;&|(]*/)?(?:sudo\s+)?(?:rg|grep)\b`)
+// match missed /usr/bin/grep). The captured separator distinguishes grep as
+// a pipe FILTER from grep as a file SEARCHER — see hookDenyReason.
+var grepCommandPattern = regexp.MustCompile(`(^|[\s;&|(])((?:[^\s;&|(]*/)?(?:sudo\s+)?(?:rg|grep)\b)`)
 
 const grepHookReason = "grep/rg are blocked in this project. Use prism_search(scope=\"text\") " +
 	"(MCP tool, already loaded) for the equivalent ripgrep pass, or if you are already in a " +
@@ -2055,11 +2086,45 @@ func hookDenyReason(toolName string, toolInput map[string]any) string {
 		return grepHookReason
 	case "Bash":
 		cmd, _ := toolInput["command"].(string)
-		if grepCommandPattern.MatchString(cmd) {
+		// grep as a pipe FILTER of another command's output (git log | grep,
+		// pip list | grep -i x) is NOT replaceable by prism — there is no
+		// file to search. Mining 946 real grep invocations from 228
+		// benchmark cells (2026-08-15): 289 were exactly this. Denying them
+		// forces awk/python workarounds without routing anything to prism.
+		// Only grep-as-file-searcher is denied: a grep token whose preceding
+		// separator is a pipe passes through.
+		for _, m := range grepCommandPattern.FindAllStringSubmatchIndex(cmd, -1) {
+			if isPipeFilter(cmd, m[2], m[3]) {
+				continue // stdin filter: prism has no equivalent, let it run
+			}
 			return grepHookReason
 		}
 	}
 	return ""
+}
+
+// isPipeFilter reports whether the grep token preceded by cmd[sepStart:sepEnd]
+// is consuming stdin through a single pipe (`a | grep x` — a stream filter)
+// rather than starting a fresh command (line start, ;, &&, ||, & or a
+// subshell paren — a file searcher). `||` is a logical or: the grep after it
+// is a producer, not a filter, and stays denied.
+func isPipeFilter(cmd string, sepStart, sepEnd int) bool {
+	sep := cmd[sepStart:sepEnd]
+	if sep == "|" {
+		return sepStart == 0 || cmd[sepStart-1] != '|'
+	}
+	if strings.TrimSpace(sep) != "" {
+		return false // ; & ( — fresh command position
+	}
+	// Separator was whitespace (or line start): look back for the operator.
+	i := sepStart - 1
+	for i >= 0 && (cmd[i] == ' ' || cmd[i] == '\t') {
+		i--
+	}
+	if i < 0 || cmd[i] != '|' {
+		return false
+	}
+	return i == 0 || cmd[i-1] != '|'
 }
 
 // cmdHook implements the Claude Code PreToolUse hook protocol: read the

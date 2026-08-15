@@ -208,6 +208,10 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) string {
 				fmt.Fprintf(&sb, "%s: %d more matches omitted\n", file, len(g.hits)-textRenderHitsPerFile)
 				break
 			}
+			if hit.Line == 0 && hit.Text == "" {
+				fmt.Fprintf(&sb, "%s\n", file) // files-only mode (grep -l)
+				continue
+			}
 			fmt.Fprintf(&sb, "%s:%d:%s\n", file, hit.Line, hit.Text)
 		}
 	}
