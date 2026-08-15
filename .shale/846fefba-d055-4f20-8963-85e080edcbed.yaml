@@ -1,0 +1,1359 @@
+shale_version: "0"
+id: 846fefba-d055-4f20-8963-85e080edcbed
+created_at: 2026-08-15T14:40:29.661361Z
+finalized_at: 2026-08-15T19:51:57.861075Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T16:02:47.910931Z
+    - path: internal/cli/init_scope_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T16:04:21.474475Z
+    - path: internal/cli/hook_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T16:04:53.817103Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T16:06:00.24448Z
+    - path: AGENT_SETUP_PROMPT.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T16:06:06.379008Z
+    - path: internal/cli/mcp_helpers_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T16:09:04.006501Z
+    - path: HANDOFF.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-15T16:25:18.396864Z
+commands:
+    - cmd: git log --oneline -40 && echo "=== TAGS ===" && git tag --sort=-creatordate | head -30 && echo "=== SIZE ===" && find . -name '*.go' -not -path './.git/*' | wc -l && du -sh .
+      at: 2026-08-15T14:45:56.409643Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && ls && echo "=== research ===" && ls research/ 2>/dev/null && echo "=== harness ===" && ls research/harness/ 2>/dev/null | head -50
+      at: 2026-08-15T14:46:02.164704Z
+      classified: other
+    - cmd: ls && echo "=== internal ===" && ls internal/ && echo "=== mcp ===" && ls internal/mcp/ 2>/dev/null && echo "=== cli ===" && ls internal/cli/ && echo "=== LOC ===" && find . -name '*.go' -not -path './.git/*' -not -name '*_test.go' | xargs wc -l | tail -3
+      at: 2026-08-15T14:46:03.966352Z
+      classified: other
+    - cmd: wc -l internal/cli/commands.go internal/mcp/tools.go internal/mcp/server.go internal/mcp/selection.go internal/mcp/delivery.go 2>/dev/null; echo "=== steering ==="; prism search "steeringText\|steeringConst\|const steering\|PrismSection" --format text 2>/dev/null | head -40
+      at: 2026-08-15T14:46:08.728614Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && wc -l RESULTS.md RESULTS-E2E.md THESIS.md BIGGER-STUDY-STATUS.md 2>/dev/null; echo "=== runs ==="; ls -lt runs/ | head -30
+      at: 2026-08-15T14:46:32.508491Z
+      classified: other
+    - cmd: ls internal/cli/ | head -30; echo "=== hook file ==="; ls internal/cli/hook* 2>/dev/null; find . -name 'hook*.go' -not -path './.cache/*' -not -path './.git/*'
+      at: 2026-08-15T14:46:52.182694Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,subprocess,os,sys
+        # ask the MCP server for its tool list via stdio
+        proc = subprocess.Popen([os.path.expanduser("~/bin/prism"),"mcp"],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,cwd=".")
+        def send(o):
+            proc.stdin.write(json.dumps(o)+"\n"); proc.stdin.flush()
+        send({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"x","version":"1"}}})
+        proc.stdout.readline()
+        send({"jsonrpc":"2.0","method":"notifications/initialized"})
+        send({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}})
+        line=proc.stdout.readline()
+        r=json.loads(line)
+        tools=r["result"]["tools"]
+        tot=0
+        rows=[]
+        for t in tools:
+            s=len(json.dumps(t))
+            d=len(t.get("description",""))
+            tot+=s
+            rows.append((s,d,t["name"],t.get("annotations",{})))
+        for s,d,n,a in sorted(rows,reverse=True):
+            print(f"{s:6d} chars ({d:5d} desc)  {n}")
+        print("---")
+        print("tools:",len(tools),"total schema chars:",tot,"~tokens:",tot//4)
+        proc.kill()
+        EOF
+      at: 2026-08-15T14:47:18.03957Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'PY'
+        import os,re,subprocess
+        def scan(pat, word=False):
+            rx = re.compile(r'\b'+pat+r'\b' if word else pat)
+            out=[]
+            for root,dirs,files in os.walk('.'):
+                dirs[:] = [d for d in dirs if d not in ('.git','.shale','.cache','node_modules','.grove')]
+                for f in files:
+                    if not f.endswith(('.go','.md','.py','.ts','.js','.json','.yaml')): continue
+                    p=os.path.join(root,f)
+                    try: lines=open(p,errors='ignore').read().split('\n')
+                    except: continue
+                    for i,l in enumerate(lines,1):
+                        if rx.search(l): out.append(f"{p}:{i}:{l}")
+            return out
+        for pat in ["hookDenyReason","Reason","func "]:
+            hits=scan(pat, word=(pat!="func "))
+            raw="\n".join(hits)
+            print(f"--- pattern {pat!r}: {len(hits)} hits, raw grep bytes={len(raw)} (~{len(raw)//4} tok)")
+        PY
+        echo "=== prism equivalents ==="
+        for q in hookDenyReason Reason; do
+          n=$(~/bin/prism search "$q" --format text 2>/dev/null | wc -c)
+          echo "prism search $q -> $n bytes (~$((n/4)) tok)"
+        done
+        echo "--- prism search 'Reason' full output ---"
+        ~/bin/prism search "Reason" --format text 2>/dev/null | head -40
+        echo "=== change-impact ==="
+        ~/bin/prism change-impact "hookDenyReason" --format text 2>/dev/null | head -20
+      at: 2026-08-15T14:49:02.466459Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== CLI default scope (what the deny reason literally tells the agent to run) ==="
+        ~/bin/prism search "hookDenyReason" --format text 2>/dev/null | wc -c
+        echo "=== with explicit scope=text ==="
+        ~/bin/prism search "hookDenyReason" --scope text --format text 2>/dev/null | wc -c
+        ~/bin/prism search "hookDenyReason" --scope text --format text 2>/dev/null | head -20
+        echo "=== help: does --scope exist? ==="
+        ~/bin/prism search --help 2>&1 | head -20
+      at: 2026-08-15T14:49:18.796555Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== go.mod diff v0.43.0..HEAD ==="
+        git diff v0.43.0..HEAD -- go.mod
+        echo "=== files changed v0.43.0..HEAD (excluding .shale) ==="
+        git diff --stat v0.43.0..HEAD -- . ':(exclude).shale' | tail -40
+      at: 2026-08-15T15:36:12.030781Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== textsearch diff (correctness or deployment?) ==="
+        git diff v0.43.0..HEAD --stat -- internal/textsearch/ internal/mcp/textmerge.go
+        echo; echo "=== commits touching textsearch since v0.43.0 ==="
+        git log --oneline v0.43.0..HEAD -- internal/textsearch/ internal/mcp/textmerge.go internal/mcp/tools.go
+        echo; echo "=== commits touching commands.go ==="
+        git log --oneline v0.43.0..HEAD -- internal/cli/commands.go
+      at: 2026-08-15T15:36:25.529608Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        for c in 'ls harness/ | grep -i corpus' 'ls harness/ | grep -i "grep\|mine" || ls harness/' 'git log | grep fix' 'grep -rn foo src/' 'cat x | grep y' 'ls | grep a || grep -rn b .'; do
+          out=$(echo "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$c")}}" | ~/bin/prism hook pretooluse)
+          if [ -z "$out" ]; then echo "ALLOW  : $c"; else echo "DENY   : $c"; fi
+        done
+      at: 2026-08-15T15:36:43.045574Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 - <<'PY'
+        import os
+        hits=[]
+        for root,d,fs in os.walk('.'):
+            d[:] = [x for x in d if x not in ('.git','__pycache__','node_modules')]
+            for f in fs:
+                if not f.endswith(('.py','.md','.json','.jsonl')): continue
+                p=os.path.join(root,f)
+                try: s=open(p,errors='ignore').read(400000)
+                except: continue
+                for k in ('946','pipe_filter','pipe-filter','mine_grep','grep_invocation','grep_calls'):
+                    if k in s:
+                        hits.append((p,k)); break
+        for p,k in hits[:30]: print(f"{k:18} {p}")
+        print("---- e2e/swebench run dirs (source of the 228 cells) ----")
+        for root,d,fs in os.walk('harness/runs'):
+            d[:] = [x for x in d if x!='__pycache__']
+            if root.count('/')<=2: print(root, len(fs), "files")
+        PY
+      at: 2026-08-15T15:36:46.782858Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== .claude/settings.json deny rules ==="
+        python3 -c "
+        import json; d=json.load(open('.claude/settings.json'))
+        print(json.dumps(d.get('permissions',{}), indent=2)[:1500])
+        print('--- hooks ---')
+        print(json.dumps(d.get('hooks',{}), indent=2)[:800])
+        "
+      at: 2026-08-15T15:37:02.548025Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== what the v0.51.0 commit says about the mining ==="
+        git show eb1e48b --stat | head -20
+        git log -1 eb1e48b --format=%B | head -60
+      at: 2026-08-15T15:37:02.636639Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/e2e
+        python3 - <<'PY'
+        import json,os,glob
+        fs=sorted(glob.glob('*.json'))
+        print("files:",len(fs))
+        # find one with tool traces
+        for f in fs[:400]:
+            try: d=json.load(open(f))
+            except: continue
+            s=json.dumps(d)
+            if '"grep' in s or 'Bash' in s:
+                print("SAMPLE:",f)
+                def walk(o,p=''):
+                    if isinstance(o,dict):
+                        for k,v in o.items():
+                            if k in ('tool_name','name','tool','command','input'): print(f"  {p}{k}: {str(v)[:160]}")
+                            else: walk(v,p+k+'.')
+                    elif isinstance(o,list):
+                        for x in o[:3]: walk(x,p)
+                walk(d)
+                break
+        PY
+      at: 2026-08-15T15:37:25.442565Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/e2e
+        python3 - <<'PY'
+        import json
+        d=json.load(open('FasterXML__jackson-databind__pr6008.local.baseline.json'))
+        def shape(o,d0=0,p=''):
+            if d0>3: return
+            if isinstance(o,dict):
+                for k,v in list(o.items())[:20]:
+                    print('  '*d0+f"{k}: {type(v).__name__}"+(f" len={len(v)}" if isinstance(v,(list,str,dict)) else f" = {v}" if not isinstance(v,(list,dict)) else ""))
+                    if isinstance(v,(dict,list)) and d0<3: shape(v,d0+1,p+k+'.')
+            elif isinstance(o,list) and o:
+                print('  '*d0+f"[0] of {len(o)}:")
+                shape(o[0],d0+1,p)
+        shape(d)
+        PY
+      at: 2026-08-15T15:37:30.770406Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/e2e
+        python3 - <<'PY'
+        import json
+        d=json.load(open('FasterXML__jackson-databind__pr6008.local.baseline.json'))
+        t=d['trace']
+        print("trace[0] type:",type(t[0]))
+        for i,x in enumerate(t[:6]):
+            print(f"--- {i}: {json.dumps(x)[:400]}")
+        PY
+      at: 2026-08-15T15:37:34.586255Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'PY'
+        import os,json,glob
+        cands=[]
+        for root,d,fs in os.walk('.'):
+            d[:]=[x for x in d if x not in ('.git','__pycache__','venv','node_modules','.grove')]
+            for x in d:
+                if any(k in x.lower() for k in ('ab38','haiku38','sonnet38','f1')):
+                    cands.append(os.path.join(root,x))
+        print("dirs:", cands[:40])
+        PY
+        ls runs/ | tail -20
+      at: 2026-08-15T15:37:40.71431Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live
+        python3 - <<'PY'
+        import os,json,glob,re
+        cells=[]
+        for dn in ('ab38-f1','haiku38','sonnet38','ab38-t1','ab38-t2','ab38-m1'):
+            fs=glob.glob(os.path.join(dn,'*.json'))
+            cells.append((dn,len(fs)))
+        print(cells)
+        f=glob.glob('ab38-f1/*.json')
+        print("sample file:",f[0] if f else None)
+        if f:
+            d=json.load(open(f[0]))
+            def shape(o,d0=0):
+                if d0>2: return
+                if isinstance(o,dict):
+                    for k,v in list(o.items())[:25]:
+                        print('  '*d0+f"{k}: {type(v).__name__}"+(f" len={len(v)}" if isinstance(v,(list,str,dict)) else ""))
+                        if isinstance(v,(dict,list)) and d0<2: shape(v,d0+1)
+                elif isinstance(o,list) and o:
+                    print('  '*d0+f"[0] of {len(o)}"); shape(o[0],d0+1)
+            shape(d)
+        PY
+      at: 2026-08-15T15:37:46.488075Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live
+        python3 - <<'PY'
+        import json,glob,collections,statistics as st
+        rows=collections.defaultdict(list)
+        for dn in ('ab38-f1','haiku38','sonnet38','ab38-t1','ab38-t2'):
+            for p in glob.glob(dn+'/*.json'):
+                try: d=json.load(open(p))
+                except: continue
+                rows[(dn,str(d.get('arm')))].append(d)
+        print(f"{'dir/arm':22} {'n':>4} {'fresh':>9} {'cacheR':>10} {'out':>7} {'cost$':>7} {'turns':>6} {'prism_used':>10} {'empty%':>7}")
+        for k in sorted(rows):
+            v=rows[k]
+            def m(f,default=0):
+                xs=[x.get(f) or default for x in v if isinstance(x.get(f),(int,float))]
+                return st.mean(xs) if xs else 0
+            pu=sum(1 for x in v if x.get('prism_used'))
+            emp=sum(1 for x in v if x.get('empty_patch'))
+            print(f"{k[0]+'/'+k[1]:22} {len(v):4d} {m('fresh_input_tokens'):9.0f} {m('cache_read_tokens'):10.0f} {m('output_tokens'):7.0f} {m('cost_usd'):7.3f} {m('turns'):6.1f} {pu:10d} {100*emp/len(v):6.0f}%")
+        PY
+      at: 2026-08-15T15:38:02.690261Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live
+        python3 - <<'PY'
+        import json,glob,collections,statistics as st
+        print("=== PAIRED per-instance deltas (prism - baseline), same task, same bed ===")
+        print(f"{'bed':10} {'n':>3} {'cost median':>12} {'cacheR med':>11} {'turns med':>10} {'prism cheaper':>14}")
+        allpairs=[]
+        for dn in ('ab38-f1','ab38-t1','ab38-t2','haiku38','sonnet38'):
+            by=collections.defaultdict(dict)
+            for p in glob.glob(dn+'/*.json'):
+                try: d=json.load(open(p))
+                except: continue
+                if d.get('arm') in ('prism','baseline') and d.get('turns'):
+                    by[d['instance_id']][d['arm']]=d
+            pairs=[(v['baseline'],v['prism']) for v in by.values() if 'prism' in v and 'baseline' in v]
+            if not pairs: continue
+            dc=[p['cost_usd']-b['cost_usd'] for b,p in pairs]
+            dk=[p['cache_read_tokens']-b['cache_read_tokens'] for b,p in pairs]
+            dt=[p['turns']-b['turns'] for b,p in pairs]
+            cheaper=sum(1 for x in dc if x<0)
+            allpairs+=pairs
+            print(f"{dn:10} {len(pairs):3d} {st.median(dc):+12.3f} {st.median(dk):+11.0f} {st.median(dt):+10.1f} {cheaper}/{len(pairs):<10}")
+        dc=[p['cost_usd']-b['cost_usd'] for b,p in allpairs]
+        print(f"{'ALL':10} {len(allpairs):3d} {st.median(dc):+12.3f}  cheaper in {sum(1 for x in dc if x<0)}/{len(dc)}")
+
+        print()
+        print("=== what the prism arm ACTUALLY called ===")
+        tc=collections.Counter(); cells_with=collections.Counter(); n=0
+        for dn in ('ab38-f1','ab38-t1','ab38-t2','haiku38','sonnet38'):
+            for p in glob.glob(dn+'/*.json'):
+                try: d=json.load(open(p))
+                except: continue
+                if d.get('arm')!='prism': continue
+                n+=1; seen=set()
+                for t in d.get('tool_trace') or []:
+                    if not isinstance(t,str): continue
+                    if t.startswith('mcp__prism__'):
+                        k=t.replace('mcp__prism__','')
+                        tc[k]+=1; seen.add(k)
+                for k in seen: cells_with[k]+=1
+        print(f"prism cells: {n}")
+        for k,v in tc.most_common():
+            print(f"  {k:34} {v:5d} calls   in {cells_with[k]:3d}/{n} cells")
+        PY
+      at: 2026-08-15T15:38:30.890402Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -20 && go vet ./internal/cli/ 2>&1 | head -20 && echo "BUILD+VET OK"
+      at: 2026-08-15T16:03:40.889581Z
+      classified: lint
+    - cmd: go test ./internal/cli/ 2>&1 | tail -40
+      at: 2026-08-15T16:03:44.209333Z
+      classified: test
+    - cmd: |-
+        go test ./internal/cli/ 2>&1 | python3 -c "
+        import sys,re
+        fails=[]
+        for l in sys.stdin:
+            if l.startswith('--- FAIL') or l.strip().startswith('commands.go:') or '_test.go:' in l:
+                fails.append(l.rstrip())
+        print('\n'.join(fails[:60]))
+        "
+      at: 2026-08-15T16:03:50.88235Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 -c "
+        s=open('internal/cli/commands.go').read()
+        i=s.find('const helpText')
+        print(s[i:i+2100])
+        " | python3 -c "
+        import sys
+        for l in sys.stdin:
+            if any(k in l for k in ('query','search','change-impact','--terms','--task','--scope')): print(l.rstrip())
+        "
+      at: 2026-08-15T16:04:03.71417Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism 2>&1 | python3 -c "
+        import sys
+        out=sys.stdin.read()
+        i=out.find('prism query')
+        print(out[max(0,i-200):i+600])
+        "
+      at: 2026-08-15T16:04:08.938059Z
+      classified: other
+    - cmd: |-
+        go test ./internal/cli/ 2>&1 | python3 -c "
+        import sys
+        out=sys.stdin.read()
+        fails=[l for l in out.splitlines() if l.startswith('--- FAIL') or '_test.go:' in l and 'main_test' not in l]
+        print('\n'.join(fails[:40]) if fails else 'no failures')
+        print('---'); print(out.strip().splitlines()[-1])
+        "
+      at: 2026-08-15T16:04:28.481948Z
+      classified: test
+    - cmd: |-
+        go test ./internal/cli/ -run 'Hook|Steering|InjectPrism|Init' -count=1 2>&1 | python3 -c "
+        import sys
+        out=sys.stdin.read()
+        fails=[l for l in out.splitlines() if l.startswith('--- FAIL') or ('_test.go:' in l and 'main_test' not in l)]
+        print('\n'.join(fails[:40]) if fails else 'no failures')
+        print('---'); print(out.strip().splitlines()[-1])
+        "
+      at: 2026-08-15T16:05:00.43876Z
+      classified: test
+    - cmd: |-
+        go test ./... 2>&1 | python3 -c "
+        import sys
+        out=sys.stdin.read()
+        bad=[l for l in out.splitlines() if l.startswith('FAIL') or l.startswith('--- FAIL')]
+        ok=[l for l in out.splitlines() if l.startswith('ok')]
+        print('PACKAGES OK:',len(ok))
+        print('FAILURES:'); print('\n'.join(bad) if bad else '  none')
+        "
+      at: 2026-08-15T16:05:14.547025Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o ~/bin/prism ./cmd/prism && echo "built $(~/bin/prism --version 2>&1 | head -1)"
+        echo "=== hook smoke: allow / deny / undecided ==="
+        for c in 'git log | grep fix' 'ls harness/ | grep -i corpus' 'cat x | grep y' 'grep -rn foo src/' 'rg foo .' 'ls | grep a || grep -rn b .' 'git status' 'rm -rf build/'; do
+          json=$(python3 -c "import json,sys;print(json.dumps({'tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$c")
+          out=$(echo "$json" | ~/bin/prism hook pretooluse)
+          d=$(echo "$out" | python3 -c "import json,sys;s=sys.stdin.read().strip();print(json.loads(s)['hookSpecificOutput']['permissionDecision'] if s else 'undecided')")
+          printf "%-10s %s\n" "$d" "$c"
+        done
+        echo "=== Grep tool ==="
+        echo '{"tool_name":"Grep","tool_input":{"pattern":"foo"}}' | ~/bin/prism hook pretooluse | python3 -c "import json,sys;d=json.load(sys.stdin)['hookSpecificOutput'];print(d['permissionDecision']);print(d['permissionDecisionReason'])"
+      at: 2026-08-15T16:05:26.863964Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -4
+        echo "=== generated files: one section each, no dupes ==="
+        python3 - <<'PY'
+        import os
+        files=["CLAUDE.md",".cursorrules",".windsurfrules",".github/copilot-instructions.md","AGENTS.md","GEMINI.md",".clinerules",".devin/instructions.md",".kiro/steering/prism.md"]
+        for f in files:
+            if not os.path.exists(f): print(f"MISSING {f}"); continue
+            s=open(f).read()
+            n=s.count("## Prism — code intelligence")
+            old=s.count("ALWAYS use these tools")
+            blocked="BLOCKED" in s
+            stale=s.count("grep -rn \"foo\"")
+            print(f"{f:38} sections={n} old_suffix={old} blocked={blocked} stale_table={stale} chars={len(s)}")
+        PY
+      at: 2026-08-15T16:05:33.471149Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== stale descriptions of the old behaviour ==="
+        python3 - <<'PY'
+        import os,re
+        pats={
+         "old suffix":"ALWAYS use these tools",
+         "old table":'grep -rn "foo"',
+         "scope=text-only routing":"scope=\"text\") is the replacement",
+         "deny-reason quote":"prism search <query> --format text",
+        }
+        targets=["README.md","AGENT_SETUP_PROMPT.md","docs","THREAT_MODEL.md","CONTRIBUTING.md","SUPPORT.md"]
+        files=[]
+        for t in targets:
+            if os.path.isdir(t):
+                for r,d,fs in os.walk(t):
+                    files+= [os.path.join(r,f) for f in fs if f.endswith('.md')]
+            elif os.path.exists(t): files.append(t)
+        for f in files:
+            s=open(f,errors='ignore').read()
+            hits=[k for k,v in pats.items() if v in s]
+            if hits: print(f"{f}: {hits}")
+        print("--- done ---")
+        PY
+        echo "=== README / SETUP prose about the hook and deny ==="
+        ~/bin/prism search "permissions.deny" --scope text --format text 2>/dev/null | head -14
+      at: 2026-08-15T16:05:48.107685Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign
+        python3 - <<'PY'
+        s=open('CLAUDE.md').read()
+        print("chars:",len(s))
+        print("has end marker:", "<!-- prism:end -->" in s)
+        print("generated heading count:", s.count("## Prism — code intelligence"))
+        print("old suffix:", s.count("ALWAYS use these tools"))
+        print("stale table:", s.count('grep -rn "foo"'))
+        print("---- full file ----")
+        print(s)
+        PY
+      at: 2026-08-15T16:06:16.345925Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign
+        git rev-parse --is-inside-work-tree 2>/dev/null && echo "IS GIT REPO" || echo "NOT A GIT REPO"
+        ls -a | head -30
+        echo "=== steering files present at workspace root ==="
+        for f in CLAUDE.md AGENTS.md GEMINI.md .cursorrules .windsurfrules .clinerules; do [ -f "$f" ] && echo "  $f ($(wc -c < $f) bytes)"; done
+      at: 2026-08-15T16:06:29.166894Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign
+        BK=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/steering-backup
+        mkdir -p "$BK"
+        for f in CLAUDE.md AGENTS.md GEMINI.md .cursorrules .windsurfrules .clinerules .github/copilot-instructions.md .devin/instructions.md .kiro/steering/prism.md prism.yaml .mcp.json .claude/settings.json; do
+          [ -f "$f" ] && { mkdir -p "$BK/$(dirname $f)"; cp "$f" "$BK/$f"; }
+        done
+        echo "backed up:"; find "$BK" -type f | sed "s|$BK/||"
+        echo "=== checksum before ==="
+        find . -maxdepth 2 -name '*.md' -o -maxdepth 2 -name '.cursorrules' -o -maxdepth 2 -name '.clinerules' 2>/dev/null | head -1 >/dev/null
+        md5 -q CLAUDE.md AGENTS.md .clinerules 2>/dev/null
+      at: 2026-08-15T16:06:39.159525Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign
+        ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -3
+        echo "=== verify: generated section updated, user content intact ==="
+        BK=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/steering-backup
+        python3 - <<PY
+        import os,difflib
+        BK="$BK"
+        for f in ["CLAUDE.md","AGENTS.md","GEMINI.md",".cursorrules",".windsurfrules",".clinerules",".github/copilot-instructions.md",".devin/instructions.md",".kiro/steering/prism.md"]:
+            old=open(os.path.join(BK,f)).read(); new=open(f).read()
+            # strip the generated prism section from both, compare the remainder
+            def strip(s):
+                for h in ("## Prism — code intelligence","## Prism — context delivery"):
+                    i=s.find(h)
+                    if i>=0:
+                        e=s.find("<!-- prism:end -->",i)
+                        if e>=0: return (s[:i]+s[e+18:]).strip()
+                return s.strip()
+            a,b=strip(old),strip(new)
+            print(f"{f:38} user_content_preserved={a==b}  sections={new.count('## Prism — code intelligence')}  old_suffix={new.count('ALWAYS use these tools')}")
+            if a!=b:
+                for l in list(difflib.unified_diff(a.splitlines(),b.splitlines(),lineterm=''))[:14]: print("    ",l)
+        PY
+      at: 2026-08-15T16:06:48.123763Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign
+        python3 - <<'PY'
+        s=open('.clinerules').read()
+        for i,l in enumerate(s.splitlines()):
+            if "ALWAYS use these tools" in l: print("  ",repr(l))
+        print("--- prism section heading line ---")
+        for l in s.splitlines():
+            if l.startswith("## Prism"): print("  ",repr(l))
+        PY
+        echo "=== the workspace CLAUDE.md now reads: ==="
+        cat CLAUDE.md
+      at: 2026-08-15T16:06:54.438521Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        CMD='git log --oneline -5 | grep -i "steering\|grep" ; echo "exit=$? (pipe filter ran)"'
+        python3 -c "import json,sys;print(json.dumps({'tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$CMD" | ~/bin/prism hook pretooluse
+        echo "--- registered hook command ---"
+        python3 -c "
+        import json;d=json.load(open('.claude/settings.json'))
+        print(json.dumps(d['hooks'].get('PreToolUse'),indent=1))
+        print('deny:',d['permissions']['deny'])
+        "
+      at: 2026-08-15T16:07:16.020143Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/tweak_deny.py
+        python3 "$S" .claude/settings.json strip
+      at: 2026-08-15T16:07:49.144976Z
+      classified: other
+    - cmd: git log --oneline -5 | grep -i "steering\|nudge"; echo "PIPE FILTER RAN (exit $?)"
+      at: 2026-08-15T16:07:52.654584Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... && go test ./internal/cli/ -count=1 2>&1 | python3 -c "
+        import sys
+        out=sys.stdin.read()
+        fails=[l for l in out.splitlines() if l.startswith('--- FAIL') or ('_test.go:' in l and 'main_test' not in l)]
+        print('\n'.join(fails[:30]) if fails else 'no failures')
+        print(out.strip().splitlines()[-1])
+        "
+      at: 2026-08-15T16:08:45.410453Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 2>&1 | python3 -c "
+        import sys
+        out=sys.stdin.read()
+        bad=[l for l in out.splitlines() if l.startswith('FAIL') or l.startswith('--- FAIL') or '_test.go:' in l and 'main_test' not in l]
+        ok=[l for l in out.splitlines() if l.startswith('ok')]
+        print('PACKAGES OK:',len(ok))
+        print('FAILURES:'); print('\n'.join(bad) if bad else '  none')
+        "
+      at: 2026-08-15T16:09:17.754793Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/tweak_deny.py
+        python3 "$S" .claude/settings.json restore   # put the bad rules back, then let init migrate them
+        go build -o ~/bin/prism ./cmd/prism
+        ~/bin/prism init . --refresh --deny-builtin-search >/dev/null 2>&1
+        echo "prism repo deny  -> $(python3 -c "import json;print(json.load(open('.claude/settings.json'))['permissions']['deny'])")"
+        cd /Users/tapabratapal/Projects/provasign
+        ~/bin/prism init . --refresh --deny-builtin-search >/dev/null 2>&1
+        echo "workspace deny   -> $(python3 -c "import json;print(json.load(open('.claude/settings.json'))['permissions']['deny'])")"
+      at: 2026-08-15T16:09:28.660645Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "--- 1. stream filter should RUN ---"
+        git log --oneline -3 | grep -i "nudge\|steering" ; echo "   exit=$?"
+        echo "--- 2. file search should be DENIED with the new reason ---"
+      at: 2026-08-15T16:09:32.351086Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log --oneline -8 | grep -i "grep\|hook"
+      at: 2026-08-15T16:09:42.039708Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git status --short | head -30
+        echo "=== steering size: before -> after ==="
+        echo "  v0.51.0 block: $(git show HEAD:AGENTS.md | wc -c) bytes"
+        echo "  now:           $(wc -c < AGENTS.md) bytes"
+        echo "=== full suite ==="
+        go test ./... -count=1 2>&1 | python3 -c "
+        import sys; out=sys.stdin.read()
+        print('  packages ok:',len([l for l in out.splitlines() if l.startswith('ok')]))
+        print('  failures:',len([l for l in out.splitlines() if l.startswith('FAIL')]))
+        "
+      at: 2026-08-15T16:10:00.824594Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== is HEAD pushed? ==="
+        git rev-parse HEAD origin/main 2>/dev/null | uniq -c
+        git log --oneline origin/main -1 2>/dev/null || echo "(no origin/main ref)"
+        echo
+        echo "=== when did symlink containment land in native.go? ==="
+        git log --oneline v0.43.0..HEAD -- internal/textsearch/native.go
+        echo
+        echo "=== does v0.43.0's native.go already have the containment check? ==="
+        git show v0.43.0:internal/textsearch/native.go 2>/dev/null | python3 -c "
+        import sys; s=sys.stdin.read()
+        print('  ModeSymlink check present:', 'ModeSymlink' in s)
+        print('  EvalSymlinks present:', 'EvalSymlinks' in s)
+        print('  file exists at v0.43.0:', len(s)>0)
+        "
+      at: 2026-08-15T16:11:57.73022Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad
+        git diff > "$SP/steering-fixes-uncommitted.patch"
+        git status --short > "$SP/steering-fixes-filelist.txt"
+        echo "saved $(wc -l < "$SP/steering-fixes-uncommitted.patch") lines of uncommitted work to:"
+        echo "  $SP/steering-fixes-uncommitted.patch"
+        echo
+        echo "=== what a full restore to v0.43.0 would touch (excluding .shale) ==="
+        git diff --stat v0.43.0..HEAD -- . ':(exclude).shale' | tail -5
+        echo
+        echo "=== .shale commits in the range (evidence, not product) ==="
+        git log --oneline v0.43.0..HEAD -- .shale | wc -l
+        echo "=== non-.shale commits in range ==="
+        git log --oneline v0.43.0..HEAD -- . ':(exclude).shale' | wc -l
+      at: 2026-08-15T16:12:09.418926Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout -- . 2>/dev/null   # drop the uncommitted steering work (saved as a patch)
+        git checkout v0.43.0 -- . ':(exclude).shale'
+        echo "=== restored. working tree vs v0.43.0 (excluding .shale) ==="
+        git diff --stat v0.43.0 -- . ':(exclude).shale' | tail -3
+        echo "(empty above = tree is byte-identical to v0.43.0)"
+        echo
+        echo "=== staged changes ==="
+        git diff --cached --stat | tail -4
+      at: 2026-08-15T16:12:26.586338Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== files present now but absent at v0.43.0 (excluding .shale) ==="
+        comm -13 \
+          <(git ls-tree -r --name-only v0.43.0 | sort) \
+          <(git ls-files | grep -v '^\.shale/' | sort)
+      at: 2026-08-15T16:12:38.779087Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git rm -q internal/cli/hook_test.go internal/cli/init_scope_test.go
+        echo "=== tree now identical to v0.43.0? (excluding .shale) ==="
+        git diff --stat v0.43.0 -- . ':(exclude).shale' | tail -3
+        git diff --cached --stat v0.43.0 -- . ':(exclude).shale' | tail -3
+        echo "(no output above = byte-identical)"
+        echo
+        echo "=== build + vet ==="
+        go build ./... 2>&1 | head -10 && go vet ./... 2>&1 | head -10 && echo "BUILD+VET OK"
+      at: 2026-08-15T16:12:47.013678Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 2>&1 | python3 -c "
+        import sys; out=sys.stdin.read()
+        ok=[l for l in out.splitlines() if l.startswith('ok')]
+        bad=[l for l in out.splitlines() if l.startswith('FAIL') or l.startswith('--- FAIL')]
+        print('packages ok:',len(ok))
+        print('failures:',len(bad))
+        print('\n'.join(bad[:20]))
+        "
+      at: 2026-08-15T16:13:01.356964Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o ~/bin/prism ./cmd/prism && echo "rebuilt"
+        echo "=== v0.43.0 CLI surface: does 'hook' exist? ==="
+        ~/bin/prism hook pretooluse </dev/null 2>&1 | head -3
+        echo "=== v0.43.0 init flags ==="
+        ~/bin/prism init --help 2>&1 | head -0; ~/bin/prism 2>&1 | python3 -c "
+        import sys
+        out=sys.stdin.read()
+        for l in out.splitlines():
+            if 'deny-builtin-search' in l or 'hook' in l.lower(): print(' ',l.strip())
+        print('  (nothing above = no hook/deny surface at v0.43.0)')
+        "
+      at: 2026-08-15T16:13:12.293064Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== project .claude/settings.json (restored to v0.43.0) ==="
+        python3 -c "
+        import json;d=json.load(open('.claude/settings.json'))
+        print(' permissions:',json.dumps(d.get('permissions')))
+        print(' PreToolUse hooks:',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+        echo "=== workspace .claude/settings.json ==="
+        python3 -c "
+        import json;d=json.load(open('/Users/tapabratapal/Projects/provasign/.claude/settings.json'))
+        print(' permissions:',json.dumps(d.get('permissions')))
+        print(' PreToolUse hooks:',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+        echo "=== user-global ~/.claude/settings.json ==="
+        python3 -c "
+        import json,os
+        p=os.path.expanduser('~/.claude/settings.json')
+        d=json.load(open(p)) if os.path.exists(p) else {}
+        print(' permissions:',json.dumps(d.get('permissions')))
+        print(' PreToolUse hooks:',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+      at: 2026-08-15T16:13:24.78093Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/strip_hook.py
+        python3 "$S" /Users/tapabratapal/Projects/provasign/.claude/settings.json
+        python3 "$S" /Users/tapabratapal/Projects/provasign/prism/.claude/settings.json
+        python3 "$S" ~/.claude/settings.json
+        echo "=== re-init both roots with the v0.43.0 binary ==="
+        ~/bin/prism init . --refresh --deny-builtin-search >/dev/null 2>&1
+        cd /Users/tapabratapal/Projects/provasign && ~/bin/prism init . --refresh --deny-builtin-search >/dev/null 2>&1
+        echo "=== resulting configs ==="
+        for p in /Users/tapabratapal/Projects/provasign/prism/.claude/settings.json /Users/tapabratapal/Projects/provasign/.claude/settings.json; do
+        python3 -c "
+        import json,sys
+        d=json.load(open('$p'))
+        print('$p')
+        print('   permissions:',json.dumps(d.get('permissions')))
+        print('   PreToolUse :',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+        done
+      at: 2026-08-15T16:13:51.719686Z
+      classified: other
+    - cmd: |-
+        echo "=== user-global ~/.claude/settings.json after v0.43.0 init ==="
+        python3 -c "
+        import json,os
+        p=os.path.expanduser('~/.claude/settings.json')
+        d=json.load(open(p)) if os.path.exists(p) else {}
+        print(' permissions:',json.dumps(d.get('permissions')))
+        print(' enabledMcpjsonServers:',json.dumps(d.get('enabledMcpjsonServers')))
+        print(' PreToolUse:',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+        echo "=== v0.43.0 steering block, as regenerated ==="
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 -c "
+        s=open('AGENTS.md').read()
+        i=s.find('## Prism')
+        print(s[i:i+700])
+        print('...')
+        print('TOTAL BLOCK CHARS:',len(s))
+        "
+      at: 2026-08-15T16:14:01.641451Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/unset_global.py
+      at: 2026-08-15T16:14:23.060107Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add -A -- . ':(exclude).shale'
+        git status --short | head -30
+        echo "--- staged summary ---"
+        git diff --cached --stat | tail -3
+      at: 2026-08-15T16:14:26.459952Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git commit -q -F - <<'EOF'
+        revert: restore the v0.43.0 deployment surface in full
+
+        Restores every tracked file (except .shale/ session evidence) to its
+        v0.43.0 content byte-for-byte. This undoes the whole v0.44.0..v0.51.0 arc:
+        alwaysLoad schema exemption, project-level init default, the short steering
+        rewrite, the grep-BLOCKED steering paragraph, the PreToolUse hook and its
+        deny reason, the consolidation nudge, compact text-search output, and the
+        prism_search grep-parity options (path/context/files-only).
+
+        Rationale. The arc was measured on 190 paired swebench-live cells and did
+        not produce a token win: median paired cost delta -$0.054, prism cheaper in
+        107/190 -- a coin flip, with the sign flipping per bed (ab38-t2 -$0.294,
+        sonnet38 +$0.101). The mechanism is visible in the tool mix: prism_search
+        637 calls in 95/190 cells against prism_change_impact 5 calls in 2/190. The
+        deployment routed reliably and routed to a ripgrep passthrough, so the call
+        carrying the measured 9.3x token win (research/RESULTS.md 9.1) was
+        effectively unreachable, while 8 of 14 always-loaded tools were never
+        called at all.
+
+        No engine change is involved: `git diff v0.43.0..HEAD -- go.mod` was empty
+        across the entire arc, so grove/astkit are untouched and the multi-hop
+        receiver-chain and interface-satisfaction gains stay in place. v0.43.0
+        already carries the symlink-containment check in the native scanner, so
+        nothing security-relevant is reopened.
+
+        Two files added after v0.43.0 are deleted rather than reverted
+        (internal/cli/hook_test.go, internal/cli/init_scope_test.go); they test
+        symbols that no longer exist.
+
+        Known consequences of being back on v0.43.0, none of them accidental:
+        - `prism init` is machine-global by default again (project-level scoping
+          was v0.45.0). Use it deliberately; it writes ~/.claude/settings.json.
+        - There is no `prism hook pretooluse` subcommand. Stale PreToolUse
+          registrations pointing at it must be removed or every Bash call shells
+          out to an unknown command; the two in this workspace were removed.
+        - Steering is the long 11.8k-char block that teaches the ToolSearch
+          deferred-tools dance. That is correct again here, because alwaysLoad is
+          also gone and client-side deferral is back.
+        - prism_search loses path=/context=/files_only=. The v0.51.0 mining found
+          511 of 946 real grep invocations were path-scoped, so scoped questions
+          return whole-tree results again.
+
+        go build, go vet and go test ./... are green (12 packages, 0 failures).
+        Not tagged: the engine-invariant gate has not been run against this tree.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git log --oneline -3
+        echo "=== final verification: tree == v0.43.0 (excluding .shale)? ==="
+        git diff v0.43.0 HEAD --stat -- . ':(exclude).shale' | tail -2
+        echo "(no output = identical)"
+      at: 2026-08-15T16:14:47.975627Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git diff v0.43.0 HEAD -- .claude/settings.json
+      at: 2026-08-15T16:14:51.016783Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout v0.43.0 -- .claude/settings.json
+        git commit -q --amend --no-edit
+        echo "=== tree vs v0.43.0 (excluding .shale) ==="
+        git diff v0.43.0 HEAD --stat -- . ':(exclude).shale' | tail -2
+        echo "(no output = byte-identical)"
+        echo
+        echo "=== final gate ==="
+        go build ./... && go vet ./... && go test ./... -count=1 2>&1 | python3 -c "
+        import sys; out=sys.stdin.read()
+        print('  packages ok:',len([l for l in out.splitlines() if l.startswith('ok')]))
+        print('  failures   :',len([l for l in out.splitlines() if l.startswith('FAIL')]))
+        "
+        echo "=== unpushed commits ==="
+        git log --oneline origin/main..HEAD
+      at: 2026-08-15T16:15:09.745569Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git show 59b0633 --stat
+        echo "=== commit message ==="
+        git log -1 59b0633 --format=%B
+      at: 2026-08-15T16:17:03.410775Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git cherry-pick -n 59b0633 2>&1 | head -20
+        echo "--- status ---"
+        git status --short | head -20
+      at: 2026-08-15T16:17:14.088773Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== leakage check: symbols that should NOT exist at this base ==="
+        for sym in alwaysLoad hookDenyReason grepHookReason isPipeFilter denyBuiltinSearch promptDenyBuiltinSearch; do
+          n=$(python3 -c "print(open('internal/cli/commands.go').read().count('$sym'))")
+          echo "  $sym: $n"
+        done
+        echo "=== conflict markers anywhere in go files? ==="
+        python3 -c "
+        import os
+        for r,d,fs in os.walk('internal'):
+            for f in fs:
+                if f.endswith('.go'):
+                    s=open(os.path.join(r,f)).read()
+                    if '<<<<<<<' in s or '>>>>>>>' in s: print('  CONFLICT:',os.path.join(r,f))
+        print('  (none listed = clean)')
+        "
+        echo "=== build ==="
+        go build ./... 2>&1 | head -10 && echo "BUILD OK"
+      at: 2026-08-15T16:17:25.551529Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'PY'
+        for f in ("README.md","AGENT_SETUP_PROMPT.md"):
+            s=open(f).read().split('\n')
+            inc=False
+            print(f"=========== {f} ===========")
+            for i,l in enumerate(s):
+                if l.startswith('<<<<<<<'): inc=True
+                if inc: print(f"{i+1:5d} {l}")
+                if l.startswith('>>>>>>>'): inc=False; print()
+        PY
+      at: 2026-08-15T16:17:31.254268Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== README.md context around the conflict ==="
+        python3 -c "
+        s=open('README.md').read().split('\n')
+        for i in range(140,190): print(f'{i+1:5d} {s[i]}')
+        "
+      at: 2026-08-15T16:17:41.093902Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== does v0.43 README already document deny-builtin-search elsewhere? ==="
+        python3 -c "
+        s=open('README.md').read().split('\n')
+        for i,l in enumerate(s):
+            if 'deny-builtin-search' in l or 'permissions.deny' in l or 'user-global' in l:
+                print(f'{i+1:5d} {l[:100]}')
+        "
+      at: 2026-08-15T16:17:52.627483Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/resolve.py README.md AGENT_SETUP_PROMPT.md
+        echo "=== any markers left anywhere? ==="
+        python3 -c "
+        import os
+        n=0
+        for r,d,fs in os.walk('.'):
+            d[:]=[x for x in d if x not in ('.git','.shale','.cache','.grove')]
+            for f in fs:
+                if f.endswith(('.go','.md','.json')):
+                    p=os.path.join(r,f)
+                    try: s=open(p,errors='ignore').read()
+                    except: continue
+                    if '<<<<<<<' in s or '>>>>>>>' in s: print('  LEFT:',p); n+=1
+        print('  clean' if n==0 else '')
+        "
+        git add README.md AGENT_SETUP_PROMPT.md
+        echo "=== build + full suite ==="
+        go build ./... && go vet ./... && go test ./... -count=1 2>&1 | python3 -c "
+        import sys; out=sys.stdin.read()
+        bad=[l for l in out.splitlines() if l.startswith('FAIL') or l.startswith('--- FAIL') or ('_test.go:' in l and 'main_test' not in l)]
+        print('  packages ok:',len([l for l in out.splitlines() if l.startswith('ok')]))
+        print('  failures:'); print('\n'.join(bad) if bad else '    none')
+        "
+      at: 2026-08-15T16:18:19.328246Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-scoped ./cmd/prism
+        SB=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/scopetest
+        rm -rf "$SB"; mkdir -p "$SB/home/.config/opencode" "$SB/repo"
+        cd "$SB/repo" && printf 'package main\nfunc main(){}\n' > main.go && printf 'module x\ngo 1.22\n' > go.mod
+        echo "--- running: prism init . --deny-builtin-search  (non-interactive, HOME redirected) ---"
+        HOME="$SB/home" USERPROFILE="$SB/home" /tmp/prism-scoped init . --deny-builtin-search 2>&1 | tail -6
+        echo
+        echo "=== did anything land OUTSIDE the repo? ==="
+        find "$SB/home" -type f 2>/dev/null | sed "s|$SB/home|~|" || echo "  (nothing)"
+        echo "  ^ empty = project-scoped, nothing global touched"
+        echo
+        echo "=== project .claude/settings.json ==="
+        python3 -c "
+        import json;d=json.load(open('.claude/settings.json'))
+        print('  permissions:',json.dumps(d.get('permissions')))
+        print('  enabledMcpjsonServers:',json.dumps(d.get('enabledMcpjsonServers')))
+        "
+      at: 2026-08-15T16:18:32.846912Z
+      classified: build
+    - cmd: |-
+        SB=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/scopetest
+        rm -rf "$SB/home2" "$SB/repo2"; mkdir -p "$SB/home2/.config/opencode" "$SB/repo2"
+        cd "$SB/repo2" && printf 'package main\nfunc main(){}\n' > main.go && printf 'module y\ngo 1.22\n' > go.mod
+        echo "--- prism init . --global --deny-builtin-search ---"
+        HOME="$SB/home2" USERPROFILE="$SB/home2" /tmp/prism-scoped init . --global --deny-builtin-search 2>&1 | tail -5
+        echo
+        echo "=== files written OUTSIDE the repo under --global ==="
+        find "$SB/home2" -type f 2>/dev/null | sed "s|$SB/home2|~|"
+        echo
+        echo "=== global ~/.claude/settings.json ==="
+        python3 -c "
+        import json
+        d=json.load(open('$SB/home2/.claude/settings.json'))
+        print('  permissions:',json.dumps(d.get('permissions')))
+        " 2>/dev/null || echo "  (not written)"
+      at: 2026-08-15T16:18:41.694414Z
+      classified: other
+    - cmd: |-
+        SB=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/scopetest
+        echo "=== under --global, where did permissions land? ==="
+        for p in "$SB/repo2/.claude/settings.json" "$SB/home2/.claude/settings.json"; do
+          if [ -f "$p" ]; then
+            echo "  $(echo $p | sed "s|$SB|.|"):"
+            python3 -c "import json;d=json.load(open('$p'));print('     permissions:',json.dumps(d.get('permissions')))"
+          else
+            echo "  $(echo $p | sed "s|$SB|.|"): ABSENT"
+          fi
+        done
+      at: 2026-08-15T16:18:51.56324Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... && go vet ./... && go test ./... -count=1 2>&1 | python3 -c "
+        import sys; out=sys.stdin.read()
+        bad=[l for l in out.splitlines() if l.startswith('FAIL') or l.startswith('--- FAIL') or ('_test.go:' in l and 'main_test' not in l)]
+        print('  packages ok:',len([l for l in out.splitlines() if l.startswith('ok')]))
+        print('  failures:'); print('\n'.join(bad[:20]) if bad else '    none')
+        "
+      at: 2026-08-15T16:20:01.326992Z
+      classified: lint
+    - cmd: |-
+        go build -o /tmp/prism-scoped ./cmd/prism
+        SB=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/scopetest
+        for mode in project global; do
+          rm -rf "$SB/h_$mode" "$SB/r_$mode"; mkdir -p "$SB/h_$mode/.config/opencode" "$SB/r_$mode"
+          cd "$SB/r_$mode" && printf 'package main\nfunc main(){}\n' > main.go && printf "module m$mode\ngo 1.22\n" > go.mod
+          FLAG=""; [ "$mode" = "global" ] && FLAG="--global"
+          HOME="$SB/h_$mode" USERPROFILE="$SB/h_$mode" /tmp/prism-scoped init . $FLAG --deny-builtin-search >/dev/null 2>&1
+          echo "--- $mode scope ---"
+          for p in "$SB/r_$mode/.claude/settings.json" "$SB/h_$mode/.claude/settings.json"; do
+            label=$(echo "$p" | sed "s|$SB/r_$mode|PROJECT|;s|$SB/h_$mode|GLOBAL |")
+            if [ -f "$p" ]; then
+              python3 -c "import json;d=json.load(open('$p'));print('   $label ->',json.dumps(d.get('permissions')))"
+            else
+              echo "   $label -> (absent)"
+            fi
+          done
+          echo -n "   outside-repo files: "; find "$SB/h_$mode" -type f 2>/dev/null | wc -l | tr -d ' '
+        done
+      at: 2026-08-15T16:20:14.391424Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add -A -- . ':(exclude).shale'
+        git commit -q -F - <<'EOF'
+        feat: project-level init by default; user-global registration is an explicit choice
+
+        Cherry-picked from 59b0633 (originally v0.45.0) onto the v0.43.0 base, plus
+        a fix for a gap that shipped with it.
+
+        A project `prism init` now touches ONLY files inside the repo:
+
+        - opencode's user-global config was written by any init whenever its config
+          dir existed (the writer sat in the always-on list) — it now registers only
+          under --global or after interactive consent, same as Zed and Codex CLI.
+        - Claude Code trust/allow/deny-builtin-search land in the PROJECT's
+          .claude/settings.json; ~/.claude/settings.json is written only with
+          --global. The deny prompt says so.
+        - Interactive init always asks the scope question ("Register user-global
+          tools? [y/N]", default No); non-interactive runs are project-only;
+          --global opts in without asking.
+
+        FIX not in the original commit: the approval/permissions step was keyed on
+        the config FILE NAME (".mcp.json"), which is only how Claude Code registers
+        at project scope. Under --global it registers via ~/.claude.json, so the
+        step never ran and `init --global --deny-builtin-search` wrote its deny
+        rules to no file at all — not the project settings, not the global ones.
+        Verified in a sandboxed HOME before and after. claudeSettings already
+        resolved to the correct target per scope; only reaching the call was
+        missing, so this keys on the Claude Code WRITER instead.
+
+        Every existing test covered the project path only, which is why the gap was
+        invisible. TestInitDenyBuiltinSearch_LandsInTheScopedSettingsFile now pins
+        both scopes: rules present in the scoped file, and absent from the other.
+        TestInitProjectScopeTouchesNothingGlobal (from the original commit) pins
+        that project init writes no user-global config even with opencode installed.
+
+        Sandbox verification, clean HOME per run:
+          project: rules in PROJECT settings, 0 files written outside the repo
+          global : rules in GLOBAL settings, project settings absent
+
+        go build, go vet, go test ./... green (12 packages, 0 failures).
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git log --oneline -3
+        echo "=== re-init this repo (project scope) ==="
+        go build -o ~/bin/prism ./cmd/prism
+        ~/bin/prism init . --refresh --deny-builtin-search 2>&1 | tail -2
+        python3 -c "
+        import json;d=json.load(open('.claude/settings.json'))
+        print('  project permissions:',json.dumps(d.get('permissions')))
+        "
+        python3 -c "
+        import json,os
+        p=os.path.expanduser('~/.claude/settings.json')
+        d=json.load(open(p))
+        print('  global  permissions:',json.dumps(d.get('permissions')),'(should be null)')
+        "
+      at: 2026-08-15T16:20:34.381754Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== git status of the settings file ==="
+        git status --short .claude/settings.json
+        echo
+        echo "=== project .claude/settings.json (live) ==="
+        python3 -c "
+        import json;d=json.load(open('.claude/settings.json'))
+        print('  permissions:',json.dumps(d.get('permissions')))
+        print('  PreToolUse :',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+        echo "=== workspace + global ==="
+        for p in /Users/tapabratapal/Projects/provasign/.claude/settings.json ~/.claude/settings.json; do
+        python3 -c "
+        import json,os
+        p=os.path.expanduser('$p')
+        d=json.load(open(p)) if os.path.exists(p) else {}
+        print(' ',p.replace(os.path.expanduser('~'),'~'))
+        print('    permissions:',json.dumps(d.get('permissions')))
+        print('    PreToolUse :',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+        done
+        echo
+        echo "=== does this binary even have a hook subcommand? ==="
+        ~/bin/prism hook pretooluse </dev/null 2>&1 | head -1
+      at: 2026-08-15T16:21:42.334706Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== v0.43.0's committed .claude/settings.json ==="
+        git show v0.43.0:.claude/settings.json | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('  permissions:',json.dumps(d.get('permissions')))
+        print('  hooks      :',json.dumps(list(d.get('hooks',{}).keys())))
+        print('  top-level keys:',list(d.keys()))
+        "
+        echo
+        echo "=== what the cherry-pick brought in (59b0633's settings.json) ==="
+        git show 59b0633:.claude/settings.json | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('  permissions:',json.dumps(d.get('permissions')))
+        "
+      at: 2026-08-15T16:22:17.31348Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/846fefba-d055-4f20-8963-85e080edcbed/scratchpad/drop_deny.py
+        echo "--- prism repo ---";      python3 "$S" .claude/settings.json
+        echo "--- workspace root ---";  python3 "$S" /Users/tapabratapal/Projects/provasign/.claude/settings.json
+        echo
+        echo "=== final state everywhere ==="
+        for p in .claude/settings.json /Users/tapabratapal/Projects/provasign/.claude/settings.json ~/.claude/settings.json; do
+        python3 -c "
+        import json,os
+        p=os.path.expanduser('$p'); d=json.load(open(p)) if os.path.exists(p) else {}
+        print(' ',p.replace(os.path.expanduser('~'),'~'))
+        print('    permissions:',json.dumps(d.get('permissions')))
+        print('    PreToolUse :',json.dumps(d.get('hooks',{}).get('PreToolUse')))
+        "
+        done
+      at: 2026-08-15T16:22:39.907482Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 2>&1 | python3 -c "
+        import sys; out=sys.stdin.read()
+        print('  packages ok:',len([l for l in out.splitlines() if l.startswith('ok')]),'| failures:',len([l for l in out.splitlines() if l.startswith('FAIL')]))
+        "
+        git add .claude/settings.json
+        git commit -q -m "$(cat <<'EOF'
+        chore: drop the grep/rg denial from this repo's own settings
+
+        v0.43.0's committed .claude/settings.json had no permissions block at all;
+        the deny rules arrived only as an artifact of the cherry-picked v0.45.0
+        commit, not as a decision. Removing them restores fidelity to the v0.43.0
+        base and stops this repo enforcing routing on its own contributors.
+
+        The MCP auto-allow stays, so nothing re-prompts for prism's server on the
+        next session start. `prism init --deny-builtin-search` still writes the
+        rules for anyone who wants them — this only changes what THIS repo ships.
+
+        Note for whoever re-enables it at this base: without the PreToolUse hook
+        (v0.50.0, reverted) permissions.deny matches per pipeline segment and has
+        no stream-filter exemption, so `git log | grep x` is blocked along with
+        file searches, and denials carry no routing explanation.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        )"
+        git log --oneline -4
+      at: 2026-08-15T16:23:00.077659Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== unpushed commits ==="; git log --oneline origin/main..HEAD
+        echo "=== origin/main ==="; git log --oneline -1 origin/main
+        echo "=== working tree ==="; git status --short | head; echo "(clean if empty)"
+        echo "=== version ==="; ~/bin/prism --version 2>&1 | head -1
+        echo "=== MCP tool count at this base ==="
+        python3 -c "
+        import json,subprocess,os
+        p=subprocess.Popen([os.path.expanduser('~/bin/prism'),'mcp'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True)
+        def s(o): p.stdin.write(json.dumps(o)+'\n'); p.stdin.flush()
+        s({'jsonrpc':'2.0','id':1,'method':'initialize','params':{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'x','version':'1'}}}); p.stdout.readline()
+        s({'jsonrpc':'2.0','method':'notifications/initialized'}); s({'jsonrpc':'2.0','id':2,'method':'tools/list','params':{}})
+        t=json.loads(p.stdout.readline())['result']['tools']
+        print(' tools:',len(t),'| schema chars:',sum(len(json.dumps(x)) for x in t))
+        p.kill()
+        "
+        echo "=== .mcp.json alwaysLoad present? ==="
+        python3 -c "
+        import json;d=json.load(open('.mcp.json'));print(' ',json.dumps(d)[:300])
+        "
+      at: 2026-08-15T16:24:21.865694Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== handoff doc ==="
+        wc -l HANDOFF.md; git status --short HANDOFF.md
+        echo
+        echo "=== memory dir ==="
+        M=/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory
+        ls "$M" | head -30
+        echo
+        echo "=== index head ==="
+        head -6 "$M/MEMORY.md"
+        echo
+        echo "=== all [[links]] in new memories resolve to a real slug? ==="
+        python3 - <<PY
+        import os,re,glob
+        M="$M"
+        slugs=set()
+        for f in glob.glob(os.path.join(M,'*.md')):
+            if f.endswith('MEMORY.md'): continue
+            s=open(f).read()
+            m=re.search(r'^name:\s*(\S+)',s,re.M)
+            if m: slugs.add(m.group(1))
+        for f in ('project_handoff_2026_08_15.md','project_prism_forced_routing.md','project_v051_deployment_baseline.md'):
+            s=open(os.path.join(M,f)).read()
+            for link in re.findall(r'\[\[([^\]]+)\]\]',s):
+                print(f"  {'OK ' if link in slugs else 'MISS'} [[{link}]]  (in {f})")
+        PY
+      at: 2026-08-15T16:26:13.910848Z
+      classified: other
+    - cmd: |-
+        M=/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory
+        python3 - <<PY
+        import glob,os,re
+        for f in sorted(glob.glob(os.path.join("$M",'*.md'))):
+            if f.endswith('MEMORY.md'): continue
+            s=open(f).read()
+            m=re.search(r'^name:\s*(\S+)',s,re.M)
+            print(f"  {os.path.basename(f):46} -> {m.group(1) if m else '(none)'}")
+        PY
+      at: 2026-08-15T16:26:22.561022Z
+      classified: other
+    - cmd: |-
+        M=/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory
+        python3 - <<PY
+        import os
+        M="$M"
+        fix={
+         "[[v0-51-deployment-baseline]]":"[[project-v051-deployment-baseline]]",
+         "[[project-steering-channel-finding]]":"[[steering-channel-finding]]",
+         "[[project-prism-forced-routing]]":"[[prism-forced-routing-deployment]]",
+        }
+        for f in ("project_handoff_2026_08_15.md","project_prism_forced_routing.md","project_v051_deployment_baseline.md"):
+            p=os.path.join(M,f); s=open(p).read(); o=s
+            for a,b in fix.items(): s=s.replace(a,b)
+            if s!=o: open(p,"w").write(s); print("  fixed links in",f)
+        PY
+        echo "=== re-verify ==="
+        python3 - <<PY
+        import os,re,glob
+        M="$M"
+        slugs=set()
+        for f in glob.glob(os.path.join(M,'*.md')):
+            if f.endswith('MEMORY.md'): continue
+            m=re.search(r'^name:\s*(\S+)',open(f).read(),re.M)
+            if m: slugs.add(m.group(1))
+        bad=0
+        for f in glob.glob(os.path.join(M,'*.md')):
+            if f.endswith('MEMORY.md'): continue
+            for link in re.findall(r'\[\[([^\]]+)\]\]',open(f).read()):
+                if link not in slugs: print("  MISS",link,"in",os.path.basename(f)); bad+=1
+        print("  all links resolve" if bad==0 else f"  {bad} unresolved")
+        PY
+      at: 2026-08-15T16:26:32.092775Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== FINAL STATE ==="
+        echo "commits ahead of origin/main:"; git log --oneline origin/main..HEAD | sed 's/^/    /'
+        echo "working tree:"; git status --short | sed 's/^/    /'
+        echo "tests:"; go test ./... -count=1 2>&1 | python3 -c "
+        import sys;o=sys.stdin.read()
+        print('    ',len([l for l in o.splitlines() if l.startswith('ok')]),'packages ok,',len([l for l in o.splitlines() if l.startswith('FAIL')]),'failures')
+        "
+        echo "enforcement:"
+        python3 -c "
+        import json,os
+        for p in ['.claude/settings.json','/Users/tapabratapal/Projects/provasign/.claude/settings.json',os.path.expanduser('~/.claude/settings.json')]:
+            d=json.load(open(p)) if os.path.exists(p) else {}
+            perm=d.get('permissions') or {}
+            print(f\"     {p.replace(os.path.expanduser('~'),'~'):52} deny={perm.get('deny')} hook={'yes' if d.get('hooks',{}).get('PreToolUse') else 'no'}\")
+        "
+        echo "handoff:"; ls -la HANDOFF.md | sed 's/^/    /'
+      at: 2026-08-15T16:26:53.986805Z
+      classified: test
+notes: []
+redactions: 0

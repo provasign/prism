@@ -1,0 +1,74 @@
+shale_version: "0"
+id: 4678afc5-41b7-4e53-ac34-9f3ed1212962
+created_at: 2026-08-15T16:28:16.146499Z
+finalized_at: 2026-08-15T19:51:57.861075Z
+agent:
+    tool: claude-code
+    model: claude-opus-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git log --oneline -12 && git status --short && git tag --sort=-v:refname | head -8
+      at: 2026-08-15T16:29:42.686204Z
+      classified: other
+    - cmd: echo "=== diff stat vs v0.43.0 ===" && git diff --stat v0.43.0..HEAD && echo "=== go.mod diff ===" && git diff v0.43.0..HEAD -- go.mod && echo "=== hook refs ===" && (git grep -n "pretooluse" -- . || echo "none")
+      at: 2026-08-15T19:48:00.464255Z
+      classified: other
+    - cmd: echo "=== settings.json ===" && cat .claude/settings.json && echo "=== commands.go diff ===" && git diff v0.43.0..HEAD -- internal/cli/commands.go | head -140
+      at: 2026-08-15T19:48:05.146197Z
+      classified: other
+    - cmd: go build ./... && go vet ./... && go test ./... 2>&1 | tail -25
+      at: 2026-08-15T19:48:21.901667Z
+      classified: lint
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py && python3 /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py --help 2>&1 | head -30
+      at: 2026-08-15T19:48:26.315534Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n '1,60p' harness/ci_invariants.py
+      at: 2026-08-15T19:48:28.293377Z
+      classified: other
+    - cmd: ls -d ~/ci-corpus ~/.cache/ci-corpus ~/.cache/prism-ci-corpus /Users/tapabratapal/Projects/provasign/research/.ci-corpus 2>/dev/null; echo "---"; go build -o /Users/tapabratapal/bin/prism ./cmd/prism && ~/bin/prism version 2>&1 | head -3
+      at: 2026-08-15T19:48:42.803861Z
+      classified: build
+    - cmd: mkdir -p ~/.cache/prism-ci-corpus && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism ~/bin/prism 2>&1 | tail -40
+      at: 2026-08-15T19:48:49.302735Z
+      classified: other
+    - cmd: cat .github/workflows/release.yml
+      at: 2026-08-15T19:48:53.740469Z
+      classified: other
+    - cmd: gh secret list -R provasign/prism 2>&1 | head; echo "=== tap formula ==="; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' 2>/dev/null | base64 -d | head -20
+      at: 2026-08-15T19:49:05.008329Z
+      classified: other
+    - cmd: |-
+        echo "=== which prism ==="; which -a prism; brew list --versions prism 2>/dev/null; echo "=== project .mcp.json ==="; cat .mcp.json 2>/dev/null; echo "=== workspace .mcp.json ==="; cat ../.mcp.json 2>/dev/null; echo "=== global settings hooks/deny ==="; python3 -c "
+        import json,os
+        p=os.path.expanduser('~/.claude/settings.json')
+        d=json.load(open(p))
+        print('deny:',d.get('permissions',{}).get('deny'))
+        print('hooks keys:',list(d.get('hooks',{}).keys()))
+        print('PreToolUse:',json.dumps(d.get('hooks',{}).get('PreToolUse'),indent=1)[:600])
+        "
+      at: 2026-08-15T19:49:19.499074Z
+      classified: other
+    - cmd: |-
+        git add HANDOFF.md && git commit -q -m "$(cat <<'EOF'
+        docs: handoff for the v0.44–v0.51 revert
+
+        Records why the arc was reverted (190-cell paired measurement), what is
+        still true about the engine, the accepted gaps at this base, and the
+        bugs found-but-not-fixed. Read before touching steering, the hook, or
+        `prism init`.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01CYfUFhBWrJnDjz7xYyX4Si
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-15T19:49:31.422559Z
+      classified: other
+    - cmd: ls CHANGELOG.md 2>/dev/null; git show v0.43.0 --stat --oneline | head -5; echo "=== version.go ==="; cat internal/version/*.go
+      at: 2026-08-15T19:49:38.037005Z
+      classified: other
+notes: []
+redactions: 0

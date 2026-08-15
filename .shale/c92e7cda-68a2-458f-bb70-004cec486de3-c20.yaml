@@ -1,0 +1,751 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c20
+created_at: 2026-08-15T04:36:51.715356Z
+finalized_at: 2026-08-15T19:51:57.861075Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout -b grep-parity -q
+        git add -A
+        git commit -q -F - <<'EOF'
+        feat: grep capability parity for prism_search + hook pipe-filter fix (v0.51.0)
+
+        Empirical basis: mined all 946 real grep/rg invocations from the 228
+        recorded benchmark cells (ab38-f1/haiku38/sonnet38 tool traces + denied
+        attempts). Usage vs prism_search's actual surface:
+
+          511  dir/file-scoped searches (grep pat src/, grep -n pat file.py)  MISSING
+          322  alternation a\|b\|c                                            covered (regex)
+          289  grep as pipe FILTER of another command's output               NOT REPLACEABLE
+          272  | head/tail                                                    covered (limit)
+          101  context lines -A/-B/-C                                         MISSING
+           66  files-only -l                                                  MISSING
+
+        Half of real grep usage was path-scoped — inexpressible, so agents got
+        whole-tree noise for scoped questions. And 31% was stream filtering
+        (git log | grep, pip list | grep -i x) that prism structurally cannot
+        replace — yet the v0.50.x hook's regex denied it, forcing awk/python
+        workarounds without routing anything to prism (the exact bypass pattern
+        observed on a real user machine).
+
+        Shipped:
+        - textsearch.Options gains Path (one file or subtree), Context (grep -C),
+          FilesOnly (grep -l) — implemented on all three backends (rg via
+          --field-context-separator=: so context lines parse like match lines;
+          grep fallback; native scanner incl. dedup of overlapping context).
+        - prism_search MCP schema + handler thread path/context/files through
+          both the pure-text pass and the merged pass.
+        - CLI: prism search --path X -C N -l; help text updated.
+        - Hook: isPipeFilter() — a grep token preceded by a single pipe consumes
+          stdin and passes through; line-start/;/&&/||/(/sudo forms stay denied.
+          || is a logical-or (fresh producer), still denied.
+        - Steering translation table gains the three new rows + an explicit
+          "piping another command's output through grep stays allowed" line;
+          all 9 generated steering variants refreshed.
+
+        Tests: backend-parity suite for the three options (native+rg),
+        pipe-filter allow/deny matrix in hook tests. go build/vet/test green;
+        every capability live-verified on this repo before commit.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git checkout main -q && git merge --ff-only grep-parity -q && git branch -d grep-parity
+        git push origin main 2>&1 | tail -1
+        git tag v0.51.0 && git push origin v0.51.0 2>&1 | tail -1
+      at: 2026-08-15T04:36:51.715356Z
+      classified: build
+    - cmd: |-
+        ~/bin/prism version
+        cd ~/Projects/provasign/research
+        python3 harness/ci_invariants.py --prism ~/bin/prism 2>&1 | tail -25
+      at: 2026-08-15T13:25:00.443826Z
+      classified: other
+    - cmd: |-
+        ls /tmp/ci-corpus/ 2>/dev/null
+        ls /tmp/ci-corpus/jackson-databind 2>/dev/null | head -5
+        ls /tmp/ci-corpus/jackson-databind/.git/HEAD 2>&1
+        ls /tmp/ci-corpus/jackson-databind/.grove 2>/dev/null | head -3
+        echo "--- how does ci_invariants source its corpus? ---"
+        cd ~/Projects/provasign/research
+        python3 - <<'EOF'
+        import re
+        c = open('harness/ci_invariants.py').read()
+        for m in re.finditer(r'.{0,80}(ci-corpus|corpus_root|clone|CORPUS).{0,90}', c):
+            print(m.group(0).replace("\n"," ")[:170])
+        EOF
+      at: 2026-08-15T13:25:14.437059Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research
+        nohup python3 harness/ci_invariants.py --prism ~/bin/prism --corpus-root ~/.cache/prism-research/ci-corpus > /tmp/ci_gate_v0510.log 2>&1 &
+        echo "gate pid $!"
+      at: 2026-08-15T13:25:31.839246Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/mcp/tools.go').read()
+
+        old = '''	case "prism_read":
+        		return h.toolRead(ctx, args)'''
+        new = '''	case "prism_read":
+        		return h.toolRead(ctx, args)
+        	case "prism_file_brief":
+        		// INTERNAL dispatch target — deliberately absent from ToolSchemas /
+        		// tools/list, so it adds zero per-turn schema weight and is invisible
+        		// to agents. Caller is the PostToolUse enrichment hook (`prism hook
+        		// posttooluse`), which rides graph context into the result channel of
+        		// a Read the model already chose to make — the delivery-channel
+        		// finding (2026-08-15) engineered into the product: in-band beats
+        		// turn-0 prose, and this channel requires no adoption at all.
+        		return h.toolFileBrief(ctx, args)'''
+        assert old in c; c = c.replace(old, new)
+
+        old = '''func (h *Handler) nodeFile(ctx context.Context, path string, syms []grove.SymbolRecord) (any, error) {'''
+        new = '''// toolFileBrief returns a file's graph structure WITHOUT its content — the
+        // agent just Read the file; what it cannot see is who depends on it.
+        func (h *Handler) toolFileBrief(ctx context.Context, args map[string]any) (any, error) {
+        	path := stringArg(args, "file", "")
+        	if path == "" {
+        		return nil, errors.New("file is required")
+        	}
+        	rel := normalizePath(path)
+        	syms, err := h.Grove.FileSymbols(ctx, rel)
+        	if err != nil {
+        		return nil, err
+        	}
+        	defined := make([]map[string]any, 0, len(syms))
+        	for _, s := range syms {
+        		defined = append(defined, map[string]any{
+        			"name": displayQN(s), "kind": s.Kind, "line": s.Span.Start,
+        		})
+        	}
+        	out := map[string]any{"file": rel, "defines": defined}
+        	// Same dependents derivation as nodeFile: edges whose To side lives in
+        	// this file, grouped by the depending file.
+        	if edges, err := h.Grove.Deps(ctx, rel); err == nil {
+        		prefix := rel + "::"
+        		seen := map[string]bool{}
+        		dependents := []string{}
+        		for _, e := range edges {
+        			if !strings.HasPrefix(e.To, prefix) {
+        				continue
+        			}
+        			from := e.From
+        			if i := strings.Index(from, "::"); i >= 0 {
+        				from = from[:i]
+        			}
+        			from = strings.TrimPrefix(from, "file:")
+        			if from == "" || from == rel || seen[from] {
+        				continue
+        			}
+        			seen[from] = true
+        			dependents = append(dependents, from)
+        		}
+        		sort.Strings(dependents)
+        		out["dependents"] = dependents
+        	}
+        	return out, nil
+        }
+
+        func (h *Handler) nodeFile(ctx context.Context, path string, syms []grove.SymbolRecord) (any, error) {'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/mcp/tools.go','w').write(c)
+        print("mcp ok")
+        EOF
+        go build ./internal/mcp/ 2>&1
+      at: 2026-08-15T13:47:51.052734Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/cli/commands.go').read()
+
+        old = '''func cmdHook(args []string) int {
+        	if len(args) < 1 || args[0] != "pretooluse" {
+        		fmt.Fprintln(os.Stderr, "hook: usage: prism hook pretooluse (reads Claude Code's PreToolUse JSON on stdin)")
+        		return 2
+        	}'''
+        new = '''func cmdHook(args []string) int {
+        	if len(args) < 1 {
+        		fmt.Fprintln(os.Stderr, "hook: usage: prism hook pretooluse|posttooluse (reads Claude Code's hook JSON on stdin)")
+        		return 2
+        	}
+        	if args[0] == "posttooluse" {
+        		return cmdHookPostToolUse()
+        	}
+        	if args[0] != "pretooluse" {
+        		fmt.Fprintln(os.Stderr, "hook: usage: prism hook pretooluse|posttooluse (reads Claude Code's hook JSON on stdin)")
+        		return 2
+        	}'''
+        assert old in c; c = c.replace(old, new)
+
+        # append the posttooluse implementation right after cmdHook's closing — anchor on the function that follows won't be stable; insert before cmdCompact
+        old = '''func cmdCompact(args []string) int {'''
+        new = '''// postToolUseBrief fetches graph structure for one file. A var so tests can
+        // stub the engine; the default goes through the same handler dispatch as
+        // every CLI verb (internal-only tool, absent from tools/list).
+        var postToolUseBrief = func(root, rel string) (map[string]any, error) {
+        	out, err := invokeWithPersistentLedger(root, "prism_file_brief", map[string]any{"file": rel})
+        	if err != nil {
+        		return nil, err
+        	}
+        	m, _ := out.(map[string]any)
+        	return m, nil
+        }
+
+        // cmdHookPostToolUse implements PostToolUse enrichment (prototype,
+        // 2026-08-15): after the agent Reads a file, append what the graph knows
+        // and the file itself cannot show — who depends on it. Design constraints,
+        // each one a measured lesson from this project:
+        //   - rides the tool-result channel (the only channel measured to steer);
+        //   - requires NO adoption: the model already chose to Read;
+        //   - silent unless there is real signal, once per file per session
+        //     (resolvedRefNote's anti-wallpaper discipline; 14 repeated nudges
+        //     measurably did nothing);
+        //   - fails open on EVERYTHING (no index, timeout, parse error): a hook
+        //     that slows or breaks Read trains the agent away from prism.
+        func cmdHookPostToolUse() int {
+        	var in struct {
+        		SessionID string         `json:"session_id"`
+        		CWD       string         `json:"cwd"`
+        		ToolName  string         `json:"tool_name"`
+        		ToolInput map[string]any `json:"tool_input"`
+        	}
+        	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
+        		return 0
+        	}
+        	if in.ToolName != "Read" || in.CWD == "" {
+        		return 0
+        	}
+        	fp, _ := in.ToolInput["file_path"].(string)
+        	if fp == "" {
+        		return 0
+        	}
+        	// Only enrich files inside an ALREADY-indexed project: AutoIndexIfEmpty
+        	// would otherwise cold-index arbitrary repos as a side effect of a Read.
+        	if _, err := os.Stat(filepath.Join(in.CWD, ".grove", "grove.db")); err != nil {
+        		return 0
+        	}
+        	rel, err := filepath.Rel(in.CWD, fp)
+        	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+        		return 0
+        	}
+        	rel = filepath.ToSlash(rel)
+
+        	// Once per file per session.
+        	sid := in.SessionID
+        	if len(sid) > 8 {
+        		sid = sid[:8]
+        	}
+        	seenFile := filepath.Join(in.CWD, ".grove", "hook-enrich-"+sid+".txt")
+        	if raw, err := os.ReadFile(seenFile); err == nil {
+        		for _, line := range strings.Split(string(raw), "\\n") {
+        			if line == rel {
+        				return 0
+        			}
+        		}
+        	}
+
+        	// Watchdog: enrichment must never make Read feel slow. Miss the budget,
+        	// skip the enrichment — never the other way around.
+        	type res struct {
+        		brief map[string]any
+        		err   error
+        	}
+        	ch := make(chan res, 1)
+        	go func() {
+        		b, err := postToolUseBrief(in.CWD, rel)
+        		ch <- res{b, err}
+        	}()
+        	var brief map[string]any
+        	select {
+        	case r := <-ch:
+        		if r.err != nil {
+        			return 0
+        		}
+        		brief = r.brief
+        	case <-time.After(2500 * time.Millisecond):
+        		return 0
+        	}
+
+        	msg := formatFileBrief(rel, brief)
+        	if msg == "" {
+        		return 0
+        	}
+        	f, err := os.OpenFile(seenFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+        	if err == nil {
+        		fmt.Fprintln(f, rel)
+        		f.Close()
+        	}
+        	printJSON(map[string]any{
+        		"hookSpecificOutput": map[string]any{
+        			"hookEventName":     "PostToolUse",
+        			"additionalContext": msg,
+        		},
+        	})
+        	return 0
+        }
+
+        // formatFileBrief renders the enrichment line. Empty string = no signal, say
+        // nothing. Hard cap keeps it a footnote, never a payload.
+        func formatFileBrief(rel string, brief map[string]any) string {
+        	if brief == nil {
+        		return ""
+        	}
+        	deps, _ := brief["dependents"].([]string)
+        	if deps == nil {
+        		if raw, ok := brief["dependents"].([]any); ok {
+        			for _, d := range raw {
+        				if s, ok := d.(string); ok {
+        					deps = append(deps, s)
+        				}
+        			}
+        		}
+        	}
+        	if len(deps) == 0 {
+        		return "" // nothing the agent could not see by reading the file
+        	}
+        	shown := deps
+        	more := 0
+        	if len(shown) > 3 {
+        		more = len(shown) - 3
+        		shown = shown[:3]
+        	}
+        	msg := fmt.Sprintf("[prism] %d file(s) depend on %s: %s", len(deps), rel,
+        		strings.Join(shown, ", "))
+        	if more > 0 {
+        		msg += fmt.Sprintf(" (+%d more)", more)
+        	}
+        	msg += ". Before changing a signature defined here, prism_change_impact(\\"<Type.method>\\") returns the complete caller set."
+        	if len(msg) > 600 {
+        		msg = msg[:600]
+        	}
+        	return msg
+        }
+
+        func cmdCompact(args []string) int {'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/cli/commands.go','w').write(c)
+        print("cli ok")
+        EOF
+        go build ./... 2>&1
+      at: 2026-08-15T13:48:22.889425Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        t = open('internal/cli/hook_test.go').read()
+
+        # generalize the stdin harness for both hook verbs
+        old = '''	code := cmdHook([]string{"pretooluse"})'''
+        new = '''	code := cmdHook(hookArgs)'''
+        assert old in t; t = t.replace(old, new)
+        old = '''func runCmdHookForTest(t *testing.T, stdin string) (string, int) {
+        	t.Helper()'''
+        new = '''func runCmdHookForTest(t *testing.T, stdin string) (string, int) {
+        	return runCmdHookVerb(t, stdin, "pretooluse")
+        }
+
+        func runCmdHookVerb(t *testing.T, stdin string, verb string) (string, int) {
+        	t.Helper()
+        	hookArgs := []string{verb}'''
+        assert old in t; t = t.replace(old, new)
+
+        t += '''
+
+        // TestCmdHookPostToolUse: the enrichment prototype end to end through the
+        // stdin/stdout protocol, with the engine stubbed. Covers: signal emitted
+        // with the agent's dependents, once-per-file-per-session dedupe, silence on
+        // no-signal / wrong tool / un-indexed project, and fail-open on engine error.
+        func TestCmdHookPostToolUse(t *testing.T) {
+        	root := t.TempDir()
+        	if err := os.MkdirAll(root+"/.grove", 0o755); err != nil {
+        		t.Fatal(err)
+        	}
+        	if err := os.WriteFile(root+"/.grove/grove.db", []byte("x"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	orig := postToolUseBrief
+        	defer func() { postToolUseBrief = orig }()
+        	postToolUseBrief = func(r, rel string) (map[string]any, error) {
+        		return map[string]any{"dependents": []any{"a.go", "b.go", "c.go", "d.go", "e.go"}}, nil
+        	}
+
+        	mk := func(tool, file string) string {
+        		return `{"session_id":"sess1234abcd","cwd":` + strconv.Quote(root) +
+        			`,"tool_name":"` + tool + `","tool_input":{"file_path":` + strconv.Quote(file) + `}}`
+        	}
+
+        	out, code := runCmdHookVerb(t, mk("Read", root+"/pkg/core.go"), "posttooluse")
+        	if code != 0 {
+        		t.Fatalf("exit=%d", code)
+        	}
+        	for _, want := range []string{"additionalContext", "5 file(s) depend on pkg/core.go",
+        		"a.go, b.go, c.go", "(+2 more)", "prism_change_impact"} {
+        		if !strings.Contains(out, want) {
+        			t.Errorf("missing %q in %q", want, out)
+        		}
+        	}
+
+        	// Same file again in the same session: dedupe, silence.
+        	out, _ = runCmdHookVerb(t, mk("Read", root+"/pkg/core.go"), "posttooluse")
+        	if strings.TrimSpace(out) != "" {
+        		t.Errorf("second Read of the same file must be silent, got %q", out)
+        	}
+
+        	// Different file: fires again.
+        	out, _ = runCmdHookVerb(t, mk("Read", root+"/pkg/other.go"), "posttooluse")
+        	if !strings.Contains(out, "other.go") {
+        		t.Errorf("different file should be enriched, got %q", out)
+        	}
+
+        	// Non-Read tools: silent.
+        	out, _ = runCmdHookVerb(t, mk("Grep", root+"/pkg/core.go"), "posttooluse")
+        	if strings.TrimSpace(out) != "" {
+        		t.Errorf("non-Read must be silent, got %q", out)
+        	}
+
+        	// No dependents = no signal = silence.
+        	postToolUseBrief = func(r, rel string) (map[string]any, error) {
+        		return map[string]any{"dependents": []any{}}, nil
+        	}
+        	out, _ = runCmdHookVerb(t, mk("Read", root+"/pkg/lonely.go"), "posttooluse")
+        	if strings.TrimSpace(out) != "" {
+        		t.Errorf("no dependents must be silent, got %q", out)
+        	}
+
+        	// Engine error: fail open, silent.
+        	postToolUseBrief = func(r, rel string) (map[string]any, error) {
+        		return nil, errors.New("engine down")
+        	}
+        	out, code = runCmdHookVerb(t, mk("Read", root+"/pkg/err.go"), "posttooluse")
+        	if code != 0 || strings.TrimSpace(out) != "" {
+        		t.Errorf("engine error must fail open silently, got code=%d out=%q", code, out)
+        	}
+
+        	// Un-indexed project (no grove.db): silent.
+        	bare := t.TempDir()
+        	out, _ = runCmdHookVerb(t,
+        		`{"session_id":"s","cwd":`+strconv.Quote(bare)+`,"tool_name":"Read","tool_input":{"file_path":`+strconv.Quote(bare+"/x.go")+`}}`,
+        		"posttooluse")
+        	if strings.TrimSpace(out) != "" {
+        		t.Errorf("un-indexed project must be silent, got %q", out)
+        	}
+
+        	// File outside the project root: silent.
+        	out, _ = runCmdHookVerb(t, mk("Read", "/etc/hosts"), "posttooluse")
+        	if strings.TrimSpace(out) != "" {
+        		t.Errorf("out-of-root file must be silent, got %q", out)
+        	}
+        }
+        '''
+        open('internal/cli/hook_test.go','w').write(t)
+        print("test written")
+        EOF
+        python3 - <<'EOF'
+        # add imports needed by the new test (errors, strconv) if absent
+        t = open('internal/cli/hook_test.go').read()
+        if '"errors"' not in t:
+            t = t.replace('import (\n\t"bytes"', 'import (\n\t"bytes"\n\t"errors"')
+        if '"strconv"' not in t:
+            t = t.replace('\t"os"', '\t"os"\n\t"strconv"')
+        open('internal/cli/hook_test.go','w').write(t)
+        EOF
+        go test ./internal/cli/ -run 'TestCmdHook|TestHookDeny' 2>&1 | tail -3
+      at: 2026-08-15T13:48:46.89425Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go vet ./... && go test ./... 2>&1 | awk '/FAIL/'; echo "suite ok"
+        go build -o /tmp/prism-proto ./cmd/prism
+        echo "--- live engine check against THIS repo (real graph, real timing) ---"
+        rm -f .grove/hook-enrich-livetest1.txt
+        time (echo '{"session_id":"livetest1","cwd":"/Users/tapabratapal/Projects/provasign/prism","tool_name":"Read","tool_input":{"file_path":"/Users/tapabratapal/Projects/provasign/prism/internal/textsearch/textsearch.go"}}' | /tmp/prism-proto hook posttooluse)
+        echo "--- dedupe on second read ---"
+        echo '{"session_id":"livetest1","cwd":"/Users/tapabratapal/Projects/provasign/prism","tool_name":"Read","tool_input":{"file_path":"/Users/tapabratapal/Projects/provasign/prism/internal/textsearch/textsearch.go"}}' | /tmp/prism-proto hook posttooluse
+        echo "(empty = dedupe worked)"
+        rm -f .grove/hook-enrich-livetest1.txt
+      at: 2026-08-15T13:49:06.965007Z
+      classified: lint
+    - cmd: |-
+        rm -rf /tmp/enrich-e2e && mkdir -p /tmp/enrich-e2e/pkg /tmp/enrich-e2e/.claude
+        cd /tmp/enrich-e2e
+        cat > pkg/cache.py <<'EOF'
+        class Cache:
+            def __init__(self):
+                self._d = {}
+
+            def get(self, k):
+                return self._d.get(k)
+
+            def put(self, k, v):
+                self._d[k] = v
+        EOF
+        cat > pkg/ingest.py <<'EOF'
+        from pkg.cache import Cache
+
+        def ingest(rows):
+            c = Cache()
+            for r in rows:
+                c.put(r["id"], r)
+            return c
+        EOF
+        cat > pkg/serve.py <<'EOF'
+        from pkg.cache import Cache
+
+        def lookup(cache: Cache, key):
+            return cache.get(key)
+        EOF
+        git init -q && git add -A && git commit -qm init
+        /tmp/prism-proto index . 2>&1 | tail -2
+        cat > .claude/settings.json <<'EOF'
+        {
+          "hooks": {
+            "PostToolUse": [
+              {
+                "matcher": "Read",
+                "hooks": [{"type": "command", "command": "/tmp/prism-proto hook posttooluse"}]
+              }
+            ]
+          }
+        }
+        EOF
+        python3 - <<'PYEOF'
+        import json, os
+        p = os.path.expanduser("~/.claude.json"); d = json.load(open(p))
+        d.setdefault("projects", {})["/private/tmp/enrich-e2e"] = {"hasTrustDialogAccepted": True}
+        json.dump(d, open(p, "w"), indent=2)
+        PYEOF
+        claude -p 'Read pkg/cache.py. Then answer: (1) what does the Cache class do, and (2) which OTHER files in this repo depend on pkg/cache.py? For (2), answer only from what you already know after the Read — do NOT search, glob, or read any other file.' \
+          --output-format stream-json --verbose --model haiku \
+          --allowedTools Read \
+          > /tmp/enrich_e2e.jsonl 2>&1
+        echo "exit: $?"
+      at: 2026-08-15T13:49:39.692305Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        found_ctx = False
+        for line in open('/tmp/enrich_e2e.jsonl'):
+            line = line.strip()
+            if not line: continue
+            try: rec = json.loads(line)
+            except Exception: continue
+            raw = json.dumps(rec)
+            if "[prism]" in raw and rec.get("type") != "result":
+                found_ctx = True
+                # locate where it appears
+                print(f"ENRICHMENT DELIVERED (in a {rec.get('type')} event):")
+                idx = raw.find("[prism]")
+                print("  ...", raw[idx:idx+220].replace("\\n"," "), "...")
+                print()
+            if rec.get("type") == "result":
+                print(f"turns={rec.get('num_turns')} cost=${rec.get('total_cost_usd'):.4f}")
+                print("FINAL ANSWER:")
+                print(rec.get("result"))
+        print("\nenrichment reached transcript:", found_ctx)
+        EOF
+      at: 2026-08-15T13:49:46.240102Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/enrich-e2e /tmp/enrich_e2e.jsonl /tmp/prism-proto
+        python3 - <<'EOF'
+        import json, os
+        p = os.path.expanduser("~/.claude.json"); d = json.load(open(p))
+        d.get("projects", {}).pop("/private/tmp/enrich-e2e", None)
+        json.dump(d, open(p, "w"), indent=2)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout -b proto/posttooluse-enrichment -q
+        git add -A internal/
+        git commit -q -F - <<'EOF'
+        proto: PostToolUse Read enrichment — graph context rides the Read result
+
+        PROTOTYPE — local branch only, not pushed, not tagged, not registered by
+        `prism init` (manual settings.json registration only), per explicit
+        instruction.
+
+        Mechanism: `prism hook posttooluse` (Claude Code PostToolUse hook,
+        matcher Read) receives the Read event, asks the graph what the file's
+        content cannot show — which files depend on it — and returns it as
+        hookSpecificOutput.additionalContext, which Claude Code injects into the
+        model's context in the same turn. Engine access via a new INTERNAL
+        dispatch case `prism_file_brief` (deliberately absent from
+        ToolSchemas/tools/list: zero per-turn schema weight, invisible to
+        agents; defines + dependents only, no content — the agent just read the
+        file).
+
+        Design constraints, each a measured lesson from 2026-08-14/15:
+        - rides the tool-result channel (the only channel measured to steer);
+        - requires no adoption: the model already chose to Read;
+        - silent without signal, once per file per session (.grove marker;
+          anti-wallpaper — 14 repeated nudges measurably did nothing);
+        - fails open on everything (no index, engine error, 2.5s watchdog):
+          a hook that slows or breaks Read trains agents away from prism;
+        - never cold-indexes a repo as a Read side effect (.grove/grove.db
+          guard before any engine call).
+
+        Verified end to end, evidence-first this time:
+        - unit suite: protocol-level tests (signal, dedupe, wrong-tool,
+          un-indexed, out-of-root, engine-error fail-open), full go test green;
+        - live engine: real repo, correct dependents, 454ms round trip;
+        - real agent run (haiku, Read-only toolset, hook registered): asked
+          "which OTHER files depend on pkg/cache.py — do not search", a question
+          the file content cannot answer; model answered both dependents
+          correctly and attributed them to "the hook information from the Read
+          operation". $0.016, 2 turns.
+
+        Not measured yet: effect at benchmark scale (searches-per-task,
+        resolve, cost). That is the next validation gate before this ever ships.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git log --oneline -1
+        git branch --show-current
+        git status --short | head -3
+      at: 2026-08-15T13:50:14.341372Z
+      classified: test
+    - cmd: git checkout main -q && git branch --show-current && git log --oneline -1
+      at: 2026-08-15T13:50:21.019748Z
+      classified: other
+    - cmd: |-
+        mkdir -p ~/.cache/prism-research/bin
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout proto/posttooluse-enrichment -q
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.51.0-proto" -o ~/.cache/prism-research/bin/prism-proto ./cmd/prism
+        git checkout main -q
+        ~/.cache/prism-research/bin/prism-proto version
+        mkdir -p ~/Projects/provasign/research/harness/runs/swebench-live/enrich-smoke
+        cat > ~/.cache/prism-research/bin/enrich-hook.sh <<'EOF'
+        #!/bin/bash
+        # Wrapper for the enrichment smoke: passes the hook through and logs firings
+        # (additionalContext deliveries are not echoed in stream-json transcripts,
+        # so this side-channel is the only firing count).
+        out=$(~/.cache/prism-research/bin/prism-proto hook posttooluse)
+        if [ -n "$out" ]; then
+          echo "$out"
+          echo "$(date +%s) $PWD" >> ~/Projects/provasign/research/harness/runs/swebench-live/enrich-smoke/enrich-firings.log
+        fi
+        EOF
+        chmod +x ~/.cache/prism-research/bin/enrich-hook.sh
+        echo ok
+      at: 2026-08-15T13:56:17.275989Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        c = open('swebench_ab.py').read()
+
+        # arm family: "prism" (control) and "prism-enrich" (identical + PostToolUse hook)
+        c = c.replace('''        mcp_cfg = ""
+                if arm == "prism":''', '''        mcp_cfg = ""
+                if arm.startswith("prism"):''')
+        c = c.replace('''        ] if arm == "prism" else []''', '''        ] if arm.startswith("prism") else []''')
+        c = c.replace('''    finally:
+                if arm == "prism":
+                    unmark_trusted(wt)''', '''    finally:
+                if arm.startswith("prism"):
+                    unmark_trusted(wt)''')
+
+        old = '''            mark_trusted(wt)
+                    mcp_cfg = str(wt / ".mcp.json")'''
+        new = '''            mark_trusted(wt)
+                    mcp_cfg = str(wt / ".mcp.json")
+                    # Enrichment-smoke arm (2026-08-15, prototype branch
+                    # proto/posttooluse-enrichment): identical deployment PLUS the
+                    # PostToolUse Read-enrichment hook, injected into the worktree's
+                    # settings.json. Gated on an explicit env var so ordinary runs
+                    # are untouched.
+                    if arm == "prism-enrich":
+                        hook_cmd = os.environ.get("PRISM_POSTTOOLUSE_HOOK")
+                        if not hook_cmd:
+                            raise RuntimeError("arm prism-enrich requires PRISM_POSTTOOLUSE_HOOK")
+                        sp = wt / ".claude" / "settings.json"
+                        doc = json.loads(sp.read_text()) if sp.exists() else {}
+                        doc.setdefault("hooks", {}).setdefault("PostToolUse", []).append(
+                            {"matcher": "Read",
+                             "hooks": [{"type": "command", "command": hook_cmd}]})
+                        sp.parent.mkdir(parents=True, exist_ok=True)
+                        sp.write_text(json.dumps(doc, indent=2))'''
+        assert old in c; c = c.replace(old, new)
+        open('swebench_ab.py','w').write(c)
+        print("patched")
+        EOF
+        python3 test_swebench_ab.py 2>&1 | tail -1
+      at: 2026-08-15T13:56:28.64579Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        PRISM_POSTTOOLUSE_HOOK="$HOME/.cache/prism-research/bin/enrich-hook.sh" \
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/phase1/valid-instances.json --limit 3 \
+          --arms prism prism-enrich --out runs/swebench-live/enrich-smoke \
+          --prism "$HOME/.cache/prism-research/bin/prism-proto" --model sonnet \
+          > /tmp/enrich_smoke.log 2>&1 &
+        echo "pid $!"
+      at: 2026-08-15T13:56:34.033956Z
+      classified: other
+    - cmd: |-
+        D=~/Projects/provasign/research/harness/runs/swebench-live/enrich-smoke
+        ls "$D"/*.json 2>/dev/null | head
+        echo "--- firings so far ---"
+        wc -l "$D"/enrich-firings.log 2>/dev/null || echo "no firings logged yet"
+        tail -3 "$D"/enrich-firings.log 2>/dev/null
+      at: 2026-08-15T13:58:45.769184Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/enrich-smoke
+        python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+        rows = defaultdict(dict)
+        for f in glob.glob("*.json"):
+            if "predictions" in f or "patches" in f: continue
+            rec = json.loads(open(f).read())
+            arm = "enrich" if rec["arm"] == "prism-enrich" else "control"
+            rows[rec["instance_id"]][arm] = rec
+        for iid, v in sorted(rows.items()):
+            print(f"=== {iid}")
+            for arm in ("control", "enrich"):
+                r = v.get(arm)
+                if not r: continue
+                reads = sum(1 for t in r["tool_trace"] if t == "Read")
+                preads = sum(1 for t in r["tool_trace"] if t == "mcp__prism__prism_read")
+                print(f"  {arm:8} turns={r['turns']:<3} cost=${r['cost_usd']:<7.3f} "
+                      f"cache={r['cache_read_tokens']:>9,} fresh={r['fresh_input_tokens']:>7,} "
+                      f"Read={reads} prism_read={preads}")
+        print("\n--- firings per cell ---")
+        from collections import Counter
+        c = Counter()
+        for line in open("enrich-firings.log"):
+            c[line.split("/")[-1].strip()] += 1
+        for k, n in c.items():
+            print(f"  {n:2}  {k}")
+        EOF
+      at: 2026-08-15T14:24:54.018818Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/runs/swebench-live/enrich-smoke
+        python3 -c "
+        import json
+        r = json.loads(open('browser-use__browser-use-2480.prism-enrich.json').read())
+        print('output_tokens:', r['output_tokens'])
+        for i, t in enumerate(r['tool_trace'][:16]):
+            print(f'{i:2} {t[:95]}')
+        "
+      at: 2026-08-15T14:25:20.150622Z
+      classified: other
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-15T04:36:51.715356Z
+redactions: 0
