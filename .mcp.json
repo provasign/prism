@@ -1,12 +1,16 @@
 {
   "mcpServers": {
-    "prism": {
-      "command": "/Users/tapabratapal/bin/prism",
-      "args": ["mcp"]
-    },
     "fuse": {
       "command": "/Users/tapabratapal/bin/fuse",
-      "args": ["mcp"]
+      "args": [
+        "mcp"
+      ]
+    },
+    "prism": {
+      "command": "/opt/homebrew/bin/prism",
+      "args": [
+        "mcp"
+      ]
     }
   }
 }
