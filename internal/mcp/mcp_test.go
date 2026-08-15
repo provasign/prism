@@ -239,8 +239,8 @@ func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
 
 func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	schemas := ToolSchemas()
-	if len(schemas) != 14 {
-		t.Fatalf("want 14 tool schemas, got %d", len(schemas))
+	if len(schemas) != 6 {
+		t.Fatalf("want 6 tool schemas, got %d", len(schemas))
 	}
 	names := make(map[string]bool)
 	for _, s := range schemas {
@@ -258,10 +258,7 @@ func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	}
 	for _, want := range []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_change_impact", "prism_missing_implementations",
-		"prism_dead_code", "prism_rename_plan", "prism_node",
-		"prism_verify", "prism_arch_check",
-		"prism_index", "prism_references", "prism_map",
+		"prism_change_impact", "prism_verify",
 	} {
 		if !names[want] {
 			t.Errorf("ToolSchemas missing %q", want)
@@ -269,9 +266,14 @@ func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	}
 	// Demoted from the agent surface (CLI-only): never re-advertise without
 	// a deliberate decision — every extra tool is a routing error candidate.
+	// The second group went in 2026-08-15 on measured call counts: zero calls
+	// across 190 paired A/B cells, ~9.4 KB of schema for nothing.
 	for _, gone := range []string{
 		"prism_resolve", "prism_edges", "prism_cycles", "prism_drift",
 		"prism_compact", "prism_savings", "prism_feedback", "prism_evidence",
+		"prism_references", "prism_missing_implementations", "prism_dead_code",
+		"prism_rename_plan", "prism_map", "prism_node", "prism_arch_check",
+		"prism_index",
 		// The unified prism(task) tool was REMOVED (2026-08-09): natural
 		// language was its sole retrieval key, which contradicts the
 		// deterministic-anchor contract every other surface honors.
@@ -346,8 +348,8 @@ func TestServerToolsList(t *testing.T) {
 	if !ok {
 		t.Fatalf("tools field missing or wrong type: %T", result["tools"])
 	}
-	if len(tools) != 14 {
-		t.Errorf("tools/list: got %d tools, want 14", len(tools))
+	if len(tools) != len(ToolSchemas()) {
+		t.Errorf("tools/list: got %d tools, want %d", len(tools), len(ToolSchemas()))
 	}
 }
 

@@ -117,13 +117,14 @@ for both.
 
 **The surface — one route per need.** There is deliberately no natural-language
 front door: a v0.41.0 measurement showed NL-as-the-only-retrieval-key loses to
-the agent picking a route and passing its own confirmed anchors. The surface is
-14 specialized tools, one per question shape: `prism_query` (task + `terms=`
-anchors → edit-ready source windows), the whole-task graph ops
-(`prism_change_impact`, `prism_rename_plan`, `prism_missing_implementations`,
-`prism_dead_code`, `prism_map`), the cheap reads (`prism_read`, `prism_lookup`,
-`prism_node`, `prism_search`, `prism_references`), and the gates
-(`prism_verify`, `prism_arch_check`).
+the agent picking a route and passing its own confirmed anchors. The agent
+surface is six tools, one per question shape: `prism_query` (task + `terms=`
+anchors → edit-ready source windows), the cheap reads (`prism_read`,
+`prism_lookup`, `prism_search`), `prism_change_impact` (the complete change
+set for a symbol), and `prism_verify` (is this diff complete?). Everything
+else — `map`, `dead-code`, `rename-plan`, `missing-implementations`, `arch`,
+`node`, `references`, `index` — is a CLI command and an HTTP route, but is
+not advertised to agents (see [MCP](#mcp) for why).
 
 **Use cases** — the questions Prism answers in one call:
 
@@ -364,20 +365,27 @@ prism init .              # non-interactive; registers MCP servers and writes
 
 ### MCP
 
-MCP advertises fourteen tools, kept deliberately small (every extra tool is
-a routing error waiting to happen): the
-context surface (`prism_query`, `prism_read`, `prism_search`,
-`prism_lookup`, `prism_node`, `prism_references`), the task-shaped graph
-operations (`prism_change_impact`, `prism_missing_implementations`,
-`prism_dead_code`, `prism_rename_plan`, `prism_map`), the gates
-(`prism_verify`, `prism_arch_check`), and `prism_index`. Search runs a real
-full-text pass (rg/grep/built-in) alongside symbol search, so agents never
-need a separate grep tool. `prism resolve`, `prism edges`, `prism cycles`
-(a field of `prism map`'s result), `prism drift`, and the telemetry
-commands (`prism savings`, `prism feedback`, `prism compact`) remain CLI
-commands without spending schema tokens in every MCP session. Use MCP when
-the client has first-class MCP support and you want persistent session
-deduplication.
+MCP advertises **six** tools: the context surface (`prism_query`,
+`prism_read`, `prism_search`, `prism_lookup`), `prism_change_impact`, and
+the `prism_verify` gate. Search runs a real full-text pass
+(rg/grep/built-in) alongside symbol search, so agents never need a separate
+grep tool.
+
+It was fourteen until v0.53.0. A 190-cell paired A/B measured which ones
+agents actually reach for: `search` in 95 cells, `read` 53, `query` 35,
+`lookup` 29, `change_impact` 2 — and `map`, `dead_code`, `rename_plan`,
+`missing_implementations`, `arch_check`, `node` and `index` at **zero calls
+in all 190**. Those eight were charging ~9.4 KB of schema per session to
+never be called, and a long menu measurably mis-routes the tools that are.
+`change_impact` stays despite two calls because it carries the whole
+concentrated win (4.2 turns / $0.27 against grep's 26.8 / $1.66).
+
+Nothing was removed from the product: every demoted tool is still a CLI
+command and still an HTTP route (`docs/HTTP_API.md`), alongside the ones
+that were already CLI-only — `resolve`, `edges`, `cycles` (a field of
+`map`'s result), `drift`, and the telemetry commands (`savings`,
+`feedback`, `compact`). Use MCP when the client has first-class MCP support
+and you want persistent session deduplication.
 
 ### HTTP Server
 

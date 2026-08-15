@@ -273,19 +273,26 @@ func sameRoot(dir, root string) bool {
 
 // ToolSchemas returns the schema list for tools/list.
 func ToolSchemas() []map[string]any {
-	// The agent-facing surface, kept deliberately small: every extra tool is
-	// a routing error waiting to happen (measured: agents mis-route when the
-	// menu is long). resolve/edges/cycles/drift remain CLI commands and
-	// Invoke-able, but are not offered to agents — their jobs are covered by
-	// search (locate, with test doubles tagged), node (orient), map (cycles
-	// are a field of its result), and the gates' own delta-reindexing.
+	// The agent-facing surface, cut to six (2026-08-15). The 190-cell paired
+	// A/B in research/harness/runs/swebench-live measured which of the
+	// fourteen advertised tools agents actually reach for: search 95/190,
+	// read 53, lookup 29, query 35, change_impact 2 — and map, dead_code,
+	// rename_plan, missing_implementations, arch_check, node and index at
+	// ZERO calls across all 190 cells. Eight tools were paying ~9.4 KB of
+	// schema per session to never be called, and a long menu measurably
+	// mis-routes the ones that are.
+	//
+	// So: the four measured-routing tools, plus change_impact (rarely
+	// reached but carrying the whole concentrated win — 4.2 turns/$0.27 vs
+	// grep's 26.8/$1.66, RESULTS.md §9.1) and verify (the pre-commit
+	// completeness gate, 258 bytes).
+	//
+	// Everything dropped is still a CLI command and still Invoke-able over
+	// HTTP — this narrows the agent menu, not the product. Do not re-add a
+	// tool here without call-count evidence that agents reach for it.
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_references", "prism_change_impact",
-		"prism_missing_implementations", "prism_dead_code",
-		"prism_rename_plan", "prism_map", "prism_node",
-		"prism_verify", "prism_arch_check",
-		"prism_index",
+		"prism_change_impact", "prism_verify",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
@@ -330,11 +337,9 @@ func toolSchema(name string) map[string]any {
 				"terms": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]) — prism searches " +
-						"these then expands via call graph. Guess ONE keyword from the task if you don't have a " +
-						"name yet (a class/function fragment, a domain term); measured, an agent's own guess beats " +
-						"a no-terms fallback in most cases, so there is no longer one — this call errors with " +
-						"guidance instead of guessing for you.",
+					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]), expanded " +
+						"via the call graph. No name yet? Guess ONE keyword from the task — there is no " +
+						"no-terms fallback, the call errors instead.",
 				},
 				"include": map[string]any{
 					"type":        "array",
@@ -344,7 +349,7 @@ func toolSchema(name string) map[string]any {
 				"delivery": map[string]any{
 					"type":        "string",
 					"enum":        []string{"source", "symbols"},
-					"description": "source = verbatim line-numbered windows + per-anchor callers/tests (edit-ready); symbols = compact per-symbol list. Default: phase-aware (bug-fix/implement tasks get source).",
+					"description": "source = line-numbered windows + callers (edit-ready); symbols = compact list. Default: source for bug-fix/implement tasks.",
 				},
 				"max_files": map[string]any{
 					"type":        "integer",
@@ -377,18 +382,18 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"query": map[string]any{
 					"type":        "string",
-					"description": "Substring matched against symbol names, signatures, and docstrings — AND against raw source text (a real rg/grep pass). With regex=true, a regular expression for the text pass.",
+					"description": "Substring matched against symbol names/signatures/docstrings and against raw source text. A regular expression when regex=true.",
 				},
 				"scope": map[string]any{
-					"type": "string",
-					"enum": []string{"both", "text", "symbols"},
-					"description": "What you want back. \"text\" = a PURE grep: exactly the rg hits, no symbol search, no graph, cheapest — use when you would have run grep/rg. \"symbols\" = indexed symbols only. Default \"both\" merges the two.",
+					"type":        "string",
+					"enum":        []string{"both", "text", "symbols"},
+					"description": "\"text\" = pure grep, cheapest. \"symbols\" = indexed symbols only. Default \"both\".",
 				},
 				"regex": map[string]any{
 					"type":        "boolean",
-					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
+					"description": "Treat query as a regex for the text pass (invalid patterns fall back to literal).",
 				},
-				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},
+				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 			},
 		}
 	case "prism_lookup":
@@ -585,42 +590,25 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "DELIVER (this tool answers \"give me what I need to do this task\" — to merely locate " +
-			"something, use prism_search): pass the task and terms=[...] with anchor names you have " +
-			"CONFIRMED (from grep/search or named in the task) — retrieval keys on the terms, so a " +
-			"confirmed anchor beats a well-phrased task, but a guessed term for a common name hurts. " +
-			"Prism finds those symbols then expands through the call graph (callers, callees), AND runs a " +
-			"real full-text search (rg/grep) for each term in the same call — matches outside any symbol " +
-			"(comments, configs, docs) arrive as textMatches, so a separate grep call is never needed. " +
-			"For bug-fix/implement tasks it delivers LINE-NUMBERED source windows plus each " +
-			"anchor's callers — edit-ready; lines under 1200 chars are byte-for-byte verbatim, " +
-			"longer ones carry an in-band truncation marker (Read the file before editing those). " +
-			"Do NOT re-read the files it shows. Unchanged files already delivered this session come back as one-line " +
-			"cached pointers. delivery=\"symbols\" forces the compact per-symbol list. " +
-			"Use include=[\"docs\"] for doc filenames only."
+		return "Edit-ready context for a task. Pass the task plus terms=[...] holding anchor names " +
+			"(a confirmed anchor beats a well-phrased task; guessing a common name hurts). Returns " +
+			"line-numbered source windows for the matching symbols, their callers/callees, and " +
+			"full-text matches outside any symbol — a separate grep is not needed. Do not re-read " +
+			"the files it shows. delivery=\"symbols\" for a compact list instead of windows. " +
+			"To merely locate something, use prism_search."
 	case "prism_read":
-		return "Whole-file read with session compression: full content on first read; a repeat read of " +
-			"an UNCHANGED file returns a one-line `// [prism:cached] <file> @sha:… (prior delivery still " +
-			"in context)` pointer INSTEAD of the body — this is not an error or an empty file: you already " +
-			"received this file earlier in the session, so use that copy and do NOT re-fetch. " +
-			"For a single function use prism_lookup (~5× cheaper)."
+		return "Whole-file read. A repeat read of an UNCHANGED file returns a one-line " +
+			"`// [prism:cached] <file> @sha:…` pointer instead of the body — not an error and not " +
+			"empty: use the copy you already have. For a single function use prism_lookup."
 	case "prism_search":
-		return "LOCATE (this tool answers \"where is X?\"): one call searches BOTH indexed symbol " +
-			"names/signatures/docstrings AND the raw source text (a real rg/grep full-text pass, results " +
-			"in textHits) — the on-ramp when you only have a concept, an error message, or a config key " +
-			"and need to FIND an anchor. A separate grep call is never needed. YOU price the request: " +
-			"scope=\"text\" is a pure grep (exactly the rg hits, cheapest — say this whenever you would " +
-			"have run grep/rg and want nothing else; regex=true for patterns); scope=\"symbols\" for " +
-			"names only; default \"both\" merges the two. Test doubles are tagged and listed last. " +
-			"Returns locations, not context: once you have the anchor, prism_query delivers the " +
-			"edit-ready context for your task (or prism_node/prism_lookup to orient and read piecewise)."
+		return "Locate something: one call searches indexed symbol names/signatures/docstrings AND " +
+			"raw source text (a real rg/grep pass). scope=\"text\" is a pure grep and the cheapest " +
+			"option — use it wherever you would have run grep/rg (regex=true for patterns); " +
+			"\"symbols\" for names only; default \"both\" merges them. Returns locations, not context."
 	case "prism_lookup":
-		return "Read one symbol by qualified name (e.g. 'ranking.Select', " +
-			"'kvstore.SecretsKVStoreSQL.Get'). Choose which COLUMNS to read with fields=[...]: " +
-			"signature (the contract, cheap), doc, body (full source), kind, parent, modifiers — " +
-			"omit fields to get the whole body. Every result includes the exact file:line, which is " +
-			"AUTHORITATIVE: navigate straight to it, do not re-confirm with grep. ~5× cheaper than " +
-			"reading the whole file; fields=[signature] is cheaper still."
+		return "Read one symbol by qualified name (e.g. 'ranking.Select', 'kvstore.Store.Get'). " +
+			"fields=[...] narrows to signature/doc/body/kind/parent/modifiers; omit it for the whole " +
+			"body. The returned file:line is authoritative — go straight there, do not re-grep."
 	case "prism_resolve":
 		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
 			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
@@ -669,29 +657,16 @@ func toolDescription(name string) string {
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_change_impact":
-		return "Deterministic change-set for a method signature change: pass 'Type.method' or " +
-			"'Type.method(ParamType, ...)' and get back the exact declaration(s), every " +
-			"override/implementation in the subtype closure (family), super-declarations, and " +
-			"all resolved callers — in one engine call, milliseconds, no token cost. " +
-			"Use this instead of prism_references + manual override hunting when you need to " +
-			"find every site affected by a method signature change. Result groups: declarations " +
-			"(the method itself), family (overrides + implementations), supers (same-member " +
-			"declarations on other contracts — sibling interfaces satisfied by the same " +
-			"implementations break under the change too), callers (call sites into the set), " +
-			"declaringTypes (the interface/type declaration blocks that textually change " +
-			"because their member specs are not separate symbols — Go/TS; ALWAYS include " +
-			"these as change sites). Check 'completeness': 'closed' " +
-			"means the set is authoritative; 'project-local' + 'overridesExternal' means the " +
-			"method belongs to an external (JDK/dependency) contract — its signature cannot " +
-			"safely change, and calls typed against the external supertype are not included. " +
-			"Querying an external type directly (e.g. 'Iterator.next') returns the project's " +
-			"implementation closure of that contract — use for deprecation/migration sweeps. " +
-			"RELAY the returned set as-is: do not re-verify, re-filter, or transform it " +
-			"through shell pipelines — re-processing a solved traversal measurably drops " +
-			"real sites and adds spurious ones. A repeat call whose freshly recomputed " +
-			"result is IDENTICAL to one already delivered this session returns a one-line " +
-			"[prism:cached] pointer with group counts — not an error, not empty: use the " +
-			"prior delivery."
+		return "Every site that must change when a symbol does. Pass 'Type.method' (or " +
+			"'Type.method(ParamType, ...)') and get, in one call: declarations, the full " +
+			"override/implementation family, sibling contracts that break with it (supers), all " +
+			"resolved callers, and the interface/type blocks that textually change " +
+			"(declaringTypes — always change sites). Reach for this before editing any existing " +
+			"symbol. 'completeness':'closed' means the set is authoritative; 'project-local' " +
+			"with overridesExternal means the method implements an external contract whose " +
+			"signature you must not change (query that external type directly to sweep the " +
+			"project's implementations of it). Relay the set as-is — re-filtering a solved " +
+			"traversal through grep measurably drops real sites."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
 			"and get every type in the subtype closure that FAILS to implement the member — " +
