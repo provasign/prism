@@ -1,34 +1,51 @@
 # Handoff — prism deployment reset, 2026-08-15
 
-Written at the end of a session that evaluated prism's v0.44–v0.51 arc, found
-it did not pay for itself, and reverted it. Read this before touching the
-steering, the hook, or `prism init`.
+The v0.44–v0.51 deployment arc was evaluated, found not to pay for itself, and
+reverted. The revert shipped as **v0.52.0**; **v0.52.1** followed with a CLI
+fix. Read this before touching the steering, the hook, or `prism init`.
 
 **Do not trust the older memory entries or `research/RESULTS.md` §1–§7 as a
-description of current behaviour.** They describe the arc that was just
-reverted. §8 and §9 of RESULTS.md are still accurate and load-bearing.
+description of current behaviour.** They describe the arc that was reverted.
+§8 and §9 of RESULTS.md are still accurate and load-bearing.
 
 ---
 
-## 1. Where the code is
+## 1. Where things stand
 
-Three unpushed commits on `main`, on top of `origin/main = eb1e48b (v0.51.0)`:
+`main` is pushed and tagged. On top of `v0.43.0`:
 
 | commit | what |
 |---|---|
 | `2daf496` | revert: restore the v0.43.0 deployment surface in full |
-| `a2a351d` | feat: project-level init by default (+ a scope bug fix) |
+| `a2a351d` | feat: project-level init by default (+ a `--global` scope bug fix) |
 | `012ea9c` | chore: drop the grep/rg denial from this repo's own settings |
+| `48964a9` | docs: this handoff |
+| `701e099` | chore: point local MCP registrations at the brew-installed prism |
+| `0f042cf` | fix: `prism <cmd> --help` prints usage instead of running the command |
+| `7ea33d5` | ci: stop pretending the release publishes the Homebrew formula |
 
-- Working tree clean. `go build`, `go vet`, `go test ./...` green (12 packages).
-- **Not pushed, not tagged.** `origin/main` is still v0.51.0.
-- `ci_invariants.py` has **not** been run against this tree. Required before
-  any tag, per the standing rule.
-- The binary at `~/bin/prism` is built from this tree and reports `prism dev`.
+Tags: **v0.52.0** = the revert + project-scoped init. **v0.52.1** = the
+`--help` fix.
 
-The tree is byte-identical to `v0.43.0` except for the two feature commits and
-`.shale/` (session evidence, deliberately preserved — it is the audit record,
-not product code).
+The product tree is byte-identical to `v0.43.0` except for those feature/fix
+commits and `.shale/` (session evidence, deliberately preserved — it is the
+audit record, not product code). `git diff v0.43.0..HEAD -- go.mod` is empty,
+and was empty across the entire arc: **no engine change was ever involved.**
+Grove and astkit are untouched, so the multi-hop receiver-chain and
+interface-satisfaction gains are intact. v0.43.0 already carries the
+symlink-containment check in the native scanner, so nothing security-relevant
+was reopened.
+
+Gate run before each tag, both green:
+
+- `go vet ./...` and `go test ./...` — 12 packages.
+- `python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus
+  --prism <binary>` from the research repo — 13 ceiling tasks across 6 corpora
+  at baseline recall/precision, missing-implementations 0 (1 documented),
+  rename-plan contract declarations resolved, double-cold-index byte-identical.
+
+**Keep the corpus root durable.** `~/.cache/prism-ci-corpus`, never `/tmp` —
+macOS purges it and you will re-download six repos every run.
 
 ## 2. Why the arc was reverted
 
@@ -62,12 +79,6 @@ measured 9.3× token win (`RESULTS.md` §9.1) was reached in 1% of cells, and
 per cell vs 24–62k fresh). A large tool result is paid once fresh and then on
 every later turn. A 5 KB result at turn 3 of 28 is paid ~25 times. **Payload
 size matters more than call count.**
-
-No engine change was involved: `git diff v0.43.0..HEAD -- go.mod` was empty
-across the entire arc. Grove and astkit are untouched, so the multi-hop
-receiver-chain and interface-satisfaction gains are intact. v0.43.0 already
-carries the symlink-containment check in the native scanner, so nothing
-security-relevant was reopened.
 
 ## 3. What is actually true about prism
 
@@ -119,7 +130,10 @@ https://claude.ai/code/artifact/c9409bf3-90c7-47b3-934c-d132ad0b7384
 - **Tools are deferred, not resident.** `.mcp.json` has no `alwaysLoad`.
   14 tools, ~18.3k chars of schema, loaded on demand via `ToolSearch`.
 - **`prism init` writes deny rules only when asked.** It has no path that
-  *removes* them; that is manual. This repo now ships none.
+  *removes* them; that is manual. This repo ships none.
+- **`excludeDirs` is only `[".git", ".grove"]`**, so text search reads
+  `.shale/`, `.claude/` and `.cursor/` — prism indexes its own session
+  transcripts as source.
 
 ## 5. If the deployment layer is rebuilt
 
@@ -139,8 +153,6 @@ the value; none requires the agent to learn anything new.
 4. Defer the tools nobody calls; the measured routing-critical set is four:
    `search`, `read`, `lookup`, `query`.
 5. Exclude agent-state dirs (`.shale`, `.claude`, `.cursor`) from text search.
-   `excludeDirs` is only `[".git", ".grove"]`, so prism reads its own session
-   transcripts as source.
 6. Do not re-ship the consolidation nudge. Three replications, three ignores.
 7. Never let the graph narrow a result silently — state both counts.
 
@@ -152,14 +164,57 @@ how many get a better answer. Then `ci_invariants.py`, then `go test ./...`.
 
 - prism's tools will **not** be in the tool list. Load them with
   `ToolSearch("select:prism_query,prism_search,prism_change_impact")`.
-- **grep and rg work.** No denial, no hook, anywhere.
+- **grep and rg work.** No denial, no hook, anywhere. Verified clean in the
+  project settings, `~/.claude/settings.json`, `settings.local.json` and the
+  workspace settings.
 - `CLAUDE.md` and the eight sibling steering files carry the long v0.43 block.
+- **A running MCP server keeps serving the binary it was launched with.**
+  Upgrading prism on disk does nothing for a live session — the server detects
+  this and says so in its tool results. Restart the agent after an upgrade.
+  The CLI is unaffected: every invocation is a fresh process.
 - The parent workspace `/Users/tapabratapal/Projects/provasign/` is **not a
   git repo** — changes there have no undo. Back up before editing.
 
-## 7. Bugs found and NOT fixed (all reverted away, all still real upstream)
+## 7. Release and tap mechanics
 
-Recorded so they are not rediscovered from scratch:
+Tagging `vX.Y.Z` runs `.github/workflows/release.yml`: five platform builds,
+checksums, SPDX SBOM, artifact attestation, install scripts.
+
+**The Homebrew formula is not published from there, and must not be.**
+`provasign/homebrew-shale` refreshes itself: `refresh-formulae.yml` runs daily
+and on `workflow_dispatch`, regenerates any formula behind its repo's latest
+release (prism, mason, fuse, shale), and pushes to its *own* repository with
+the built-in `GITHUB_TOKEN`. That design exists precisely so no tool repo
+needs a cross-repo push token — the arrangement that let the tap freeze at
+0.23.0 through 15 prism releases.
+
+Consequence: the tap lags a tag by up to a day. To publish immediately:
+
+    gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+
+prism's release workflow used to carry a publish step guarded on a
+`HOMEBREW_TAP_TOKEN` secret that was never set. It warned "tap NOT updated" on
+every single release and made the working mechanism look broken; `7ea33d5`
+removed it. **Do not add it back.**
+
+Install: `brew install provasign/shale/prism` (one family tap — never create
+another). On this machine `/opt/homebrew/bin/prism` is the release build and
+both `.mcp.json` files point at it; `~/bin/prism` is a local dev build that
+still precedes it on `PATH`, so a bare `prism` in a shell may be the dev
+binary.
+
+## 8. Bugs
+
+**Fixed in v0.52.1** — `prism <cmd> --help` ran the command instead of
+printing usage. `prism init --help` performed a *full init*: prism.yaml, nine
+steering files and every project MCP registration. `prism search --help`
+searched for the string `--help`. One mechanism: nothing parsed `-h`/`--help`
+before the command body. `Run()` now answers it before dispatch for every
+subcommand and prints that command's own block. A bare `help` argument is
+still a query term, so `prism search help` searches.
+
+**Still real, in code that no longer ships** — recorded so they are not
+rediscovered from scratch if the hook is ever rebuilt:
 
 - `permissions.deny` **beats** a PreToolUse hook's `allow`. Verified directly.
   This made v0.51.0's pipe-filter fix inert in the shipped config: the hook
@@ -167,18 +222,11 @@ Recorded so they are not rediscovered from scratch:
 - The v0.51.0 deny reason's CLI form omitted `--scope text`, a **3.8×**
   overcharge (5,126 vs 1,348 bytes) printed by the product's own
   highest-compliance string.
-- ~~`prism search --help` runs a search for the string `--help`.~~ **FIXED in
-  v0.52.1**, along with the worse sibling found on 2026-08-15: `prism init
-  --help` ran a *full init*, writing `prism.yaml`, all nine steering files and
-  every project MCP registration. One mechanism behind both — nothing parsed
-  `-h`/`--help` before the command body. `Run()` now answers it before
-  dispatch for every subcommand. A bare `help` argument is still a query term,
-  so `prism search help` searches.
 - `grepCommandPattern` treats `(` as a command separator, so any Bash command
   whose *text* contains `(grep` is denied — it fired on a Python script
   manipulating a deny list. Fails closed, so a nuisance rather than a hazard.
 
-## 8. Loose ends
+## 9. Loose ends
 
 - `scratchpad/steering-fixes-uncommitted.patch` (1,152 lines) — the abandoned
   intent-routing steering rewrite from earlier in the session. Written against
@@ -186,3 +234,7 @@ Recorded so they are not rediscovered from scratch:
 - The workspace `CLAUDE.md` has a user-authored `## MCP Tooling` section that
   predates all of this and still says to use `prism_*` for "file reads, symbol
   lookup, search". It is the user's, left alone, but it sits against §3.
+- Pushes to `main` report "Bypassed rule violations … Required status check
+  `test (ubuntu-latest)` is expected." CI runs after the push rather than
+  gating it. Harmless given the local gate, but it means a red CI will not
+  stop a tag — check it.
