@@ -130,30 +130,18 @@ jobs:
             uninstall.sh
             uninstall.ps1
 
-      # The tap drifted 15 releases behind (0.23.0 while v0.38.0 shipped)
-      # because nothing here updated it — prism builds its assets by hand
-      # rather than through GoReleaser, so it never had the publish step
-      # shale has. Without a token the step is a no-op, never a failed release.
-      - name: Publish Homebrew formula
-        env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      # The Homebrew formula is NOT published from here. provasign/homebrew-shale
+      # refreshes itself daily (.github/workflows/refresh-formulae.yml): a
+      # workflow in the tap writes to its own repository with the built-in
+      # GITHUB_TOKEN, so there is no cross-repo push token to provision here and
+      # forget. This job used to carry a publish step guarded on a
+      # HOMEBREW_TAP_TOKEN secret that was never set — it warned and no-opped on
+      # every single release, which read as "the tap is stale" when the tap was
+      # in fact updating itself.
+      #
+      # The tap therefore lags a tag by up to a day. To publish immediately:
+      #   gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      - name: Homebrew formula
         run: |
-          set -euo pipefail
-          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
-            echo "::warning::HOMEBREW_TAP_TOKEN not set — tap NOT updated; brew will keep serving the previous version"
-            exit 0
-          fi
-          scripts/gen-homebrew-formula.sh "${GITHUB_REF_NAME}" dist/checksums.txt > /tmp/prism.rb
-          tap="$(mktemp -d)"
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/provasign/homebrew-shale.git" "${tap}"
-          mkdir -p "${tap}/Formula"
-          cp /tmp/prism.rb "${tap}/Formula/prism.rb"
-          git -C "${tap}" config user.name "github-actions[bot]"
-          git -C "${tap}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -z "$(git -C "${tap}" status --porcelain -- Formula/prism.rb)" ]; then
-            echo "Homebrew formula already current."
-            exit 0
-          fi
-          git -C "${tap}" add Formula/prism.rb
-          git -C "${tap}" commit -m "Brew formula update for prism ${GITHUB_REF_NAME}"
-          git -C "${tap}" push origin HEAD:main
+          echo "Formula publishing is owned by provasign/homebrew-shale (daily refresh)."
+          echo "For an immediate update: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale"
