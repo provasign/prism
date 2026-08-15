@@ -1,0 +1,135 @@
+shale_version: "0"
+id: 4678afc5-41b7-4e53-ac34-9f3ed1212962-c2
+created_at: 2026-08-15T19:52:00.485059Z
+finalized_at: 2026-08-15T19:55:51.514407Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: HANDOFF.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T19:55:45.856249Z
+commands:
+    - cmd: |-
+        git push origin main && git tag -a v0.52.0 -m "$(cat <<'EOF'
+        v0.52.0: revert the v0.44–v0.51 deployment arc; project-scoped init
+
+        Restores the v0.43.0 deployment surface in full. No PreToolUse hook, no
+        grep/rg denial shipped anywhere, tools deferred (no alwaysLoad). The arc
+        was reverted on a 190-cell paired measurement, not on argument: cost was
+        a coin flip (prism cheaper in 107/190), routing landed on
+        prism_search(scope="text") — a ripgrep passthrough — and change_impact,
+        the call carrying the measured win, was reached in 2/190 cells. See
+        HANDOFF.md for the full record and the known gaps accepted at this base.
+
+        Engine untouched across the whole arc: go.mod is byte-identical to
+        v0.43.0, so the grove/astkit resolution work is intact.
+
+        Also in this tag:
+        - `prism init` is project-scoped by default. User-global configs (Zed,
+          Codex CLI, opencode) and ~/.claude/settings.json are written only with
+          --global or after an explicit interactive yes.
+        - fix: approval/permission writes follow the Claude Code writer rather
+          than the ".mcp.json" basename, so `init --global --deny-builtin-search`
+          no longer writes the deny rules nowhere at all.
+
+        Gate: go test ./... green (12 packages); ci_invariants.py all green
+        (6 corpora, ceiling + compile + rename-plan + determinism).
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        EOF
+        )" && git push origin v0.52.0
+      at: 2026-08-15T19:52:00.485059Z
+      classified: test
+    - cmd: git status --short; git log --oneline -2; echo "=== runs ==="; sleep 5; gh run list -R provasign/prism --limit 4
+      at: 2026-08-15T19:52:09.034433Z
+      classified: other
+    - cmd: gh run watch 31905117837 -R provasign/prism --exit-status >/dev/null 2>&1; gh run view 31905117837 -R provasign/prism | head -20
+      at: 2026-08-15T19:52:11.603956Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign && cp .mcp.json .mcp.json.bak-20260815 && python3 - <<'EOF'
+        import json
+        p='/Users/tapabratapal/Projects/provasign/.mcp.json'
+        d=json.load(open(p))
+        d['mcpServers']['prism'].pop('alwaysLoad', None)
+        open(p,'w').write(json.dumps(d, indent=2)+'\n')
+        print(open(p).read())
+        EOF
+      at: 2026-08-15T19:52:20.578197Z
+      classified: other
+    - cmd: 'gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq ''.content'' | base64 -d | grep -m2 -E ''version|arm64"'' ; echo "=== log of tap step ==="; gh api repos/provasign/homebrew-shale/commits --jq ''.[0].commit.message'' '
+      at: 2026-08-15T19:54:02.620072Z
+      classified: other
+    - cmd: gh run view 31905117837 -R provasign/prism --job 95061757388 --log 2>/dev/null | grep -i -A5 "Publish Homebrew" | head -40
+      at: 2026-08-15T19:54:08.312841Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad && gh release download v0.52.0 -R provasign/prism -p checksums.txt -D . --clobber && cat checksums.txt && /Users/tapabratapal/Projects/provasign/prism/scripts/gen-homebrew-formula.sh v0.52.0 checksums.txt > prism.rb && head -30 prism.rb
+      at: 2026-08-15T19:54:18.979546Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad && rm -rf tap && git clone -q https://github.com/provasign/homebrew-shale.git tap && cp prism.rb tap/Formula/prism.rb && git -C tap add Formula/prism.rb && git -C tap commit -q -m "Brew formula update for prism v0.52.0" && git -C tap push origin HEAD:main && echo PUSHED
+      at: 2026-08-15T19:54:27.400678Z
+      classified: other
+    - cmd: brew update >/dev/null 2>&1; brew upgrade prism 2>&1 | tail -8; echo "==="; /opt/homebrew/bin/prism version
+      at: 2026-08-15T19:54:37.248088Z
+      classified: other
+    - cmd: brew upgrade provasign/shale/prism 2>&1 | tail -8; echo "==="; /opt/homebrew/bin/prism version
+      at: 2026-08-15T19:54:45.478953Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism init --help 2>&1 | head -40
+      at: 2026-08-15T19:54:54.879966Z
+      classified: other
+    - cmd: |-
+        git status --short; echo "=== .mcp.json ==="; cat .mcp.json; echo "=== settings deny? ==="; python3 -c "
+        import json;d=json.load(open('.claude/settings.json'));print(json.dumps(d.get('permissions'),indent=1));print('hooks:',list(d.get('hooks',{}).keys()))"
+      at: 2026-08-15T19:55:01.453536Z
+      classified: other
+    - cmd: git diff -- .mcp.json .cursor/mcp.json .windsurf/mcp.json
+      at: 2026-08-15T19:55:07.469914Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        p='/Users/tapabratapal/Projects/provasign/.mcp.json'
+        d=json.load(open(p))
+        d['mcpServers']['prism']['command']='/opt/homebrew/bin/prism'
+        open(p,'w').write(json.dumps(d, indent=2)+'\n')
+        print(open(p).read())
+        EOF
+        printf '\n' >> .mcp.json && git add .mcp.json .cursor/mcp.json .windsurf/mcp.json && git commit -q -m "$(cat <<'EOF'
+        chore: point local MCP registrations at the brew-installed prism
+
+        `prism init` on v0.52.0, project scope: no user-global writes, no deny
+        rules. Command path moves from the ~/bin dev build to
+        /opt/homebrew/bin/prism.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01CYfUFhBWrJnDjz7xYyX4Si
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-15T19:55:26.851396Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism doctor 2>&1 | head -30; echo "=== smoke ==="; /opt/homebrew/bin/prism search "promptGlobalTools" --scope text --format text 2>&1 | head -8
+      at: 2026-08-15T19:55:31.543249Z
+      classified: other
+    - cmd: |-
+        for f in .claude/settings.local.json ~/.claude/settings.json ~/.claude/settings.local.json ../.claude/settings.json; do echo "--- $f"; python3 -c "
+        import json,sys,os
+        p=os.path.expanduser('$f')
+        try: d=json.load(open(p))
+        except Exception as e: print('  (none)'); sys.exit()
+        print('  deny:',d.get('permissions',{}).get('deny'))
+        print('  PreToolUse:',bool(d.get('hooks',{}).get('PreToolUse')))
+        "; done; echo "=== any prism hook registration on the machine ==="; grep -rl "prism hook" ~/.claude/ 2>/dev/null | head
+      at: 2026-08-15T19:55:40.953695Z
+      classified: other
+notes:
+    - text: continuation of session 4678afc5-41b7-4e53-ac34-9f3ed1212962 — events captured after its evidence was finalized
+      at: 2026-08-15T19:52:00.485059Z
+redactions: 0
