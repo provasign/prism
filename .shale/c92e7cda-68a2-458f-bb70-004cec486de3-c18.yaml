@@ -1,0 +1,215 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c18
+created_at: 2026-08-15T03:56:11.874442Z
+finalized_at: 2026-08-15T04:02:40.968331Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T04:01:48.661224Z
+commands:
+    - cmd: |-
+        rm -rf /tmp/smoke-nudge /tmp/smoke_nudge.jsonl
+        python3 - <<'EOF'
+        import json, os
+        path = os.path.expanduser("~/.claude.json")
+        doc = json.load(open(path))
+        doc.get("projects", {}).pop("/private/tmp/smoke-nudge/kinto", None)
+        json.dump(doc, open(path, "w"), indent=2)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git checkout -b inband-search-nudge -q
+        git add -A internal/
+        git commit -q -F - <<'EOF'
+        feat: in-band consolidation nudge on the Nth sequential search (v0.50.3)
+
+        Delivery-channel finding, and the mechanism it implies: the IDENTICAL
+        instruction ("use prism_search instead of grep") failed 12:1 as turn-0
+        steering prose and succeeded ~100% as the PreToolUse hook's deny reason.
+        Steering effectiveness is a function of WHERE and WHEN it arrives — the
+        tool-result channel at decision time steers; turn-0 prose that must
+        survive 30 turns of attention decay does not. v0.50.2 shipped the
+        "consolidate your guesses into prism_query(terms=[...])" advice as prose;
+        its first live smoke showed nine sequential single-term searches and zero
+        consolidation. Same advice, wrong channel.
+
+        This moves it to the channel that works: Handler now tracks distinct
+        prism_search queries since the last prism_query (searchStreak), and from
+        the third onward the SEARCH RESULT ITSELF carries a one-line note with the
+        agent's own accumulated terms as a paste-ready prism_query call. Silent
+        below threshold and on repeat terms (resolvedRefNote's anti-wallpaper
+        discipline). prism_query resets the streak in Invoke's dispatch,
+        succeed-or-fail. CLI --format text prints the note in the scope=text
+        branch.
+
+        Measured, same task (Kinto-3566 cache-hit-ratio), same model (sonnet),
+        same config, one hour apart: prose-only — 9 sequential searches, 0
+        prism_query, $0.48. In-band nudge — consolidated after 2 nudges into
+        prism_query(terms=["cache","metrics","prometheus","counter"]), the first
+        prism_query sonnet produced on this task in any run tonight, $0.38. n=1,
+        directional, not proof: the agent also drifted back to single searches
+        later in the session and ignored two later nudges. The channel moves
+        behavior; it does not lock it.
+
+        Pinned by TestSearchStreakNoteFiresOnThirdDistinctSearch. Full suite green.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git checkout main -q && git merge --ff-only inband-search-nudge -q && git branch -d inband-search-nudge
+        git push origin main 2>&1 | tail -2
+        git tag v0.50.3 && git push origin v0.50.3 2>&1 | tail -1
+      at: 2026-08-15T03:56:11.874442Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        mkdir -p ~/Projects/provasign/research/harness/runs/swebench-live/nudge-smoke
+        # control binary: v0.50.2 (prose steering, no nudge)
+        git worktree add /tmp/prism-v0502 v0.50.2 -f 2>&1 | tail -1
+        cd /tmp/prism-v0502 && go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.50.2" -o /tmp/prism-control ./cmd/prism && /tmp/prism-control version
+        # treatment binary: current main (v0.50.3, nudge)
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.50.3" -o /tmp/prism-treatment ./cmd/prism && /tmp/prism-treatment version
+      at: 2026-08-15T03:58:14.09113Z
+      classified: build
+    - cmd: |-
+        rm -rf /tmp/nudge-wire && mkdir /tmp/nudge-wire && cd /tmp/nudge-wire
+        git init -q && printf "cache_hits = 1\ncache_misses = 2\nhit_ratio = 3\n" > m.py && git add -A && git commit -qm init
+        python3 - <<'EOF'
+        import json, subprocess
+        p = subprocess.Popen(["/tmp/prism-treatment", "mcp"], cwd=".", stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+        def rpc(obj):
+            p.stdin.write(json.dumps(obj) + "\n"); p.stdin.flush()
+            return json.loads(p.stdout.readline())
+        rpc({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}})
+        p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"}) + "\n"); p.stdin.flush()
+        for i, term in enumerate(["cache_hits", "cache_misses", "hit_ratio"], 1):
+            r = rpc({"jsonrpc":"2.0","id":i+1,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":term,"scope":"text"}}})
+            body = r["result"]["content"][0]["text"]
+            print(f"--- search #{i}: {term} ---")
+            print(body)
+            print()
+        p.terminate()
+        EOF
+      at: 2026-08-15T03:58:26.533417Z
+      classified: other
+    - cmd: |-
+        OUT=~/Projects/provasign/research/harness/runs/swebench-live/nudge-smoke
+        PROMPT='You are fixing a real bug in the Kinto/kinto repository, checked out at the
+        commit where the bug exists. Read the issue, find the cause in the code, and EDIT
+        the source files to fix it. Do not write a new test; the project'"'"'s own test suite
+        will judge your fix. Make the smallest change that resolves the issue.
+
+        ISSUE:
+        Implement metric for cache hit ratio
+        ```
+          100 * sum(rate(cache_hits_total[$__rate_interval]))
+        /
+          (sum(rate(cache_hits_total[$__rate_interval])) + sum(rate(cache_misses_total[$__rate_interval])))
+        ```
+
+        When done, stop — your edits to the working tree are the submission.'
+
+        for arm in control treatment; do
+          BIN=/tmp/prism-$arm
+          WT=/tmp/nudge-ab-$arm
+          rm -rf "$WT" && mkdir -p "$WT"
+          cp -r /tmp/swebench-repos/Kinto__kinto "$WT/kinto"
+          cd "$WT/kinto"
+          git checkout -qf f4da0160f7eec83b5571548954ab64c59d63695a
+          "$BIN" init --deny-builtin-search <<< "" > /dev/null 2>&1
+          python3 -c "
+        import json, os
+        p = os.path.expanduser('~/.claude.json'); d = json.load(open(p))
+        d.setdefault('projects', {})['$WT/kinto'] = {'hasTrustDialogAccepted': True}
+        json.dump(d, open(p, 'w'), indent=2)"
+          "$BIN" index . > /dev/null 2>&1
+          claude -p "$PROMPT" \
+            --output-format stream-json --verbose --strict-mcp-config --mcp-config .mcp.json --model sonnet \
+            --allowedTools Read,Edit,Write,Glob,Bash,mcp__prism \
+            > "$OUT/$arm.jsonl" 2>&1
+          git diff > "$OUT/$arm.diff"
+          echo "$arm done: exit=$? transcript=$(wc -l < $OUT/$arm.jsonl) lines, diff=$(wc -l < $OUT/$arm.diff) lines"
+        done
+      at: 2026-08-15T04:00:35.918023Z
+      classified: other
+    - cmd: |-
+        OUT=~/Projects/provasign/research/harness/runs/swebench-live/nudge-smoke
+        for arm in control treatment; do
+        echo "##################### $arm #####################"
+        python3 - "$OUT/$arm.jsonl" <<'EOF'
+        import json, sys
+        searches, queries, nudges = 0, 0, 0
+        for line in open(sys.argv[1]):
+            line = line.strip()
+            if not line: continue
+            try: rec = json.loads(line)
+            except Exception: continue
+            t = rec.get("type")
+            if t == "assistant":
+                for b in rec.get("message", {}).get("content", []):
+                    if b.get("type") == "tool_use":
+                        n, inp = b.get("name"), b.get("input", {})
+                        if n == "mcp__prism__prism_search":
+                            searches += 1
+                            print(f"  prism_search  {json.dumps(inp)[:140]}")
+                        elif n == "mcp__prism__prism_query":
+                            queries += 1
+                            print(f"  PRISM_QUERY   {json.dumps(inp)[:200]}")
+                        elif n.startswith("mcp__prism"):
+                            print(f"  {n.replace('mcp__prism__',''):13} {json.dumps(inp)[:120]}")
+            elif t == "user":
+                for b in rec.get("message", {}).get("content", []):
+                    if b.get("type") == "tool_result":
+                        c = b.get("content")
+                        if isinstance(c, list): c = " ".join(x.get("text","") for x in c if isinstance(x, dict))
+                        if "sequential search" in str(c): nudges += 1
+            elif t == "result":
+                print(f"\n  turns={rec.get('num_turns')} cost=${rec.get('total_cost_usd'):.3f}")
+        print(f"  prism_search calls: {searches} | prism_query calls: {queries} | nudges delivered: {nudges}")
+        EOF
+        done
+      at: 2026-08-15T04:00:46.821905Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        # extend the unit test: 4th search after a nudge must be silent
+        python3 - <<'EOF'
+        content = open('internal/mcp/textmerge_test.go').read()
+        old = '''	// A prism_query call resets the streak (wired in Invoke's dispatch).'''
+        new = '''	// The 4th search must be silent — one nudge per streak; fourteen
+        	// repeats in one live session (nudge-smoke) changed nothing.
+        	if n2 := h.searchStreakNote("fourth_term"); n2 != "" {
+        		t.Errorf("nudge must fire once per streak, got a repeat: %q", n2)
+        	}
+        	// A prism_query call resets the streak (wired in Invoke's dispatch).'''
+        open('internal/mcp/textmerge_test.go','w').write(content.replace(old, new, 1))
+        EOF
+        # the reset block in the test must also clear streakNudged
+        python3 - <<'EOF'
+        content = open('internal/mcp/textmerge_test.go').read()
+        old = '''	h.streakMu.Lock()
+        	h.searchStreak = nil
+        	h.streakMu.Unlock()'''
+        new = '''	h.streakMu.Lock()
+        	h.searchStreak = nil
+        	h.streakNudged = false
+        	h.streakMu.Unlock()'''
+        open('internal/mcp/textmerge_test.go','w').write(content.replace(old, new, 1))
+        EOF
+        go build ./... && go vet ./... && go test ./internal/mcp/ -run TestSearchStreak -v 2>&1 | tail -4 && go test ./... 2>&1 | tail -4
+      at: 2026-08-15T04:02:25.533372Z
+      classified: lint
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-15T03:56:11.874442Z
+redactions: 0
