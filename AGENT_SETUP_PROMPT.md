@@ -165,6 +165,25 @@ prism index .   # optional warm-up: indexing is automatic (server start /
 echo "Prism initialized. Restart your AI coding tool to activate MCP and reload steering instructions."
 ```
 
+**The routing question.** Interactive `prism init` asks: *"Deny built-in
+search? [y/N]"*. This is the one change that actually routes agents through
+Prism (steering alone is ignored — measured 12:1): it adds `Grep`,
+`Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in the PROJECT's
+`.claude/settings.json` (machine-global only with `--global`). Nothing
+becomes unfindable —
+`prism_search(scope="text")` is a ripgrep passthrough — and it's reversible
+by deleting those lines. Relay this question to the user rather than
+answering it yourself; if you are running non-interactively the prompt is
+skipped and no settings change is made (pass `--deny-builtin-search` to
+opt in explicitly once the user has agreed).
+
+**The scope question.** Interactive `prism init` also asks: *"Register
+user-global tools? [y/N]"* — Zed, Codex CLI, and opencode keep their MCP
+registrations in user-global config files outside the repo. The default (No)
+keeps setup strictly project-level: nothing outside the repo is touched.
+Relay this question to the user too; non-interactive runs default to
+project-only, and `--global` opts in without asking.
+
 > **Claude Code users:** `prism init` writes `.mcp.json` at the project root. When Claude Code restarts it may prompt "Allow MCP servers from .mcp.json?" — click **Allow**.
 
 ---
