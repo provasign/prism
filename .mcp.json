@@ -1,17 +1,12 @@
 {
   "mcpServers": {
-    "fuse": {
-      "command": "/Users/tapabratapal/bin/fuse",
-      "args": [
-        "mcp"
-      ]
-    },
     "prism": {
       "command": "/Users/tapabratapal/bin/prism",
-      "args": [
-        "mcp"
-      ],
-      "alwaysLoad": true
+      "args": ["mcp"]
+    },
+    "fuse": {
+      "command": "/Users/tapabratapal/bin/fuse",
+      "args": ["mcp"]
     }
   }
 }

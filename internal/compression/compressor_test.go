@@ -25,6 +25,7 @@ func makeSymbols(filePath string, n int) []grove.SymbolRecord {
 
 func freshOpts(tracker *session.Tracker, syms []grove.SymbolRecord) Options {
 	return Options{
+		Task:            "test task",
 		Symbols:         syms,
 		Session:         tracker,
 		Ledger:          session.NewLedger("test"),

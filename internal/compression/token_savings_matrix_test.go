@@ -61,6 +61,7 @@ func runTurns(path string, turns []turn) (original int, delivered int) {
 	ledger := session.NewLedger("token-matrix")
 	for _, t := range turns {
 		r := CompressFileRead(path, t.content, Options{
+			Task:            "complex token savings matrix",
 			Symbols:         t.syms,
 			Session:         tr,
 			Ledger:          ledger,
@@ -167,6 +168,7 @@ func TestTokenSavings_ComplexMixedWorkflow(t *testing.T) {
 		path := fmt.Sprintf("pkg/file_%02d.go", i)
 		content, syms := syntheticFile(path, funcsPerFile, -1)
 		r := CompressFileRead(path, content, Options{
+			Task:            "complex savings workflow turn1",
 			Symbols:         syms,
 			Session:         tr,
 			Ledger:          ledger,
@@ -191,6 +193,7 @@ func TestTokenSavings_ComplexMixedWorkflow(t *testing.T) {
 			syms = changedSyms
 		}
 		r := CompressFileRead(path, content, Options{
+			Task:            "complex savings workflow turn2",
 			Symbols:         syms,
 			Session:         tr,
 			Ledger:          ledger,
@@ -207,6 +210,7 @@ func TestTokenSavings_ComplexMixedWorkflow(t *testing.T) {
 		path := fmt.Sprintf("pkg/file_%02d.go", i)
 		base, baseSyms := syntheticFile(path, funcsPerFile, -1)
 		r := CompressFileRead(path, base, Options{
+			Task:            "complex savings workflow turn3",
 			Symbols:         baseSyms,
 			Session:         tr,
 			Ledger:          ledger,

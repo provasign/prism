@@ -44,23 +44,6 @@ type Handler struct {
 	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
-
-	// searchStreak tracks distinct prism_search queries since the last
-	// prism_query. Delivery-channel finding (2026-08-15): the identical
-	// instruction ("use prism_search instead of grep") failed 12:1 as
-	// turn-0 steering prose and succeeded ~100% as a hook deny reason —
-	// steering works when it arrives at decision time in the tool-result
-	// channel, not when it must survive 30 turns of attention decay.
-	// So the "combine your guesses into one prism_query(terms=[...])"
-	// advice lives HERE, appended in-band to the Nth sequential search
-	// result with the agent's own accumulated terms — the same
-	// fires-only-when-the-condition-holds discipline as resolvedRefNote.
-	streakMu     sync.Mutex
-	searchStreak []string
-	// streakNudged: the nudge fires ONCE per streak. Measured (nudge-smoke,
-	// 2026-08-15): fourteen repeated nudges in one session changed nothing —
-	// repetition is wallpaper, not emphasis.
-	streakNudged bool
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -202,12 +185,6 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	}
 	switch name {
 	case "prism_query":
-		// The agent took the consolidated route — reset the search streak
-		// regardless of whether the query itself succeeds.
-		h.streakMu.Lock()
-		h.searchStreak = nil
-		h.streakNudged = false
-		h.streakMu.Unlock()
 		return h.toolQuery(ctx, args)
 	case "prism_read":
 		return h.toolRead(ctx, args)
@@ -312,24 +289,11 @@ func ToolSchemas() []map[string]any {
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
-		entry := map[string]any{
+		out = append(out, map[string]any{
 			"name":        n,
 			"description": toolDescription(n),
 			"inputSchema": toolSchema(n),
-		}
-		// Routing-critical tools are exempted from client-side schema
-		// deferral (Claude Code defers MCP schemas past ~10% of context and
-		// gates them behind a ToolSearch hop). Frontier models make that hop;
-		// cheap tiers don't — measured on SWE-bench-Live (haiku: 0 prism
-		// calls deferred vs 5 loaded, same task). Deny-builtin-search closes
-		// the grep door; this keeps the prism door open on every tier. The
-		// long-tail graph ops stay deferrable to keep the always-on cost low.
-		switch n {
-		case "prism_search", "prism_query", "prism_read", "prism_lookup",
-			"prism_change_impact":
-			entry["_meta"] = map[string]any{"anthropic/alwaysLoad": true}
-		}
-		out = append(out, entry)
+		})
 	}
 	return out
 }
@@ -364,8 +328,8 @@ func toolSchema(name string) map[string]any {
 					"description": "What you are trying to do.",
 				},
 				"terms": map[string]any{
-					"type":  "array",
-					"items": map[string]any{"type": "string"},
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
 					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]) — prism searches " +
 						"these then expands via call graph. Guess ONE keyword from the task if you don't have a " +
 						"name yet (a class/function fragment, a domain term); measured, an agent's own guess beats " +
@@ -403,6 +367,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
+				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
 			},
 		}
 	case "prism_search":
@@ -415,25 +380,13 @@ func toolSchema(name string) map[string]any {
 					"description": "Substring matched against symbol names, signatures, and docstrings — AND against raw source text (a real rg/grep pass). With regex=true, a regular expression for the text pass.",
 				},
 				"scope": map[string]any{
-					"type":        "string",
-					"enum":        []string{"both", "text", "symbols"},
+					"type": "string",
+					"enum": []string{"both", "text", "symbols"},
 					"description": "What you want back. \"text\" = a PURE grep: exactly the rg hits, no symbol search, no graph, cheapest — use when you would have run grep/rg. \"symbols\" = indexed symbols only. Default \"both\" merges the two.",
 				},
 				"regex": map[string]any{
 					"type":        "boolean",
 					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
-				},
-				"path": map[string]any{
-					"type":        "string",
-					"description": "Restrict the text pass to one file or directory (repo-relative), like `grep pat src/`. Default: whole tree.",
-				},
-				"context": map[string]any{
-					"type":        "integer",
-					"description": "Include N lines around each text match (grep -C N).",
-				},
-				"files": map[string]any{
-					"type":        "boolean",
-					"description": "Text pass returns matching file paths only, no lines (grep -l).",
 				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},
 			},
@@ -632,13 +585,19 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "Give edit-ready context for a task: pass task + terms=[...] — CONFIRMED anchor names " +
-			"(from grep/search or named in the task) beat a guessed term. Expands via the call graph " +
-			"(callers, callees) AND runs a real full-text search on the terms in the same call — no " +
-			"separate grep needed. Bug-fix/implement tasks get LINE-NUMBERED source windows plus each " +
-			"anchor's callers, edit-ready; do not re-read what it shows. Same cached-pointer behavior " +
-			"as prism_read applies to already-delivered files. delivery=\"symbols\" forces the compact " +
-			"list; include=[\"docs\"] for doc filenames only."
+		return "DELIVER (this tool answers \"give me what I need to do this task\" — to merely locate " +
+			"something, use prism_search): pass the task and terms=[...] with anchor names you have " +
+			"CONFIRMED (from grep/search or named in the task) — retrieval keys on the terms, so a " +
+			"confirmed anchor beats a well-phrased task, but a guessed term for a common name hurts. " +
+			"Prism finds those symbols then expands through the call graph (callers, callees), AND runs a " +
+			"real full-text search (rg/grep) for each term in the same call — matches outside any symbol " +
+			"(comments, configs, docs) arrive as textMatches, so a separate grep call is never needed. " +
+			"For bug-fix/implement tasks it delivers LINE-NUMBERED source windows plus each " +
+			"anchor's callers — edit-ready; lines under 1200 chars are byte-for-byte verbatim, " +
+			"longer ones carry an in-band truncation marker (Read the file before editing those). " +
+			"Do NOT re-read the files it shows. Unchanged files already delivered this session come back as one-line " +
+			"cached pointers. delivery=\"symbols\" forces the compact per-symbol list. " +
+			"Use include=[\"docs\"] for doc filenames only."
 	case "prism_read":
 		return "Whole-file read with session compression: full content on first read; a repeat read of " +
 			"an UNCHANGED file returns a one-line `// [prism:cached] <file> @sha:… (prior delivery still " +
@@ -646,18 +605,22 @@ func toolDescription(name string) string {
 			"received this file earlier in the session, so use that copy and do NOT re-fetch. " +
 			"For a single function use prism_lookup (~5× cheaper)."
 	case "prism_search":
-		return "Locate a string, symbol, or file — where is X? One call searches indexed symbol " +
-			"names/docstrings AND raw source text (a real rg/grep pass, results in textHits); no " +
-			"separate grep needed. YOU price it: scope=\"text\" is a pure grep (cheapest, say this " +
-			"whenever you'd have run grep/rg; regex=true for patterns); scope=\"symbols\" for names " +
-			"only; default \"both\" merges the two. Returns locations, not context — once you have the " +
-			"anchor, prism_query delivers the edit-ready context."
+		return "LOCATE (this tool answers \"where is X?\"): one call searches BOTH indexed symbol " +
+			"names/signatures/docstrings AND the raw source text (a real rg/grep full-text pass, results " +
+			"in textHits) — the on-ramp when you only have a concept, an error message, or a config key " +
+			"and need to FIND an anchor. A separate grep call is never needed. YOU price the request: " +
+			"scope=\"text\" is a pure grep (exactly the rg hits, cheapest — say this whenever you would " +
+			"have run grep/rg and want nothing else; regex=true for patterns); scope=\"symbols\" for " +
+			"names only; default \"both\" merges the two. Test doubles are tagged and listed last. " +
+			"Returns locations, not context: once you have the anchor, prism_query delivers the " +
+			"edit-ready context for your task (or prism_node/prism_lookup to orient and read piecewise)."
 	case "prism_lookup":
 		return "Read one symbol by qualified name (e.g. 'ranking.Select', " +
-			"'kvstore.SecretsKVStoreSQL.Get'). fields=[...] picks columns: signature (cheap), doc, " +
-			"body (full source, default), kind, parent, modifiers. Result file:line is AUTHORITATIVE " +
-			"— navigate straight to it, don't re-confirm with grep. ~5× cheaper than reading the whole " +
-			"file; fields=[signature] cheaper still."
+			"'kvstore.SecretsKVStoreSQL.Get'). Choose which COLUMNS to read with fields=[...]: " +
+			"signature (the contract, cheap), doc, body (full source), kind, parent, modifiers — " +
+			"omit fields to get the whole body. Every result includes the exact file:line, which is " +
+			"AUTHORITATIVE: navigate straight to it, do not re-confirm with grep. ~5× cheaper than " +
+			"reading the whole file; fields=[signature] is cheaper still."
 	case "prism_resolve":
 		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
 			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
@@ -706,17 +669,29 @@ func toolDescription(name string) string {
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_change_impact":
-		return "Complete change-set for a method signature change: pass 'Type.method' or " +
-			"'Type.method(ParamType, ...)' and get every declaration, override/implementation " +
-			"(family), sibling-contract declaration (supers — same member on another interface, " +
-			"breaks too), resolved caller, and interface/type block whose member spec changes " +
-			"textually (declaringTypes — Go/TS; ALWAYS a change site) — one engine call, no token " +
-			"cost. Check 'completeness': 'closed' = authoritative; 'project-local'+overridesExternal " +
-			"= external (JDK/dependency) contract — don't change its signature; query the external " +
-			"type directly (e.g. 'Iterator.next') for its full project implementation closure " +
-			"(deprecation/migration sweeps). RELAY the set as-is — re-verifying with grep/sed " +
-			"measurably drops real sites and adds spurious ones. Same cached-pointer behavior as " +
-			"prism_read applies when a repeat call's result is identical."
+		return "Deterministic change-set for a method signature change: pass 'Type.method' or " +
+			"'Type.method(ParamType, ...)' and get back the exact declaration(s), every " +
+			"override/implementation in the subtype closure (family), super-declarations, and " +
+			"all resolved callers — in one engine call, milliseconds, no token cost. " +
+			"Use this instead of prism_references + manual override hunting when you need to " +
+			"find every site affected by a method signature change. Result groups: declarations " +
+			"(the method itself), family (overrides + implementations), supers (same-member " +
+			"declarations on other contracts — sibling interfaces satisfied by the same " +
+			"implementations break under the change too), callers (call sites into the set), " +
+			"declaringTypes (the interface/type declaration blocks that textually change " +
+			"because their member specs are not separate symbols — Go/TS; ALWAYS include " +
+			"these as change sites). Check 'completeness': 'closed' " +
+			"means the set is authoritative; 'project-local' + 'overridesExternal' means the " +
+			"method belongs to an external (JDK/dependency) contract — its signature cannot " +
+			"safely change, and calls typed against the external supertype are not included. " +
+			"Querying an external type directly (e.g. 'Iterator.next') returns the project's " +
+			"implementation closure of that contract — use for deprecation/migration sweeps. " +
+			"RELAY the returned set as-is: do not re-verify, re-filter, or transform it " +
+			"through shell pipelines — re-processing a solved traversal measurably drops " +
+			"real sites and adds spurious ones. A repeat call whose freshly recomputed " +
+			"result is IDENTICAL to one already delivered this session returns a one-line " +
+			"[prism:cached] pointer with group counts — not an error, not empty: use the " +
+			"prior delivery."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
 			"and get every type in the subtype closure that FAILS to implement the member — " +
@@ -783,10 +758,9 @@ type queryResult struct {
 	BudgetUsed int            `json:"budgetUsed"`
 	Symbols    []rankedSymbol `json:"symbols"`
 	// TextMatches are full-text hits outside any indexed symbol (comments,
-	// configs, docs) — the grep half of the merged search. Compact plain
-	// text (file:line:text lines), not nested JSON — see renderTextMatches.
-	TextMatches string `json:"textMatches,omitempty"`
-	TextBackend string `json:"textBackend,omitempty"`
+	// configs, docs) — the grep half of the merged search.
+	TextMatches []map[string]any `json:"textMatches,omitempty"`
+	TextBackend string           `json:"textBackend,omitempty"`
 	// Note explains an empty result so agents can tell "wrong root" or
 	// "term typo" apart from "genuinely no matches" without guessing.
 	Note string `json:"note,omitempty"`
@@ -890,7 +864,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if tm := h.renderTextMatches(sel.textHits); tm != "" {
+		if tm := h.renderTextMatches(sel.textHits); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
@@ -918,7 +892,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
-	if tm := h.renderTextMatches(sel.textHits); tm != "" {
+	if tm := h.renderTextMatches(sel.textHits); tm != nil {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
 	}
@@ -964,7 +938,6 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 	}
 	return total
 }
-
 // ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
@@ -972,6 +945,7 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if path == "" {
 		return nil, errors.New("file is required")
 	}
+	task := stringArg(args, "task", "")
 	abs, sessionPath, err := safePathWithinRoot(h.Root, path)
 	if err != nil {
 		return nil, err
@@ -992,6 +966,7 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 		confidence = h.confidenceFor(entry, contextUsed, readCfg.ContextWindow())
 	}
 	res := compression.CompressFileRead(sessionPath, string(data), compression.Options{
+		Task:            task,
 		Symbols:         fileSyms,
 		Session:         h.Session,
 		Ledger:          h.Ledger,
@@ -1024,27 +999,15 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	limit := intArg(args, "limit", 25)
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
-	tsOpts := textsearch.Options{
-		Timeout: textSearchTimeout, Regex: regex,
-		Path:      stringArg(args, "path", ""),
-		Context:   intArg(args, "context", 0),
-		FilesOnly: boolArg(args, "files"),
-	}
 
 	// scope="text": the agent asked for a PURE grep — exactly what rg
 	// returns, no symbol search, no graph, minimal envelope. This is the
 	// agent pricing its own request (measured: routing every locate through
 	// the enriched path cost ~1.5× on ordinary bug fixes for zero benefit).
 	if scope == "text" {
-		// Raw collection floor at textScanCeiling regardless of the
-		// agent's requested `limit`: ranking (renderTextMatches, below)
-		// needs real material to choose the best files from. `limit`
-		// still governs collection when the agent asks for more than the
-		// ceiling; it never governs DISPLAY size — that's
-		// textRenderFileCap/textRenderHitsPerFile, unaffected by this.
-		o := tsOpts
-		o.MaxHits = max(limit, textScanCeiling)
-		r := textsearch.Search(ctx, h.Root, q, o)
+		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+		})
 		out := map[string]any{
 			"textHits":    h.renderTextMatches(r.Hits),
 			"textBackend": r.Backend,
@@ -1060,9 +1023,6 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		}
 		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
 			out["resolvedNote"] = n
-		}
-		if n := h.searchStreakNote(q); n != "" {
-			out["note"] = n
 		}
 		return out, nil
 	}
@@ -1101,62 +1061,14 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.
 	if scope != "symbols" {
-		o := tsOpts
-		o.MaxHits = 50
-		if r := textsearch.Search(ctx, h.Root, q, o); len(r.Hits) > 0 {
+		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
+		}); len(r.Hits) > 0 {
 			out["textHits"] = h.renderTextMatches(r.Hits)
 			out["textBackend"] = r.Backend
 		}
 	}
-	if n := h.searchStreakNote(q); n != "" {
-		out["note"] = n
-	}
 	return out, nil
-}
-
-// searchStreakNote records q in the sequential-search streak and, from the
-// third distinct search since the last prism_query, returns an in-band nudge
-// carrying the agent's own accumulated terms as a ready-to-use prism_query
-// call. Delivery-channel finding (2026-08-15): this exact advice shipped as
-// turn-0 steering prose and was ignored on the very next smoke test (nine
-// sequential single-term searches); the hook's deny reason — the same kind
-// of instruction, delivered in the tool-result channel at decision time —
-// steers ~100%. Same channel, same moment, so the advice rides the result.
-// Silent below the threshold (resolvedRefNote's anti-wallpaper discipline).
-func (h *Handler) searchStreakNote(q string) string {
-	h.streakMu.Lock()
-	defer h.streakMu.Unlock()
-	for _, prev := range h.searchStreak {
-		if prev == q {
-			return "" // a repeat of the same term is a re-check, not a new guess
-		}
-	}
-	h.searchStreak = append(h.searchStreak, q)
-	if len(h.searchStreak) < 3 || h.streakNudged {
-		return ""
-	}
-	h.streakNudged = true
-	terms := h.searchStreak
-	if len(terms) > 5 {
-		terms = terms[len(terms)-5:]
-	}
-	quoted := make([]string, len(terms))
-	for i, t := range terms {
-		quoted[i] = fmt.Sprintf("%q", t)
-	}
-	return fmt.Sprintf("this is your %s sequential search — one call covers all these "+
-		"candidates AND expands the call graph from whichever lands: "+
-		"prism_query(task=\"<what you are doing>\", terms=[%s])",
-		ordinal(len(h.searchStreak)), strings.Join(quoted, ", "))
-}
-
-func ordinal(n int) string {
-	switch n {
-	case 3:
-		return "3rd"
-	default:
-		return fmt.Sprintf("%dth", n)
-	}
 }
 
 func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any, error) {

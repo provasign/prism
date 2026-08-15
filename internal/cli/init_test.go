@@ -54,7 +54,7 @@ func TestDetectSelfPath(t *testing.T) {
 
 func TestWriteSteeringInstructions(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir, false)
+	writeSteeringInstructions(dir)
 	// Should have written at least one instruction file
 	entries, _ := os.ReadDir(dir)
 	if len(entries) == 0 {
@@ -140,7 +140,7 @@ func TestBuildVSCodeConfig(t *testing.T) {
 
 func TestWriteSteeringInstructions_AllTargets(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir, false)
+	writeSteeringInstructions(dir)
 	for _, want := range []string{
 		"CLAUDE.md",
 		"AGENTS.md",
@@ -166,7 +166,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 	if err := os.WriteFile(path, []byte(stale), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	writeSteeringInstructions(dir, false)
+	writeSteeringInstructions(dir)
 	raw, _ := os.ReadFile(path)
 	s := string(raw)
 	// Old guidance must be gone.
@@ -174,7 +174,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 		t.Error("stale instructions not replaced")
 	}
 	// New guidance must be present.
-	if !strings.Contains(s, "prism_change_impact") {
+	if !strings.Contains(s, "line-numbered source windows") {
 		t.Error("new instructions not written")
 	}
 	// Content before the Prism section must be preserved.
@@ -328,7 +328,7 @@ func TestSteeringBlock_CoversBothSurfaces(t *testing.T) {
 	// changed which documentation the agent read, so it collapsed. The single
 	// block must still carry BOTH surfaces — MCP tool names for the primary
 	// path and CLI invocations for Bash-only subagents.
-	got := steeringBlock(false)
+	got := steeringBlock()
 	for _, want := range []string{"prism_query", "prism query", "prism_change_impact", "change-impact"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("steering block missing %q — it must cover MCP and CLI together", want)
@@ -390,8 +390,8 @@ func TestEnsureClaudeCodeApproval_WritesPermissionsAllow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false)
-	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false) // idempotence
+	ensureClaudeCodeApproval("prism", true, false)
+	ensureClaudeCodeApproval("prism", true, false) // idempotence
 
 	raw, err := os.ReadFile(settings)
 	if err != nil {
@@ -416,10 +416,9 @@ func TestEnsureClaudeCodeApproval_WritesPermissionsAllow(t *testing.T) {
 func TestEnsureClaudeCodeApproval_NoPermissions(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
-	settings := filepath.Join(home, ".claude", "settings.json")
-	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", false, false)
+	ensureClaudeCodeApproval("prism", false, false)
 
-	raw, err := os.ReadFile(settings)
+	raw, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +443,7 @@ func TestEnsureClaudeCodeApproval_UpgradesTrustOnlyConfig(t *testing.T) {
 	if err := os.WriteFile(settings, []byte(`{"enabledMcpjsonServers":["prism"]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	ensureClaudeCodeApproval(settings, "prism", "/fake/prism", true, false)
+	ensureClaudeCodeApproval("prism", true, false)
 	raw, _ := os.ReadFile(settings)
 	if !strings.Contains(string(raw), "mcp__prism") {
 		t.Errorf("allow rule not added to a trust-only config: %s", raw)

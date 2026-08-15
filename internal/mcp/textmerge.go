@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -47,16 +46,6 @@ const (
 	// textMatches section so it cannot crowd out the source windows.
 	textRenderFileCap     = 10
 	textRenderHitsPerFile = 5
-	// textScanCeiling is the MINIMUM raw hits collected before ranking picks
-	// which files to show. Found live 2026-08-14: prism_search("RequestContext")
-	// on a2a-python had 251 real hits across 28 files, but the raw scan
-	// stopped at the requested limit (25) in whatever order rg's stdout
-	// happened to emit -- 9 files survived, none of them the actual
-	// implementation (tests/samples/CHANGELOG only). Collecting the full
-	// scan (bounded here, not truly unlimited) before ranking is what makes
-	// "which 10 files get shown" a real decision instead of an artifact of
-	// scan order.
-	textScanCeiling = 300
 )
 
 // textMergeResult is what mergeTextSearch feeds back into selection.
@@ -139,18 +128,13 @@ func (h *Handler) mergeTextSearch(ctx context.Context, terms []string, seededIDs
 	return res
 }
 
-// renderTextMatches renders raw hits for delivery, grouped by file, as
-// compact plain-text lines (file:line:text, a real grep/rg transcript)
-// instead of nested JSON objects — the model only ever reads this as text
-// either way, and the field-name/brace overhead of a JSON envelope measured
-// ~2-12 tokens per match (worse the more files hits scatter across), pure
-// waste for information that is a flat list either way. The session-SHA
-// cache discipline is preserved: a file already delivered unchanged this
-// session collapses to a single line-numbers-only line (the agent has the
-// content), never a re-send of its text.
-func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) string {
+// renderTextMatches renders raw hits for delivery, grouped by file, with the
+// session-SHA cache discipline: a file already delivered unchanged this
+// session gets line numbers only (the agent has the content), never a
+// re-send of its text.
+func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) []map[string]any {
 	if len(rawHits) == 0 {
-		return ""
+		return nil
 	}
 	type group struct {
 		file string
@@ -168,54 +152,38 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) string {
 		g.hits = append(g.hits, hit)
 	}
 
-	// Rank BEFORE the file cap decides who's cut. Found live 2026-08-14:
-	// leaving `order` in raw scan order meant which files survived
-	// textRenderFileCap was an accident of rg's stdout ordering, not a
-	// decision — a common symbol's real implementation file was silently
-	// dropped in favor of tests/samples/CHANGELOG that happened to be
-	// scanned first. Real implementations before test doubles (same
-	// convention prism_search's symbol results already use), then more
-	// hits before fewer within each tier — a file with 20 matches is more
-	// likely central to the query than one with 1.
-	sort.SliceStable(order, func(i, j int) bool {
-		fi, fj := order[i], order[j]
-		ti, tj := isTestDouble(fi), isTestDouble(fj)
-		if ti != tj {
-			return !ti // non-test-double first
-		}
-		return len(byFile[fi].hits) > len(byFile[fj].hits)
-	})
-
-	var sb strings.Builder
+	out := make([]map[string]any, 0, minInt(len(order), textRenderFileCap))
 	for i, file := range order {
 		if i >= textRenderFileCap {
-			fmt.Fprintf(&sb, "# %d more files with matches omitted — narrow the term or grep-style search that file directly\n",
-				len(order)-textRenderFileCap)
+			out = append(out, map[string]any{
+				"note": strconv.Itoa(len(order)-textRenderFileCap) + " more files with matches omitted — narrow the term or grep-style search that file directly",
+			})
 			break
 		}
 		g := byFile[file]
+		entry := map[string]any{"file": file}
 		if h.textFileCached(file) {
-			lines := make([]string, 0, len(g.hits))
+			var lines []int
 			for _, hit := range g.hits {
-				lines = append(lines, strconv.Itoa(hit.Line))
+				lines = append(lines, hit.Line)
 			}
-			fmt.Fprintf(&sb, "%s: [cached, unchanged — already delivered this session] lines %s\n",
-				file, strings.Join(lines, ","))
-			continue
+			entry["lines"] = lines
+			entry["cached"] = true
+			entry["note"] = "content already delivered this session (unchanged) — matches listed by line only"
+		} else {
+			shown := make([]map[string]any, 0, minInt(len(g.hits), textRenderHitsPerFile))
+			for j, hit := range g.hits {
+				if j >= textRenderHitsPerFile {
+					entry["moreHits"] = len(g.hits) - textRenderHitsPerFile
+					break
+				}
+				shown = append(shown, map[string]any{"line": hit.Line, "text": hit.Text})
+			}
+			entry["hits"] = shown
 		}
-		for j, hit := range g.hits {
-			if j >= textRenderHitsPerFile {
-				fmt.Fprintf(&sb, "%s: %d more matches omitted\n", file, len(g.hits)-textRenderHitsPerFile)
-				break
-			}
-			if hit.Line == 0 && hit.Text == "" {
-				fmt.Fprintf(&sb, "%s\n", file) // files-only mode (grep -l)
-				continue
-			}
-			fmt.Fprintf(&sb, "%s:%d:%s\n", file, hit.Line, hit.Text)
-		}
+		out = append(out, entry)
 	}
-	return sb.String()
+	return out
 }
 
 // textFileCached reports whether this file's CURRENT content was already

@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -82,8 +81,7 @@ Usage:
                                   --format text|lean|json  Output format (default: text)
   prism search <keyword> [dir]    Search symbol names AND raw source text (a real
                                   rg/grep pass). --scope text is a pure grep
-                                  ([--scope text|symbols|both] [--regex] [--limit N]
-                                   [--path FILE-OR-DIR] [-C N context lines] [-l files only])
+                                  ([--scope text|symbols|both] [--regex] [--limit N])
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
@@ -120,10 +118,6 @@ Usage:
   prism savings [dir]             Show session savings dashboard
   prism drift [dir]              Report files/symbols that changed since they were delivered this session
   prism config [dir]              Show resolved configuration
-  prism hook pretooluse           Claude Code PreToolUse hook: reads the event JSON
-                                  from stdin, denies grep/rg with a reason fed back to
-                                  the model. Registered automatically by
-                                  --deny-builtin-search; not meant to be run by hand.
   prism version                   Print version
 
 prism init [dir] flags:
@@ -134,10 +128,7 @@ prism init [dir] flags:
   --deny-builtin-search
                       deny Claude Code's Grep/Bash(grep|rg) so agents actually
                       reach prism (asked interactively; Claude Code only —
-                      no other agent exposes a tool-denial setting). Also
-                      registers a PreToolUse hook (prism hook pretooluse) that
-                      explains the denial back to the model instead of a bare
-                      failure; the permissions.deny rule stays as a failsafe.
+                      no other agent exposes a tool-denial setting)
   --refresh           rewrite ONLY agents already configured (never adds new ones)
   --print-config <id> print one agent's snippet and exit, writing nothing
                       ids: claude, cursor, windsurf, vscode, zed, codex, opencode, hermes
@@ -231,8 +222,6 @@ func Run(args []string) int {
 		return cmdDrift(rest)
 	case "config":
 		return cmdConfig(rest)
-	case "hook":
-		return cmdHook(rest)
 	}
 	fmt.Fprintln(os.Stderr, "unknown command:", cmd)
 	fmt.Print(helpText)
@@ -326,23 +315,18 @@ profile: "%s"
 	// 2. Detect the prism binary path for use in MCP configs.
 	prismBin := detectSelfPath()
 
+	// 3. Write steering instructions matching the chosen mode.
+	writeSteeringInstructions(abs)
+
 	// Routing is the one thing steering cannot do. Measured at 12:1 in the
 	// benchmark and observed live: an agent listed prism's connected tools,
 	// said its CLAUDE.md directed it to use them, then ran Bash(grep) on the
 	// next task. Denying the built-in search is the only reliable fix — but
 	// it edits the user's own Claude Code settings, so ASK rather than assume.
 	// Never prompt non-interactively (CI gets the safe default: no change).
-	// This MUST resolve before writeSteeringInstructions: the steering text
-	// itself differs when grep is actually blocked (below) — telling a user
-	// who declined the deny prompt that "grep is BLOCKED" would be false
-	// guidance, so the steering has to know the final answer, not the
-	// pre-prompt default.
 	if !denyBuiltinSearch && permissions && printConfig == "" && isInteractive() {
 		denyBuiltinSearch = promptDenyBuiltinSearch()
 	}
-
-	// 3. Write steering instructions matching the chosen mode.
-	writeSteeringInstructions(abs, denyBuiltinSearch)
 
 	// 4. Register with every detected AI coding tool.
 	registered := initRegisterMCPTools(abs, prismBin, global, permissions, refresh, denyBuiltinSearch)
@@ -397,28 +381,171 @@ func mergePrismYAML(existing, profile string) string {
 // MCP tools are primary; the CLI section serves as fallback for subagents
 // that only have Bash access.
 const steeringInstructions = `
-## Prism — code intelligence (ALWAYS use these tools)
+## Prism — context delivery (ALWAYS use these tools)
 
-Reaching for grep/rg/cat/sed? The prism call is the same request, better answered.
-The translation is mechanical — all of these are already in your tool list:
+Prism answers whole-task questions (change impact, missing implementations,
+test gaps, dead code) in ONE deterministic call, and delivers code context
+cheaply. Three layers, in priority order.
 
-    grep -rn "foo"                      ->  prism_search(query="foo", scope="text")
-    grep -rn "foo" src/  (or one file)  ->  prism_search(query="foo", scope="text", path="src/")
-    grep -rn "a\|b\|c"  (regex)         ->  prism_search(query="a|b|c", scope="text", regex=true)
-    grep -C 5 / -A 10 (context lines)   ->  prism_search(..., context=5)
-    grep -rl "foo"  (files only)        ->  prism_search(query="foo", scope="text", files=true)
-    guessing names: grep a, grep b, ... ->  prism_query(task="...", terms=["a","b","c"]) -- one call,
-                                            all candidates, graph expands from whichever lands
-    grep "Foo("  (who calls Foo?)       ->  prism_change_impact(query="Foo") -- resolved call sites,
-                                            complete set; do not re-verify with grep, that drops sites
-    grep -A10 "def foo" / sed -n N,Mp   ->  prism_lookup(name="foo") -- whole body, no line guessing
-    cat file / re-reading a file        ->  prism_read(file=...) -- a repeat read returns a one-line
-                                            cached pointer, not the body; that is not an error
+### When MCP tools are available
 
-Piping ANOTHER command's output through grep (git log | grep x, pip list |
-grep -i y) is fine and stays allowed — prism replaces searching FILES, not
-filtering streams. No MCP session (Bash-only subagent)? Same verbs as CLI:
-prism query/search/read/lookup/change-impact --format text.
+Use the registered prism_* MCP tools.
+
+**If you do not see prism_* in your tool list, they are DEFERRED, not absent.**
+Some harnesses (Claude Code among them) do not load MCP tool schemas up front;
+they are discoverable on demand. Load them BEFORE concluding Prism is
+unavailable and falling back to grep:
+
+    ToolSearch("select:prism_query,prism_search,prism_change_impact")
+
+or search by keyword: ToolSearch("prism"). This is a one-time call per
+session. An agent that skips it will grep for everything and never touch the
+graph — measured, that is the single most common reason Prism goes unused on
+a machine where it is correctly installed and connected.
+
+**1. Changing or auditing code? One call answers the whole task:**
+
+| Situation | Tool |
+|---|---|
+| Renaming/changing a method signature | prism_change_impact(query="Type.method(ParamType, ...)") — declaration + overrides + callers |
+| Adding/changing a method on an interface or base class | prism_change_impact — override family + all callers |
+| Renaming a class, struct, or type | prism_change_impact for each public method — all usages |
+| Deprecating a symbol (need all callers to migrate) | prism_change_impact — complete caller list |
+| ANY task that says "find all X" for a specific method | prism_change_impact first, before any grep |
+| Renaming a method and you want the edits, not just the sites | prism_rename_plan(query="Type.method", newName="newName") — every edit line with before/after; review and apply |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | prism_missing_implementations(query="Type.method") — every closure type with no implementation |
+| Cleanups, library extraction, "can I delete this?" at scale | prism_dead_code — unreachable production symbols, safe-to-delete list + caveats |
+| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | prism_map — components + induced dependency edges (weights, tiers, cycles); from+to expands any edge to file:line sites |
+
+**2. Reading code? Prism reads are cheaper than shell reads:**
+
+| Situation | Tool |
+|---|---|
+| Read a whole file | prism_read — SHA-pointer (~30 tokens) on repeat reads |
+| Read one function body | prism_lookup(name="pkg.FuncName") — ~5x cheaper than prism_read |
+| Orient on ONE symbol or file before deciding where to go | prism_node(name="Type.method" or "path/to/file.go") — source plus a names-only neighbour menu (symbol), or definitions + dependents (file) |
+
+A repeat read of an unchanged file returns a one-line
+` + "`" + `// [prism:cached] <file> @sha:… (prior delivery still in context)` + "`" + ` pointer
+instead of the body — NOT an error or an empty file: you already received it
+earlier this session, so use the copy you have and do not re-fetch.
+
+**3. Fixing a bug or exploring an unfamiliar area? ONE prism_query call:**
+
+prism_query REQUIRES terms — guess ONE keyword from the task first (a
+class/function name fragment, a domain term); there is no task-alone
+fallback, a call with no terms errors with this guidance.
+
+| Situation | Tool |
+|---|---|
+| Bug report, error message, or unfamiliar feature area | prism_query(task="<the symptom>", terms=["<your best guess>"]) — ONE call; bug-fix/implement tasks get verbatim line-numbered source windows (edit-ready) + per-anchor callers |
+| You already grepped an anchor | prism_query(task=..., terms=["<anchor>"]) — same delivery, grep-precision seeding |
+| No plausible guess at all | grep/prism_search a domain term first, THEN prism_query with that term |
+| Locate a string, symbol, or file | prism_search — searches symbol names AND raw source text (a real rg/grep pass). scope="text" for a PURE grep (cheapest, use it exactly as you would grep; regex=true for patterns) |
+
+**Pre-task rule:** before writing any code on a task that involves changing or
+renaming an existing symbol, call prism_change_impact FIRST — even if the change
+looks small. Small changes can have large blast radii through inheritance and
+indirect callers that grep will not find. Result groups: declarations + family
+(every override/implementation) + callers + declaringTypes (interface/type blocks
+whose member specs are not separate symbols — Go/TS; always sites) = every site
+that must change.
+
+Check the result's completeness field. "closed" means the set is authoritative.
+"project-local" with overridesExternal means the method belongs to an external
+(JDK/dependency) contract: do NOT change its signature — that breaks a contract
+this project does not own — and the set covers project code only. To sweep every
+project implementation of an external interface (migration/deprecation), query
+the external type directly (e.g. "Iterator.next").
+
+Relay rule: the result is deterministic and type-resolved. Do NOT re-verify,
+re-filter, dedup, or transform it through grep/sed/awk/scripts — re-processing
+a solved traversal drops real sites and adds spurious ones (measured). Use the
+returned sites as-is; read individual sites only to make the edits.
+
+Route discipline — optimize total latency and context, not Prism usage.
+Decide what you need, make ONE call, and treat its result as final:
+
+    locate a string/symbol/file         -> prism_search (scope="text" when you would have run grep)
+    read one known function             -> prism_lookup
+    read one known whole file           -> prism_read
+    orient on ONE symbol or file        -> prism_node
+    bug/feature with a plausible anchor -> prism_query, ONE call:
+      guess ONE keyword from the task (a class/function fragment, a domain term)
+        -> prism_query(task="<bug symptom or task>", terms=["<guess>"])   <- often the ONLY context call needed
+        wrong guess / still missing an anchor?
+        -> prism_search(query=..., scope="text")   <- locate it: real rg/grep inside prism
+        -> prism_query(task="...", terms=["same-grep-terms"], include=["graph"])   <- retry with a real anchor
+    signature change / rename / deletion / interface evolution
+                                        -> the whole-task op (change_impact, rename_plan,
+                                           missing_implementations). Its set is terminal —
+                                           never rebuild or re-verify it with searches.
+    broad review / onboarding / "what do you think of this repo"
+                                        -> README + prism_map (depth 1), then at most ~3
+                                           prism_lookup/prism_node probes on representative
+                                           symbols. Do NOT run broad prism_query sweeps,
+                                           prism_dead_code, or prism_arch_check unless the
+                                           user asked about those dimensions.
+
+Redundancy rules:
+- Do not stack prism_query + prism_node + prism_lookup on the same symbol
+  unless the previous result was genuinely insufficient.
+- Do not search broad project-name terms ("Prism") — they match everything
+  and anchor nothing.
+- Exploratory work wants one SMALL result, not one comprehensive one:
+  prism_query with budget=3000-4000 and max_files=3 answers most questions.
+- Stop gathering context the moment the question is answerable with concrete
+  evidence.
+
+Housekeeping: indexing is AUTOMATIC — the MCP server indexes at startup, a
+never-indexed repo indexes itself on first query, and every whole-repo graph
+op (change_impact, map, dead_code, rename_plan, missing_implementations,
+verify, arch) delta-refreshes before it runs. Call prism_index only after a
+stale-context warning or an explicit empty-index failure, never routinely. A
+stale-context warning names the changed files — re-read them (prism_read
+returns the changed content) before relying on them.
+
+### When only Bash is available (subagents, CI)
+
+Use the prism CLI with --format text instead of MCP tools:
+
+| Situation | Command |
+|---|---|
+| Renaming/changing a method signature | ` + "`" + `prism change-impact 'Type.method(ParamType, ...)'` + "`" + ` — declaration + overrides + callers |
+| Adding/changing a method on an interface or base class | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — override family + callers |
+| Renaming a class, struct, or type | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` for each public method |
+| Deprecating a symbol (need all callers to migrate) | ` + "`" + `prism change-impact 'Type.method'` + "`" + ` — complete caller list |
+| Renaming a method and you want the edits, not just the sites | ` + "`" + `prism rename-plan 'Type.method' NewName` + "`" + ` — every edit line with before/after; review and apply |
+| Adding a REQUIRED method to an interface/base class ("who is now broken?") | ` + "`" + `prism missing-implementations 'Type.method'` + "`" + ` — every closure type with no implementation |
+| Cleanups / "can I delete this?" at scale | ` + "`" + `prism dead-code` + "`" + ` — unreachable production symbols + caveats |
+| "How is this repo structured?" / onboarding / refactor planning / dependency cycles | ` + "`" + `prism map [--depth N]` + "`" + ` — components + induced dependency edges (weights, tiers, cycles); ` + "`" + `--expand 'A->B'` + "`" + ` shows concrete file:line sites |
+| Enforcing declared architecture (pre-commit, CI) | ` + "`" + `prism arch` + "`" + ` — validates arch_deny rules from prism.yaml; violations cite file:line; exit 1 on violation |
+| Verifying a change/diff is COMPLETE before commit (agent-authored or your own) | ` + "`" + `prism verify [--base REF]` + "`" + ` — missed change-impact sites (line-precise), introduced arch violations; exit 1 if incomplete |
+| Bug report / unfamiliar area (one-call context) | ` + "`" + `prism query "<the symptom>" --terms <your best guess> --format text` + "`" + ` — ONE call; --terms is REQUIRED, guess a keyword from the task |
+| Locate a string, symbol, or file | prism search <term> — symbol names AND raw source text (real rg/grep inside). Pure grep: prism search <term> --scope text [--regex] |
+| Callers/callees for a symbol just found | ` + "`" + `prism query "<task>" --terms a,b --include graph --format text` + "`" + ` |
+| Read a whole file | ` + "`" + `prism read <file> --format text` + "`" + ` |
+| Read one function body | ` + "`" + `prism lookup <pkg.FuncName> --format text` + "`" + ` |
+| Orient on ONE symbol or file before deciding where to go | ` + "`" + `prism node <symbol-or-file> --format text` + "`" + ` — source plus neighbours, or definitions + dependents |
+
+### Do NOT
+
+- Do NOT re-read files prism_query / prism query just delivered as source windows — they are verbatim, current, line-numbered; go straight to the edit
+- Do NOT grep for what prism_query already returned — grep is for locating anchors it missed
+- Do NOT orchestrate multi-call traversals (references, then callers, then lookups) to enumerate a change's impact — prism_change_impact / prism change-impact computes the complete set in one call
+- Do NOT use prism_read / prism read for a single function — use prism_lookup / prism lookup instead
+- Do NOT call prism_index "just in case" at session start — indexing is
+  automatic (see Housekeeping); a redundant index call adds seconds for nothing
+- Do NOT reach for a separate grep/rg tool: prism_search and prism_query run a
+  real ripgrep pass internally, so text matches outside any symbol (comments,
+  configs, docs, string literals) come back as textMatches/textHits. Pay only
+  for what you need: scope="text" is a pure grep, scope="both" (default) merges
+  symbol and text results
+- A repeat call to a whole-repo graph op (change_impact, map, dead_code,
+  rename_plan, missing_implementations) whose freshly recomputed result is
+  IDENTICAL to one already delivered this session returns a one-line
+  [prism:cached] pointer plus group counts — NOT an error, NOT an empty
+  result: use the delivery you already have
 
 <!-- prism:end -->
 `
@@ -426,7 +553,7 @@ prism query/search/read/lookup/change-impact --format text.
 // writeSteeringInstructions writes per-tool instruction files into the project
 // so agents know how to use Prism tools correctly.
 // On re-init it replaces a stale Prism section rather than skipping.
-func writeSteeringInstructions(projectDir string, denyBuiltinSearch bool) {
+func writeSteeringInstructions(projectDir string) {
 	type instrFile struct {
 		name    string // description for log
 		relPath string // path relative to projectDir
@@ -449,7 +576,7 @@ func writeSteeringInstructions(projectDir string, denyBuiltinSearch bool) {
 		{name: "Kiro", relPath: ".kiro/steering/prism.md"},
 	}
 
-	block := steeringBlock(denyBuiltinSearch)
+	block := steeringBlock()
 
 	for _, t := range targets {
 		path := filepath.Join(projectDir, t.relPath)
@@ -481,29 +608,7 @@ func writeSteeringInstructions(projectDir string, denyBuiltinSearch bool) {
 // agent read, for a 317-token difference. Three copies of the same prose
 // also drifted: a steering edit landed in one of three variants before this
 // collapsed them.
-// steeringBlock appends a hard-stop paragraph ONLY when grep/rg are actually
-// blocked (denyBuiltinSearch). Saying "grep is BLOCKED" to a user who
-// declined the deny prompt would be false — most users say no, and for them
-// grep is a normal, working fallback. Text, not just structure: the deny
-// mechanism stops a denied call from succeeding, but says nothing to the
-// model in advance — measured live (2026-08-11), an agent tried grep anyway,
-// ate a denial, then recovered via prism. Telling it up front that the
-// attempt will fail should cut that wasted turn without changing anything
-// for users who never opted into the deny.
-func steeringBlock(denyBuiltinSearch bool) string {
-	if !denyBuiltinSearch {
-		return steeringInstructions
-	}
-	return strings.Replace(steeringInstructions,
-		"## Prism — code intelligence (ALWAYS use these tools)",
-		"## Prism — code intelligence (ALWAYS use these tools)\n\n"+
-			"grep, rg, and the built-in Grep tool are BLOCKED in this project — "+
-			"any attempt fails and wastes a turn. Do not try them, even out of "+
-			"habit. prism_search(scope=\"text\") is the replacement (a real "+
-			"ripgrep pass); prism_query/prism_read for context. Read/Edit still "+
-			"work for files you already know you're editing.",
-		1)
-}
+func steeringBlock() string { return steeringInstructions }
 
 // injectPrismSection replaces the Prism steering section in content, or
 // appends it when absent.
@@ -519,70 +624,40 @@ func steeringBlock(denyBuiltinSearch bool) string {
 // those are replaced up to the next top-level "## " heading, which preserves
 // the user's following sections instead of eating them.
 func injectPrismSection(content, block string) string {
-	// Exact-match the headings prism has EVER generated -- not a bare
-	// "## Prism — " prefix. Both failure modes are measured, same day:
-	// a marker pinned to one old heading made upgrades APPEND (duplicated
-	// blocks after the v0.48.0 heading rename), and an over-greedy prefix
-	// marker deleted a USER-authored "## Prism — Context Delivery Layer"
-	// architecture section from provasign/CLAUDE.md (restored from git).
-	// Prism may only ever claim sections it wrote; when the generated
-	// heading changes, ADD the old one here, never widen the match.
-	// Heading STEMS, case-sensitive: early generated headings appeared both
-	// with and without the "(ALWAYS use these tools)" suffix. The user's
-	// clashing section was "## Prism — Context Delivery Layer" — capital C —
-	// so case-sensitive stems distinguish it.
-	generatedHeadings := []string{
-		"## Prism — context delivery",
-		"## Prism — code intelligence",
-	}
+	const marker = "## Prism — context delivery"
 	const endMarker = "<!-- prism:end -->"
 
-	findSection := func(s string) (start, prefixLen int) {
-		start = -1
-		for _, h := range generatedHeadings {
-			if idx := strings.Index(s, "\n"+h); idx >= 0 && (start < 0 || idx < start) {
-				start, prefixLen = idx, 1
-			}
-			if strings.HasPrefix(s, h) {
-				start, prefixLen = 0, 0
-			}
-		}
-		return start, prefixLen
+	start := strings.Index(content, "\n"+marker)
+	prefixLen := 1 // the leading newline belongs to the preceding content
+	if start < 0 && strings.HasPrefix(content, marker) {
+		start, prefixLen = 0, 0
 	}
-
-	insertAt := -1
-	for {
-		start, prefixLen := findSection(content)
-		if start < 0 {
-			break
-		}
-		if insertAt < 0 {
-			insertAt = start
-		}
-		head := content[:start]
-		rest := content[start+prefixLen:]
-		if e := strings.Index(rest, endMarker); e >= 0 {
-			// Bounded section: everything through the end marker is ours.
-			content = head + "\n" + strings.TrimLeft(rest[e+len(endMarker):], "\n")
-		} else if n := strings.Index(rest, "\n## "); n >= 0 {
-			// Legacy unbounded section: ends at the next top-level heading.
-			content = head + "\n" + strings.TrimLeft(rest[n+1:], "\n")
-		} else {
-			content = head
-		}
-		content = strings.TrimRight(content, "\n") + "\n"
-	}
-
-	if insertAt < 0 || insertAt >= len(content) {
+	if start < 0 {
 		return strings.TrimRight(content, "\n") + block
 	}
-	head := strings.TrimRight(content[:insertAt], "\n")
-	tail := strings.TrimLeft(content[insertAt:], "\n")
-	if tail == "" {
-		return head + block
+	head := content[:start]
+	rest := content[start+prefixLen:]
+
+	// Bounded section: everything through the end marker is ours. Trim ALL
+	// leading newlines off the tail and re-join with exactly one blank line,
+	// so repeated re-init is byte-stable instead of accreting whitespace.
+	if e := strings.Index(rest, endMarker); e >= 0 {
+		tail := strings.TrimLeft(rest[e+len(endMarker):], "\n")
+		if tail == "" {
+			return head + block
+		}
+		return head + block + "\n" + tail
 	}
-	return head + block + "\n" + tail
+	// Legacy unbounded section: end it at the next top-level heading so the
+	// user's later sections survive the upgrade.
+	if n := strings.Index(rest, "\n## "); n >= 0 {
+		return head + block + "\n" + strings.TrimLeft(rest[n+1:], "\n")
+	}
+	return head + block
 }
+
+// detectSelfPath returns the absolute path to the running prism binary, or
+// falls back to "prism" (assumes it's on PATH).
 func detectSelfPath() string {
 	exe, err := os.Executable()
 	if err != nil {
@@ -592,16 +667,9 @@ func detectSelfPath() string {
 }
 
 // mcpEntry is the JSON structure every MCP-compatible tool expects.
-// AlwaysLoad exempts the server's tool schemas from client-side deferral
-// (Claude Code's tool-search): without it, cheap-tier models never make the
-// ToolSearch hop and the tools go unused (measured: haiku 0 prism calls
-// deferred vs 5 loaded, same task). Server-level belt to the per-tool
-// anthropic/alwaysLoad _meta the MCP server also emits; clients that don't
-// know the key ignore it.
 type mcpEntry struct {
-	Command    string   `json:"command"`
-	Args       []string `json:"args"`
-	AlwaysLoad bool     `json:"alwaysLoad,omitempty"`
+	Command string   `json:"command"`
+	Args    []string `json:"args"`
 }
 
 // initRegisterMCPTools writes MCP server config for every detected tool.
@@ -613,30 +681,12 @@ type mcpEntry struct {
 func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refresh, denyBuiltinSearch bool) []string {
 	var written []string
 
-	// Scope model: project-level is the default and touches ONLY files inside
-	// the repo. User-global tools (Zed, Codex CLI, opencode) and the global
-	// Claude settings are written only with --global, or after the explicit
-	// interactive question below — never silently.
-	globalTools := global
-	if !globalTools && !refresh && isInteractive() {
-		globalTools = promptGlobalTools()
-	}
-	// Claude Code approval/permissions target: the PROJECT settings file by
-	// default, so allow/deny/trust stay with the repo; machine-global only
-	// under --global.
-	claudeSettings := filepath.Join(projectDir, ".claude", "settings.json")
-	if global {
-		if home, err := os.UserHomeDir(); err == nil {
-			claudeSettings = filepath.Join(home, ".claude", "settings.json")
-		}
-	}
-
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
 	// portable and correct after the repo moves. The IDE writers below keep
 	// the explicit dir because their launch cwd is not guaranteed.
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}, AlwaysLoad: true}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
 
 	// Wrap in the per-tool envelope format and write.
 	type writer struct {
@@ -700,13 +750,9 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 				return buildVSCodeConfig(prismBin, projectDir)
 			},
 		},
-	}
-	if globalTools {
-		// opencode: ~/.config/opencode/opencode.json. USER-GLOBAL — written
-		// only when global registration was requested (flag or interactive
-		// consent). A project init must never touch machine-wide configs;
-		// this writer used to sit in the always-on list and leaked.
-		writers = append(writers, writer{
+		{
+			// opencode: ~/.config/opencode/opencode.json. User-global only —
+			// the loop below skips it unless that directory already exists.
 			name: "opencode",
 			path: func() string {
 				return filepath.Join(home, ".config", "opencode", "opencode.json")
@@ -714,7 +760,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 			build: func() []byte {
 				return buildOpencodeConfig(prismBin)
 			},
-		})
+		},
 	}
 
 	for _, w := range writers {
@@ -750,7 +796,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		if filepath.Base(p) == ".mcp.json" && mcpEntryAlreadyPresent(p, "prism", claudeEntry) {
 			fmt.Printf("already registered with %s: %s\n", w.name, p)
 			written = append(written, p)
-			ensureClaudeCodeApproval(claudeSettings, "prism", prismBin, permissions, denyBuiltinSearch)
+			ensureClaudeCodeApproval("prism", permissions, denyBuiltinSearch)
 			continue
 		}
 		content := w.build()
@@ -763,7 +809,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		fmt.Printf("registered with %s: %s\n", w.name, p)
 		written = append(written, p)
 		if filepath.Base(p) == ".mcp.json" {
-			ensureClaudeCodeApproval(claudeSettings, "prism", prismBin, permissions, denyBuiltinSearch)
+			ensureClaudeCodeApproval("prism", permissions, denyBuiltinSearch)
 		}
 	}
 
@@ -774,7 +820,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 	// one. Register them only with --global, and without a pinned project
 	// dir — `prism mcp` serves the editor's launch cwd, so one global entry
 	// is correct in every project.
-	if globalTools {
+	if global {
 		zedPath := filepath.Join(home, ".config", "zed", "settings.json")
 		if _, err := os.Stat(filepath.Dir(zedPath)); err == nil && !(refresh && !fileExists(zedPath)) {
 			merged := mergeOrCreate(zedPath, buildZedConfig(prismBin))
@@ -844,13 +890,6 @@ func mcpEntryAlreadyPresent(path string, name string, want mcpEntry) bool {
 		if got.Args[i] != a {
 			return false
 		}
-	}
-	// alwaysLoad participates in "already correct": an entry written before
-	// v0.44.0 lacks it, and skipping the rewrite would leave the server's
-	// schemas deferrable forever. The one-time Claude Code re-approval this
-	// rewrite triggers is the cost of the upgrade.
-	if got.AlwaysLoad != want.AlwaysLoad {
-		return false
 	}
 	return true
 }
@@ -1141,25 +1180,6 @@ func isInteractive() bool {
 	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
 }
 
-// promptGlobalTools asks — every interactive project-level init — whether to
-// also register the tools that only have user-global configs. Default NO:
-// a project init keeps the machine untouched.
-func promptGlobalTools() bool {
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Zed, Codex CLI, and opencode keep MCP registrations in USER-GLOBAL")
-	fmt.Fprintln(os.Stderr, "config files (outside this repo). Register prism with them too?")
-	fmt.Fprintln(os.Stderr, "  Default keeps setup project-level: nothing outside this repo is")
-	fmt.Fprintln(os.Stderr, "  touched, and other projects are unaffected.")
-	fmt.Fprint(os.Stderr, "Register user-global tools? [y/N]: ")
-	var line string
-	fmt.Scanln(&line)
-	switch strings.ToLower(strings.TrimSpace(line)) {
-	case "y", "yes":
-		return true
-	}
-	return false
-}
-
 // promptDenyBuiltinSearch offers the one change that actually routes agents
 // through prism, and explains the trade honestly. Default is NO: this edits
 // settings the user owns.
@@ -1168,9 +1188,8 @@ func promptDenyBuiltinSearch() bool {
 	fmt.Fprintln(os.Stderr, "Agents usually ignore steering and use their own grep — measured 12:1,")
 	fmt.Fprintln(os.Stderr, "and reproduced on a machine where prism was installed and connected.")
 	fmt.Fprintln(os.Stderr, "Deny Claude Code's built-in search so prism is actually reached?")
-	fmt.Fprintln(os.Stderr, "  Adds Grep, Bash(grep:*), Bash(rg:*) to permissions.deny in the")
-	fmt.Fprintln(os.Stderr, "  PROJECT's .claude/settings.json (machine-global only with")
-	fmt.Fprintln(os.Stderr, "  --global). Nothing becomes unfindable —")
+	fmt.Fprintln(os.Stderr, "  Adds Grep, Bash(grep:*), Bash(rg:*) to permissions.deny in")
+	fmt.Fprintln(os.Stderr, "  ~/.claude/settings.json. Nothing becomes unfindable —")
 	fmt.Fprintln(os.Stderr, "  prism_search(scope=\"text\") is a ripgrep passthrough. Reversible:")
 	fmt.Fprintln(os.Stderr, "  delete those lines. Only affects Claude Code.")
 	fmt.Fprint(os.Stderr, "Deny built-in search? [y/N]: ")
@@ -1183,54 +1202,12 @@ func promptDenyBuiltinSearch() bool {
 	return false
 }
 
-// ensureClaudeCodeHook registers `prism hook pretooluse` as a PreToolUse hook
-// for the Bash and Grep matchers, idempotently (safe to call on every
-// `prism init`/`--refresh`). It mutates doc in place and reports whether it
-// changed anything. Scope is deliberately narrow: this hook only ever denies
-// grep/rg — it does not touch Bash otherwise, so python and every other Bash
-// use is unaffected.
-func ensureClaudeCodeHook(doc map[string]any, prismBin string) bool {
-	command := prismBin + " hook pretooluse"
-	hooks, _ := doc["hooks"].(map[string]any)
-	if hooks == nil {
-		hooks = map[string]any{}
-	}
-	changed := false
-	for _, matcher := range []string{"Bash", "Grep"} {
-		entries, _ := hooks["PreToolUse"].([]any)
-		already := false
-		for _, e := range entries {
-			em, ok := e.(map[string]any)
-			if !ok || em["matcher"] != matcher {
-				continue
-			}
-			for _, hh := range asSliceAny(em["hooks"]) {
-				hm, ok := hh.(map[string]any)
-				if ok && hm["command"] == command {
-					already = true
-				}
-			}
-		}
-		if already {
-			continue
-		}
-		entries = append(entries, map[string]any{
-			"matcher": matcher,
-			"hooks":   []any{map[string]any{"type": "command", "command": command}},
-		})
-		hooks["PreToolUse"] = entries
-		changed = true
-	}
-	if changed {
-		doc["hooks"] = hooks
-	}
-	return changed
-}
-
-func ensureClaudeCodeApproval(path, serverName, prismBin string, allowTools, denyBuiltinSearch bool) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+func ensureClaudeCodeApproval(serverName string, allowTools, denyBuiltinSearch bool) {
+	home, err := os.UserHomeDir()
+	if err != nil {
 		return
 	}
+	path := filepath.Join(home, ".claude", "settings.json")
 	var doc map[string]any
 	if raw, err := os.ReadFile(path); err == nil {
 		json.Unmarshal(raw, &doc) //nolint:errcheck
@@ -1286,17 +1263,6 @@ func ensureClaudeCodeApproval(path, serverName, prismBin string, allowTools, den
 			}
 			perms["deny"] = deny
 			doc["permissions"] = perms
-
-			// PreToolUse hook: same policy as the deny rule above, but a hook
-			// fires BEFORE permission rules are evaluated and, on deny, feeds
-			// permissionDecisionReason back to the model as feedback instead of
-			// a bare failure — measured (haiku38, 2026-08) that agents recover
-			// to prism reliably once told what to do, not just that grep failed.
-			// permissions.deny stays as a failsafe: a hook that errors or is
-			// unreachable must not silently reopen the gap it exists to close.
-			if ensureClaudeCodeHook(doc, prismBin) {
-				changed = true
-			}
 		}
 	}
 
@@ -1592,9 +1558,6 @@ func cmdSearch(args []string) int {
 	format := formatText
 	scope := ""
 	regex := false
-	pathArg := ""
-	contextN := 0
-	filesOnly := false
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -1616,20 +1579,6 @@ func cmdSearch(args []string) int {
 			}
 		case "--regex":
 			regex = true
-		case "--files", "-l":
-			filesOnly = true
-		case "--path":
-			if i+1 < len(args) {
-				pathArg = args[i+1]
-				i++
-			}
-		case "--context", "-C":
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					contextN = n
-				}
-				i++
-			}
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1661,15 +1610,6 @@ func cmdSearch(args []string) int {
 	}
 	if regex {
 		callArgs["regex"] = true
-	}
-	if pathArg != "" {
-		callArgs["path"] = pathArg
-	}
-	if contextN > 0 {
-		callArgs["context"] = contextN
-	}
-	if filesOnly {
-		callArgs["files"] = true
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
 	if err != nil {
@@ -2059,108 +1999,6 @@ func cmdDeadCode(args []string) int {
 	return 0
 }
 
-// grepCommandPattern matches a grep/rg invocation as a Bash command: at the
-// start of the string or after a shell separator, an optional path prefix
-// (/usr/bin/grep), an optional sudo, then rg or grep as a whole word. Ported
-// from research/harness/swebench_ab.py's denied_search_attempts pattern,
-// which was tuned twice against real false positives (a bare substring match
-// hit the harness's own /tmp/...grepwarn dir name; a bare word-boundary
-// match missed /usr/bin/grep). The captured separator distinguishes grep as
-// a pipe FILTER from grep as a file SEARCHER — see hookDenyReason.
-var grepCommandPattern = regexp.MustCompile(`(^|[\s;&|(])((?:[^\s;&|(]*/)?(?:sudo\s+)?(?:rg|grep)\b)`)
-
-const grepHookReason = "grep/rg are blocked in this project. Use prism_search(scope=\"text\") " +
-	"(MCP tool, already loaded) for the equivalent ripgrep pass, or if you are already in a " +
-	"shell, `prism search <query> --format text` (CLI, same process, no extra round trip)."
-
-// hookDenyReason returns the permissionDecisionReason for a PreToolUse call,
-// or "" if it should proceed uninterrupted. Scope is deliberately narrow:
-// only grep/rg (the Grep tool, or grep/rg run via Bash) is ever denied here.
-// python and every other Bash use passes through untouched — python is a
-// real, general-purpose tool the agent needs for tests and repro scripts,
-// and pattern-matching "python reimplementing a file read" reliably enough
-// to avoid false-positiving on legitimate scripts is not solved here.
-func hookDenyReason(toolName string, toolInput map[string]any) string {
-	switch toolName {
-	case "Grep":
-		return grepHookReason
-	case "Bash":
-		cmd, _ := toolInput["command"].(string)
-		// grep as a pipe FILTER of another command's output (git log | grep,
-		// pip list | grep -i x) is NOT replaceable by prism — there is no
-		// file to search. Mining 946 real grep invocations from 228
-		// benchmark cells (2026-08-15): 289 were exactly this. Denying them
-		// forces awk/python workarounds without routing anything to prism.
-		// Only grep-as-file-searcher is denied: a grep token whose preceding
-		// separator is a pipe passes through.
-		for _, m := range grepCommandPattern.FindAllStringSubmatchIndex(cmd, -1) {
-			if isPipeFilter(cmd, m[2], m[3]) {
-				continue // stdin filter: prism has no equivalent, let it run
-			}
-			return grepHookReason
-		}
-	}
-	return ""
-}
-
-// isPipeFilter reports whether the grep token preceded by cmd[sepStart:sepEnd]
-// is consuming stdin through a single pipe (`a | grep x` — a stream filter)
-// rather than starting a fresh command (line start, ;, &&, ||, & or a
-// subshell paren — a file searcher). `||` is a logical or: the grep after it
-// is a producer, not a filter, and stays denied.
-func isPipeFilter(cmd string, sepStart, sepEnd int) bool {
-	sep := cmd[sepStart:sepEnd]
-	if sep == "|" {
-		return sepStart == 0 || cmd[sepStart-1] != '|'
-	}
-	if strings.TrimSpace(sep) != "" {
-		return false // ; & ( — fresh command position
-	}
-	// Separator was whitespace (or line start): look back for the operator.
-	i := sepStart - 1
-	for i >= 0 && (cmd[i] == ' ' || cmd[i] == '\t') {
-		i--
-	}
-	if i < 0 || cmd[i] != '|' {
-		return false
-	}
-	return i == 0 || cmd[i-1] != '|'
-}
-
-// cmdHook implements the Claude Code PreToolUse hook protocol: read the
-// event JSON from stdin, and on a match, write a hookSpecificOutput deny
-// decision so Claude Code cancels the call and feeds the reason back to the
-// model as feedback — richer than a bare permissions.deny failure, which
-// remains in place as a failsafe in case this hook is unreachable (binary
-// moved, PATH broken, etc.).
-func cmdHook(args []string) int {
-	if len(args) < 1 || args[0] != "pretooluse" {
-		fmt.Fprintln(os.Stderr, "hook: usage: prism hook pretooluse (reads Claude Code's PreToolUse JSON on stdin)")
-		return 2
-	}
-	var in struct {
-		ToolName  string         `json:"tool_name"`
-		ToolInput map[string]any `json:"tool_input"`
-	}
-	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
-		// Malformed/empty input must not block the tool call it exists to
-		// police — silently allow rather than fail closed on a parse error.
-		return 0
-	}
-	reason := hookDenyReason(in.ToolName, in.ToolInput)
-	if reason == "" {
-		return 0
-	}
-	printJSON(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":            "PreToolUse",
-			"permissionDecision":       "deny",
-			"permissionDecisionReason": reason,
-		},
-	})
-	return 0
-}
-
 func cmdCompact(args []string) int {
 	dir := dirArg(args, 0, ".")
 	var turns []map[string]any
@@ -2535,17 +2373,44 @@ func printJSON(v any) {
 // prism_search response: per-file matched lines, cached files as line
 // numbers only.
 func printTextMatches(m map[string]any) {
-	text, _ := m["textMatches"].(string)
-	if text == "" {
-		text, _ = m["textHits"].(string)
+	groups := asSliceAny(m["textMatches"])
+	if groups == nil {
+		groups = asSliceAny(m["textHits"])
 	}
-	if text == "" {
+	if len(groups) == 0 {
 		return
 	}
 	backend, _ := m["textBackend"].(string)
 	fmt.Printf("// text matches (%s):\n", backend)
-	for _, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
-		fmt.Printf("//   %s\n", line)
+	for _, g := range groups {
+		gm, ok := g.(map[string]any)
+		if !ok {
+			continue
+		}
+		if note, _ := gm["note"].(string); note != "" && gm["file"] == nil {
+			fmt.Printf("//   %s\n", note)
+			continue
+		}
+		file, _ := gm["file"].(string)
+		if cached, _ := gm["cached"].(bool); cached {
+			var lines []string
+			for _, l := range asSliceAny(gm["lines"]) {
+				lines = append(lines, fmt.Sprint(jsonInt(l)))
+			}
+			fmt.Printf("//   %s:%s [cached — content already delivered this session]\n",
+				file, strings.Join(lines, ","))
+			continue
+		}
+		for _, h := range asSliceAny(gm["hits"]) {
+			hm, ok := h.(map[string]any)
+			if !ok {
+				continue
+			}
+			fmt.Printf("//   %s:%d: %v\n", file, jsonInt(hm["line"]), hm["text"])
+		}
+		if more := jsonInt(gm["moreHits"]); more > 0 {
+			fmt.Printf("//   %s: +%d more matches\n", file, more)
+		}
 	}
 }
 
@@ -2667,28 +2532,6 @@ func printTextOutput(m map[string]any) {
 			fmt.Println("// " + note)
 		}
 		return
-	}
-	// prism_search scope="text" ("pure grep"): no "symbols" key at all, just
-	// textHits/textBackend/truncated(/resolvedNote/timedOut) — the branch
-	// above only fires when "symbols" is present, so this shape fell
-	// through all the way to the JSON fallback, silently. --format text
-	// documented (steering, README, the hook's own deny message) as the
-	// zero-extra-round-trip path for exactly this call; it never rendered
-	// as text.
-	if _, hasSymbols := m["symbols"]; !hasSymbols {
-		if _, hasTextHits := m["textHits"]; hasTextHits {
-			printTextMatches(m)
-			if w, _ := m["warning"].(string); w != "" {
-				fmt.Println("// " + w)
-			}
-			if n, _ := m["resolvedNote"].(string); n != "" {
-				fmt.Println("// " + n)
-			}
-			if n, _ := m["note"].(string); n != "" {
-				fmt.Println("// " + n)
-			}
-			return
-		}
 	}
 	// prism_lookup with --fields: projected columns (name/file/line + selected),
 	// no "content"/"symbol". Render the requested columns compactly.

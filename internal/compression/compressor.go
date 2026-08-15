@@ -35,7 +35,15 @@ func Hash(content string) string {
 }
 
 // Options configures CompressFileRead.
+//
+// Task is retained for API compatibility and potential future use, but it
+// intentionally does NOT influence a first read: Prism delivers the complete
+// file on first read and never trims symbol bodies by relevance, since a
+// lossy first-read reconstruction silently drops content the model has never
+// seen. All compression happens on the safe re-read paths (sha-pointer and the
+// lossless semantic delta), which key off Session state, not relevance.
 type Options struct {
+	Task            string               // unused by file-read compression (see above)
 	Symbols         []grove.SymbolRecord // symbols in this file (from Grove)
 	Session         *session.Tracker
 	Ledger          *session.Ledger

@@ -47,12 +47,6 @@ type Result struct {
 }
 
 // Options bound a search. Zero values get safe defaults.
-//
-// Path/Context/FilesOnly exist because agents use grep with them constantly:
-// mining 946 real grep/rg invocations from 228 benchmark cells (2026-08-15)
-// found 511 dir- or file-scoped searches, 101 uses of -A/-B/-C context and
-// 66 of -l — capabilities prism_search could not express, so agents either
-// got whole-tree noise for a scoped question or fell back to shell.
 type Options struct {
 	MaxHits    int           // total hits cap (default 100)
 	MaxPerFile int           // per-file hits cap (default 20)
@@ -61,13 +55,6 @@ type Options struct {
 	// string. A pattern that does not compile falls back to literal — a
 	// search that errors is a tool agents route around.
 	Regex bool
-	// Path restricts the search to one file or directory (relative to root),
-	// grep's `grep pat some/dir` / `grep pat file.py`. Empty = whole tree.
-	Path string
-	// Context includes N lines around each match (grep -C N).
-	Context int
-	// FilesOnly returns one hit per matching file, no text (grep -l).
-	FilesOnly bool
 }
 
 func (o Options) withDefaults() Options {
@@ -229,22 +216,8 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")
 	}
-	if opts.Context > 0 {
-		// Context lines normally use dash separators (path-N-text), which are
-		// ambiguous to parse when paths contain dashes; a colon separator
-		// makes them parse identically to match lines.
-		args = append(args, "--context", strconv.Itoa(opts.Context),
-			"--field-context-separator", ":", "--no-context-separator")
-	}
-	if opts.FilesOnly {
-		args = append(args, "--files-with-matches")
-	}
-	target := "."
-	if opts.Path != "" {
-		target = opts.Path
-	}
 	// --hidden would otherwise descend into the VCS dir and prism's state.
-	args = append(args, "--glob", "!.git/", "--glob", "!.grove/", "-e", pattern, "--", target)
+	args = append(args, "--glob", "!.git/", "--glob", "!.grove/", "-e", pattern, "--", ".")
 	return runLineTool(ctx, root, bin("rg"), args, nil, opts)
 }
 
@@ -267,17 +240,7 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
-	if opts.Context > 0 {
-		args = append(args, "-C", strconv.Itoa(opts.Context))
-	}
-	if opts.FilesOnly {
-		args = append(args, "-l")
-	}
-	target := "."
-	if opts.Path != "" {
-		target = opts.Path
-	}
-	args = append(args, "-e", pattern, "--", target)
+	args = append(args, "-e", pattern, "--", ".")
 	return runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)
 }
 
@@ -299,18 +262,6 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		if len(res.Hits) >= opts.MaxHits {
 			res.Truncated = true
 			break
-		}
-		if opts.FilesOnly {
-			// -l / --files-with-matches: each line is a bare path.
-			p := strings.TrimSpace(sc.Text())
-			if p != "" && p != "--" {
-				res.Hits = append(res.Hits, Hit{
-					File: filepath.ToSlash(strings.TrimPrefix(p, "./"))})
-			}
-			continue
-		}
-		if sc.Text() == "--" {
-			continue // grep's context-group separator
 		}
 		parts := strings.SplitN(sc.Text(), ":", 3)
 		if len(parts) != 3 {

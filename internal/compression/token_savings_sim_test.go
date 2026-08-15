@@ -164,6 +164,7 @@ func TestTokenSavings(t *testing.T) {
 		res := scenarioResult{name: "full-fresh (turn 1, faithful)"}
 		for _, fd := range corpus {
 			r := CompressFileRead(fd.path, fd.content, Options{
+				Task:            "implement caching layer",
 				Symbols:         fd.syms,
 				Session:         tr,
 				Ledger:          ledger,
@@ -186,7 +187,7 @@ func TestTokenSavings(t *testing.T) {
 		// Turn 1: prime the session.
 		for _, fd := range corpus {
 			CompressFileRead(fd.path, fd.content, Options{
-				Symbols: fd.syms,
+				Task: "implement", Symbols: fd.syms,
 				Session: tr, Ledger: ledger, TokenLedgerName: "prism_read",
 				Confidence: session.High,
 			})
@@ -194,7 +195,7 @@ func TestTokenSavings(t *testing.T) {
 		// Turn 2: re-read same files.
 		for _, fd := range corpus {
 			r := CompressFileRead(fd.path, fd.content, Options{
-				Symbols: fd.syms,
+				Task: "implement", Symbols: fd.syms,
 				Session: tr, Ledger: ledger, TokenLedgerName: "prism_read",
 				Confidence: session.High,
 			})
@@ -214,7 +215,7 @@ func TestTokenSavings(t *testing.T) {
 		// Turn 1: prime the session with all symbols + their SHAs.
 		for _, fd := range corpus {
 			r := CompressFileRead(fd.path, fd.content, Options{
-				Symbols: fd.syms,
+				Task: "fix bug", Symbols: fd.syms,
 				Session: tr, Ledger: ledger, TokenLedgerName: "prism_read",
 				Confidence: session.High,
 			})
@@ -227,7 +228,7 @@ func TestTokenSavings(t *testing.T) {
 		for _, fd := range corpus {
 			modified := fd.content + "\n// edited\n"
 			r := CompressFileRead(fd.path, modified, Options{
-				Symbols: fd.syms,
+				Task: "fix bug", Symbols: fd.syms,
 				Session: tr, Ledger: ledger, TokenLedgerName: "prism_read",
 				Confidence: session.High,
 			})

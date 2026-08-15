@@ -237,49 +237,6 @@ func TestSafePathWithinRoot_RelativeSymlinkEscape(t *testing.T) {
 
 // ─── ToolSchemas ──────────────────────────────────────────────────────────
 
-// Routing-critical tools must carry anthropic/alwaysLoad so Claude Code never
-// defers their schemas behind a ToolSearch hop (cheap tiers don't make the
-// hop — measured haiku 0 calls deferred vs 5 loaded). Long-tail graph ops
-// must stay deferrable to keep the always-on schema cost low.
-// Combined size of the always-loaded descriptions is billed in every prism
-// session, on every prism user, forever — unlike steering (harness-injected,
-// variable) this is baked into the shipped binary. Ceiling catches accretion
-// (each addition individually justified, nobody sums them — see the 2026-08-11
-// steering diet, same failure one layer up); floor catches over-cutting into
-// content tests don't otherwise protect.
-func TestToolDescriptionsAlwaysLoadTotalSizeBounded(t *testing.T) {
-	always := []string{"prism_search", "prism_query", "prism_read", "prism_lookup", "prism_change_impact"}
-	total := 0
-	for _, n := range always {
-		total += len(toolDescription(n))
-	}
-	if total > 3200 {
-		t.Errorf("always-loaded tool descriptions total %d chars, want <=3200 (billed every session, every user)", total)
-	}
-	if total < 2000 {
-		t.Errorf("always-loaded tool descriptions total %d chars, want >=2000 (suspiciously low — check nothing load-bearing was cut)", total)
-	}
-}
-
-func TestToolSchemasAlwaysLoadOnRoutingCriticalTools(t *testing.T) {
-	always := map[string]bool{
-		"prism_search": true, "prism_query": true, "prism_read": true,
-		"prism_lookup": true, "prism_change_impact": true,
-	}
-	for _, s := range ToolSchemas() {
-		name := s["name"].(string)
-		meta, hasMeta := s["_meta"].(map[string]any)
-		if always[name] {
-			if !hasMeta || meta["anthropic/alwaysLoad"] != true {
-				t.Errorf("%s must set _meta anthropic/alwaysLoad=true", name)
-			}
-		} else if hasMeta && meta["anthropic/alwaysLoad"] == true {
-			t.Errorf("%s must stay deferrable (unexpected alwaysLoad)", name)
-		}
-	}
-}
-
-
 func TestToolSchemasReturnsAdvertisedTools(t *testing.T) {
 	schemas := ToolSchemas()
 	if len(schemas) != 14 {

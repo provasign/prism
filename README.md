@@ -76,15 +76,9 @@ for both.
    completeness holds from a free local 30B model to a frontier model —
    measured at recall 1.00 on both, where orchestration-based approaches
    collapse on cheap models.
-5. **One search surface, structurally routed.** `prism_search(scope="text")`
-   runs a real ripgrep pass, so Prism subsumes `grep` rather than sitting
-   beside it — and routing is enforced structurally, not by persuasion:
-   steering alone is ignored (measured 12:1), so `prism init` offers
-   (`--deny-builtin-search`) to deny Claude Code's built-in Grep/`grep`/`rg`
-   and register a PreToolUse hook that explains the denial back to the model
-   in-band, making Prism the search path while nothing becomes unfindable.
-   Prism answers relationship and whole-task questions; the model reasons
-   and edits.
+5. **Each layer does what it's best at.** Shell tools find the first anchor
+   (they win at string location — Prism does not replace `grep`). Prism
+   answers relationship and whole-task questions. The model reasons and edits.
 6. **Evidence-backed abstraction.** Above the task ops sits a component-level
    view (`prism map` / `prism cycles`): directories as components, dependency
    edges induced from the real call/import/type edges crossing between them,
@@ -165,27 +159,6 @@ fallback for subagents that don't inherit the MCP session):
 ```bash
 prism init .
 ```
-
-**Routing is structural, not rhetorical.** Steering alone does not route
-agents — measured 12:1, an agent will acknowledge its CLAUDE.md and then run
-`grep` anyway. Interactive `prism init` therefore offers (and
-`--deny-builtin-search` forces) two changes in the PROJECT's
-`.claude/settings.json` (machine-global only with `--global`):
-`Grep`, `Bash(grep:*)`, `Bash(rg:*)` added to `permissions.deny`, and a
-`PreToolUse` hook (`prism hook pretooluse`) registered on the `Bash`/`Grep`
-matchers. The hook is what actually fires first — it denies the call and
-feeds the reason back to the model as tool-result text ("use prism_search
-instead"), rather than a bare failure; `permissions.deny` stays as a
-failsafe in case the hook binary is ever unreachable. Nothing becomes
-unfindable — `prism_search(scope="text")` is a ripgrep passthrough — and
-it's reversible by deleting those lines. Claude Code only; CI and
-non-interactive runs are never prompted and get no settings change.
-
-**Setup is project-level by default.** A plain `prism init` touches only
-files inside the repo (`.mcp.json`, steering files, the project's
-`.claude/settings.json`). Tools whose configs are user-global — Zed, Codex
-CLI, opencode — are registered only when interactive init's *"Register
-user-global tools?"* question is answered yes, or with `--global`.
 
 Agents with an active MCP session call `prism_query`, `prism_read`, and
 `prism_lookup` directly. For bug-fix and implement tasks `prism_query`
@@ -547,9 +520,7 @@ Current practical summary:
 
 - CLI `--format text` is the recommended default for shell-capable agents.
 - Prism is strongest on graph/blast-radius questions.
-- String/filename location is covered in-tool: `prism search --scope text`
-  is a ripgrep passthrough, so no separate shell search is needed (and with
-  `--deny-builtin-search` it is the only search path).
+- Shell tools remain best for locating exact strings or filenames.
 - MCP persistent transports add repeated-read deduplication that direct CLI
   invocations do not fully exercise.
 

@@ -53,73 +53,22 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 		{File: "seen.txt", Line: 3, Text: "gamma needle"},
 		{File: "fresh.txt", Line: 1, Text: "delta needle"},
 	})
-	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("got %d lines, want 2 (one cached summary, one verbatim hit): %v", len(lines), lines)
+	if len(out) != 2 {
+		t.Fatalf("got %d file groups, want 2: %v", len(out), out)
 	}
-	seenLine, freshLine := lines[0], lines[1]
-	if !strings.HasPrefix(seenLine, "seen.txt:") || !strings.Contains(seenLine, "cached") ||
-		!strings.Contains(seenLine, "1,3") {
-		t.Errorf("seen.txt entry should be a cached summary naming both lines: %q", seenLine)
+	seen, fresh := out[0], out[1]
+	if seen["file"] != "seen.txt" || seen["cached"] != true {
+		t.Errorf("seen.txt entry should be cached: %v", seen)
 	}
-	if strings.Contains(seenLine, "alpha needle") || strings.Contains(seenLine, "gamma needle") {
-		t.Errorf("cached entry must not re-send text: %q", seenLine)
+	if _, hasText := seen["hits"]; hasText {
+		t.Errorf("cached entry must not re-send text: %v", seen)
 	}
-	if freshLine != "fresh.txt:1:delta needle" {
-		t.Errorf("fresh.txt should carry verbatim file:line:text, got %q", freshLine)
+	if lines, ok := seen["lines"].([]int); !ok || len(lines) != 2 {
+		t.Errorf("cached entry should list both lines: %v", seen)
 	}
-}
-
-// TestRenderTextMatchesRanksRealFilesBeforeTestDoubles: found live
-// 2026-08-14 (prism_search("RequestContext") on a2a-python, 251 real hits
-// across 28 files) -- with files kept in raw scan order, the file cap
-// showed 9 test/sample files and zero real implementation files, purely
-// because of the order rg's stdout happened to emit them in. Real files
-// must outrank test doubles regardless of encounter order or hit count.
-func TestRenderTextMatchesRanksRealFilesBeforeTestDoubles(t *testing.T) {
-	h := newTestHandler(t)
-	var hits []textsearch.Hit
-	// Encounter order deliberately adversarial: the test double file comes
-	// first AND has more hits than the real file -- both signals point the
-	// wrong way, so only an explicit real-before-test rule survives this.
-	for l := 1; l <= 20; l++ {
-		hits = append(hits, textsearch.Hit{File: "pkg/foo_test.go", Line: l, Text: "x"})
-	}
-	for l := 1; l <= 3; l++ {
-		hits = append(hits, textsearch.Hit{File: "pkg/foo.go", Line: l, Text: "x"})
-	}
-	out := h.renderTextMatches(hits)
-	realIdx := strings.Index(out, "pkg/foo.go:")
-	testIdx := strings.Index(out, "pkg/foo_test.go:")
-	if realIdx < 0 {
-		t.Fatalf("real file missing from output entirely: %q", out)
-	}
-	if testIdx >= 0 && realIdx > testIdx {
-		t.Errorf("test double ranked before the real implementation file: %q", out)
-	}
-}
-
-// TestRenderTextMatchesRanksByHitCountWithinTier: among files of the same
-// tier (both real, or both test doubles), more hits should rank first --
-// a file mentioned 20 times is more likely central to the query than one
-// mentioned once.
-func TestRenderTextMatchesRanksByHitCountWithinTier(t *testing.T) {
-	h := newTestHandler(t)
-	var hits []textsearch.Hit
-	// Low-hit file encountered first; high-hit file second -- only a real
-	// ranking (not scan order) puts the high-hit file first.
-	hits = append(hits, textsearch.Hit{File: "pkg/rare.go", Line: 1, Text: "x"})
-	for l := 1; l <= 10; l++ {
-		hits = append(hits, textsearch.Hit{File: "pkg/central.go", Line: l, Text: "x"})
-	}
-	out := h.renderTextMatches(hits)
-	rareIdx := strings.Index(out, "pkg/rare.go:")
-	centralIdx := strings.Index(out, "pkg/central.go:")
-	if rareIdx < 0 || centralIdx < 0 {
-		t.Fatalf("expected both files present: %q", out)
-	}
-	if centralIdx > rareIdx {
-		t.Errorf("file with more hits (central.go) should rank before file with fewer (rare.go): %q", out)
+	hits, ok := fresh["hits"].([]map[string]any)
+	if fresh["file"] != "fresh.txt" || !ok || len(hits) != 1 || hits[0]["text"] != "delta needle" {
+		t.Errorf("fresh.txt should carry verbatim text: %v", fresh)
 	}
 }
 
@@ -135,11 +84,16 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 		}
 	}
 	out := h.renderTextMatches(hits)
-	if !strings.Contains(out, "3 more files with matches omitted") {
-		t.Errorf("expected an omission note for the 3 files beyond the cap: %q", out)
+	if len(out) != textRenderFileCap+1 { // cap + omission note
+		t.Fatalf("got %d entries, want %d", len(out), textRenderFileCap+1)
 	}
-	if !strings.Contains(out, "2 more matches omitted") {
-		t.Errorf("expected per-file overflow to be counted, got: %q", out)
+	last := out[len(out)-1]
+	if _, ok := last["note"]; !ok {
+		t.Errorf("final entry should be the omission note: %v", last)
+	}
+	first := out[0]
+	if more, ok := first["moreHits"].(int); !ok || more != 2 {
+		t.Errorf("per-file overflow should be counted: %v", first)
 	}
 }
 
@@ -159,8 +113,8 @@ func TestSearchScopeTextIsPureGrep(t *testing.T) {
 	if _, hasSyms := m["symbols"]; hasSyms {
 		t.Errorf("pure grep must not carry a symbols section: %v", m)
 	}
-	hits, ok := m["textHits"].(string)
-	if !ok || !strings.HasPrefix(hits, "cfg.yaml:1:") {
+	hits, ok := m["textHits"].([]map[string]any)
+	if !ok || len(hits) != 1 || hits[0]["file"] != "cfg.yaml" {
 		t.Errorf("expected exactly the cfg.yaml hit, got %v", m)
 	}
 }
@@ -207,46 +161,5 @@ func TestSourceDeliveryBoundedByGiantLine(t *testing.T) {
 	}
 	if !strings.Contains(out, "dashboard.py") || !strings.Contains(out, "truncated") {
 		t.Error("truncation must name the file and say it happened")
-	}
-}
-
-// TestSearchStreakNoteFiresOnThirdDistinctSearch: the in-band consolidation
-// nudge. Delivery-channel finding 2026-08-15: the identical advice as turn-0
-// steering prose was ignored on its first live smoke (nine sequential
-// single-term searches); the hook's deny reason — same kind of instruction,
-// tool-result channel, decision time — steers ~100%. So the advice rides
-// the Nth search result, carrying the agent's own accumulated terms.
-func TestSearchStreakNoteFiresOnThirdDistinctSearch(t *testing.T) {
-	h := newTestHandler(t)
-	if n := h.searchStreakNote("cache_hit"); n != "" {
-		t.Errorf("1st search must be silent, got %q", n)
-	}
-	if n := h.searchStreakNote("cache_miss"); n != "" {
-		t.Errorf("2nd search must be silent, got %q", n)
-	}
-	if n := h.searchStreakNote("cache_hit"); n != "" {
-		t.Errorf("repeat of a prior term is a re-check, must not advance the streak: %q", n)
-	}
-	n := h.searchStreakNote("hit_ratio")
-	if n == "" {
-		t.Fatal("3rd distinct search must carry the consolidation nudge")
-	}
-	for _, want := range []string{"prism_query", `"cache_hit"`, `"cache_miss"`, `"hit_ratio"`} {
-		if !strings.Contains(n, want) {
-			t.Errorf("nudge must carry the agent's own terms ready to paste; missing %s in %q", want, n)
-		}
-	}
-	// The 4th search must be silent — one nudge per streak; fourteen
-	// repeats in one live session (nudge-smoke) changed nothing.
-	if n2 := h.searchStreakNote("fourth_term"); n2 != "" {
-		t.Errorf("nudge must fire once per streak, got a repeat: %q", n2)
-	}
-	// A prism_query call resets the streak (wired in Invoke's dispatch).
-	h.streakMu.Lock()
-	h.searchStreak = nil
-	h.streakNudged = false
-	h.streakMu.Unlock()
-	if n := h.searchStreakNote("fresh_term"); n != "" {
-		t.Errorf("streak must reset after prism_query, got %q", n)
 	}
 }

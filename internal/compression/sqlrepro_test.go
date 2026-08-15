@@ -63,6 +63,7 @@ func sqlSymbols() []grove.SymbolRecord {
 // read must return the file byte-for-byte regardless of symbol relevance.
 func TestSQL_FirstReadIsFaithful(t *testing.T) {
 	opts := Options{
+		Task:            "make the orders total column allow negative refunds",
 		Symbols:         sqlSymbols(),
 		Session:         session.NewTracker(100),
 		Ledger:          session.NewLedger("sql"),
