@@ -1,0 +1,71 @@
+shale_version: "0"
+id: 4678afc5-41b7-4e53-ac34-9f3ed1212962-c3
+created_at: 2026-08-15T19:55:52.531672Z
+finalized_at: 2026-08-15T20:23:19.182199Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:20:41.209434Z
+    - path: internal/cli/help_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:21:24.662264Z
+commands:
+    - cmd: 'git commit -q -am "docs: record that \`prism init --help\` performs an init" && git push origin main 2>&1 | tail -3'
+      at: 2026-08-15T19:55:52.531672Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        import re,io
+        p='MEMORY.md'
+        s=open(p).read()
+        s=s.replace("read prism/HANDOFF.md before touching steering, the hook, or init",
+                    "SHIPPED as v0.52.0; tap must be updated BY HAND (no HOMEBREW_TAP_TOKEN); read prism/HANDOFF.md before touching steering, the hook, or init")
+        open(p,'w').write(s)
+        print([l for l in s.splitlines() if 'HANDOFF' in l])
+        EOF
+      at: 2026-08-15T19:56:07.282415Z
+      classified: other
+    - cmd: go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/prism-test ./cmd/prism && cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad && mkdir -p helpcheck && cd helpcheck && ../prism-test init --help; echo "--- exit $? ; files written:"; ls -A
+      at: 2026-08-15T20:20:59.990313Z
+      classified: build
+    - cmd: |-
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/prism-test
+        echo "### search --help"; $P search --help
+        echo "### query -h"; $P query -h
+        echo "### change-impact --help"; $P change-impact --help
+        echo "### install --help (alias)"; $P install --help | head -2
+        echo "### search help (must still search)"; $P search help --scope text --limit 2 --format text 2>&1 | head -6
+        echo "### plain help still works"; $P --help | head -3
+      at: 2026-08-15T20:21:06.300156Z
+      classified: other
+    - cmd: go test ./internal/cli/ -run 'Help|Usage' -v 2>&1 | tail -25
+      at: 2026-08-15T20:21:27.197037Z
+      classified: test
+    - cmd: go test ./internal/cli/ -run 'Help|Usage' -v 2>&1 | tail -20
+      at: 2026-08-15T20:21:41.770501Z
+      classified: test
+    - cmd: go test ./internal/cli/ -run 'Help|Usage' 2>&1 | tail -3; echo "=== full suite ==="; go vet ./... && go test ./... 2>&1 | tail -16
+      at: 2026-08-15T20:21:46.836004Z
+      classified: lint
+    - cmd: go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.52.1" -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/prism-gate ./cmd/prism && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/prism-gate 2>&1 | tail -20
+      at: 2026-08-15T20:21:55.427439Z
+      classified: build
+    - cmd: tail -8 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/tasks/bayi38ccj.output
+      at: 2026-08-15T20:23:07.37714Z
+      classified: other
+notes:
+    - text: continuation of session 4678afc5-41b7-4e53-ac34-9f3ed1212962 — events captured after its evidence was finalized
+      at: 2026-08-15T19:55:52.531672Z
+redactions: 0
