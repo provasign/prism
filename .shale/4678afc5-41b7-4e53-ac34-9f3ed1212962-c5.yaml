@@ -1,0 +1,45 @@
+shale_version: "0"
+id: 4678afc5-41b7-4e53-ac34-9f3ed1212962-c5
+created_at: 2026-08-15T20:25:37.372904Z
+finalized_at: 2026-08-15T20:28:00.89087Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: .github/workflows/release.yml
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T20:27:50.028562Z
+commands:
+    - cmd: |-
+        git commit -q -am "docs: mark the --help bugs fixed in v0.52.1" && git push -q origin main && echo PUSHED; python3 - <<'EOF'
+        import re
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_handoff_2026_08_15.md'
+        s=open(p).read()
+        s=s.replace("**SHIPPED as `v0.52.0` on 2026-08-15**","**SHIPPED as `v0.52.0` on 2026-08-15**, then **`v0.52.1`** (fixes `prism\n<cmd> --help` running the command — `init --help` used to perform a full init)")
+        open(p,'w').write(s)
+        i='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+        t=open(i).read().replace("SHIPPED as v0.52.0;","SHIPPED as v0.52.1;")
+        open(i,'w').write(t)
+        print("memory updated")
+        EOF
+      at: 2026-08-15T20:25:37.372904Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/tap && git pull -q && ls -A && ls Formula && echo "=== workflows ===" && ls -A .github/workflows 2>/dev/null || echo "(none)"; echo "=== gen script ==="; cat /Users/tapabratapal/Projects/provasign/prism/scripts/gen-homebrew-formula.sh
+      at: 2026-08-15T20:27:13.309008Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/tap && cat .github/workflows/refresh-formulae.yml && echo "=== scripts ===" && ls scripts
+      at: 2026-08-15T20:27:18.419893Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4678afc5-41b7-4e53-ac34-9f3ed1212962/scratchpad/tap && cat scripts/refresh-formulae.sh; echo "=== recent tap runs ==="; gh run list -R provasign/homebrew-shale --limit 5
+      at: 2026-08-15T20:27:30.775696Z
+      classified: other
+notes:
+    - text: continuation of session 4678afc5-41b7-4e53-ac34-9f3ed1212962 — events captured after its evidence was finalized
+      at: 2026-08-15T20:25:37.372904Z
+redactions: 0
