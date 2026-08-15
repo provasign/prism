@@ -1,0 +1,1277 @@
+shale_version: "0"
+id: c92e7cda-68a2-458f-bb70-004cec486de3-c19
+created_at: 2026-08-15T04:02:43.298855Z
+finalized_at: 2026-08-15T04:36:49.348475Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-15T04:09:52.431324Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git worktree remove /tmp/prism-v0502 --force 2>/dev/null
+        rm -f /tmp/prism-control /tmp/prism-treatment && rm -rf /tmp/nudge-wire /tmp/nudge-ab-control /tmp/nudge-ab-treatment
+        python3 - <<'EOF'
+        import json, os
+        p = os.path.expanduser("~/.claude.json"); d = json.load(open(p))
+        for k in list(d.get("projects", {})):
+            if k.startswith("/tmp/nudge-ab-"): d["projects"].pop(k)
+        json.dump(d, open(p, "w"), indent=2)
+        EOF
+        git checkout -b nudge-correction -q
+        git add -A internal/
+        git commit -q -F - <<'EOF'
+        fix: nudge fires once per streak; correct the v0.50.3 effectiveness claim
+
+        The v0.50.3 replication FAILED. Preserved A/B (control=v0.50.2 binary,
+        treatment=v0.50.3, identical Kinto-3566 task/model/config; transcripts and
+        diffs in research/harness/runs/swebench-live/nudge-smoke/): treatment ran
+        16 sequential single-term searches, received 14 nudges, consolidated ZERO
+        times — worse than that run's control (5 searches). Across n=2 treatment
+        runs: one consolidation, one total ignore. The v0.50.3 commit's
+        "directional" claim overstated an n=1.
+
+        Refined finding, recorded in session memory: the hook's ~100% steering
+        number comes from channel + CONSEQUENCE — a deny blocks the action, so
+        the model must change course. An advisory note in the same channel blocks
+        nothing and performs like ordinary advice. Advisory in-band nudges are
+        not enforcement; their effect, if any, is unproven.
+
+        What this commit changes: the nudge now fires ONCE per streak
+        (streakNudged, reset alongside the streak on prism_query) instead of on
+        every search from the 3rd onward — fourteen repeats in one session is
+        wallpaper by this codebase's own resolvedRefNote discipline, and the
+        transcript shows repetition changed nothing. The mechanism stays (cheap,
+        one line, possibly helpful, now non-spammy); the claim shrinks to match
+        the evidence.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git checkout main -q && git merge --ff-only nudge-correction -q && git branch -d nudge-correction
+        git push origin main 2>&1 | tail -1
+        git tag v0.50.4 && git push origin v0.50.4 2>&1 | tail -1
+      at: 2026-08-15T04:02:43.298855Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... && go vet ./... && go test ./... 2>&1 | tail -6
+      at: 2026-08-15T04:10:06.584441Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... 2>&1 | awk '/FAIL|--- FAIL/'
+      at: 2026-08-15T04:10:11.274764Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/cli/ -run 'TestSteeringBlock_CoversBothSurfaces|TestCmdInit_ModeFlagAcceptedAndIgnored' -v 2>&1 | awk '/FAIL|want|got|missing|Error/' | head -12
+      at: 2026-08-15T04:10:16.630809Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... && go test ./... 2>&1 | awk '/FAIL/' ; echo "suite: $?"
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.50.4-redirect" -o /tmp/prism-redirect ./cmd/prism
+      at: 2026-08-15T04:10:34.092937Z
+      classified: test
+    - cmd: |-
+        OUT=~/Projects/provasign/research/harness/runs/swebench-live/steering-redirect-smoke
+        ls -la "$OUT" 2>/dev/null
+        echo "--- scratch worktrees ---"
+        ls -d /tmp/redirect-run* 2>/dev/null && du -sh /tmp/redirect-run*/kinto 2>/dev/null
+        echo "--- any leftover processes ---"
+        ps aux -o pid,etime,command | awk '/claude -p|prism-redirect|cp -r .tmp.swebench-repos/ && !/awk/'
+        echo "--- partial transcript? ---"
+        wc -l "$OUT"/redirect-run1.jsonl 2>/dev/null || echo "no transcript file"
+      at: 2026-08-15T04:17:24.790738Z
+      classified: other
+    - cmd: |-
+        python3 - ~/Projects/provasign/research/harness/runs/swebench-live/steering-redirect-smoke/redirect-run1.jsonl <<'EOF'
+        import json, sys
+        searches = queries = greps = 0
+        seq = []
+        for line in open(sys.argv[1]):
+            line = line.strip()
+            if not line: continue
+            try: rec = json.loads(line)
+            except Exception: continue
+            t = rec.get("type")
+            if t == "assistant":
+                for b in rec.get("message", {}).get("content", []):
+                    if b.get("type") == "tool_use":
+                        n, inp = b.get("name"), b.get("input", {})
+                        if n == "mcp__prism__prism_search":
+                            searches += 1; seq.append(f"search({inp.get('query','')[:40]})")
+                        elif n == "mcp__prism__prism_query":
+                            queries += 1; seq.append(f"QUERY(terms={inp.get('terms')})")
+                        elif n.startswith("mcp__prism"):
+                            seq.append(n.replace("mcp__prism__",""))
+                        elif n == "Bash":
+                            cmd = str(inp.get("command",""))[:50]
+                            seq.append(f"bash:{cmd}")
+                        else:
+                            seq.append(n)
+            elif t == "result":
+                print(f"turns={rec.get('num_turns')} cost=${rec.get('total_cost_usd'):.3f} denials={len(rec.get('permission_denials') or [])}")
+        print(f"prism_search={searches} prism_query={queries}")
+        for i, s in enumerate(seq[:45]):
+            print(f"  {i:2} {s}")
+        if len(seq) > 45: print(f"  ... +{len(seq)-45} more")
+        EOF
+      at: 2026-08-15T04:17:42.790003Z
+      classified: other
+    - cmd: |-
+        cd /tmp/redirect-run1/kinto && git diff > ~/Projects/provasign/research/harness/runs/swebench-live/steering-redirect-smoke/redirect-run1.diff 2>/dev/null
+        cd / && rm -rf /tmp/redirect-run1
+        python3 - <<'EOF'
+        import json, os
+        p = os.path.expanduser("~/.claude.json"); d = json.load(open(p))
+        for k in list(d.get("projects", {})):
+            if k.startswith("/tmp/redirect-run"): d["projects"].pop(k)
+        json.dump(d, open(p, "w"), indent=2)
+        EOF
+        echo cleaned
+      at: 2026-08-15T04:17:57.898806Z
+      classified: other
+    - cmd: |-
+        cd /tmp/swebench-repos/Kinto__kinto
+        echo "--- does the local clone contain history AFTER the task's base commit? ---"
+        git log --oneline f4da0160f7eec83b5571548954ab64c59d63695a..origin/main 2>/dev/null | head -8
+        echo ""
+        echo "--- specifically: is the cache-hit-ratio FIX in the clone? ---"
+        git log --all --oneline -i --grep="cache hit\|hit ratio\|cache_hits" 2>/dev/null | head -5
+        echo ""
+        cd /tmp/swebench-repos/Archmonger__django-dbbackup
+        echo "--- dbbackup: the commit 1c40705 agents kept 'git show'-ing — what is it? ---"
+        git show 1c40705 --stat --no-patch 2>/dev/null | head -6
+      at: 2026-08-15T04:22:18.706925Z
+      classified: other
+    - cmd: |-
+        ls -la /tmp/swebench-repos/Kinto__kinto/ | head -8
+        echo "---"
+        cat /tmp/swebench-repos/Kinto__kinto/.git 2>/dev/null
+        file /tmp/swebench-repos/Kinto__kinto/.git 2>/dev/null
+        echo "--- top level of the cache dir ---"
+        ls /tmp/swebench-repos/ | head -4
+        df -h /tmp 2>/dev/null | tail -1
+      at: 2026-08-15T04:22:41.683176Z
+      classified: other
+    - cmd: |-
+        ls -la /tmp/swebench-repos/Kinto__kinto/.git/
+        echo "--- HEAD? config? ---"
+        cat /tmp/swebench-repos/Kinto__kinto/.git/HEAD 2>&1
+        cat /tmp/swebench-repos/Kinto__kinto/.git/config 2>&1 | head -8
+      at: 2026-08-15T04:22:57.831311Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        c = open('swebench_ab.py').read()
+
+        # 1) cache off /tmp — macOS purges /tmp files untouched 3+ days
+        c = c.replace(
+            'REPO_CACHE = Path("/tmp/swebench-repos")',
+            '# NOT /tmp: macOS\'s periodic cleaner deletes /tmp files untouched for 3+\n'
+            '# days while KEEPING directories — observed 2026-08-15 00:00: all 32 cached\n'
+            '# clones lost .git/HEAD+config simultaneously, leaving repos that LOOK\n'
+            '# present but where checkout silently fails and the working tree stays at\n'
+            '# clone-time state. A smoke ran on the wrong code for 64 turns before a\n'
+            '# human noticed. Cache lives in $HOME now; integrity is CHECKED, not assumed.\n'
+            'REPO_CACHE = Path.home() / ".cache" / "prism-research" / "swebench-repos"')
+
+        # 2) integrity-checked ensure_repo
+        c = c.replace(
+            '''def ensure_repo(repo: str) -> Path:
+            """Clone `owner/name` once (blobless) into the cache."""
+            dest = REPO_CACHE / repo.replace("/", "__")
+            if not dest.exists():
+                REPO_CACHE.mkdir(parents=True, exist_ok=True)
+                sh("git", "clone", "--filter=blob:none", "--quiet",
+                   f"https://github.com/{repo}.git", str(dest))
+            return dest''',
+            '''def ensure_repo(repo: str) -> Path:
+            """Clone `owner/name` once (blobless) into the cache; re-clone if the
+            cached copy fails an integrity check (a present-looking but gutted .git
+            is exactly what the /tmp cleaner left behind)."""
+            dest = REPO_CACHE / repo.replace("/", "__")
+            if dest.exists():
+                ok = sh("git", "-C", str(dest), "rev-parse", "--git-dir")
+                if ok.returncode != 0:
+                    print(f"!! cache integrity failure for {repo} — re-cloning", flush=True)
+                    import shutil
+                    shutil.rmtree(dest, ignore_errors=True)
+            if not dest.exists():
+                REPO_CACHE.mkdir(parents=True, exist_ok=True)
+                sh("git", "clone", "--filter=blob:none", "--quiet",
+                   f"https://github.com/{repo}.git", str(dest))
+            return dest''')
+
+        # 3) verify the worktree actually landed on base_commit — fail loud, never run on wrong code
+        c = c.replace(
+            '''    sh("git", "-C", str(repo_dir), "worktree", "add", "--detach", "-f",
+               str(wt), task["base_commit"])
+            isolation_removed = sanitize_worktree(wt, arm)''',
+            '''    sh("git", "-C", str(repo_dir), "worktree", "add", "--detach", "-f",
+               str(wt), task["base_commit"])
+            # A checkout that silently failed (corrupted cache, missing blobs) leaves
+            # the agent editing the WRONG CODE while every downstream number still
+            # gets recorded. Verify, don't assume.
+            head = sh("git", "-C", str(wt), "rev-parse", "HEAD").stdout.strip()
+            if head != task["base_commit"]:
+                raise RuntimeError(
+                    f"worktree for {task['instance_id']} is at {head!r}, expected "
+                    f"{task['base_commit']!r} — refusing to run an agent on the wrong code")
+            isolation_removed = sanitize_worktree(wt, arm)''')
+
+        open('swebench_ab.py','w').write(c)
+        print("patched")
+        EOF
+        python3 test_swebench_ab.py 2>&1 | tail -2
+      at: 2026-08-15T04:25:07.755131Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        c = open('test_swebench_ab.py').read()
+        c = c.replace(
+            '''        ab.WT_ROOT = Path(tempfile.mkdtemp())
+                ab.ensure_repo = lambda repo: ab.WT_ROOT
+                ab.sh = lambda *a, **k: type("R", (), {"stdout": "", "returncode": 0})()
+                task = {"instance_id": "x", "repo": "a/b", "base_commit": "HEAD",
+                        "problem_statement": "p"}''',
+            '''        ab.WT_ROOT = Path(tempfile.mkdtemp())
+                ab.ensure_repo = lambda repo: ab.WT_ROOT
+                BASE = "deadbeef" * 5
+                # rev-parse HEAD must echo the base commit or run_arm now refuses to
+                # run (the 2026-08-15 wrong-code guard); everything else returns "".
+                def fake_sh(*a, **k):
+                    out = BASE if ("rev-parse" in a and "HEAD" in a) else ""
+                    return type("R", (), {"stdout": out, "returncode": 0})()
+                ab.sh = fake_sh
+                task = {"instance_id": "x", "repo": "a/b", "base_commit": BASE,
+                        "problem_statement": "p"}''')
+        open('test_swebench_ab.py','w').write(c)
+        EOF
+        python3 test_swebench_ab.py 2>&1 | tail -2
+      at: 2026-08-15T04:25:19.227301Z
+      classified: other
+    - cmd: |-
+        git clone --filter=blob:none --quiet https://github.com/Archmonger/django-dbbackup.git ~/.cache/prism-research/swebench-repos/Archmonger__django-dbbackup 2>&1
+        cd ~/.cache/prism-research/swebench-repos/Archmonger__django-dbbackup
+        echo "--- is 1c40705 (shown by agents in dbbackup-623/631 cells) in the clone? what is it? ---"
+        git show 1c40705 --stat --no-patch 2>&1 | head -8
+        echo "--- task bases: 623=?, is 1c40705 AFTER them? ---"
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        tasks = json.load(open('runs/swebench-live/phase1/valid-instances.json'))
+        for t in tasks:
+            if 'dbbackup' in t['instance_id']:
+                print(t['instance_id'], t['base_commit'][:10])
+        "
+      at: 2026-08-15T04:25:38.416568Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        import json, glob, re
+
+        show_re = re.compile(r'git show\s+[0-9a-f]{6,}')
+        all_re  = re.compile(r'git log[^|]*--all|--all[^|]*git log|origin/(main|master)|git branch -a')
+
+        for run in ["runs/swebench-live/ab38-f1", "runs/swebench-live/haiku38", "runs/swebench-live/sonnet38"]:
+            verdicts = {}
+            try:
+                v = json.load(open(f"{run}/verdicts.json"))
+                for arm in v:
+                    for iid, rec in v[arm].items():
+                        verdicts[(iid, arm)] = rec.get("resolved")
+            except FileNotFoundError:
+                pass
+            tainted = []
+            total = 0
+            for f in sorted(glob.glob(f"{run}/*.json")):
+                if f.endswith(("verdicts.json", "patches.json")) or "predictions" in f:
+                    continue
+                try:
+                    rec = json.load(open(f))
+                except Exception:
+                    continue
+                iid, arm = rec.get("instance_id"), rec.get("arm")
+                if not iid:
+                    continue
+                total += 1
+                trace = [t for t in (rec.get("tool_trace") or []) if isinstance(t, str)]
+                hist = any(all_re.search(t) for t in trace)
+                shows = any(show_re.search(t) for t in trace)
+                if hist and shows:
+                    tainted.append((iid, arm, verdicts.get((iid, arm))))
+            name = run.split("/")[-1]
+            resolved_tainted = [t for t in tainted if t[2]]
+            print(f"{name}: {total} cells, {len(tainted)} used git-history archaeology (log --all/origin + git show <sha>)")
+            for iid, arm, res in tainted:
+                print(f"    {iid[:44]:<45} {arm:<9} resolved={res}")
+        EOF
+      at: 2026-08-15T04:26:16.52468Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        c = open('swebench_ab.py').read()
+
+        old = '''    sh("git", "-C", str(repo_dir), "worktree", "prune")
+            sh("git", "-C", str(repo_dir), "worktree", "add", "--detach", "-f",
+               str(wt), task["base_commit"])'''
+        new = '''    # Per-cell LOCAL CLONE with every ref stripped — NOT a worktree. A
+            # worktree shares the cache's refs, and the cache (cloned after every
+            # task's fixing PR merged) carries the GOLD FIX on origin/main. Agents
+            # provably mined it: 2026-08-15 audit found 21/228 cells running
+            # `git log --all` + `git show <sha>`; sonnet38 baseline dbbackup-623
+            # showed 1c40705 — the literal fix commit for its own task ("...
+            # auto-enabling --if-exists (#623)") — then edited and scored
+            # resolved=True. GIT_ALLOW_PROTOCOL=file blocked FETCHING the fix but
+            # the clone already contained it. --local hardlinks objects (cheap);
+            # checkout runs while origin still points at the cache (so a blobless
+            # cache can lazy-fetch), THEN all refs and the remote are deleted:
+            # future history becomes unreachable-by-discovery — `git log --all`
+            # shows only the detached base commit's ancestry.
+            sh("git", "clone", "--local", "--no-checkout", "--quiet",
+               str(repo_dir), str(wt))
+            sh("git", "-C", str(wt), "checkout", "--detach", "-f", "-q", task["base_commit"])
+            for ref in sh("git", "-C", str(wt), "for-each-ref",
+                          "--format=%(refname)").stdout.split():
+                sh("git", "-C", str(wt), "update-ref", "-d", ref)
+            sh("git", "-C", str(wt), "remote", "remove", "origin")'''
+        assert old in c
+        c = c.replace(old, new)
+
+        old2 = '''    finally:
+                if arm == "prism":
+                    unmark_trusted(wt)
+                sh("git", "-C", str(repo_dir), "worktree", "remove", "--force", str(wt))'''
+        new2 = '''    finally:
+                if arm == "prism":
+                    unmark_trusted(wt)
+                import shutil
+                shutil.rmtree(wt, ignore_errors=True)  # standalone clone now, not a worktree'''
+        assert old2 in c
+        c = c.replace(old2, new2)
+        open('swebench_ab.py','w').write(c)
+        print("patched")
+        EOF
+        python3 test_swebench_ab.py 2>&1 | tail -1
+        echo "--- live micro-check of the isolation itself (no agent, no cost) ---"
+        python3 - <<'EOF'
+        import sys; sys.path.insert(0, '.')
+        import swebench_ab as ab
+        repo_dir = ab.ensure_repo("Archmonger/django-dbbackup")
+        wt = ab.WT_ROOT / "isolation-check"
+        ab.WT_ROOT.mkdir(parents=True, exist_ok=True)
+        import shutil; shutil.rmtree(wt, ignore_errors=True)
+        base = "ecf18d91bc037a627cd6a03bd6dea28f2f347774"  # dbbackup-623 base
+        ab.sh("git", "clone", "--local", "--no-checkout", "--quiet", str(repo_dir), str(wt))
+        ab.sh("git", "-C", str(wt), "checkout", "--detach", "-f", "-q", base)
+        for ref in ab.sh("git", "-C", str(wt), "for-each-ref", "--format=%(refname)").stdout.split():
+            ab.sh("git", "-C", str(wt), "update-ref", "-d", ref)
+        ab.sh("git", "-C", str(wt), "remote", "remove", "origin")
+        head = ab.sh("git", "-C", str(wt), "rev-parse", "HEAD").stdout.strip()
+        print("HEAD ok:", head == base)
+        allrefs = ab.sh("git", "-C", str(wt), "log", "--all", "--oneline")
+        print("log --all lines:", len(allrefs.stdout.splitlines()), "(ancestors of base only)")
+        leak = ab.sh("git", "-C", str(wt), "log", "--all", "--oneline", "-i", "--grep=if-exists")
+        print("gold fix discoverable via log --all --grep:", bool([l for l in leak.stdout.splitlines() if "1c40705" in l]))
+        branches = ab.sh("git", "-C", str(wt), "branch", "-a").stdout.strip()
+        print("branch -a output:", repr(branches))
+        shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-08-15T04:27:17.716257Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        c = open('swebench_ab.py').read()
+        old = '''    sh("git", "clone", "--local", "--no-checkout", "--quiet",
+               str(repo_dir), str(wt))
+            sh("git", "-C", str(wt), "checkout", "--detach", "-f", "-q", task["base_commit"])'''
+        new = '''    sh("git", "clone", "--local", "--no-checkout", "--quiet",
+               str(repo_dir), str(wt))
+            # The cache is blobless; a --local clone's origin is a file path, which
+            # cannot serve promisor lazy-fetches. Re-point origin at the real remote
+            # (with promisor config) for the one checkout that materializes the
+            # tree — network at SETUP time, before any agent runs — then strip.
+            upstream = sh("git", "-C", str(repo_dir), "remote", "get-url", "origin").stdout.strip()
+            sh("git", "-C", str(wt), "remote", "set-url", "origin", upstream)
+            sh("git", "-C", str(wt), "config", "remote.origin.promisor", "true")
+            sh("git", "-C", str(wt), "config", "remote.origin.partialclonefilter", "blob:none")
+            sh("git", "-C", str(wt), "checkout", "--detach", "-f", "-q", task["base_commit"])'''
+        assert old in c
+        c = c.replace(old, new)
+        open('swebench_ab.py','w').write(c)
+        print("patched")
+        EOF
+        python3 - <<'EOF'
+        import sys; sys.path.insert(0, '.')
+        import swebench_ab as ab, shutil
+        repo_dir = ab.ensure_repo("Archmonger/django-dbbackup")
+        wt = ab.WT_ROOT / "isolation-check"
+        ab.WT_ROOT.mkdir(parents=True, exist_ok=True)
+        shutil.rmtree(wt, ignore_errors=True)
+        base = "ecf18d91bc037a627cd6a03bd6dea28f2f347774"
+        ab.sh("git", "clone", "--local", "--no-checkout", "--quiet", str(repo_dir), str(wt))
+        upstream = ab.sh("git", "-C", str(repo_dir), "remote", "get-url", "origin").stdout.strip()
+        ab.sh("git", "-C", str(wt), "remote", "set-url", "origin", upstream)
+        ab.sh("git", "-C", str(wt), "config", "remote.origin.promisor", "true")
+        ab.sh("git", "-C", str(wt), "config", "remote.origin.partialclonefilter", "blob:none")
+        r = ab.sh("git", "-C", str(wt), "checkout", "--detach", "-f", "-q", base)
+        if r.returncode: print("checkout stderr:", r.stderr[-300:])
+        for ref in ab.sh("git", "-C", str(wt), "for-each-ref", "--format=%(refname)").stdout.split():
+            ab.sh("git", "-C", str(wt), "update-ref", "-d", ref)
+        ab.sh("git", "-C", str(wt), "remote", "remove", "origin")
+        head = ab.sh("git", "-C", str(wt), "rev-parse", "HEAD").stdout.strip()
+        print("HEAD == base:", head == base)
+        n = len(ab.sh("git", "-C", str(wt), "log", "--all", "--oneline").stdout.splitlines())
+        print(f"log --all lines: {n} (should be >0: base ancestry; and no future)")
+        leak = ab.sh("git", "-C", str(wt), "log", "--all", "--oneline", "-i", "--grep=if-exists").stdout
+        print("gold fix (1c40705) discoverable:", "1c40705" in leak)
+        probe = ab.sh("git", "-C", str(wt), "show", "--no-patch", "--oneline", "1c40705").stdout
+        print("git show 1c40705 by raw sha:", repr(probe[:60]), "(object may exist but sha is undiscoverable)")
+        f = ab.sh("git", "-C", str(wt), "ls-files").stdout.splitlines()
+        print("working tree files:", len(f))
+        shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-08-15T04:27:51.381114Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        import sys, json, shutil; sys.path.insert(0, '.')
+        import swebench_ab as ab
+        base = next(t["base_commit"] for t in json.load(open("runs/swebench-live/phase1/valid-instances.json"))
+                    if t["instance_id"] == "Archmonger__django-dbbackup-623")
+        print("real base:", base)
+        repo_dir = ab.ensure_repo("Archmonger/django-dbbackup")
+        wt = ab.WT_ROOT / "isolation-check"; ab.WT_ROOT.mkdir(parents=True, exist_ok=True)
+        shutil.rmtree(wt, ignore_errors=True)
+        ab.sh("git", "clone", "--local", "--no-checkout", "--quiet", str(repo_dir), str(wt))
+        upstream = ab.sh("git", "-C", str(repo_dir), "remote", "get-url", "origin").stdout.strip()
+        ab.sh("git", "-C", str(wt), "remote", "set-url", "origin", upstream)
+        ab.sh("git", "-C", str(wt), "config", "remote.origin.promisor", "true")
+        ab.sh("git", "-C", str(wt), "config", "remote.origin.partialclonefilter", "blob:none")
+        r = ab.sh("git", "-C", str(wt), "checkout", "--detach", "-f", "-q", base)
+        if r.returncode: print("checkout stderr:", r.stderr[-200:])
+        for ref in ab.sh("git", "-C", str(wt), "for-each-ref", "--format=%(refname)").stdout.split():
+            ab.sh("git", "-C", str(wt), "update-ref", "-d", ref)
+        ab.sh("git", "-C", str(wt), "remote", "remove", "origin")
+        head = ab.sh("git", "-C", str(wt), "rev-parse", "HEAD").stdout.strip()
+        print("HEAD == base:", head == base)
+        print("log --all lines:", len(ab.sh("git", "-C", str(wt), "log", "--all", "--oneline").stdout.splitlines()))
+        print("gold fix discoverable via --all --grep:", "1c40705" in ab.sh("git", "-C", str(wt), "log", "--all", "--oneline", "-i", "--grep=if-exists").stdout)
+        print("working tree files:", len(ab.sh("git", "-C", str(wt), "ls-files").stdout.splitlines()))
+        shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-08-15T04:28:12.263861Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research
+        cat > harness/runs/swebench-live/steering-redirect-smoke/INVALID.md <<'EOF'
+        # redirect-run1 is INVALID — do not use
+
+        The /tmp repo cache was corrupted by macOS's periodic /tmp cleaner at
+        2026-08-15 00:00 (files untouched 3+ days deleted, directories kept: every
+        cached clone lost .git/HEAD and .git/config). This run's copy was made at
+        00:10 from the corrupted cache: `git checkout` to the base commit silently
+        failed, the agent ran against clone-time working-tree state (NOT
+        Kinto-3566's base commit) with every git command erroring — which explains
+        its 64-turn/$1.74 spiral and 0-byte diff. No conclusion about the
+        "redirect" steering variant can be drawn from it. The transcript is kept
+        only as evidence of the failure mode.
+
+        Harness fixes that came out of this (swebench_ab.py): cache moved to
+        ~/.cache/prism-research (off /tmp), cache integrity re-clone check,
+        rev-parse HEAD == base_commit guard ("refusing to run an agent on the
+        wrong code"), and — found during the same audit — per-cell ref-stripped
+        local clones replacing shared-ref worktrees, closing the gold-fix
+        git-archaeology hole (21/228 benchmark cells had run `git log --all` +
+        `git show <sha>`; one provably showed its own task's fix commit).
+        EOF
+        git add harness/swebench_ab.py harness/test_swebench_ab.py harness/runs/swebench-live/steering-redirect-smoke/ harness/runs/swebench-live/nudge-smoke/ 2>&1
+        git commit -q -F - <<'EOF'
+        harness: cache off /tmp + integrity guards + gold-fix isolation
+
+        Three validity holes found in one audit (2026-08-15), all fixed:
+
+        1. REPO_CACHE lived in /tmp: macOS's periodic cleaner deleted 3-day-old
+           files (keeping dirs) at midnight, gutting .git in ALL 32 cached clones
+           simultaneously. A smoke run then executed against the wrong code for 64
+           turns with zero errors surfaced. Cache now in ~/.cache/prism-research;
+           ensure_repo re-clones on integrity failure.
+        2. Nothing verified checkouts: run_arm now asserts rev-parse HEAD ==
+           base_commit and refuses to run otherwise.
+        3. Worktrees shared the cache's refs, and the cache (cloned after every
+           task's fixing PR merged) carries each GOLD FIX on origin/main. Audit of
+           all 228 recorded cells: 21 ran `git log --all`-style archaeology plus
+           `git show <sha>`; sonnet38 baseline dbbackup-623 showed 1c40705 — the
+           literal fix commit for its own task — then edited and scored
+           resolved=True. 16 of the 21 were baseline cells (no prism_search, so
+           git history became their search engine), meaning the contamination
+           skewed AGAINST prism in the reported ties. Cells are now per-cell
+           local clones (hardlinked objects) checked out at base, then ALL refs
+           and the remote deleted — `git log --all` shows only base ancestry;
+           verified live against the dbbackup gold fix.
+
+        Also: nudge-smoke transcripts/diffs/REPORT.md preserved; redirect-run1
+        marked INVALID (ran on the corrupted cache).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_013KQbcGBEfN6F9T7NxAdA3a
+        EOF
+        git log --oneline -1
+      at: 2026-08-15T04:28:37.82835Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 - <<'EOF'
+        import json, glob, re
+        from collections import Counter
+
+        grep_head = re.compile(r'(?:^|[\s;&|(])(?:[^\s;&|(]*/)?(?:rg|grep)\s')
+        cmds = []
+        for run in ["runs/swebench-live/ab38-f1", "runs/swebench-live/haiku38", "runs/swebench-live/sonnet38"]:
+            for f in glob.glob(f"{run}/*.json"):
+                if f.endswith(("verdicts.json",)) or "predictions" in f or "patches" in f: continue
+                try: rec = json.load(open(f))
+                except Exception: continue
+                for t in rec.get("tool_trace") or []:
+                    if isinstance(t, str) and grep_head.search(t):
+                        cmds.append(t)
+                for d in rec.get("permission_denials") or []:
+                    c = str(d.get("tool_input", {}).get("command", ""))
+                    if grep_head.search(c):
+                        cmds.append(c)
+
+        print(f"total grep/rg invocations mined: {len(cmds)}\n")
+        flags = Counter()
+        feature = Counter()
+        for c in cmds:
+            for m in re.finditer(r'(?:^|\s)-([A-Za-z]+)\b|--(\w[\w-]*)', c):
+                f = m.group(1) or "--"+m.group(2)
+                if f and not f.startswith("--include"): flags[f] += 1
+            if re.search(r'--include', c): feature["--include glob"] += 1
+            if re.search(r'\\\|', c): feature["alternation a\\|b"] += 1
+            if re.search(r'-[ABC]\s?\d', c): feature["context lines -A/-B/-C"] += 1
+            if re.search(r'(?:grep|rg)\s+(?:-\S+\s+)*["\x27][^"\x27]+["\x27]?\s+[\w./]+\.(py|go|rst|toml|cfg|txt|md|json|yaml)', c): feature["single-FILE target"] += 1
+            if re.search(r'(?:grep|rg)\s+(?:-\S+\s+)*\S+\s+[\w./]*(?:/|tests|src|dbbackup|kinto|mcpgateway)\S*/?(?:\s|$)', c): feature["DIR-scoped target"] += 1
+            if re.search(r'\|\s*(?:head|tail)', c): feature["| head/tail"] += 1
+            if re.search(r'(?:^|\|)\s*grep[^|]*\|\s*grep', c): feature["grep | grep chain"] += 1
+            if re.search(r'\bgit\s+\S+.*\|\s*grep', c) or re.search(r'\|\s*grep', c): feature["FILTER of other output (| grep)"] += 1
+        top = [(f,n) for f,n in flags.most_common(18)]
+        print("flag usage:", top)
+        print()
+        for k, n in feature.most_common():
+            print(f"{n:4}  {k}")
+        print("\n--- representative examples ---")
+        seen=set()
+        for c in cmds:
+            key = tuple(sorted(set(re.findall(r'\s-([A-Za-z]{1,3})\b', c))))
+            if key not in seen and len(seen) < 10:
+                seen.add(key); print(" ", c[:110])
+        EOF
+      at: 2026-08-15T04:31:55.218184Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/textsearch/textsearch.go').read()
+
+        # 1) Options: Path, Context, FilesOnly — mined from 946 real grep invocations
+        old = '''// Options bound a search. Zero values get safe defaults.
+        type Options struct {
+        	MaxHits    int           // total hits cap (default 100)
+        	MaxPerFile int           // per-file hits cap (default 20)
+        	Timeout    time.Duration // default 10s
+        	// Regex treats pattern as a regular expression instead of a fixed
+        	// string. A pattern that does not compile falls back to literal — a
+        	// search that errors is a tool agents route around.
+        	Regex bool
+        }'''
+        new = '''// Options bound a search. Zero values get safe defaults.
+        //
+        // Path/Context/FilesOnly exist because agents use grep with them constantly:
+        // mining 946 real grep/rg invocations from 228 benchmark cells (2026-08-15)
+        // found 511 dir- or file-scoped searches, 101 uses of -A/-B/-C context and
+        // 66 of -l — capabilities prism_search could not express, so agents either
+        // got whole-tree noise for a scoped question or fell back to shell.
+        type Options struct {
+        	MaxHits    int           // total hits cap (default 100)
+        	MaxPerFile int           // per-file hits cap (default 20)
+        	Timeout    time.Duration // default 10s
+        	// Regex treats pattern as a regular expression instead of a fixed
+        	// string. A pattern that does not compile falls back to literal — a
+        	// search that errors is a tool agents route around.
+        	Regex bool
+        	// Path restricts the search to one file or directory (relative to root),
+        	// grep's `grep pat some/dir` / `grep pat file.py`. Empty = whole tree.
+        	Path string
+        	// Context includes N lines around each match (grep -C N).
+        	Context int
+        	// FilesOnly returns one hit per matching file, no text (grep -l).
+        	FilesOnly bool
+        }'''
+        assert old in c; c = c.replace(old, new)
+
+        # 2) runRg: honor the new options
+        old = '''	if !regexUsable(pattern, opts) {
+        		args = append(args, "--fixed-strings")
+        	}
+        	// --hidden would otherwise descend into the VCS dir and prism's state.
+        	args = append(args, "--glob", "!.git/", "--glob", "!.grove/", "-e", pattern, "--", ".")
+        	return runLineTool(ctx, root, bin("rg"), args, nil, opts)'''
+        new = '''	if !regexUsable(pattern, opts) {
+        		args = append(args, "--fixed-strings")
+        	}
+        	if opts.Context > 0 {
+        		args = append(args, "--context", strconv.Itoa(opts.Context))
+        	}
+        	if opts.FilesOnly {
+        		args = append(args, "--files-with-matches")
+        	}
+        	target := "."
+        	if opts.Path != "" {
+        		target = opts.Path
+        	}
+        	// --hidden would otherwise descend into the VCS dir and prism's state.
+        	args = append(args, "--glob", "!.git/", "--glob", "!.grove/", "-e", pattern, "--", target)
+        	return runLineTool(ctx, root, bin("rg"), args, nil, opts)'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/textsearch/textsearch.go','w').write(c)
+        print("options+rg patched")
+        EOF
+        sed -n '/func runGrep/,/^}/p' internal/textsearch/textsearch.go
+      at: 2026-08-15T04:33:11.200538Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/textsearch/textsearch.go').read()
+
+        # runGrep: same three options for the grep fallback
+        old = '''	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+        	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+        		args = append(args, "--exclude-dir="+d)
+        	}
+        	args = append(args, "-e", pattern, "--", ".")
+        	return runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)'''
+        new = '''	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+        	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
+        		args = append(args, "--exclude-dir="+d)
+        	}
+        	if opts.Context > 0 {
+        		args = append(args, "-C", strconv.Itoa(opts.Context))
+        	}
+        	if opts.FilesOnly {
+        		args = append(args, "-l")
+        	}
+        	target := "."
+        	if opts.Path != "" {
+        		target = opts.Path
+        	}
+        	args = append(args, "-e", pattern, "--", target)
+        	return runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/textsearch/textsearch.go','w').write(c)
+        print("grep backend patched")
+        EOF
+        sed -n '/func runLineTool/,/^}/p' internal/textsearch/textsearch.go | head -40
+      at: 2026-08-15T04:33:19.49775Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/textsearch/textsearch.go').read()
+
+        # rg: colon field-context separator so context lines parse like match lines;
+        # runLineTool: FilesOnly parsing (bare paths)
+        old = '''	if opts.Context > 0 {
+        		args = append(args, "--context", strconv.Itoa(opts.Context))
+        	}
+        	if opts.FilesOnly {
+        		args = append(args, "--files-with-matches")
+        	}'''
+        new = '''	if opts.Context > 0 {
+        		// Context lines normally use dash separators (path-N-text), which are
+        		// ambiguous to parse when paths contain dashes; a colon separator
+        		// makes them parse identically to match lines.
+        		args = append(args, "--context", strconv.Itoa(opts.Context),
+        			"--field-context-separator", ":", "--no-context-separator")
+        	}
+        	if opts.FilesOnly {
+        		args = append(args, "--files-with-matches")
+        	}'''
+        assert old in c; c = c.replace(old, new)
+
+        old = '''	out, err := cmd.Output()
+        	res := Result{Backend: filepath.Base(bin)}
+        	sc := bufio.NewScanner(strings.NewReader(string(out)))
+        	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+        	for sc.Scan() {
+        		if len(res.Hits) >= opts.MaxHits {
+        			res.Truncated = true
+        			break
+        		}
+        		parts := strings.SplitN(sc.Text(), ":", 3)
+        		if len(parts) != 3 {
+        			continue
+        		}'''
+        new = '''	out, err := cmd.Output()
+        	res := Result{Backend: filepath.Base(bin)}
+        	sc := bufio.NewScanner(strings.NewReader(string(out)))
+        	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+        	for sc.Scan() {
+        		if len(res.Hits) >= opts.MaxHits {
+        			res.Truncated = true
+        			break
+        		}
+        		if opts.FilesOnly {
+        			// -l / --files-with-matches: each line is a bare path.
+        			p := strings.TrimSpace(sc.Text())
+        			if p != "" && p != "--" {
+        				res.Hits = append(res.Hits, Hit{
+        					File: filepath.ToSlash(strings.TrimPrefix(p, "./"))})
+        			}
+        			continue
+        		}
+        		if sc.Text() == "--" {
+        			continue // grep's context-group separator
+        		}
+        		parts := strings.SplitN(sc.Text(), ":", 3)
+        		if len(parts) != 3 {
+        			continue
+        		}'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/textsearch/textsearch.go','w').write(c)
+
+        # native fallback: Path scoping + FilesOnly + Context
+        n = open('internal/textsearch/native.go').read()
+        old = '''	var files []string
+        	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {'''
+        new = '''	walkRoot := root
+        	if opts.Path != "" {
+        		// grep's target-path semantics: search one file or subtree only.
+        		walkRoot = filepath.Join(root, filepath.FromSlash(opts.Path))
+        	}
+        	var files []string
+        	_ = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {'''
+        assert old in n; n = n.replace(old, new)
+        old = '''			hits := scanFile(path, root, match, opts.MaxPerFile)'''
+        new = '''			hits := scanFile(path, root, match, opts.MaxPerFile, opts.Context, opts.FilesOnly)'''
+        assert old in n; n = n.replace(old, new)
+        old = '''func scanFile(path, root string, match func(string) bool, maxPerFile int) []Hit {'''
+        new = '''func scanFile(path, root string, match func(string) bool, maxPerFile, context int, filesOnly bool) []Hit {'''
+        assert old in n; n = n.replace(old, new)
+        old = '''	var hits []Hit
+        	sc := bufio.NewScanner(f)
+        	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+        	ln := 0
+        	for sc.Scan() {
+        		ln++
+        		line := sc.Text()
+        		if !match(line) {
+        			continue
+        		}
+        		hits = append(hits, Hit{File: rel, Line: ln, Text: truncateLine(line)})
+        		if len(hits) >= maxPerFile {
+        			break
+        		}
+        	}
+        	return hits
+        }'''
+        new = '''	var lines []string
+        	sc := bufio.NewScanner(f)
+        	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+        	for sc.Scan() {
+        		lines = append(lines, sc.Text())
+        	}
+        	var hits []Hit
+        	emitted := map[int]bool{}
+        	matches := 0
+        	for i, line := range lines {
+        		if !match(line) {
+        			continue
+        		}
+        		if filesOnly {
+        			return []Hit{{File: rel}}
+        		}
+        		matches++
+        		lo, hi := i-context, i+context
+        		if lo < 0 {
+        			lo = 0
+        		}
+        		if hi > len(lines)-1 {
+        			hi = len(lines) - 1
+        		}
+        		for j := lo; j <= hi; j++ {
+        			if !emitted[j] {
+        				emitted[j] = true
+        				hits = append(hits, Hit{File: rel, Line: j + 1, Text: truncateLine(lines[j])})
+        			}
+        		}
+        		if matches >= maxPerFile {
+        			break
+        		}
+        	}
+        	return hits
+        }'''
+        assert old in n; n = n.replace(old, new)
+        open('internal/textsearch/native.go','w').write(n)
+        print("native patched")
+        EOF
+        go build ./internal/textsearch/ 2>&1
+      at: 2026-08-15T04:34:05.5006Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/mcp/tools.go').read()
+
+        # schema: path/context/files params on prism_search
+        old = '''			"regex": map[string]any{
+        					"type":        "boolean",
+        					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
+        				},
+        				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},'''
+        new = '''			"regex": map[string]any{
+        					"type":        "boolean",
+        					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
+        				},
+        				"path": map[string]any{
+        					"type":        "string",
+        					"description": "Restrict the text pass to one file or directory (repo-relative), like `grep pat src/`. Default: whole tree.",
+        				},
+        				"context": map[string]any{
+        					"type":        "integer",
+        					"description": "Include N lines around each text match (grep -C N).",
+        				},
+        				"files": map[string]any{
+        					"type":        "boolean",
+        					"description": "Text pass returns matching file paths only, no lines (grep -l).",
+        				},
+        				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},'''
+        assert old in c; c = c.replace(old, new)
+
+        # handler: thread the args (both the scope=text pass and the merged pass)
+        old = '''	limit := intArg(args, "limit", 25)
+        	scope := stringArg(args, "scope", "both")
+        	regex := boolArg(args, "regex")'''
+        new = '''	limit := intArg(args, "limit", 25)
+        	scope := stringArg(args, "scope", "both")
+        	regex := boolArg(args, "regex")
+        	tsOpts := textsearch.Options{
+        		Timeout: textSearchTimeout, Regex: regex,
+        		Path:      stringArg(args, "path", ""),
+        		Context:   intArg(args, "context", 0),
+        		FilesOnly: boolArg(args, "files"),
+        	}'''
+        assert old in c; c = c.replace(old, new)
+        old = '''		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: max(limit, textScanCeiling), Timeout: textSearchTimeout, Regex: regex,
+        		})'''
+        new = '''		o := tsOpts
+        		o.MaxHits = max(limit, textScanCeiling)
+        		r := textsearch.Search(ctx, h.Root, q, o)'''
+        assert old in c; c = c.replace(old, new)
+        old = '''		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
+        		}); len(r.Hits) > 0 {'''
+        new = '''		o := tsOpts
+        		o.MaxHits = 50
+        		if r := textsearch.Search(ctx, h.Root, q, o); len(r.Hits) > 0 {'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/mcp/tools.go','w').write(c)
+
+        # renderer: files-only hits (Line==0, empty Text) print as bare paths
+        t = open('internal/mcp/textmerge.go').read()
+        old = '''		for j, hit := range g.hits {
+        			if j >= textRenderHitsPerFile {
+        				fmt.Fprintf(&sb, "%s: %d more matches omitted\\n", file, len(g.hits)-textRenderHitsPerFile)
+        				break
+        			}
+        			fmt.Fprintf(&sb, "%s:%d:%s\\n", file, hit.Line, hit.Text)
+        		}'''
+        new = '''		for j, hit := range g.hits {
+        			if j >= textRenderHitsPerFile {
+        				fmt.Fprintf(&sb, "%s: %d more matches omitted\\n", file, len(g.hits)-textRenderHitsPerFile)
+        				break
+        			}
+        			if hit.Line == 0 && hit.Text == "" {
+        				fmt.Fprintf(&sb, "%s\\n", file) // files-only mode (grep -l)
+        				continue
+        			}
+        			fmt.Fprintf(&sb, "%s:%d:%s\\n", file, hit.Line, hit.Text)
+        		}'''
+        assert old in t; t = t.replace(old, new)
+        open('internal/mcp/textmerge.go','w').write(t)
+        print("mcp patched")
+        EOF
+        go build ./... 2>&1
+      at: 2026-08-15T04:34:31.146966Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/cli/commands.go').read()
+
+        old = '''// grepCommandPattern matches a grep/rg invocation as a Bash command: at the
+        // start of the string or after a shell separator, an optional path prefix
+        // (/usr/bin/grep), an optional sudo, then rg or grep as a whole word. Ported
+        // from research/harness/swebench_ab.py's denied_search_attempts pattern,
+        // which was tuned twice against real false positives (a bare substring match
+        // hit the harness's own /tmp/...grepwarn dir name; a bare word-boundary
+        // match missed /usr/bin/grep).
+        var grepCommandPattern = regexp.MustCompile(`(?:^|[\\s;&|(])(?:[^\\s;&|(]*/)?(?:sudo\\s+)?(?:rg|grep)\\b`)'''
+        new = '''// grepCommandPattern matches a grep/rg invocation as a Bash command: at the
+        // start of the string or after a shell separator, an optional path prefix
+        // (/usr/bin/grep), an optional sudo, then rg or grep as a whole word. Ported
+        // from research/harness/swebench_ab.py's denied_search_attempts pattern,
+        // which was tuned twice against real false positives (a bare substring match
+        // hit the harness's own /tmp/...grepwarn dir name; a bare word-boundary
+        // match missed /usr/bin/grep). The captured separator distinguishes grep as
+        // a pipe FILTER from grep as a file SEARCHER — see hookDenyReason.
+        var grepCommandPattern = regexp.MustCompile(`(^|[\\s;&|(])((?:[^\\s;&|(]*/)?(?:sudo\\s+)?(?:rg|grep)\\b)`)'''
+        assert old in c; c = c.replace(old, new)
+
+        old = '''	case "Bash":
+        		cmd, _ := toolInput["command"].(string)
+        		if grepCommandPattern.MatchString(cmd) {
+        			return grepHookReason
+        		}
+        	}
+        	return ""
+        }'''
+        new = '''	case "Bash":
+        		cmd, _ := toolInput["command"].(string)
+        		// grep as a pipe FILTER of another command's output (git log | grep,
+        		// pip list | grep -i x) is NOT replaceable by prism — there is no
+        		// file to search. Mining 946 real grep invocations from 228
+        		// benchmark cells (2026-08-15): 289 were exactly this. Denying them
+        		// forces awk/python workarounds without routing anything to prism.
+        		// Only grep-as-file-searcher is denied: a grep token whose preceding
+        		// separator is a pipe passes through.
+        		for _, m := range grepCommandPattern.FindAllStringSubmatchIndex(cmd, -1) {
+        			sep := cmd[m[2]:m[3]] // the separator that preceded the token
+        			if strings.TrimSpace(sep) == "|" || (sep != "" && strings.TrimSpace(sep) == "") &&
+        				m[2] > 0 && lastNonSpace(cmd[:m[2]]) == '|' {
+        				continue // stdin filter: prism has no equivalent, let it run
+        			}
+        			return grepHookReason
+        		}
+        	}
+        	return ""
+        }
+
+        // lastNonSpace returns the last non-whitespace byte of s (0 if none) — used
+        // to see through the whitespace between a pipe and the grep token.
+        func lastNonSpace(s string) byte {
+        	for i := len(s) - 1; i >= 0; i-- {
+        		if s[i] != ' ' && s[i] != '\\t' {
+        			return s[i]
+        		}
+        	}
+        	return 0
+        }'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/cli/commands.go','w').write(c)
+        print("hook patched")
+        EOF
+        go build ./internal/cli/ 2>&1
+      at: 2026-08-15T04:34:49.713306Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/cli/commands.go').read()
+        old = '''		for _, m := range grepCommandPattern.FindAllStringSubmatchIndex(cmd, -1) {
+        			sep := cmd[m[2]:m[3]] // the separator that preceded the token
+        			if strings.TrimSpace(sep) == "|" || (sep != "" && strings.TrimSpace(sep) == "") &&
+        				m[2] > 0 && lastNonSpace(cmd[:m[2]]) == '|' {
+        				continue // stdin filter: prism has no equivalent, let it run
+        			}
+        			return grepHookReason
+        		}
+        	}
+        	return ""
+        }
+
+        // lastNonSpace returns the last non-whitespace byte of s (0 if none) — used
+        // to see through the whitespace between a pipe and the grep token.
+        func lastNonSpace(s string) byte {
+        	for i := len(s) - 1; i >= 0; i-- {
+        		if s[i] != ' ' && s[i] != '\\t' {
+        			return s[i]
+        		}
+        	}
+        	return 0
+        }'''
+        new = '''		for _, m := range grepCommandPattern.FindAllStringSubmatchIndex(cmd, -1) {
+        			if isPipeFilter(cmd, m[2], m[3]) {
+        				continue // stdin filter: prism has no equivalent, let it run
+        			}
+        			return grepHookReason
+        		}
+        	}
+        	return ""
+        }
+
+        // isPipeFilter reports whether the grep token preceded by cmd[sepStart:sepEnd]
+        // is consuming stdin through a single pipe (`a | grep x` — a stream filter)
+        // rather than starting a fresh command (line start, ;, &&, ||, & or a
+        // subshell paren — a file searcher). `||` is a logical or: the grep after it
+        // is a producer, not a filter, and stays denied.
+        func isPipeFilter(cmd string, sepStart, sepEnd int) bool {
+        	sep := cmd[sepStart:sepEnd]
+        	if sep == "|" {
+        		return sepStart == 0 || cmd[sepStart-1] != '|'
+        	}
+        	if strings.TrimSpace(sep) != "" {
+        		return false // ; & ( — fresh command position
+        	}
+        	// Separator was whitespace (or line start): look back for the operator.
+        	i := sepStart - 1
+        	for i >= 0 && (cmd[i] == ' ' || cmd[i] == '\\t') {
+        		i--
+        	}
+        	if i < 0 || cmd[i] != '|' {
+        		return false
+        	}
+        	return i == 0 || cmd[i-1] != '|'
+        }'''
+        assert old in c; c = c.replace(old, new)
+
+        # CLI search flags: --path, --context/-C, --files
+        old = '''		case "--regex":
+        			regex = true'''
+        new = '''		case "--regex":
+        			regex = true
+        		case "--files", "-l":
+        			filesOnly = true
+        		case "--path":
+        			if i+1 < len(args) {
+        				pathArg = args[i+1]
+        				i++
+        			}
+        		case "--context", "-C":
+        			if i+1 < len(args) {
+        				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+        					contextN = n
+        				}
+        				i++
+        			}'''
+        assert old in c; c = c.replace(old, new)
+        old = '''	format := formatText
+        	scope := ""
+        	regex := false'''
+        new = '''	format := formatText
+        	scope := ""
+        	regex := false
+        	pathArg := ""
+        	contextN := 0
+        	filesOnly := false'''
+        assert old in c; c = c.replace(old, new)
+        old = '''	if regex {
+        		callArgs["regex"] = true
+        	}
+        	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)'''
+        new = '''	if regex {
+        		callArgs["regex"] = true
+        	}
+        	if pathArg != "" {
+        		callArgs["path"] = pathArg
+        	}
+        	if contextN > 0 {
+        		callArgs["context"] = contextN
+        	}
+        	if filesOnly {
+        		callArgs["files"] = true
+        	}
+        	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)'''
+        assert old in c; c = c.replace(old, new)
+
+        # help text for the new flags
+        old = '''  prism search <keyword> [dir]    Search symbol names AND raw source text (a real
+                                          rg/grep pass). --scope text is a pure grep
+                                          ([--scope text|symbols|both] [--regex] [--limit N])
+                                          --format text|lean|json  Output format (default: text)'''
+        new = '''  prism search <keyword> [dir]    Search symbol names AND raw source text (a real
+                                          rg/grep pass). --scope text is a pure grep
+                                          ([--scope text|symbols|both] [--regex] [--limit N]
+                                           [--path FILE-OR-DIR] [-C N context lines] [-l files only])
+                                          --format text|lean|json  Output format (default: text)'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/cli/commands.go','w').write(c)
+        print("cli patched")
+        EOF
+        go build ./... 2>&1
+      at: 2026-08-15T04:35:26.981266Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 - <<'EOF'
+        c = open('internal/cli/commands.go').read()
+        old = '''    grep -rn "foo"                      ->  prism_search(query="foo", scope="text")
+            grep -rn "a\\|b\\|c"  (regex)         ->  prism_search(query="a|b|c", scope="text", regex=true)'''
+        new = '''    grep -rn "foo"                      ->  prism_search(query="foo", scope="text")
+            grep -rn "foo" src/  (or one file)  ->  prism_search(query="foo", scope="text", path="src/")
+            grep -rn "a\\|b\\|c"  (regex)         ->  prism_search(query="a|b|c", scope="text", regex=true)
+            grep -C 5 / -A 10 (context lines)   ->  prism_search(..., context=5)
+            grep -rl "foo"  (files only)        ->  prism_search(query="foo", scope="text", files=true)'''
+        assert old in c; c = c.replace(old, new)
+        old = '''No MCP session (Bash-only subagent)? Same verbs as CLI:
+        prism query/search/read/lookup/change-impact --format text.'''
+        new = '''Piping ANOTHER command's output through grep (git log | grep x, pip list |
+        grep -i y) is fine and stays allowed — prism replaces searching FILES, not
+        filtering streams. No MCP session (Bash-only subagent)? Same verbs as CLI:
+        prism query/search/read/lookup/change-impact --format text.'''
+        assert old in c; c = c.replace(old, new)
+        open('internal/cli/commands.go','w').write(c)
+
+        t = open('internal/cli/hook_test.go').read()
+        old = '''		{"path-prefixed grep", "Bash", map[string]any{"command": "/usr/bin/grep foo bar.go"}},
+        		{"sudo grep", "Bash", map[string]any{"command": "sudo grep foo bar.go"}},
+        		{"grep mid-pipeline", "Bash", map[string]any{"command": "cat bar.go | grep foo"}},
+        		{"rg after separator", "Bash", map[string]any{"command": "cd /tmp && rg foo"}},'''
+        new = '''		{"path-prefixed grep", "Bash", map[string]any{"command": "/usr/bin/grep foo bar.go"}},
+        		{"sudo grep", "Bash", map[string]any{"command": "sudo grep foo bar.go"}},
+        		{"rg after separator", "Bash", map[string]any{"command": "cd /tmp && rg foo"}},
+        		{"grep after logical-or", "Bash", map[string]any{"command": "test -f x || grep foo bar.go"}},
+        		{"grep after semicolon", "Bash", map[string]any{"command": "cd src; grep -rn foo ."}},'''
+        assert old in t; t = t.replace(old, new)
+        old = '''		{"grep as a substring of another word", "python3 -c 'x = 1' # not agrep"},
+        		{"a path merely containing grep", "python3 /tmp/swebench-wt-grepwarn/run.py"},'''
+        new = '''		{"grep as a substring of another word", "python3 -c 'x = 1' # not agrep"},
+        		{"a path merely containing grep", "python3 /tmp/swebench-wt-grepwarn/run.py"},
+        		// grep as a pipe FILTER of another command's stream — 289 of 946
+        		// real grep invocations mined 2026-08-15. Prism cannot replace
+        		// these (no file to search); denying them only forces awk/python
+        		// workarounds.
+        		{"git log piped to grep", "git log --oneline -20 | grep -i cache"},
+        		{"pip list piped to grep", "pip3 list 2>&1 | grep -i jq"},
+        		{"ls piped to grep", "ls -la | grep -E '(setup|tox)'"},
+        		{"tight pipe no spaces", "git branch -a|grep feature"},
+        		{"grep chain second stage", "git diff | grep '^-' | grep -v '^---'"},'''
+        assert old in t; t = t.replace(old, new)
+        open('internal/cli/hook_test.go','w').write(t)
+        print("tests patched")
+        EOF
+        go build ./... && go test ./internal/cli/ -run TestHookDeny -v 2>&1 | tail -22
+      at: 2026-08-15T04:35:49.950668Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cat >> internal/textsearch/textsearch_test.go <<'EOF'
+
+        // TestGrepParityOptions: Path / Context / FilesOnly — the three capabilities
+        // mined as most-used-and-missing from 946 real agent grep invocations
+        // (2026-08-15: 511 path-scoped, 101 context, 66 files-only). Verified on
+        // every backend so the fallbacks cannot silently diverge.
+        func TestGrepParityOptions(t *testing.T) {
+        	dir := t.TempDir()
+        	must := func(err error) {
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	must(os.MkdirAll(filepath.Join(dir, "src"), 0o755))
+        	must(os.MkdirAll(filepath.Join(dir, "docs"), 0o755))
+        	must(os.WriteFile(filepath.Join(dir, "src", "a.py"),
+        		[]byte("before\nparityneedle here\nafter\n"), 0o644))
+        	must(os.WriteFile(filepath.Join(dir, "docs", "b.md"),
+        		[]byte("parityneedle in docs\n"), 0o644))
+
+        	backends := map[string]func(Options) Result{
+        		"native": func(o Options) Result { return nativeSearch(context.Background(), dir, "parityneedle", o) },
+        	}
+        	if r, ok := runRg(context.Background(), dir, "parityneedle", Options{}.withDefaults()); ok && r.Backend == "rg" {
+        		backends["rg"] = func(o Options) Result {
+        			r, _ := runRg(context.Background(), dir, "parityneedle", o)
+        			return r
+        		}
+        	}
+
+        	for name, search := range backends {
+        		t.Run(name+"/path-scoped", func(t *testing.T) {
+        			r := search(Options{Path: "src"}.withDefaults())
+        			for _, h := range r.Hits {
+        				if !strings.HasPrefix(h.File, "src/") {
+        					t.Errorf("path=src must not surface %s", h.File)
+        				}
+        			}
+        			if len(r.Hits) == 0 {
+        				t.Error("path=src should still find the src hit")
+        			}
+        		})
+        		t.Run(name+"/context", func(t *testing.T) {
+        			o := Options{Context: 1}.withDefaults()
+        			r := search(o)
+        			var texts []string
+        			for _, h := range r.Hits {
+        				if h.File == "src/a.py" {
+        					texts = append(texts, h.Text)
+        				}
+        			}
+        			joined := strings.Join(texts, "|")
+        			if !strings.Contains(joined, "before") || !strings.Contains(joined, "after") {
+        				t.Errorf("context=1 should deliver surrounding lines, got %q", joined)
+        			}
+        		})
+        		t.Run(name+"/files-only", func(t *testing.T) {
+        			r := search(Options{FilesOnly: true}.withDefaults())
+        			files := map[string]bool{}
+        			for _, h := range r.Hits {
+        				files[h.File] = true
+        				if h.Text != "" {
+        					t.Errorf("files-only must not carry text: %+v", h)
+        				}
+        			}
+        			if !files["src/a.py"] || !files["docs/b.md"] {
+        				t.Errorf("files-only should list both matching files, got %v", files)
+        			}
+        		})
+        	}
+        }
+        EOF
+        go test ./internal/textsearch/ -run TestGrepParity -v 2>&1 | tail -12
+      at: 2026-08-15T04:36:06.278315Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go vet ./... && go test ./... 2>&1 | awk '/FAIL|ok  .*(cli|mcp|textsearch)/'
+      at: 2026-08-15T04:36:18.074057Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -ldflags="-X github.com/provasign/prism/internal/version.Version=v0.51.0" -o ~/bin/prism ./cmd/prism
+        echo "--- path-scoped search, this repo ---"
+        ~/bin/prism search "textScanCeiling" --scope text --path internal/mcp --format text 2>/dev/null | head -4
+        echo "--- context lines ---"
+        ~/bin/prism search "textScanCeiling = 300" --scope text -C 2 --format text 2>/dev/null | head -7
+        echo "--- files-only ---"
+        ~/bin/prism search "searchStreak" --scope text -l --format text 2>/dev/null | head -5
+        echo "--- hook: pipe filter allowed, file search denied ---"
+        echo '{"tool_name":"Bash","tool_input":{"command":"git log --oneline | grep -i fix"}}' | ~/bin/prism hook pretooluse; echo "(pipe: exit $?, no output = allowed)"
+        echo '{"tool_name":"Bash","tool_input":{"command":"grep -rn fix src/"}}' | ~/bin/prism hook pretooluse | head -2
+        ~/bin/prism init --refresh 2>&1 | tail -2
+        git status --short | head -14
+      at: 2026-08-15T04:36:30.92496Z
+      classified: build
+notes:
+    - text: continuation of session c92e7cda-68a2-458f-bb70-004cec486de3 — events captured after its evidence was finalized
+      at: 2026-08-15T04:02:43.298855Z
+redactions: 0
