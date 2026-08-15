@@ -124,11 +124,17 @@ https://claude.ai/code/artifact/c9409bf3-90c7-47b3-934c-d132ad0b7384
 - **No PreToolUse hook.** `prism hook pretooluse` does not exist at this base.
   Any stale registration pointing at it makes every Bash call shell out to an
   unknown command — two such registrations were removed from this workspace.
-- **Steering is the long 11.8k-char block** teaching the ToolSearch
-  deferred-tools dance. That is correct here: `alwaysLoad` is gone too, so
+- **Steering is a 1.8k-char block** (was 11.8k until the 2026-08-15 trim) that
+  teaches the ToolSearch deferred-tools dance, one route per question, and the
+  change_impact relay rule. Nothing else. `alwaysLoad` is gone too, so
   client-side deferral is back and the two agree.
 - **Tools are deferred, not resident.** `.mcp.json` has no `alwaysLoad`.
-  14 tools, ~18.3k chars of schema, loaded on demand via `ToolSearch`.
+  **6 tools, ~6.2k chars of schema** (was 14 / ~17.8k), loaded on demand via
+  `ToolSearch`. The eight demoted on 2026-08-15 — `references`,
+  `missing_implementations`, `dead_code`, `rename_plan`, `map`, `node`,
+  `arch_check`, `index` — had **zero calls across all 190 A/B cells**. They
+  remain CLI commands and HTTP routes; only the agent menu narrowed. Do not
+  re-advertise one without call-count evidence.
 - **`prism init` writes deny rules only when asked.** It has no path that
   *removes* them; that is manual. This repo ships none.
 - **`excludeDirs` is only `[".git", ".grove"]`**, so text search reads
@@ -150,8 +156,9 @@ the value; none requires the agent to learn anything new.
    retry turn entirely.
 3. **Default payloads to locations, not bodies.** See the cache-read
    compounding note in §2.
-4. Defer the tools nobody calls; the measured routing-critical set is four:
-   `search`, `read`, `lookup`, `query`.
+4. ~~Defer the tools nobody calls; the measured routing-critical set is four:
+   `search`, `read`, `lookup`, `query`.~~ **DONE 2026-08-15** — agent surface
+   cut to those four plus `change_impact` and `verify`. See §4.
 5. Exclude agent-state dirs (`.shale`, `.claude`, `.cursor`) from text search.
 6. Do not re-ship the consolidation nudge. Three replications, three ignores.
 7. Never let the graph narrow a result silently — state both counts.
