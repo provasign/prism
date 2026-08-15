@@ -57,6 +57,10 @@ type Handler struct {
 	// fires-only-when-the-condition-holds discipline as resolvedRefNote.
 	streakMu     sync.Mutex
 	searchStreak []string
+	// streakNudged: the nudge fires ONCE per streak. Measured (nudge-smoke,
+	// 2026-08-15): fourteen repeated nudges in one session changed nothing —
+	// repetition is wallpaper, not emphasis.
+	streakNudged bool
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -202,6 +206,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		// regardless of whether the query itself succeeds.
 		h.streakMu.Lock()
 		h.searchStreak = nil
+		h.streakNudged = false
 		h.streakMu.Unlock()
 		return h.toolQuery(ctx, args)
 	case "prism_read":
@@ -1109,9 +1114,10 @@ func (h *Handler) searchStreakNote(q string) string {
 		}
 	}
 	h.searchStreak = append(h.searchStreak, q)
-	if len(h.searchStreak) < 3 {
+	if len(h.searchStreak) < 3 || h.streakNudged {
 		return ""
 	}
+	h.streakNudged = true
 	terms := h.searchStreak
 	if len(terms) > 5 {
 		terms = terms[len(terms)-5:]

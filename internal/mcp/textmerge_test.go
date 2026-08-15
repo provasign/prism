@@ -236,9 +236,15 @@ func TestSearchStreakNoteFiresOnThirdDistinctSearch(t *testing.T) {
 			t.Errorf("nudge must carry the agent's own terms ready to paste; missing %s in %q", want, n)
 		}
 	}
+	// The 4th search must be silent — one nudge per streak; fourteen
+	// repeats in one live session (nudge-smoke) changed nothing.
+	if n2 := h.searchStreakNote("fourth_term"); n2 != "" {
+		t.Errorf("nudge must fire once per streak, got a repeat: %q", n2)
+	}
 	// A prism_query call resets the streak (wired in Invoke's dispatch).
 	h.streakMu.Lock()
 	h.searchStreak = nil
+	h.streakNudged = false
 	h.streakMu.Unlock()
 	if n := h.searchStreakNote("fresh_term"); n != "" {
 		t.Errorf("streak must reset after prism_query, got %q", n)
