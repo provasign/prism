@@ -7,7 +7,7 @@
       {
         "hooks": [
           {
-            "command": "command -v shale \u003e/dev/null 2\u003e\u00261 \u0026\u0026 shale capture claude-code || true",
+            "command": "command -v shale >/dev/null 2>&1 && shale capture claude-code || true",
             "type": "command"
           }
         ],
@@ -18,7 +18,7 @@
       {
         "hooks": [
           {
-            "command": "command -v shale \u003e/dev/null 2\u003e\u00261 \u0026\u0026 shale capture claude-code || true",
+            "command": "command -v shale >/dev/null 2>&1 && shale capture claude-code || true",
             "type": "command"
           }
         ]
@@ -28,7 +28,7 @@
       {
         "hooks": [
           {
-            "command": "command -v shale \u003e/dev/null 2\u003e\u00261 \u0026\u0026 shale capture claude-code || true",
+            "command": "command -v shale >/dev/null 2>&1 && shale capture claude-code || true",
             "type": "command"
           }
         ]
@@ -38,7 +38,7 @@
       {
         "hooks": [
           {
-            "command": "command -v shale \u003e/dev/null 2\u003e\u00261 \u0026\u0026 shale capture claude-code || true",
+            "command": "command -v shale >/dev/null 2>&1 && shale capture claude-code || true",
             "type": "command"
           }
         ]
@@ -48,7 +48,7 @@
       {
         "hooks": [
           {
-            "command": "command -v shale \u003e/dev/null 2\u003e\u00261 \u0026\u0026 shale capture claude-code || true",
+            "command": "command -v shale >/dev/null 2>&1 && shale capture claude-code || true",
             "type": "command"
           }
         ]
@@ -58,11 +58,6 @@
   "permissions": {
     "allow": [
       "mcp__prism"
-    ],
-    "deny": [
-      "Grep",
-      "Bash(grep:*)",
-      "Bash(rg:*)"
     ]
   }
 }
