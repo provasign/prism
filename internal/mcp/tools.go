@@ -394,6 +394,20 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "Treat query as a regex for the text pass (invalid patterns fall back to literal).",
 				},
+				"path": map[string]any{
+					"type":        []string{"string", "array"},
+					"items":       map[string]any{"type": "string"},
+					"description": "Restrict the search to these repo-relative files or directories (e.g. \"octodns/manager.py\" or [\"src/\",\"tests/\"]). Scope whenever you know where to look — it is what you would have written after the grep pattern.",
+				},
+				"glob": map[string]any{
+					"type":        []string{"string", "array"},
+					"items":       map[string]any{"type": "string"},
+					"description": "Only search files matching these globs, e.g. \"*.py\" (grep --include / rg --glob).",
+				},
+				"files_only": map[string]any{
+					"type":        "boolean",
+					"description": "Return matching file paths without the matching lines — the cheapest answer to \"where does this live\".",
+				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 			},
 		}
@@ -608,7 +622,9 @@ func toolDescription(name string) string {
 			"term you already know you need instead of calling once per term; results come back " +
 			"grouped under the term that produced them. scope=\"text\" is a pure grep and the " +
 			"cheapest option — use it wherever you would have run grep/rg (regex=true for patterns); " +
-			"\"symbols\" for names only; default \"both\" merges them. Returns locations, not context."
+			"\"symbols\" for names only; default \"both\" merges them. SCOPE IT when you know where to " +
+			"look: path=\"pkg/file.go\" or path=[\"src/\",\"tests/\"], glob=\"*.py\", files_only=true — " +
+			"the same narrowing you would write after a grep pattern. Returns locations, not context."
 	case "prism_lookup":
 		return "Read one symbol by qualified name (e.g. 'ranking.Select', 'kvstore.Store.Get'). " +
 			"fields=[...] narrows to signature/doc/body/kind/parent/modifiers; omit it for the whole " +
@@ -996,6 +1012,11 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	limit := intArg(args, "limit", 25)
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
+	sc := searchScope{
+		paths:     stringsArg(args, "path"),
+		glob:      stringsArg(args, "glob"),
+		filesOnly: boolArg(args, "files_only"),
+	}
 
 	// Multi-term: run each term through the same single-term path and group
 	// the results under the term that produced them, so an agent can tell
@@ -1009,7 +1030,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			wg.Add(1)
 			go func(i int, q string) {
 				defer wg.Done()
-				r, err := h.searchOne(ctx, q, scope, limit, regex)
+				r, err := h.searchOne(ctx, q, scope, limit, regex, sc)
 				if err != nil {
 					errs[i] = err
 					return
@@ -1040,7 +1061,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		return out, nil
 	}
 
-	out, err := h.searchOne(ctx, queries[0], scope, limit, regex)
+	out, err := h.searchOne(ctx, queries[0], scope, limit, regex, sc)
 	if err != nil {
 		return nil, err
 	}
@@ -1052,7 +1073,13 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 
 // searchOne is the single-term search, unchanged in behaviour and shape from
 // when prism_search took exactly one query.
-func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool) (map[string]any, error) {
+type searchScope struct {
+	paths     []string
+	glob      []string
+	filesOnly bool
+}
+
+func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
 
 	// scope="text": the agent asked for a PURE grep — exactly what rg
 	// returns, no symbol search, no graph, minimal envelope. This is the
@@ -1061,11 +1088,35 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	if scope == "text" {
 		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 		})
 		out := map[string]any{
 			"textHits":    h.renderTextMatches(r.Hits),
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
+		}
+		if sc.filesOnly {
+			// Locations without lines: the cheapest answer to "where does
+			// this live". Done here rather than via rg --files-with-matches,
+			// whose bare-path output breaks the shared line parser.
+			seen := map[string]bool{}
+			var files []string
+			for _, hit := range r.Hits {
+				if !seen[hit.File] {
+					seen[hit.File] = true
+					files = append(files, hit.File)
+				}
+			}
+			delete(out, "textHits")
+			out["files"] = files
+			out["fileCount"] = len(files)
+		}
+		if len(r.RejectedPaths) > 0 {
+			// Never let a dropped scope pass as a completed search.
+			out["rejectedPaths"] = r.RejectedPaths
+			out["warning"] = fmt.Sprintf(
+				"these path= entries resolve outside the project root and were NOT searched: %v",
+				r.RejectedPaths)
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
@@ -1117,6 +1168,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	if scope != "symbols" {
 		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
+			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 		}); len(r.Hits) > 0 {
 			out["textHits"] = h.renderTextMatches(r.Hits)
 			out["textBackend"] = r.Backend

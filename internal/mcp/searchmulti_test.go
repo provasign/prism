@@ -130,3 +130,116 @@ func TestToolSearch_EmptyQueryStillErrors(t *testing.T) {
 		}
 	}
 }
+
+// --- path scoping ------------------------------------------------------
+//
+// The adoption lever. In the 2026-08-15 A/B cells, 12 of 20 grep invocations
+// named a path, and the cells where the agent DECLINED prism opened with
+// `grep -n alias octodns/manager.py` — a scoped search prism could not
+// express. Whole-tree-only is why an agent that knows its file uses grep.
+
+func TestToolSearch_PathScopeRestrictsResults(t *testing.T) {
+	h := newTextSearchHandler(t)
+	all, err := h.Invoke("prism_search", map[string]any{"query": "Alpha", "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(asHits(all)); n < 2 {
+		t.Fatalf("fixture should match Alpha in both files, got %d", n)
+	}
+	// Scoped to the file that only MENTIONS Alpha, not the one defining it.
+	one, err := h.Invoke("prism_search", map[string]any{
+		"query": "Alpha", "scope": "text", "path": "beta.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range hitFiles(one) {
+		if f != "beta.go" {
+			t.Errorf("path=beta.go returned a hit in %q — the scope was not applied", f)
+		}
+	}
+	if len(hitFiles(one)) == 0 {
+		t.Error("scoping to a single file returned nothing; rg/grep omit the filename for a " +
+			"single file operand and the path:line:text parse drops every hit without --with-filename")
+	}
+}
+
+func TestToolSearch_PathOutsideRootIsRefusedNotWidened(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Alpha", "scope": "text", "path": "/etc"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	// The dangerous failure is not an error, it is a WIDENING: answering a
+	// question about /etc with hits from the whole project reads as success.
+	if n := len(asHits(out)); n != 0 {
+		t.Errorf("an out-of-root scope returned %d hits; it must return none", n)
+	}
+	if m["rejectedPaths"] == nil || m["warning"] == nil {
+		t.Errorf("a dropped scope must be reported, got %v", m)
+	}
+}
+
+func TestToolSearch_FilesOnlyDropsLines(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Alpha", "scope": "text", "files_only": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if _, ok := m["textHits"]; ok {
+		t.Error("files_only must not return per-line hits")
+	}
+	files, _ := m["files"].([]string)
+	if len(files) == 0 {
+		t.Fatalf("files_only returned no files: %v", m)
+	}
+	for _, f := range files {
+		if f == "" {
+			t.Error("empty file path in files_only result")
+		}
+	}
+}
+
+func asHits(out any) []any {
+	m, _ := out.(map[string]any)
+	if m == nil {
+		return nil
+	}
+	var n []any
+	for _, g := range toSlice(m["textHits"]) {
+		gm, _ := g.(map[string]any)
+		n = append(n, toSlice(gm["hits"])...)
+	}
+	return n
+}
+
+func hitFiles(out any) []string {
+	m, _ := out.(map[string]any)
+	var fs []string
+	for _, g := range toSlice(m["textHits"]) {
+		if gm, ok := g.(map[string]any); ok {
+			if f, _ := gm["file"].(string); f != "" {
+				fs = append(fs, f)
+			}
+		}
+	}
+	return fs
+}
+
+func toSlice(v any) []any {
+	switch x := v.(type) {
+	case []any:
+		return x
+	case []map[string]any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = e
+		}
+		return out
+	}
+	return nil
+}

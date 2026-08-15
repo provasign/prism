@@ -84,6 +84,8 @@ Usage:
                                   in one call (up to 10), grouped by term.
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
+                                  [--path <file-or-dir>]  scope the search (repeatable)
+                                  [--glob '*.py'] [--files-only]
                                   [--dir <path>]  where to search (default: .)
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
@@ -483,6 +485,7 @@ Route by the question. One call, and treat its result as final:
 |---|---|
 | where is X? | ` + "`" + `prism_search` + "`" + ` — ` + "`" + `scope="text"` + "`" + ` is a plain grep and the cheapest option |
 | where are X, Y and Z? | ` + "`" + `prism_search(query=["X","Y","Z"])` + "`" + ` — one call, up to 10 terms, grouped by term |
+| where is X **in this file/dir**? | ` + "`" + `prism_search(query="X", path="pkg/file.go")` + "`" + ` — also ` + "`" + `glob="*.py"` + "`" + `, ` + "`" + `files_only=true` + "`" + `. Scope it whenever you know where to look |
 | read one function | ` + "`" + `prism_lookup(name="pkg.Func")` + "`" + ` |
 | read one file | ` + "`" + `prism_read` + "`" + ` |
 | give me the code for X, ready to edit | ` + "`" + `prism_query(task="<label>", terms=["X"])` + "`" + ` — keys on ` + "`" + `terms` + "`" + `; the task wording changes nothing |
@@ -500,7 +503,7 @@ automatic — you never need to trigger it.
 
 ### Bash-only (subagents, CI)
 
-    prism search <term> [more terms...] --scope text --format text
+    prism search <term> [more terms...] [--path <file-or-dir>] --scope text --format text
     prism query "<task>" --terms X --format text
     prism change-impact 'Type.method' --format text
     prism lookup <pkg.Func> --format text
@@ -1565,6 +1568,8 @@ func cmdSearch(args []string) int {
 	format := formatText
 	scope := ""
 	regex := false
+	var paths, globs []string
+	filesOnly := false
 	var bare []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -1594,6 +1599,21 @@ func cmdSearch(args []string) int {
 			}
 		case "--regex":
 			regex = true
+		case "--path":
+			// The grep operand, restored. `prism search alias --path
+			// octodns/manager.py` is what an agent that already knows the
+			// file wants; without it, it uses grep instead.
+			if i+1 < len(args) {
+				paths = append(paths, args[i+1])
+				i++
+			}
+		case "--glob", "--include":
+			if i+1 < len(args) {
+				globs = append(globs, args[i+1])
+				i++
+			}
+		case "--files-only", "-l":
+			filesOnly = true
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1648,6 +1668,15 @@ func cmdSearch(args []string) int {
 	}
 	if regex {
 		callArgs["regex"] = true
+	}
+	if len(paths) > 0 {
+		callArgs["path"] = paths
+	}
+	if len(globs) > 0 {
+		callArgs["glob"] = globs
+	}
+	if filesOnly {
+		callArgs["files_only"] = true
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
 	if err != nil {
@@ -2504,6 +2533,23 @@ func printTextOutput(m map[string]any) {
 	// `prism search X --scope text --format text` — the exact invocation the
 	// steering gives Bash-only subagents — printed JSON, several times the
 	// tokens of the line-oriented form it asked for.
+	// files_only delivery: paths, no lines.
+	if files, ok := m["files"]; ok {
+		if _, hasSyms := m["symbols"]; !hasSyms {
+			for _, f := range asSliceAny(files) {
+				fmt.Printf("%v\n", f)
+			}
+			if len(asSliceAny(files)) == 0 {
+				fmt.Println("// no matching files")
+			}
+			for _, k := range []string{"warning", "note"} {
+				if s, _ := m[k].(string); s != "" {
+					fmt.Println("// " + s)
+				}
+			}
+			return
+		}
+	}
 	if _, hasHits := m["textHits"]; hasHits {
 		_, hasSyms := m["symbols"]
 		_, hasContent := m["content"]

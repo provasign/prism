@@ -99,6 +99,32 @@ These survive the revert and should anchor any future work:
 - **Agents decline graph tools when a text tool is present.** Measured twice,
   independently — the 190-cell mix above, and the §8.2 codegraph arm that made
   0 calls in 6 cells.
+- **MCP exists to keep the index open, and that is worth 35–65×.** A CLI
+  invocation is a fresh process that reopens the store every time. Measured
+  2026-08-15 on grafana-122750 (1.1 GB `.grove`), same binary:
+
+  | operation | CLI per call | MCP warm |
+  |---|---:|---:|
+  | `search --scope symbols` | 4.05s | 2.15s first, then **0.06s** |
+  | `lookup` | 3.05s | **0.11s** |
+  | `search --scope text` | 0.56s | 0.47s |
+
+  `--scope text` is a ripgrep pass that never touches the index, so it is
+  ~equal; the whole gap is `lookup` / `--scope symbols` / `change-impact` /
+  `query`. On a small repo (prism itself) CLI startup is 0.03–0.09s and the
+  effect is invisible — it only appears at monorepo scale. This is the
+  architectural reason for MCP and it is independent of token accounting.
+  It had to be rediscovered on 2026-08-15 after a full session of reasoning
+  about CLI-vs-MCP purely in tokens. **Do not lose it again.**
+
+  MCP's fixed token overhead, by contrast, is now negligible: **+92 fresh
+  tokens** on a cell where prism is never called (v054-smoke-fixed). An
+  earlier +19k figure came from a run carrying a stale grep-denial config
+  and is wrong.
+
+  MCP also has a session ledger the CLI structurally cannot have — a repeat
+  `prism_read` of an unchanged file returns a pointer, while `prism read`
+  through a shell re-delivers the body.
 
 External work agrees and is worth citing:
 

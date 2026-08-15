@@ -32,6 +32,7 @@ Route by the question. One call, and treat its result as final:
 |---|---|
 | where is X? | `prism_search` — `scope="text"` is a plain grep and the cheapest option |
 | where are X, Y and Z? | `prism_search(query=["X","Y","Z"])` — one call, up to 10 terms, grouped by term |
+| where is X **in this file/dir**? | `prism_search(query="X", path="pkg/file.go")` — also `glob="*.py"`, `files_only=true`. Scope it whenever you know where to look |
 | read one function | `prism_lookup(name="pkg.Func")` |
 | read one file | `prism_read` |
 | give me the code for X, ready to edit | `prism_query(task="<label>", terms=["X"])` — keys on `terms`; the task wording changes nothing |
@@ -49,7 +50,7 @@ automatic — you never need to trigger it.
 
 ### Bash-only (subagents, CI)
 
-    prism search <term> [more terms...] --scope text --format text
+    prism search <term> [more terms...] [--path <file-or-dir>] --scope text --format text
     prism query "<task>" --terms X --format text
     prism change-impact 'Type.method' --format text
     prism lookup <pkg.Func> --format text

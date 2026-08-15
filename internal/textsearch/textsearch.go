@@ -44,6 +44,11 @@ type Result struct {
 	// project's own source).
 	Truncated bool `json:"truncated,omitempty"`
 	TimedOut  bool `json:"timedOut,omitempty"`
+	// RejectedPaths lists requested scopes that resolved outside the root
+	// and were dropped. Never silent: a search that quietly widened from
+	// one directory to the whole tree returns plausible hits from the wrong
+	// place, which is worse than an error.
+	RejectedPaths []string `json:"rejectedPaths,omitempty"`
 }
 
 // Options bound a search. Zero values get safe defaults.
@@ -55,6 +60,80 @@ type Options struct {
 	// string. A pattern that does not compile falls back to literal — a
 	// search that errors is a tool agents route around.
 	Regex bool
+	// Paths restricts the search to these repo-relative files or
+	// directories. Empty means the whole tree.
+	//
+	// This exists because agents overwhelmingly search SCOPED. 511 of 946
+	// mined real grep invocations named a path (v0.51.0 mining), and 12 of
+	// 20 in the 2026-08-15 A/B cells did. Without it prism_search cannot
+	// express `grep -n alias octodns/manager.py`, so an agent that knows
+	// which file it wants reaches for grep instead — measured as the main
+	// reason prism went unused in cells where the issue named its location.
+	//
+	// Entries that escape the root are DROPPED, and the caller is told
+	// which: silently searching the whole tree after being asked for one
+	// directory would return plausible hits from the wrong place.
+	Paths []string
+	// Glob restricts the search to files matching these shell globs
+	// (rg --glob / grep --include), e.g. "*.py".
+	Glob []string
+	// FilesOnly is honoured by the CALLER, not by this package: rg
+	// --files-with-matches and grep -l emit bare paths, which breaks the
+	// path:line:text parse every backend shares. The delivery layer drops
+	// the lines instead, which is where the token saving actually lands.
+	FilesOnly bool
+}
+
+// scopeArgs resolves opts.Paths against root, dropping anything that escapes
+// it. Returns the operands to pass to the backend (always non-empty: "." when
+// nothing valid was requested) plus the rejected entries.
+//
+// Containment is checked on the SYMLINK-RESOLVED path, matching the native
+// scanner's existing check: a path argument is attacker-reachable in an
+// agent setting, and "search this directory" must not become "read /etc".
+func scopeArgs(root string, paths []string) (operands []string, rejected []string) {
+	// root arrives relative in CLI use ("."), and EvalSymlinks returns an
+	// absolute path -- comparing the two made filepath.Rel fail and rejected
+	// every legitimate scope, so a scoped search silently returned nothing.
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		absRoot = root
+	}
+	resolvedRoot := absRoot
+	if rr, err := filepath.EvalSymlinks(absRoot); err == nil {
+		resolvedRoot = rr
+	}
+	for _, p := range paths {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		abs := p
+		if !filepath.IsAbs(abs) {
+			abs = filepath.Join(absRoot, p)
+		}
+		real := abs
+		if rr, err := filepath.EvalSymlinks(abs); err == nil {
+			real = rr
+		}
+		rel, err := filepath.Rel(resolvedRoot, real)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			rejected = append(rejected, p)
+			continue
+		}
+		operands = append(operands, "./"+filepath.ToSlash(rel))
+	}
+	if len(operands) == 0 && len(rejected) > 0 {
+		// Every requested scope was rejected. Do NOT fall back to the whole
+		// tree: the caller asked about one place, and hits from everywhere
+		// else read as an answer to the question they asked. Return nothing
+		// and let RejectedPaths explain why.
+		return nil, rejected
+	}
+	if len(operands) == 0 {
+		operands = []string{"."}
+	}
+	return operands, rejected
 }
 
 func (o Options) withDefaults() Options {
@@ -197,6 +276,12 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 	args := []string{
 		"--no-config", "--line-number", "--no-heading", "--color=never",
 		"--ignore-case",
+		// Force the filename onto every line. With a SINGLE FILE operand rg
+		// (and grep) omit it, emitting "988:text" instead of
+		// "path:988:text" -- runLineTool parses path:line:text, so a search
+		// scoped to one file silently returned zero hits. Found the moment
+		// path scoping landed; it is invisible for directory operands.
+		"--with-filename",
 		// rg honors .gitignore only INSIDE a git repository. A worktree, an
 		// unpacked tarball or a subdirectory checkout has the ignore file but
 		// no .git, and rg would then search everything the project asked it
@@ -217,8 +302,19 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		args = append(args, "--fixed-strings")
 	}
 	// --hidden would otherwise descend into the VCS dir and prism's state.
-	args = append(args, "--glob", "!.git/", "--glob", "!.grove/", "-e", pattern, "--", ".")
-	return runLineTool(ctx, root, bin("rg"), args, nil, opts)
+	args = append(args, "--glob", "!.git/", "--glob", "!.grove/")
+	for _, g := range opts.Glob {
+		args = append(args, "--glob", g)
+	}
+	operands, rejected := scopeArgs(root, opts.Paths)
+	if len(operands) == 0 {
+		return Result{Backend: "rg", RejectedPaths: rejected}, true
+	}
+	args = append(args, "-e", pattern, "--")
+	args = append(args, operands...)
+	r, ok := runLineTool(ctx, root, bin("rg"), args, nil, opts)
+	r.RejectedPaths = rejected
+	return r, ok
 }
 
 // runGrep shells out to grep, pinned to the C locale — under a UTF-8 locale
@@ -236,12 +332,22 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	if regexUsable(pattern, opts) {
 		mode = "-E"
 	}
-	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+	args := []string{"-rnHI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
-	args = append(args, "-e", pattern, "--", ".")
-	return runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)
+	for _, g := range opts.Glob {
+		args = append(args, "--include="+g)
+	}
+	operands, rejected := scopeArgs(root, opts.Paths)
+	if len(operands) == 0 {
+		return Result{Backend: "grep", RejectedPaths: rejected}, true
+	}
+	args = append(args, "-e", pattern, "--")
+	args = append(args, operands...)
+	r, ok := runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)
+	r.RejectedPaths = rejected
+	return r, ok
 }
 
 // runLineTool runs an external searcher emitting `path:line:text` lines and

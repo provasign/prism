@@ -53,42 +53,67 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 	if rr, rerr := filepath.EvalSymlinks(root); rerr == nil {
 		resolvedRoot = rr
 	}
+	// Honour Paths here too. If the native scanner ignored the scope while
+	// rg respected it, the same query would return different results on a
+	// machine without ripgrep -- and the wider answer is the dangerous one,
+	// because it looks like a successful search of the directory asked for.
+	roots, rejected := scopeArgs(root, opts.Paths)
+	res.RejectedPaths = rejected
+	globs := opts.Glob
+
 	var files []string
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if ctx.Err() != nil {
-			return filepath.SkipAll
-		}
-		name := d.Name()
-		if d.IsDir() {
-			if path != root && skip[name] {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		// A symlinked FILE entry can point anywhere; WalkDir already refuses
-		// to descend into symlinked directories, but without this check a
-		// repository symlink would expose external file contents through
-		// search results. Reject any entry whose resolved target escapes root
-		// (same containment rule as Grove's indexer).
-		if d.Type()&fs.ModeSymlink != 0 {
-			resolved, rerr := filepath.EvalSymlinks(path)
-			if rerr != nil {
+	walk := func(scanRoot string) {
+		_ = filepath.WalkDir(scanRoot, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
 				return nil
 			}
-			if r, rerr := filepath.Rel(resolvedRoot, resolved); rerr != nil || r == ".." ||
-				strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+			if ctx.Err() != nil {
+				return filepath.SkipAll
+			}
+			name := d.Name()
+			if d.IsDir() {
+				if path != root && skip[name] {
+					return filepath.SkipDir
+				}
 				return nil
 			}
-		}
-		if info, ierr := d.Info(); ierr != nil || info.Size() > 2<<20 {
-			return nil // unreadable or >2MB: same cap as the rg invocation
-		}
-		files = append(files, path)
-		return nil
-	})
+			// A symlinked FILE entry can point anywhere; WalkDir already refuses
+			// to descend into symlinked directories, but without this check a
+			// repository symlink would expose external file contents through
+			// search results. Reject any entry whose resolved target escapes root
+			// (same containment rule as Grove's indexer).
+			if d.Type()&fs.ModeSymlink != 0 {
+				resolved, rerr := filepath.EvalSymlinks(path)
+				if rerr != nil {
+					return nil
+				}
+				if r, rerr := filepath.Rel(resolvedRoot, resolved); rerr != nil || r == ".." ||
+					strings.HasPrefix(r, ".."+string(filepath.Separator)) {
+					return nil
+				}
+			}
+			if info, ierr := d.Info(); ierr != nil || info.Size() > 2<<20 {
+				return nil // unreadable or >2MB: same cap as the rg invocation
+			}
+			if len(globs) > 0 {
+				ok := false
+				for _, g := range globs {
+					if m, _ := filepath.Match(g, name); m {
+						ok = true
+						break
+					}
+				}
+				if !ok {
+					return nil
+				}
+			}
+			files = append(files, path)
+			return nil
+		})
+	}
+	for _, r := range roots {
+		walk(filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(r, "./"))))
+	}
 
 	var (
 		mu      sync.Mutex
