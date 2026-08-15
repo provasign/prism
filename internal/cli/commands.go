@@ -157,6 +157,16 @@ func Run(args []string) int {
 		return 0
 	}
 	cmd, rest := args[0], args[1:]
+	// `prism <cmd> --help` used to RUN <cmd>: no handler parsed -h/--help, so
+	// `prism init --help` performed a full init (writing prism.yaml, nine
+	// steering files and every project MCP registration) and `prism search
+	// --help` searched for the string "--help". Answer here, once, before any
+	// command body can execute. Only the flag spellings count — a bare `help`
+	// argument stays a search term, so `prism search help` still searches.
+	if cmd != "help" && helpRequested(rest) {
+		fmt.Print(commandHelp(cmd))
+		return 0
+	}
 	switch cmd {
 	case "-h", "--help", "help":
 		fmt.Print(helpText)
@@ -226,6 +236,65 @@ func Run(args []string) int {
 	fmt.Fprintln(os.Stderr, "unknown command:", cmd)
 	fmt.Print(helpText)
 	return 2
+}
+
+// helpRequested reports whether a subcommand's own arguments ask for usage.
+// Deliberately narrow: the flag spellings only, so a literal `help` argument
+// is still a query term for search/lookup/references.
+func helpRequested(args []string) bool {
+	for _, a := range args {
+		if a == "-h" || a == "--help" {
+			return true
+		}
+	}
+	return false
+}
+
+// helpAliases maps command aliases onto the name helpText documents them under.
+var helpAliases = map[string]string{
+	"install":    "init",
+	"refs":       "references",
+	"arch-check": "arch",
+}
+
+// commandHelp returns the usage block for one subcommand, extracted from
+// helpText: its `  prism <cmd> …` line plus the indented continuation lines
+// under it, and for init the flag section further down. Falls back to the full
+// help when the command has no block — an unknown command should still get
+// something useful rather than silence.
+func commandHelp(cmd string) string {
+	if c, ok := helpAliases[cmd]; ok {
+		cmd = c
+	}
+	prefix := "  prism " + cmd
+	var b strings.Builder
+	inBlock := false
+	for _, line := range strings.Split(helpText, "\n") {
+		switch {
+		case strings.HasPrefix(line, prefix) && (len(line) == len(prefix) || line[len(prefix)] == ' '):
+			inBlock = true
+			b.WriteString(line + "\n")
+		case !inBlock:
+			// outside a block: nothing to collect
+		case strings.HasPrefix(line, "   ") && !strings.HasPrefix(line, "  prism "):
+			b.WriteString(line + "\n")
+		default:
+			inBlock = false
+		}
+	}
+	if b.Len() == 0 {
+		return helpText
+	}
+	if cmd == "init" {
+		if i := strings.Index(helpText, "prism init [dir] flags:"); i >= 0 {
+			section := helpText[i:]
+			if j := strings.Index(section, "\n\n"); j >= 0 {
+				section = section[:j]
+			}
+			b.WriteString("\n" + section + "\n")
+		}
+	}
+	return b.String()
 }
 
 // --- per-command implementations ---------------------------------------
