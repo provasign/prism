@@ -79,9 +79,12 @@ Usage:
                                   --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
                                   --format text|lean|json  Output format (default: text)
-  prism search <keyword> [dir]    Search symbol names AND raw source text (a real
-                                  rg/grep pass). --scope text is a pure grep
+  prism search <term>... [dir]    Search symbol names AND raw source text (a real
+                                  rg/grep pass). Pass SEVERAL terms to search them
+                                  in one call (up to 10), grouped by term.
+                                  --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
+                                  [--dir <path>]  where to search (default: .)
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
@@ -479,9 +482,10 @@ Route by the question. One call, and treat its result as final:
 | Question | Call |
 |---|---|
 | where is X? | ` + "`" + `prism_search` + "`" + ` — ` + "`" + `scope="text"` + "`" + ` is a plain grep and the cheapest option |
+| where are X, Y and Z? | ` + "`" + `prism_search(query=["X","Y","Z"])` + "`" + ` — one call, up to 10 terms, grouped by term |
 | read one function | ` + "`" + `prism_lookup(name="pkg.Func")` + "`" + ` |
 | read one file | ` + "`" + `prism_read` + "`" + ` |
-| bug report / unfamiliar area | ` + "`" + `prism_query(task="<symptom>", terms=["<one keyword>"])` + "`" + ` |
+| give me the code for X, ready to edit | ` + "`" + `prism_query(task="<label>", terms=["X"])` + "`" + ` — keys on ` + "`" + `terms` + "`" + `; the task wording changes nothing |
 | who breaks if I change X? | ` + "`" + `prism_change_impact(query="Type.method")` + "`" + ` |
 | is my diff complete? | ` + "`" + `prism_verify` + "`" + ` (pre-commit gate) |
 
@@ -496,7 +500,7 @@ automatic — you never need to trigger it.
 
 ### Bash-only (subagents, CI)
 
-    prism search <term> --scope text --format text
+    prism search <term> [more terms...] --scope text --format text
     prism query "<task>" --terms X --format text
     prism change-impact 'Type.method' --format text
     prism lookup <pkg.Func> --format text
@@ -1553,18 +1557,25 @@ func cmdRead(args []string) int {
 
 func cmdSearch(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism search <keyword> [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism search <term> [term...] [--dir <path>]")
 		return 2
 	}
-	query := args[0]
 	limit := 25
-	dir := "."
+	dir := ""
 	format := formatText
 	scope := ""
 	regex := false
-	for i := 1; i < len(args); i++ {
+	var bare []string
+	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--dir":
+			// The unambiguous way to say where to search, now that bare
+			// arguments are terms rather than "term then directory".
+			if i+1 < len(args) {
+				dir = args[i+1]
+				i++
+			}
 		case "--scope":
 			// The steering has documented `prism search <t> --scope text` since
 			// v0.37.0 while this parser knew only --limit and --format, so the
@@ -1605,8 +1616,31 @@ func cmdSearch(args []string) int {
 				fmt.Fprintf(os.Stderr, "search: unknown flag %q\n", a)
 				return 2
 			}
-			dir = a
+			bare = append(bare, a)
 		}
+	}
+	if len(bare) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: prism search <term> [term...] [--dir <path>]")
+		return 2
+	}
+	// `prism search <keyword> <dir>` was the documented form for many
+	// releases, so the two-argument case still honours it when the second
+	// argument really is a directory — but says so, because the same two
+	// words are now also a legitimate two-term search.
+	if dir == "" && len(bare) == 2 {
+		if fi, err := os.Stat(bare[1]); err == nil && fi.IsDir() {
+			fmt.Fprintf(os.Stderr,
+				"search: reading %q as the directory, not a second term (legacy `prism search <term> <dir>` form); "+
+					"use --dir %s to be explicit, or --dir . to search for both words\n", bare[1], bare[1])
+			dir, bare = bare[1], bare[:1]
+		}
+	}
+	if dir == "" {
+		dir = "."
+	}
+	var query any = bare[0]
+	if len(bare) > 1 {
+		query = bare
 	}
 	callArgs := map[string]any{"query": query, "limit": limit}
 	if scope != "" {
@@ -2446,6 +2480,49 @@ func printOutput(v any, format outputFormat) {
 // printTextOutput renders a Prism response as plain text for agent consumption.
 // Handles prism_query, prism_read, prism_search, and prism_lookup responses.
 func printTextOutput(m map[string]any) {
+	// Multi-term prism_search: one group per term, each rendered by the
+	// single-term path below so the two forms read identically.
+	if groups, ok := m["results"]; ok {
+		if note, _ := m["note"].(string); note != "" {
+			fmt.Println("// " + note)
+		}
+		for _, g := range asSliceAny(groups) {
+			gm, ok := g.(map[string]any)
+			if !ok {
+				continue
+			}
+			fmt.Printf("// ── %v ──\n", gm["query"])
+			printTextOutput(gm)
+		}
+		for _, f := range asSliceAny(m["failedTerms"]) {
+			fmt.Printf("// failed: %v\n", f)
+		}
+		return
+	}
+	// A pure text search (scope="text") has textHits and nothing else. Without
+	// this branch it fell past every case below to the JSON fallback, so
+	// `prism search X --scope text --format text` — the exact invocation the
+	// steering gives Bash-only subagents — printed JSON, several times the
+	// tokens of the line-oriented form it asked for.
+	if _, hasHits := m["textHits"]; hasHits {
+		_, hasSyms := m["symbols"]
+		_, hasContent := m["content"]
+		if !hasSyms && !hasContent {
+			printTextMatches(m)
+			if len(asSliceAny(m["textHits"])) == 0 {
+				fmt.Println("// no matches")
+			}
+			for _, k := range []string{"resolvedNote", "warning", "note"} {
+				if s, _ := m[k].(string); s != "" {
+					fmt.Println("// " + s)
+				}
+			}
+			if t, _ := m["truncated"].(bool); t {
+				fmt.Println("// truncated at the hit limit — raise --limit for more")
+			}
+			return
+		}
+	}
 	// prism_node: source PLUS the orientation payload. Must come first — its
 	// shape overlaps prism_lookup's (symbol+content) and prism_read's
 	// (file+content), so without this branch both node views fell through and

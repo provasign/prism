@@ -332,7 +332,7 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"task": map[string]any{
 					"type":        "string",
-					"description": "What you are trying to do.",
+					"description": "What you are trying to do. A label for the response header — it does not affect retrieval, ranking or sizing.",
 				},
 				"terms": map[string]any{
 					"type":        "array",
@@ -358,7 +358,7 @@ func toolSchema(name string) map[string]any {
 				"model":        modelProp,
 				"context_used": contextUsedProp,
 				"profile":      map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
-				"budget":       map[string]any{"type": "integer", "description": "Token budget. Explicit values are honored exactly; default 8000."},
+				"budget":       map[string]any{"type": "integer", "description": "Token budget, honored exactly. Default 8000 for every task."},
 			},
 		}
 	case "prism_read":
@@ -381,8 +381,9 @@ func toolSchema(name string) map[string]any {
 			"required": []string{"query"},
 			"properties": map[string]any{
 				"query": map[string]any{
-					"type":        "string",
-					"description": "Substring matched against symbol names/signatures/docstrings and against raw source text. A regular expression when regex=true.",
+					"type":        []string{"string", "array"},
+					"items":       map[string]any{"type": "string"},
+					"description": "One term, or an ARRAY of terms searched in one call (up to 10) — batch them whenever you have more than one thing to find. Matched against symbol names/signatures/docstrings and raw source text. A regular expression when regex=true.",
 				},
 				"scope": map[string]any{
 					"type":        "string",
@@ -590,20 +591,23 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "Edit-ready context for a task. Pass the task plus terms=[...] holding anchor names " +
-			"(a confirmed anchor beats a well-phrased task; guessing a common name hurts). Returns " +
-			"line-numbered source windows for the matching symbols, their callers/callees, and " +
-			"full-text matches outside any symbol — a separate grep is not needed. Do not re-read " +
-			"the files it shows. delivery=\"symbols\" for a compact list instead of windows. " +
-			"To merely locate something, use prism_search."
+		return "Edit-ready context for the symbols you name. Retrieval keys ONLY on terms=[...]: " +
+			"prism finds those symbols, expands one hop through the call graph, and runs a " +
+			"full-text pass for each term, then returns line-numbered source windows plus each " +
+			"anchor's callers — no separate grep needed. task is a LABEL, not a search key: how " +
+			"you phrase it does not change what comes back. Size with budget= (default 8000) and " +
+			"max_files=; delivery=\"symbols\" swaps windows for a compact list. Do not re-read " +
+			"the files it shows. To merely locate something, use prism_search."
 	case "prism_read":
 		return "Whole-file read. A repeat read of an UNCHANGED file returns a one-line " +
 			"`// [prism:cached] <file> @sha:…` pointer instead of the body — not an error and not " +
 			"empty: use the copy you already have. For a single function use prism_lookup."
 	case "prism_search":
-		return "Locate something: one call searches indexed symbol names/signatures/docstrings AND " +
-			"raw source text (a real rg/grep pass). scope=\"text\" is a pure grep and the cheapest " +
-			"option — use it wherever you would have run grep/rg (regex=true for patterns); " +
+		return "Locate things: searches indexed symbol names/signatures/docstrings AND raw source " +
+			"text (a real rg/grep pass). query takes ONE term or an ARRAY of up to 10 — batch every " +
+			"term you already know you need instead of calling once per term; results come back " +
+			"grouped under the term that produced them. scope=\"text\" is a pure grep and the " +
+			"cheapest option — use it wherever you would have run grep/rg (regex=true for patterns); " +
 			"\"symbols\" for names only; default \"both\" merges them. Returns locations, not context."
 	case "prism_lookup":
 		return "Read one symbol by qualified name (e.g. 'ranking.Select', 'kvstore.Store.Get'). " +
@@ -827,15 +831,16 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	stamp("post-selectContext")
 
 	// Delivery: "source" = verbatim line-numbered windows + anchor summary
-	// (edit-ready); "symbols" = the compact per-symbol list. Explicit arg wins;
-	// otherwise phase-aware — an agent debugging or implementing is about to
-	// edit and gets source, an agent orienting or reviewing gets symbols.
+	// (edit-ready); "symbols" = the compact per-symbol list.
+	//
+	// Source is the default, unconditionally. It used to depend on
+	// DetectPhase(task) — so "fix the timeout bug" returned editable windows
+	// and "look at the timeout handling" returned a symbol list, from the same
+	// seeds. Delivering context for an edit is what this tool is for; ask for
+	// delivery="symbols" when you want the compact list.
 	delivery := stringArg(args, "delivery", "")
 	if delivery == "" && len(sel.picked) > 0 {
-		switch ranking.DetectPhase(task) {
-		case ranking.PhaseDebug, ranking.PhaseImplement:
-			delivery = "source"
-		}
+		delivery = "source"
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
@@ -964,16 +969,90 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	}, nil
 }
 
+// searchTermCap bounds how many terms one prism_search call will run. The
+// point of batching is to collapse a run of turns, not to let one result
+// become the payload that dominates every later turn (cache reads compound:
+// a result at turn 3 of 28 is paid ~25 times). Ten covers every observed run
+// in the A/B — the longest was 10 — and anything past it is a different kind
+// of request that should be narrowed, not widened.
+const searchTermCap = 10
+
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
-	q := stringArg(args, "query", "")
-	if strings.TrimSpace(q) == "" {
+	queries := stringsArg(args, "query")
+	if len(queries) == 0 {
 		// The schema declares query required; without this an empty string
 		// returned an arbitrary slice of the index as if it were a result.
-		return nil, errors.New("query is required (a name or name fragment to search for)")
+		return nil, errors.New("query is required (a name, a name fragment, or an array of them)")
+	}
+	var termNote string
+	if len(queries) > searchTermCap {
+		// Never drop silently. A filter that quietly narrows the request is
+		// the failure mode SWE-Explore measures as the expensive one: missing
+		// evidence costs far more than noise.
+		termNote = fmt.Sprintf("only the first %d of %d terms were searched; re-run with the rest",
+			searchTermCap, len(queries))
+		queries = queries[:searchTermCap]
 	}
 	limit := intArg(args, "limit", 25)
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
+
+	// Multi-term: run each term through the same single-term path and group
+	// the results under the term that produced them, so an agent can tell
+	// which hit answered which question. One term keeps the flat shape
+	// verbatim — every existing caller and test sees no change.
+	if len(queries) > 1 {
+		perTerm := make([]map[string]any, len(queries))
+		errs := make([]error, len(queries))
+		var wg sync.WaitGroup
+		for i, q := range queries {
+			wg.Add(1)
+			go func(i int, q string) {
+				defer wg.Done()
+				r, err := h.searchOne(ctx, q, scope, limit, regex)
+				if err != nil {
+					errs[i] = err
+					return
+				}
+				r["query"] = q
+				perTerm[i] = r
+			}(i, q)
+		}
+		wg.Wait()
+		out := map[string]any{}
+		results := make([]map[string]any, 0, len(queries))
+		var failed []string
+		for i := range queries {
+			if errs[i] != nil {
+				// One bad term must not lose the other nine's results.
+				failed = append(failed, fmt.Sprintf("%s: %v", queries[i], errs[i]))
+				continue
+			}
+			results = append(results, perTerm[i])
+		}
+		out["results"] = results
+		if len(failed) > 0 {
+			out["failedTerms"] = failed
+		}
+		if termNote != "" {
+			out["note"] = termNote
+		}
+		return out, nil
+	}
+
+	out, err := h.searchOne(ctx, queries[0], scope, limit, regex)
+	if err != nil {
+		return nil, err
+	}
+	if termNote != "" {
+		out["note"] = termNote
+	}
+	return out, nil
+}
+
+// searchOne is the single-term search, unchanged in behaviour and shape from
+// when prism_search took exactly one query.
+func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool) (map[string]any, error) {
 
 	// scope="text": the agent asked for a PURE grep — exactly what rg
 	// returns, no symbol search, no graph, minimal envelope. This is the
@@ -2046,6 +2125,43 @@ func stringArg(args map[string]any, key, def string) string {
 	return def
 }
 
+// stringsArg reads a value that may be a single string OR an array of them,
+// returning the non-empty entries in order with duplicates dropped.
+//
+// This is what lets prism_search take several terms in one call. Measured on
+// the 190-cell A/B: 490 of 900 search calls (54%) sat in back-to-back runs of
+// 2-10, each a separate turn whose result is then re-read on every later turn.
+// One call with N terms is one turn and one result.
+func stringsArg(args map[string]any, key string) []string {
+	var raw []any
+	switch v := args[key].(type) {
+	case string:
+		raw = []any{v}
+	case []string:
+		for _, s := range v {
+			raw = append(raw, s)
+		}
+	case []any:
+		raw = v
+	default:
+		return nil
+	}
+	seen := make(map[string]bool, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, e := range raw {
+		s, ok := e.(string)
+		if !ok {
+			continue
+		}
+		if s = strings.TrimSpace(s); s == "" || seen[s] {
+			continue
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+	return out
+}
+
 func intArg(args map[string]any, key string, def int) int {
 	switch v := args[key].(type) {
 	case float64:
@@ -2061,17 +2177,6 @@ func intArg(args map[string]any, key string, def int) int {
 	return def
 }
 
-// isTestWritingTask reports whether the task description signals the agent
-// is about to write or add tests, so we can surface more test context.
-func isTestWritingTask(task string) bool {
-	lower := strings.ToLower(task)
-	return strings.Contains(lower, "write test") ||
-		strings.Contains(lower, "add test") ||
-		strings.Contains(lower, "test for") ||
-		strings.Contains(lower, "tests for") ||
-		strings.Contains(lower, "coverage for") ||
-		strings.Contains(lower, "need to test")
-}
 
 func minFloat(a, b float64) float64 {
 	if a < b {
