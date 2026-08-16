@@ -173,7 +173,14 @@ func (o Options) withDefaults() Options {
 // ARE searched on every backend (rg gets --hidden) — rg's default hidden-skip
 // made .github/.clinerules-style configs read as "not in the repo", which is
 // silent absence, the one divergence direction this package forbids.
-var excludeDirs = []string{".git", ".grove"}
+// Agent-state directories are not source. prism was indexing its own
+// session transcripts and returning them as the TOP hits for a symbol
+// query -- observed 2026-08-16: `prism search stringsArg --scope text`
+// returned three .shale/ log lines and no definition. HANDOFF §4 flagged
+// this as a known gap; it is a measured degradation, not a cosmetic one.
+// rg also gets these as --glob excludes (see runRg).
+var excludeDirs = []string{".git", ".grove", ".shale", ".claude", ".cursor",
+	".windsurf", ".kiro", ".devin"}
 
 // gitignoreDirs approximates rg's .gitignore handling for the grep and native
 // fallbacks, which have none. Read from the repo's own .gitignore so prism
@@ -323,7 +330,9 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		args = append(args, "--fixed-strings")
 	}
 	// --hidden would otherwise descend into the VCS dir and prism's state.
-	args = append(args, "--glob", "!.git/", "--glob", "!.grove/")
+	for _, d := range excludeDirs {
+		args = append(args, "--glob", "!"+d+"/")
+	}
 	for _, g := range opts.Glob {
 		args = append(args, "--glob", g)
 	}
