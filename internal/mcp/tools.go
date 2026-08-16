@@ -376,6 +376,7 @@ func toolSchema(name string) map[string]any {
 				"context_used": contextUsedProp,
 				"profile":      map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
 				"budget":       map[string]any{"type": "integer", "description": "Token budget, honored exactly. Default 8000 for every task."},
+				"limit":        map[string]any{"type": "integer", "description": "Max candidate symbols considered before ranking/budget cutoff. Default 50."},
 			},
 		}
 	case "prism_read":
@@ -386,6 +387,14 @@ func toolSchema(name string) map[string]any {
 				"file": map[string]any{
 					"type":        "string",
 					"description": "File path relative to project root.",
+				},
+				"offset": map[string]any{
+					"type":        "integer",
+					"description": "First line to return (1-based). With limit this is an exact window — the `sed -n A,Bp` / Read(offset,limit) shape. Half of all real file reads are ranged; use this instead of pulling a whole file to see part of it.",
+				},
+				"limit": map[string]any{
+					"type":        "integer",
+					"description": "How many lines to return from offset. Omit both for the whole file (compressed, and a one-line cached pointer on repeat).",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
