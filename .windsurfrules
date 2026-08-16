@@ -27,9 +27,4 @@ Bash-only (subagents, CI) — same verbs, add `--format text`:
     prism change-impact 'Type.method'
     prism lookup <pkg.Func>   |   prism read <file>   |   prism verify --base <ref>
 
-No prism_* in your tool list? They are deferred, not absent — load them once
-with `ToolSearch("select:prism_search,prism_query,prism_change_impact")`.
-If you can already see them, skip this: calling ToolSearch for tools you
-already have costs a turn and returns nothing new.
-
 <!-- prism:end -->

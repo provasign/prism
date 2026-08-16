@@ -494,11 +494,6 @@ Bash-only (subagents, CI) — same verbs, add ` + "`" + `--format text` + "`" + 
     prism change-impact 'Type.method'
     prism lookup <pkg.Func>   |   prism read <file>   |   prism verify --base <ref>
 
-No prism_* in your tool list? They are deferred, not absent — load them once
-with ` + "`" + `ToolSearch("select:prism_search,prism_query,prism_change_impact")` + "`" + `.
-If you can already see them, skip this: calling ToolSearch for tools you
-already have costs a turn and returns nothing new.
-
 <!-- prism:end -->
 `
 
@@ -619,9 +614,13 @@ func detectSelfPath() string {
 }
 
 // mcpEntry is the JSON structure every MCP-compatible tool expects.
+// AlwaysLoad exempts the server's tool schemas from client-side deferral —
+// the server-level belt to the per-tool anthropic/alwaysLoad _meta that
+// ToolSchemas emits. Clients that do not know the key ignore it.
 type mcpEntry struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
+	Command    string   `json:"command"`
+	Args       []string `json:"args"`
+	AlwaysLoad bool     `json:"alwaysLoad,omitempty"`
 }
 
 // initRegisterMCPTools writes MCP server config for every detected tool.
@@ -651,12 +650,12 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		}
 	}
 
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
 	// portable and correct after the repo moves. The IDE writers below keep
 	// the explicit dir because their launch cwd is not guaranteed.
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}, AlwaysLoad: true}
 
 	// Wrap in the per-tool envelope format and write.
 	type writer struct {
@@ -873,6 +872,13 @@ func mcpEntryAlreadyPresent(path string, name string, want mcpEntry) bool {
 			return false
 		}
 	}
+	// alwaysLoad participates in "already correct": an entry written without
+	// it would keep the server's schemas deferrable forever, because
+	// --refresh skips entries it considers current. The one-time client
+	// re-approval this rewrite triggers is the cost of the upgrade.
+	if got.AlwaysLoad != want.AlwaysLoad {
+		return false
+	}
 	return true
 }
 
@@ -942,8 +948,8 @@ func buildCodexSnippet(prismBin string) string {
 // targets initRegisterMCPTools writes, plus print-only Hermes.
 func printAgentConfig(id, projectDir, prismBin string, global bool) int {
 	home, _ := os.UserHomeDir()
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}, AlwaysLoad: true}
 
 	pick := func(globalPath, projectPath string) string {
 		if global {

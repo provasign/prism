@@ -10,7 +10,8 @@
       "command": "/opt/homebrew/bin/prism",
       "args": [
         "mcp"
-      ]
+      ],
+      "alwaysLoad": true
     }
   }
 }

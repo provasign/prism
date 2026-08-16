@@ -243,3 +243,25 @@ func toSlice(v any) []any {
 	}
 	return nil
 }
+
+// Every advertised tool must be exempt from client-side schema deferral.
+//
+// Claude Code defers MCP schemas behind a ToolSearch hop. Frontier models
+// make the hop; cheap tiers do not — measured on SWE-bench-Live (haiku, same
+// task): 0 prism calls deferred, 5 loaded, and with the flag haiku opens with
+// prism_query at 30 turns/$0.30 against 45/$0.53. v0.44.0 shipped this and
+// v0.52.0 reverted it wholesale with the rest of the arc, not on its own
+// evidence. The steering block no longer carries a ToolSearch paragraph, so
+// if this regresses the tools become both invisible AND unexplained.
+func TestToolSchemas_AllAlwaysLoad(t *testing.T) {
+	for _, tool := range ToolSchemas() {
+		meta, ok := tool["_meta"].(map[string]any)
+		if !ok {
+			t.Errorf("%v has no _meta — client will defer its schema", tool["name"])
+			continue
+		}
+		if meta["anthropic/alwaysLoad"] != true {
+			t.Errorf("%v: anthropic/alwaysLoad = %v, want true", tool["name"], meta["anthropic/alwaysLoad"])
+		}
+	}
+}

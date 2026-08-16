@@ -300,6 +300,22 @@ func ToolSchemas() []map[string]any {
 			"name":        n,
 			"description": toolDescription(n),
 			"inputSchema": toolSchema(n),
+			// Exempt from client-side schema deferral. Claude Code defers MCP
+			// schemas and gates them behind a ToolSearch hop; frontier models
+			// make the hop, cheap tiers do not. Measured on SWE-bench-Live
+			// (haiku, same task): 0 prism calls with deferred schemas, 5 with
+			// loaded ones, and with this flag haiku opens with prism_query at
+			// 30 turns/$0.30 against 45/$0.53 without.
+			//
+			// v0.44.0 shipped this for five of fourteen tools and kept the
+			// long tail deferrable to bound the always-on cost; v0.52.0
+			// reverted it wholesale along with the rest of the arc, not on
+			// its own evidence. All SIX tools carry it now because the
+			// surface was cut to the routing-critical set in v0.53.0 — there
+			// is no long tail left to exclude, and the whole schema is 7.7 KB.
+			// Residency is cheap in practice: measured +92 fresh tokens on a
+			// cell where prism was never called.
+			"_meta": map[string]any{"anthropic/alwaysLoad": true},
 		})
 	}
 	return out
