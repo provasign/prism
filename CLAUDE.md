@@ -23,7 +23,7 @@ Route by the question. One call, and treat its result as final:
 
 | Question | Call |
 |---|---|
-| where is X? / who calls X? | `prism_search(query="X")` — for a symbol it returns the definition site and graph-resolved callers, which grep cannot. Several at once: `query=["X","Y"]`. Know where to look: `path=`, `glob=`, `files_only=true` |
+| where is X? | `prism_search(query="X")` — searches symbol names AND raw text. Several at once: `query=["X","Y"]`. Know where to look: `path=`, `glob=`, `files_only=true` |
 | a literal string, message or config key | `prism_search(query="...", scope="text")` — pure grep, cheapest. Use it for TEXT; leave the default for code |
 | EVERY site of X (rewrite them all, count them) | `prism_search(query="X", exhaustive=true)` — results are capped at 25 by default and a capped answer to a completeness question looks complete. Say `exhaustive`; add `files_only=true` to keep it cheap |
 | read one function, or one file | `prism_lookup(name="pkg.Func")` / `prism_read` |

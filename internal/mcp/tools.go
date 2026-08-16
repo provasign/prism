@@ -1165,14 +1165,6 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
 			out["resolvedNote"] = n
 		}
-		// A symbol-shaped query asked of scope="text" gets the graph answer
-		// anyway. 78% of real searches are symbol-shaped (176 measured), and
-		// the steering pushes scope="text" as the cheap default -- so without
-		// this, prism answers a go-to-definition question with ranked-by-
-		// nothing grep hits. Costs nothing when the name is not indexed.
-		if sym := h.symbolAnswer(ctx, q); sym != nil {
-			out["symbol"] = sym
-		}
 		return out, nil
 	}
 
@@ -1206,9 +1198,6 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	}
 	annotated = append(annotated, doubles...)
 	out := map[string]any{"symbols": annotated}
-	if sym := h.symbolAnswer(ctx, q); sym != nil {
-		out["symbol"] = sym
-	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.

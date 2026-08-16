@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -260,102 +259,4 @@ func (h *Handler) resolvedRefNote(ctx context.Context, query string, hits []text
 			"name without referring to it (other types, comments, strings). "+
 			"prism_references %s for just the real ones.",
 		len(hits), n, qn, qn)
-}
-
-// --- Symbol enrichment on text search -------------------------------------
-
-// symbolShaped reports whether a search query is asking about CODE rather
-// than text, and returns the identifier it is asking about.
-//
-// Measured over 176 real searches from the unaided arm of the 2026-08-16
-// A/B: 78% are symbol-shaped -- 27% a bare identifier, 41% an alternation of
-// identifiers, 10% `def X`/`class X`, 13% a call shape like `LogRecord(`.
-// Only 8% are genuine text (an error message, a config key).
-//
-// Those searches are graph questions written in grep syntax: 10.2% are
-// literally go-to-definition and 8.5% are find-call-sites. The agent asks
-// them of prism_search because that is the tool it reaches for, and gets
-// back ranked-by-nothing text hits. Answering them properly requires no new
-// tool and no steering compliance -- just noticing what was asked.
-func symbolShaped(q string) (string, bool) {
-	q = strings.TrimSpace(q)
-	if q == "" || len(q) > 120 {
-		return "", false
-	}
-	// def X / class X / func X  -> go-to-definition
-	if m := regexp.MustCompile(`^(?:def|class|func|function)\s+([A-Za-z_]\w*)`).FindStringSubmatch(q); m != nil {
-		return m[1], true
-	}
-	// X(  -> find call sites / constructions
-	if m := regexp.MustCompile(`^([A-Za-z_]\w*)\\?\($`).FindStringSubmatch(q); m != nil {
-		return m[1], true
-	}
-	// a bare identifier, long enough not to be a stray word
-	if m := regexp.MustCompile(`^([A-Za-z_]\w{2,})$`).FindStringSubmatch(q); m != nil {
-		return m[1], true
-	}
-	return "", false
-}
-
-// symbolAnswer returns the compact graph answer for a symbol-shaped query:
-// where it is defined, and who calls it. Empty when the name is not an
-// indexed symbol -- an honest silence beats a speculative note.
-//
-// Deliberately small. Cache reads dominate a session (700k-3.2M per cell
-// against 24-62k fresh), so anything attached to a frequently-called tool is
-// paid on every later turn. Definition line plus a bounded caller list is
-// the whole budget.
-func (h *Handler) symbolAnswer(ctx context.Context, query string) map[string]any {
-	name, ok := symbolShaped(query)
-	if !ok || h.Grove == nil {
-		return nil
-	}
-	cands, err := h.Grove.Resolve(ctx, name)
-	if err != nil || len(cands) == 0 {
-		return nil
-	}
-	real := make([]grove.ResolvedSymbol, 0, len(cands))
-	for _, c := range cands {
-		if !c.TestDouble {
-			real = append(real, c)
-		}
-	}
-	if len(real) == 0 {
-		real = cands
-	}
-	out := map[string]any{}
-	defs := make([]string, 0, 3)
-	for _, c := range real {
-		if len(defs) == 3 {
-			break
-		}
-		defs = append(defs, fmt.Sprintf("%s %s — %s:%d", c.Kind, c.Name, c.File, c.Line))
-	}
-	out["definedAt"] = defs
-	if len(real) > 3 {
-		out["moreDefinitions"] = len(real) - 3
-	}
-	// Callers: the question grep cannot answer at all. Counted in full,
-	// listed in part -- a count without sites is unactionable, and every
-	// site is a payload.
-	if callers, cerr := h.Grove.Callers(ctx, real[0].Name); cerr == nil {
-		files := map[string]bool{}
-		sites := make([]string, 0, 5)
-		for _, c := range callers {
-			files[c.FilePath] = true
-			if len(sites) < 5 {
-				sites = append(sites, fmt.Sprintf("%s:%d %s", c.FilePath, c.Span.Start, c.Name))
-			}
-		}
-		out["callerCount"] = len(callers)
-		out["callerFiles"] = len(files)
-		if len(sites) > 0 {
-			out["callers"] = sites
-		}
-		out["note"] = fmt.Sprintf(
-			"%q resolves to an indexed symbol; the %d caller(s) across %d file(s) above are "+
-				"graph-resolved, not text matches. For the complete change set of a "+
-				"signature change use prism_change_impact.", name, len(callers), len(files))
-	}
-	return out
 }

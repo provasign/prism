@@ -476,7 +476,7 @@ Route by the question. One call, and treat its result as final:
 
 | Question | Call |
 |---|---|
-| where is X? / who calls X? | ` + "`" + `prism_search(query="X")` + "`" + ` — for a symbol it returns the definition site and graph-resolved callers, which grep cannot. Several at once: ` + "`" + `query=["X","Y"]` + "`" + `. Know where to look: ` + "`" + `path=` + "`" + `, ` + "`" + `glob=` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |
+| where is X? | ` + "`" + `prism_search(query="X")` + "`" + ` — searches symbol names AND raw text. Several at once: ` + "`" + `query=["X","Y"]` + "`" + `. Know where to look: ` + "`" + `path=` + "`" + `, ` + "`" + `glob=` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |
 | a literal string, message or config key | ` + "`" + `prism_search(query="...", scope="text")` + "`" + ` — pure grep, cheapest. Use it for TEXT; leave the default for code |
 | EVERY site of X (rewrite them all, count them) | ` + "`" + `prism_search(query="X", exhaustive=true)` + "`" + ` — results are capped at 25 by default and a capped answer to a completeness question looks complete. Say ` + "`" + `exhaustive` + "`" + `; add ` + "`" + `files_only=true` + "`" + ` to keep it cheap |
 | read one function, or one file | ` + "`" + `prism_lookup(name="pkg.Func")` + "`" + ` / ` + "`" + `prism_read` + "`" + ` |
@@ -2439,26 +2439,6 @@ func printJSON(v any) {
 // printOutput prints v in the requested format.
 // JSON round-trips through map[string]any so both typed structs (queryResult)
 // and plain maps are handled uniformly by the text/lean formatters.
-// printSymbolAnswer renders the graph answer attached to a symbol-shaped
-// search: where the name is defined and who calls it. Text search cannot
-// produce the caller list at all, so it is labelled as graph-resolved.
-func printSymbolAnswer(m map[string]any) {
-	sym, ok := m["symbol"].(map[string]any)
-	if !ok {
-		return
-	}
-	for _, d := range asSliceAny(sym["definedAt"]) {
-		fmt.Printf("// defined: %v\n", d)
-	}
-	if n := jsonInt(sym["callerCount"]); n > 0 {
-		fmt.Printf("// callers: %d across %d file(s) [graph-resolved]\n",
-			n, jsonInt(sym["callerFiles"]))
-		for _, c := range asSliceAny(sym["callers"]) {
-			fmt.Printf("//   %v\n", c)
-		}
-	}
-}
-
 // printTextMatches renders the merged full-text section of a prism_query /
 // prism_search response: per-file matched lines, cached files as line
 // numbers only.
@@ -2578,7 +2558,6 @@ func printTextOutput(m map[string]any) {
 		_, hasContent := m["content"]
 		if !hasSyms && !hasContent {
 			printTextMatches(m)
-			printSymbolAnswer(m)
 			if len(asSliceAny(m["textHits"])) == 0 {
 				fmt.Println("// no matches")
 			}
