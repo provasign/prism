@@ -55,13 +55,27 @@ macOS purges it and you will re-download six repos every run.
 
 Not on argument — on a paired measurement anyone can re-run.
 
-`research/harness/runs/swebench-live/` (`ab38-f1`, `ab38-t1`, `ab38-t2`,
-`haiku38`, `sonnet38`) holds 190 paired cells: same task, prism arm vs
-baseline arm, with per-cell tokens, cost, turns and full tool traces.
+**THESE CELLS WERE DELETED 2026-08-16 and the cost numbers below are
+RETRACTED.** They were measured on a bench with two defects that changed the
+sign of the result: an `--allowedTools` enumeration that denied ordinary
+Python tooling (`uv` 93 times in one run, `PYTHONPATH=…` 46, plus pip and
+pytest), and a stale grep denial in the prism arm of `sonnet38`/`haiku38`.
+Denial deltas correlated with turn deltas at **+0.89** — every large cost
+swing was a cell where one arm hit the allowlist harder than the other.
+See `research/harness/runs/swebench-live/README.md`.
 
-**Cost was a coin flip.** Median paired delta −$0.054; prism cheaper in
-107/190. The sign flips per bed: ab38-t1 −$0.270, ab38-t2 −$0.294, but
-ab38-f1 +$0.116 and sonnet38 +$0.101.
+What survives is the TOOL-MIX table below: which tools agents reached for is
+unaffected by how often their shell commands were refused. The cost figures
+are not.
+
+Historically, `research/harness/runs/swebench-live/` (`ab38-f1`, `ab38-t1`,
+`ab38-t2`, `haiku38`, `sonnet38`) held 190 paired cells.
+
+**Cost was a coin flip** — median paired delta −$0.054, prism cheaper in
+107/190. RETRACTED as above; do not quote the per-bed figures. The direction
+was independently reproduced on the corrected bench, though: 30 pairs at 83%
+adoption still came out flat (median +$0.022), which is a stronger result
+than the original because it holds when agents DO reach for prism.
 
 **The tool mix explains it:**
 

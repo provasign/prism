@@ -372,7 +372,9 @@ the `prism_verify` gate. Search runs a real full-text pass
 grep tool.
 
 It was fourteen until v0.53.0. A 190-cell paired A/B measured which ones
-agents actually reach for: `search` in 95 cells, `read` 53, `query` 35,
+agents actually reach for (those cells were later deleted for unrelated
+bench defects that affected cost, not tool mix — see
+`research/harness/runs/swebench-live/README.md`): `search` in 95 cells, `read` 53, `query` 35,
 `lookup` 29, `change_impact` 2 — and `map`, `dead_code`, `rename_plan`,
 `missing_implementations`, `arch_check`, `node` and `index` at **zero calls
 in all 190**. Those eight were charging ~9.4 KB of schema per session to
