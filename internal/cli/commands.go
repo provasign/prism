@@ -85,7 +85,7 @@ Usage:
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
                                   [--path <file-or-dir>]  scope the search (repeatable)
-                                  [--glob '*.py'] [--files-only]
+                                  [--glob '*.py'] [--files-only] [--exhaustive]
                                   [--dir <path>]  where to search (default: .)
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
@@ -477,6 +477,7 @@ Route by the question. One call, and treat its result as final:
 | Question | Call |
 |---|---|
 | where is X? | ` + "`" + `prism_search(query="X")` + "`" + ` — ` + "`" + `scope="text"` + "`" + ` is a plain grep, the cheapest option. Several things at once: ` + "`" + `query=["X","Y","Z"]` + "`" + `. Already know where to look: ` + "`" + `path="pkg/file.go"` + "`" + `, ` + "`" + `glob="*.py"` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |
+| EVERY site of X (rewrite them all, count them) | ` + "`" + `prism_search(query="X", exhaustive=true)` + "`" + ` — results are capped at 25 by default and a capped answer to a completeness question looks complete. Say ` + "`" + `exhaustive` + "`" + `; add ` + "`" + `files_only=true` + "`" + ` to keep it cheap |
 | read one function, or one file | ` + "`" + `prism_lookup(name="pkg.Func")` + "`" + ` / ` + "`" + `prism_read` + "`" + ` |
 | give me the code for X, ready to edit | ` + "`" + `prism_query(task="<label>", terms=["X"])` + "`" + ` — keys on ` + "`" + `terms` + "`" + `; the wording changes nothing |
 | who breaks if I change X? | ` + "`" + `prism_change_impact(query="Type.method")` + "`" + ` |
@@ -489,7 +490,7 @@ grep/sed/scripts measurably drops real sites.
 
 Bash-only (subagents, CI) — same verbs, add ` + "`" + `--format text` + "`" + `:
 
-    prism search <term>... [--path <file-or-dir>] --scope text
+    prism search <term>... [--path <file-or-dir>] [--exhaustive] --scope text
     prism query "<task>" --terms X
     prism change-impact 'Type.method'
     prism lookup <pkg.Func>   |   prism read <file>   |   prism verify --base <ref>
@@ -1565,6 +1566,7 @@ func cmdSearch(args []string) int {
 	regex := false
 	var paths, globs []string
 	filesOnly := false
+	exhaustive := false
 	var bare []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -1609,6 +1611,8 @@ func cmdSearch(args []string) int {
 			}
 		case "--files-only", "-l":
 			filesOnly = true
+		case "--exhaustive", "--all":
+			exhaustive = true
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1672,6 +1676,9 @@ func cmdSearch(args []string) int {
 	}
 	if filesOnly {
 		callArgs["files_only"] = true
+	}
+	if exhaustive {
+		callArgs["exhaustive"] = true
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
 	if err != nil {
@@ -2558,8 +2565,10 @@ func printTextOutput(m map[string]any) {
 					fmt.Println("// " + s)
 				}
 			}
-			if t, _ := m["truncated"].(bool); t {
-				fmt.Println("// truncated at the hit limit — raise --limit for more")
+			// The truncation warning is already carried in m["warning"] and
+			// printed above; printing a second line here duplicated it.
+			if t, _ := m["truncated"].(bool); t && m["warning"] == nil {
+				fmt.Println("// truncated at the hit limit — raise --limit, or --exhaustive")
 			}
 			return
 		}

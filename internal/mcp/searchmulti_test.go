@@ -265,3 +265,47 @@ func TestToolSchemas_AllAlwaysLoad(t *testing.T) {
 		}
 	}
 }
+
+// Truncation must carry a denominator, and completeness must be askable.
+//
+// Before this, a capped search returned `truncated: true` and nothing else:
+// an agent could not tell 22-of-25 from 22-of-990 (measured on this repo:
+// "func " returned 22 hits against 1,311 real matches). A capped answer to
+// "rewrite every call site" LOOKS complete, which is the expensive failure
+// SWE-Explore measures -- missing evidence costs far more than noise.
+func TestToolSearch_TruncationCarriesADenominator(t *testing.T) {
+	h := newTextSearchHandler(t)
+	// Fixture files both contain "package", so limit=1 forces truncation.
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "package", "scope": "text", "limit": 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["truncated"] != true {
+		t.Fatalf("limit=1 over two matching files should truncate: %v", m)
+	}
+	total, _ := m["totalHits"].(int)
+	if total < 2 {
+		t.Errorf("totalHits = %v, want >= 2 — truncation without a denominator "+
+			"reads to the agent as a complete answer", m["totalHits"])
+	}
+	if w, _ := m["warning"].(string); w == "" {
+		t.Error("a truncated result must warn that it is a sample")
+	}
+}
+
+func TestToolSearch_ExhaustiveIsNotCapped(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "package", "scope": "text", "limit": 1, "exhaustive": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	// exhaustive is the agent DECLARING it needs completeness; an explicit
+	// limit must not silently re-impose the cap.
+	if m["truncated"] == true {
+		t.Errorf("exhaustive=true still truncated: %v", m)
+	}
+}

@@ -351,8 +351,8 @@ func toolSchema(name string) map[string]any {
 					"description": "What you are trying to do. A label for the response header — it does not affect retrieval, ranking or sizing.",
 				},
 				"terms": map[string]any{
-					"type":        "array",
-					"items":       map[string]any{"type": "string"},
+					"type":  "array",
+					"items": map[string]any{"type": "string"},
 					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]), expanded " +
 						"via the call graph. No name yet? Guess ONE keyword from the task — there is no " +
 						"no-terms fallback, the call errors instead.",
@@ -419,6 +419,10 @@ func toolSchema(name string) map[string]any {
 					"type":        []string{"string", "array"},
 					"items":       map[string]any{"type": "string"},
 					"description": "Only search files matching these globs, e.g. \"*.py\" (grep --include / rg --glob).",
+				},
+				"exhaustive": map[string]any{
+					"type":        "boolean",
+					"description": "Return EVERY match, uncapped. Say so when you need completeness (\"rewrite every call site\", \"how many places do this\") — a capped answer to that question looks complete and is not. Pair with files_only or path= unless you want thousands of lines.",
 				},
 				"files_only": map[string]any{
 					"type":        "boolean",
@@ -950,6 +954,7 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 	}
 	return total
 }
+
 // ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
@@ -1029,9 +1034,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
 	sc := searchScope{
-		paths:     stringsArg(args, "path"),
-		glob:      stringsArg(args, "glob"),
-		filesOnly: boolArg(args, "files_only"),
+		paths:      stringsArg(args, "path"),
+		glob:       stringsArg(args, "glob"),
+		filesOnly:  boolArg(args, "files_only"),
+		exhaustive: boolArg(args, "exhaustive"),
 	}
 
 	// Multi-term: run each term through the same single-term path and group
@@ -1090,9 +1096,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 // searchOne is the single-term search, unchanged in behaviour and shape from
 // when prism_search took exactly one query.
 type searchScope struct {
-	paths     []string
-	glob      []string
-	filesOnly bool
+	paths      []string
+	glob       []string
+	filesOnly  bool
+	exhaustive bool
 }
 
 func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
@@ -1105,11 +1112,24 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+			Exhaustive: sc.exhaustive,
 		})
 		out := map[string]any{
 			"textHits":    h.renderTextMatches(r.Hits),
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
+		}
+		if r.Truncated {
+			// Truncation always carries a denominator. Without one the agent
+			// cannot tell a complete answer from a 2% sample, and the failure
+			// is silent: it reads the capped list as the whole picture.
+			out["totalHits"] = r.TotalHits
+			out["filesMatched"] = r.FilesMatched
+			out["warning"] = fmt.Sprintf(
+				"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not the "+
+					"full set. Raise limit=, narrow with path=/glob=, or use files_only=true to "+
+					"see the spread before drawing conclusions.",
+				len(r.Hits), r.TotalHits, r.FilesMatched)
 		}
 		if sc.filesOnly {
 			// Locations without lines: the cheapest answer to "where does
@@ -1185,6 +1205,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+			Exhaustive: sc.exhaustive,
 		}); len(r.Hits) > 0 {
 			out["textHits"] = h.renderTextMatches(r.Hits)
 			out["textBackend"] = r.Backend
@@ -2244,7 +2265,6 @@ func intArg(args map[string]any, key string, def int) int {
 	}
 	return def
 }
-
 
 func minFloat(a, b float64) float64 {
 	if a < b {

@@ -44,6 +44,15 @@ type Result struct {
 	// project's own source).
 	Truncated bool `json:"truncated,omitempty"`
 	TimedOut  bool `json:"timedOut,omitempty"`
+	// TotalHits is how many matches the backend actually emitted and
+	// FilesMatched how many files they span -- reported even when Hits is
+	// capped, so truncation always carries a denominator.
+	//
+	// LOWER BOUND, not the exact total: the backend is invoked with a
+	// per-file cap (MaxPerFile), so a file with 200 matches contributes at
+	// most that many. Callers must present it as "at least N".
+	TotalHits    int `json:"totalHits,omitempty"`
+	FilesMatched int `json:"filesMatched,omitempty"`
 	// RejectedPaths lists requested scopes that resolved outside the root
 	// and were dropped. Never silent: a search that quietly widened from
 	// one directory to the whole tree returns plausible hits from the wrong
@@ -77,6 +86,13 @@ type Options struct {
 	// Glob restricts the search to files matching these shell globs
 	// (rg --glob / grep --include), e.g. "*.py".
 	Glob []string
+	// Exhaustive removes both caps: every match, from every file. The agent
+	// declares this -- prism does not guess. A "where is X" question wants a
+	// sample and a count; "rewrite every .format() call" wants all 1,024
+	// sites, and a capped answer to the second is worse than useless because
+	// it looks complete. Pair with FilesOnly or Paths unless thousands of
+	// lines are genuinely wanted.
+	Exhaustive bool
 	// FilesOnly is honoured by the CALLER, not by this package: rg
 	// --files-with-matches and grep -l emit bare paths, which breaks the
 	// path:line:text parse every backend shares. The delivery layer drops
@@ -251,6 +267,11 @@ func Backend() string {
 // erroring: a text search that sometimes fails is a tool agents route around.
 func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	opts = opts.withDefaults()
+	if opts.Exhaustive {
+		// Large rather than unlimited: a runaway pattern on a monorepo must
+		// still terminate, and TotalHits reports what was actually seen.
+		opts.MaxHits, opts.MaxPerFile = 100000, 10000
+	}
 	if strings.TrimSpace(pattern) == "" {
 		return Result{Backend: Backend()}
 	}
@@ -364,11 +385,8 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 	res := Result{Backend: filepath.Base(bin)}
 	sc := bufio.NewScanner(strings.NewReader(string(out)))
 	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+	files := map[string]bool{}
 	for sc.Scan() {
-		if len(res.Hits) >= opts.MaxHits {
-			res.Truncated = true
-			break
-		}
 		parts := strings.SplitN(sc.Text(), ":", 3)
 		if len(parts) != 3 {
 			continue
@@ -377,12 +395,22 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		if aerr != nil || ln < 1 {
 			continue
 		}
-		res.Hits = append(res.Hits, Hit{
-			File: filepath.ToSlash(strings.TrimPrefix(parts[0], "./")),
-			Line: ln,
-			Text: truncateLine(parts[2]),
-		})
+		file := filepath.ToSlash(strings.TrimPrefix(parts[0], "./"))
+		// Count EVERY match, then keep the first MaxHits. The loop used to
+		// break at the cap, so a truncated result reported `truncated: true`
+		// with no denominator -- an agent could not tell 22-of-25 from
+		// 22-of-990 (measured: "func " in this repo returns 22 hits and
+		// says truncated, against 990 real occurrences). A silent narrowing
+		// is the one thing this package is not allowed to do.
+		res.TotalHits++
+		files[file] = true
+		if len(res.Hits) >= opts.MaxHits {
+			res.Truncated = true
+			continue
+		}
+		res.Hits = append(res.Hits, Hit{File: file, Line: ln, Text: truncateLine(parts[2])})
 	}
+	res.FilesMatched = len(files)
 	if err != nil && len(res.Hits) == 0 {
 		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
 			return res, true // exit 1 = no matches: a real, empty answer
