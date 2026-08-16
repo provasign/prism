@@ -132,21 +132,27 @@ reading anything.
 
 ---
 
-## 5. `ls` — directory listing — RECOMMEND SKIPPING
+## Decided against
 
-**Measured.** 193 actions, 62.1% of the gap by count, and the largest single
-item. **Do not build it.**
+### `ls` — directory listing. NOT BUILDING. (decided 2026-08-16)
+
+193 actions, 62.1% of the measured capability gap — **the single biggest
+item by count, and it is not being built.** Recorded here so it is not
+re-proposed from the raw counts.
 
 Most of it is orientation (`ls && ls dagfactory`) and environment poking
 (`ls .venv/bin`, `ls /opt/homebrew/bin`), not code intelligence. Prism knows
 only the indexed tree: no permissions, no non-indexed files, no `.venv`,
-nothing outside the root. A `prism_ls` would be a strictly worse `ls` that
-can nonetheless express the request — the reverse failure mode, and harder to
-detect than a gap, because the agent gets an answer and it is wrong.
+nothing outside the root, nothing it failed to parse.
 
-This is the one place the shell tool is genuinely the right tool.
+A `prism_ls` would therefore be a strictly worse `ls` that can nonetheless
+express the request. That is the REVERSE failure mode and it is harder to
+detect than a gap: with a gap the agent routes around prism and we see it in
+the traces; with a worse answer the agent gets a confident, incomplete
+listing and proceeds on it. A missing file reads as "not in the repo".
 
----
+This is the one place in the whole backlog where the shell tool is genuinely
+the right tool, and prism should stay out of its way.
 
 ## Not on this list, and why
 
