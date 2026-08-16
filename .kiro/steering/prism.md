@@ -1,46 +1,35 @@
 
 ## Prism — context delivery
 
-Prism indexes this repo's call and type graph. Two things it does that a text
-search cannot: resolve the complete blast radius of a change, and hand back
-edit-ready context in one call.
-
-**If you do not see prism_* in your tool list, they are DEFERRED, not absent.**
-Load them once, rather than concluding Prism is unavailable and grepping for
-everything (measured: the most common reason Prism goes unused where it is
-correctly installed):
-
-    ToolSearch("select:prism_query,prism_search,prism_change_impact")
+Prism indexes this repo's call and type graph. grep finds the same lines —
+prism tells you which of them matter (file-level precision 0.51 -> 0.91 on
+change tasks) and answers in one call where search-then-read takes several.
 
 Route by the question. One call, and treat its result as final:
 
 | Question | Call |
 |---|---|
-| where is X? | `prism_search` — `scope="text"` is a plain grep and the cheapest option |
-| where are X, Y and Z? | `prism_search(query=["X","Y","Z"])` — one call, up to 10 terms, grouped by term |
-| where is X **in this file/dir**? | `prism_search(query="X", path="pkg/file.go")` — also `glob="*.py"`, `files_only=true`. Scope it whenever you know where to look |
-| read one function | `prism_lookup(name="pkg.Func")` |
-| read one file | `prism_read` |
-| give me the code for X, ready to edit | `prism_query(task="<label>", terms=["X"])` — keys on `terms`; the task wording changes nothing |
+| where is X? | `prism_search(query="X")` — `scope="text"` is a plain grep, the cheapest option. Several things at once: `query=["X","Y","Z"]`. Already know where to look: `path="pkg/file.go"`, `glob="*.py"`, `files_only=true` |
+| read one function, or one file | `prism_lookup(name="pkg.Func")` / `prism_read` |
+| give me the code for X, ready to edit | `prism_query(task="<label>", terms=["X"])` — keys on `terms`; the wording changes nothing |
 | who breaks if I change X? | `prism_change_impact(query="Type.method")` |
-| is my diff complete? | `prism_verify` (pre-commit gate) |
+| is my diff complete? | `prism_verify` |
 
-Before editing an existing symbol, run `prism_change_impact`. It returns the
-declarations, every override and implementation, and all resolved callers,
-type-resolved in one call. **Relay that set as-is** — re-verifying or filtering
-it through grep/sed/scripts measurably drops real sites.
+Before editing an existing symbol, run `prism_change_impact`: declarations,
+every override and implementation, all resolved callers, type-resolved in one
+call. **Relay that set as-is** — re-verifying or filtering it through
+grep/sed/scripts measurably drops real sites.
 
-Anything else Prism does (map, dead-code, rename-plan, missing-implementations,
-arch, index) is a CLI command; `prism --help` lists them. Indexing is
-automatic — you never need to trigger it.
+Bash-only (subagents, CI) — same verbs, add `--format text`:
 
-### Bash-only (subagents, CI)
+    prism search <term>... [--path <file-or-dir>] --scope text
+    prism query "<task>" --terms X
+    prism change-impact 'Type.method'
+    prism lookup <pkg.Func>   |   prism read <file>   |   prism verify --base <ref>
 
-    prism search <term> [more terms...] [--path <file-or-dir>] --scope text --format text
-    prism query "<task>" --terms X --format text
-    prism change-impact 'Type.method' --format text
-    prism lookup <pkg.Func> --format text
-    prism read <file> --format text
-    prism verify --base <ref>
+No prism_* in your tool list? They are deferred, not absent — load them once
+with `ToolSearch("select:prism_search,prism_query,prism_change_impact")`.
+If you can already see them, skip this: calling ToolSearch for tools you
+already have costs a turn and returns nothing new.
 
 <!-- prism:end -->
