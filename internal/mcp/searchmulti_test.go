@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -307,5 +308,77 @@ func TestToolSearch_ExhaustiveIsNotCapped(t *testing.T) {
 	// limit must not silently re-impose the cap.
 	if m["truncated"] == true {
 		t.Errorf("exhaustive=true still truncated: %v", m)
+	}
+}
+
+// --- ranged reads ---------------------------------------------------------
+//
+// prism_read was whole-file only, and 50.6% of the 374 file reads measured
+// across real agent runs are line-ranged (sed -n A,Bp 25.7%, native
+// Read(offset,limit) 23.8%). That gap is why 87% of the reads prism never
+// saw were ranged, and why its session ledger fired 0 times in 45 calls.
+
+func TestToolRead_Range(t *testing.T) {
+	h := newTextSearchHandler(t)
+	body := ""
+	for i := 1; i <= 20; i++ {
+		body += "line" + string(rune('0'+i%10)) + "\n"
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "r.txt"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := h.Invoke("prism_read", map[string]any{"file": "r.txt", "offset": 5, "limit": 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["startLine"] != 5 || m["endLine"] != 7 {
+		t.Errorf("window = %v-%v, want 5-7", m["startLine"], m["endLine"])
+	}
+	if m["totalLines"] != 20 {
+		t.Errorf("totalLines = %v, want 20 — a window without a denominator reads as the whole file",
+			m["totalLines"])
+	}
+	c, _ := m["content"].(string)
+	if strings.Count(c, "\n") != 3 {
+		t.Errorf("want 3 lines, got %q", c)
+	}
+	if !strings.Contains(c, "5\t") {
+		t.Errorf("lines must be numbered so the agent can cite them: %q", c)
+	}
+	if m["note"] == nil {
+		t.Error("a partial read must say it is partial")
+	}
+}
+
+func TestToolRead_RangePastEOFClampsNotErrors(t *testing.T) {
+	h := newTextSearchHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "s.txt"), []byte("a\nb\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A tool that errors is a tool agents route around; clamp and explain.
+	out, err := h.Invoke("prism_read", map[string]any{"file": "s.txt", "offset": 999})
+	if err != nil {
+		t.Fatalf("out-of-range offset must not error: %v", err)
+	}
+	m := out.(map[string]any)
+	if m["totalLines"] != 2 || m["warning"] == nil {
+		t.Errorf("want totalLines and a warning, got %v", m)
+	}
+}
+
+func TestToolRead_RangeNeedsNoIndex(t *testing.T) {
+	// A line window is a file operation, not a graph one. It must work before
+	// the index is built or when the engine is unavailable -- otherwise the
+	// agent falls back to `sed -n A,Bp` exactly when prism is least able to
+	// see what it read. (The whole-file path DOES need Grove for symbols;
+	// TestToolRead_OK covers that.)
+	h := newTextSearchHandler(t) // nil Grove
+	out, err := h.Invoke("prism_read", map[string]any{"file": "alpha.go", "offset": 1, "limit": 2})
+	if err != nil {
+		t.Fatalf("ranged read must not require the index: %v", err)
+	}
+	if out.(map[string]any)["delivery"] != "range" {
+		t.Errorf("want a range delivery, got %v", out)
 	}
 }

@@ -1522,15 +1522,29 @@ func cmdQuery(args []string) int {
 
 func cmdRead(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism read <file> [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism read <file> [--offset N] [--limit N] [dir]")
 		return 2
 	}
 	file := args[0]
 	dir := "."
 	format := formatText
+	offset, limit := 0, 0
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--offset", "--limit":
+			// Line-window parity with `sed -n A,Bp`, which is a quarter of
+			// every file read agents make.
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+					if a == "--offset" {
+						offset = n
+					} else {
+						limit = n
+					}
+				}
+				i++
+			}
 		case "--format":
 			if i+1 < len(args) {
 				switch outputFormat(args[i+1]) {
@@ -1546,7 +1560,14 @@ func cmdRead(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": file})
+	readArgs := map[string]any{"file": file}
+	if offset > 0 {
+		readArgs["offset"] = offset
+	}
+	if limit > 0 {
+		readArgs["limit"] = limit
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_read", readArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1

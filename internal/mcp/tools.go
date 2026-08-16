@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -633,7 +634,9 @@ func toolDescription(name string) string {
 			"max_files=; delivery=\"symbols\" swaps windows for a compact list. Do not re-read " +
 			"the files it shows. To merely locate something, use prism_search."
 	case "prism_read":
-		return "Whole-file read. A repeat read of an UNCHANGED file returns a one-line " +
+		return "Read a file, whole or by line range. offset/limit give an exact window " +
+			"(line-numbered, with the file's total line count) — the same shape as " +
+			"`sed -n A,Bp`. Omit both for the whole file. A repeat read of an UNCHANGED file returns a one-line " +
 			"`// [prism:cached] <file> @sha:…` pointer instead of the body — not an error and not " +
 			"empty: use the copy you already have. For a single function use prism_lookup."
 	case "prism_search":
@@ -957,6 +960,54 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 
 // ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
 
+// readRange delivers an explicit line window, verbatim and line-numbered —
+// the shape `sed -n A,Bp` and native Read(offset,limit) produce, which
+// agents reach for on half their reads.
+//
+// totalLines is always reported: a window without a denominator reads as the
+// whole file, which is the silent-narrowing failure this codebase keeps
+// re-learning. Out-of-range requests clamp and say so rather than erroring —
+// a tool that errors is a tool agents route around.
+func (h *Handler) readRange(sessionPath, content string, offset, limit int) (any, error) {
+	lines := strings.Split(content, "\n")
+	if n := len(lines); n > 0 && lines[n-1] == "" {
+		lines = lines[:n-1] // trailing newline is not a line
+	}
+	total := len(lines)
+	if offset < 1 {
+		offset = 1
+	}
+	if offset > total {
+		return map[string]any{
+			"file": sessionPath, "totalLines": total, "delivery": "range",
+			"warning": fmt.Sprintf("offset %d is past end of file (%d lines); nothing to show",
+				offset, total),
+		}, nil
+	}
+	end := total
+	if limit > 0 && offset-1+limit < total {
+		end = offset - 1 + limit
+	}
+	var b strings.Builder
+	width := len(strconv.Itoa(end))
+	for i := offset - 1; i < end; i++ {
+		fmt.Fprintf(&b, "%*d\t%s\n", width, i+1, lines[i])
+	}
+	out := map[string]any{
+		"file":       sessionPath,
+		"delivery":   "range",
+		"startLine":  offset,
+		"endLine":    end,
+		"totalLines": total,
+		"content":    b.String(),
+	}
+	if end < total || offset > 1 {
+		out["note"] = fmt.Sprintf("lines %d-%d of %d — this is a WINDOW, not the file",
+			offset, end, total)
+	}
+	return out, nil
+}
+
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
 	path := stringArg(args, "file", stringArg(args, "path", ""))
 	if path == "" {
@@ -970,6 +1021,21 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	data, err := os.ReadFile(abs)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	// Line-ranged reads. Measured over 374 real file reads by unaided and
+	// prism-armed agents: 50.6% are line-ranged (sed -n A,Bp 25.7%, native
+	// Read offset+limit 23.8%) and prism_read could express NONE of it. That
+	// gap is why 87% of the reads prism never saw were ranged, and why its
+	// session ledger fired 0 times in 45 calls -- the agent cannot route a
+	// ranged read through a whole-file tool, so the ledger never sees the
+	// repeats it exists to collapse.
+	//
+	// Whole-file reads keep the compression path unchanged; a ranged read is
+	// delivered verbatim and line-numbered, because slicing lines and THEN
+	// compressing them would be two lossy steps on the same content.
+	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
+	if offset > 0 || limit > 0 {
+		return h.readRange(sessionPath, string(data), offset, limit)
 	}
 	// The file's currently indexed symbols, by exact path (Grove v0.6.1).
 	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))
