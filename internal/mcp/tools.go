@@ -656,7 +656,9 @@ func toolDescription(name string) string {
 			"cheapest option — use it wherever you would have run grep/rg (regex=true for patterns); " +
 			"\"symbols\" for names only; default \"both\" merges them. SCOPE IT when you know where to " +
 			"look: path=\"pkg/file.go\" or path=[\"src/\",\"tests/\"], glob=\"*.py\", files_only=true — " +
-			"the same narrowing you would write after a grep pattern. Returns locations, not context."
+			"the same narrowing you would write after a grep pattern. Returns locations, not context. " +
+			"A pure-text result (no symbol matches) comes back as plain `path:line: text` lines, not " +
+			"JSON — the same shape grep would print; do not try to parse it as an object."
 	case "prism_lookup":
 		return "Read one symbol by qualified name (e.g. 'ranking.Select', 'kvstore.Store.Get'). " +
 			"fields=[...] narrows to signature/doc/body/kind/parent/modifiers; omit it for the whole " +

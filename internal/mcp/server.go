@@ -155,11 +155,28 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if err != nil {
 			return nil, &rpcError{Code: -32000, Message: err.Error()}
 		}
-		// MCP expects content array with text parts. Compact JSON: results
-		// land in an agent's context window, and indentation is pure token
-		// overhead.
-		encoded, _ := json.Marshal(out)
-		content := []map[string]string{{"type": "text", "text": string(encoded)}}
+		// MCP content is free-form text — JSON is not required, only what
+		// this server has always sent by default. prism_search gets a plain
+		// grep-style rendering instead: measured 1.19-1.32x fewer bytes for
+		// identical hits (BACKLOG.md item 1), on the highest-call-count tool
+		// in the system, where the saving is paid back on every later turn
+		// the result sits in cache. Falls back to JSON for any shape the
+		// renderer does not fully recognise (symbol-bearing results, or an
+		// unexpected field) rather than risk dropping content silently.
+		var text string
+		var rendered bool
+		if call.Name == "prism_search" {
+			if m, ok := out.(map[string]any); ok {
+				text, rendered = renderSearchAsText(m)
+			}
+		}
+		if !rendered {
+			// Compact JSON: results land in an agent's context window, and
+			// indentation is pure token overhead.
+			encoded, _ := json.Marshal(out)
+			text = string(encoded)
+		}
+		content := []map[string]string{{"type": "text", "text": text}}
 		// Stale-context delivery: when any recently delivered file changed
 		// on disk, every context-bearing response carries the warning, so
 		// the agent learns mid-task instead of at merge time. Cheap probe
