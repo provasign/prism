@@ -1247,7 +1247,13 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 				"ripgrep nor grep was found on this server's PATH; installing " +
 				"ripgrep fixes both the speed and this warning."
 		}
-		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
+		// Structural hint first: the fan-out of the symbol this term names
+		// (implementations + callers with sites) outranks the noise-ratio
+		// note — full38 showed missed fan-out sites, not noisy greps, are
+		// where searches go wrong.
+		if n := h.structuralNote(ctx, q); n != "" {
+			out["resolvedNote"] = n
+		} else if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
 			out["resolvedNote"] = n
 		}
 		return out, nil
@@ -1295,6 +1301,12 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			out["textHits"] = h.renderTextMatches(r.Hits)
 			out["textBackend"] = r.Backend
 		}
+	}
+	// Same structural hint as scope=text: the symbol list above says the
+	// name exists, but not that changing it fans out — and the fan-out is
+	// the part agents were measured never to ask for on their own.
+	if n := h.structuralNote(ctx, q); n != "" {
+		out["resolvedNote"] = n
 	}
 	return out, nil
 }

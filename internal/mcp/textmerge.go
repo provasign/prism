@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -207,6 +208,103 @@ func (h *Handler) textFileCached(file string) bool {
 	_, seen, sameHash := h.Session.Lookup(normalizePath(file), compression.Hash(string(content)))
 	return seen && sameHash
 }
+
+// structuralNote: when a search term IS a symbol with real fan-out, deliver
+// the change-impact skeleton as one line — implementations and callers, with
+// sites — inside the search result the agent already asked for.
+//
+// Why (full38, 2026-08-17): on failed fan-out cells the agents SEARCHED the
+// exact symbols whose siblings they went on to miss — set_additional_properties
+// (its 3rd caller parse_root_type was the missed site), the Kinto cache
+// interface methods (3 sibling implementations missed by both arms) — and
+// then chose a fix design as if the term were a lone string. change_impact
+// was called once in 38 cells; the graph's knowledge never reached the design
+// decision. This note is the reach: the agent will not ask "who else
+// implements this?", so the answer rides along on the question it did ask.
+//
+// Fires only when the term resolves to exactly one real symbol AND that
+// symbol has fan-out worth knowing (any override/implementation family, or
+// 2+ callers). A leaf helper with one caller stays silent — a note printed
+// on every search is wallpaper, and wallpaper trained agents to skim.
+func (h *Handler) structuralNote(ctx context.Context, query string) string {
+	if h.Grove == nil || !identLike.MatchString(query) {
+		return ""
+	}
+	cands, err := h.Grove.Resolve(ctx, query)
+	if err != nil {
+		return ""
+	}
+	// Dedup: Resolve can return the same declaration twice (observed on
+	// Kinto's CacheBase.get — identical name/file/line, twice). Distinct
+	// SYMBOLS mean genuine ambiguity and stay silent; duplicates of one
+	// symbol must not.
+	var real []grove.ResolvedSymbol
+	seen := map[string]bool{}
+	for _, c := range cands {
+		if c.TestDouble {
+			continue
+		}
+		key := fmt.Sprintf("%s|%s", c.Name, c.File)
+		if !seen[key] {
+			seen[key] = true
+			real = append(real, c)
+		}
+	}
+	if len(real) != 1 {
+		return "" // ambiguous names are resolvedRefNote's case, not this one
+	}
+	r, err := h.Grove.ChangeImpact(ctx, real[0].Name)
+	if err != nil || r == nil {
+		return ""
+	}
+	if len(r.Family) == 0 && len(r.Callers) < 2 {
+		return ""
+	}
+	site := func(s grove.SymbolRecord) string {
+		parts := strings.Split(s.FilePath, "/")
+		p := s.FilePath
+		if len(parts) > 2 {
+			p = strings.Join(parts[len(parts)-2:], "/")
+		}
+		return fmt.Sprintf("%s:%d", p, s.Span.Start)
+	}
+	var b strings.Builder
+	if query == r.Query {
+		b.WriteString(r.Query)
+	} else {
+		fmt.Fprintf(&b, "%s is %s", query, r.Query)
+	}
+	if len(r.Declarations) > 0 {
+		fmt.Fprintf(&b, " (%s)", site(r.Declarations[0]))
+	}
+	if n := len(r.Family); n > 0 {
+		fmt.Fprintf(&b, " — %d implementation(s):", n)
+		for i, s := range r.Family {
+			if i == 4 {
+				fmt.Fprintf(&b, " +%d more", n-4)
+				break
+			}
+			fmt.Fprintf(&b, " %s", site(s))
+		}
+	}
+	if n := len(r.Callers); n > 0 {
+		fmt.Fprintf(&b, "; %d caller(s):", n)
+		for i, s := range r.Callers {
+			if i == 3 {
+				fmt.Fprintf(&b, " +%d more", n-3)
+				break
+			}
+			fmt.Fprintf(&b, " %s %s", leafOf(s.Name), site(s))
+		}
+	}
+	b.WriteString(". A contract change here touches that whole set — " +
+		"prism_change_impact for the closed, line-precise list.")
+	return b.String()
+}
+
+// identLike gates structuralNote to queries that could name a symbol —
+// a regex or a phrase is a text question, not a symbol question.
+var identLike = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.]*$`)
 
 // resolvedRefNote tells the agent how much of a raw text search is signal.
 // Measured (research/harness/grep_vs_graph_gap.py, 127 symbols / 6 repos /

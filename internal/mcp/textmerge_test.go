@@ -163,3 +163,28 @@ func TestSourceDeliveryBoundedByGiantLine(t *testing.T) {
 		t.Error("truncation must name the file and say it happened")
 	}
 }
+
+// TestStructuralNoteSilentWithoutGrove: like every advisory note, it must
+// never fire or error when there is no graph behind it.
+func TestStructuralNoteSilentWithoutGrove(t *testing.T) {
+	h := newTestHandler(t)
+	if n := h.structuralNote(context.Background(), "CacheBase.get"); n != "" {
+		t.Errorf("note must be silent without a graph, got %q", n)
+	}
+}
+
+// TestStructuralNoteSilentOnNonIdentifiers: a regex or phrase is a text
+// question, not a symbol question — resolving it would be noise.
+func TestStructuralNoteSilentOnNonIdentifiers(t *testing.T) {
+	h := newTestHandler(t)
+	for _, q := range []string{
+		"cache\\.get\\(|cache\\.set\\(", // regex alternation
+		"class JSONRPCRequest",          // phrase with space
+		"url = f\"http://",              // string literal
+		"",                              // empty
+	} {
+		if n := h.structuralNote(context.Background(), q); n != "" {
+			t.Errorf("query %q must not produce a structural note, got %q", q, n)
+		}
+	}
+}
