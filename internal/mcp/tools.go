@@ -354,9 +354,8 @@ func toolSchema(name string) map[string]any {
 				"terms": map[string]any{
 					"type":  "array",
 					"items": map[string]any{"type": "string"},
-					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]), expanded " +
-						"via the call graph. No name yet? Guess ONE keyword from the task — there is no " +
-						"no-terms fallback, the call errors instead.",
+					"description": "REQUIRED: search terms (e.g. [\"AccessCount\"]), expanded via the call " +
+						"graph. No name yet? Guess ONE keyword — there is no no-terms fallback.",
 				},
 				"include": map[string]any{
 					"type":        "array",
@@ -390,11 +389,11 @@ func toolSchema(name string) map[string]any {
 				},
 				"offset": map[string]any{
 					"type":        "integer",
-					"description": "First line to return (1-based). With limit this is an exact window — the `sed -n A,Bp` / Read(offset,limit) shape. Half of all real file reads are ranged; use this instead of pulling a whole file to see part of it.",
+					"description": "First line to return (1-based). Use with limit for an exact window instead of pulling a whole file to see part of it.",
 				},
 				"limit": map[string]any{
 					"type":        "integer",
-					"description": "How many lines to return from offset. Omit both for the whole file (compressed, and a one-line cached pointer on repeat).",
+					"description": "How many lines to return from offset. Omit both for the whole file.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
@@ -409,7 +408,7 @@ func toolSchema(name string) map[string]any {
 				"query": map[string]any{
 					"type":        []string{"string", "array"},
 					"items":       map[string]any{"type": "string"},
-					"description": "One term, or an ARRAY of terms searched in one call (up to 10) — batch them whenever you have more than one thing to find. Matched against symbol names/signatures/docstrings and raw source text. A regular expression when regex=true.",
+					"description": "One term or an array of up to 10, searched in one call — batch them. A regular expression when regex=true.",
 				},
 				"scope": map[string]any{
 					"type":        "string",
@@ -423,7 +422,7 @@ func toolSchema(name string) map[string]any {
 				"path": map[string]any{
 					"type":        []string{"string", "array"},
 					"items":       map[string]any{"type": "string"},
-					"description": "Restrict the search to these repo-relative files or directories (e.g. \"octodns/manager.py\" or [\"src/\",\"tests/\"]). Scope whenever you know where to look — it is what you would have written after the grep pattern.",
+					"description": "Restrict to these repo-relative files or directories (e.g. \"src/manager.py\" or [\"src/\",\"tests/\"]).",
 				},
 				"glob": map[string]any{
 					"type":        []string{"string", "array"},
@@ -432,7 +431,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"exhaustive": map[string]any{
 					"type":        "boolean",
-					"description": "Return EVERY match, uncapped. Say so when you need completeness (\"rewrite every call site\", \"how many places do this\") — a capped answer to that question looks complete and is not. Pair with files_only or path= unless you want thousands of lines.",
+					"description": "Return EVERY match, uncapped — required for completeness questions (\"rewrite every call site\"), where a capped answer looks complete and is not. Pair with files_only or path=.",
 				},
 				"files_only": map[string]any{
 					"type":        "boolean",
@@ -441,7 +440,7 @@ func toolSchema(name string) map[string]any {
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 				"context": map[string]any{
 					"type":        "integer",
-					"description": "Lines of surrounding source to include on each side of a match (like `grep -C N`). Use this instead of a follow-up prism_read for the lines around a hit — one call instead of two.",
+					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read.",
 				},
 			},
 		}
@@ -639,32 +638,25 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "Edit-ready context for the symbols you name. Retrieval keys ONLY on terms=[...]: " +
-			"prism finds those symbols, expands one hop through the call graph, and runs a " +
-			"full-text pass for each term, then returns line-numbered source windows plus each " +
-			"anchor's callers — no separate grep needed. task is a LABEL, not a search key: how " +
-			"you phrase it does not change what comes back. Size with budget= (default 8000) and " +
-			"max_files=; delivery=\"symbols\" swaps windows for a compact list. Do not re-read " +
-			"the files it shows. To merely locate something, use prism_search."
+		return "Edit-ready context for the symbols named in terms=[...] — the ONLY retrieval key " +
+			"(task is a label): finds them, expands one hop through the call graph, adds a " +
+			"full-text pass, returns line-numbered source windows plus callers. No separate grep " +
+			"needed; do not re-read the files it shows. Size with budget= and max_files=. " +
+			"To merely locate something, use prism_search."
 	case "prism_read":
-		return "Read a file, whole or by line range. offset/limit give an exact window " +
-			"(line-numbered, with the file's total line count) — the same shape as " +
-			"`sed -n A,Bp`. Omit both for the whole file. A repeat read of an UNCHANGED file returns a one-line " +
-			"`// [prism:cached] <file> @sha:…` pointer instead of the body — not an error and not " +
-			"empty: use the copy you already have. For a single function use prism_lookup."
+		return "Read a file, whole or by line range (offset/limit — the `sed -n A,Bp` shape, " +
+			"line-numbered). A repeat read of an UNCHANGED file returns a one-line " +
+			"`// [prism:cached]` pointer instead of the body — not an error: use the copy you " +
+			"already have. For a single function use prism_lookup."
 	case "prism_search":
-		return "Locate things: searches indexed symbol names/signatures/docstrings AND raw source " +
-			"text (a real rg/grep pass). query takes ONE term or an ARRAY of up to 10 — batch every " +
-			"term you already know you need instead of calling once per term; results come back " +
-			"grouped under the term that produced them. scope=\"text\" is a pure grep and the " +
-			"cheapest option — use it wherever you would have run grep/rg (regex=true for patterns); " +
-			"\"symbols\" for names only; default \"both\" merges them. SCOPE IT when you know where to " +
-			"look: path=\"pkg/file.go\" or path=[\"src/\",\"tests/\"], glob=\"*.py\", files_only=true — " +
-			"the same narrowing you would write after a grep pattern. context=N adds N lines around " +
-			"each match (grep -C) in the SAME call — use this instead of a follow-up prism_read for " +
-			"the surrounding lines, one round trip instead of two. Returns locations, not context. " +
-			"A pure-text result (no symbol matches) comes back as plain `path:line: text` lines, not " +
-			"JSON — the same shape grep would print; do not try to parse it as an object."
+		return "Locate things: symbol names/signatures/docstrings AND raw source text (real " +
+			"rg/grep) in one call. query = one term or an array of up to 10 — batch what you know " +
+			"you need. scope=\"text\" is pure grep, cheapest — use it wherever you would run " +
+			"grep/rg (regex=true for patterns). Narrow with path=/glob=/files_only, exactly the " +
+			"scoping you would write after a grep pattern. context=N adds surrounding lines " +
+			"(grep -C) in the same call — no follow-up read. exhaustive=true lifts the hit cap " +
+			"for completeness questions. Pure-text results are plain `path:line: text` lines, " +
+			"not JSON."
 	case "prism_lookup":
 		return "Read one symbol by qualified name (e.g. 'ranking.Select', 'kvstore.Store.Get'). " +
 			"fields=[...] narrows to signature/doc/body/kind/parent/modifiers; omit it for the whole " +
@@ -717,16 +709,12 @@ func toolDescription(name string) string {
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_change_impact":
-		return "Every site that must change when a symbol does. Pass 'Type.method' (or " +
-			"'Type.method(ParamType, ...)') and get, in one call: declarations, the full " +
-			"override/implementation family, sibling contracts that break with it (supers), all " +
-			"resolved callers, and the interface/type blocks that textually change " +
-			"(declaringTypes — always change sites). Reach for this before editing any existing " +
-			"symbol. 'completeness':'closed' means the set is authoritative; 'project-local' " +
-			"with overridesExternal means the method implements an external contract whose " +
-			"signature you must not change (query that external type directly to sweep the " +
-			"project's implementations of it). Relay the set as-is — re-filtering a solved " +
-			"traversal through grep measurably drops real sites."
+		return "Every site that must change when a symbol does. Pass 'Type.method' and get, in " +
+			"one call: declarations, the full override/implementation family, breaking sibling " +
+			"contracts (supers), all resolved callers, and declaringTypes. Reach for this before " +
+			"editing any existing symbol. completeness:'closed' = authoritative; 'project-local' " +
+			"+ overridesExternal = the method implements an external contract whose signature " +
+			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
 			"and get every type in the subtype closure that FAILS to implement the member — " +

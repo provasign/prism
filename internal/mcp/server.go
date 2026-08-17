@@ -165,9 +165,18 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		// unexpected field) rather than risk dropping content silently.
 		var text string
 		var rendered bool
-		if call.Name == "prism_search" {
-			if m, ok := out.(map[string]any); ok {
+		if m, ok := out.(map[string]any); ok {
+			switch call.Name {
+			case "prism_search":
 				text, rendered = renderSearchAsText(m)
+			case "prism_read":
+				// +7-18% JSON escaping over whole source bodies, on the
+				// highest-call-count tool (56% of prism calls in full38).
+				text, rendered = renderReadAsText(m)
+			case "prism_change_impact":
+				// 3.1x measured: symbol-record lists are the most
+				// repetitive JSON this server emits (graphtext.go).
+				text, rendered = renderChangeImpactAsText(m)
 			}
 		}
 		if !rendered {

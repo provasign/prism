@@ -468,27 +468,17 @@ func mergePrismYAML(existing, profile string) string {
 const steeringInstructions = `
 ## Prism — context delivery
 
-Prism indexes this repo's call and type graph. grep finds the same lines —
-prism tells you which of them matter (file-level precision 0.51 -> 0.91 on
-change tasks) and answers in one call where search-then-read takes several.
+Prism indexes this repo's call and type graph. Use the prism_* tools for
+locating, reading and searching code — each tool's own description says when
+it applies: ` + "`" + `prism_search` + "`" + ` (locate; scope="text" = pure grep),
+` + "`" + `prism_query` + "`" + ` (edit-ready context), ` + "`" + `prism_read` + "`" + `/` + "`" + `prism_lookup` + "`" + ` (read a
+file / one symbol), ` + "`" + `prism_change_impact` + "`" + ` (blast radius), ` + "`" + `prism_verify` + "`" + `
+(diff completeness). What the descriptions cannot say, the workflow rules:
 
-Route by the question. One call, and treat its result as final:
-
-| Question | Call |
-|---|---|
-| where is X? | ` + "`" + `prism_search(query="X")` + "`" + ` — searches symbol names AND raw text. Several at once: ` + "`" + `query=["X","Y"]` + "`" + `. Know where to look: ` + "`" + `path=` + "`" + `, ` + "`" + `glob=` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |
-| a literal string, message or config key | ` + "`" + `prism_search(query="...", scope="text")` + "`" + ` — pure grep, cheapest. Use it for TEXT; leave the default for code |
-| EVERY site of X (rewrite them all, count them) | ` + "`" + `prism_search(query="X", exhaustive=true)` + "`" + ` — results are capped at 25 by default and a capped answer to a completeness question looks complete. Say ` + "`" + `exhaustive` + "`" + `; add ` + "`" + `files_only=true` + "`" + ` to keep it cheap |
-| X, plus the lines around it | ` + "`" + `prism_search(query="X", context=N)` + "`" + ` — one call instead of search-then-prism_read |
-| read one function, or one file | ` + "`" + `prism_lookup(name="pkg.Func")` + "`" + ` / ` + "`" + `prism_read` + "`" + ` |
-| give me the code for X, ready to edit | ` + "`" + `prism_query(task="<label>", terms=["X"])` + "`" + ` — keys on ` + "`" + `terms` + "`" + `; the wording changes nothing |
-| who breaks if I change X? | ` + "`" + `prism_change_impact(query="Type.method")` + "`" + ` |
-| is my diff complete? | ` + "`" + `prism_verify` + "`" + ` |
-
-Before editing an existing symbol, run ` + "`" + `prism_change_impact` + "`" + `: declarations,
-every override and implementation, all resolved callers, type-resolved in one
-call. **Relay that set as-is** — re-verifying or filtering it through
-grep/sed/scripts measurably drops real sites.
+- Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
+  **Relay that set as-is** — re-filtering it through grep/sed measurably
+  drops real sites.
+- Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
 
 Bash-only (subagents, CI) — same verbs, add ` + "`" + `--format text` + "`" + `:
 
