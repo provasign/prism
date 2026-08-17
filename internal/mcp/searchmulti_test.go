@@ -382,3 +382,66 @@ func TestToolRead_RangeNeedsNoIndex(t *testing.T) {
 		t.Errorf("want a range delivery, got %v", out)
 	}
 }
+
+// --- context= (grep -A/-B/-C) --------------------------------------------
+//
+// Measured 2026-08-16: prism_search followed by a ranged prism_read (find
+// the match, then pull the surrounding lines) occurred 13 times in real
+// traces. context= collapses that into one call: measured 1,152B for one
+// call at context=10 against 1,596B for the two-call sequence it replaces.
+
+func TestToolSearch_ContextAddsSurroundingLines(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Alpha", "scope": "text", "context": 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	groups := toSlice(m["textHits"])
+	if len(groups) == 0 {
+		t.Fatal("expected at least one file group")
+	}
+	gm := groups[0].(map[string]any)
+	hits := toSlice(gm["hits"])
+	if len(hits) == 0 {
+		t.Fatal("expected at least one hit")
+	}
+	hm := hits[0].(map[string]any)
+	// alpha.go is "package p\n\nfunc Alpha() {}\n" -- Alpha is on line 3,
+	// so context=1 must include line 2 (blank) before it.
+	if hm["before"] == nil {
+		t.Errorf("expected before-context, got %v", hm)
+	}
+}
+
+func TestToolSearch_NoContextMeansNoBeforeAfter(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{"query": "Alpha", "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	groups := toSlice(m["textHits"])
+	gm := groups[0].(map[string]any)
+	hm := toSlice(gm["hits"])[0].(map[string]any)
+	if hm["before"] != nil || hm["after"] != nil {
+		t.Errorf("context=0 (default) must not attach before/after: %v", hm)
+	}
+}
+
+func TestToolSearch_ContextRenderedInPlainText(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Alpha", "scope": "text", "context": 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, ok := renderSearchAsText(out.(map[string]any))
+	if !ok {
+		t.Fatal("expected a plain-text rendering")
+	}
+	if !strings.Contains(text, "alpha.go:") {
+		t.Errorf("context lines missing from rendering: %s", text)
+	}
+}

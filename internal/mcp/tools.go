@@ -439,6 +439,10 @@ func toolSchema(name string) map[string]any {
 					"description": "Return matching file paths without the matching lines — the cheapest answer to \"where does this live\".",
 				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
+				"context": map[string]any{
+					"type":        "integer",
+					"description": "Lines of surrounding source to include on each side of a match (like `grep -C N`). Use this instead of a follow-up prism_read for the lines around a hit — one call instead of two.",
+				},
 			},
 		}
 	case "prism_lookup":
@@ -656,7 +660,9 @@ func toolDescription(name string) string {
 			"cheapest option — use it wherever you would have run grep/rg (regex=true for patterns); " +
 			"\"symbols\" for names only; default \"both\" merges them. SCOPE IT when you know where to " +
 			"look: path=\"pkg/file.go\" or path=[\"src/\",\"tests/\"], glob=\"*.py\", files_only=true — " +
-			"the same narrowing you would write after a grep pattern. Returns locations, not context. " +
+			"the same narrowing you would write after a grep pattern. context=N adds N lines around " +
+			"each match (grep -C) in the SAME call — use this instead of a follow-up prism_read for " +
+			"the surrounding lines, one round trip instead of two. Returns locations, not context. " +
 			"A pure-text result (no symbol matches) comes back as plain `path:line: text` lines, not " +
 			"JSON — the same shape grep would print; do not try to parse it as an object."
 	case "prism_lookup":
@@ -1115,6 +1121,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		glob:       stringsArg(args, "glob"),
 		filesOnly:  boolArg(args, "files_only"),
 		exhaustive: boolArg(args, "exhaustive"),
+		context:    intArg(args, "context", 0),
 	}
 
 	// Multi-term: run each term through the same single-term path and group
@@ -1177,6 +1184,7 @@ type searchScope struct {
 	glob       []string
 	filesOnly  bool
 	exhaustive bool
+	context    int
 }
 
 func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
@@ -1189,7 +1197,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
-			Exhaustive: sc.exhaustive,
+			Exhaustive: sc.exhaustive, Context: sc.context,
 		})
 		out := map[string]any{
 			"textHits":    h.renderTextMatches(r.Hits),
@@ -1282,7 +1290,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
-			Exhaustive: sc.exhaustive,
+			Exhaustive: sc.exhaustive, Context: sc.context,
 		}); len(r.Hits) > 0 {
 			out["textHits"] = h.renderTextMatches(r.Hits)
 			out["textBackend"] = r.Backend

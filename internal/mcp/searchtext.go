@@ -107,7 +107,18 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 				if !ok {
 					return false
 				}
+				line, _ := hm["line"].(int)
+				before := anySlice(hm["before"])
+				for i, l := range before {
+					fmt.Fprintf(b, "%s:%d-  %v\n", file, line-len(before)+i, l)
+				}
 				fmt.Fprintf(b, "%s:%v: %v\n", file, hm["line"], hm["text"])
+				for i, l := range anySlice(hm["after"]) {
+					fmt.Fprintf(b, "%s:%d-  %v\n", file, line+1+i, l)
+				}
+				if len(before) > 0 || hm["after"] != nil {
+					b.WriteString("--\n")
+				}
 			}
 			if more, ok := gm["moreHits"]; ok {
 				fmt.Fprintf(b, "%s: +%v more matches\n", file, more)

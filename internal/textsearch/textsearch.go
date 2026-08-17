@@ -30,6 +30,12 @@ type Hit struct {
 	File string `json:"file"`
 	Line int    `json:"line"`
 	Text string `json:"text"`
+	// Before/After hold up to Options.Context lines of surrounding source,
+	// oldest first. Populated by attachContext after the match search
+	// itself, regardless of which backend served it — see Context's comment
+	// for why.
+	Before []string `json:"before,omitempty"`
+	After  []string `json:"after,omitempty"`
 }
 
 // Result is the outcome of one search.
@@ -98,6 +104,18 @@ type Options struct {
 	// path:line:text parse every backend shares. The delivery layer drops
 	// the lines instead, which is where the token saving actually lands.
 	FilesOnly bool
+	// Context requests N lines of surrounding source on each side of a
+	// match (grep -C N). Deliberately NOT implemented via each backend's
+	// own -A/-B/-C: rg's context lines use a "-" separator instead of ":"
+	// for the match line, GNU grep's differs again, and both insert "--"
+	// group-separator lines between non-contiguous context blocks -- three
+	// text formats to parse correctly, with real divergence risk between rg
+	// and the native fallback (the exact failure class this package already
+	// forbids for scoping and hidden-file handling). Instead, Search()
+	// resolves the match set as it always has, then attachContext() reads
+	// each hit's file directly and slices the window -- one code path,
+	// identical behaviour on every backend, by construction.
+	Context int
 }
 
 // scopeArgs resolves opts.Paths against root, dropping anything that escapes
@@ -285,17 +303,73 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
+	var res Result
 	switch Backend() {
 	case "rg":
 		if r, ok := runRg(ctx, root, pattern, opts); ok {
-			return r
+			res = r
+			break
 		}
+		res = nativeSearch(ctx, root, pattern, opts)
 	case "grep":
 		if r, ok := runGrep(ctx, root, pattern, opts); ok {
-			return r
+			res = r
+			break
+		}
+		res = nativeSearch(ctx, root, pattern, opts)
+	default:
+		res = nativeSearch(ctx, root, pattern, opts)
+	}
+	if opts.Context > 0 && len(res.Hits) > 0 {
+		attachContext(root, res.Hits, opts.Context)
+	}
+	return res
+}
+
+// attachContext fills each hit's Before/After with up to n lines of
+// surrounding source, read directly from disk -- one file open per unique
+// file among the hits, regardless of how many hits it contains. Best-effort:
+// a file that can no longer be read (deleted, permissions, binary) is left
+// without context rather than failing the whole search over an enrichment.
+func attachContext(root string, hits []Hit, n int) {
+	cache := map[string][]string{}
+	for i := range hits {
+		h := &hits[i]
+		lines, ok := cache[h.File]
+		if !ok {
+			data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(h.File)))
+			if err != nil || len(data) > 2<<20 {
+				cache[h.File] = nil
+				continue
+			}
+			lines = strings.Split(string(data), "\n")
+			if len(lines) > 0 && lines[len(lines)-1] == "" {
+				lines = lines[:len(lines)-1]
+			}
+			cache[h.File] = lines
+		}
+		if lines == nil {
+			continue
+		}
+		idx := h.Line - 1 // hits are 1-based
+		if idx < 0 || idx >= len(lines) {
+			continue
+		}
+		start := idx - n
+		if start < 0 {
+			start = 0
+		}
+		if start < idx {
+			h.Before = append([]string{}, lines[start:idx]...)
+		}
+		end := idx + 1 + n
+		if end > len(lines) {
+			end = len(lines)
+		}
+		if end > idx+1 {
+			h.After = append([]string{}, lines[idx+1:end]...)
 		}
 	}
-	return nativeSearch(ctx, root, pattern, opts)
 }
 
 // runRg shells out to ripgrep. ok=false means the invocation itself failed

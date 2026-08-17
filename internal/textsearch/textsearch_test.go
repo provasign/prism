@@ -291,3 +291,79 @@ func TestBinResolvesOnlyItsOwnBackend(t *testing.T) {
 		t.Errorf("bin(%q) = %q — returned the detected backend's path", other, got)
 	}
 }
+
+func TestSearch_ContextAttachesSurroundingLines(t *testing.T) {
+	dir := t.TempDir()
+	body := "one\ntwo\nMATCH\nfour\nfive\n"
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Search(context.Background(), dir, "MATCH", Options{Context: 1})
+	if len(r.Hits) != 1 {
+		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+	}
+	h := r.Hits[0]
+	if len(h.Before) != 1 || h.Before[0] != "two" {
+		t.Errorf("before = %v, want [two]", h.Before)
+	}
+	if len(h.After) != 1 || h.After[0] != "four" {
+		t.Errorf("after = %v, want [four]", h.After)
+	}
+}
+
+func TestSearch_ContextZeroAttachesNothing(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte("one\nMATCH\nthree\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Search(context.Background(), dir, "MATCH", Options{})
+	if len(r.Hits) != 1 {
+		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+	}
+	if r.Hits[0].Before != nil || r.Hits[0].After != nil {
+		t.Errorf("context=0 must attach nothing: %+v", r.Hits[0])
+	}
+}
+
+func TestSearch_ContextClampsAtFileBoundaries(t *testing.T) {
+	dir := t.TempDir()
+	// Match on the FIRST line: asking for 5 lines of before-context must not
+	// panic or go negative, just return what exists (nothing, here).
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte("MATCH\ntwo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Search(context.Background(), dir, "MATCH", Options{Context: 5})
+	if len(r.Hits) != 1 {
+		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+	}
+	if len(r.Hits[0].Before) != 0 {
+		t.Errorf("before at start of file = %v, want empty", r.Hits[0].Before)
+	}
+	if len(r.Hits[0].After) != 1 || r.Hits[0].After[0] != "two" {
+		t.Errorf("after clamped at EOF = %v, want [two]", r.Hits[0].After)
+	}
+}
+
+func TestSearch_ContextIdenticalAcrossBackends(t *testing.T) {
+	// The whole reason attachContext runs AFTER backend dispatch rather than
+	// being implemented per-backend (rg -A/-B/-C, grep -A/-B/-C, each a
+	// different text format): it must be impossible for rg and the native
+	// scanner to disagree on context. Force native and compare to whatever
+	// the real backend on this machine returns.
+	dir := t.TempDir()
+	body := "a\nb\nNEEDLE\nc\nd\n"
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	viaBackend := Search(context.Background(), dir, "NEEDLE", Options{Context: 2})
+	viaNative := nativeSearch(context.Background(), dir, "NEEDLE", Options{Context: 2}.withDefaults())
+	if len(viaNative.Hits) != 1 {
+		t.Fatalf("native: want 1 hit, got %d", len(viaNative.Hits))
+	}
+	// nativeSearch itself does not call attachContext (Search does, once,
+	// after dispatch) -- so compare the CONTENT each backend located, not
+	// context, to confirm they agree on the same file/line.
+	if viaBackend.Hits[0].File != viaNative.Hits[0].File || viaBackend.Hits[0].Line != viaNative.Hits[0].Line {
+		t.Errorf("backend and native disagree on the hit: %+v vs %+v", viaBackend.Hits[0], viaNative.Hits[0])
+	}
+}

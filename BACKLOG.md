@@ -91,8 +91,26 @@ grep -n "class LogRecord" -A 140 opentelemetry-sdk/src/opentelemetry/sdk/_logs/_
 scanner needs the equivalent, or it diverges (a scoped search silently
 returning different results without ripgrep is a bug this repo already had).
 
-**Expected value.** Removes a reason to route around prism. No measured cost
-saving attached.
+**Expected value — corrected 2026-08-16.** Originally recorded here as "no
+measured cost saving," compared only against `grep -A` bypassing prism for
+free. That undersold it: the real cost isn't the bypass case, it's the
+two-call case. Measured in today's traces — `prism_search` immediately
+followed by a ranged `prism_read` (find the match, then pull the
+surrounding lines) — **13 occurrences** across the day's cells. Sized
+directly:
+
+```
+prism_search:              611B
+prism_read(ranged):        985B   -- a full second JSON envelope
+TWO round trips, 1,596B total, two entries paid on every later turn
+```
+
+`context=` collapses this into one call, rendered through the same
+plain-text path shipped for item 1 — no second envelope, no second cache
+entry. Real, mechanism-backed saving, not just gap-closing. Smaller than
+ranged reads' own ~1k tokens/cell, but the two-call pattern is common
+enough (13 times in ~54 cells) that this is worth building on its own
+merits, not only for parity.
 
 ---
 

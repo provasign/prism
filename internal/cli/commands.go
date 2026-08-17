@@ -85,7 +85,7 @@ Usage:
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
                                   [--path <file-or-dir>]  scope the search (repeatable)
-                                  [--glob '*.py'] [--files-only] [--exhaustive]
+                                  [--glob '*.py'] [--files-only] [--exhaustive] [--context N]
                                   [--dir <path>]  where to search (default: .)
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
@@ -479,6 +479,7 @@ Route by the question. One call, and treat its result as final:
 | where is X? | ` + "`" + `prism_search(query="X")` + "`" + ` — searches symbol names AND raw text. Several at once: ` + "`" + `query=["X","Y"]` + "`" + `. Know where to look: ` + "`" + `path=` + "`" + `, ` + "`" + `glob=` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |
 | a literal string, message or config key | ` + "`" + `prism_search(query="...", scope="text")` + "`" + ` — pure grep, cheapest. Use it for TEXT; leave the default for code |
 | EVERY site of X (rewrite them all, count them) | ` + "`" + `prism_search(query="X", exhaustive=true)` + "`" + ` — results are capped at 25 by default and a capped answer to a completeness question looks complete. Say ` + "`" + `exhaustive` + "`" + `; add ` + "`" + `files_only=true` + "`" + ` to keep it cheap |
+| X, plus the lines around it | ` + "`" + `prism_search(query="X", context=N)` + "`" + ` — one call instead of search-then-prism_read |
 | read one function, or one file | ` + "`" + `prism_lookup(name="pkg.Func")` + "`" + ` / ` + "`" + `prism_read` + "`" + ` |
 | give me the code for X, ready to edit | ` + "`" + `prism_query(task="<label>", terms=["X"])` + "`" + ` — keys on ` + "`" + `terms` + "`" + `; the wording changes nothing |
 | who breaks if I change X? | ` + "`" + `prism_change_impact(query="Type.method")` + "`" + ` |
@@ -1589,6 +1590,7 @@ func cmdSearch(args []string) int {
 	var paths, globs []string
 	filesOnly := false
 	exhaustive := false
+	contextLines := 0
 	var bare []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -1635,6 +1637,13 @@ func cmdSearch(args []string) int {
 			filesOnly = true
 		case "--exhaustive", "--all":
 			exhaustive = true
+		case "--context", "-C":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+					contextLines = n
+				}
+				i++
+			}
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1701,6 +1710,9 @@ func cmdSearch(args []string) int {
 	}
 	if exhaustive {
 		callArgs["exhaustive"] = true
+	}
+	if contextLines > 0 {
+		callArgs["context"] = contextLines
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
 	if err != nil {
@@ -2497,7 +2509,18 @@ func printTextMatches(m map[string]any) {
 			if !ok {
 				continue
 			}
-			fmt.Printf("//   %s:%d: %v\n", file, jsonInt(hm["line"]), hm["text"])
+			line := jsonInt(hm["line"])
+			before := asSliceAny(hm["before"])
+			for i, l := range before {
+				fmt.Printf("//   %s:%d-  %v\n", file, line-len(before)+i, l)
+			}
+			fmt.Printf("//   %s:%d: %v\n", file, line, hm["text"])
+			for i, l := range asSliceAny(hm["after"]) {
+				fmt.Printf("//   %s:%d-  %v\n", file, line+1+i, l)
+			}
+			if len(before) > 0 || hm["after"] != nil {
+				fmt.Println("//   --")
+			}
 		}
 		if more := jsonInt(gm["moreHits"]); more > 0 {
 			fmt.Printf("//   %s: +%d more matches\n", file, more)

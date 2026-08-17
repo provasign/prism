@@ -177,7 +177,14 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) []map[string]any {
 					entry["moreHits"] = len(g.hits) - textRenderHitsPerFile
 					break
 				}
-				shown = append(shown, map[string]any{"line": hit.Line, "text": hit.Text})
+				entry2 := map[string]any{"line": hit.Line, "text": hit.Text}
+				if len(hit.Before) > 0 {
+					entry2["before"] = hit.Before
+				}
+				if len(hit.After) > 0 {
+					entry2["after"] = hit.After
+				}
+				shown = append(shown, entry2)
 			}
 			entry["hits"] = shown
 		}
