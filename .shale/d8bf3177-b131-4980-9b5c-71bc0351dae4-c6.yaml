@@ -1,0 +1,363 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c6
+created_at: 2026-08-16T22:29:20.229558Z
+finalized_at: 2026-08-17T00:37:26.513104Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/searchtext.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-08-16T22:41:25.082719Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-16T22:41:50.191815Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-16T22:42:54.357003Z
+    - path: internal/mcp/searchtext_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-08-16T22:43:31.15936Z
+commands:
+    - cmd: git push origin main 2>&1 | tail -3; git log --oneline origin/main..HEAD | wc -l
+      at: 2026-08-16T22:29:20.229558Z
+      classified: other
+    - cmd: cat BACKLOG.md | sed -n '1,50p'
+      at: 2026-08-16T22:37:20.706455Z
+      classified: other
+    - cmd: grep -n '^## ' BACKLOG.md; echo "---"; tail -30 BACKLOG.md
+      at: 2026-08-16T22:37:23.877902Z
+      classified: other
+    - cmd: grep -n 'content.*text\|json.Marshal\|MarshalIndent' internal/mcp/server.go | head -15
+      at: 2026-08-16T22:39:38.697644Z
+      classified: other
+    - cmd: sed -n '135,180p' internal/mcp/server.go
+      at: 2026-08-16T22:39:42.048864Z
+      classified: other
+    - cmd: grep -n 'func (h \*Handler) toolSearch\|func (h \*Handler) searchOne' internal/mcp/tools.go
+      at: 2026-08-16T22:40:04.824781Z
+      classified: other
+    - cmd: grep -n 'func (h \*Handler) renderTextMatches' -A 30 internal/mcp/tools.go | head -35
+      at: 2026-08-16T22:40:15.278851Z
+      classified: other
+    - cmd: grep -rn 'func (h \*Handler) renderTextMatches' internal/mcp/*.go
+      at: 2026-08-16T22:40:19.771119Z
+      classified: other
+    - cmd: grep -rn 'func asAnySlice\|func anySlice\|func toSlice\|func asSliceAny' internal/mcp/*.go | grep -v _test
+      at: 2026-08-16T22:41:03.815198Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -20
+      at: 2026-08-16T22:42:04.905587Z
+      classified: build
+    - cmd: go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head -20; echo DONE
+      at: 2026-08-16T22:42:19.282893Z
+      classified: lint
+    - cmd: grep -n 'func invokeWithPersistentLedger\|h.Invoke\|Handler.Invoke\|\.Invoke(' internal/cli/commands.go | head -8
+      at: 2026-08-16T22:42:27.768988Z
+      classified: other
+    - cmd: grep -rln 'DispatchableTools\|httpapi' internal/ cmd/ 2>/dev/null | grep -v _test | head -5
+      at: 2026-08-16T22:42:31.759117Z
+      classified: other
+    - cmd: grep -n 'json.Marshal\|w.Write\|Invoke(' internal/httpapi/http.go | head -10
+      at: 2026-08-16T22:42:34.347842Z
+      classified: other
+    - cmd: "sed -n '68,73p' internal/httpapi/http.go; echo \"---\"; grep -n 'case \"prism_search\":' -A 6 internal/mcp/tools.go | grep -A6 'func toolDescription' \ngrep -n '\"prism_search\":' internal/mcp/tools.go"
+      at: 2026-08-16T22:42:40.674512Z
+      classified: other
+    - cmd: sed -n '648,660p' internal/mcp/tools.go
+      at: 2026-08-16T22:42:45.298609Z
+      classified: other
+    - cmd: go build ./... && go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)"; echo GREEN
+      at: 2026-08-16T22:43:09.48085Z
+      classified: lint
+    - cmd: |-
+        go test ./internal/mcp -run TestRenderSearchAsText -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+        go test ./internal/mcp -run TestPrismSearch_TextScope -v 2>&1 | tail -10
+      at: 2026-08-16T22:43:38.329421Z
+      classified: test
+    - cmd: go test ./internal/mcp -run TestRenderSearchAsText_SingleTerm -v 2>&1 | head -15
+      at: 2026-08-16T22:43:45.414988Z
+      classified: test
+    - cmd: |-
+        go test ./internal/mcp -run TestRenderSearchAsText -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)"; echo SUITE-GREEN
+      at: 2026-08-16T22:44:07.978527Z
+      classified: lint
+    - cmd: |-
+        go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ./cmd/prism
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        for Q in "func " stringsArg Handler; do
+          n=$(printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"prism_search\",\"arguments\":{\"query\":\"$Q\",\"scope\":\"text\",\"limit\":25}}}" | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(len(d['result']['content'][0]['text'])); break")
+          python3 -c "print(f'  query {\"$Q\":12} new bytes: {$n}')"
+        done
+        echo; echo "=== sample output shape (should be plain text now) ==="
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"stringsArg","scope":"text","limit":3}}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(d['result']['content'][0]['text']); break"
+      at: 2026-08-16T22:44:22.524796Z
+      classified: build
+    - cmd: |-
+        OLD=/opt/homebrew/bin/prism  # v0.55.1, pre-this-change, released binary
+        NEW=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        for Q in "func " stringsArg Handler "search text"; do
+          o=$(printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"prism_search\",\"arguments\":{\"query\":\"$Q\",\"scope\":\"text\",\"limit\":25}}}" | $OLD mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(len(d['result']['content'][0]['text'])); break")
+          n=$(printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"prism_search\",\"arguments\":{\"query\":\"$Q\",\"scope\":\"text\",\"limit\":25}}}" | $NEW mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(len(d['result']['content'][0]['text'])); break")
+          python3 -c "print(f'  query {\"$Q\":15} OLD(JSON) {$o:6}B   NEW(text) {$n:6}B   ratio {$n/$o:.2f}x   saved {$o-$n}B ({100*($o-$n)/$o:.0f}%)')"
+        done
+      at: 2026-08-16T22:44:42.069997Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism 2>&1 | tail -3
+      at: 2026-08-16T22:46:16.195339Z
+      classified: other
+    - cmd: |-
+        cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ~/bin/prism
+        git add -A && git commit -q -F - <<'EOF'
+        feat(mcp): plain-text response for prism_search — BACKLOG.md item 1
+
+        MCP content is free-form text; JSON was never required, only what this
+        server has always sent by default. prism_search's text-scope results now
+        render as plain `path:line: text` lines instead of a JSON-encoded map.
+
+        MEASURED (not projected) — same binary, identical current corpus, old vs
+        new build, real protocol call:
+
+            query "func "       OLD 2678B  NEW 2092B   -22% (586B)
+            query "stringsArg"  OLD 1650B  NEW 1397B   -15% (253B)
+            query "Handler"      OLD 2572B  NEW 2496B   -3%  (76B)
+            query "search text"  OLD  195B  NEW  107B  -45%  (88B)
+
+        Never a regression across four real queries; savings track hit density.
+        This is why the item mattered: prism_search was the highest-call-count
+        tool measured (637 calls / 190 cells), and every result sits in the
+        session cache for the rest of the run — the envelope is paid again on
+        every later turn, not once.
+
+        renderSearchAsText() falls back to JSON (does not attempt to render) for:
+          - scope="symbols"/"both" results carrying structured data (signature,
+            doc, body, kind) that would lose information if flattened;
+          - any field it does not recognise, checked EXPLICITLY (an allowlist of
+            known keys) rather than assumed absent -- a shape this function
+            doesn't understand must fall back loud, not drop content quiet.
+
+        Untouched, deliberately: the HTTP API (internal/httpapi/http.go) and the
+        CLI (internal/cli/commands.go) both call Invoke() directly and JSON-encode
+        independently of server.go's MCP tools/call path -- this change is scoped
+        to the wire format one real MCP client actually receives.
+
+        Schema: no INPUT schema change (query/scope/etc are unaffected). The tool
+        DESCRIPTION is updated to say the text-scope result is plain lines, not
+        JSON, so an agent parsing content as an object is told not to.
+
+        Tests: 8 new, covering single-term, multi-term, files_only, cached-file
+        entries, and both fallback paths (symbol-bearing, unrecognised field) plus
+        an end-to-end Invoke()-through-renderer size assertion.
+
+        Gate: go vet + go test ./... green (new tests included); ci_invariants.py
+        green.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-16T22:46:33.498631Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && rm -rf /tmp/swebench-wt 2>/dev/null
+        ~/bin/prism version
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-inject5.json --limit 5 \
+          --arms no-prism prism --out runs/swebench-live/jsontext5 --prism ~/bin/prism \
+          > runs/swebench-live/jsontext5.log 2>&1 &
+        echo "pid $!"; sleep 15; head -4 runs/swebench-live/jsontext5.log
+      at: 2026-08-16T22:46:59.710217Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && until ! pgrep -f swebench_ab.py >/dev/null; do sleep 30; done; echo "=== DONE ==="; cat runs/swebench-live/jsontext5.log
+      at: 2026-08-16T22:57:05.256818Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "FINISHED"; cat runs/swebench-live/jsontext5.log
+      at: 2026-08-16T22:57:11.295338Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && until ! pgrep -f swebench_ab.py >/dev/null; do sleep 30; done; echo "=== DONE ==="; cat runs/swebench-live/jsontext5.log
+      at: 2026-08-16T22:57:16.050639Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "FINISHED/STOPPED"; cat runs/swebench-live/jsontext5.log
+      at: 2026-08-16T23:17:08.662867Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/jsontext5 --all 2>&1 | tail -90
+      at: 2026-08-16T23:21:38.715906Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,statistics
+        d=json.load(open('runs/swebench-live/jsontext5/scored.json'))
+        print(f"{'cell':38}{'files':>6}{'base':>10}{'prism':>10}{'Δturns':>8}{'Δcost':>8}  used")
+        for r in sorted(d,[REDACTED:env-secret] x:x['gold_files']):
+            a,b=r['arms']['no-prism'],r['arms']['prism']
+            v=lambda x:{True:'RESOLVED',False:'no',None:'err'}[x['resolved']]
+            print(f"{r['instance_id'][:38]:38}{r['gold_files']:6}{v(a):>10}{v(b):>10}{b['turns']-a['turns']:+8}{b['cost']-a['cost']:+8.2f}  {b['prism_used']}")
+        rb=sum(1 for r in d if r['arms']['no-prism']['resolved']); rp=sum(1 for r in d if r['arms']['prism']['resolved'])
+        print(f"\nRESOLVE  baseline {rb}/5   prism {rp}/5   ADOPTION {sum(1 for r in d if r['arms']['prism']['prism_used'])}/5")
+        eq=[r for r in d if r['arms']['no-prism']['resolved']==r['arms']['prism']['resolved']]
+        dc=[r['arms']['prism']['cost']-r['arms']['no-prism']['cost'] for r in eq]
+        dt=[r['arms']['prism']['turns']-r['arms']['no-prism']['turns'] for r in eq]
+        print(f"ALL 5 (equal-correctness): median Δcost {statistics.median(dc):+.3f}  median Δturns {statistics.median(dt):+.1f}")
+        eq_no_outlier=[r for r in eq if r['instance_id']!='astronomer__dag-factory-544']
+        dc2=[r['arms']['prism']['cost']-r['arms']['no-prism']['cost'] for r in eq_no_outlier]
+        dt2=[r['arms']['prism']['turns']-r['arms']['no-prism']['turns'] for r in eq_no_outlier]
+        print(f"EXCL dag-factory outlier: median Δcost {statistics.median(dc2):+.3f}  median Δturns {statistics.median(dt2):+.1f}  (n={len(eq_no_outlier)})")
+        print(f"denials: base {sum(r['arms']['no-prism']['behaviour']['denials'] for r in d)}  prism {sum(r['arms']['prism']['behaviour']['denials'] for r in d)}")
+        PY
+      at: 2026-08-16T23:21:52.437047Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json
+        d=json.load(open('runs/swebench-live/jsontext5/astronomer__dag-factory-544.prism.json'))
+        print(f"turns={d['turns']}  cost=${d['cost_usd']:.2f}  timed_out={d.get('timed_out')}  wall={d.get('wall_s')}s")
+        for i,c in enumerate(d['tool_calls'],1):
+            n=c['name'].replace('mcp__prism__prism_','prism.')
+            arg=c['input'].get('command') or c['input'].get('file_path') or c['input'].get('file') or json.dumps(c['input'].get('query',''))
+            print(f"{i:3} {n:14} {str(arg)[:110].replace(chr(10),' ')}")
+        PY
+      at: 2026-08-17T00:04:10.037096Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json
+        d=json.load(open('runs/swebench-live/jsontext5/astronomer__dag-factory-544.no-prism.json'))
+        print(f"BASELINE: turns={d['turns']}  cost=${d['cost_usd']:.2f}")
+        for i,c in enumerate(d['tool_calls'],1):
+            n=c['name']
+            arg=c['input'].get('command') or c['input'].get('file_path') or ''
+            print(f"{i:3} {n:8} {str(arg)[:110].replace(chr(10),' ')}")
+        PY
+      at: 2026-08-17T00:04:23.128678Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json
+        d=json.load(open('runs/swebench-live/jsontext5/astronomer__dag-factory-544.prism.json'))
+        for i,c in enumerate(d['tool_calls'],1):
+            if i<33 or i>60: continue
+            if c['name']!='Bash': continue
+            cmd=c['input'].get('command','')
+            print(f"--- turn {i} ---")
+            print(cmd[:400])
+            print()
+        PY
+      at: 2026-08-17T00:10:37.41929Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/jsontext5/astronomer__dag-factory-544.prism.json'))
+        print('keys:', list(d.keys()))
+        print('tool_calls[0] keys:', list(d['tool_calls'][0].keys()))
+        "
+      at: 2026-08-17T00:10:52.33814Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        t=[x for x in json.load(open('runs/swebench-live/slice-inject5.json')) if x['instance_id']=='astronomer__dag-factory-544'][0]
+        print(t['base_commit'])"
+      at: 2026-08-17T00:11:01.833759Z
+      classified: other
+    - cmd: |-
+        D=$(mktemp -d) && git -C ~/.cache/prism-research/swebench-repos/astronomer__dag-factory worktree add --force --detach "$D" 899a2e550de40cbb2a5ce080490b2bb064b7f0f6 2>&1 | tail -2
+        cd "$D" && which uv >/dev/null 2>&1 && echo "uv present" || pip install -q uv
+        uv venv --python 3.11 .venv 2>&1 | tail -3
+        uv pip install -q "apache-airflow==2.10.5" -e . pytest pytest-cov 2>&1 | tail -20
+      at: 2026-08-17T00:11:10.490469Z
+      classified: test
+    - cmd: |-
+        D=$(git -C ~/.cache/prism-research/swebench-repos/astronomer__dag-factory worktree list | grep -v '(bare)' | grep -v 'swebench-repos/astronomer' | head -1 | awk '{print $1}')
+        echo "worktree: $D"; cd "$D"
+        .venv/bin/pip list 2>/dev/null | grep -i airflow | head -20
+      at: 2026-08-17T00:11:17.829249Z
+      classified: other
+    - cmd: |-
+        D=/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/tmp.eWR81a0ReQ
+        cd "$D" && uv pip install "apache-airflow==2.10.5" -e . pytest pytest-cov 2>&1 | tail -40
+      at: 2026-08-17T00:11:24.624333Z
+      classified: test
+    - cmd: |-
+        D=/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/tmp.eWR81a0ReQ
+        cd "$D" && .venv/bin/pip list 2>/dev/null | grep -i airflow
+        echo "---"
+        AIRFLOW_HOME=/tmp/afhome2 .venv/bin/python -m pytest tests -q -p no:cacheprovider -m "not integration" --ignore=tests/test_example_dags.py 2>&1 | tail -50
+      at: 2026-08-17T00:11:36.440149Z
+      classified: test
+    - cmd: |-
+        grep -n "add_argument.*--model" /Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py
+        echo "---"
+        grep -n '"model"' /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/jsontext5/astronomer__dag-factory-544.prism.json 2>/dev/null | head -2
+        echo "--- prior grep for uv venv in baseline trace ---"
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/jsontext5/astronomer__dag-factory-544.no-prism.json'))
+        for i,c in enumerate(d['tool_calls'],1):
+            cmd=str(c['input'].get('command',''))
+            if 'venv' in cmd or 'uv pip' in cmd or 'airflow==' in cmd:
+                print(i, cmd[:150])
+        print('any venv/install attempt in baseline:', any('venv' in str(c['input'].get('command','')) for c in d['tool_calls']))
+        "
+      at: 2026-08-17T00:31:19.36905Z
+      classified: other
+    - cmd: grep -n 'covering test\|renderAnchorSummary' internal/mcp/*.go | grep -v _test | head -10
+      at: 2026-08-17T00:34:25.456776Z
+      classified: other
+    - cmd: |-
+        P=~/bin/prism
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prism_query","arguments":{"task":"check stringsArg","terms":["stringsArg"]}}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1:
+                c=json.loads(d['result']['content'][0]['text'])
+                print(c.get('content','')[:800])
+                break"
+      at: 2026-08-17T00:34:44.363898Z
+      classified: other
+    - cmd: sed -n '162,220p' internal/mcp/delivery.go
+      at: 2026-08-17T00:34:49.938617Z
+      classified: other
+    - cmd: grep -n 'hasTestEdgeToSeed\|TestRelevance\|hasTestEdgeID\|testFilePaths' internal/mcp/selection.go internal/ranking/signals.go | grep -v _test | head -15
+      at: 2026-08-17T00:34:59.584055Z
+      classified: other
+    - cmd: |-
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head; echo UNIT-GREEN
+        git log --oneline -1; git status --short
+      at: 2026-08-17T00:37:16.156914Z
+      classified: lint
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-16T22:29:20.229558Z
+redactions: 1
