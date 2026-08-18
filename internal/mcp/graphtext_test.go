@@ -112,3 +112,101 @@ func TestRenderChangeImpactAsText_FallsBackOnUnknownField(t *testing.T) {
 		t.Fatal("unknown field must force JSON fallback")
 	}
 }
+
+func TestRenderLookupAsText_FoundSymbol(t *testing.T) {
+	out := map[string]any{
+		"symbol": map[string]any{"qualifiedName": "CacheBase.get", "kind": "method",
+			"filePath": "cache/__init__.py", "span": map[string]any{"start": 58, "end": 66},
+			"rawText": "def get(self, key): ...", "blobSha": "beef", "id": "s1"},
+		"content": "def get(self, key): ...",
+	}
+	text, ok := renderLookupAsText(out)
+	if !ok {
+		t.Fatal("found shape must render")
+	}
+	if !strings.Contains(text, "CacheBase.get") || !strings.Contains(text, "cache/__init__.py:58-66") {
+		t.Errorf("header missing: %q", text)
+	}
+	if strings.Count(text, "def get(self, key)") != 1 {
+		t.Errorf("body must appear exactly once (JSON shipped it twice): %q", text)
+	}
+	if strings.Contains(text, "beef") {
+		t.Error("index internals must not leak")
+	}
+}
+
+func TestRenderLookupAsText_MissAndProjection(t *testing.T) {
+	miss := map[string]any{"symbol": nil, "name": "Nope", "matched": false,
+		"note": "no symbol named \"Nope\"", "candidates": []string{"Near (a.py)"}}
+	text, ok := renderLookupAsText(miss)
+	if !ok || !strings.Contains(text, "no symbol named") || !strings.Contains(text, "Near (a.py)") {
+		t.Errorf("miss shape wrong: ok=%v %q", ok, text)
+	}
+	proj := map[string]any{"signature": "def f()", "kind": "function"}
+	text, ok = renderLookupAsText(proj)
+	if !ok || !strings.Contains(text, "signature: def f()") {
+		t.Errorf("projection shape wrong: ok=%v %q", ok, text)
+	}
+	if _, ok := renderLookupAsText(map[string]any{"symbol": nil, "shiny": 1}); ok {
+		t.Error("unknown field must force JSON fallback")
+	}
+}
+
+func TestRenderVerifyAsText_CleanAndIncomplete(t *testing.T) {
+	clean := map[string]any{"verdict": "clean", "base": "HEAD", "note": "no changes vs HEAD"}
+	text, ok := renderVerifyAsText(clean)
+	if !ok || !strings.Contains(text, "verify: clean") {
+		t.Errorf("clean shape: ok=%v %q", ok, text)
+	}
+	inc := map[string]any{
+		"verdict": "incomplete", "base": "HEAD",
+		"changedFiles":     []string{"a.py", "b.py"},
+		"signatureChanges": []map[string]any{{"file": "a.py", "line": 657, "reason": "signature of X changed"}},
+		"missedSites": []map[string]any{{"file": "a.py", "line": 1310,
+			"qualifiedName": "P.parse_root_type", "detail": "calls set_title at line 1310"}},
+		"unverifiedSeeds": []string{"Y — review manually"},
+		"newDependencies": []map[string]any{{"from": "a", "to": "b", "weight": 2, "minTier": "call"}},
+		"archStatus":      "review", "archIntroduced": []string{"rule R broken"},
+		"notes":           []string{"scored against HEAD"},
+	}
+	text, ok = renderVerifyAsText(inc)
+	if !ok {
+		t.Fatal("incomplete shape must render")
+	}
+	for _, want := range []string{"verify: incomplete — 2 changed files", "MISSED SITES (1)",
+		"P.parse_root_type", "UNVERIFIED contract changes (1)", "a -> b  2 crossing(s)",
+		"arch rules touched", "rule R broken", "note: scored against HEAD"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("dropped %q from:\n%s", want, text)
+		}
+	}
+	if _, ok := renderVerifyAsText(map[string]any{"verdict": "complete", "extra": 1}); ok {
+		t.Error("unknown field must force JSON fallback")
+	}
+}
+
+func TestRenderQuerySourceAsText(t *testing.T) {
+	out := map[string]any{
+		"content": "**Source** — ...\n### a.py\n1\tcode\n",
+		"delivery": "source", "deliveredTokens": 100, "symbolCount": 3,
+		"files": []string{"a.py"},
+		"textMatches": []map[string]any{{"file": "b.cfg",
+			"hits": []map[string]any{{"line": 4, "text": "key = 1"}}}},
+		"textBackend": "rg",
+	}
+	text, ok := renderQuerySourceAsText(out)
+	if !ok {
+		t.Fatal("source delivery must render")
+	}
+	for _, want := range []string{"### a.py", "b.cfg:4: key = 1", "text matches"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "deliveredTokens") {
+		t.Error("bookkeeping must not render")
+	}
+	if _, ok := renderQuerySourceAsText(map[string]any{"content": "x", "newKey": 1}); ok {
+		t.Error("unknown field must force JSON fallback")
+	}
+}

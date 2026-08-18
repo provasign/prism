@@ -177,6 +177,16 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 				// 3.1x measured: symbol-record lists are the most
 				// repetitive JSON this server emits (graphtext.go).
 				text, rendered = renderChangeImpactAsText(m)
+			case "prism_lookup":
+				// 4.8x measured: the JSON form shipped the body twice
+				// plus index internals (graphtext.go).
+				text, rendered = renderLookupAsText(m)
+			case "prism_verify":
+				text, rendered = renderVerifyAsText(m)
+			case "prism_query":
+				// source delivery only; the symbols-delivery struct is not
+				// a map and correctly falls through to JSON.
+				text, rendered = renderQuerySourceAsText(m)
 			}
 		}
 		if !rendered {

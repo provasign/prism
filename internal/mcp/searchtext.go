@@ -23,15 +23,13 @@ import (
 // than a slightly larger response: better to fall back to JSON than to
 // truncate a field the agent needs and never say so.
 func renderSearchAsText(out map[string]any) (string, bool) {
-	if _, hasSymbols := out["symbols"]; hasSymbols {
-		return "", false
-	}
 	known := map[string]bool{
 		"textHits": true, "textBackend": true, "truncated": true,
 		"totalHits": true, "filesMatched": true, "warning": true,
 		"files": true, "fileCount": true, "rejectedPaths": true,
 		"timedOut": true, "resolvedNote": true, "results": true,
 		"failedTerms": true, "note": true, "query": true,
+		"symbols": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -69,7 +67,42 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 // Returns false on any field it does not know how to render, so the caller
 // falls back to JSON rather than silently dropping content.
 func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
+	// Symbol matches first: one location line per symbol instead of the full
+	// JSON record. Measured (Kinto, v0.55.5): a default-scope search returned
+	// 26-27 KB — full SymbolRecords with rawText bodies, blobSha, ids and
+	// callSites — for a tool whose contract is "locate". The text form is the
+	// location and the contract to go get the body, stated in-band.
+	if syms := anySlice(m["symbols"]); len(syms) > 0 {
+		fmt.Fprintf(b, "symbols (%d):\n", len(syms))
+		for _, s := range syms {
+			sm, ok := s.(map[string]any)
+			if !ok {
+				return false
+			}
+			name := sm["qualifiedName"]
+			if name == nil || name == "" {
+				name = sm["name"]
+			}
+			span, _ := sm["span"].(map[string]any)
+			fmt.Fprintf(b, "  %v %v  %v", sm["kind"], name, sm["filePath"])
+			if span != nil {
+				fmt.Fprintf(b, ":%v-%v", span["start"], span["end"])
+			}
+			if sig, _ := sm["signature"].(string); sig != "" {
+				fmt.Fprintf(b, "  %s", sig)
+			}
+			if td, _ := sm["testDouble"].(bool); td {
+				b.WriteString("  [test double]")
+			}
+			b.WriteString("\n")
+		}
+		b.WriteString("// locations only — prism_lookup <name> or prism_read for the body\n")
+	} else if hasKey(m, "symbols") && !hasKey(m, "textHits") && !hasKey(m, "files") {
+		b.WriteString("// no symbol matches\n")
+	}
 	switch {
+	case hasKey(m, "symbols") && !hasKey(m, "files") && !hasKey(m, "textHits"):
+		// symbols-only result: already rendered above.
 	case hasKey(m, "files"):
 		files := anySlice(m["files"])
 		for _, f := range files {

@@ -93,14 +93,32 @@ func TestRenderSearchAsText_MultiTerm(t *testing.T) {
 	}
 }
 
-func TestRenderSearchAsText_FallsBackForSymbolResults(t *testing.T) {
-	// scope="symbols"/"both" results carry structured data (signature, doc,
-	// body, kind) that would lose information if flattened -- must fall back
-	// to JSON, not attempt a lossy text form.
-	out := map[string]any{"symbols": []map[string]any{{"name": "Foo", "kind": "func"}}}
-	_, ok := renderSearchAsText(out)
-	if ok {
-		t.Error("symbol-bearing results must fall back to JSON, not render as text")
+func TestRenderSearchAsText_SymbolsRenderAsLocations(t *testing.T) {
+	// Contract change (v0.55.6): search is a LOCATE tool, but its JSON form
+	// shipped full SymbolRecords — rawText bodies, blobSha, ids, callSites —
+	// measured at 26-27KB per default-scope call on Kinto. The text form is
+	// one location line per symbol plus an explicit in-band pointer to
+	// lookup/read for bodies; index internals are policy-dropped, not lost.
+	out := map[string]any{"symbols": []map[string]any{{
+		"name": "Foo", "qualifiedName": "pkg.Foo", "kind": "func",
+		"filePath": "pkg/foo.go", "signature": "func Foo() error",
+		"span":    map[string]any{"start": 10, "end": 30},
+		"rawText": "func Foo() error {\n\treturn nil\n}\n",
+		"blobSha": "deadbeef", "id": "sym-1",
+	}}}
+	text, ok := renderSearchAsText(out)
+	if !ok {
+		t.Fatal("symbol results must render as location lines")
+	}
+	for _, want := range []string{"pkg.Foo", "pkg/foo.go:10-30", "func Foo() error", "prism_lookup"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in:\n%s", want, text)
+		}
+	}
+	for _, banned := range []string{"deadbeef", "return nil", "sym-1"} {
+		if strings.Contains(text, banned) {
+			t.Errorf("index internal / body %q leaked into locate result:\n%s", banned, text)
+		}
 	}
 }
 
