@@ -1,0 +1,439 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c9
+created_at: 2026-08-17T21:16:17.633932Z
+finalized_at: 2026-08-18T00:09:44.351855Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T21:51:56.926366Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T21:52:50.14169Z
+    - path: internal/mcp/graphtext.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-08-17T21:56:00.462091Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T21:56:17.703756Z
+    - path: internal/mcp/graphtext_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-17T21:56:39.662039Z
+commands:
+    - cmd: 'git tag -a v0.55.4 -m "v0.55.4: structural note — a symbol''s fan-out delivered inside the search that names it" && git push origin main v0.55.4 2>&1 | tail -3'
+      at: 2026-08-17T21:16:17.633932Z
+      classified: other
+    - cmd: |-
+        until gh run list --repo provasign/prism --limit 4 --json displayTitle,status,conclusion,event --jq '.[] | select(.event=="push")' 2>/dev/null | grep -q v0.55.4; do sleep 10; done
+        gh run list --repo provasign/prism --limit 4
+      at: 2026-08-17T21:19:33.151299Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 5 2>/dev/null
+      at: 2026-08-17T21:19:38.944619Z
+      classified: other
+    - cmd: |-
+        gh release view v0.55.4 --repo provasign/prism --json tagName,assets --jq '{tag:.tagName, assets:[.assets[].name]}' 2>/dev/null
+        echo "--- tap self-refreshes daily; verifying release binary works locally ---"
+        brew upgrade provasign/shale/prism 2>&1 | tail -2 || true
+        ~/bin/prism --version 2>/dev/null; which prism && prism --version
+      at: 2026-08-17T21:19:52.523082Z
+      classified: other
+    - cmd: cd /tmp && gh release download v0.55.4 --repo provasign/prism -p 'prism-v0.55.4-darwin-arm64' -p checksums.txt --clobber && grep darwin-arm64 checksums.txt && shasum -a 256 prism-v0.55.4-darwin-arm64 && chmod +x prism-v0.55.4-darwin-arm64 && mv prism-v0.55.4-darwin-arm64 ~/bin/prism && ~/bin/prism --version
+      at: 2026-08-17T21:20:05.902213Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        # 1) actual advertised schema bytes over the real protocol (v0.55.4)
+        python3 << 'PY'
+        import json, subprocess, os
+        proc = subprocess.Popen([os.path.expanduser('~/bin/prism'),'mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+        r = rpc(2,'tools/list',{})
+        tools = r['result']['tools']
+        total = 0
+        for t in tools:
+            b = len(json.dumps(t))
+            total += b
+            print(f"  {t['name']:22} {b:6,} B   alwaysLoad={'anthropic/alwaysLoad' in json.dumps(t.get('_meta',{}))}")
+        print(f"  TOTAL schemas: {total:,} B  (~{total//4:,} tokens)")
+        proc.kill()
+        PY
+        echo "--- 2) current steering block size ---"
+        wc -c .claude/CLAUDE.md CLAUDE.md 2>/dev/null | tail -2
+      at: 2026-08-17T21:30:43.573473Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism && python3 << 'PY'
+        import json, subprocess, os
+        proc = subprocess.Popen([os.path.expanduser('~/bin/prism'),'mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+        f = "kinto/core/cache/__init__.py"
+        r1 = rpc(2,'tools/call',{"name":"prism_read","arguments":{"file":f}})
+        r2 = rpc(3,'tools/call',{"name":"prism_read","arguments":{"file":f}})
+        t1, t2 = r1['result']['content'][0]['text'], r2['result']['content'][0]['text']
+        print(f"1st read: {len(t1):,} B   2nd read: {len(t2):,} B")
+        print("2nd read body:", t2[:220])
+        proc.kill()
+        PY
+      at: 2026-08-17T21:31:08.562391Z
+      classified: other
+    - cmd: |-
+        grep -n "PRISM_STEERING\|steeringBlock\|const steering" internal/cli/commands.go | head -5
+        python3 - <<'PY'
+        import re
+        src = open('internal/cli/commands.go').read()
+        m = re.search(r'(?:mcpSteering|steeringBlock|CLI_PRISM_STEERING|prismSteering)\w*\s*=\s*`([^`]+)`', src)
+        blocks = re.findall(r'(\w*[Ss]teering\w*)\s*=\s*`([^`]+)`', src)
+        for name, body in blocks:
+            print(f"{name}: {len(body):,} B (~{len(body)//4} tokens)")
+        PY
+      at: 2026-08-17T21:31:36.107335Z
+      classified: other
+    - cmd: sed -n 468,528p internal/cli/commands.go
+      at: 2026-08-17T21:31:41.426956Z
+      classified: other
+    - cmd: |-
+        grep -n '"description"' internal/mcp/tools.go | head -20
+        grep -n "func ToolSchemas\|func toolSchema" internal/mcp/tools.go | head -4
+      at: 2026-08-17T21:51:10.161633Z
+      classified: other
+    - cmd: 'grep -n "func toolDescription" internal/mcp/tools.go && sed -n "$(grep -n ''func toolDescription'' internal/mcp/tools.go | cut -d: -f1),+130p" internal/mcp/tools.go'
+      at: 2026-08-17T21:51:16.803459Z
+      classified: other
+    - cmd: sed -n 342,470p internal/mcp/tools.go
+      at: 2026-08-17T21:51:40.80477Z
+      classified: other
+    - cmd: |-
+        go build ./... && go test ./internal/mcp/ ./internal/cli/ -count=1 2>&1 | tail -3
+        # measure new schema bytes over the real protocol
+        go build -o /tmp/prism-diet ./cmd/prism && cd /tmp && python3 << 'PY'
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-diet','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, cwd='/tmp')
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+        r = rpc(2,'tools/list',{})
+        total = 0
+        for t in r['result']['tools']:
+            b = len(json.dumps(t)); total += b
+            print(f"  {t['name']:22} {b:6,} B")
+        print(f"  TOTAL: {total:,} B (was 9,612 B) — {(9612-total)/9612:.0%} cut, ~{(9612-total)//4} tokens/turn less carry")
+        proc.kill()
+        PY
+      at: 2026-08-17T21:53:16.015821Z
+      classified: test
+    - cmd: go test ./internal/cli/ -count=1 2>&1 | grep -E "^---|FAIL:" | head -8
+      at: 2026-08-17T21:53:23.952131Z
+      classified: test
+    - cmd: 'go test ./internal/cli/ -count=1 -run ''TestSteeringBlock_CoversBothSurfaces|TestCmdInit_ModeFlag'' 2>&1 | grep -A4 "FAIL: TestSteering\|steering" | head -20'
+      at: 2026-08-17T21:53:29.959247Z
+      classified: test
+    - cmd: |-
+        go build ./... && go test ./internal/cli/ ./internal/mcp/ -count=1 2>&1 | tail -3
+        python3 -c "
+        import re
+        src = open('internal/cli/commands.go').read()
+        i = src.index('const steeringInstructions')
+        j = src.index('// writeSteeringInstructions')
+        block = src[i:j]
+        # strip go concat syntax roughly to estimate emitted size
+        body = re.sub(r'\` \+ \"\`\" \+ \`', '\`', block)
+        print('steering source region:', len(block), 'B (emitted block ~', len(re.sub(chr(96)+r' \+ \"'+chr(96)+r'\" \+ '+chr(96),chr(96),block)), 'B)')
+        "
+      at: 2026-08-17T21:54:09.220206Z
+      classified: test
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism && python3 << 'PY'
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-diet','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+        r = rpc(2,'tools/call',{"name":"prism_change_impact","arguments":{"query":"CacheBase.get"}})
+        text = r['result']['content'][0]['text']
+        print("format: JSON" if text.lstrip().startswith('{') else "format: text")
+        print(f"bytes: {len(text):,}")
+        d = json.loads(text)
+        print("keys:", list(d.keys()))
+        print("\nsample of one caller entry:")
+        print(json.dumps(d['callers'][0], indent=1))
+        # what the CLI text renderer produced for the same call earlier: 25 lines, ~1.4KB
+        proc.kill()
+        PY
+        echo "--- CLI text rendering of the same, for size comparison ---"
+        cd $SCRATCH/Kinto__kinto-3566__prism && /tmp/prism-diet change-impact 'CacheBase.get' --format text | wc -c
+      at: 2026-08-17T21:54:28.070215Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism && python3 << 'PY'
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-diet','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+
+        for name, args in [
+            ("prism_read",   {"file":"kinto/core/cache/postgresql/__init__.py"}),
+            ("prism_read",   {"file":"kinto/core/cache/memory.py","offset":1,"limit":60}),
+            ("prism_lookup", {"name":"CacheBase.get"}),
+            ("prism_query",  {"task":"cache metrics","terms":["CacheBase"]}),
+        ]:
+            r = rpc(3, 'tools/call', {"name":name,"arguments":args})
+            text = r['result']['content'][0]['text']
+            isjson = text.lstrip().startswith('{')
+            inner = ""
+            if isjson:
+                try:
+                    d = json.loads(text)
+                    c = d.get('content') or d.get('source') or ''
+                    if isinstance(c, str): inner = f"  inner content {len(c):,}B, envelope+escaping overhead {len(text)-len(c):,}B ({(len(text)-len(c))/max(len(c),1):.0%})"
+                except Exception as e: inner = f"  ({e})"
+            print(f"{name:12} {str(args)[:52]:52} {'JSON' if isjson else 'text'} {len(text):6,}B{inner}")
+        proc.kill()
+        PY
+      at: 2026-08-17T21:54:54.7933Z
+      classified: other
+    - cmd: |-
+        grep -n "func (h \*Handler) toolRead" internal/mcp/tools.go | head -1
+        sed -n "$(grep -n 'func (h \*Handler) toolRead' internal/mcp/tools.go | head -1 | cut -d: -f1),+60p" internal/mcp/tools.go | grep -n '"' | grep -oE '"[a-zA-Z]+":' | sort -u
+        echo "--- change_impact out keys ---"
+        sed -n 2000,2045p internal/mcp/tools.go
+      at: 2026-08-17T21:55:19.781031Z
+      classified: other
+    - cmd: |-
+        sed -n 1016,1105p internal/mcp/tools.go
+        echo "--- widerAnchorHint shape ---"
+        grep -n "func (h \*Handler) widerAnchorHint" -A 5 internal/mcp/wideranchor.go | head -8
+        grep -oE '"[a-zA-Z]+":' internal/mcp/wideranchor.go | sort -u
+      at: 2026-08-17T21:55:27.479403Z
+      classified: other
+    - cmd: 'grep -n "func (h \*Handler) readRange" internal/mcp/*.go && sed -n "$(grep -rn ''func (h \*Handler) readRange'' internal/mcp/tools.go | cut -d: -f2),+45p" internal/mcp/tools.go | grep -oE ''"[a-zA-Z]+":'' | sort -u'
+      at: 2026-08-17T21:55:35.302855Z
+      classified: other
+    - cmd: 'grep -n "renderSearchAsText" internal/mcp/server.go && sed -n "$(grep -n ''renderSearchAsText'' internal/mcp/server.go | head -1 | cut -d: -f1 | awk ''{print $1-12}''),+20p" internal/mcp/server.go'
+      at: 2026-08-17T21:56:08.723136Z
+      classified: other
+    - cmd: |-
+        go test ./internal/mcp/ -count=1 2>&1 | tail -2 && go build -o /tmp/prism-diet ./cmd/prism && SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook && cd $SCRATCH/Kinto__kinto-3566__prism && python3 << 'PY'
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-diet','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+
+        BEFORE = {"prism_change_impact": 5830, "read_whole": 6464, "read_range": 2031}
+        r = rpc(2,'tools/call',{"name":"prism_change_impact","arguments":{"query":"CacheBase.get"}})
+        t = r['result']['content'][0]['text']
+        print(f"change_impact: {len(t):,}B (was {BEFORE['prism_change_impact']:,}B JSON) — {'TEXT' if not t.startswith('{') else 'STILL JSON'}")
+        print(t[:400])
+        r = rpc(3,'tools/call',{"name":"prism_read","arguments":{"file":"kinto/core/cache/postgresql/__init__.py"}})
+        t = r['result']['content'][0]['text']
+        print(f"\nread whole: {len(t):,}B (was {BEFORE['read_whole']:,}B) — starts: {t[:80]!r}")
+        r = rpc(4,'tools/call',{"name":"prism_read","arguments":{"file":"kinto/core/cache/memory.py","offset":1,"limit":60}})
+        t = r['result']['content'][0]['text']
+        print(f"read ranged: {len(t):,}B (was {BEFORE['read_range']:,}B) — starts: {t[:80]!r}")
+        # cached-pointer repeat must still work through the text path
+        r = rpc(5,'tools/call',{"name":"prism_read","arguments":{"file":"kinto/core/cache/postgresql/__init__.py"}})
+        t = r['result']['content'][0]['text']
+        print(f"repeat read: {len(t):,}B — {t[:110]!r}")
+        proc.kill()
+        PY
+      at: 2026-08-17T21:57:09.04378Z
+      classified: test
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism && python3 -c "
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-diet','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({'jsonrpc':'2.0','id':id,'method':method,'params':params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'t','version':'0'}})
+        proc.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized'})+'\n'); proc.stdin.flush()
+        r = rpc(2,'tools/call',{'name':'prism_read','arguments':{'file':'kinto/core/cache/memory.py','offset':1,'limit':60}})
+        print(sorted(json.loads(r['result']['content'][0]['text']).keys()))
+        proc.kill()
+        "
+      at: 2026-08-17T21:57:29.615356Z
+      classified: other
+    - cmd: |-
+        go test ./internal/mcp/ -count=1 2>&1 | tail -1 && go build -o /tmp/prism-diet ./cmd/prism && SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook && cd $SCRATCH/Kinto__kinto-3566__prism && python3 -c "
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-diet','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({'jsonrpc':'2.0','id':id,'method':method,'params':params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'t','version':'0'}})
+        proc.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized'})+'\n'); proc.stdin.flush()
+        r = rpc(2,'tools/call',{'name':'prism_read','arguments':{'file':'kinto/core/cache/memory.py','offset':1,'limit':60}})
+        t = r['result']['content'][0]['text']
+        print(f'ranged: {len(t):,}B (was 2,031B JSON) — {\"TEXT\" if not t.startswith(chr(123)) else \"STILL JSON\"}')
+        print(t[:150])
+        proc.kill()
+        "
+      at: 2026-08-17T21:58:02.439615Z
+      classified: test
+    - cmd: |-
+        go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "SUITE: $?"
+        cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-diet --corpus-root ~/.cache/prism-research/ci-corpus 2>&1 | tail -2
+      at: 2026-08-17T21:59:37.673543Z
+      classified: test
+    - cmd: |-
+        git add -A && git commit -m "$(cat <<'EOF'
+        mcp: schema+steering diet; text rendering for read and change_impact results
+
+        Diet (the measured fixed carry): full38's median cache_read delta (+76k
+        tokens/cell) reconciles almost exactly to (schemas 2.4k + steering 0.55k
+        tokens) x ~25 turns — the median cost delta IS prism's own fixed surface,
+        re-read every turn, not its payloads (replayed at 0.87x native). So compress
+        us: advertised schemas 9,612 -> 7,964 B (-17%), steering block ~2.2KB ->
+        ~1.05KB (route-table rows that duplicated tool descriptions removed; kept the
+        one-line tool map for CLI-only agents, the workflow rules, and the bash
+        table). Combined: ~700 tokens/turn less carry.
+
+        Text rendering (measured over the real protocol, Kinto index):
+        - prism_change_impact: 5,830 -> 2,203 B (2.6x). Symbol-record lists are the
+          most repetitive JSON this server emits; the graph answer compresses better
+          than the grep answer did (1.19-1.32x, v0.55.2).
+        - prism_read whole: 6,464 -> 6,082 B; ranged: 2,031 -> 1,819 B — envelope
+          fields plus JSON escaping of entire source bodies, on the tool that was
+          56% of all prism calls in full38. Cached-pointer repeats: 272 -> 185 B.
+        Same fallback contract as renderSearchAsText: any unrecognized field falls
+        back to JSON rather than risk a silent drop (caught live: readRange's `note`
+        field, missing from the first allowlist, correctly forced JSON until added).
+
+        Gate: full unit suite green, all engine invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-17T21:59:53.719241Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 audit_bed.py runs/swebench-live/slice-smoke5.json --wt 2>&1 | tail -1 && cp /tmp/prism-diet ~/bin/prism-test-diet && nohup python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-smoke5.json --limit 5 \
+          --arms baseline prism --out runs/swebench-live/diet5 \
+          --prism ~/bin/prism-test-diet --model opus \
+          > runs/swebench-live/diet5.log 2>&1 &
+        echo launched
+      at: 2026-08-17T22:00:03.527067Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "swebench_ab.py.*diet5" > /dev/null && echo "RUN ALIVE" || echo "launcher exited; checking real state"
+        tail -5 runs/swebench-live/diet5.log 2>/dev/null
+        ls runs/swebench-live/diet5/*.json 2>/dev/null | grep -v provenance | wc -l
+      at: 2026-08-17T22:00:25.902289Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "swebench_ab.py.*diet5" > /dev/null && echo "RUN ALIVE" || echo "RUN FINISHED"
+        tail -15 runs/swebench-live/diet5.log
+        ls runs/swebench-live/diet5/*.json 2>/dev/null | grep -v provenance | wc -l
+      at: 2026-08-17T23:44:52.973755Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 score_cell.py runs/swebench-live/diet5 --all --official --slice runs/swebench-live/slice-smoke5.json > runs/swebench-live/diet5.scored.log 2>&1 &
+        echo launched
+      at: 2026-08-17T23:45:05.355951Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f score_cell > /dev/null && echo "SCORING RUNNING" || echo "scoring done/exited"
+        ls -la runs/swebench-live/diet5/scored.json 2>/dev/null && python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/diet5/scored.json'))
+        print('scored:', len(d), '/5')" 2>/dev/null || echo "no scored.json yet"
+      at: 2026-08-17T23:45:13.105322Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f score_cell > /dev/null && echo "STILL RUNNING" || echo "DONE"
+        python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/diet5/scored.json'))
+        print('scored:', len(d), '/5')"
+        tail -20 runs/swebench-live/diet5.scored.log
+      at: 2026-08-18T00:09:27.644953Z
+      classified: other
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-17T21:16:17.633932Z
+redactions: 0
