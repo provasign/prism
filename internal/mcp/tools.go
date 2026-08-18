@@ -1203,6 +1203,12 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 					"full set. Raise limit=, narrow with path=/glob=, or use files_only=true to "+
 					"see the spread before drawing conclusions.",
 				len(r.Hits), r.TotalHits, r.FilesMatched)
+			// The graph's organization of the WHOLE hit set rides along with
+			// the sample, so the narrowing decision can happen this turn
+			// (rollup.go — 27% of real searches truncate).
+			if ru := h.hitRollup(ctx, q, sc, regex); len(ru) > 0 {
+				out["hitRollup"] = ru
+			}
 		}
 		if sc.filesOnly {
 			// Locations without lines: the cheapest answer to "where does

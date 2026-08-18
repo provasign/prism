@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -165,5 +166,36 @@ func TestPrismSearch_TextScope_SmallerThanJSON(t *testing.T) {
 	encoded, _ := json.Marshal(m)
 	if len(text) >= len(encoded) {
 		t.Errorf("text rendering (%d bytes) is not smaller than JSON (%d bytes)", len(text), len(encoded))
+	}
+}
+
+func TestRenderSearchAsText_HitRollup(t *testing.T) {
+	out := map[string]any{
+		"textHits":  []map[string]any{{"file": "a.py", "hits": []map[string]any{{"line": 1, "text": "x"}}}},
+		"truncated": true, "totalHits": 443, "filesMatched": 30,
+		"warning": "showing 25 of AT LEAST 443 matches",
+		"hitRollup": []map[string]any{
+			{"symbol": "TransitConnection.hints", "file": "src/transit.py",
+				"span": map[string]any{"start": 120, "end": 180}, "hits": 34},
+			{"note": "+12 more symbols with 200 hit(s)"},
+			{"note": "57 hit(s) outside indexed symbols (comments, docs, config) or in files past the probe cap"},
+		},
+	}
+	text, ok := renderSearchAsText(out)
+	if !ok {
+		t.Fatal("rollup-bearing result must render")
+	}
+	for _, want := range []string{"graph rollup", "TransitConnection.hints  src/transit.py:120-180  (34 hits)",
+		"+12 more symbols", "57 hit(s) outside indexed symbols"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in:\n%s", want, text)
+		}
+	}
+}
+
+func TestHitRollupSilentWithoutGrove(t *testing.T) {
+	h := newTestHandler(t)
+	if ru := h.hitRollup(context.Background(), "anything", searchScope{}, false); ru != nil {
+		t.Errorf("rollup must be silent without a graph, got %v", ru)
 	}
 }

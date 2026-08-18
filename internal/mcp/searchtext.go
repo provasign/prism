@@ -29,7 +29,7 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"files": true, "fileCount": true, "rejectedPaths": true,
 		"timedOut": true, "resolvedNote": true, "results": true,
 		"failedTerms": true, "note": true, "query": true,
-		"symbols": true,
+		"symbols": true, "hitRollup": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -162,6 +162,25 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 	}
 	if w, _ := m["warning"].(string); w != "" {
 		fmt.Fprintf(b, "// %s\n", w)
+	}
+	if ru := anySlice(m["hitRollup"]); len(ru) > 0 {
+		b.WriteString("// ALL matches by enclosing symbol (graph rollup of the full set):\n")
+		for _, e := range ru {
+			em, ok := e.(map[string]any)
+			if !ok {
+				return false
+			}
+			if note, _ := em["note"].(string); note != "" {
+				fmt.Fprintf(b, "//   %s\n", note)
+				continue
+			}
+			span, _ := em["span"].(map[string]any)
+			fmt.Fprintf(b, "//   %v  %v", em["symbol"], em["file"])
+			if span != nil {
+				fmt.Fprintf(b, ":%v-%v", span["start"], span["end"])
+			}
+			fmt.Fprintf(b, "  (%v hits)\n", em["hits"])
+		}
 	}
 	if n, _ := m["resolvedNote"].(string); n != "" {
 		fmt.Fprintf(b, "// %s\n", n)

@@ -2600,6 +2600,27 @@ func printTextOutput(m map[string]any) {
 					fmt.Println("// " + s)
 				}
 			}
+			// Graph rollup of a truncated search's FULL hit set (rollup.go) —
+			// same rendering as the MCP text surface.
+			if ru, _ := m["hitRollup"].([]any); len(ru) > 0 {
+				fmt.Println("// ALL matches by enclosing symbol (graph rollup of the full set):")
+				for _, e := range ru {
+					em, _ := e.(map[string]any)
+					if em == nil {
+						continue
+					}
+					if note, _ := em["note"].(string); note != "" {
+						fmt.Println("//   " + note)
+						continue
+					}
+					span, _ := em["span"].(map[string]any)
+					line := fmt.Sprintf("//   %v  %v", em["symbol"], em["file"])
+					if span != nil {
+						line += fmt.Sprintf(":%v-%v", span["start"], span["end"])
+					}
+					fmt.Printf("%s  (%v hits)\n", line, em["hits"])
+				}
+			}
 			// The truncation warning is already carried in m["warning"] and
 			// printed above; printing a second line here duplicated it.
 			if t, _ := m["truncated"].(bool); t && m["warning"] == nil {
