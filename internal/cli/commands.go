@@ -643,6 +643,18 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		}
 	}
 
+	// Legacy denial cleanup: v0.50-era inits wrote Grep/Bash(grep:*)/Bash(rg:*)
+	// into permissions.deny, and upgrading prism never removed them — so a
+	// machine kept denying grep releases after the product stopped asking for
+	// it (reported live, 2026-08-20; the benchmark reset documents the same
+	// leftover skewing two whole runs). When THIS init is not requesting
+	// denial, surface any stale trio: offer removal interactively, warn
+	// loudly otherwise. Never silent either way — the entries are in a file
+	// the user owns and may have authored deliberately.
+	if !denyBuiltinSearch {
+		cleanupLegacyDenyEntries(claudeSettings)
+	}
+
 	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
@@ -1199,6 +1211,85 @@ func promptDenyBuiltinSearch() bool {
 	switch strings.ToLower(strings.TrimSpace(line)) {
 	case "y", "yes":
 		return true
+	}
+	return false
+}
+
+// prismDenyEntries is the exact trio historic inits wrote; cleanup matches
+// nothing else, so user-authored deny rules are never touched.
+var prismDenyEntries = []string{"Grep", "Bash(grep:*)", "Bash(rg:*)"}
+
+// cleanupLegacyDenyEntries detects the prism-written search-denial trio in a
+// settings file when the current init did NOT ask for denial, and offers to
+// remove it (interactive) or warns about it (non-interactive).
+func cleanupLegacyDenyEntries(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	var doc map[string]any
+	if json.Unmarshal(data, &doc) != nil {
+		return
+	}
+	perms, _ := doc["permissions"].(map[string]any)
+	if perms == nil {
+		return
+	}
+	deny, _ := perms["deny"].([]any)
+	var stale []string
+	for _, d := range prismDenyEntries {
+		if containsString(deny, d) {
+			stale = append(stale, d)
+		}
+	}
+	if len(stale) == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "\n%s denies Claude Code's built-in search (%s) —\n", path, strings.Join(stale, ", "))
+	fmt.Fprintln(os.Stderr, "written by an earlier prism init; current prism does not need it.")
+	if !isInteractive() {
+		fmt.Fprintln(os.Stderr, "Remove those permissions.deny lines to restore built-in search.")
+		return
+	}
+	fmt.Fprint(os.Stderr, "Remove them now? [y/N]: ")
+	var line string
+	fmt.Scanln(&line)
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "y", "yes":
+	default:
+		return
+	}
+	kept := make([]any, 0, len(deny))
+	for _, d := range deny {
+		s, _ := d.(string)
+		if !containsString2(prismDenyEntries, s) {
+			kept = append(kept, d)
+		}
+	}
+	if len(kept) == 0 {
+		delete(perms, "deny")
+	} else {
+		perms["deny"] = kept
+	}
+	doc["permissions"] = perms
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return
+	}
+	tmp := path + ".tmp"
+	if os.WriteFile(tmp, append(out, '\n'), 0o644) != nil {
+		return
+	}
+	if os.Rename(tmp, path) == nil {
+		fmt.Printf("removed legacy built-in-search denial from %s\n", path)
+	}
+}
+
+func containsString2(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
 	}
 	return false
 }
