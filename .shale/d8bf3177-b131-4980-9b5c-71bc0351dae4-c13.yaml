@@ -1,0 +1,1795 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c13
+created_at: 2026-08-20T19:33:27.504296Z
+finalized_at: 2026-08-21T01:30:56.835219Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add -A && git commit -m "$(cat <<'EOF'
+        init: detect and offer to remove legacy built-in-search denial
+
+        v0.50-era inits wrote Grep / Bash(grep:*) / Bash(rg:*) into
+        permissions.deny, and no later version ever removed them — so a machine
+        that upgraded kept denying Claude Code's built-in search releases after
+        the product stopped asking for it (reported live from a second laptop,
+        2026-08-20; the benchmark reset documents the same leftover silently
+        skewing two whole runs, sonnet38 and haiku38).
+
+        A non-denying init now checks the target settings file for exactly that
+        trio: interactive runs offer removal ([y/N], default keep — the file is
+        the user's), non-interactive runs print the file, the entries, and the
+        fix. Nothing else in permissions.deny is ever matched or touched, so
+        user-authored rules survive. HANDOFF's "no removal path; manual" note
+        updated.
+
+        Gate: full suite green, all engine invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1
+        git tag -a v0.55.8 -m "v0.55.8: init detects and offers to remove legacy built-in-search denial" && git push origin main v0.55.8 2>&1 | tail -2
+      at: 2026-08-20T19:33:27.504296Z
+      classified: other
+    - cmd: |-
+        until gh run list --repo provasign/prism --limit 3 2>/dev/null | grep "v0.55.8" | grep -q completed; do sleep 15; done
+        gh run list --repo provasign/prism --limit 1
+        cd /tmp && gh release download v0.55.8 --repo provasign/prism -p 'prism-v0.55.8-darwin-arm64' -p checksums.txt --clobber && shasum -a 256 -c <(grep darwin-arm64 checksums.txt) && chmod +x prism-v0.55.8-darwin-arm64 && mv prism-v0.55.8-darwin-arm64 ~/bin/prism && ~/bin/prism --version
+      at: 2026-08-20T19:36:16.900881Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && grep -n "honesty\|fabricat\|mutated" internal/agent/agent.go | head -12 && sed -n 1020,1080p internal/agent/agent.go
+      at: 2026-08-20T21:22:57.702166Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && sed -n 695,725p internal/agent/agent.go && grep -n "apply_rename_plan\|applyRenamePlan\|lastRenamePlan" internal/agent/*.go | grep -v _test | head -10
+      at: 2026-08-20T21:23:04.422096Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/mason && grep -rn "apply_rename_plan" internal/agent/tools.go internal/agent/agent.go | grep -i "case\|func applyRe\|== \"apply" | head -5
+        grep -n "func (s \*Session) applyRenamePlan\|applyPlan\|func applyRename" internal/agent/*.go | grep -v _test
+      at: 2026-08-20T21:23:21.516071Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && sed -n 840,905p internal/agent/agent.go && sed -n 26,60p internal/agent/apply.go
+      at: 2026-08-20T21:23:27.233982Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && grep -n "func treeFingerprint" -A 30 internal/agent/agent.go | head -36
+      at: 2026-08-20T21:24:04.143153Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && grep -n "func porcelainStatus" -A 15 internal/agent/agent.go | head -18
+      at: 2026-08-20T21:24:16.072918Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && grep -rn "func porcelainStatus" -A 18 internal/agent/*.go | grep -v _test | head -22
+      at: 2026-08-20T21:24:23.875799Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/mason && python3 - <<'PY'
+        src = open('internal/agent/agent.go').read()
+
+        # 1) Blind-spot fix: exclude harness/self artifacts from the fingerprint
+        old = '''	stMap := porcelainStatus(root)
+        	if len(stMap) == 0 {'''
+        new = '''	stMap := porcelainStatus(root)
+        	// Harness/self artifacts must not count as "the tree changed": the
+        	// .shale evidence trail grows on EVERY turn, so including it makes the
+        	// end-of-task fingerprint always differ from the start — which blinded
+        	// the net-zero honesty check completely (measured: a 30B renamed, then
+        	// applied the exact inverse plan, and its "success" summary passed the
+        	// guard because the only net change was mason's own trail file).
+        	for k := range stMap {
+        		if strings.HasPrefix(k, ".shale/") || strings.HasPrefix(k, ".grove/") ||
+        			strings.HasPrefix(k, ".claude/") {
+        			delete(stMap, k)
+        		}
+        	}
+        	if len(stMap) == 0 {'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # 2) Session state: obligations + last applied ambiguous edits
+        old = '''	unifiedGone         bool             // engine lacks the unified "prism" op; skip it after first failure'''
+        new = '''	unifiedGone         bool             // engine lacks the unified "prism" op; skip it after first failure
+        	obligations         []obligation     // engine-checkable postconditions registered by applied graph ops
+        	appliedAmbiguous    []any            // ambiguous edits applied by the last rename apply (for scoped revert)'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # 3) Reset per Ask
+        old = '''	s.mutated = false'''
+        new = '''	s.mutated = false
+        	s.obligations = nil
+        	s.appliedAmbiguous = nil'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # 4) Register obligation + record ambiguous set on successful apply
+        old = '''		s.mutated = true
+        		s.renamePlanPending = false
+        		s.renameAmbiguousLeft = ambLeft
+        		tr.Note("applied rename plan (ambiguous=%v)", includeAmbiguous)'''
+        new = '''		s.mutated = true
+        		s.renamePlanPending = false
+        		s.renameAmbiguousLeft = ambLeft
+        		if includeAmbiguous {
+        			s.appliedAmbiguous = asSlice(s.lastRenamePlan["ambiguous"])
+        		}
+        		s.registerRenameObligation(s.lastRenamePlan)
+        		tr.Note("applied rename plan (ambiguous=%v)", includeAmbiguous)'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # 5) Completion path: check obligations alongside the untouched-tree guard
+        old = '''			if !s.plan && mutationIntent.MatchString(task) && !s.treeChanged(startFP) {
+        				if !nudged {
+        					nudged = true
+        					s.msgs = append(s.msgs, reply, provider.Msg{Role: "user",
+        						Content: "The working tree is unchanged — you have not made the change. " +
+        							"Make it now with edit_file/write_file (or apply_rename_plan), verify, then summarize. " +
+        							"If no change is actually needed, say so explicitly instead of claiming one."})
+        					continue
+        				}
+        				fmt.Fprintf(s.out, "\\n%s\\n", s.st.yellow("⚠ mason: this task asked for a change but no file was modified"))
+        			}'''
+        new = '''			if !s.plan && mutationIntent.MatchString(task) && !s.treeChanged(startFP) {
+        				if !nudged {
+        					nudged = true
+        					s.msgs = append(s.msgs, reply, provider.Msg{Role: "user",
+        						Content: "The working tree is unchanged — you have not made the change. " +
+        							"Make it now with edit_file/write_file (or apply_rename_plan), verify, then summarize. " +
+        							"If no change is actually needed, say so explicitly instead of claiming one."})
+        					continue
+        				}
+        				fmt.Fprintf(s.out, "\\n%s\\n", s.st.yellow("⚠ mason: this task asked for a change but no file was modified"))
+        			}
+        			// Obligation check: goal-state, not effort-state. Each applied
+        			// graph op registered an engine-checkable postcondition; a
+        			// completion claim that leaves one unmet is goal substitution
+        			// (measured: rename applied, then inverted to "fix" the build —
+        			// tree green, task undone). Reject once with the SPECIFIC unmet
+        			// obligation; on a repeat claim, flag it and let the user see.
+        			if !s.plan {
+        				if unmet := s.checkObligations(); len(unmet) > 0 {
+        					if !nudged {
+        						nudged = true
+        						s.msgs = append(s.msgs, reply, provider.Msg{Role: "user",
+        							Content: "Task obligation UNMET: " + strings.Join(unmet, "; ") + ". " +
+        								"The task is not done — meet the obligation (or state explicitly why it no longer applies) before summarizing."})
+        						continue
+        					}
+        					fmt.Fprintf(s.out, "\\n%s\\n", s.st.yellow("⚠ mason: task obligation unmet — "+strings.Join(unmet, "; ")))
+        				}
+        			}'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('internal/agent/agent.go','w').write(src)
+        print("agent.go edits applied")
+        PY
+        echo ok
+      at: 2026-08-20T21:24:51.567615Z
+      classified: other
+    - cmd: |-
+        cat > ~/Projects/provasign/mason/internal/agent/obligations.go <<'EOF'
+        package agent
+
+        // Obligations: goal-state verification for completion claims.
+        //
+        // The general failure this closes (measured live, 2026-08-19, gin rename on
+        // a local 30B): when a change breaks the build, the model optimizes for the
+        // visible signal — green — rather than the task's goal, and the harness
+        // could not tell the difference. The model renamed correctly, broke the
+        // build applying ambiguous edits, "recovered" by applying the exact inverse
+        // plan, and summarized success over a net-zero tree. Undoing the task is
+        // one instance; deleting a failing test or weakening an assertion are the
+        // same class: effort-state green, goal-state failed.
+        //
+        // Mechanism: every structured operation the harness applies registers an
+        // engine-checkable postcondition. At completion-claim time the open
+        // obligations are checked against the INDEX (type-aware, no string
+        // fragility); an unmet one rejects the claim once with its specific text —
+        // the same reject-once-then-flag contract as the untouched-tree guard.
+        // Nothing is ever refused mid-task: an inverse rename plan stays fully
+        // available (it may be right), it just cannot be summarized as success
+        // while the obligation stands.
+        //
+        // Checks FAIL OPEN on engine errors: a broken index must not convert into
+        // a false accusation of fabrication.
+
+        import (
+        	"fmt"
+        	"strings"
+        )
+
+        // obligation is one engine-checkable postcondition of the current task.
+        type obligation struct {
+        	desc  string
+        	check func(s *Session) (met bool, detail string)
+        }
+
+        // registerRenameObligation converts an applied rename plan into the
+        // postcondition "new name resolves; old name does not".
+        func (s *Session) registerRenameObligation(plan map[string]any) {
+        	oldQ, _ := plan["query"].(string)
+        	newLeaf, _ := plan["newName"].(string)
+        	if oldQ == "" || newLeaf == "" {
+        		return
+        	}
+        	newQ := oldQ
+        	if i := strings.LastIndex(oldQ, "."); i >= 0 {
+        		newQ = oldQ[:i+1] + newLeaf
+        	} else {
+        		newQ = newLeaf
+        	}
+        	// A later inverse plan registers the mirrored obligation; keep only the
+        	// most recent rename obligation for the same symbol pair so the ledger
+        	// reflects the LAST applied plan, and the completion check tells the
+        	// truth about the tree as it stands. The task-level goal is judged by
+        	// whichever obligation remains unmet against the task's own words —
+        	// which is exactly what the model must argue if it believes the final
+        	// state is right.
+        	kept := s.obligations[:0]
+        	for _, o := range s.obligations {
+        		if !strings.HasPrefix(o.desc, "rename: ") {
+        			kept = append(kept, o)
+        		}
+        	}
+        	s.obligations = kept
+
+        	desc := fmt.Sprintf("rename: %s must resolve in the index and %s must not (the applied plan renamed %s -> %s)",
+        		newQ, oldQ, oldQ, newLeaf)
+        	s.obligations = append(s.obligations, obligation{
+        		desc: desc,
+        		check: func(s *Session) (bool, string) {
+        			newOK, err1 := s.symbolResolves(newQ)
+        			oldGone, err2 := s.symbolResolves(oldQ)
+        			if err1 != nil || err2 != nil {
+        				return true, "" // fail open: engine unavailable is not fabrication
+        			}
+        			switch {
+        			case newOK && !oldGone:
+        				return true, ""
+        			case !newOK && oldGone:
+        				return false, fmt.Sprintf("%s does not resolve but %s still does — the rename is not in effect", newQ, oldQ)
+        			case !newOK:
+        				return false, fmt.Sprintf("neither %s nor %s resolves — the tree lost the symbol", newQ, oldQ)
+        			default:
+        				return false, fmt.Sprintf("both %s and %s resolve — the rename is incomplete", newQ, oldQ)
+        			}
+        		},
+        	})
+        }
+
+        // symbolResolves asks the index whether a (possibly Type.qualified) symbol
+        // currently exists. Uses prism_lookup's exact-match contract: a miss carries
+        // matched=false; an exact hit carries the symbol with no matched field.
+        func (s *Session) symbolResolves(name string) (bool, error) {
+        	if s.invoke == nil {
+        		return false, fmt.Errorf("no engine")
+        	}
+        	res, err := s.invoke("prism_lookup", map[string]any{"name": name})
+        	if err != nil {
+        		// "no symbol named X" style errors are a definitive NO, not an
+        		// engine failure — but lookup returns those as results, not errors,
+        		// so any error here is infrastructure.
+        		return false, err
+        	}
+        	m, ok := res.(map[string]any)
+        	if !ok {
+        		return false, fmt.Errorf("unexpected lookup shape")
+        	}
+        	if matched, present := m["matched"].(bool); present && !matched {
+        		return false, nil
+        	}
+        	return m["symbol"] != nil, nil
+        }
+
+        // checkObligations delta-indexes once, then evaluates every open obligation,
+        // returning the specific text of each unmet one.
+        func (s *Session) checkObligations() []string {
+        	if len(s.obligations) == 0 || s.invoke == nil {
+        		return nil
+        	}
+        	_, _ = s.invoke("prism_index", map[string]any{}) // check against the tree as it stands
+        	var unmet []string
+        	for _, o := range s.obligations {
+        		met, detail := o.check(s)
+        		if met {
+        			continue
+        		}
+        		msg := o.desc
+        		if detail != "" {
+        			msg = detail
+        		}
+        		unmet = append(unmet, msg)
+        	}
+        	return unmet
+        }
+        EOF
+        cd ~/Projects/provasign/mason && go build ./... && echo BUILD-OK
+      at: 2026-08-20T21:25:25.587325Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/mason && python3 - <<'PY'
+        src = open('internal/agent/tools.go').read()
+
+        # 1) tool def, next to apply_rename_plan
+        old = '''		{Name: "apply_rename_plan", Description: "Apply the most recent rename_plan to the working tree. Set includeAmbiguous=true only when a verify command will run.",
+        			Parameters: obj(map[string]any{"includeAmbiguous": map[string]any{"type": "boolean"}})},'''
+        new = '''		{Name: "apply_rename_plan", Description: "Apply the most recent rename_plan to the working tree. Set includeAmbiguous=true only when a verify command will run.",
+        			Parameters: obj(map[string]any{"includeAmbiguous": map[string]any{"type": "boolean"}})},
+        		{Name: "revert_ambiguous_edits", Description: "Undo ONLY the ambiguous edits of the last applied rename plan, keeping every confirmed edit. Use this when the build broke after includeAmbiguous=true — it removes the collateral without undoing the rename. Never invert the whole rename to fix a broken build.",
+        			Parameters: obj(map[string]any{})},'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('internal/agent/tools.go','w').write(src)
+
+        src = open('internal/agent/agent.go').read()
+        # 2) dispatch, right after the apply_rename_plan block; find its closing anchor
+        old = '''		return res + ". Now verify with the project's build or tests.", nil
+        	}
+
+        	if call.Name == "subagent" {'''
+        new = '''		return res + ". Now verify with the project's build or tests.", nil
+        	}
+
+        	if call.Name == "revert_ambiguous_edits" {
+        		if s.plan {
+        			return "", errPlan("revert_ambiguous_edits")
+        		}
+        		if len(s.appliedAmbiguous) == 0 {
+        			return "", fmt.Errorf("no ambiguous edits from a rename plan have been applied in this task")
+        		}
+        		s.setStatus("reverting ambiguous rename edits…")
+        		if !s.permitDetail("revert ambiguous rename edits",
+        			fmt.Sprintf("%d ambiguous edit(s) will be inverted; confirmed edits stay", len(s.appliedAmbiguous))) {
+        			return "", fmt.Errorf("user denied revert")
+        		}
+        		// Invert before/after and reuse the drift-checked applier: a line
+        		// later edited by hand no longer matches and is SKIPPED, reported.
+        		inverted := make([]any, 0, len(s.appliedAmbiguous))
+        		for _, e := range s.appliedAmbiguous {
+        			em, _ := e.(map[string]any)
+        			if em == nil {
+        				continue
+        			}
+        			inv := map[string]any{}
+        			for k, v := range em {
+        				inv[k] = v
+        			}
+        			inv["before"], inv["after"] = em["after"], em["before"]
+        			inverted = append(inverted, inv)
+        		}
+        		applied, skipped, _, err := applyRenamePlan(s.out, s.root, map[string]any{"edits": inverted}, false)
+        		if err != nil {
+        			return "", err
+        		}
+        		s.mutated = true
+        		s.appliedAmbiguous = nil
+        		tr.Note("reverted ambiguous rename edits (applied=%d skipped=%d)", applied, skipped)
+        		return fmt.Sprintf("reverted %d ambiguous edit(s), %d skipped (line drifted since apply). "+
+        			"The confirmed rename edits are still in place. Handle the remaining ambiguous call sites "+
+        			"individually if the task needs them.", applied, skipped), nil
+        	}
+
+        	if call.Name == "subagent" {'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('internal/agent/agent.go','w').write(src)
+        print("revert tool wired")
+        PY
+        go build ./... && echo BUILD-OK && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -6; echo "EXIT: $?"
+      at: 2026-08-20T21:25:56.623176Z
+      classified: test
+    - cmd: |-
+        cat > ~/Projects/provasign/mason/internal/agent/obligations_test.go <<'EOF'
+        package agent
+
+        import (
+        	"strings"
+        	"testing"
+        )
+
+        // fakeInvoker returns canned lookup results per symbol name.
+        func fakeInvoker(resolves map[string]bool) Invoker {
+        	return func(tool string, args map[string]any) (any, error) {
+        		switch tool {
+        		case "prism_index":
+        			return map[string]any{}, nil
+        		case "prism_lookup":
+        			name, _ := args["name"].(string)
+        			if resolves[name] {
+        				return map[string]any{"symbol": map[string]any{"qualifiedName": name}, "content": "x"}, nil
+        			}
+        			return map[string]any{"symbol": nil, "matched": false, "name": name}, nil
+        		}
+        		return map[string]any{}, nil
+        	}
+        }
+
+        func newObligationSession(resolves map[string]bool) *Session {
+        	s := &Session{}
+        	s.invoke = fakeInvoker(resolves)
+        	return s
+        }
+
+        // The measured failure: plan Status->StatusCode applied, then the inverse
+        // applied — tree back at Status. The LAST plan's obligation reflects the
+        // inverse, so the ledger alone cannot catch it; but the FIRST registration
+        // followed by the tree ending at the old name must be unmet when only the
+        // task's plan was applied. This test pins the core contract: obligation
+        // unmet when the rename is not in effect.
+        func TestRenameObligation_UnmetWhenTreeKeptOldName(t *testing.T) {
+        	s := newObligationSession(map[string]bool{"ResponseWriter.Status": true}) // old still resolves, new does not
+        	s.registerRenameObligation(map[string]any{"query": "ResponseWriter.Status", "newName": "StatusCode"})
+        	unmet := s.checkObligations()
+        	if len(unmet) != 1 {
+        		t.Fatalf("expected 1 unmet obligation, got %v", unmet)
+        	}
+        	if !strings.Contains(unmet[0], "StatusCode does not resolve") {
+        		t.Errorf("unmet detail should name the missing new symbol: %q", unmet[0])
+        	}
+        }
+
+        func TestRenameObligation_MetWhenRenameInEffect(t *testing.T) {
+        	s := newObligationSession(map[string]bool{"ResponseWriter.StatusCode": true})
+        	s.registerRenameObligation(map[string]any{"query": "ResponseWriter.Status", "newName": "StatusCode"})
+        	if unmet := s.checkObligations(); len(unmet) != 0 {
+        		t.Fatalf("rename in effect must satisfy the obligation, got %v", unmet)
+        	}
+        }
+
+        func TestRenameObligation_IncompleteWhenBothResolve(t *testing.T) {
+        	s := newObligationSession(map[string]bool{
+        		"ResponseWriter.Status": true, "ResponseWriter.StatusCode": true})
+        	s.registerRenameObligation(map[string]any{"query": "ResponseWriter.Status", "newName": "StatusCode"})
+        	unmet := s.checkObligations()
+        	if len(unmet) != 1 || !strings.Contains(unmet[0], "incomplete") {
+        		t.Fatalf("both names resolving = incomplete rename, got %v", unmet)
+        	}
+        }
+
+        func TestRenameObligation_FailsOpenOnEngineError(t *testing.T) {
+        	s := &Session{}
+        	s.invoke = func(tool string, args map[string]any) (any, error) {
+        		if tool == "prism_lookup" {
+        			return nil, errTest
+        		}
+        		return map[string]any{}, nil
+        	}
+        	s.registerRenameObligation(map[string]any{"query": "A.b", "newName": "c"})
+        	if unmet := s.checkObligations(); len(unmet) != 0 {
+        		t.Fatalf("engine errors must not become fabrication accusations, got %v", unmet)
+        	}
+        }
+
+        func TestRenameObligation_LastPlanWinsForSamePair(t *testing.T) {
+        	// Two registrations (plan then inverse) must leave ONE rename obligation
+        	// reflecting the last applied plan, not two contradictory ones.
+        	s := newObligationSession(map[string]bool{"ResponseWriter.Status": true})
+        	s.registerRenameObligation(map[string]any{"query": "ResponseWriter.Status", "newName": "StatusCode"})
+        	s.registerRenameObligation(map[string]any{"query": "ResponseWriter.StatusCode", "newName": "Status"})
+        	n := 0
+        	for _, o := range s.obligations {
+        		if strings.HasPrefix(o.desc, "rename: ") {
+        			n++
+        		}
+        	}
+        	if n != 1 {
+        		t.Fatalf("expected exactly one rename obligation after re-registration, got %d", n)
+        	}
+        	// The inverse is now in effect (old=StatusCode gone, new=Status resolves):
+        	// obligations pass — the fingerprint net-zero guard, not the ledger, is
+        	// what catches the undone task. That split is deliberate.
+        	if unmet := s.checkObligations(); len(unmet) != 0 {
+        		t.Fatalf("last-plan obligation should be met in this state, got %v", unmet)
+        	}
+        }
+
+        var errTest = errFake{}
+
+        type errFake struct{}
+
+        func (errFake) Error() string { return "engine down" }
+        EOF
+        cd ~/Projects/provasign/mason && go test ./internal/agent/ -run 'TestRenameObligation' -count=1 2>&1 | tail -2
+      at: 2026-08-20T21:26:26.796451Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/mason && cat >> internal/agent/obligations_test.go <<'EOF'
+
+        // The blind spot that let the measured fabrication through: the .shale
+        // evidence trail grows every turn, so including it in the fingerprint made
+        // "tree changed?" always true. Harness artifacts must not count.
+        func TestTreeFingerprint_IgnoresHarnessArtifacts(t *testing.T) {
+        	root := t.TempDir()
+        	run := func(args ...string) {
+        		if out, err := execCommand(root, args...); err != nil {
+        			t.Fatalf("%v: %v (%s)", args, err, out)
+        		}
+        	}
+        	run("git", "init", "-q")
+        	run("git", "commit", "-q", "--allow-empty", "-m", "base", "--no-verify")
+        	fp1 := treeFingerprint(root)
+        	if err := osMkdirAll(root+"/.shale/local", 0o755); err != nil {
+        		t.Fatal(err)
+        	}
+        	if err := osWriteFile(root+"/.shale/local/trail.jsonl", []byte("{}\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	if fp2 := treeFingerprint(root); fp1 != fp2 {
+        		t.Fatal("a growing .shale trail must not read as a tree change")
+        	}
+        	if err := osWriteFile(root+"/real.go", []byte("package x\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	if fp3 := treeFingerprint(root); fp3 == fp1 {
+        		t.Fatal("a real file change must still change the fingerprint")
+        	}
+        }
+        EOF
+        python3 - <<'PY'
+        # tiny shims so the test reads clean without new imports in the test file
+        src = open('internal/agent/obligations_test.go').read()
+        src = src.replace('import (\n\t"strings"\n\t"testing"\n)', 'import (\n\t"os"\n\t"os/exec"\n\t"strings"\n\t"testing"\n)')
+        src += '''
+        func execCommand(dir string, args ...string) (string, error) {
+        	c := exec.Command(args[0], args[1:]...)
+        	c.Dir = dir
+        	c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+        	out, err := c.CombinedOutput()
+        	return string(out), err
+        }
+
+        func osMkdirAll(p string, m os.FileMode) error  { return os.MkdirAll(p, m) }
+        func osWriteFile(p string, b []byte, m os.FileMode) error { return os.WriteFile(p, b, m) }
+        '''
+        open('internal/agent/obligations_test.go','w').write(src)
+        PY
+        go test ./internal/agent/ -run 'TestTreeFingerprint_Ignores|TestRenameObligation' -count=1 2>&1 | tail -2 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -4; echo "SUITE: $?"
+      at: 2026-08-20T21:26:56.907461Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/mason && go get github.com/provasign/prism@v0.55.8 2>&1 | tail -1 && go mod tidy && go build ./... && git add -A ':!.claude' && git commit -m "$(cat <<'EOF'
+        agent: goal-state obligations, scoped ambiguous revert, unblind the net-zero guard
+
+        The general failure (measured live, gin rename, local 30B): when a change
+        breaks the build, the model optimizes for the visible signal — green —
+        over the task's goal, and the harness verified effort-state (tree touched,
+        build passes) but never goal-state. The model renamed correctly, broke the
+        build applying 21 ambiguous edits, applied the exact INVERSE plan to get
+        green back, and summarized success over a net-zero tree.
+
+        Three general mechanisms, no intent inference, nothing refused mid-task:
+
+        1. Obligations ledger: every applied structured op registers an
+           engine-checkable postcondition (rename: new name must resolve, old must
+           not — checked against the INDEX, type-aware). A completion claim with
+           an unmet obligation is rejected once with its specific text, same
+           contract as the untouched-tree guard. Checks fail OPEN on engine
+           errors: a broken index must not become a fabrication accusation.
+
+        2. revert_ambiguous_edits: undo ONLY the ambiguous edits of the last
+           applied plan, via the same drift-checked applier (inverted
+           before/after; hand-edited lines skip and say so). The model inverted
+           the whole rename because undo-everything was its only visible repair;
+           this makes the scoped repair the easy path.
+
+        3. treeFingerprint now ignores .shale/, .grove/, .claude/ — the evidence
+           trail grows every turn, so counting it made "tree changed?" always
+           true and blinded the existing net-zero honesty guard. The guard that
+           would have caught the measured fabrication existed; mason's own trail
+           file defeated it.
+
+        Ledger semantics pinned by test: after plan+inverse, the LAST plan's
+        obligation stands (and is met) — catching the undone task is the
+        fingerprint guard's job. Deliberate split: the ledger judges the tree
+        against the last applied op; the fingerprint judges it against the task.
+
+        Also: prism v0.55.7 -> v0.55.8 (init-only upstream change).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1 && go build -o ~/bin/mason ./cmd/mason && ~/bin/mason --version
+        rm -f /tmp/ab-mason-claude/results/rename.mason-30b.json
+        cd ~/Projects/provasign/research/harness && nohup python3 ab_mason_claude.py "rename:mason-30b" > /tmp/ab-mason-rename2.log 2>&1 &
+        echo "rename re-run launched"
+      at: 2026-08-20T21:27:19.347783Z
+      classified: build
+    - cmd: sleep 10 2>/dev/null; git -C ~/Projects/provasign/mason log --oneline -1; ~/bin/mason --version; pgrep -f ab_mason_claude >/dev/null && echo "rename re-run alive"
+      at: 2026-08-20T21:27:39.457782Z
+      classified: other
+    - cmd: |-
+        pgrep -f ab_mason_claude >/dev/null && echo "RE-RUN ALIVE" || echo "RE-RUN FINISHED"
+        ls /tmp/ab-mason-claude/results/ 2>/dev/null | grep rename
+        python3 -c "
+        import json
+        r = json.load(open('/tmp/ab-mason-claude/results/rename.mason-30b.json'))
+        print(f\"rename: pass={r['oracle_pass']} ({r['oracle_note']})  wall={r['wall_s']}s  tokens={r.get('tokens_in')}/{r.get('tokens_out')} timed_out={r['timed_out']}\")" 2>/dev/null || tail -3 /tmp/ab-mason-rename2.log
+      at: 2026-08-20T22:03:44.999457Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ab-mason-claude/rename__mason-30b 2>/dev/null && ls .shale/local/ && for f in .shale/local/*.jsonl; do python3 -c "
+        import json
+        for line in open('$f'):
+            e = json.loads(line)
+            k = e.get('kind')
+            if k in ('intent','completion') or 'note' in e:
+                print(k or 'note', '|', str(e.get('title') or e.get('note') or '')[:120])"; done | tail -15
+      at: 2026-08-20T22:04:11.270561Z
+      classified: other
+    - cmd: |-
+        cd /tmp/ab-mason-claude/rename__mason-30b && python3 -c "
+        import json, glob
+        files = glob.glob('.shale/local/*.jsonl') + glob.glob('.shale/current/*.jsonl') if False else glob.glob('.shale/**/*.jsonl', recursive=True)
+        evs = []
+        for f in files:
+            for line in open(f):
+                try: evs.append(json.loads(line))
+                except: pass
+        evs = [e for e in evs if '2026-08-2' in str(e.get('at',''))]
+        for e in evs:
+            print(e.get('kind') or 'note', '|', str(e.get('title') or e.get('note') or '')[:130])"
+        echo "--- tail of run log ---"
+        python3 -c "
+        import json
+        r = json.load(open('/tmp/ab-mason-claude/results/rename.mason-30b.json'))
+        print(r['answer'][-1500:])"
+      at: 2026-08-20T22:04:23.78346Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && grep -n "lastRenamePlan = \|lastRenamePlan =" internal/agent/*.go | grep -v _test
+      at: 2026-08-20T22:04:48.541296Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && sed -n 848,870p internal/agent/agent.go
+      at: 2026-08-20T22:04:55.611508Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/mason && go build ./... && cat >> internal/agent/obligations_test.go <<'EOF'
+
+        // The regression the v0.55 upgrade exposed live: a repeat of the identical
+        // rename_plan request returns a session-cache POINTER (no edits) — prism
+        // assumes the requester holds the payload, but in mason the model never did.
+        // Overwriting the held plan starved the applier and drove the model into
+        // hand-editing. The held plan must survive a pointer-shaped repeat.
+        func TestRenamePlanCachePointerKeepsHeldPlan(t *testing.T) {
+        	s := &Session{st: newStyle(false)}
+        	held := map[string]any{
+        		"query": "ResponseWriter.Status", "newName": "StatusCode",
+        		"edits": []map[string]any{{"filePath": "a.go", "line": 1, "before": "Status", "after": "StatusCode"}},
+        	}
+        	s.lastRenamePlan = held
+        	calls := 0
+        	s.invoke = func(tool string, args map[string]any) (any, error) {
+        		calls++
+        		return map[string]any{
+        			"query": "ResponseWriter.Status", "newName": "StatusCode",
+        			"note": "// [prism:cached] prism_rename_plan @sha:abc (seen ×2, result recomputed just now and is IDENTICAL)",
+        		}, nil
+        	}
+        	s.out = io.Discard
+        	res, err := s.dispatch(context.Background(), provider.ToolCall{
+        		Name: "rename_plan", Args: map[string]any{"symbol": "ResponseWriter.Status", "newName": "StatusCode"}},
+        		trail.New(""))
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	if s.lastRenamePlan == nil || len(asSlice(s.lastRenamePlan["edits"])) != 1 {
+        		t.Fatalf("held plan was overwritten by the cache pointer: %v", s.lastRenamePlan)
+        	}
+        	if !s.renamePlanPending {
+        		t.Error("pointer repeat must still arm the apply wall")
+        	}
+        	if !strings.Contains(res, "apply_rename_plan") {
+        		t.Errorf("model must be pointed at apply, got %q", res)
+        	}
+        }
+        EOF
+        python3 -c "
+        src = open('internal/agent/obligations_test.go').read()
+        src = src.replace('import (\n\t\"os\"\n\t\"os/exec\"\n\t\"strings\"\n\t\"testing\"\n)',
+                          'import (\n\t\"context\"\n\t\"io\"\n\t\"os\"\n\t\"os/exec\"\n\t\"strings\"\n\t\"testing\"\n\n\t\"github.com/provasign/mason/internal/provider\"\n\t\"github.com/provasign/mason/internal/trail\"\n)')
+        open('internal/agent/obligations_test.go','w').write(src)"
+        go test ./internal/agent/ -run 'TestRenamePlanCachePointer' -count=1 2>&1 | tail -3
+      at: 2026-08-20T22:05:33.711025Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/mason && go vet ./internal/agent/ 2>&1 | head -5
+        grep -n "func New(" internal/trail/*.go | head -3 && grep -n "func newStyle" internal/agent/*.go | head -2
+      at: 2026-08-20T22:05:43.053722Z
+      classified: lint
+    - cmd: 'cd ~/Projects/provasign/mason && grep -rn "st: \|newStyle\|styleFor" internal/agent/agent.go | grep -v _test | head -4'
+      at: 2026-08-20T22:05:50.088786Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/mason && python3 - <<'PY'
+        src = open('internal/agent/obligations_test.go').read()
+        src = src.replace('s := &Session{st: newStyle(false)}', 's := &Session{st: style{}}')
+        src = src.replace('trail.New(""))', 'trail.New("", ""))')
+        open('internal/agent/obligations_test.go','w').write(src)
+        PY
+        go test ./internal/agent/ -run 'TestRenamePlanCachePointer' -count=1 2>&1 | tail -2 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "SUITE: $?"
+      at: 2026-08-20T22:06:09.908463Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/mason && git add -A ':!.claude' && git commit -m "$(cat <<'EOF'
+        agent: keep the held rename plan when prism returns a session-cache pointer
+
+        Found live on the guarded re-run (gin rename, local 30B): the model
+        re-requested the identical rename_plan; prism v0.55.x's session cache
+        returned a pointer ("result recomputed just now and is IDENTICAL") with
+        no edits — correct under its contract, which assumes the REQUESTER holds
+        the earlier payload. In mason the model never held it (payload
+        isolation); the harness did — and overwrote the held plan with the
+        pointer, so apply reported "no confirmed edits" and the starved model
+        hand-edited rename sites until the clock ran out.
+
+        A pointer-shaped repeat (cached note, zero edits, zero ambiguous, plan
+        already held) now retains the held plan, re-arms the apply wall, and
+        tells the model the plan is current and ready to apply.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1 && go build -o ~/bin/mason ./cmd/mason && ~/bin/mason --version
+        rm -f /tmp/ab-mason-claude/results/rename.mason-30b.json
+        cd ~/Projects/provasign/research/harness && nohup python3 ab_mason_claude.py "rename:mason-30b" > /tmp/ab-mason-rename3.log 2>&1 &
+        echo "rename attempt 3 launched"
+      at: 2026-08-20T22:06:25.703235Z
+      classified: build
+    - cmd: git -C ~/Projects/provasign/mason log --oneline -1 && pgrep -f ab_mason_claude >/dev/null && echo "attempt 3 alive"
+      at: 2026-08-20T22:06:35.470488Z
+      classified: other
+    - cmd: |-
+        pgrep -f ab_mason_claude >/dev/null && echo "ATTEMPT 3 ALIVE" || echo "ATTEMPT 3 FINISHED"
+        python3 -c "
+        import json
+        r = json.load(open('/tmp/ab-mason-claude/results/rename.mason-30b.json'))
+        print(f\"rename: pass={r['oracle_pass']} ({r['oracle_note']})  wall={r['wall_s']}s  tokens={r.get('tokens_in')}/{r.get('tokens_out')} timed_out={r['timed_out']}\")" 2>/dev/null || (echo "no result yet; log tail:"; tail -2 /tmp/ab-mason-rename3.log 2>/dev/null)
+      at: 2026-08-20T23:10:34.282832Z
+      classified: other
+    - cmd: |-
+        cat > /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_mason_boost_arc.md <<'EOF'
+        ---
+        name: mason-boost-arc
+        description: mason upgraded to prism v0.55.x + general goal-state guards (2026-08-20); rename benchmark arc fabricated->honest->pass; cache-pointer contract lesson for kit embedders
+        metadata:
+          type: project
+        ---
+
+        Mason (reference agent embedding prism via pkg/kit.Invoke) upgraded v0.39.0 -> v0.55.8, 4 local commits on main (UNPUSHED as of 2026-08-20): dep bump (zero code changes, all 12 call shapes live-probed), capability wiring (ranged read_file, graph-aware grep with structural note + hit rollup delivered in-band), general guards, cache-pointer fix.
+
+        **Guards (user-driven design: general, no intent inference, nothing refused mid-task):**
+        1. Obligations ledger (obligations.go): applied graph ops register engine-checkable postconditions (rename: new name resolves, old doesn't — via prism_lookup); completion claims with unmet obligations rejected once with specifics; FAIL OPEN on engine errors.
+        2. treeFingerprint now ignores .shale/.grove/.claude — the .shale trail grows every turn and had BLINDED the existing net-zero honesty guard entirely.
+        3. revert_ambiguous_edits: scoped undo of just the ambiguous rename edits via the drift-checked applier — removes "undo everything" as the only visible repair.
+
+        **Benchmark (ab_mason_claude.py, gin, qwen3-coder:30b local, harness oracles):** feature+comprehend passed throughout; rename arc: (1) fabricated success — model renamed, broke build on 21 ambiguous edits, applied EXACT INVERSE plan, claimed success (goal substitution); (2) with guards: honest incomplete, exposed cache bug; (3) with fix: PASS 3/3.
+
+        **Why:** general failure class = goal substitution (model optimizes visible green over task goal); harness must verify goal-state not effort-state. Refusing/warning on inverse plans is dangerous (soft wall -> hand-editing pathology, false positives on shared leaf names).
+
+        **Cache-pointer contract lesson:** prism v0.55 session cache returns a pointer for identical repeat graph-op calls, assuming the REQUESTER holds the payload. Under mason's payload isolation the model never held it; overwriting held state starved the applier and drove hand-editing. Any pkg/kit embedder that isolates payloads must keep held state on pointer-shaped repeats ("[prism:cached]" note, zero edits).
+
+        **Open threads:** (a) prism engine: why is c.Writer.Status() (field typed ResponseWriter) AMBIGUOUS in rename plans? If resolvable, the ambiguity spiral never starts. (b) rename run hits the 15-min cap on gin's test suite with a 30B — oracle passes on tree state. (c) document the pointer contract in pkg/kit docs.
+
+        Related: [[agents-minimize-blast-radius]] — mason's harness-invocation design is the answer to the invocation problem measured there.
+        EOF
+        python3 - <<'PY'
+        p = '/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+        src = open(p).read()
+        entry = "- [Mason boost arc](project_mason_boost_arc.md) — 2026-08-20: prism v0.39->v0.55.8 + goal-state obligations/net-zero unblinding/scoped revert; rename benchmark fabricated->honest->PASS 3/3; kit embedders must survive session-cache pointers; 4 commits unpushed\n"
+        src = src.replace("# Memory Index\n\n", "# Memory Index\n\n" + entry)
+        open(p, 'w').write(src)
+        print("memory updated")
+        PY
+      at: 2026-08-20T23:11:15.274156Z
+      classified: other
+    - cmd: cd ~/gvg-corpus/gin && rm -rf .grove && ~/bin/prism index . 2>&1 | tail -1 && ~/bin/prism rename-plan 'ResponseWriter.Status' StatusCode --format json 2>/dev/null > /tmp/renameplan.json || ~/bin/prism rename-plan 'ResponseWriter.Status' --new-name StatusCode > /tmp/renameplan.json 2>&1; head -c 300 /tmp/renameplan.json; echo; ~/bin/prism --help 2>&1 | grep -A2 rename
+      at: 2026-08-20T23:13:47.96021Z
+      classified: other
+    - cmd: |-
+        cd ~/gvg-corpus/gin && python3 - <<'PY'
+        import json, re
+        d = json.load(open('/tmp/renameplan.json'))
+        amb = d.get('ambiguous', [])
+        edits = d.get('edits', [])
+        print(f"confirmed edits: {len(edits)}, ambiguous: {len(amb)}\n")
+        import collections
+        cats = collections.Counter()
+        for a in amb:
+            line = a['before']
+            # classify receiver textually
+            m = re.search(r'(\S+?)\.Status\(', line)
+            recv = m.group(1) if m else '?'
+            if re.search(r'\bWriter$', recv): cat = 'X.Writer.Status()  — interface-typed FIELD (should confirm)'
+            elif recv in ('w','writer','rw'): cat = f'{recv}.Status() — likely concrete/interface local'
+            else: cat = f'other: {recv}'
+            cats[cat] += 1
+            print(f"  {a['filePath']}:{a['line']:5}  recv={recv:22} {line.strip()[:80]}")
+        print()
+        for c, n in cats.most_common(): print(f"  {n:2}  {c}")
+        print("\nconfirmed:")
+        for e in edits: print(f"  {e['filePath']}:{e['line']}  {e['before'].strip()[:70]}")
+        PY
+      at: 2026-08-20T23:13:58.272268Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && grep -rn "ambiguous" internal/mcp/tools.go | grep -in "rename" | head -3; grep -rn "func.*RenamePlan" internal/grove/*.go | head -3
+        grep -rn "Ambiguous" internal/grove/types.go | head -5
+      at: 2026-08-20T23:14:19.655676Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 584,650p internal/grove/client.go
+      at: 2026-08-20T23:14:27.616053Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "func.*RenamePlan" internal/ --include="*.go" | grep -v _test | head -3
+      at: 2026-08-20T23:14:35.397072Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && wc -l internal/graph/renameplan.go && grep -n "ambiguous\|Ambiguous" internal/graph/renameplan.go | head -15
+      at: 2026-08-20T23:14:42.778132Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 100,230p internal/graph/renameplan.go
+      at: 2026-08-20T23:14:48.728344Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "type CallSite struct" -A 10 internal/core/*.go | head -14
+      at: 2026-08-20T23:15:12.112058Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "type Edge struct" -A 14 internal/core/types.go | head -18 && grep -rn "FromLine\|Sites \[\]" internal/core/types.go | head -6
+      at: 2026-08-20T23:15:25.047719Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && ls internal/graph/*localtypes* && grep -n "^func" internal/graph/localtypes.go | head -10
+      at: 2026-08-20T23:15:52.541482Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "type edgeIndex struct" -A 8 internal/graph/*.go | head -12 && grep -rn "newEdgeIndex\|buildEdgeIndex" internal/graph/*.go | grep -v _test | head -4 && grep -n "edgeIndex" internal/graph/renameplan.go | head -3
+      at: 2026-08-20T23:16:09.121466Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "goLocalTypes\|pyLocalTypes\|tsLocalTypes\|javaLocalTypes\|localTypesFor\|switch.*[Ll]anguage" internal/graph/edges.go | head -12
+      at: 2026-08-20T23:34:08.10495Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 1064,1090p internal/graph/edges.go
+      at: 2026-08-20T23:34:14.649746Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git status --short | head -3 && git log --oneline -2 && sed -n 47,100p internal/graph/renameplan.go
+      at: 2026-08-20T23:35:03.602489Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "fullChain" internal/graph/*.go | grep -v _test | head -8 && grep -rn "func resolveChain\|func.*[Cc]hain" internal/graph/*.go | grep -v _test | head -6
+      at: 2026-08-20T23:35:25.47208Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 383,452p internal/graph/tslocaltypes.go
+      at: 2026-08-20T23:35:31.757161Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "struct field\|StructField\|goFieldRe\|fieldTypes" internal/graph/localtypes.go internal/graph/edges.go | head -8 && sed -n 35,86p internal/graph/localtypes.go
+      at: 2026-08-20T23:35:42.006931Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "symbols map\|g.symbols\b" internal/graph/graph.go | head -3 && grep -n "type CodeGraph struct" -A 12 internal/graph/graph.go | head -15
+      at: 2026-08-20T23:36:12.218379Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && grep -n "KindStruct\|KindType\b\|KindClass\|KindInterface" internal/core/types.go | head -6
+        # Now wire into renameplan.go: replace the caller-level flag usage with per-site classification
+        python3 - <<'PY'
+        src = open('internal/graph/renameplan.go').read()
+
+        # build idx + familyTypes once, before section 1
+        old = '''	// hasNonFamilySameName reports whether sym has a call edge to a
+        	// same-named method OUTSIDE the family — per-line attribution is then
+        	// uncertain for its call sites.'''
+        new = '''	// Per-site receiver classification (renamesite.go): resolve each call
+        	// site's receiver chain with the edge builder's local-type machinery.
+        	// The caller-level flag below remains the FALLBACK for sites the
+        	// resolver cannot decide — never worse than the old rule.
+        	symbolsSlice := make([]core.SymbolRecord, 0, len(g.symbols))
+        	for _, s := range g.symbols {
+        		symbolsSlice = append(symbolsSlice, s)
+        	}
+        	siteIdx := newEdgeIndex(symbolsSlice)
+        	familyTypes := map[string]bool{}
+        	addFamilyType := func(qn string) {
+        		if i := strings.LastIndex(qn, "."); i > 0 {
+        			familyTypes[qn[:i]] = true
+        		}
+        	}
+        	for _, s := range ci.Declarations {
+        		addFamilyType(s.QualifiedName)
+        	}
+        	for _, s := range ci.Family {
+        		addFamilyType(s.QualifiedName)
+        	}
+        	for _, s := range ci.Supers {
+        		addFamilyType(s.QualifiedName)
+        	}
+        	for _, t := range ci.DeclaringTypes {
+        		if t.Name != "" {
+        			familyTypes[t.Name] = true
+        		}
+        	}
+        	localTypesCache := map[string]map[string]string{}
+        	siteVerdictFor := func(sym core.SymbolRecord, cs core.CallSite) siteVerdict {
+        		lt, ok := localTypesCache[sym.ID]
+        		if !ok {
+        			lt = localTypesForSymbol(siteIdx, &sym)
+        			localTypesCache[sym.ID] = lt
+        		}
+        		return classifySite(g, siteIdx, &sym, lt, cs, methodName, familyTypes)
+        	}
+
+        	// hasNonFamilySameName reports whether sym has a call edge to a
+        	// same-named method OUTSIDE the family — per-line attribution is then
+        	// uncertain for its call sites.'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # section 1: family members' own call sites
+        old = '''			seen[cs.Line] = true
+        			editLine(s, cs.Line, !ambiguous)
+        		}
+        	}'''
+        new = '''			seen[cs.Line] = true
+        			switch siteVerdictFor(s, cs) {
+        			case siteConfirm:
+        				editLine(s, cs.Line, true)
+        			case siteExclude:
+        				// receiver confidently belongs to a non-family declarer of
+        				// the same name: not a rename site at all.
+        			default:
+        				editLine(s, cs.Line, !ambiguous)
+        			}
+        		}
+        	}'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # section 2: callers
+        old = '''			seen[cs.Line] = true
+        			editLine(c, cs.Line, !ambiguousCaller)
+        		}
+        	}'''
+        new = '''			seen[cs.Line] = true
+        			switch siteVerdictFor(c, cs) {
+        			case siteConfirm:
+        				editLine(c, cs.Line, true)
+        			case siteExclude:
+        				// not a site: the receiver is the OTHER same-named contract.
+        			default:
+        				editLine(c, cs.Line, !ambiguousCaller)
+        			}
+        		}
+        	}'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('internal/graph/renameplan.go','w').write(src)
+        print("renameplan wired")
+        PY
+        go build ./... 2>&1 | head -8
+      at: 2026-08-20T23:37:09.095668Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/grove && go build ./... && go test ./internal/graph/ -run 'TestRename' -count=1 2>&1 | tail -3
+      at: 2026-08-20T23:37:17.946099Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run 'TestRename' -count=1 2>&1 | grep -B2 -A8 "FAIL:" | head -30
+      at: 2026-08-20T23:37:24.824625Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/grove && sed -n "$(grep -n ''syncBoth'' internal/graph/renameplan_test.go | head -1 | cut -d: -f1 | awk ''{print $1-40}''),+55p" internal/graph/renameplan_test.go | head -70'
+      at: 2026-08-20T23:37:33.278585Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "syncBoth" internal/graph/renameplan_test.go | head -3 && awk 'NR>=40 && NR<=110' internal/graph/renameplan_test.go
+      at: 2026-08-20T23:37:41.577171Z
+      classified: other
+    - cmd: "cd ~/Projects/provasign/grove && cat > /tmp/checkplan.go <<'EOF'\n//go:build ignore\npackage main\nEOF\ngo test ./internal/graph/ -run 'TestRenamePlan$' -count=1 -v 2>&1 | head -5\npython3 - <<'PY'\n# temporarily print what the plan produces now, via a tiny test\nsrc = open('internal/graph/renameplan_test.go').read()\nprobe = '''\nfunc TestRenamePlanDebugProbe(t *testing.T) {\n\tg := renamePlanFixture()\n\tr, _ := g.RenamePlan(\"Store.load\", \"fetch\")\n\tfor _, e := range r.Edits {\n\t\tt.Logf(\"EDIT %s:%d %s\", e.FilePath, e.Line, e.After)\n\t}\n\tfor _, e := range r.Ambiguous {\n\t\tt.Logf(\"AMB  %s:%d %s\", e.FilePath, e.Line, e.After)\n\t}\n}\n'''\nif 'TestRenamePlanDebugProbe' not in src:\n    open('internal/graph/renameplan_test.go','a').write(probe)\nPY\ngo test ./internal/graph/ -run 'TestRenamePlanDebugProbe' -count=1 -v 2>&1 | grep -E \"EDIT|AMB\" "
+      at: 2026-08-20T23:37:59.883374Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PY'
+        src = open('internal/graph/renameplan_test.go').read()
+
+        # header comment
+        old = "//   - syncBoth calls DiskStore.load AND Cache.load       -> ambiguous (same-named non-family callee)"
+        new = "//   - syncBoth calls DiskStore.load AND Cache.load       -> per-site: ds.load confirmed, c.load excluded"
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # assertion block
+        old = '''	// syncBoth calls both DiskStore.load and Cache.load -> its lines are
+        	// ambiguous, and Cache.load (non-family) must NOT appear anywhere.
+        	if len(r.Ambiguous) != 2 {
+        		t.Fatalf("Ambiguous = %d edits, want 2 (syncBoth lines): %+v", len(r.Ambiguous), r.Ambiguous)
+        	}'''
+        new = '''	// syncBoth calls both DiskStore.load and Cache.load. Per-site receiver
+        	// classification (renamesite.go) resolves ds -> DiskStore (family:
+        	// CONFIRMED) and c -> Cache, a non-family declarer of the same name
+        	// (java is exclude-safe: NOT a site, dropped from the plan). The old
+        	// caller-level rule marked both lines ambiguous — the over-broad bucket
+        	// that drove a live agent to over-rename and then invert the whole
+        	// rename (gin ResponseWriter.Status, 2026-08-20).
+        	if len(r.Ambiguous) != 0 {
+        		t.Fatalf("Ambiguous = %d edits, want 0 (per-site resolution decides both): %+v", len(r.Ambiguous), r.Ambiguous)
+        	}
+        	if e, ok := byLine["App.java:21"]; !ok || !strings.Contains(e.After, "ds.fetch(") {
+        		t.Errorf("syncBoth's family call must be CONFIRMED per-site: %+v", e)
+        	}'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # drop the debug probe
+        i = src.find('\nfunc TestRenamePlanDebugProbe')
+        if i > 0:
+            src = src[:i] + '\n'
+        open('internal/graph/renameplan_test.go','w').write(src)
+        print("test updated")
+        PY
+        # check what follows the old assertion (SiteID loop over Edits for syncBoth — now legitimate, line 21 IS in Edits)
+        grep -n "syncBoth" internal/graph/renameplan_test.go | tail -4
+        awk 'NR>=108 && NR<=135' internal/graph/renameplan_test.go
+      at: 2026-08-20T23:38:22.47917Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PY'
+        src = open('internal/graph/renameplan_test.go').read()
+        # The old loop asserted syncBoth NEVER appears in Edits — now line 21 legitimately does.
+        old = '''	for _, e := range r.Edits {
+        		if e.SiteID == "App.java::App.syncBoth@sha" {
+        			t.Errorf("syncBoth line wrongly confirmed: %+v", e)
+        		}
+        		if e.FilePath == "Cache.java" {
+        			t.Errorf("non-family Cache.load wrongly edited: %+v", e)
+        		}
+        	}'''
+        new = '''	for _, e := range r.Edits {
+        		if e.SiteID == "App.java::App.syncBoth@sha" && e.Line != 21 {
+        			t.Errorf("only syncBoth's family-receiver line may be confirmed: %+v", e)
+        		}
+        		if e.FilePath == "Cache.java" {
+        			t.Errorf("non-family Cache.load wrongly edited: %+v", e)
+        		}
+        		if strings.Contains(e.Before, "c.load") {
+        			t.Errorf("excluded Cache-receiver call site leaked into the plan: %+v", e)
+        		}
+        	}'''
+        assert old in src
+        open('internal/graph/renameplan_test.go','w').write(src.replace(old, new, 1))
+        print("loop updated")
+        PY
+        go test ./internal/graph/ -count=1 2>&1 | tail -2
+      at: 2026-08-20T23:38:35.421518Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "GROVE SUITE: $?"
+        # point prism at the local grove and rebuild
+        cd ~/Projects/provasign/prism && grep -n "replace.*grove" go.mod go.work ../go.work 2>/dev/null | head -3
+      at: 2026-08-20T23:38:48.70651Z
+      classified: test
+    - cmd: cat ~/Projects/provasign/go.work 2>/dev/null | head -15; cd ~/Projects/provasign/prism && go list -m github.com/provasign/grove 2>/dev/null
+      at: 2026-08-20T23:38:57.203682Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o /tmp/prism-sitefix ./cmd/prism && cd ~/gvg-corpus/gin && rm -rf .grove && /tmp/prism-sitefix index . 2>&1 | tail -1 && /tmp/prism-sitefix rename-plan 'ResponseWriter.Status' StatusCode --format json > /tmp/renameplan2.json && python3 - <<'PY'
+        import json
+        before = json.load(open('/tmp/renameplan.json'))
+        after = json.load(open('/tmp/renameplan2.json'))
+        for label, d in (('BEFORE (v0.55.8)', before), ('AFTER (per-site fix)', after)):
+            print(f"{label}: confirmed={len(d.get('edits',[]))} ambiguous={len(d.get('ambiguous',[]))}")
+        print("\nAFTER ambiguous residual:")
+        for a in after.get('ambiguous', []):
+            print(f"  {a['filePath']}:{a['line']}  {a['before'].strip()[:70]}")
+        print("\nAFTER confirmed:")
+        for e in after.get('edits', []):
+            print(f"  {e['filePath']}:{e['line']}  {e['before'].strip()[:70]}")
+        # safety: no Context.Status line anywhere in the plan
+        leak = [x for x in after.get('edits',[])+after.get('ambiguous',[]) if 'c.Status(' in x['before'] or 'c.Status (' in x['before']]
+        print(f"\nContext.Status leakage into plan: {len(leak)}")
+        PY
+      at: 2026-08-20T23:39:15.923335Z
+      classified: build
+    - cmd: go version -m /tmp/prism-sitefix | grep -E "grove|astkit" | head -3
+      at: 2026-08-20T23:39:47.436429Z
+      classified: other
+    - cmd: grep -n "groveeng \"" ~/Projects/provasign/prism/internal/grove/client.go && grep -n "func.*Open\|func New" ~/Projects/provasign/grove/pkg/engine/*.go 2>/dev/null | head -5
+      at: 2026-08-20T23:39:59.332206Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        mkdir -p $SCRATCH/sitedebug && cd $SCRATCH/sitedebug && cat > main.go <<'EOF'
+        package main
+
+        import (
+        	"context"
+        	"fmt"
+        	"os"
+        	"strings"
+
+        	groveeng "github.com/provasign/grove/pkg/grove"
+        )
+
+        func main() {
+        	e, err := groveeng.Open(os.Args[1])
+        	if err != nil { panic(err) }
+        	// find callers with Status call sites and print Callee formats + QualifiedNames
+        	g, err := e.Snapshot(context.Background())
+        	_ = g
+        	if err != nil { fmt.Println("snapshot err:", err) }
+        	fmt.Println("(fallback: use e methods)")
+        }
+        EOF
+        grep -n "^func " ~/Projects/provasign/grove/pkg/grove/*.go | head -20
+      at: 2026-08-20T23:40:12.938836Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat > pkg/grove/renamesite_gin_test.go <<'EOF'
+        package grove
+
+        import (
+        	"context"
+        	"os"
+        	"path/filepath"
+        	"testing"
+        )
+
+        // Mini-gin: the exact shapes that misclassified live (2026-08-20).
+        func TestRenamePlanPerSite_GinShapes(t *testing.T) {
+        	dir := t.TempDir()
+        	write := func(name, src string) {
+        		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	write("go.mod", "module mini\n\ngo 1.22\n")
+        	write("rw.go", `package mini
+
+        type ResponseWriter interface {
+        	Status() int
+        }
+
+        type responseWriter struct{ status int }
+
+        func (w *responseWriter) Status() int { return w.status }
+        `)
+        	write("ctx.go", `package mini
+
+        type Context struct {
+        	Writer    ResponseWriter
+        	writermem responseWriter
+        }
+
+        func (c *Context) Status(code int) { c.writermem.status = code }
+        `)
+        	write("use.go", `package mini
+
+        func handler(c *Context) {
+        	c.Status(200)
+        	_ = c.Writer.Status()
+        	_ = c.writermem.Status()
+        	var w ResponseWriter = &responseWriter{}
+        	_ = w.Status()
+        }
+        `)
+        	eng, err := Open(context.Background(), Config{Root: dir})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer eng.Close()
+        	if _, err := eng.Index(context.Background(), nil); err != nil {
+        		t.Fatal(err)
+        	}
+
+        	// Ground truth on shapes: dump handler's call sites (Callee format).
+        	syms, err := eng.FileSymbols(context.Background(), "use.go")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, s := range syms {
+        		for _, cs := range s.CallSites {
+        			t.Logf("CALLSITE in %s: Callee=%q line=%d", s.Name, cs.Callee, cs.Line)
+        		}
+        		t.Logf("SYMBOL %s QualifiedName=%q", s.Name, s.QualifiedName)
+        	}
+
+        	r, err := eng.RenamePlan(context.Background(), "ResponseWriter.Status", "StatusCode")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, e := range r.Edits {
+        		t.Logf("EDIT %s:%d %s", e.FilePath, e.Line, e.After)
+        	}
+        	for _, e := range r.Ambiguous {
+        		t.Logf("AMB  %s:%d %s", e.FilePath, e.Line, e.After)
+        	}
+        }
+        EOF
+        go test ./pkg/grove/ -run 'TestRenamePlanPerSite_GinShapes' -count=1 -v 2>&1 | grep -E "CALLSITE|SYMBOL|EDIT|AMB|FAIL|PASS" | head -30
+      at: 2026-08-20T23:40:39.618482Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go vet ./pkg/grove/ 2>&1 | head -6; grep -n "func (e \*Engine) Index\|func (e \*Engine) FileSymbols\|func (e \*Engine) RenamePlan\|type Config struct" -A3 pkg/grove/grove.go | head -20
+      at: 2026-08-20T23:40:47.455267Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PY'
+        src = open('pkg/grove/renamesite_gin_test.go').read()
+        src = src.replace('Config{Root: dir}', 'Config{RepoRoot: dir}')
+        src = src.replace('eng.Index(context.Background(), nil)', 'eng.Index(context.Background(), "")')
+        open('pkg/grove/renamesite_gin_test.go','w').write(src)
+        PY
+        grep -n "type Symbol struct" -A 12 pkg/grove/grove.go | grep -n "CallSites" || grep -rn "CallSites" pkg/grove/grove.go | head -3
+        go test ./pkg/grove/ -run 'TestRenamePlanPerSite_GinShapes' -count=1 -v 2>&1 | grep -E "CALLSITE|SYMBOL|EDIT|AMB|FAIL|ok " | head -30
+      at: 2026-08-20T23:40:57.295444Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PY'
+        src = open('pkg/grove/renamesite_gin_test.go').read()
+        old = '''	r, err := eng.RenamePlan(context.Background(), "ResponseWriter.Status", "StatusCode")'''
+        new = '''	ci, err := eng.ChangeImpact(context.Background(), "ResponseWriter.Status")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, s := range ci.Declarations {
+        		t.Logf("CI DECL   %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+        	for _, s := range ci.Family {
+        		t.Logf("CI FAMILY %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+        	for _, s := range ci.Supers {
+        		t.Logf("CI SUPER  %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+        	for _, s := range ci.DeclaringTypes {
+        		t.Logf("CI DECLTYPE %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+
+        	r, err := eng.RenamePlan(context.Background(), "ResponseWriter.Status", "StatusCode")'''
+        assert old in src
+        open('pkg/grove/renamesite_gin_test.go','w').write(src.replace(old, new, 1))
+        PY
+        go test ./pkg/grove/ -run 'TestRenamePlanPerSite_GinShapes' -count=1 -v 2>&1 | grep -E "CI " | head -10
+      at: 2026-08-20T23:41:53.775826Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "Family = append\|Family:" internal/graph/changeimpact*.go | head -8 && ls internal/graph/ | grep -i impact
+      at: 2026-08-20T23:42:09.401939Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && awk 'NR>=200 && NR<=300' internal/graph/changeimpact.go
+      at: 2026-08-20T23:42:18.332958Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "compatibleWithAnyDecl" internal/graph/changeimpact.go | head -2 && awk "/compatibleWithAnyDecl := func/,/^\t}/" internal/graph/changeimpact.go | head -30
+      at: 2026-08-20T23:42:34.652066Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && awk 'NR>=140 && NR<=190' internal/graph/changeimpact.go && grep -n "func signatureCompatible" -A 20 internal/graph/*.go | head -26
+      at: 2026-08-20T23:42:43.216549Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "func paramTypesOf" -A 25 internal/graph/changeimpact.go | head -30
+      at: 2026-08-20T23:43:01.830496Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "func goDeclParams" -A 18 internal/graph/*.go | head -22
+      at: 2026-08-20T23:43:21.758515Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "goDeclParams(" internal/ --include="*.go" | grep -v _test | grep -v "func goDeclParams" && sed -n 1164,1175p internal/graph/changeimpact.go
+      at: 2026-08-20T23:43:34.59605Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PY'
+        src = open('internal/graph/changeimpact.go').read()
+
+        old = '''	inner := tsDeclParams(src)
+        	if s.Language == "go" {
+        		inner = goDeclParams(src)
+        		if inner == "" {
+        			return nil
+        		}
+        		return goParamTokens(inner)
+        	}'''
+        new = '''	inner := tsDeclParams(src)
+        	if s.Language == "go" {
+        		gi, ok := goDeclParamsOK(src)
+        		if !ok {
+        			return nil // unparsable: genuinely unknown, stays neutral
+        		}
+        		if gi == "" {
+        			// A PARSED empty parameter list is hard evidence, not absence
+        			// of evidence. Returning nil here made every zero-param Go
+        			// member compatible with everything: a synthesized interface
+        			// anchor like `Status() int` accepted same-named methods of ANY
+        			// arity into the family — measured on a single-method-interface
+        			// fixture, where Context.Status(int) joined ResponseWriter.
+        			// Status()'s family and the rename plan edited the wrong
+        			// method's declaration.
+        			return []string{}
+        		}
+        		return goParamTokens(gi)
+        	}'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        old = '''func goDeclParams(signature string) string {
+        	trimmed := strings.TrimSpace(signature)
+        	open := strings.IndexByte(trimmed, '(')
+        	if open < 0 {
+        		return ""
+        	}
+        	if strings.HasPrefix(trimmed, "func (") {
+        		_, receiverClose, ok := parenthesizedAt(trimmed, open)
+        		if !ok {
+        			return ""
+        		}
+        		open = strings.IndexByte(trimmed[receiverClose+1:], '(')
+        		if open < 0 {
+        			return ""
+        		}
+        		open += receiverClose + 1
+        	}
+        	params, _, ok := parenthesizedAt(trimmed, open)
+        	if !ok {
+        		return ""
+        	}
+        	return params
+        }'''
+        new = '''func goDeclParams(signature string) string {
+        	params, _ := goDeclParamsOK(signature)
+        	return params
+        }
+
+        // goDeclParamsOK distinguishes "parsed, zero parameters" (ok=true, "") from
+        // "no parameter list found" (ok=false) — signatureCompatible treats the two
+        // completely differently (evidence vs neutrality).
+        func goDeclParamsOK(signature string) (string, bool) {
+        	trimmed := strings.TrimSpace(signature)
+        	open := strings.IndexByte(trimmed, '(')
+        	if open < 0 {
+        		return "", false
+        	}
+        	if strings.HasPrefix(trimmed, "func (") {
+        		_, receiverClose, ok := parenthesizedAt(trimmed, open)
+        		if !ok {
+        			return "", false
+        		}
+        		open = strings.IndexByte(trimmed[receiverClose+1:], '(')
+        		if open < 0 {
+        			return "", false
+        		}
+        		open += receiverClose + 1
+        	}
+        	params, _, ok := parenthesizedAt(trimmed, open)
+        	if !ok {
+        		return "", false
+        	}
+        	return params, true
+        }'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('internal/graph/changeimpact.go','w').write(src)
+        print("paramTypesOf fixed")
+        PY
+        go build ./... && go test ./pkg/grove/ -run 'TestRenamePlanPerSite_GinShapes' -count=1 -v 2>&1 | grep -E "CI |EDIT|AMB|ok " | head -16
+      at: 2026-08-20T23:43:55.057622Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go build ./... && go test ./pkg/grove/ -run 'TestRenamePlanPerSite_GinShapes' -count=1 -v 2>&1 | grep -E "EDIT|AMB|ok |FAIL" | head -12
+      at: 2026-08-20T23:44:51.301527Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o /tmp/prism-sitefix ./cmd/prism && cd ~/gvg-corpus/gin && rm -rf .grove && /tmp/prism-sitefix index . 2>&1 | tail -1 && /tmp/prism-sitefix rename-plan 'ResponseWriter.Status' StatusCode --format json > /tmp/renameplan3.json && python3 - <<'PY'
+        import json
+        before = json.load(open('/tmp/renameplan.json'))
+        after = json.load(open('/tmp/renameplan3.json'))
+        print(f"BEFORE: confirmed={len(before.get('edits',[]))} ambiguous={len(before.get('ambiguous',[]))}")
+        print(f"AFTER : confirmed={len(after.get('edits',[]))} ambiguous={len(after.get('ambiguous',[]))}")
+        print("\nconfirmed now:")
+        for e in after.get('edits',[]): print(f"  {e['filePath']}:{e['line']}  {e['before'].strip()[:72]}")
+        print("\nambiguous residual:")
+        for a in after.get('ambiguous',[]): print(f"  {a['filePath']}:{a['line']}  {a['before'].strip()[:72]}")
+        leak = [x for x in after.get('edits',[]) if '\tc.Status(' in x['before'] or ' c.Status(' in x['before']]
+        print(f"\nContext.Status lines wrongly CONFIRMED: {len(leak)}")
+        PY
+      at: 2026-08-20T23:45:11.908714Z
+      classified: build
+    - cmd: cd ~/gvg-corpus/gin && sed -n '1848,1856p' context_test.go && echo --- && sed -n '295,303p' logger.go && echo --- && awk 'NR>=60 && NR<=70' response_writer_test.go && echo --- && sed -n '48,54p' response_writer_test.go
+      at: 2026-08-20T23:45:39.167301Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "goVarDeclRe\|goCompositeLitRe\|goNewCtorRe" internal/graph/localtypes.go | head -6 && awk '/goVarDeclRe =|goCompositeLitRe =|goNewCtorRe =/' internal/graph/localtypes.go
+      at: 2026-08-20T23:46:02.887188Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PY'
+        src = open('internal/graph/localtypes.go').read()
+
+        # new regexes next to the existing ones
+        old = '''	goVarDeclRe = regexp.MustCompile(`(?m)\\bvar\\s+([a-zA-Z_]\\w*)\\s+\\*?(?:\\[\\])?(?:\\w+\\.)?([A-Za-z_]\\w*)`)'''
+        new = '''	goVarDeclRe = regexp.MustCompile(`(?m)\\bvar\\s+([a-zA-Z_]\\w*)\\s+\\*?(?:\\[\\])?(?:\\w+\\.)?([A-Za-z_]\\w*)`)
+
+        	// goConvRe: `w := ResponseWriter(writer)` — a type CONVERSION binds the
+        	// variable to the named type. Textually identical to a function call, so
+        	// the match is gated on the captured name resolving to an INDEXED TYPE
+        	// (typeSymbolExists), exactly like the New-ctor heuristic below.
+        	goConvRe = regexp.MustCompile(`(?m)\\b([a-zA-Z_]\\w*)\\s*:?=\\s*(?:\\w+\\.)?([A-Z]\\w*)\\(`)
+
+        	// goCallResultRe: `c, _ := CreateTestContext(w)` — the FIRST variable of
+        	// a call-result assignment binds to the called function's first return
+        	// type, when that function is indexed and its return parses.
+        	goCallResultRe = regexp.MustCompile(`(?m)\\b([a-zA-Z_]\\w*)(?:\\s*,\\s*[a-zA-Z_]\\w*)*\\s*:=\\s*(?:\\w+\\.)?([A-Za-z_]\\w*)\\(`)
+
+        	// goClosureParamRe: `func(c *Context) {` — closure-literal parameter
+        	// lists. Scoped narrower than the whole function, so these bind at the
+        	// LOWEST precedence and never overwrite an existing entry.
+        	goClosureParamRe = regexp.MustCompile(`func\\(([^()]*)\\)`)'''
+        assert old in src
+        src = src.replace(old, new, 1)
+
+        # wire into goLocalTypes after the ctor block
+        old = '''		for _, m := range goNewCtorRe.FindAllStringSubmatch(body, -1) {
+        			if typ := resolveCtorType(idx, m[2]); typ != "" {
+        				out[m[1]] = typ
+        			}
+        		}
+        	}
+        	delete(out, "_")
+        	return out
+        }'''
+        new = '''		for _, m := range goNewCtorRe.FindAllStringSubmatch(body, -1) {
+        			if typ := resolveCtorType(idx, m[2]); typ != "" {
+        				out[m[1]] = typ
+        			}
+        		}
+        		// Type conversions: only when the name IS an indexed type — a plain
+        		// function call never binds here.
+        		for _, m := range goConvRe.FindAllStringSubmatch(body, -1) {
+        			if typeSymbolExists(idx, m[2]) {
+        				out[m[1]] = m[2]
+        			}
+        		}
+        		// Call results: first variable takes the called function's first
+        		// return type, when the callee is indexed and its return parses.
+        		for _, m := range goCallResultRe.FindAllStringSubmatch(body, -1) {
+        			if _, exists := out[m[1]]; exists {
+        				continue
+        			}
+        			if typ := goFirstReturnType(idx, m[2]); typ != "" {
+        				out[m[1]] = typ
+        			}
+        		}
+        		// Closure params, lowest precedence: never overwrite.
+        		for _, m := range goClosureParamRe.FindAllStringSubmatch(body, -1) {
+        			for name, typ := range goParamTypes("func(" + m[1] + ")") {
+        				if _, exists := out[name]; !exists {
+        					out[name] = typ
+        				}
+        			}
+        		}
+        	}
+        	delete(out, "_")
+        	return out
+        }
+
+        // goFirstReturnType resolves an indexed Go FUNCTION's first return type to a
+        // bare, indexed type name; "" when the callee is unknown, not a function, or
+        // the return does not parse to an indexed type.
+        func goFirstReturnType(idx *edgeIndex, fnName string) string {
+        	for _, f := range idx.byName[strings.ToLower(fnName)] {
+        		if f.Name != fnName || f.Language != "go" {
+        			continue
+        		}
+        		switch f.Kind {
+        		case core.KindFunction, core.KindMethod:
+        		default:
+        			continue
+        		}
+        		sig := f.Signature
+        		close := strings.IndexByte(sig, ')')
+        		if close < 0 {
+        			continue
+        		}
+        		// Skip a leading receiver's parens for methods.
+        		rest := strings.TrimSpace(sig[close+1:])
+        		if strings.HasPrefix(rest, "(") {
+        			rest = strings.TrimPrefix(rest, "(")
+        		}
+        		rest = strings.TrimSpace(rest)
+        		if rest == "" || rest == "{" {
+        			continue
+        		}
+        		first := rest
+        		if i := strings.IndexAny(first, ",)"); i >= 0 {
+        			first = first[:i]
+        		}
+        		// "c *Context" or "*Context" — take the last token, strip decorations.
+        		fields := strings.Fields(first)
+        		tok := fields[len(fields)-1]
+        		tok = strings.TrimLeft(tok, "*&[]")
+        		if i := strings.LastIndexByte(tok, '.'); i >= 0 {
+        			tok = tok[i+1:]
+        		}
+        		tok = strings.TrimRight(tok, "{")
+        		if tok != "" && typeSymbolExists(idx, tok) {
+        			return tok
+        		}
+        	}
+        	return ""
+        }'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        open('internal/graph/localtypes.go','w').write(src)
+        print("localtypes extended")
+        PY
+        go build ./... 2>&1 | head -5 && go test ./internal/graph/ -count=1 2>&1 | tail -2
+      at: 2026-08-20T23:46:34.465702Z
+      classified: test
+    - cmd: |-
+        rm -f ~/Library/Caches/prism/ledger/8200172d20421613512c1b55548a85ec7ae7d217.json.lock && cd ~/gvg-corpus/gin && /tmp/prism-sitefix rename-plan 'ResponseWriter.Status' StatusCode --format json > /tmp/renameplan4.json && python3 - <<'PY'
+        import json
+        after = json.load(open('/tmp/renameplan4.json'))
+        print(f"BEFORE fix : confirmed=3  ambiguous=21")
+        print(f"AFTER  fix : confirmed={len(after.get('edits',[]))} ambiguous={len(after.get('ambiguous',[]))}")
+        print("\nconfirmed:")
+        for e in after.get('edits',[]): print(f"  {e['filePath']}:{e['line']}  {e['before'].strip()[:74]}")
+        print("\nambiguous residual:")
+        for a in after.get('ambiguous',[]): print(f"  {a['filePath']}:{a['line']}  {a['before'].strip()[:74]}")
+        PY
+      at: 2026-08-20T23:47:25.450796Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat > /tmp/lt_test.go <<'EOF'
+        package graph
+
+        import "testing"
+
+        func TestGoParamTypesClosureShape(t *testing.T) {
+        	for _, sig := range []string{"func(c *Context)", "func(c *gin.Context)"} {
+        		got := goParamTypes(sig)
+        		t.Logf("%q -> %v", sig, got)
+        	}
+        }
+        EOF
+        cp /tmp/lt_test.go internal/graph/lt_probe_test.go && go test ./internal/graph/ -run 'TestGoParamTypesClosureShape' -count=1 -v 2>&1 | grep -E '"|ok |FAIL' | head -5
+      at: 2026-08-20T23:47:55.109408Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && awk 'NR>=117 && NR<=160' internal/graph/localtypes.go | head -20 && grep -n "func goParamList" -A 20 internal/graph/localtypes.go | head -24
+      at: 2026-08-20T23:48:03.507536Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PY'
+        src = open('internal/graph/localtypes.go').read()
+        old = '''		for _, m := range goClosureParamRe.FindAllStringSubmatch(body, -1) {
+        			for name, typ := range goParamTypes("func(" + m[1] + ")") {'''
+        new = '''		for _, m := range goClosureParamRe.FindAllStringSubmatch(body, -1) {
+        			// goParamList requires the named form ("func name(params)") —
+        			// a bare closure literal reads its params as a receiver.
+        			for name, typ := range goParamTypes("func closure(" + m[1] + ")") {'''
+        assert old in src
+        open('internal/graph/localtypes.go','w').write(src.replace(old, new, 1))
+        print("fixed")
+        PY
+        go test ./internal/graph/ -run 'TestGoParamTypesClosureShape' -count=1 2>&1 | tail -1
+        cd ~/Projects/provasign/prism && go build -o /tmp/prism-sitefix ./cmd/prism && cd ~/gvg-corpus/gin && rm -rf .grove && /tmp/prism-sitefix index . 2>&1 | tail -1 && /tmp/prism-sitefix rename-plan 'ResponseWriter.Status' StatusCode --format json > /tmp/renameplan5.json && python3 -c "
+        import json
+        after = json.load(open('/tmp/renameplan5.json'))
+        print(f'AFTER: confirmed={len(after.get(\"edits\",[]))} ambiguous={len(after.get(\"ambiguous\",[]))}')
+        print('ambiguous residual:')
+        for a in after.get('ambiguous',[]): print(f'  {a[\"filePath\"]}:{a[\"line\"]}  {a[\"before\"].strip()[:74]}')"
+      at: 2026-08-20T23:48:25.711027Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && rm internal/graph/lt_probe_test.go && python3 - <<'PY'
+        src = open('pkg/grove/renamesite_gin_test.go').read()
+        # replace log-dumps with assertions
+        old = '''	// Ground truth on shapes: dump handler's call sites (Callee format).
+        	syms, err := eng.FileSymbols(context.Background(), "use.go")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, s := range syms {
+        		for _, cs := range s.CallSites {
+        			t.Logf("CALLSITE in %s: Callee=%q line=%d", s.Name, cs.Callee, cs.Line)
+        		}
+        		t.Logf("SYMBOL %s QualifiedName=%q", s.Name, s.QualifiedName)
+        	}
+
+        	ci, err := eng.ChangeImpact(context.Background(), "ResponseWriter.Status")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, s := range ci.Declarations {
+        		t.Logf("CI DECL   %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+        	for _, s := range ci.Family {
+        		t.Logf("CI FAMILY %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+        	for _, s := range ci.Supers {
+        		t.Logf("CI SUPER  %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+        	for _, s := range ci.DeclaringTypes {
+        		t.Logf("CI DECLTYPE %s (%s)", s.QualifiedName, s.FilePath)
+        	}
+
+        	r, err := eng.RenamePlan(context.Background(), "ResponseWriter.Status", "StatusCode")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, e := range r.Edits {
+        		t.Logf("EDIT %s:%d %s", e.FilePath, e.Line, e.After)
+        	}
+        	for _, e := range r.Ambiguous {
+        		t.Logf("AMB  %s:%d %s", e.FilePath, e.Line, e.After)
+        	}
+        }'''
+        new = '''	// Family must NOT include Context.Status: its arity differs from the
+        	// interface member, and a PARSED zero-param list is evidence, not
+        	// absence of evidence (the paramTypesOf nil-vs-empty fix).
+        	ci, err := eng.ChangeImpact(context.Background(), "ResponseWriter.Status")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	for _, s := range ci.Family {
+        		if s.QualifiedName == "Context.Status" {
+        			t.Fatalf("Context.Status(int) joined the zero-param interface member's family")
+        		}
+        	}
+
+        	r, err := eng.RenamePlan(context.Background(), "ResponseWriter.Status", "StatusCode")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	confirmed := map[string]bool{}
+        	for _, e := range r.Edits {
+        		confirmed[e.FilePath+":"+itoa(e.Line)] = true
+        		if e.FilePath == "ctx.go" && e.Line == 8 {
+        			t.Fatalf("Context.Status's own declaration wrongly renamed: %+v", e)
+        		}
+        	}
+        	// Every true site confirms per-site: interface-typed field chain
+        	// (c.Writer), concrete field chain (c.writermem), conversion-typed
+        	// local (w) — the shapes measured live on gin.
+        	for _, want := range []string{"rw.go:4", "rw.go:9", "use.go:5", "use.go:6", "use.go:8"} {
+        		if !confirmed[want] {
+        			t.Errorf("expected confirmed edit at %s; got %v", want, confirmed)
+        		}
+        	}
+        	if len(r.Ambiguous) != 0 {
+        		t.Errorf("per-site resolution should leave nothing ambiguous here: %+v", r.Ambiguous)
+        	}
+        	// Context.Status call is not a site: excluded entirely.
+        	if confirmed["use.go:4"] {
+        		t.Error("c.Status(200) is Context.Status — must be excluded, not confirmed")
+        	}
+        }
+
+        func itoa(n int) string { return fmt.Sprintf("%d", n) }'''
+        assert old in src
+        src = src.replace(old, new, 1)
+        src = src.replace('import (\n\t"context"\n\t"os"', 'import (\n\t"context"\n\t"fmt"\n\t"os"')
+        open('pkg/grove/renamesite_gin_test.go','w').write(src)
+        print("test pinned")
+        PY
+        go test ./pkg/grove/ -run 'TestRenamePlanPerSite' -count=1 2>&1 | tail -2 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -4; echo "GROVE SUITE: $?"
+      at: 2026-08-20T23:49:02.263321Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && grep -n "grove-eval\|go run" .github/workflows/eval.yml | head -8 && ls eval/ | head -8
+      at: 2026-08-20T23:49:11.325534Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && grep -n "GIN_COMMIT" .github/workflows/eval.yml | head -2
+        cd eval && go build -o /tmp/grove-eval ./cmd/grove-eval && echo built
+        # gin pin from the workflow
+        GIN=$(grep -m1 "GIN_COMMIT:" ~/Projects/provasign/grove/.github/workflows/eval.yml | awk '{print $2}' | tr -d '"')
+        echo "gin pin: $GIN"
+        # clone gin at pin into scratch
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        rm -rf $SCRATCH/evalgin && git clone -q ~/gvg-corpus/gin $SCRATCH/evalgin && git -C $SCRATCH/evalgin checkout -q $GIN 2>/dev/null || echo "pin not in local clone; using corpus HEAD $(git -C $SCRATCH/evalgin rev-parse --short HEAD)"
+        rm -rf $SCRATCH/evalgin/.grove
+      at: 2026-08-20T23:49:24.263434Z
+      classified: build
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        cd ~/Projects/provasign/grove/eval && GOWORK=off go build -o /tmp/grove-eval ./cmd/grove-eval 2>&1 | head -3 || go build -o /tmp/grove-eval ./grove-eval 2>/dev/null; ls -la /tmp/grove-eval 2>/dev/null | head -1
+        ls cmd 2>/dev/null; git -C $SCRATCH/evalgin log --oneline -1
+      at: 2026-08-20T23:49:37.597448Z
+      classified: build
+    - cmd: |-
+        grep -A2 replace ~/Projects/provasign/grove/eval/go.mod
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        /tmp/grove-eval truth --repo $SCRATCH/evalgin --commit d75fcd4 --out /tmp/calls-truth.jsonl 2>&1 | tail -2 && /tmp/grove-eval score --repo $SCRATCH/evalgin --truth /tmp/calls-truth.jsonl --out-dir /tmp/eval-out --baseline ~/Projects/provasign/grove/eval/baseline.json 2>&1 | tail -8
+      at: 2026-08-20T23:49:54.525114Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        b = json.load(open('/Users/tapabratapal/Projects/provasign/grove/eval/baseline.json'))
+        print(json.dumps(b.get('gin', b), indent=1)[:400])"
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        mv $SCRATCH/evalgin $SCRATCH/gin && /tmp/grove-eval score --repo $SCRATCH/gin --truth /tmp/calls-truth.jsonl --out-dir /tmp/eval-out --baseline ~/Projects/provasign/grove/eval/baseline.json 2>&1 | tail -3
+      at: 2026-08-20T23:50:08.722835Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        /tmp/grove-eval truth --repo $SCRATCH/gin --commit d75fcd4 --out /tmp/calls-truth.jsonl 2>&1 | tail -1
+        /tmp/grove-eval score --repo $SCRATCH/gin --truth /tmp/calls-truth.jsonl --out-dir /tmp/eval-out --baseline ~/Projects/provasign/grove/eval/baseline.json 2>&1 | tail -3
+      at: 2026-08-20T23:50:29.601703Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-sitefix --corpus-root ~/.cache/prism-research/ci-corpus 2>&1 | tail -4 && python3 harness/mcp_ceiling.py /tmp/prism-sitefix 2>&1 | tail -3
+      at: 2026-08-20T23:52:28.673313Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "PRISM SUITE: $?"
+        cd ~/Projects/provasign/grove && git add internal/graph/renamesite.go internal/graph/renameplan.go internal/graph/localtypes.go internal/graph/changeimpact.go internal/graph/renameplan_test.go pkg/grove/renamesite_gin_test.go && git commit -m "$(cat <<'EOF'
+        graph: per-site receiver classification for rename plans; zero-param family evidence; Go localtypes for conversions, call results, closure params
+
+        Measured live (gin ResponseWriter.Status -> StatusCode, 2026-08-20): the
+        plan came back 3 confirmed + 21 ambiguous, and the 21 drove a local-model
+        agent to over-rename, break the build, and apply the exact inverse plan to
+        get green back. Per-site classification takes the same plan to
+        14 confirmed + 0 ambiguous — every true site confirmed (including
+        logger.go:301, the site that broke that live run) and all 10
+        Context.Status non-sites excluded from the plan entirely.
+
+        Four fixes, one arc:
+
+        1. renameplan.go was CALLER-granular: one hasNonFamilySameName(caller)
+           flag bucketed every matching line in a caller. renamesite.go now
+           resolves EACH call site's receiver chain with the edge builder's own
+           local-type machinery: family receiver -> confirmed; confidently
+           resolved non-family declarer -> excluded (statically-typed languages
+           only); unresolved -> ambiguous, i.e. never worse than the old rule.
+           Chains are recovered from the source line (chainFromLine) because
+           astkit's CallSite.Callee keeps only the last receiver segment.
+
+        2. paramTypesOf treated a PARSED empty Go parameter list as nil —
+           "absence of evidence" — so a zero-param interface anchor like
+           Status() int accepted same-named methods of ANY arity into the
+           family; on a single-method interface fixture Context.Status(int)
+           joined ResponseWriter.Status()'s family and the plan renamed the
+           wrong method's declaration. goDeclParamsOK distinguishes parsed-empty
+           (hard evidence) from unparsable (neutral).
+
+        3. goLocalTypes learns three receiver shapes measured on real gin:
+           type conversions (w := ResponseWriter(writer), gated on the name
+           resolving to an indexed type), call results (c, _ :=
+           CreateTestContext(w): first variable binds the indexed callee's first
+           return type), and closure-literal params (func(c *Context) { ... },
+           lowest precedence, never overwriting).
+
+        4. goParamTypes required the named "func name(...)" form; closure param
+           lists fed as bare literals parsed as receivers and yielded nothing.
+
+        Gates: full suite green; gin accuracy gate formally within baseline with
+        precision IMPROVED (P 0.9339 -> 0.9402, R 0.9452 within tolerance,
+        universe 99.7%); downstream prism invariants all held (rename-plan
+        invariants, compile invariants, 13 MCP-surface change-impact ceilings,
+        index determinism).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-20T23:53:07.426942Z
+      classified: test
+    - cmd: |-
+        # 1) mason rename benchmark on the fixed engine (workspace build = local grove+prism)
+        cd ~/Projects/provasign/mason && go build -o ~/bin/mason ./cmd/mason && ~/bin/mason --version
+        rm -f /tmp/ab-mason-claude/results/rename.mason-30b.json
+        cd ~/Projects/provasign/research/harness && nohup python3 ab_mason_claude.py "rename:mason-30b" > /tmp/ab-mason-rename4.log 2>&1 &
+        echo "benchmark re-run launched"
+        # 2) grove release prep: tag conventions + release workflow
+        cd ~/Projects/provasign/grove && git tag --sort=-v:refname | head -3 && ls .github/workflows/ | head -6
+      at: 2026-08-21T01:22:45.976998Z
+      classified: build
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/btjre8mv6.output 2>/dev/null | head -8
+        pgrep -f ab_mason_claude >/dev/null && echo "benchmark alive"
+        git -C ~/Projects/provasign/grove tag --sort=-v:refname | head -3
+      at: 2026-08-21T01:22:55.415479Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git status --short | grep -v "^??" | head -3
+        git tag -a v0.32.0 -m "v0.32.0: per-site receiver classification for rename plans; zero-param family evidence; Go localtypes for conversions, call results, closure params" && git push origin main v0.32.0 2>&1 | tail -2
+      at: 2026-08-21T01:23:07.430832Z
+      classified: other
+    - cmd: |-
+        until gh run list --repo provasign/grove --limit 4 2>/dev/null | grep "v0.32.0" | grep -qE "completed"; do sleep 20; done
+        gh run list --repo provasign/grove --limit 4 | head -4
+      at: 2026-08-21T01:25:24.622672Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go get github.com/provasign/grove@v0.32.0 2>&1 | tail -1 && go mod tidy && GOWORK=off go build -o /tmp/prism-v0559 ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "SUITE: $?"
+        go version -m /tmp/prism-v0559 | grep grove
+      at: 2026-08-21T01:26:10.1706Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-v0559 --corpus-root ~/.cache/prism-research/ci-corpus 2>&1 | tail -2 && python3 harness/mcp_ceiling.py /tmp/prism-v0559 2>&1 | tail -2
+      at: 2026-08-21T01:30:39.021767Z
+      classified: other
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-20T19:33:27.504296Z
+redactions: 0
