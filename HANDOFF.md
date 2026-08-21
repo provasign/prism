@@ -179,7 +179,11 @@ https://claude.ai/code/artifact/c9409bf3-90c7-47b3-934c-d132ad0b7384
   `arch_check`, `index` — had **zero calls across all 190 A/B cells**. They
   remain CLI commands and HTTP routes; only the agent menu narrowed. Do not
   re-advertise one without call-count evidence.
-- **`prism init` writes deny rules only when asked.** Since v0.55.8 a
+- **`prism init` writes deny rules only when asked** — and since v0.55.10
+  it never ASKS either: the interactive deny prompt was removed (its
+  "measured 12:1" pitch predates alwaysLoad, which took adoption to 90%+
+  with no denial). `--deny-builtin-search` remains the explicit opt-in.
+  Since v0.55.8 a
   non-denying init also DETECTS the legacy trio in the target settings and
   offers removal (interactive) or warns (non-interactive) — stale denial
   from v0.50-era inits kept machines denying grep after upgrades (live

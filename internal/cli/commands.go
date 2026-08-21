@@ -398,9 +398,12 @@ profile: "%s"
 	// next task. Denying the built-in search is the only reliable fix — but
 	// it edits the user's own Claude Code settings, so ASK rather than assume.
 	// Never prompt non-interactively (CI gets the safe default: no change).
-	if !denyBuiltinSearch && permissions && printConfig == "" && isInteractive() {
-		denyBuiltinSearch = promptDenyBuiltinSearch()
-	}
+	// No interactive denial prompt. The prompt's own pitch ("agents ignore
+	// steering, measured 12:1") predates alwaysLoad schemas, which took
+	// adoption to 90%+ WITHOUT denying anything (full38, 2026-08-17+); the
+	// denial experiment itself was reverted in v0.52.0, and its leftovers
+	// skewed two benchmark runs badly enough to void them. Denial remains
+	// available to those who ask for it: --deny-builtin-search.
 
 	// 4. Register with every detected AI coding tool.
 	registered := initRegisterMCPTools(abs, prismBin, global, permissions, refresh, denyBuiltinSearch)
@@ -1183,29 +1186,6 @@ func promptGlobalTools() bool {
 	fmt.Fprintln(os.Stderr, "  Default keeps setup project-level: nothing outside this repo is")
 	fmt.Fprintln(os.Stderr, "  touched, and other projects are unaffected.")
 	fmt.Fprint(os.Stderr, "Register user-global tools? [y/N]: ")
-	var line string
-	fmt.Scanln(&line)
-	switch strings.ToLower(strings.TrimSpace(line)) {
-	case "y", "yes":
-		return true
-	}
-	return false
-}
-
-// promptDenyBuiltinSearch offers the one change that actually routes agents
-// through prism, and explains the trade honestly. Default is NO: this edits
-// settings the user owns.
-func promptDenyBuiltinSearch() bool {
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Agents usually ignore steering and use their own grep — measured 12:1,")
-	fmt.Fprintln(os.Stderr, "and reproduced on a machine where prism was installed and connected.")
-	fmt.Fprintln(os.Stderr, "Deny Claude Code's built-in search so prism is actually reached?")
-	fmt.Fprintln(os.Stderr, "  Adds Grep, Bash(grep:*), Bash(rg:*) to permissions.deny in the")
-	fmt.Fprintln(os.Stderr, "  PROJECT's .claude/settings.json (machine-global only with")
-	fmt.Fprintln(os.Stderr, "  --global). Nothing becomes unfindable —")
-	fmt.Fprintln(os.Stderr, "  prism_search(scope=\"text\") is a ripgrep passthrough. Reversible:")
-	fmt.Fprintln(os.Stderr, "  delete those lines. Only affects Claude Code.")
-	fmt.Fprint(os.Stderr, "Deny built-in search? [y/N]: ")
 	var line string
 	fmt.Scanln(&line)
 	switch strings.ToLower(strings.TrimSpace(line)) {
