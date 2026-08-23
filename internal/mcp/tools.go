@@ -38,6 +38,12 @@ type Handler struct {
 	driftMu   sync.Mutex
 	driftBase map[string][]grove.SymbolRecord
 
+	// contract-delivery caches (contracts.go): per-symbol obligation lines
+	// and the per-file once-per-session trailer dedup.
+	contractMu    sync.Mutex
+	contractLines map[string]string
+	contractFiles map[string]bool
+
 	// readyCh is closed when the background Grove connection + initial index
 	// completes. Nil means no deferred init (Grove is already ready).
 	readyCh <-chan struct{}
@@ -1040,7 +1046,23 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	// compressing them would be two lossy steps on the same content.
 	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
 	if offset > 0 || limit > 0 {
-		return h.readRange(sessionPath, string(data), offset, limit)
+		out, err := h.readRange(sessionPath, string(data), offset, limit)
+		if err == nil {
+			if m, ok := out.(map[string]any); ok {
+				// Ranged windows are HOW contract files get read in practice
+				// (a2a-414 read jsonrpc_app.py in 250-line windows) — the
+				// trailer must ride on them too.
+				if trailer := h.fileContractsTrailer(ctx, normalizePath(sessionPath)); trailer != "" {
+					if c, ok := m["content"].(string); ok {
+						if !strings.HasSuffix(c, "\n") {
+							c += "\n"
+						}
+						m["content"] = c + trailer
+					}
+				}
+			}
+		}
+		return out, err
 	}
 	// The file's currently indexed symbols, by exact path (Grove v0.6.1).
 	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))
@@ -1067,13 +1089,24 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if len(fileSyms) > 0 {
 		h.setDriftBase(sessionPath, fileSyms)
 	}
+	content := res.Content
+	// Proactive contract delivery (contracts.go): the fan-out of this
+	// file's contract-shaped symbols, once per file per session — the
+	// design-time information measured absent in every graph-addressable
+	// failure (the agent read the contract file, then designed locally).
+	if trailer := h.fileContractsTrailer(ctx, normalizePath(sessionPath)); trailer != "" {
+		if !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		content += trailer
+	}
 	return map[string]any{
 		"file":            res.FilePath,
 		"strategy":        res.Strategy,
 		"originalTokens":  res.OriginalTokens,
 		"deliveredTokens": res.DeliveredTokens,
 		"savingsPercent":  res.SavingsPercent,
-		"content":         res.Content,
+		"content":         content,
 	}, nil
 }
 
@@ -1246,6 +1279,13 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// note — full38 showed missed fan-out sites, not noisy greps, are
 		// where searches go wrong.
 		if n := h.structuralNote(ctx, q); n != "" {
+			out["resolvedNote"] = n
+		} else if n := h.calleeContractsNote(ctx, q); n != "" {
+			out["resolvedNote"] = n
+		} else if n := h.hitContractsNote(ctx, r.Hits); n != "" {
+			// The Kinto shape: hits land inside a fan-out symbol the agent
+			// never named — deliver that symbol's obligations here, at the
+			// moment the design is being decided.
 			out["resolvedNote"] = n
 		} else if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
 			out["resolvedNote"] = n
