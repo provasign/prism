@@ -19,7 +19,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -380,6 +382,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		unverifiedSeeds = append(unverifiedSeeds, staleNote)
 	}
 	seen := map[string]bool{}
+	staleSeen := map[string]bool{}
 	for _, sd := range seeds {
 		sigChanges = append(sigChanges, map[string]any{
 			"symbol": displayQN(sd.sym), "file": sd.sym.FilePath, "line": sd.sym.Span.Start,
@@ -397,6 +400,40 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		// base-signature parameter list, plus their (still correctly
 		// resolved) callers.
 		bc := h.baseContractImpact(ctx, sd.sym, sd.before)
+		// RENAMES: baseContractImpact looks the old signature up by the NEW
+		// name, so a rename always bails out of it — and the post-edit graph
+		// cannot see stale callers either, because they reference a name
+		// that no longer resolves. Measured 2026-08-25 (electrum
+		// seed_type->calc_seed_type, 4 call sites reverted): verify printed
+		// "calc_seed_type renamed" and then "no missed sites". The gate was
+		// structurally blind to the shape rename_plan exists for. Stale
+		// references to the OLD name ARE recoverable from the reference
+		// layer, which is name-based rather than resolution-based.
+		if stale := h.staleOldNameRefs(ctx, sd.sym, sd.before); len(stale) > 0 {
+			for _, s := range stale {
+				// One physical line, one finding. Every member of a renamed
+				// TYPE seeds separately (networkx: __call__, _convert_and_call,
+				// …), so without this the same decorator line was reported 32
+				// times for 3 real sites — a gate that inflates its own output
+				// teaches people to ignore it.
+				key := s.file + ":" + strconv.Itoa(s.line) + ":" + s.oldName
+				if staleSeen[key] {
+					continue
+				}
+				staleSeen[key] = true
+				name := s.enclosing
+				if name == "" {
+					name = s.oldName
+				}
+				missed = append(missed, missedSite{
+					Symbol: s.oldName, QualifiedName: name,
+					File: s.file, Line: s.line, Kind: "stale-reference",
+					BecauseOf: displayQN(sd.sym),
+					Detail: "still references the old name " + s.oldName +
+						" — renamed to " + s.newName,
+				})
+			}
+		}
 		if bc != nil && strings.HasPrefix(bc.Completeness, "base-contract-error") {
 			// Engine failure during enumeration: fail closed and SAY so.
 			unverifiedSeeds = append(unverifiedSeeds,
@@ -999,4 +1036,137 @@ func displayQN(s grove.SymbolRecord) string {
 		return s.QualifiedName
 	}
 	return s.Name
+}
+
+
+// staleRef is one surviving occurrence of a renamed symbol's OLD name.
+type staleRef struct {
+	file, enclosing, oldName, newName string
+	line                              int
+}
+
+// staleOldNameRefs finds references to a renamed symbol's OLD name that
+// survive in the post-edit tree. The reference layer matches by NAME, so it
+// sees exactly what resolution-based impact cannot: call sites left pointing
+// at a name that no longer exists.
+//
+// Conservative by construction — a rename is only actionable when the old
+// name is genuinely gone:
+//   - silent unless the symbol was renamed (before != nil, names differ)
+//   - silent if the old name still RESOLVES to a declaration (an overload,
+//     a same-named sibling, or a deliberately kept alias — then a surviving
+//     reference is legitimate, not stale)
+//   - comment/string occurrences are excluded by References itself
+func (h *Handler) staleOldNameRefs(ctx context.Context, sym grove.SymbolRecord, before *grove.SymbolRecord) []staleRef {
+	if h.Grove == nil || before == nil {
+		return nil
+	}
+	oldName := before.Name
+	newDisplay := sym.Name
+	if oldName == "" || oldName == sym.Name {
+		// A member of a renamed TYPE keeps its own leaf name (networkx:
+		// `_dispatchable.__call__ renamed` — leaf `__call__` unchanged,
+		// parent `_dispatch` -> `_dispatchable`). The broken references are
+		// to the old PARENT, so fall back to it.
+		oldParent, newParent := leafOf(before.ParentSymbol), leafOf(sym.ParentSymbol)
+		if oldParent == "" || oldParent == newParent {
+			return nil
+		}
+		oldName = oldParent
+		newDisplay = newParent
+		// re-anchor the callability test on the parent type
+		if p, err := h.Grove.Resolve(ctx, newParent); err == nil && len(p) > 0 {
+			sym.Kind, before.Kind = p[0].Kind, p[0].Kind
+		} else {
+			sym.Kind, before.Kind = "class", "class"
+		}
+	}
+	// If something still declares the old name, surviving references are fine.
+	if cands, err := h.Grove.Resolve(ctx, oldName); err == nil {
+		for _, c := range cands {
+			if !c.TestDouble {
+				return nil
+			}
+		}
+	}
+	// Only CALL POSITION breaks. Measured 2026-08-25 (electrum): the bare
+	// reference layer flagged 25 sites on the COMPLETE gold diff, because
+	// `seed_type` survives legitimately as a variable, a kwarg and a dict
+	// key — renaming the FUNCTION does not break any of those. A gate that
+	// fires on a correct change is worse than no gate, so the filter is
+	// mandatory, not a refinement.
+	if !isCallable(sym.Kind) && !isCallable(before.Kind) {
+		return nil
+	}
+	res, err := h.Grove.References(ctx, oldName)
+	if err != nil {
+		return nil
+	}
+	callRe := regexp.MustCompile(`\b` + regexp.QuoteMeta(oldName) + `\s*\(`)
+	out := make([]staleRef, 0, len(res.Refs))
+	for _, r := range res.Refs {
+		line := sourceLineAt(h.Root, r.File, r.Line)
+		if line == "" || !callRe.MatchString(stripCommentsAndStringsLine(line)) {
+			continue
+		}
+		out = append(out, staleRef{file: r.File, line: r.Line,
+			enclosing: r.Enclosing, oldName: oldName, newName: newDisplay})
+		if len(out) == 25 {
+			break
+		}
+	}
+	return out
+}
+
+// isCallable: kinds whose rename breaks CALL-position references. Classes
+// count — measured on networkx, whose renamed `_dispatch` class is used as
+// a decorator (`@_dispatch(...)`), so every stale use is a call the old
+// name can no longer satisfy.
+func isCallable(kind string) bool {
+	switch kind {
+	case "function", "method", "constructor", "class", "struct":
+		return true
+	}
+	return false
+}
+
+// sourceLineAt reads one 1-based line from a repo-relative file; "" on any
+// failure (a gate must degrade to silence, never to a false accusation).
+func sourceLineAt(root, rel string, line int) string {
+	b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	if err != nil || len(b) > 4<<20 {
+		return ""
+	}
+	lines := strings.Split(string(b), "\n")
+	if line < 1 || line > len(lines) {
+		return ""
+	}
+	return lines[line-1]
+}
+
+// stripCommentsAndStringsLine blanks quoted spans and trailing line comments
+// so `"seed_type("` in a docstring cannot read as a call site.
+func stripCommentsAndStringsLine(s string) string {
+	var b strings.Builder
+	var quote rune
+	for i, r := range s {
+		switch {
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			}
+			b.WriteByte(' ')
+			continue
+		case r == '\'' || r == '"' || r == '`':
+			quote = r
+			b.WriteByte(' ')
+			continue
+		case r == '#':
+			return b.String()
+		case r == '/' && i+1 < len(s) && s[i+1] == '/':
+			return b.String()
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
