@@ -30,6 +30,7 @@ func renderReadAsText(out map[string]any) (string, bool) {
 		"deliveredTokens": true, "savingsPercent": true, "content": true,
 		"delivery": true, "startLine": true, "endLine": true,
 		"totalLines": true, "warning": true, "note": true,
+		"bodiesIncluded": true,
 	}
 	for k := range out {
 		if !known[k] {
