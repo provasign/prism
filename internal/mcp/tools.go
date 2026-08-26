@@ -1261,6 +1261,13 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		return nil, err
 	}
 	syms = filterGeneratedPrismContext(syms)
+	// path=/glob= are honored by the TEXT pass (textsearch.Options) but were
+	// silently dropped by the SYMBOL pass — the agent's narrowing simply did
+	// not apply to half its own result. Measured on jackson (2026-08-25): a
+	// search for "anySetter" scoped to src/main/java returned 25 symbols, 8
+	// of them from src/test/java, and the agent re-grepped to recover. A
+	// scope the tool advertises and then ignores is worse than no scope.
+	syms = filterSymbolsByScope(syms, sc)
 	// Real implementations first, test doubles tagged and last — the
 	// disambiguation prism_resolve used to provide, folded into the one
 	// locate tool so agents never need a second call to tell them apart.
@@ -1282,7 +1289,24 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		}
 	}
 	annotated = append(annotated, doubles...)
+	// LOCATE returns locations, not bodies. The text renderer already drops
+	// rawText (v0.55.6), but the JSON payload still carried whole symbol
+	// bodies — measured on jackson (2026-08-25): one `search anySetter`
+	// returned 95,315 bytes of class bodies for a locate question, in a
+	// language where a class body runs hundreds of lines. Python hid this;
+	// Java made it the dominant cost. Bodies remain one prism_lookup away,
+	// and the pointer says so.
+	for _, m := range annotated {
+		delete(m, "rawText")
+		delete(m, "callSites")
+		delete(m, "blobSha")
+		delete(m, "id")
+		delete(m, "imports")
+	}
 	out := map[string]any{"symbols": annotated}
+	if len(annotated) > 0 {
+		out["note"] = "locations only — prism_lookup <name> for a symbol's body, prism_read for a file"
+	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.
@@ -2423,4 +2447,45 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+
+// filterSymbolsByScope applies the same path=/glob= narrowing to indexed
+// symbols that textsearch applies to raw hits. Empty scope passes through.
+func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.SymbolRecord {
+	if len(sc.paths) == 0 && len(sc.glob) == 0 {
+		return syms
+	}
+	// NOT syms[:0]: reusing the caller's backing array rewrites the very
+	// slice we are filtering (caught by TestFilterSymbolsByScope — the
+	// second call in one test saw data the first had clobbered).
+	keep := make([]grove.SymbolRecord, 0, len(syms))
+	for _, s := range syms {
+		p := filepath.ToSlash(s.FilePath)
+		ok := len(sc.paths) == 0
+		for _, want := range sc.paths {
+			w := strings.TrimSuffix(filepath.ToSlash(want), "/")
+			if p == w || strings.HasPrefix(p, w+"/") {
+				ok = true
+				break
+			}
+		}
+		if ok && len(sc.glob) > 0 {
+			ok = false
+			for _, g := range sc.glob {
+				if m, _ := filepath.Match(g, filepath.Base(p)); m {
+					ok = true
+					break
+				}
+				if m, _ := filepath.Match(g, p); m {
+					ok = true
+					break
+				}
+			}
+		}
+		if ok {
+			keep = append(keep, s)
+		}
+	}
+	return keep
 }
