@@ -78,12 +78,29 @@ const ScoreCliffFactor = 0.6
 func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int) []BudgetedSymbol {
 	out := make([]BudgetedSymbol, 0, len(seeds)+len(candidates))
 	for _, s := range seeds {
+		disc := DisclosureFull
+		// TYPE seeds are budget-aware. Full disclosure of a 2,000-line class
+		// blew the section budget and truncated away the METHOD seeds at
+		// high line numbers (BeanDeserializerBase: class window 29-1986
+		// forced a cut at 1369, killing the score-1.0 seed at 1482). But
+		// signature-ALWAYS overcorrected: when the task is about the type
+		// itself, the need spreads across its body, and five oracle cells
+		// regressed when whole-type delivery vanished (RecyclerPool: the
+		// fix touches the interface and every nested impl). Rule: a type
+		// seed keeps full disclosure while its body fits inside 40% of the
+		// total budget — one type may anchor a delivery, not monopolize it.
+		switch s.Kind {
+		case "class", "interface", "struct", "enum", "type":
+			if EstimateTokens(Render(s, DisclosureFull)) > (totalBudget*2)/5 {
+				disc = DisclosureSignature
+			}
+		}
 		out = append(out, BudgetedSymbol{
 			Symbol:     s,
 			Score:      1.0,
 			Category:   CategoryTarget,
-			Disclosure: DisclosureFull,
-			TokenCost:  EstimateTokens(Render(s, DisclosureFull)),
+			Disclosure: disc,
+			TokenCost:  EstimateTokens(Render(s, disc)),
 		})
 	}
 

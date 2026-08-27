@@ -258,8 +258,13 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 				"to guess, use prism_search or grep first to find an anchor, then retry with terms")
 	}
 	stamp("seeds")
-	// Build candidates: treat first 5 as seeds (distance 0), remainder as candidates.
-	seedCount := minInt(5, len(seeds))
+	// Build candidates: the first interleave round seeds (distance 0), the
+	// remainder are candidates. Fixed 5 breaks with more than five terms —
+	// round-robin gets cut MID-ROUND and the last terms never seed at all
+	// (measured 2026-08-26: two cells regressed the moment the oracle
+	// started passing 8 terms). Every term contributes its best match; the
+	// cap only guards against absurd term lists.
+	seedCount := minInt(maxInt(5, len(p.terms)), minInt(10, len(seeds)))
 	seedSyms := seeds[:seedCount]
 	candidateSyms := seeds[seedCount:]
 

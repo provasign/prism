@@ -115,7 +115,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 			skipped = append(skipped, files[i:]...)
 			break
 		}
-		section, ok := h.renderFileSection(fg)
+		section, commit, ok := h.renderFileSection(fg)
 		if !ok {
 			skipped = append(skipped, fg)
 			continue
@@ -130,10 +130,42 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 			skipped = append(skipped, files[i:]...)
 			break
 		} else if delivered+cost > hard {
-			section = truncateSection(section, hard-delivered, fg.path)
-			cost = ranking.EstimateTokens(section)
+			// Over budget: shed the LOWEST-scored symbols and re-render,
+			// never byte-truncate first. Byte truncation cuts the tail, and
+			// windows render in line order — so the windows that died were
+			// whichever sat at high line numbers, including the caller's own
+			// SEED (measured 2026-08-26: a 2,012-line file's section ended
+			// at line 1369 while the anchor the terms named sat at 1482,
+			// picked, full-disclosure, score 1.0 — sacrificed for thirty
+			// low-score text-hit windows above it). Seeds are named by the
+			// caller; they are the last thing to shed, not the first.
+			trimmed := fg
+			for len(trimmed.symbols) > 1 && delivered+cost > hard {
+				worst, wi := trimmed.symbols[0], 0
+				for j, ps := range trimmed.symbols {
+					if ps.Score < worst.Score {
+						worst, wi = ps, j
+					}
+				}
+				if worst.Score >= 1.0 {
+					break // only seeds left — take the truncation below
+				}
+				trimmed.symbols = append(append([]ranking.BudgetedSymbol{},
+					trimmed.symbols[:wi]...), trimmed.symbols[wi+1:]...)
+				if sec2, commit2, ok2 := h.renderFileSection(trimmed); ok2 {
+					section, commit = sec2, commit2
+					cost = ranking.EstimateTokens(section)
+				} else {
+					break
+				}
+			}
+			if delivered+cost > hard {
+				section = truncateSection(section, hard-delivered, fg.path)
+				cost = ranking.EstimateTokens(section)
+			}
 		}
 		b.WriteString(section)
+		commit()
 		delivered += cost
 		shown = append(shown, fg.path)
 	}
@@ -310,11 +342,11 @@ func groupPickedByFile(picked []ranking.BudgetedSymbol) []fileGroup {
 
 func clampSourceLine(l string) string { return ranking.ClampLines(l) }
 
-func (h *Handler) renderFileSection(fg fileGroup) (string, bool) {
+func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 	abs := filepath.Join(h.Root, filepath.FromSlash(fg.path))
 	data, err := os.ReadFile(abs)
 	if err != nil {
-		return "", false
+		return "", nil, false
 	}
 	content := string(data)
 	hash := compression.Hash(content)
@@ -326,9 +358,15 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, bool) {
 	// Already delivered in full this session, unchanged → pointer, not resend.
 	if entry, seen, same := h.Session.Lookup(fg.path, hash); seen && same && entry.DisclosureLevel == "full" {
 		h.Session.Record(fg.path, hash, int64(ranking.EstimateTokens(content)), "full")
-		return compression.SHAPointer(fg.path, hash, entry.AccessCount) + "\n", true
+		return compression.SHAPointer(fg.path, hash, entry.AccessCount) + "\n", func() {}, true
 	}
 
+	if os.Getenv("PRISM_DEBUG_PICK") != "" {
+		for _, ps := range fg.symbols {
+			fmt.Fprintf(os.Stderr, "[pick] %s %s span=%d-%d disc=%s score=%.2f\n",
+				fg.path, ps.Symbol.Name, ps.Symbol.Span.Start, ps.Symbol.Span.End, ps.Disclosure, ps.Score)
+		}
+	}
 	wins := symbolWindows(fg.symbols, len(lines))
 	covered := 0
 	for _, w := range wins {
@@ -354,13 +392,18 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, bool) {
 	}
 	b.WriteString("```\n\n")
 
-	// Record ONLY full-file deliveries: the sha-pointer path in prism_read
-	// does not know about disclosure levels, so recording a windowed delivery
-	// would make a later read return a pointer to content the agent never saw.
+	// Record ONLY full-file deliveries — and only when the caller COMMITS the
+	// section. Recording inside the render made a discarded render poison the
+	// session: the over-budget shed loop re-rendered a trimmed section and
+	// got back a [prism:cached] pointer to content the agent never received
+	// (measured 2026-08-26 — a 64KB delivery collapsed to 6KB of pointer).
+	commit := func() {}
 	if wholeFile {
-		h.Session.Record(fg.path, hash, int64(ranking.EstimateTokens(content)), "full")
+		commit = func() {
+			h.Session.Record(fg.path, hash, int64(ranking.EstimateTokens(content)), "full")
+		}
 	}
-	return b.String(), true
+	return b.String(), commit, true
 }
 
 // symbolWindows converts the selected symbols of one file into ordered,
