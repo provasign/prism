@@ -45,16 +45,6 @@ type Handler struct {
 	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
-
-	// recentTerms: what this session has been looking for (search queries,
-	// looked-up symbols). A large-file read uses it to decide which symbols
-	// to deliver in FULL — the difference between an outline the agent must
-	// follow up on and an answer it can act on. Measured 2026-08-26: across
-	// 36 cell x variant observations, Δ(read calls) correlates with Δcache
-	// at r=0.69 and with Δturns at r=0.82 — round trips, not payload size,
-	// drive session cost.
-	termMu      sync.Mutex
-	recentTerms []string
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -1080,12 +1070,8 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	// makes the cheap path the default path, and full=true keeps the whole
 	// body one argument away.
 	if !boolArg(args, "full") && len(fileSyms) > 0 {
-		hints := h.terms()
-		if t := stringArg(args, "task", ""); t != "" {
-			hints = append([]string{t}, hints...)
-		}
-		if digest, ok := h.fileDigest(sessionPath, string(data), fileSyms, hints); ok {
-			return digest, nil
+		if outline, ok := h.fileOutline(sessionPath, string(data), fileSyms); ok {
+			return outline, nil
 		}
 	}
 	readCfg := h.Cfg.WithModel(stringArg(args, "model", ""))
@@ -1216,34 +1202,7 @@ type searchScope struct {
 	context    int
 }
 
-// noteTerm records a thing the session asked about, most recent first,
-// bounded — relevance signal for large-file reads (digest.go).
-func (h *Handler) noteTerm(t string) {
-	t = strings.TrimSpace(t)
-	if len(t) < 3 || len(t) > 80 {
-		return
-	}
-	h.termMu.Lock()
-	defer h.termMu.Unlock()
-	for _, x := range h.recentTerms {
-		if strings.EqualFold(x, t) {
-			return
-		}
-	}
-	h.recentTerms = append([]string{t}, h.recentTerms...)
-	if len(h.recentTerms) > 12 {
-		h.recentTerms = h.recentTerms[:12]
-	}
-}
-
-func (h *Handler) terms() []string {
-	h.termMu.Lock()
-	defer h.termMu.Unlock()
-	return append([]string(nil), h.recentTerms...)
-}
-
 func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
-	h.noteTerm(q)
 
 	// scope="text": the agent asked for a PURE grep — exactly what rg
 	// returns, no symbol search, no graph, minimal envelope. This is the
@@ -1727,7 +1686,6 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
-	h.noteTerm(name)
 	// Optional column projection: return only the requested fields (signature,
 	// doc, body, kind, parent, modifiers) instead of the full source body.
 	var fields []string
