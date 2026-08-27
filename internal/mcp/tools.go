@@ -395,12 +395,6 @@ func toolSchema(name string) map[string]any {
 					"type":        "integer",
 					"description": "How many lines to return from offset. Omit both for the whole file.",
 				},
-				"full": map[string]any{
-					"type": "boolean",
-					"description": "Force the entire body of a large file. Without it, files over " +
-						"800 lines return an OUTLINE (every symbol with its line range) instead — " +
-						"read the part you need with offset/limit or prism_lookup.",
-				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
 				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
@@ -1052,27 +1046,6 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))
 	if err != nil {
 		return nil, fmt.Errorf("grove symbols: %w", err)
-	}
-	// LARGE FILES: hand back a map, not the body.
-	//
-	// Measured on jackson (2026-08-26): BeanDeserializerBase.java is 2,012
-	// lines and prism_read returned 83,651 bytes for it — which then sits in
-	// the transcript and is re-read on every later turn. One cell read that
-	// same file three times. Across 12 Java cells, file content was 67% of
-	// ALL cache mass (44% first reads, 23% duplicates), while the single
-	// symbol the agent actually needed costs 2,007 bytes via prism_lookup —
-	// 42x less.
-	//
-	// Steering could not fix this: three separate directives moved routing
-	// but not cost, and telling agents to "window precisely" made it worse
-	// by fragmenting one read into twelve. So the TOOL changes what it
-	// returns instead of asking the agent to behave differently: an outline
-	// makes the cheap path the default path, and full=true keeps the whole
-	// body one argument away.
-	if !boolArg(args, "full") && len(fileSyms) > 0 {
-		if outline, ok := h.fileOutline(sessionPath, string(data), fileSyms); ok {
-			return outline, nil
-		}
 	}
 	readCfg := h.Cfg.WithModel(stringArg(args, "model", ""))
 	contextUsed := int64(intArg(args, "context_used", 0))
