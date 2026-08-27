@@ -148,6 +148,59 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		}
 	}
 
+	// ── Family section ───────────────────────────────────────────────────
+	// Overrides/overloads of the anchors, APPENDED after the main windows so
+	// they can only add coverage, never displace it. When family competed in
+	// the candidate pool it evicted gold-covering files from the maxFiles
+	// slots and mean oracle-bed recall fell 0.65 -> 0.55 (2026-08-26); as an
+	// appendix the same symbols are pure upside. Tight bodies only, few of
+	// them, deduped against files already shown in full.
+	if fam := sel.familySyms; len(fam) > 0 {
+		wrote := 0
+		var fb strings.Builder
+		delivered := make(map[string]bool)
+		for _, pk := range sel.picked {
+			delivered[pk.Symbol.ID] = true
+		}
+		for _, fs := range fam {
+			if wrote >= 6 {
+				break
+			}
+			// ID-level dedupe only. Skipping by FILE over-blocked: a file
+			// shown for OTHER symbols' windows still lacks this member's
+			// body, and the autopsied gold misses (sibling-class overrides)
+			// live in exactly such files — measured 2026-08-26: the appendix
+			// never fired and family-vs-none scored identical on all 12
+			// oracle tasks.
+			if delivered[fs.ID] || fs.RawText == "" {
+				continue
+			}
+			body := fs.RawText
+			if lines := strings.Count(body, "\n"); lines > 60 {
+				cut := body
+				for i, n := 0, 0; i < len(cut); i++ {
+					if cut[i] == '\n' {
+						n++
+						if n == 60 {
+							body = cut[:i] + "\n… [family member truncated — prism_lookup for the rest]"
+							break
+						}
+					}
+				}
+			}
+			name := fs.QualifiedName
+			if name == "" {
+				name = fs.Name
+			}
+			fmt.Fprintf(&fb, "\n`%s` — %s:%d\n```\n%s\n```\n", name, fs.FilePath, fs.Span.Start, strings.TrimRight(body, "\n"))
+			wrote++
+		}
+		if wrote > 0 {
+			b.WriteString("\n**Family — overrides/overloads of the anchors (fixes often touch these too):**\n")
+			b.WriteString(fb.String())
+		}
+	}
+
 	content := b.String()
 	deliveredTokens := ranking.EstimateTokens(content)
 	return map[string]any{
@@ -239,7 +292,12 @@ func groupPickedByFile(picked []ranking.BudgetedSymbol) []fileGroup {
 	for _, rel := range order {
 		out = append(out, *byPath[rel])
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].best > out[j].best })
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].best != out[j].best {
+			return out[i].best > out[j].best
+		}
+		return out[i].path < out[j].path // total order — ties must not follow map layout
+	})
 	return out
 }
 
@@ -331,7 +389,15 @@ func symbolWindows(symbols []ranking.BudgetedSymbol, maxLine int) []lineWindow {
 		}
 		raw = append(raw, lineWindow{start, end})
 	}
-	sort.Slice(raw, func(i, j int) bool { return raw[i].start < raw[j].start })
+	// Stable + total: sort.Slice is UNSTABLE, so two windows with the same
+	// start swapped at random between runs (the last nondeterminism site
+	// after the ranking sorts got total orders, 2026-08-26).
+	sort.SliceStable(raw, func(i, j int) bool {
+		if raw[i].start != raw[j].start {
+			return raw[i].start < raw[j].start
+		}
+		return raw[i].end < raw[j].end
+	})
 	merged := make([]lineWindow, 0, len(raw))
 	for _, w := range raw {
 		if n := len(merged); n > 0 && w.start <= merged[n-1].end+windowMergeGap+1 {

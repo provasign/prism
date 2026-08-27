@@ -2360,13 +2360,20 @@ func cmdMCP(args []string) int {
 			close(readyCh)
 			return
 		}
-		// Signal ready as soon as the engine is open so tool calls (including
-		// explicit prism_index calls) are not blocked waiting for the initial
-		// index to complete. Large codebases can take minutes to index.
-		close(readyCh)
+		// Ready means INDEXED, not merely open. This used to close readyCh
+		// before the initial index ran, so every early tool call raced the
+		// background refresh and could answer from a partial graph — measured
+		// 2026-08-26: five identical `prism query` invocations on an
+		// unchanged, pre-indexed worktree produced FOUR different context
+		// selections (28KB with the right anchors down to 3.5KB with wrong
+		// ones), because seed search hit the graph mid-mutation. Correct and
+		// slow beats fast and silently wrong: the first tool call on a large
+		// cold repo now waits for the index, and the MCP handshake is still
+		// served immediately (readyCh gates tool calls only).
 		if _, err := client.Index(ctx, root); err != nil {
 			fmt.Fprintln(os.Stderr, "warning: initial index failed:", err)
 		}
+		close(readyCh)
 	}()
 
 	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)

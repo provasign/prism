@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"sort"
 	"context"
 	"fmt"
 	"os"
@@ -32,6 +33,7 @@ type selectParams struct {
 type selection struct {
 	picked     []ranking.BudgetedSymbol
 	seedSyms   []grove.SymbolRecord
+	familySyms []grove.SymbolRecord
 	graphExtra []grove.SymbolRecord
 	seeds      []grove.SymbolRecord
 	budget     int
@@ -197,6 +199,8 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		seenIDs[s.ID] = true
 	}
 	var graphExtra []grove.SymbolRecord
+	var familySyms []grove.SymbolRecord
+	famSeen := make(map[string]bool)
 
 	for _, seed := range seedSyms {
 		// Expand by qualified name when the symbol has one: bare names
@@ -223,9 +227,64 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 					}
 				}
 			}
+			// Family expansion — into a SEPARATE set, never the candidate
+			// pool. The call neighborhood alone missed a third of gold fix
+			// regions on the jackson oracle bed (recall 0.65 with PERFECT
+			// terms, 2026-08-26): every autopsied miss was a family member —
+			// the same method in a sibling class, or an overload two methods
+			// down. But the first version dumped family into the candidates
+			// and mean recall DROPPED to 0.55: family lives in sibling
+			// FILES, so it competed for the sourceDeliveryMaxFiles slots and
+			// evicted the files that were covering gold, while itself
+			// ranking too low to be delivered. Zero-sum budgets turn naive
+			// enrichment into displacement. Family is therefore carried
+			// separately and rendered as its own appended section
+			// (delivery.go), where it can only add coverage.
+			if r, err := h.Grove.ChangeImpact(ctx, seedQuery); err == nil && r != nil && os.Getenv("PRISM_NO_FAMILY") == "" {
+				for _, fs := range r.Family {
+					if len(familySyms) >= 12 {
+						break
+					}
+					// NOT seenIDs: marking family there stole symbols from
+					// graphExtra (a family member that is also a later
+					// seed's call-neighbor was silently demoted from a main
+					// window to the truncated appendix — measured as recall
+					// 0.65 -> 0.57 even in append-only form). The two sets
+					// dedupe at render time instead.
+					// famSeen only — NOT seenIDs. A same-name override IS
+					// found by term search, so every family member is
+					// already a seed candidate; excluding "known" symbols
+					// excluded the entire family (measured: appendix never
+					// fired, family-vs-none identical on all 12 oracle
+					// tasks). Known-but-unpicked is exactly what the
+					// appendix exists to rescue; true duplication is
+					// prevented at render time against the PICKED set.
+					if !famSeen[fs.ID] {
+						famSeen[fs.ID] = true
+						familySyms = append(familySyms, fs)
+					}
+				}
+			}
 		}
 	}
 
+	// Graph-derived sets arrive in adjacency-map order; sort them into a
+	// stable order at the source so no downstream tie can inherit map layout.
+	sort.SliceStable(graphExtra, func(i, j int) bool {
+		if graphExtra[i].FilePath != graphExtra[j].FilePath {
+			return graphExtra[i].FilePath < graphExtra[j].FilePath
+		}
+		if graphExtra[i].Span.Start != graphExtra[j].Span.Start {
+			return graphExtra[i].Span.Start < graphExtra[j].Span.Start
+		}
+		return graphExtra[i].ID < graphExtra[j].ID
+	})
+	sort.SliceStable(familySyms, func(i, j int) bool {
+		if familySyms[i].FilePath != familySyms[j].FilePath {
+			return familySyms[i].FilePath < familySyms[j].FilePath
+		}
+		return familySyms[i].Span.Start < familySyms[j].Span.Start
+	})
 	stamp("graph-expand")
 	// Merge candidates and graph-enriched symbols, then filter by include set.
 	merged := make([]grove.SymbolRecord, 0, len(candidateSyms)+len(graphExtra))
@@ -298,6 +357,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	return &selection{
 		picked:      picked,
 		seedSyms:    seedSyms,
+		familySyms:  familySyms,
 		graphExtra:  graphExtra,
 		seeds:       seeds,
 		budget:      budget,

@@ -98,8 +98,23 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 		perCat[c] = int(float64(totalBudget) * share)
 	}
 
+	// Total order, not just score: with a score-only stable sort, tie order
+	// is the INPUT order, and part of the input arrives from Go map
+	// iteration (graph adjacency) — measured 2026-08-26: five identical
+	// `prism query` runs produced three different context selections,
+	// recurring, exactly the signature of ties resolved by map order. A
+	// ranking that depends on runtime map layout is not a ranking.
 	sort.SliceStable(candidates, func(i, j int) bool {
-		return candidates[i].Score > candidates[j].Score
+		if candidates[i].Score != candidates[j].Score {
+			return candidates[i].Score > candidates[j].Score
+		}
+		if candidates[i].Symbol.FilePath != candidates[j].Symbol.FilePath {
+			return candidates[i].Symbol.FilePath < candidates[j].Symbol.FilePath
+		}
+		if candidates[i].Symbol.Span.Start != candidates[j].Symbol.Span.Start {
+			return candidates[i].Symbol.Span.Start < candidates[j].Symbol.Span.Start
+		}
+		return candidates[i].Symbol.ID < candidates[j].Symbol.ID
 	})
 
 	var peakScore float64

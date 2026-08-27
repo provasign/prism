@@ -396,6 +396,14 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		// (measured: an agent concluded six hidden configs did not exist).
 		// .gitignore still applies, so ignored venvs stay out.
 		"--hidden",
+		// Deterministic file order. rg is multi-threaded and emits files in
+		// completion order; when the hit list is capped downstream, WHICH
+		// files survive the cap varies per run — measured 2026-08-26 as
+		// prism_query returning different anchor sets on identical inputs
+		// (the text-confirmed seed promotion followed rg's race winners).
+		// --sort path forces single-threaded sorted output; on repo-scale
+		// trees the determinism is worth far more than the parallelism.
+		"--sort", "path",
 		"--max-count", strconv.Itoa(opts.MaxPerFile),
 		"--max-columns", strconv.Itoa(maxLineLen), "--max-columns-preview",
 		"--max-filesize", "2M",
