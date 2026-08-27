@@ -862,6 +862,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	sel, err := h.selectContext(ctx, selectParams{
 		task:            task,
 		terms:           terms,
+		minedTerms:      mineTaskIdentifiers(task, terms),
 		includeSet:      includeSet,
 		explicitProfile: stringArg(args, "profile", ""),
 		limit:           intArg(args, "limit", 50),
@@ -2488,4 +2489,37 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 		}
 	}
 	return keep
+}
+
+
+// mineTaskIdentifiers lifts identifier-shaped tokens (CamelCase, snake_case,
+// Dotted.Names, backtick-quoted) out of a task description, excluding the
+// caller's explicit terms. These seed AFTER explicit terms — pure fallback
+// signal, capped small.
+func mineTaskIdentifiers(task string, explicit []string) []string {
+	have := make(map[string]bool, len(explicit))
+	for _, t := range explicit {
+		have[strings.ToLower(t)] = true
+	}
+	re := regexp.MustCompile("[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*")
+	seen := map[string]bool{}
+	var out []string
+	for _, tok := range re.FindAllString(task, -1) {
+		if len(out) >= 4 {
+			break
+		}
+		lt := strings.ToLower(tok)
+		if len(tok) < 5 || have[lt] || seen[lt] {
+			continue
+		}
+		// identifier-shaped: mixed case beyond the first rune, an
+		// underscore, or a dotted path — plain words don't qualify.
+		mixed := strings.ToLower(tok) != tok && strings.ToUpper(tok) != tok
+		if !mixed && !strings.ContainsAny(tok, "._") {
+			continue
+		}
+		seen[lt] = true
+		out = append(out, tok)
+	}
+	return out
 }

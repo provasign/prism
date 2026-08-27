@@ -17,6 +17,7 @@ import (
 // selectParams are the inputs to the shared retrieve→expand→rank→budget
 // pipeline behind prism_query and prism_explore.
 type selectParams struct {
+	minedTerms []string // identifiers mined from the task text; seed AFTER explicit terms
 	task            string
 	terms           []string
 	includeSet      map[string]bool
@@ -82,7 +83,16 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	if len(p.terms) > 0 {
 		// Term-seeded retrieval: search for each agent-supplied term and union
 		// the results. This gives grep-level precision as the entry point.
+		//
+		// Seeds INTERLEAVE across terms (round-robin below) instead of
+		// concatenating per term. Concatenation let one noisy term poison
+		// the whole selection: measured 2026-08-26 (jackson-core-1309),
+		// terms ["valueOf","looksLikeValidNumber"] scored gold-recall 0.0
+		// where the good term alone scored 1.0 — valueOf's fan-out filled
+		// every seed slot and the term that named the actual fix region
+		// never seeded. Each term now gets seed representation.
 		seenTermSeeds := map[string]bool{}
+		perTermSeeds := make([][]grove.SymbolRecord, 0, len(p.terms))
 		for _, term := range p.terms {
 			// Honor --limit here too. This path hardcoded 10, so
 			// `--limit 50 --terms Foo` silently capped at 10 per term — and
@@ -124,7 +134,45 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 				}
 			}
 			nameHits = append(realHits, doubleHits...)
+			var termSeeds []grove.SymbolRecord
 			for _, m := range append(nameHits, contentHits...) {
+				if !seenTermSeeds[m.ID] {
+					seenTermSeeds[m.ID] = true
+					termSeeds = append(termSeeds, m)
+				}
+			}
+			perTermSeeds = append(perTermSeeds, termSeeds)
+		}
+		for i := 0; ; i++ {
+			any := false
+			for _, ts := range perTermSeeds {
+				if i < len(ts) {
+					seeds = append(seeds, ts[i])
+					any = true
+				}
+			}
+			if !any {
+				break
+			}
+		}
+		// Mined terms (identifiers lifted from the task text) seed strictly
+		// AFTER everything the caller asked for: they only shape the
+		// selection when explicit terms are weak, so a caller with good
+		// terms loses nothing. Measured motivation: realistic-terms gold
+		// recall is 0.31 vs 0.49 with oracle terms — the gap IS term
+		// quality, and the task text usually names the fix region
+		// (issue titles carry the type/method being discussed).
+		for _, term := range p.minedTerms {
+			matches, err := h.Grove.SearchSymbols(ctx, term, 5)
+			if err != nil {
+				continue
+			}
+			tl := strings.ToLower(term)
+			for _, m := range matches {
+				if !strings.Contains(strings.ToLower(m.Name), tl) &&
+					!strings.Contains(strings.ToLower(m.QualifiedName), tl) {
+					continue
+				}
 				if !seenTermSeeds[m.ID] {
 					seenTermSeeds[m.ID] = true
 					seeds = append(seeds, m)
@@ -146,19 +194,51 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			seeds = append(seeds, filterGeneratedPrismContext(textMerge.extraSeeds)...)
 		}
 		if len(textMerge.confirmed) > 0 {
-			// Two independent signals (symbol match + text hit) beat one:
-			// stable-reorder confirmed seeds to the front so they land in
-			// the seed set that gets graph expansion.
-			confirmed := make([]grove.SymbolRecord, 0, len(seeds))
-			var rest []grove.SymbolRecord
-			for _, s := range seeds {
-				if textMerge.confirmed[s.ID] {
-					confirmed = append(confirmed, s)
-				} else {
-					rest = append(rest, s)
+			// Two independent signals (symbol match + text hit) beat one —
+			// but promote confirmed seeds within each ROUND of the term
+			// interleave, never globally. The global reorder un-did the
+			// round-robin: a broad term text-matches everywhere, so ALL its
+			// seeds were "confirmed" and promoted above the precise terms'
+			// seeds (a qualified term's literal never appears in source
+			// text), and the top-5 seed cut was single-term again —
+			// measured 2026-08-26 (jackson-core-1263): the qualified terms
+			// contributed ZERO anchors and gold recall was 0.0 while
+			// change-impact knew the whole family. Round position = which
+			// interleave pass produced the seed; promotion happens inside a
+			// round, so every term keeps its seed representation.
+			if len(perTermSeeds) == 1 {
+				// One term: no interleave to protect — the original global
+				// promotion applies (round-scoping degenerates to a no-op
+				// here and silently DISABLED promotion; measured as a
+				// realistic-terms recall drop on the oracle bed).
+				confirmed := make([]grove.SymbolRecord, 0, len(seeds))
+				var rest []grove.SymbolRecord
+				for _, sd := range seeds {
+					if textMerge.confirmed[sd.ID] {
+						confirmed = append(confirmed, sd)
+					} else {
+						rest = append(rest, sd)
+					}
 				}
+				seeds = append(confirmed, rest...)
+			} else {
+				roundOf := make(map[string]int, len(seeds))
+				for i, s := range seeds {
+					roundOf[s.ID] = i // interleave emitted round-major order
+				}
+				sort.SliceStable(seeds, func(i, j int) bool {
+					ri, rj := roundOf[seeds[i].ID]/len(perTermSeeds),
+						roundOf[seeds[j].ID]/len(perTermSeeds)
+					if ri != rj {
+						return ri < rj
+					}
+					ci, cj := textMerge.confirmed[seeds[i].ID], textMerge.confirmed[seeds[j].ID]
+					if ci != cj {
+						return ci
+					}
+					return roundOf[seeds[i].ID] < roundOf[seeds[j].ID]
+				})
 			}
-			seeds = append(confirmed, rest...)
 		}
 		stamp("text-merge")
 	} else {
@@ -364,4 +444,11 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		textHits:    textMerge.rawHits,
 		textBackend: textMerge.backend,
 	}, nil
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
