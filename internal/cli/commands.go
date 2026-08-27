@@ -2641,6 +2641,25 @@ func printTextOutput(m map[string]any) {
 	// `prism search X --scope text --format text` — the exact invocation the
 	// steering gives Bash-only subagents — printed JSON, several times the
 	// tokens of the line-oriented form it asked for.
+	// prism_query source delivery: the assembled context IS the answer.
+	// Measured 2026-08-26 (jackson worktree): the MCP surface returned the
+	// full 21KB context while this CLI path printed FIVE FILE PATHS — the
+	// files_only branch below fired because the query payload has "files"
+	// and no "symbols" key, and the entire "content" field (5,201 delivered
+	// tokens, anchors, callers) was silently discarded. Every Bash-only
+	// consumer (subagents, CI — exactly who the CLAUDE.md bash table sends
+	// here) got paths where the tool's whole purpose is context.
+	// prism_read also carries "content" but never "files"; its own branch
+	// below prints the header line — the guard keeps it out of this one.
+	if content, ok := m["content"].(string); ok && content != "" {
+		if _, isQuery := m["files"]; isQuery {
+			fmt.Print(content)
+			if !strings.HasSuffix(content, "\n") {
+				fmt.Println()
+			}
+			return
+		}
+	}
 	// files_only delivery: paths, no lines.
 	if files, ok := m["files"]; ok {
 		if _, hasSyms := m["symbols"]; !hasSyms {
