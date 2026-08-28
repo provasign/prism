@@ -482,6 +482,9 @@ file / one symbol), ` + "`" + `prism_change_impact` + "`" + ` (blast radius), ` 
   **Relay that set as-is** — re-filtering it through grep/sed measurably
   drops real sites.
 - Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
+- Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
+  Do NOT issue one search per name — each extra call costs a full turn
+  and re-reads your whole context.
 
 Bash-only (subagents, CI) — same verbs, add ` + "`" + `--format text` + "`" + `:
 

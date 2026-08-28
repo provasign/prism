@@ -9,7 +9,7 @@ Route by the question. One call, and treat its result as final:
 
 | Question | Call |
 |---|---|
-| where is X? | `prism_search(query="X")` — searches symbol names AND raw text. Several at once: `query=["X","Y"]`. Know where to look: `path=`, `glob=`, `files_only=true` |
+| where is X? | `prism_search(query="X")` — searches symbol names AND raw text. Several names? You MUST batch: `query=["X","Y"]` — one search per name wastes a turn each. Know where to look: `path=`, `glob=`, `files_only=true` |
 | a literal string, message or config key | `prism_search(query="...", scope="text")` — pure grep, cheapest. Use it for TEXT; leave the default for code |
 | EVERY site of X (rewrite them all, count them) | `prism_search(query="X", exhaustive=true)` — results are capped at 25 by default and a capped answer to a completeness question looks complete. Say `exhaustive`; add `files_only=true` to keep it cheap |
 | X, plus the lines around it | `prism_search(query="X", context=N)` — one call instead of search-then-prism_read |
