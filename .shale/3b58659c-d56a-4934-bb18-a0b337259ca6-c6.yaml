@@ -1,0 +1,106 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c6
+created_at: 2026-08-29T01:42:24.224049Z
+finalized_at: 2026-08-29T01:55:57.234775Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: grep -n -A20 "func buildUsesType" ~/Projects/provasign/grove/internal/graph/*.go | head -30
+      at: 2026-08-29T01:53:17.618402Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/edges.go"
+        src = open(p).read()
+        old = """	for _, symbol := range symbols {
+        		if symbol.Signature == "" {
+        			continue
+        		}
+        		scope := idx.importedFiles(symbol.FilePath)
+        		matches := usesTypeIdent.FindAllStringSubmatch(symbol.Signature, -1)"""
+        new = """	for _, symbol := range symbols {
+        		if symbol.Signature == "" {
+        			continue
+        		}
+        		if symbol.Language == "cobol" || symbol.Language == "jcl" {
+        			// Mainframe signatures are lists of field names — matching them
+        			// against in-scope names manufactured millions of vague edges
+        			// (measured on a real estate: 2.08M, 63% of the whole index).
+        			// The mainframe builder emits the precise vocabulary instead
+        			// (reads/writes/redefines/binds-dataset).
+        			continue
+        		}
+        		scope := idx.importedFiles(symbol.FilePath)
+        		matches := usesTypeIdent.FindAllStringSubmatch(symbol.Signature, -1)"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("guarded")
+        EOF
+        grep -n -B2 -A8 "func buildExtendsImplements\|func buildInterfaceSatisfaction" internal/graph/edges.go | grep -E "Kind|Language|func " | head -8
+      at: 2026-08-29T01:53:34.219483Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/mainframe_estate_test.go <<'EOF'
+
+        // The volume trap: the modern uses-type builder must never see mainframe
+        // symbols (measured leak on a real estate: 2.08M vague edges, 63% of the
+        // index). Their data flow is expressed by reads/writes/redefines only.
+        func TestMainframeEstate_NoModernUsesTypeLeak(t *testing.T) {
+        	symbols, edges := indexEstate(t)
+        	mfIDs := map[string]bool{}
+        	for _, s := range symbols {
+        		if s.Language == "cobol" || s.Language == "jcl" {
+        			mfIDs[s.ID] = true
+        		}
+        	}
+        	for _, e := range edges {
+        		if e.Type == core.EdgeUsesType && (mfIDs[e.From] || mfIDs[e.To]) {
+        			t.Errorf("uses-type edge on mainframe symbol: %s -> %s", trimID(e.From), trimID(e.To))
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/graph/ 2>&1 | tail -1 && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && go build -o $S/grove-mf ./cmd/grove && rm -rf $S/lineage-estate/.grove && $S/grove-mf index $S/lineage-estate >/dev/null 2>&1 && $S/grove-mf status $S/lineage-estate | grep edgeCount; rm -rf $S/noop6 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop6 && rm -rf $S/noop6/.grove && $S/grove-mf index $S/noop6 >/dev/null 2>&1 && $S/grove-mf status $S/noop6 | grep -E "symbolCount|edgeCount"
+      at: 2026-08-29T01:53:53.457471Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "gate: $?"; git add internal/graph/edges.go internal/graph/mainframe_estate_test.go && git commit -q -m "$(cat <<'EOF'
+        graph: modern uses-type builder never sees mainframe symbols
+
+        buildUsesType matches signature tokens against every in-scope name; a
+        COBOL data-item signature IS a list of field names, so on a real estate
+        this manufactured 2.08M vague edges — 63% of a 3.6GB index for 44MB of
+        source. Mainframe data flow already has its precise vocabulary
+        (reads/writes/redefines/binds-dataset); the modern builder now skips
+        cobol/jcl symbols, and a golden trap test keeps it that way.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.36.1 -m "fix: uses-type volume leak on mainframe symbols" && git push origin v0.36.1 2>&1 | tail -1 && cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.36.1 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3
+      at: 2026-08-29T01:54:09.163624Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.36.1 — kill the uses-type volume leak
+
+        The modern uses-type builder no longer sees mainframe symbols; the
+        2.08M vague signature-match edges (63% of a real estate's 3.6GB index)
+        are gone, leaving the precise directional vocabulary. Gates green,
+        invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.4 -m "mainframe: uses-type volume fix" && git push origin v0.56.4 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T01:55:56.694282Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T01:42:24.224049Z
+redactions: 0
