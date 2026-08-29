@@ -1,0 +1,274 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c9
+created_at: 2026-08-29T02:50:41.905691Z
+finalized_at: 2026-08-29T03:09:42.88558Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: sed -n 126,155p ~/Projects/provasign/grove/internal/parser/treesitter.go; grep -rn "indexVersion\|IndexVersion\|schemaVersion\|extractorVersion\|version" ~/Projects/provasign/grove/internal/index/indexer.go | head -8
+      at: 2026-08-29T03:01:21.821154Z
+      classified: other
+    - cmd: sed -n 156,175p ~/Projects/provasign/grove/internal/parser/treesitter.go; grep -rn "blobSHA\|needsReindex\|skip.*unchanged\|unchanged" ~/Projects/provasign/grove/internal/index/indexer.go | grep -in "sha\|unchanged\|skip" | head -6
+      at: 2026-08-29T03:01:26.599202Z
+      classified: other
+    - cmd: grep -rn "func.*Meta\|meta table\|CREATE TABLE" ~/Projects/provasign/grove/internal/store/*.go | head -10
+      at: 2026-08-29T03:01:48.321222Z
+      classified: other
+    - cmd: sed -n 180,230p ~/Projects/provasign/grove/internal/store/store.go; sed -n 962,970p ~/Projects/provasign/grove/internal/store/store.go
+      at: 2026-08-29T03:01:52.316657Z
+      classified: other
+    - cmd: sed -n 240,300p ~/Projects/provasign/grove/internal/index/indexer.go
+      at: 2026-08-29T03:02:06.563653Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && grep -n "fileMeta, err\|fileMeta :=\|AllFileMeta" internal/index/indexer.go | head -3 && grep -n "func (i \*Indexer) Index" internal/index/indexer.go && sed -n "$(grep -n ''AllFileMeta'' internal/index/indexer.go | head -1 | cut -d: -f1),+6p" internal/index/indexer.go'
+      at: 2026-08-29T03:02:21.419035Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        # 1. Store: generic meta accessors.
+        p = "internal/store/store.go"
+        src = open(p).read()
+        old = """func (s *Store) markMigrationDone(ctx context.Context, key string) error {"""
+        new = """// GetMeta reads one key from the meta table ("" and false when absent).
+        func (s *Store) GetMeta(ctx context.Context, key string) (string, bool, error) {
+        	var v string
+        	err := s.db.QueryRowContext(ctx, `SELECT value FROM meta WHERE key = ?`, key).Scan(&v)
+        	if err == sql.ErrNoRows {
+        		return "", false, nil
+        	}
+        	if err != nil {
+        		return "", false, fmt.Errorf("meta %q: %w", key, err)
+        	}
+        	return v, true, nil
+        }
+
+        // SetMeta writes one key into the meta table.
+        func (s *Store) SetMeta(ctx context.Context, key, value string) error {
+        	_, err := s.db.ExecContext(ctx,
+        		`INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
+        	if err != nil {
+        		return fmt.Errorf("meta %q: %w", key, err)
+        	}
+        	return nil
+        }
+
+        func (s *Store) markMigrationDone(ctx context.Context, key string) error {"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+
+        # 2. Parser: extractor version.
+        p2 = "internal/parser/languages.go"
+        src2 = open(p2).read()
+        marker = "// DetectLanguage returns the Grove language tag for a file path."
+        addition = """// ExtractorVersion stamps the symbol-extraction semantics. Bump it whenever
+        // extraction output changes for unchanged file content (new strategies,
+        // detector fixes, synthesized records): the indexer re-extracts every file
+        // when the stored stamp differs, because the blobSHA cache is otherwise
+        // blind to binary upgrades and serves stale symbols indefinitely.
+        const ExtractorVersion = "2026-08-28.1"
+
+        """
+        assert marker in src2
+        open(p2, "w").write(src2.replace(marker, addition + marker, 1))
+
+        # 3. Indexer: honor Force on the blobSHA skip; version-mismatch forces too.
+        p3 = "internal/index/indexer.go"
+        src3 = open(p3).read()
+        old3 = """	fileMeta, err := i.store.AllFileMeta(ctx)
+        	if err != nil {
+        		return nil, result, err
+        	}"""
+        new3 = """	fileMeta, err := i.store.AllFileMeta(ctx)
+        	if err != nil {
+        		return nil, result, err
+        	}
+        	// A binary upgrade can change extraction semantics for unchanged bytes;
+        	// the blobSHA cache cannot see that. A stamp mismatch re-extracts
+        	// everything once, then records the new stamp.
+        	storedExtractor, _, err := i.store.GetMeta(ctx, "extractor-version")
+        	if err != nil {
+        		return nil, result, err
+        	}
+        	forceExtract := opts.Force || storedExtractor != parser.ExtractorVersion"""
+        assert src3.count(old3) == 1
+        src3 = src3.replace(old3, new3)
+        old4 = """		if !opts.Force && statErr == nil && found &&
+        			meta.Size == info.Size() && meta.Mtime == info.ModTime().UnixNano() {"""
+        new4 = """		if !forceExtract && statErr == nil && found &&
+        			meta.Size == info.Size() && meta.Mtime == info.ModTime().UnixNano() {"""
+        assert src3.count(old4) == 1
+        src3 = src3.replace(old4, new4)
+        old5 = """		if found && meta.BlobSHA == blobSHA {
+        			// Touched (or first run after the stat-cache migration) but
+        			// content-identical: refresh the stat so the next walk skips it.
+        			result.FilesSkipped++
+        			statRefresh[relPath] = [2]int64{size, mtime}
+        			return nil
+        		}"""
+        new5 = """		if !forceExtract && found && meta.BlobSHA == blobSHA {
+        			// Touched (or first run after the stat-cache migration) but
+        			// content-identical: refresh the stat so the next walk skips it.
+        			// forceExtract bypasses this too — force means force, and a
+        			// changed extractor stamp must re-extract identical bytes.
+        			result.FilesSkipped++
+        			statRefresh[relPath] = [2]int64{size, mtime}
+        			return nil
+        		}"""
+        assert src3.count(old5) == 1
+        src3 = src3.replace(old5, new5)
+        open(p3, "w").write(src3)
+        print("all three patches applied")
+        EOF
+        go build ./... 2>&1 | head -3
+      at: 2026-08-29T03:03:42.83548Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/grove && sed -n 395,425p internal/index/indexer.go | head -35; grep -n "return .*graph.*result, nil" internal/index/indexer.go | head -3
+      at: 2026-08-29T03:03:48.885279Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/index/indexer.go"
+        src = open(p).read()
+        old = """	result.FilesPruned = filesPruned
+
+        	tick("persist-changed")"""
+        new = """	result.FilesPruned = filesPruned
+
+        	// Extraction for this walk ran under the current semantics; stamp it so
+        	// the next run only re-extracts on a real upgrade.
+        	if storedExtractor != parser.ExtractorVersion {
+        		if err := i.store.SetMeta(ctx, "extractor-version", parser.ExtractorVersion); err != nil {
+        			return nil, result, err
+        		}
+        	}
+
+        	tick("persist-changed")"""
+        assert src.count(old) == 1
+        # The no-change shortcut must not skip edge rebuild when a stamp mismatch
+        # forced re-extraction (FilesUpdated will be >0 then anyway, but keep the
+        # guard aligned with forceExtract for clarity).
+        old2 = """	if !opts.Force && result.FilesUpdated == 0 && result.FilesPruned == 0 {"""
+        new2 = """	if !forceExtract && result.FilesUpdated == 0 && result.FilesPruned == 0 {"""
+        assert src.count(old2) == 1
+        open(p, "w").write(src.replace(old, new).replace(old2, new2))
+        print("stamp write + shortcut guard")
+        EOF
+        go build ./... && go test ./internal/index/ ./internal/store/ 2>&1 | tail -2
+      at: 2026-08-29T03:04:00.426983Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/cobol.go"
+        src = open(p).read()
+        # PDS member names cannot start with a digit: tighten both member matchers.
+        old1 = "	reCopy       = regexp.MustCompile(`(?i)\\bCOPY\\s+([A-Za-z0-9][A-Za-z0-9-]*)(?:\\s+(?:OF|IN)\\s+([A-Za-z0-9-]+))?`)"
+        new1 = "	// Member names cannot start with a digit (PDS naming): a leading-digit\n	// match is a sequence number or numeric operand, not a member\n	// (field-reported: 68 numeric \"members\" like 053300).\n	reCopy       = regexp.MustCompile(`(?i)\\bCOPY\\s+([A-Za-z@#$][A-Za-z0-9@#$-]*)(?:\\s+(?:OF|IN)\\s+([A-Za-z0-9-]+))?`)"
+        assert src.count(old1) == 1
+        src = src.replace(old1, new1)
+        old2 = "	reMemberHead = regexp.MustCompile(`^\\s*([A-Za-z0-9][A-Za-z0-9-]*)`)"
+        new2 = "	reMemberHead = regexp.MustCompile(`^\\s*([A-Za-z@#$][A-Za-z0-9@#$-]*)`)"
+        assert src.count(old2) == 1
+        open(p, "w").write(src.replace(old2, new2))
+        print("member matchers tightened")
+        EOF
+        cat >> strategies/mainframe_test.go <<'EOF'
+
+        // Field-reported: 68 numeric "members" (053300, 08, 11) — sequence numbers
+        // or numeric operands captured as COPY targets. PDS member names cannot
+        // start with a digit.
+        func TestCOBOL_NoNumericMembers(t *testing.T) {
+        	src := strings.Join([]string{
+        		pad("000100", " ", " COPY"),
+        		pad("000200", " ", " 053300 MOVE A TO B."),
+        		pad("000300", " ", " COPY 08."),
+        		pad("000400", " ", " COPY REALMEM."),
+        	}, "\n")
+        	imports, err := NewCOBOL().ExtractImports(nil, []byte(src))
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	if len(imports) != 1 || imports[0].Path != "REALMEM" {
+        		t.Fatalf("want only REALMEM, got %+v", imports)
+        	}
+        }
+        EOF
+        go test ./... 2>&1 | tail -2
+      at: 2026-08-29T03:04:15.527435Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && git worktree add -q $S/wt-g361 v0.36.1 && (cd $S/wt-g361 && go build -o $S/grove-old ./cmd/grove) && git worktree remove -f $S/wt-g361; R2=$S/stale-repro; rm -rf $R2 && mkdir -p $R2 && cd $R2 && git init -q && python3 -c "
+        R2='$R2'
+        stamped = '\n'.join([
+          'AUS130 01  A1-REC.' + ' '*44 + 'AUS130XX',
+          'AUS130     05  A1-SSN  PIC 9(9).' + ' '*30 + 'AUS130XX',
+        ])
+        prog = '\n'.join([
+          '000100  IDENTIFICATION DIVISION.'.ljust(72)[:72] + 'SEQ73-80',
+          '000200  PROGRAM-ID. TESTPGM.'.ljust(72)[:72] + 'SEQ73-80',
+          '000300  DATA DIVISION.'.ljust(72)[:72] + 'SEQ73-80',
+          '000400  COPY AUS130C.'.ljust(72)[:72] + 'SEQ73-80',
+        ])
+        open(f'{R2}/AUS130C.cpy','w').write(stamped)
+        open(f'{R2}/TESTPGM.cbl','w').write(prog)
+        "; echo "== old binary index =="; $S/grove-old index $R2 >/dev/null 2>&1; $S/grove-old deps TESTPGM.cbl $R2 2>/dev/null | grep -c "file:AUS130C.cpy"; echo "== new binary reindex, files untouched =="; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && $S/grove-mf index $R2 >/dev/null 2>&1; $S/grove-mf deps TESTPGM.cbl $R2 2>/dev/null | grep -c "file:AUS130C.cpy"
+      at: 2026-08-29T03:04:35.421987Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; rm -rf $S/noop8 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop8 && rm -rf $S/noop8/.grove && $S/grove-mf index $S/noop8 >/dev/null 2>&1 && $S/grove-mf status $S/noop8 | grep -E "symbolCount|edgeCount"; cd ~/Projects/provasign/astkit && git add strategies/cobol.go strategies/mainframe_test.go && git commit -q -m "$(cat <<'EOF'
+        cobol: member names cannot start with a digit
+
+        Field-reported: 68 numeric "members" (sequence numbers / numeric
+        operands) captured as COPY targets. PDS naming starts alpha/@#$.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.6.3 -m "numeric member rejection" && git push origin v0.6.3 2>&1 | tail -1 && cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.6.3 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove gate: $?"
+      at: 2026-08-29T03:05:08.499957Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git add go.mod go.sum internal/store/store.go internal/parser/languages.go internal/index/indexer.go && git commit -q -m "$(cat <<'EOF'
+        index: extractor-version stamp; --force actually re-extracts
+
+        Two staleness traps found while chasing a (retracted) field report:
+
+        - The blobSHA cache is blind to binary upgrades: extraction semantics
+          changed six times tonight and stored symbols silently kept the old
+          results. parser.ExtractorVersion is stamped into the store meta; a
+          mismatch re-extracts every file once, then records the new stamp.
+          Proven end-to-end: index with v0.36.1, upgrade, plain reindex — the
+          stamped-copybook member self-heals with no file changes.
+        - --force bypassed only the stat cache, not the blobSHA skip: it
+          re-hashed but never re-extracted. Force now means force.
+
+        astkit v0.6.3 rejects leading-digit COPY members (PDS naming).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.37.0 -m "extractor-version stamp, force-means-force, numeric member rejection" && git push origin v0.37.0 2>&1 | tail -1 && cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.37.0 github.com/provasign/astkit@v0.6.3 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3; cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test
+      at: 2026-08-29T03:05:21.151672Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.37.0, astkit v0.6.3 — extraction staleness fixes
+
+        Extractor-version stamp (binary upgrades re-extract unchanged files
+        once, proven self-healing), --force actually re-extracts, and
+        leading-digit COPY members rejected. Gates green, invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.7 -m "extraction staleness fixes, numeric member rejection" && git push origin v0.56.7 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T03:09:42.32292Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T02:50:41.905691Z
+redactions: 0
