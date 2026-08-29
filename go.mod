@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/provasign/grove v0.32.0
+	github.com/provasign/grove v0.33.0
 )
 
 require (
@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/provasign/astkit v0.4.23 // indirect
+	github.com/provasign/astkit v0.5.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82 // indirect
 	golang.org/x/mod v0.37.0 // indirect
