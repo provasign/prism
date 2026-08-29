@@ -254,15 +254,18 @@ func toSlice(v any) []any {
 // v0.52.0 reverted it wholesale with the rest of the arc, not on its own
 // evidence. The steering block no longer carries a ToolSearch paragraph, so
 // if this regresses the tools become both invisible AND unexplained.
-func TestToolSchemas_AllAlwaysLoad(t *testing.T) {
+// Deferral is the deliberate state since 2026-08-29: the ab_deferral A/B
+// (9 paired bed tasks, haiku) measured zero routing losses and recall delta
+// +0.004 with schemas deferred — steering that names the tools routes fine
+// through the ToolSearch hop, and every session saves ~2k tokens of
+// always-resident schema. This guard keeps alwaysLoad from silently
+// returning; if it must return, bring a fresh A/B.
+func TestToolSchemas_NoneAlwaysLoad(t *testing.T) {
 	for _, tool := range ToolSchemas() {
-		meta, ok := tool["_meta"].(map[string]any)
-		if !ok {
-			t.Errorf("%v has no _meta — client will defer its schema", tool["name"])
-			continue
-		}
-		if meta["anthropic/alwaysLoad"] != true {
-			t.Errorf("%v: anthropic/alwaysLoad = %v, want true", tool["name"], meta["anthropic/alwaysLoad"])
+		if meta, ok := tool["_meta"].(map[string]any); ok {
+			if meta["anthropic/alwaysLoad"] == true {
+				t.Errorf("%v carries anthropic/alwaysLoad — deferral policy reversed without an A/B?", tool["name"])
+			}
 		}
 	}
 }

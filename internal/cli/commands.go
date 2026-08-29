@@ -615,9 +615,13 @@ func detectSelfPath() string {
 }
 
 // mcpEntry is the JSON structure every MCP-compatible tool expects.
-// AlwaysLoad exempts the server's tool schemas from client-side deferral —
-// the server-level belt to the per-tool anthropic/alwaysLoad _meta that
-// ToolSchemas emits. Clients that do not know the key ignore it.
+// AlwaysLoad is no longer written: the 2026-08-29 deferral A/B (9 paired
+// bed tasks, haiku) measured ZERO routing losses and recall delta +0.004
+// with schemas deferred behind the client's ToolSearch hop — steering that
+// names the tools is sufficient on current models, and deferral drops ~2k
+// tokens of always-resident schema from every session. The field stays in
+// the struct so --refresh recognizes (and rewrites) old entries that
+// carry it.
 type mcpEntry struct {
 	Command    string   `json:"command"`
 	Args       []string `json:"args"`
@@ -663,12 +667,12 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		cleanupLegacyDenyEntries(claudeSettings)
 	}
 
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
 	// portable and correct after the repo moves. The IDE writers below keep
 	// the explicit dir because their launch cwd is not guaranteed.
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}, AlwaysLoad: true}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
 
 	// Wrap in the per-tool envelope format and write.
 	type writer struct {
@@ -961,8 +965,8 @@ func buildCodexSnippet(prismBin string) string {
 // targets initRegisterMCPTools writes, plus print-only Hermes.
 func printAgentConfig(id, projectDir, prismBin string, global bool) int {
 	home, _ := os.UserHomeDir()
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}, AlwaysLoad: true}
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}, AlwaysLoad: true}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
 
 	pick := func(globalPath, projectPath string) string {
 		if global {

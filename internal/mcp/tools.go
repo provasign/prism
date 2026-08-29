@@ -314,9 +314,13 @@ func ToolSchemas() []map[string]any {
 			// its own evidence. All SIX tools carry it now because the
 			// surface was cut to the routing-critical set in v0.53.0 — there
 			// is no long tail left to exclude, and the whole schema is 7.7 KB.
-			// Residency is cheap in practice: measured +92 fresh tokens on a
-			// cell where prism was never called.
-			"_meta": map[string]any{"anthropic/alwaysLoad": true},
+			// Residency was justified by a v0.55.0 measurement that cheap
+			// tiers stop reaching for deferred tools. Re-measured
+			// 2026-08-29 (ab_deferral.py, 9 paired bed tasks, haiku):
+			// zero routing losses, recall delta +0.004 — steering that
+			// names the tools routes fine through the ToolSearch hop on
+			// current models, so the schemas defer and every session
+			// saves their residency.
 		})
 	}
 	return out
