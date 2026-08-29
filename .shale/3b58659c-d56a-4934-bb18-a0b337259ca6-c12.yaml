@@ -1,0 +1,1455 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c12
+created_at: 2026-08-29T16:37:26.142972Z
+finalized_at: 2026-08-29T21:15:45.484958Z
+agent:
+    tool: claude-code
+    model: claude-haiku-4-5-20251001
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/grove/types.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-29T19:30:47.123374Z
+    - path: internal/grove/client.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-29T19:30:50.906509Z
+    - path: internal/mcp/graphtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-29T19:31:06.955315Z
+    - path: internal/mcp/verify.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-29T19:31:15.448735Z
+commands:
+    - cmd: cd ~/Projects/provasign/research/harness && head -30 mine_wide_sweeps.py 2>/dev/null; ls tasks-e2e-fanout/ 2>/dev/null | head; python3 -c "import json; m=json.load(open('manifest-fanout.json')); print(type(m), len(m)); print(json.dumps(m[0] if isinstance(m,list) else list(m.items())[0], indent=1)[:500])" 2>/dev/null
+      at: 2026-08-29T18:11:12.106022Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        t=json.load(open('tasks-e2e-fanout/pallets__click__pr3695.json'))
+        print({k:(str(v)[:120] if not isinstance(v,(int,float)) else v) for k,v in t.items()})" 2>/dev/null | head -20; ls runs/ | grep -i "fanout\|wide\|e2e" | head -5; grep -l "fanout\|wide" agg_walk_ab.py aggregate_e2e.py 2>/dev/null; head -25 run_e2e.py 2>/dev/null
+      at: 2026-08-29T18:11:20.121342Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && wc -l RESULTS-E2E.md && head -60 RESULTS-E2E.md && grep -n "change_impact\|change-impact\|routing" RESULTS-E2E.md | head -10
+      at: 2026-08-29T18:11:35.000392Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && grep -n "steering\|guidance\|CLAUDE" ab_endtoend_arms.py | head -12 && sed -n "$(grep -n ''prism'' ab_endtoend_arms.py | head -2 | tail -1 | cut -d: -f1),+25p" ab_endtoend_arms.py | head -30'
+      at: 2026-08-29T18:11:57.095053Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && python3 -u ab_routing.py --prism ~/Projects/provasign/prism/bin/prism --seeds 1 --limit 1 --arms field-prism 2>&1; echo "exit: $?"'
+      at: 2026-08-29T18:13:26.097045Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n -B2 -A12 "problem_statement" run_e2e.py | head -30
+      at: 2026-08-29T18:14:08.427114Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && grep -n -B2 -A8 "^TASK_TAIL" run_e2e.py | head -14 && python3 - <<'EOF'
+        p = "ab_routing.py"
+        src = open(p).read()
+        old = '''        cmd = ["claude", "-p", task["problem_statement"],'''
+        new = '''        # Same edit contract run_e2e uses for every arm — task framing, not
+                # tool coaching. Without it -p agents investigate and report instead
+                # of editing (probe: 4 prism calls, 5 turns, zero files changed).
+                prompt = (task["problem_statement"]
+                          + "\\n\\nFix this issue by EDITING the repository files. Make the"
+                            " complete change the issue requires — every affected file —"
+                            " then stop. Do not just describe the fix.")
+                cmd = ["claude", "-p", prompt,'''
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("edit contract added")
+        EOF
+        rm -f runs/ab-routing/*.json && python3 -u ab_routing.py --prism ~/Projects/provasign/prism/bin/prism --seeds 1 --limit 1 2>&1; echo "exit: $?"
+      at: 2026-08-29T18:14:18.308467Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && python3 -u ab_routing.py --prism ~/Projects/provasign/prism/bin/prism 2>&1; echo "exit: $?"'
+      at: 2026-08-29T18:19:32.564517Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && cat >> harness/ROUTING-PROGRAM.md <<'EOF'
+
+        ## R0 results (2026-08-29, 12 cells, haiku)
+
+        - Routing: field agents used prism 5/6 cells; change_impact 2/6. The
+          2/190 era is over — current steering routes at a usable baseline.
+        - Completeness: ZERO arm delta. Per-task recall identical (even the
+          seed split reproduced in both arms). These tasks name their targets
+          in the issue text: grep suffices, so the bed cannot discriminate.
+          Prism arm paid ~32% more turns for equal outcome — matches the
+          "enriched path on ordinary tasks" cost finding.
+        - REDIRECT: the bed must select FINDABILITY-HARD gold PRs (sites not
+          reachable by name-grep: interface impls, registries, framework
+          template/DI references). This converges with the framework-support
+          question — the same mined tasks answer both "does the graph see it"
+          (engine ground truth, free) and "does the agent find it" (agent
+          cells). R1 steering variants are premature until the bed can detect
+          a completeness delta at all.
+        EOF
+        git add harness/ROUTING-PROGRAM.md harness/ab_routing.py && git commit -q -m "$(cat <<'EOF'
+        routing R0: field agents route; the fanout bed cannot discriminate
+
+        12 cells (3 real-PR wide-fix tasks x field-prism/field-bare x 2 seeds,
+        haiku, worktrees carrying exactly what prism init writes, bare task
+        prompts, routing measured from prism's own ledger). Findings: field
+        routing is real (prism 5/6 cells, change_impact 2/6 — the 2/190 era is
+        over); completeness delta is ZERO because these PRs name their targets
+        in the issue text, so grep suffices (prism arm +32% turns for equal
+        recall). Program redirect: mine findability-hard gold PRs (interface
+        dispatch, registries, framework template/DI refs) before any R1
+        steering variant — a bed grep can saturate cannot falsify anything.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1
+      at: 2026-08-29T19:00:15.758477Z
+      classified: other
+    - cmd: R=~/.cache/prism-research/routing-repos; mkdir -p $R; for repo in spring-projects/spring-petclinic apache/fineract; do d=$R/$(echo $repo | tr / _); [ -d $d/.git ] || git clone -q --filter=blob:none https://github.com/$repo.git $d & done; wait; du -sh $R/* 2>/dev/null | tail -2
+      at: 2026-08-29T19:11:38.155379Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; du -sh $R/spring* $R/apache* 2>/dev/null; python3 - <<'EOF'
+        import subprocess, re, os
+        from collections import Counter
+        R = os.path.expanduser("~/.cache/prism-research/routing-repos")
+        PATTERNS = {
+            "@Autowired": r"@Autowired",
+            "@Qualifier(str)": r"@Qualifier\(",
+            "@Bean(name)": r"@Bean\s*\(",
+            "@Value(${...})": r"@Value\(\"\$\{",
+            "JPA repo interface": r"extends\s+(Jpa|Crud|PagingAndSorting)Repository",
+            "@EventListener": r"@EventListener",
+            "@RequestMapping/route": r"@(Request|Get|Post|Put|Delete|Patch)Mapping",
+            "@Component/@Service/@Repository": r"@(Component|Service|Repository)\b",
+            "Thymeleaf expr in html": r"th:[a-z]+=",
+            "JSP/JSF EL": r"\$\{[a-zA-Z]",
+        }
+        for repo in ("spring-projects_spring-petclinic", "apache_fineract"):
+            d = os.path.join(R, repo)
+            print(f"\n=== {repo} ===")
+            java = subprocess.run(["bash","-c",f"find {d} -name '*.java' | wc -l"],capture_output=True,text=True).stdout.strip()
+            tmpl = subprocess.run(["bash","-c",f"find {d} \\( -name '*.html' -o -name '*.jsp' -o -name '*.ftl' \\) | wc -l"],capture_output=True,text=True).stdout.strip()
+            yml = subprocess.run(["bash","-c",f"find {d} \\( -name '*.yml' -o -name '*.yaml' -o -name '*.properties' \\) -not -path '*/node_modules/*' | wc -l"],capture_output=True,text=True).stdout.strip()
+            print(f"java files: {java}, templates: {tmpl}, config files: {yml}")
+            for label, pat in PATTERNS.items():
+                r = subprocess.run(["grep","-rEc",pat,d,"--include=*.java","--include=*.html","--include=*.jsp","--include=*.yml","--include=*.properties"],capture_output=True,text=True)
+                n = sum(int(l.rsplit(":",1)[1]) for l in r.stdout.splitlines() if l.rsplit(":",1)[-1].isdigit())
+                print(f"  {label:34} {n:>7}")
+        EOF
+      at: 2026-08-29T19:12:09.975529Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/spring-projects_spring-petclinic && $P index . >/dev/null 2>&1; echo "== petclinic: gold template sites for Owner.firstName =="; grep -rn 'firstName' src/main/resources/templates/ | head -4; echo "== change_impact firstName =="; $P change-impact firstName . 2>&1 | python3 -c "
+        import json,sys
+        try:
+          d=json.load(sys.stdin)
+          print(' decls:', [x['qualifiedName'] for x in d.get('Declarations') or []][:4])
+          print(' callers:', [x['qualifiedName'] for x in (d.get('Callers') or [])][:8])
+          files=set()
+          for k in ('Declarations','Callers','Family','DeclaringTypes'):
+            for x in d.get(k) or []: files.add(x['filePath'])
+          print(' template files in result:', [f for f in files if 'templates' in f])
+          print(' completeness:', d.get('Completeness'))
+        except Exception as e: print(' raw:', sys.stdin.read()[:200], e)"
+      at: 2026-08-29T19:12:45.607537Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/spring-projects_spring-petclinic && $P change-impact firstName . 2>&1 | head -5; echo ---; $P change-impact getFirstName . 2>&1 | python3 -c "
+        import json,sys
+        s=sys.stdin.read()
+        try:
+          d=json.loads(s)
+          files=set()
+          for k in ('Declarations','Callers','Family','DeclaringTypes','Supers'):
+            for x in d.get(k) or []: files.add(x['filePath'])
+          print('decls:', [x['qualifiedName']+' @ '+x['filePath'] for x in d.get('Declarations') or []][:4])
+          print('callers:', [x['qualifiedName'] for x in d.get('Callers') or []][:8])
+          print('template files in result:', sorted(f for f in files if 'templates' in f))
+          print('completeness:', d.get('Completeness'))
+        except Exception as e: print('raw:', s[:300])"
+      at: 2026-08-29T19:12:53.99973Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/spring-projects_spring-petclinic && $P search getFirstName --scope symbols --format text . 2>&1 | head -6; echo ---; $P change-impact getFirstName . 2>&1 | head -3; echo ---; $P change-impact 'Person.getFirstName' . 2>&1 | python3 -c "
+        import json,sys
+        s=sys.stdin.read()
+        try:
+          d=json.loads(s)
+          print('decls:', [x['qualifiedName'] for x in d.get('Declarations') or []])
+          print('callers:', [x['qualifiedName'] for x in d.get('Callers') or []][:10])
+          print('completeness:', d.get('Completeness'))
+        except Exception: print('raw:', s[:300])"
+      at: 2026-08-29T19:13:06.956432Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/spring-projects_spring-petclinic && $P change-impact getFirstName . 2>&1 | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        def qn(x): return x.get('qualifiedName','?')+' @ '+x.get('filePath','?')
+        print('decls:', [qn(x) for x in d.get('Declarations') or []])
+        print('callers:', [qn(x) for x in d.get('Callers') or []][:10])
+        files=set()
+        for k in ('Declarations','Callers','Family','DeclaringTypes'):
+            for x in d.get(k) or []: files.add(x.get('filePath',''))
+        print('any template files:', sorted(f for f in files if 'template' in f))
+        print('completeness:', d.get('Completeness'))"
+      at: 2026-08-29T19:13:15.661982Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/spring-projects_spring-petclinic && $P change-impact getFirstName . 2>&1 | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('top keys:', list(d.keys()))
+        def qn(x): return (x.get('qualifiedName') or x.get('name','?'))+' @ '+x.get('filePath','?')
+        for k in d:
+            v=d[k]
+            if isinstance(v,list) and v and isinstance(v[0],dict) and 'filePath' in v[0]:
+                print(f'{k} ({len(v)}):', [qn(x) for x in v[:6]])
+            elif not isinstance(v,(list,dict)):
+                print(f'{k}:', v)
+        files=set()
+        for k,v in d.items():
+            if isinstance(v,list):
+                for x in v:
+                    if isinstance(x,dict): files.add(x.get('filePath',''))
+        print('template files in result:', sorted(f for f in files if 'template' in f))"
+      at: 2026-08-29T19:13:26.0699Z
+      classified: other
+    - cmd: R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/apache_fineract && $P index . 2>&1 | tail -1; grep -rn "findBy" --include='*.java' -l . 2>/dev/null | head -2; grep -rhn "List<.*> findBy[A-Z][a-zA-Z]*(" --include='*.java' . 2>/dev/null | head -3
+      at: 2026-08-29T19:13:45.433568Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/apache_fineract && echo "== JPA derived query case: entity field loanId -> findByLoanId ==" && $P change-impact loanId . 2>&1 | head -3; echo; $P change-impact getLoanId . 2>&1 | python3 -c "
+        import json,sys
+        s=sys.stdin.read()
+        try:
+          d=json.loads(s)
+          print('query:', d.get('query'), '| totalSites:', d.get('totalSites'), '| completeness:', d.get('completeness'))
+          fb=[x for k in ('callers','family','declarations') for x in (d.get(k) or []) if 'findBy' in (x.get('name') or '')]
+          print('findBy* methods in result:', len(fb))
+        except Exception: print('raw:', s[:200])"; echo; echo "== DI-by-type case =="; grep -rn "public interface LoanOriginatorService\|class LoanOriginatorServiceImpl" --include='*.java' -l . | head -2
+      at: 2026-08-29T19:15:04.570244Z
+      classified: other
+    - cmd: |-
+        R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/apache_fineract && grep -rn "class LoanOriginatorMapping" --include='*.java' -l . | head -1; $P change-impact 'Guarantor.getLoanId' . 2>&1 | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('query:', d.get('query'), '| totalSites:', d.get('totalSites'), '| completeness:', d.get('completeness'))
+        callers=[x.get('qualifiedName') for x in d.get('callers') or []]
+        print('callers:', callers[:8])
+        allsyms=[x for k in ('callers','family','declarations','supers') for x in (d.get(k) or [])]
+        print('findBy/derived-query sites in result:', [x.get('qualifiedName') for x in allsyms if 'findBy' in (x.get('name') or '')])"; echo "== gold: derived queries on Guarantor loanId? =="; grep -rn "findByLoanId" --include='*.java' . | grep -i guarantor | head -3
+      at: 2026-08-29T19:15:16.199269Z
+      classified: other
+    - cmd: R=~/.cache/prism-research/routing-repos; P=~/Projects/provasign/prism/bin/prism; cd $R/apache_fineract && grep -rn "class LoanOriginatorMapping \|getLoanId\|private Long loanId" fineract-loan-origination/src/main/java/org/apache/fineract/portfolio/loanorigination/domain/LoanOriginatorMapping.java 2>/dev/null | head -4; ls fineract-loan-origination/src/main/java/org/apache/fineract/portfolio/loanorigination/domain/ 2>/dev/null | head -4; grep -rn "@Getter\|lombok" fineract-loan-origination/src/main/java/org/apache/fineract/portfolio/loanorigination/domain/LoanOriginatorMapping.java 2>/dev/null | head -3
+      at: 2026-08-29T19:15:31.038054Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && ls strategies/ && grep -n "javaStrategy\|func.*Java" strategies/*.go | grep -v _test | head -6 && grep -c "Annotations" strategies/extractors.go 2>/dev/null; grep -rn "Annotations" strategies/*.go | grep -v _test | head -4
+      at: 2026-08-29T19:16:20.84948Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && sed -n 712,790p strategies/extractors.go
+      at: 2026-08-29T19:16:25.107602Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && grep -n -A30 "func javaFieldDecl" strategies/extractors.go | head -36
+      at: 2026-08-29T19:16:35.096731Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/extractors.go"
+        src = open(p).read()
+        old = """	body := n.ChildByFieldName("body")
+        	if body != nil {
+        		javaVisit(body, filePath, blobSHA, src, imports, qualJoin(parentClass, className), out)
+        	}
+        }"""
+        new = """	body := n.ChildByFieldName("body")
+        	if body != nil {
+        		before := len(*out)
+        		javaVisit(body, filePath, blobSHA, src, imports, qualJoin(parentClass, className), out)
+        		synthesizeLombokAccessors(className, javaAnnotations(n, src), before, out)
+        	}
+        }
+
+        // synthesizeLombokAccessors emits getter/setter method symbols for fields of
+        // a class annotated @Getter/@Setter/@Data/@Value (or fields carrying those
+        // annotations themselves). Without this, a Lombok entity's accessors exist
+        // only in bytecode: call sites reference getLoanId() but no such symbol is
+        // indexed, so the field is UNANCHORABLE for change-impact and every accessor
+        // caller dangles (measured on apache/fineract: entity fields with derived
+        // queries could not be queried at all). Synthesized symbols carry the
+        // "lombok-generated" modifier and the FIELD's span, so results point at the
+        // declaration a human would edit.
+        func synthesizeLombokAccessors(className string, classAnn []string, fieldsFrom int, out *[]astkit.Symbol) {
+        	has := func(ann []string, names ...string) bool {
+        		for _, a := range ann {
+        			for _, n := range names {
+        				if strings.HasPrefix(a, "@"+n) {
+        					return true
+        				}
+        			}
+        		}
+        		return false
+        	}
+        	clsGetter := has(classAnn, "Getter", "Data", "Value")
+        	clsSetter := has(classAnn, "Setter", "Data")
+        	if !clsGetter && !clsSetter {
+        		// Field-level annotations may still apply; scan below regardless.
+        	}
+        	var synth []astkit.Symbol
+        	fields := (*out)[fieldsFrom:]
+        	for i := range fields {
+        		f := &fields[i]
+        		if f.Kind != astkit.KindField || f.ParentName != className {
+        			continue
+        		}
+        		g := clsGetter || has(f.Annotations, "Getter", "Data", "Value")
+        		s := clsSetter || has(f.Annotations, "Setter", "Data")
+        		if !g && !s {
+        			continue
+        		}
+        		name := f.Name
+        		cap := strings.ToUpper(name[:1]) + name[1:]
+        		getter := "get" + cap
+        		if strings.Contains(f.Signature, "boolean ") {
+        			getter = "is" + cap
+        		}
+        		mk := func(mname, sig string) astkit.Symbol {
+        			return astkit.Symbol{
+        				Kind: astkit.KindMethod, Name: mname,
+        				QualifiedName: f.QualifiedName[:len(f.QualifiedName)-len(name)] + mname,
+        				ParentName:    className,
+        				Signature:     sig,
+        				Span:          f.Span,
+        				Exported:      true,
+        				Modifiers:     []string{"lombok-generated"},
+        			}
+        		}
+        		if g {
+        			synth = append(synth, mk(getter, "public "+getter+"() [lombok, from field "+name+"]"))
+        		}
+        		if s {
+        			synth = append(synth, mk("set"+cap, "public set"+cap+"(...) [lombok, from field "+name+"]"))
+        		}
+        	}
+        	*out = append(*out, synth...)
+        }"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("lombok synthesis added")
+        EOF
+        go build ./strategies/ 2>&1 | head -3
+      at: 2026-08-29T19:16:52.199218Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && sed -n 853,860p strategies/extractors.go && cat >> strategies/strategies_test.go <<'EOF'
+
+        func TestJava_LombokAccessorSynthesis(t *testing.T) {
+        	src := []byte(`
+        import lombok.Getter;
+        import lombok.Setter;
+        import lombok.Data;
+
+        @Getter
+        @Setter
+        public class LoanMapping {
+            private Long loanId;
+            private boolean active;
+        }
+
+        @Data
+        class Wallet {
+            private String owner;
+        }
+
+        class Plain {
+            private int x;
+        }
+        `)
+        	eng := astkit.NewEngine()
+        	tree, err := eng.Parse(context.Background(), astkit.LangJava, src)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer tree.Close()
+        	syms, err := NewJava().Extract(tree, src)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	byName := map[string]astkit.Symbol{}
+        	for _, s := range syms {
+        		byName[s.QualifiedName] = s
+        	}
+        	for _, want := range []string{"LoanMapping.getLoanId", "LoanMapping.setLoanId",
+        		"LoanMapping.isActive", "LoanMapping.setActive",
+        		"Wallet.getOwner", "Wallet.setOwner"} {
+        		s, ok := byName[want]
+        		if !ok {
+        			t.Errorf("missing synthesized accessor %s", want)
+        			continue
+        		}
+        		if s.Kind != astkit.KindMethod || len(s.Modifiers) == 0 || s.Modifiers[0] != "lombok-generated" {
+        			t.Errorf("%s: kind=%s modifiers=%v", want, s.Kind, s.Modifiers)
+        		}
+        	}
+        	if _, ok := byName["Plain.getX"]; ok {
+        		t.Error("Plain has no Lombok annotations but got a synthesized getter")
+        	}
+        }
+        EOF
+        grep -n '"context"' strategies/strategies_test.go | head -1 || sed -i '' 's/^import (/import (\n\t"context"/' strategies/strategies_test.go; go test ./strategies/ -run Lombok -v 2>&1 | tail -4
+      at: 2026-08-29T19:17:06.085999Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/astkit && head -12 strategies/strategies_test.go | grep -E "^package|^import" ; sed -n 848,856p strategies/extractors.go
+      at: 2026-08-29T19:17:14.238583Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        # 1. Field symbols must carry Annotations (field-level @Getter/@Setter).
+        p = "strategies/extractors.go"
+        src = open(p).read()
+        old = """	*out = append(*out, astkit.Symbol{
+        		Kind:          astkit.KindField,
+        		Name:          name,
+        		QualifiedName: qualJoin(parentClass, name),
+        		Signature:     sig,
+        		Span:          internalast.NodeSpan(n),
+        		Exported:      exports,
+        		Body:          raw,
+        		ParentName:    qualLast(parentClass),
+        		Modifiers:     modifiers,"""
+        new = """	*out = append(*out, astkit.Symbol{
+        		Kind:          astkit.KindField,
+        		Name:          name,
+        		QualifiedName: qualJoin(parentClass, name),
+        		Signature:     sig,
+        		Span:          internalast.NodeSpan(n),
+        		Exported:      exports,
+        		Body:          raw,
+        		ParentName:    qualLast(parentClass),
+        		Annotations:   javaAnnotations(n, src),
+        		Modifiers:     modifiers,"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+
+        # 2. Test file: external package — qualify the strategy constructors.
+        p2 = "strategies/strategies_test.go"
+        src2 = open(p2).read()
+        src2 = src2.replace("syms, err := NewJava().Extract(tree, src)",
+                            "syms, err := strategies.NewJava().Extract(tree, src)")
+        open(p2, "w").write(src2)
+        print("patched")
+        EOF
+        go test ./strategies/ -run Lombok -v 2>&1 | tail -4 && go test ./... 2>&1 | tail -3
+      at: 2026-08-29T19:17:24.489901Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 -c "
+        src=open('strategies/extractors.go').read()
+        src=src.replace('''		ParentName:    qualLast(parentClass),
+        		Annotations:   javaAnnotations(n, src),
+        		Modifiers:     modifiers,''','''		ParentName:    qualLast(parentClass),
+        		Modifiers:     modifiers,''',1)
+        open('strategies/extractors.go','w').write(src)" && go test ./strategies/ -run Lombok -v 2>&1 | tail -3 && go test ./... 2>&1 | tail -3
+      at: 2026-08-29T19:17:33.91232Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/astkit && go test ./strategies/ -run Lombok -v 2>&1 | grep -E "^    |--- " | head -10
+      at: 2026-08-29T19:17:39.6555Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/astkit && grep -n -A15 "func javaAnnotations" strategies/extractors.go | head -20
+      at: 2026-08-29T19:17:46.595681Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && grep -rn "javaAnnotations" strategies/ internalast/ | head -4; grep -rn "func.*[aA]nnotations" strategies/extractors.go internalast/*.go | head -6
+      at: 2026-08-29T19:17:52.050994Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && sed -n 797,830p strategies/metadata.go
+      at: 2026-08-29T19:17:56.121407Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 -c "
+        src=open('strategies/extractors.go').read()
+        old='''	has := func(ann []string, names ...string) bool {
+        		for _, a := range ann {
+        			for _, n := range names {
+        				if strings.HasPrefix(a, \"@\"+n) {
+        					return true
+        				}
+        			}
+        		}
+        		return false
+        	}'''
+        new='''	has := func(ann []string, names ...string) bool {
+        		// javaAnnotations strips the leading @; match the bare name exactly
+        		// or with an argument list (\"Getter\", \"Getter(...)\").
+        		for _, a := range ann {
+        			for _, n := range names {
+        				if a == n || strings.HasPrefix(a, n+\"(\") {
+        					return true
+        				}
+        			}
+        		}
+        		return false
+        	}'''
+        assert src.count(old)==1
+        open('strategies/extractors.go','w').write(src.replace(old,new))
+        print('fixed')" && go test ./... 2>&1 | tail -3
+      at: 2026-08-29T19:18:07.478466Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o bin/prism ./cmd/prism && R=~/.cache/prism-research/routing-repos/apache_fineract && cd $R && rm -rf .grove && ~/Projects/provasign/prism/bin/prism index . >/dev/null 2>&1 && ~/Projects/provasign/prism/bin/prism change-impact 'LoanOriginatorMapping.getLoanId' . 2>&1 | python3 -c "
+        import json,sys
+        s=sys.stdin.read()
+        try:
+          d=json.loads(s)
+          print('query:', d.get('query'), '| totalSites:', d.get('totalSites'), '| completeness:', d.get('completeness'))
+          print('decls:', [(x.get('qualifiedName'), x.get('modifiers')) for x in d.get('declarations') or []])
+          print('callers:', [x.get('qualifiedName') for x in d.get('callers') or []][:8])
+        except Exception: print('raw:', s[:300])"
+      at: 2026-08-29T19:18:19.238941Z
+      classified: build
+    - cmd: R=~/.cache/prism-research/routing-repos/apache_fineract; grep -rn "\.getLoanId()" $R/fineract-loan-origination --include='*.java' | head -5; echo ---; grep -rn "LoanOriginatorMapping" $R --include='*.java' -l | wc -l
+      at: 2026-08-29T19:19:40.569171Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/parser/languages.go"
+        src = open(p).read()
+        old = """	case ".csv":
+        		return PlaintextLanguage"""
+        new = """	case ".csv":
+        		return PlaintextLanguage
+        	// View templates: indexed as plaintext so framework reference edges
+        	// (Thymeleaf/JSP EL -> entity accessors) have records to hang off —
+        	// an EL property access invokes the getter at runtime, and un-indexed
+        	// templates made change-impact claim "closed" while live bindings
+        	// existed (measured: petclinic getFirstName, 2 sites claimed closed,
+        	// 4+ template files referencing the property).
+        	case ".jsp", ".ftl":
+        		return PlaintextLanguage
+        	case ".html", ".htm":
+        		return PlaintextLanguage"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("template detection added")
+        EOF
+        cat > internal/graph/spring.go <<'EOF'
+        package graph
+
+        import (
+        	"regexp"
+        	"strings"
+
+        	"github.com/provasign/grove/internal/core"
+        )
+
+        // Framework reference edges (SPRING-MEASURE.md, gaps B and D). Both emit
+        // CALLS edges to accessor methods because both ARE invocations at runtime:
+        // a Thymeleaf/JSP EL property access calls the getter; a JPA derived-query
+        // method's name binds it to the field's accessor (rename the field and
+        // findByLoanId must change with it). Confidence and reason mark them as
+        // name-derived, never certain.
+
+        var (
+        	reJpaRepo = regexp.MustCompile(
+        		`extends\s+\w*(?:Jpa|Crud|PagingAndSorting|ListCrud|ListPagingAndSorting)Repository\s*<\s*(\w+)`)
+        	reDerived = regexp.MustCompile(
+        		`^(?:find|read|get|query|search|stream|count|exists|delete|remove)(?:All|First\d*|Top\d*|Distinct)?By([A-Z].*)$`)
+        	// Operator/suffix tokens stripped from a derived-query property expression.
+        	reDerivedOps = regexp.MustCompile(
+        		`(?:And|Or|OrderBy.*|IgnoreCase|Not|In|NotIn|Between|LessThan\w*|GreaterThan\w*|Like|NotLike|Containing|Contains|StartingWith|StartsWith|EndingWith|EndsWith|IsNull|IsNotNull|Null|NotNull|True|False|After|Before|Desc|Asc)$`)
+        	// EL property references in templates: th:field="*{name}", ${obj.name},
+        	// #{...} skipped (message keys, not properties).
+        	reELProp = regexp.MustCompile(`[$*]\{[^}]*?([A-Za-z][A-Za-z0-9]*)\s*[}.\s+)]`)
+        )
+
+        func buildFrameworkEdges(idx *edgeIndex, symbols []core.SymbolRecord) []core.Edge {
+        	// accessor lookup: lowercase property -> getter/setter method symbols.
+        	type acc struct{ sym *core.SymbolRecord }
+        	accessors := map[string][]acc{}
+        	javaSeen := false
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language != "java" {
+        			continue
+        		}
+        		javaSeen = true
+        		if s.Kind != core.KindMethod {
+        			continue
+        		}
+        		n := s.Name
+        		var prop string
+        		switch {
+        		case strings.HasPrefix(n, "get") && len(n) > 3:
+        			prop = n[3:]
+        		case strings.HasPrefix(n, "is") && len(n) > 2:
+        			prop = n[2:]
+        		default:
+        			continue
+        		}
+        		accessors[strings.ToLower(prop)] = append(accessors[strings.ToLower(prop)], acc{s})
+        	}
+        	if !javaSeen {
+        		return nil
+        	}
+
+        	var edges []core.Edge
+        	seen := map[string]bool{}
+        	add := func(from, to string, conf float64) {
+        		key := from + "::" + to
+        		if seen[key] {
+        			return
+        		}
+        		seen[key] = true
+        		edges = append(edges, core.Edge{
+        			From: from, To: to,
+        			Type: core.EdgeCalls, Confidence: conf,
+        			Source: core.EvidenceSourceHeuristic, Reason: core.ReasonCrossArtifact,
+        		})
+        	}
+
+        	// D: JPA derived-query methods -> entity accessors, scoped to the
+        	// repository's own entity type so same-named properties on other
+        	// entities never match.
+        	entityOf := map[string]string{} // interface qualified name -> entity name
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language == "java" && s.Kind == core.KindInterface {
+        			if m := reJpaRepo.FindStringSubmatch(s.Signature); m != nil {
+        				entityOf[s.Name] = m[1]
+        			}
+        		}
+        	}
+        	if len(entityOf) > 0 {
+        		for i := range symbols {
+        			s := &symbols[i]
+        			if s.Language != "java" || s.Kind != core.KindMethod {
+        				continue
+        			}
+        			entity, ok := entityOf[s.ParentSymbol]
+        			if !ok {
+        				continue
+        			}
+        			m := reDerived.FindStringSubmatch(s.Name)
+        			if m == nil {
+        				continue
+        			}
+        			for _, raw := range splitDerivedProps(m[1]) {
+        				prop := strings.ToLower(reDerivedOps.ReplaceAllString(raw, ""))
+        				for _, a := range accessors[prop] {
+        					if a.sym.ParentSymbol == entity {
+        						add(s.ID, a.sym.ID, 0.7)
+        					}
+        				}
+        			}
+        		}
+        	}
+
+        	// B: template EL property references -> accessors. Estate-wide by
+        	// property name at low confidence: templates carry no type context, and
+        	// a missed binding is the expensive failure (rename ships, view breaks
+        	// at runtime). Plaintext template records carry the file's content.
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language != "plaintext" || s.RawText == "" {
+        			continue
+        		}
+        		fp := strings.ToLower(s.FilePath)
+        		if !strings.HasSuffix(fp, ".html") && !strings.HasSuffix(fp, ".htm") &&
+        			!strings.HasSuffix(fp, ".jsp") && !strings.HasSuffix(fp, ".ftl") {
+        			continue
+        		}
+        		for _, m := range reELProp.FindAllStringSubmatch(s.RawText, -1) {
+        			for _, a := range accessors[strings.ToLower(m[1])] {
+        				add(s.ID, a.sym.ID, 0.6)
+        			}
+        		}
+        	}
+        	return edges
+        }
+
+        // splitDerivedProps splits a derived-query property expression on And/Or
+        // boundaries: "LoanIdAndStatus" -> ["LoanId", "Status"].
+        func splitDerivedProps(expr string) []string {
+        	parts := regexp.MustCompile(`(?:And|Or)(?=[A-Z])`).Split(expr, -1)
+        	out := parts[:0]
+        	for _, p := range parts {
+        		if p != "" {
+        			out = append(out, p)
+        		}
+        	}
+        	return out
+        }
+        EOF
+        python3 -c "
+        src=open('internal/graph/graph.go').read()
+        old='''	edges = append(edges, buildMainframeDataEdges(idx, symbols)...)
+        	tick(\"mainframe-data\")'''
+        new='''	edges = append(edges, buildMainframeDataEdges(idx, symbols)...)
+        	tick(\"mainframe-data\")
+        	edges = append(edges, buildFrameworkEdges(idx, symbols)...)
+        	tick(\"framework\")'''
+        assert src.count(old)==1
+        open('internal/graph/graph.go','w').write(src.replace(old,new))
+        print('wired')" && go build ./... 2>&1 | head -3
+      at: 2026-08-29T19:21:05.462981Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/spring.go"
+        src = open(p).read()
+        old = '''// splitDerivedProps splits a derived-query property expression on And/Or
+        // boundaries: "LoanIdAndStatus" -> ["LoanId", "Status"].
+        func splitDerivedProps(expr string) []string {
+        	parts := regexp.MustCompile(`(?:And|Or)(?=[A-Z])`).Split(expr, -1)
+        	out := parts[:0]
+        	for _, p := range parts {
+        		if p != "" {
+        			out = append(out, p)
+        		}
+        	}
+        	return out
+        }'''
+        new = '''// splitDerivedProps splits a derived-query property expression on And/Or
+        // boundaries: "LoanIdAndStatus" -> ["LoanId", "Status"]. Manual scan — RE2
+        // has no lookahead, and a MustCompile panic here surfaced as an internal
+        // error on the first change-impact query of any Spring repo.
+        func splitDerivedProps(expr string) []string {
+        	var out []string
+        	start := 0
+        	for i := 0; i < len(expr)-2; i++ {
+        		if expr[i] == 'A' && i+3 < len(expr) && expr[i+1] == 'n' && expr[i+2] == 'd' &&
+        			expr[i+3] >= 'A' && expr[i+3] <= 'Z' && i > start {
+        			out = append(out, expr[start:i])
+        			start = i + 3
+        			i += 2
+        		} else if expr[i] == 'O' && i+2 < len(expr) && expr[i+1] == 'r' &&
+        			expr[i+2] >= 'A' && expr[i+2] <= 'Z' && i > start {
+        			out = append(out, expr[start:i])
+        			start = i + 2
+        			i++
+        		}
+        	}
+        	if start < len(expr) {
+        		out = append(out, expr[start:])
+        	}
+        	return out
+        }'''
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("splitter fixed")
+        EOF
+        cat >> internal/graph/spring_test.go <<'EOF'
+        package graph
+
+        import "testing"
+
+        func TestSplitDerivedProps(t *testing.T) {
+        	cases := map[string][]string{
+        		"LoanId":            {"LoanId"},
+        		"LoanIdAndStatus":   {"LoanId", "Status"},
+        		"NameOrEmail":       {"Name", "Email"},
+        		"AndroidId":         {"AndroidId"}, // "And" inside a word must not split
+        		"OrderDateAndTotal": {"OrderDate", "Total"},
+        	}
+        	for in, want := range cases {
+        		got := splitDerivedProps(in)
+        		if len(got) != len(want) {
+        			t.Errorf("%s: got %v want %v", in, got, want)
+        			continue
+        		}
+        		for i := range want {
+        			if got[i] != want[i] {
+        				t.Errorf("%s: got %v want %v", in, got, want)
+        				break
+        			}
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/graph/ -run SplitDerived -v 2>&1 | tail -3
+      at: 2026-08-29T19:21:56.447532Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o bin/prism ./cmd/prism && P=$PWD/bin/prism && cd ~/.cache/prism-research/routing-repos/spring-projects_spring-petclinic && rm -rf .grove && $P index . >/dev/null 2>&1 && $P change-impact 'Person.getFirstName' . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('totalSites:', d.get('totalSites'), '| completeness:', d.get('completeness'))
+        callers=[(x.get('qualifiedName'), x.get('filePath')) for x in d.get('callers') or []]
+        tmpl=[c for c in callers if 'template' in (c[1] or '')]
+        print('callers:', len(callers), '| template callers:', len(tmpl))
+        for c in tmpl[:8]: print('  ', c[1])"
+      at: 2026-08-29T19:22:09.209655Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/spring.go"
+        src = open(p).read()
+        old = '''	// EL property references in templates: th:field="*{name}", ${obj.name},
+        	// #{...} skipped (message keys, not properties).
+        	reELProp = regexp.MustCompile(`[$*]\\{[^}]*?([A-Za-z][A-Za-z0-9]*)\\s*[}.\\s+)]`)'''
+        new = '''	// EL expressions in templates: th:field="*{name}", ${obj.name}. The
+        	// whole expression is captured and every identifier inside considered:
+        	// ${vet.firstName + ' ' + vet.lastName} references THREE properties and
+        	// a first-token-only capture missed two of them (measured: one of four
+        	// gold template files dropped). #{...} skipped — message keys.
+        	reELExpr  = regexp.MustCompile(`[$*]\\{([^}]*)\\}`)
+        	reELIdent = regexp.MustCompile(`[A-Za-z][A-Za-z0-9]*`)'''
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        old2 = '''		for _, m := range reELProp.FindAllStringSubmatch(s.RawText, -1) {
+        			for _, a := range accessors[strings.ToLower(m[1])] {
+        				add(s.ID, a.sym.ID, 0.6)
+        			}
+        		}'''
+        new2 = '''		for _, m := range reELExpr.FindAllStringSubmatch(s.RawText, -1) {
+        			for _, ident := range reELIdent.FindAllString(m[1], -1) {
+        				for _, a := range accessors[strings.ToLower(ident)] {
+        					add(s.ID, a.sym.ID, 0.6)
+        				}
+        			}
+        		}'''
+        assert src.count(old2) == 1
+        open(p, "w").write(src.replace(old2, new2))
+        print("EL tokenizer fixed")
+        EOF
+        python3 - <<'EOF'
+        # Honesty qualifier: heuristic-source caller edges downgrade "closed".
+        p = "internal/graph/changeimpact.go"
+        src = open(p).read()
+        import re
+        m = re.search(r'\tseen := map\[string\]bool\{\}\n\tvar callers \[\]core\.SymbolRecord\n\tfor id := range declIDs \{\n\t\tfor _, ei := range g\.inbound\[id\] \{\n\t\t\tedge := g\.edges\[ei\]\n\t\t\taccept := edge\.Type == core\.EdgeCalls \|\|', src)
+        assert m, "callers loop not found"
+        # Find the free-function loop already patched for mainframe; add heuristic flag there and where completeness set.
+        old = """	dataAnchor := false
+        	for _, d := range decls {
+        		if mainframeDataKind(d.Kind) {
+        			dataAnchor = true
+        			break
+        		}
+        	}
+        	seen := map[string]bool{}
+        	var callers []core.SymbolRecord
+        	for id := range declIDs {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			accept := edge.Type == core.EdgeCalls ||
+        				(dataAnchor && (edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites || edge.Type == core.EdgeRedefines))
+        			if !accept || declIDs[edge.From] || seen[edge.From] {
+        				continue
+        			}"""
+        new = """	dataAnchor := false
+        	for _, d := range decls {
+        		if mainframeDataKind(d.Kind) {
+        			dataAnchor = true
+        			break
+        		}
+        	}
+        	heuristicEdges := false
+        	seen := map[string]bool{}
+        	var callers []core.SymbolRecord
+        	for id := range declIDs {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			accept := edge.Type == core.EdgeCalls ||
+        				(dataAnchor && (edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites || edge.Type == core.EdgeRedefines))
+        			if !accept || declIDs[edge.From] || seen[edge.From] {
+        				continue
+        			}
+        			if edge.Source == core.EvidenceSourceHeuristic || edge.Source == core.EvidenceSourceRegex {
+        				heuristicEdges = true
+        			}"""
+        assert src.count(old) == 1, src.count(old)
+        src = src.replace(old, new)
+        open(p, "w").write(src)
+        print("free-path heuristic flag added — need completeness wiring next")
+        EOF
+        grep -n "callers-only" internal/graph/changeimpact.go | head -3
+      at: 2026-08-29T19:22:44.242742Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "g.inbound\[" internal/graph/changeimpact.go | head -6 && sed -n 300,340p internal/graph/changeimpact.go | grep -n "EdgeCalls\|callers\|inbound" | head -6
+      at: 2026-08-29T19:22:52.086904Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 348,380p internal/graph/changeimpact.go && grep -n "completeness :=\|completeness =" internal/graph/changeimpact.go | head -5
+      at: 2026-08-29T19:22:56.539739Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 382,392p internal/graph/changeimpact.go
+      at: 2026-08-29T19:23:11.92366Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/changeimpact.go"
+        src = open(p).read()
+        old = """	callerSeen := make(map[string]bool)
+        	var callers []core.SymbolRecord
+        	for id := range memberIDs {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			if edge.Type != core.EdgeCalls {
+        				continue
+        			}
+        			if memberIDs[edge.From] || callerSeen[edge.From] {
+        				continue
+        			}
+        			callerSeen[edge.From] = true"""
+        new = """	callerSeen := make(map[string]bool)
+        	heuristicCallers := false
+        	var callers []core.SymbolRecord
+        	for id := range memberIDs {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			if edge.Type != core.EdgeCalls {
+        				continue
+        			}
+        			if memberIDs[edge.From] || callerSeen[edge.From] {
+        				continue
+        			}
+        			callerSeen[edge.From] = true
+        			if edge.Source == core.EvidenceSourceHeuristic || edge.Source == core.EvidenceSourceRegex {
+        				heuristicCallers = true
+        			}"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("caller-loop flag added")
+        EOF
+        go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove suite: $?"
+      at: 2026-08-29T19:23:34.428172Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && sed -n 351,360p internal/graph/changeimpact.go
+      at: 2026-08-29T19:23:38.239313Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/changeimpact.go"
+        src = open(p).read()
+        old = """	callerSeen := make(map[string]bool)
+        	var callers []core.SymbolRecord
+        	for id := range memberIDs {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			if edge.Type != core.EdgeCalls {
+        				continue
+        			}
+        			if memberIDs[edge.From] || callerSeen[edge.From] {
+        				continue"""
+        new = """	callerSeen := make(map[string]bool)
+        	heuristicCallers := false
+        	var callers []core.SymbolRecord
+        	for id := range memberIDs {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			if edge.Type != core.EdgeCalls {
+        				continue
+        			}
+        			if edge.Source == core.EvidenceSourceHeuristic || edge.Source == core.EvidenceSourceRegex {
+        				heuristicCallers = true
+        			}
+        			if memberIDs[edge.From] || callerSeen[edge.From] {
+        				continue"""
+        assert src.count(old) == 2
+        src = src.replace(old, new)
+        # externalRootedImpact's completeness literal gains the same qualifier.
+        old2 = '''		Completeness:      "project-local",'''
+        assert src.count(old2) == 1
+        src = src.replace(old2, '''		Completeness: func() string {
+        			if heuristicCallers {
+        				return "project-local+heuristic-refs"
+        			}
+        			return "project-local"
+        		}(),''')
+        open(p, "w").write(src)
+        print("both loops flagged")
+        EOF
+        go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove suite: $?"
+      at: 2026-08-29T19:24:02.710539Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o bin/prism ./cmd/prism && P=$PWD/bin/prism; cd ~/.cache/prism-research/routing-repos/spring-projects_spring-petclinic && rm -rf .grove && $P index . >/dev/null 2>&1 && echo "== petclinic getFirstName ==" && $P change-impact 'Person.getFirstName' . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('totalSites:', d.get('totalSites'), '| completeness:', d.get('completeness'))
+        tmpl=[x['filePath'] for x in d.get('callers') or [] if 'template' in x.get('filePath','')]
+        print('template callers:', len(tmpl)); [print('  ',t) for t in sorted(tmpl)]"; cd ~/.cache/prism-research/routing-repos/apache_fineract && rm -rf .grove && ~/Projects/provasign/prism/bin/prism index . >/dev/null 2>&1 && echo "== fineract LoanOriginatorMapping.getLoanId ==" && ~/Projects/provasign/prism/bin/prism change-impact 'LoanOriginatorMapping.getLoanId' . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('totalSites:', d.get('totalSites'), '| completeness:', d.get('completeness'))
+        print('callers:', [x.get('qualifiedName') for x in d.get('callers') or []][:6])"
+      at: 2026-08-29T19:24:14.036468Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/spring_test.go <<'EOF'
+
+        func TestBuildFrameworkEdges(t *testing.T) {
+        	syms := []core.SymbolRecord{
+        		{ID: "e1", Language: "java", Kind: core.KindClass, Name: "Loan", QualifiedName: "Loan", FilePath: "Loan.java"},
+        		{ID: "g1", Language: "java", Kind: core.KindMethod, Name: "getLoanId", QualifiedName: "Loan.getLoanId", ParentSymbol: "Loan", FilePath: "Loan.java"},
+        		{ID: "g2", Language: "java", Kind: core.KindMethod, Name: "getStatus", QualifiedName: "Loan.getStatus", ParentSymbol: "Loan", FilePath: "Loan.java"},
+        		{ID: "gx", Language: "java", Kind: core.KindMethod, Name: "getLoanId", QualifiedName: "Other.getLoanId", ParentSymbol: "Other", FilePath: "Other.java"},
+        		{ID: "r1", Language: "java", Kind: core.KindInterface, Name: "LoanRepo", QualifiedName: "LoanRepo",
+        			Signature: "public interface LoanRepo extends JpaRepository<Loan, Long>", FilePath: "LoanRepo.java"},
+        		{ID: "m1", Language: "java", Kind: core.KindMethod, Name: "findByLoanIdAndStatus", QualifiedName: "LoanRepo.findByLoanIdAndStatus", ParentSymbol: "LoanRepo", FilePath: "LoanRepo.java"},
+        		{ID: "t1", Language: "plaintext", Kind: core.KindFile, Name: "view", FilePath: "templates/view.html",
+        			RawText: `<td th:text="${loan.loanId}"></td><input th:field="*{status}"/>`},
+        	}
+        	idx := newEdgeIndex(syms)
+        	edges := buildFrameworkEdges(idx, syms)
+        	got := map[string]float64{}
+        	for _, e := range edges {
+        		got[e.From+"->"+e.To] = e.Confidence
+        	}
+        	// Derived query: both properties, scoped to the repo's OWN entity —
+        	// Other.getLoanId must not receive a derived-query edge.
+        	if got["m1->g1"] != 0.7 || got["m1->g2"] != 0.7 {
+        		t.Errorf("derived-query edges missing: %v", got)
+        	}
+        	if _, ok := got["m1->gx"]; ok {
+        		t.Error("derived query leaked to another entity's accessor")
+        	}
+        	// Template EL: both identifiers, estate-wide (gx legitimately included).
+        	if got["t1->g1"] != 0.6 || got["t1->g2"] != 0.6 || got["t1->gx"] != 0.6 {
+        		t.Errorf("template EL edges missing: %v", got)
+        	}
+        }
+        EOF
+        go test ./internal/graph/ -run "Framework|SplitDerived" -v 2>&1 | tail -4
+      at: 2026-08-29T19:25:44.570217Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 -c "
+        src=open('internal/graph/spring_test.go').read()
+        src=src.replace('import \"testing\"','import (\n\t\"testing\"\n\n\t\"github.com/provasign/grove/internal/core\"\n)',1)
+        open('internal/graph/spring_test.go','w').write(src)" && go test ./internal/graph/ -run "Framework|SplitDerived" 2>&1 | tail -2 && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && go build -o $S/grove-mf ./cmd/grove && rm -rf $S/noop9 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop9 && rm -rf $S/noop9/.grove && $S/grove-mf index $S/noop9 >/dev/null 2>&1 && $S/grove-mf status $S/noop9 | grep -E "filesIndexed|symbolCount|edgeCount"; find ~/.cache/prism-ci-corpus/gin -name '*.html' | wc -l
+      at: 2026-08-29T19:25:58.235612Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && go test ./... 2>&1 | grep -cv "^ok\|no test files"; git add strategies/extractors.go strategies/strategies_test.go && git commit -q -m "$(cat <<'EOF'
+        java: synthesize Lombok accessor symbols
+
+        @Getter/@Setter/@Data/@Value (class- or field-level) entities carry
+        accessors only in bytecode: call sites reference getLoanId() but no
+        such symbol was indexed, so the field was UNANCHORABLE for
+        change-impact and every accessor caller dangled (measured on
+        apache/fineract). Synthesized methods carry the "lombok-generated"
+        modifier and the FIELD's span — results point at the declaration a
+        human would edit. isX for booleans; @Data implies both.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.7.0 -m "lombok accessor synthesis" && git push origin v0.7.0 2>&1 | tail -1 && cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.7.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove gate: $?"
+      at: 2026-08-29T19:26:15.398633Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p = "harness/SPRING-MEASURE.md"
+        add = """
+
+        ## Results (2026-08-29)
+
+        M1: templates dominate MVC apps (petclinic: 272 EL/th refs vs 50 java
+        files); string-borne DI is ~1-2% of a large estate (fineract); typed
+        @Autowired resolves through the existing interface graph.
+
+        M2 before: petclinic Person.getFirstName claimed CLOSED at 2 sites with
+        4+ template files of live bindings; fineract LoanOriginatorMapping.loanId
+        UNANCHORABLE (Lombok — no getter symbol) with findByLoanId invisible.
+        DI-by-type: covered (Guarantor case) -> KILL 1 applied to the DI slice,
+        nothing built there.
+
+        Build (to measured gaps only): Lombok accessor synthesis (astkit —
+        a JAVA completeness fix, not framework machinery); JPA derived-query
+        edges (findByLoanIdAndStatus -> entity accessors, entity-scoped, 0.7);
+        template EL edges (.html/.jsp/.ftl indexed as plaintext, ${...}/*{...}
+        identifiers -> accessors estate-wide, 0.6); completeness honesty:
+        heuristic-source callers append "+heuristic-refs" — never plain
+        "closed" with name-derived edges in the set.
+
+        M2 after: getFirstName 2->7 sites, ALL 5 template files as callers;
+        getLoanId unanchorable -> 6 sites incl. all five derived-query methods.
+        KILL 2 not triggered (lift ~0 -> ~1.0 on framework-crossing gold).
+        gin byte-identical (no html); chained-receiver Lombok attribution
+        (x.getValue().getFirst().getLoanId()) remains a known deep-chain gap.
+        """
+        open(p, "a").write(add)
+        print("results recorded")
+        EOF
+        git add harness/SPRING-MEASURE.md && git commit -q -m "spring measure: M1/M2 results — build kept, KILL 1 hit DI slice only
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT" && git push origin main 2>&1 | tail -1
+      at: 2026-08-29T19:26:31.676044Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git add go.mod go.sum internal/graph/spring.go internal/graph/spring_test.go internal/graph/graph.go internal/graph/changeimpact.go internal/parser/languages.go && git commit -q -m "$(cat <<'EOF'
+        framework edges: JPA derived queries, template EL, honest completeness
+
+        Measured on real corpora (research/harness/SPRING-MEASURE.md): typed
+        @Autowired already resolves through the interface graph (nothing
+        built); the real blindspots were name-derived references.
+
+        - JPA derived-query methods (findByLoanIdAndStatus) emit calls edges to
+          their OWN entity's accessors (0.7, cross-artifact) — rename the field
+          and the query methods surface as callers. And/Or property splitting
+          is a manual scan: RE2 has no lookahead, and the regex version panicked
+          on the first query of any Spring repo.
+        - View templates (.html/.jsp/.ftl) index as plaintext; ${...}/*{...} EL
+          identifiers emit calls edges to matching accessors estate-wide (0.6)
+          — an EL property access IS a getter invocation at runtime. Before:
+          petclinic getFirstName claimed CLOSED at 2 sites with 5 template
+          files of live bindings; after: all 5 surface.
+        - Honesty: caller sets containing heuristic/regex-source edges append
+          "+heuristic-refs" to completeness — never plain "closed" when
+          name-derived references are in the set.
+
+        With astkit v0.7.0 (Lombok accessor synthesis) the fineract gold case
+        goes from UNANCHORABLE to 6 sites incl. all five derived-query
+        methods. gin byte-identical (no html files).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.38.0 -m "framework reference edges + lombok + honest completeness" && git push origin v0.38.0 2>&1 | tail -1 && cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.38.0 github.com/provasign/astkit@v0.7.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3
+      at: 2026-08-29T19:27:00.802614Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && grep -n "widerAnchor\|WiderAnchor" internal/graph/changeimpact.go | head -10
+      at: 2026-08-29T19:29:14.836418Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rln "widerAnchor" internal/ | head -5
+      at: 2026-08-29T19:29:17.560223Z
+      classified: other
+    - cmd: grep -rln "widerAnchor\|WiderAnchor" ~/Projects/provasign/prism/internal/ 2>/dev/null; find ~/Projects/provasign/prism -name "wideranchor_test.go"
+      at: 2026-08-29T19:29:21.383591Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 1,40p internal/mcp/wideranchor.go
+      at: 2026-08-29T19:29:24.547451Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 40,90p internal/mcp/wideranchor.go
+      at: 2026-08-29T19:29:27.011137Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rn '"closed"\|\.Completeness ==' internal --include='*.go' | grep -v _test | grep -v wideranchor.go
+      at: 2026-08-29T19:29:32.727572Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/changeimpact.go"
+        src = open(p).read()
+
+        # Revert the string-suffix approach to a clean separate field.
+        src = src.replace(
+        '''\tif heuristicCallers {
+        \t\t// Name-derived framework references (template EL, JPA derived
+        \t\t// queries) are in the caller set at reduced confidence. The set is
+        \t\t// deliberately over-inclusive rather than silently incomplete, but
+        \t\t// it is not CLOSED in the certain sense — say so.
+        \t\tcompleteness += "+heuristic-refs"
+        \t}
+        ''', '')
+
+        src = src.replace(
+        '''\t\tCompleteness: func() string {
+        \t\t\tif heuristicEdges {
+        \t\t\t\treturn "callers-only+heuristic-refs"
+        \t\t\t}
+        \t\t\treturn "callers-only"
+        \t\t}(),''',
+        '''\t\tCompleteness:    "callers-only",
+        \t\tHasHeuristicRefs: heuristicEdges,''')
+
+        src = src.replace(
+        '''\t\tCompleteness: func() string {
+        \t\t\tif heuristicCallers {
+        \t\t\t\treturn "project-local+heuristic-refs"
+        \t\t\t}
+        \t\t\treturn "project-local"
+        \t\t}(),''',
+        '''\t\tCompleteness:    "project-local",\n\t\tHasHeuristicRefs: heuristicCallers,''')
+
+        assert 'heuristic-refs"' not in src, "suffix leftover"
+        open(p, "w").write(src)
+        print("suffix approach reverted")
+        EOF
+        grep -n "Completeness   " internal/graph/changeimpact.go | head -3; grep -n "type ChangeImpactResult struct" -A20 internal/graph/changeimpact.go | head -22
+      at: 2026-08-29T19:29:41.448678Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "Completeness string" internal/graph/changeimpact.go
+      at: 2026-08-29T19:29:44.371221Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && gofmt -l internal/graph/changeimpact.go; gofmt -w internal/graph/changeimpact.go; go build ./... 2>&1 | head -10
+      at: 2026-08-29T19:30:01.056305Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign/grove && grep -n "Completeness: *completeness\|completeness := \"closed\"" internal/graph/changeimpact.go | head -5'
+      at: 2026-08-29T19:30:05.728508Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 395,423p internal/graph/changeimpact.go
+      at: 2026-08-29T19:30:08.277418Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "HasHeuristicRefs\|heuristicCallers\|heuristicEdges" internal/graph/changeimpact.go
+      at: 2026-08-29T19:30:18.224261Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && gofmt -w internal/graph/changeimpact.go && go build ./... 2>&1 | head -10 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "grove suite: $?"'
+      at: 2026-08-29T19:30:28.762131Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && grep -n "Completeness" internal/grove/types.go internal/mcp/graphtext.go | head -10
+      at: 2026-08-29T19:30:32.150394Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 135,175p internal/grove/types.go
+      at: 2026-08-29T19:30:34.599798Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 95,122p internal/grove/types.go; grep -n "func.*ChangeImpact" internal/grove/*.go | grep -v _test
+      at: 2026-08-29T19:30:38.119338Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 530,560p internal/grove/client.go
+      at: 2026-08-29T19:30:41.571104Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "Completeness\|completeness" internal/mcp/graphtext.go
+      at: 2026-08-29T19:30:54.557678Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 55,95p internal/mcp/graphtext.go
+      at: 2026-08-29T19:30:58.229795Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 460,475p internal/mcp/verify.go
+      at: 2026-08-29T19:31:10.534772Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && go build ./... 2>&1 | head -10 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -10; echo "prism suite: $?"'
+      at: 2026-08-29T19:31:21.435721Z
+      classified: test
+    - cmd: find ~/Projects/provasign/grove -path "*/pkg/grove/*" -name "*.go" | xargs grep -ln "ChangeImpactResult" 2>/dev/null
+      at: 2026-08-29T19:31:25.193601Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "ChangeImpactResult\|Completeness" pkg/grove/grove.go | head -10
+      at: 2026-08-29T19:31:28.26706Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && grep -n "Completeness:      raw.Completeness" pkg/grove/grove.go'
+      at: 2026-08-29T19:31:45.204448Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 355,365p pkg/grove/grove.go; echo ---; sed -n 405,420p pkg/grove/grove.go; echo ---; sed -n 460,472p pkg/grove/grove.go
+      at: 2026-08-29T19:31:49.158541Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && go build ./... 2>&1 | head -10 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "grove: $?"'
+      at: 2026-08-29T19:32:03.270489Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.7.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "module gate: $?"; git add -A && git status --short | head -10'
+      at: 2026-08-29T19:32:13.126962Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git reset .claude/settings.json .mcp.json 2>&1 | tail -1; git add internal/graph/changeimpact.go pkg/grove/grove.go && git commit -q -m "$(cat <<'EOF'
+        fix: heuristic-refs as a field, not a Completeness string suffix
+
+        The v0.38.0 candidate suffixed Completeness ("closed+heuristic-refs"),
+        which silently broke every exact-match consumer of the value —
+        prism's widerAnchorHint compares == "closed" and stopped firing for
+        any result touching a framework edge; caught by the module-mode gate
+        before release, not after. HasHeuristicRefs is now its own bool field
+        on ChangeImpactResult (internal/graph AND pkg/grove — three mirror
+        structs for this type across grove/pkg-grove/prism, all three now
+        correct). Completeness values are unchanged: closed, project-local,
+        callers-only.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.38.1 -m "fix: HasHeuristicRefs field, not Completeness suffix" && git push origin v0.38.1 2>&1 | tail -1
+      at: 2026-08-29T19:32:26.66687Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.38.1 github.com/provasign/astkit@v0.7.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -10; echo "prism gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3'
+      at: 2026-08-29T19:32:33.355734Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/research/harness && python3 -u ab_gate.py --baseline ~/bin/prism --candidate ~/Projects/provasign/prism/bin/prism-rel-test 2>&1; echo "gate exit: $?"'
+      at: 2026-08-29T19:34:22.723421Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls -la runs/ab-gate/*.json | grep -E "jackson-serialize|grafana" | tail -8; python3 -c "
+        import json
+        for f in ['runs/ab-gate/jackson-serialize.haiku.gate-cand.json','runs/ab-gate/grafana-checkhealth-impact.haiku.gate-cand.json']:
+            try:
+                d=json.load(open(f))
+                print(f, '->', {k:v for k,v in d.items() if k in ('error','stderr','wall_s','recall','tokens_in')})
+            except Exception as e: print(f, 'MISSING/ERR', e)"
+      at: 2026-08-29T19:43:55.517342Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        for f in ['runs/ab-gate/jackson-serialize.haiku.273a3974.json','runs/ab-gate/grafana-checkhealth-impact.haiku.273a3974.json']:
+            d=json.load(open(f))
+            print(f); print(json.dumps(d, indent=1)[:600]); print()"
+      at: 2026-08-29T21:04:33.180215Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && grep -n "def run_arm" ab_agentic_mcp.py | head -1; sed -n "$(grep -n ''def run_arm'' ab_agentic_mcp.py | head -1 | cut -d: -f1),+40p" ab_agentic_mcp.py | grep -n "wall_s\|turns.*1\|except\|error\|rate" '
+      at: 2026-08-29T21:04:40.837035Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 79,130p ab_agentic_mcp.py
+      at: 2026-08-29T21:04:45.200956Z
+      classified: other
+    - cmd: |
+        cd ~/Projects/provasign/research/harness && rm -f runs/ab-gate/jackson-serialize.haiku.273a3974.json && python3 -c "
+        import sys, json, subprocess
+        sys.path.insert(0,'.')
+        import ab_gate, ab_agentic_mcp as bed
+        from schema import Task
+        c_arm = ab_gate.arm_for('$HOME/Projects/provasign/prism/bin/prism-rel-test', 'cand')
+        task = Task.load('tasks/jackson-serialize.json')
+        corpus = __import__('pathlib').Path(task.workdir or task.repo)
+        subprocess.run(['git','-C',str(corpus),'checkout','-q',task.pin], capture_output=True)
+        spec = bed.ARMS[c_arm]
+        prompt = spec['guidance'] + '\n' + bed.CONTRACT.format(prompt=task.prompt)
+        cmd = ['claude','-p',prompt,'--model','haiku','--output-format','json',
+               '--dangerously-skip-permissions','--strict-mcp-config',
+               '--allowedTools', *spec['allowed'], '--mcp-config', spec['mcp']]
+        r = subprocess.run(cmd, cwd=corpus, capture_output=True, text=True, timeout=120)
+        print('RC', r.returncode)
+        print('STDOUT', r.stdout[:1000])
+        print('STDERR', r.stderr[:1000])
+        "
+      at: 2026-08-29T21:06:07.424559Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && rm -f runs/ab-gate/jackson-serialize.haiku.*.json runs/ab-gate/grafana-checkhealth-impact.haiku.*.json runs/ab-gate/grafana-querydata-impact.haiku.*.json && python3 -u ab_gate.py --baseline ~/bin/prism --candidate ~/Projects/provasign/prism/bin/prism-rel-test 2>&1; echo "gate exit: $?"'
+      at: 2026-08-29T21:06:15.618489Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p = "harness/ab_gate.py"
+        src = open(p).read()
+        old = '''def run_cell(arm: str, task: Task, corpus: Path, model: str,
+                     out: Path, binary: str, sha: str) -> dict:
+            f = out / f"{task.id}.{model}.{sha}.json"
+            if f.exists():
+                return json.loads(f.read_text())
+            subprocess.run(["git", "-C", str(corpus), "checkout", "-q", task.pin],
+                           capture_output=True)
+            subprocess.run([binary, "index", str(corpus)], capture_output=True,
+                           timeout=900)
+            rec = bed.run_arm(arm, task, corpus, model)
+            rec.update(task=task.id, model=model, binary_sha=sha)
+            f.write_text(json.dumps(rec, indent=2))
+            return rec'''
+        new = '''def is_degenerate(rec: dict) -> bool:
+            """True when the CLI returned cleanly but did no real work — a transient
+            rate-limit/quota response returns valid JSON with turns=1, cost=0,
+            tokens=0 rather than raising, so it never hits run_arm's except path and
+            was silently averaged in as a zero recall delta (observed 2026-08-29:
+            3/9 cells degenerate on BOTH arms in one run, masked by the mean-delta
+            math into an apparent clean PASS). Not cached — degenerate cells must
+            re-run, never be treated as a real result."""
+            return (rec.get("turns") == 1 and (rec.get("cost_usd") or 0) == 0
+                    and (rec.get("tokens_in") or 0) == 0 and "error" not in rec)
+
+
+        def run_cell(arm: str, task: Task, corpus: Path, model: str,
+                     out: Path, binary: str, sha: str) -> dict:
+            f = out / f"{task.id}.{model}.{sha}.json"
+            if f.exists():
+                cached = json.loads(f.read_text())
+                if not is_degenerate(cached):
+                    return cached
+                print(f"  ({f.name} was degenerate — re-running, not trusting cache)")
+            subprocess.run(["git", "-C", str(corpus), "checkout", "-q", task.pin],
+                           capture_output=True)
+            subprocess.run([binary, "index", str(corpus)], capture_output=True,
+                           timeout=900)
+            rec = bed.run_arm(arm, task, corpus, model)
+            rec.update(task=task.id, model=model, binary_sha=sha)
+            if is_degenerate(rec):
+                # One transient retry, same shape as the recall-drop retry policy.
+                print(f"  degenerate cell (turns=1, cost=$0) — one fresh retry")
+                rec = bed.run_arm(arm, task, corpus, model)
+                rec.update(task=task.id, model=model, binary_sha=sha)
+            f.write_text(json.dumps(rec, indent=2))
+            return rec'''
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+
+        # Hard-fail if a cell is STILL degenerate after retry — never silently
+        # average a no-signal cell into the mean.
+        old2 = '''        b = run_cell(b_arm, task, corpus, args.model, out, args.baseline, b_sha)
+                c = run_cell(c_arm, task, corpus, args.model, out, args.candidate, c_sha)
+
+                def hard_fails(cand: dict) -> str:'''
+        new2 = '''        b = run_cell(b_arm, task, corpus, args.model, out, args.baseline, b_sha)
+                c = run_cell(c_arm, task, corpus, args.model, out, args.candidate, c_sha)
+                if is_degenerate(b) or is_degenerate(c):
+                    print(f"HARNESS ERROR: {task.id} still degenerate after retry "
+                          f"(base_turns={b.get('turns')} cand_turns={c.get('turns')}) "
+                          "— infra issue, not a quality signal. Fix infra and re-run.")
+                    return 2
+
+                def hard_fails(cand: dict) -> str:'''
+        assert src.count(old2) == 1
+        src = src.replace(old2, new2)
+        open(p, "w").write(src)
+        print("degenerate-cell guard added")
+        EOF
+        python3 -c "
+        import ast
+        ast.parse(open('harness/ab_gate.py').read())
+        print('syntax ok')"
+      at: 2026-08-29T21:15:13.173579Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && python3 -u ab_gate.py --baseline ~/bin/prism --candidate ~/Projects/provasign/prism/bin/prism-rel-test 2>&1; echo "exit: $?"'
+      at: 2026-08-29T21:15:18.802721Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git add harness/ab_gate.py && git commit -q -m "$(cat <<'EOF'
+        ab_gate: detect and retry degenerate zero-signal cells
+
+        A CLI rate-limit/quota response can return cleanly (no exception) with
+        turns=1, cost=0, tokens=0 — never hitting run_arm's except path.
+        Observed 2026-08-29: 3/9 cells degenerate on BOTH arms in one run,
+        silently averaged into an apparent clean PASS by the mean-delta math.
+        is_degenerate() detects the shape, forces a fresh (uncached) retry, and
+        hard-fails with exit 2 (harness error, not a quality verdict) if still
+        degenerate — never lets a no-signal cell count toward the verdict.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1
+      at: 2026-08-29T21:15:29.057237Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test && git add internal/grove/types.go internal/grove/client.go internal/mcp/graphtext.go internal/mcp/verify.go go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.38.1, astkit v0.7.0 — Java completeness + framework refs
+
+        Lombok accessor synthesis (astkit): @Getter/@Setter/@Data fields were
+        unanchorable for change_impact — only bytecode had the accessor, so
+        callers of getX()/setX() dangled. Now synthesized with a
+        "lombok-generated" modifier, benefiting any Lombok Java project.
+
+        Framework reference edges (grove): JPA derived-query methods
+        (findByLoanIdAndStatus) -> entity accessors (entity-scoped, 0.7); view
+        template EL expressions (.html/.jsp/.ftl, ${...}/*{...}) -> matching
+        accessors (0.6). Measured on real corpora (petclinic, apache/fineract)
+        per research/harness/SPRING-MEASURE.md's kill-criteria contract: DI
+        already covered by the existing interface graph (nothing built there);
+        gold recall on framework-crossing cases went 0 -> ~1.0 with the built
+        edges. change_impact results touching these edges carry
+        hasHeuristicRefs=true and the text renderer notes it — "closed" alone
+        never again implies AST-certain when name-derived refs are included.
+
+        Gates: module-mode suite green (catches a real bug: encoding this as a
+        Completeness string suffix broke widerAnchorHint's exact-match check,
+        now a proper bool field), ci_invariants held, ab_gate clean rerun PASS
+        (mean recall delta +0.112, tokens -3%; a transient rate-limit response
+        degenerated 3 cells in the first run — ab_gate now detects and retries
+        that shape rather than silently averaging it in).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.58.0 -m "java completeness + spring framework references" && git push origin v0.58.0 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T21:15:44.929264Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T16:37:26.142972Z
+redactions: 0
