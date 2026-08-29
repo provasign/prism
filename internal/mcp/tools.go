@@ -2058,6 +2058,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if r.Completeness != "" {
 		out["completeness"] = r.Completeness
 	}
+	if r.HasHeuristicRefs {
+		out["hasHeuristicRefs"] = true
+	}
 	if len(r.ExternalSupers) > 0 {
 		out["externalSupers"] = r.ExternalSupers
 	}
