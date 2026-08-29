@@ -469,6 +469,10 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		if impact.Completeness != "" && impact.Completeness != "closed" {
 			notes = append(notes, displayQN(sd.sym)+": impact completeness is "+impact.Completeness)
 		}
+		if impact.HasHeuristicRefs {
+			notes = append(notes, displayQN(sd.sym)+": required set includes name-derived "+
+				"(framework template/query) references — probably right, not certain")
+		}
 		required := make([]grove.SymbolRecord, 0,
 			len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes))
 		required = append(required, impact.Family...)

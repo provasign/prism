@@ -551,6 +551,7 @@ func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactR
 		ExternalSupers:    r.ExternalSupers,
 		OverridesExternal: r.OverridesExternal,
 		Completeness:      r.Completeness,
+		HasHeuristicRefs:  r.HasHeuristicRefs,
 	}, nil
 }
 

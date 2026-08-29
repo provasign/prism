@@ -116,8 +116,14 @@ type ChangeImpactResult struct {
 	// external supertype's contract — a signature change breaks a contract
 	// the project does not own; the change-set is project-local only.
 	OverridesExternal []string `json:"overridesExternal,omitempty"`
-	// Completeness: "closed" or "project-local".
+	// Completeness: "closed", "project-local", or "callers-only".
 	Completeness string `json:"completeness,omitempty"`
+	// HasHeuristicRefs is true when the caller set includes at least one
+	// name-derived edge (framework template/JPA references) rather than
+	// only AST-certain ones — the set is deliberately over-inclusive
+	// rather than silently incomplete, but is not certain in the way a
+	// bare "closed" implies.
+	HasHeuristicRefs bool `json:"hasHeuristicRefs,omitempty"`
 }
 
 // MissingImplementationsResult answers "which types claiming this contract do
