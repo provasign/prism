@@ -16,12 +16,11 @@ import (
 // session cache for the rest of the run, so the envelope is paid again on
 // every later turn, not once.
 //
-// Falls back to JSON (ok=false) whenever the result carries structured
-// symbol data (scope="symbols"/"both") — flattening signature/doc/body/kind
-// would lose information, not just re-encode it — or whenever the shape
-// contains a field this function does not recognise. A silent drop is worse
-// than a slightly larger response: better to fall back to JSON than to
-// truncate a field the agent needs and never say so.
+// Symbol-bearing results render as location lines (kind, qualified name,
+// file:span, bounded signature) with an explicit prism_lookup pointer —
+// see renderOneSearchText. Falls back to JSON (ok=false) only when the
+// shape contains a field this function does not recognise: a silent drop
+// is worse than a slightly larger response.
 func renderSearchAsText(out map[string]any) (string, bool) {
 	known := map[string]bool{
 		"textHits": true, "textBackend": true, "truncated": true,
@@ -89,6 +88,12 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 				fmt.Fprintf(b, ":%v-%v", span["start"], span["end"])
 			}
 			if sig, _ := sm["signature"].(string); sig != "" {
+				// A locate line needs enough signature to disambiguate, not
+				// a 300-char generic method header; the full form is one
+				// prism_lookup away (the pointer below says so).
+				if len(sig) > 100 {
+					sig = sig[:97] + "..."
+				}
 				fmt.Fprintf(b, "  %s", sig)
 			}
 			if td, _ := sm["testDouble"].(bool); td {

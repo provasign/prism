@@ -1312,8 +1312,11 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.
 	if scope != "symbols" {
+		// The merged pass previously ran at MaxHits 50 — double the symbol
+		// limit the caller asked for, on the default scope of the highest-
+		// call-count tool. The caller's limit bounds both passes now.
 		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
-			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
+			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context,
 		}); len(r.Hits) > 0 {
