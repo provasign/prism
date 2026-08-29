@@ -17,17 +17,61 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/provasign/prism/internal/ranking"
+	"github.com/provasign/prism/internal/session"
 	"github.com/provasign/prism/internal/version"
 )
 
 // Server is the JSON-RPC stdio server.
 type Server struct {
 	handler *Handler
+
+	// Ledger persistence for the long-running server: CLI invocations save
+	// per call, but an MCP session historically recorded nothing durable —
+	// which is why token-cost analysis had to be done by mining agent
+	// transcripts. The server now merges its in-memory deltas into the
+	// shared per-root ledger file after each tool call, under the same file
+	// lock CLI processes use, so concurrent sessions add rather than
+	// clobber.
+	ledgerPath string
+	ledgerMu   sync.Mutex
+	lastSaved  session.Summary
 }
 
 // NewServer wires a Handler into a stdio JSON-RPC server.
 func NewServer(h *Handler) *Server { return &Server{handler: h} }
+
+// WithLedgerPersistence enables per-call delta merging into the shared
+// ledger file at path (see Server.ledgerPath).
+func (s *Server) WithLedgerPersistence(path string) *Server {
+	s.ledgerPath = path
+	s.lastSaved = s.handler.Ledger.Snapshot()
+	return s
+}
+
+// persistLedgerDelta merges counts accumulated since the last save into the
+// on-disk ledger. Best-effort: a lock timeout or IO error drops one delta,
+// never blocks a tool response.
+func (s *Server) persistLedgerDelta() {
+	if s.ledgerPath == "" {
+		return
+	}
+	s.ledgerMu.Lock()
+	defer s.ledgerMu.Unlock()
+	delta := s.handler.Ledger.DiffSince(s.lastSaved)
+	_ = session.WithFileLock(s.ledgerPath+".lock", 2*time.Second, func() error {
+		disk, err := session.LoadLedger(s.ledgerPath)
+		if err != nil {
+			disk = session.NewLedger(time.Now().Format("20060102-150405"))
+		}
+		disk.ApplyDelta(delta)
+		return disk.Save(s.ledgerPath)
+	})
+	s.lastSaved = s.handler.Ledger.Snapshot()
+}
 
 type request struct {
 	JSONRPC string          `json:"jsonrpc"`
@@ -195,6 +239,11 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			encoded, _ := json.Marshal(out)
 			text = string(encoded)
 		}
+		// Result-size accounting: this is the number that compounds via
+		// cache re-reads on every later turn (measured: median 4.4x, mean
+		// 11x effective multiplier across real sessions).
+		s.handler.Ledger.RecordResult(call.Name, ranking.EstimateTokens(text))
+		s.persistLedgerDelta()
 		content := []map[string]string{{"type": "text", "text": text}}
 		// Stale-context delivery: when any recently delivered file changed
 		// on disk, every context-bearing response carries the warning, so

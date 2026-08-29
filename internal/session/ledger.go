@@ -13,6 +13,13 @@ type ToolStats struct {
 	Calls     int   `json:"calls"`
 	Original  int64 `json:"original"`
 	Delivered int64 `json:"delivered"`
+	// ResultTokens is the size of every rendered result this tool returned,
+	// as delivered to the agent (final text, post-compression). Independent
+	// of Original/Delivered, which track the compression baseline only.
+	ResultTokens int64 `json:"resultTokens,omitempty"`
+	// ResultCalls counts dispatches that produced a result — one per tool
+	// call at the server, regardless of which internal paths also Recorded.
+	ResultCalls int64 `json:"resultCalls,omitempty"`
 }
 
 // Ledger tracks per-session token savings.
@@ -23,6 +30,7 @@ type Ledger struct {
 	TotalDelivered int64
 	ByTool         map[string]*ToolStats
 	StartTime      time.Time
+	TotalResults   int64
 }
 
 // NewLedger constructs a new ledger.
@@ -67,6 +75,71 @@ func (l *Ledger) RecordCall(tool string) {
 	stats.Calls++
 }
 
+// RecordResult adds the rendered size of one tool result — the bytes that
+// actually land in the agent's context window. This is the number token-cost
+// analysis needs (result size compounds via cache re-reads on every later
+// turn); Record's Original/Delivered pair measures compression savings and
+// says nothing about absolute cost.
+func (l *Ledger) RecordResult(tool string, tokens int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	stats, ok := l.ByTool[tool]
+	if !ok {
+		stats = &ToolStats{}
+		l.ByTool[tool] = stats
+	}
+	stats.ResultTokens += int64(tokens)
+	stats.ResultCalls++
+	l.TotalResults += int64(tokens)
+}
+
+// DiffSince returns per-tool deltas accumulated since prev (a snapshot of
+// this ledger taken earlier). Used by the long-running MCP server to merge
+// its in-memory counts into the shared on-disk ledger without clobbering
+// other sessions' contributions.
+func (l *Ledger) DiffSince(prev Summary) Summary {
+	cur := l.Snapshot()
+	d := Summary{SessionID: cur.SessionID, ByTool: map[string]ToolStats{}}
+	d.TotalOriginal = cur.TotalOriginal - prev.TotalOriginal
+	d.TotalDelivered = cur.TotalDelivered - prev.TotalDelivered
+	d.TotalResults = cur.TotalResults - prev.TotalResults
+	for tool, s := range cur.ByTool {
+		p := prev.ByTool[tool]
+		delta := ToolStats{
+			Calls:        s.Calls - p.Calls,
+			Original:     s.Original - p.Original,
+			Delivered:    s.Delivered - p.Delivered,
+			ResultTokens: s.ResultTokens - p.ResultTokens,
+			ResultCalls:  s.ResultCalls - p.ResultCalls,
+		}
+		if delta != (ToolStats{}) {
+			d.ByTool[tool] = delta
+		}
+	}
+	return d
+}
+
+// ApplyDelta adds another session's per-tool deltas into this ledger.
+func (l *Ledger) ApplyDelta(d Summary) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.TotalOriginal += d.TotalOriginal
+	l.TotalDelivered += d.TotalDelivered
+	l.TotalResults += d.TotalResults
+	for tool, ds := range d.ByTool {
+		stats, ok := l.ByTool[tool]
+		if !ok {
+			stats = &ToolStats{}
+			l.ByTool[tool] = stats
+		}
+		stats.Calls += ds.Calls
+		stats.Original += ds.Original
+		stats.Delivered += ds.Delivered
+		stats.ResultTokens += ds.ResultTokens
+		stats.ResultCalls += ds.ResultCalls
+	}
+}
+
 // TotalDeliveredTokens returns running total of delivered tokens.
 func (l *Ledger) TotalDeliveredTokens() int64 {
 	l.mu.Lock()
@@ -90,6 +163,7 @@ type Summary struct {
 	StartTime      string               `json:"startTime"`
 	TotalOriginal  int64                `json:"totalOriginalTokens"`
 	TotalDelivered int64                `json:"totalDeliveredTokens"`
+	TotalResults   int64                `json:"totalResultTokens,omitempty"`
 	SavingsPercent float64              `json:"savingsPercent"`
 	ByTool         map[string]ToolStats `json:"byTool"`
 }
@@ -111,6 +185,7 @@ func (l *Ledger) Snapshot() Summary {
 		StartTime:      l.StartTime.Format(time.RFC3339),
 		TotalOriginal:  l.TotalOriginal,
 		TotalDelivered: l.TotalDelivered,
+		TotalResults:   l.TotalResults,
 		SavingsPercent: saving,
 		ByTool:         tools,
 	}
@@ -147,6 +222,7 @@ func LoadLedger(path string) (*Ledger, error) {
 		SessionID:      s.SessionID,
 		TotalOriginal:  s.TotalOriginal,
 		TotalDelivered: s.TotalDelivered,
+		TotalResults:   s.TotalResults,
 		ByTool:         make(map[string]*ToolStats, len(s.ByTool)),
 		StartTime:      start,
 	}

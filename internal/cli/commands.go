@@ -231,6 +231,8 @@ func Run(args []string) int {
 		return cmdServe(rest)
 	case "mcp":
 		return cmdMCP(rest)
+	case "stats":
+		return cmdStats(rest)
 	case "savings":
 		return cmdSavings(rest)
 	case "drift":
@@ -2245,6 +2247,58 @@ func cmdFeedback(args []string) int {
 	return 0
 }
 
+// cmdStats prints the per-root token-cost dashboard as a human table:
+// per tool, calls / result tokens / avg per call, plus compression savings.
+// Same data source as `prism savings` (the shared per-root ledger), different
+// audience: savings is the agent-facing JSON, stats is for the human deciding
+// where token budget goes.
+func cmdStats(args []string) int {
+	dir := dirArg(args, 0, ".")
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "stats:", err)
+		return 1
+	}
+	ledger, err := session.LoadLedger(ledgerPathForRoot(root))
+	if err != nil {
+		fmt.Println("no ledger yet for this root — run some prism tools first")
+		return 0
+	}
+	s := ledger.Snapshot()
+	type row struct {
+		tool string
+		st   session.ToolStats
+	}
+	rows := make([]row, 0, len(s.ByTool))
+	for tool, st := range s.ByTool {
+		rows = append(rows, row{tool, st})
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].st.ResultTokens > rows[j].st.ResultTokens })
+	fmt.Printf("%-28s %8s %14s %10s %12s\n", "tool", "calls", "result tokens", "avg/call", "compressed")
+	for _, r := range rows {
+		calls := r.st.ResultCalls
+		if calls == 0 {
+			calls = int64(r.st.Calls) // pre-instrumentation ledgers
+		}
+		avg := int64(0)
+		if calls > 0 {
+			avg = r.st.ResultTokens / calls
+		}
+		comp := ""
+		if r.st.Original > 0 {
+			comp = fmt.Sprintf("%.0f%%", (1-float64(r.st.Delivered)/float64(r.st.Original))*100)
+		}
+		fmt.Printf("%-28s %8d %14d %10d %12s\n", r.tool, calls, r.st.ResultTokens, avg, comp)
+	}
+	fmt.Printf("\nTOTAL result tokens delivered: %d", s.TotalResults)
+	if s.TotalOriginal > 0 {
+		fmt.Printf("   (compression saved %.0f%% on the compressible paths)", s.SavingsPercent)
+	}
+	fmt.Println()
+	fmt.Println("result tokens compound: each result is re-read from cache on every later turn.")
+	return 0
+}
+
 func cmdSavings(args []string) int {
 	dir := dirArg(args, 0, ".")
 	out, err := invokeWithPersistentLedger(dir, "prism_savings", nil)
@@ -2380,7 +2434,7 @@ func cmdMCP(args []string) int {
 	}()
 
 	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)
-	srv := mcp.NewServer(h)
+	srv := mcp.NewServer(h).WithLedgerPersistence(ledgerPathForRoot(root))
 	serveErr := srv.Serve(os.Stdin, os.Stdout)
 
 	// Stop background work and close the embedded engine before returning so no
