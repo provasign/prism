@@ -103,7 +103,11 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 		}
 		b.WriteString("// locations only — prism_lookup <name> or prism_read for the body\n")
 	} else if hasKey(m, "symbols") && !hasKey(m, "textHits") && !hasKey(m, "files") {
-		b.WriteString("// no symbol matches\n")
+		// Same completeness rule as the text-search empty case above. Symbol
+		// matching is an in-memory index lookup, not a scan with a timeout
+		// risk, so the reassurance is simpler: the whole index was checked,
+		// not a partial/truncated pass.
+		b.WriteString("// no symbol matches (full index checked, not a partial pass)\n")
 	}
 	switch {
 	case hasKey(m, "symbols") && !hasKey(m, "files") && !hasKey(m, "textHits"):
@@ -119,7 +123,19 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 	case hasKey(m, "textHits"):
 		groups := anySlice(m["textHits"])
 		if len(groups) == 0 {
-			b.WriteString("// no matches\n")
+			// A bare "no matches" is indistinguishable from "the search
+			// didn't finish" or "the index missed it" -- an agent that
+			// doesn't trust the null rationally re-verifies with grep,
+			// which is correct caution, not routing failure. timedOut is
+			// already the engine's own completion signal (set only when
+			// the deadline fired before the scan finished); surface it so
+			// the null carries the same evidence a truncated hit list
+			// already does.
+			if timedOut, _ := m["timedOut"].(bool); timedOut {
+				b.WriteString("// no matches — search timed out before finishing; results may be incomplete\n")
+			} else {
+				b.WriteString("// no matches — search completed (not truncated, not timed out)\n")
+			}
 		}
 		for _, g := range groups {
 			gm, ok := g.(map[string]any)

@@ -2751,7 +2751,14 @@ func printTextOutput(m map[string]any) {
 		if !hasSyms && !hasContent {
 			printTextMatches(m)
 			if len(asSliceAny(m["textHits"])) == 0 {
-				fmt.Println("// no matches")
+				// Same evidence rule as the MCP renderer (searchtext.go):
+				// a bare null is indistinguishable from a broken/partial
+				// search, so state completion explicitly.
+				if timedOut, _ := m["timedOut"].(bool); timedOut {
+					fmt.Println("// no matches — search timed out before finishing; results may be incomplete")
+				} else {
+					fmt.Println("// no matches — search completed (not truncated, not timed out)")
+				}
 			}
 			for _, k := range []string{"resolvedNote", "warning", "note"} {
 				if s, _ := m[k].(string); s != "" {

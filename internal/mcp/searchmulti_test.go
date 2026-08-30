@@ -299,6 +299,26 @@ func TestToolSearch_TruncationCarriesADenominator(t *testing.T) {
 	}
 }
 
+func TestToolSearch_EmptyResultCarriesCompletionEvidence(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "ThisStringDoesNotExistAnywhere12345", "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	text, ok := renderSearchAsText(m)
+	if !ok {
+		t.Fatal("expected a plain-text rendering")
+	}
+	// A bare "no matches" is indistinguishable from a broken/incomplete
+	// search; the rendered null must say the search actually finished, so
+	// an agent doesn't have a rational reason to re-verify with grep.
+	if !strings.Contains(text, "no matches") || !strings.Contains(text, "completed") {
+		t.Errorf("empty result must state the search completed, got: %q", text)
+	}
+}
+
 func TestToolSearch_ExhaustiveIsNotCapped(t *testing.T) {
 	h := newTextSearchHandler(t)
 	out, err := h.Invoke("prism_search", map[string]any{
