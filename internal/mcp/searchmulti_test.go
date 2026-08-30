@@ -448,3 +448,24 @@ func TestToolSearch_ContextRenderedInPlainText(t *testing.T) {
 		t.Errorf("context lines missing from rendering: %s", text)
 	}
 }
+
+func TestToolSearch_ContextClampedWithNote(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Alpha", "scope": "text", "context": searchContextCap + 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	note, _ := m["note"].(string)
+	if note == "" {
+		t.Error("context was silently clamped — truncation must never be silent")
+	}
+	groups := toSlice(m["textHits"])
+	gm := groups[0].(map[string]any)
+	hm := toSlice(gm["hits"])[0].(map[string]any)
+	before, _ := hm["before"].([]any)
+	if len(before) > searchContextCap {
+		t.Errorf("before-context has %d lines, want <= %d (the cap)", len(before), searchContextCap)
+	}
+}

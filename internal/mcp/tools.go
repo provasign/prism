@@ -444,7 +444,7 @@ func toolSchema(name string) map[string]any {
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 				"context": map[string]any{
 					"type":        "integer",
-					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read.",
+					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read. Clamped to 30; for more, prism_read the file.",
 				},
 			},
 		}
@@ -1090,6 +1090,22 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 // of request that should be narrowed, not widened.
 const searchTermCap = 10
 
+// searchContextCap bounds context= lines per hit. Unbounded, an agent
+// pairing a large context with exhaustive=true (or a wide path/no path) can
+// turn one call into the token cost of reading whole files hit-by-hit --
+// measured 2026-08-30: a context=30 call over a whole source file inside an
+// already-expensive debugging loop, on a task where the extra payload did
+// not shorten the loop. 30 lines each side covers a function body; past
+// that the caller wants prism_read on the specific file, not more context.
+const searchContextCap = 30
+
+func appendNote(existing, add string) string {
+	if existing == "" {
+		return add
+	}
+	return existing + "; " + add
+}
+
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
 	queries := stringsArg(args, "query")
 	if len(queries) == 0 {
@@ -1109,12 +1125,19 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	limit := intArg(args, "limit", 25)
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
+	reqContext := intArg(args, "context", 0)
+	if reqContext > searchContextCap {
+		termNote = appendNote(termNote, fmt.Sprintf(
+			"context clamped to %d (asked for %d) — for more than a function's worth, use prism_read on the file",
+			searchContextCap, reqContext))
+		reqContext = searchContextCap
+	}
 	sc := searchScope{
 		paths:      stringsArg(args, "path"),
 		glob:       stringsArg(args, "glob"),
 		filesOnly:  boolArg(args, "files_only"),
 		exhaustive: boolArg(args, "exhaustive"),
-		context:    intArg(args, "context", 0),
+		context:    reqContext,
 	}
 
 	// Multi-term: run each term through the same single-term path and group
