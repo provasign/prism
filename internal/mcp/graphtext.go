@@ -87,6 +87,13 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 		b.WriteString("// includes name-derived references (framework template/query bindings) — " +
 			"probably right, not certain; verify before relying on it for a safety-critical change\n")
 	}
+	if c, _ := out["completeness"].(string); c == "type-level" {
+		b.WriteString("// class-level query: direct structural dependents only (calls into its " +
+			"members, type references, extends/implements) — a consumer that only does an " +
+			"instanceof/duck-typing check against an UNRELATED type has no edge here and will " +
+			"not appear; if this class's runtime BEHAVIOR changed (not just its shape), also " +
+			"prism_search for instanceof checks against types it might resemble\n")
+	}
 	for _, sec := range []struct{ key, label string }{
 		{"declarations", "declarations"},
 		{"supers", "supers"},
