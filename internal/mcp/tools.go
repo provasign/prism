@@ -443,7 +443,7 @@ func toolSchema(name string) map[string]any {
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 				"context": map[string]any{
 					"type":        "integer",
-					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read. Clamped to 30. Guessing a large number to capture a whole named function/class? Use prism_lookup(name) instead — the exact body, no guessing.",
+					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read. Clamped to 15. Guessing a large number to capture a whole named function/class? Use prism_lookup(name) instead — the exact body, no guessing.",
 				},
 			},
 		}
@@ -1094,9 +1094,19 @@ const searchTermCap = 10
 // turn one call into the token cost of reading whole files hit-by-hit --
 // measured 2026-08-30: a context=30 call over a whole source file inside an
 // already-expensive debugging loop, on a task where the extra payload did
-// not shorten the loop. 30 lines each side covers a function body; past
-// that the caller wants prism_read on the specific file, not more context.
-const searchContextCap = 30
+// not shorten the loop.
+//
+// Tightened 30 -> 15 the same day, by binary search over 75 real context=
+// requests mined from e2e sessions: 15-19 are behaviorally identical (no
+// request in that range all day), so 15 sits at the true edge of normal
+// usage -- 86% of all requests already fall at or under it. Every one of
+// the 10 requests this tightening newly clamps (20,20,22,25,30x4,40x2) is
+// the SAME misuse pattern: a single named function/class captured by
+// guessing a context= large enough, rather than prism_lookup(name) -- the
+// exact case prism_lookup's routing fix (same day) targets directly. Past
+// 15, the caller wants prism_lookup for one symbol or prism_read for a
+// file, not more context.
+const searchContextCap = 15
 
 func appendNote(existing, add string) string {
 	if existing == "" {
