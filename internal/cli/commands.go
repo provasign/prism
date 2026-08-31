@@ -487,6 +487,9 @@ file / one symbol), ` + "`" + `prism_change_impact` + "`" + ` (blast radius), ` 
 - Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
   Do NOT issue one search per name — each extra call costs a full turn
   and re-reads your whole context.
+- Need one named function/class's whole body? ` + "`" + `prism_lookup(name)` + "`" + ` —
+  not ` + "`" + `prism_search(..., context=N)` + "`" + ` with N guessed large enough to
+  cover it.
 
 Bash-only (subagents, CI) — same verbs, add ` + "`" + `--format text` + "`" + `:
 

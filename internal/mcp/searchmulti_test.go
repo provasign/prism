@@ -252,20 +252,28 @@ func toSlice(v any) []any {
 // task): 0 prism calls deferred, 5 loaded, and with the flag haiku opens with
 // prism_query at 30 turns/$0.30 against 45/$0.53. v0.44.0 shipped this and
 // v0.52.0 reverted it wholesale with the rest of the arc, not on its own
-// evidence. The steering block no longer carries a ToolSearch paragraph, so
-// if this regresses the tools become both invisible AND unexplained.
-// Deferral is the deliberate state since 2026-08-29: the ab_deferral A/B
-// (9 paired bed tasks, haiku) measured zero routing losses and recall delta
-// +0.004 with schemas deferred — steering that names the tools routes fine
-// through the ToolSearch hop, and every session saves ~2k tokens of
-// always-resident schema. This guard keeps alwaysLoad from silently
-// returning; if it must return, bring a fresh A/B.
-func TestToolSchemas_NoneAlwaysLoad(t *testing.T) {
+// evidence. Full deferral (2026-08-29, ab_deferral A/B) held on a bed whose
+// guidance mandates an opening prism_query call. On realistic e2e tasks that
+// mandate doesn't hold: 2026-08-30 mining of 48 e2e sessions found usage
+// gated almost perfectly by whether the agent made the ToolSearch hop at
+// all (25/25 hopped -> used prism, 23/23 didn't -> used none), not by tool
+// choice once loaded. HYBRID residency (prism_query resident, the other
+// five deferred) is the current state: a 12-task e2e A/B moved usage 8/12
+// -> 11/12 sessions with turns -2.4%/cost +6.1% and zero resolve
+// regressions. This guard now checks the OPPOSITE of the old policy: keep
+// prism_query resident, everything else deferred. If either changes, bring
+// a fresh A/B first.
+func TestToolSchemas_QueryAlwaysLoadOthersDeferred(t *testing.T) {
 	for _, tool := range ToolSchemas() {
+		name, _ := tool["name"].(string)
+		loaded := false
 		if meta, ok := tool["_meta"].(map[string]any); ok {
-			if meta["anthropic/alwaysLoad"] == true {
-				t.Errorf("%v carries anthropic/alwaysLoad — deferral policy reversed without an A/B?", tool["name"])
-			}
+			loaded, _ = meta["anthropic/alwaysLoad"].(bool)
+		}
+		want := name == "prism_query"
+		if loaded != want {
+			t.Errorf("%v: alwaysLoad=%v, want %v — residency policy changed without a fresh A/B?",
+				name, loaded, want)
 		}
 	}
 }

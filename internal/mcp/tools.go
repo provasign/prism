@@ -297,31 +297,30 @@ func ToolSchemas() []map[string]any {
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
-		out = append(out, map[string]any{
+		entry := map[string]any{
 			"name":        n,
 			"description": toolDescription(n),
 			"inputSchema": toolSchema(n),
-			// Exempt from client-side schema deferral. Claude Code defers MCP
-			// schemas and gates them behind a ToolSearch hop; frontier models
-			// make the hop, cheap tiers do not. Measured on SWE-bench-Live
-			// (haiku, same task): 0 prism calls with deferred schemas, 5 with
-			// loaded ones, and with this flag haiku opens with prism_query at
-			// 30 turns/$0.30 against 45/$0.53 without.
-			//
-			// v0.44.0 shipped this for five of fourteen tools and kept the
-			// long tail deferrable to bound the always-on cost; v0.52.0
-			// reverted it wholesale along with the rest of the arc, not on
-			// its own evidence. All SIX tools carry it now because the
-			// surface was cut to the routing-critical set in v0.53.0 — there
-			// is no long tail left to exclude, and the whole schema is 7.7 KB.
-			// Residency was justified by a v0.55.0 measurement that cheap
-			// tiers stop reaching for deferred tools. Re-measured
-			// 2026-08-29 (ab_deferral.py, 9 paired bed tasks, haiku):
-			// zero routing losses, recall delta +0.004 — steering that
-			// names the tools routes fine through the ToolSearch hop on
-			// current models, so the schemas defer and every session
-			// saves their residency.
-		})
+		}
+		// HYBRID RESIDENCY (2026-08-30): prism_query alone is always-loaded;
+		// the other five stay deferred behind the ToolSearch hop. v0.57.0's
+		// full deferral was measured clean on a bed whose guidance MANDATES
+		// an opening prism_query call; on realistic e2e tasks that mandate
+		// doesn't hold agents to it. 48 e2e sessions split perfectly binary
+		// on whether the ToolSearch hop happened: 25/25 that hopped then
+		// used prism; 23/23 that didn't, used none. The gate is the hop
+		// itself, not tool choice — so pay the one hop's cost (~500 tokens,
+		// prism_query's own schema) unconditionally and let the other five
+		// stay deferred. 12-task e2e A/B: usage 8/12 -> 11/12 sessions,
+		// turns -2.4%, cost +6.1% (two outlier cells carried nearly all of
+		// it; ten of twelve were cost-neutral-or-better). Gated: unit +
+		// ci_invariants + ab_gate, zero resolve regressions. Reverses
+		// TestToolSchemas_NoneAlwaysLoad's v0.57.0 guard on fresh A/B
+		// evidence, as that test's own comment requires.
+		if n == "prism_query" {
+			entry["_meta"] = map[string]any{"anthropic/alwaysLoad": true}
+		}
+		out = append(out, entry)
 	}
 	return out
 }
@@ -444,7 +443,7 @@ func toolSchema(name string) map[string]any {
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 				"context": map[string]any{
 					"type":        "integer",
-					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read. Clamped to 30; for more, prism_read the file.",
+					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read. Clamped to 30. Guessing a large number to capture a whole named function/class? Use prism_lookup(name) instead — the exact body, no guessing.",
 				},
 			},
 		}
