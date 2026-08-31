@@ -216,3 +216,70 @@ func TestRender_DisclosureSignaturePlaintextDoesNotDuplicateContent(t *testing.T
 		t.Fatalf("plaintext signature should avoid docstring+signature duplication, got %q", got)
 	}
 }
+
+func TestSelect_FileCapDemotesAggregateTiling(t *testing.T) {
+	// The measured failure (2026-08-31, werkzeug routing/map.py): a seed
+	// plus many same-file graph candidates, each individually affordable,
+	// collectively tiling the whole file. Seeds are never demoted but DO
+	// count toward the file's spend, so a seed-heavy file hits
+	// FileBudgetFraction sooner — further full-disclosure candidates from
+	// it must degrade to signature, while another file's candidate (own
+	// category budget, own file) still gets its body.
+	line := "\tx := 1\n\t_ = x\n"
+	bigBody := "func X() {\n"
+	for i := 0; i < 150; i++ {
+		bigBody += line
+	}
+	bigBody += "}"
+	smallBody := "func Y() {\n" + line + line + "}"
+
+	seed := grove.SymbolRecord{
+		ID: "seed", Name: "Anchor", FilePath: "big.go", Kind: "method",
+		Signature: "func (m *M) Anchor()", RawText: bigBody,
+	}
+	var cands []Candidate
+	for i := 0; i < 8; i++ {
+		cands = append(cands, Candidate{
+			Symbol: grove.SymbolRecord{
+				ID: string(rune('a' + i)), Name: "M", FilePath: "big.go",
+				Kind: "method", Signature: "func (m *M) X()", RawText: smallBody,
+			},
+			Score: 0.9, Category: CategoryDependency,
+		})
+	}
+	other := grove.SymbolRecord{
+		ID: "other", Name: "O", FilePath: "other.go", Kind: "function",
+		Signature: "func O()", RawText: smallBody,
+	}
+	cands = append(cands, Candidate{Symbol: other, Score: 0.9, Category: CategoryTest})
+
+	// budget sized so the SEED alone crosses fileCap: fileCap =
+	// 0.4*budget < seed tokens, while category budgets stay roomy for
+	// the small candidate bodies.
+	budget := 2 * EstimateTokens(Render(seed, DisclosureFull))
+	out := Select([]grove.SymbolRecord{seed}, cands, budget)
+
+	fullFromBig, sigFromBig, fullFromOther := 0, 0, 0
+	for _, b := range out {
+		if b.Category == CategoryTarget {
+			continue
+		}
+		switch {
+		case b.Symbol.FilePath == "big.go" && b.Disclosure == DisclosureFull:
+			fullFromBig++
+		case b.Symbol.FilePath == "big.go" && b.Disclosure == DisclosureSignature:
+			sigFromBig++
+		case b.Symbol.FilePath == "other.go" && b.Disclosure == DisclosureFull:
+			fullFromOther++
+		}
+	}
+	if sigFromBig == 0 {
+		t.Errorf("seed spent big.go past its file cap; candidates must demote to signature (full=%d sig=%d)", fullFromBig, sigFromBig)
+	}
+	if fullFromBig != 0 {
+		t.Errorf("file already past cap at seed time — no candidate body from it should land (full=%d)", fullFromBig)
+	}
+	if fullFromOther == 0 {
+		t.Error("other.go must be unaffected by big.go's cap")
+	}
+}

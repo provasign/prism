@@ -64,6 +64,19 @@ type Candidate struct {
 // 0.6 means: stop when score falls more than 40% below the peak.
 const ScoreCliffFactor = 0.6
 
+// FileBudgetFraction caps how much of the total budget one FILE's selected
+// content may consume (seeds included in the accounting, though seeds are
+// never themselves demoted — they are the targets). Same rationale as the
+// type-seed 40% rule above, applied to the aggregate: without it, every
+// method of a well-matching class arrives as its own graph-connected
+// candidate, each individually fits its category budget, and collectively
+// they tile the entire file — measured 2026-08-31 (werkzeug routing/map.py,
+// budget=14000): merged candidate windows covered 913 of 951 lines, a
+// whole-file delivery in all but name. Past the cap, further candidates
+// from that file degrade to signature disclosure (the contract survives;
+// the body is one prism_read away via the omission marker's pointer).
+const FileBudgetFraction = 0.4
+
 // Select runs the budget-aware greedy selector.
 //
 //   - Seeds are always included at DisclosureFull and are NOT charged against
@@ -77,6 +90,8 @@ const ScoreCliffFactor = 0.6
 //     below the peak score seen so far (score cliff cutoff).
 func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int) []BudgetedSymbol {
 	out := make([]BudgetedSymbol, 0, len(seeds)+len(candidates))
+	perFile := map[string]int{}
+	fileCap := int(float64(totalBudget) * FileBudgetFraction)
 	for _, s := range seeds {
 		disc := DisclosureFull
 		// TYPE seeds are budget-aware. Full disclosure of a 2,000-line class
@@ -87,20 +102,28 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 		// itself, the need spreads across its body, and five oracle cells
 		// regressed when whole-type delivery vanished (RecyclerPool: the
 		// fix touches the interface and every nested impl). Rule: a type
-		// seed keeps full disclosure while its body fits inside 40% of the
-		// total budget — one type may anchor a delivery, not monopolize it.
+		// seed keeps full disclosure while the file's CUMULATIVE spend
+		// (this seed included) fits inside FileBudgetFraction of the total
+		// budget — one type may anchor a delivery, not monopolize it. The
+		// check is aggregate, not per-symbol: a broad term resolving two
+		// large classes in one file (measured 2026-08-31, "Map" -> Map +
+		// MapAdapter in werkzeug routing/map.py, budget=14000) passed the
+		// old per-symbol check twice and tiled 913 of 951 lines. Method
+		// seeds stay unconditionally full — they are small, named targets.
 		switch s.Kind {
 		case "class", "interface", "struct", "enum", "type":
-			if EstimateTokens(Render(s, DisclosureFull)) > (totalBudget*2)/5 {
+			if perFile[s.FilePath]+EstimateTokens(Render(s, DisclosureFull)) > fileCap {
 				disc = DisclosureSignature
 			}
 		}
+		cost := EstimateTokens(Render(s, disc))
+		perFile[s.FilePath] += cost
 		out = append(out, BudgetedSymbol{
 			Symbol:     s,
 			Score:      1.0,
 			Category:   CategoryTarget,
 			Disclosure: disc,
-			TokenCost:  EstimateTokens(Render(s, disc)),
+			TokenCost:  cost,
 		})
 	}
 
@@ -146,6 +169,14 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 		}
 
 		desired := chooseDisclosure(cand)
+		// Per-file cap: once this candidate's file has spent its share of
+		// the budget, the best it can get is signature disclosure — the
+		// aggregate-tiling failure mode this prevents is bodies, not
+		// contracts (a signature line costs little and keeps the symbol
+		// discoverable; its body is one prism_read away).
+		if perFile[cand.Symbol.FilePath] >= fileCap && desired == DisclosureFull {
+			desired = DisclosureSignature
+		}
 		// Try desired level first, then degrade until it fits or we give up.
 		levels := []DisclosureLevel{desired, DisclosureSignature, DisclosureReference}
 		picked := DisclosureLevel("")
@@ -161,6 +192,7 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 			continue // does not fit even at reference level
 		}
 		perCat[cand.Category] -= cost
+		perFile[cand.Symbol.FilePath] += cost
 		out = append(out, BudgetedSymbol{
 			Symbol:     cand.Symbol,
 			Score:      cand.Score,
