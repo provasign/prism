@@ -30,9 +30,22 @@ const (
 	// whole — windowing tiny files saves nothing and costs anchors.
 	wholeFileLines = 80
 	// wholeFileFraction: when windows would cover at least this fraction of a
-	// file, deliver the whole file instead (and record it in the session
-	// tracker, making later reads sha-pointer-eligible).
+	// file AND the file is small enough (wholeFileMaxLines), deliver the
+	// whole file instead (and record it in the session tracker, making later
+	// reads sha-pointer-eligible).
 	wholeFileFraction = 0.8
+	// wholeFileMaxLines bounds the coverage-triggered whole-file escape.
+	// Unbounded, 0.8 coverage on a 951-line file delivered all 951 lines
+	// verbatim (measured 2026-08-31: werkzeug routing/map.py, 5 identical
+	// deliveries, ~40k chars each — the majority of prism_query's entire
+	// 76%-of-all-tokens footprint came through this path). The windows the
+	// ranking had ALREADY computed for those calls held every named anchor
+	// and its graph-selected neighbors; collapsing them to the whole file
+	// added ~700 incidental lines per call. Above this bound the windowed
+	// rendering (with its omitted-ranges markers) always wins; the agent
+	// reaches omitted lines via prism_read(file, offset, limit) — the same
+	// follow-up shape a sed-based baseline uses, minus the guessing.
+	wholeFileMaxLines = 300
 	// signatureWindowLines: span cap for dependency symbols selected at
 	// signature-level disclosure — enough for the signature and doc head.
 	signatureWindowLines = 8
@@ -373,7 +386,8 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 		covered += w.end - w.start + 1
 	}
 	wholeFile := len(lines) <= wholeFileLines ||
-		float64(covered) >= wholeFileFraction*float64(len(lines))
+		(len(lines) <= wholeFileMaxLines &&
+			float64(covered) >= wholeFileFraction*float64(len(lines)))
 	if wholeFile {
 		wins = []lineWindow{{1, len(lines)}}
 	}
@@ -383,7 +397,13 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 	prevEnd := 0
 	for _, w := range wins {
 		if prevEnd > 0 && w.start > prevEnd+1 {
-			fmt.Fprintf(&b, "… [lines %d–%d omitted] …\n", prevEnd+1, w.start-1)
+			// Actionable omission: name the exact prism_read call that
+			// fetches the gap, so reaching omitted code is one precise
+			// call, not a guessed sed range (measured 2026-08-31: baseline
+			// agents needed 1-5 guess-and-retry reads to land the same
+			// windows this ranking picks directly).
+			fmt.Fprintf(&b, "… [lines %d–%d omitted — prism_read(file, offset=%d, limit=%d) if needed] …\n",
+				prevEnd+1, w.start-1, prevEnd+1, w.start-1-prevEnd)
 		}
 		for n := w.start; n <= w.end && n <= len(lines); n++ {
 			fmt.Fprintf(&b, "%d\t%s\n", n, clampSourceLine(lines[n-1]))
