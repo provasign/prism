@@ -478,7 +478,16 @@ locating, reading and searching code — each tool's own description says when
 it applies: ` + "`" + `prism_search` + "`" + ` (locate; scope="text" = pure grep),
 ` + "`" + `prism_query` + "`" + ` (edit-ready context), ` + "`" + `prism_read` + "`" + `/` + "`" + `prism_lookup` + "`" + ` (read a
 file / one symbol), ` + "`" + `prism_change_impact` + "`" + ` (blast radius), ` + "`" + `prism_verify` + "`" + `
-(diff completeness). What the descriptions cannot say, the workflow rules:
+(diff completeness).
+
+**If you do not see prism_* in your tool list, they are DEFERRED, not
+absent.** Load them once, rather than concluding Prism is unavailable and
+grepping for everything (measured: the most common reason Prism goes unused
+where it is correctly installed):
+
+    ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact")
+
+What the descriptions cannot say, the workflow rules:
 
 - Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
   **Relay that set as-is** — re-filtering it through grep/sed measurably

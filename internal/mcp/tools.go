@@ -302,24 +302,22 @@ func ToolSchemas() []map[string]any {
 			"description": toolDescription(n),
 			"inputSchema": toolSchema(n),
 		}
-		// HYBRID RESIDENCY (2026-08-30): prism_query alone is always-loaded;
-		// the other five stay deferred behind the ToolSearch hop. v0.57.0's
-		// full deferral was measured clean on a bed whose guidance MANDATES
-		// an opening prism_query call; on realistic e2e tasks that mandate
-		// doesn't hold agents to it. 48 e2e sessions split perfectly binary
-		// on whether the ToolSearch hop happened: 25/25 that hopped then
-		// used prism; 23/23 that didn't, used none. The gate is the hop
-		// itself, not tool choice — so pay the one hop's cost (~500 tokens,
-		// prism_query's own schema) unconditionally and let the other five
-		// stay deferred. 12-task e2e A/B: usage 8/12 -> 11/12 sessions,
-		// turns -2.4%, cost +6.1% (two outlier cells carried nearly all of
-		// it; ten of twelve were cost-neutral-or-better). Gated: unit +
-		// ci_invariants + ab_gate, zero resolve regressions. Reverses
-		// TestToolSchemas_NoneAlwaysLoad's v0.57.0 guard on fresh A/B
-		// evidence, as that test's own comment requires.
-		if n == "prism_query" {
-			entry["_meta"] = map[string]any{"anthropic/alwaysLoad": true}
-		}
+		// NO RESIDENCY (2026-09-01): nothing is always-loaded; all six stay
+		// deferred behind the ToolSearch hop. The 2026-08-30 hybrid (query
+		// alone resident) backfired on the wide-change bed: across every
+		// transcript with all six resident (v0.55.10 cells) sonnet's entry
+		// point was prism_search — 23 search + 5 read calls, prism_query
+		// ZERO — so residency backed the one tool agents never open with.
+		// Worse, the visible prism_query masked deferral: steering's "if
+		// you do not see prism_* they are DEFERRED" clause never fired
+		// because one prism tool WAS visible, and 8/8 wide prism cells +
+		// a post-fix probe made zero prism calls and zero ToolSearch hops.
+		// With nothing resident the deferred-tools clause is unambiguous
+		// (no prism_* visible at all -> hop), which is the one mechanism
+		// measured to gate usage (48 e2e sessions: 25/25 that hopped used
+		// prism, 23/23 that didn't used none). Do not re-add residency for
+		// any tool without call-count evidence that agents actually open
+		// with THAT tool when it is resident.
 		out = append(out, entry)
 	}
 	return out

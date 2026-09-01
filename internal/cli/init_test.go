@@ -336,6 +336,31 @@ func TestSteeringBlock_CoversBothSurfaces(t *testing.T) {
 	}
 }
 
+func TestSteeringBlock_DeferredToolsBootstrap(t *testing.T) {
+	// Regression: this line was silently dropped from steeringInstructions
+	// during the 2026-08-15 length trim while the comment above the const
+	// claimed it survived. Without it, an agent whose MCP schemas are
+	// deferred (the default since the 2026-08-29 deferral change) has no
+	// way to learn prism_* tools exist at all — a 16-cell isolated A/B
+	// (2026-08-31) confirmed the mechanism: 9/11 deferred-schema cells
+	// called ToolSearch zero times and prism zero times; the 2 that called
+	// ToolSearch went on to use prism every time.
+	got := steeringBlock()
+	if !strings.Contains(got, "ToolSearch(") {
+		t.Error("steering block missing the ToolSearch deferred-tools bootstrap line")
+	}
+	// The select: form matches EXACT deferred names, which carry the MCP
+	// prefix. A probe following the bare-name form got "No matching
+	// deferred tools found" and gave up (2026-09-01); the two sessions
+	// that succeeded typed the full mcp__prism__ names themselves.
+	if !strings.Contains(got, "select:mcp__prism__prism_search") {
+		t.Error("ToolSearch line must use full mcp__prism__ tool names — bare names match nothing")
+	}
+	if !strings.Contains(got, "DEFERRED") {
+		t.Error("steering block missing the DEFERRED explanation")
+	}
+}
+
 func TestCmdInit_ModeFlagAcceptedAndIgnored(t *testing.T) {
 	// --mode is kept for one release so existing scripts do not break; it must
 	// not fail, and must not write an agent_mode key back into prism.yaml.

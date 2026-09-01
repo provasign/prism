@@ -258,22 +258,26 @@ func toSlice(v any) []any {
 // gated almost perfectly by whether the agent made the ToolSearch hop at
 // all (25/25 hopped -> used prism, 23/23 didn't -> used none), not by tool
 // choice once loaded. HYBRID residency (prism_query resident, the other
-// five deferred) is the current state: a 12-task e2e A/B moved usage 8/12
-// -> 11/12 sessions with turns -2.4%/cost +6.1% and zero resolve
-// regressions. This guard now checks the OPPOSITE of the old policy: keep
-// prism_query resident, everything else deferred. If either changes, bring
-// a fresh A/B first.
-func TestToolSchemas_QueryAlwaysLoadOthersDeferred(t *testing.T) {
+// five deferred) moved usage 8/12 -> 11/12 on a 12-task localized e2e A/B —
+// but backfired on the wide-change bed (2026-09-01): sonnet never opens with
+// prism_query even when it is resident (v0.55.10 all-resident cells: 23
+// prism_search + 5 prism_read, prism_query ZERO), and the one visible tool
+// masked the steering's deferred-tools clause, so 8/8 wide prism cells made
+// zero prism calls and zero ToolSearch hops. Residency is now REMOVED
+// entirely: no prism_* visible means the "they are DEFERRED, hop once"
+// steering line is unambiguous, and the hop is the one mechanism measured
+// to gate usage (25/25 hopped -> used, 23/23 didn't -> none). This guard
+// checks that nothing is resident. If that changes, bring call-count
+// evidence that agents open with the tool being made resident.
+func TestToolSchemas_NoResidency(t *testing.T) {
 	for _, tool := range ToolSchemas() {
 		name, _ := tool["name"].(string)
 		loaded := false
 		if meta, ok := tool["_meta"].(map[string]any); ok {
 			loaded, _ = meta["anthropic/alwaysLoad"].(bool)
 		}
-		want := name == "prism_query"
-		if loaded != want {
-			t.Errorf("%v: alwaysLoad=%v, want %v — residency policy changed without a fresh A/B?",
-				name, loaded, want)
+		if loaded {
+			t.Errorf("%v: alwaysLoad=true — residency policy changed without fresh evidence?", name)
 		}
 	}
 }
