@@ -1,0 +1,3290 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c22
+created_at: 2026-08-31T18:59:10.691223Z
+finalized_at: 2026-09-02T12:07:12.95934Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-01T10:43:46.154209Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-01T10:44:01.41767Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-01T11:25:15.46898Z
+    - path: internal/mcp/searchmulti_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-01T11:25:26.778089Z
+commands:
+    - cmd: 'cd ~/Projects/provasign/prism && echo "=== prism: commits by files-touched ===" && git log --oneline --no-merges -200 --format="%h" | while read h; do n=$(git show --stat --format="" $h 2>/dev/null | tail -1 | grep -o ''[0-9]* file'' | grep -o ''[0-9]*''); [ -n "$n" ] && echo "$n $h"; done | sort -rn | head -15'
+      at: 2026-08-31T20:18:17.475487Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && echo "=== grove: wide commits ===" && git log --oneline --no-merges -200 --format="%h" | while read h; do n=$(git show --stat --format="" $h 2>/dev/null | tail -1 | grep -o '[0-9]* file' | grep -o '[0-9]*'); [ -n "$n" ] && echo "$n $h"; done | sort -rn | head -12
+        echo "=== grove commit count ==="; git rev-list --count HEAD
+      at: 2026-08-31T20:18:31.507914Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && for h in ac780d9 60ba50e eb1e48b acc06da 98ed1b2 4f22f39 e8007fd c274302; do
+          subj=$(git log -1 --format="%s" $h | cut -c1-58)
+          code=$(git show --stat --format="" $h | grep -E "\.go \|" | grep -v "_test.go" | wc -l | tr -d ' ')
+          tests=$(git show --stat --format="" $h | grep -E "_test\.go \|" | wc -l | tr -d ' ')
+          echo "$h  code_files=$code test_files=$tests  $subj"
+        done
+      at: 2026-08-31T20:18:40.448123Z
+      classified: other
+    - cmd: ls ~/.cache/prism-ci-corpus/ 2>/dev/null; echo "--- gvg ---"; ls ~/gvg-corpus/ 2>/dev/null | head; echo "--- routing-repos ---"; ls ~/.cache/prism-research/routing-repos/ 2>/dev/null | head -20
+      at: 2026-08-31T20:57:50.177658Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/scan_wide.py <<'PYEOF'
+        import subprocess, sys, os, collections, json
+
+        def sh(*a, cwd=None):
+            return subprocess.run(a, cwd=cwd, capture_output=True, text=True).stdout
+
+        SRC_EXT = (".go", ".py", ".java", ".ts", ".js")
+        def is_src(p):
+            return p.endswith(SRC_EXT) and "test" not in p.lower() and "/vendor/" not in p
+
+        repo = sys.argv[1]
+        label = sys.argv[2]
+        n = int(sys.argv[3]) if len(sys.argv) > 3 else 400
+        hashes = sh("git", "log", "--no-merges", "-%d" % n, "--format=%H", cwd=repo).split()
+        qual = []
+        for h in hashes:
+            files = [l for l in sh("git", "show", "--name-only", "--format=", h, cwd=repo).splitlines() if l.strip()]
+            src = [f for f in files if is_src(f)]
+            if len(src) < 4:
+                continue
+            subj = sh("git", "log", "-1", "--format=%s", h, cwd=repo).strip()
+            qual.append({"sha": h[:10], "n_src": len(src), "subj": subj[:70], "files": src[:8]})
+        qual.sort([REDACTED:env-secret] x: -x["n_src"])
+        print(f"=== {label}: {len(qual)} commits touching >=4 source files (of {len(hashes)} scanned) ===")
+        for q in qual[:12]:
+            print(f"  {q['n_src']:3} src  {q['sha']}  {q['subj']}")
+        json.dump(qual, open(f"/tmp/wide_{label}.json","w"), indent=1)
+        PYEOF
+        python3 /tmp/scan_wide.py ~/.cache/prism-research/routing-repos/pallets__werkzeug werkzeug 400
+      at: 2026-08-31T20:58:09.47203Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git log -1 --format="first commit: %ad" --date=short $(git rev-list --max-parents=0 HEAD | head -1) 2>/dev/null
+        echo "grove commits: $(git rev-list --count HEAD)"
+        cd ~/Projects/provasign/prism && git log -1 --format="first commit: %ad" --date=short $(git rev-list --max-parents=0 HEAD | head -1) 2>/dev/null
+        echo "prism commits: $(git rev-list --count HEAD)"
+        echo "--- astkit ---"; cd ~/Projects/provasign/astkit && git log -1 --format="first: %ad" --date=short $(git rev-list --max-parents=0 HEAD | head -1) 2>/dev/null; echo "commits: $(git rev-list --count HEAD)"
+      at: 2026-08-31T20:58:19.590519Z
+      classified: other
+    - cmd: |-
+        python3 /tmp/scan_wide.py ~/Projects/provasign/grove grove 212 2>&1 | head -18
+        echo
+        python3 /tmp/scan_wide.py ~/Projects/provasign/prism prism 407 2>&1 | head -18
+      at: 2026-08-31T20:58:34.200214Z
+      classified: other
+    - cmd: |-
+        python3 /tmp/scan_wide.py ~/.cache/prism-ci-corpus/jackson-databind jackson 500 2>&1 | head -14
+        echo
+        python3 /tmp/scan_wide.py ~/.cache/prism-ci-corpus/django django 400 2>&1 | head -14
+      at: 2026-08-31T20:58:49.396381Z
+      classified: other
+    - cmd: cd ~/.cache/prism-ci-corpus/jackson-databind && git log --oneline -3 2>&1 | head -5; echo "---"; ls -a | head -8
+      at: 2026-08-31T20:58:54.815671Z
+      classified: other
+    - cmd: |-
+        for d in ~/gvg-corpus/django ~/gvg-corpus/commons-collections ~/gvg-corpus/commons-lang ~/gvg-corpus/dubbo; do
+          [ -d "$d/.git" ] && echo "$(basename $d): $(git -C $d rev-list --count HEAD 2>/dev/null) commits" || echo "$(basename $d): no .git"
+        done
+        ls ~/gvg-corpus/ | grep -v "\.log\|\.json" | head -20
+      at: 2026-08-31T20:59:02.256643Z
+      classified: other
+    - cmd: |-
+        for d in ~/gvg-corpus/*/; do
+          n=$(git -C "$d" rev-list --count HEAD 2>/dev/null)
+          [ -n "$n" ] && [ "$n" -gt 500 ] && echo "$(basename $d): $n commits"
+        done
+      at: 2026-08-31T20:59:09.72349Z
+      classified: other
+    - cmd: python3 /tmp/scan_wide.py ~/gvg-corpus/jackson-databind jackson 600 2>&1 | head -16
+      at: 2026-08-31T20:59:23.644095Z
+      classified: other
+    - cmd: |-
+        ls -d ~/gvg-corpus/*spring* ~/.cache/prism-research/routing-repos/*spring* ~/.cache/prism-ci-corpus/*spring* 2>/dev/null
+        echo "--- petclinic (routing-repos) ---"
+        d=~/.cache/prism-research/routing-repos/spring-projects_spring-petclinic
+        [ -d "$d/.git" ] && git -C $d rev-list --count HEAD && git -C $d log -1 --format="latest: %ad" --date=short || echo "no git"
+      at: 2026-08-31T21:00:44.942089Z
+      classified: other
+    - cmd: python3 /tmp/scan_wide.py ~/.cache/prism-research/routing-repos/spring-projects_spring-petclinic petclinic 1042 2>&1 | head -14
+      at: 2026-08-31T21:01:04.121647Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        qual = json.load(open("/tmp/wide_petclinic.json"))
+        SKIP = ("format", "license", "import", "webjar", "bower", "bootstrap", "editorconfig",
+                "readme", "doc", "typo", "whitespace", "@override", "upgrade", "bump", "version")
+        good = [q for q in qual if not any(s in q["subj"].lower() for s in SKIP)]
+        print(f"{len(good)} of {len(qual)} survive the mechanical-sweep filter:\n")
+        for q in good[:20]:
+            print(f"  {q['n_src']:3} src  {q['sha']}  {q['subj']}")
+        EOF
+      at: 2026-08-31T21:01:12.020987Z
+      classified: other
+    - cmd: |-
+        d=~/.cache/prism-research/routing-repos/spring-projects_spring-petclinic
+        git -C $d log --oneline --no-merges --all --format="%h %ad %s" --date=short 2>/dev/null | grep -iE "spring (boot )?[0-9]|migrat|upgrade to spring|boot [0-9]|jakarta|javax|spring [0-9]\." | head -25
+      at: 2026-08-31T21:01:31.667483Z
+      classified: other
+    - cmd: |-
+        d=~/.cache/prism-research/routing-repos/spring-projects_spring-petclinic
+        for h in 9a5d50c 95f7e82 37d5315 645c852 47be0ea 3aa79e3 d44ad42 a0ba075 9f1cda1 5a9d1fc 0d9e882 dade7fc f3a8d24; do
+          java=$(git -C $d show --name-only --format="" $h 2>/dev/null | grep -c "\.java$")
+          all=$(git -C $d show --name-only --format="" $h 2>/dev/null | grep -c .)
+          subj=$(git -C $d log -1 --format="%s" $h | cut -c1-42)
+          echo "$h  java=$java  total=$all  $subj"
+        done
+      at: 2026-08-31T21:01:41.076586Z
+      classified: other
+    - cmd: |-
+        d=~/.cache/prism-research/routing-repos/spring-projects_spring-petclinic
+        for h in 645c852 a0ba075 37d5315; do
+          echo "=== $h: $(git -C $d log -1 --format='%s' $h) ==="
+          git -C $d show --name-only --format="" $h | grep "\.java$"
+          git -C $d show $h -- "*.java" | grep -E "^[+-]" | grep -vE "^[+-]{3}" | grep -vE "^[+-]\s*(\*|//|$)" | head -12
+          echo
+        done
+      at: 2026-08-31T21:01:49.060197Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 gen_upgrade_tasks.py 2>&1 | tail -25
+      at: 2026-08-31T21:56:29.975915Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('tasks-wide/petclinic__645c85278b.json'))
+        print('subject:', d['subject'])
+        print('base:', d['base_commit'][:10])
+        print('gt_symbols:', d['gt_symbols'])
+        print('gt_files:'); [print('  ', f) for f in d['gt_files']]
+        "
+      at: 2026-08-31T21:56:36.910908Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob
+        for f in sorted(glob.glob("tasks-wide/*.json")):
+            d = json.load(open(f))
+            gt = d["gt_files"]
+            tests = [x for x in gt if "/test/" in x or "_test." in x or x.endswith("_test.go") or "tests/" in x]
+            main = [x for x in gt if x not in tests]
+            print(f"{d['instance_id']:26} main={len(main):2} test={len(tests):2}  {'TEST-ONLY' if not main else ''}")
+        EOF
+      at: 2026-08-31T21:56:44.971202Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, os
+        # Drop tasks that are neither compile-checkable nor symbol-anchored.
+        drop = []
+        for f in sorted(glob.glob("tasks-wide/*.json")):
+            d = json.load(open(f))
+            if d["project"] == "petclinic" and not d["gt_symbols"]:
+                drop.append((f, d["instance_id"], "no relocated symbols — pure version bump"))
+        for f, iid, why in drop:
+            os.rename(f, f + ".excluded")
+            print(f"EXCLUDED {iid}: {why}")
+        print(f"\nremaining: {len(glob.glob('tasks-wide/*.json'))} tasks")
+        EOF
+      at: 2026-08-31T21:56:56.143027Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && timeout 900 python3 run_wide.py --only petclinic__645c85278b --arms prism_native --tag probe 2>&1 | tail -8
+      at: 2026-08-31T21:57:34.55592Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 run_wide.py --only petclinic__645c85278b --arms prism_native --tag probe 2>&1 | tail -8
+      at: 2026-08-31T21:57:42.871242Z
+      classified: other
+    - cmd: |-
+        pkill -f "run_wide.py" 2>/dev/null; echo "probe stopped"
+        for d in ~/gvg-corpus/*/; do
+          n=$(git -C "$d" rev-list --count HEAD 2>/dev/null)
+          [ -n "$n" ] && [ "$n" -gt 1500 ] && echo "$(basename $d): $n commits"
+        done
+      at: 2026-08-31T22:01:56.24709Z
+      classified: other
+    - cmd: |-
+        for d in wt-pr109250 wt-pr112043 wt-pr117392; do
+          p=~/gvg-corpus/$d
+          echo "$d: $(git -C $p remote get-url origin 2>/dev/null || echo 'no remote')"
+        done
+        echo "--- dubbo/netty are real production frameworks; check spring-adjacent ---"
+        git -C ~/gvg-corpus/dubbo log --oneline -3 2>/dev/null | head -3
+      at: 2026-08-31T22:02:03.960018Z
+      classified: other
+    - cmd: |-
+        d=~/gvg-corpus/dubbo
+        git -C $d log --oneline --no-merges -3000 --format="%h %ad %s" --date=short 2>/dev/null | grep -iE "spring.?boot [0-9]|upgrade spring|spring [0-9]\.|migrate.*spring|jakarta|javax.*jakarta" | head -20
+      at: 2026-08-31T22:02:12.011398Z
+      classified: other
+    - cmd: |-
+        d=~/gvg-corpus/dubbo
+        for h in 423f4ec20 eed86982b 29d9c070d ff561616e 6571e8241; do
+          java=$(git -C $d show --name-only --format="" $h 2>/dev/null | grep -c "\.java$")
+          main=$(git -C $d show --name-only --format="" $h 2>/dev/null | grep "\.java$" | grep -vc "/test/")
+          subj=$(git -C $d log -1 --format="%s" $h | cut -c1-50)
+          echo "$h  java=$java main=$main  $subj"
+        done
+      at: 2026-08-31T22:02:20.13449Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/find_wide.sh <<'EOF'
+        #!/bin/zsh
+        d=$1; label=$2; n=${3:-4000}
+        git -C $d log --no-merges -$n --format="%H" 2>/dev/null | while read h; do
+          cnt=$(git -C $d show --name-only --format="" $h 2>/dev/null | grep -E "\.(java|go|py|ts)$" | grep -vc "/test/\|_test\.\|/tests/")
+          if [ "$cnt" -ge 8 ]; then
+            subj=$(git -C $d log -1 --format="%s" $h | cut -c1-60)
+            echo "$cnt $h $subj"
+          fi
+        done | sort -rn | head -12
+        EOF
+        chmod +x /tmp/find_wide.sh
+        echo "=== DUBBO ==="; /tmp/find_wide.sh ~/gvg-corpus/dubbo dubbo 1500
+      at: 2026-08-31T22:03:10.952972Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/find_band.sh <<'EOF'
+        #!/bin/zsh
+        d=$1; n=${2:-1500}
+        git -C $d log --no-merges -$n --format="%H" 2>/dev/null | while read h; do
+          cnt=$(git -C $d show --name-only --format="" $h 2>/dev/null | grep -E "\.(java|go|py|ts)$" | grep -vc "/test/\|_test\.\|/tests/")
+          if [ "$cnt" -ge 8 ] && [ "$cnt" -le 25 ]; then
+            subj=$(git -C $d log -1 --format="%s" $h | cut -c1-58)
+            echo "$cnt $h $subj"
+          fi
+        done | sort -rn | head -14
+        EOF
+        chmod +x /tmp/find_band.sh
+        echo "=== DUBBO (8-25 main files) ==="; /tmp/find_band.sh ~/gvg-corpus/dubbo 1200
+      at: 2026-08-31T22:03:43.469694Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && rm -f tasks-wide/petclinic__*.json tasks-wide/petclinic__*.excluded && python3 - <<'EOF'
+        import re
+        p = "gen_upgrade_tasks.py"
+        s = open(p).read()
+        s = s.replace('''PETCLINIC_UPGRADES = [
+            "645c852", "a0ba075", "37d5315", "9a5d50c", "3aa79e3", "5a9d1fc",
+        ]''', '''# Apache Dubbo — real production framework (8,898 commits), tractable
+        # width band (8-25 main source files). Spring-related module/dependency
+        # refactors plus other forced-wide changes; a missed site breaks the build.
+        DUBBO_COMMITS = [
+            "4fb4d709",  # remove spring-context-support dependency (18 main)
+            "6c6056ac",  # move observability autoconfigure to spring-boot-autoconfigure (16)
+            "e826b0c2",  # remove old zookeeper (22)
+            "8700256b",  # unify graceful shutdown interface (22)
+            "9600dc9c",  # remove triple parameter in metadata (15)
+            "86dd9889",  # upgrade to Netty HTTP/3 release versions (18)
+        ]''')
+        s = s.replace('''        (str(home / ".cache/prism-research/routing-repos/spring-projects_spring-petclinic"),
+                 "petclinic", "spring_upgrade", PETCLINIC_UPGRADES),''',
+        '''        (str(home / "gvg-corpus/dubbo"), "dubbo", "wide_refactor", DUBBO_COMMITS),''')
+        # dubbo/java build check is maven — mark skipped like petclinic was
+        open(p,"w").write(s)
+        print("generator retargeted to dubbo")
+        EOF
+        python3 gen_upgrade_tasks.py 2>&1 | tail -22
+      at: 2026-08-31T22:04:06.353986Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -i '' 's/^import subprocess$/import re\nimport subprocess/' gen_upgrade_tasks.py && head -28 gen_upgrade_tasks.py | grep -n "^import" && python3 gen_upgrade_tasks.py 2>&1 | tail -20
+      at: 2026-08-31T22:04:37.76986Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 run_wide.py --only dubbo__4fb4d709f4 --arms prism_native --tag probe 2>&1 | tail -6
+      at: 2026-08-31T22:04:44.540116Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 run_wide.py --only dubbo__4fb4d709f4 --arms prism_native,baseline --model sonnet --tag s1 2>&1 | tail -6
+      at: 2026-08-31T22:37:34.733819Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bjlu07avv.output 2>/dev/null
+        echo "--- process ---"
+        ps -o pid,etime,stat -p $(pgrep -f "claude -p" | head -1) 2>/dev/null || echo "no agent running"
+      at: 2026-08-31T23:20:24.622073Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import subprocess, json, sys, time
+        sys.path.insert(0, ".")
+        import ab_endtoend_arms as arms
+        spec = arms.ARMS["prism_native"]
+        # reproduce just the subprocess call shape to surface the real error
+        task = json.load(open("tasks-wide/dubbo__4fb4d709f4.json"))
+        cmd = ["claude", "-p", "say ok", "--model", "sonnet", "--output-format", "json",
+               "--dangerously-skip-permissions", "--strict-mcp-config",
+               "--allowedTools", *spec["allowed"], "--mcp-config", spec["mcp"]]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        print("rc:", r.returncode)
+        print("stdout:", r.stdout[:400])
+        print("stderr:", r.stderr[:400])
+        EOF
+      at: 2026-08-31T23:22:57.495508Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('runs/wide/dubbo__4fb4d709f4.sonnet.baseline.s1.json'))
+        print('BASELINE sonnet:', {k:d.get(k) for k in ('file_recall','files_found','files_expected','symbol_recall','extra_files','turns','cost_usd','wall_s')})
+        print()
+        d2 = json.load(open('runs/wide/dubbo__4fb4d709f4.opus.prism_native.probe.json'))
+        print('PRISM opus:    ', {k:d2.get(k) for k in ('file_recall','files_found','files_expected','symbol_recall','extra_files','turns','cost_usd','wall_s')})
+        "
+      at: 2026-08-31T23:23:05.613583Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('runs/wide/dubbo__4fb4d709f4.opus.prism_native.probe.json'))
+        print('MISSED FILES (8):')
+        for f in d.get('missed_files', []): print('  ', f)
+        print()
+        print('symbols missed:', len(d.get('symbols_missed', [])))
+        "
+      at: 2026-08-31T23:24:32.983898Z
+      classified: other
+    - cmd: |-
+        d=~/gvg-corpus/dubbo
+        git -C $d show --stat 4fb4d709 | head -5
+        echo "=== what happened to those 8 files in the real commit? ==="
+        git -C $d show --name-status 4fb4d709 -- "dubbo-config/dubbo-config-spring/src/main/java/org/apache/dubbo/config/spring/context/annotation/" "dubbo-config/dubbo-config-spring/src/main/java/org/apache/dubbo/config/spring/util/" | head -15
+      at: 2026-08-31T23:24:39.401527Z
+      classified: other
+    - cmd: |-
+        d=~/gvg-corpus/dubbo
+        echo "=== file status breakdown for the task commit ==="
+        git -C $d show --name-status 4fb4d709 -- "*.java" | grep -E "^[AMD]\s" | awk '{print $1}' | sort | uniq -c
+        echo
+        echo "=== same check across all 6 dubbo tasks ==="
+        for h in 4fb4d709 6c6056ac e826b0c2 8700256b 9600dc9c 86dd9889; do
+          a=$(git -C $d show --name-status $h -- "*.java" | grep -c "^A\s")
+          m=$(git -C $d show --name-status $h -- "*.java" | grep -c "^M\s")
+          del=$(git -C $d show --name-status $h -- "*.java" | grep -c "^D\s")
+          subj=$(git -C $d log -1 --format="%s" $h | cut -c1-40)
+          echo "$h  added=$a modified=$m deleted=$del  $subj"
+        done
+      at: 2026-08-31T23:24:49.637969Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && rm -f tasks-wide/*.json && python3 gen_upgrade_tasks.py 2>&1 | tail -22
+      at: 2026-09-01T00:40:19.463691Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob
+        print(f"{'task':26} {'scored':>7} {'mod':>4} {'del':>4} {'added(unscored)':>16}")
+        for f in sorted(glob.glob("tasks-wide/*.json")):
+            d = json.load(open(f))
+            print(f"{d['instance_id']:26} {len(d['gt_files']):7} {len(d['gt_modified']):4} "
+                  f"{len(d['gt_deleted']):4} {len(d['unscored_added']):16}")
+        EOF
+      at: 2026-09-01T00:40:25.441283Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import re
+        p = "run_wide.py"
+        s = open(p).read()
+        anchor = "OUT = Path(\"runs/wide\")"
+        add = '''# prism_plus: prism AND the normal shell tools, which is how prism
+        # actually ships. The prism_native arm STRIPS grep/find/ls/cat to force
+        # routing — useful for isolating the graph, but it is not a product
+        # configuration, and comparing a grep-less arm against a grep-only
+        # baseline measures the handicap, not the tool (measured 2026-08-31).
+        arms.ARMS["prism_plus"] = {
+            "guidance": (
+                "CONTEXT TOOL: the Prism MCP server, alongside your normal tools. "
+                "prism_change_impact(query=\\"Type.method\\") returns every site a "
+                "signature change touches — declarations, the override/implementation "
+                "family, and resolved callers — in ONE call; prefer it when the task "
+                "is 'find everything affected by X'. prism_query(task, terms=[...]) "
+                "returns edit-ready context. grep/find/ls remain available; use "
+                "whichever is right for the question."),
+            "allowed": arms.ARMS["baseline"]["allowed"] + ["mcp__prism"],
+            "mcp": arms.ARMS["prism_native"]["mcp"],
+        }
+
+        '''
+        s = s.replace(anchor, add + anchor, 1)
+        open(p, "w").write(s)
+        print("prism_plus arm added")
+        EOF
+        python3 -c "
+        import sys; sys.path.insert(0,'/Users/tapabratapal/Projects/provasign/research/harness')
+        import os; os.chdir('/Users/tapabratapal/Projects/provasign/research/harness')
+        import run_wide, ab_endtoend_arms as a
+        print('allowed:', a.ARMS['prism_plus']['allowed'])"
+      at: 2026-09-01T00:40:50.443362Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 run_wide.py --only prism__98ed1b2b4d --arms baseline,prism_plus --model sonnet --tag f1 2>&1 | tail -6
+      at: 2026-09-01T00:40:58.114505Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/boyo7dpmt.output 2>/dev/null
+        echo "--- agent ---"
+        ps -o pid,etime,stat -p $(pgrep -f "claude -p" | head -1) 2>/dev/null || echo "none running"
+      at: 2026-09-01T00:55:32.464862Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/boyo7dpmt.output 2>/dev/null | tail -3
+        cat > /tmp/par_wide.sh <<'EOF'
+        #!/bin/zsh
+        # Run arms in PARALLEL — cells are independent (separate worktrees,
+        # separate agents), so serializing them just doubles wall time.
+        cd ~/Projects/provasign/research/harness
+        task=$1; model=${2:-sonnet}; tag=${3:-p1}
+        for arm in baseline prism_plus; do
+          python3 run_wide.py --only $task --arms $arm --model $model --tag $tag \
+            > /tmp/wide_${task}_${arm}.log 2>&1 &
+        done
+        wait
+        cat /tmp/wide_${task}_baseline.log /tmp/wide_${task}_prism_plus.log | grep -E "recall=|ERROR"
+        EOF
+        chmod +x /tmp/par_wide.sh && echo "parallel runner ready"
+      at: 2026-09-01T01:07:47.761014Z
+      classified: other
+    - cmd: /tmp/par_wide.sh grove__2a949fe7d6 sonnet p1 2>&1 | tail -4
+      at: 2026-09-01T01:07:53.380866Z
+      classified: other
+    - cmd: |-
+        ps -eo pid,etime,command | grep "claude -p" | grep -v grep | sed 's/\(.\{150\}\).*/\1.../' | head -5
+        echo "=== worktrees in play ==="
+        ls -dt /var/folders/*/*/T/wide-* 2>/dev/null | head -4
+      at: 2026-09-01T01:08:34.199936Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('tasks-wide/grove__2a949fe7d6.json'))
+        print('SUBJECT:', d['subject'])
+        print()
+        print('BODY:', (d.get('body') or '(empty)')[:600])
+        print()
+        print('gt_files:', len(d['gt_files']))
+        r = json.load(open('runs/wide/grove__2a949fe7d6.sonnet.prism_plus.p1.json'))
+        print()
+        print('agent diff length:', len(r.get('diff','')))
+        print('diff head:', r.get('diff','')[:200])
+        "
+      at: 2026-09-01T01:08:54.316121Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/boyo7dpmt.output
+      at: 2026-09-01T01:09:00.462675Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob
+        # A valid task needs a FORCED change: something removed/renamed that
+        # callers must follow. Perf/refactor-internal commits have no such anchor.
+        PERF = ("perf", "index the hot", "sort the snapshot", "tuning", "optimiz")
+        print(f"{'task':26} {'files':>5}  verdict")
+        for f in sorted(glob.glob("tasks-wide/*.json")):
+            d = json.load(open(f))
+            s = (d["subject"] + " " + (d.get("body") or "")).lower()
+            forced = any(k in s for k in ("remove", "delete", "rename", "unify", "upgrade", "move", "drop", "replace"))
+            perfish = any(k in d["subject"].lower() for k in PERF)
+            verdict = "PERF — no forced change" if perfish else ("ok" if forced else "REVIEW — no clear anchor")
+            print(f"{d['instance_id']:26} {len(d['gt_files']):5}  {verdict}")
+        EOF
+      at: 2026-09-01T01:09:20.538406Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && mv tasks-wide/grove__2a949fe7d6.json tasks-wide/grove__2a949fe7d6.json.excluded && echo "excluded: perf commit, no forced change to propagate (agent correctly no-oped, 0 edits)" && ls tasks-wide/*.json | wc -l'
+      at: 2026-09-01T01:09:26.304892Z
+      classified: other
+    - cmd: cat /tmp/wide_grove__2a949fe7d6_baseline.log 2>/dev/null | tail -3
+      at: 2026-09-01T01:12:37.077198Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time, collections
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/*wide-*"))]
+        dirs.sort([REDACTED:env-secret] reverse=True)
+        print("candidate session dirs:", [os.path.basename(d)[:40] for d in dirs[:4]])
+        for d in dirs[:4]:
+            for f in glob.glob(d + "/*.jsonl"):
+                tools = collections.Counter()
+                n_assistant = 0
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") == "assistant":
+                        n_assistant += 1
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c, dict) and c.get("type") == "tool_use":
+                                tools[c["name"]] += 1
+                if n_assistant > 50:
+                    print(f"\n{os.path.basename(d)[:45]} assistant_msgs={n_assistant}")
+                    for k, v in tools.most_common(10):
+                        print(f"   {k:34} {v}")
+        EOF
+      at: 2026-09-01T01:14:26.020981Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, collections
+        dirs = glob.glob(os.path.expanduser("~/.claude/projects/*wide-*"))
+        for d in dirs:
+            for f in glob.glob(d + "/*.jsonl"):
+                tools = collections.Counter(); n=0
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") == "assistant":
+                        n += 1
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c, dict) and c.get("type") == "tool_use":
+                                tools[c["name"]] += 1
+                if any("prism" in k for k in tools):
+                    print(f"{os.path.basename(d)[-14:]}  msgs={n}")
+                    for k,v in tools.most_common(12): print(f"    {k:36} {v}")
+                    print()
+        EOF
+      at: 2026-09-01T01:14:32.876257Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, collections
+        for tag in ("npzi905s", "v1aehydu", "qjfzv0bl"):
+            d = glob.glob(os.path.expanduser(f"~/.claude/projects/*wide-{tag}*"))
+            if not d: continue
+            for f in glob.glob(d[0] + "/*.jsonl"):
+                cmds = []; edits = 0
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") == "assistant":
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c, dict) and c.get("type") == "tool_use":
+                                if c["name"] == "Bash":
+                                    cmds.append((c.get("input") or {}).get("command","")[:70])
+                                elif c["name"] in ("Edit","Write"):
+                                    edits += 1
+                print(f"=== wide-{tag}: {len(cmds)} bash, {edits} edits ===")
+                heads = collections.Counter(c.strip().split()[0] if c.strip() else "?" for c in cmds)
+                print("  ", dict(heads.most_common(8)))
+                for c in cmds[:6]: print("   >", c)
+                print()
+        EOF
+      at: 2026-09-01T01:14:47.354442Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        print("=== git archaeology / network across ALL wide sessions ===")
+        for d in glob.glob(os.path.expanduser("~/.claude/projects/*wide-*")):
+            for f in glob.glob(d + "/*.jsonl"):
+                hits = []
+                prism = False
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") != "assistant": continue
+                    for c in ((j.get("message") or {}).get("content") or []):
+                        if not (isinstance(c, dict) and c.get("type") == "tool_use"): continue
+                        if "prism" in c["name"]: prism = True
+                        inp = json.dumps(c.get("input") or {})
+                        if c["name"] == "Bash":
+                            cmd = (c.get("input") or {}).get("command", "")
+                            if any(k in cmd for k in ("git log --all", "git show", "cherry-pick",
+                                                      "git diff HEAD", "git stash", "reflog",
+                                                      "curl", "wget", "gh api")):
+                                hits.append(cmd[:75])
+                        elif c["name"] in ("WebFetch", "WebSearch"):
+                            hits.append(f"{c['name']}: {inp[:60]}")
+                if hits:
+                    print(f"\n{os.path.basename(d)[-14:]} prism_arm={prism}  {len(hits)} suspicious:")
+                    for h in hits[:6]: print("   ", h)
+        EOF
+      at: 2026-09-01T01:15:06.155758Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        # prism__98ed1b2b4d = "mcp: remove the coverage surface (untested_surface...)"
+        for d in glob.glob(os.path.expanduser("~/.claude/projects/*wide-*")):
+            for f in glob.glob(d + "/*.jsonl"):
+                txt = open(f, errors="ignore").read()
+                if "untested_surface" not in txt: continue
+                n=0; tools={}; suspicious=[]
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") != "assistant": continue
+                    n+=1
+                    for c in ((j.get("message") or {}).get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tools[c["name"]] = tools.get(c["name"],0)+1
+                            if c["name"]=="Bash":
+                                cmd=(c.get("input") or {}).get("command","")
+                                if any(k in cmd for k in ("git log","git show","cherry","git diff","stash","curl","reflog","git branch")):
+                                    suspicious.append(cmd[:80])
+                            elif c["name"] in ("WebFetch","WebSearch"):
+                                suspicious.append(c["name"]+" "+json.dumps(c.get("input"))[:60])
+                print(f"SESSION {os.path.basename(d)[-12:]}  assistant_msgs={n}")
+                print("  tools:", tools)
+                print("  suspicious:", suspicious if suspicious else "NONE — clean")
+                print()
+        EOF
+      at: 2026-09-01T01:15:23.36841Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        for tag in ("yqum6bwq","j01glt2a"):
+            d = glob.glob(os.path.expanduser(f"~/.claude/projects/*wide-{tag}*"))
+            if not d: continue
+            for f in glob.glob(d[0] + "/*.jsonl"):
+                first_user = None
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") == "user" and first_user is None:
+                        c = (j.get("message") or {}).get("content")
+                        s = c if isinstance(c,str) else json.dumps(c)
+                        first_user = s[:260]
+                        break
+                print(f"=== wide-{tag} ===")
+                print(first_user)
+                print()
+        EOF
+      at: 2026-09-01T01:15:45.822155Z
+      classified: other
+    - cmd: |-
+        pkill -f "run_wide.py\|par_wide.sh\|claude -p" 2>/dev/null; sleep 1
+        ps aux | grep -E "run_wide|claude -p" | grep -v grep
+        echo "---"
+        echo "processes killed"
+      at: 2026-09-01T01:17:03.427557Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "git log --all\|archive\|--no-local\|isolat\|leak\|shared-ref" swebench_ab.py docker_eval.py 2>/dev/null | head -20
+      at: 2026-09-01T01:19:50.089909Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n '440,545p' swebench_ab.py
+      at: 2026-09-01T01:19:52.39738Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys, json, shutil
+        sys.path.insert(0, ".")
+        import run_wide
+
+        task = json.load(open("tasks-wide/prism__98ed1b2b4d.json"))
+        repo, wt = run_wide.isolated_worktree(task)
+        print("worktree:", wt)
+        print("HEAD:", run_wide.sh("git", "-C", str(wt), "rev-parse", "HEAD").strip())
+        print()
+        print("--- git log --all (must show ONLY base commit's own ancestry) ---")
+        print(run_wide.sh("git", "-C", str(wt), "log", "--all", "--oneline", "-5"))
+        print("--- can it reach the gold commit? ---")
+        gold = task["gold_commit"]
+        found = run_wide.sh("git", "-C", str(wt), "cat-file", "-t", gold).strip()
+        print(f"git cat-file -t {gold[:10]}: {found!r} (should be empty/error)")
+        print("--- remotes ---")
+        print("remotes:", repr(run_wide.sh("git", "-C", str(wt), "remote", "-v")))
+        shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-09-01T01:20:47.416302Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys, json, shutil
+        sys.path.insert(0, ".")
+        import run_wide
+        task = json.load(open("tasks-wide/prism__98ed1b2b4d.json"))
+        repo, wt = run_wide.isolated_worktree(task)
+        out = run_wide.sh("git", "-C", str(wt), "rev-list", "--objects", "--all")
+        print("reachable objects via --all:", len(out.splitlines()))
+        out2 = run_wide.sh("git", "-C", str(wt), "cat-file", "--batch-all-objects", "--batch-check")
+        lines = out2.splitlines()
+        print("TOTAL objects physically in the store:", len(lines))
+        gold = task["gold_commit"]
+        print("gold sha present in batch-all-objects:", any(gold[:10] in l for l in lines))
+        shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-09-01T01:21:12.992608Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys, json, shutil, importlib
+        sys.path.insert(0, ".")
+        if "run_wide" in sys.modules: importlib.reload(sys.modules["run_wide"])
+        import run_wide
+
+        task = json.load(open("tasks-wide/prism__98ed1b2b4d.json"))
+        repo, wt = run_wide.isolated_worktree(task)
+        print("ISOLATION VERIFIED OK")
+        print("worktree:", wt)
+        print("n_commits:", len(run_wide.sh("git","-C",str(wt),"log","--oneline","--all").splitlines()))
+        gold = task["gold_commit"]
+        r = __import__("subprocess").run(["git","-C",str(wt),"cat-file","-t",gold],capture_output=True,text=True)
+        print("cat-file -t on gold sha: rc=", r.returncode, "out=", r.stdout.strip(), "err=", r.stderr.strip()[:80])
+
+        # sanity: file tree actually matches base_commit
+        diff = run_wide.sh("git", "-C", str(wt), "diff", "--stat")
+        print("diff vs its own HEAD (should be empty):", repr(diff[:100]))
+
+        # network block check
+        env = {**__import__("os").environ, "GIT_ALLOW_PROTOCOL": "file"}
+        r2 = __import__("subprocess").run(["git","-C",str(wt),"fetch","https://github.com/apache/dubbo.git"],
+                                           capture_output=True, text=True, env=env, timeout=15)
+        print("fetch attempt blocked:", r2.returncode != 0, r2.stderr.strip()[:100])
+        shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-09-01T01:21:58.351837Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import ab_endtoend_arms as a
+        import run_wide
+        print('prism_plus allowed:', run_wide.arms.ARMS['prism_plus']['allowed'])
+        print('baseline allowed:', run_wide.arms.ARMS['baseline']['allowed'])
+        "
+      at: 2026-09-01T01:22:04.710718Z
+      classified: other
+    - cmd: claude -p "Fetch https://example.com with WebFetch and tell me what it says." --model haiku --output-format json --allowedTools Read --disallowedTools WebFetch WebSearch "Bash(curl:*)" 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['result'][:200])"
+      at: 2026-09-01T01:22:32.297024Z
+      classified: other
+    - cmd: |-
+        cd /tmp/claude-perm-test 2>/dev/null || mkdir -p /tmp/claude-perm-test && cd /tmp/claude-perm-test
+        claude -p "Run: curl -s https://example.com" --model haiku --output-format json \
+          --allowedTools "Read" "Bash(ls:*)" --disallowedTools "Bash(curl:*)" "WebFetch" "WebSearch" 2>&1 | \
+          python3 -c "import json,sys; d=json.load(sys.stdin); print(d['result'][:250])"
+      at: 2026-09-01T01:22:46.068255Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 run_wide.py --only prism__98ed1b2b4d --arms baseline --model sonnet --tag v2 2>&1 | tail -6
+      at: 2026-09-01T01:22:52.481162Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/*wide-*"))
+                if time.time() - os.path.getmtime(d) < 30*60]
+        for d in dirs:
+            for f in glob.glob(d + "/*.jsonl"):
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") == "assistant":
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c, dict):
+                                if c.get("type") == "tool_use":
+                                    print(f"[{c['name']}]", json.dumps(c.get("input"))[:130])
+                                elif c.get("type") == "text" and c.get("text","").strip():
+                                    print("[TEXT]", c["text"].strip()[:150])
+        EOF
+      at: 2026-09-01T01:37:13.083838Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/*wide-*"))
+                if time.time() - os.path.getmtime(d) < 30*60]
+        for d in dirs:
+            for f in glob.glob(d + "/*.jsonl"):
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    # look for subagent tool_use entries (parent_tool_use_id set) or any WebFetch/curl anywhere
+                    msg = j.get("message") or {}
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type") == "tool_use":
+                            name = c["name"]
+                            if name in ("WebFetch","WebSearch") or (name=="Bash" and any(k in json.dumps(c.get("input") or {}) for k in ("curl","wget","gh api","github.com"))):
+                                print("FOUND:", name, json.dumps(c.get("input"))[:150], "parent_tool_use_id:", j.get("parent_tool_use_id"))
+        print("scan complete")
+        EOF
+      at: 2026-09-01T01:37:29.821919Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time, collections
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/*wide-*"))
+                if time.time() - os.path.getmtime(d) < 30*60]
+        tool_counts = collections.Counter()
+        has_parent_ref = 0
+        for d in dirs:
+            for f in glob.glob(d + "/*.jsonl"):
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("parent_tool_use_id"): has_parent_ref += 1
+                    msg = j.get("message") or {}
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type") == "tool_use":
+                            tool_counts[c["name"]] += 1
+        print("all tool calls seen:", dict(tool_counts))
+        print("entries with parent_tool_use_id (subagent-attributed events):", has_parent_ref)
+        EOF
+      at: 2026-09-01T01:37:37.398576Z
+      classified: other
+    - cmd: |-
+        rm -f ~/Projects/provasign/research/harness/runs/wide/prism__98ed1b2b4d.sonnet.baseline.v2.json
+        cd ~/Projects/provasign/research/harness && python3 run_wide.py --only prism__98ed1b2b4d --arms baseline --model sonnet --tag v2 2>&1 | tail -6
+      at: 2026-09-01T01:38:02.513291Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time, collections
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/*wide-*"))
+                if time.time() - os.path.getmtime(d) < 15*60]
+        tool_counts = collections.Counter()
+        for d in dirs:
+            for f in glob.glob(d + "/*.jsonl"):
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    for c in ((j.get("message") or {}).get("content") or []):
+                        if isinstance(c, dict) and c.get("type") == "tool_use":
+                            tool_counts[c["name"]] += 1
+        print(dict(tool_counts))
+        EOF
+      at: 2026-09-01T01:50:39.669399Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/run_pair.sh <<'EOF'
+        #!/bin/zsh
+        cd ~/Projects/provasign/research/harness
+        task=$1
+        for arm in baseline prism_plus; do
+          python3 run_wide.py --only $task --arms $arm --model sonnet --tag v2 \
+            > /tmp/wv2_${task}_${arm}.log 2>&1 &
+        done
+        wait
+        cat /tmp/wv2_${task}_baseline.log /tmp/wv2_${task}_prism_plus.log
+        EOF
+        chmod +x /tmp/run_pair.sh
+        ls ~/Projects/provasign/research/harness/tasks-wide/*.json | xargs -n1 basename | sed 's/\.json$//'
+      at: 2026-09-01T01:50:47.720019Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/run_all_pairs.sh <<'EOF'
+        #!/bin/zsh
+        tasks=(dubbo__86dd98899b dubbo__9600dc9ce6 dubbo__e826b0c20d
+               grove__50e438b026 grove__74854a22f5 grove__b40b72d94e grove__d34856e4e0
+               prism__4f22f3947c prism__98ed1b2b4d prism__a0cabbe6a5 prism__ac780d9258)
+        for t in $tasks; do
+          echo "=== $t ==="
+          /tmp/run_pair.sh $t
+        done
+        EOF
+        chmod +x /tmp/run_all_pairs.sh
+        /tmp/run_all_pairs.sh 2>&1
+      at: 2026-09-01T01:50:59.453829Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import ab_endtoend_arms as a
+        import run_wide
+        print(run_wide.arms.ARMS['prism_plus']['guidance'])
+        "
+      at: 2026-09-01T01:57:04.798529Z
+      classified: other
+    - cmd: pkill -f "run_all_pairs.sh\|run_pair.sh\|run_wide.py" 2>/dev/null; sleep 1; echo "stopped"
+      at: 2026-09-01T01:57:25.546332Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n '473,497p' internal/cli/commands.go
+      at: 2026-09-01T01:57:28.816702Z
+      classified: other
+    - cmd: |-
+        rm -f ~/Projects/provasign/research/harness/runs/wide/dubbo__86dd98899b.sonnet.prism_plus.v2.json
+        echo "stale cell invalidated"
+        /tmp/run_all_pairs.sh 2>&1
+      at: 2026-09-01T01:57:56.133975Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        import re
+        s = open('internal/cli/commands.go').read()
+        i = s.find('const steeringInstructions')
+        j = s.find('<!-- prism:end -->', i)
+        block = s[i:j]
+        # strip Go string-concat syntax to get the literal text
+        block = re.sub(r'\`\s*\+\s*\"([^\"]*)\"\s*\+\s*\`', r'\1', block)
+        block = block.split('\`', 2)[2] if block.count('\`')>=2 else block
+        open('/tmp/real_steering.txt','w').write(block)
+        "
+        cat /tmp/real_steering.txt
+      at: 2026-09-01T01:58:28.548225Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import ab_endtoend_arms as a
+        import run_wide
+        print(run_wide.arms.ARMS['prism_plus']['guidance'])
+        "
+      at: 2026-09-01T01:58:37.666126Z
+      classified: other
+    - cmd: pkill -f "run_all_pairs.sh\|run_pair.sh\|run_wide.py" 2>/dev/null; sleep 1; echo stopped
+      at: 2026-09-01T01:58:52.577918Z
+      classified: other
+    - cmd: |-
+        grep -n "^import re\|^import" ~/Projects/provasign/research/harness/run_wide.py | head -8
+        cat /tmp/ab-endtoend/prism.json 2>/dev/null
+        /opt/homebrew/bin/prism --version
+      at: 2026-09-01T01:59:36.826211Z
+      classified: other
+    - cmd: ~/bin/prism --version 2>/dev/null || echo "not found/broken"
+      at: 2026-09-01T01:59:42.894895Z
+      classified: other
+    - cmd: |-
+        which prism
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import ab_endtoend_arms as a
+        import run_wide
+        g = run_wide.arms.ARMS['prism_plus']['guidance']
+        print(g)
+        print()
+        print('---MCP config---')
+        print((run_wide.arms.CFG_DIR / 'prism.json').read_text())
+        "
+      at: 2026-09-01T01:59:56.959352Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        import re
+        s = open('internal/cli/commands.go').read()
+        i = s.index('const steeringInstructions')
+        j = s.index('<!-- prism:end -->', i)
+        block = s[i:j]
+        # isolate the whole assignment's RHS: everything after 'const steeringInstructions = '
+        rhs = block.split('=', 1)[1].strip()
+        # Go concatenation of \`literal\` + \"escaped\" + \`literal\` + ... segments.
+        # Split on the + operators between segments, alternating raw-backtick and
+        # quoted-escape segments, and decode each correctly.
+        parts = re.findall(r'\`([^\`]*)\`|\"((?:[^\"\\\\]|\\\\.)*)\"', rhs)
+        text = ''
+        for raw, esc in parts:
+            if raw:
+                text += raw
+            else:
+                text += esc.encode().decode('unicode_escape')
+        open('/tmp/steer2.txt','w').write(text)
+        "
+        cat /tmp/steer2.txt
+      at: 2026-09-01T02:00:12.565373Z
+      classified: other
+    - cmd: grep -n '"prism", "index"' ~/Projects/provasign/research/harness/run_wide.py
+      at: 2026-09-01T02:00:31.876324Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import importlib, ab_endtoend_arms as a
+        import run_wide
+        g = run_wide.arms.ARMS['prism_plus']['guidance']
+        assert 'Prism indexes this repo' in g, 'missing intro'
+        assert 'prism_lookup' in g, 'missing lookup rule'
+        assert 'Relay that set as-is' in g, 'missing relay rule'
+        assert '_REAL_PRISM' not in g
+        print('steering OK, len=', len(g))
+        print()
+        print(g[:400])
+        print('...')
+        print(g[-200:])
+        "
+        echo "--- config ---"
+        cat /tmp/ab-endtoend/prism.json
+        echo
+        echo "--- clearing ALL cached wide-bed results (every one ran under a broken pipeline) ---"
+        rm -f runs/wide/*.json
+        ls runs/wide/ | wc -l
+      at: 2026-09-01T02:01:05.896536Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 run_wide.py --only dubbo__86dd98899b --arms prism_plus --model sonnet --tag v3 2>&1 | tail -6
+      at: 2026-09-01T02:01:13.268166Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('tasks-wide/dubbo__86dd98899b.json'))
+        print('SUBJECT:', d['subject'])
+        print('BODY:', (d.get('body') or '')[:400])
+        print('gt_symbols:', d['gt_symbols'][:15])
+        "
+      at: 2026-09-01T02:06:54.983125Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, subprocess, sys, tempfile, shutil
+        sys.path.insert(0, ".")
+        import run_wide
+
+        PRISM = "/opt/homebrew/bin/prism"
+        for tf in sorted(glob.glob("tasks-wide/*.json")):
+            task = json.load(open(tf))
+            repo, wt = run_wide.isolated_worktree(task)
+            subprocess.run([PRISM, "index", str(wt)], capture_output=True, timeout=600)
+            resolvable = 0
+            for sym in task["gt_symbols"][:20]:
+                r = subprocess.run([PRISM, "search", sym, "--scope", "symbols", "--format", "text",
+                                    "--dir", str(wt)], capture_output=True, text=True, timeout=30)
+                if "no matches" not in r.stdout.lower() and r.stdout.strip():
+                    resolvable += 1
+            n = min(len(task["gt_symbols"]), 20)
+            pct = resolvable / n * 100 if n else 0
+            verdict = "OK" if pct >= 40 else "EXTERNAL-DOMINATED"
+            print(f"{task['instance_id']:26} {resolvable}/{n} symbols resolve in-repo ({pct:.0f}%)  {verdict}")
+            shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-09-01T02:07:19.671148Z
+      classified: other
+    - cmd: ps aux | grep -E "claude -p|run_wide|run_pair|run_all_pairs" | grep -v grep
+      at: 2026-09-01T02:08:14.373847Z
+      classified: other
+    - cmd: |-
+        for pid in 60401 60400 60399 58521 58520 56577 56572 55342 55335; do kill -9 $pid 2>/dev/null; done
+        sleep 2
+        ps aux | grep -E "claude -p|run_wide|run_pair|run_all_pairs" | grep -v grep
+        echo "--- residual worktrees ---"
+        ls -d /var/folders/*/*/T/wide-* 2>/dev/null | wc -l
+      at: 2026-09-01T02:08:26.6738Z
+      classified: other
+    - cmd: |-
+        for d in /var/folders/*/*/T/wide-*; do
+          [ -d "$d" ] && rm -rf "$d" 2>/dev/null
+        done
+        rm -f ~/Projects/provasign/research/harness/runs/wide/*.json
+        echo "clean: $(ls ~/Projects/provasign/research/harness/runs/wide/ | wc -l) cached results, $(ls -d /var/folders/*/*/T/wide-* 2>/dev/null | wc -l) worktrees"
+        ps aux | grep -E "run_wide|run_pair" | grep -v grep | wc -l
+      at: 2026-09-01T02:08:38.302156Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, subprocess, sys, shutil
+        sys.path.insert(0, ".")
+        import run_wide
+
+        PRISM = "/opt/homebrew/bin/prism"
+        for tf in sorted(glob.glob("tasks-wide/*.json")):
+            task = json.load(open(tf))
+            try:
+                repo, wt = run_wide.isolated_worktree(task)
+            except Exception as e:
+                print(f"{task['instance_id']:26} ISOLATION ERROR: {str(e)[:100]}")
+                continue
+            subprocess.run([PRISM, "index", str(wt)], capture_output=True, timeout=600)
+            resolvable = 0
+            for sym in task["gt_symbols"][:20]:
+                r = subprocess.run([PRISM, "search", sym, "--scope", "symbols", "--format", "text",
+                                    "--dir", str(wt)], capture_output=True, text=True, timeout=30)
+                if "no matches" not in r.stdout.lower() and r.stdout.strip():
+                    resolvable += 1
+            n = min(len(task["gt_symbols"]), 20)
+            pct = resolvable / n * 100 if n else 0
+            verdict = "OK" if pct >= 40 else "EXTERNAL-DOMINATED"
+            print(f"{task['instance_id']:26} {resolvable}/{n} symbols resolve in-repo ({pct:.0f}%)  {verdict}")
+            shutil.rmtree(wt, ignore_errors=True)
+        EOF
+      at: 2026-09-01T02:08:56.603232Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness
+        for t in grove__50e438b026 grove__74854a22f5 prism__a0cabbe6a5; do
+          mv tasks-wide/$t.json tasks-wide/$t.json.excluded
+          echo "excluded: $t (external-dominated ground truth, prism_change_impact has nothing to query)"
+        done
+        ls tasks-wide/*.json | xargs -n1 basename
+        echo "--- 8 valid tasks confirmed ---"
+      at: 2026-09-01T02:11:02.640954Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 run_wide.py --arms baseline,prism_plus --model sonnet --tag final 2>&1 | tee /tmp/wide_final.log
+      at: 2026-09-01T02:11:08.352131Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('runs/wide/dubbo__9600dc9ce6.sonnet.baseline.final.json'))
+        print('missed_files sample:', d.get('missed_files',[])[:5])
+        print('diff len:', len(d.get('diff','')))
+        print(d.get('diff','')[:500])
+        print('agent_error:', d.get('agent_error'))
+        "
+      at: 2026-09-01T02:16:57.437349Z
+      classified: other
+    - cmd: tail -5 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bw3bcbmmz.output | head -c 2000
+      at: 2026-09-01T02:59:57.155655Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        line = open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bw3bcbmmz.output').readlines()[3]
+        print(line)
+        "
+      at: 2026-09-01T03:00:13.256611Z
+      classified: other
+    - cmd: tail -1 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bw3bcbmmz.output
+      at: 2026-09-01T04:43:45.978167Z
+      classified: other
+    - cmd: wc -l /Users/tapabratapal/Projects/provasign/research/harness/run_wide.py
+      at: 2026-09-01T10:40:49.99909Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,200p' ab_endtoend_arms.py
+      at: 2026-09-01T10:41:09.541771Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "prism_native\|ToolSearch\|alwaysLoad\|deferred" ab_endtoend_arms.py run_wide.py
+      at: 2026-09-01T10:41:11.906317Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '220,260p' ab_endtoend_arms.py
+      at: 2026-09-01T10:41:17.694988Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls runs/wide/*.json | head -3
+        find ~/.claude/projects -maxdepth 1 -iname "*wide-*" -newermt "2026-08-30" 2>/dev/null | head -5
+      at: 2026-09-01T10:41:27.820394Z
+      classified: other
+    - cmd: |-
+        for d in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-*; do
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          n=$(grep -c '"name":"mcp__prism' "$f" 2>/dev/null)
+          echo "$d -> $f mcp_mentions=$n"
+        done | head -20
+      at: 2026-09-01T10:41:32.194727Z
+      classified: other
+    - cmd: |
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-34bicwlk
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j = json.loads(line)
+                if j.get('type') == 'system':
+                    print(json.dumps(j, indent=2)[:3000])
+                    break
+        "
+      at: 2026-09-01T10:41:37.096341Z
+      classified: other
+    - cmd: |
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-34bicwlk
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        wc -l "$f"
+        python3 -c "
+        import json
+        with open('$f') as fh:
+            for i, line in enumerate(fh):
+                j = json.loads(line)
+                print(i, j.get('type'), list(j.keys()))
+                if i > 5: break
+        "
+      at: 2026-09-01T10:41:40.840557Z
+      classified: other
+    - cmd: |
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-34bicwlk
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        grep -io '"mcp[a-z_]*"' "$f" | sort -u
+        echo "---attachment sample---"
+        python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j = json.loads(line)
+                if j.get('type') == 'attachment':
+                    print(json.dumps(j.get('attachment'))[:1500])
+        "
+      at: 2026-09-01T10:41:45.96296Z
+      classified: other
+    - cmd: |-
+        for dir in 34bicwlk 8v363xih c607kbfw efz2lxxy j01glt2a k5tjqhz6; do
+          d="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-$dir"
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          echo "== $dir =="
+          python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j = json.loads(line)
+                if j.get('type')=='attachment' and j.get('attachment',{}).get('type')=='deferred_tools_delta':
+                    a = j['attachment']
+                    print('pending:', a.get('pendingMcpServers'), 'failed:', a.get('failedMcpServers'), 'needsauth:', a.get('needsAuthMcpServers'))
+                    print('added has prism:', any('prism' in n.lower() for n in a.get('addedNames',[])))
+            # also grab prompt to see arm
+                if j.get('type')=='user' and isinstance(j.get('message',{}).get('content'), str):
+                    pass
+        "
+        done
+      at: 2026-09-01T10:42:02.874994Z
+      classified: other
+    - cmd: |-
+        d="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-8v363xih"
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j = json.loads(line)
+                if j.get('type')=='attachment' and j.get('attachment',{}).get('type')=='deferred_tools_delta':
+                    a=j['attachment']
+                    print('added:', a.get('addedNames'))
+        "
+        echo "---ToolSearch calls---"
+        grep -o '"name":"ToolSearch"' "$f" | wc -l
+        echo "---tool_use names---"
+        python3 -c "
+        import json, collections
+        c=collections.Counter()
+        with open('$f') as fh:
+            for line in fh:
+                j=json.loads(line)
+                if j.get('type')!='assistant': continue
+                for cc in (j.get('message',{}).get('content') or []):
+                    if isinstance(cc,dict) and cc.get('type')=='tool_use':
+                        c[cc['name']]+=1
+        print(c)
+        "
+      at: 2026-09-01T10:42:09.470903Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys
+        sys.path.insert(0, '.')
+        import run_wide
+        print(run_wide._real_shipped_steering())
+        " 2>&1 | head -60
+      at: 2026-09-01T10:42:23.989901Z
+      classified: other
+    - cmd: grep -n "DEFERRED\|ToolSearch\|deferred" /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go | head -20
+      at: 2026-09-01T10:42:34.185149Z
+      classified: other
+    - cmd: sed -n '440,640p' /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-09-01T10:42:36.745113Z
+      classified: other
+    - cmd: git diff -- internal/cli/commands.go AGENTS.md | head -150
+      at: 2026-09-01T10:42:47.094749Z
+      classified: other
+    - cmd: git status; git diff --stat
+      at: 2026-09-01T10:42:48.819384Z
+      classified: other
+    - cmd: git log -1 --stat; echo ---; git show HEAD -- internal/cli/commands.go | head -100
+      at: 2026-09-01T10:42:51.350336Z
+      classified: other
+    - cmd: sed -n '1,40p' /Users/tapabratapal/Projects/provasign/CLAUDE.md
+      at: 2026-09-01T10:42:55.564382Z
+      classified: other
+    - cmd: |-
+        for d in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-*; do
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          python3 -c "
+        import json
+        deferred_has_prism=False
+        toolsearch_calls=0
+        prism_calls=0
+        with open('$f') as fh:
+            for line in fh:
+                try: j=json.loads(line)
+                except: continue
+                if j.get('type')=='attachment' and j.get('attachment',{}).get('type')=='deferred_tools_delta':
+                    if any('prism' in n.lower() for n in j['attachment'].get('addedNames',[])):
+                        deferred_has_prism=True
+                if j.get('type')=='assistant':
+                    for c in (j.get('message',{}).get('content') or []):
+                        if isinstance(c,dict) and c.get('type')=='tool_use':
+                            if c['name']=='ToolSearch': toolsearch_calls+=1
+                            if 'prism' in c['name'].lower(): prism_calls+=1
+        if deferred_has_prism or prism_calls or toolsearch_calls:
+            print('$d'.split('-')[-1], 'deferred_prism=',deferred_has_prism,'toolsearch=',toolsearch_calls,'prism_tool_calls=',prism_calls)
+        "
+        done
+      at: 2026-09-01T10:43:15.714889Z
+      classified: other
+    - cmd: go build ./... 2>&1 | tail -30
+      at: 2026-09-01T10:43:51.472278Z
+      classified: build
+    - cmd: grep -rn "steeringInstructions\|steeringBlock" internal/cli/*_test.go 2>/dev/null
+      at: 2026-09-01T10:43:52.933151Z
+      classified: other
+    - cmd: sed -n '300,360p' internal/cli/init_test.go
+      at: 2026-09-01T10:43:54.259617Z
+      classified: other
+    - cmd: go test ./... 2>&1 | tail -60
+      at: 2026-09-01T10:44:05.104512Z
+      classified: test
+    - cmd: go build -o /tmp/prism-fixed ./cmd/prism && /tmp/prism-fixed --version 2>&1 | head -5
+      at: 2026-09-01T11:07:53.296363Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls tasks-wide/ | grep dubbo
+      at: 2026-09-01T11:07:57.706719Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 /tmp/probe_one.py > /tmp/probe_one.log 2>&1 &
+        echo "started pid $!"
+      at: 2026-09-01T11:10:12.127034Z
+      classified: other
+    - cmd: until ! ps -p 92221 >/dev/null 2>&1; do sleep 15; done; echo done
+      at: 2026-09-01T11:10:16.954378Z
+      classified: other
+    - cmd: tail -100 /tmp/probe_one.log
+      at: 2026-09-01T11:12:51.183752Z
+      classified: other
+    - cmd: ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* 2>/dev/null | head -3
+      at: 2026-09-01T11:12:57.640849Z
+      classified: other
+    - cmd: |-
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-nby89ccu
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        echo "$f"
+        python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j=json.loads(line)
+                if j.get('type')=='attachment' and j.get('attachment',{}).get('type')=='deferred_tools_delta':
+                    a=j['attachment']
+                    print('added:', a.get('addedNames'))
+                    print('failedMcpServers:', a.get('failedMcpServers'))
+                    print('pendingMcpServers:', a.get('pendingMcpServers'))
+        "
+      at: 2026-09-01T11:13:02.312967Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.')
+        import run_wide as rw
+        print(rw.arms.ARMS['prism_plus']['guidance'])
+        "
+      at: 2026-09-01T11:13:09.116845Z
+      classified: other
+    - cmd: |-
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-nby89ccu
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j=json.loads(line)
+                if j.get('type')=='user':
+                    m=j.get('message',{})
+                    c=m.get('content')
+                    if isinstance(c,str):
+                        print(c[:600])
+                    elif isinstance(c,list):
+                        for cc in c:
+                            if isinstance(cc,dict) and cc.get('type')=='text':
+                                print(cc['text'][:600])
+                    break
+        "
+      at: 2026-09-01T11:13:17.087001Z
+      classified: other
+    - cmd: |-
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-nby89ccu
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        python3 -c "
+        import json
+        n=0
+        with open('$f') as fh:
+            for line in fh:
+                j=json.loads(line)
+                if j.get('type')=='assistant':
+                    for c in (j.get('message',{}).get('content') or []):
+                        if isinstance(c,dict):
+                            if c.get('type')=='text':
+                                print('TEXT:', c['text'][:400])
+                            elif c.get('type')=='tool_use':
+                                print('TOOL:', c['name'], json.dumps(c.get('input',{}))[:150])
+                    n+=1
+                    if n>=6: break
+        "
+      at: 2026-09-01T11:13:31.06015Z
+      classified: other
+    - cmd: |-
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-nby89ccu
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        python3 << EOF
+        import json
+        f = "$f"
+        # 1. What was actually in the main (non-deferred) tool list? 2. full first user prompt. 3. any mcp errors.
+        with open(f) as fh:
+            for line in fh:
+                j = json.loads(line)
+                t = j.get('type')
+                if t == 'user':
+                    c = j.get('message', {}).get('content')
+                    if isinstance(c, str) and 'CONTEXT TOOL' in c:
+                        print("=== FULL PROMPT ===")
+                        print(c)
+                        print("=== END PROMPT ===")
+                        break
+        EOF
+      at: 2026-09-01T11:16:10.90567Z
+      classified: other
+    - cmd: |-
+        d=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-nby89ccu
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        python3 << EOF
+        import json
+        f = "$f"
+        with open(f) as fh:
+            for line in fh:
+                j = json.loads(line)
+                a = j.get('attachment', {}) if j.get('type') == 'attachment' else {}
+                ty = a.get('type')
+                if ty and ty not in ('total_tokens_reminder',):
+                    s = json.dumps(a)
+                    if 'prism' in s.lower() or ty in ('deferred_tools_delta','mcp','queued_command'):
+                        print(ty, '->', s[:800])
+                        print()
+        EOF
+      at: 2026-09-01T11:16:17.82465Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && (printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'; sleep 2) | /tmp/prism-fixed mcp 2>/dev/null | python3 -c "
+        import sys, json
+        for line in sys.stdin:
+            try: j=json.loads(line)
+            except: continue
+            if j.get('id')==2:
+                for t in j['result']['tools']:
+                    meta = t.get('_meta') or {}
+                    print(t['name'], 'alwaysLoad=', meta.get('anthropic/alwaysLoad'), '| desc:', (t.get('description') or '')[:60])
+        "
+      at: 2026-09-01T11:16:56.060136Z
+      classified: other
+    - cmd: |-
+        for dir in npzi905s qjfzv0bl osfpztte v1aehydu; do
+          d="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-$dir"
+          f=$(ls -t "$d"/*.jsonl | head -1)
+          echo "== $dir  (mtime: $(stat -f %Sm "$f")) =="
+          python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j=json.loads(line)
+                if j.get('type')=='user':
+                    c=j.get('message',{}).get('content')
+                    if isinstance(c,str):
+                        # find the UPSTREAM CHANGE line to identify the task
+                        import re
+                        m=re.search(r'UPSTREAM CHANGE:\n(.*)', c)
+                        print('cwd:', j.get('cwd'))
+                        print('task:', m.group(1) if m else c[:80])
+                        break
+        "
+        done
+      at: 2026-09-01T11:18:04.995879Z
+      classified: other
+    - cmd: |-
+        for bin in ~/bin/prism /opt/homebrew/bin/prism /tmp/prism-fixed; do
+          echo "== $bin ($($bin --version 2>/dev/null | head -1)) =="
+          (printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'; sleep 2) | $bin mcp 2>/dev/null | python3 -c "
+        import sys, json
+        for line in sys.stdin:
+            try: j=json.loads(line)
+            except: continue
+            if j.get('id')==2:
+                for t in j['result']['tools']:
+                    meta = t.get('_meta') or {}
+                    print(' ', t['name'], 'alwaysLoad=', meta.get('anthropic/alwaysLoad'))
+        "
+        done
+      at: 2026-09-01T11:18:34.180609Z
+      classified: other
+    - cmd: |-
+        for dir in npzi905s qjfzv0bl; do
+          d="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-$dir"
+          f=$(ls -t "$d"/*.jsonl | head -1)
+          echo "== $dir =="
+          python3 -c "
+        import json, collections
+        c=collections.Counter()
+        with open('$f') as fh:
+            for line in fh:
+                j=json.loads(line)
+                if j.get('type')!='assistant': continue
+                for cc in (j.get('message',{}).get('content') or []):
+                    if isinstance(cc,dict) and cc.get('type')=='tool_use' and 'prism' in cc['name']:
+                        c[cc['name']]+=1
+        for k,v in c.most_common(): print(' ',k,v)
+        "
+        done
+      at: 2026-09-01T11:18:45.940395Z
+      classified: other
+    - cmd: grep -rn "alwaysLoad\|AlwaysLoad" internal/mcp/*.go | grep -v _test | head
+      at: 2026-09-01T11:18:57.112714Z
+      classified: other
+    - cmd: sed -n '290,330p' internal/mcp/tools.go
+      at: 2026-09-01T11:18:59.082504Z
+      classified: other
+    - cmd: sed 's/if n == "prism_query" {/if n == "prism_query" || n == "prism_search" {/' internal/mcp/tools.go > /tmp/tools_exp.go && diff internal/mcp/tools.go /tmp/tools_exp.go; echo "---"; cp internal/mcp/tools.go /tmp/tools_orig.go && cp /tmp/tools_exp.go internal/mcp/tools.go && go build -o /tmp/prism-exp ./cmd/prism && cp /tmp/tools_orig.go internal/mcp/tools.go && git diff --stat && echo "source restored, exp binary built"
+      at: 2026-09-01T11:19:32.710159Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && sed 's|/tmp/prism-fixed|/tmp/prism-exp|; s|probe_toolsearch_fix|probe_search_resident|' /tmp/probe_one.py > /tmp/probe_two.py && nohup python3 /tmp/probe_two.py > /tmp/probe_two.log 2>&1 &
+        echo "probe pid $!"
+      at: 2026-09-01T11:19:38.355158Z
+      classified: other
+    - cmd: until ! ps -p 93248 >/dev/null 2>&1; do sleep 15; done; echo done
+      at: 2026-09-01T11:19:40.874989Z
+      classified: other
+    - cmd: grep -rn "alwaysLoad\|AlwaysLoad" internal/mcp/ internal/cli/ --include="*_test.go" | head
+      at: 2026-09-01T11:25:00.28395Z
+      classified: other
+    - cmd: sed -n '250,285p' internal/mcp/searchmulti_test.go
+      at: 2026-09-01T11:25:02.561794Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/mcp/ ./internal/cli/ 2>&1 | tail -5
+      at: 2026-09-01T11:25:41.906294Z
+      classified: test
+    - cmd: |-
+        go build -o /tmp/prism-nores ./cmd/prism && (printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'; sleep 2) | /tmp/prism-nores mcp 2>/dev/null | python3 -c "
+        import sys, json
+        for line in sys.stdin:
+            try: j=json.loads(line)
+            except: continue
+            if j.get('id')==2:
+                for t in j['result']['tools']:
+                    print(t['name'], 'alwaysLoad=', (t.get('_meta') or {}).get('anthropic/alwaysLoad'))
+        "
+      at: 2026-09-01T11:25:52.352636Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && sed 's|/tmp/prism-fixed|/tmp/prism-nores|; s|probe_toolsearch_fix|probe_no_residency|' /tmp/probe_one.py > /tmp/probe_three.py && nohup python3 /tmp/probe_three.py > /tmp/probe_three.log 2>&1 &
+        echo "probe pid $!"
+      at: 2026-09-01T11:26:00.449305Z
+      classified: other
+    - cmd: until ! ps -p 94524 >/dev/null 2>&1; do sleep 15; done; echo done
+      at: 2026-09-01T11:26:02.755949Z
+      classified: other
+    - cmd: tail -25 /tmp/probe_two.log | head -30; grep -E '>>>' /tmp/probe_two.log
+      at: 2026-09-01T11:27:30.55565Z
+      classified: other
+    - cmd: |-
+        grep -E '"file_recall"|"turns"|"cost_usd"|"wall_s"' /tmp/probe_two.log; echo ---; python3 -c "
+        import json
+        rec=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__e826b0c20d.sonnet.prism_plus.probe_search_resident.json'))
+        print(json.dumps(rec['tool_trace'], indent=1))
+        "
+      at: 2026-09-01T11:27:35.842986Z
+      classified: other
+    - cmd: |-
+        grep -E '"file_recall"|"turns"|"cost_usd"|"wall_s"|>>>' /tmp/probe_three.log; echo ---; python3 -c "
+        import json
+        rec=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__e826b0c20d.sonnet.prism_plus.probe_no_residency.json'))
+        print(json.dumps(rec['tool_trace'], indent=1))
+        print('extra_files:', rec['extra_files'], 'symbol_recall:', rec['symbol_recall'])
+        "
+      at: 2026-09-01T11:28:53.308321Z
+      classified: other
+    - cmd: |-
+        d=$(ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* | head -1)
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        echo "$f"
+        python3 << EOF
+        import json
+        f = "$f"
+        with open(f) as fh:
+            lines = [json.loads(l) for l in fh]
+        # find ToolSearch call and its result
+        for i, j in enumerate(lines):
+            if j.get('type')=='assistant':
+                for c in (j.get('message',{}).get('content') or []):
+                    if isinstance(c,dict) and c.get('type')=='tool_use' and c['name']=='ToolSearch':
+                        print('TOOLSEARCH INPUT:', json.dumps(c.get('input')))
+                        tid = c['id']
+                        # find result
+                        for k in lines[i:i+6]:
+                            if k.get('type')=='user':
+                                for cc in (k.get('message',{}).get('content') or []):
+                                    if isinstance(cc,dict) and cc.get('type')=='tool_result' and cc.get('tool_use_id')==tid:
+                                        s = json.dumps(cc.get('content'))[:1200]
+                                        print('RESULT:', s)
+        EOF
+      at: 2026-09-01T11:29:04.717803Z
+      classified: other
+    - cmd: |-
+        for dir in phaa76jz qsamhrp6; do
+          d="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-$dir"
+          f=$(ls -t "$d"/*.jsonl | head -1)
+          echo "== $dir =="
+          python3 -c "
+        import json
+        with open('$f') as fh:
+            for line in fh:
+                j=json.loads(line)
+                if j.get('type')=='assistant':
+                    for c in (j.get('message',{}).get('content') or []):
+                        if isinstance(c,dict) and c.get('type')=='tool_use' and c['name']=='ToolSearch':
+                            print('  ', json.dumps(c.get('input')))
+        "
+        done
+      at: 2026-09-01T11:29:21.962683Z
+      classified: other
+    - cmd: go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -3 && go build -o /tmp/prism-nores ./cmd/prism && echo rebuilt
+      at: 2026-09-01T11:29:45.556576Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && sed 's|probe_no_residency|probe_no_residency_v2|' /tmp/probe_three.py > /tmp/probe_four.py && nohup python3 /tmp/probe_four.py > /tmp/probe_four.log 2>&1 &
+        echo "probe pid $!"
+      at: 2026-09-01T11:29:51.311803Z
+      classified: other
+    - cmd: until ! ps -p 95273 >/dev/null 2>&1; do sleep 15; done; echo done
+      at: 2026-09-01T11:29:53.775134Z
+      classified: other
+    - cmd: |-
+        grep -E '"file_recall"|"turns"|"cost_usd"|"wall_s"|>>>' /tmp/probe_four.log; echo ---; python3 -c "
+        import json
+        rec=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__e826b0c20d.sonnet.prism_plus.probe_no_residency_v2.json'))
+        print(json.dumps(rec['tool_trace'], indent=1))
+        print('extra:', rec['extra_files'], 'sym:', rec['symbol_recall'], 'missed:', len(rec['missed_files']))
+        "
+      at: 2026-09-01T11:32:00.033772Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > /tmp/probe_rate.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        rw._REAL_PRISM = "/tmp/prism-nores"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        task = json.loads(Path("tasks-wide/dubbo__e826b0c20d.json").read_text())
+        for i in range(5):
+            tag = f"hoprate{i}"
+            rec = rw.run_cell(task, "prism_plus", "sonnet", tag)
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            Path(f"runs/wide/dubbo__e826b0c20d.sonnet.prism_plus.{tag}.json").write_text(json.dumps(rec, indent=1))
+            print(f"rep{i}: hop={ts} prism={p} recall={rec.get('file_recall')} turns={rec.get('turns')} cost={rec.get('cost_usd')}", flush=True)
+        EOF
+        nohup python3 /tmp/probe_rate.py > /tmp/probe_rate.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-01T11:32:28.772355Z
+      classified: other
+    - cmd: until ! ps -p 95557 >/dev/null 2>&1; do sleep 30; done; echo done
+      at: 2026-09-01T11:32:31.140749Z
+      classified: other
+    - cmd: ps -p 95557 >/dev/null 2>&1 && echo RUNNING || echo FINISHED; cat /tmp/probe_rate.log 2>/dev/null
+      at: 2026-09-01T11:48:35.766048Z
+      classified: other
+    - cmd: cat /tmp/probe_rate.log
+      at: 2026-09-01T11:49:36.147392Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness/ci_invariants.py harness/ab_gate.py 2>&1; python3 harness/ci_invariants.py --help 2>&1 | head -15
+      at: 2026-09-01T11:49:42.916598Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/ci_invariants.py --prism /tmp/prism-nores > /tmp/gate_ci.log 2>&1 &
+        echo "ci pid $!"; python3 harness/ab_gate.py --help 2>&1 | head -20
+      at: 2026-09-01T11:49:47.480307Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-nores --out /tmp/ab_gate_nores > /tmp/gate_ab.log 2>&1 &
+        echo "ab pid $!"
+      at: 2026-09-01T11:49:51.50721Z
+      classified: other
+    - cmd: until ! ps -p 97104 >/dev/null 2>&1 && ! ps -p 97138 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-01T11:49:54.090956Z
+      classified: other
+    - cmd: echo "=== ci_invariants ==="; tail -20 /tmp/gate_ci.log; echo "=== ab_gate ==="; tail -30 /tmp/gate_ab.log
+      at: 2026-09-01T11:49:58.658482Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "corpus_root\|ci-corpus\|CORPUS" harness/ci_invariants.py | head; ls ~/Projects/provasign/research/corpus 2>/dev/null || ls -d ~/ci-corpus 2>/dev/null || find ~/Projects/provasign -maxdepth 3 -name "*corpus*" -type d 2>/dev/null | head
+      at: 2026-09-01T11:50:06.122334Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/research/.ci-corpus 2>/dev/null; ls -d ~/.cache/ci-corpus 2>/dev/null; ls /tmp/ci-corpus 2>/dev/null; du -sh /tmp/ci-corpus/* 2>/dev/null | head
+      at: 2026-09-01T11:50:10.899318Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/ci_invariants.py --prism /tmp/prism-nores --corpus-root ~/ci-corpus > /tmp/gate_ci.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-nores --out /tmp/ab_gate_nores > /tmp/gate_ab.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-01T11:50:19.051075Z
+      classified: other
+    - cmd: until ! ps -p 97291 >/dev/null 2>&1 && ! ps -p 97292 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-01T11:50:22.36288Z
+      classified: other
+    - cmd: |-
+        git add internal/cli/commands.go internal/cli/init_test.go internal/mcp/tools.go internal/mcp/searchmulti_test.go && git commit -m "$(cat <<'EOF'
+        steering+mcp: fix the three-bug stack that zeroed prism engagement
+
+        Wide-bed fleet (16 cells, sonnet, isolated worktrees, real binary,
+        byte-identical steering) measured prism used in 1 of 8 prism_plus cells.
+        Root cause was three stacked routing bugs, each masking the next:
+
+        1. steeringInstructions lost the ToolSearch deferred-tools line in the
+           2026-08-15 trim while the comment above the const claimed it survived.
+           Agents whose schemas are deferred had no way to learn prism exists.
+
+        2. Hybrid residency (2026-08-30) kept prism_query alone alwaysLoad — the
+           one tool sonnet never opens with (v0.55.10 all-resident cells: 23
+           prism_search + 5 prism_read calls, prism_query ZERO). The visible
+           prism_query also defeated the restored "if you do not see prism_*"
+           clause. Residency is now removed entirely; all six tools defer.
+
+        3. The steering's ToolSearch call used bare names (select:prism_query,...)
+           which match nothing — deferred names carry the mcp__prism__ prefix. A
+           probe following it verbatim got "No matching deferred tools found" and
+           fell back to grep; the two fleet cells that engaged prism had typed the
+           full names themselves. The line now uses full names.
+
+        Measured on dubbo__e826b0c20d (wide bed): hop-and-use 4/5 repeats with
+        all three fixes vs 2/11 fleet cells before. Guards added:
+        TestSteeringBlock_DeferredToolsBootstrap (full-name select present),
+        TestToolSchemas_NoResidency (replaces QueryAlwaysLoadOthersDeferred).
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-01T11:50:37.096217Z
+      classified: other
+    - cmd: echo "=== ci_invariants (tail) ==="; tail -15 /tmp/gate_ci.log; echo; echo "=== ab_gate (tail) ==="; tail -25 /tmp/gate_ab.log
+      at: 2026-09-01T12:06:58.093484Z
+      classified: other
+    - cmd: git log v0.64.0..HEAD --oneline 2>/dev/null || { git tag | tail -3; git log --oneline -8; }
+      at: 2026-09-01T12:07:13.982536Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,60p' ab_gate.py
+      at: 2026-09-01T12:07:24.498828Z
+      classified: other
+    - cmd: |-
+        ls /tmp/ab_gate_nores/ | head; python3 -c "
+        import json, glob
+        for f in sorted(glob.glob('/tmp/ab_gate_nores/*querydata*')):
+            j = json.load(open(f))
+            tt = j.get('tool_trace') or {}
+            print(f.split('/')[-1], 'turns=', j.get('turns'), 'tokens=', j.get('tokens') or j.get('total_tokens'), {k:v for k,v in tt.items()})
+        "
+      at: 2026-09-01T12:07:43.927098Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        for sha in ('36ae4f62','5d3517ad'):
+            j = json.load(open(f'/tmp/ab_gate_nores/grafana-querydata-impact.haiku.{sha}.json'))
+            print(sha, sorted(j.keys()))
+            for k in ('recall','tokens_total','input_tokens','output_tokens','cache_read','cost_usd','num_turns','turns'):
+                if k in j: print(' ', k, j[k])
+        "
+      at: 2026-09-01T12:07:49.572188Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > /tmp/run_wide_fixed.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        # The fixed build: no residency + corrected full-name ToolSearch steering
+        # (commit b5805f2). Baseline cells are untouched by the prism binary, so the
+        # .final baseline results stay valid as the comparison arm.
+        rw._REAL_PRISM = "/tmp/prism-nores"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        for tf in sorted(Path("tasks-wide").glob("*.json")):
+            task = json.loads(tf.read_text())
+            out = Path(f"runs/wide/{task['instance_id']}.sonnet.prism_plus.fixed1.json")
+            if out.exists():
+                print(f"(cached) {task['instance_id']}", flush=True)
+                continue
+            try:
+                rec = rw.run_cell(task, "prism_plus", "sonnet", "fixed1")
+            except Exception as e:
+                print(f"{task['instance_id']:26} ERROR {str(e)[:200]}", flush=True)
+                continue
+            out.write_text(json.dumps(rec, indent=1))
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            print(f"{rec['task']:26} recall={rec.get('file_recall')} "
+                  f"({rec.get('files_found')}/{rec.get('files_expected')}) "
+                  f"sym={rec.get('symbol_recall')} extra={rec.get('extra_files')} "
+                  f"build={rec.get('build')} turns={rec.get('turns')} "
+                  f"cost=${rec.get('cost_usd')} hop={ts} prism_calls={p}", flush=True)
+        EOF
+        nohup python3 /tmp/run_wide_fixed.py > /tmp/run_wide_fixed.log 2>&1 &
+        echo "fleet pid $!"
+      at: 2026-09-01T12:27:37.769404Z
+      classified: other
+    - cmd: until ! ps -p 1117 >/dev/null 2>&1; do sleep 60; done; echo fleet-done
+      at: 2026-09-01T12:27:40.147653Z
+      classified: other
+    - cmd: cat /tmp/run_wide_fixed.log
+      at: 2026-09-01T13:18:46.916397Z
+      classified: other
+    - cmd: |-
+        for d in $(ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* | head -14); do
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          mt=$(stat -f %Sm -t '%m-%d %H:%M' "$f")
+          subj=$(python3 -c "
+        import json,re
+        for line in open('$f'):
+            j=json.loads(line)
+            if j.get('type')=='user':
+                c=j.get('message',{}).get('content')
+                if isinstance(c,str) and 'UPSTREAM CHANGE' in c:
+                    m=re.search(r'UPSTREAM CHANGE:\n(.*)',c); print(m.group(1)[:60] if m else ''); break
+        ")
+          echo "$mt  $(basename $d | sed 's/.*wide-//')  $subj"
+        done
+      at: 2026-09-01T13:39:30.640832Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-3c6yj3dd/ && ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__86dd98899b.sonnet.prism_plus.fixed1.json
+      at: 2026-09-01T13:40:05.836036Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-b51z3wvs/
+      at: 2026-09-01T13:40:11.724477Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__9600dc9ce6.sonnet.prism_plus.fixed1.json'))
+        print(list(d.keys()))
+        for k,v in d.items():
+            s=json.dumps(v)
+            print('==',k,len(s))
+            print(s[:2000])
+        "
+      at: 2026-09-01T13:40:15.325485Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-9v37kwx7/ && echo "---" && ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__e826b0c20d.sonnet.prism_plus.fixed1.json
+      at: 2026-09-01T13:40:18.719591Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-3c6yj3dd/ && python3 -c "
+        import json
+        lines=[json.loads(l) for l in open('5dcacfd9-4456-4b45-a649-172dd7bb6a5d.jsonl')]
+        n=0
+        for l in lines:
+            t=l.get('type')
+            if t not in ('assistant','user'): continue
+            c=(l.get('message') or {}).get('content')
+            if isinstance(c,str):
+                print('===',t,'TEXT'); print(c[:4000]); continue
+            if not c: continue
+            for b in c:
+                bt=b.get('type')
+                if bt=='text':
+                    print('=== ASSISTANT TEXT:'); print(b['text'][:2500])
+                elif bt=='tool_use':
+                    print('=== TOOL_USE', b['name'], json.dumps(b['input'])[:600])
+                elif bt=='tool_result':
+                    r=b.get('content')
+                    s=r if isinstance(r,str) else ' '.join(x.get('text','') for x in r if isinstance(x,dict))
+                    print('--- RESULT:', s[:700].replace(chr(10),' | '))
+        " > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/t.txt; wc -l /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/t.txt
+      at: 2026-09-01T13:40:20.281665Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__9600dc9ce6.sonnet.prism_plus.fixed1.json'))
+        print(d['diff'][1600:])
+        "
+      at: 2026-09-01T13:40:20.701093Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/
+      at: 2026-09-01T13:40:23.423456Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/wide && python3 -c "
+        import json
+        d=json.load(open('dubbo__e826b0c20d.sonnet.prism_plus.fixed1.json'))
+        def walk(o,p=''):
+            if isinstance(o,dict):
+                for k,v in o.items():
+                    if isinstance(v,(dict,list)) and len(str(v))>200: walk(v,p+'/'+k)
+                    else: print(p+'/'+k,'=',str(v)[:400])
+            elif isinstance(o,list):
+                print(p,'LIST len',len(o))
+                for i,v in enumerate(o[:40]): print(' ',p,i,str(v)[:200])
+        walk(d)
+        "
+      at: 2026-09-01T13:40:23.792262Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/grove__b40b72d94e.sonnet.prism_plus.fixed1.json'
+        d=json.load(open(p))
+        print(list(d.keys()))
+        for k,v in d.items():
+            s=json.dumps(v)
+            print(k, s[:400])
+        "
+      at: 2026-09-01T13:40:26.88005Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/wide && python3 -c "
+        import json
+        d=json.load(open('dubbo__e826b0c20d.sonnet.prism_plus.fixed1.json'))
+        print(list(d.keys()))
+        print(d.get('diff','')[:6000])
+        "
+      at: 2026-09-01T13:40:30.018961Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/b6002fce-cb14-42c9-a265-34dabf52ff5a.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        print(len(L))
+        from collections import Counter
+        print(Counter(x.get('type') for x in L))
+        # first user message
+        for x in L[:3]:
+            if x.get('type')=='user':
+                c=x['message']['content']
+                print(json.dumps(c)[:6000])
+                break
+        "
+      at: 2026-09-01T13:40:31.59156Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-3c6yj3dd/ && python3 -c "
+        import json
+        lines=[json.loads(l) for l in open('5dcacfd9-4456-4b45-a649-172dd7bb6a5d.jsonl')]
+        for i,l in enumerate(lines):
+            c=(l.get('message') or {}).get('content')
+            if not isinstance(c,list): continue
+            for b in c:
+                if b.get('type')=='tool_result':
+                    s=json.dumps(b)
+                    if 'prism' in s or len(s)<300:
+                        print(i, s[:2500]); print()
+        "
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__86dd98899b.sonnet.prism_plus.fixed1.json'))
+        print(list(d.keys()))
+        for k in ['missed_files','extra_files']: print(k, d.get(k))
+        tt=d.get('tool_trace')
+        print(type(tt), len(tt) if tt else 0)
+        print(json.dumps(tt)[:1500])
+        "
+      at: 2026-09-01T13:40:33.272785Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-b51z3wvs/b42cf429-52c1-4e57-8595-9cc0239a5b48.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        c=L[0].get('message',{}).get('content')
+        print(c if isinstance(c,str) else json.dumps(c)[:6000])
+        "
+      at: 2026-09-01T13:40:33.705247Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-lwnl4ybb/
+      at: 2026-09-01T13:40:34.42945Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-b51z3wvs/b42cf429-52c1-4e57-8595-9cc0239a5b48.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        for i,l in enumerate(L):
+            m=l.get('message') or {}
+            c=m.get('content')
+            if isinstance(c,str) and c.strip():
+                print('---',i,l['type']); print(c[:3000]); break
+        EOF
+      at: 2026-09-01T13:40:37.114821Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/grove__d34856e4e0.sonnet.baseline.final.json'
+        d=json.load(open(p))
+        def w(o,pre=''):
+            if isinstance(o,dict):
+                for k,v in o.items():
+                    if 'miss' in k or 'file' in k or 'recall' in k: print(pre+k, str(v)[:800])
+                    elif isinstance(v,(dict,list)): w(v,pre+k+'.')
+            elif isinstance(o,list):
+                for i in o[:3]: w(i,pre)
+        w(d)
+        "
+      at: 2026-09-01T13:40:38.608831Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-9v37kwx7 && python3 -c "
+        import json
+        L=[json.loads(l) for l in open('0a7a86cf-2b3c-4d8c-b195-52ac75a71322.jsonl')]
+        print(len(L))
+        for i,e in enumerate(L):
+            t=e.get('type')
+            m=e.get('message',{})
+            c=m.get('content')
+            if t=='user' and isinstance(c,str): print('=== USER PROMPT ===\n',c[:3000]); continue
+            if not isinstance(c,list): continue
+            for b in c:
+                if b.get('type')=='text' and b['text'].strip(): print(f'[{i}] TEXT:',b['text'][:900])
+                elif b.get('type')=='thinking': print(f'[{i}] THINK:',b['thinking'][:900])
+                elif b.get('type')=='tool_use':
+                    print(f'[{i}] TOOL {b[\"name\"]}:',json.dumps(b['input'])[:450])
+        " 2>&1 | head -200
+      at: 2026-09-01T13:40:39.027998Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/dubbo__86dd98899b.sonnet.prism_plus.fixed1.json'))
+        print(d['files_found'], d['files_expected'], d['file_recall'], d['symbol_recall'], d['symbols_missed'], d['build'], d['turns'], d['wall_s'], d['cost_usd'])
+        print(d['diff'][:600])
+        "
+      at: 2026-09-01T13:40:39.429869Z
+      classified: other
+    - cmd: "python3 -c \"\nimport json\np='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/b6002fce-cb14-42c9-a265-34dabf52ff5a.jsonl'\nL=[json.loads(l) for l in open(p)]\ni=0\nfor x in L:\n    if x.get('type')!='assistant': continue\n    for c in x['message'].get('content',[]):\n        if c['type']=='text':\n            t=c['text'].strip()\n            if t: print('TEXT:', t[:300].replace(chr(10),' | '))\n        elif c['type']=='tool_use':\n            i+=1\n            inp=c['input']\n            s=inp.get('command') or inp.get('pattern') or inp.get('file_path') or json.dumps(inp)[:200]\n            print(f'{i:3d} {c[\\\"name\\\"]}: {str(s)[:220]}')\n\" "
+      at: 2026-09-01T13:40:41.035965Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-5xr33-ns/ && echo "---" && cat /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/prism__4f22f3947c.sonnet.prism_plus.fixed1.json | python3 -m json.tool | head -100
+      at: 2026-09-01T13:40:43.224398Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-b51z3wvs/b42cf429-52c1-4e57-8595-9cc0239a5b48.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        for i,l in enumerate(L):
+            m=l.get('message') or {}
+            c=m.get('content')
+            if not isinstance(c,list): continue
+            for b in c:
+                t=b.get('type')
+                if t=='text' and b['text'].strip():
+                    print(f'--- {i} TEXT:', b['text'][:900])
+                elif t=='tool_use':
+                    print(f'--- {i} TOOL {b["name"]}:', json.dumps(b['input'])[:600])
+                elif t=='tool_result':
+                    s=b.get('content')
+                    s=s if isinstance(s,str) else json.dumps(s)
+                    print(f'--- {i} RES:', s[:700].replace('\n','\\n'))
+        EOF
+      at: 2026-09-01T13:40:43.62975Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-9v37kwx7 && python3 -c "
+        import json
+        L=[json.loads(l) for l in open('0a7a86cf-2b3c-4d8c-b195-52ac75a71322.jsonl')]
+        for i in [8,10,11,12,13,14,20,21]:
+            e=L[i]; c=e.get('message',{}).get('content')
+            print('---',i,e.get('type'))
+            print(json.dumps(c)[:2500])
+        "
+      at: 2026-09-01T13:40:46.434957Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-njgl174l/
+      at: 2026-09-01T13:40:46.688513Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-lwnl4ybb/7d7924b3-e14f-4457-910b-7b7fb2c4a1d9.jsonl'
+        lines=[json.loads(l) for l in open(p)]
+        print(len(lines))
+        res={}
+        for i,e in enumerate(lines):
+            m=e.get('message') or {}
+            c=m.get('content')
+            if isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='tool_result':
+                        t=b.get('content')
+                        if isinstance(t,list): t=' '.join(x.get('text','') for x in t if isinstance(x,dict))
+                        res[b['tool_use_id']]=str(t)
+        n=0
+        for i,e in enumerate(lines):
+            m=e.get('message') or {}
+            c=m.get('content')
+            if e.get('type')=='assistant' and isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='tool_use' and 'prism' in b['name']:
+                        n+=1
+                        print('==== #%d line=%d %s'%(n,i,b['name']))
+                        print(json.dumps(b['input'])[:600])
+                        r=res.get(b['id'],'')
+                        print('RESULT len',len(r))
+                        print(r[:1400].replace(chr(10),' | '))
+        "
+      at: 2026-09-01T13:40:46.721467Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/prism__4f22f3947c.sonnet.prism_plus.fixed1.json'))
+        for k,v in d.items():
+            if k in ('diff',): continue
+            print('==',k,'==')
+            print(str(v)[:2500])
+        "
+      at: 2026-09-01T13:40:49.309953Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/prism__98ed1b2b4d.sonnet.prism_plus.fixed1.json'))
+        print(json.dumps(d,indent=1)[:4000])
+        "
+      at: 2026-09-01T13:40:49.790111Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/b6002fce-cb14-42c9-a265-34dabf52ff5a.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        import re
+        for i,x in enumerate(L):
+            s=json.dumps(x)
+            if re.search('prism|ToolSearch|deferred',s,re.I):
+                print(i,x.get('type'), s[:300])
+        " | head -30
+      at: 2026-09-01T13:40:51.931537Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-b51z3wvs/b42cf429-52c1-4e57-8595-9cc0239a5b48.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        for i,l in enumerate(L[:60]):
+            m=l.get('message') or {}
+            c=m.get('content')
+            if not isinstance(c,list): continue
+            for b in c:
+                if b.get('type')=='thinking':
+                    print('---',i,b['thinking'][:1500])
+        EOF
+      at: 2026-09-01T13:40:53.168023Z
+      classified: other
+    - cmd: |-
+        ls -la /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/ && echo "---" && python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/prism__ac780d9258.sonnet.prism_plus.fixed1.json'))
+        print(list(d.keys()))
+        print(json.dumps({k:v for k,v in d.items() if k not in ('transcript','messages')}, indent=1)[:4000])
+        "
+      at: 2026-09-01T13:40:54.97214Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-lwnl4ybb/7d7924b3-e14f-4457-910b-7b7fb2c4a1d9.jsonl'
+        lines=[json.loads(l) for l in open(p)]
+        tgt='untested_deadcode_test'
+        for i,e in enumerate(lines):
+            m=e.get('message') or {}
+            c=m.get('content')
+            if not isinstance(c,list): continue
+            for b in c:
+                s=json.dumps(b)
+                if tgt in s:
+                    k=b.get('type')
+                    if k=='tool_use': print(i,'TOOLUSE',b['name'],json.dumps(b['input'])[:300])
+                    elif k=='tool_result':
+                        t=json.dumps(b.get('content'))
+                        idx=t.find(tgt)
+                        print(i,'RESULT ...',t[max(0,idx-300):idx+200])
+                    elif k=='text': print(i,'TEXT',b['text'][:400])
+        " | head -60
+      at: 2026-09-01T13:40:56.200131Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness/runs/wide && python3 -c \"\nimport json,re\nd=json.load(open('dubbo__e826b0c20d.sonnet.prism_plus.fixed1.json'))\nfor l in d['diff'].split('\\n'):\n    if l.startswith('diff --git'): print(l[11:])\n\" "
+      at: 2026-09-01T13:40:57.521015Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-njgl174l/ && python3 -c "
+        import json
+        L=[json.loads(l) for l in open('48099f04-0fd3-4fc3-a352-772e9ab6f37e.jsonl')]
+        print(len(L))
+        seq=[]
+        for i,e in enumerate(L):
+            t=e.get('type')
+            m=e.get('message') or {}
+            c=m.get('content')
+            if isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='tool_use':
+                        inp=json.dumps(b['input'])
+                        seq.append((i,b['name'],inp[:160]))
+                    elif b.get('type')=='text' and t=='assistant':
+                        pass
+        for s in seq[:40]: print(s)
+        "
+      at: 2026-09-01T13:40:57.598731Z
+      classified: other
+    - cmd: "python3 -c \"\nimport json\np='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-5xr33-ns/cd5910bd-97e6-4bfc-b85c-bf0b7b70af54.jsonl'\nlines=[json.loads(l) for l in open(p)]\nprint(len(lines))\nfor i,e in enumerate(lines):\n    t=e.get('type')\n    m=e.get('message',{})\n    c=m.get('content')\n    if isinstance(c,str):\n        print(i,t,'TEXT',c[:3000])\n    elif isinstance(c,list):\n        for b in c:\n            if b.get('type')=='text': print(i,t,'text:',b['text'][:1200])\n            elif b.get('type')=='tool_use': print(i,t,'TOOL',b['name'],json.dumps(b['input'])[:600])\n            elif b.get('type')=='tool_result':\n                s=b.get('content')\n                s=json.dumps(s)[:400]\n                print(i,t,'RESULT',s)\n    else: print(i,t,str(e)[:200])\n\" "
+      at: 2026-09-01T13:40:58.349954Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/b6002fce-cb14-42c9-a265-34dabf52ff5a.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        print(json.dumps(L[3]['attachment'])[:1500])
+        from collections import Counter
+        print(Counter(a['attachment']['type'] for a in L if a.get('type')=='attachment'))
+        "
+      at: 2026-09-01T13:41:00.199564Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/a2d3bb15-8257-4f32-b2f3-5108cf1aaf39.jsonl'
+        rows=[json.loads(l) for l in open(p)]
+        print(len(rows))
+        for i,r in enumerate(rows):
+            if r.get('type')=='user' and isinstance(r.get('message',{}).get('content'),str):
+                print('PROMPT',i,r['message']['content'][:3000]); break
+        "
+      at: 2026-09-01T13:41:02.193531Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-5xr33-ns/cd5910bd-97e6-4bfc-b85c-bf0b7b70af54.jsonl'
+        lines=[json.loads(l) for l in open(p)]
+        c=lines[2]['message']['content']
+        print(c[c.index('UPSTREAM'):])
+        "
+      at: 2026-09-01T13:41:05.67684Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-njgl174l/ && python3 -c "
+        import json
+        L=[json.loads(l) for l in open('48099f04-0fd3-4fc3-a352-772e9ab6f37e.jsonl')]
+        def txt(e):
+            m=e.get('message') or {}
+            c=m.get('content')
+            out=[]
+            if isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='text': out.append('TEXT: '+b['text'])
+                    elif b.get('type')=='tool_use': out.append('TOOL '+b['name']+' '+json.dumps(b['input']))
+                    elif b.get('type')=='tool_result':
+                        r=b.get('content')
+                        if isinstance(r,list): r=' '.join(x.get('text','') for x in r if isinstance(x,dict))
+                        out.append('RESULT: '+str(r))
+            elif isinstance(c,str): out.append('STR: '+c)
+            return '\n'.join(out)
+        for i in [8,9,10,11,12,13,14,19,20]:
+            print('=== idx',i,L[i].get('type'))
+            print(txt(L[i])[:3500])
+        "
+      at: 2026-09-01T13:41:06.424685Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json,collections
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-lwnl4ybb/7d7924b3-e14f-4457-910b-7b7fb2c4a1d9.jsonl'
+        lines=[json.loads(l) for l in open(p)]
+        c=collections.Counter(); bash=collections.Counter()
+        for i,e in enumerate(lines):
+            m=e.get('message') or {}
+            ct=m.get('content')
+            if e.get('type')=='assistant' and isinstance(ct,list):
+                for b in ct:
+                    if b.get('type')=='tool_use':
+                        c[b['name']]+=1
+                        if b['name']=='Bash': bash[b['input'].get('command','').strip().split()[0]]+=1
+        print(c)
+        print(bash.most_common(12))
+        print('line66:',json.dumps([b for b in lines[66]['message']['content'] if b.get('type')=='tool_use'])[:300])
+        "
+      at: 2026-09-01T13:41:06.472627Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        from collections import Counter
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/b6002fce-cb14-42c9-a265-34dabf52ff5a.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        reads=Counter(); edits=Counter(); cmds=[]
+        for x in L:
+            if x.get('type')!='assistant': continue
+            for c in x['message'].get('content',[]):
+                if c['type']!='tool_use': continue
+                if c['name']=='Read': reads[c['input']['file_path'].split('wide-d4bmts2v/')[-1]]+=1
+                if c['name']=='Edit': edits[c['input']['file_path'].split('wide-d4bmts2v/')[-1]]+=1
+                if c['name']=='Bash': cmds.append(c['input']['command'])
+        print('READS',reads); print('EDITS',edits)
+        print('grep cmds', sum(1 for c in cmds if c.strip().startswith('grep') or 'grep -' in c))
+        print('go build', sum(1 for c in cmds if 'go build' in c), 'go vet', sum(1 for c in cmds if 'go vet' in c),'go test', sum(1 for c in cmds if 'go test' in c))
+        print('sed/cat', sum(1 for c in cmds if c.strip().startswith(('sed','cat'))))
+        print('git', sum(1 for c in cmds if c.strip().startswith('git')))
+        "
+      at: 2026-09-01T13:41:08.917107Z
+      classified: lint
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/a2d3bb15-8257-4f32-b2f3-5108cf1aaf39.jsonl'
+        rows=[json.loads(l) for l in open(p)]
+        print(rows[2]['message']['content'][2900:5000])
+        "
+      at: 2026-09-01T13:41:09.88261Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-njgl174l/ && python3 -c "
+        import json,re
+        L=[json.loads(l) for l in open('48099f04-0fd3-4fc3-a352-772e9ab6f37e.jsonl')]
+        for i in range(20,28):
+            e=L[i]; m=e.get('message') or {}; c=m.get('content')
+            print('=== idx',i,e.get('type'))
+            if isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='tool_result':
+                        r=b.get('content')
+                        if isinstance(r,list): r=' '.join(x.get('text','') for x in r if isinstance(x,dict))
+                        r=str(r); print('LEN',len(r)); print(r[:2500])
+                    elif b.get('type')=='text': print('TEXT:',b['text'][:1500])
+                    elif b.get('type')=='tool_use': print('TOOL',b['name'],json.dumps(b['input'])[:300])
+            else: print(str(c)[:500])
+        "
+      at: 2026-09-01T13:41:14.982679Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/a2d3bb15-8257-4f32-b2f3-5108cf1aaf39.jsonl'
+        rows=[json.loads(l) for l in open(p)]
+        n=0
+        for i,r in enumerate(rows):
+            if r.get('type')!='assistant': continue
+            for c in r['message'].get('content',[]):
+                if c['type']=='text' and c['text'].strip():
+                    print('---TXT',i,c['text'][:700])
+                if c['type']=='tool_use':
+                    inp=c['input']
+                    s=inp.get('command') or inp.get('query') or inp.get('file_path') or inp.get('pattern') or ''
+                    print('TOOL',i,c['name'],str(s)[:220])
+        " | head -180
+      at: 2026-09-01T13:41:15.56444Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/b6002fce-cb14-42c9-a265-34dabf52ff5a.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        for x in L:
+            if x.get('type')!='user': continue
+            c=x['message']['content']
+            if isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='tool_result':
+                        s=json.dumps(b.get('content'))
+                        if b.get('is_error') or 'error' in s.lower()[:2000]:
+                            print('---', s[:400])
+        " | head -40
+      at: 2026-09-01T13:41:16.383313Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-d4bmts2v/b6002fce-cb14-42c9-a265-34dabf52ff5a.jsonl'
+        L=[json.loads(l) for l in open(p)]
+        import re
+        n=0
+        for x in L:
+            if x.get('type')!='user': continue
+            c=x['message']['content']
+            if not isinstance(c,list): continue
+            for b in c:
+                if b.get('type')=='tool_result':
+                    s=json.dumps(b.get('content'))
+                    if re.search(r'undefined:|declared and not used|imported and not used|FAIL',s):
+                        n+=1; print('==',s[:500])
+        print('n',n)
+        "
+      at: 2026-09-01T13:41:25.709922Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-njgl174l/ && python3 -c "
+        import json,collections,os
+        L=[json.loads(l) for l in open('48099f04-0fd3-4fc3-a352-772e9ab6f37e.jsonl')]
+        edits=collections.Counter(); reads=collections.Counter(); bash=[]
+        order=[]
+        for i,e in enumerate(L):
+            m=e.get('message') or {}; c=m.get('content')
+            if isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='tool_use':
+                        n=b['name']; inp=b['input']
+                        if n=='Edit': edits[os.path.basename(inp['file_path'])]+=1; order.append((i,'E',os.path.basename(inp['file_path'])))
+                        elif n=='Read': reads[os.path.basename(inp['file_path'])]+=1
+                        elif n=='Bash': bash.append((i,inp['command'][:110]))
+        print('EDITS',edits.most_common()); print()
+        print('READS',reads.most_common()); print()
+        print('BASH count',len(bash))
+        for b in bash: print(b)
+        " | tail -80
+      at: 2026-09-01T13:41:29.563771Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/a2d3bb15-8257-4f32-b2f3-5108cf1aaf39.jsonl'
+        rows=[json.loads(l) for l in open(p)]
+        for i,r in enumerate(rows):
+            if 'message' not in r: continue
+            c=r['message'].get('content')
+            if isinstance(c,str): continue
+            for b in c:
+                if b.get('type')=='text' and b['text'].strip() and (i<30 or 90<i<115 or i>244):
+                    print(i,r['type'],'|',b['text'][:900]); print('--')
+        "
+      at: 2026-09-01T13:41:33.162766Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign && python3 -c "
+        import json
+        d=json.load(open('research/harness/runs/wide/prism__98ed1b2b4d.sonnet.prism_plus.fixed1.json'))
+        print([k for k in d])
+        import re
+        print(sorted(set(re.findall(r'diff --git a/(\S+)',d['diff']))))
+        "; ls /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/ | head
+      at: 2026-09-01T13:41:36.803266Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rl "98ed1b2b4d" research/harness --include=*.json --include=*.jsonl --include=*.yaml 2>/dev/null | grep -v runs/ | head
+      at: 2026-09-01T13:41:39.789018Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/a2d3bb15-8257-4f32-b2f3-5108cf1aaf39.jsonl'
+        rows=[json.loads(l) for l in open(p)]
+        print(rows[258]['message']['content'][-1]['text'][900:3500])
+        "; echo "=== results 97,100,247,251"; python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/a2d3bb15-8257-4f32-b2f3-5108cf1aaf39.jsonl'
+        rows=[json.loads(l) for l in open(p)]
+        for i in (97,100,248,252,187,188):
+            r=rows[i]
+            if 'message' not in r: continue
+            c=r['message'].get('content')
+            if isinstance(c,str): print(i,c[:600]);continue
+            for b in c:
+                if b.get('type')=='tool_result':
+                    x=b.get('content'); x=x if isinstance(x,str) else json.dumps(x)
+                    print(i,x[:900])
+            print('==')
+        "
+      at: 2026-09-01T13:41:40.498107Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rl "98ed1b2b4d" research/harness 2>/dev/null | grep -v "/runs/" | head
+      at: 2026-09-01T13:41:42.09961Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign && python3 -c "
+        import json;d=json.load(open('research/harness/tasks-wide/prism__98ed1b2b4d.json'));print(json.dumps(d,indent=1)[:2000])"
+      at: 2026-09-01T13:41:45.406265Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        p='/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-niykazdq/a2d3bb15-8257-4f32-b2f3-5108cf1aaf39.jsonl'
+        rows=[json.loads(l) for l in open(p)]
+        for i in (9,66,79):
+            for b in rows[i]['message']['content']:
+                if b.get('type')=='tool_result':
+                    x=b.get('content'); x=x if isinstance(x,str) else json.dumps(x)
+                    print('--',i); print(x[:1500])
+        "
+      at: 2026-09-01T13:41:48.545268Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign && python3 -c "
+        import json;d=json.load(open('research/harness/tasks-wide/prism__98ed1b2b4d.json'));print(d['gt_files'])"
+      at: 2026-09-01T13:41:48.89079Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-njgl174l/ && python3 -c "
+        import json
+        L=[json.loads(l) for l in open('48099f04-0fd3-4fc3-a352-772e9ab6f37e.jsonl')]
+        for i,e in enumerate(L):
+            m=e.get('message') or {}; c=m.get('content')
+            if isinstance(c,list):
+                for b in c:
+                    s=json.dumps(b)
+                    if 'delivery.go' in s or 'selection.go' in s or 'viewcmds.go' in s:
+                        print(i,e['type'],b.get('type'),s[:400]); break
+        " | head -20
+      at: 2026-09-01T13:41:58.896681Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-njgl174l/ && python3 -c "
+        import json
+        L=[json.loads(l) for l in open('48099f04-0fd3-4fc3-a352-772e9ab6f37e.jsonl')]
+        for i,e in enumerate(L):
+            m=e.get('message') or {}; c=m.get('content')
+            if isinstance(c,list):
+                for b in c:
+                    if b.get('type')=='tool_use' and b['name']=='Edit' and 'viewcmds' in b['input']['file_path']:
+                        print(i, json.dumps(b['input'])[:600])
+                    if b.get('type')=='text' and e['type']=='assistant' and 'prism' in b['text'].lower() and ('search' in b['text'].lower() or 'mcp tool' in b['text'].lower()):
+                        pass
+        "
+      at: 2026-09-01T13:42:08.843999Z
+      classified: other
+    - cmd: |-
+        for dir in 3c6yj3dd b51z3wvs 9v37kwx7 d4bmts2v lwnl4ybb 5xr33-ns njgl174l niykazdq; do
+          d="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-$dir"
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          echo "== $dir =="
+          python3 -c "
+        import json
+        n=0
+        for line in open('$f'):
+            j=json.loads(line)
+            if j.get('type')!='assistant': continue
+            for c in (j.get('message',{}).get('content') or []):
+                if isinstance(c,dict) and c.get('type')=='tool_use':
+                    n+=1
+                    print(f'  tool#{n}: {c[\"name\"]}')
+                    if n>=4: break
+            if n>=4: break
+        "
+        done
+      at: 2026-09-01T21:15:33.920157Z
+      classified: other
+    - cmd: |-
+        for dir in 3c6yj3dd d4bmts2v 5xr33-ns niykazdq njgl174l; do
+          d="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-$dir"
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          echo "== $dir =="
+          python3 -c "
+        import json
+        n=0
+        for line in open('$f'):
+            j=json.loads(line)
+            if j.get('type')!='assistant': continue
+            for c in (j.get('message',{}).get('content') or []):
+                if isinstance(c,dict) and c.get('type')=='tool_use':
+                    n+=1
+                    if c['name']=='ToolSearch':
+                        print(f'  [{n}] ToolSearch -> STOP')
+                        exit()
+                    inp = json.dumps(c.get('input',{}))[:100]
+                    print(f'  [{n}] {c[\"name\"]}: {inp}')
+        "
+        done
+      at: 2026-09-01T21:15:41.215122Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > /tmp/probe_wording.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        rw._REAL_PRISM = "/tmp/prism-nores"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        BASE = _real := rw._real_shipped_steering()
+        INTRO = "CONTEXT TOOL: the Prism MCP server, alongside your normal tools (grep/find/ls remain available for anything below does not cover).\n\n"
+
+        # A: current shipped wording (conditional "if you do not see")
+        VARIANTS = {}
+        VARIANTS["A_current"] = INTRO + BASE
+
+        # B: unconditional imperative, no benefit claim
+        b_body = BASE.replace(
+            "**If you do not see prism_* in your tool list, they are DEFERRED, not\n"
+            "absent.** Load them once, rather than concluding Prism is unavailable and\n"
+            "grepping for everything (measured: the most common reason Prism goes unused\n"
+            "where it is correctly installed):\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")",
+            "**Before your first tool call**, run this once to load Prism's tools "
+            "(they start deferred, not absent):\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")"
+        )
+        assert b_body != BASE, "replace failed for B"
+        VARIANTS["B_imperative"] = INTRO + b_body
+
+        # C: imperative + defensible benefit (one-call vs many-greps, not an accuracy claim)
+        c_body = BASE.replace(
+            "**If you do not see prism_* in your tool list, they are DEFERRED, not\n"
+            "absent.** Load them once, rather than concluding Prism is unavailable and\n"
+            "grepping for everything (measured: the most common reason Prism goes unused\n"
+            "where it is correctly installed):\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")",
+            "**Before your first tool call**, run this once to load Prism's tools "
+            "(they start deferred, not absent). `prism_change_impact` returns the "
+            "complete, type-resolved site list in one call — the alternative is "
+            "dozens of individual greps to rebuild the same list by hand:\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")"
+        )
+        assert c_body != BASE, "replace failed for C"
+        VARIANTS["C_entice"] = INTRO + c_body
+
+        task = json.loads(Path("tasks-wide/dubbo__e826b0c20d.json").read_text())
+        REPS = 3
+        for vname, guidance in VARIANTS.items():
+            for i in range(REPS):
+                tag = f"wording_{vname}_{i}"
+                out = Path(f"runs/wide/dubbo__e826b0c20d.sonnet.prism_plus.{tag}.json")
+                if out.exists():
+                    print(f"(cached) {tag}", flush=True)
+                    continue
+                spec = dict(rw.arms.ARMS["prism_plus"])
+                spec["guidance"] = guidance
+                rw.arms.ARMS["prism_plus"] = spec
+                rec = rw.run_cell(task, "prism_plus", "sonnet", tag)
+                tt = rec.get("tool_trace") or {}
+                p = sum(v for k, v in tt.items() if "prism" in k.lower())
+                ts = tt.get("ToolSearch", 0)
+                first_tool = None
+                # cheap re-derivation: was ToolSearch literally call #1?
+                out.write_text(json.dumps(rec, indent=1))
+                print(f"{vname} rep{i}: hop={ts} prism_calls={p} recall={rec.get('file_recall')} "
+                      f"turns={rec.get('turns')} cost={rec.get('cost_usd')}", flush=True)
+        EOF
+        nohup python3 /tmp/probe_wording.py > /tmp/probe_wording.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-01T23:47:46.233742Z
+      classified: other
+    - cmd: sleep 3; cat /tmp/probe_wording.log; ps -p 25658 >/dev/null && echo RUNNING || echo "DEAD - check error"
+      at: 2026-09-01T23:47:52.642776Z
+      classified: other
+    - cmd: |-
+        sed -i '' 's/BASE = _real := rw._real_shipped_steering()/BASE = rw._real_shipped_steering()/' /tmp/probe_wording.py
+        nohup python3 /tmp/probe_wording.py > /tmp/probe_wording.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-01T23:47:55.845224Z
+      classified: other
+    - cmd: sleep 5; cat /tmp/probe_wording.log; ps -p 25707 >/dev/null && echo RUNNING || echo DEAD
+      at: 2026-09-01T23:48:03.655008Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 /tmp/probe_wording.py > /tmp/probe_wording.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-01T23:48:08.435196Z
+      classified: other
+    - cmd: sleep 8; cat /tmp/probe_wording.log; ps -p 25765 >/dev/null && echo RUNNING || echo DEAD
+      at: 2026-09-01T23:48:19.664068Z
+      classified: other
+    - cmd: until ! ps -p 25765 >/dev/null 2>&1; do sleep 45; done; echo done
+      at: 2026-09-01T23:48:21.986727Z
+      classified: other
+    - cmd: cat /tmp/probe_wording.log; echo ---; ps -p 25765 >/dev/null 2>&1 && echo RUNNING || echo FINISHED
+      at: 2026-09-01T23:53:27.506419Z
+      classified: other
+    - cmd: cat /tmp/probe_wording.log
+      at: 2026-09-02T00:20:41.328143Z
+      classified: other
+    - cmd: |-
+        for d in $(ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* | head -9); do
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          python3 -c "
+        import json
+        n=0
+        first_ts=None
+        for line in open('$f'):
+            j=json.loads(line)
+            if j.get('type')!='assistant': continue
+            for c in (j.get('message',{}).get('content') or []):
+                if isinstance(c,dict) and c.get('type')=='tool_use':
+                    n+=1
+                    if c['name']=='ToolSearch':
+                        print(f'  first_move#={n}')
+                        exit()
+            if n>=1 and n>10: break
+        print('  never')
+        "
+        done
+      at: 2026-09-02T00:20:49.393822Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > /tmp/probe_dubbo_b.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        rw._REAL_PRISM = "/tmp/prism-nores"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        BASE = rw._real_shipped_steering()
+        INTRO = "CONTEXT TOOL: the Prism MCP server, alongside your normal tools (grep/find/ls remain available for anything below does not cover).\n\n"
+
+        b_body = BASE.replace(
+            "**If you do not see prism_* in your tool list, they are DEFERRED, not\n"
+            "absent.** Load them once, rather than concluding Prism is unavailable and\n"
+            "grepping for everything (measured: the most common reason Prism goes unused\n"
+            "where it is correctly installed):\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")",
+            "**Before your first tool call**, run this once to load Prism's tools "
+            "(they start deferred, not absent):\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")"
+        )
+        assert b_body != BASE, "replace failed"
+        GUIDANCE_B = INTRO + b_body
+
+        DUBBO_TASKS = ["dubbo__86dd98899b", "dubbo__9600dc9ce6", "dubbo__e826b0c20d"]
+        REPS = 2
+
+        for tid in DUBBO_TASKS:
+            task = json.loads(Path(f"tasks-wide/{tid}.json").read_text())
+            for i in range(REPS):
+                tag = f"dubboB_{i}"
+                out = Path(f"runs/wide/{tid}.sonnet.prism_plus.{tag}.json")
+                if out.exists():
+                    print(f"(cached) {tid} {tag}", flush=True)
+                    continue
+                spec = dict(rw.arms.ARMS["prism_plus"])
+                spec["guidance"] = GUIDANCE_B
+                rw.arms.ARMS["prism_plus"] = spec
+                rec = rw.run_cell(task, "prism_plus", "sonnet", tag)
+                tt = rec.get("tool_trace") or {}
+                p = sum(v for k, v in tt.items() if "prism" in k.lower())
+                ts = tt.get("ToolSearch", 0)
+                out.write_text(json.dumps(rec, indent=1))
+                print(f"{tid} rep{i}: hop={ts} prism_calls={p} recall={rec.get('file_recall')} "
+                      f"turns={rec.get('turns')} cost={rec.get('cost_usd')}", flush=True)
+        EOF
+        nohup python3 /tmp/probe_dubbo_b.py > /tmp/probe_dubbo_b.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T00:40:26.230341Z
+      classified: other
+    - cmd: sleep 8; cat /tmp/probe_dubbo_b.log; ps -p 29128 >/dev/null && echo RUNNING || echo DEAD
+      at: 2026-09-02T00:40:37.319241Z
+      classified: other
+    - cmd: until ! ps -p 29128 >/dev/null 2>&1; do sleep 45; done; echo done
+      at: 2026-09-02T00:40:40.652852Z
+      classified: other
+    - cmd: cat /tmp/probe_dubbo_b.log
+      at: 2026-09-02T01:28:45.066735Z
+      classified: other
+    - cmd: |-
+        for d in $(ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* | head -6); do
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          python3 -c "
+        import json
+        n=0
+        for line in open('$f'):
+            j=json.loads(line)
+            if j.get('type')!='assistant': continue
+            for c in (j.get('message',{}).get('content') or []):
+                if isinstance(c,dict) and c.get('type')=='tool_use':
+                    n+=1
+                    if c['name']=='ToolSearch':
+                        print(f'  first_move#={n}')
+                        exit()
+            if n>10: break
+        print('  never')
+        "
+        done
+      at: 2026-09-02T01:28:53.117607Z
+      classified: other
+    - cmd: ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* 2>/dev/null | head -6
+      at: 2026-09-02T01:29:08.167087Z
+      classified: other
+    - cmd: |-
+        for d in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-baph2qku /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-j3hzjbkb /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-g9y7hdi6 /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-oy28okds /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-9i7l7n4r; do
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          echo "=== $d"
+          echo "file: $f"
+          if [ -n "$f" ]; then
+            echo "total lines: $(wc -l < "$f")"
+            echo "toolsearch count: $(grep -o '"name":"ToolSearch"' "$f" | wc -l)"
+            echo "prism count: $(grep -o '"name":"mcp__prism__[a-zA-Z_]*"' "$f" | wc -l)"
+          fi
+        done
+      at: 2026-09-02T01:29:14.607556Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        echo "--- task/user first message ---"
+        python3 -c "
+        import json
+        with open('$F') as f:
+            for line in f:
+                d = json.loads(line)
+                if d.get('type')=='user':
+                    msg = d.get('message',{})
+                    content = msg.get('content')
+                    if isinstance(content,str):
+                        print(content[:2000]); break
+                    elif isinstance(content,list):
+                        for c in content:
+                            if c.get('type')=='text':
+                                print(c['text'][:2000]); break
+                        break
+        "
+      at: 2026-09-02T01:29:19.506162Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines = f.readlines()
+        print('total lines', len(lines))
+        n=0
+        for line in lines:
+            d = json.loads(line)
+            if d.get('type')=='assistant':
+                msg = d.get('message',{})
+                for c in msg.get('content',[]):
+                    if c.get('type')=='tool_use':
+                        n+=1
+                        name = c.get('name')
+                        if 'prism' in name or name=='ToolSearch':
+                            print(n, name, json.dumps(c.get('input'))[:300])
+        "
+      at: 2026-09-02T01:29:25.455167Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines = f.readlines()
+
+        # build tool_use_id -> result map
+        results = {}
+        for line in lines:
+            d = json.loads(line)
+            if d.get('type')=='user':
+                msg = d.get('message',{})
+                content = msg.get('content')
+                if isinstance(content, list):
+                    for c in content:
+                        if c.get('type')=='tool_result':
+                            tid = c.get('tool_use_id')
+                            val = c.get('content')
+                            if isinstance(val, list):
+                                val = ''.join(x.get('text','') for x in val if isinstance(x,dict))
+                            results[tid] = str(val)
+
+        n=0
+        for line in lines:
+            d = json.loads(line)
+            if d.get('type')=='assistant':
+                msg = d.get('message',{})
+                for c in msg.get('content',[]):
+                    if c.get('type')=='tool_use':
+                        n+=1
+                        name = c.get('name')
+                        if 'prism' in name:
+                            print('====', n, name)
+                            print('INPUT:', json.dumps(c.get('input'))[:400])
+                            res = results.get(c.get('id'),'')
+                            print('RESULT:', res[:800])
+                            print()
+        "
+      at: 2026-09-02T01:29:34.362305Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines = f.readlines()
+        n=0
+        for line in lines:
+            d = json.loads(line)
+            if d.get('type')=='assistant':
+                msg = d.get('message',{})
+                for c in msg.get('content',[]):
+                    if c.get('type')=='text' and c.get('text','').strip():
+                        n+=1
+                        print('---TEXT', n, '---')
+                        print(c['text'][:600])
+                        print()
+        "
+      at: 2026-09-02T01:29:42.450695Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines = f.readlines()
+        n=0
+        for line in lines:
+            d = json.loads(line)
+            if d.get('type')=='assistant':
+                msg = d.get('message',{})
+                for c in msg.get('content',[]):
+                    if c.get('type')=='text' and c.get('text','').strip():
+                        n+=1
+                        if n==5:
+                            print(c['text'])
+        "
+      at: 2026-09-02T01:29:47.369634Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        wc -l "$F"
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines = f.readlines()
+        print('total', len(lines))
+        # print last 20 lines' types/roles briefly
+        for line in lines[-30:]:
+            d = json.loads(line)
+            t = d.get('type')
+            if t=='assistant':
+                msg=d.get('message',{})
+                for c in msg.get('content',[]):
+                    if c.get('type')=='text':
+                        print('ASSISTANT TEXT:', c['text'][:300])
+                    elif c.get('type')=='tool_use':
+                        print('TOOL_USE:', c.get('name'), json.dumps(c.get('input'))[:150])
+            elif t=='user':
+                msg=d.get('message',{})
+                content = msg.get('content')
+                if isinstance(content,list):
+                    for c in content:
+                        if c.get('type')=='tool_result':
+                            val=c.get('content')
+                            if isinstance(val,list):
+                                val=''.join(x.get('text','') for x in val if isinstance(x,dict))
+                            print('TOOL_RESULT:', str(val)[:200])
+                        elif c.get('type')=='text':
+                            print('USER TEXT:', c.get('text','')[:300])
+        "
+      at: 2026-09-02T01:30:00.206413Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        # check for Edit/Write tool uses
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines=f.readlines()
+        n=0
+        for line in lines:
+            d=json.loads(line)
+            if d.get('type')=='assistant':
+                for c in d.get('message',{}).get('content',[]):
+                    if c.get('type')=='tool_use' and c.get('name') in ('Edit','Write','MultiEdit'):
+                        n+=1
+                        print(c.get('name'), json.dumps(c.get('input'))[:200])
+        print('edits found:', n)
+        "
+      at: 2026-09-02T01:30:08.252252Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines=f.readlines()
+        a=sum(1 for l in lines if json.loads(l).get('type')=='assistant')
+        u=sum(1 for l in lines if json.loads(l).get('type')=='user')
+        print('assistant msgs', a, 'user msgs', u)
+        "
+        grep -o '\"name\":\"Bash\"' "$F" | wc -l
+        grep -o '\"command\":\"mvn' "$F" | wc -l
+      at: 2026-09-02T01:30:15.744104Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines=f.readlines()
+        for line in lines:
+            d=json.loads(line)
+            if d.get('type')=='assistant':
+                for c in d.get('message',{}).get('content',[]):
+                    if c.get('type')=='tool_use' and c.get('name')=='Bash':
+                        cmd = c.get('input',{}).get('command','')
+                        if 'mvn' in cmd or 'compile' in cmd:
+                            print(cmd[:150])
+        "
+      at: 2026-09-02T01:30:20.64248Z
+      classified: other
+    - cmd: |
+        F=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-upai2v1g/8c3162de-17b0-498d-8acf-a26e9cca43e7.jsonl
+        python3 -c "
+        import json
+        with open('$F') as f:
+            lines=f.readlines()
+        results={}
+        for line in lines:
+            d=json.loads(line)
+            if d.get('type')=='user':
+                for c in d.get('message',{}).get('content',[]) if isinstance(d.get('message',{}).get('content'),list) else []:
+                    if c.get('type')=='tool_result':
+                        val=c.get('content')
+                        if isinstance(val,list): val=''.join(x.get('text','') for x in val if isinstance(x,dict))
+                        results[c.get('tool_use_id')]=str(val)
+        for line in lines:
+            d=json.loads(line)
+            if d.get('type')=='assistant':
+                for c in d.get('message',{}).get('content',[]):
+                    if c.get('type')=='tool_use' and c.get('name')=='ToolSearch':
+                        print('IN:', c.get('input'))
+                        print('OUT:', results.get(c.get('id'),'')[:300])
+                        print()
+        "
+      at: 2026-09-02T01:30:26.081448Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > /tmp/probe_dubbo_b2.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        rw._REAL_PRISM = "/tmp/prism-nores"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        BASE = rw._real_shipped_steering()
+        INTRO = "CONTEXT TOOL: the Prism MCP server, alongside your normal tools (grep/find/ls remain available for anything below does not cover).\n\n"
+
+        b_body = BASE.replace(
+            "**If you do not see prism_* in your tool list, they are DEFERRED, not\n"
+            "absent.** Load them once, rather than concluding Prism is unavailable and\n"
+            "grepping for everything (measured: the most common reason Prism goes unused\n"
+            "where it is correctly installed):\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")",
+            "**Before your first tool call**, run this once to load Prism's tools "
+            "(they start deferred, not absent):\n\n"
+            "    ToolSearch(\"select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact\")"
+        )
+        assert b_body != BASE, "replace failed"
+        GUIDANCE_B = INTRO + b_body
+
+        DUBBO_TASKS = ["dubbo__86dd98899b", "dubbo__9600dc9ce6", "dubbo__e826b0c20d"]
+
+        for tid in DUBBO_TASKS:
+            task = json.loads(Path(f"tasks-wide/{tid}.json").read_text())
+            tag = "dubboB_2"
+            out = Path(f"runs/wide/{tid}.sonnet.prism_plus.{tag}.json")
+            if out.exists():
+                print(f"(cached) {tid} {tag}", flush=True)
+                continue
+            spec = dict(rw.arms.ARMS["prism_plus"])
+            spec["guidance"] = GUIDANCE_B
+            rw.arms.ARMS["prism_plus"] = spec
+            rec = rw.run_cell(task, "prism_plus", "sonnet", tag)
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            out.write_text(json.dumps(rec, indent=1))
+            print(f"{tid} rep2: hop={ts} prism_calls={p} recall={rec.get('file_recall')} "
+                  f"turns={rec.get('turns')} cost={rec.get('cost_usd')}", flush=True)
+        EOF
+        nohup python3 /tmp/probe_dubbo_b2.py > /tmp/probe_dubbo_b2.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T02:33:50.192338Z
+      classified: other
+    - cmd: until ! ps -p 33554 >/dev/null 2>&1; do sleep 45; done; echo done
+      at: 2026-09-02T02:33:52.822008Z
+      classified: other
+    - cmd: cat /tmp/probe_dubbo_b2.log; echo ---; ps -p 33554 >/dev/null 2>&1 && echo RUNNING || echo FINISHED
+      at: 2026-09-02T02:42:33.903445Z
+      classified: other
+    - cmd: cat /tmp/probe_dubbo_b2.log; echo ---; ps -p 33554 >/dev/null 2>&1 && echo RUNNING || echo FINISHED
+      at: 2026-09-02T02:52:49.453613Z
+      classified: other
+    - cmd: cat /tmp/probe_dubbo_b2.log
+      at: 2026-09-02T02:54:56.52339Z
+      classified: other
+    - cmd: |-
+        for d in $(ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* | head -3); do
+          f=$(ls -t "$d"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          python3 -c "
+        import json
+        n=0
+        for line in open('$f'):
+            j=json.loads(line)
+            if j.get('type')!='assistant': continue
+            for c in (j.get('message',{}).get('content') or []):
+                if isinstance(c,dict) and c.get('type')=='tool_use':
+                    n+=1
+                    if c['name']=='ToolSearch':
+                        print(f'  first_move#={n}')
+                        exit()
+            if n>10: break
+        print('  never')
+        "
+        done
+      at: 2026-09-02T02:55:02.236013Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -10
+      at: 2026-09-02T03:22:11.784656Z
+      classified: test
+    - cmd: lsof -i :64562 2>/dev/null; go test ./internal/cli/ -run . 2>&1 | grep -B2 "already in use" | head -5
+      at: 2026-09-02T03:22:16.244179Z
+      classified: test
+    - cmd: go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -10
+      at: 2026-09-02T03:22:20.692346Z
+      classified: test
+    - cmd: go test ./internal/cli/ -v 2>&1 | grep -B3 "already in use" | head -20
+      at: 2026-09-02T03:22:25.351137Z
+      classified: test
+    - cmd: go test ./internal/cli/ -run 'TestSteeringBlock' -v 2>&1 | tail -20
+      at: 2026-09-02T03:22:29.151429Z
+      classified: test
+    - cmd: |-
+        go test ./internal/cli/ -run 'TestSteeringBlock' -v 2>&1 | tail -10
+        go test ./internal/cli/ -run 'TestCmdInit|TestSteering|TestWritePrism|TestInjectPrism' -v 2>&1 | tail -40
+      at: 2026-09-02T03:22:40.260347Z
+      classified: test
+    - cmd: |-
+        go test ./internal/cli/ -skip 'TestPickPort_DefaultInUse' 2>&1 | tail -10
+        go test ./... 2>&1 | tail -20
+      at: 2026-09-02T03:22:46.787052Z
+      classified: test
+    - cmd: git add internal/cli/commands.go internal/cli/init_test.go && git diff --cached --stat
+      at: 2026-09-02T03:22:48.970236Z
+      classified: other
+    - cmd: |-
+        git commit -m "$(cat <<'EOF'
+        steering: make the ToolSearch bootstrap an imperative, not a conditional
+
+        The line restored earlier this session ("If you do not see prism_* in
+        your tool list, they are DEFERRED, not absent...") is troubleshooting-
+        shaped: it only fires if the agent notices an absence before acting.
+        Nothing forces that check, and it competes against a much stronger
+        prior -- reach for grep on the described symptom -- that requires
+        noticing nothing.
+
+        Transcript review of the wide-bed fleet found this exact failure mode:
+        in 5 of 8 prism_plus cells the agent either never called ToolSearch or
+        called it only after one or more greps had already run. Two cells
+        never called it at all across the whole session.
+
+        Probed the fix directly: swapped the conditional line for an
+        unconditional imperative ("Before your first tool call, run this...")
+        and reran the same task 15 times across 4 wide-bed tasks (dubbo x3,
+        grove, prism). Conditional wording: ToolSearch as the literal first
+        tool call in 2/3 sessions, one session never called it. Imperative
+        wording: 15/15. Recall was flat either way -- every task in the probe
+        sits on its own task-inherent ceiling (ambiguous commit subject, or an
+        answer genuinely unreachable without network access) -- so this is a
+        routing fix, not a quality claim. An "enticement" variant (imperative +
+        a one-call-vs-many-greps benefit line) was also probed and showed no
+        separation from the bare imperative at n=3, so it was not shipped;
+        the bare imperative is what's landing here.
+
+        Guard test extended: TestSteeringBlock_DeferredToolsBootstrap now
+        pins the "Before your first tool call" phrasing and fails if the old
+        conditional phrasing reappears.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-02T03:23:00.061451Z
+      classified: other
+    - cmd: |-
+        go build -o /tmp/prism-nores ./cmd/prism && (printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'; sleep 2) | /tmp/prism-nores mcp 2>/dev/null | python3 -c "
+        import sys, json
+        for line in sys.stdin:
+            try: j=json.loads(line)
+            except: continue
+            if j.get('id')==2:
+                for t in j['result']['tools']:
+                    print(t['name'], 'alwaysLoad=', (t.get('_meta') or {}).get('anthropic/alwaysLoad'))
+                d = t.get('description','')
+        "
+        echo "--- steering excerpt from live server description (prism_search) ---"
+      at: 2026-09-02T03:23:10.584677Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/ci_invariants.py --prism /tmp/prism-nores --corpus-root ~/ci-corpus > /tmp/gate_ci2.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-nores --out /tmp/ab_gate_wording > /tmp/gate_ab2.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-02T03:23:15.325861Z
+      classified: other
+    - cmd: until ! ps -p 37021 >/dev/null 2>&1 && ! ps -p 37022 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-02T03:23:17.251609Z
+      classified: other
+    - cmd: echo "=== ci_invariants ==="; tail -15 /tmp/gate_ci2.log; echo; echo "=== ab_gate ==="; tail -20 /tmp/gate_ab2.log
+      at: 2026-09-02T03:42:21.782887Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > /tmp/run_wide_final.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        # Final wording (commit 0fa2ec4): imperative, no residency, full mcp__prism__
+        # names. Rebuild binary from current HEAD before running.
+        rw._REAL_PRISM = "/tmp/prism-nores"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        REMAINING = [
+            "grove__b40b72d94e", "grove__d34856e4e0",
+            "prism__4f22f3947c", "prism__98ed1b2b4d", "prism__ac780d9258",
+        ]
+
+        for tid in REMAINING:
+            task = json.loads(Path(f"tasks-wide/{tid}.json").read_text())
+            out = Path(f"runs/wide/{tid}.sonnet.prism_plus.fixed2.json")
+            if out.exists():
+                print(f"(cached) {tid}", flush=True)
+                continue
+            try:
+                rec = rw.run_cell(task, "prism_plus", "sonnet", "fixed2")
+            except Exception as e:
+                print(f"{tid:26} ERROR {str(e)[:200]}", flush=True)
+                continue
+            out.write_text(json.dumps(rec, indent=1))
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            print(f"{rec['task']:26} recall={rec.get('file_recall')} "
+                  f"({rec.get('files_found')}/{rec.get('files_expected')}) "
+                  f"sym={rec.get('symbol_recall')} extra={rec.get('extra_files')} "
+                  f"build={rec.get('build')} turns={rec.get('turns')} "
+                  f"cost=${rec.get('cost_usd')} hop={ts} prism_calls={p}", flush=True)
+        EOF
+        go build -o /tmp/prism-nores ../../prism/cmd/prism 2>&1 || (cd ../../prism && go build -o /tmp/prism-nores ./cmd/prism)
+        nohup python3 /tmp/run_wide_final.py > /tmp/run_wide_final.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T11:25:15.362306Z
+      classified: build
+    - cmd: |-
+        sleep 3; cat /tmp/run_wide_final.log; ps -p 48148 >/dev/null && echo RUNNING || echo DEAD
+        md5 /tmp/prism-nores; git log -1 --format=%H
+      at: 2026-09-02T11:25:23.566973Z
+      classified: other
+    - cmd: until ! ps -p 48148 >/dev/null 2>&1; do sleep 60; done; echo done
+      at: 2026-09-02T11:25:27.974304Z
+      classified: other
+    - cmd: git log -1 --oneline; git tag --sort=-creatordate | head -3; git status; echo "---installed---"; /opt/homebrew/bin/prism --version 2>&1 | head -1
+      at: 2026-09-02T12:06:38.564995Z
+      classified: other
+    - cmd: cat .github/workflows/release.yml
+      at: 2026-09-02T12:07:09.533779Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-31T18:59:10.691223Z
+redactions: 2
