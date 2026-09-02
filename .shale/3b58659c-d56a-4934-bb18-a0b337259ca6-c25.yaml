@@ -1,0 +1,258 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c25
+created_at: 2026-09-02T16:50:59.544341Z
+finalized_at: 2026-09-02T16:58:50.00024Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T16:55:08.882348Z
+    - path: internal/mcp/selection_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-02T16:56:12.652522Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git push origin main && git tag v0.65.2 && git push origin v0.65.2
+      at: 2026-09-02T16:50:59.544341Z
+      classified: other
+    - cmd: sleep 10; gh run list -R provasign/prism --limit 2 2>&1
+      at: 2026-09-02T16:51:12.280512Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list -R provasign/prism --workflow Release --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ] && [ "$(gh run list -R provasign/prism --workflow CI --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 20; done
+        echo "both done"
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion -q '.[0]'
+        gh run list -R provasign/prism --workflow CI --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T16:51:17.690623Z
+      classified: other
+    - cmd: |-
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion -q '.[0]'
+        gh run list -R provasign/prism --workflow CI --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T16:53:26.511552Z
+      classified: other
+    - cmd: gh run list -R provasign/prism --workflow CI --limit 1 --json databaseId -q '.[0].databaseId'
+      at: 2026-09-02T16:53:29.921522Z
+      classified: other
+    - cmd: gh run view 33657432010 -R provasign/prism 2>&1 | head -60
+      at: 2026-09-02T16:53:33.943928Z
+      classified: other
+    - cmd: gh run view 33657432010 -R provasign/prism --log-failed 2>&1 | tail -150
+      at: 2026-09-02T16:53:40.245965Z
+      classified: other
+    - cmd: grep -n "func Backend\b" /Users/tapabratapal/Projects/provasign/prism/internal/textsearch/textsearch.go
+      at: 2026-09-02T16:54:02.073526Z
+      classified: other
+    - cmd: |-
+        sed -n '265,293p' /Users/tapabratapal/Projects/provasign/prism/internal/textsearch/textsearch.go
+        grep -n ".github" /Users/tapabratapal/Projects/provasign/prism/.github/workflows/ci.yml 2>/dev/null; cat /Users/tapabratapal/Projects/provasign/prism/.github/workflows/ci.yml | head -40
+      at: 2026-09-02T16:54:05.281314Z
+      classified: other
+    - cmd: grep -n "func runGrep" -A 40 /Users/tapabratapal/Projects/provasign/prism/internal/textsearch/textsearch.go | head -50
+      at: 2026-09-02T16:54:09.753061Z
+      classified: other
+    - cmd: grep -n "^func selectContext" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection.go
+      at: 2026-09-02T16:55:12.128565Z
+      classified: other
+    - cmd: grep -n "^func " /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection.go
+      at: 2026-09-02T16:55:14.769277Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n '190,220p' internal/mcp/selection.go
+        go build ./... 2>&1 | head -30
+      at: 2026-09-02T16:55:42.812071Z
+      classified: build
+    - cmd: grep -rn "symbolNames" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go
+      at: 2026-09-02T16:56:16.235439Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+        go vet ./... 2>&1 | head -30
+      at: 2026-09-02T16:56:22.075698Z
+      classified: lint
+    - cmd: grep -rn "^func sym(" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*_test.go
+      at: 2026-09-02T16:56:26.048928Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -i '' 's/\bsym(/seedSym(/g; s/func seedSym(id, name/func seedSym(id, name/' internal/mcp/selection_test.go
+        grep -n "seedSym" internal/mcp/selection_test.go | head -5
+      at: 2026-09-02T16:56:32.303123Z
+      classified: other
+    - cmd: grep -n "sym(" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection_test.go | head -20
+      at: 2026-09-02T16:56:35.304943Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 -c "
+        import re
+        path = 'internal/mcp/selection_test.go'
+        with open(path) as f:
+            text = f.read()
+        text = re.sub(r'\bsym\(', 'seedSym(', text)
+        with open(path, 'w') as f:
+            f.write(text)
+        "
+        grep -n "seedSym(" internal/mcp/selection_test.go
+      at: 2026-09-02T16:56:40.179544Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+        go vet ./... 2>&1 | head -30
+      at: 2026-09-02T16:56:45.32531Z
+      classified: lint
+    - cmd: grep -rn "^func names(" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*_test.go
+      at: 2026-09-02T16:56:48.782057Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 -c "
+        with open('internal/mcp/selection_test.go') as f:
+            text = f.read()
+        old = '''func names(syms []grove.SymbolRecord) []string {
+        	out := make([]string, len(syms))
+        	for i, s := range syms {
+        		out[i] = s.Name
+        	}
+        	return out
+        }
+
+        '''
+        assert old in text
+        text = text.replace(old, '')
+        text = text.replace('names(got)', 'seedNames(got)')
+        with open('internal/mcp/selection_test.go', 'w') as f:
+            f.write(text)
+        "
+        grep -n "names(" internal/mcp/selection_test.go
+      at: 2026-09-02T16:56:54.040075Z
+      classified: other
+    - cmd: grep -n "seedNames\|names(" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection_test.go
+      at: 2026-09-02T16:56:56.841944Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+        go vet ./... 2>&1 | head -30
+      at: 2026-09-02T16:57:08.803725Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/mcp/ -run 'TestPromoteSingleTermSeeds' -v -count=1 2>&1 | tail -25
+      at: 2026-09-02T16:57:13.312447Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 -timeout 120s 2>&1 | tail -25
+      at: 2026-09-02T16:57:27.289658Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-final ./cmd/prism 2>&1 | head -20
+        cd /tmp/wt-414
+        /tmp/prism-final index . >/dev/null 2>&1
+        echo "=== a2a-414 ==="
+        /tmp/prism-final query "fix JSONRPC issue" --terms JSONRPC --format text 2>&1 | head -6
+        cd ~/ci-corpus/django
+        echo; echo "=== django ==="
+        /tmp/prism-final query "how does BaseDatabaseOperations.quote_name work" --terms quote_name --format text 2>&1 | head -6
+      at: 2026-09-02T16:57:44.363606Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add internal/mcp/selection.go internal/mcp/selection_test.go
+        git commit --amend --no-edit
+        git log -1 --format="%H %s"
+      at: 2026-09-02T16:57:48.857898Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log --oneline -6
+        git show --stat HEAD | head -10
+      at: 2026-09-02T16:57:52.679479Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git reset --soft c973dc0
+        git status --short
+      at: 2026-09-02T16:58:04.751152Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git reset .shale/3b58659c-d56a-4934-bb18-a0b337259ca6-c24.yaml
+        git commit -m "chore(shale): session evidence"
+        git status --short
+      at: 2026-09-02T16:58:09.591315Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git reset --soft HEAD~1
+        git status --short
+      at: 2026-09-02T16:58:16.213518Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git commit -m "$(cat <<'EOF'
+        mcp: extract promoteSingleTermSeeds; fix CI-only test flakiness
+
+        CI failure on the v0.65.2 tag (both ubuntu-latest and macos-latest):
+        TestToolQuery_ManyExactTiesFallBackToConfirmation failed there while
+        passing reliably here. Root cause: neither GitHub-hosted runner image
+        ships ripgrep, so both fall back to `grep -r`, whose recursive
+        traversal order carries no ordering guarantee -- unlike rg's --sort
+        path, which the test's fixture depended on to force specific hits
+        inside/outside mergeTextSearch's 40-hit confirmation cap. Locally (rg
+        installed) the fixture was deterministic; in CI (grep fallback) it
+        was not.
+
+        Fix: extracted the single-term reorder into promoteSingleTermSeeds, a
+        pure function over (seeds, confirmed map, term) with no grep/grove
+        involved, and rewrote both regression tests (plus two new boundary
+        tests) to call it directly with hand-built inputs. Deterministic on
+        any machine, OS, or grep/rg availability -- the text-search backend is
+        no longer in the loop for what these tests are actually checking.
+
+        Verified this is a pure refactor, not a behavior change: rebuilt and
+        re-ran both real-world repros (django BaseDatabaseOperations.quote_name,
+        a2aproject/a2a-python-414 JSONRPC) directly against the built binary --
+        identical output to the version already tagged as v0.65.2. `go test
+        ./... -count=1 -timeout 120s` (CI's exact invocation) green locally.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-02T16:58:27.903426Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add .shale/3b58659c-d56a-4934-bb18-a0b337259ca6-c24.yaml
+        git commit -m "chore(shale): session evidence"
+        git log --oneline -5
+        git status --short
+      at: 2026-09-02T16:58:31.931231Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -10
+        go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+      at: 2026-09-02T16:58:46.948672Z
+      classified: test
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-09-02T16:50:59.544341Z
+redactions: 0
