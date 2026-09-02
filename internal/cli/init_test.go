@@ -356,7 +356,18 @@ func TestSteeringBlock_DeferredToolsBootstrap(t *testing.T) {
 	if !strings.Contains(got, "select:mcp__prism__prism_search") {
 		t.Error("ToolSearch line must use full mcp__prism__ tool names — bare names match nothing")
 	}
-	if !strings.Contains(got, "DEFERRED") {
+	// Unconditional imperative, not "if you do not see prism_* in your tool
+	// list" — that phrasing requires the agent to notice an absence before
+	// acting, which nothing forces. 2026-09-01 probe: conditional phrasing
+	// got ToolSearch as the literal first tool call in 2/3 sessions (one
+	// never called it at all); the imperative form got 15/15 across 4 tasks.
+	if !strings.Contains(got, "Before your first tool call") {
+		t.Error("ToolSearch line must be an unconditional imperative, not gated on the agent noticing tools are missing")
+	}
+	if strings.Contains(got, "If you do not see prism_*") {
+		t.Error("steering reverted to the conditional framing that measured worse first-move compliance")
+	}
+	if !strings.Contains(got, "deferred") {
 		t.Error("steering block missing the DEFERRED explanation")
 	}
 }

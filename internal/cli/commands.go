@@ -465,11 +465,23 @@ func mergePrismYAML(existing, profile string) string {
 // per-tool detail, and repeating it here paid for the same prose twice. The
 // long version also documented seven tools that the 190-cell A/B measured at
 // zero calls. What survives is what changed behaviour: the ToolSearch
-// deferred-tools line (without it agents conclude prism is absent and grep
-// for everything), one route per question, and the change_impact relay rule.
-// Do not grow this back into a manual — add detail to toolDescription instead.
-// The heading is also injectPrismSection's start marker — changing its text
-// would orphan every section already written into a user's files.
+// deferred-tools line, one route per question, and the change_impact relay
+// rule. Do not grow this back into a manual — add detail to toolDescription
+// instead. The heading is also injectPrismSection's start marker — changing
+// its text would orphan every section already written into a user's files.
+//
+// The ToolSearch line is phrased as an unconditional imperative ("before
+// your first tool call, run this"), not the earlier conditional framing
+// ("if you do not see prism_* in your tool list..."). The conditional form
+// requires the agent to notice an absence before acting on it — nothing
+// forces that check, and it competes against a much stronger prior (grep
+// for the described symptom) that doesn't require noticing anything.
+// Measured 2026-09-01 on the wide-change bed (15 sessions, 4 tasks,
+// sonnet): unconditional phrasing got ToolSearch as literally the first
+// tool call in 15/15 sessions; the conditional phrasing it replaced got
+// 2/3 with one session never calling it at all. Recall was unaffected
+// either way — every task in that probe sat on its own task-inherent
+// ceiling — so this is a routing fix, not a quality claim.
 const steeringInstructions = `
 ## Prism — context delivery
 
@@ -480,10 +492,8 @@ it applies: ` + "`" + `prism_search` + "`" + ` (locate; scope="text" = pure grep
 file / one symbol), ` + "`" + `prism_change_impact` + "`" + ` (blast radius), ` + "`" + `prism_verify` + "`" + `
 (diff completeness).
 
-**If you do not see prism_* in your tool list, they are DEFERRED, not
-absent.** Load them once, rather than concluding Prism is unavailable and
-grepping for everything (measured: the most common reason Prism goes unused
-where it is correctly installed):
+**Before your first tool call**, run this once to load Prism's tools (they
+start deferred, not absent):
 
     ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact")
 
