@@ -1,0 +1,348 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c23
+created_at: 2026-09-02T12:07:17.056531Z
+finalized_at: 2026-09-02T13:01:39.778798Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T12:33:39.243188Z
+    - path: internal/mcp/searchmulti_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T12:34:39.257542Z
+commands:
+    - cmd: git push origin main && git tag v0.65.0 && git push origin v0.65.0
+      at: 2026-09-02T12:07:17.056531Z
+      classified: other
+    - cmd: sleep 10; gh run list -R provasign/prism --limit 3 2>&1
+      at: 2026-09-02T12:07:30.207585Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list -R provasign/prism --limit 1 --workflow Release --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 20; done
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion,url -q '.[0]'
+      at: 2026-09-02T12:07:57.087965Z
+      classified: other
+    - cmd: |-
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion,url -q '.[0]'
+        gh run list -R provasign/prism --workflow CI --limit 1 --json status,conclusion,url -q '.[0]'
+      at: 2026-09-02T12:09:44.382014Z
+      classified: other
+    - cmd: 'gh release view v0.65.0 -R provasign/prism --json tagName,isDraft,assets -q ''{tag: .tagName, draft: .isDraft, assets: [.assets[].name]}'''
+      at: 2026-09-02T12:09:47.028349Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale && sleep 5 && gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1
+      at: 2026-09-02T12:09:58.409732Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 15; done
+        gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T12:10:03.58451Z
+      classified: other
+    - cmd: gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T12:10:22.342972Z
+      classified: other
+    - cmd: brew update >/dev/null 2>&1; brew info provasign/shale/prism 2>&1 | head -3
+      at: 2026-09-02T12:10:31.81198Z
+      classified: other
+    - cmd: brew upgrade provasign/shale/prism 2>&1 | tail -15 && /opt/homebrew/bin/prism --version
+      at: 2026-09-02T12:10:40.77628Z
+      classified: other
+    - cmd: cat /tmp/run_wide_final.log
+      at: 2026-09-02T12:20:32.65601Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        for tid in ('prism__98ed1b2b4d','prism__ac780d9258'):
+            rec = json.load(open(f'/Users/tapabratapal/Projects/provasign/research/harness/runs/wide/{tid}.sonnet.prism_plus.fixed2.json'))
+            print(tid, rec.get('tool_trace'))
+        "
+      at: 2026-09-02T12:20:46.361633Z
+      classified: other
+    - cmd: ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* 2>/dev/null | head -5
+      at: 2026-09-02T12:21:11.358832Z
+      classified: other
+    - cmd: |-
+        for d in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-z33q7s41 /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-jqqw5b3d; do
+        echo "=== $d ==="
+        ls -la "$d"
+        done
+      at: 2026-09-02T12:21:15.047031Z
+      classified: other
+    - cmd: |-
+        for f in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-z33q7s41/3577d023-481c-4b9f-a3ef-f2dabefbb9c1.jsonl /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-jqqw5b3d/cdb8a534-25b7-42ef-a314-62ac2f526eb7.jsonl; do
+        echo "=== $f ==="
+        python3 - "$f" <<'EOF'
+        import json,sys
+        f=sys.argv[1]
+        with open(f) as fh:
+            for line in fh:
+                try:
+                    obj=json.loads(line)
+                except:
+                    continue
+                if obj.get('type')=='user':
+                    msg=obj.get('message',{})
+                    content=msg.get('content')
+                    if isinstance(content,str):
+                        text=content
+                    elif isinstance(content,list):
+                        text="".join([c.get('text','') for c in content if isinstance(c,dict) and c.get('type')=='text'])
+                    else:
+                        text=""
+                    if 'UPSTREAM CHANGE' in text or 'upstream change' in text.lower():
+                        print("FOUND UPSTREAM CHANGE, first 500 chars:")
+                        print(text[:1500])
+                    break
+        EOF
+        done
+      at: 2026-09-02T12:21:21.673808Z
+      classified: other
+    - cmd: |-
+        for f in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-z33q7s41/3577d023-481c-4b9f-a3ef-f2dabefbb9c1.jsonl /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-jqqw5b3d/cdb8a534-25b7-42ef-a314-62ac2f526eb7.jsonl; do
+        echo "############ $f ############"
+        python3 - "$f" <<'EOF'
+        import json,sys
+        f=sys.argv[1]
+        tool_calls=0
+        with open(f) as fh:
+            for line in fh:
+                try:
+                    obj=json.loads(line)
+                except:
+                    continue
+                if obj.get('type')!='assistant':
+                    continue
+                msg=obj.get('message',{})
+                content=msg.get('content',[])
+                if not isinstance(content,list):
+                    continue
+                for c in content:
+                    if not isinstance(c,dict):
+                        continue
+                    if c.get('type')=='text':
+                        txt=c.get('text','')
+                        if txt.strip():
+                            print(f"[TEXT before/around tool_call#{tool_calls}]: {txt[:800]}")
+                    elif c.get('type')=='tool_use':
+                        tool_calls+=1
+                        print(f"--- tool_use #{tool_calls}: name={c.get('name')} input={json.dumps(c.get('input'))[:500]}")
+                if tool_calls>=10:
+                    break
+        EOF
+        done
+      at: 2026-09-02T12:21:30.247363Z
+      classified: other
+    - cmd: |-
+        for f in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-z33q7s41/3577d023-481c-4b9f-a3ef-f2dabefbb9c1.jsonl /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-jqqw5b3d/cdb8a534-25b7-42ef-a314-62ac2f526eb7.jsonl; do
+        echo "### $f"
+        python3 - "$f" <<'EOF'
+        import json,sys
+        f=sys.argv[1]
+        tool_calls=0
+        with open(f) as fh:
+            for line in fh:
+                try:
+                    obj=json.loads(line)
+                except:
+                    continue
+                if obj.get('type')!='assistant':
+                    continue
+                msg=obj.get('message',{})
+                content=msg.get('content',[])
+                if not isinstance(content,list):
+                    continue
+                for c in content:
+                    if not isinstance(c,dict):
+                        continue
+                    if c.get('type')=='tool_use':
+                        tool_calls+=1
+                if tool_calls>=10:
+                    break
+        print("total assistant text blocks scanned above; searching whole message list for 'prism' or 'ToolSearch' mentions in text type up to that point already printed")
+        EOF
+        grep -o '"type":"text"[^}]*' "$f" | grep -i -E "prism|toolsearch" | head -5
+        done
+      at: 2026-09-02T12:21:39.447772Z
+      classified: other
+    - cmd: |-
+        for f in /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-z33q7s41/3577d023-481c-4b9f-a3ef-f2dabefbb9c1.jsonl /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-jqqw5b3d/cdb8a534-25b7-42ef-a314-62ac2f526eb7.jsonl; do
+        echo "### $f"
+        python3 - "$f" <<'EOF'
+        import json,sys
+        f=sys.argv[1]
+        tool_calls=0
+        found=False
+        with open(f) as fh:
+            for line in fh:
+                try:
+                    obj=json.loads(line)
+                except:
+                    continue
+                if obj.get('type')!='assistant':
+                    continue
+                msg=obj.get('message',{})
+                content=msg.get('content',[])
+                if not isinstance(content,list):
+                    continue
+                for c in content:
+                    if not isinstance(c,dict):
+                        continue
+                    if c.get('type')=='text':
+                        txt=c.get('text','')
+                        if 'prism' in txt.lower() or 'toolsearch' in txt.lower():
+                            print(f"ASSISTANT TEXT (tool_calls so far={tool_calls}): {txt[:500]}")
+                            found=True
+                    elif c.get('type')=='tool_use':
+                        tool_calls+=1
+                if tool_calls>=10:
+                    break
+        if not found:
+            print("NO assistant text mentioning prism/ToolSearch found in first 10 tool calls")
+        EOF
+        done
+      at: 2026-09-02T12:21:49.168847Z
+      classified: other
+    - cmd: grep -n "truncat\|exhaustive" internal/mcp/tools.go internal/mcp/searchmulti*.go 2>/dev/null | grep -v _test | head -30
+      at: 2026-09-02T12:27:37.905204Z
+      classified: other
+    - cmd: sed -n '1220,1260p' internal/mcp/tools.go
+      at: 2026-09-02T12:27:39.649162Z
+      classified: other
+    - cmd: grep -n "func.*hitRollup\|func.*Rollup" internal/mcp/*.go | grep -v _test
+      at: 2026-09-02T12:29:50.850659Z
+      classified: other
+    - cmd: sed -n '1,100p' internal/mcp/rollup.go
+      at: 2026-09-02T12:29:52.460703Z
+      classified: other
+    - cmd: sed -n '100,170p' internal/mcp/rollup.go
+      at: 2026-09-02T12:30:01.800944Z
+      classified: other
+    - cmd: sed -n '1226,1246p' internal/mcp/tools.go
+      at: 2026-09-02T12:33:26.795744Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -30
+      at: 2026-09-02T12:33:44.651725Z
+      classified: build
+    - cmd: grep -rln "AT LEAST\|Raise limit\|hitRollup" internal/mcp/*_test.go
+      at: 2026-09-02T12:33:46.838818Z
+      classified: other
+    - cmd: grep -n "AT LEAST\|Raise limit\|hitRollup\|func Test" internal/mcp/searchtext_test.go
+      at: 2026-09-02T12:33:48.908982Z
+      classified: other
+    - cmd: 'grep -rn "AT LEAST\|Truncated: true\|r.Truncated" internal/mcp/tools_test.go internal/mcp/searchmulti_test.go 2>/dev/null | head -20'
+      at: 2026-09-02T12:33:52.988085Z
+      classified: other
+    - cmd: grep -rln "AT LEAST" internal/mcp/*.go
+      at: 2026-09-02T12:33:54.593139Z
+      classified: other
+    - cmd: sed -n '1,50p' internal/mcp/searchtext_test.go
+      at: 2026-09-02T12:33:58.928598Z
+      classified: other
+    - cmd: grep -rn "func TestHitRollupSilentWithoutGrove\|func Test.*Truncat" internal/mcp/*_test.go
+      at: 2026-09-02T12:34:02.122481Z
+      classified: other
+    - cmd: sed -n '280,340p' internal/mcp/searchmulti_test.go
+      at: 2026-09-02T12:34:03.957067Z
+      classified: other
+    - cmd: grep -n "func newTextSearchHandler" -A 30 internal/mcp/*_test.go | head -40
+      at: 2026-09-02T12:34:06.990261Z
+      classified: other
+    - cmd: grep -n "func newTestHandler" -A 25 internal/mcp/*_test.go | head -35
+      at: 2026-09-02T12:34:10.918556Z
+      classified: other
+    - cmd: sed -n '170,220p' internal/mcp/searchtext_test.go
+      at: 2026-09-02T12:34:16.148273Z
+      classified: other
+    - cmd: grep -rln "h.Grove = \|\.Grove =" internal/mcp/*_test.go | head -5
+      at: 2026-09-02T12:34:21.377387Z
+      classified: other
+    - cmd: |-
+        grep -rln "grove.New\|grove.Open\|NewHandlerWithLedger(cfg" internal/mcp/*_test.go | head -10
+        grep -n "func NewHandlerWithLedger" -A 15 internal/mcp/*.go | grep -v _test
+      at: 2026-09-02T12:34:23.843672Z
+      classified: other
+    - cmd: grep -n "grove.New\|grove\." internal/mcp/changeimpact_declaringtypes_test.go | head -10
+      at: 2026-09-02T12:34:25.672358Z
+      classified: other
+    - cmd: sed -n '1,45p' internal/mcp/changeimpact_declaringtypes_test.go
+      at: 2026-09-02T12:34:27.52056Z
+      classified: other
+    - cmd: grep -n "func mustWrite" internal/mcp/*_test.go
+      at: 2026-09-02T12:34:30.114063Z
+      classified: other
+    - cmd: tail -20 internal/mcp/searchmulti_test.go
+      at: 2026-09-02T12:34:32.118417Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run 'TestToolSearch_WarningPointsAtRollupWhenPresent|TestToolSearch_TruncationCarriesADenominator|TestHitRollupSilentWithoutGrove|TestRenderSearchAsText' -v 2>&1 | tail -50
+      at: 2026-09-02T12:34:58.296145Z
+      classified: test
+    - cmd: go build ./... && go test ./... 2>&1 | tail -20
+      at: 2026-09-02T12:35:13.104974Z
+      classified: test
+    - cmd: |-
+        git add internal/mcp/tools.go internal/mcp/searchmulti_test.go
+        git commit -m "$(cat <<'EOF'
+        mcp: truncation warning points at hitRollup before re-query advice
+
+        Real usage (2026-09-02): a truncated OWNER-pattern search on an
+        access-control audit reported "AT LEAST 543" against a true 829
+        matches. The graph's hitRollup -- a complete, grouped-by-symbol
+        breakdown of the WHOLE hit set -- rides along in the same response
+        (rollup.go, existing since the truncation-denominator work), but the
+        warning text never mentioned it: "Raise limit=, narrow with
+        path=/glob=, or use files_only=true" pointed only at re-querying,
+        never at the free complete answer already sitting in the payload.
+
+        For a correctness-critical query (access control, ownership, anything
+        security-shaped) that's the wrong default: the agent has to already
+        know hitRollup exists from the static tool schema to find it, rather
+        than being told at the exact moment truncation happens.
+
+        Warning now branches: when hitRollup is non-empty, it leads with "the
+        graph's COMPLETE breakdown... is in hitRollup below" and only mentions
+        exhaustive=true as the fallback for raw lines instead of grouped
+        counts. Falls back to the old re-query wording only when no rollup was
+        produced (rollup.go: no graph, search failed, or nothing indexed).
+
+        New test drives this through a real Grove-indexed fixture end to end
+        (not a synthetic map, like the existing TestRenderSearchAsText_HitRollup)
+        so the assertion exercises the actual handler code path, not just the
+        rendering step.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-02T12:35:24.784581Z
+      classified: other
+    - cmd: go build -o /tmp/prism-rollup ./cmd/prism && echo built
+      at: 2026-09-02T12:35:29.019668Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/ci_invariants.py --prism /tmp/prism-rollup --corpus-root ~/ci-corpus > /tmp/gate_ci3.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-rollup --out /tmp/ab_gate_rollup > /tmp/gate_ab3.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-02T12:35:33.830355Z
+      classified: other
+    - cmd: until ! ps -p 62391 >/dev/null 2>&1 && ! ps -p 62392 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-02T12:35:36.107912Z
+      classified: other
+    - cmd: echo "=== ci_invariants ==="; tail -15 /tmp/gate_ci3.log; echo; echo "=== ab_gate ==="; tail -20 /tmp/gate_ab3.log
+      at: 2026-09-02T12:58:41.055252Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-09-02T12:07:17.056531Z
+redactions: 0
