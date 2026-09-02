@@ -39,7 +39,14 @@ func NewSignalComputer(workspaceRoot string) *SignalComputer {
 
 // Compute returns the SignalValues for one symbol given seed symbol IDs and
 // the BFS distance from any seed (0 means seed itself, math.MaxInt = unreachable).
-func (c *SignalComputer) Compute(ctx context.Context, task string, sym grove.SymbolRecord, bfsDistance int, hasTestEdgeToSeed bool, sameFileAsTest bool) SignalValues {
+//
+// Takes no task text: this used to score lexical relevance between the task
+// string and the symbol, removed along with DetectPhase (see selection.go) --
+// identical seeds now produce an identical selection no matter how the task
+// is phrased. Graph distance, recency, edit frequency, and test relevance
+// are the only signals; a caller that wants relevance-by-content should pass
+// better terms, not a better sentence.
+func (c *SignalComputer) Compute(ctx context.Context, sym grove.SymbolRecord, bfsDistance int, hasTestEdgeToSeed bool, sameFileAsTest bool) SignalValues {
 	gv := SignalValues{}
 
 	// Signal 1 — Graph distance

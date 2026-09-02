@@ -207,20 +207,62 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// interleave pass produced the seed; promotion happens inside a
 			// round, so every term keeps its seed representation.
 			if len(perTermSeeds) == 1 {
-				// One term: no interleave to protect — the original global
-				// promotion applies (round-scoping degenerates to a no-op
-				// here and silently DISABLED promotion; measured as a
-				// realistic-terms recall drop on the oracle bed).
-				confirmed := make([]grove.SymbolRecord, 0, len(seeds))
-				var rest []grove.SymbolRecord
+				// One term: no interleave to protect, but the plain
+				// global promotion this used to be had its own bug --
+				// discovered 2026-09-02 (django quote_name): an EXACT
+				// name/qualified-name match (graph rank 100) got pushed
+				// behind a substring match (geo_quote_name, rank 70)
+				// because mergeTextSearch's confirmation grep is capped
+				// (40 hits) and happened to surface the substring
+				// symbol's own definition lines before the exact
+				// symbol's -- five geo_quote_name overrides got
+				// "confirmed" and the real quote_name family, seeded
+				// correctly at the front by the graph, never did.
+				// Confirmation is a real signal (two independent hits
+				// beat one) but must never outrank an exact match on
+				// the term itself -- pin exact matches first, and let
+				// confirmation reorder only the remainder.
+				term := ""
+				if len(p.terms) == 1 {
+					term = strings.ToLower(p.terms[0])
+				}
+				var exact, rest []grove.SymbolRecord
 				for _, sd := range seeds {
-					if textMerge.confirmed[sd.ID] {
-						confirmed = append(confirmed, sd)
+					if term != "" && (strings.ToLower(sd.Name) == term || strings.ToLower(sd.QualifiedName) == term) {
+						exact = append(exact, sd)
 					} else {
 						rest = append(rest, sd)
 					}
 				}
-				seeds = append(confirmed, rest...)
+				// The pin above holds for a REAL override/declaration
+				// family (django quote_name: 7 ties, all the same
+				// concept) but breaks when the "exact" name is a common
+				// field/attribute shared by many unrelated types (a2a-
+				// python JSONRPC: 23 Pydantic models each declaring a
+				// boilerplate `jsonrpc` field) -- exactness stops being
+				// a meaningful signal at that point, and blindly pinning
+				// it buried two symbols confirmation had correctly
+				// promoted (JsonRpcTransport, A2AClientJSONRPCError,
+				// each independently referenced elsewhere), dropping
+				// recall 0.222 -> 0.111 on the swebench oracle bed
+				// (2026-09-02). No fixed priority over {exact,confirmed}
+				// satisfies both cases -- this is a tuned compromise,
+				// not a proof, and the threshold may need revisiting on
+				// more data.
+				const exactTieLimit = 10
+				if len(exact) > exactTieLimit {
+					exact, rest = nil, seeds
+				}
+				confirmed := make([]grove.SymbolRecord, 0, len(rest))
+				var unconfirmed []grove.SymbolRecord
+				for _, sd := range rest {
+					if textMerge.confirmed[sd.ID] {
+						confirmed = append(confirmed, sd)
+					} else {
+						unconfirmed = append(unconfirmed, sd)
+					}
+				}
+				seeds = append(append(exact, confirmed...), unconfirmed...)
 			} else {
 				roundOf := make(map[string]int, len(seeds))
 				for i, s := range seeds {
@@ -406,7 +448,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// unrelated ones.
 			dist = 3 + (i / 10)
 		}
-		sv := h.Signals.Compute(ctx, p.task, sym, dist, hasTestEdgeID[sym.ID], testFilePaths[sym.FilePath])
+		sv := h.Signals.Compute(ctx, sym, dist, hasTestEdgeID[sym.ID], testFilePaths[sym.FilePath])
 		score := ranking.Score(sv, profile)
 		cat := categorize(sym)
 		sessionPath := normalizePath(sym.FilePath)

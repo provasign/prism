@@ -23,19 +23,19 @@ func TestNewSignalComputer(t *testing.T) {
 
 func TestCompute(t *testing.T) {
 	c := NewSignalComputer("")
-	v := c.Compute(context.Background(), "task", grove.SymbolRecord{FilePath: "x.go"}, 2, true, false)
+	v := c.Compute(context.Background(), grove.SymbolRecord{FilePath: "x.go"}, 2, true, false)
 	if v.GraphDistance == 0 {
 		t.Error("graph dist")
 	}
 	if v.TestRelevance != 1.0 {
 		t.Error("test rel")
 	}
-	v = c.Compute(context.Background(), "task", grove.SymbolRecord{}, 0, false, true)
+	v = c.Compute(context.Background(), grove.SymbolRecord{}, 0, false, true)
 	if v.TestRelevance != 0.5 {
 		t.Error("test rel sameFile")
 	}
 	// unreachable
-	v = c.Compute(context.Background(), "", grove.SymbolRecord{}, math.MaxInt, false, false)
+	v = c.Compute(context.Background(), grove.SymbolRecord{}, math.MaxInt, false, false)
 	if v.GraphDistance != 0 {
 		t.Error("unreachable")
 	}

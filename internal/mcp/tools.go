@@ -398,7 +398,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
+				"task":         map[string]any{"type": "string", "description": "Optional label for logging only — a first read always delivers the complete file regardless of task text."},
 			},
 		}
 	case "prism_search":
