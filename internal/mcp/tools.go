@@ -438,6 +438,13 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "Return matching file paths without the matching lines — the cheapest answer to \"where does this live\".",
 				},
+				"rollup_only": map[string]any{
+					"type": "boolean",
+					"description": "On a truncated search, skip the raw sample lines and return only hitRollup " +
+						"(the grouped-by-symbol breakdown) — for when you already know you just want " +
+						"\"how many, and where do they cluster\", not example content. No effect when the " +
+						"search isn't truncated or produces no rollup (nothing to answer with otherwise).",
+				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 				"context": map[string]any{
 					"type":        "integer",
@@ -1147,6 +1154,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		filesOnly:  boolArg(args, "files_only"),
 		exhaustive: boolArg(args, "exhaustive"),
 		context:    reqContext,
+		rollupOnly: boolArg(args, "rollup_only"),
 	}
 
 	// Multi-term: run each term through the same single-term path and group
@@ -1210,6 +1218,7 @@ type searchScope struct {
 	filesOnly  bool
 	exhaustive bool
 	context    int
+	rollupOnly bool
 }
 
 func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
@@ -1255,6 +1264,21 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 						"it usually answers 'where are the rest' without another call. Need every "+
 						"raw line instead of grouped counts? exhaustive=true.",
 					len(r.Hits), r.TotalHits, r.FilesMatched, r.TotalHits)
+				if sc.rollupOnly {
+					// The caller already knows the sample's raw lines are
+					// not what they need this call -- "how many, and where
+					// do they cluster" is fully answered by hitRollup alone
+					// (real usage, 2026-09-02: paid for the sample's tokens
+					// on repeated searches where only the rollup was ever
+					// read). Ordering the rollup earlier in the payload
+					// would not have saved anything -- deliveredTokens
+					// bills the whole response regardless of read order;
+					// not delivering the sample at all is the only real
+					// lever. Only suppressed when a rollup actually exists
+					// (nothing to answer with otherwise, and dropping
+					// information silently is worse than the tokens).
+					delete(out, "textHits")
+				}
 			} else {
 				out["warning"] = fmt.Sprintf(
 					"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not the "+

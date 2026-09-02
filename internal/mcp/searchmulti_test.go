@@ -580,3 +580,75 @@ func shared() {}
 		t.Error("warning still leads with re-query advice even though a complete rollup is present")
 	}
 }
+
+// TestToolSearch_RollupOnlyDropsSampleWhenRollupExists: real feedback
+// (2026-09-02) on the fix above -- once hitRollup exists in the same
+// response, ordering it earlier doesn't save tokens (deliveredTokens bills
+// the whole response regardless of read order); the only real lever is not
+// delivering the raw sample at all when the caller already knows the
+// rollup alone answers "how many, and where do they cluster". rollup_only
+// is the files_only-shaped sibling for that case.
+func TestToolSearch_RollupOnlyDropsSampleWhenRollupExists(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, dir, "alpha.go", `package p
+
+func Alpha() {
+	shared()
+	shared()
+}
+`)
+	mustWrite(t, dir, "beta.go", `package p
+
+func Beta() {
+	shared()
+}
+
+func shared() {}
+`)
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	defer gc.Shutdown()
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "shared", "scope": "text", "limit": 1, "rollup_only": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["truncated"] != true {
+		t.Fatalf("limit=1 over 3 matches should truncate: %v", m)
+	}
+	ru, _ := m["hitRollup"].([]map[string]any)
+	if len(ru) == 0 {
+		t.Skip("no rollup produced for this fixture — nothing to assert")
+	}
+	if _, present := m["textHits"]; present {
+		t.Errorf("rollup_only with a rollup present must drop textHits from the response, got: %v", m)
+	}
+}
+
+// TestToolSearch_RollupOnlyKeepsSampleWithoutRollup: rollup_only must never
+// silently drop the only content in the response -- when there is nothing
+// to roll up (no truncation, or truncation with no indexed symbols
+// enclosing the hits), textHits stays.
+func TestToolSearch_RollupOnlyKeepsSampleWithoutRollup(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Alpha", "scope": "text", "rollup_only": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["truncated"] == true {
+		t.Fatalf("this fixture's hit count should not truncate: %v", m)
+	}
+	if _, present := m["textHits"]; !present {
+		t.Error("rollup_only must not drop textHits when there is no rollup to answer with instead")
+	}
+}

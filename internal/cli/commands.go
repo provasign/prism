@@ -86,6 +86,8 @@ Usage:
                                   ([--scope text|symbols|both] [--regex] [--limit N])
                                   [--path <file-or-dir>]  scope the search (repeatable)
                                   [--glob '*.py'] [--files-only] [--exhaustive] [--context N]
+                                  [--rollup-only]  on a truncated search, skip the raw
+                                  sample and return only the grouped-by-symbol rollup
                                   [--dir <path>]  where to search (default: .)
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
@@ -1682,6 +1684,7 @@ func cmdSearch(args []string) int {
 	var paths, globs []string
 	filesOnly := false
 	exhaustive := false
+	rollupOnly := false
 	contextLines := 0
 	var bare []string
 	for i := 0; i < len(args); i++ {
@@ -1729,6 +1732,8 @@ func cmdSearch(args []string) int {
 			filesOnly = true
 		case "--exhaustive", "--all":
 			exhaustive = true
+		case "--rollup-only":
+			rollupOnly = true
 		case "--context", "-C":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1802,6 +1807,9 @@ func cmdSearch(args []string) int {
 	}
 	if exhaustive {
 		callArgs["exhaustive"] = true
+	}
+	if rollupOnly {
+		callArgs["rollup_only"] = true
 	}
 	if contextLines > 0 {
 		callArgs["context"] = contextLines
