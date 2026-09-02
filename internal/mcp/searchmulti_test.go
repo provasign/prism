@@ -7,6 +7,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/grove"
 )
 
 // newTextSearchHandler returns a handler over a small real tree. The shared
@@ -499,5 +502,81 @@ func TestToolSearch_ContextClampedWithNote(t *testing.T) {
 	before, _ := hm["before"].([]any)
 	if len(before) > searchContextCap {
 		t.Errorf("before-context has %d lines, want <= %d (the cap)", len(before), searchContextCap)
+	}
+}
+
+// TestToolSearch_WarningPointsAtRollupWhenPresent drives a real truncated
+// search through a Grove-indexed repo end to end (not a synthetic map, like
+// TestRenderSearchAsText_HitRollup) and pins that the warning text changes
+// shape once a rollup is actually available.
+//
+// 2026-09-02, real usage: a truncated OWNER-pattern search (543 reported vs
+// 829 true matches, a security/access-control audit) rode with a hitRollup
+// that already had the complete grouped answer -- but the warning text only
+// said "raise limit=, narrow with path=/glob=, or use files_only=true",
+// never mentioning hitRollup or exhaustive=true, so nothing pointed the
+// agent at the free complete answer already sitting in the same response.
+func TestToolSearch_WarningPointsAtRollupWhenPresent(t *testing.T) {
+	dir := t.TempDir()
+	// Two files, several calls each, so scope=text over limit=1 truncates
+	// AND the calls land inside real indexed function bodies (hitRollup
+	// groups by innermost enclosing symbol; a bare "package" line does not
+	// count, functions do).
+	mustWrite(t, dir, "alpha.go", `package p
+
+func Alpha() {
+	shared()
+	shared()
+}
+`)
+	mustWrite(t, dir, "beta.go", `package p
+
+func Beta() {
+	shared()
+}
+
+func shared() {}
+`)
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	defer gc.Shutdown()
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "shared", "scope": "text", "limit": 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["truncated"] != true {
+		t.Fatalf("limit=1 over 3 matches should truncate: %v", m)
+	}
+	ru, _ := m["hitRollup"].([]map[string]any)
+	warning, _ := m["warning"].(string)
+	if warning == "" {
+		t.Fatal("truncated result must carry a warning")
+	}
+	if len(ru) == 0 {
+		t.Skip("no rollup produced for this fixture (e.g. grove indexing changed) — nothing to assert")
+	}
+	for _, want := range []string{"hitRollup", "COMPLETE"} {
+		if !strings.Contains(warning, want) {
+			t.Errorf("warning must point at the rollup that already answers completeness, missing %q in: %s", want, warning)
+		}
+	}
+	if !strings.Contains(warning, "exhaustive=true") {
+		t.Error("warning should still mention exhaustive=true as the fallback for raw lines")
+	}
+	// The old, rollup-blind wording must not survive alongside the new one --
+	// it told the agent to re-query (limit=/path=/files_only=) instead of
+	// reading the answer already in the response.
+	if strings.Contains(warning, "Raise limit=") {
+		t.Error("warning still leads with re-query advice even though a complete rollup is present")
 	}
 }

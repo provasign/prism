@@ -1233,16 +1233,32 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			// is silent: it reads the capped list as the whole picture.
 			out["totalHits"] = r.TotalHits
 			out["filesMatched"] = r.FilesMatched
-			out["warning"] = fmt.Sprintf(
-				"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not the "+
-					"full set. Raise limit=, narrow with path=/glob=, or use files_only=true to "+
-					"see the spread before drawing conclusions.",
-				len(r.Hits), r.TotalHits, r.FilesMatched)
 			// The graph's organization of the WHOLE hit set rides along with
 			// the sample, so the narrowing decision can happen this turn
-			// (rollup.go — 27% of real searches truncate).
-			if ru := h.hitRollup(ctx, q, sc, regex); len(ru) > 0 {
+			// (rollup.go — 27% of real searches truncate). Compute it BEFORE
+			// the warning so the warning can point at it: on a security/audit
+			// query (access-control patterns, ownership) the complete grouped
+			// answer is already in this same response, and telling the agent
+			// to "raise limit= / narrow" first — without mentioning it — was
+			// measured (2026-09-02, real usage) sending the agent past it
+			// unread and toward a re-query or, worse, treating the sample as
+			// the whole picture for a correctness-critical check.
+			ru := h.hitRollup(ctx, q, sc, regex)
+			if len(ru) > 0 {
 				out["hitRollup"] = ru
+				out["warning"] = fmt.Sprintf(
+					"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not "+
+						"the full set. The graph's COMPLETE breakdown of all %d hits, grouped by "+
+						"enclosing symbol, is in hitRollup below — check it before re-querying, "+
+						"it usually answers 'where are the rest' without another call. Need every "+
+						"raw line instead of grouped counts? exhaustive=true.",
+					len(r.Hits), r.TotalHits, r.FilesMatched, r.TotalHits)
+			} else {
+				out["warning"] = fmt.Sprintf(
+					"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not the "+
+						"full set. Raise limit=, narrow with path=/glob=, or use files_only=true to "+
+						"see the spread before drawing conclusions. Need every raw line? exhaustive=true.",
+					len(r.Hits), r.TotalHits, r.FilesMatched)
 			}
 		}
 		if sc.filesOnly {
