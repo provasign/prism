@@ -242,3 +242,75 @@ func TestToolQuery_PhrasingDoesNotChangeTheResult(t *testing.T) {
 		}
 	}
 }
+
+// TestToolQuery_TestedByPointer verifies the restored test-coverage signal
+// (2026-09-02): prism_query's own tool description promises "callers and
+// covering tests", but the delivery path unconditionally dropped every
+// CategoryTest symbol (pr3493: an unrelated, lexically-task-matched test
+// earned a whole source window), and the supporting hasTestEdgeID/
+// testFilePaths maps that should have gated a SAFE version of that were
+// declared and never populated -- so the promised behavior was silently
+// dead. Fixed as a pointer only (file:line, never a body), which cannot
+// repeat the pr3493 failure since it never enters the budget/disclosure
+// pipeline at all.
+func TestToolQuery_TestedByPointer(t *testing.T) {
+	h := newDeliveryFixture(t)
+	// newDeliveryFixture's util_test.go already has TestFormatGreeting
+	// calling FormatGreeting directly -- a real verified test caller.
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task": "how does the greeting work", "terms": []string{"FormatGreeting"},
+	})
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("want map delivery, got %T", out)
+	}
+	content, _ := m["content"].(string)
+	if !strings.Contains(content, "tested by") || !strings.Contains(content, "TestFormatGreeting") {
+		t.Errorf("expected a 'tested by' pointer naming TestFormatGreeting, got:\n%s", content)
+	}
+	// Pointer only: the test's body ("if FormatGreeting(...") must not
+	// appear -- that would mean it leaked into a source window instead of
+	// staying a location-only pointer.
+	if strings.Contains(content, `if FormatGreeting("")`) {
+		t.Error("test body leaked into delivery -- this must stay pointer-only (file:line), not a source window")
+	}
+}
+
+// TestToolChangeImpact_LabelsTestCallers verifies change_impact's caller
+// list marks which callers are verified tests (isTest: true) instead of
+// silently mixing them with production call sites -- the caller data was
+// always present (change_impact never filtered test files), only the
+// distinction was missing.
+func TestToolChangeImpact_LabelsTestCallers(t *testing.T) {
+	h := newDeliveryFixture(t)
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "FormatGreeting"})
+	if err != nil {
+		t.Fatalf("change_impact: %v", err)
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("want map, got %T", out)
+	}
+	callers, _ := m["callers"].([]map[string]any)
+	if len(callers) == 0 {
+		t.Fatal("expected at least one caller")
+	}
+	found := false
+	for _, c := range callers {
+		if c["name"] == "TestFormatGreeting" {
+			found = true
+			if c["isTest"] != true {
+				t.Errorf("TestFormatGreeting caller missing isTest:true, got %v", c)
+			}
+		}
+		if c["name"] == "run" && c["isTest"] == true {
+			t.Errorf("run() is production code, must not be marked isTest: %v", c)
+		}
+	}
+	if !found {
+		t.Error("TestFormatGreeting not found among callers")
+	}
+}

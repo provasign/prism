@@ -379,6 +379,33 @@ func (c *Client) CallNeighbors(ctx context.Context, query string) ([]SymbolRecor
 	return out, nil
 }
 
+// InboundCallers returns the direct `calls` callers of query, in BOTH
+// production and test files, unfiltered by isCallNeighborTestDouble — the
+// caller decides what to keep. CallNeighbors deliberately drops every
+// _test.go/mock/fake/stub file so the call CHAIN shows real implementations;
+// this is the opposite use case, "who tests this", which needs exactly the
+// callers CallNeighbors throws away. Nothing new is indexed for this: a
+// test calling the code it exercises is an ordinary `calls` edge already
+// captured for every symbol (confirmed live, 2026-09-02: change_impact's
+// caller list already includes test callers, unfiltered, via a different
+// path -- this method gives prism_query the same access CallNeighbors
+// structurally denies it).
+func (c *Client) InboundCallers(ctx context.Context, query string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	ns, err := e.Neighbors(ctx, query, "in", groveeng.EdgeCalls)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SymbolRecord, 0, len(ns))
+	for _, n := range ns {
+		out = append(out, convertSymbol(n.Symbol))
+	}
+	return out, nil
+}
+
 // isCallNeighborTestDouble drops mock/fake/stub/test files from call neighbors so
 // the chain shows real implementations, not test doubles that share a name.
 func isCallNeighborTestDouble(path string) bool {

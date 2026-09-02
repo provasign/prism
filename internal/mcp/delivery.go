@@ -90,7 +90,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 	fmt.Fprintf(&b, "**Context for: %s**\n\n", summarize(task, 120))
 
 	// ── Anchor summary ────────────────────────────────────────────────────
-	anchors := h.renderAnchorSummary(ctx, sel.seedSyms)
+	anchors := h.renderAnchorSummary(ctx, sel.seedSyms, sel.testCallers)
 	if anchors != "" {
 		b.WriteString("**Anchors — callers (verify before editing)**\n\n")
 		b.WriteString(anchors)
@@ -260,7 +260,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 // renderAnchorSummary emits one line per anchor symbol: caller count + caller
 // files (from the typed calls graph, incoming edges only) and covering tests,
 // with an explicit warning when none exist.
-func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.SymbolRecord) string {
+func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.SymbolRecord, testCallers map[string][]grove.SymbolRecord) string {
 	var b strings.Builder
 	seen := map[string]bool{}
 	count := 0
@@ -301,6 +301,22 @@ func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.Symbo
 			b.WriteString(" — no resolved callers")
 		}
 		b.WriteString("\n")
+		// Pointer only: locations, never bodies -- prism_read/prism_lookup
+		// on the file:line for the actual assertion/mocking pattern. See
+		// selectContext's testCallers declaration for why this is safe
+		// against the pr3493 failure (unrelated test wins a whole window)
+		// that removed test delivery in the first place.
+		if tc := testCallers[a.ID]; len(tc) > 0 {
+			names := make([]string, 0, len(tc))
+			for _, c := range tc {
+				n := c.Name
+				if n == "" {
+					n = "test"
+				}
+				names = append(names, fmt.Sprintf("%s:%d (%s)", c.FilePath, c.Span.Start, n))
+			}
+			fmt.Fprintf(&b, "  tested by %d: %s\n", len(tc), joinCapped(names, 3))
+		}
 	}
 	return b.String()
 }

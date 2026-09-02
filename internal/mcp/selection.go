@@ -38,6 +38,11 @@ type selection struct {
 	graphExtra []grove.SymbolRecord
 	seeds      []grove.SymbolRecord
 	budget     int
+	// testCallers maps a seed's symbol ID to its verified test callers
+	// (real test files, doubles excluded) -- pointer-only, see the
+	// declaration in selectContext for why this never enters the
+	// budget/disclosure pipeline.
+	testCallers map[string][]grove.SymbolRecord
 	// textHits are full-text matches no indexed symbol encloses (comments,
 	// configs, docs) — the grep half of the merged search; textBackend
 	// records which engine produced them (rg/grep/native).
@@ -111,20 +116,51 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			termLower := strings.ToLower(term)
 			var nameHits, contentHits []grove.SymbolRecord
 			for _, m := range matches {
-				if strings.Contains(strings.ToLower(m.Name), termLower) ||
-					strings.Contains(strings.ToLower(m.QualifiedName), termLower) {
+				nameLower, qualLower := strings.ToLower(m.Name), strings.ToLower(m.QualifiedName)
+				nameContains := strings.Contains(nameLower, termLower) || strings.Contains(qualLower, termLower)
+				switch {
+				case nameContains && isTestFilePath(m.FilePath) && nameLower != termLower && qualLower != termLower:
+					// A test whose name merely CONTAINS the term as a
+					// substring -- the common case for any TestFoo-style
+					// naming convention, which trivially contains "Foo" --
+					// is not a deliberate ask the way an EXACT name match
+					// is (terms=["TestFoo"] still seeds normally below).
+					// Seeds are force-stamped CategoryTarget in
+					// ranking.Select, bypassing the CategoryTest delivery
+					// guard entirely, so an incidental substring match
+					// here was pr3493's exact failure (an unrelated test
+					// earning a whole source window) relocated from the
+					// candidate path -- fixed in v0.25.0 -- to the seed
+					// path, which never was (caught 2026-09-02 writing a
+					// test for the "tested by" pointer feature: terms=
+					// ["FormatGreeting"] pulled in the FULL BODY of
+					// TestFormatGreeting, purely because that name
+					// contains "FormatGreeting"). EXCLUDED outright, not
+					// merely deprioritized into contentHits -- on a small
+					// candidate set a deprioritized bucket still survives
+					// the seed cut (measured: it did, on exactly this
+					// fixture). It is still discoverable, correctly, via
+					// the new InboundCallers "tested by" pointer.
+					continue
+				case nameContains:
 					nameHits = append(nameHits, m)
-				} else {
+				case isTestFilePath(m.FilePath):
+					// Content-only match landing inside a test file's
+					// body (e.g. it calls the production function under
+					// test) -- same reasoning: never seed a test this way.
+					continue
+				default:
 					contentHits = append(contentHits, m)
 				}
 			}
 			if len(contentHits) > 3 {
 				contentHits = contentHits[:3]
 			}
-			// Prefer real implementations over test doubles among name hits, so a
-			// term like "DecryptedValues" seeds the graph on the real Service
-			// method (and expands its call chain) rather than on a mock that
-			// shares the name — which would leave the real chain out of reach.
+			// Prefer real implementations over test doubles (mock/fake/stub,
+			// non-test-file) among name hits, so a term like "DecryptedValues"
+			// seeds the graph on the real Service method (and expands its
+			// call chain) rather than on a mock that shares the name — which
+			// would leave the real chain out of reach.
 			var realHits, doubleHits []grove.SymbolRecord
 			for _, m := range nameHits {
 				if isTestDouble(m.FilePath) {
@@ -191,7 +227,25 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 		textMerge = h.mergeTextSearch(ctx, p.terms, seededIDs)
 		if len(textMerge.extraSeeds) > 0 {
-			seeds = append(seeds, filterGeneratedPrismContext(textMerge.extraSeeds)...)
+			extra := filterGeneratedPrismContext(textMerge.extraSeeds)
+			// extraSeeds are pure text hits promoted to a seed by whatever
+			// symbol encloses them -- always content-driven, never a name
+			// match, so (unlike the SearchSymbols path above) there is no
+			// "exact name" carve-out here: a test file's body mentioning a
+			// term is never a deliberate ask, only ever incidental. Same
+			// pr3493-class bug this loop's sibling exclusion fixes -- this
+			// is the second of two places a test could reach `seeds` this
+			// way (caught 2026-09-02: excluding only the SearchSymbols path
+			// was not enough, mergeTextSearch's grep pass re-added the same
+			// symbol via this list on the identical fixture).
+			kept := extra[:0]
+			for _, s := range extra {
+				if isTestFilePath(s.FilePath) {
+					continue
+				}
+				kept = append(kept, s)
+			}
+			seeds = append(seeds, kept...)
 		}
 		if len(textMerge.confirmed) > 0 {
 			// Two independent signals (symbol match + text hit) beat one —
@@ -269,6 +323,15 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	graphDist := make(map[string]int)
 	hasTestEdgeID := make(map[string]bool)
 	testFilePaths := make(map[string]bool)
+	// testCallers is pointer-only (delivery.go renders locations, never
+	// bodies): a verified `calls` edge from a real test file into a seed.
+	// Deliberately outside the budget/disclosure pipeline entirely -- the
+	// prior CategoryTest delivery path was removed (pr3493) because a
+	// lexically-task-matched test with no verified relation to the anchor
+	// earned a whole source window; a capped location list cannot repeat
+	// that failure because it never competes for budget or renders a body.
+	testCallers := make(map[string][]grove.SymbolRecord)
+	const testCallersPerSeedCap = 5
 
 	seenIDs := make(map[string]bool, len(seeds))
 	for _, s := range seeds {
@@ -300,6 +363,20 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 					if !seenIDs[nb.ID] {
 						seenIDs[nb.ID] = true
 						graphExtra = append(graphExtra, nb)
+					}
+				}
+				// Verified test callers, for the pointer line in
+				// renderAnchorSummary -- NOT added to graphExtra/candidates,
+				// see testCallers' declaration above.
+				if tc, err := h.Grove.InboundCallers(ctx, seedQuery); err == nil {
+					for _, caller := range tc {
+						if !isVerifiedTestCaller(caller.FilePath) {
+							continue
+						}
+						hasTestEdgeID[seed.ID] = true
+						if len(testCallers[seed.ID]) < testCallersPerSeedCap {
+							testCallers[seed.ID] = append(testCallers[seed.ID], caller)
+						}
 					}
 				}
 			}
@@ -439,6 +516,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		budget:      budget,
 		textHits:    textMerge.rawHits,
 		textBackend: textMerge.backend,
+		testCallers: testCallers,
 	}, nil
 }
 

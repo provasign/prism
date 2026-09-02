@@ -1035,6 +1035,21 @@ func isTestFilePath(p string) bool {
 		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/")
 }
 
+// isVerifiedTestCaller reports whether a caller found via InboundCallers is
+// a REAL test -- isTestFilePath alone is not enough, because that also
+// matches mocks/fakes/stubs living in a test-shaped path (e.g. a hand-
+// written _test.go helper that isn't itself a test function). A mock
+// calling the real implementation it wraps is not evidence a test covers
+// that implementation; only a genuine test file is.
+func isVerifiedTestCaller(path string) bool {
+	if !isTestFilePath(path) {
+		return false
+	}
+	lp := strings.ToLower(path)
+	return !strings.Contains(lp, "mock") && !strings.Contains(lp, "fake") &&
+		!strings.Contains(lp, "stub") && !strings.Contains(lp, "/testdata/")
+}
+
 func displayQN(s grove.SymbolRecord) string {
 	if s.QualifiedName != "" {
 		return s.QualifiedName

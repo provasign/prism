@@ -641,8 +641,10 @@ func toolDescription(name string) string {
 	case "prism_query":
 		return "Edit-ready context for the symbols named in terms=[...] — the ONLY retrieval key " +
 			"(task is a label): finds them, expands one hop through the call graph, adds a " +
-			"full-text pass, returns line-numbered source windows plus callers. No separate grep " +
-			"needed; do not re-read the files it shows. Size with budget= and max_files=. " +
+			"full-text pass, returns line-numbered source windows plus callers and, when a " +
+			"verified test calls the symbol, a 'tested by' pointer (file:line, not the test " +
+			"body — read it directly if you want the assertion/mocking pattern). No separate " +
+			"grep needed; do not re-read the files it shows. Size with budget= and max_files=. " +
 			"To merely locate something, use prism_search."
 	case "prism_read":
 		return "Read a file, whole or by line range (offset/limit — the `sed -n A,Bp` shape, " +
@@ -2077,6 +2079,14 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
 					entry["via"] = via
+				}
+				// Callers already include test files (a test calling the
+				// code it exercises is an ordinary `calls` edge, never
+				// specially excluded here) -- this was silent before,
+				// leaving the agent to guess from the filename which
+				// callers are production call sites and which are tests.
+				if isVerifiedTestCaller(s.FilePath) {
+					entry["isTest"] = true
 				}
 			}
 			out = append(out, entry)
