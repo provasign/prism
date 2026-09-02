@@ -207,62 +207,11 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// interleave pass produced the seed; promotion happens inside a
 			// round, so every term keeps its seed representation.
 			if len(perTermSeeds) == 1 {
-				// One term: no interleave to protect, but the plain
-				// global promotion this used to be had its own bug --
-				// discovered 2026-09-02 (django quote_name): an EXACT
-				// name/qualified-name match (graph rank 100) got pushed
-				// behind a substring match (geo_quote_name, rank 70)
-				// because mergeTextSearch's confirmation grep is capped
-				// (40 hits) and happened to surface the substring
-				// symbol's own definition lines before the exact
-				// symbol's -- five geo_quote_name overrides got
-				// "confirmed" and the real quote_name family, seeded
-				// correctly at the front by the graph, never did.
-				// Confirmation is a real signal (two independent hits
-				// beat one) but must never outrank an exact match on
-				// the term itself -- pin exact matches first, and let
-				// confirmation reorder only the remainder.
 				term := ""
 				if len(p.terms) == 1 {
 					term = strings.ToLower(p.terms[0])
 				}
-				var exact, rest []grove.SymbolRecord
-				for _, sd := range seeds {
-					if term != "" && (strings.ToLower(sd.Name) == term || strings.ToLower(sd.QualifiedName) == term) {
-						exact = append(exact, sd)
-					} else {
-						rest = append(rest, sd)
-					}
-				}
-				// The pin above holds for a REAL override/declaration
-				// family (django quote_name: 7 ties, all the same
-				// concept) but breaks when the "exact" name is a common
-				// field/attribute shared by many unrelated types (a2a-
-				// python JSONRPC: 23 Pydantic models each declaring a
-				// boilerplate `jsonrpc` field) -- exactness stops being
-				// a meaningful signal at that point, and blindly pinning
-				// it buried two symbols confirmation had correctly
-				// promoted (JsonRpcTransport, A2AClientJSONRPCError,
-				// each independently referenced elsewhere), dropping
-				// recall 0.222 -> 0.111 on the swebench oracle bed
-				// (2026-09-02). No fixed priority over {exact,confirmed}
-				// satisfies both cases -- this is a tuned compromise,
-				// not a proof, and the threshold may need revisiting on
-				// more data.
-				const exactTieLimit = 10
-				if len(exact) > exactTieLimit {
-					exact, rest = nil, seeds
-				}
-				confirmed := make([]grove.SymbolRecord, 0, len(rest))
-				var unconfirmed []grove.SymbolRecord
-				for _, sd := range rest {
-					if textMerge.confirmed[sd.ID] {
-						confirmed = append(confirmed, sd)
-					} else {
-						unconfirmed = append(unconfirmed, sd)
-					}
-				}
-				seeds = append(append(exact, confirmed...), unconfirmed...)
+				seeds = promoteSingleTermSeeds(seeds, textMerge.confirmed, term)
 			} else {
 				roundOf := make(map[string]int, len(seeds))
 				for i, s := range seeds {
@@ -491,6 +440,76 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		textHits:    textMerge.rawHits,
 		textBackend: textMerge.backend,
 	}, nil
+}
+
+// promoteSingleTermSeeds reorders seeds for the single-term case: two
+// independent signals (symbol match + text hit) beat one, but confirmation
+// must never outrank an exact match by too wide a margin. A pure function
+// (no grep, no grove) so its exact/confirmed tier boundaries can be unit
+// tested directly instead of through real text-search timing/ordering,
+// which is NOT portable across backends -- see the git history of this
+// function's tests for a CI failure (2026-09-02) caused by exactly that:
+// a fixture tuned against rg's --sort path determinism broke under the
+// grep fallback CI runners actually use (neither GitHub-hosted ubuntu nor
+// macos images ship ripgrep).
+//
+// Two real, opposite-direction bugs shaped this function (2026-09-02):
+//
+//  1. Plain global confirmation-promotion (the original design) could push
+//     an EXACT name/qualified-name match (graph rank 100) behind a mere
+//     substring match (graph rank 70) purely because mergeTextSearch's
+//     confirmation grep is capped (40 hits) and happened to surface the
+//     substring symbol's definition lines before the exact symbol's --
+//     django BaseDatabaseOperations.quote_name: geo_quote_name (5 unrelated
+//     GIS methods, substring match) got confirmed and promoted ahead of
+//     the real quote_name family (7 ties, exact match), which never got a
+//     chance. Fix: pin exact matches ahead of confirmed-but-inexact ones.
+//
+//  2. That pin, applied unconditionally, is itself wrong when "exact" is a
+//     common field/attribute name shared by many unrelated types rather
+//     than a real declaration/override family: a2aproject/a2a-python-414,
+//     term "JSONRPC" -- 23 Pydantic models each declare a boilerplate
+//     `jsonrpc` field (23 "exact" ties, not one concept), and pinning them
+//     all ahead buried two symbols confirmation had correctly promoted
+//     (JsonRpcTransport, A2AClientJSONRPCError, each independently
+//     referenced elsewhere) under the boilerplate. Oracle recall dropped
+//     0.222 -> 0.111 on prism's swebench query_oracle bed before this was
+//     caught by rerunning that existing, deterministic (no agent noise)
+//     benchmark -- a single hand-picked repro is not enough evidence for a
+//     ranking change like this one.
+//
+// No fixed priority order over {exact, confirmed} satisfies both cases at
+// once (django needs exact-but-unconfirmed to beat confirmed-inexact;
+// a2a-414 needs the opposite) -- exactTieLimit is a tuned compromise
+// between "few ties = a real family, exactness is the strong signal" and
+// "many ties = a name collision, confirmation is the strong signal", not a
+// proof, and may need revisiting on more data.
+func promoteSingleTermSeeds(seeds []grove.SymbolRecord, confirmed map[string]bool, term string) []grove.SymbolRecord {
+	if len(confirmed) == 0 {
+		return seeds
+	}
+	var exact, rest []grove.SymbolRecord
+	for _, sd := range seeds {
+		if term != "" && (strings.ToLower(sd.Name) == term || strings.ToLower(sd.QualifiedName) == term) {
+			exact = append(exact, sd)
+		} else {
+			rest = append(rest, sd)
+		}
+	}
+	const exactTieLimit = 10
+	if len(exact) > exactTieLimit {
+		exact, rest = nil, seeds
+	}
+	confirmedSyms := make([]grove.SymbolRecord, 0, len(rest))
+	var unconfirmed []grove.SymbolRecord
+	for _, sd := range rest {
+		if confirmed[sd.ID] {
+			confirmedSyms = append(confirmedSyms, sd)
+		} else {
+			unconfirmed = append(unconfirmed, sd)
+		}
+	}
+	return append(append(exact, confirmedSyms...), unconfirmed...)
 }
 
 func maxInt(a, b int) int {
