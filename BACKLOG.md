@@ -210,8 +210,14 @@ grove 6a5b4873 + prism 79e0275 (file= disambiguator + ambiguityNote), 8 in
 f4f7460 (verify removed_symbols fast path). Item 9's core (breaking sites
 incl. tests, keyed by file) is substantially covered by 4 + the isTest
 caller labels (v0.66.0); a dedicated delete-mode remains unbuilt and can
-wait for demand. Item 10 (residency A/B) is deliberately open — it is a
-benchmark question, queued for the next benchmark phase.
+wait for demand. Item 10 (residency A/B) RESOLVED
+2026-09-03: 8-cell paired A/B (4 tasks x 2 reps, all-alwaysLoad
+experiment build vs released deferred v0.67.0) — full residency raises
+prism call VOLUME on every engaging task but recall never improves and
+cost is higher on every task, including one with zero prism calls (pure
+schema overhead + variance). The deferred design + imperative ToolSearch
+steering stands; do not reverse the v0.65.0 residency removal without
+new evidence of a different shape.
 
 Source: 4-analyst sweep of 30 wide-bed session transcripts (tasks-wide,
 sonnet, prism_plus arm; research/harness/runs/wide) after the v0.66.0
