@@ -331,3 +331,60 @@ Two items:
    denial without an in-band reason does not steer — it gets confabulated
    around, including via subagent escape hatches. Any future routing
    enforcement must carry its explanation inside the denial itself.
+
+---
+
+# Addendum 2 — v0.67.0 fleet + residency transcript mining, 2026-09-03
+
+Source: 2-analyst sweep of the fresh v0.67.0 fleet and residency-A/B
+transcripts (24 cells, all post-dating every fix above). The frontier moved:
+engagement is solved, dead ends are recoverable — the new axis is the
+MARGINAL VALUE OF THE NTH CALL.
+
+## 11. Opening-inventory steering (amplify the measured win)
+
+e826's first-ever ceiling break (0.3 -> 0.35, AND 36 turns/$0.72 vs
+baseline 61/$0.95) was causally ONE call: prism_search(query="zookeeper",
+scope=text, exhaustive=true, files_only=true) — a complete file inventory
+whose api/curator4/curator5 SPI triangle no artifact-name grep ever
+produced (vi304o8a #2; the agent cat'd exactly those three paths at #6 and
+edited the SPI file at #29). The same call REPLACED the iterative
+discovery phase (one Read in the whole run). Today's steering never
+mentions this opening. Fix: one steering line — wide removal/refactor
+task? open with an exhaustive files_only inventory of the concept term.
+
+## 12. Hypothesis ledger + scope note (cap the confabulation loss)
+
+The $3.09/recall-0.0 cell (ms-vfs18, unanswerable "triple parameter"
+task): the v0.66.0 retry guidance is INNOCENT — 3 firings, ~3 turns, each
+followed by an intelligent pivot, zero broaden-retry loops. 59% of cost
+($1.82) came AFTER search ended: the agent confabulated a reading
+("triple parameter" = the 3-arg constructor, a pun with zero evidentiary
+support) and paid to make the fabricated change build (7 edits, 4 Maven
+compiles, cascading call-site fixes). The preventing signal existed in
+prism's own session by the halfway mark: 5 same-stem negative searches
+(Tuple3/Triple</ImmutableTriple/...) + 5 change_impact results all
+"completeness: closed" with <=6 sites — contradicting the task's "the
+change is deliberately wide" head-on.
+
+Fix: session-scoped hypothesis ledger. Track (a) consecutive same-stem
+empty results, (b) closed-small change_impact results. At >=3 of BOTH,
+append a scope note to the next result — additive, never a stop, on top
+of the existing retry guidance: "N negatives on stem X and M closed
+impact results with <=K sites — nothing here has a wide blast radius
+matching your terms; if the task says wide, your READING of the term is
+probably wrong: restate the term, don't re-search it. Searched stems so
+far: ...". Dual threshold verified against both cells: the benign
+19-call cell (ddtb4dv8, one change_impact only) never triggers; the
+pathological cell trips at call 16 of 25 — before the confabulation
+pivot at the transcript's line 264.
+
+## 13. Redundant-call echo (small)
+
+ddtb4dv8: ~7 of 19 prism calls re-asked answered questions — four
+sequential prism_read windows of one 863-line file; a prism_search for a
+line a previous read had already displayed; two empty searches of the
+same question with different punctuation one turn apart. The "searched
+stems so far" line from item 12 covers the search half nearly for free;
+windowed-read dedup can wait for demand (~$0.30/cell, the cost lives in
+the edit loop, not discovery).
