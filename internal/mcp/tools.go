@@ -1197,6 +1197,16 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		if termNote != "" {
 			out["note"] = termNote
 		}
+		allEmpty := len(results) > 0
+		for _, r := range results {
+			if !searchResultEmpty(r) {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			h.attachEmptySearchGuidance(ctx, out, queries)
+		}
 		return out, nil
 	}
 
@@ -1207,7 +1217,100 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	if termNote != "" {
 		out["note"] = termNote
 	}
+	if searchResultEmpty(out) {
+		h.attachEmptySearchGuidance(ctx, out, queries)
+	}
 	return out, nil
+}
+
+// searchResultEmpty reports whether one searchOne result carries no hits of
+// any shape (symbols, text hits, or files).
+func searchResultEmpty(m map[string]any) bool {
+	if m == nil {
+		return true
+	}
+	return len(anySlice(m["symbols"])) == 0 &&
+		len(anySlice(m["textHits"])) == 0 &&
+		len(anySlice(m["files"])) == 0
+}
+
+// attachEmptySearchGuidance annotates an all-empty search with what to do
+// NEXT, at the moment it matters -- the same in-band-guidance pattern as the
+// truncation warning's hitRollup pointer.
+//
+// Why: transcript analysis (2026-09-02, grove__b40b72d94e wide-bed cell)
+// found the exact moment an agent abandoned prism for the rest of a task --
+// one search where every guessed term (punctuation-laden call patterns like
+// "e.Query(") came back empty. It never called prism again; 7 more files
+// were then found by manual grep at ~2x the turns. The empty result was
+// honest but terminal: nothing in it distinguished "these exact strings
+// don't exist -- broaden and retry" from "this tool can't help here". Terms
+// that HAD matched minutes earlier were never retried.
+//
+// The annotation does two things: says explicitly that empty means the
+// TERMS missed (not that the tool is exhausted), and -- when the symbol
+// index has near-miss candidates for the identifier tokens inside the
+// failed terms -- lists them, so the retry is one obvious step instead of
+// a fresh guess.
+func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]any, terms []string) {
+	guidance := "all terms returned nothing — that means these exact strings don't exist, " +
+		"NOT that the tool is done: retry with a broader/shorter term (drop punctuation and " +
+		"qualifiers, e.g. \"e.Query(\" -> \"Query\"), or reuse a term that matched earlier."
+	if dym := h.nearMissSymbols(ctx, terms); len(dym) > 0 {
+		out["didYouMean"] = dym
+		guidance += " Closest indexed symbols to your terms are in didYouMean."
+	}
+	if existing, _ := out["note"].(string); existing != "" {
+		out["note"] = existing + " — " + guidance
+	} else {
+		out["note"] = guidance
+	}
+}
+
+// nearMissSymbols extracts the identifier tokens from failed search terms
+// (dropping the punctuation that most often causes a zero-hit grep pattern)
+// and asks the symbol index for their closest matches. Best-effort: no
+// Grove, no tokens, or no matches all yield nil.
+func (h *Handler) nearMissSymbols(ctx context.Context, terms []string) []string {
+	if h.Grove == nil {
+		return nil
+	}
+	ident := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{2,}`)
+	seenTok := map[string]bool{}
+	seenOut := map[string]bool{}
+	var out []string
+	for _, t := range terms {
+		var longest string
+		for _, tok := range ident.FindAllString(t, -1) {
+			if len(tok) > len(longest) {
+				longest = tok
+			}
+		}
+		lt := strings.ToLower(longest)
+		if longest == "" || seenTok[lt] {
+			continue
+		}
+		seenTok[lt] = true
+		ms, err := h.Grove.SearchSymbols(ctx, longest, 3)
+		if err != nil {
+			continue
+		}
+		for _, m := range ms {
+			q := m.QualifiedName
+			if q == "" {
+				q = m.Name
+			}
+			if q == "" || seenOut[q] {
+				continue
+			}
+			seenOut[q] = true
+			out = append(out, fmt.Sprintf("%s (%s:%d)", q, m.FilePath, m.Span.Start))
+			if len(out) >= 8 {
+				return out
+			}
+		}
+	}
+	return out
 }
 
 // searchOne is the single-term search, unchanged in behaviour and shape from
@@ -2064,6 +2167,64 @@ func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, err
 	return map[string]any{"recorded": entry, "totalRatings": len(h.feedback)}, nil
 }
 
+// enrichNoMethodError turns grove's terminal "type X declares no method Y"
+// into a correctable one: the members X actually declares (from prism's own
+// index) plus the one failure mode measured to cause it in practice --
+// querying AFTER editing/deleting the member instead of before. Returns nil
+// when nothing useful can be added (unparseable query, type not found), so
+// the caller falls back to the original error unchanged.
+func (h *Handler) enrichNoMethodError(ctx context.Context, query string, orig error) error {
+	q := query
+	if i := strings.IndexByte(q, '('); i >= 0 {
+		q = q[:i]
+	}
+	dot := strings.LastIndexByte(q, '.')
+	if dot <= 0 {
+		return nil
+	}
+	typeName := strings.TrimSpace(q[:dot])
+	if typeName == "" || h.Grove == nil {
+		return nil
+	}
+	ms, err := h.Grove.SearchSymbols(ctx, typeName, 10)
+	if err != nil {
+		return nil
+	}
+	var typeFile string
+	for _, m := range ms {
+		if m.Name == typeName {
+			typeFile = m.FilePath
+			break
+		}
+	}
+	if typeFile == "" {
+		return nil
+	}
+	syms, err := h.Grove.FileSymbols(ctx, typeFile)
+	if err != nil {
+		return nil
+	}
+	prefix := typeName + "."
+	var members []string
+	for _, s := range syms {
+		if strings.HasPrefix(s.QualifiedName, prefix) {
+			members = append(members, strings.TrimPrefix(s.QualifiedName, prefix))
+			if len(members) >= 12 {
+				break
+			}
+		}
+	}
+	if len(members) == 0 {
+		return fmt.Errorf("%w — if you already edited or deleted this member, that is why: "+
+			"change-impact reads the CURRENT index, so it must run BEFORE the edit; "+
+			"query the new name, or re-run after re-indexing", orig)
+	}
+	return fmt.Errorf("%w — %s currently declares: %s. If you already edited or deleted "+
+		"the member you meant, that is why: change-impact reads the CURRENT index, so it "+
+		"must run BEFORE the edit",
+		orig, typeName, strings.Join(members, ", "))
+}
+
 func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (any, error) {
 	query := stringArg(args, "query", "")
 	if query == "" {
@@ -2071,6 +2232,20 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	r, err := h.Grove.ChangeImpact(ctx, query)
 	if err != nil {
+		// "declares no method" is the dead-end that abandons agents:
+		// transcript analysis (2026-09-02, grove wide-bed cell) caught an
+		// agent asking change_impact about a method it had ALREADY deleted
+		// two edits earlier (the steering says before-edit; it called it
+		// after), getting this error, and never touching prism again for
+		// the task's remaining 7 files. The error was honest but terminal.
+		// Make the retry obvious in-band: list what the type actually
+		// declares (from prism's own index, no grove change needed) and
+		// name the already-edited-it failure mode explicitly.
+		if strings.Contains(err.Error(), "declares no method") {
+			if enriched := h.enrichNoMethodError(ctx, query, err); enriched != nil {
+				return nil, enriched
+			}
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_change_impact")

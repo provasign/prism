@@ -314,3 +314,45 @@ func TestToolChangeImpact_LabelsTestCallers(t *testing.T) {
 		t.Error("TestFormatGreeting not found among callers")
 	}
 }
+
+// TestToolChangeImpact_NoMethodErrorIsCorrectable: grove's "type X declares
+// no method Y" was measured (2026-09-02 transcript analysis) as the dead end
+// that made an agent abandon prism for a whole task -- it had deleted the
+// member two edits earlier, asked change_impact about it AFTER (steering
+// says before), got the terse error, and never called prism again. The
+// enriched error names the members the type actually declares and states
+// the query-after-edit failure mode explicitly, so the retry is one obvious
+// step instead of a dead end.
+func TestToolChangeImpact_NoMethodErrorIsCorrectable(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "svc.go"), []byte(`package p
+
+type Service struct{}
+
+func (s *Service) Start() {}
+
+func (s *Service) Stop() {}
+`), 0o644)
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "Service.Nope"})
+	if err == nil {
+		t.Fatal("Service.Nope should not resolve")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "BEFORE the edit") {
+		t.Errorf("no-method error must name the query-after-edit failure mode, got: %s", msg)
+	}
+	// The members the type ACTUALLY declares make the retry one obvious step.
+	if !strings.Contains(msg, "Start") || !strings.Contains(msg, "Stop") {
+		t.Errorf("no-method error should list the type's real members, got: %s", msg)
+	}
+}

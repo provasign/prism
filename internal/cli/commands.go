@@ -2721,6 +2721,7 @@ func printTextOutput(m map[string]any) {
 		if note, _ := m["note"].(string); note != "" {
 			fmt.Println("// " + note)
 		}
+		printDidYouMean(m)
 		for _, g := range asSliceAny(groups) {
 			gm, ok := g.(map[string]any)
 			if !ok {
@@ -2795,6 +2796,7 @@ func printTextOutput(m map[string]any) {
 					fmt.Println("// " + s)
 				}
 			}
+			printDidYouMean(m)
 			// Graph rollup of a truncated search's FULL hit set (rollup.go) —
 			// same rendering as the MCP text surface.
 			if ru, _ := m["hitRollup"].([]any); len(ru) > 0 {
@@ -3088,6 +3090,19 @@ func printSiteGroup(label string, v any) {
 
 // printNotes emits the advisory keys (completeness, warnings, notes) that
 // carry the caveats a caller must not silently drop.
+// printDidYouMean renders an empty search's near-miss symbol candidates —
+// the retry pointer attachEmptySearchGuidance's note refers to.
+func printDidYouMean(m map[string]any) {
+	dym := asSliceAny(m["didYouMean"])
+	if len(dym) == 0 {
+		return
+	}
+	fmt.Println("// closest indexed symbols:")
+	for _, d := range dym {
+		fmt.Printf("//   %v\n", d)
+	}
+}
+
 func printNotes(m map[string]any, keys ...string) {
 	for _, k := range keys {
 		switch v := m[k].(type) {

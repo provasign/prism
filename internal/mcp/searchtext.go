@@ -28,7 +28,7 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"files": true, "fileCount": true, "rejectedPaths": true,
 		"timedOut": true, "resolvedNote": true, "results": true,
 		"failedTerms": true, "note": true, "query": true,
-		"symbols": true, "hitRollup": true,
+		"symbols": true, "hitRollup": true, "didYouMean": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -54,6 +54,12 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 
 	if note, _ := out["note"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if dym := anySlice(out["didYouMean"]); len(dym) > 0 {
+		b.WriteString("// closest indexed symbols:\n")
+		for _, d := range dym {
+			fmt.Fprintf(&b, "//   %v\n", d)
+		}
 	}
 	for _, f := range anySlice(out["failedTerms"]) {
 		fmt.Fprintf(&b, "// failed: %v\n", f)

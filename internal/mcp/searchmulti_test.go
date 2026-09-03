@@ -652,3 +652,54 @@ func TestToolSearch_RollupOnlyKeepsSampleWithoutRollup(t *testing.T) {
 		t.Error("rollup_only must not drop textHits when there is no rollup to answer with instead")
 	}
 }
+
+// TestToolSearch_AllEmptyCarriesRetryGuidance: transcript analysis
+// (2026-09-02, grove wide-bed cell) caught the moment an agent abandoned
+// prism for an entire task -- one multi-term search where every guessed
+// term (punctuation-laden call patterns) returned empty. The result was
+// honest but terminal: nothing distinguished "these exact strings don't
+// exist, broaden and retry" from "this tool can't help here", and the
+// agent chose the second reading, reverting to manual grep for 7 more
+// files at ~2x the turns. An all-empty search must say what to do next
+// and, when the index has near-miss candidates for the terms' identifier
+// tokens, name them.
+func TestToolSearch_AllEmptyCarriesRetryGuidance(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": []string{"e.AlphaZZZ(", "cg.BetaZZZ("}, "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	note, _ := m["note"].(string)
+	if !strings.Contains(note, "NOT that the tool is done") {
+		t.Errorf("all-empty multi-term search must carry retry guidance, got note=%q", note)
+	}
+	// Single-term shape too.
+	out, err = h.Invoke("prism_search", map[string]any{
+		"query": "ZZZdoesNotExistZZZ", "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = out.(map[string]any)
+	note, _ = m["note"].(string)
+	if !strings.Contains(note, "NOT that the tool is done") {
+		t.Errorf("all-empty single-term search must carry retry guidance, got note=%q", note)
+	}
+}
+
+// TestToolSearch_PartialMatchesCarryNoRetryGuidance: the guidance is for
+// the all-empty dead end only -- a search where any term matched must not
+// be second-guessed.
+func TestToolSearch_PartialMatchesCarryNoRetryGuidance(t *testing.T) {
+	h := newTextSearchHandler(t)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": []string{"Alpha", "ZZZnotfoundZZZ"}, "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if note, _ := m["note"].(string); strings.Contains(note, "NOT that the tool is done") {
+		t.Errorf("a search with real matches must not carry the all-empty guidance, got note=%q", note)
+	}
+}
