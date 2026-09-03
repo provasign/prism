@@ -199,3 +199,99 @@ after parity, adoption should be observed before being forced.
 - **Measure the slice before building for it.** The reverted injection was
   aimed at a real pattern — 78% of searches are symbol-shaped — that turned
   out to sit inside a 7.7% slice.
+
+---
+
+# Addendum — wide-bed transcript mining, 2026-09-02
+
+Source: 4-analyst sweep of 30 wide-bed session transcripts (tasks-wide,
+sonnet, prism_plus arm; research/harness/runs/wide) after the v0.66.0
+fixes landed — hunting friction NOT already fixed (ToolSearch hop wording,
+empty-search abandonment, change_impact-after-edit, test noise in
+delivery). Every item below is anchored to specific transcript call
+numbers; the transcripts live under ~/.claude/projects/*wide-*.
+
+## Tier 1 — bugs (small, no design risk)
+
+1. **prism_verify accepts unknown params silently.** b8mjxuh6 #26: agent
+   passed `query="MetadataInfo.ServiceInfo.getMethodParameter"` — schema
+   has only `base` — the arg was ignored and the agent read the whole-repo
+   verdict as if symbol-scoped. Fix: reject/warn on unknown argument keys
+   (all tools, one shared validator).
+
+2. **Cached marker contradicts stale warning and elides the matched
+   line.** 6rqii7zt #39: hit rendered as `pkg/grove/grove.go: 260 [cached —
+   content already delivered this session]`, matched line text dropped;
+   #50 then warned the SAME file was stale and must be re-read. Fix: never
+   elide the matched line; suppress the cached marker for stale-flagged
+   files.
+
+3. **verify output drowned by per-symbol deletion lines.** 6rqii7zt #88:
+   13.9k chars, ~30 lines of `... removed with file
+   internal/embeddings/model2vec/*.go`; agent dismissed all of it in one
+   sentence. Fix: collapse whole-file/whole-dir deletions to one line
+   ("internal/embeddings/ deleted — 34 symbols").
+
+## Tier 2 — quality fixes, byte-measurable before/after
+
+4. **change_impact said "completeness: closed" while missing Java TEST
+   call sites.** b8mjxuh6 #8: `MetadataInfo.ServiceInfo.getMethodParameter`
+   → callers (2), closed — but MetadataInfoTest.java:100/118 call it, the
+   agent spent 4 extra calls (#15-#19) re-deriving them and edited both
+   (#23/#24). A wrong completeness claim on the flagship guarantee.
+   Engine-level (grove): Java test-caller resolution. HIGHEST PRIORITY of
+   this tier on principle.
+
+5. **change_impact merges same-named distinct symbols.** 6rqii7zt #37:
+   `Engine.Query` returned declarations(2) merging
+   internal/embeddings/model2vec.go:194 with pkg/grove/grove.go:260, and
+   13 callers all belonging to the embeddings one; agent distrusted the
+   result and re-derived manually (#38/#39). Also b8mjxuh6 #8 (two
+   overloads listed as one anchor). Fix: `file=` disambiguator (lookup
+   already has one) + split output per declaration when packages/signatures
+   differ.
+
+6. **Text search ranks build/doc noise above source.** upai2v1g/b8mjxuh6:
+   the Dubbo "triple" cell burned 44.8kB across 11 prism calls for ~1.2kB
+   of demonstrated value — pom.xml/README/.licenserc hits ahead of any
+   .java source; every call was followed by a manual grep of the same
+   term. Fix: rank source files first, collapse non-source to a counted
+   group. Measure: bytes-to-first-source-hit on the same transcripts'
+   queries.
+
+7. **prism_query spends budget on zero-signal anchors.** upai2v1g #93:
+   22.5kB delivery, 3 of 4 anchors had "no resolved callers" AND no
+   term-name match (generic `triple`/`metadata` field hits), full
+   license-header dump of an untouched file; nothing it returned was used.
+   Fix: drop anchors with no callers and no name match from source
+   windows; spend the budget on the anchor that resolved.
+
+## Tier 3 — workflow features (the $8-cell turn sinks)
+
+8. **Mid-loop residual-reference checking.** ji5zetwy + pgl2edn8 (~210
+   calls each): ~45-48 Bash greps per session (~22% of ALL calls) re-check
+   the same 8-12 removed identifiers ~15 times — hand-rolled verify.
+   prism_verify ran once, at call 210 of 212. Fix: verify accepts
+   `removed_symbols=[...]` and reports remaining references cheaply
+   mid-loop; steering surfaces it as the loop check, not the exit gate.
+
+9. **Delete-mode impact.** Same cells: 30 test-file edits discovered one
+   compiler error at a time; `impact(symbol, mode=delete)` returning every
+   breaking site keyed by file (tests included — see item 4) would have
+   fronted the whole list. Overlaps 4; do 4 first.
+
+## Tier 4 — strategic (needs an A/B, reverses a v0.65.0 decision)
+
+10. **The deferral cliff survives the imperative wording.** krjw0y3d +
+    jqqw5b3d (161/170 calls, ZERO prism, zero ToolSearch): both received
+    the fixed "Before your first tool call..." imperative and ignored it at
+    turn 0 — first action was a reflex grep; neither session emitted a
+    single thinking block, so no deliberation step existed for the
+    instruction to win. Wording is exhausted. Remaining lever is
+    structural: all-tools alwaysLoad (the all-resident v0.55.10 cells were
+    the highest-engagement of the week: 11-17 calls/cell) at ~2k
+    tokens/session schema cost. Needs a paired A/B on the wide bed —
+    engagement rate AND net cost — before reversing the residency removal.
+
+Out of scope, noted: cwd-loss churn in Bash (harness, not prism);
+README-prose reconciliation (prism indexes symbols, not prose).
