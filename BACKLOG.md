@@ -204,6 +204,15 @@ after parity, adoption should be observed before being forced.
 
 # Addendum — wide-bed transcript mining, 2026-09-02
 
+**Status (same day):** items 1-8 SHIPPED — 1-3 in prism 0f32d14, 6-7 in
+7ce6098, 4 in grove dce6cd75 (Java package scope spans source roots), 5 in
+grove 6a5b4873 + prism 79e0275 (file= disambiguator + ambiguityNote), 8 in
+f4f7460 (verify removed_symbols fast path). Item 9's core (breaking sites
+incl. tests, keyed by file) is substantially covered by 4 + the isTest
+caller labels (v0.66.0); a dedicated delete-mode remains unbuilt and can
+wait for demand. Item 10 (residency A/B) is deliberately open — it is a
+benchmark question, queued for the next benchmark phase.
+
 Source: 4-analyst sweep of 30 wide-bed session transcripts (tasks-wide,
 sonnet, prism_plus arm; research/harness/runs/wide) after the v0.66.0
 fixes landed — hunting friction NOT already fixed (ToolSearch hop wording,
