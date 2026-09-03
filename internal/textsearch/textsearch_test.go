@@ -2,6 +2,7 @@ package textsearch
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -365,5 +366,43 @@ func TestSearch_ContextIdenticalAcrossBackends(t *testing.T) {
 	// context, to confirm they agree on the same file/line.
 	if viaBackend.Hits[0].File != viaNative.Hits[0].File || viaBackend.Hits[0].Line != viaNative.Hits[0].Line {
 		t.Errorf("backend and native disagree on the hit: %+v vs %+v", viaBackend.Hits[0], viaNative.Hits[0])
+	}
+}
+
+// TestSearchRanksSourceFirst: BACKLOG addendum #6 (Dubbo "triple",
+// 2026-09-02) — the backend's --sort path order let early-sorting
+// non-source trees (.changelog-archive, .licenserc.yaml, pom.xml, README)
+// consume the entire hit cap before any code was reached; 11 consecutive
+// searches delivered ~44.8kB of manifest noise and the agent re-ran every
+// one as a manual grep. Search now over-fetches past the cap and delivers
+// source-extension files first (stable within each group).
+func TestSearchRanksSourceFirst(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Alphabetically-early noise, many matches.
+	var noise strings.Builder
+	for i := 0; i < 30; i++ {
+		fmt.Fprintf(&noise, "needle mention %d in changelog\n", i)
+	}
+	write("AAA-CHANGELOG.md", noise.String())
+	write("BBB.licenserc.yaml", "needle: license config\nneedle2: more\n")
+	// Late-sorting source file with the real matches.
+	write("zzz_source.go", "package p\n\n// needle\nfunc Needle() { /* needle */ }\n")
+
+	r := Search(context.Background(), dir, "needle", Options{MaxHits: 5, MaxPerFile: 20})
+	if len(r.Hits) == 0 {
+		t.Fatal("no hits")
+	}
+	if got := r.Hits[0].File; got != "zzz_source.go" {
+		files := make([]string, 0, len(r.Hits))
+		for _, h := range r.Hits {
+			files = append(files, h.File)
+		}
+		t.Errorf("first hit should be the source file, got %q (order: %v)", got, files)
 	}
 }

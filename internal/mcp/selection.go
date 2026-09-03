@@ -43,6 +43,10 @@ type selection struct {
 	// declaration in selectContext for why this never enters the
 	// budget/disclosure pipeline.
 	testCallers map[string][]grove.SymbolRecord
+	// contentOnlySeeds: seed IDs matched only by body content, never by
+	// name — delivered at signature disclosure, not full windows (see the
+	// declaration in selectContext).
+	contentOnlySeeds map[string]bool
 	// textHits are full-text matches no indexed symbol encloses (comments,
 	// configs, docs) — the grep half of the merged search; textBackend
 	// records which engine produced them (rg/grep/native).
@@ -84,6 +88,16 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	}
 	var seeds []grove.SymbolRecord
 	var textMerge textMergeResult
+	// contentOnlySeeds marks seeds whose only claim is that a term appears
+	// somewhere in their BODY (RawText), not in their name — a license
+	// header, a doc comment, an incidental mention. They stay seeds (the
+	// mention may matter) but must not earn full source windows: measured
+	// 2026-09-02 (BACKLOG addendum #7, upai2v1g #93), a 22.5kB delivery
+	// spent most of its budget dumping the full license-headed body of a
+	// file whose only connection to the task was a content match, and
+	// nothing it returned was ever used. Demoted to signature disclosure
+	// at delivery.
+	contentOnlySeeds := map[string]bool{}
 
 	if len(p.terms) > 0 {
 		// Term-seeded retrieval: search for each agent-supplied term and union
@@ -151,6 +165,21 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 					continue
 				default:
 					contentHits = append(contentHits, m)
+					// Demotion is decided separately from bucket routing:
+					// a FILE PATH match (term "jsonrpc_app.py" naming the
+					// file) is a deliberate ask and keeps full disclosure,
+					// but must NOT join nameHits — the first attempt did
+					// that and a term like "__init__.py" flooded the seed
+					// order with every package's file, collapsing
+					// oracle-terms recall on two cells. Routing stays
+					// name/qual-only; only the disclosure decision is
+					// path-aware. (Both directions measured 2026-09-02 on
+					// the query oracle bed: demoting path matches 0.588 ->
+					// 0.335; promoting them into nameHits broke two cells
+					// the other way.)
+					if !strings.Contains(strings.ToLower(m.FilePath), termLower) {
+						contentOnlySeeds[m.ID] = true
+					}
 				}
 			}
 			if len(contentHits) > 3 {
@@ -242,6 +271,14 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			for _, s := range extra {
 				if isTestFilePath(s.FilePath) {
 					continue
+				}
+				// extraSeeds are content-driven BY CONSTRUCTION (a grep hit
+				// inside the symbol's body promoted it) — unless the symbol
+				// also name-matches a term, it gets the same signature-level
+				// demotion as SearchSymbols content hits. This was the path
+				// the upai2v1g #93 license-header dump actually took.
+				if !seedNameMatchesAnyTerm(s, p.terms) {
+					contentOnlySeeds[s.ID] = true
 				}
 				kept = append(kept, s)
 			}
@@ -516,7 +553,8 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		budget:      budget,
 		textHits:    textMerge.rawHits,
 		textBackend: textMerge.backend,
-		testCallers: testCallers,
+		testCallers:      testCallers,
+		contentOnlySeeds: contentOnlySeeds,
 	}, nil
 }
 
@@ -595,4 +633,20 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// seedNameMatchesAnyTerm reports whether a symbol's name or qualified name
+// contains any of the caller's terms — the distinction between a seed the
+// caller effectively asked for by name and one that only content-matched.
+func seedNameMatchesAnyTerm(s grove.SymbolRecord, terms []string) bool {
+	nameLower, qualLower := strings.ToLower(s.Name), strings.ToLower(s.QualifiedName)
+	pathLower := strings.ToLower(s.FilePath)
+	for _, t := range terms {
+		tl := strings.ToLower(t)
+		if tl != "" && (strings.Contains(nameLower, tl) || strings.Contains(qualLower, tl) ||
+			strings.Contains(pathLower, tl)) {
+			return true
+		}
+	}
+	return false
 }

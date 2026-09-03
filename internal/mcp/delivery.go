@@ -107,6 +107,15 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		if p.Category == ranking.CategoryTest {
 			continue
 		}
+		// Content-only seeds (term matched the BODY, never the name — a
+		// license header, a doc comment) get signature disclosure, not a
+		// full window: measured (BACKLOG addendum #7) a full-body dump of
+		// a content-matched file spent most of a 22.5kB delivery on code
+		// that was never used. The signature line keeps the pointer; the
+		// body is one prism_lookup away if the mention actually matters.
+		if p.Disclosure == ranking.DisclosureFull && sel.contentOnlySeeds[p.Symbol.ID] {
+			p.Disclosure = ranking.DisclosureSignature
+		}
 		picked = append(picked, p)
 	}
 	files := groupPickedByFile(picked)
@@ -401,9 +410,21 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 	for _, w := range wins {
 		covered += w.end - w.start + 1
 	}
-	wholeFile := len(lines) <= wholeFileLines ||
+	// The whole-file escape never applies to a file whose every pick is
+	// signature-level: those are demoted content-only seeds (see
+	// deliverSource), and collapsing to the whole file would undo the
+	// demotion for exactly the small files where the license-header-dump
+	// waste was measured (BACKLOG addendum #7).
+	allSignature := len(fg.symbols) > 0
+	for _, ps := range fg.symbols {
+		if ps.Disclosure == ranking.DisclosureFull {
+			allSignature = false
+			break
+		}
+	}
+	wholeFile := !allSignature && (len(lines) <= wholeFileLines ||
 		(len(lines) <= wholeFileMaxLines &&
-			float64(covered) >= wholeFileFraction*float64(len(lines)))
+			float64(covered) >= wholeFileFraction*float64(len(lines))))
 	if wholeFile {
 		wins = []lineWindow{{1, len(lines)}}
 	}

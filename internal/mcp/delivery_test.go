@@ -356,3 +356,59 @@ func (s *Service) Stop() {}
 		t.Errorf("no-method error should list the type's real members, got: %s", msg)
 	}
 }
+
+// TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow: BACKLOG addendum
+// #7 (upai2v1g #93, 2026-09-02) — a 22.5kB prism_query delivery spent most
+// of its budget dumping the full license-headed body of a file whose ONLY
+// connection to the task was a term appearing in its body text (never its
+// name); nothing it returned was used. Content-only seeds now deliver at
+// signature disclosure — the pointer stays, the body is one lookup away.
+func TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, rel), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Name-matched target: small, really about frobnicate.
+	write("target.go", `package p
+
+func FrobnicateThing() string { return "x" }
+`)
+	// Content-only bystander: name has nothing to do with the term; the
+	// term appears once in a doc comment inside a LARGE body that a full
+	// window would dump wholesale.
+	var big strings.Builder
+	big.WriteString("package p\n\nfunc Unrelated() string {\n\t_ = \"mentions frobnicate once, in passing\"\n")
+	for i := 0; i < 40; i++ {
+		fmt.Fprintf(&big, "\t_ = \"filler line %d ------------------------------------------------\"\n", i)
+	}
+	big.WriteString("\treturn \"y\"\n}\n")
+	write("bystander.go", big.String())
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_query", map[string]any{
+		"task": "fix frobnicate", "terms": []string{"frobnicate"},
+	})
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	m := out.(map[string]any)
+	content, _ := m["content"].(string)
+	if !strings.Contains(content, "FrobnicateThing") {
+		t.Fatalf("name-matched target missing from delivery:\n%s", content)
+	}
+	if strings.Contains(content, "filler line 20") {
+		t.Errorf("content-only bystander's full body was delivered — should be signature-level only:\n%s", content)
+	}
+}

@@ -303,27 +303,76 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
+	// SOURCE-FIRST DELIVERY. The backend emits hits in --sort path order, so
+	// on repos with early-sorting non-source trees the whole cap is spent
+	// before any code is reached — measured 2026-09-02 (BACKLOG addendum #6,
+	// Dubbo "triple"): .licenserc/CHANGELOG/pom.xml consumed the sample on
+	// 11 consecutive searches, ~44.8kB delivered for ~1.2kB of value, and
+	// the agent re-ran every one of them as a manual grep. Over-fetch past
+	// the caller's cap, then deliver source files first (stable within each
+	// group, so the backend's deterministic order is preserved). Exhaustive
+	// searches already return everything and skip both steps.
+	fetch := opts
+	if !opts.Exhaustive && opts.MaxHits < 200 {
+		fetch.MaxHits = 200
+	}
+
 	var res Result
 	switch Backend() {
 	case "rg":
-		if r, ok := runRg(ctx, root, pattern, opts); ok {
+		if r, ok := runRg(ctx, root, pattern, fetch); ok {
 			res = r
 			break
 		}
-		res = nativeSearch(ctx, root, pattern, opts)
+		res = nativeSearch(ctx, root, pattern, fetch)
 	case "grep":
-		if r, ok := runGrep(ctx, root, pattern, opts); ok {
+		if r, ok := runGrep(ctx, root, pattern, fetch); ok {
 			res = r
 			break
 		}
-		res = nativeSearch(ctx, root, pattern, opts)
+		res = nativeSearch(ctx, root, pattern, fetch)
 	default:
-		res = nativeSearch(ctx, root, pattern, opts)
+		res = nativeSearch(ctx, root, pattern, fetch)
+	}
+	if !opts.Exhaustive && len(res.Hits) > 0 {
+		res.Hits = rankSourceFirst(res.Hits)
+		if len(res.Hits) > opts.MaxHits {
+			res.Hits = res.Hits[:opts.MaxHits]
+			res.Truncated = true
+		}
 	}
 	if opts.Context > 0 && len(res.Hits) > 0 {
 		attachContext(root, res.Hits, opts.Context)
 	}
 	return res
+}
+
+// sourceExts are extensions of files an agent edits as code — the files a
+// code search is almost always FOR. Everything else (manifests, changelogs,
+// license config, docs) still matches, but after source.
+var sourceExts = map[string]bool{
+	".go": true, ".java": true, ".py": true, ".ts": true, ".tsx": true,
+	".js": true, ".jsx": true, ".rb": true, ".rs": true, ".c": true,
+	".h": true, ".cc": true, ".cpp": true, ".hpp": true, ".cs": true,
+	".php": true, ".kt": true, ".kts": true, ".scala": true, ".swift": true,
+	".m": true, ".mm": true, ".sql": true, ".sh": true, ".proto": true,
+}
+
+// rankSourceFirst stably partitions hits so source-code files come before
+// manifests/docs/config. Order within each partition is untouched — the
+// backend's deterministic path order still applies.
+func rankSourceFirst(hits []Hit) []Hit {
+	src := make([]Hit, 0, len(hits))
+	var rest []Hit
+	for _, h := range hits {
+		ext := strings.ToLower(filepath.Ext(h.File))
+		if sourceExts[ext] {
+			src = append(src, h)
+		} else {
+			rest = append(rest, h)
+		}
+	}
+	return append(src, rest...)
 }
 
 // attachContext fills each hit's Before/After with up to n lines of
