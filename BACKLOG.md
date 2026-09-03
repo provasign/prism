@@ -388,3 +388,32 @@ same question with different punctuation one turn apart. The "searched
 stems so far" line from item 12 covers the search half nearly for free;
 windowed-read dedup can wait for demand (~$0.30/cell, the cost lives in
 the edit loop, not discovery).
+
+## 14. Pre-edit residual check steering (the build-cascade sink)
+
+Edit-phase mining (xiconoiu/71o4q969/ddtb4dv8, 2026-09-03): the largest
+remaining sink is SERIAL build-cascade discovery — xiconoiu spent 70
+turns (23.3% of an $8.48 run) walking go-build failures one package at a
+time (L524 index -> L531 grove -> L552 mcp -> L573 cli -> L597 eval),
+and 71o4q969 re-discovered the identical two test errors 165 turns
+apart. Decisive detail: BOTH runs called prism_verify(removed_symbols)
+only AFTER the build was green — xiconoiu L771's list is the same list
+that generated all 15 build errors 250 turns earlier. The v0.68.0
+steering line frames the check as replacing re-greps; it must name the
+MOMENT: the moment you know what you are removing, BEFORE editing.
+
+## 15. Tab-delimiter ambiguity in line-numbered deliveries
+
+ddtb4dv8 L153-207 (~20 turns) + 71o4q969 L114 (~7): prism_read renders
+"N<TAB>source"; on tab-indented files the delimiter tab reads as leading
+indentation, the agent copies one extra \t into Edit old_string, and
+re-reads show the same format so the illusion survives two od -c
+sessions and a cat -A that doesn't exist on macOS. Fix: when a delivered
+file is tab-indented, say so in-band ("the first tab after each line
+number is the delimiter, not indentation"). Changing the delimiter
+itself would break the "line-numbered like the Read tool" contract.
+
+Honest boundary from the same mining: 70/70 clean Edits in the most
+expensive cell are inherent removal work — no tool response shrinks
+them. Edit-failure recovery is NOT the sink (0-14% of turns); serial
+discovery is.
