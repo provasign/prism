@@ -383,11 +383,36 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	}
 	seen := map[string]bool{}
 	staleSeen := map[string]bool{}
+	// Whole-file deletions collapse to ONE rendered line per file. The
+	// per-symbol seeds still run through impact analysis below unchanged —
+	// only the sigChanges REPORT is grouped: measured 2026-09-02 (6rqii7zt
+	// #88), a deleted 34-symbol directory produced ~30 near-identical
+	// "X removed with file Y" lines in a 13.9k-char verify response, and
+	// the agent dismissed the whole block in one sentence. A report shape
+	// the reader skips is noise even when every line is true.
+	deletedFileSyms := map[string]int{}
 	for _, sd := range seeds {
+		if strings.Contains(sd.reason, " removed with file ") {
+			deletedFileSyms[sd.sym.FilePath]++
+			continue
+		}
 		sigChanges = append(sigChanges, map[string]any{
 			"symbol": displayQN(sd.sym), "file": sd.sym.FilePath, "line": sd.sym.Span.Start,
 			"reason": sd.reason,
 		})
+	}
+	delFiles := make([]string, 0, len(deletedFileSyms))
+	for f := range deletedFileSyms {
+		delFiles = append(delFiles, f)
+	}
+	sort.Strings(delFiles)
+	for _, f := range delFiles {
+		sigChanges = append(sigChanges, map[string]any{
+			"file":   f,
+			"reason": fmt.Sprintf("file deleted — %d symbol(s) removed with it", deletedFileSyms[f]),
+		})
+	}
+	for _, sd := range seeds {
 		impact, err := h.changeImpactFor(ctx, sd.sym)
 		// BASE-CONTRACT ENUMERATION: the post-edit graph answers "who depends
 		// on the NEW signature" — but the question is who depended on the OLD

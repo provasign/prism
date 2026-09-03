@@ -164,13 +164,27 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) []map[string]any {
 		g := byFile[file]
 		entry := map[string]any{"file": file}
 		if h.textFileCached(file) {
-			var lines []int
-			for _, hit := range g.hits {
-				lines = append(lines, hit.Line)
+			// Cached = the FILE BODY was already delivered this session and
+			// is unchanged, so surrounding context is not re-sent. The
+			// matched lines themselves are never elided: they used to be
+			// (line numbers only), and measured 2026-09-02 (6rqii7zt #39)
+			// the agent got `grove.go: 260 [cached]` with no text, could
+			// not tell what matched, and fell back to manual grep on the
+			// same file — the elision saved a few hundred bytes and cost
+			// the call its purpose. One line per hit is the search's whole
+			// answer; the cache saving is skipping before/after context
+			// and the body, not the answer itself.
+			shown := make([]map[string]any, 0, minInt(len(g.hits), textRenderHitsPerFile))
+			for j, hit := range g.hits {
+				if j >= textRenderHitsPerFile {
+					entry["moreHits"] = len(g.hits) - textRenderHitsPerFile
+					break
+				}
+				shown = append(shown, map[string]any{"line": hit.Line, "text": hit.Text})
 			}
-			entry["lines"] = lines
+			entry["hits"] = shown
 			entry["cached"] = true
-			entry["note"] = "content already delivered this session (unchanged) — matches listed by line only"
+			entry["note"] = "file content already delivered this session (unchanged) — context lines omitted, matched lines shown"
 		} else {
 			shown := make([]map[string]any, 0, minInt(len(g.hits), textRenderHitsPerFile))
 			for j, hit := range g.hits {

@@ -34,8 +34,13 @@ func TestMergeTextSearchNoGroveDeliversRawHits(t *testing.T) {
 }
 
 // TestRenderTextMatchesUsesSessionSHA: hits in a file already delivered this
-// session (same content hash) are rendered as line numbers only — never a
-// re-send of text the agent already has.
+// session (same content hash) keep the cached marker — but the MATCHED LINES
+// are never elided. This test used to assert lines-only elision; measured
+// 2026-09-02 (6rqii7zt #39) that shape gave the agent `grove.go: 260
+// [cached]` with no text, it could not tell what matched, and it re-derived
+// the answer with manual grep — the elision cost the call its purpose. The
+// cache saving is skipping before/after context and the file body, never the
+// one-line answers themselves.
 func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 	h := newTestHandler(t)
 	content := "alpha needle\nbeta\ngamma needle\n"
@@ -60,11 +65,17 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 	if seen["file"] != "seen.txt" || seen["cached"] != true {
 		t.Errorf("seen.txt entry should be cached: %v", seen)
 	}
-	if _, hasText := seen["hits"]; hasText {
-		t.Errorf("cached entry must not re-send text: %v", seen)
+	seenHits, ok := seen["hits"].([]map[string]any)
+	if !ok || len(seenHits) != 2 {
+		t.Fatalf("cached entry must still carry both matched lines with text: %v", seen)
 	}
-	if lines, ok := seen["lines"].([]int); !ok || len(lines) != 2 {
-		t.Errorf("cached entry should list both lines: %v", seen)
+	if seenHits[0]["text"] != "alpha needle" || seenHits[1]["text"] != "gamma needle" {
+		t.Errorf("cached entry elided the matched line text: %v", seenHits)
+	}
+	for _, hh := range seenHits {
+		if hh["before"] != nil || hh["after"] != nil {
+			t.Errorf("cached entry should omit context lines (that's the saving): %v", hh)
+		}
 	}
 	hits, ok := fresh["hits"].([]map[string]any)
 	if fresh["file"] != "fresh.txt" || !ok || len(hits) != 1 || hits[0]["text"] != "delta needle" {

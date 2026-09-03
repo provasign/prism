@@ -154,6 +154,20 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 			}
 			file, _ := gm["file"].(string)
 			if cached, _ := gm["cached"].(bool); cached {
+				// New shape: matched lines with text (never elided), context
+				// omitted. Legacy shape (lines-only ints) still renders for
+				// any old payload in flight.
+				if hits := anySlice(gm["hits"]); len(hits) > 0 {
+					for _, hh := range hits {
+						hm, ok := hh.(map[string]any)
+						if !ok {
+							return false
+						}
+						fmt.Fprintf(b, "%s:%v: %v\n", file, hm["line"], hm["text"])
+					}
+					fmt.Fprintf(b, "%s: [file body cached — content already delivered this session]\n", file)
+					continue
+				}
 				var lines []string
 				for _, l := range anySlice(gm["lines"]) {
 					lines = append(lines, fmt.Sprint(l))

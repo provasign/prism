@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -399,5 +400,91 @@ func TestValidGitBase_BlocksOptionInjection(t *testing.T) {
 		if validGitBase(bad) {
 			t.Errorf("validGitBase(%q) = true, want false (injection payload accepted)", bad)
 		}
+	}
+}
+
+// TestToolVerify_DeletedFileCollapsesToOneLine: measured 2026-09-02
+// (6rqii7zt #88) — a deleted 34-symbol directory produced ~30 near-identical
+// "X removed with file Y" signatureChanges lines in a 13.9k-char verify
+// response, and the agent dismissed the whole block in one sentence. The
+// per-symbol seeds still run impact analysis; only the REPORT collapses to
+// one "file deleted — N symbol(s)" line per file.
+func TestToolVerify_DeletedFileCollapsesToOneLine(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/d\n\ngo 1.26\n")
+	// A file with several symbols that will be deleted wholesale.
+	write("gone/gone.go", `package gone
+
+func A() {}
+
+func B() {}
+
+func C() {}
+
+func D() {}
+`)
+	write("keep/keep.go", "package keep\n\nfunc Keep() {}\n")
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir,
+			"-c", "user.email=t@t", "-c", "user.name=t"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q")
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	if err := os.RemoveAll(filepath.Join(dir, "gone")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("re-index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_verify", map[string]any{})
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	m := out.(map[string]any)
+	perSymbol, collapsed := 0, 0
+	for _, sc := range mustJSON(t, m["signatureChanges"]) {
+		reason, _ := sc["reason"].(string)
+		if strings.Contains(reason, "removed with file") {
+			perSymbol++
+		}
+		if strings.Contains(reason, "file deleted —") {
+			collapsed++
+			if !strings.Contains(reason, "4 symbol(s)") {
+				t.Errorf("collapsed line should carry the symbol count, got %q", reason)
+			}
+		}
+	}
+	if perSymbol > 0 {
+		t.Errorf("deleted file still reported per-symbol (%d lines) — must collapse to one", perSymbol)
+	}
+	if collapsed != 1 {
+		t.Errorf("want exactly 1 collapsed deleted-file line, got %d", collapsed)
 	}
 }

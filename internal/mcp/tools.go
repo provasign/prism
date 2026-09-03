@@ -184,6 +184,17 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	if dir := stringArg(args, "dir", ""); dir != "" && !sameRoot(dir, h.Root) {
 		return nil, fmt.Errorf("server is rooted at %s and cannot serve dir %s; restart with `prism mcp %s` or run the prism CLI from that directory", h.Root, dir, dir)
 	}
+	// Unknown-parameter rejection. Measured (2026-09-02, b8mjxuh6 #26): an
+	// agent called prism_verify with query="Type.method" — a parameter the
+	// tool does not have — got the whole-repo verdict back with no warning,
+	// and read it as if it were scoped to that symbol. Silently accepted
+	// wrong parameters produce confidently misread answers; an error that
+	// names the valid parameters produces a one-step correction instead.
+	// Validated against the tool's own published schema (the same source
+	// tools/list serves), so the check can never drift from what agents see.
+	if err := rejectUnknownArgs(name, args); err != nil {
+		return nil, err
+	}
 	switch name {
 	case "prism_query":
 		return h.toolQuery(ctx, args)
@@ -338,6 +349,48 @@ var modelProp = map[string]any{
 var contextUsedProp = map[string]any{
 	"type":        "integer",
 	"description": "Tokens currently in your context window. Improves re-read confidence. Optional.",
+}
+
+// argAliases are accepted parameter names that deliberately do not appear
+// in the published schema: legacy spellings the handlers still honor, plus
+// "dir" which Invoke itself validates for every tool.
+var argAliases = map[string]map[string]bool{
+	"prism_query": {"intent": true},
+	"prism_read":  {"path": true},
+}
+
+// rejectUnknownArgs errors on any argument key the tool's published schema
+// does not declare (aliases above excepted). Tools without a published
+// schema (HTTP-only surfaces) are not checked.
+func rejectUnknownArgs(name string, args map[string]any) error {
+	schema := toolSchema(name)
+	if schema == nil {
+		return nil
+	}
+	props, _ := schema["properties"].(map[string]any)
+	if props == nil {
+		return nil
+	}
+	var unknown []string
+	for k := range args {
+		if k == "dir" || props[k] != nil || argAliases[name][k] {
+			continue
+		}
+		unknown = append(unknown, k)
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	sort.Strings(unknown)
+	valid := make([]string, 0, len(props))
+	for k := range props {
+		valid = append(valid, k)
+	}
+	sort.Strings(valid)
+	return fmt.Errorf("%s: unknown parameter(s) %s — this tool accepts: %s. "+
+		"The call was NOT run; passing an unsupported parameter would have "+
+		"silently returned an unscoped/unfiltered answer that reads as if the "+
+		"parameter worked", name, strings.Join(unknown, ", "), strings.Join(valid, ", "))
 }
 
 func toolSchema(name string) map[string]any {
@@ -585,12 +638,37 @@ func toolSchema(name string) map[string]any {
 			},
 		}
 	case "prism_arch_check":
+		// Schema had drifted to just "base" while the handler read deny/
+		// strict/depth/max_sites/include_tests all along — found the moment
+		// the unknown-arg validator landed and its own tests started
+		// rejecting parameters the handler genuinely honors.
 		return map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"base": map[string]any{
 					"type":        "string",
 					"description": "Optional git ref: report only violations INTRODUCED since it, instead of every current violation.",
+				},
+				"deny": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "Extra \"<from> -> <to>\" deny rules checked in addition to prism.yaml's arch_deny lines.",
+				},
+				"strict": map[string]any{
+					"type":        "boolean",
+					"description": "Escalate heuristic-evidence review items to failures.",
+				},
+				"depth": map[string]any{
+					"type":        "integer",
+					"description": "Truncate components to the first N path segments (0 = one component per directory).",
+				},
+				"max_sites": map[string]any{
+					"type":        "integer",
+					"description": "Max cited file:line sites per violation (default 5).",
+				},
+				"include_tests": map[string]any{
+					"type":        "boolean",
+					"description": "Include test files in the component view.",
 				},
 			},
 		}

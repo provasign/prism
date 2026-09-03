@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/provasign/prism/internal/config"
@@ -308,28 +309,37 @@ func TestToolQuery_IncludeDocsOnly(t *testing.T) {
 	}
 }
 
-func TestToolQuery_GraphDepthClamped(t *testing.T) {
+func TestToolQuery_UnknownParamRejected(t *testing.T) {
+	// graph_depth was advertised for months while no code path read it
+	// (see toolQuery's own comment); this test used to assert it was
+	// silently ACCEPTED at any value — the exact failure mode the
+	// unknown-arg validator exists to kill (b8mjxuh6 #26: prism_verify
+	// with a query= param it doesn't have, whole-repo answer read as
+	// scoped). It now asserts rejection, with the valid names in-band.
 	h := newHWithGrove(t, nil)
-	// depth=0 should be clamped to 1, depth=99 to 5 — neither should error
-	for _, depth := range []int{0, 1, 5, 99} {
-		_, err := h.Invoke("prism_query", map[string]any{
-			"task":        "find symbols",
-			"terms":       []any{"Symbol"},
-			"graph_depth": depth,
-		})
-		if err != nil {
-			t.Errorf("depth=%d: unexpected error: %v", depth, err)
+	_, err := h.Invoke("prism_query", map[string]any{
+		"task":        "find symbols",
+		"terms":       []any{"Symbol"},
+		"graph_depth": 2,
+	})
+	if err == nil {
+		t.Fatal("unknown parameter graph_depth must be rejected, not silently ignored")
+	}
+	for _, want := range []string{"graph_depth", "terms", "NOT run"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("rejection should name the bad param and the valid ones, missing %q in: %v", want, err)
 		}
 	}
 }
 
 func TestToolQuery_TermsAndIncludeCombined(t *testing.T) {
 	h := newHWithGrove(t, nil)
+	// graph_depth used to be passed here — a parameter no code path ever
+	// read; the unknown-arg validator now correctly rejects it.
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":        "repeat read handling",
-		"terms":       []any{"AccessCount"},
-		"include":     []any{"graph", "tests"},
-		"graph_depth": 2,
+		"task":    "repeat read handling",
+		"terms":   []any{"AccessCount"},
+		"include": []any{"graph", "tests"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
