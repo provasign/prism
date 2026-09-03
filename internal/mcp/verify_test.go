@@ -488,3 +488,52 @@ func D() {}
 		t.Errorf("want exactly 1 collapsed deleted-file line, got %d", collapsed)
 	}
 }
+
+// TestToolVerify_RemovedSymbolsFastPath: BACKLOG addendum #8 — two ~210-call
+// removal-task sessions each spent ~45-48 Bash greps (~22% of ALL calls)
+// re-checking the same removed identifiers ~15 times, hand-rolling residual-
+// reference verification because the full verify gate is priced as an exit
+// check. removed_symbols=[...] answers "which still have references?" in one
+// mid-loop-affordable call.
+func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, rel), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("a.go", "package p\n\nfunc keep() { stillHere() }\n\nfunc stillHere() {}\n")
+	write("b.go", "package p\n\n// mentions stillHere in a comment too\n")
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+
+	out, err := h.Invoke("prism_verify", map[string]any{
+		"removed_symbols": []any{"stillHere", "trulyGone"}})
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	m := out.(map[string]any)
+	if m["mode"] != "removed_symbols" {
+		t.Fatalf("want fast-path mode, got %v", m["mode"])
+	}
+	if m["clean"] != 1 || m["checked"] != 2 {
+		t.Errorf("clean/checked = %v/%v, want 1/2", m["clean"], m["checked"])
+	}
+	res := mustJSON(t, m["residuals"])
+	byName := map[string]map[string]any{}
+	for _, r := range res {
+		byName[fmt.Sprint(r["symbol"])] = r
+	}
+	if c, _ := byName["stillHere"]["count"].(float64); int(c) != 3 {
+		t.Errorf("stillHere count = %v, want 3 (two code refs + one comment — comments count, "+
+			"a doc naming a removed symbol needs updating too)", byName["stillHere"]["count"])
+	}
+	if c, _ := byName["trulyGone"]["count"].(float64); int(c) != 0 {
+		t.Errorf("trulyGone count = %v, want 0", byName["trulyGone"]["count"])
+	}
+}

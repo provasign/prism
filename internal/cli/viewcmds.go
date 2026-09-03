@@ -44,6 +44,21 @@ func cmdMap(args []string) int {
 			}
 		case "--tests":
 			callArgs["include_tests"] = true
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports remaining
+			// references to each removed identifier instead of the full gate.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -87,6 +102,21 @@ func cmdCycles(args []string) int {
 			}
 		case "--tests":
 			callArgs["include_tests"] = true
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports remaining
+			// references to each removed identifier instead of the full gate.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -141,6 +171,21 @@ func cmdArch(args []string) int {
 			callArgs["include_tests"] = true
 		case "--strict":
 			callArgs["strict"] = true
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports remaining
+			// references to each removed identifier instead of the full gate.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -246,6 +291,21 @@ func cmdVerify(args []string) int {
 				callArgs["base"] = args[i+1]
 				i++
 			}
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports remaining
+			// references to each removed identifier instead of the full gate.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -274,6 +334,41 @@ func cmdVerify(args []string) int {
 		return 2
 	}
 	m := toMap(out)
+	if mode, _ := m["mode"].(string); mode == "removed_symbols" {
+		// The fast-path result has its own compact shape; render directly.
+		if jsonOut {
+			printJSON(out)
+		} else {
+			fmt.Printf("verify --removed: %v (%v/%v clean)\n", m["verdict"], m["clean"], m["checked"])
+			for _, r := range asSliceAny(m["residuals"]) {
+				rm, _ := r.(map[string]any)
+				if rm == nil {
+					continue
+				}
+				cnt, _ := rm["count"].(float64)
+				if cnt == 0 {
+					fmt.Printf("  %v: clean\n", rm["symbol"])
+					continue
+				}
+				fmt.Printf("  %v: %v remaining\n", rm["symbol"], rm["count"])
+				for _, s := range asSliceAny(rm["sites"]) {
+					sm, _ := s.(map[string]any)
+					if sm == nil {
+						continue
+					}
+					if note, _ := sm["note"].(string); note != "" {
+						fmt.Printf("    %s\n", note)
+						continue
+					}
+					fmt.Printf("    %v:%v: %v\n", sm["file"], sm["line"], sm["text"])
+				}
+			}
+		}
+		if c, _ := m["clean"].(float64); int(c) != len(asSliceAny(m["residuals"])) {
+			return 1
+		}
+		return 0
+	}
 	if jsonOut {
 		printJSON(out)
 	} else {

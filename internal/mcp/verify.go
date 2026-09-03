@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/textsearch"
 	"github.com/provasign/prism/internal/view"
 )
 
@@ -187,6 +188,18 @@ type missedSite struct {
 
 func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, error) {
 	base := stringArg(args, "base", "HEAD")
+
+	// FAST PATH — removed_symbols: a cheap mid-loop residual-reference
+	// check, no diff walk. Measured (BACKLOG addendum #8, 2026-09-02, two
+	// ~210-call removal-task sessions): ~45-48 Bash greps per session —
+	// ~22% of ALL tool calls — re-checked the same 8-12 removed
+	// identifiers ~15 times, hand-rolling exactly this; prism_verify ran
+	// once, at call 210 of 212, because the full gate is priced as an
+	// exit check, not a loop check. This path answers "which of these
+	// still have references?" in one call agents can afford mid-loop.
+	if syms := stringsArg(args, "removed_symbols"); len(syms) > 0 {
+		return h.verifyRemovedSymbols(ctx, syms)
+	}
 
 	// Refresh the index FIRST (delta — cheap). Verify compares each changed
 	// file's base version against the live index, so a stale index shows no
@@ -1213,4 +1226,50 @@ func stripCommentsAndStringsLine(s string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+// verifyRemovedSymbols reports, per removed identifier, every place it is
+// still referenced in the working tree — an exhaustive text pass (a capped
+// answer to a residual-reference question looks complete and is not) with
+// per-file grouping. The loop-shaped sibling of the full verify gate.
+func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any, error) {
+	type residual struct {
+		Symbol string           `json:"symbol"`
+		Count  int              `json:"count"`
+		Sites  []map[string]any `json:"sites,omitempty"`
+	}
+	const perSymbolSiteCap = 20
+	var out []residual
+	clean := 0
+	for _, s := range syms {
+		r := textsearch.Search(ctx, h.Root, s, textsearch.Options{Exhaustive: true})
+		res := residual{Symbol: s, Count: len(r.Hits)}
+		for i, hit := range r.Hits {
+			if i >= perSymbolSiteCap {
+				res.Sites = append(res.Sites, map[string]any{
+					"note": fmt.Sprintf("+%d more sites", len(r.Hits)-perSymbolSiteCap)})
+				break
+			}
+			res.Sites = append(res.Sites, map[string]any{
+				"file": hit.File, "line": hit.Line, "text": hit.Text})
+		}
+		if res.Count == 0 {
+			clean++
+		}
+		out = append(out, res)
+	}
+	verdict := "residual references remain"
+	if clean == len(syms) {
+		verdict = "clean — no references to any removed symbol remain"
+	}
+	return map[string]any{
+		"mode":      "removed_symbols",
+		"verdict":   verdict,
+		"clean":     clean,
+		"checked":   len(syms),
+		"residuals": out,
+		"note": "exhaustive text pass over the working tree (comments and docs included — " +
+			"a doc mentioning a removed symbol usually needs updating too). This is the " +
+			"loop check; run plain prism_verify before declaring the change done.",
+	}, nil
 }

@@ -656,6 +656,14 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Git ref to diff the working tree against (default \"HEAD\"). The change-set is computed relative to this.",
 				},
+				"removed_symbols": map[string]any{
+					"type":  "array",
+					"items": map[string]any{"type": "string"},
+					"description": "MID-LOOP fast path: instead of the full diff gate, report every remaining " +
+						"reference to each listed removed identifier (exhaustive, comments/docs included) — " +
+						"one call replacing the repeated per-identifier greps of a removal task. Run the " +
+						"plain (no-arg) verify before declaring the change done.",
+				},
 			},
 		}
 	case "prism_arch_check":
