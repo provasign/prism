@@ -1,0 +1,1581 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c26
+created_at: 2026-09-02T16:59:29.987521Z
+finalized_at: 2026-09-03T01:03:33.058303Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/grove/client.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T21:00:14.903441Z
+    - path: internal/mcp/verify.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T21:00:32.158874Z
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T21:01:04.886229Z
+    - path: internal/mcp/delivery.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T21:01:49.860582Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T21:02:35.140146Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T22:05:59.062322Z
+    - path: internal/mcp/searchmulti_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T22:07:10.638866Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-03T00:09:23.045336Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git push origin main && git tag v0.65.3 && git push origin v0.65.3
+      at: 2026-09-02T16:59:29.987521Z
+      classified: other
+    - cmd: sleep 10; gh run list -R provasign/prism --limit 2 2>&1
+      at: 2026-09-02T16:59:43.152858Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list -R provasign/prism --workflow Release --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ] && [ "$(gh run list -R provasign/prism --workflow CI --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 20; done
+        echo "both done"
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion -q '.[0]'
+        gh run list -R provasign/prism --workflow CI --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T16:59:47.994862Z
+      classified: other
+    - cmd: |-
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion -q '.[0]'
+        gh run list -R provasign/prism --workflow CI --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T17:01:35.667262Z
+      classified: other
+    - cmd: |-
+        gh release view v0.65.3 -R provasign/prism --json tagName,isDraft,assets -q '{tag: .tagName, draft: .isDraft, assets: [.assets[].name]}'
+        gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      at: 2026-09-02T17:01:42.29972Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 15; done
+        gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T17:01:47.069306Z
+      classified: other
+    - cmd: |-
+        gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status,conclusion -q '.[0]'
+        brew update >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -10 && /opt/homebrew/bin/prism --version
+      at: 2026-09-02T17:02:17.231892Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism --version
+      at: 2026-09-02T17:57:23.348098Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 query_oracle.py --prism /opt/homebrew/bin/prism --slice runs/swebench-live/slice-bed37.json --out /tmp/oracle_v0653.json > /tmp/oracle_v0653.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T17:57:32.720784Z
+      classified: other
+    - cmd: until ! ps -p 86579 >/dev/null 2>&1; do sleep 30; done; echo done
+      at: 2026-09-02T17:57:35.2998Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        nohup python3 harness/ci_invariants.py --prism /opt/homebrew/bin/prism --corpus-root ~/ci-corpus > /tmp/gate_ci_final.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /opt/homebrew/bin/prism --out /tmp/ab_gate_selfcheck > /tmp/gate_ab_final.log 2>&1 &
+        echo "ci=$CI (ab skipped: baseline==candidate would be meaningless, dropping)"
+      at: 2026-09-02T17:57:44.147893Z
+      classified: other
+    - cmd: |-
+        pkill -f "ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /opt/homebrew/bin/prism" 2>/dev/null
+        echo "killed pointless self-compare; ci_invariants still running (pid $(pgrep -f ci_invariants.py))"
+      at: 2026-09-02T17:57:49.864368Z
+      classified: other
+    - cmd: until ! ps -p 86858 >/dev/null 2>&1; do sleep 20; done; echo ci-done
+      at: 2026-09-02T17:57:52.455883Z
+      classified: other
+    - cmd: tail -35 /tmp/oracle_v0653.log
+      at: 2026-09-02T17:58:39.286041Z
+      classified: other
+    - cmd: ps -p 86858 >/dev/null 2>&1 && echo RUNNING || echo DONE; tail -20 /tmp/gate_ci_final.log
+      at: 2026-09-02T17:58:44.261033Z
+      classified: other
+    - cmd: until ! ps -p 86858 >/dev/null 2>&1; do sleep 15; done; echo done
+      at: 2026-09-02T17:58:48.047742Z
+      classified: other
+    - cmd: tail -20 /tmp/gate_ci_final.log
+      at: 2026-09-02T17:59:17.37359Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        cat > /tmp/run_wide_v0653.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        # The actual shipped, released binary (v0.65.3) -- no dev build, no probe
+        # binary. This is what a real user gets from `brew install`.
+        rw._REAL_PRISM = "/opt/homebrew/bin/prism"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        for tf in sorted(Path("tasks-wide").glob("*.json")):
+            task = json.loads(tf.read_text())
+            out = Path(f"runs/wide/{task['instance_id']}.sonnet.prism_plus.v0653.json")
+            if out.exists():
+                print(f"(cached) {task['instance_id']}", flush=True)
+                continue
+            try:
+                rec = rw.run_cell(task, "prism_plus", "sonnet", "v0653")
+            except Exception as e:
+                print(f"{task['instance_id']:26} ERROR {str(e)[:200]}", flush=True)
+                continue
+            out.write_text(json.dumps(rec, indent=1))
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            print(f"{rec['task']:26} recall={rec.get('file_recall')} "
+                  f"({rec.get('files_found')}/{rec.get('files_expected')}) "
+                  f"sym={rec.get('symbol_recall')} extra={rec.get('extra_files')} "
+                  f"build={rec.get('build')} turns={rec.get('turns')} "
+                  f"cost=${rec.get('cost_usd')} hop={ts} prism_calls={p}", flush=True)
+        EOF
+        nohup python3 /tmp/run_wide_v0653.py > /tmp/run_wide_v0653.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T18:08:18.984479Z
+      classified: other
+    - cmd: until ! ps -p 87634 >/dev/null 2>&1; do sleep 60; done; echo done
+      at: 2026-09-02T18:08:23.117796Z
+      classified: other
+    - cmd: cat /tmp/run_wide_v0653.log; echo ---; ps -p 87634 >/dev/null 2>&1 && echo RUNNING || echo FINISHED
+      at: 2026-09-02T18:25:49.843711Z
+      classified: other
+    - cmd: ps -p 87634 >/dev/null 2>&1 && echo RUNNING || echo FINISHED
+      at: 2026-09-02T18:25:56.421401Z
+      classified: other
+    - cmd: cat /tmp/run_wide_v0653.log
+      at: 2026-09-02T19:08:28.710909Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "rollupSymbolCap\|rollupFileCap\|rollupMaxHits\|rollupTimeout" internal/mcp/rollup.go
+        echo "---"
+        grep -n "func.*intArg(args, \"limit\"" internal/mcp/tools.go | head -5
+        grep -n "\"limit\"" internal/mcp/tools.go | head -10
+      at: 2026-09-02T20:03:05.993692Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/jackson-databind
+        echo "=== current: limit=25 default ==="
+        $P search "MismatchedInputException" --scope text --format text 2>&1 | wc -c
+        $P search "MismatchedInputException" --scope text --format text 2>&1 | grep -c "^//.*:"
+        echo "=== rollup lines byte size ==="
+        $P search "MismatchedInputException" --scope text --format text 2>&1 | sed -n '/graph rollup/,$p' | wc -c
+        $P search "MismatchedInputException" --scope text --format text 2>&1 | sed -n '/graph rollup/,$p' | wc -l
+      at: 2026-09-02T20:03:20.795834Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/jackson-databind
+        for n in 5 10 25; do
+          b=$($P search "MismatchedInputException" --scope text --format text --limit $n 2>&1 | wc -c)
+          echo "limit=$n total_bytes=$b"
+        done
+      at: 2026-09-02T20:03:32.220372Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/jackson-databind
+        $P search "MismatchedInputException" --scope text --format text --limit 1 2>&1 | sed -n '/graph rollup/,$p'
+      at: 2026-09-02T20:03:39.0657Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/jackson-databind
+        $P search "MismatchedInputException" --scope text --format json 2>&1 | python3 -m json.tool | head -40
+      at: 2026-09-02T20:06:56.167148Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "MaxHits: limit, Timeout" internal/mcp/tools.go | head -3
+        sed -n '1200,1226p' internal/mcp/tools.go
+      at: 2026-09-02T20:06:59.518636Z
+      classified: other
+    - cmd: sed -n '1125,1150p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-02T20:07:02.456042Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cp internal/mcp/tools.go /tmp/tools_orig.go
+        cp internal/mcp/rollup.go /tmp/rollup_orig.go
+
+        # Variant: limit default 25->10, rollupSymbolCap 10->30
+        sed -i '' 's/limit := intArg(args, "limit", 25)/limit := intArg(args, "limit", 10)/' internal/mcp/tools.go
+        sed -i '' 's/rollupSymbolCap = 10/rollupSymbolCap = 30/' internal/mcp/rollup.go
+        go build -o /tmp/prism-rebalance ./cmd/prism 2>&1 | head -20
+
+        cp /tmp/tools_orig.go internal/mcp/tools.go
+        cp /tmp/rollup_orig.go internal/mcp/rollup.go
+        git diff --stat internal/mcp/tools.go internal/mcp/rollup.go
+        go build -o /tmp/prism-current ./cmd/prism 2>&1 | head -20
+        echo "both built"
+      at: 2026-09-02T20:07:14.937693Z
+      classified: build
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness\nsed -n '1,60p' query_oracle.py | grep -n \"^import\\|CACHE\\|def gold_hunks\\|def title_terms\\|def run_capped\\|def show\" "
+      at: 2026-09-02T20:07:19.916818Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 /tmp/rollup_oracle.py --current /tmp/prism-current --proposed /tmp/prism-rebalance > /tmp/rollup_oracle.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T20:07:45.375632Z
+      classified: other
+    - cmd: sleep 8; cat /tmp/rollup_oracle.log; ps -p 99980 >/dev/null && echo RUNNING || echo DEAD
+      at: 2026-09-02T20:07:57.414341Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 /tmp/rollup_oracle.py --current /tmp/prism-current --proposed /tmp/prism-rebalance > /tmp/rollup_oracle.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T20:08:07.594324Z
+      classified: other
+    - cmd: sleep 10; cat /tmp/rollup_oracle.log; ps -p 172 >/dev/null && echo RUNNING || echo DEAD
+      at: 2026-09-02T20:08:21.334876Z
+      classified: other
+    - cmd: until ! ps -p 172 >/dev/null 2>&1; do sleep 30; done; echo done
+      at: 2026-09-02T20:08:24.518208Z
+      classified: other
+    - cmd: cat /tmp/rollup_oracle.log
+      at: 2026-09-02T20:08:59.006503Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -rln "covering test\|coveringTest\|hasTestEdge\|CategoryTest" internal/mcp/*.go internal/ranking/*.go internal/grove/*.go 2>/dev/null | grep -v _test
+      at: 2026-09-02T20:23:42.562939Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "hasTestEdge\|testFilePaths\|CategoryTest\|isTestFile\|isTestDouble" internal/mcp/selection.go
+      at: 2026-09-02T20:23:45.30611Z
+      classified: other
+    - cmd: sed -n '290,400p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection.go
+      at: 2026-09-02T20:23:47.615839Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "hasTestEdgeID\[" internal/mcp/selection.go
+      at: 2026-09-02T20:23:56.485457Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "hasTestEdgeID\|testFilePaths\[" internal/mcp/*.go | grep -v _test
+      at: 2026-09-02T20:23:59.992188Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "func categorize\|CategoryTest" internal/mcp/*.go internal/ranking/*.go | grep -v _test
+      at: 2026-09-02T20:24:09.646823Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n '95,115p' internal/mcp/delivery.go
+        echo "---budget.go context---"
+        sed -n '1,45p' internal/ranking/budget.go
+      at: 2026-09-02T20:24:15.588748Z
+      classified: other
+    - cmd: grep -rn "EdgeTests\|EdgeKind.*[Tt]est\|\"tests\"" /Users/tapabratapal/Projects/provasign/grove/pkg/grove/*.go /Users/tapabratapal/Projects/provasign/grove/internal/graph/*.go 2>/dev/null | grep -v _test | head -15
+      at: 2026-09-02T20:24:29.566826Z
+      classified: other
+    - cmd: |-
+        sed -n '95,120p' /Users/tapabratapal/Projects/provasign/grove/internal/graph/graph.go
+        echo "---"
+        sed -n '90,110p' /Users/tapabratapal/Projects/provasign/grove/internal/graph/deadcode.go
+      at: 2026-09-02T20:24:43.91001Z
+      classified: other
+    - cmd: grep -n "func isCallNeighborTestDouble\|func isTestDouble" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go
+      at: 2026-09-02T20:24:53.796512Z
+      classified: other
+    - cmd: |-
+        grep -n "func isCallNeighborTestDouble" /Users/tapabratapal/Projects/provasign/prism/internal/grove/*.go
+        sed -n '1505,1530p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-02T20:24:56.505482Z
+      classified: other
+    - cmd: sed -n '380,395p' /Users/tapabratapal/Projects/provasign/prism/internal/grove/client.go
+      at: 2026-09-02T20:25:00.393015Z
+      classified: other
+    - cmd: grep -rln "_test\.go\|isTestFile\|skipTest" /Users/tapabratapal/Projects/provasign/grove/internal/index/*.go /Users/tapabratapal/Projects/provasign/grove/internal/extract*/*.go 2>/dev/null | grep -v _test | head -10
+      at: 2026-09-02T20:26:38.558061Z
+      classified: other
+    - cmd: grep -rln "_test\.go\|isTestFile" /Users/tapabratapal/Projects/provasign/grove/internal/*/*.go 2>/dev/null | grep -v _test | head -15
+      at: 2026-09-02T20:26:41.176677Z
+      classified: other
+    - cmd: grep -n "isTestFile\|_test\.go" /Users/tapabratapal/Projects/provasign/grove/internal/graph/edges.go | head -20
+      at: 2026-09-02T20:26:43.609021Z
+      classified: other
+    - cmd: grep -n "isTestFile" /Users/tapabratapal/Projects/provasign/grove/internal/core/testdetect.go /Users/tapabratapal/Projects/provasign/grove/internal/graph/incremental.go /Users/tapabratapal/Projects/provasign/grove/internal/graph/graph.go
+      at: 2026-09-02T20:26:47.196708Z
+      classified: other
+    - cmd: grep -n "isTestFile(" /Users/tapabratapal/Projects/provasign/grove/internal/graph/*.go | grep -v "^.*func isTestFile"
+      at: 2026-09-02T20:26:49.376128Z
+      classified: other
+    - cmd: grep -rn "isTestFile(" /Users/tapabratapal/Projects/provasign/grove/internal/ /Users/tapabratapal/Projects/provasign/grove/pkg/ 2>/dev/null
+      at: 2026-09-02T20:26:54.970377Z
+      classified: other
+    - cmd: grep -rln "func.*[Ii]ndex\b\|func.*[Bb]uild.*[Gg]raph\|func.*Extract" /Users/tapabratapal/Projects/provasign/grove/internal/*/*.go 2>/dev/null | grep -v _test | head -10
+      at: 2026-09-02T20:26:59.001512Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "func.*CallNeighbors\|func.*Neighbors\b" internal/grove/client.go
+      at: 2026-09-02T20:59:23.085757Z
+      classified: other
+    - cmd: |-
+        sed -n '355,390p' /Users/tapabratapal/Projects/provasign/prism/internal/grove/client.go
+        echo "---groveeng---"
+        grep -n "func.*Neighbors" /Users/tapabratapal/Projects/provasign/grove/pkg/grove/grove.go
+      at: 2026-09-02T20:59:25.954981Z
+      classified: other
+    - cmd: 'grep -rn "func.*[Ii]sTestFile\|_test\.go.*test_.*\.py\|Test\.java" /Users/tapabratapal/Projects/provasign/prism/internal/*/*.go 2>/dev/null | grep -v _test.go: | grep -iv "grove/client.go\|tools.go"'
+      at: 2026-09-02T20:59:33.699868Z
+      classified: other
+    - cmd: sed -n '1020,1045p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/verify.go
+      at: 2026-09-02T20:59:36.14996Z
+      classified: other
+    - cmd: sed -n '500,530p' /Users/tapabratapal/Projects/provasign/grove/pkg/grove/grove.go
+      at: 2026-09-02T21:00:03.136528Z
+      classified: other
+    - cmd: sed -n '283,300p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection.go
+      at: 2026-09-02T21:00:42.035588Z
+      classified: other
+    - cmd: 'grep -n "textBackend: textMerge.backend" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection.go'
+      at: 2026-09-02T21:01:27.3901Z
+      classified: other
+    - cmd: grep -rn "renderAnchorSummary(" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go
+      at: 2026-09-02T21:02:07.172114Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -40
+      at: 2026-09-02T21:02:14.290338Z
+      classified: build
+    - cmd: grep -n "func.*toolChangeImpact\|\"callers\"" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -10
+      at: 2026-09-02T21:02:17.161505Z
+      classified: other
+    - cmd: grep -n "func compactWithScope\|func compact\b" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-02T21:02:20.11573Z
+      classified: other
+    - cmd: grep -rn "func compactWithScope" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go
+      at: 2026-09-02T21:02:22.683483Z
+      classified: other
+    - cmd: grep -rn "compactWithScope" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go
+      at: 2026-09-02T21:02:25.05388Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -40
+      at: 2026-09-02T21:02:39.730744Z
+      classified: build
+    - cmd: 'grep -n "\"task\": map\[string\]any{" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -3'
+      at: 2026-09-02T21:02:43.210679Z
+      classified: other
+    - cmd: grep -n "case \"prism_query\":" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-02T21:02:47.743062Z
+      classified: other
+    - cmd: sed -n '641,660p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-02T21:02:50.128539Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-tests ./cmd/prism 2>&1 | head -20
+        cd ~/ci-corpus/gin
+        /tmp/prism-tests index . >/dev/null 2>&1
+        echo "=== prism_query ==="
+        /tmp/prism-tests query "how does ResponseWriter.Status work" --terms Status --format text 2>&1 | head -10
+        echo; echo "=== change_impact ==="
+        /tmp/prism-tests change-impact "ResponseWriter.Status" --format json 2>&1 | python3 -m json.tool | grep -A3 '"isTest"' | head -20
+      at: 2026-09-02T21:03:07.437789Z
+      classified: build
+    - cmd: grep -n "func newDeliveryFixture" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/delivery_test.go
+      at: 2026-09-02T21:03:10.108311Z
+      classified: other
+    - cmd: tail -20 /Users/tapabratapal/Projects/provasign/prism/internal/mcp/delivery_test.go
+      at: 2026-09-02T21:03:15.815279Z
+      classified: other
+    - cmd: grep -n "^import\|\"github.com" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/delivery_test.go | head -10
+      at: 2026-09-02T21:03:18.802471Z
+      classified: other
+    - cmd: |-
+        tail -c 0 /Users/tapabratapal/Projects/provasign/prism/internal/mcp/delivery_test.go
+        cat >> /Users/tapabratapal/Projects/provasign/prism/internal/mcp/delivery_test.go << 'EOF'
+
+        // TestToolQuery_TestedByPointer verifies the restored test-coverage signal
+        // (2026-09-02): prism_query's own tool description promises "callers and
+        // covering tests", but the delivery path unconditionally dropped every
+        // CategoryTest symbol (pr3493: an unrelated, lexically-task-matched test
+        // earned a whole source window), and the supporting hasTestEdgeID/
+        // testFilePaths maps that should have gated a SAFE version of that were
+        // declared and never populated -- so the promised behavior was silently
+        // dead. Fixed as a pointer only (file:line, never a body), which cannot
+        // repeat the pr3493 failure since it never enters the budget/disclosure
+        // pipeline at all.
+        func TestToolQuery_TestedByPointer(t *testing.T) {
+        	h := newDeliveryFixture(t)
+        	// newDeliveryFixture's util_test.go already has TestFormatGreeting
+        	// calling FormatGreeting directly -- a real verified test caller.
+        	out, err := h.Invoke("prism_query", map[string]any{
+        		"task": "how does the greeting work", "terms": []string{"FormatGreeting"},
+        	})
+        	if err != nil {
+        		t.Fatalf("query: %v", err)
+        	}
+        	m, ok := out.(map[string]any)
+        	if !ok {
+        		t.Fatalf("want map delivery, got %T", out)
+        	}
+        	content, _ := m["content"].(string)
+        	if !strings.Contains(content, "tested by") || !strings.Contains(content, "TestFormatGreeting") {
+        		t.Errorf("expected a 'tested by' pointer naming TestFormatGreeting, got:\n%s", content)
+        	}
+        	// Pointer only: the test's body ("if FormatGreeting(...") must not
+        	// appear -- that would mean it leaked into a source window instead of
+        	// staying a location-only pointer.
+        	if strings.Contains(content, `if FormatGreeting("")`) {
+        		t.Error("test body leaked into delivery -- this must stay pointer-only (file:line), not a source window")
+        	}
+        }
+
+        // TestToolChangeImpact_LabelsTestCallers verifies change_impact's caller
+        // list marks which callers are verified tests (isTest: true) instead of
+        // silently mixing them with production call sites -- the caller data was
+        // always present (change_impact never filtered test files), only the
+        // distinction was missing.
+        func TestToolChangeImpact_LabelsTestCallers(t *testing.T) {
+        	h := newDeliveryFixture(t)
+        	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "FormatGreeting"})
+        	if err != nil {
+        		t.Fatalf("change_impact: %v", err)
+        	}
+        	m, ok := out.(map[string]any)
+        	if !ok {
+        		t.Fatalf("want map, got %T", out)
+        	}
+        	callers, _ := m["callers"].([]map[string]any)
+        	if len(callers) == 0 {
+        		t.Fatal("expected at least one caller")
+        	}
+        	found := false
+        	for _, c := range callers {
+        		if c["name"] == "TestFormatGreeting" {
+        			found = true
+        			if c["isTest"] != true {
+        				t.Errorf("TestFormatGreeting caller missing isTest:true, got %v", c)
+        			}
+        		}
+        		if c["name"] == "run" && c["isTest"] == true {
+        			t.Errorf("run() is production code, must not be marked isTest: %v", c)
+        		}
+        	}
+        	if !found {
+        		t.Error("TestFormatGreeting not found among callers")
+        	}
+        }
+        EOF
+        echo done
+      at: 2026-09-02T21:03:34.838164Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -20
+        go test ./internal/mcp/ -run 'TestToolQuery_TestedByPointer|TestToolChangeImpact_LabelsTestCallers' -v 2>&1 | tail -30
+      at: 2026-09-02T21:03:45.602453Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cat > /tmp/debug_test.go << 'EOF'
+        package mcp
+
+        import (
+        	"fmt"
+        	"testing"
+        )
+
+        func TestDebugTestedBy(t *testing.T) {
+        	h := newDeliveryFixture(t)
+        	out, err := h.Invoke("prism_query", map[string]any{
+        		"task": "how does the greeting work", "terms": []string{"FormatGreeting"},
+        	})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	content, _ := m["content"].(string)
+        	fmt.Println(content)
+        }
+        EOF
+        cp /tmp/debug_test.go internal/mcp/zzdebug_test.go
+        go test ./internal/mcp/ -run TestDebugTestedBy -v 2>&1 | head -60
+        rm internal/mcp/zzdebug_test.go
+      at: 2026-09-02T21:03:59.299986Z
+      classified: test
+    - cmd: sed -n '2280,2310p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-02T21:04:09.14159Z
+      classified: other
+    - cmd: grep -n "func Select\b" /Users/tapabratapal/Projects/provasign/prism/internal/ranking/*.go
+      at: 2026-09-02T21:04:30.239964Z
+      classified: other
+    - cmd: sed -n '91,140p' /Users/tapabratapal/Projects/provasign/prism/internal/ranking/budget.go
+      at: 2026-09-02T21:04:32.832894Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log --oneline --all | wc -l
+        git log --oneline --all --grep="pr3493\|CategoryTest\|test.*window\|test.*noise\|test.*dilut" -i | head -30
+      at: 2026-09-02T21:19:33.631042Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log --oneline --all -S "earned a whole" -- internal/mcp/delivery.go
+        echo "---"
+        git log --oneline --all -S "Test-coverage edges were removed" -- internal/mcp/selection.go
+        echo "---"
+        git log --oneline --all -S "pr3493"
+      at: 2026-09-02T21:19:40.24042Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git show e10275e --stat | head -20
+        echo "==="
+        git log -1 --format="%H %s%n%b" e10275e | head -40
+      at: 2026-09-02T21:19:46.502071Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log --oneline --all -S "unrelated help-\nrendering tests" 2>/dev/null
+        git log --oneline --all -S "unrelated help" -- internal/mcp/delivery.go
+      at: 2026-09-02T21:19:59.062876Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log --oneline --all -S "hasTestEdgeID\[" -- internal/mcp/selection.go | tail -5
+      at: 2026-09-02T21:20:10.081472Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log --oneline --all -S "hasTestEdgeID" -- internal/mcp/selection.go
+      at: 2026-09-02T21:20:15.217337Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git show 98ed1b2 -- internal/mcp/selection.go | head -150
+      at: 2026-09-02T21:20:20.057203Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove
+        git log --oneline --all -S "EdgeTests" --diff-filter=D -- internal/graph/edges.go internal/graph/*.go 2>/dev/null | head -10
+        git log --oneline --all -S "func.*[Bb]uild.*[Tt]est.*[Ee]dge\|deriveTestEdges\|testEdgesFrom" 2>/dev/null | head -10
+      at: 2026-09-02T21:20:48.784008Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove
+        git log --oneline --all --grep="test-coverage edges\|EdgeTests" -i | head -20
+      at: 2026-09-02T21:20:55.033988Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove
+        git log -1 --format="%B" d34856e4 | head -40
+      at: 2026-09-02T21:21:03.333675Z
+      classified: other
+    - cmd: sed -n '95,145p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection.go
+      at: 2026-09-02T21:21:23.580116Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -20
+        go test ./internal/mcp/ -run 'TestToolQuery_TestedByPointer|TestToolChangeImpact_LabelsTestCallers' -v 2>&1 | tail -20
+      at: 2026-09-02T21:21:51.655734Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+      at: 2026-09-02T21:23:02.201648Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/mcp/ -run 'TestToolQuery_TestedByPointer|TestToolChangeImpact_LabelsTestCallers' -v 2>&1 | tail -20
+      at: 2026-09-02T21:23:07.747511Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cp /tmp/debug_test.go internal/mcp/zzdebug_test.go
+        go test ./internal/mcp/ -run TestDebugTestedBy -v 2>&1 | head -50
+        rm internal/mcp/zzdebug_test.go
+      at: 2026-09-02T21:23:16.475375Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+        go test ./internal/mcp/ -run 'TestToolQuery_TestedByPointer|TestToolChangeImpact_LabelsTestCallers' -v 2>&1 | tail -20
+      at: 2026-09-02T21:23:52.306474Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cp /tmp/debug_test.go internal/mcp/zzdebug_test.go
+        go test ./internal/mcp/ -run TestDebugTestedBy -v 2>&1 | head -20
+        rm internal/mcp/zzdebug_test.go
+      at: 2026-09-02T21:23:59.825645Z
+      classified: test
+    - cmd: grep -n "extraSeeds" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/textmerge.go /Users/tapabratapal/Projects/provasign/prism/internal/mcp/selection.go
+      at: 2026-09-02T21:24:09.482841Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+        go test ./internal/mcp/ -run 'TestToolQuery_TestedByPointer|TestToolChangeImpact_LabelsTestCallers' -v 2>&1 | tail -20
+      at: 2026-09-02T21:24:33.642898Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cp /tmp/debug_test.go internal/mcp/zzdebug_test.go
+        go test ./internal/mcp/ -run TestDebugTestedBy -v 2>&1 | head -25
+        rm internal/mcp/zzdebug_test.go
+      at: 2026-09-02T21:24:40.100548Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+      at: 2026-09-02T21:24:55.003106Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-tests2 ./cmd/prism 2>&1 | head -20
+        cd ~/ci-corpus/gin
+        /tmp/prism-tests2 index . >/dev/null 2>&1
+        echo "=== gin query ==="
+        /tmp/prism-tests2 query "how does ResponseWriter.Status work" --terms Status --format text 2>&1 | head -12
+        echo; echo "=== django quote_name (verify seed-fix from earlier still intact) ==="
+        cd ~/ci-corpus/django
+        /tmp/prism-tests2 query "how does BaseDatabaseOperations.quote_name work" --terms quote_name --format text 2>&1 | head -6
+      at: 2026-09-02T21:25:10.903865Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 query_oracle.py --prism /tmp/prism-tests2 --slice runs/swebench-live/slice-bed37.json --out /tmp/oracle_testsfeature.json > /tmp/oracle_testsfeature.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T21:25:18.909652Z
+      classified: other
+    - cmd: until ! ps -p 6251 >/dev/null 2>&1; do sleep 30; done; echo done
+      at: 2026-09-02T21:25:21.815055Z
+      classified: other
+    - cmd: |
+        tail -5 /tmp/oracle_testsfeature.log
+        python3 -c "
+        import json
+        b = json.load(open('/tmp/oracle_before.json'))
+        a = json.load(open('/tmp/oracle_testsfeature.json'))
+        print('before:', b['aggregate'])
+        print('after: ', a['aggregate'])
+        bm = {r['instance_id']: r for r in b['results']}
+        am = {r['instance_id']: r for r in a['results']}
+        for iid in bm:
+            br, ar = bm[iid].get('realistic'), am.get(iid,{}).get('realistic')
+            if br and ar and br['recall'] != ar['recall']:
+                print('CHANGED', iid, br['recall'], '->', ar['recall'])
+        "
+      at: 2026-09-02T21:25:57.453403Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        b = json.load(open('/tmp/oracle_before.json'))
+        a = json.load(open('/tmp/oracle_testsfeature.json'))
+        for r in b['results']:
+            if '581' in r['instance_id']:
+                print('BEFORE:', json.dumps(r['realistic'], indent=1))
+        for r in a['results']:
+            if '581' in r['instance_id']:
+                print('AFTER:', json.dumps(r['realistic'], indent=1))
+        "
+      at: 2026-09-02T21:26:06.359336Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        tasks = json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json'))
+        for t in tasks:
+            if '581' in t['instance_id']:
+                print(t['repo'], t['base_commit'])
+                # find gold hunk
+                import re
+                for line in t['patch'].split('\n'):
+                    m = re.match(r'^\+\+\+ b/(.+)$', line)
+                    if m: print('file:', m.group(1))
+        "
+      at: 2026-09-02T21:26:15.287778Z
+      classified: other
+    - cmd: |-
+        CACHE=~/.cache/prism-research/swebench-repos
+        REPO="$CACHE/sooperset__mcp-atlassian"
+        rm -rf /tmp/wt-581 && git -C "$REPO" worktree add --detach --force /tmp/wt-581 aaeb824f782d08b777ea57565c70930f91ede2e4 2>&1 | tail -3
+        cd /tmp/wt-581
+        /tmp/prism-current index . >/dev/null 2>&1
+        echo "=== OLD binary (before test-exclusion fix) ==="
+        /tmp/prism-current query "..." --terms OAuth,cloud_id --format text 2>&1 | sed -n '1,8p'
+        echo "=== NEW binary ==="
+        /tmp/prism-tests2 index . >/dev/null 2>&1
+        /tmp/prism-tests2 query "..." --terms OAuth,cloud_id --format text 2>&1 | sed -n '1,8p'
+      at: 2026-09-02T21:26:23.311184Z
+      classified: other
+    - cmd: |-
+        cd /tmp/wt-581
+        /tmp/prism-current query "..." --terms OAuth,cloud_id --format text 2>&1 > /tmp/out_old.txt
+        /tmp/prism-tests2 query "..." --terms OAuth,cloud_id --format text 2>&1 > /tmp/out_new.txt
+        diff /tmp/out_old.txt /tmp/out_new.txt | head -60
+      at: 2026-09-02T21:26:34.432257Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        for f,tag in [('/tmp/oracle_before.json','before'),('/tmp/oracle_testsfeature.json','after')]:
+            d = json.load(open(f))
+            for r in d['results']:
+                if '2502' in r['instance_id']:
+                    print(tag, json.dumps(r['realistic']))
+        "
+      at: 2026-09-02T21:26:49.575172Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git status --short
+      at: 2026-09-02T21:30:40.624926Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add internal/grove/client.go internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/selection.go internal/mcp/tools.go internal/mcp/verify.go
+        git commit -m "$(cat <<'EOF'
+        mcp: restore verified test-coverage surfacing as pointer, not body
+
+        prism_query's own tool description has long promised "callers and
+        covering tests" -- but the delivery path unconditionally dropped
+        every CategoryTest symbol, and hasTestEdgeID/testFilePaths (the maps
+        that were supposed to gate a SAFE version of that) were declared and
+        never populated. Traced the full history:
+
+        - v0.25.0 (e10275e): tests surfaced via a real EdgeTests graph edge,
+          explicitly gated against lexical-only matches ("pr3493": an
+          unrelated test earning a whole source window).
+        - grove d34856e4: EdgeTests was a SEPARATE heuristic, measured against
+          real pytest runtime coverage at 4.2%/12.3% recall (flask/requests) --
+          correctly killed. Its own removal commit says what should replace
+          it: "coveringTests ... find covering test SYMBOLS over calls edges
+          -- a test that exercises changed code has a resolved calls edge to
+          it, so the derived tests edge added nothing." grove's own `cert`
+          package already reworked onto that basis, validated byte-identical.
+        - prism 98ed1b2: deleted prism_query's entire coverage-facing surface
+          wholesale rather than reworking it onto calls-edges the way `cert`
+          was. That second half was never done until now.
+
+        This does the rework the removal commit itself prescribed:
+
+        1. grove/client.go: InboundCallers -- the direct `calls` callers of a
+           symbol, unfiltered (CallNeighbors' existing test-double exclusion
+           is correct for call CHAINS but was also hiding the one thing "who
+           tests this" needs). Zero new indexing: a test calling the code it
+           exercises is an ordinary, already-indexed `calls` edge -- confirmed
+           live, change_impact's caller list already includes test callers
+           through a different, unfiltered path.
+        2. mcp/verify.go: isVerifiedTestCaller -- isTestFilePath AND NOT a
+           mock/fake/stub (isTestFilePath alone also matches test doubles).
+        3. selection.go: per-seed verified test callers, rendered in
+           delivery.go's renderAnchorSummary as a POINTER (file:line + name,
+           capped at 3, "+N more") -- never a body, never entering the
+           budget/disclosure pipeline. This is deliberately the same shape as
+           the existing caller-count line, and structurally cannot repeat the
+           pr3493 failure: there is no content to dilute anything with.
+        4. tools.go: change_impact's caller list gets an `isTest` marker on
+           entries already present (never filtered there) but previously
+           indistinguishable from production call sites.
+
+        Writing a real test for #3 surfaced a second, live instance of
+        pr3493's exact bug, independent of anything above: a symbol matching
+        a term only via TestFoo-style naming (containing the term as a
+        substring, e.g. TestFormatGreeting contains FormatGreeting) or via
+        grep-confirmed content inside a test file could still become a seed --
+        seeds are force-stamped CategoryTarget in ranking.Select, bypassing
+        the CategoryTest delivery guard entirely regardless of how the seed
+        arrived. Fixed in both places a test could reach `seeds` (the
+        SearchSymbols term loop and mergeTextSearch's extraSeeds); an EXACT
+        name/qualified-name match on a test (a deliberate terms=["TestFoo"])
+        is unaffected.
+
+        Measured on the swebench query_oracle bed (37-task slice, deterministic,
+        no agent noise): realistic-terms mean recall 0.737 -> 0.853. Not a
+        byte-math projection -- traced one improved task directly:
+        sooperset/mcp-atlassian-581 (0.0 -> 1.0) had a pytest OAuth fixture
+        occupying a source-window slot and crowding budget, silently truncating
+        the real gold method entirely ("lines 34-133 omitted"); excluding the
+        test noise let the real content render. One task regressed slightly
+        (adk-python-2502, 0.929 -> 0.857, one hunk-site) -- the same mechanism
+        occasionally costs a little when a test's content genuinely overlapped
+        a gold region, an acceptable and understood trade-off, not a mystery.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-02T21:31:04.18593Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+        go build -o /tmp/prism-final2 ./cmd/prism && echo built
+      at: 2026-09-02T21:31:22.232431Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        nohup python3 harness/ci_invariants.py --prism /tmp/prism-final2 --corpus-root ~/ci-corpus > /tmp/gate_ci_tests.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-final2 --out /tmp/ab_gate_tests > /tmp/gate_ab_tests.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-02T21:31:29.451931Z
+      classified: other
+    - cmd: until ! ps -p 7840 >/dev/null 2>&1 && ! ps -p 7841 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-02T21:31:32.557071Z
+      classified: other
+    - cmd: echo "=== ci_invariants ==="; tail -20 /tmp/gate_ci_tests.log; echo; echo "=== ab_gate ==="; tail -20 /tmp/gate_ab_tests.log
+      at: 2026-09-02T21:49:08.848619Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        cat > /tmp/run_wide_couple.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        # Final cumulative build (commit 06acb44, unreleased) -- includes today's
+        # test-surfacing feature on top of everything else shipped today.
+        rw._REAL_PRISM = "/tmp/prism-final2"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        TASKS = ["dubbo__86dd98899b", "grove__b40b72d94e"]
+
+        for tid in TASKS:
+            task = json.loads(Path(f"tasks-wide/{tid}.json").read_text())
+            out = Path(f"runs/wide/{tid}.sonnet.prism_plus.final06acb44.json")
+            if out.exists():
+                print(f"(cached) {tid}", flush=True)
+                continue
+            try:
+                rec = rw.run_cell(task, "prism_plus", "sonnet", "final06acb44")
+            except Exception as e:
+                print(f"{tid:26} ERROR {str(e)[:200]}", flush=True)
+                continue
+            out.write_text(json.dumps(rec, indent=1))
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            print(f"{rec['task']:26} recall={rec.get('file_recall')} "
+                  f"({rec.get('files_found')}/{rec.get('files_expected')}) "
+                  f"sym={rec.get('symbol_recall')} extra={rec.get('extra_files')} "
+                  f"build={rec.get('build')} turns={rec.get('turns')} "
+                  f"cost=${rec.get('cost_usd')} hop={ts} prism_calls={p}", flush=True)
+        EOF
+        nohup python3 /tmp/run_wide_couple.py > /tmp/run_wide_couple.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T21:52:58.318758Z
+      classified: other
+    - cmd: until ! ps -p 9350 >/dev/null 2>&1; do sleep 30; done; echo done
+      at: 2026-09-02T21:53:02.824106Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git log -1 --format="%H %s"
+        git tag --sort=-creatordate | head -3
+        git status --short
+        git log origin/main..HEAD --oneline 2>/dev/null
+        /opt/homebrew/bin/prism --version
+      at: 2026-09-02T21:54:14.572514Z
+      classified: other
+    - cmd: cat /tmp/run_wide_couple.log; echo ---; ps -p 9350 >/dev/null 2>&1 && echo RUNNING || echo FINISHED
+      at: 2026-09-02T21:59:49.855638Z
+      classified: other
+    - cmd: cat /tmp/run_wide_couple.log
+      at: 2026-09-02T22:00:37.992738Z
+      classified: other
+    - cmd: grep -n "files_only\|filesOnly" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -20
+      at: 2026-09-02T22:04:26.506151Z
+      classified: other
+    - cmd: 'grep -n "filesOnly:  boolArg" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go'
+      at: 2026-09-02T22:05:12.008267Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-rollup-only ./cmd/prism 2>&1 | head -30
+      at: 2026-09-02T22:05:34.316052Z
+      classified: build
+    - cmd: |-
+        cd ~/ci-corpus/jackson-databind
+        P=/tmp/prism-rollup-only
+        echo "=== default (with sample) ==="
+        $P search "MismatchedInputException" --scope text --format json 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); print('has textHits:', 'textHits' in d, 'has hitRollup:', 'hitRollup' in d, len(json.dumps(d)), 'bytes')"
+        echo "=== rollup_only=true ==="
+        $P search "MismatchedInputException" --scope text --rollup-only --format json 2>&1 | head -5
+      at: 2026-09-02T22:05:42.099566Z
+      classified: other
+    - cmd: grep -n "\"files-only\"\|files_only" /Users/tapabratapal/Projects/provasign/prism/internal/cli/*.go | grep -v _test
+      at: 2026-09-02T22:05:46.349544Z
+      classified: other
+    - cmd: sed -n '1790,1810p' /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-09-02T22:05:49.764078Z
+      classified: other
+    - cmd: grep -n "filesOnly\s*:=\|filesOnly bool\|\"--files-only\"" /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go | head -10
+      at: 2026-09-02T22:05:52.30332Z
+      classified: other
+    - cmd: grep -n "files-only.*exhaustive\|--exhaustive\].*context" /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go | grep -v "case \|rollupOnly"
+      at: 2026-09-02T22:06:12.276649Z
+      classified: other
+    - cmd: sed -n '82,92p' /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-09-02T22:06:15.408863Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-rollup-only ./cmd/prism 2>&1 | head -30
+      at: 2026-09-02T22:06:24.971668Z
+      classified: build
+    - cmd: |-
+        cd ~/ci-corpus/jackson-databind
+        P=/tmp/prism-rollup-only
+        echo "=== default ==="
+        $P search "MismatchedInputException" --scope text --format json 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); print('textHits' in d, 'hitRollup' in d, len(json.dumps(d)))"
+        echo "=== rollup-only ==="
+        $P search "MismatchedInputException" --scope text --rollup-only --format json 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); print('textHits' in d, 'hitRollup' in d, len(json.dumps(d)))"
+        echo "=== rollup-only on a SMALL (non-truncated) search: should keep textHits ==="
+        $P search "MismatchedInputExceptionZZZNOTFOUND" --scope text --rollup-only --format json 2>&1
+        $P search "ObjectMapper" --scope text --rollup-only --limit 1000 --format json 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin); print('truncated:', d.get('truncated'), 'textHits present:', 'textHits' in d)"
+      at: 2026-09-02T22:06:37.077825Z
+      classified: other
+    - cmd: grep -n "func TestToolSearch_WarningPointsAtRollupWhenPresent" -A 55 /Users/tapabratapal/Projects/provasign/prism/internal/mcp/searchmulti_test.go | tail -35
+      at: 2026-09-02T22:06:48.568179Z
+      classified: other
+    - cmd: grep -n "func TestToolSearch_WarningPointsAtRollupWhenPresent" -A 60 /Users/tapabratapal/Projects/provasign/prism/internal/mcp/searchmulti_test.go | tail -8
+      at: 2026-09-02T22:06:52.673226Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -30
+        go test ./internal/mcp/ -run 'TestToolSearch_RollupOnly' -v 2>&1 | tail -20
+      at: 2026-09-02T22:07:17.124989Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+      at: 2026-09-02T22:07:30.188151Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add internal/mcp/tools.go internal/mcp/searchmulti_test.go internal/cli/commands.go
+        git commit -m "$(cat <<'EOF'
+        mcp: add rollup_only to prism_search -- skip the sample, keep the rollup
+
+        Real feedback (2026-09-02) on the hitRollup truncation-warning fix:
+        should the rollup be surfaced earlier in the response, or as its own
+        tool? Neither -- ordering within one response doesn't save tokens
+        (deliveredTokens bills the whole payload regardless of read order),
+        and a separate tool costs a second call on the common case (wanting
+        both the sample and the structure together). The real lever is the
+        one prism_search already exposes for the analogous files_only case:
+        let the caller skip content they don't want in the first place.
+
+        rollup_only=true drops textHits from a truncated search's response
+        when hitRollup exists -- for a caller who already knows "how many,
+        and where do they cluster" is all they need, not example lines.
+        Measured on jackson-databind's MismatchedInputException search: 5604
+        -> 2980 bytes (~47%) with the rollup itself unchanged. Never drops
+        textHits when there is nothing to answer with instead (not truncated,
+        or a rollup was not producible) -- silently dropping the only content
+        in the response would be worse than the tokens.
+
+        Wired through the MCP schema and the CLI (--rollup-only), matching
+        --files-only's existing shape exactly.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-02T22:07:41.797109Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-final3 ./cmd/prism && echo built
+        cd /Users/tapabratapal/Projects/provasign/research
+        nohup python3 harness/ci_invariants.py --prism /tmp/prism-final3 --corpus-root ~/ci-corpus > /tmp/gate_ci_ronly.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-final3 --out /tmp/ab_gate_ronly > /tmp/gate_ab_ronly.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-02T22:07:51.035357Z
+      classified: build
+    - cmd: until ! ps -p 12313 >/dev/null 2>&1 && ! ps -p 12314 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-02T22:07:54.486597Z
+      classified: other
+    - cmd: |-
+        ps -p 12313 >/dev/null 2>&1 && echo "ci RUNNING" || echo "ci DONE"
+        ps -p 12314 >/dev/null 2>&1 && echo "ab RUNNING" || echo "ab DONE"
+      at: 2026-09-02T22:09:41.162186Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        cat > /tmp/run_wide_couple2.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        # Final cumulative build (commit f2ad6b0, unreleased) -- test-surfacing +
+        # rollup_only on top of everything else shipped today.
+        rw._REAL_PRISM = "/tmp/prism-final3"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        TASKS = ["dubbo__86dd98899b", "grove__b40b72d94e"]
+
+        for tid in TASKS:
+            task = json.loads(Path(f"tasks-wide/{tid}.json").read_text())
+            out = Path(f"runs/wide/{tid}.sonnet.prism_plus.finalf2ad6b0.json")
+            if out.exists():
+                print(f"(cached) {tid}", flush=True)
+                continue
+            try:
+                rec = rw.run_cell(task, "prism_plus", "sonnet", "finalf2ad6b0")
+            except Exception as e:
+                print(f"{tid:26} ERROR {str(e)[:200]}", flush=True)
+                continue
+            out.write_text(json.dumps(rec, indent=1))
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            print(f"{rec['task']:26} recall={rec.get('file_recall')} "
+                  f"({rec.get('files_found')}/{rec.get('files_expected')}) "
+                  f"sym={rec.get('symbol_recall')} extra={rec.get('extra_files')} "
+                  f"build={rec.get('build')} turns={rec.get('turns')} "
+                  f"cost=${rec.get('cost_usd')} hop={ts} prism_calls={p}", flush=True)
+        EOF
+        nohup python3 /tmp/run_wide_couple2.py > /tmp/run_wide_couple2.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T22:09:51.320279Z
+      classified: other
+    - cmd: until ! ps -p 12314 >/dev/null 2>&1 && ! ps -p 12916 >/dev/null 2>&1; do sleep 30; done; echo all-done
+      at: 2026-09-02T22:10:00.514878Z
+      classified: other
+    - cmd: |-
+        echo "=== ci_invariants (already done) ==="; tail -10 /tmp/gate_ci_ronly.log
+        echo; echo "=== ab_gate ==="; ps -p 12314 >/dev/null 2>&1 && echo RUNNING || echo DONE; tail -10 /tmp/gate_ab_ronly.log
+        echo; echo "=== wide-bed couple ==="; cat /tmp/run_wide_couple2.log; ps -p 12916 >/dev/null 2>&1 && echo RUNNING || echo DONE
+      at: 2026-09-02T22:16:15.905484Z
+      classified: other
+    - cmd: |-
+        echo "=== ab_gate ==="; ps -p 12314 >/dev/null 2>&1 && echo RUNNING || echo DONE; tail -15 /tmp/gate_ab_ronly.log
+        echo; echo "=== wide-bed couple ==="; cat /tmp/run_wide_couple2.log; ps -p 12916 >/dev/null 2>&1 && echo RUNNING || echo DONE
+      at: 2026-09-02T22:24:08.395235Z
+      classified: other
+    - cmd: tail -15 /tmp/gate_ab_ronly.log
+      at: 2026-09-02T22:29:30.201452Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        for tid, tag in [('dubbo__86dd98899b','finalf2ad6b0'), ('grove__b40b72d94e','finalf2ad6b0')]:
+            for arm in ('baseline.final', f'prism_plus.{tag}'):
+                try:
+                    r = json.load(open(f'runs/wide/{tid}.sonnet.{arm}.json'))
+                except FileNotFoundError:
+                    continue
+                tt = r.get('tool_trace') or {}
+                print(tid, arm, 'turns=', r.get('turns'), 'cost=', r.get('cost_usd'))
+                for k,v in sorted(tt.items(), [REDACTED:env-secret] x:-x[1]):
+                    print('   ', k, v)
+        "
+      at: 2026-09-02T23:42:55.08255Z
+      classified: other
+    - cmd: ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* 2>/dev/null | head -3
+      at: 2026-09-02T23:59:18.124092Z
+      classified: other
+    - cmd: |-
+        for d in uwxq2xnj x710-zlz qzuagu7l; do
+          dir="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-$d"
+          f=$(ls -t "$dir"/*.jsonl 2>/dev/null | head -1)
+          [ -z "$f" ] && continue
+          n=$(python3 -c "
+        import json
+        c=0
+        for line in open('$f'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')!='assistant': continue
+            for cc in (j.get('message',{}).get('content') or []):
+                if isinstance(cc,dict) and cc.get('type')=='tool_use' and 'prism' in cc['name'].lower():
+                    c+=1
+        print(c)
+        ")
+          echo "$d: prism_calls=$n"
+        done
+      at: 2026-09-02T23:59:24.458387Z
+      classified: other
+    - cmd: |-
+        dir="/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-uwxq2xnj"
+        f=$(ls -t "$dir"/*.jsonl | head -1)
+        python3 << PYEOF
+        import json
+        f = "$f"
+        n = 0
+        for line in open(f):
+            try: j = json.loads(line)
+            except: continue
+            if j.get('type') != 'assistant': continue
+            for c in (j.get('message',{}).get('content') or []):
+                if not (isinstance(c, dict) and c.get('type') == 'tool_use'): continue
+                name = c['name']
+                inp = c.get('input', {})
+                n += 1
+                if name == 'Read':
+                    print(f"[{n}] Read {inp.get('file_path','')} offset={inp.get('offset')} limit={inp.get('limit')}")
+                elif name == 'Bash':
+                    cmd = inp.get('command','')[:90]
+                    print(f"[{n}] Bash: {cmd}")
+                elif name == 'Edit':
+                    print(f"[{n}] Edit {inp.get('file_path','')}")
+                elif 'prism' in name.lower():
+                    print(f"[{n}] {name} {json.dumps(inp)[:150]}")
+                elif name == 'ToolSearch':
+                    print(f"[{n}] ToolSearch {inp}")
+        PYEOF
+      at: 2026-09-02T23:59:36.824467Z
+      classified: other
+    - cmd: "dir=\"/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-uwxq2xnj\"\nf=$(ls -t \"$dir\"/*.jsonl | head -1)\npython3 << 'PYEOF'\nimport json\nf = \"/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-uwxq2xnj/\" \nimport glob\nf = glob.glob(f + \"*.jsonl\")[0]\nlines = [json.loads(l) for l in open(f)]\n# find tool_use id for call #13 (the exhaustive text search) and #12 (change_impact)\nn = 0\nfor i, j in enumerate(lines):\n    if j.get('type') != 'assistant': continue\n    for c in (j.get('message',{}).get('content') or []):\n        if not (isinstance(c, dict) and c.get('type') == 'tool_use'): continue\n        n += 1\n        if n in (12, 13):\n            tid = c['id']\n            # find result\n            for k in lines[i:i+5]:\n                if k.get('type') == 'user':\n                    for cc in (k.get('message',{}).get('content') or []):\n                        if isinstance(cc, dict) and cc.get('type') == 'tool_result' and cc.get('tool_use_id') == tid:\n                            content = cc.get('content')\n                            s = content if isinstance(content, str) else json.dumps(content)\n                            print(f\"=== call #{n} ({c['name']}) result ===\")\n                            print(s[:1500])\n                            print()\nPYEOF"
+      at: 2026-09-03T00:00:05.17724Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "no matches — search completed\|no matches . search completed" internal/mcp/*.go | grep -v _test
+        grep -rn "declares no method" internal/ --include="*.go" | grep -v _test
+        grep -rn "declares no method" /Users/tapabratapal/Projects/provasign/grove/internal /Users/tapabratapal/Projects/provasign/grove/pkg --include="*.go" 2>/dev/null | grep -v _test | head -5
+      at: 2026-09-03T00:07:48.142506Z
+      classified: other
+    - cmd: sed -n '250,290p' /Users/tapabratapal/Projects/provasign/grove/internal/graph/changeimpact.go
+      at: 2026-09-03T00:07:51.202721Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go list -m -f '{{.Dir}} {{.Replace}}' github.com/provasign/grove
+        ls /Users/tapabratapal/go/pkg/mod/github.com/provasign/ 2>/dev/null | head -5
+        git -C /Users/tapabratapal/Projects/provasign/grove log --oneline -3
+        git -C /Users/tapabratapal/Projects/provasign/grove status --short | head -5
+        git -C /Users/tapabratapal/Projects/provasign/grove tag --sort=-creatordate | head -3
+      at: 2026-09-03T00:08:04.70351Z
+      classified: other
+    - cmd: |-
+        ls /Users/tapabratapal/Projects/provasign/go.work 2>/dev/null && cat /Users/tapabratapal/Projects/provasign/go.work
+        go env GOWORK GOFLAGS
+      at: 2026-09-03T00:08:11.309553Z
+      classified: other
+    - cmd: sed -n '100,160p' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/searchtext.go
+      at: 2026-09-03T00:08:21.77159Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "Multi-term: run each term" -A 40 internal/mcp/tools.go | head -55
+      at: 2026-09-03T00:08:24.833314Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n '1,95p' internal/mcp/searchtext.go
+      at: 2026-09-03T00:08:48.036712Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n '1200,1215p' internal/mcp/tools.go
+      at: 2026-09-03T00:08:54.694208Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n '2160,2180p' internal/mcp/tools.go
+        grep -n "func (h \*Handler) toolChangeImpact" internal/mcp/tools.go
+      at: 2026-09-03T00:09:33.202647Z
+      classified: other
+    - cmd: grep -n "func leafOf" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go | grep -v _test
+      at: 2026-09-03T00:09:45.575146Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n '"regexp"' internal/mcp/tools.go | head -2
+        go build ./... 2>&1 | head -20
+      at: 2026-09-03T00:10:04.493668Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-retry ./cmd/prism
+        cd ~/ci-corpus/gin
+        /tmp/prism-retry index . >/dev/null 2>&1
+        echo "=== A: all-empty multi-term search (the exact real failure shape) ==="
+        /tmp/prism-retry search 'e.Query(' 'cg.Semantic(' 'grove.Scored' --scope text --format text 2>&1 | tail -10
+        echo
+        echo "=== A2: single empty term ==="
+        /tmp/prism-retry search 'ZZZnotfoundZZZ' --scope text --format text 2>&1 | tail -5
+        echo
+        echo "=== B: change_impact on a nonexistent method of a real type ==="
+        /tmp/prism-retry change-impact "ResponseWriter.Nope" --format text 2>&1 | head -5
+      at: 2026-09-03T00:10:15.407685Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "didYouMean\|failedTerms" internal/cli/*.go | grep -v _test | head
+        grep -rn '"── \|── %v' internal/cli/*.go | head -5
+      at: 2026-09-03T00:10:30.767218Z
+      classified: other
+    - cmd: sed -n '2700,2760p' /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-09-03T00:10:33.708435Z
+      classified: other
+    - cmd: grep -n '"note"' /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go | head
+      at: 2026-09-03T00:10:48.459269Z
+      classified: other
+    - cmd: sed -n '2788,2800p' /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-09-03T00:10:51.628082Z
+      classified: other
+    - cmd: grep -n "^func printNotes" /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-09-03T00:10:59.735815Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-retry ./cmd/prism 2>&1 | head -10
+        cd ~/ci-corpus/gin
+        echo "=== A: multi-term with identifier tokens that DO nearly exist ==="
+        /tmp/prism-retry search 'w.Status(' 'x.AbortWithStatus(' --scope text --format text 2>&1 | head -12
+      at: 2026-09-03T00:11:17.099635Z
+      classified: build
+    - cmd: |-
+        cd ~/ci-corpus/gin
+        echo "=== all-empty with near-miss identifier (Statuz -> should suggest Status symbols? [REDACTED:env-secret] won't match) ==="
+        /tmp/prism-retry search 'e.AbortWithStatus(zz' 'qq.LoggerWithConfig(zz' --scope text --format text 2>&1 | head -10
+      at: 2026-09-03T00:11:23.537703Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cat >> internal/mcp/searchmulti_test.go << 'EOF'
+
+        // TestToolSearch_AllEmptyCarriesRetryGuidance: transcript analysis
+        // (2026-09-02, grove wide-bed cell) caught the moment an agent abandoned
+        // prism for an entire task -- one multi-term search where every guessed
+        // term (punctuation-laden call patterns) returned empty. The result was
+        // honest but terminal: nothing distinguished "these exact strings don't
+        // exist, broaden and retry" from "this tool can't help here", and the
+        // agent chose the second reading, reverting to manual grep for 7 more
+        // files at ~2x the turns. An all-empty search must say what to do next
+        // and, when the index has near-miss candidates for the terms' identifier
+        // tokens, name them.
+        func TestToolSearch_AllEmptyCarriesRetryGuidance(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	out, err := h.Invoke("prism_search", map[string]any{
+        		"query": []string{"e.AlphaZZZ(", "cg.BetaZZZ("}, "scope": "text"})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	note, _ := m["note"].(string)
+        	if !strings.Contains(note, "NOT that the tool is done") {
+        		t.Errorf("all-empty multi-term search must carry retry guidance, got note=%q", note)
+        	}
+        	// Single-term shape too.
+        	out, err = h.Invoke("prism_search", map[string]any{
+        		"query": "ZZZdoesNotExistZZZ", "scope": "text"})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m = out.(map[string]any)
+        	note, _ = m["note"].(string)
+        	if !strings.Contains(note, "NOT that the tool is done") {
+        		t.Errorf("all-empty single-term search must carry retry guidance, got note=%q", note)
+        	}
+        }
+
+        // TestToolSearch_PartialMatchesCarryNoRetryGuidance: the guidance is for
+        // the all-empty dead end only -- a search where any term matched must not
+        // be second-guessed.
+        func TestToolSearch_PartialMatchesCarryNoRetryGuidance(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	out, err := h.Invoke("prism_search", map[string]any{
+        		"query": []string{"Alpha", "ZZZnotfoundZZZ"}, "scope": "text"})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	if note, _ := m["note"].(string); strings.Contains(note, "NOT that the tool is done") {
+        		t.Errorf("a search with real matches must not carry the all-empty guidance, got note=%q", note)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run 'TestToolSearch_AllEmpty|TestToolSearch_PartialMatches' -v 2>&1 | tail -10
+      at: 2026-09-03T00:11:40.284749Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cat >> internal/mcp/delivery_test.go << 'EOF'
+
+        // TestToolChangeImpact_NoMethodErrorIsCorrectable: grove's "type X declares
+        // no method Y" was measured (2026-09-02 transcript analysis) as the dead end
+        // that made an agent abandon prism for a whole task -- it had deleted the
+        // member two edits earlier, asked change_impact about it AFTER (steering
+        // says before), got the terse error, and never called prism again. The
+        // enriched error names the members the type actually declares and states
+        // the query-after-edit failure mode explicitly, so the retry is one obvious
+        // step instead of a dead end.
+        func TestToolChangeImpact_NoMethodErrorIsCorrectable(t *testing.T) {
+        	h := newDeliveryFixture(t)
+        	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "FormatGreeting.Nope"})
+        	if err == nil {
+        		t.Skip("fixture resolved FormatGreeting.Nope — nothing to assert")
+        	}
+        	msg := err.Error()
+        	if !strings.Contains(msg, "BEFORE the edit") {
+        		t.Errorf("no-method error must name the query-after-edit failure mode, got: %s", msg)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run 'TestToolChangeImpact_NoMethodErrorIsCorrectable' -v 2>&1 | tail -8
+      at: 2026-09-03T00:11:52.393684Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 << 'PYEOF'
+        path = 'internal/mcp/delivery_test.go'
+        text = open(path).read()
+        old = '''func TestToolChangeImpact_NoMethodErrorIsCorrectable(t *testing.T) {
+        	h := newDeliveryFixture(t)
+        	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "FormatGreeting.Nope"})
+        	if err == nil {
+        		t.Skip("fixture resolved FormatGreeting.Nope — nothing to assert")
+        	}
+        	msg := err.Error()
+        	if !strings.Contains(msg, "BEFORE the edit") {
+        		t.Errorf("no-method error must name the query-after-edit failure mode, got: %s", msg)
+        	}
+        }'''
+        new = '''func TestToolChangeImpact_NoMethodErrorIsCorrectable(t *testing.T) {
+        	dir := t.TempDir()
+        	os.WriteFile(filepath.Join(dir, "svc.go"), []byte(`package p
+
+        type Service struct{}
+
+        func (s *Service) Start() {}
+
+        func (s *Service) Stop() {}
+        `), 0o644)
+        	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+        	if err := gc.EnsureRunning(t.Context()); err != nil {
+        		t.Fatalf("grove ensure: %v", err)
+        	}
+        	t.Cleanup(gc.Shutdown)
+        	h := NewHandler(config.Default(), dir, gc)
+        	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+        		t.Fatalf("index: %v", err)
+        	}
+
+        	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "Service.Nope"})
+        	if err == nil {
+        		t.Fatal("Service.Nope should not resolve")
+        	}
+        	msg := err.Error()
+        	if !strings.Contains(msg, "BEFORE the edit") {
+        		t.Errorf("no-method error must name the query-after-edit failure mode, got: %s", msg)
+        	}
+        	// The members the type ACTUALLY declares make the retry one obvious step.
+        	if !strings.Contains(msg, "Start") || !strings.Contains(msg, "Stop") {
+        		t.Errorf("no-method error should list the type's real members, got: %s", msg)
+        	}
+        }'''
+        assert old in text
+        open(path, 'w').write(text.replace(old, new))
+        print("done")
+        PYEOF
+        go test ./internal/mcp/ -run 'TestToolChangeImpact_NoMethodErrorIsCorrectable' -v 2>&1 | tail -8
+      at: 2026-09-03T00:12:07.896841Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... -count=1 -timeout 120s 2>&1 | tail -18
+      at: 2026-09-03T00:12:21.475783Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/searchmulti_test.go internal/mcp/delivery_test.go internal/cli/commands.go
+        git commit -m "$(cat <<'EOF'
+        mcp: make prism's dead ends correctable -- retry guidance on empty search,
+        member listing on change-impact misses
+
+        Root-caused the wide-bed turns/cost overhead (prism_plus consistently
+        costs more turns than baseline at equal recall): transcript analysis of
+        grove__b40b72d94e found the exact abandonment moment. The agent used
+        prism cleanly and substitutively for its first two files (prism_read ->
+        Edit, no redundant reads), then hit two dead ends back to back:
+
+          1. change_impact("Engine.Query") -> "type Engine declares no method
+             Query" -- because it had ALREADY deleted the method two edits
+             earlier (steering says change-impact runs BEFORE the edit; it ran
+             it after, making the query self-defeating).
+          2. A follow-up 5-term search of guessed call patterns ("e.Query(",
+             "cg.Query(", ".Semantic(" ...) -> five "no matches".
+
+        After those two results it never called prism again: the task's
+        remaining 7 files were all found by manual grep at roughly 2x the
+        turns. Both responses were honest but TERMINAL -- nothing in either
+        distinguished "your term/timing was wrong, here is the correction"
+        from "this tool cannot help here", and the agent chose the second
+        reading. Terms that had matched minutes earlier were never retried.
+
+        Fix, on the same in-band-guidance-at-the-moment-of-failure pattern as
+        the truncation warning's hitRollup pointer (the one steering mechanism
+        measured to work this session, vs. static doc text which mostly is not
+        acted on):
+
+        - All-empty search (every term, all shapes): the response now states
+          that empty means the TERMS missed, not that the tool is exhausted --
+          retry broader/shorter, drop punctuation -- and lists the closest
+          indexed symbols to the failed terms' identifier tokens (didYouMean,
+          with file:line), so the retry is one obvious step instead of a fresh
+          guess. Fires only when EVERY term came back empty; a search with any
+          real match is untouched.
+        - change_impact "declares no method": the error now lists the members
+          the type actually declares (from prism's own index -- no grove
+          change or release needed) and names the measured failure mode
+          explicitly: the index is read at query time, so change-impact must
+          run BEFORE the edit that removes the member.
+
+        Both rendered through MCP JSON and the CLI text formatter (didYouMean
+        added to the renderer's known-keys whitelist and printed as location
+        lines).
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-03T00:12:40.724036Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-final4 ./cmd/prism && echo built
+        cd /Users/tapabratapal/Projects/provasign/research
+        nohup python3 harness/ci_invariants.py --prism /tmp/prism-final4 --corpus-root ~/ci-corpus > /tmp/gate_ci_retry.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-final4 --out /tmp/ab_gate_retry > /tmp/gate_ab_retry.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-03T00:12:49.65791Z
+      classified: build
+    - cmd: until ! ps -p 32494 >/dev/null 2>&1 && ! ps -p 32495 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-03T00:12:53.63918Z
+      classified: other
+    - cmd: echo "=== ci_invariants ==="; tail -6 /tmp/gate_ci_retry.log; echo; echo "=== ab_gate ==="; tail -13 /tmp/gate_ab_retry.log
+      at: 2026-09-03T00:28:59.902194Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        cat > /tmp/run_wide_retry.py << 'EOF'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, ".")
+        import run_wide as rw
+
+        # Final build with the dead-end fixes (commit 39c430c) -- the investigation
+        # started from grove__b40b72d94e's transcript, so that cell is the test.
+        rw._REAL_PRISM = "/tmp/prism-final4"
+        (rw.arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": rw._REAL_PRISM, "args": ["mcp"]}}}))
+
+        TASKS = ["dubbo__86dd98899b", "grove__b40b72d94e"]
+
+        for tid in TASKS:
+            task = json.loads(Path(f"tasks-wide/{tid}.json").read_text())
+            out = Path(f"runs/wide/{tid}.sonnet.prism_plus.final39c430c.json")
+            if out.exists():
+                print(f"(cached) {tid}", flush=True)
+                continue
+            try:
+                rec = rw.run_cell(task, "prism_plus", "sonnet", "final39c430c")
+            except Exception as e:
+                print(f"{tid:26} ERROR {str(e)[:200]}", flush=True)
+                continue
+            out.write_text(json.dumps(rec, indent=1))
+            tt = rec.get("tool_trace") or {}
+            p = sum(v for k, v in tt.items() if "prism" in k.lower())
+            ts = tt.get("ToolSearch", 0)
+            print(f"{rec['task']:26} recall={rec.get('file_recall')} "
+                  f"({rec.get('files_found')}/{rec.get('files_expected')}) "
+                  f"sym={rec.get('symbol_recall')} extra={rec.get('extra_files')} "
+                  f"build={rec.get('build')} turns={rec.get('turns')} "
+                  f"cost=${rec.get('cost_usd')} hop={ts} prism_calls={p}", flush=True)
+        EOF
+        nohup python3 /tmp/run_wide_retry.py > /tmp/run_wide_retry.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-03T00:33:50.820556Z
+      classified: other
+    - cmd: until ! ps -p 33905 >/dev/null 2>&1; do sleep 30; done; echo done
+      at: 2026-09-03T00:33:53.732629Z
+      classified: other
+    - cmd: cat /tmp/run_wide_retry.log
+      at: 2026-09-03T00:43:28.625345Z
+      classified: other
+    - cmd: |-
+        d=$(ls -dt /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-wide-* | head -1)
+        f=$(ls -t "$d"/*.jsonl | head -1)
+        grep -c "UPSTREAM" "$f" >/dev/null
+        python3 << PYEOF
+        import json, glob
+        f = "$f"
+        lines = [json.loads(l) for l in open(f)]
+        # confirm task + list prism calls and any empty results / retries
+        n = 0
+        for i, j in enumerate(lines):
+            if j.get('type') != 'assistant': continue
+            for c in (j.get('message',{}).get('content') or []):
+                if not (isinstance(c, dict) and c.get('type') == 'tool_use'): continue
+                n += 1
+                name = c['name']
+                if 'prism' in name.lower():
+                    print(f"[{n}] {name}: {json.dumps(c.get('input',{}))[:130]}")
+                    tid = c['id']
+                    for k in lines[i:i+5]:
+                        if k.get('type') == 'user':
+                            for cc in (k.get('message',{}).get('content') or []):
+                                if isinstance(cc, dict) and cc.get('type') == 'tool_result' and cc.get('tool_use_id') == tid:
+                                    s = cc.get('content')
+                                    s = s if isinstance(s, str) else json.dumps(s)
+                                    if 'no matches' in s or 'NOT that the tool is done' in s or 'declares no' in s:
+                                        print(f"     -> EMPTY/GUIDANCE: {s[:250]}")
+        PYEOF
+      at: 2026-09-03T00:43:40.312777Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-09-02T16:59:29.987521Z
+redactions: 2
