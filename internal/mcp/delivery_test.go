@@ -412,3 +412,68 @@ func FrobnicateThing() string { return "x" }
 		t.Errorf("content-only bystander's full body was delivered — should be signature-level only:\n%s", content)
 	}
 }
+
+// TestToolChangeImpact_AmbiguityNoteOnMultiFileDeclarations: BACKLOG
+// addendum #5 — same-named types in distinct files all seed one merged
+// closure whose caller list can belong entirely to the wrong type; the
+// result must SAY when that risk exists and name the file= fix.
+func TestToolChangeImpact_AmbiguityNoteOnMultiFileDeclarations(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/a\n\ngo 1.26\n")
+	write("pkg/one/one.go", `package one
+
+type Engine struct{}
+
+func (e *Engine) Query(q string) string { return q }
+`)
+	write("pkg/two/two.go", `package two
+
+type Engine struct{}
+
+func (e *Engine) Query(v int) int { return v }
+`)
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "Engine.Query"})
+	if err != nil {
+		t.Fatalf("change_impact: %v", err)
+	}
+	m := out.(map[string]any)
+	note, _ := m["ambiguityNote"].(string)
+	if !strings.Contains(note, "file=") {
+		t.Errorf("multi-file declarations must carry the ambiguity note naming file=, got %q", note)
+	}
+
+	// Scoped call: no note, one declaration.
+	out, err = h.Invoke("prism_change_impact", map[string]any{"query": "Engine.Query", "file": "pkg/one"})
+	if err != nil {
+		t.Fatalf("scoped change_impact: %v", err)
+	}
+	m = out.(map[string]any)
+	if _, has := m["ambiguityNote"]; has {
+		t.Error("scoped call must not carry the ambiguity note")
+	}
+	decls := mustJSON(t, m["declarations"])
+	if len(decls) != 1 || decls[0]["filePath"] != "pkg/one/one.go" {
+		t.Errorf("scoped declarations = %v, want exactly pkg/one/one.go", decls)
+	}
+}

@@ -2058,6 +2058,7 @@ func cmdChangeImpact(args []string) int {
 	query := args[0]
 	dir := "."
 	format := formatJSON
+	file := ""
 	for i := 1; i < len(args); i++ {
 		a := args[i]
 		switch a {
@@ -2069,6 +2070,13 @@ func cmdChangeImpact(args []string) int {
 				}
 				i++
 			}
+		case "--file":
+			// Disambiguate same-named types in different packages: only
+			// types declared in a matching file seed the closure.
+			if i+1 < len(args) {
+				file = args[i+1]
+				i++
+			}
 		default:
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("change-impact", a)
@@ -2076,7 +2084,11 @@ func cmdChangeImpact(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_change_impact", map[string]any{"query": query})
+	callArgs := map[string]any{"query": query}
+	if file != "" {
+		callArgs["file"] = file
+	}
+	out, err := invokeWithPersistentLedger(dir, "prism_change_impact", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
 		return 1

@@ -584,7 +584,24 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
-	case "prism_change_impact", "prism_missing_implementations":
+	case "prism_missing_implementations":
+		// Same shape as change_impact MINUS file= (its handler does not read
+		// it, and the unknown-arg validator keys on this schema — sharing
+		// the case would let a silently-ignored file= through, the exact
+		// bug class rejectUnknownArgs exists to kill).
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"query"},
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "Type.method or Type.method(ParamType, ...) — the interface/abstract member to check implementations of.",
+				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
+			},
+		}
+	case "prism_change_impact":
 		return map[string]any{
 			"type":     "object",
 			"required": []string{"query"},
@@ -592,6 +609,10 @@ func toolSchema(name string) map[string]any {
 				"query": map[string]any{
 					"type":        "string",
 					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\". A bare member name (\"serialize\") or file:line (\"src/Foo.java:120\") also works when it resolves to exactly one symbol; if several match, the error lists the candidates.",
+				},
+				"file": map[string]any{
+					"type":        "string",
+					"description": "Disambiguate same-named types in different packages: only types declared in a file whose path contains this seed the closure (change_impact only; the result says when this is needed).",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
@@ -2308,7 +2329,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if query == "" {
 		return nil, errors.New("query is required")
 	}
-	r, err := h.Grove.ChangeImpact(ctx, query)
+	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
 	if err != nil {
 		// "declares no method" is the dead-end that abandons agents:
 		// transcript analysis (2026-09-02, grove wide-bed cell) caught an
@@ -2380,6 +2401,31 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"family":       compact(r.Family),
 		"callers":      compactWithScope(r.Callers, true),
 		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
+	}
+	// Same-named types in distinct files all seed one merged closure — and
+	// a merged answer whose callers belong to the OTHER type reads as
+	// authoritative nonsense (measured 2026-09-02, BACKLOG addendum #5:
+	// "Engine.Query" merged two unrelated Engines; all 13 callers belonged
+	// to the one the agent was not asking about, and it re-derived the
+	// answer manually). When declarations span multiple files and the call
+	// was not already file-scoped, say so and name the fix.
+	if stringArg(args, "file", "") == "" {
+		declFiles := map[string]bool{}
+		for _, d := range r.Declarations {
+			declFiles[d.FilePath] = true
+		}
+		if len(declFiles) > 1 {
+			files := make([]string, 0, len(declFiles))
+			for f := range declFiles {
+				files = append(files, f)
+			}
+			sort.Strings(files)
+			out["ambiguityNote"] = fmt.Sprintf(
+				"declarations span %d files (%s) — if these are DIFFERENT types sharing a name "+
+					"(not overloads of one type), this result merges their closures and the "+
+					"caller/family lists mix both. Re-run with file=\"<path fragment>\" to scope "+
+					"to the one you mean.", len(declFiles), strings.Join(files, ", "))
+		}
 	}
 	if len(r.DeclaringTypes) > 0 {
 		out["declaringTypes"] = compact(r.DeclaringTypes)

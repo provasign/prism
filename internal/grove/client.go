@@ -560,11 +560,17 @@ func (c *Client) Resolve(ctx context.Context, name string) ([]ResolvedSymbol, er
 // query to the exact change-set: declaration(s), override/implementation
 // family in the subtype closure, super-declarations, and callers.
 func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactResult, error) {
+	return c.ChangeImpactScoped(ctx, query, "")
+}
+
+// ChangeImpactScoped is ChangeImpact with an optional declaring-file filter
+// for same-named types in distinct packages.
+func (c *Client) ChangeImpactScoped(ctx context.Context, query, file string) (*ChangeImpactResult, error) {
 	e, err := c.requireEngine()
 	if err != nil {
 		return nil, err
 	}
-	r, err := e.ChangeImpact(ctx, query)
+	r, err := e.ChangeImpactScoped(ctx, query, file)
 	if err != nil {
 		return nil, err
 	}
