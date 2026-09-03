@@ -42,6 +42,10 @@ type Handler struct {
 	// completes. Nil means no deferred init (Grove is already ready).
 	readyCh <-chan struct{}
 
+	// hypLedger accumulates per-session evidence for the scope note
+	// (hypothesisledger.go).
+	hypLedger hypothesisLedger
+
 	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
@@ -1367,6 +1371,10 @@ func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]
 		out["didYouMean"] = dym
 		guidance += " Closest indexed symbols to your terms are in didYouMean."
 	}
+	h.hypLedger.recordEmptySearch(terms)
+	if sn := h.hypLedger.scopeNote(); sn != "" {
+		guidance += " " + sn
+	}
 	if existing, _ := out["note"].(string); existing != "" {
 		out["note"] = existing + " — " + guidance
 	} else {
@@ -2409,6 +2417,11 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"family":       compact(r.Family),
 		"callers":      compactWithScope(r.Callers, true),
 		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
+	}
+	h.hypLedger.recordClosedImpact(r.Completeness,
+		len(r.Declarations)+len(r.Family)+len(r.Callers)+len(r.DeclaringTypes))
+	if sn := h.hypLedger.scopeNote(); sn != "" {
+		out["scopeNote"] = sn
 	}
 	// Same-named types in distinct files all seed one merged closure — and
 	// a merged answer whose callers belong to the OTHER type reads as

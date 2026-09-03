@@ -511,6 +511,10 @@ What the descriptions cannot say, the workflow rules:
 - Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
   Do NOT issue one search per name — each extra call costs a full turn
   and re-reads your whole context.
+- Wide removal/refactor ("remove X everywhere")? Open with
+  ` + "`" + `prism_search(query="<concept>", scope="text", exhaustive=true, files_only=true)` + "`" + ` —
+  the complete file inventory up front replaces the whole iterative
+  discovery phase and surfaces the API/SPI files a name-grep misses.
 - Need one named function/class's whole body? ` + "`" + `prism_lookup(name)` + "`" + ` —
   not ` + "`" + `prism_search(..., context=N)` + "`" + ` with N guessed large enough to
   cover it.
@@ -3149,7 +3153,7 @@ func printChangeImpactText(m map[string]any) {
 	printSiteGroup("family", m["family"])
 	printSiteGroup("declaringTypes", m["declaringTypes"])
 	printSiteGroup("callers", m["callers"])
-	printNotes(m, "declaringTypesNote", "externalSupers", "overridesExternal", "warning")
+	printNotes(m, "declaringTypesNote", "externalSupers", "overridesExternal", "warning", "ambiguityNote", "scopeNote")
 	if hint, ok := m["widerAnchor"].(map[string]any); ok {
 		fmt.Printf("widerAnchor: %v\n", hint["message"])
 	}
