@@ -430,7 +430,11 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "**`%s`**\n\n```%s\n", fg.path, langTag(fg.path))
+	fmt.Fprintf(&b, "**`%s`**", fg.path)
+	if note := tabIndentNote(lines); note != "" {
+		fmt.Fprintf(&b, " — %s", note)
+	}
+	fmt.Fprintf(&b, "\n\n```%s\n", langTag(fg.path))
 	prevEnd := 0
 	for _, w := range wins {
 		if prevEnd > 0 && w.start > prevEnd+1 {

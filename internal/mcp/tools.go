@@ -1128,6 +1128,9 @@ func (h *Handler) readRange(sessionPath, content string, offset, limit int) (any
 		"totalLines": total,
 		"content":    b.String(),
 	}
+	if note := tabIndentNote(lines[offset-1 : end]); note != "" {
+		out["formatNote"] = note
+	}
 	if end < total || offset > 1 {
 		out["note"] = fmt.Sprintf("lines %d-%d of %d — this is a WINDOW, not the file",
 			offset, end, total)
@@ -2932,4 +2935,22 @@ func mineTaskIdentifiers(task string, explicit []string) []string {
 		out = append(out, tok)
 	}
 	return out
+}
+
+// tabIndentNote returns the delimiter disambiguation for tab-indented
+// deliveries, or "". Measured (BACKLOG addendum 2 item 15, 2026-09-03,
+// ddtb4dv8 L153-207): the line-number format is "N<TAB>source"; on a
+// tab-indented file the delimiter tab reads as leading indentation, the
+// agent copies one extra \t into an Edit old_string, and every re-read
+// shows the same format so the illusion survived two od -c sessions —
+// ~20 turns of byte-level archaeology that one sentence prevents.
+func tabIndentNote(lines []string) string {
+	for _, l := range lines {
+		if strings.HasPrefix(l, "\t") {
+			return "tab-indented file: the FIRST tab after each line number is the " +
+				"delimiter, not part of the source — source indentation starts after it " +
+				"(a line shown as `12<TAB><TAB>x` has ONE tab of indentation)"
+		}
+	}
+	return ""
 }

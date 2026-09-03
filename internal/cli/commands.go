@@ -505,9 +505,12 @@ What the descriptions cannot say, the workflow rules:
   **Relay that set as-is** — re-filtering it through grep/sed measurably
   drops real sites.
 - Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
-- Removing symbols? ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + ` lists every
-  remaining reference in ONE call — instead of re-grepping each name
-  after every edit round.
+- Removing symbols? The moment you know WHAT you are removing — BEFORE
+  editing — run ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + `: every reference
+  in ONE list, instead of discovering them one build failure at a time
+  (measured: a 5-package go-build cascade, 70 turns, whose full list
+  this call had available 250 turns earlier). Re-run it per edit round;
+  plain ` + "`" + `prism_verify` + "`" + ` still gates the finish.
 - Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
   Do NOT issue one search per name — each extra call costs a full turn
   and re-reads your whole context.

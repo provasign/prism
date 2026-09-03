@@ -477,3 +477,34 @@ func (e *Engine) Query(v int) int { return v }
 		t.Errorf("scoped declarations = %v, want exactly pkg/one/one.go", decls)
 	}
 }
+
+// TestTabIndentNote: BACKLOG addendum 2 item 15 — the "N<TAB>source" line
+// format made a delimiter tab read as indentation on tab-indented files
+// (~20 turns of od -c archaeology in ddtb4dv8); the disambiguating
+// sentence must appear for tab-indented content and stay absent otherwise.
+func TestTabIndentNote(t *testing.T) {
+	if n := tabIndentNote([]string{"package p", "\tfunc x() {}"}); n == "" {
+		t.Error("tab-indented lines must carry the delimiter note")
+	}
+	if n := tabIndentNote([]string{"package p", "    spaces only"}); n != "" {
+		t.Errorf("space-indented content must not carry the note, got %q", n)
+	}
+}
+
+// TestToolRead_RangeCarriesTabNote: the range path (the shape the measured
+// failure actually used) must surface it as formatNote.
+func TestToolRead_RangeCarriesTabNote(t *testing.T) {
+	h := newTestHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "tabby.go"),
+		[]byte("package p\n\nfunc a() {\n\tx := 1\n\t_ = x\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := h.Invoke("prism_read", map[string]any{"file": "tabby.go", "offset": 3, "limit": 3})
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	m := out.(map[string]any)
+	if note, _ := m["formatNote"].(string); !strings.Contains(note, "delimiter") {
+		t.Errorf("tab-indented range read must carry formatNote, got %v", m["formatNote"])
+	}
+}
