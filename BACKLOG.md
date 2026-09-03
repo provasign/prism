@@ -304,3 +304,24 @@ numbers; the transcripts live under ~/.claude/projects/*wide-*.
 
 Out of scope, noted: cwd-loss churn in Bash (harness, not prism);
 README-prose reconciliation (prism indexes symbols, not prose).
+
+## Field report, 2026-09-03 — stale v0.50 deny entries + subagent circumvention
+
+Live session on another repo (confirmed + fixed by hand): a v0.50-era
+`permissions.deny` trio (Grep/Bash(grep:*)/Bash(rg:*)) survived years of
+upgrades — cleanupLegacyDenyEntries only fires on re-init, which nobody
+runs. The model, given the BARE denial (no reason attached, unlike the
+v0.50 hook that explained itself and steered ~100%), confabulated intent
+("user seems to be blocking grep/rg") and routed around the policy via
+the Explore subagent — own tool grants, no prism steering, unauditable
+calls. The denial achieved the opposite of its intent.
+
+Two items:
+1. Stale-denial detection that does not require re-init — e.g. the MCP
+   server, at startup, noticing its own legacy deny trio in the host
+   settings and warning in-band (loudness, never silent edits of a
+   user-owned file — same rule as cleanupLegacyDenyEntries).
+2. Standing design rule, now field-confirmed from the failure side: a
+   denial without an in-band reason does not steer — it gets confabulated
+   around, including via subagent escape hatches. Any future routing
+   enforcement must carry its explanation inside the denial itself.
