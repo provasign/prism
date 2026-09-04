@@ -508,3 +508,52 @@ func TestToolRead_RangeCarriesTabNote(t *testing.T) {
 		t.Errorf("tab-indented range read must carry formatNote, got %v", m["formatNote"])
 	}
 }
+
+// TestToolRead_HostCapDegradesNotErrors: BACKLOG addendum 2 item 17 — a
+// whole-file read past the host's MCP result cap used to return the full
+// body, which Claude Code rejected ("exceeds maximum allowed tokens");
+// measured (71o4q969), the agent then NEVER retried prism_read and issued
+// 50 native Reads. Files that cannot be delivered whole must degrade to a
+// valid head+symbol-map partial with continuation instructions — never a
+// payload the host bounces.
+func TestToolRead_HostCapDegradesNotErrors(t *testing.T) {
+	dir := t.TempDir()
+	var big strings.Builder
+	big.WriteString("package p\n\n")
+	for i := 0; i < 3000; i++ {
+		fmt.Fprintf(&big, "func f%d() string { return \"some reasonably long line of code %d\" }\n", i, i)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "huge.go"), []byte(big.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+	out, err := h.Invoke("prism_read", map[string]any{"file": "huge.go"})
+	if err != nil {
+		t.Fatalf("read must not error on an oversized file: %v", err)
+	}
+	m := out.(map[string]any)
+	content, _ := m["content"].(string)
+	if got := len(content); got > 80000 {
+		t.Fatalf("degraded delivery is still oversized: %d bytes", got)
+	}
+	if !strings.Contains(content, "1\tpackage p") {
+		t.Errorf("head window missing:\n%.200s", content)
+	}
+	note, _ := m["note"].(string)
+	for _, want := range []string{"offset=401", "prism_lookup", "do NOT fall back to native Read"} {
+		if !strings.Contains(note, want) {
+			t.Errorf("continuation note missing %q: %s", want, note)
+		}
+	}
+	if m["totalLines"] == nil {
+		t.Error("degraded delivery must carry totalLines (the denominator rule)")
+	}
+}

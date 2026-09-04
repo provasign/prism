@@ -1178,6 +1178,58 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if entry, seen, _ := h.Session.Lookup(sessionPath, ""); seen {
 		confidence = h.confidenceFor(entry, contextUsed, readCfg.ContextWindow())
 	}
+	// HOST-CAP DEGRADATION (BACKLOG addendum 2 item 17). Claude Code
+	// rejects MCP results past ~25k tokens; a whole-file delivery over
+	// that bound never reaches the agent — it sees only "exceeds maximum
+	// allowed tokens" and, measured (71o4q969, 2026-09-03), never retries
+	// prism_read on ANY file again (50 native Reads followed). For files
+	// whose body CANNOT be delivered there is no policy question — the
+	// choice is an error the agent routes around forever, or a valid
+	// partial. Deliver the head window plus the file's symbol map with
+	// explicit continuation instructions. Files under the bound are
+	// untouched (this deliberately does NOT reopen the reverted
+	// outline/map delivery-shaping work, which concerned deliverable
+	// files).
+	const hostCapTokens = 20000 // safety margin under the host's ~25k
+	if ranking.EstimateTokens(string(data)) > hostCapTokens {
+		lines := strings.Split(string(data), "\n")
+		const headLines = 400
+		head := lines
+		if len(head) > headLines {
+			head = head[:headLines]
+		}
+		var b strings.Builder
+		for i, l := range head {
+			fmt.Fprintf(&b, "%d\t%s\n", i+1, l)
+		}
+		symMap := make([]map[string]any, 0, len(fileSyms))
+		for _, s := range fileSyms {
+			symMap = append(symMap, map[string]any{
+				"name": displayQN(s), "kind": s.Kind,
+				"lines": fmt.Sprintf("%d-%d", s.Span.Start, s.Span.End),
+			})
+		}
+		out := map[string]any{
+			"file":       sessionPath,
+			"strategy":   "head+map (file exceeds the deliverable result cap)",
+			"totalLines": len(lines),
+			"content":    b.String(),
+			"symbols":    symMap,
+			"note": fmt.Sprintf("this file is %d lines (~%d tokens) — larger than one tool "+
+				"result can carry. Delivered: lines 1-%d plus the complete symbol map. "+
+				"Continue with prism_read(file, offset=%d, limit=400), or fetch one body "+
+				"with prism_lookup(name) — do NOT fall back to native Read, it has the "+
+				"same size limit.",
+				len(lines), ranking.EstimateTokens(string(data)), len(head), len(head)+1),
+		}
+		if fn := tabIndentNote(head); fn != "" {
+			out["formatNote"] = fn
+		}
+		if len(fileSyms) > 0 {
+			h.setDriftBase(sessionPath, fileSyms)
+		}
+		return out, nil
+	}
 	res := compression.CompressFileRead(sessionPath, string(data), compression.Options{
 		Task:            task,
 		Symbols:         fileSyms,

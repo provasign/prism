@@ -499,6 +499,11 @@ start deferred, not absent):
 
     ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact")
 
+Then make your FIRST discovery call a prism one (search/query) — not grep.
+Measured: sessions that open with prism displace the manual exploration
+phase entirely; sessions that grep first and add prism later do the same
+manual work anyway and re-grep every prism answer as a confirmation.
+
 What the descriptions cannot say, the workflow rules:
 
 - Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
