@@ -452,7 +452,7 @@ partially covers; full repair (recognizing code-syntax patterns and
 suggesting the symbol query form) deferred pending evidence it recurs
 post-v0.68.0.
 
-## 19. Grep-parity single-turn usage (from the first baseline-arm study)
+## 19. Grep-parity single-turn usage (from the first baseline-arm study) — SHIPPED v0.69.1 (949383e)
 
 Baseline mining (d87oeprf/7zcdam8v, 2026-09-03 — first study of the
 grep-only arm): baseline's efficiency is structural, not magic. (a)
@@ -465,7 +465,7 @@ inventory-first win, independently rediscovered by the grep arm. Fix:
 steering names context= as the grep -n equivalent ("locate AND see the
 lines in one call").
 
-## 20. Compiler-oracle honesty (scope prism's verification claim)
+## 20. Compiler-oracle honesty (scope prism's verification claim) — SHIPPED v0.69.1 (949383e)
 
 Same mining, the honest boundary: on compiled-language DELETION tasks,
 `go build ./...` is already an authoritative impact oracle — ~5 of
@@ -499,9 +499,22 @@ settings" — the stale deny-trio, live in a second repo. Confirms R1: forced
 substitution burns overhead on text-shaped queries. What worked: prism_lookup
 for named functions ("avoid guessing a grep -C N context size").
 
-Mined item (field-data-backed, not yet scheduled): prism_search's response
-envelope (header, match-count framing, closest-indexed-symbols suggestions)
-has fixed overhead that exceeds grep -n on ONE-LINE exact-string hits. The
-empty-search guidance is load-bearing (v0.66 dead-end fix) — do not touch it;
-candidate is slimming the envelope on small SUCCESSFUL result sets. Needs a
-measured before/after on the query-oracle + ab_gate before any change.
+Mined item, RE-SCOPED 2026-09-04 after code inspection: the original
+"envelope overhead" read does not hold up. renderSearchAsText/
+renderOneSearchText already render a successful exact-string hit as bare
+`path:line: text` — no header padding, and didYouMean/hitRollup are both
+gated OFF on successful non-truncated results (checked in code, not just
+docs). Item 19's context=N steering (the actual grep-n-equivalent fix) had
+ALREADY shipped (v0.69.1, 949383e) before this transcript, so the agent had
+the guidance available and still felt fixed overhead per call — the more
+likely explanation is call-count, not payload: this session's own grep was
+denied (same stale deny-trio as field report 1), so the agent was forced
+into prism_search for EVERY exact-string lookup instead of choosing it,
+paying MCP round-trip overhead per call regardless of steering quality.
+Forced substitution defeats routing guidance by construction — R1's finding,
+now confirmed at the individual-call level too. No envelope work is
+indicated. Next step, if any: confirm via a fresh transcript once v0.69.2's
+denial-cleanup (re-init) has reached that machine — if fixed overhead
+complaints persist with grep available and choice restored, THEN revisit
+the envelope with a query-oracle before/after. Until then this is closed
+pending new evidence.
