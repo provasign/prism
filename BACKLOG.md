@@ -451,3 +451,28 @@ A2 burned 5/19 calls guessing Go receiver syntax as literal strings
 partially covers; full repair (recognizing code-syntax patterns and
 suggesting the symbol query form) deferred pending evidence it recurs
 post-v0.68.0.
+
+## 19. Grep-parity single-turn usage (from the first baseline-arm study)
+
+Baseline mining (d87oeprf/7zcdam8v, 2026-09-03 — first study of the
+grep-only arm): baseline's efficiency is structural, not magic. (a)
+`grep -n f1 f2 f3` returns location AND content in ONE turn; prism runs
+answer the same question as search -> lookup -> read, 2-3 turns. But
+prism_search(context=N) + multi-term batching IS that one-turn shape —
+agents just don't reach for it. (b) Baseline freezes a file manifest at
+turn 2 (one -rli OR-regex) and never re-derives it — the e826
+inventory-first win, independently rediscovered by the grep arm. Fix:
+steering names context= as the grep -n equivalent ("locate AND see the
+lines in one call").
+
+## 20. Compiler-oracle honesty (scope prism's verification claim)
+
+Same mining, the honest boundary: on compiled-language DELETION tasks,
+`go build ./...` is already an authoritative impact oracle — ~5 of
+prism's extra turns on the deletion cell were confirmatory redundancy.
+Prism's traversal guarantee earns its cost where the compiler is silent:
+dynamic languages, comments/docs/config references, and changes that
+still compile (behavior-preserving signature edits, dead-but-compiling
+weights — the ac78 class). Steering should SAY this scope instead of
+pushing verification the compiler gives free — cost credibility beats
+coverage theater.

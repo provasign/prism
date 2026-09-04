@@ -515,10 +515,15 @@ What the descriptions cannot say, the workflow rules:
   in ONE list, instead of discovering them one build failure at a time
   (measured: a 5-package go-build cascade, 70 turns, whose full list
   this call had available 250 turns earlier). Re-run it per edit round;
-  plain ` + "`" + `prism_verify` + "`" + ` still gates the finish.
+  plain ` + "`" + `prism_verify` + "`" + ` still gates the finish. In a compiled language
+  the compiler already enumerates BREAKING fallout — spend prism's checks
+  on what it cannot see: comments, docs, config, other languages, and
+  code that still compiles but should have changed.
 - Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
   Do NOT issue one search per name — each extra call costs a full turn
-  and re-reads your whole context.
+  and re-reads your whole context. Add ` + "`" + `context=3` + "`" + ` to see the matching
+  lines in the same call (the ` + "`" + `grep -n` + "`" + ` shape: locate AND read, one turn —
+  not search, then lookup, then read).
 - Wide removal/refactor ("remove X everywhere")? Open with
   ` + "`" + `prism_search(query="<concept>", scope="text", exhaustive=true, files_only=true)` + "`" + ` —
   the complete file inventory up front replaces the whole iterative
