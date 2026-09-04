@@ -165,17 +165,12 @@ prism index .   # optional warm-up: indexing is automatic (server start /
 echo "Prism initialized. Restart your AI coding tool to activate MCP and reload steering instructions."
 ```
 
-**The routing question.** Interactive `prism init` asks: *"Deny built-in
-search? [y/N]"*. This is the one change that actually routes agents through
-Prism (steering alone is ignored — measured 12:1): it adds `Grep`,
-`Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in the PROJECT's
-`.claude/settings.json` (machine-global only with `--global`). Nothing
-becomes unfindable —
-`prism_search(scope="text")` is a ripgrep passthrough — and it's reversible
-by deleting those lines. Relay this question to the user rather than
-answering it yourself; if you are running non-interactively the prompt is
-skipped and no settings change is made (pass `--deny-builtin-search` to
-opt in explicitly once the user has agreed).
+**No routing question.** `prism init` does not deny built-in search tools —
+that model is dead, and init actively offers to CLEAN UP legacy
+`Grep`/`Bash(grep:*)`/`Bash(rg:*)` deny entries left by old versions (a
+bare denial gets worked around, including via subagents, and defeats its
+own purpose). Routing comes from the steering block init writes plus
+guidance inside prism's own tool responses.
 
 **The scope question.** Interactive `prism init` also asks: *"Register
 user-global tools? [y/N]"* — Zed, Codex CLI, and opencode keep their MCP
@@ -201,7 +196,7 @@ RESULT=$(prism query "find the main entry point" --terms main --format text 2>/d
   || echo "❌ prism query returned nothing — run: prism index ."
 ```
 
-**If MCP or both mode was selected, verify the MCP server connects (Claude Code):**
+**Verify the MCP server connects (Claude Code):**
 
 ```bash
 MCP_OUT="$(claude mcp list 2>&1)"

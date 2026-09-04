@@ -66,8 +66,9 @@ for both.
    answer is a faster broken build. Every design choice is subordinate to
    returning the complete, type-resolved answer.
 2. **Task altitude, not primitives.** The graph is exposed as whole-task
-   operations (`change_impact`, `rename_plan`, `missing_implementations`, …), not as
-   node/edge primitives the agent must orchestrate. Orchestrating traversals
+   operations — `change_impact` and `verify` over MCP; `rename_plan`,
+   `missing_implementations` and more via the CLI — not as node/edge
+   primitives the agent must orchestrate. Orchestrating traversals
    is itself a frontier-model skill; a task-level call works on any model.
 3. **Determinism.** The engine solves the traversal; the agent relays the
    result. Same query, same index, same answer — testable without an LLM, and
@@ -101,7 +102,9 @@ for both.
    changes (signature changes, renames, interface-member changes), computes
    the required change set from the **base** contract, and reports every
    dependent site the diff did not touch — line-precise. Measured on 9 real
-   corpora with seeded incomplete edits (27 trials + 9 controls):
+   corpora with seeded incomplete edits (27 trials + 9 controls), and
+   change-impact recall/precision now CI-gated on every release against 15
+   corpora across 4 languages (recall 0.997–1.0, precision ~0.9–1.0):
    - **Verdict is fail-closed** — 0 false "complete" across every run; an
      incomplete change is never waved through. Safe as a CI gate.
    - **Site listing catches 88%** of forgotten files (django, grafana,
@@ -161,16 +164,16 @@ fallback for subagents that don't inherit the MCP session):
 prism init .
 ```
 
-**Routing is structural, not rhetorical.** Steering alone does not route
-agents — measured 12:1, an agent will acknowledge its CLAUDE.md and then run
-`grep` anyway. Interactive `prism init` therefore offers (and
-`--deny-builtin-search` forces) the one change that actually routes: adding
-`Grep`, `Bash(grep:*)`, `Bash(rg:*)` to `permissions.deny` in the
-PROJECT's `.claude/settings.json` (machine-global only with `--global`).
-Nothing becomes unfindable —
-`prism_search(scope="text")` is a ripgrep passthrough — and it's reversible
-by deleting those lines. Claude Code only; CI and non-interactive runs are
-never prompted and get no settings change.
+**Routing is earned in-band, not forced.** Earlier versions offered denying
+Claude Code's built-in Grep/`grep`/`rg` to force routing; that model is dead
+(measured: a bare denial with no reason gets confabulated around, including
+via subagents) and `prism init` now actively cleans up those legacy deny
+entries where it finds them. What routes agents today, each measured on real
+transcripts: an unconditional load-the-tools line in steering, guidance
+INSIDE tool responses at the exact moment it matters (truncation warnings
+that point at the complete rollup, empty-result retry hints with
+closest-symbol suggestions, errors that name the fix), and tools that
+degrade instead of erroring. Grep is never blocked — it is out-competed.
 
 **Setup is project-level by default.** A plain `prism init` touches only
 files inside the repo (`.mcp.json`, steering files, the project's
@@ -257,7 +260,7 @@ Embedded Grove index
       v
 Prism ranking
   - graph distance
-  - semantic similarity
+  - ranking signals (graph distance, recency, edit frequency)
   - recency
   - test relevance
   - edit frequency / learned weights
@@ -296,7 +299,7 @@ curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | b
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin a version
-VERSION=v0.33.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v0.69.1 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes `prism` to `~/bin` by default. Set
@@ -369,7 +372,24 @@ MCP advertises **six** tools: the context surface (`prism_query`,
 `prism_read`, `prism_search`, `prism_lookup`), `prism_change_impact`, and
 the `prism_verify` gate. Search runs a real full-text pass
 (rg/grep/built-in) alongside symbol search, so agents never need a separate
-grep tool.
+grep tool. All six load deferred (no resident schema cost); steering tells
+the agent to load them once, up front.
+
+What the six do today, each addition transcript-measured before shipping:
+`prism_search` batches up to 10 terms per call, scopes with
+`path=`/`glob=`/`files_only`/`exhaustive`, inlines surrounding lines with
+`context=N` (the `grep -n` shape: locate and read in one turn), attaches a
+grouped-by-symbol `hitRollup` of the FULL hit set when a result truncates
+(`rollup_only=true` skips the raw sample), and answers an all-empty search
+with retry guidance plus closest-symbol suggestions instead of a dead end.
+`prism_change_impact` disambiguates same-named types with `file=`, labels
+test callers `isTest`, and includes same-package test callers Java's split
+source roots used to hide. `prism_verify(removed_symbols=[...])` is the
+cheap mid-loop residual check for removal tasks; the plain call gates the
+finish. `prism_read` degrades oversized files to a head window plus a
+complete symbol map instead of returning a result the host rejects.
+`prism_query` returns "tested by" pointers next to each anchor — locations
+of verified test callers, never test bodies.
 
 It was fourteen until v0.53.0. A 190-cell paired A/B measured which ones
 agents actually reach for (those cells were later deleted for unrelated

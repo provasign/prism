@@ -42,11 +42,16 @@ POST /prism_resolve      POST /prism_verify
 POST /prism_edges        POST /prism_arch_check
 ```
 
-Note this is the *dispatch* surface (21 tools) — wider than the 14-tool menu
-advertised to agents over MCP `tools/list`. The extra routes
-(`prism_resolve`, `prism_edges`, `prism_cycles`, `prism_drift`,
-`prism_compact`, `prism_savings`, `prism_feedback`) are operator tools kept
-off the agent menu to avoid routing errors, but callable by name here.
+Note this is the *dispatch* surface (21 tools) — wider than the 6-tool menu
+advertised to agents over MCP `tools/list` (`prism_query`, `prism_read`,
+`prism_search`, `prism_lookup`, `prism_change_impact`, `prism_verify`). The
+other 15 routes (`prism_node`, `prism_references`, `prism_resolve`,
+`prism_edges`, `prism_missing_implementations`, `prism_dead_code`,
+`prism_rename_plan`, `prism_map`, `prism_cycles`, `prism_arch_check`,
+`prism_index`, `prism_drift`, `prism_compact`, `prism_savings`,
+`prism_feedback`) are CLI/operator tools kept off the agent menu — a long
+menu measurably mis-routes the tools that matter — but callable by name
+here.
 
 ## Request / response contract
 
