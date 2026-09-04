@@ -417,3 +417,37 @@ Honest boundary from the same mining: 70/70 clean Edits in the most
 expensive cell are inherent removal work — no tool response shrinks
 them. Edit-failure recovery is NOT the sink (0-14% of turns); serial
 discovery is.
+
+## 16. First-discovery-call steering (H2 — the substitution discriminator)
+
+Substitutive-vs-additive diff (4 cells, 2026-09-03): the opening move
+DECIDES whether prism displaces work. All three prism-first sessions
+substituted (S1: 1 call replaced the discovery phase, 36 vs 61 turns);
+the one manual-first session (A1, prism absent until call 18) displaced
+nothing — its change_impact results were each followed by a manual grep
+of the same symbols. Decisive: A1/A2 are the SAME TASK with opposite
+outcomes, killing the task-shape hypothesis. Once an agent has built a
+manual map, prism results become confirmations it re-greps. Fix: steering
+names the first DISCOVERY call, not just the ToolSearch hop.
+
+## 17. Host-cap file reads must degrade, not error
+
+S2 (71o4q969): prism_read on a 2,162-line file -> host rejected the
+80,253-char result ("exceeds maximum allowed tokens") -> the agent never
+retried prism on ANY file and issued 50 native Reads. Two prior
+delivery-shaping attempts (outline e896d0f, map+bodies 0c57ffa) were
+both reverted 2026-08-26 (same minute, reasons unrecorded) — this item
+deliberately does NOT reopen that policy question: it covers only files
+whose full body CANNOT be delivered (host cap), where the only choice is
+error vs valid partial. Deliver the head window + the file's symbol map
++ explicit continuation instructions. "A tool that errors is a tool
+agents route around" — this codebase's own maxim, currently violated at
+exactly the boundary measured to cause permanent abandonment.
+
+## 18. Receiver-syntax query repair (deferred)
+
+A2 burned 5/19 calls guessing Go receiver syntax as literal strings
+('func (g \*CodeGraph) Search', '") Search("'). didYouMean (v0.66.0)
+partially covers; full repair (recognizing code-syntax patterns and
+suggesting the symbol query form) deferred pending evidence it recurs
+post-v0.68.0.
