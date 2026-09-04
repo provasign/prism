@@ -1,0 +1,239 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c29
+created_at: 2026-09-04T20:46:00.228005Z
+finalized_at: 2026-09-04T20:57:25.36902Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: BACKLOG.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-04T20:57:04.61068Z
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        git status --short
+        git log --oneline -3
+        git tag -a v0.69.2 -m "v0.69.2: init cleans up the v0.50-era CLAUDE.md denial section on re-init
+
+        injectPrismSection now matches the legacy '## Prism — code intelligence
+        (ALWAYS use these tools)' header, so a repo initialized by the reverted
+        v0.50 forced-routing architecture gets that section (denial text
+        included) replaced instead of a second section appended alongside it.
+        Field-confirmed live on a work machine 2026-09-04.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT"
+        git push origin main --follow-tags 2>&1 | tail -5
+      at: 2026-09-04T20:46:00.228005Z
+      classified: other
+    - cmd: |-
+        sleep 20
+        gh run list --repo provasign/prism --limit 5 2>&1
+      at: 2026-09-04T20:46:24.895028Z
+      classified: other
+    - cmd: |-
+        echo "--- CPU/load ---"
+        uptime
+        echo "--- Memory (vm_stat) ---"
+        vm_stat | head -10
+        echo "--- Memory pressure ---"
+        memory_pressure 2>/dev/null | tail -5
+        echo "--- Disk ---"
+        df -h / /System/Volumes/Data 2>/dev/null | head -5
+        echo "--- Top procs by CPU ---"
+        ps aux | sort -rk3 | head -8
+        echo "--- Top procs by RSS ---"
+        ps aux | sort -rk4 | head -8
+      at: 2026-09-04T20:47:13.124169Z
+      classified: other
+    - cmd: |-
+        kill -9 27126 44271 46045 44051 45832 2>&1
+        sleep 2
+        ps -p 27126,44271,46045,44051,45832 2>&1 | tail -6
+      at: 2026-09-04T20:47:52.235505Z
+      classified: other
+    - cmd: |-
+        uptime
+        memory_pressure 2>/dev/null | grep "free percentage"
+      at: 2026-09-04T20:48:28.118126Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 3
+      at: 2026-09-04T20:48:32.572948Z
+      classified: other
+    - cmd: gh workflow run "tap-refresh.yml" --repo provasign/homebrew-shale 2>&1 || gh workflow list --repo provasign/homebrew-shale 2>&1
+      at: 2026-09-04T20:48:38.807651Z
+      classified: other
+    - cmd: |-
+        gh workflow run "Refresh formulae" --repo provasign/homebrew-shale
+        sleep 8
+        gh run list --repo provasign/homebrew-shale --limit 3
+      at: 2026-09-04T20:48:52.990368Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run view 33918080841 --repo provasign/homebrew-shale --json status -q .status)" = "completed" ]; do sleep 3; done
+        gh run view 33918080841 --repo provasign/homebrew-shale --json status,conclusion -q '.status + " " + .conclusion'
+      at: 2026-09-04T20:48:59.988534Z
+      classified: other
+    - cmd: |-
+        brew upgrade provasign/shale/prism 2>&1 | tail -10
+        prism --version
+      at: 2026-09-04T20:49:19.079247Z
+      classified: other
+    - cmd: |-
+        ls -la ~/bin/prism
+        /opt/homebrew/bin/prism --version
+      at: 2026-09-04T20:49:24.628469Z
+      classified: other
+    - cmd: |-
+        ps aux | grep -i python | grep -v grep
+        echo ---
+        ps aux | grep -iE "swebench_ab|ab_gate|hybrid|routing" | grep -v grep
+      at: 2026-09-04T20:49:44.662359Z
+      classified: other
+    - cmd: |-
+        rm ~/bin/prism
+        hash -r
+        prism --version
+      at: 2026-09-04T20:50:00.33568Z
+      classified: other
+    - cmd: |-
+        echo "--- Load ---"; uptime
+        echo "--- Memory ---"; memory_pressure 2>/dev/null | grep "free percentage"
+        echo "--- Disk ---"; df -h / /System/Volumes/Data | head -3
+        echo "--- Top CPU ---"; ps aux | sort -rk3 | head -6 | awk '{printf "%-6s %5s%% %s\n", $2, $3, $11}'
+        echo "--- Top RSS ---"; ps aux | sort -rk4 | head -6 | awk '{printf "%-6s %5s%% %6sMB %s\n", $2, $4, $6/1024, $11}'
+      at: 2026-09-04T20:51:04.20671Z
+      classified: other
+    - cmd: |-
+        ps -p 27128 2>&1 | tail -3
+        uptime
+        memory_pressure 2>/dev/null | grep "free percentage"
+      at: 2026-09-04T20:51:58.784318Z
+      classified: other
+    - cmd: |-
+        kill -9 27128 2>&1
+        sleep 2
+        ps -p 27128 2>&1 | tail -2
+        echo "---"
+        ps aux | sort -rk4 | head -6 | awk '{printf "%-6s %5s%% %6.0fMB %s\n", $2, $4, $6/1024, $11}'
+        memory_pressure 2>/dev/null | grep "free percentage"
+      at: 2026-09-04T20:52:06.091312Z
+      classified: other
+    - cmd: |-
+        ps aux | grep -i codex | grep -v grep
+        echo "--- ollama ---"
+        curl -s -m 3 localhost:11434/api/ps 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(m['name'], round(m.get('size_vram',0)/(1<<30),1),'GB VRAM') for m in d.get('models',[])]" 2>/dev/null || echo "ollama not responding"
+        echo "--- wired/compressed ---"
+        vm_stat | grep -E "Pages wired|Pages compress|Pages purgeable|Swapins|Swapouts"
+      at: 2026-09-04T20:52:14.69634Z
+      classified: other
+    - cmd: |-
+        ollama stop qwen3-coder:30b
+        sleep 3
+        curl -s -m 3 localhost:11434/api/ps | python3 -c "import json,sys; d=json.load(sys.stdin); print('still loaded:', d.get('models',[]))"
+        memory_pressure 2>/dev/null | grep "free percentage"
+      at: 2026-09-04T20:52:32.497531Z
+      classified: other
+    - cmd: |-
+        wc -l ~/Projects/provasign/prism/BACKLOG.md
+        grep -n "^#" ~/Projects/provasign/prism/BACKLOG.md
+      at: 2026-09-04T20:52:54.947344Z
+      classified: other
+    - cmd: sed -n '447,507p' ~/Projects/provasign/prism/BACKLOG.md
+      at: 2026-09-04T20:53:26.144442Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -n "func.*toolSearch\|closestIndexed\|didYouMean\|match-count\|hitRollup" internal/mcp/search.go 2>/dev/null | head -20
+        ls internal/mcp/ | grep -i search
+      at: 2026-09-04T20:54:50.433193Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -n "func \|header\|closest\|didYouMean" internal/mcp/searchtext.go | head -30
+      at: 2026-09-04T20:54:52.721851Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        sed -n '1,75p' internal/mcp/searchtext.go
+      at: 2026-09-04T20:54:54.727505Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        sed -n '75,180p' internal/mcp/searchtext.go
+      at: 2026-09-04T20:54:58.916198Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -rn "didYouMean" internal/mcp/*.go | grep -v test | grep -v searchtext.go
+      at: 2026-09-04T20:55:04.291934Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        sed -n '1395,1430p' internal/mcp/tools.go
+      at: 2026-09-04T20:55:06.29447Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -n "func toolSearch\|guidance :=\|guidance +=" internal/mcp/tools.go | grep -i search | head -10
+        grep -n "func.*toolSearch" internal/mcp/tools.go
+      at: 2026-09-04T20:55:11.313882Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        sed -n '1291,1395p' internal/mcp/tools.go
+      at: 2026-09-04T20:55:13.434891Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -n "hitRollup" internal/mcp/*.go | grep -v test
+      at: 2026-09-04T20:55:18.382606Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -n "func.*nearMissSymbols\|receiver\|func (.*) Search(" internal/mcp/tools.go | head -6
+        grep -rn "receiver" internal/mcp/*.go internal/ranking/*.go 2>/dev/null | grep -v test | head -10
+      at: 2026-09-04T20:55:30.573596Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -n "steeringInstructions\s*=" internal/cli/commands.go | head -3
+      at: 2026-09-04T20:56:34.591136Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        grep -n "context=\|scope=\"text\"\|grep -n\|grep -C" internal/cli/commands.go | head -20
+      at: 2026-09-04T20:56:36.700162Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        sed -n '505,535p' internal/cli/commands.go
+      at: 2026-09-04T20:56:39.523249Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        git log --oneline -S "the grep -n\` shape: locate AND read, one turn" -- internal/cli/commands.go | head -3
+      at: 2026-09-04T20:56:45.282955Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        git log --oneline -S "grep -n" -- internal/cli/commands.go | head -5
+      at: 2026-09-04T20:56:48.628746Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism
+        git show 949383e --stat | head -6
+        grep -n "compiler already\|behavior-preserving\|compiler.*silent" internal/cli/commands.go | head -5
+      at: 2026-09-04T20:56:53.662504Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-09-04T20:46:00.228005Z
+redactions: 0
