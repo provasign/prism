@@ -489,3 +489,19 @@ DB queries were "just Bash" — runtime data is not the graph's job.
 Note: that project blocks grep/rg via CLAUDE.md text (user-authored), not the
 stale settings deny-trio — denial-without-in-band-reason, handled gracefully
 this time; no sanctioned text-search escape exists there if prism can't serve.
+
+## Field report 2 — 2026-09-04, same laptop (sbom repo): the honest negative
+
+Agent self-audited token cost and concluded prism COST tokens that day: almost
+every call was an exact-string line-number lookup (grep -n shaped) made via
+prism_search only because "plain grep kept getting denied by your permission
+settings" — the stale deny-trio, live in a second repo. Confirms R1: forced
+substitution burns overhead on text-shaped queries. What worked: prism_lookup
+for named functions ("avoid guessing a grep -C N context size").
+
+Mined item (field-data-backed, not yet scheduled): prism_search's response
+envelope (header, match-count framing, closest-indexed-symbols suggestions)
+has fixed overhead that exceeds grep -n on ONE-LINE exact-string hits. The
+empty-search guidance is load-bearing (v0.66 dead-end fix) — do not touch it;
+candidate is slimming the envelope on small SUCCESSFUL result sets. Needs a
+measured before/after on the query-oracle + ab_gate before any change.
