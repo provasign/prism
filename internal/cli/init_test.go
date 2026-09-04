@@ -205,6 +205,12 @@ func TestInjectPrismSection(t *testing.T) {
 			existing: "# Header\n",
 			wantPre:  "# Header",
 		},
+		{
+			name: "replaces legacy v0.50 denial section",
+			existing: "# Header\n\n## Prism — code intelligence (ALWAYS use these tools)\n\n" +
+				"grep, rg, and the built-in Grep tool are BLOCKED in this project — old\n\n## Deploy\nkeep me\n",
+			wantPre: "# Header",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -619,10 +619,24 @@ func injectPrismSection(content, block string) string {
 	const marker = "## Prism — context delivery"
 	const endMarker = "<!-- prism:end -->"
 
-	start := strings.Index(content, "\n"+marker)
-	prefixLen := 1 // the leading newline belongs to the preceding content
-	if start < 0 && strings.HasPrefix(content, marker) {
-		start, prefixLen = 0, 0
+	// Older inits wrote different section headers; match them too, or a
+	// re-init APPENDS a second section and leaves the old one standing —
+	// including the v0.50-era "grep/rg/Grep are BLOCKED in this project"
+	// denial text, which that architecture's revert was supposed to retire.
+	markers := []string{
+		marker,
+		"## Prism — code intelligence (ALWAYS use these tools)",
+	}
+	start, prefixLen := -1, 1 // the leading newline belongs to the preceding content
+	for _, m := range markers {
+		if s := strings.Index(content, "\n"+m); s >= 0 {
+			start = s
+			break
+		}
+		if strings.HasPrefix(content, m) {
+			start, prefixLen = 0, 0
+			break
+		}
 	}
 	if start < 0 {
 		return strings.TrimRight(content, "\n") + block
