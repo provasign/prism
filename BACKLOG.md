@@ -476,3 +476,16 @@ still compile (behavior-preserving signature edits, dead-but-compiling
 weights — the ac78 class). Steering should SAY this scope instead of
 pushing verification the compiler gives free — cost credibility beats
 coverage theater.
+
+## Field report — 2026-09-04, work laptop (datacollection repo)
+
+Positive in-the-wild transcript (photo relayed by Topo): agent narrated its own
+prism usage on a secrets-scan task. Mechanisms confirmed landing: hitRollup
+group-by-function ("pick the right 3-4 functions instead of scanning hundreds
+of lines"), bounded prism_query delivery with omission markers ("lines 289-503
+omitted ... kept my context smaller"), [prism:cached] pointer correctly read
+as already-have-it, relay without re-filtering. Honest negative: live SQLite
+DB queries were "just Bash" — runtime data is not the graph's job.
+Note: that project blocks grep/rg via CLAUDE.md text (user-authored), not the
+stale settings deny-trio — denial-without-in-band-reason, handled gracefully
+this time; no sanctioned text-search escape exists there if prism can't serve.
