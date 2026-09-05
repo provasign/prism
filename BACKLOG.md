@@ -518,3 +518,106 @@ denial-cleanup (re-init) has reached that machine — if fixed overhead
 complaints persist with grep available and choice restored, THEN revisit
 the envelope with a query-oracle before/after. Until then this is closed
 pending new evidence.
+
+REOPENED AND FIXED 2026-09-05 — the evidence arrived (Topo: "the backlog 2
+document provides a real different Claude cli experience"). Measured on 261
+real prism_search results from the wide bed: 16.8% of all delivered bytes
+are envelope (`//` notes and headers), and the bulk of it is verbatim
+repetition inside one session — "no matches — search completed (not
+truncated, not timed out)" 158x (121 repeats), "locations only —
+prism_lookup <name> or prism_read for the body" 108x (85 repeats), a
+300-char structural note for one symbol up to 10x. The code-inspection
+re-scope above was wrong: it looked at one successful hit's lines and not
+at what a session of them accumulates. Shipped (item 21): once-per-session
+notes (oncenotes.go) — first sighting verbatim, later ones a short form,
+long notes collapse to a pointer; the all-empty search said "completed" in
+two notes (~350 chars) and now says it in one.
+
+## 21. Token cost, decomposed (v070sample, 2026-09-05) — the handle
+
+8 paired cells, sonnet, wide bed, shipped v0.70.0 vs no-prism baseline:
+recall 0.606 vs 0.591 (0 wins / 7 ties / 1 loss), cost $2.00 vs $3.22
+mean, prism cheaper in 0/8. Tokens recovered from the session transcripts
+(run_wide.py keeps only cost/turns) and attributed by CUMULATIVE context
+cost — each payload × the turns it is re-read on — over the 7 matched
+pairs: baseline 77.3M, prism 120.4M, Δ +43.1M:
+
+    host Read payloads      30.3M -> 53.6M   +23.3M  (54% of Δ)
+    prism_search payloads       0 ->  9.7M    +9.7M  (23%)
+    assistant text          28.1M -> 33.0M    +4.9M  (11%)
+    fixed prompt × turns    12.8M -> 16.1M    +3.3M   (8%)
+    Bash                    12.7M -> 15.3M    +2.6M   (6%)
+    ToolSearch schema load      0 ->  2.0M    +2.0M   (5%)
+    prism_read/verify           0 ->  0.9M    +0.9M
+    Edit                     3.2M ->  2.3M    -0.9M
+
+NOT the problem: the system prompt (first-turn context 16k in both arms;
+the CLAUDE.md steering is ~1k) and repeated identical calls (~0% in every
+cell — dedup stays dead). Chars/token is ~2 for every tool (prism_search
+1.97, Read 2.17, Bash 1.93): no tool's format tokenizes worse than another.
+
+What IS:
+1. Unbounded exhaustive payloads, early. 15 of 26 prism_search calls
+   were exhaustive=true; they are 6.2M of the 9.7M. The steering's own
+   wide-refactor opener (item 11: exhaustive + files_only) returned 245
+   paths / 26k chars at turn 3 of 74 = 0.93M tokens, 23% of that cell.
+   A 3-term exhaustive at turn 3 of 84 = 45k chars, 27% of its cell.
+   SHIPPED (this tree): boundedInventory — files past the flat cap render
+   as a breadth-first refined directory trie within a line budget (60
+   files_only / 30 hits), every file in exactly one named group, module
+   names preserved (the curator5 module item 11 credits stays visible),
+   path=<dir> expands. zookeeper opener 24,694 -> 3,802 chars; the text
+   renderers (MCP + CLI) now actually print the inventory (they dropped
+   the list and kept the promise); resolvedNote leads each result instead
+   of trailing it; a batched call prints a repeated headline once.
+2. Search -> whole-file Read. Prism-arm agents read more files, whole:
+   35 of 40 whole-file Reads targeted a file a prism_search had ALREADY
+   located with line spans. Baseline agents range-read with `sed -n`.
+   Agents used context= in 2/26 calls despite the steering. Prism cannot
+   intercept host Read; the lever is making the search answer sufficient.
+   NOT shipped — behavioural, needs the wide-bed A/B, not faith.
+3. Schema: 9,082 chars (~2.3k tokens, measured 2.1-3.4k jump at turn 2),
+   re-read every turn. SHIPPED: descriptions and per-parameter prose
+   trimmed, same parameters — 6,871 chars (~1.7k), -24%.
+4. Turn count multiplies everything (prism arm +30% turns; the
+   ToolSearch hop is one). Not a payload lever.
+
+5. Repetitive envelope (field report 2, confirmed): 16.8% of prism_search
+   bytes are `//` notes/headers, mostly verbatim within-session repeats.
+   SHIPPED: oncenotes.go — each fixed note verbatim once per session, then
+   a short form ("// no matches"; the locations-only pointer dropped); any
+   `//` line >= 100 chars repeated byte-for-byte collapses to "(as noted
+   earlier) …"; the all-empty double note folded into one. Replay of a real
+   8-search session: envelope 3312 -> 2759 chars; a repeated empty search
+   is 55 chars. First-time wording is kept on purpose — in-band guidance at
+   the failure moment is the one steering mechanism that measurably works.
+6. Batched calls repeated themselves per term: one overflow inventory per
+   term (same directories 3-4x) and the same file:line under "http3" and
+   "Http3". SHIPPED: overflow inventories merge into ONE per response; a
+   file:line printed under an earlier term is counted, not reprinted.
+   4-term exhaustive on dubbo: 18.5k -> 12.1k chars (v0.70.0: 10.9k, with
+   100+ files silently dropped); 3-term: 12.0k -> 8.2k (v0.70.0: 8.3k).
+7. Descriptions are steering (measured 2026-09-05): a trimmed
+   prism_change_impact description coincided with haiku opening on
+   prism_search instead of change_impact on both A/B-gate change tasks
+   (typeorm 2->4 turns, grafana 5->18); restoring the original wording
+   put typeorm back to 2 turns/23k. Parameter prose stays trimmed
+   (schema 9,082 -> ~7.3k chars); tool descriptions are not free to cut.
+
+Gate log 2026-09-05 (haiku, 9 tasks, vs v0.70.0): dev-fieldtype PASS
+(+0.107 recall, tokens -48%, grafana-driven); dev3 PASS (+0.102, tokens
++59% — the description regression above); dev4 PASS (+0.106, -11%).
+Token deltas at n=1 swing 82k<->437k on the grafana cells between runs of
+near-identical binaries: the gate reads recall, not tokens. The small
+tasks' tokens_in is bimodal across EVERY binary in the cache (typeorm
+23.9k or 28.3k with a byte-identical 3,391-char result): whether turn 1
+found a warm prompt cache (cache_read 14k) or wrote it (4.5k create +
+9.6k read). A +3-4k there is cache warmth, not payload. dev5 PASS
+(+0.107, -26%). One-unit wide
+probe (dubbo__86dd, dev4): recall 1.0 both, $0.76 vs $0.39 — the agent
+took a 10-edit route instead of 3 with ~8k chars of prism payload in the
+whole session; variance, not payload.
+
+Gate: unit + ci_invariants green on the tree; ab_gate (haiku, 9 tasks)
+and the wide bed paired against v0.70.0 are the release condition — the
+tie-at-1.6x-cost above is the number to beat.

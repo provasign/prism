@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -42,17 +43,65 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		if !ok {
 			return "", false
 		}
+		seenNote := map[string]bool{}
+		// A batched exhaustive call used to print one overflow inventory per
+		// term — the same files, three or four times (measured: a 4-term
+		// exhaustive on dubbo, 18.6k chars, 3/4 of it inventories of the
+		// same directories). Merge them into one at the end.
+		merged := map[string]int{}
+		mergedTerms := 0
+		// file:line lines already printed under an earlier term of this
+		// batch ("http3" and "Http3" hit the same lines): shown once,
+		// counted after.
+		seenLines := map[string]bool{}
 		for _, g := range groups {
 			fmt.Fprintf(&b, "── %v ──\n", g["query"])
-			if !renderOneSearchText(&b, g) {
+			// A batched query's terms often resolve to the same symbol
+			// ("triple", "getTriple", "TRIPLE" → ProtocolConfig.triple);
+			// the headline is worth reading once, not once per term.
+			if n, _ := g["resolvedNote"].(string); n != "" {
+				if seenNote[n] {
+					g = withoutKey(g, "resolvedNote")
+				}
+				seenNote[n] = true
+			}
+			if len(groups) > 1 {
+				if raw, rest := takeInventory(g); raw != nil {
+					g = rest
+					mergedTerms++
+					for f, n := range raw {
+						merged[f] += n
+					}
+				}
+			}
+			if !renderOneSearchText(&b, g, seenLines) {
 				return "", false
 			}
 		}
-	} else if !renderOneSearchText(&b, out) {
+		if len(merged) > 0 {
+			files := make([]string, 0, len(merged))
+			for f := range merged {
+				files = append(files, f)
+			}
+			sort.Strings(files)
+			lines, shape := boundedInventory(files, merged, inventoryLineBudget/2)
+			fmt.Fprintf(&b, "// %d more files with matches across %d term(s) — exhaustive=true: %s\n", len(files), mergedTerms, shape)
+			for _, l := range lines {
+				b.WriteString(l + "\n")
+			}
+		}
+	} else if !renderOneSearchText(&b, out, nil) {
 		return "", false
 	}
 
 	if note, _ := out["note"].(string); note != "" {
+		if strings.HasPrefix(note, "no matches — search completed") {
+			// The all-empty guidance already states completion; drop the
+			// per-term line that said it first.
+			s := strings.ReplaceAll(b.String(), "// no matches — search completed (not truncated, not timed out)\n", "")
+			b.Reset()
+			b.WriteString(s)
+		}
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if dym := anySlice(out["didYouMean"]); len(dym) > 0 {
@@ -71,7 +120,15 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 // either the files_only shape or the textHits shape — plus its warnings.
 // Returns false on any field it does not know how to render, so the caller
 // falls back to JSON rather than silently dropping content.
-func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
+func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]bool) bool {
+	// The graph's one-line reading of the term comes FIRST. It used to trail
+	// the hit list; measured 2026-09-05 (dubbo retest transcript): the
+	// field→type headline sat at byte 3399 of a 5292-byte result, after 170
+	// grep lines, and the agent's next move ignored it. A headline is only a
+	// headline at the top.
+	if n, _ := m["resolvedNote"].(string); n != "" {
+		fmt.Fprintf(b, "// %s\n", n)
+	}
 	// Symbol matches first: one location line per symbol instead of the full
 	// JSON record. Measured (Kinto, v0.55.5): a default-scope search returned
 	// 26-27 KB — full SymbolRecords with rawText bodies, blobSha, ids and
@@ -150,6 +207,14 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 			}
 			if note, _ := gm["note"].(string); note != "" && gm["file"] == nil {
 				fmt.Fprintf(b, "// %s\n", note)
+				// exhaustive=true inventory (renderTextMatches): the files
+				// past the cap, one per line. Measured 2026-09-05 (dubbo
+				// retest): the note promised "every one is listed here" and
+				// this renderer dropped the list — the agent got the promise
+				// and nothing else.
+				for _, f := range anySlice(gm["files"]) {
+					fmt.Fprintf(b, "%v\n", f)
+				}
 				continue
 			}
 			file, _ := gm["file"].(string)
@@ -176,12 +241,21 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 					file, strings.Join(lines, ","))
 				continue
 			}
+			dup := 0
 			for _, h := range anySlice(gm["hits"]) {
 				hm, ok := h.(map[string]any)
 				if !ok {
 					return false
 				}
 				line, _ := hm["line"].(int)
+				if seen != nil {
+					key := fmt.Sprintf("%s:%d", file, line)
+					if seen[key] {
+						dup++
+						continue
+					}
+					seen[key] = true
+				}
 				before := anySlice(hm["before"])
 				for i, l := range before {
 					fmt.Fprintf(b, "%s:%d-  %v\n", file, line-len(before)+i, l)
@@ -193,6 +267,9 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 				if len(before) > 0 || hm["after"] != nil {
 					b.WriteString("--\n")
 				}
+			}
+			if dup > 0 {
+				fmt.Fprintf(b, "%s: %d line(s) already shown under an earlier term\n", file, dup)
 			}
 			if more, ok := gm["moreHits"]; ok {
 				fmt.Fprintf(b, "%s: +%v more matches\n", file, more)
@@ -223,13 +300,48 @@ func renderOneSearchText(b *strings.Builder, m map[string]any) bool {
 			fmt.Fprintf(b, "  (%v hits)\n", em["hits"])
 		}
 	}
-	if n, _ := m["resolvedNote"].(string); n != "" {
-		fmt.Fprintf(b, "// %s\n", n)
-	}
 	if rp := anySlice(m["rejectedPaths"]); len(rp) > 0 {
 		fmt.Fprintf(b, "// rejected paths: %v\n", rp)
 	}
 	return true
+}
+
+// takeInventory splits a term's overflow inventory (the textHits entry
+// carrying rawFiles) out of the group: returns the raw file→hits map and a
+// copy of the group without that entry, or nil when there is none.
+func takeInventory(g map[string]any) (map[string]int, map[string]any) {
+	hits := anySlice(g["textHits"])
+	for i, h := range hits {
+		hm, ok := h.(map[string]any)
+		if !ok {
+			continue
+		}
+		raw, ok := hm["rawFiles"].(map[string]int)
+		if !ok {
+			continue
+		}
+		rest := make([]any, 0, len(hits)-1)
+		rest = append(rest, hits[:i]...)
+		rest = append(rest, hits[i+1:]...)
+		out := make(map[string]any, len(g))
+		for k, v := range g {
+			out[k] = v
+		}
+		out["textHits"] = rest
+		return raw, out
+	}
+	return nil, g
+}
+
+// withoutKey returns a shallow copy of m with one key removed.
+func withoutKey(m map[string]any, k string) map[string]any {
+	out := make(map[string]any, len(m))
+	for kk, v := range m {
+		if kk != k {
+			out[kk] = v
+		}
+	}
+	return out
 }
 
 // hasKey reports whether m has the key at all, distinguishing "absent" from

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -57,7 +58,7 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 		{File: "seen.txt", Line: 1, Text: "alpha needle"},
 		{File: "seen.txt", Line: 3, Text: "gamma needle"},
 		{File: "fresh.txt", Line: 1, Text: "delta needle"},
-	})
+	}, false)
 	if len(out) != 2 {
 		t.Fatalf("got %d file groups, want 2: %v", len(out), out)
 	}
@@ -94,7 +95,7 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 			hits = append(hits, textsearch.Hit{File: name, Line: l, Text: "x"})
 		}
 	}
-	out := h.renderTextMatches(hits)
+	out := h.renderTextMatches(hits, false)
 	if len(out) != textRenderFileCap+1 { // cap + omission note
 		t.Fatalf("got %d entries, want %d", len(out), textRenderFileCap+1)
 	}
@@ -105,6 +106,20 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 	first := out[0]
 	if more, ok := first["moreHits"].(int); !ok || more != 2 {
 		t.Errorf("per-file overflow should be counted: %v", first)
+	}
+
+	// exhaustive=true: the files past the cap are inventoried, not dropped.
+	out = h.renderTextMatches(hits, true)
+	if len(out) != textRenderFileCap+1 {
+		t.Fatalf("exhaustive: got %d entries, want %d", len(out), textRenderFileCap+1)
+	}
+	last = out[len(out)-1]
+	files, ok := last["files"].([]string)
+	if !ok || len(files) != 3 {
+		t.Fatalf("exhaustive tail must list the 3 uncapped files: %v", last)
+	}
+	if !strings.HasSuffix(files[0], " ("+strconv.Itoa(textRenderHitsPerFile+2)+")") {
+		t.Errorf("inventory entries carry the hit count: %v", files)
 	}
 }
 

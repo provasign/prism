@@ -49,6 +49,9 @@ type Handler struct {
 	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
+
+	// once: notes already said this session (oncenotes.go).
+	once onceNotes
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -343,7 +346,7 @@ func ToolSchemas() []map[string]any {
 // size the context budget and session confidence thresholds.
 var modelProp = map[string]any{
 	"type":        "string",
-	"description": "Your model ID (e.g. \"claude-sonnet-4-6\", \"gpt-4o\"). Sizes context budgets. Optional.",
+	"description": "Your model ID; sizes budgets. Optional.",
 }
 
 // contextUsedProp lets agents report how many tokens their context window
@@ -352,7 +355,7 @@ var modelProp = map[string]any{
 // tools (shell output, edits, other MCP servers).
 var contextUsedProp = map[string]any{
 	"type":        "integer",
-	"description": "Tokens currently in your context window. Improves re-read confidence. Optional.",
+	"description": "Tokens in your context now. Optional.",
 }
 
 // argAliases are accepted parameter names that deliberately do not appear
@@ -407,33 +410,32 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"task": map[string]any{
 					"type":        "string",
-					"description": "What you are trying to do. A label for the response header — it does not affect retrieval, ranking or sizing.",
+					"description": "Label for the response header only.",
 				},
 				"terms": map[string]any{
-					"type":  "array",
-					"items": map[string]any{"type": "string"},
-					"description": "REQUIRED: search terms (e.g. [\"AccessCount\"]), expanded via the call " +
-						"graph. No name yet? Guess ONE keyword — there is no no-terms fallback.",
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "REQUIRED retrieval key, e.g. [\"AccessCount\"], expanded via the call graph. No name yet? Guess ONE keyword.",
 				},
 				"include": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string", "enum": []string{"graph", "docs"}},
-					"description": "Categories: graph (callers/callees), docs (filenames only). Default: [\"graph\"].",
+					"description": "graph (callers/callees), docs (filenames). Default [\"graph\"].",
 				},
 				"delivery": map[string]any{
 					"type":        "string",
 					"enum":        []string{"source", "symbols"},
-					"description": "source = line-numbered windows + callers (edit-ready); symbols = compact list. Default: source for bug-fix/implement tasks.",
+					"description": "source = line-numbered windows + callers; symbols = compact list. Default source.",
 				},
 				"max_files": map[string]any{
 					"type":        "integer",
-					"description": "source delivery only: max files shown as windows (rest listed by name). Default 5.",
+					"description": "source only: max files shown as windows. Default 5.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"profile":      map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
-				"budget":       map[string]any{"type": "integer", "description": "Token budget, honored exactly. Default 8000 for every task."},
-				"limit":        map[string]any{"type": "integer", "description": "Max candidate symbols considered before ranking/budget cutoff. Default 50."},
+				"profile":      map[string]any{"type": "string", "description": "default|implement_feature|fix_bug|code_review"},
+				"budget":       map[string]any{"type": "integer", "description": "Token budget (default 8000)."},
+				"limit":        map[string]any{"type": "integer", "description": "Max candidates before ranking cutoff (default 50)."},
 			},
 		}
 	case "prism_read":
@@ -447,15 +449,15 @@ func toolSchema(name string) map[string]any {
 				},
 				"offset": map[string]any{
 					"type":        "integer",
-					"description": "First line to return (1-based). Use with limit for an exact window instead of pulling a whole file to see part of it.",
+					"description": "First line (1-based); with limit, an exact window.",
 				},
 				"limit": map[string]any{
 					"type":        "integer",
-					"description": "How many lines to return from offset. Omit both for the whole file.",
+					"description": "Lines from offset. Omit both for the whole file.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"task":         map[string]any{"type": "string", "description": "Optional label for logging only — a first read always delivers the complete file regardless of task text."},
+				"task":         map[string]any{"type": "string", "description": "Log label only."},
 			},
 		}
 	case "prism_search":
@@ -466,46 +468,43 @@ func toolSchema(name string) map[string]any {
 				"query": map[string]any{
 					"type":        []string{"string", "array"},
 					"items":       map[string]any{"type": "string"},
-					"description": "One term or an array of up to 10, searched in one call — batch them. A regular expression when regex=true.",
+					"description": "One term or an array of up to 10 (batch them). Regex when regex=true.",
 				},
 				"scope": map[string]any{
 					"type":        "string",
 					"enum":        []string{"both", "text", "symbols"},
-					"description": "\"text\" = pure grep, cheapest. \"symbols\" = indexed symbols only. Default \"both\".",
+					"description": "\"text\" = pure grep (cheapest); \"symbols\" = index only. Default \"both\".",
 				},
 				"regex": map[string]any{
 					"type":        "boolean",
-					"description": "Treat query as a regex for the text pass (invalid patterns fall back to literal).",
+					"description": "Regex for the text pass (invalid → literal).",
 				},
 				"path": map[string]any{
 					"type":        []string{"string", "array"},
 					"items":       map[string]any{"type": "string"},
-					"description": "Restrict to these repo-relative files or directories (e.g. \"src/manager.py\" or [\"src/\",\"tests/\"]).",
+					"description": "Restrict to repo-relative files/dirs, e.g. \"src/\" or [\"src/\",\"tests/\"].",
 				},
 				"glob": map[string]any{
 					"type":        []string{"string", "array"},
 					"items":       map[string]any{"type": "string"},
-					"description": "Only search files matching these globs, e.g. \"*.py\" (grep --include / rg --glob).",
+					"description": "Only files matching, e.g. \"*.py\".",
 				},
 				"exhaustive": map[string]any{
 					"type":        "boolean",
-					"description": "Return EVERY match, uncapped — required for completeness questions (\"rewrite every call site\"), where a capped answer looks complete and is not. Pair with files_only or path=.",
+					"description": "Every match, uncapped — for completeness questions (a capped answer looks complete). Pair with files_only or path=.",
 				},
 				"files_only": map[string]any{
 					"type":        "boolean",
-					"description": "Return matching file paths without the matching lines — the cheapest answer to \"where does this live\".",
+					"description": "Paths only, no lines — cheapest \"where does this live\".",
 				},
 				"rollup_only": map[string]any{
-					"type": "boolean",
-					"description": "On a truncated search, skip the raw sample lines and return only hitRollup " +
-						"(the grouped-by-symbol breakdown) — for when you already know you just want " +
-						"\"how many, and where do they cluster\", not example content. No effect when the " +
-						"search isn't truncated or produces no rollup (nothing to answer with otherwise).",
+					"type":        "boolean",
+					"description": "On a truncated search return only hitRollup (grouped counts), no sample lines.",
 				},
 				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
 				"context": map[string]any{
 					"type":        "integer",
-					"description": "Lines of surrounding source on each side of a match (grep -C N) — instead of a follow-up read. Clamped to 15. Guessing a large number to capture a whole named function/class? Use prism_lookup(name) instead — the exact body, no guessing.",
+					"description": "Lines around each match (grep -C N, max 15) — instead of a follow-up read. Whole function? prism_lookup.",
 				},
 			},
 		}
@@ -516,16 +515,16 @@ func toolSchema(name string) map[string]any {
 			"properties": map[string]any{
 				"name": map[string]any{
 					"type":        "string",
-					"description": "Symbol name, optionally package-qualified ('internal/cli.Run' or bare 'Run').",
+					"description": "Symbol name, optionally qualified ('internal/cli.Run' or 'Run').",
 				},
 				"fields": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}},
-					"description": "Which columns to read. Omit for the full body. e.g. [signature] for just the contract.",
+					"description": "Columns to read; omit for the full body.",
 				},
 				"file": map[string]any{
 					"type":        "string",
-					"description": "Disambiguate a name shared across packages: file path (or substring, as shown in prism_search results).",
+					"description": "Disambiguate a shared name: file path or substring.",
 				},
 			},
 		}
@@ -757,31 +756,23 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "Edit-ready context for the symbols named in terms=[...] — the ONLY retrieval key " +
-			"(task is a label): finds them, expands one hop through the call graph, adds a " +
-			"full-text pass, returns line-numbered source windows plus callers and, when a " +
-			"verified test calls the symbol, a 'tested by' pointer (file:line, not the test " +
-			"body — read it directly if you want the assertion/mocking pattern). No separate " +
-			"grep needed; do not re-read the files it shows. Size with budget= and max_files=. " +
-			"To merely locate something, use prism_search."
+		return "Edit-ready context for the symbols in terms=[...] (the only retrieval key): " +
+			"one hop through the call graph plus a full-text pass, delivered as line-numbered " +
+			"source windows with callers and a 'tested by' file:line. Do not re-read the files " +
+			"it shows. Size with budget= and max_files=. To merely locate, use prism_search."
 	case "prism_read":
-		return "Read a file, whole or by line range (offset/limit — the `sed -n A,Bp` shape, " +
-			"line-numbered). A repeat read of an UNCHANGED file returns a one-line " +
-			"`// [prism:cached]` pointer instead of the body — not an error: use the copy you " +
-			"already have. For a single function use prism_lookup."
+		return "Read a file, whole or by line range (offset/limit), line-numbered. A repeat " +
+			"read of an unchanged file returns a `// [prism:cached]` pointer — use the copy " +
+			"you already have. For one function use prism_lookup."
 	case "prism_search":
-		return "Locate things: symbol names/signatures/docstrings AND raw source text (real " +
-			"rg/grep) in one call. query = one term or an array of up to 10 — batch what you know " +
-			"you need. scope=\"text\" is pure grep, cheapest — use it wherever you would run " +
-			"grep/rg (regex=true for patterns). Narrow with path=/glob=/files_only, exactly the " +
-			"scoping you would write after a grep pattern. context=N adds surrounding lines " +
-			"(grep -C) in the same call — no follow-up read. exhaustive=true lifts the hit cap " +
-			"for completeness questions. Pure-text results are plain `path:line: text` lines, " +
-			"not JSON."
+		return "Locate: symbol names AND raw text (real rg/grep) in one call. Batch up to 10 " +
+			"terms in query=[...]. scope=\"text\" is pure grep, cheapest — use it wherever you " +
+			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
+			"around each hit (grep -C) — no follow-up read. exhaustive=true lifts the cap for " +
+			"completeness questions."
 	case "prism_lookup":
-		return "Read one symbol by qualified name (e.g. 'ranking.Select', 'kvstore.Store.Get'). " +
-			"fields=[...] narrows to signature/doc/body/kind/parent/modifiers; omit it for the whole " +
-			"body. The returned file:line is authoritative — go straight there, do not re-grep."
+		return "Read one symbol by qualified name (e.g. 'kvstore.Store.Get'). fields=[...] narrows " +
+			"to signature/doc/body/...; omit for the whole body. The file:line is authoritative."
 	case "prism_resolve":
 		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
 			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
@@ -830,6 +821,10 @@ func toolDescription(name string) string {
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_change_impact":
+		// Wording restored 2026-09-05: a trimmed version ("…— one call, before
+		// editing…") coincided with haiku opening on prism_search instead of
+		// this tool on both change tasks of the A/B gate (typeorm 2->4 turns,
+		// grafana 5->18). Descriptions are steering; this one earns its bytes.
 		return "Every site that must change when a symbol does. Pass 'Type.method' and get, in " +
 			"one call: declarations, the full override/implementation family, breaking sibling " +
 			"contracts (supers), all resolved callers, and declaringTypes. Reach for this before " +
@@ -1010,7 +1005,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if tm := h.renderTextMatches(sel.textHits); tm != nil {
+		if tm := h.renderTextMatches(sel.textHits, false); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
@@ -1038,7 +1033,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
-	if tm := h.renderTextMatches(sel.textHits); tm != nil {
+	if tm := h.renderTextMatches(sel.textHits, false); tm != nil {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
 	}
@@ -1419,12 +1414,16 @@ func searchResultEmpty(m map[string]any) bool {
 // failed terms -- lists them, so the retry is one obvious step instead of
 // a fresh guess.
 func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]any, terms []string) {
-	guidance := "all terms returned nothing — that means these exact strings don't exist, " +
-		"NOT that the tool is done: retry with a broader/shorter term (drop punctuation and " +
-		"qualifiers, e.g. \"e.Query(\" -> \"Query\"), or reuse a term that matched earlier."
+	// One line carries the completion evidence AND the retry: the
+	// per-term "no matches — search completed" line is suppressed by the
+	// renderer when this note is present (they said the same thing twice,
+	// ~350 chars, on every empty search).
+	guidance := "no matches — search completed, not truncated, not timed out: these exact strings " +
+		"don't exist, NOT that the tool is done. Retry broader/shorter (drop punctuation and " +
+		"qualifiers: \"e.Query(\" -> \"Query\") or reuse a term that matched earlier."
 	if dym := h.nearMissSymbols(ctx, terms); len(dym) > 0 {
 		out["didYouMean"] = dym
-		guidance += " Closest indexed symbols to your terms are in didYouMean."
+		guidance += " Closest indexed symbols below."
 	}
 	h.hypLedger.recordEmptySearch(terms)
 	if sn := h.hypLedger.scopeNote(); sn != "" {
@@ -1507,7 +1506,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			Exhaustive: sc.exhaustive, Context: sc.context,
 		})
 		out := map[string]any{
-			"textHits":    h.renderTextMatches(r.Hits),
+			"textHits":    h.renderTextMatches(r.Hits, sc.exhaustive),
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
 		}
@@ -1573,8 +1572,18 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 				}
 			}
 			delete(out, "textHits")
-			out["files"] = files
 			out["fileCount"] = len(files)
+			if len(files) > inventoryFlatCap {
+				// Bounded the same way as the exhaustive hit inventory:
+				// paths up to the flat cap, directory groups past it (see
+				// boundedInventory for the measurement). fileCount is the
+				// true total either way.
+				lines, shape := boundedInventory(files, nil, inventoryLineBudget)
+				out["files"] = lines
+				out["note"] = strconv.Itoa(len(files)) + " files match — " + shape
+			} else {
+				out["files"] = files
+			}
 		}
 		if len(r.RejectedPaths) > 0 {
 			// Never let a dropped scope pass as a completed search.
@@ -1653,10 +1662,10 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		delete(m, "id")
 		delete(m, "imports")
 	}
+	// No "locations only" note here: the text renderer states it once
+	// under the symbol list (searchtext.go); carrying it in the envelope
+	// too printed two near-identical pointers on every symbol result.
 	out := map[string]any{"symbols": annotated}
-	if len(annotated) > 0 {
-		out["note"] = "locations only — prism_lookup <name> for a symbol's body, prism_read for a file"
-	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.
@@ -1669,7 +1678,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context,
 		}); len(r.Hits) > 0 {
-			out["textHits"] = h.renderTextMatches(r.Hits)
+			out["textHits"] = h.renderTextMatches(r.Hits, sc.exhaustive)
 			out["textBackend"] = r.Backend
 		}
 	}
@@ -2915,7 +2924,6 @@ func minInt(a, b int) int {
 	return b
 }
 
-
 // filterSymbolsByScope applies the same path=/glob= narrowing to indexed
 // symbols that textsearch applies to raw hits. Empty scope passes through.
 func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.SymbolRecord {
@@ -2955,7 +2963,6 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 	}
 	return keep
 }
-
 
 // mineTaskIdentifiers lifts identifier-shaped tokens (CamelCase, snake_case,
 // Dotted.Names, backtick-quoted) out of a task description, excluding the

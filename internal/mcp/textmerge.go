@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -133,7 +134,15 @@ func (h *Handler) mergeTextSearch(ctx context.Context, terms []string, seededIDs
 // session-SHA cache discipline: a file already delivered unchanged this
 // session gets line numbers only (the agent has the content), never a
 // re-send of its text.
-func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) []map[string]any {
+//
+// exhaustive is the caller's exhaustive=true: the agent asked for EVERY
+// site, so files past the render cap are listed by path and hit count
+// instead of being counted and dropped. Measured on dubbo (v070sample
+// 2026-09-05): `search triple exhaustive=true` answered "176 more files
+// with matches omitted" — the completeness the flag promises, withheld by
+// the renderer — and the agent spent the rest of a 108-turn cell grepping
+// for the inventory it had just been refused.
+func (h *Handler) renderTextMatches(rawHits []textsearch.Hit, exhaustive bool) []map[string]any {
 	if len(rawHits) == 0 {
 		return nil
 	}
@@ -156,8 +165,26 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit) []map[string]any {
 	out := make([]map[string]any, 0, minInt(len(order), textRenderFileCap))
 	for i, file := range order {
 		if i >= textRenderFileCap {
+			rest := len(order) - textRenderFileCap
+			if !exhaustive {
+				out = append(out, map[string]any{
+					"note": strconv.Itoa(rest) + " more files with matches omitted — narrow the term, or exhaustive=true to list every file",
+				})
+				break
+			}
+			hits := map[string]int{}
+			for _, f := range order[textRenderFileCap:] {
+				hits[f] = len(byFile[f].hits)
+			}
+			// Half the files_only budget: the ten hit groups above already
+			// spend lines, and a batched call renders one inventory per term.
+			inventory, note := boundedInventory(order[textRenderFileCap:], hits, inventoryLineBudget/2)
 			out = append(out, map[string]any{
-				"note": strconv.Itoa(len(order)-textRenderFileCap) + " more files with matches omitted — narrow the term or grep-style search that file directly",
+				"note":  strconv.Itoa(rest) + " more files with matches — exhaustive=true: " + note,
+				"files": inventory,
+				// rawFiles lets a batched call merge every term's overflow
+				// into ONE inventory (searchtext.go) instead of one per term.
+				"rawFiles": hits,
 			})
 			break
 		}
@@ -267,6 +294,9 @@ func (h *Handler) structuralNote(ctx context.Context, query string) string {
 	if len(real) != 1 {
 		return "" // ambiguous names are resolvedRefNote's case, not this one
 	}
+	if n := h.fieldTypeNote(ctx, query, real[0]); n != "" {
+		return n
+	}
 	r, err := h.Grove.ChangeImpact(ctx, real[0].Name)
 	if err != nil || r == nil {
 		return ""
@@ -314,6 +344,342 @@ func (h *Handler) structuralNote(ctx context.Context, query string) string {
 	b.WriteString(". A contract change here touches that whole set — " +
 		"prism_change_impact for the closed, line-precise list.")
 	return b.String()
+}
+
+// fieldTypeNote is structuralNote's answer when the term names a FIELD: a
+// field's own change-impact is a dead end (one declaration, no callers), but
+// the type it holds is where the work is. Measured on dubbo (v070sample
+// 2026-09-05, 108-turn cell): `search triple` resolved to the field
+// ProtocolConfig.triple — type TripleConfig, 27 sites in 12 files covering
+// 8/17 of the gold change — and said nothing, so the agent never learned the
+// type existed and chased the wrong meaning of the word for 67 Bash calls.
+// Silent unless the declared type is exactly one indexed type with fan-out.
+func (h *Handler) fieldTypeNote(ctx context.Context, query string, field grove.ResolvedSymbol) string {
+	switch field.Kind {
+	case "field", "property", "variable", "constant":
+	default:
+		return ""
+	}
+	syms, err := h.Grove.SearchSymbols(ctx, field.Name, 10)
+	if err != nil {
+		return ""
+	}
+	var rec *grove.SymbolRecord
+	for i := range syms {
+		if syms[i].QualifiedName == field.Name && syms[i].FilePath == field.File {
+			rec = &syms[i]
+			break
+		}
+	}
+	if rec == nil {
+		return ""
+	}
+	typ := declaredTypeOf(rec.Signature, rec.Name, rec.Language)
+	if typ == "" || typ == rec.Name {
+		return ""
+	}
+	tc, err := h.Grove.Resolve(ctx, typ)
+	if err != nil {
+		return ""
+	}
+	var types []grove.ResolvedSymbol
+	for _, c := range tc {
+		switch c.Kind {
+		case "class", "struct", "interface", "type", "enum":
+			if !c.TestDouble {
+				types = append(types, c)
+			}
+		}
+	}
+	if len(types) != 1 {
+		return ""
+	}
+	r, err := h.Grove.ChangeImpact(ctx, types[0].Name)
+	if err != nil || r == nil {
+		return ""
+	}
+	sites := append(append([]grove.SymbolRecord{}, r.Family...), r.Callers...)
+	if len(sites) < 2 {
+		return ""
+	}
+	site := func(s grove.SymbolRecord) string {
+		parts := strings.Split(s.FilePath, "/")
+		p := s.FilePath
+		if len(parts) > 2 {
+			p = strings.Join(parts[len(parts)-2:], "/")
+		}
+		return fmt.Sprintf("%s:%d", p, s.Span.Start)
+	}
+	files := map[string]bool{}
+	for _, s := range sites {
+		files[s.FilePath] = true
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s is a %s %s (%s:%d) of type %s", query, field.Kind, field.Name,
+		shortPath(field.File), field.Line, types[0].Name)
+	if len(r.Declarations) > 0 {
+		fmt.Fprintf(&b, " (%s)", site(r.Declarations[0]))
+	}
+	fmt.Fprintf(&b, " — %s is used at %d site(s) in %d file(s):", types[0].Name, len(sites), len(files))
+	for i, s := range sites {
+		if i == 4 {
+			fmt.Fprintf(&b, " +%d more", len(sites)-4)
+			break
+		}
+		fmt.Fprintf(&b, " %s %s", leafOf(s.Name), site(s))
+	}
+	fmt.Fprintf(&b, ". A change to what %s holds usually lands across that set — prism_change_impact %s for the complete, line-precise list.",
+		field.Name, types[0].Name)
+	return b.String()
+}
+
+// inventoryLineBudget bounds an exhaustive inventory. Measured (v070sample,
+// 2026-09-05): the steering's own wide-refactor opener (exhaustive +
+// files_only) returned a 245-path list — 26k chars at turn 3 of 74, re-read
+// on every later turn for 0.93M tokens, 23% of the whole cell; a 3-term
+// exhaustive search at turn 3 of 84 was 45k chars and 27% of its cell. But
+// the same opener once carried the whole answer (BACKLOG item 11: the
+// zookeeper-api / curator4 / curator5 module triangle), so the bound must
+// keep the directory NAMES where files cluster. boundedInventory refines a
+// path trie: dense directories split into their children while the budget
+// allows, sparse ones list their files. Every file is either listed or
+// inside exactly one named group — complete at directory granularity, and
+// path=<dir> expands any group.
+const inventoryLineBudget = 60
+
+// inventoryFlatCap: at or below this many files the inventory is simply the
+// list — grouping would hide more than it saves.
+const inventoryFlatCap = 30
+
+type invNode struct {
+	path     string // directory path with trailing "/" ("" for the root)
+	file     string // set for a leaf that is a single file
+	files    []string
+	hits     int
+	children map[string]*invNode
+	frozen   bool // refinement would not fit the budget
+}
+
+func (n *invNode) count() int {
+	if n.file != "" {
+		return 1
+	}
+	c := len(n.files)
+	for _, ch := range n.children {
+		c += ch.count()
+	}
+	return c
+}
+
+func (n *invNode) leaves() []string {
+	if n.file != "" {
+		return []string{n.file}
+	}
+	out := append([]string{}, n.files...)
+	for _, ch := range n.children {
+		out = append(out, ch.leaves()...)
+	}
+	return out
+}
+
+// boundedInventory renders files (with optional per-file hit counts) within
+// budget lines. Returns the lines and a sentence describing
+// their shape.
+func boundedInventory(files []string, hits map[string]int, budget int) ([]string, string) {
+	entry := func(f string) string {
+		if n, ok := hits[f]; ok {
+			return f + " (" + strconv.Itoa(n) + ")"
+		}
+		return f
+	}
+	if len(files) <= inventoryFlatCap {
+		out := make([]string, 0, len(files))
+		for _, f := range files {
+			out = append(out, entry(f))
+		}
+		if hits != nil {
+			return out, "every one listed as path (hit count); path= on one for its lines"
+		}
+		return out, "every one listed"
+	}
+	root := &invNode{children: map[string]*invNode{}}
+	for _, f := range files {
+		parts := strings.Split(f, "/")
+		n := root
+		for _, seg := range parts[:len(parts)-1] {
+			ch := n.children[seg]
+			if ch == nil {
+				ch = &invNode{path: n.path + seg + "/", children: map[string]*invNode{}}
+				n.children[seg] = ch
+			}
+			n = ch
+			n.hits += hits[f]
+		}
+		n.files = append(n.files, f)
+	}
+	// Frontier: the entries currently shown (root's subdirectories and
+	// root-level files). Refine the largest splittable directory while the
+	// extra lines fit the budget; a directory that does not fit is frozen
+	// and the next-largest is tried.
+	var frontier []*invNode
+	for _, ch := range root.children {
+		frontier = append(frontier, ch)
+	}
+	for _, f := range root.files {
+		frontier = append(frontier, &invNode{file: f})
+	}
+	lines := len(frontier)
+	for {
+		// Split preference: breadth-first. Splitting by raw count spent
+		// the budget naming a test module's eight pom.xml files while
+		// dubbo-remoting/ (15 files) stayed one line, hiding the
+		// zookeeper-api/curator4/curator5 modules that were the answer
+		// (BACKLOG item 11); one level of names under every top-level
+		// module is what an inventory is for. A single-child chain
+		// (src/ → main/ → java/) costs no lines and always splits.
+		var best *invNode
+		bi, bestScore := -1, -1
+		for i, n := range frontier {
+			if n.file != "" || n.frozen {
+				continue
+			}
+			parts := len(n.children) + len(n.files)
+			if parts < 2 && len(n.children) != 1 {
+				continue
+			}
+			if n.count() < 3 {
+				continue
+			}
+			// Breadth-first: shallower directories split first so every
+			// top-level module gets one level of names before anything
+			// goes deeper; ties by count.
+			depth := strings.Count(n.path, "/")
+			score := (16-depth)*100000 + n.count()
+			if parts == 1 {
+				score = 1 << 30 // free chain collapse
+			}
+			if score > bestScore {
+				best, bi, bestScore = n, i, score
+			}
+		}
+		if best == nil {
+			break
+		}
+		extra := len(best.children) + len(best.files) - 1
+		if lines+extra > budget {
+			best.frozen = true
+			continue
+		}
+		frontier = append(frontier[:bi], frontier[bi+1:]...)
+		for _, ch := range best.children {
+			frontier = append(frontier, ch)
+		}
+		for _, f := range best.files {
+			frontier = append(frontier, &invNode{file: f})
+		}
+		lines += extra
+	}
+	type line struct{ key, text string }
+	var out []line
+	grouped := 0
+	for _, n := range frontier {
+		if n.file != "" {
+			out = append(out, line{n.file, entry(n.file)})
+			continue
+		}
+		c := n.count()
+		if c <= 2 {
+			// one or two files under a directory: name them instead
+			for _, f := range n.leaves() {
+				out = append(out, line{f, entry(f)})
+			}
+			continue
+		}
+		grouped += c
+		t := n.path + " (" + strconv.Itoa(c) + " files"
+		if hits != nil {
+			t += ", " + strconv.Itoa(n.hits) + " hits"
+		}
+		out = append(out, line{n.path, t + ")"})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].key < out[j].key })
+	res := make([]string, 0, len(out))
+	for _, l := range out {
+		res = append(res, l.text)
+	}
+	return res, strconv.Itoa(len(files)-grouped) + " listed by path, " + strconv.Itoa(grouped) +
+		" grouped by directory (every file is in exactly one group) — path=<dir> lists that group's files"
+}
+
+func shortPath(p string) string {
+	parts := strings.Split(p, "/")
+	if len(parts) > 2 {
+		return strings.Join(parts[len(parts)-2:], "/")
+	}
+	return p
+}
+
+// declaredTypeOf extracts the bare type name a field declaration holds:
+// `private TripleConfig triple;` → TripleConfig, `triple: TripleConfig`
+// → TripleConfig, Go's `Triple *TripleConfig` → TripleConfig. Generic
+// arguments, arrays, pointers, nullability and package qualifiers are
+// stripped — the head type is what the graph can resolve. Returns "" for
+// shapes it does not recognise (inferred `var x = …`, tuples, lambdas).
+func declaredTypeOf(sig, name, language string) string {
+	sig = strings.TrimSpace(sig)
+	if i := strings.Index(sig, "="); i >= 0 {
+		sig = sig[:i]
+	}
+	sig = strings.TrimRight(strings.TrimSpace(sig), ";,")
+	var typ string
+	if i := strings.Index(sig, name+":"); i >= 0 {
+		// name: Type (TypeScript, Python annotations, Rust, Kotlin)
+		typ = strings.TrimSpace(sig[i+len(name)+1:])
+	} else if i := strings.Index(sig, name+"?:"); i >= 0 {
+		typ = strings.TrimSpace(sig[i+len(name)+2:]) // optional TS property
+	} else {
+		fields := strings.Fields(sig)
+		idx := -1
+		for i, f := range fields {
+			if strings.TrimRight(f, "?!;,") == name || strings.TrimLeft(f, "$") == name {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 {
+			return ""
+		}
+		switch language {
+		case "go":
+			if idx+1 < len(fields) {
+				typ = fields[idx+1]
+			}
+		default: // java, csharp, php, c, cpp: Type precedes the name
+			if idx > 0 {
+				typ = fields[idx-1]
+			}
+		}
+	}
+	typ = strings.TrimSpace(typ)
+	if i := strings.IndexAny(typ, "<(["); i >= 0 {
+		typ = typ[:i]
+	}
+	typ = strings.TrimLeft(typ, "*&?")
+	typ = strings.TrimRight(typ, "?!")
+	if i := strings.LastIndexAny(typ, ".:\\"); i >= 0 {
+		typ = typ[i+1:]
+	}
+	switch typ {
+	case "", "var", "let", "const", "final", "static", "private", "public", "protected",
+		"readonly", "int", "long", "short", "byte", "char", "boolean", "bool", "float", "double",
+		"string", "String", "void", "object", "Object", "any", "number", "str", "float64", "int64",
+		"error", "interface{}", "dynamic":
+		return ""
+	}
+	if !identLike.MatchString(typ) {
+		return ""
+	}
+	return typ
 }
 
 // identLike gates structuralNote to queries that could name a symbol —

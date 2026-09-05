@@ -338,7 +338,7 @@ func renderQuerySourceAsText(out map[string]any) (string, bool) {
 	}
 	if tm := anySlice(out["textMatches"]); len(tm) > 0 {
 		b.WriteString("\ntext matches (outside indexed symbols):\n")
-		if !renderOneSearchText(&b, map[string]any{"textHits": out["textMatches"]}) {
+		if !renderOneSearchText(&b, map[string]any{"textHits": out["textMatches"]}, nil) {
 			return "", false
 		}
 	}

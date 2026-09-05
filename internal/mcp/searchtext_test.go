@@ -62,6 +62,35 @@ func TestRenderSearchAsText_NothingSilentlyDropped(t *testing.T) {
 			t.Errorf("dropped field, missing %q in:\n%s", want, text)
 		}
 	}
+	// The graph's reading of the term is the headline: first line, before
+	// any hit (dubbo retest 2026-09-05: trailing it after 170 grep lines got
+	// it ignored).
+	if !strings.HasPrefix(text, "// 37%") {
+		t.Errorf("resolvedNote must lead the rendering, got:\n%s", text)
+	}
+}
+
+// TestRenderSearchAsText_ExhaustiveInventoryListed: the files past the render
+// cap under exhaustive=true are printed one per line, not just promised.
+func TestRenderSearchAsText_ExhaustiveInventoryListed(t *testing.T) {
+	out := map[string]any{
+		"textHits": []map[string]any{
+			{"file": "a.go", "hits": []map[string]any{{"line": 1, "text": "x"}}},
+			{"note": "2 more files with matches — exhaustive=true, so every one is listed here",
+				"files": []string{"b.go (3)", "c/d.go (1)"}},
+		},
+		"textBackend": "rg",
+		"truncated":   false,
+	}
+	text, ok := renderSearchAsText(out)
+	if !ok {
+		t.Fatal("expected a plain-text rendering")
+	}
+	for _, want := range []string{"b.go (3)\n", "c/d.go (1)\n"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("inventory entry %q dropped from:\n%s", want, text)
+		}
+	}
 }
 
 func TestRenderSearchAsText_FilesOnly(t *testing.T) {
@@ -197,5 +226,28 @@ func TestHitRollupSilentWithoutGrove(t *testing.T) {
 	h := newTestHandler(t)
 	if ru := h.hitRollup(context.Background(), "anything", searchScope{}, false); ru != nil {
 		t.Errorf("rollup must be silent without a graph, got %v", ru)
+	}
+}
+
+// TestRenderSearchAsText_BatchDedupesLinesAcrossTerms: a file:line printed
+// under one term of a batched call is counted, not reprinted, under the
+// next ("http3" and "Http3" hit the same lines).
+func TestRenderSearchAsText_BatchDedupesLinesAcrossTerms(t *testing.T) {
+	hit := func() []map[string]any {
+		return []map[string]any{{"file": "a.go", "hits": []map[string]any{{"line": 7, "text": "x http3 y"}, {"line": 9, "text": "z"}}}}
+	}
+	out := map[string]any{"results": []map[string]any{
+		{"query": "http3", "textHits": hit(), "textBackend": "rg"},
+		{"query": "Http3", "textHits": hit(), "textBackend": "rg"},
+	}}
+	text, ok := renderSearchAsText(out)
+	if !ok {
+		t.Fatal("expected a plain-text rendering")
+	}
+	if strings.Count(text, "a.go:7: x http3 y") != 1 || strings.Count(text, "a.go:9: z") != 1 {
+		t.Errorf("each line should print once across terms:\n%s", text)
+	}
+	if !strings.Contains(text, "a.go: 2 line(s) already shown under an earlier term") {
+		t.Errorf("the second term should carry the dedupe count:\n%s", text)
 	}
 }

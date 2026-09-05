@@ -2697,6 +2697,11 @@ func printTextMatches(m map[string]any) {
 		}
 		if note, _ := gm["note"].(string); note != "" && gm["file"] == nil {
 			fmt.Printf("//   %s\n", note)
+			// exhaustive=true inventory: the files past the render cap
+			// (same as the MCP renderer in searchtext.go).
+			for _, f := range asSliceAny(gm["files"]) {
+				fmt.Printf("//   %v\n", f)
+			}
 			continue
 		}
 		file, _ := gm["file"].(string)
@@ -2826,6 +2831,11 @@ func printTextOutput(m map[string]any) {
 		_, hasSyms := m["symbols"]
 		_, hasContent := m["content"]
 		if !hasSyms && !hasContent {
+			// Headline first — the graph's reading of the term leads, the
+			// grep lines follow (searchtext.go has the measurement).
+			if s, _ := m["resolvedNote"].(string); s != "" {
+				fmt.Println("// " + s)
+			}
 			printTextMatches(m)
 			if len(asSliceAny(m["textHits"])) == 0 {
 				// Same evidence rule as the MCP renderer (searchtext.go):
@@ -2837,7 +2847,7 @@ func printTextOutput(m map[string]any) {
 					fmt.Println("// no matches — search completed (not truncated, not timed out)")
 				}
 			}
-			for _, k := range []string{"resolvedNote", "warning", "note"} {
+			for _, k := range []string{"warning", "note"} {
 				if s, _ := m[k].(string); s != "" {
 					fmt.Println("// " + s)
 				}

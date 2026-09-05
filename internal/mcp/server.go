@@ -10,11 +10,11 @@
 package mcp
 
 import (
-	"os"
 	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -213,6 +213,9 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			switch call.Name {
 			case "prism_search":
 				text, rendered = renderSearchAsText(m)
+				if rendered {
+					text = s.handler.once.apply(text)
+				}
 			case "prism_read":
 				// +7-18% JSON escaping over whole source bodies, on the
 				// highest-call-count tool (56% of prism calls in full38).
@@ -273,8 +276,8 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 func contextBearingTool(name string) bool {
 	switch name {
 	case "prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_node", // symbol bodies + edge file:lines, both index-derived
-		"prism_rename_plan", // its edits carry index-derived line numbers — stale index means wrong-line edits applied verbatim
+		"prism_node",                // symbol bodies + edge file:lines, both index-derived
+		"prism_rename_plan",         // its edits carry index-derived line numbers — stale index means wrong-line edits applied verbatim
 		"prism_map", "prism_cycles": // their sites carry index-derived file:line evidence
 		return true
 	default:
