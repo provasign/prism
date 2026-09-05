@@ -1,0 +1,35 @@
+shale_version: "0"
+id: 7894673e-0428-4d59-88be-46c3191ace25
+created_at: 2026-09-04T21:16:13.716556Z
+finalized_at: 2026-09-05T15:28:15.969922Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: which claude; claude --version; claude update 2>&1 | tail -20
+      at: 2026-09-04T21:18:09.498487Z
+      classified: other
+    - cmd: grep -o '"remote[^,}]*' ~/.claude.json 2>/dev/null | head; echo "---settings---"; cat ~/.claude/settings.json 2>/dev/null | head -40
+      at: 2026-09-04T21:18:09.551587Z
+      classified: other
+    - cmd: screen -S claude-rc-1788556903 -X hardcopy /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/7894673e-0428-4d59-88be-46c3191ace25/scratchpad/rc-screen.txt; sleep 1; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/7894673e-0428-4d59-88be-46c3191ace25/scratchpad/rc-screen.txt | grep -v '^ *$'
+      at: 2026-09-04T21:22:29.428091Z
+      classified: other
+    - cmd: F=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/7894673e-0428-4d59-88be-46c3191ace25/scratchpad/rc-screen.txt; ls -la $F; wc -c $F; tr -s '\n' '\n' < $F | tail -30
+      at: 2026-09-04T21:22:38.541611Z
+      classified: other
+    - cmd: sleep 45; echo waited
+      at: 2026-09-04T21:22:44.738985Z
+      classified: other
+    - cmd: printf '%s\n' '- [Headless Claude relaunch](reference_headless_claude_relaunch.md) — screen -dmS gives a pty with no terminal attached; ~/.claude/relaunch-rc.sh + remoteControlAtStartup; start-then-verify, never kill-then-relaunch' >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md && tail -2 /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md
+      at: 2026-09-04T21:24:11.764503Z
+      classified: other
+    - cmd: nohup bash -c 'sleep 8; kill 67864' >/dev/null 2>&1 & disown; echo "shutdown of PID 67864 scheduled in 8s"
+      at: 2026-09-04T21:25:07.977001Z
+      classified: other
+notes: []
+redactions: 0
