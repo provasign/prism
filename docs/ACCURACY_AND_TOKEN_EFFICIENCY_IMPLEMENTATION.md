@@ -477,7 +477,40 @@ product source changed between replays. Model executions and spend were zero.
 The original evidence archive remains unchanged and verifies successfully.
 
 See the [scope contract, replay, and remaining proof](accuracy-efficiency-candidate/scoped-lookup-2026-09-06/REPORT.md).
-Next: a frozen before/after model comparison to test adoption and whole-session
-cost, followed by native Sonnet/Codex controls. The earlier efficiency targets
-remain unmet. Freshness/continuations, per-edge provenance, and stronger
-completion validation are still separate outstanding work.
+The subsequent frozen before/after comparison is recorded below. Efficiency
+targets remain unmet, and native Sonnet/Codex controls are still required.
+Freshness/continuations, per-edge provenance, and stronger completion validation
+remain outstanding work.
+
+## 17. Scoped Lookup Model Comparison: Efficiency Failure
+
+Eight fresh Codex cells, Gin and Django with two repeats each, fixed model,
+effort, task snapshots, scoring and guidance; only the Prism binary changed.
+All eight were valid, with no setup failures, retries or exclusions. Both arms
+scored 100% exact-site recall and precision, with zero false-complete answers.
+
+- Tokens: 250,078 -> 273,667, **9.4% more** with the candidate.
+- Median paired token change: **11.5% more**, not the required 25% saving.
+- Estimated cost: $0.494915 -> $0.523492, **5.8% more**, not the required 30% saving.
+- Total spend for this invocation: **$1.018407**, fixed-rate API equivalent.
+- Post-impact lookups: 5 -> 3; searches: 3 -> 5. Total tool calls: 19 -> 18.
+
+Scoped batching was adopted in both Django candidate cells, with eight identities
+per batch and no scoped errors/misses/omissions. One repeat replaced five
+lookups with one; the other added body retrieval before a search that sufficed
+without it in the before arm. Gin consumed more tokens in both repeats.
+Capability and exact scope are proven on these fixtures; autonomous efficiency
+is not. Do not pool these percentages with earlier studies or call this a
+native-control comparison. Quality here measures site sets, not working patches.
+
+Next priority remains context sufficiency: classify actual evidence gaps before
+reducing follow-ups, distinguish enumeration from body-needed work, and add
+free fixtures for those modes. Investigate the Gin declarations-only `closed`
+impact result versus observed interface-call sites before stronger stopping
+guidance. Preserve full recovery and uncertainty reporting; do not hide
+required sites or label all post-impact searches redundant.
+
+All eight raw answers and usage totals replay, all 111 artifact checksums pass,
+and 27 offline tests pass. The original archive remains unchanged. See the
+[full comparison and next gate](accuracy-efficiency-candidate/scoped-lookup-2026-09-06/comparison/REPORT.md).
+Broad savings claims and release readiness remain unproven.

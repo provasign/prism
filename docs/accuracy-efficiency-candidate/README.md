@@ -14,7 +14,8 @@ Links to evidence are pinned to that commit, not a mutable branch.
 | [24-cell four-way panel](panel-2026-09-06/REPORT.md) | Inconclusive overall; Codex fails both efficiency targets |
 | [Evidence-delivery comparison](evidence-delivery-2026-09-06/comparison/REPORT.md) | 100% recall/precision; 15.3% median token saving, 27.7% cost saving; fails targets |
 | [Guidance comparison](routing-2026-09-06/comparison/REPORT.md) | 100% recall/precision; 11.1% median token saving, 21.4% cost saving; fails targets |
-| [Exact scoped lookup](scoped-lookup-2026-09-06/REPORT.md) | Free replay: five calls -> one batch, eight bodies preserved, two explicit misses; session savings unmeasured |
+| [Exact scoped lookup](scoped-lookup-2026-09-06/REPORT.md) | Free replay: five calls -> one batch, eight bodies preserved, two explicit misses |
+| [Scoped lookup model comparison](scoped-lookup-2026-09-06/comparison/REPORT.md) | 100% recall/precision; 9.4% more aggregate tokens and 5.8% higher estimated cost; fails targets |
 
 The comparisons use different controls. Do not compound their savings or
 claim product-wide superiority over native tools.
@@ -28,8 +29,9 @@ Those source/test bytes match the old `e855442` tree. Scoped lookup follows as
 commits into main.
 
 Evidence branch: **`accuracy-efficiency-evidence`** in research, at
-`2f79a4347be886ce6effe92156cd3fa11604dbb3`.
-It contains the initial archive, historical references, and the new free replay.
+`8518b5b2692dc972069a8a8de4060620f8d1d5d8`.
+It contains the initial archive, historical references, free replay and the
+eight-cell scoped-lookup model comparison, including its efficiency failure.
 The original source branches and working copies were preserved unchanged.
 Neither new branch has been pushed; the pinned GitHub links will resolve after
 the research branch is published.
@@ -42,11 +44,13 @@ the research branch is published.
 - Prism completeness verification reports no missed sites. It marks the
   steering string as a manual-review contract: its only references are the
   declaration and `steeringBlock`, covered by the routing/safeguard tests.
-- All 29 local report links and 83 pinned research links resolve to files or
+- All 32 local report links and 85 pinned research links resolve to files or
   Git objects. Remote links become accessible after the evidence is pushed.
 - All 638 copied files match their source hashes; all 594 original artifact
   checksum checks pass. Frozen manifests and scripts were not rewritten.
 - All 26 historical offline experiment tests pass after relocation.
+- The new eight-cell comparison replays all raw answers and usage totals;
+  all 111 archived checksum checks and 27 offline experiment tests pass.
 - The read-only [archive verifier](https://github.com/provasign/research/blob/dc0972177436c191b8b7c8f30cff406f5006915f/harness/runs/prism-accuracy-efficiency-2026-09-06/verify_archive.py)
   reproduces 40 summary cells and rechecks 16 raw answers and usage records
   without the original checkout, temporary binaries, or model calls.

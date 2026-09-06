@@ -1,7 +1,9 @@
 # Exact File-Scoped Batch Lookup
 
 Date: 2026-09-06. Product commit: `71a509b` on `cand-search-context-clean`.
-Implemented and tested; no new autonomous model comparison has run.
+Implemented and tested. The free replay below predates the autonomous
+[eight-cell comparison](comparison/REPORT.md), which preserved exact-site
+accuracy but failed both efficiency targets.
 
 ## API And Accuracy Contract
 
@@ -73,9 +75,13 @@ are in [research](https://github.com/provasign/research/tree/2f79a4347be886ce6ef
 The product repo carries this report only. Corpus files, old evidence, original
 working checkouts, installed binaries, and global agent configs were not changed.
 
-Next is a separately frozen, budgeted before/after model comparison with fixed
-tasks, guidance, model, and effort. Check actual scoped-item adoption, remaining
-lookups, total tokens/cost, recall, and false-complete answers. Retain every
-execution and its per-run spend. Then run native Sonnet/Codex controls before a
-broader product claim. The targets remain 25% median paired token savings and
+The subsequent separately frozen, budgeted before/after model comparison used fixed
+tasks, guidance, model, and effort. It measured actual scoped-item adoption,
+remaining lookups, total tokens/cost, recall, and false-complete answers, retaining
+every execution and its per-run spend. Native Sonnet/Codex controls are still
+required before a broader product claim. The targets remain 25% median paired token savings and
 30% aggregate estimated cost savings without paired recall loss.
+
+Outcome: the candidate was adopted in both Django repeats but used 9.4% more
+aggregate tokens and cost 5.8% more across the eight-cell bed. See the comparison
+report for the full per-pair results and the next context-sufficiency work.
