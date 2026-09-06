@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -38,18 +40,72 @@ func lookupBatchNames(raw any) ([]string, bool, error) {
 	return names, true, nil
 }
 
-func (h *Handler) toolLookupBatch(ctx context.Context, args map[string]any, names []string) (any, error) {
-	results := make([]map[string]any, 0, len(names))
+type lookupRequest struct {
+	name string
+	file string
+}
+
+func lookupBatchRequests(raw any) ([]lookupRequest, bool, error) {
+	files := map[int]string{}
+	if values, ok := raw.([]any); ok {
+		names := append([]any(nil), values...)
+		for i, value := range values {
+			if item, ok := value.(map[string]any); ok {
+				name, nameOK := item["name"].(string)
+				file, fileOK := item["file"].(string)
+				if len(item) != 2 || !nameOK || !fileOK || strings.TrimSpace(name) == "" || strings.TrimSpace(file) == "" {
+					return nil, true, fmt.Errorf("name[%d] must contain only nonempty string name and file; no lookups were run", i)
+				}
+				names[i], files[i] = name, file
+			}
+		}
+		raw = names
+	}
+	names, batch, err := lookupBatchNames(raw)
+	if err != nil || !batch {
+		return nil, batch, err
+	}
+	requests := make([]lookupRequest, len(names))
+	for i, name := range names {
+		requests[i] = lookupRequest{name: name, file: files[i]}
+	}
+	return requests, true, nil
+}
+
+func (h *Handler) lookupFileScope(file string) (string, error) {
+	if filepath.IsAbs(file) {
+		return "", errors.New("scoped lookup file must be repo-relative")
+	}
+	abs, rel, err := safePathWithinRoot(h.Root, file)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		return "", fmt.Errorf("scoped lookup file %q: %w", file, err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("scoped lookup file %q is not a regular file", file)
+	}
+	return rel, nil
+}
+
+func (h *Handler) toolLookupBatch(ctx context.Context, args map[string]any, requests []lookupRequest) (any, error) {
+	results := make([]map[string]any, 0, len(requests))
 	var omitted []string
+	var omittedItems []map[string]any
 	used := 0
-	for _, name := range names {
+	for _, request := range requests {
 		one := make(map[string]any, len(args))
 		for key, value := range args {
 			one[key] = value
 		}
-		one["name"] = name
-		result, err := h.toolLookup(ctx, one)
-		entry := map[string]any{"name": name}
+		one["name"] = request.name
+		result, err := h.lookupSymbol(ctx, one, request.file)
+		entry := map[string]any{"name": request.name}
+		if request.file != "" {
+			entry["file"] = request.file
+		}
 		if err != nil {
 			entry["error"] = err.Error()
 		} else {
@@ -60,7 +116,11 @@ func (h *Handler) toolLookupBatch(ctx context.Context, args map[string]any, name
 			return nil, fmt.Errorf("lookup batch encoding: %w", err)
 		}
 		if used+len(encoded) > lookupBatchMaxBytes {
-			omitted = append(omitted, name)
+			if request.file == "" {
+				omitted = append(omitted, request.name)
+			} else {
+				omittedItems = append(omittedItems, map[string]any{"name": request.name, "file": request.file})
+			}
 			continue
 		}
 		used += len(encoded)
@@ -69,7 +129,12 @@ func (h *Handler) toolLookupBatch(ctx context.Context, args map[string]any, name
 	out := map[string]any{"results": results}
 	if len(omitted) > 0 {
 		out["omitted"] = omitted
-		out["note"] = "Batch body budget reached; omitted results were NOT delivered. Request those names individually or use fields=[\"signature\"]."
+	}
+	if len(omittedItems) > 0 {
+		out["omittedItems"] = omittedItems
+	}
+	if len(omitted)+len(omittedItems) > 0 {
+		out["note"] = "Batch body budget reached; omitted results were NOT delivered. Retry in smaller batches with the same file scopes or use fields=[\"signature\"]."
 	}
 	return out, nil
 }
@@ -81,21 +146,31 @@ func renderLookupBatchAsText(out map[string]any) (string, bool) {
 		return "", false
 	}
 	for key := range out {
-		if key != "results" && key != "omitted" && key != "note" {
+		if key != "results" && key != "omitted" && key != "omittedItems" && key != "note" {
 			return "", false
 		}
 	}
 	var b strings.Builder
 	for _, raw := range anySlice(out["results"]) {
 		entry, ok := raw.(map[string]any)
-		if !ok || len(entry) != 2 {
-			return "", false
-		}
-		name, ok := entry["name"].(string)
 		if !ok {
 			return "", false
 		}
-		fmt.Fprintf(&b, "// lookup %s\n", name)
+		label, ok := lookupRequestLabel(entry)
+		if !ok || (len(entry) != 2 && len(entry) != 3) {
+			return "", false
+		}
+		for key := range entry {
+			if key != "name" && key != "file" && key != "error" && key != "result" {
+				return "", false
+			}
+		}
+		_, hasError := entry["error"]
+		_, hasResult := entry["result"]
+		if hasError == hasResult {
+			return "", false
+		}
+		fmt.Fprintf(&b, "// lookup %s\n", label)
 		if failure, ok := entry["error"].(string); ok {
 			fmt.Fprintf(&b, "// ERROR: %s\n", failure)
 			continue
@@ -118,8 +193,41 @@ func renderLookupBatchAsText(out map[string]any) (string, bool) {
 		}
 		fmt.Fprintf(&b, "// NOT DELIVERED: %v\n", omitted)
 	}
+	if raw, exists := out["omittedItems"]; exists {
+		switch raw.(type) {
+		case []any, []map[string]any:
+		default:
+			return "", false
+		}
+		for _, value := range anySlice(raw) {
+			item, ok := value.(map[string]any)
+			if !ok || len(item) != 2 || item["file"] == nil {
+				return "", false
+			}
+			label, ok := lookupRequestLabel(item)
+			if !ok {
+				return "", false
+			}
+			fmt.Fprintf(&b, "// NOT DELIVERED: %s\n", label)
+		}
+	}
 	if note, _ := out["note"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	return b.String(), true
+}
+
+func lookupRequestLabel(entry map[string]any) (string, bool) {
+	name, ok := entry["name"].(string)
+	if !ok {
+		return "", false
+	}
+	if raw, exists := entry["file"]; exists {
+		file, ok := raw.(string)
+		if !ok || file == "" {
+			return "", false
+		}
+		return fmt.Sprintf("%s (file=%q)", name, file), true
+	}
+	return name, true
 }

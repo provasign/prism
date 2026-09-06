@@ -520,9 +520,18 @@ func toolSchema(name string) map[string]any {
 				"name": map[string]any{
 					"oneOf": []map[string]any{
 						{"type": "string"},
-						{"type": "array", "items": map[string]any{"type": "string"}, "minItems": 1, "maxItems": 10},
+						{"type": "array", "minItems": 1, "maxItems": 10, "items": map[string]any{
+							"oneOf": []map[string]any{
+								{"type": "string"},
+								{"type": "object", "required": []string{"name", "file"}, "additionalProperties": false,
+									"properties": map[string]any{
+										"name": map[string]any{"type": "string", "minLength": 1},
+										"file": map[string]any{"type": "string", "minLength": 1, "description": "Exact repo-relative file scope; never widened on a miss."},
+									}},
+							},
+						}},
 					},
-					"description": "One qualified symbol name, or up to 10 names to read together. file and fields apply to every name; oversized batch results are listed as omitted, never silently cut.",
+					"description": "One name, or 1-10 strings/{name,file} items. Objects use exact file scope; outer file hints apply only to strings. fields applies to all; oversized results are explicitly omitted with their scopes.",
 				},
 				"fields": map[string]any{
 					"type":        "array",
@@ -531,7 +540,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"file": map[string]any{
 					"type":        "string",
-					"description": "Disambiguate a shared name: file path or substring.",
+					"description": "Legacy soft path/substring hint for string names; ignored if no candidate matches. Use {name,file} batch items for exact scope.",
 				},
 			},
 		}
@@ -780,7 +789,7 @@ func toolDescription(name string) string {
 			"heed partial-result warnings."
 	case "prism_lookup":
 		return "Read whole symbol bodies by qualified name. Batch related methods in name=[...] " +
-			"(up to 10) instead of separate lookups; file disambiguates the batch. For a small local bug, " +
+			"(up to 10); use name=[{\"name\":\"Type.method\",\"file\":\"path/to/file\"}] for exact per-item file scope. For a small local bug, " +
 			"read the relevant methods together; impact is for affected-site questions. " +
 			"fields=[...] narrows to signature/doc/body/...; omit for whole bodies."
 	case "prism_resolve":
@@ -2122,14 +2131,25 @@ func (h *Handler) nodeFile(ctx context.Context, path string, syms []grove.Symbol
 }
 
 func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, error) {
-	if names, batch, err := lookupBatchNames(args["name"]); err != nil {
+	if requests, batch, err := lookupBatchRequests(args["name"]); err != nil {
 		return nil, err
 	} else if batch {
-		return h.toolLookupBatch(ctx, args, names)
+		return h.toolLookupBatch(ctx, args, requests)
 	}
+	return h.lookupSymbol(ctx, args, "")
+}
+
+func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileScope string) (any, error) {
 	name := stringArg(args, "name", stringArg(args, "qualifiedName", ""))
 	if name == "" {
 		return nil, errors.New("name is required")
+	}
+	if fileScope != "" {
+		var err error
+		fileScope, err = h.lookupFileScope(fileScope)
+		if err != nil {
+			return nil, err
+		}
 	}
 	// Optional column projection: return only the requested fields (signature,
 	// doc, body, kind, parent, modifiers) instead of the full source body.
@@ -2175,7 +2195,14 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 		}
 	}
 
-	syms, err := h.Grove.SearchSymbols(ctx, searchName, 25)
+	var syms []grove.SymbolRecord
+	var err error
+	if fileScope != "" {
+		// Exact file reads must not inherit the global name search's 25-hit cap.
+		syms, err = h.Grove.FileSymbols(ctx, fileScope)
+	} else {
+		syms, err = h.Grove.SearchSymbols(ctx, searchName, 25)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -2184,7 +2211,7 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	// present, search Grove for that qualified form too (its searchRank matches
 	// qualified_name exactly) and prepend it so the precise method is in the
 	// candidate pool before ranking.
-	if typeQualified != "" {
+	if fileScope == "" && typeQualified != "" {
 		if extra, qerr := h.Grove.SearchSymbols(ctx, typeQualified, 25); qerr == nil {
 			syms = append(extra, syms...)
 		}
@@ -2194,7 +2221,7 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	// File disambiguator: restrict to candidates whose path contains the hint, so
 	// a name shared across packages resolves to the one the agent means. Ignored
 	// if it would empty the set (a stale/typo'd hint shouldn't lose the symbol).
-	if fileHint != "" {
+	if fileScope == "" && fileHint != "" {
 		var kept []grove.SymbolRecord
 		for _, s := range syms {
 			if strings.Contains(strings.ToLower(s.FilePath), fileHint) {
@@ -2224,6 +2251,10 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	// real-vs-test-double then break ties, so a name still lands on the
 	// production symbol rather than a mock that shares it.
 	score := func(s grove.SymbolRecord) int {
+		if fileScope != "" && typeQualified != "" && s.QualifiedName != typeQualified &&
+			s.QualifiedName != name && !(s.QualifiedName == searchName && pkgMatches(s)) {
+			return -1
+		}
 		sc := 0
 		switch {
 		case typeQualified != "" && s.QualifiedName == typeQualified:
@@ -2282,6 +2313,12 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 			out["candidates"] = cands
 		}
 		return out, nil
+	}
+	if fileScope != "" {
+		return map[string]any{
+			"symbol": nil, "name": name, "matched": false,
+			"note": fmt.Sprintf("no exact symbol named %q indexed in file %q; scope was not widened. Check the name/path and index freshness", name, fileScope),
+		}, nil
 	}
 	if len(syms) > 0 {
 		// No exact match — returning the closest hit silently would hand the

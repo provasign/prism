@@ -243,7 +243,11 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		}
 	}
 	if m, ok := out["matched"].(bool); ok && !m {
-		b.WriteString("// NO EXACT MATCH — closest shown above; candidates:\n")
+		if content, _ := out["content"].(string); content != "" {
+			b.WriteString("// NO EXACT MATCH — closest shown above; candidates:\n")
+		} else {
+			b.WriteString("// NO EXACT MATCH\n")
+		}
 	} else if amb, _ := out["ambiguous"].(bool); amb {
 		b.WriteString("// AMBIGUOUS — same score for:\n")
 	}
