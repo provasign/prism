@@ -574,3 +574,26 @@ Next: inherited contract/family representation and cross-package dispatch
 tests, followed by frozen autonomous task-depth/cost comparisons. Do not
 restore `closed` or prohibit recovery searches on the strength of this one
 caller-recall repair. See the [engine replay and limits](accuracy-efficiency-candidate/go-interface-dispatch-2026-09-06/REPORT.md).
+
+## 20. Inherited Go Interface Contracts
+
+Grove `184f8a9e` adds exact local implements/overrides edges and synthetic
+interface-member call anchors on top of `ff9adefb`. A fresh Gin replay shows
+the concrete CloseNotify impact gaining its inherited `ResponseWriter` member
+and declaring interface; the interface-rooted query gains that inherited
+declaration while preserving its concrete family and two callers. No sites
+disappear, and Prism continues to report `partial`.
+
+The full Grove and dependency-replaced Prism race suites pass. The follow-up
+tests cover interface roots and supers alongside the existing signature,
+promotion, invalid-type and incremental controls. Prism reports no missed sites.
+All 25 final replay hashes verify, and six archived source files match the Grove
+commit. Evidence is isolated in research commit `030ae78`; Prism stores only
+the report.
+
+No model ran, no spend occurred, and no autonomous token/accuracy result is
+claimed. Cross-package project-source loading failed its exploratory test and
+was not papered over with name matching; it remains the next engine task.
+Generic interfaces remain a boundary. The feature branches are published, but
+Grove is untagged and Prism still pins v0.43.1. See the
+[family replay and limits](accuracy-efficiency-candidate/go-interface-family-2026-09-06/REPORT.md).
