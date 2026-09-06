@@ -514,3 +514,37 @@ All eight raw answers and usage totals replay, all 111 artifact checksums pass,
 and 27 offline tests pass. The original archive remains unchanged. See the
 [full comparison and next gate](accuracy-efficiency-candidate/scoped-lookup-2026-09-06/comparison/REPORT.md).
 Broad savings claims and release readiness remain unproven.
+
+## 18. Go Coverage Boundary And Task Depth
+
+Implemented as `cef7dad` on the clean branch. A minimal Go fixture reproduces
+the Gin concern: an interface-dispatched call is present in source, while
+Grove returns one declaration, no callers, and `closed`. Prism now converts
+otherwise-closed Go method/interface impact results to `partial` with a
+coverage warning. Returned site arrays are untouched. The warning survives
+cached/full rendering, the closed-impact ledger excludes these results, and
+wider-anchor hints cannot restore a stronger guarantee.
+
+This is a conservative capability boundary, not an engine-recall fix. The
+underlying Go interface/embedded-method edges are still missing; do not claim
+they were recovered. Non-closed tiers and non-Go closed results are preserved.
+
+Steering now distinguishes read-only body inspection from affected-site
+enumeration: a known name alone does not require impact, and enumeration does
+not require body retrieval by default. Edit/verify safeguards remain. This
+template was not installed into existing agent configs, and no autonomous run
+has measured its efficiency effect.
+
+The free Gin/Django replay preserves all impact inventories and body responses.
+Gin's two impact replies change only their tier and warning, adding 166 bytes
+each. Django impact is unchanged and already includes all eight gold identities.
+Four new tests (including eleven capability cases), updated routing/anchor tests,
+and the full race suite pass. All 58 evidence checksum checks pass; a retained
+sandbox-cache failure passed on the same-source permission-enabled rerun.
+Prism's steering-constant review obligation was checked through its two
+references and safeguard tests; no missed sites were reported.
+
+Next: fix the embedded engine's Go interface coverage with negative controls
+before restoring `closed`; separately measure task-depth routing under a new
+frozen protocol. The latest paid efficiency failure remains the latest result.
+See the [coverage reproduction and limits](accuracy-efficiency-candidate/impact-coverage-2026-09-06/REPORT.md).
