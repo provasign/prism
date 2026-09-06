@@ -1,8 +1,9 @@
 # Accuracy And Efficiency Reports
 
-This directory contains reports only. Raw transcripts, per-cell results,
-patches, protocols, frozen harness snapshots, and experiment scripts are in
-the [research archive](https://github.com/provasign/research/tree/dc0972177436c191b8b7c8f30cff406f5006915f/harness/runs/prism-accuracy-efficiency-2026-09-06).
+This directory contains reports only. The initial raw transcripts, per-cell
+results, patches, protocols, frozen harness snapshots, and experiment scripts
+are in the [research archive](https://github.com/provasign/research/tree/dc0972177436c191b8b7c8f30cff406f5006915f/harness/runs/prism-accuracy-efficiency-2026-09-06).
+Later stage reports link to their separate research evidence.
 Links to evidence are pinned to that commit, not a mutable branch.
 
 ## Results
@@ -13,6 +14,7 @@ Links to evidence are pinned to that commit, not a mutable branch.
 | [24-cell four-way panel](panel-2026-09-06/REPORT.md) | Inconclusive overall; Codex fails both efficiency targets |
 | [Evidence-delivery comparison](evidence-delivery-2026-09-06/comparison/REPORT.md) | 100% recall/precision; 15.3% median token saving, 27.7% cost saving; fails targets |
 | [Guidance comparison](routing-2026-09-06/comparison/REPORT.md) | 100% recall/precision; 11.1% median token saving, 21.4% cost saving; fails targets |
+| [Exact scoped lookup](scoped-lookup-2026-09-06/REPORT.md) | Free replay: five calls -> one batch, eight bodies preserved, two explicit misses; session savings unmeasured |
 
 The comparisons use different controls. Do not compound their savings or
 claim product-wide superiority over native tools.
@@ -20,13 +22,14 @@ claim product-wide superiority over native tools.
 ## Branches
 
 Merge candidate: **`cand-search-context-clean`**, based on `a1c7aa6`.
-The two product commits are `e245668` and `7169b4a`; reports are separate.
-All product source/test bytes match the old `e855442` tree. Do not merge the
-superseded `cand-search-context` evidence-heavy commits into main.
+The initial product-only commits are `e245668` and `7169b4a`; reports are separate.
+Those source/test bytes match the old `e855442` tree. Scoped lookup follows as
+`71a509b`. Do not merge the superseded `cand-search-context` evidence-heavy
+commits into main.
 
 Evidence branch: **`accuracy-efficiency-evidence`** in research, at
-`dc0972177436c191b8b7c8f30cff406f5006915f`.
-It contains the archive commit `6360da8` and the historical-reference follow-up.
+`2f79a4347be886ce6effe92156cd3fa11604dbb3`.
+It contains the initial archive, historical references, and the new free replay.
 The original source branches and working copies were preserved unchanged.
 Neither new branch has been pushed; the pinned GitHub links will resolve after
 the research branch is published.
@@ -39,7 +42,7 @@ the research branch is published.
 - Prism completeness verification reports no missed sites. It marks the
   steering string as a manual-review contract: its only references are the
   declaration and `steeringBlock`, covered by the routing/safeguard tests.
-- All 27 local report links and 82 pinned research links resolve to files or
+- All 29 local report links and 83 pinned research links resolve to files or
   Git objects. Remote links become accessible after the evidence is pushed.
 - All 638 copied files match their source hashes; all 594 original artifact
   checksum checks pass. Frozen manifests and scripts were not rewritten.

@@ -435,7 +435,8 @@ The replacement branch, `cand-search-context-clean`, starts at `a1c7aa6`:
 - Reports are a separate documentation-only commit. No experiment runner,
   raw transcript, patch, per-cell JSON, or checksum inventory is in this range.
 
-All 18 distinct product source/test files are byte-identical to `e855442`.
+At the separation checkpoint, all 18 distinct product source/test files were
+byte-identical to `e855442`.
 The full Go suite and affected-package race tests pass in the clean worktree.
 Prism reports no missed sites, with the existing steering-string contract
 manually reviewed through its two references and regression tests.
@@ -452,3 +453,31 @@ The source branches and their uncommitted edits remain untouched. These new
 branches have not been pushed or merged; publish the research branch before
 the product report links need to resolve on GitHub. This is a packaging fix,
 not additional evidence of accuracy or token savings.
+
+## 16. Exact File-Scoped Batch Lookup
+
+Implemented as `71a509b` on the clean branch. `prism_lookup` accepts
+`name=[{"name":"Type.method","file":"path/to/file"}]`, including mixed batches
+with legacy strings. Objects require exact repo-relative file scopes; existing
+scalar/string batches retain their soft hints. The exact-file path bypasses the
+global lookup candidate cap, rejects invalid scopes, and never replaces a miss
+with another receiver/file. Ambiguity and scoped omission identities remain
+visible within the existing ten-item / 64 KiB record limits.
+
+Ten new Go tests and the full race-enabled suite pass. The model-free Django MCP
+replay delivers the recorded five-call sequence in one batch: eight valid bodies
+preserved verbatim, plus two explicit wrong-file/type misses. The whole impact
+response and all legacy lookup responses remain identical. Response text falls
+14,212 -> 13,519 UTF-8 bytes, while the lookup schema grows 979 -> 1,375 bytes.
+Those are byte/capability measurements, not model-token savings or agent accuracy.
+
+Prism completeness verification passes for the four product/test files; three
+probe tests pass. Both probe-harness failures are retained in research, and no
+product source changed between replays. Model executions and spend were zero.
+The original evidence archive remains unchanged and verifies successfully.
+
+See the [scope contract, replay, and remaining proof](accuracy-efficiency-candidate/scoped-lookup-2026-09-06/REPORT.md).
+Next: a frozen before/after model comparison to test adoption and whole-session
+cost, followed by native Sonnet/Codex controls. The earlier efficiency targets
+remain unmet. Freshness/continuations, per-edge provenance, and stronger
+completion validation are still separate outstanding work.
