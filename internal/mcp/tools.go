@@ -1615,7 +1615,21 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// Grove's symbol search is ranked (exact name > prefix > substring,
 	// v0.6.0) — deliver it directly, matching this tool's contract of
 	// searching symbol names rather than re-ranking semantically.
-	syms, err := h.Grove.SearchSymbols(ctx, q, limit)
+	// exhaustive=true lifts the SYMBOL cap too. Until 2026-09-06 only the
+	// text pass honoured it: scope="symbols", exhaustive=true returned the
+	// default 25 with no marker at all. Measured (ab_gate, grafana
+	// CheckHealth): 25 of 53+ methods, the agent answered from the sample
+	// as if it were the set and scored 0.73 recall. A capped answer to a
+	// completeness question looks complete — so a capped symbol list now
+	// carries a warning, and an exhaustive one is not capped.
+	fetch := limit + 1
+	if len(sc.paths) > 0 || len(sc.glob) > 0 {
+		fetch = limit*4 + 1 // scope filtering below may drop most of them
+	}
+	if sc.exhaustive {
+		fetch = 1 << 20
+	}
+	syms, err := h.Grove.SearchSymbols(ctx, q, fetch)
 	if err != nil {
 		return nil, err
 	}
@@ -1627,6 +1641,11 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// of them from src/test/java, and the agent re-grepped to recover. A
 	// scope the tool advertises and then ignores is worse than no scope.
 	syms = filterSymbolsByScope(syms, sc)
+	symbolsTruncated := false
+	if !sc.exhaustive && len(syms) > limit {
+		syms = syms[:limit]
+		symbolsTruncated = true
+	}
 	// Real implementations first, test doubles tagged and last — the
 	// disambiguation prism_resolve used to provide, folded into the one
 	// locate tool so agents never need a second call to tell them apart.
@@ -1666,6 +1685,13 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// under the symbol list (searchtext.go); carrying it in the envelope
 	// too printed two near-identical pointers on every symbol result.
 	out := map[string]any{"symbols": annotated}
+	if symbolsTruncated {
+		out["symbolsTruncated"] = true
+		out["warning"] = fmt.Sprintf(
+			"showing %d symbol matches — a SAMPLE, more exist. For a completeness question "+
+				"(every implementation, every override) use exhaustive=true; otherwise narrow "+
+				"with path=/glob= or raise limit=.", limit)
+	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.

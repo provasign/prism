@@ -30,6 +30,7 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"timedOut": true, "resolvedNote": true, "results": true,
 		"failedTerms": true, "note": true, "query": true,
 		"symbols": true, "hitRollup": true, "didYouMean": true,
+		"symbolsTruncated": true,
 	}
 	for k := range out {
 		if !known[k] {
