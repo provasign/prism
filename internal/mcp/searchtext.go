@@ -118,6 +118,76 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 
 // renderOneSearchText renders a single search result (one term's worth) —
 // either the files_only shape or the textHits shape — plus its warnings.
+// renderContextHits prints one file's hits with their context lines the way
+// `grep -n -C` does: every line at most once, in line order, contiguous
+// runs joined, "--" only between runs that do not touch. Before 2026-09-06
+// each hit printed its own before/after block, so two matches three lines
+// apart (context=1) printed line 6 twice and a "--" between them, and a
+// match on consecutive lines repeated both — a 988-byte result whose
+// second half was its first half again. Returns (lines skipped as already
+// shown under an earlier term, ok).
+func renderContextHits(b *strings.Builder, file string, hits []any, seen map[string]bool) (int, bool) {
+	type ln struct {
+		text  string
+		match bool
+	}
+	byLine := map[int]ln{}
+	dup := 0
+	hasContext := false
+	for _, h := range hits {
+		hm, ok := h.(map[string]any)
+		if !ok {
+			return 0, false
+		}
+		line, _ := hm["line"].(int)
+		if seen != nil {
+			key := fmt.Sprintf("%s:%d", file, line)
+			if seen[key] {
+				dup++
+				continue
+			}
+			seen[key] = true
+		}
+		before := anySlice(hm["before"])
+		after := anySlice(hm["after"])
+		if len(before) > 0 || hm["after"] != nil {
+			hasContext = true
+		}
+		for i, l := range before {
+			n := line - len(before) + i
+			if _, taken := byLine[n]; !taken {
+				byLine[n] = ln{strings.TrimRight(fmt.Sprint(l), "\r\n"), false}
+			}
+		}
+		byLine[line] = ln{strings.TrimRight(fmt.Sprint(hm["text"]), "\r\n"), true}
+		for i, l := range after {
+			n := line + 1 + i
+			if _, taken := byLine[n]; !taken {
+				byLine[n] = ln{strings.TrimRight(fmt.Sprint(l), "\r\n"), false}
+			}
+		}
+	}
+	nums := make([]int, 0, len(byLine))
+	for n := range byLine {
+		nums = append(nums, n)
+	}
+	sort.Ints(nums)
+	for i, n := range nums {
+		if i > 0 && n != nums[i-1]+1 {
+			b.WriteString("--\n")
+		}
+		if l := byLine[n]; l.match {
+			fmt.Fprintf(b, "%s:%d: %s\n", file, n, l.text)
+		} else {
+			fmt.Fprintf(b, "%s:%d-  %s\n", file, n, l.text)
+		}
+	}
+	if hasContext && len(nums) > 0 {
+		b.WriteString("--\n")
+	}
+	return dup, true
+}
+
 // Returns false on any field it does not know how to render, so the caller
 // falls back to JSON rather than silently dropping content.
 func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]bool) bool {
@@ -241,32 +311,9 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 					file, strings.Join(lines, ","))
 				continue
 			}
-			dup := 0
-			for _, h := range anySlice(gm["hits"]) {
-				hm, ok := h.(map[string]any)
-				if !ok {
-					return false
-				}
-				line, _ := hm["line"].(int)
-				if seen != nil {
-					key := fmt.Sprintf("%s:%d", file, line)
-					if seen[key] {
-						dup++
-						continue
-					}
-					seen[key] = true
-				}
-				before := anySlice(hm["before"])
-				for i, l := range before {
-					fmt.Fprintf(b, "%s:%d-  %v\n", file, line-len(before)+i, l)
-				}
-				fmt.Fprintf(b, "%s:%v: %v\n", file, hm["line"], hm["text"])
-				for i, l := range anySlice(hm["after"]) {
-					fmt.Fprintf(b, "%s:%d-  %v\n", file, line+1+i, l)
-				}
-				if len(before) > 0 || hm["after"] != nil {
-					b.WriteString("--\n")
-				}
+			dup, ok := renderContextHits(b, file, anySlice(gm["hits"]), seen)
+			if !ok {
+				return false
 			}
 			if dup > 0 {
 				fmt.Fprintf(b, "%s: %d line(s) already shown under an earlier term\n", file, dup)
