@@ -23,12 +23,13 @@ import (
 // lines (hits, symbols, files) are never touched.
 
 var onceFixed = map[string]string{
-	"// no matches — search completed (not truncated, not timed out)":              "// no matches",
-	"// no symbol matches (full index checked, not a partial pass)":                "// no symbol matches",
-	"// locations only — prism_lookup <name> or prism_read for the body":           "",
-	"// ALL matches by enclosing symbol (graph rollup of the full set):":           "// by enclosing symbol:",
-	"// closest indexed symbols:":                                                  "// closest indexed symbols:",
-	"// no matches — search timed out before finishing; results may be incomplete": "// no matches — timed out, INCOMPLETE",
+	"// no matches — search completed (not truncated, not timed out)":                        "// no matches",
+	"// no symbol matches (full index checked, not a partial pass)":                          "// no symbol matches",
+	"// locations only — prism_lookup <name> or prism_read for the body":                     "",
+	"// ALL matches by enclosing symbol (graph rollup of the full set):":                     "// by enclosing symbol:",
+	"// Grouped matches by enclosing symbol (bounded graph rollup; inspect omission notes):": "// bounded rollup by enclosing symbol; inspect omissions:",
+	"// closest indexed symbols:":                                                            "// closest indexed symbols:",
+	"// no matches — search timed out before finishing; results may be incomplete":           "// no matches — timed out, INCOMPLETE",
 }
 
 var oncePatterns = []struct {
@@ -37,7 +38,7 @@ var oncePatterns = []struct {
 }{
 	{regexp.MustCompile(`^// (\d+) more files with matches omitted — .*$`), "// $1 more files omitted (exhaustive=true lists them)"},
 	{regexp.MustCompile(`^// no matches — search completed, not truncated, not timed out: .*$`), "// no matches (exact strings absent; broaden the term)"},
-	{regexp.MustCompile(`^// showing (\d+) of AT LEAST (\d+) matches across (\d+) files — .*hitRollup.*$`), "// showing $1 of ≥$2 matches in $3 files — complete breakdown by symbol below"},
+	{regexp.MustCompile(`^// showing (\d+) of AT LEAST (\d+) matches across (\d+) files — .*hitRollup.*$`), "// showing $1 of ≥$2 matches in $3 files — bounded rollup below; inspect omissions"},
 	{regexp.MustCompile(`^// showing (\d+) of AT LEAST (\d+) matches across (\d+) files — .*$`), "// showing $1 of ≥$2 matches in $3 files — a SAMPLE; narrow, or exhaustive=true"},
 	{regexp.MustCompile(`^// (\d+) files match — first .*$`), "// $1 files match — listed by path, then by directory (path=<dir> expands)"},
 	{regexp.MustCompile(`^// (\d+) more files with matches — exhaustive=true: .*$`), "// $1 more files — by path, then by directory (path=<dir> expands)"},

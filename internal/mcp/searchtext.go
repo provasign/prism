@@ -360,7 +360,7 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 		fmt.Fprintf(b, "// %s\n", w)
 	}
 	if ru := anySlice(m["hitRollup"]); len(ru) > 0 {
-		b.WriteString("// ALL matches by enclosing symbol (graph rollup of the full set):\n")
+		b.WriteString("// Grouped matches by enclosing symbol (bounded graph rollup; inspect omission notes):\n")
 		for _, e := range ru {
 			em, ok := e.(map[string]any)
 			if !ok {

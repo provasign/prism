@@ -529,10 +529,10 @@ func TestToolSearch_ContextClampedWithNote(t *testing.T) {
 //
 // 2026-09-02, real usage: a truncated OWNER-pattern search (543 reported vs
 // 829 true matches, a security/access-control audit) rode with a hitRollup
-// that already had the complete grouped answer -- but the warning text only
+// that already had useful grouped evidence -- but the warning text only
 // said "raise limit=, narrow with path=/glob=, or use files_only=true",
 // never mentioning hitRollup or exhaustive=true, so nothing pointed the
-// agent at the free complete answer already sitting in the same response.
+// agent at the grouped evidence already sitting in the same response.
 func TestToolSearch_WarningPointsAtRollupWhenPresent(t *testing.T) {
 	dir := t.TempDir()
 	// Two files, several calls each, so scope=text over limit=1 truncates
@@ -582,9 +582,9 @@ func shared() {}
 	if len(ru) == 0 {
 		t.Skip("no rollup produced for this fixture (e.g. grove indexing changed) — nothing to assert")
 	}
-	for _, want := range []string{"hitRollup", "COMPLETE"} {
+	for _, want := range []string{"hitRollup", "bounded", "not a complete site inventory"} {
 		if !strings.Contains(warning, want) {
-			t.Errorf("warning must point at the rollup that already answers completeness, missing %q in: %s", want, warning)
+			t.Errorf("warning must point at the rollup without overstating coverage, missing %q in: %s", want, warning)
 		}
 	}
 	if !strings.Contains(warning, "exhaustive=true") {

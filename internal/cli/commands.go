@@ -487,50 +487,40 @@ func mergePrismYAML(existing, profile string) string {
 const steeringInstructions = `
 ## Prism — context delivery
 
-Prism indexes this repo's call and type graph. Use the prism_* tools for
-locating, reading and searching code — each tool's own description says when
-it applies: ` + "`" + `prism_search` + "`" + ` (locate; scope="text" = pure grep),
-` + "`" + `prism_query` + "`" + ` (edit-ready context), ` + "`" + `prism_read` + "`" + `/` + "`" + `prism_lookup` + "`" + ` (read a
-file / one symbol), ` + "`" + `prism_change_impact` + "`" + ` (blast radius), ` + "`" + `prism_verify` + "`" + `
-(diff completeness).
+Prism indexes this repo's call and type graph. Use its tools for code discovery;
+their schemas describe parameters and coverage limits.
 
 **Before your first tool call**, run this once to load Prism's tools (they
 start deferred, not absent):
 
-    ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact")
+    ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
 
-Then make your FIRST discovery call a prism one (search/query) — not grep.
-Measured: sessions that open with prism displace the manual exploration
-phase entirely; sessions that grep first and add prism later do the same
-manual work anyway and re-grep every prism answer as a confirmation.
+Make your first code-discovery call the Prism tool that answers the question:
+- Known symbol, affected sites or signature change: ` + "`" + `prism_change_impact` + "`" + ` directly.
+- Known methods, need their behavior: ` + "`" + `prism_lookup(name=["A","B"])` + "`" + ` for whole bodies.
+- Unknown location: ` + "`" + `prism_search` + "`" + `; need edit-ready context around terms: ` + "`" + `prism_query` + "`" + `.
+Do not search merely to locate a symbol already named for impact or lookup.
 
-What the descriptions cannot say, the workflow rules:
+Workflow rules:
 
 - Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
-  **Relay that set as-is** — re-filtering it through grep/sed measurably
-  drops real sites.
+  **Relay that set as-is**; do not filter it through grep/sed.
 - Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
-- Removing symbols? The moment you know WHAT you are removing — BEFORE
-  editing — run ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + `: every reference
-  in ONE list, instead of discovering them one build failure at a time
-  (measured: a 5-package go-build cascade, 70 turns, whose full list
-  this call had available 250 turns earlier). Re-run it per edit round;
-  plain ` + "`" + `prism_verify` + "`" + ` still gates the finish. In a compiled language
-  the compiler already enumerates BREAKING fallout — spend prism's checks
-  on what it cannot see: comments, docs, config, other languages, and
-  code that still compiles but should have changed.
+- After impact, use the delivered signatures and call expressions. Follow up
+  only for needed bodies, omitted evidence, ambiguous receivers, stale/incomplete
+  scope, or non-code references required by the task. Do not rescan just to
+  reproduce the site list. Preserve reported sites while resolving uncertainty;
+  if evidence gaps remain, report them instead of claiming completeness.
+- Removing symbols? Before editing, run ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + `.
+  Re-run per edit round; plain ` + "`" + `prism_verify` + "`" + ` still gates the finish. Check
+  non-compiling surfaces too: comments, docs, config, and other languages.
 - Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
-  Do NOT issue one search per name — each extra call costs a full turn
-  and re-reads your whole context. Add ` + "`" + `context=3` + "`" + ` to see the matching
-  lines in the same call (the ` + "`" + `grep -n` + "`" + ` shape: locate AND read, one turn —
-  not search, then lookup, then read).
+  Add ` + "`" + `context=3` + "`" + ` for surrounding lines. Use ` + "`" + `scope="text"` + "`" + ` for pure grep.
 - Wide removal/refactor ("remove X everywhere")? Open with
   ` + "`" + `prism_search(query="<concept>", scope="text", exhaustive=true, files_only=true)` + "`" + ` —
-  the complete file inventory up front replaces the whole iterative
-  discovery phase and surfaces the API/SPI files a name-grep misses.
-- Need one named function/class's whole body? ` + "`" + `prism_lookup(name)` + "`" + ` —
-  not ` + "`" + `prism_search(..., context=N)` + "`" + ` with N guessed large enough to
-  cover it.
+  inspect partial-result warnings before treating the inventory as complete.
+- Need a file or exact line range? ` + "`" + `prism_read` + "`" + `. Whole named bodies? Batch
+  ` + "`" + `prism_lookup` + "`" + `, not guessed search context. Reuse delivered unchanged source.
 
 Bash-only (subagents, CI) — same verbs, add ` + "`" + `--format text` + "`" + `:
 

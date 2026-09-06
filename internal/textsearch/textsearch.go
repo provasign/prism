@@ -535,7 +535,9 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		if aerr != nil || ln < 1 {
 			continue
 		}
-		file := filepath.ToSlash(strings.TrimPrefix(parts[0], "./"))
+		// Scoped operands such as './.' can produce '././file'; graph paths
+		// use the canonical repo-relative spelling, not a single-prefix trim.
+		file := filepath.ToSlash(filepath.Clean(parts[0]))
 		// Count EVERY match, then keep the first MaxHits. The loop used to
 		// break at the cap, so a truncated result reported `truncated: true`
 		// with no denominator -- an agent could not tell 22-of-25 from

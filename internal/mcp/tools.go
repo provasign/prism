@@ -470,6 +470,10 @@ func toolSchema(name string) map[string]any {
 					"items":       map[string]any{"type": "string"},
 					"description": "One term or an array of up to 10 (batch them). Regex when regex=true.",
 				},
+				"task": map[string]any{
+					"type":        "string",
+					"description": "Optional caller label only; does not affect retrieval or scope and is not echoed in results.",
+				},
 				"scope": map[string]any{
 					"type":        "string",
 					"enum":        []string{"both", "text", "symbols"},
@@ -491,7 +495,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"exhaustive": map[string]any{
 					"type":        "boolean",
-					"description": "Every match, uncapped — for completeness questions (a capped answer looks complete). Pair with files_only or path=.",
+					"description": "Raises text caps to 100000 hits / 10000 per file, symbols to 2000. Deadlines still apply. Partial results are marked; narrow path=/glob= if incomplete.",
 				},
 				"files_only": map[string]any{
 					"type":        "boolean",
@@ -768,11 +772,12 @@ func toolDescription(name string) string {
 			"read of an unchanged file returns a `// [prism:cached]` pointer — use the copy " +
 			"you already have. For one function use prism_lookup."
 	case "prism_search":
-		return "Locate: symbol names AND raw text (real rg/grep) in one call. Batch up to 10 " +
+		return "Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
+			"Known symbol? Use lookup for bodies or change_impact for affected sites directly. Batch up to 10 " +
 			"terms in query=[...]. scope=\"text\" is pure grep, cheapest — use it wherever you " +
 			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
-			"around each hit (grep -C) — no follow-up read. exhaustive=true lifts the cap for " +
-			"completeness questions."
+			"around each hit (grep -C) — no follow-up read. exhaustive=true requests full coverage; " +
+			"heed partial-result warnings."
 	case "prism_lookup":
 		return "Read whole symbol bodies by qualified name. Batch related methods in name=[...] " +
 			"(up to 10) instead of separate lookups; file disambiguates the batch. For a small local bug, " +
@@ -1307,6 +1312,12 @@ func appendNote(existing, add string) string {
 }
 
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
+	// A caller label is metadata, never a retrieval term or scope override.
+	if task, present := args["task"]; present {
+		if _, ok := task.(string); !ok {
+			return nil, errors.New("task must be a string label; query supplies the search terms")
+		}
+	}
 	queries := stringsArg(args, "query")
 	if len(queries) == 0 {
 		// The schema declares query required; without this an empty string
@@ -1568,26 +1579,17 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			// is silent: it reads the capped list as the whole picture.
 			out["totalHits"] = r.TotalHits
 			out["filesMatched"] = r.FilesMatched
-			// The graph's organization of the WHOLE hit set rides along with
-			// the sample, so the narrowing decision can happen this turn
-			// (rollup.go — 27% of real searches truncate). Compute it BEFORE
-			// the warning so the warning can point at it: on a security/audit
-			// query (access-control patterns, ownership) the complete grouped
-			// answer is already in this same response, and telling the agent
-			// to "raise limit= / narrow" first — without mentioning it — was
-			// measured (2026-09-02, real usage) sending the agent past it
-			// unread and toward a re-query or, worse, treating the sample as
-			// the whole picture for a correctness-critical check.
+			// Point at the grouped evidence without treating capped group names
+			// or lower-bound counts as an exhaustive inventory.
 			ru := h.hitRollup(ctx, q, sc, regex)
 			if len(ru) > 0 {
 				out["hitRollup"] = ru
 				out["warning"] = fmt.Sprintf(
 					"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not "+
-						"the full set. The graph's COMPLETE breakdown of all %d hits, grouped by "+
-						"enclosing symbol, is in hitRollup below — check it before re-querying, "+
-						"it usually answers 'where are the rest' without another call. Need every "+
-						"raw line instead of grouped counts? exhaustive=true.",
-					len(r.Hits), r.TotalHits, r.FilesMatched, r.TotalHits)
+						"the full set. Check the bounded hitRollup below before re-querying; "+
+						"omitted groups and unprobed hits are noted. It is not a complete site inventory. "+
+						"Need every raw line? exhaustive=true; narrow path=/glob= for evidence gaps.",
+					len(r.Hits), r.TotalHits, r.FilesMatched)
 				if sc.rollupOnly {
 					// The caller already knows the sample's raw lines are
 					// not what they need this call -- "how many, and where
