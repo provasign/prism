@@ -501,7 +501,7 @@ func toolSchema(name string) map[string]any {
 					"type":        "boolean",
 					"description": "On a truncated search return only hitRollup (grouped counts), no sample lines.",
 				},
-				"limit": map[string]any{"type": "integer", "description": "Max results (default 25)."},
+				"limit": map[string]any{"type": "integer", "description": "Max results (default 25, maximum 2000; non-positive uses default)."},
 				"context": map[string]any{
 					"type":        "integer",
 					"description": "Lines around each match (grep -C N, max 15) — instead of a follow-up read. Whole function? prism_lookup.",
@@ -514,8 +514,11 @@ func toolSchema(name string) map[string]any {
 			"required": []string{"name"},
 			"properties": map[string]any{
 				"name": map[string]any{
-					"type":        "string",
-					"description": "Symbol name, optionally qualified ('internal/cli.Run' or 'Run').",
+					"oneOf": []map[string]any{
+						{"type": "string"},
+						{"type": "array", "items": map[string]any{"type": "string"}, "minItems": 1, "maxItems": 10},
+					},
+					"description": "One qualified symbol name, or up to 10 names to read together. file and fields apply to every name; oversized batch results are listed as omitted, never silently cut.",
 				},
 				"fields": map[string]any{
 					"type":        "array",
@@ -771,8 +774,10 @@ func toolDescription(name string) string {
 			"around each hit (grep -C) — no follow-up read. exhaustive=true lifts the cap for " +
 			"completeness questions."
 	case "prism_lookup":
-		return "Read one symbol by qualified name (e.g. 'kvstore.Store.Get'). fields=[...] narrows " +
-			"to signature/doc/body/...; omit for the whole body. The file:line is authoritative."
+		return "Read whole symbol bodies by qualified name. Batch related methods in name=[...] " +
+			"(up to 10) instead of separate lookups; file disambiguates the batch. For a small local bug, " +
+			"read the relevant methods together; impact is for affected-site questions. " +
+			"fields=[...] narrows to signature/doc/body/...; omit for whole bodies."
 	case "prism_resolve":
 		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
 			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
@@ -828,7 +833,10 @@ func toolDescription(name string) string {
 		return "Every site that must change when a symbol does. Pass 'Type.method' and get, in " +
 			"one call: declarations, the full override/implementation family, breaking sibling " +
 			"contracts (supers), all resolved callers, and declaringTypes. Reach for this before " +
-			"editing any existing symbol. completeness:'closed' = authoritative; 'project-local' " +
+			"a signature change or affected-site enumeration. Includes signatures, test labels, and bounded " +
+			"matching call expressions so those facts do not need separate lookups. Read bodies only " +
+			"for behavior or evidence gaps. completeness:'closed' describes indexed scope, not proof " +
+			"of heuristic edge resolution; heed warnings. 'project-local' " +
 			"+ overridesExternal = the method implements an external contract whose signature " +
 			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
 	case "prism_missing_implementations":
@@ -1306,19 +1314,28 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		return nil, errors.New("query is required (a name, a name fragment, or an array of them)")
 	}
 	var termNote string
+	var omittedTerms []string
 	if len(queries) > searchTermCap {
 		// Never drop silently. A filter that quietly narrows the request is
 		// the failure mode SWE-Explore measures as the expensive one: missing
 		// evidence costs far more than noise.
 		termNote = fmt.Sprintf("only the first %d of %d terms were searched; re-run with the rest",
 			searchTermCap, len(queries))
+		omittedTerms = queries[searchTermCap:]
 		queries = queries[:searchTermCap]
 	}
 	limit := intArg(args, "limit", defaultSearchLimit)
 	if limit <= 0 {
 		limit = defaultSearchLimit
 	}
+	if limit > exhaustiveSymbolCap {
+		termNote = appendNote(termNote, fmt.Sprintf("limit clamped to %d (asked for %d)", exhaustiveSymbolCap, limit))
+		limit = exhaustiveSymbolCap
+	}
 	scope := stringArg(args, "scope", "both")
+	if scope != "text" && scope != "symbols" && scope != "both" {
+		return nil, fmt.Errorf("invalid scope %q; use text, symbols, or both", scope)
+	}
 	regex := boolArg(args, "regex")
 	reqContext := intArg(args, "context", -1)
 	if reqContext < 0 {
@@ -1371,7 +1388,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			}(i, q)
 		}
 		wg.Wait()
-		out := map[string]any{}
+		out := map[string]any{"root": h.Root}
+		if len(omittedTerms) > 0 {
+			out["omittedTerms"] = omittedTerms
+		}
 		results := make([]map[string]any, 0, len(queries))
 		var failed []string
 		for i := range queries {
@@ -1396,7 +1416,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 				break
 			}
 		}
-		if allEmpty {
+		if allEmpty && !searchResultPartial(out) {
 			h.attachEmptySearchGuidance(ctx, out, queries)
 		}
 		return out, nil
@@ -1406,10 +1426,11 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	if err != nil {
 		return nil, err
 	}
+	out["root"] = h.Root
 	if termNote != "" {
 		out["note"] = termNote
 	}
-	if searchResultEmpty(out) {
+	if searchResultEmpty(out) && !searchResultPartial(out) {
 		h.attachEmptySearchGuidance(ctx, out, queries)
 	}
 	return out, nil
@@ -1449,8 +1470,8 @@ func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]
 	// per-term "no matches — search completed" line is suppressed by the
 	// renderer when this note is present (they said the same thing twice,
 	// ~350 chars, on every empty search).
-	guidance := "no matches — search completed, not truncated, not timed out: these exact strings " +
-		"don't exist, NOT that the tool is done. Retry broader/shorter (drop punctuation and " +
+	guidance := "no matches — search completed, not truncated, not timed out in the requested scope; " +
+		"NOT that the tool is done. Excluded files and unindexed symbols are not covered. Retry broader/shorter (drop punctuation and " +
 		"qualifiers: \"e.Query(\" -> \"Query\") or reuse a term that matched earlier."
 	if dym := h.nearMissSymbols(ctx, terms); len(dym) > 0 {
 		out["didYouMean"] = dym
@@ -1657,6 +1678,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// limit=-1 reached the slice below as syms[:-1] (review, 2026-09-06).
 		limit = defaultSearchLimit
 	}
+	limit = minInt(limit, exhaustiveSymbolCap)
 	symCap := limit
 	if sc.exhaustive {
 		// Bounded, not unbounded: past exhaustiveSymbolCap the response
@@ -1678,20 +1700,12 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// marker). Fetch in growing batches until the filtered result exceeds
 	// the cap or the source itself is exhausted (it returned fewer than
 	// asked); only then is "not truncated" a fact.
-	var syms []grove.SymbolRecord
-	sourceExhausted := false
-	for fetch := symCap + 1; ; fetch *= 4 {
-		raw, err := h.Grove.SearchSymbols(ctx, q, fetch)
-		if err != nil {
-			return nil, err
-		}
-		sourceExhausted = len(raw) < fetch
-		syms = filterSymbolsByScope(filterGeneratedPrismContext(raw), sc)
-		if len(syms) > symCap || sourceExhausted || fetch >= symbolFetchHardMax {
-			break
-		}
+	syms, sourceExhausted, err := scopedSymbolSearch(ctx, h.Grove.SearchSymbols, q, sc, symCap, symbolFetchHardMax)
+	if err != nil {
+		return nil, err
 	}
-	symbolsTruncated := len(syms) > symCap || !sourceExhausted
+	moreKnown := len(syms) > symCap
+	symbolsTruncated := moreKnown || !sourceExhausted
 	if len(syms) > symCap {
 		syms = syms[:symCap]
 	}
@@ -1736,14 +1750,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	out := map[string]any{"symbols": annotated}
 	if symbolsTruncated {
 		out["symbolsTruncated"] = true
-		if sc.exhaustive {
-			out["warning"] = exhaustiveCapWarning(symCap)
-		} else {
-			out["warning"] = fmt.Sprintf(
-				"showing %d symbol matches — a SAMPLE, more exist. For a completeness question "+
-					"(every implementation, every override) use exhaustive=true; otherwise narrow "+
-					"with path=/glob= or raise limit=.", limit)
-		}
+		out["warning"] = symbolSearchWarning(len(annotated), symCap, sc.exhaustive, sourceExhausted, moreKnown)
 	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
@@ -1752,13 +1759,30 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// The merged pass previously ran at MaxHits 50 — double the symbol
 		// limit the caller asked for, on the default scope of the highest-
 		// call-count tool. The caller's limit bounds both passes now.
-		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context,
-		}); len(r.Hits) > 0 {
+		})
+		if len(r.Hits) > 0 {
 			out["textHits"] = h.renderTextMatches(r.Hits, sc.exhaustive)
 			out["textBackend"] = r.Backend
+		}
+		if r.Truncated {
+			out["truncated"] = true
+			out["totalHits"] = r.TotalHits
+			out["filesMatched"] = r.FilesMatched
+			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf(
+				"Text matches are a SAMPLE: showing %d of at least %d. Use exhaustive=true or narrow path=/glob=.",
+				len(r.Hits), r.TotalHits))
+		}
+		if r.TimedOut {
+			out["timedOut"] = true
+			out["warning"] = appendNote(stringArg(out, "warning", ""), "INCOMPLETE text scan: deadline reached; absence is not established.")
+		}
+		if len(r.RejectedPaths) > 0 {
+			out["rejectedPaths"] = r.RejectedPaths
+			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf("Paths outside the root were NOT searched: %v", r.RejectedPaths))
 		}
 	}
 	// Same structural hint as scope=text: the symbol list above says the
@@ -2096,6 +2120,11 @@ func (h *Handler) nodeFile(ctx context.Context, path string, syms []grove.Symbol
 }
 
 func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, error) {
+	if names, batch, err := lookupBatchNames(args["name"]); err != nil {
+		return nil, err
+	} else if batch {
+		return h.toolLookupBatch(ctx, args, names)
+	}
 	name := stringArg(args, "name", stringArg(args, "qualifiedName", ""))
 	if name == "" {
 		return nil, errors.New("name is required")
@@ -2513,6 +2542,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		targetLeaf = targetLeaf[:i]
 	}
 	targetLeaf = leafOf(strings.TrimSpace(targetLeaf))
+	evidenceBudget := impactEvidenceMaxBytes
 
 	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
@@ -2534,6 +2564,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
 			if annotate {
+				addImpactCallEvidence(entry, s, targetLeaf, &evidenceBudget)
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
 					entry["via"] = via
 				}
@@ -2542,7 +2573,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				// specially excluded here) -- this was silent before,
 				// leaving the agent to guess from the filename which
 				// callers are production call sites and which are tests.
-				if isVerifiedTestCaller(s.FilePath) {
+				if isVerifiedTestCaller("/" + filepath.ToSlash(s.FilePath)) {
 					entry["isTest"] = true
 				}
 			}
@@ -2560,6 +2591,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"family":       compact(r.Family),
 		"callers":      compactWithScope(r.Callers, true),
 		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
+	}
+	if len(r.Callers) > 0 {
+		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
 	}
 	h.hypLedger.recordClosedImpact(r.Completeness,
 		len(r.Declarations)+len(r.Family)+len(r.Callers)+len(r.DeclaringTypes))

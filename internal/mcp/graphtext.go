@@ -72,6 +72,7 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 		"declaringTypesNote": true, "completeness": true,
 		"externalSupers": true, "overridesExternal": true, "warning": true,
 		"widerAnchor": true, "hasHeuristicRefs": true,
+		"evidenceNote": true, "staleWarning": true, "scopeNote": true, "ambiguityNote": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -84,8 +85,11 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 		fmt.Fprintf(&b, "completeness: %s\n", c)
 	}
 	if hr, _ := out["hasHeuristicRefs"].(bool); hr {
-		b.WriteString("// includes name-derived references (framework template/query bindings) — " +
-			"probably right, not certain; verify before relying on it for a safety-critical change\n")
+		b.WriteString("// includes name-derived references: completeness describes indexed scope, not receiver certainty. " +
+			"Verify ambiguous expressions; per-edge provenance is unavailable here.\n")
+	}
+	if note, _ := out["evidenceNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if c, _ := out["completeness"].(string); c == "type-level" {
 		b.WriteString("// class-level query: direct structural dependents only (calls into its " +
@@ -111,6 +115,13 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 			if !ok {
 				return "", false
 			}
+			for key := range m {
+				switch key {
+				case "name", "qualifiedName", "filePath", "line", "kind", "signature", "via", "isTest", "evidence", "evidenceNote":
+				default:
+					return "", false
+				}
+			}
 			name := m["qualifiedName"]
 			if name == nil || name == "" {
 				name = m["name"]
@@ -119,7 +130,23 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 			if via, _ := m["via"].(string); via != "" {
 				fmt.Fprintf(&b, "  (via %s)", via)
 			}
+			if test, _ := m["isTest"].(bool); test {
+				b.WriteString("  [test]")
+			}
 			b.WriteString("\n")
+			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" {
+				fmt.Fprintf(&b, "    %s\n", compactImpactLine(sig))
+			}
+			for _, raw := range anySlice(m["evidence"]) {
+				evidence, ok := raw.(map[string]any)
+				if !ok || len(evidence) != 2 || evidence["line"] == nil || evidence["text"] == nil {
+					return "", false
+				}
+				fmt.Fprintf(&b, "    %v: %v\n", evidence["line"], evidence["text"])
+			}
+			if note, _ := m["evidenceNote"].(string); note != "" {
+				fmt.Fprintf(&b, "    // %s\n", note)
+			}
 		}
 	}
 	if n, _ := out["declaringTypesNote"].(string); n != "" {
@@ -134,6 +161,11 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 	if w, _ := out["warning"].(string); w != "" {
 		fmt.Fprintf(&b, "// %s\n", w)
 	}
+	for _, key := range []string{"staleWarning", "scopeNote", "ambiguityNote"} {
+		if note, _ := out[key].(string); note != "" {
+			fmt.Fprintf(&b, "// %s\n", note)
+		}
+	}
 	if wa, ok := out["widerAnchor"].(map[string]any); ok {
 		fmt.Fprintf(&b, "// wider anchor: %v (%v sites, %v) — %v\n",
 			wa["qualifiedName"], wa["totalSites"], wa["completeness"], wa["note"])
@@ -146,6 +178,9 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 // plus index internals (id, blobSha, callSites) no agent uses: measured
 // 1,072 B for 221 B of content. Text form: one header line, the body once.
 func renderLookupAsText(out map[string]any) (string, bool) {
+	if _, batch := out["results"]; batch {
+		return renderLookupBatchAsText(out)
+	}
 	known := map[string]bool{
 		"symbol": true, "content": true, "ambiguous": true, "candidates": true,
 		"matched": true, "name": true, "note": true,

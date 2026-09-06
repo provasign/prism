@@ -63,6 +63,16 @@ func (o *onceNotes) apply(text string) string {
 	lines := strings.Split(text, "\n")
 	out := lines[:0]
 	for _, l := range lines {
+		// Current validity/scope facts must survive repeats and compaction.
+		lower := strings.ToLower(l)
+		if strings.HasPrefix(l, "//") && (strings.HasPrefix(l, "// root:") ||
+			strings.Contains(lower, "in the requested scope") ||
+			strings.Contains(lower, "incomplete") || strings.Contains(lower, "not searched") ||
+			strings.Contains(lower, "a sample") || strings.Contains(lower, "exhaustive symbol search") ||
+			strings.Contains(lower, "rejected paths")) {
+			out = append(out, l)
+			continue
+		}
 		if !strings.HasPrefix(l, "//") {
 			out = append(out, l)
 			continue

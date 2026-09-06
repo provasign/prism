@@ -1720,6 +1720,7 @@ func cmdSearch(args []string) int {
 	exhaustive := false
 	rollupOnly := false
 	contextLines := 0
+	contextSet := false
 	var bare []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -1769,12 +1770,17 @@ func cmdSearch(args []string) int {
 		case "--rollup-only":
 			rollupOnly = true
 		case "--context", "-C":
-			if i+1 < len(args) {
-				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					contextLines = n
-				}
-				i++
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "search: --context requires a non-negative integer")
+				return 2
 			}
+			n, err := strconv.Atoi(args[i+1])
+			if err != nil || n < 0 {
+				fmt.Fprintln(os.Stderr, "search: --context requires a non-negative integer")
+				return 2
+			}
+			contextLines, contextSet = n, true
+			i++
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
@@ -1845,13 +1851,19 @@ func cmdSearch(args []string) int {
 	if rollupOnly {
 		callArgs["rollup_only"] = true
 	}
-	if contextLines > 0 {
+	if contextSet {
 		callArgs["context"] = contextLines
 	}
 	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
+	}
+	if format == formatText {
+		if text, ok := mcp.RenderSearchText(out); ok {
+			fmt.Print(text)
+			return 0
+		}
 	}
 	printOutput(out, format)
 	return 0
@@ -2766,6 +2778,11 @@ func printOutput(v any, format outputFormat) {
 // printTextOutput renders a Prism response as plain text for agent consumption.
 // Handles prism_query, prism_read, prism_search, and prism_lookup responses.
 func printTextOutput(m map[string]any) {
+	if root, _ := m["root"].(string); root != "" {
+		if _, search := m["results"]; search || m["textHits"] != nil || m["symbols"] != nil || m["files"] != nil {
+			fmt.Printf("// root: %s\n", root)
+		}
+	}
 	// Multi-term prism_search: one group per term, each rendered by the
 	// single-term path below so the two forms read identically.
 	if groups, ok := m["results"]; ok {

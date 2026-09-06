@@ -6,6 +6,16 @@ import (
 	"strings"
 )
 
+// RenderSearchText shares MCP's lossless, merged search rendering with the CLI.
+// Unknown shapes return false so callers can retain the complete JSON result.
+func RenderSearchText(out any) (string, bool) {
+	m, ok := out.(map[string]any)
+	if !ok {
+		return "", false
+	}
+	return renderSearchAsText(m)
+}
+
 // renderSearchAsText renders a prism_search TEXT result as plain grep-style
 // "path:line: text" lines instead of JSON.
 //
@@ -31,6 +41,8 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"failedTerms": true, "note": true, "query": true,
 		"symbols": true, "hitRollup": true, "didYouMean": true,
 		"symbolsTruncated": true,
+		"root":             true,
+		"omittedTerms":     true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -39,6 +51,9 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	}
 
 	var b strings.Builder
+	if root, _ := out["root"].(string); root != "" {
+		fmt.Fprintf(&b, "// root: %s\n", root)
+	}
 	if raw, ok := out["results"]; ok {
 		groups, ok := raw.([]map[string]any)
 		if !ok {
@@ -113,6 +128,9 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	}
 	for _, f := range anySlice(out["failedTerms"]) {
 		fmt.Fprintf(&b, "// failed: %v\n", f)
+	}
+	if omitted := anySlice(out["omittedTerms"]); len(omitted) > 0 {
+		fmt.Fprintf(&b, "// NOT searched: %v\n", omitted)
 	}
 	return b.String(), true
 }
@@ -249,7 +267,11 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 		// matching is an in-memory index lookup, not a scan with a timeout
 		// risk, so the reassurance is simpler: the whole index was checked,
 		// not a partial/truncated pass.
-		b.WriteString("// no symbol matches (full index checked, not a partial pass)\n")
+		if searchResultPartial(m) {
+			b.WriteString("// no symbol matches in the inspected portion; results are INCOMPLETE\n")
+		} else {
+			b.WriteString("// no symbol matches (full index checked, not a partial pass)\n")
+		}
 	}
 	switch {
 	case hasKey(m, "symbols") && !hasKey(m, "files") && !hasKey(m, "textHits"):
@@ -273,8 +295,8 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 			// the deadline fired before the scan finished); surface it so
 			// the null carries the same evidence a truncated hit list
 			// already does.
-			if timedOut, _ := m["timedOut"].(bool); timedOut {
-				b.WriteString("// no matches — search timed out before finishing; results may be incomplete\n")
+			if searchResultPartial(m) {
+				b.WriteString("// no matches in the inspected scope; results are INCOMPLETE\n")
 			} else {
 				b.WriteString("// no matches — search completed (not truncated, not timed out)\n")
 			}
