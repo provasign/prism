@@ -548,3 +548,29 @@ Next: fix the embedded engine's Go interface coverage with negative controls
 before restoring `closed`; separately measure task-depth routing under a new
 frozen protocol. The latest paid efficiency failure remains the latest result.
 See the [coverage reproduction and limits](accuracy-efficiency-candidate/impact-coverage-2026-09-06/REPORT.md).
+
+## 19. Native Go Interface Caller Recovery
+
+Grove `ff9adefb` on `fix-go-interface-impact` now resolves local possible
+implementations of interface calls through `go/types` method sets, including
+external embedded contracts and promoted local methods. Exact signatures and
+source-file identities constrain the targets; invalid types do not establish
+compatibility. This is separate from the unchanged heuristic matcher.
+
+A fresh pinned Gin replay recovers `Context.Stream`: CloseNotify callers grow
+0 -> 2 and Hijack callers 0 -> 3, with no previously returned sites lost.
+Supers, family and declaringTypes remain empty. Prism keeps the `partial`
+warning. Replies grow to include the missing evidence; no model run or session
+token-saving measurement occurred. The latest paid efficiency failure stands.
+
+Seven new tests, full Grove and dependency-replaced Prism race suites, and
+Prism's four-file completeness check pass. The free replay's 117 artifact
+hashes verify; exact source copies match the Grove commit. Evidence and all
+retained attempts stay in research; Prism carries this report only.
+
+The fix is committed in Grove, not shipped in Prism: its dependency manifest
+still pins v0.43.1. Nothing was pushed, tagged, installed or merged into main.
+Next: inherited contract/family representation and cross-package dispatch
+tests, followed by frozen autonomous task-depth/cost comparisons. Do not
+restore `closed` or prohibit recovery searches on the strength of this one
+caller-recall repair. See the [engine replay and limits](accuracy-efficiency-candidate/go-interface-dispatch-2026-09-06/REPORT.md).

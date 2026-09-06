@@ -17,6 +17,7 @@ Links to evidence are pinned to that commit, not a mutable branch.
 | [Exact scoped lookup](scoped-lookup-2026-09-06/REPORT.md) | Free replay: five calls -> one batch, eight bodies preserved, two explicit misses |
 | [Scoped lookup model comparison](scoped-lookup-2026-09-06/comparison/REPORT.md) | 100% recall/precision; 9.4% more aggregate tokens and 5.8% higher estimated cost; fails targets |
 | [Impact coverage and task depth](impact-coverage-2026-09-06/REPORT.md) | Go false-closed case reproduced; partial coverage reported without losing sites; no new model savings measurement |
+| [Go interface caller recovery](go-interface-dispatch-2026-09-06/REPORT.md) | Grove candidate recovers Gin callers: CloseNotify 0 -> 2, Hijack 0 -> 3; partial coverage retained; no model savings measurement |
 
 The comparisons use different controls. Do not compound their savings or
 claim product-wide superiority over native tools.
@@ -31,10 +32,14 @@ Do not merge the superseded `cand-search-context` evidence-heavy
 commits into main.
 
 Evidence branch: **`accuracy-efficiency-evidence`** in research, at
-`1aa2adcb8be12d7d43d7f41c17575269225f5075`.
+`366d40e4d4faba5ce5e8d15e4da1ac3650023906`.
 It contains the initial archive, historical references, free replay and the
 eight-cell scoped-lookup model comparison, including its efficiency failure.
 It also retains the Go coverage replay and its sandbox-cache setup failure.
+The subsequent native Go dispatch repair, negative controls and all development
+replays are retained separately. Grove branch **`fix-go-interface-impact`** at
+`ff9adefb7ce84c7124d95b35295f3d29aec111cd` contains the engine change. Prism's
+dependency remains v0.43.1; only an isolated test build uses the new engine.
 The original source branches and working copies were preserved unchanged.
 Neither new branch has been pushed; the pinned GitHub links will resolve after
 the research branch is published.
@@ -47,7 +52,7 @@ the research branch is published.
 - Prism completeness verification reports no missed sites. It marks the
   steering string as a manual-review contract: its only references are the
   declaration and `steeringBlock`, covered by the routing/safeguard tests.
-- All 34 local report links and 87 pinned research links resolve to files or
+- At the coverage checkpoint, all 34 local report links and 87 pinned research links resolved to files or
   Git objects. Remote links become accessible after the evidence is pushed.
 - All 638 copied files match their source hashes; all 594 original artifact
   checksum checks pass. Frozen manifests and scripts were not rewritten.
@@ -55,7 +60,11 @@ the research branch is published.
 - The new eight-cell comparison replays all raw answers and usage totals;
   all 111 archived checksum checks and 27 offline experiment tests pass.
 - The Go coverage replay preserves site arrays and bodies; all 58 artifact
-  hashes and the full race-enabled product suite pass. Engine recall is not fixed.
+  hashes and the full race-enabled product suite pass. That change only fixed
+  reporting; the later engine repair recovers specific missing callers.
+- Native Go dispatch has seven new tests; full Grove and dependency-replaced
+  Prism race suites pass. All 117 new replay artifact hashes verify. Interface
+  families and cross-package completeness remain unproven.
 - The read-only [archive verifier](https://github.com/provasign/research/blob/dc0972177436c191b8b7c8f30cff406f5006915f/harness/runs/prism-accuracy-efficiency-2026-09-06/verify_archive.py)
   reproduces 40 summary cells and rechecks 16 raw answers and usage records
   without the original checkout, temporary binaries, or model calls.
