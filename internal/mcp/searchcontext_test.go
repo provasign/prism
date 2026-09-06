@@ -17,7 +17,9 @@ func TestRenderContextHits_MergesOverlappingWindows(t *testing.T) {
 	if _, ok := renderContextHits(&b, "pkg/api.go", hits, nil); !ok {
 		t.Fatal("render failed")
 	}
-	want := "pkg/api.go:4-  four\npkg/api.go:5: five\npkg/api.go:6-  six\npkg/api.go:7: seven\npkg/api.go:8-  eight\n--\n"
+	// Path once, then Read-shaped numbered lines: the path repeated on every
+	// context line was most of the bytes of a context result.
+	want := "pkg/api.go:\n  4- four\n  5: five\n  6- six\n  7: seven\n  8- eight\n"
 	if b.String() != want {
 		t.Errorf("got:\n%s\nwant:\n%s", b.String(), want)
 	}
@@ -32,13 +34,16 @@ func TestRenderContextHits_SeparatesDistantRuns(t *testing.T) {
 	var b strings.Builder
 	renderContextHits(&b, "f.go", hits, nil)
 	got := b.String()
-	if strings.Count(got, "f.go:3:") != 1 || strings.Count(got, "f.go:4:") != 1 {
+	if strings.Count(got, "f.go:") != 1 {
+		t.Errorf("path must appear once as a header:\n%s", got)
+	}
+	if strings.Count(got, "  3: ") != 1 || strings.Count(got, "  4: ") != 1 {
 		t.Errorf("adjacent matches must each print once as a match line:\n%s", got)
 	}
-	if strings.Count(got, "--\n") != 2 { // one between the runs, one trailing
+	if strings.Count(got, "  --\n") != 1 {
 		t.Errorf("want exactly one separator between the two runs:\n%s", got)
 	}
-	if strings.Contains(got, "f.go:4-") {
+	if strings.Contains(got, "  4- ") {
 		t.Errorf("a line that is a match must not also appear as context:\n%s", got)
 	}
 }

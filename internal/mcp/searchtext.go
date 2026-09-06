@@ -172,18 +172,26 @@ func renderContextHits(b *strings.Builder, file string, hits []any, seen map[str
 		nums = append(nums, n)
 	}
 	sort.Ints(nums)
+	if !hasContext {
+		// Plain hit list: one self-contained `path:line: text` per match.
+		for _, n := range nums {
+			fmt.Fprintf(b, "%s:%d: %s\n", file, n, byLine[n].text)
+		}
+		return dup, true
+	}
+	// Context form: the path once, then line-numbered lines in the Read
+	// tool's shape. Repeating the path on every line was most of the bytes
+	// of a context result (a 40-char path × every context line).
+	fmt.Fprintf(b, "%s:\n", file)
 	for i, n := range nums {
 		if i > 0 && n != nums[i-1]+1 {
-			b.WriteString("--\n")
+			b.WriteString("  --\n")
 		}
 		if l := byLine[n]; l.match {
-			fmt.Fprintf(b, "%s:%d: %s\n", file, n, l.text)
+			fmt.Fprintf(b, "  %d: %s\n", n, l.text)
 		} else {
-			fmt.Fprintf(b, "%s:%d-  %s\n", file, n, l.text)
+			fmt.Fprintf(b, "  %d- %s\n", n, l.text)
 		}
-	}
-	if hasContext && len(nums) > 0 {
-		b.WriteString("--\n")
 	}
 	return dup, true
 }
