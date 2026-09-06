@@ -597,3 +597,36 @@ was not papered over with name matching; it remains the next engine task.
 Generic interfaces remain a boundary. The feature branches are published, but
 Grove is untagged and Prism still pins v0.43.1. See the
 [family replay and limits](accuracy-efficiency-candidate/go-interface-family-2026-09-06/REPORT.md).
+
+## 21. Imported Go Interface Contracts
+
+Grove `8dad4547` replaces the unbuilt-sibling-package failure with a bounded
+project-source importer. It preloads only directly imported project packages
+known to declare interfaces, recursively loads their dependencies, and uses
+`go/types` identities rather than matching method names. Synthetic member
+edges are now retained during incremental partial/skipped-language carry and
+dropped when their owning interface symbol changes.
+
+A fresh three-package replay turns a reproduced hard failure into an exact
+four-site impact result. Grove `184f8a9e` exits 1 for
+`Writer.CloseNotify` scoped to the API package and says the interface declares
+no such method. The candidate returns the inherited declaration, declaring
+interface, API caller, and `impl.Writer.CloseNotify` family member. A
+wrong-return `impl.Wrong.CloseNotify` and an unrelated sibling import are
+negative controls; neither contaminates or suppresses the result. Coverage
+remains `partial`.
+
+Full Grove and dependency-replaced Prism race suites pass, the focused
+cross-package/incremental controls pass, and Prism reports no missed sites.
+The research replay verifies 28 hashes. Its six alternating fresh-index trials
+on the same 324-file Prism archive produced medians of 0.6012s before and
+0.5984s after (-2.7ms, -0.45%), with identical 1,454-symbol and 4,911-edge
+counts. Treat that as no material index regression, not a speedup claim.
+
+No model ran, spend was zero, and autonomous accuracy and token savings remain
+unmeasured. Generic interfaces and structurally compatible implementations in
+packages with no import connection remain outside this increment. Grove is
+pushed but untagged; Prism still pins v0.43.1. The next release decision must
+first integrate a tagged Grove build, then rerun the frozen autonomous
+task-depth/cost panel rather than infer token savings from engine inventory.
+See the [cross-package replay and limits](accuracy-efficiency-candidate/go-interface-cross-package-2026-09-06/REPORT.md).

@@ -19,6 +19,7 @@ Links to evidence are pinned to that commit, not a mutable branch.
 | [Impact coverage and task depth](impact-coverage-2026-09-06/REPORT.md) | Go false-closed case reproduced; partial coverage reported without losing sites; no new model savings measurement |
 | [Go interface caller recovery](go-interface-dispatch-2026-09-06/REPORT.md) | Grove candidate recovers Gin callers: CloseNotify 0 -> 2, Hijack 0 -> 3; partial coverage retained; no model savings measurement |
 | [Go interface family materialization](go-interface-family-2026-09-06/REPORT.md) | Inherited Gin contract and declaring interface recovered; previous sites preserved; partial retained |
+| [Imported Go interface contracts](go-interface-cross-package-2026-09-06/REPORT.md) | Baseline hard fail becomes exact four-site inventory; wrong-signature decoy excluded; index timing neutral |
 
 The comparisons use different controls. Do not compound their savings or
 claim product-wide superiority over native tools.
@@ -33,13 +34,14 @@ Do not merge the superseded `cand-search-context` evidence-heavy
 commits into main.
 
 Evidence branch: **`accuracy-efficiency-evidence`** in research, at
-`030ae78aa73cc5a3529b29b72c23d27aff88b2f4`.
+`0059bb2c2359d82b56bac5a323bbd4bc52c68449`.
 It contains the initial archive, historical references, free replay and the
 eight-cell scoped-lookup model comparison, including its efficiency failure.
 It also retains the Go coverage replay and its sandbox-cache setup failure.
 The subsequent native Go dispatch repair, negative controls and all development
 replays are retained separately. Grove branch **`fix-go-interface-impact`** at
-`184f8a9ee57170d41e96029e70d578655f901a34` contains the caller and local-family repairs. Prism's
+`8dad45479ff72b78c7c8e930c6d49cbed18b39a8` contains the caller, local-family,
+and imported-contract repairs. Prism's
 dependency remains v0.43.1; only an isolated test build uses the new engine.
 The original source branches and working copies were preserved unchanged.
 The three feature branches are published; nothing is merged to main or tagged.
@@ -65,7 +67,11 @@ The three feature branches are published; nothing is merged to main or tagged.
 - Native Go dispatch has seven new tests; full Grove and dependency-replaced
   Prism race suites pass. All 117 caller-replay artifact hashes verify.
 - Local inherited Go contracts now materialize in impact; all 25 family-replay
-  hashes verify. Cross-package and generic-interface completeness remain unproven.
+  hashes verify.
+- Imported interface contracts now resolve across directly connected project
+  packages. The replay verifies 28 hashes, excludes a wrong-signature decoy,
+  and records six neutral index-timing trials per arm. Generic interfaces and
+  unconnected structural implementations remain unproven.
 - The read-only [archive verifier](https://github.com/provasign/research/blob/dc0972177436c191b8b7c8f30cff406f5006915f/harness/runs/prism-accuracy-efficiency-2026-09-06/verify_archive.py)
   reproduces 40 summary cells and rechecks 16 raw answers and usage records
   without the original checkout, temporary binaries, or model calls.
