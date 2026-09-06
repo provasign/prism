@@ -1283,6 +1283,9 @@ const searchContextCap = 15
 const (
 	defaultSearchLimit  = 25
 	exhaustiveSymbolCap = 2000
+	// defaultSearchContext: lines around each text hit when the caller set
+	// no context= (candidate under test; 0 restores the shipped behaviour).
+	defaultSearchContext = 2
 	// symbolFetchHardMax bounds the scoped fetch loop: past it the result
 	// is reported truncated rather than the index scanned without end.
 	symbolFetchHardMax = 1 << 18
@@ -1317,7 +1320,20 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	}
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
-	reqContext := intArg(args, "context", 0)
+	reqContext := intArg(args, "context", -1)
+	if reqContext < 0 {
+		// CANDIDATE (proposal §6.2, branch cand-search-context): when the
+		// agent did not choose a context, deliver a small one. Measured on
+		// 13 prism cells (read_after_locate, 2026-09-06): the host Reads
+		// that dominate cost are of files a search NAMED but never sent —
+		// 2 of 26 searches asked for context. Off for files_only /
+		// rollup_only (locations are the point) and for exhaustive (the
+		// bounded inventory already carries the shape).
+		reqContext = 0
+		if !boolArg(args, "files_only") && !boolArg(args, "rollup_only") && !boolArg(args, "exhaustive") {
+			reqContext = defaultSearchContext
+		}
+	}
 	if reqContext > searchContextCap {
 		termNote = appendNote(termNote, fmt.Sprintf(
 			"context clamped to %d (asked for %d) — for more than a function's worth, use prism_read on the file",

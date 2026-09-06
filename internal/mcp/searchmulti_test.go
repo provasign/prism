@@ -454,17 +454,34 @@ func TestToolSearch_ContextAddsSurroundingLines(t *testing.T) {
 }
 
 func TestToolSearch_NoContextMeansNoBeforeAfter(t *testing.T) {
+	// cand-search-context: an EXPLICIT context=0 means none; an absent
+	// context now defaults to defaultSearchContext (the candidate under
+	// test), and files_only never carries context.
 	h := newTextSearchHandler(t)
-	out, err := h.Invoke("prism_search", map[string]any{"query": "Alpha", "scope": "text"})
+	out, err := h.Invoke("prism_search", map[string]any{"query": "Alpha", "scope": "text", "context": 0})
 	if err != nil {
 		t.Fatal(err)
 	}
 	m := out.(map[string]any)
-	groups := toSlice(m["textHits"])
-	gm := groups[0].(map[string]any)
-	hm := toSlice(gm["hits"])[0].(map[string]any)
+	hm := toSlice(toSlice(m["textHits"])[0].(map[string]any)["hits"])[0].(map[string]any)
 	if hm["before"] != nil || hm["after"] != nil {
-		t.Errorf("context=0 (default) must not attach before/after: %v", hm)
+		t.Errorf("explicit context=0 must not attach before/after: %v", hm)
+	}
+	out, err = h.Invoke("prism_search", map[string]any{"query": "Alpha", "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = out.(map[string]any)
+	hm = toSlice(toSlice(m["textHits"])[0].(map[string]any)["hits"])[0].(map[string]any)
+	if hm["before"] == nil && hm["after"] == nil {
+		t.Errorf("absent context should default to %d lines: %v", defaultSearchContext, hm)
+	}
+	out, err = h.Invoke("prism_search", map[string]any{"query": "Alpha", "scope": "text", "files_only": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, has := out.(map[string]any)["textHits"]; has {
+		t.Errorf("files_only must stay locations-only: %v", out)
 	}
 }
 
