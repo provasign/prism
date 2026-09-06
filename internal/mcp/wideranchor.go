@@ -71,14 +71,23 @@ func (h *Handler) widerAnchorHint(ctx context.Context, r *grove.ChangeImpactResu
 	if best == nil {
 		return nil
 	}
+	completeness, coverageNote := impactCoverage(best)
+	scope := "CLOSED"
+	if completeness != "closed" {
+		scope = "indexed (partial)"
+	}
+	note := fmt.Sprintf("%s has a larger %s change set (%d sites vs %d for the queried anchor). "+
+		"If the contract being changed is the interface/base declaration rather than this one "+
+		"implementation, query %s instead to inspect its family.",
+		bestQN, scope, obligationSiteCount(best), baseline, bestQN)
+	if coverageNote != "" {
+		note += " " + coverageNote
+	}
 	return map[string]any{
 		"qualifiedName": bestQN,
 		"totalSites":    obligationSiteCount(best) + len(best.Declarations),
-		"completeness":  best.Completeness,
-		"note": fmt.Sprintf("%s has a larger CLOSED change set (%d sites vs %d for the queried anchor). "+
-			"If the contract being changed is the interface/base declaration rather than this one "+
-			"implementation, query %s instead — its family covers every implementation.",
-			bestQN, obligationSiteCount(best), baseline, bestQN),
+		"completeness":  completeness,
+		"note":          note,
 	}
 }
 

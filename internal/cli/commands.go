@@ -496,21 +496,22 @@ start deferred, not absent):
     ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
 
 Make your first code-discovery call the Prism tool that answers the question:
-- Known symbol, affected sites or signature change: ` + "`" + `prism_change_impact` + "`" + ` directly.
+- Affected sites or signature change: ` + "`" + `prism_change_impact` + "`" + ` directly.
 - Known methods, need their behavior: ` + "`" + `prism_lookup(name=["A","B"])` + "`" + ` for whole bodies.
 - Unknown location: ` + "`" + `prism_search` + "`" + `; need edit-ready context around terms: ` + "`" + `prism_query` + "`" + `.
 Do not search merely to locate a symbol already named for impact or lookup.
+Read-only inspection needs no impact just because a symbol is named.
 
 Workflow rules:
 
 - Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
   **Relay that set as-is**; do not filter it through grep/sed.
 - Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
-- After impact, use the delivered signatures and call expressions. Follow up
-  only for needed bodies, omitted evidence, ambiguous receivers, stale/incomplete
-  scope, or non-code references required by the task. Do not rescan just to
-  reproduce the site list. Preserve reported sites while resolving uncertainty;
-  if evidence gaps remain, report them instead of claiming completeness.
+- After impact, reuse signatures and call expressions for site enumeration;
+  do not fetch bodies by default. Follow up for behavior, omitted evidence, ambiguous receivers, stale/incomplete
+  scope, or required non-code references. Do not rescan to reproduce the site list.
+  Preserve reported sites while resolving uncertainty; if gaps remain,
+  report them instead of claiming completeness.
 - Removing symbols? Before editing, run ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + `.
   Re-run per edit round; plain ` + "`" + `prism_verify` + "`" + ` still gates the finish. Check
   non-compiling surfaces too: comments, docs, config, and other languages.

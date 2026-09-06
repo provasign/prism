@@ -72,7 +72,7 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 		"declaringTypesNote": true, "completeness": true,
 		"externalSupers": true, "overridesExternal": true, "warning": true,
 		"widerAnchor": true, "hasHeuristicRefs": true,
-		"evidenceNote": true, "staleWarning": true, "scopeNote": true, "ambiguityNote": true,
+		"evidenceNote": true, "coverageNote": true, "staleWarning": true, "scopeNote": true, "ambiguityNote": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -83,6 +83,9 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 	fmt.Fprintf(&b, "// %v — change-impact: %v site(s)\n", out["query"], out["totalSites"])
 	if c, _ := out["completeness"].(string); c != "" {
 		fmt.Fprintf(&b, "completeness: %s\n", c)
+	}
+	if note, _ := out["coverageNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if hr, _ := out["hasHeuristicRefs"].(bool); hr {
 		b.WriteString("// includes name-derived references: completeness describes indexed scope, not receiver certainty. " +

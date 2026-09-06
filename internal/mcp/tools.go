@@ -849,8 +849,8 @@ func toolDescription(name string) string {
 			"contracts (supers), all resolved callers, and declaringTypes. Reach for this before " +
 			"a signature change or affected-site enumeration. Includes signatures, test labels, and bounded " +
 			"matching call expressions so those facts do not need separate lookups. Read bodies only " +
-			"for behavior or evidence gaps. completeness:'closed' describes indexed scope, not proof " +
-			"of heuristic edge resolution; heed warnings. 'project-local' " +
+			"for behavior or evidence gaps, not routinely for site enumeration. 'partial' means coverage gaps; " +
+			"follow coverageNote. 'closed' describes indexed scope, not heuristic receiver certainty. 'project-local' " +
 			"+ overridesExternal = the method implements an external contract whose signature " +
 			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
 	case "prism_missing_implementations":
@@ -2634,7 +2634,11 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if len(r.Callers) > 0 {
 		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
 	}
-	h.hypLedger.recordClosedImpact(r.Completeness,
+	completeness, coverageNote := impactCoverage(r)
+	if coverageNote != "" {
+		out["coverageNote"] = coverageNote
+	}
+	h.hypLedger.recordClosedImpact(completeness,
 		len(r.Declarations)+len(r.Family)+len(r.Callers)+len(r.DeclaringTypes))
 	if sn := h.hypLedger.scopeNote(); sn != "" {
 		out["scopeNote"] = sn
@@ -2671,8 +2675,8 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			"symbols, so the type itself is the change site) — include each as a " +
 			"site in your answer"
 	}
-	if r.Completeness != "" {
-		out["completeness"] = r.Completeness
+	if completeness != "" {
+		out["completeness"] = completeness
 	}
 	if r.HasHeuristicRefs {
 		out["hasHeuristicRefs"] = true

@@ -9,7 +9,7 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
 		"mcp__prism__prism_lookup",
-		"Known symbol, affected sites or signature change:",
+		"Affected sites or signature change:",
 		"Known methods, need their behavior:",
 		`prism_lookup(name=["A","B"])`,
 		"Unknown location:",
@@ -21,6 +21,14 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 	}
 	if strings.Contains(got, "FIRST discovery call a prism one (search/query)") {
 		t.Error("known names must not require a preliminary search")
+	}
+	if strings.Contains(got, "Known symbol, affected sites") {
+		t.Error("a named symbol alone must not trigger impact")
+	}
+	for _, want := range []string{"Read-only inspection needs no impact", "do not fetch bodies by default", "site enumeration"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing task-depth distinction: %s", want)
+		}
 	}
 	if len(got) > 3000 {
 		t.Errorf("always-loaded steering grew beyond 3000 bytes: %d", len(got))
