@@ -186,6 +186,24 @@ type missedSite struct {
 	Detail        string `json:"detail"`
 }
 
+// missedSiteMaps is the result shape. The struct slice went straight into
+// the result until 2026-09-06, and the text renderer's anySlice does not
+// know struct slices — so the MISSED SITES section was silently dropped
+// from the text the agent reads while the verdict still said "incomplete".
+// (The JSON fallback never triggered: the key was known, its value simply
+// rendered as nothing.) Maps are what every renderer here understands.
+func missedSiteMaps(ms []missedSite) []map[string]any {
+	out := make([]map[string]any, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, map[string]any{
+			"symbol": m.Symbol, "qualifiedName": m.QualifiedName,
+			"file": m.File, "line": m.Line, "kind": m.Kind,
+			"becauseOf": m.BecauseOf, "detail": m.Detail,
+		})
+	}
+	return out
+}
+
 func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, error) {
 	base := stringArg(args, "base", "HEAD")
 
@@ -655,7 +673,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		"base":             base,
 		"changedFiles":     changedFiles,
 		"signatureChanges": sigChanges,
-		"missedSites":      missed,
+		"missedSites":      missedSiteMaps(missed),
 		"unverifiedSeeds":  unverifiedSeeds,
 		"newDependencies":  newDeps,
 		"archStatus":       archStatus,
