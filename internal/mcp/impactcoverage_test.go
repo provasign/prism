@@ -8,7 +8,11 @@ import (
 	"github.com/provasign/prism/internal/grove"
 )
 
-func TestImpactGoEmbeddedInterfaceIsNotClosed(t *testing.T) {
+// With grove v0.43.2 (interface contracts through method sets, across
+// packages) a non-generic Go interface closure keeps the engine's own
+// completeness; the pre-v0.43.2 blanket "partial" for every Go result is
+// gone. The inventory is never altered by the coverage label either way.
+func TestImpactGoEmbeddedInterfaceKeepsEngineCompleteness(t *testing.T) {
 	h := evidenceHandler(t, map[string]string{
 		"go.mod": "module example.com/coverage\n\ngo 1.26\n",
 		"writer.go": `package coverage
@@ -32,14 +36,11 @@ func Stream(w Writer) { <-w.CloseNotify() }
 		t.Fatal(err)
 	}
 	out := result.(map[string]any)
-	if out["completeness"] != "partial" {
-		t.Fatalf("Go interface coverage is not proved closed: %v", out)
+	if out["completeness"] != raw.Completeness {
+		t.Fatalf("non-generic Go interface must keep the engine's completeness %q: %v", raw.Completeness, out)
 	}
-	if h.hypLedger.closedSmall != 0 {
-		t.Fatal("partial impact must not enter the closed-impact ledger")
-	}
-	if note, _ := out["coverageNote"].(string); !strings.Contains(note, "interface") || !strings.Contains(note, "missing") {
-		t.Fatalf("missing actionable coverage warning: %v", out)
+	if _, has := out["coverageNote"]; has {
+		t.Fatalf("no coverage downgrade for a non-generic Go interface: %v", out)
 	}
 	for key, syms := range map[string][]grove.SymbolRecord{
 		"declarations": raw.Declarations, "supers": raw.Supers, "family": raw.Family,
@@ -57,8 +58,33 @@ func Stream(w Writer) { <-w.CloseNotify() }
 		}
 	}
 	text, ok := renderChangeImpactAsText(out)
-	if !ok || !strings.Contains(text, "completeness: partial") || !strings.Contains(text, out["coverageNote"].(string)) {
-		t.Fatalf("coverage must survive compact rendering: %t %s", ok, text)
+	if !ok || !strings.Contains(text, "completeness: "+raw.Completeness) {
+		t.Fatalf("engine completeness must survive compact rendering: %t %s", ok, text)
+	}
+}
+
+// The one Go shape grove v0.43.2 skips by design — an interface with type
+// parameters — still carries the downgrade and its note, end to end.
+func TestImpactGoGenericInterfaceIsPartial(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"go.mod": "module example.com/coverage\n\ngo 1.26\n",
+		"store.go": `package coverage
+type Store[T any] interface { Get(key string) T }
+type memStore struct{ v int }
+func (m *memStore) Get(key string) int { return m.v }
+func Use(s Store[int]) int { return s.Get("k") }
+`,
+	})
+	result, err := h.Invoke("prism_change_impact", map[string]any{"query": "Store.Get", "file": "store.go"})
+	if err != nil {
+		t.Skipf("engine cannot anchor a generic interface method here: %v", err)
+	}
+	out := result.(map[string]any)
+	if out["completeness"] == "closed" {
+		t.Fatalf("a generic Go interface contract must not be reported closed: %v", out)
+	}
+	if note, _ := out["coverageNote"].(string); out["completeness"] == "partial" && !strings.Contains(note, "type parameters") {
+		t.Fatalf("partial generic-interface result must say why: %v", out)
 	}
 }
 
@@ -69,11 +95,19 @@ func TestImpactCoveragePreservesTiersAndInput(t *testing.T) {
 		want   string
 	}{
 		{"nil", nil, ""},
-		{"language", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "go"}}}, "partial"},
-		{"file", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{FilePath: "a.go"}}}, "partial"},
-		{"interface", &grove.ChangeImpactResult{Completeness: "closed", DeclaringTypes: []grove.SymbolRecord{{FilePath: "a.go"}}}, "partial"},
-		{"super", &grove.ChangeImpactResult{Completeness: "closed", Supers: []grove.SymbolRecord{{Language: "go"}}}, "partial"},
-		{"family", &grove.ChangeImpactResult{Completeness: "closed", Family: []grove.SymbolRecord{{Language: "go"}}}, "partial"},
+		// grove v0.43.2 models Go interface dispatch through method sets: a
+		// plain Go closure keeps the engine's label.
+		{"language", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "go"}}}, "closed"},
+		{"file", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{FilePath: "a.go"}}}, "closed"},
+		{"interface", &grove.ChangeImpactResult{Completeness: "closed", DeclaringTypes: []grove.SymbolRecord{{FilePath: "a.go", Kind: "interface"}}}, "closed"},
+		{"super", &grove.ChangeImpactResult{Completeness: "closed", Supers: []grove.SymbolRecord{{Language: "go"}}}, "closed"},
+		{"family", &grove.ChangeImpactResult{Completeness: "closed", Family: []grove.SymbolRecord{{Language: "go"}}}, "closed"},
+		// What v0.43.2 skips by design: interfaces with type parameters.
+		{"generic interface declared", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "go", Kind: "interface", TypeParameters: []string{"T"}}}}, "partial"},
+		{"generic interface super", &grove.ChangeImpactResult{Completeness: "closed", Supers: []grove.SymbolRecord{{FilePath: "a.go", Kind: "interface", TypeParameters: []string{"K", "V"}}}}, "partial"},
+		{"generic interface declaring type", &grove.ChangeImpactResult{Completeness: "closed", DeclaringTypes: []grove.SymbolRecord{{FilePath: "a.go", Kind: "interface", TypeParameters: []string{"T"}}}}, "partial"},
+		{"generic struct is fine", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "go", Kind: "struct", TypeParameters: []string{"T"}}}}, "closed"},
+		{"generic java interface is fine", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "java", FilePath: "A.java", Kind: "interface", TypeParameters: []string{"T"}}}}, "closed"},
 		{"java", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "java", FilePath: "A.java"}}}, "closed"},
 		{"python", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "python", FilePath: "a.py"}}}, "closed"},
 		{"external", &grove.ChangeImpactResult{Completeness: "project-local", Declarations: []grove.SymbolRecord{{Language: "go"}}}, "project-local"},

@@ -87,11 +87,14 @@ func TestChangeImpact_WiderAnchorHintOnDisconnectedAnchor(t *testing.T) {
 	if hint == nil {
 		t.Fatal("no widerAnchor hint for a 1-caller anchor with a large same-name closed family in the graph")
 	}
-	if hint["completeness"] != "partial" {
-		t.Errorf("widerAnchor completeness = %v, want partial for Go", hint["completeness"])
+	// grove v0.43.2 models Go interface dispatch; a non-generic Go family
+	// keeps the engine's own completeness in the hint (impactCoverage only
+	// downgrades interfaces with type parameters).
+	if hint["completeness"] != "closed" {
+		t.Errorf("widerAnchor completeness = %v, want the engine's closed for a non-generic Go family", hint["completeness"])
 	}
-	if note := hint["note"].(string); strings.Contains(note, "CLOSED") || !strings.Contains(note, "callers may be missing") {
-		t.Errorf("wider anchor must not restore the engine's closed claim: %s", note)
+	if note := hint["note"].(string); !strings.Contains(note, "CLOSED") || strings.Contains(note, "callers may be missing") {
+		t.Errorf("wider anchor should carry the engine's closed scope, no coverage caveat: %s", note)
 	}
 	if n, ok := hint["totalSites"].(int); !ok || n <= 2 {
 		t.Errorf("widerAnchor totalSites = %v, want the larger Handle family", hint["totalSites"])
