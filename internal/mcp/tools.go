@@ -1276,6 +1276,15 @@ const searchTermCap = 10
 // file, not more context.
 const searchContextCap = 15
 
+// defaultSearchLimit is prism_search's default and the value a non-positive
+// limit= clamps to. exhaustiveSymbolCap bounds exhaustive=true on the
+// symbol pass: a completeness answer, but one the transport can carry — a
+// bigger set gets the cap plus a warning to narrow, never a silent cut.
+const (
+	defaultSearchLimit  = 25
+	exhaustiveSymbolCap = 2000
+)
+
 func appendNote(existing, add string) string {
 	if existing == "" {
 		return add
@@ -1299,7 +1308,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			searchTermCap, len(queries))
 		queries = queries[:searchTermCap]
 	}
-	limit := intArg(args, "limit", 25)
+	limit := intArg(args, "limit", defaultSearchLimit)
+	if limit <= 0 {
+		limit = defaultSearchLimit
+	}
 	scope := stringArg(args, "scope", "both")
 	regex := boolArg(args, "regex")
 	reqContext := intArg(args, "context", 0)
@@ -1622,12 +1634,22 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// as if it were the set and scored 0.73 recall. A capped answer to a
 	// completeness question looks complete — so a capped symbol list now
 	// carries a warning, and an exhaustive one is not capped.
+	if limit <= 0 {
+		// limit=-1 reached the slice below as syms[:-1] (review, 2026-09-06).
+		limit = defaultSearchLimit
+	}
 	fetch := limit + 1
 	if len(sc.paths) > 0 || len(sc.glob) > 0 {
 		fetch = limit*4 + 1 // scope filtering below may drop most of them
 	}
+	symCap := limit
 	if sc.exhaustive {
-		fetch = 1 << 20
+		// Bounded, not unbounded: past exhaustiveSymbolCap the response
+		// would exceed what the host accepts and be cut at the transport
+		// with no marker at all — the exact failure this fixes, one layer
+		// down. The cap is stated when hit, with the narrowing to use.
+		symCap = exhaustiveSymbolCap
+		fetch = symCap + 1
 	}
 	syms, err := h.Grove.SearchSymbols(ctx, q, fetch)
 	if err != nil {
@@ -1642,8 +1664,8 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// scope the tool advertises and then ignores is worse than no scope.
 	syms = filterSymbolsByScope(syms, sc)
 	symbolsTruncated := false
-	if !sc.exhaustive && len(syms) > limit {
-		syms = syms[:limit]
+	if len(syms) > symCap {
+		syms = syms[:symCap]
 		symbolsTruncated = true
 	}
 	// Real implementations first, test doubles tagged and last — the
@@ -1687,10 +1709,14 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	out := map[string]any{"symbols": annotated}
 	if symbolsTruncated {
 		out["symbolsTruncated"] = true
-		out["warning"] = fmt.Sprintf(
-			"showing %d symbol matches — a SAMPLE, more exist. For a completeness question "+
-				"(every implementation, every override) use exhaustive=true; otherwise narrow "+
-				"with path=/glob= or raise limit=.", limit)
+		if sc.exhaustive {
+			out["warning"] = exhaustiveCapWarning(symCap)
+		} else {
+			out["warning"] = fmt.Sprintf(
+				"showing %d symbol matches — a SAMPLE, more exist. For a completeness question "+
+					"(every implementation, every override) use exhaustive=true; otherwise narrow "+
+					"with path=/glob= or raise limit=.", limit)
+		}
 	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
@@ -2948,6 +2974,15 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// exhaustiveCapWarning is the in-band note when an exhaustive symbol search
+// exceeds exhaustiveSymbolCap: the bound is stated, and so is the way past it.
+func exhaustiveCapWarning(symCap int) string {
+	return fmt.Sprintf(
+		"exhaustive symbol search matched MORE than %d symbols — showing the first %d. "+
+			"Narrow with path=/glob= (or a longer name) and re-run exhaustive to get every one.",
+		symCap, symCap)
 }
 
 // filterSymbolsByScope applies the same path=/glob= narrowing to indexed
