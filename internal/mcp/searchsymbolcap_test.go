@@ -16,6 +16,13 @@ import (
 // from the sample and scored 0.73 recall. Symbol search must either honour
 // exhaustive or say it is a sample.
 func symbolCapFixture(t *testing.T, n int) *Handler {
+	return symbolScopeFixture(t, n, 0)
+}
+
+// n symbols FooThingNN at the root, m symbols FooThingNN under sub/ — the
+// root ones sort first, so a scoped search for sub/ sees its matches only
+// after every root match in the ranked list.
+func symbolScopeFixture(t *testing.T, n, m int) *Handler {
 	t.Helper()
 	dir := t.TempDir()
 	var b strings.Builder
@@ -25,6 +32,19 @@ func symbolCapFixture(t *testing.T, n int) *Handler {
 	}
 	if err := os.WriteFile(filepath.Join(dir, "foo.go"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)
+	}
+	if m > 0 {
+		var s strings.Builder
+		s.WriteString("package sub\n\n")
+		for i := 0; i < m; i++ {
+			fmt.Fprintf(&s, "func FooThingSub%02d() int { return %d }\n", i, i)
+		}
+		if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "sub", "sub.go"), []byte(s.String()), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	gc := grove.NewClient("", "").WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
@@ -91,6 +111,43 @@ func TestSearchSymbols_ExhaustiveIsBoundedAndSaysSo(t *testing.T) {
 	w := exhaustiveCapWarning(exhaustiveSymbolCap)
 	if !strings.Contains(w, "MORE than 2000") || !strings.Contains(w, "path=/glob=") {
 		t.Errorf("exhaustive cap warning must name the cap and the narrowing: %q", w)
+	}
+}
+
+func TestSearchSymbols_ScopedSearchSeesPastOutOfScopeMatches(t *testing.T) {
+	// Review 2026-09-06: a fixed fetch (limit*4+1, or cap+1) filtered by
+	// path= afterwards could return an incomplete in-scope set unflagged
+	// when out-of-scope matches ranked ahead of it. 60 root matches sort
+	// before the 40 under sub/; limit=5 used to fetch 21, filter to 0.
+	h := symbolScopeFixture(t, 60, 40)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "FooThing", "scope": "symbols", "path": "sub", "limit": 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if n := len(anySlice(m["symbols"])); n != 5 {
+		t.Fatalf("scoped limit=5: want 5 in-scope symbols, got %d", n)
+	}
+	if m["symbolsTruncated"] != true {
+		t.Error("40 in-scope matches under limit=5 must be flagged truncated")
+	}
+	out, err = h.Invoke("prism_search", map[string]any{
+		"query": "FooThing", "scope": "symbols", "path": "sub", "exhaustive": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = out.(map[string]any)
+	if n := len(anySlice(m["symbols"])); n != 40 {
+		t.Fatalf("scoped exhaustive: want all 40 in-scope symbols, got %d", n)
+	}
+	if _, ok := m["symbolsTruncated"]; ok {
+		t.Error("a complete scoped exhaustive result must not be flagged")
+	}
+	for _, s := range anySlice(m["symbols"]) {
+		if fp, _ := s.(map[string]any)["filePath"].(string); !strings.HasPrefix(fp, "sub/") {
+			t.Errorf("out-of-scope symbol leaked into a path=sub result: %s", fp)
+		}
 	}
 }
 

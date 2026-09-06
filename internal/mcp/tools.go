@@ -1283,6 +1283,9 @@ const searchContextCap = 15
 const (
 	defaultSearchLimit  = 25
 	exhaustiveSymbolCap = 2000
+	// symbolFetchHardMax bounds the scoped fetch loop: past it the result
+	// is reported truncated rather than the index scanned without end.
+	symbolFetchHardMax = 1 << 18
 )
 
 func appendNote(existing, add string) string {
@@ -1638,10 +1641,6 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// limit=-1 reached the slice below as syms[:-1] (review, 2026-09-06).
 		limit = defaultSearchLimit
 	}
-	fetch := limit + 1
-	if len(sc.paths) > 0 || len(sc.glob) > 0 {
-		fetch = limit*4 + 1 // scope filtering below may drop most of them
-	}
 	symCap := limit
 	if sc.exhaustive {
 		// Bounded, not unbounded: past exhaustiveSymbolCap the response
@@ -1649,24 +1648,36 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// with no marker at all — the exact failure this fixes, one layer
 		// down. The cap is stated when hit, with the narrowing to use.
 		symCap = exhaustiveSymbolCap
-		fetch = symCap + 1
 	}
-	syms, err := h.Grove.SearchSymbols(ctx, q, fetch)
-	if err != nil {
-		return nil, err
-	}
-	syms = filterGeneratedPrismContext(syms)
 	// path=/glob= are honored by the TEXT pass (textsearch.Options) but were
 	// silently dropped by the SYMBOL pass — the agent's narrowing simply did
 	// not apply to half its own result. Measured on jackson (2026-08-25): a
 	// search for "anySetter" scoped to src/main/java returned 25 symbols, 8
 	// of them from src/test/java, and the agent re-grepped to recover. A
 	// scope the tool advertises and then ignores is worse than no scope.
-	syms = filterSymbolsByScope(syms, sc)
-	symbolsTruncated := false
+	//
+	// The filters run AFTER the ranked fetch, so a fixed fetch size cannot
+	// know whether the in-scope set is complete (review, 2026-09-06: 2,001
+	// out-of-scope matches ranked first hid 3,000 in-scope ones with no
+	// marker). Fetch in growing batches until the filtered result exceeds
+	// the cap or the source itself is exhausted (it returned fewer than
+	// asked); only then is "not truncated" a fact.
+	var syms []grove.SymbolRecord
+	sourceExhausted := false
+	for fetch := symCap + 1; ; fetch *= 4 {
+		raw, err := h.Grove.SearchSymbols(ctx, q, fetch)
+		if err != nil {
+			return nil, err
+		}
+		sourceExhausted = len(raw) < fetch
+		syms = filterSymbolsByScope(filterGeneratedPrismContext(raw), sc)
+		if len(syms) > symCap || sourceExhausted || fetch >= symbolFetchHardMax {
+			break
+		}
+	}
+	symbolsTruncated := len(syms) > symCap || !sourceExhausted
 	if len(syms) > symCap {
 		syms = syms[:symCap]
-		symbolsTruncated = true
 	}
 	// Real implementations first, test doubles tagged and last — the
 	// disambiguation prism_resolve used to provide, folded into the one
