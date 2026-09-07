@@ -1,0 +1,1029 @@
+shale_version: "0"
+id: fb1a06ab-cd89-49e2-acfa-72188a0c2095-c2
+created_at: 2026-09-06T12:37:20.342979Z
+finalized_at: 2026-09-07T01:47:48.781394Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-06T14:24:16.655876Z
+    - path: internal/mcp/searchmulti_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-06T14:25:24.878661Z
+commands:
+    - cmd: git push -q origin main && git status -sb | head -1; gh run list --workflow=release.yml --limit 2 2>/dev/null | cat; gh run list --workflow=ci.yml --limit 1 2>/dev/null | cat
+      at: 2026-09-06T12:37:20.342979Z
+      classified: other
+    - cmd: gh run watch 34033641637 --exit-status >/dev/null 2>&1; echo "RELEASE-RUN exit=$?"; gh run view 34033641637 --json conclusion,status -q '"\(.status) \(.conclusion)"'; gh release view v0.71.1 --json tagName,assets -q '"\(.tagName) assets=\(.assets|length)"' 2>/dev/null
+      at: 2026-09-06T12:37:30.416166Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bpco5qr2i.output
+      at: 2026-09-06T12:39:15.343303Z
+      classified: other
+    - cmd: export GOWORK=off; git checkout -q stage2-sites-with-source && git merge -q --no-edit main 2>&1 | tail -2; git log --oneline -1; go test ./internal/mcp -count=1 2>&1 | tail -1 && go test ./... >/dev/null 2>&1; echo "go test ./... exit=$?"; go build -o ~/.cache/prism-research/bin/prism-cand-sites ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-cand-sites ~/.cache/prism-research/bin/prism-main | cut -c1-10; cp ~/.cache/prism-research/bin/prism-main ~/.cache/prism-research/bin/prism-v0.71.1; git checkout -q main; git branch --show-current
+      at: 2026-09-06T12:45:11.873968Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && B=~/.cache/prism-research/bin && for t in prism__98ed1b2b4d grove__d34856e4e0; do python3 run_wide.py --only $t --arms baseline --tag v0711 2>&1 | tail -2; python3 run_wide.py --only $t --arms prism_plus --tag v0711 --prism $B/prism-v0.71.1 2>&1 | tail -2; python3 run_wide.py --only $t --arms prism_plus --tag candsites2 --prism $B/prism-cand-sites 2>&1 | tail -2; done; echo FLEET-DONE
+      at: 2026-09-06T12:45:21.096914Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b0v7zbffr.output 2>/dev/null; echo "--- running procs:"; pgrep -fl "run_wide.py|claude -p" | cut -c1-90; echo "--- cells written so far:"; ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/ | grep -E "v0711|candsites2"
+      at: 2026-09-06T13:00:03.800019Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b0v7zbffr.output 2>/dev/null | grep -E "^(prism|grove)__" ; echo "--- running:"; pgrep -fl "run_wide.py|claude -p" | wc -l; echo "--- files:"; ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/ | grep -E "v0711|candsites2"
+      at: 2026-09-06T13:05:20.837455Z
+      classified: other
+    - cmd: pgrep -fl "run_wide.py|claude -p|prism " | awk '{print $1}' | wc -l; pgrep -fl "run_wide.py" ; echo ---; pgrep -fl "claude -p" | wc -l; ps aux | grep -c "prism-v0.71.1\|prism-cand-sites"; ps -o pid,etime,command -p $(pgrep -f "run_wide.py" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | cut -c1-150
+      at: 2026-09-06T13:05:33.467323Z
+      classified: other
+    - cmd: pgrep -f "claude -p" | wc -l; pgrep -f "claude -p" | sort -u | wc -l; pgrep -f "claude -p" | sort -u | head -20
+      at: 2026-09-06T13:05:41.404947Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b0v7zbffr.output 2>/dev/null | grep -E "^(prism|grove)__"; echo "--- running now:"; ps -o pid,etime,command -p $(pgrep -f "claude -p" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | head -3 | cut -c1-120; echo "--- cell files:"; ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/ | grep -E "v0711|candsites2"
+      at: 2026-09-06T13:12:26.129697Z
+      classified: other
+    - cmd: sleep 2; pgrep -fl "run_wide.py|claude -p" | grep -v "^$"; echo "(empty = stopped)"
+      at: 2026-09-06T13:13:19.875405Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && B=~/.cache/prism-research/bin && python3 run_wide.py --only dubbo__86dd98899b --arms baseline --tag v0711 2>&1 | tail -2; python3 run_wide.py --only dubbo__86dd98899b --arms prism_plus --tag v0711 --prism $B/prism-v0.71.1 2>&1 | tail -2; python3 run_wide.py --only dubbo__86dd98899b --arms prism_plus --tag candsites2 --prism $B/prism-cand-sites 2>&1 | tail -2; echo CHEAP-DONE
+      at: 2026-09-06T13:16:26.676055Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bh6fciwa1.output 2>/dev/null; echo "--- still running:"; pgrep -fl "claude -p" | head -1 | cut -c1-90
+      at: 2026-09-06T13:19:34.643829Z
+      classified: other
+    - cmd: pgrep -fl "run_wide.py|claude -p" | cut -c1-90; ls -la /Users/tapabratapal/Projects/provasign/research/harness/runs/wide/ | grep -E "dubbo__86dd.*v0711|dubbo__86dd.*candsites2"
+      at: 2026-09-06T13:19:40.995199Z
+      classified: other
+    - cmd: ps -o pid,etime,command -p $(pgrep -f "run_wide.py|claude -p" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | cut -c1-140; echo "---"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bh6fciwa1.output 2>/dev/null
+      at: 2026-09-06T13:22:16.27259Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bh6fciwa1.output
+      at: 2026-09-06T13:24:09.517277Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        r=json.load(open('runs/wide/dubbo__86dd98899b.sonnet.prism_plus.candsites2.json'))
+        print('session_id', (r.get('usage') or {}).get('session_id'))
+        print('tool_trace', r.get('tool_trace'))
+        "
+      at: 2026-09-06T13:39:28.376857Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        import usage_account as U
+        sid='0c942d36-faa3-41ec-845f-9fc4f2b4c21a'
+        p=U.transcript_path(sid); print(p)
+        uses={}
+        for line in open(p,errors='ignore'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use':
+                        uses[c['id']]=c
+                        print('USE', c['name'], json.dumps(c['input'])[:150])
+                    if isinstance(c,dict) and c.get('type')=='text' and c['text'].strip():
+                        print('TEXT:', c['text'][:200].replace('\n',' '))
+            elif j.get('type')=='user':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_result':
+                        u=uses.get(c.get('tool_use_id'))
+                        body=c.get('content')
+                        txt=body if isinstance(body,str) else (''.join(x.get('text','') for x in body if isinstance(x,dict)) if isinstance(body,list) else '')
+                        if u and (u['name'].startswith('mcp__prism') or u['name']=='Read'):
+                            print(f'  RESULT[{u["name"]}] {len(txt)} chars ::', txt[:600].replace('\n',' | '))
+        EOF
+      at: 2026-09-06T13:39:36.316079Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && B=~/.cache/prism-research/bin && python3 run_wide.py --only grove__b40b72d94e --arms baseline --tag v0711 2>&1 | tail -2; python3 run_wide.py --only grove__b40b72d94e --arms prism_plus --tag v0711 --prism $B/prism-v0.71.1 2>&1 | tail -2; python3 run_wide.py --only grove__b40b72d94e --arms prism_plus --tag candsites2 --prism $B/prism-cand-sites 2>&1 | tail -2; echo GROVE-DONE
+      at: 2026-09-06T13:41:35.306151Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bti3qijq2.output 2>/dev/null; echo "--- running:"; ps -o pid,etime,command -p $(pgrep -f "run_wide.py|claude -p" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | cut -c1-100
+      at: 2026-09-06T13:52:55.904514Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bti3qijq2.output
+      at: 2026-09-06T13:54:34.898822Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        r=json.load(open('runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json'))
+        print('session_id', (r.get('usage') or {}).get('session_id'))
+        print('tool_trace', r.get('tool_trace'))
+        print('missed_sites sample:', r.get('missed_sites', [])[:8])
+        print('symbols_missed_strict sample:', r.get('symbols_missed_strict', [])[:10])
+        "
+      at: 2026-09-06T13:54:47.747401Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        import usage_account as U
+        sid='b2ebe339-3e80-4c0d-96a0-bf80d2f969c2'
+        p=U.transcript_path(sid); print(p)
+        uses={}
+        for line in open(p,errors='ignore'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use':
+                        uses[c['id']]=c
+                        print('USE', c['name'], json.dumps(c['input'])[:150])
+                    if isinstance(c,dict) and c.get('type')=='text' and c['text'].strip():
+                        print('TEXT:', c['text'][:250].replace('\n',' '))
+            elif j.get('type')=='user':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_result':
+                        u=uses.get(c.get('tool_use_id'))
+                        body=c.get('content')
+                        txt=body if isinstance(body,str) else (''.join(x.get('text','') for x in body if isinstance(x,dict)) if isinstance(body,list) else '')
+                        if u and (u['name'].startswith('mcp__prism')):
+                            print(f'  RESULT[{u["name"]}] {len(txt)} chars ::', txt[:500].replace('\n',' | '))
+        EOF
+      at: 2026-09-06T13:54:59.101174Z
+      classified: other
+    - cmd: grep -n 'sh("git", "-C", str(wt), "diff")' /Users/tapabratapal/Projects/provasign/research/harness/run_wide.py
+      at: 2026-09-06T13:55:23.017545Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        r=json.load(open('runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json'))
+        print('legacy file_recall', r.get('file_recall'), r.get('files_found'), '/', r.get('files_expected'))
+        print('symbol_recall (legacy)', r.get('symbol_recall'))
+        "
+      at: 2026-09-06T13:56:04.065169Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m py_compile run_wide.py && rm -f runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.diff && python3 run_wide.py --only grove__b40b72d94e --arms prism_plus --tag candsites2 --prism ~/.cache/prism-research/bin/prism-cand-sites 2>&1 | tail -3
+      at: 2026-09-06T13:56:16.833699Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bk5cyk3ia.output
+      at: 2026-09-06T14:01:54.533821Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && wc -l runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.diff; grep -c "^diff --git" runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.diff; grep "^diff --git\|^deleted file\|^--- \|^+++ " runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.diff | head -20
+      at: 2026-09-06T14:02:03.094426Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "^def sh(" -A6 run_wide.py
+      at: 2026-09-06T14:02:29.976687Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m py_compile run_wide.py && rm -f runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.diff && python3 run_wide.py --only grove__b40b72d94e --arms prism_plus --tag candsites2 --prism ~/.cache/prism-research/bin/prism-cand-sites 2>&1 | tail -3
+      at: 2026-09-06T14:02:42.816851Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bvf8br9h1.output 2>/dev/null; echo "--- still running:"; pgrep -fl "run_wide.py|claude -p" | cut -c1-90
+      at: 2026-09-06T14:07:46.288586Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bvf8br9h1.output; echo "---"; cd /Users/tapabratapal/Projects/provasign/research/harness && wc -l runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.diff; grep -c "^diff --git" runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.diff
+      at: 2026-09-06T14:08:18.783656Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        r=json.load(open('runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json'))
+        print('session_id', (r.get('usage') or {}).get('session_id'))
+        print('tool_trace', r.get('tool_trace'))
+        tu=r.get('transcript_usage') or {}
+        print('tokens', tu.get('tokens'))
+        print('tool_result_bytes', tu.get('tool_result_bytes'))
+        "
+      at: 2026-09-06T14:09:17.401109Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        for tag,label in (('v0711','v0.71.1'),):
+            r=json.load(open(f'runs/wide/grove__b40b72d94e.sonnet.prism_plus.{tag}.json'))
+            tu=r.get('transcript_usage') or {}
+            print(label,'tool_trace',r.get('tool_trace'))
+            print(label,'tokens',tu.get('tokens'))
+            print(label,'tool_result_bytes',tu.get('tool_result_bytes'))
+        "
+      at: 2026-09-06T14:09:29.791076Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/run_wide.py && git commit -q -m "run_wide: score the diff against HEAD, not the index
+
+        A bare \`git diff\` compares the working tree to the INDEX. An agent that
+        removes a package with \`git rm -r\` stages the deletion, so the whole
+        removal vanished from the scored diff while a sibling cell using plain
+        \`rm\` scored the same work correctly (grove__b40b72d94e candidate cell:
+        site_recall 0.71 for a complete, build-green removal; 1.0 on rerun).
+        Not task[\"base_commit\"] either: the isolated worktree is a fresh
+        \`git init\` with no such object, and sh() swallowed the bad-ref error
+        into an empty diff (0/31). HEAD is the worktree's own base; check=True
+        so a bad ref can never again read as \"no changes\".
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git push -q origin main && git log --oneline -1
+      at: 2026-09-06T14:11:54.589006Z
+      classified: other
+    - cmd: B=~/.cache/prism-research/bin/prism-v0.71.1; $B verify --help 2>&1 | head -30; echo ---; cd /Users/tapabratapal/Projects/provasign/grove && $B verify --format json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(sorted(d.keys())); print(d.get('verdict'))"
+      at: 2026-09-06T14:12:21.541515Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m py_compile verify_bed.py && python3 verify_bed.py --prism ~/.cache/prism-research/bin/prism-v0.71.1 --only grove__b40b72d94e --tag probe 2>&1 | grep -v "^\[" | tail -12
+      at: 2026-09-06T14:13:24.632193Z
+      classified: other
+    - cmd: ls -la docs/ACCURACY_AND_TOKEN_EFFICIENCY_PROPOSAL.md 2>&1; wc -l docs/ACCURACY_AND_TOKEN_EFFICIENCY_PROPOSAL.md 2>/dev/null; git log --oneline -1 -- docs/ACCURACY_AND_TOKEN_EFFICIENCY_PROPOSAL.md 2>/dev/null
+      at: 2026-09-06T14:19:31.602561Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob
+        import read_after_locate as R
+        # Ceiling question: in the NATIVE baseline arm, what share of cumulative context
+        # exposure comes from actions prism could replace at all (search/grep results +
+        # file reads)? If that share is < 30%, a 30% total-cost cut via retrieval is
+        # unreachable by construction.
+        def walk(tp):
+            uses={}; events=[]; t=0
+            for line in open(tp,errors='ignore'):
+                try: j=json.loads(line)
+                except: continue
+                if j.get('type')=='assistant':
+                    for c in (j.get('message') or {}).get('content') or []:
+                        if isinstance(c,dict) and c.get('type')=='tool_use': t+=1; uses[c['id']]=c
+                        if isinstance(c,dict) and c.get('type')=='text': events.append((t,'assistant',len(c.get('text',''))))
+                elif j.get('type')=='user':
+                    for c in (j.get('message') or {}).get('content') or []:
+                        if isinstance(c,dict) and c.get('type')=='tool_result':
+                            u=uses.get(c.get('tool_use_id')); name=u['name'] if u else '?'
+                            cmd=(u or {}).get('input',{}).get('command','') if name=='Bash' else ''
+                            kind = 'locate' if (name in ('Grep','Glob') or name.startswith('mcp__prism__prism_search') or (name=='Bash' and any(k in cmd for k in ('grep','rg ','find ')))) \
+                                else 'read' if name in ('Read',) or name=='mcp__prism__prism_read' or (name=='Bash' and any(k in cmd for k in ('cat ','sed -n','head ','tail '))) \
+                                else 'prism' if name.startswith('mcp__prism') else 'edit' if name in ('Edit','Write') else 'bash-other' if name=='Bash' else 'other'
+                            events.append((t,kind,len(R._result_text(c))))
+            T=max(t,1)
+            exposure={}
+            for turn,kind,n in events:
+                exposure[kind]=exposure.get(kind,0)+n*max(T-turn,1)
+            return exposure, T
+        rows=[]
+        for p in sorted(glob.glob('runs/wide/*.baseline.v070sample.json')):
+            cell=json.load(open(p)); tp=R._fingerprint_match(cell['tool_trace'])
+            if not tp: print(cell['task'],'no transcript'); continue
+            ex,T=walk(tp); tot=sum(ex.values()) or 1
+            rep=(ex.get('locate',0)+ex.get('read',0))/tot
+            rows.append(rep)
+            print(f"{cell['task']:20} turns={T:3} replaceable(locate+read)={rep:5.1%}  locate={ex.get('locate',0)/tot:5.1%} read={ex.get('read',0)/tot:5.1%} bash-other={ex.get('bash-other',0)/tot:5.1%} assistant={ex.get('assistant',0)/tot:5.1%} edit={ex.get('edit',0)/tot:5.1%}")
+        print(f"\nMEAN replaceable share of cumulative context exposure (baseline arm): {sum(rows)/len(rows):.1%}  (n={len(rows)})")
+        EOF
+      at: 2026-09-06T14:20:24.531903Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        for sha in ('06b72411','30db37f7'):
+            r=json.load(open(f'runs/ab-gate/grafana-checkhealth-impact.haiku.{sha}.s2.json'))
+            print(sha, {k:r.get(k) for k in ('turns','cost_usd','tokens_in','recall','precision','n_sites')})"
+      at: 2026-09-06T14:21:01.196989Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "tokens_in" ab_gate.py ab_agentic_mcp.py | head; grep -n "unlink(missing_ok=True)" ab_gate.py; grep -n ''"alwaysLoad": True'' ab_gate.py; grep -n "_PATH = re.compile\|WINDOW = \|t += 1\|read_bytes\[" read_after_locate.py'
+      at: 2026-09-06T14:21:22.397858Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "def run_arm" -A 12 ab_agentic_mcp.py | grep -n "cmd = \|--allowedTools\|--disallowedTools\|mcp-config" ; grep -n "^ARMS\|\"prism\": {\|\"allowed\":" ab_agentic_mcp.py | head -8'
+      at: 2026-09-06T14:21:24.133181Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m py_compile ab_gate.py ab_agentic_mcp.py wide_score.py run_wide.py read_after_locate.py && python3 -m pytest -p no:asyncio -p no:pytest_asyncio tests/ -q 2>&1 | tail -2
+      at: 2026-09-06T14:22:59.893002Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 read_after_locate.py runs/wide/*.prism_plus.v0711.json runs/wide/*.prism_plus.candsites2.json runs/wide/*.prism_plus.v070sample.json 2>&1
+      at: 2026-09-06T14:23:13.074756Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m pytest -p no:asyncio -p no:pytest_asyncio tests/ -q 2>&1 | tail -1 && cd .. && git add harness/ab_gate.py harness/ab_agentic_mcp.py harness/wide_score.py harness/run_wide.py harness/read_after_locate.py harness/tests/test_wide_score.py harness/verify_bed.py && git commit -q -m "harness: measurement truth (proposal stage 0) + verify bed
+
+        - ab_gate: failed first attempts kept as .attempt1.json (retry says
+          retry_of, its cost joins the aggregate); no alwaysLoad (the shipped
+          install is deferred); precision delta and completed/planned reported;
+          unpriced pairs make the cost comparison explicitly incomplete;
+          tokens_request (uncached+cache write+cache read) replaces tokens_in.
+        - ab_agentic_mcp: tokens_request, raw usage, pricing basis on every cell.
+        - wide_score: files_complete requires every site in the file; docstring
+          says edit coverage, not correctness (-OldAPI +WrongAPI scores).
+        - run_wide: provenance carries task/gt hashes, scorer version, pricing basis.
+        - read_after_locate rewritten: per assistant turn, per tool-use id, root
+          files match, and each Read classified duplicate (prism had delivered
+          those lines) / located (prism only named the file) / reread (edited
+          since) / cold. Measured on 13 prism cells: duplicate = 2 reads total;
+          the reads are of files prism named but never delivered, plus rereads
+          after edits.
+        - verify_bed.py: incomplete-diff verification bed (evidence that verify
+          falsely accuses a correct commit: 133 missed sites / 37 files).
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git push -q origin main && git log --oneline -1
+      at: 2026-09-06T14:23:57.236349Z
+      classified: test
+    - cmd: git checkout -q -b cand-search-context main && git branch --show-current
+      at: 2026-09-06T14:24:14.867268Z
+      classified: other
+    - cmd: export GOWORK=off; go build ./... && go test ./internal/mcp -count=1 2>&1 | tail -1 && go build -o ~/.cache/prism-research/bin/prism-cand-ctx ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-cand-ctx | cut -c1-10 && cd ~/gvg-corpus/wt-122750 && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/mcp_call.py ~/.cache/prism-research/bin/prism-cand-ctx . prism_search '{"query":"CheckHealthRequest","scope":"text","limit":3}' | head -14
+      at: 2026-09-06T14:24:50.14507Z
+      classified: test
+    - cmd: export GOWORK=off; go test ./internal/mcp -count=1 2>&1 | grep -E "^(--- FAIL|    [a-z_]+\.go:[0-9]+:)" | head -12
+      at: 2026-09-06T14:25:06.373996Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls runs/wide/ | grep -E "v0711\.json" ; python3 - <<'EOF'
+        import json,glob
+        # cost/turn reference for the 4 probe tasks from earlier runs
+        for t in ('dubbo__86dd98899b','prism__4f22f3947c','grove__b40b72d94e','dubbo__e826b0c20d'):
+            for f in sorted(glob.glob(f'runs/wide/{t}.sonnet.*.json')):
+                r=json.load(open(f)); print(f"{t:20} {r['arm']:10} {r.get('tag') or f.split('.')[-2]:12} ${r.get('cost_usd') or 0:5.2f} {r.get('turns')}t")
+        EOF
+      at: 2026-09-06T14:25:28.953137Z
+      classified: other
+    - cmd: |-
+        export GOWORK=off; go test ./internal/mcp -count=1 2>&1 | tail -1 && go build -o ~/.cache/prism-research/bin/prism-cand-ctx ./cmd/prism && git add internal/mcp/tools.go internal/mcp/searchmulti_test.go && git commit -q -m "search: default context=2 on text hits when the caller set none (candidate)
+
+        Candidate for the proposal's §6.2 context-sufficiency experiment. Measured
+        on 13 prism cells (read_after_locate, 2026-09-06): the host Reads that
+        dominate cost are of files a search NAMED but never delivered, and only
+        2 of 26 searches asked for context. Off for files_only, rollup_only and
+        exhaustive; explicit context=0 still means none.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git log --oneline -1 && shasum ~/.cache/prism-research/bin/prism-cand-ctx | cut -c1-10 && cd /Users/tapabratapal/Projects/provasign/research/harness && B=~/.cache/prism-research/bin && for t in prism__4f22f3947c dubbo__e826b0c20d; do python3 run_wide.py --only $t --arms baseline --tag v0711 2>&1 | tail -1; python3 run_wide.py --only $t --arms prism_plus --tag v0711 --prism $B/prism-v0.71.1 2>&1 | tail -1; done; for t in dubbo__86dd98899b prism__4f22f3947c grove__b40b72d94e dubbo__e826b0c20d; do python3 run_wide.py --only $t --arms prism_plus --tag candctx --prism $B/prism-cand-ctx 2>&1 | tail -1; done; echo PROBE-DONE
+      at: 2026-09-06T14:25:48.303693Z
+      classified: test
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b8h6ulnfe.output 2>/dev/null; echo "--- running:"; ps -o etime,command -p $(pgrep -f "run_wide.py" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | cut -c1-110 | tail -1; ls /Users/tapabratapal/Projects/provasign/research/harness/runs/wide | grep -c candctx
+      at: 2026-09-06T14:53:38.43249Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b8h6ulnfe.output 2>/dev/null | grep -E "^(dubbo|prism|grove)__|PROBE"; echo "--- running:"; ps -o etime,args -p $(pgrep -f "run_wide.py|claude -p" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | cut -c1-80 | tail -2
+      at: 2026-09-06T15:02:54.926307Z
+      classified: other
+    - cmd: pkill -f "run_wide.py" 2>/dev/null; pkill -f "claude -p CONTEXT TOOL" 2>/dev/null; sleep 1; pgrep -fl "run_wide|claude -p" | wc -l
+      at: 2026-09-06T15:03:57.398979Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short | head -20; echo ---; git diff --stat | tail -12
+      at: 2026-09-06T16:02:53.080143Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m py_compile ab_gate.py ab_agentic_mcp.py read_after_locate.py usage_account.py mason_bench.py && python3 -m pytest -p no:asyncio -p no:pytest_asyncio tests/ -q 2>&1 | tail -8
+      at: 2026-09-06T16:03:05.747468Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 188,210p usage_account.py; echo "=== real-data sanity ==="; python3 read_after_locate.py runs/wide/grove__b40b72d94e.sonnet.prism_plus.v0711.json runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json runs/wide/prism__98ed1b2b4d.sonnet.prism_plus.v0711.json 2>&1 | tail -4; python3 -c "
+        import json,usage_account as U
+        r=json.load(open('runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json'))
+        t=U.transcript_usage(r['usage']['session_id']); print({k:v for k,v in t.items() if k not in ('transcript','tool_result_bytes','tool_calls')})
+        print('cli usage_complete:', U.cli_usage({'usage': r['usage'].get('raw_usage') or r['transcript_usage']['tokens'] and {}, 'total_cost_usd': r['cost_usd']})['usage_complete'])"
+      at: 2026-09-06T16:03:42.667279Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short | grep -v "^??" ; echo ---; git diff --stat | tail -8; echo "=== tests ==="; cd harness && python3 -m pytest -p no:asyncio -p no:pytest_asyncio tests/ -q 2>&1 | tail -3
+      at: 2026-09-06T16:19:08.178935Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "Bash\|affected\|_same_file\|edited\[" read_after_locate.py | head -30
+      at: 2026-09-06T16:19:08.280147Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 100,135p usage_account.py; echo "=== transcript_usage tail ==="; grep -n "final_usage\|usage_complete\|warnings.add\|cli_tokens\|def transcript_usage\|def analyze_transcript" usage_account.py | head -30
+      at: 2026-09-06T16:19:08.285277Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 74,92p usage_account.py; echo "=== tail ==="; sed -n 184,218p usage_account.py
+      at: 2026-09-06T16:19:14.429042Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 128,200p read_after_locate.py
+      at: 2026-09-06T16:19:15.928176Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && cat tests/test_read_after_locate.py; echo "======"; cat tests/test_usage_account.py
+      at: 2026-09-06T16:19:16.681786Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 read_after_locate.py runs/wide/grove__b40b72d94e.sonnet.prism_plus.v0711.json runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json runs/wide/prism__98ed1b2b4d.sonnet.prism_plus.v0711.json 2>&1 | tail -4; python3 -c "
+        import json,usage_account as U
+        r=json.load(open('runs/wide/grove__b40b72d94e.sonnet.prism_plus.candsites2.json'))
+        t=U.transcript_usage(r['usage']['session_id']); print({k:v for k,v in t.items() if k not in ('transcript','tool_result_bytes','tool_calls')})"
+      at: 2026-09-06T16:19:23.414813Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob
+        keys=('input_tokens','cache_creation_input_tokens','cache_read_input_tokens','output_tokens')
+        n=0; missing={}
+        for f in glob.glob('runs/ab-gate/*.s3.json')+glob.glob('runs/wide/*.v0711.json')+glob.glob('runs/wide/*candsites2.json'):
+            r=json.load(open(f)); u=r.get('usage_raw') or (r.get('usage') or {}).get('raw_usage') or {}
+            if not u: continue
+            n+=1
+            for k in keys:
+                if k not in u: missing[k]=missing.get(k,0)+1
+        print('records with raw CLI usage:', n, '| missing key counts:', missing or 'none')
+        EOF
+      at: 2026-09-06T16:19:44.231443Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad && claude -p "reply with the single word ok" --model haiku --output-format json --max-turns 1 2>/dev/null | python3 -c "import json,sys; j=json.load(sys.stdin); print('usage keys:', sorted((j.get('usage') or {}).keys())); print('cost:', j.get('total_cost_usd'), 'is_error:', j.get('is_error'))"
+      at: 2026-09-06T16:19:58.010841Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls -t runs/ab-gate/ | head -12; echo ---; python3 - <<'EOF'
+        import json,glob,os
+        files=sorted(glob.glob('runs/ab-gate/*.json'), [REDACTED:env-secret]
+        for f in files:
+            r=json.load(open(f))
+            if 'manifest' not in r and '.attempt.' not in f: continue
+            m=r.get('manifest') or {}
+            print(os.path.basename(f)[:70])
+            print('   arm=',r.get('arm'),'model=',r.get('model'),'binary=',(m.get('binary_sha256') or '')[:8],
+                  'recall=',r.get('recall'),'prec=',r.get('precision'),'n_sites=',r.get('n_sites'),
+                  'turns=',r.get('turns'),'cost=',r.get('cost_usd'),'tok_req=',r.get('tokens_request'),'tok_out=',r.get('tokens_out'),
+                  'err=',r.get('error'),'attempts=',len(r.get('attempts') or []))
+        EOF
+      at: 2026-09-06T16:29:56.627872Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && find harness/runs -name "*.attempt.json" -mmin -240 2>/dev/null | head; echo "--- recently modified dirs:"; find harness/runs -maxdepth 1 -type d -mmin -240 | head; echo "--- newest json anywhere:"; find harness/runs -name "*.json" -mmin -240 | grep -v "\.s[23]\.json\|wide/" | head -12
+      at: 2026-09-06T16:30:04.164484Z
+      classified: other
+    - cmd: find ~/Projects ~/.cache /private/tmp -name "*.attempt.json" -mmin -360 2>/dev/null | head -8; echo "--- research worktrees:"; git -C /Users/tapabratapal/Projects/provasign/research worktree list
+      at: 2026-09-06T16:30:25.836791Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/four-way-2026-09-06 && cat summary.json; echo "=== manifest ==="; python3 -c "import json; m=json.load(open('manifest.json')); print(json.dumps(m, indent=1)[:2500])"; echo "=== task ==="; python3 -c "import json; t=json.load(open('task.json')); print({k:(v if not isinstance(v,(list,str)) or len(str(v))<200 else str(v)[:200]+'...') for k,v in t.items()})"
+      at: 2026-09-06T16:32:26.29075Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/four-way-2026-09-06/evidence && for a in sonnet_baseline sonnet_prism codex_baseline codex_prism codex_prism_retry; do echo "=== $a"; python3 -c "
+        import json,sys
+        a='$a'
+        for f in ('measurement.json','audit.json','index.json'):
+            try: d=json.load(open(a+'/'+f)); print(f, json.dumps(d)[:900])
+            except Exception as e: print(f, 'ERR', e)
+        "; done
+      at: 2026-09-06T16:32:29.161117Z
+      classified: other
+    - cmd: sed -n 1,80p prism-four-way.py; echo "=== report ==="; grep -n "def \|tokens\|cost" prism-four-way-report.py | head -40; echo "=== patch stat ==="; grep -c "^diff --git" prism-working-tree.patch; grep "^diff --git" prism-working-tree.patch | head
+      at: 2026-09-06T16:32:29.264311Z
+      classified: other
+    - cmd: 'for a in sonnet_baseline sonnet_prism codex_baseline codex_prism codex_prism_retry; do echo "=== $a: command"; python3 -c "import json; c=json.load(open(''$a/command.json'')); print(json.dumps(c)[:700])" 2>/dev/null; echo "--- final.txt (tail)"; tail -c 600 $a/final.txt 2>/dev/null; echo; done'
+      at: 2026-09-06T16:32:33.468508Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/four-way-2026-09-06 && python3 - <<'EOF'
+        import json
+        s=json.load(open('summary.json'))
+        for r in s['rows']:
+            keep={k:r.get(k) for k in ('arm','model','recall','precision','weak_recall','n_sites','found','expected_sites','tool_calls','prism_calls','turns','wall_s','cost_usd','input_tokens','cache_read_tokens','cache_write_tokens','output_tokens','audited_total_tokens','tokens_request','measurement_complete','agent_error','claimed_complete')}
+            print(json.dumps({k:v for k,v in keep.items() if v is not None}))
+        print('top keys:', [k for k in s if k!='rows'])
+        EOF
+      at: 2026-09-06T16:32:49.079103Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/four-way-2026-09-06 && diff <(cat evidence/sonnet_baseline/prompt.txt) <(cat evidence/sonnet_prism/prompt.txt); echo "=== prism prompt tail ==="; tail -c 900 evidence/sonnet_prism/prompt.txt
+      at: 2026-09-06T16:32:51.974877Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json; m=json.load(open('manifest.json'))
+        for k,v in m.items():
+            s=json.dumps(v); print(k, ':', s[:300])"; echo "=== patch ==="; grep -c "^diff --git" prism-working-tree.patch; grep "^diff --git" prism-working-tree.patch | head -12; echo "=== audited_total_tokens ==="; grep -n "audited_total_tokens" -B2 -A8 prism-four-way-report.py | head -40
+      at: 2026-09-06T16:32:54.863433Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,sys
+        sys.path.insert(0,'.')
+        from schema import Task, Answer
+        from score import score
+        task=Task.load('tasks/jackson-settable-set.json')
+        base='/Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/four-way-2026-09-06/evidence/'
+        for arm in ('sonnet_baseline','sonnet_prism','codex_baseline','codex_prism','codex_prism_retry'):
+            txt=open(base+arm+'/final.txt').read()
+            a=Answer.parse(txt); c=score(task,a,arm,1)
+            print(f"{arm:18} recall={c.recall} prec={c.precision} weak={c.weak_recall} sites={len(a.sites)} complete={a.complete} missed={c.missed[:3]} extra={c.extra[:3]}")
+        # what did sonnet_prism actually call?
+        j=[json.loads(l) for l in open(base+'sonnet_prism/stdout.jsonl') if l.strip()]
+        for e in j:
+            if e.get('type')=='assistant':
+                for c in (e.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use': print('  CALL', c['name'], json.dumps(c['input'])[:120])
+        EOF
+      at: 2026-09-06T16:33:17.061083Z
+      classified: other
+    - cmd: git branch --show-current && git status --short | grep -v "^ M \.\|^ M [A-Z]\|^??" ; echo "--- untracked (non-docs):"; git status --short | grep "^??" | grep -v "^?? docs/" | head; echo "--- diffstat:"; git diff --stat -- internal | tail -10
+      at: 2026-09-06T18:19:29.266489Z
+      classified: other
+    - cmd: git diff -- internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/cli/commands.go
+      at: 2026-09-06T18:19:30.779934Z
+      classified: other
+    - cmd: cat internal/mcp/searchlimits.go; echo "=== tests ==="; sed -n 1,60p internal/mcp/searchaccuracy_test.go; echo ...; grep -n "^func Test" internal/mcp/searchaccuracy_test.go internal/cli/searchdelivery_test.go
+      at: 2026-09-06T18:19:32.704358Z
+      classified: other
+    - cmd: git log --oneline a1c7aa6..HEAD; echo "--- stat:"; git diff --stat a1c7aa6..HEAD | tail -12
+      at: 2026-09-06T18:19:39.274114Z
+      classified: other
+    - cmd: git diff a1c7aa6..HEAD -- internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go
+      at: 2026-09-06T18:19:40.54057Z
+      classified: other
+    - cmd: git diff a1c7aa6..HEAD -- internal/cli/commands.go; echo "=== cli test ==="; cat internal/cli/searchdelivery_test.go; echo "=== rest of searchaccuracy_test ==="; sed -n 60,160p internal/mcp/searchaccuracy_test.go
+      at: 2026-09-06T18:19:42.05826Z
+      classified: other
+    - cmd: export GOWORK=off; go vet ./... 2>&1 | tail -3; go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -8; echo "go test exit=${pipestatus[1]:-$?}"; gofmt -l internal/mcp/searchlimits.go internal/mcp/searchaccuracy_test.go internal/cli/searchdelivery_test.go internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/cli/commands.go
+      at: 2026-09-06T18:20:02.170254Z
+      classified: lint
+    - cmd: cat internal/mcp/impactevidence.go; echo "=== graphtext diff ==="; git diff a1c7aa6..HEAD -- internal/mcp/graphtext.go
+      at: 2026-09-06T18:20:10.522137Z
+      classified: other
+    - cmd: cat internal/mcp/lookupbatch.go; echo "=== evidence tests ==="; grep -n "^func Test" internal/mcp/evidencedelivery_test.go
+      at: 2026-09-06T18:20:11.270308Z
+      classified: other
+    - cmd: git diff --stat a1c7aa6..HEAD | grep -v " docs/" ; echo "--- docs files in commit:"; git diff --stat a1c7aa6..HEAD | grep -c " docs/"; echo "--- gofmt:"; gofmt -l internal/mcp/searchlimits.go internal/mcp/impactevidence.go internal/mcp/lookupbatch.go internal/mcp/searchaccuracy_test.go internal/mcp/evidencedelivery_test.go internal/cli/searchdelivery_test.go internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/graphtext.go internal/cli/commands.go; echo "(gofmt end)"; export GOWORK=off; go vet ./internal/mcp ./internal/cli && echo VET-OK
+      at: 2026-09-06T18:20:17.938457Z
+      classified: lint
+    - cmd: git diff --name-only a1c7aa6..HEAD | grep -v '^docs/'; echo "--- docs count:"; git diff --name-only a1c7aa6..HEAD | grep -c '^docs/'; echo "--- gofmt:"; gofmt -l internal/mcp/searchlimits.go internal/mcp/impactevidence.go internal/mcp/lookupbatch.go internal/mcp/searchaccuracy_test.go internal/mcp/evidencedelivery_test.go internal/cli/searchdelivery_test.go internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/graphtext.go internal/cli/commands.go; echo "(end gofmt)"; export GOWORK=off; go vet ./internal/mcp ./internal/cli 2>&1 | tail -3; echo "vet exit=$?"
+      at: 2026-09-06T18:20:32.355535Z
+      classified: lint
+    - cmd: cd docs/accuracy-efficiency-candidate && ls; echo "=== comparison REPORT ==="; find . -name REPORT.md | head -3; R=$(find . -name REPORT.md | head -1); sed -n 1,120p "$R"
+      at: 2026-09-06T18:20:35.089135Z
+      classified: other
+    - cmd: cd docs/accuracy-efficiency-candidate && I=$(find . -name "*IMPLEMENTATION.md" | head -1); grep -n "^#" "$I" | head -40; echo "=== analyzer-review.json head ==="; A=$(find . -name analyzer-review.json | head -1); python3 -c "import json; d=json.load(open('$A')); print(json.dumps(d, indent=1)[:1800])"
+      at: 2026-09-06T18:20:37.710694Z
+      classified: other
+    - cmd: ls -la; echo "=== panel REPORT (full) ==="; sed -n 120,220p panel-2026-09-06/REPORT.md
+      at: 2026-09-06T20:42:34.107874Z
+      classified: other
+    - cmd: sed -n 1,160p evidence-delivery-2026-09-06/comparison/REPORT.md
+      at: 2026-09-06T20:42:35.577102Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        v=json.load(open('validation.json')); print(json.dumps(v, indent=1)[:2500])"; echo "=== four-way REPORT ==="; sed -n 1,80p four-way-2026-09-06/REPORT.md
+      at: 2026-09-06T20:42:43.541362Z
+      classified: other
+    - cmd: |-
+        ls routing-2026-09-06; R=$(find routing-2026-09-06 -name "REPORT.md" -o -name "README.md" | head -1); sed -n 1,60p "$R"; echo "=== validation tail ==="; python3 -c "
+        import json; v=json.load(open('validation.json'))
+        for k in ('evidence_delivery_candidate','routing_followup','routing','latest'):
+            if k in v: print(k, json.dumps(v[k], indent=1)[:1200])
+        print([k for k in v])"
+      at: 2026-09-06T20:42:53.582902Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json; v=json.load(open('validation.json'))
+        print(json.dumps(v['routing_guidance_comparison'], indent=1)); print(json.dumps(v['evidence_delivery_comparison'], indent=1)[:1500])"; R=$(find routing-2026-09-06/comparison -name "REPORT.md" | head -1); [ -n "$R" ] && sed -n 1,60p "$R"
+      at: 2026-09-06T20:43:01.898733Z
+      classified: other
+    - cmd: |-
+        cd panel-2026-09-06/evidence && ls | grep django; echo "=== task ==="; python3 -c "
+        import json,glob
+        t=json.load(open(glob.glob('../task*django*.json')[0])) if glob.glob('../task*django*.json') else None
+        print((t or {}).get('prompt','')[:400] if t else 'no task file at ../')"; ls .. | head -20
+      at: 2026-09-06T20:47:15.536013Z
+      classified: other
+    - cmd: |-
+        E=/Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/panel-2026-09-06; python3 -c "
+        import json; t=json.load(open('$E/django-connparams.task.json')); print('PROMPT:', t.get('prompt','')[:500]); print('GT:', t.get('ground_truth'))"; for a in django-connparams.r1.sonnet_prism django-connparams.r2.sonnet_prism; do echo "===== $a"; python3 - "$E/evidence/$a" <<'EOF'
+        import json,sys
+        a=sys.argv[1]; uses={}
+        for line in open(a+'/stdout.jsonl'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use':
+                        uses[c['id']]=c; print('USE', c['name'], json.dumps(c['input'])[:200])
+                    elif isinstance(c,dict) and c.get('type')=='text' and c['text'].strip(): print('TEXT', c['text'][:160].replace('\n',' '))
+            elif j.get('type')=='user':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_result':
+                        u=uses.get(c.get('tool_use_id')); body=c.get('content'); txt=body if isinstance(body,str) else ''.join(x.get('text','') for x in body if isinstance(x,dict)) if isinstance(body,list) else ''
+                        print(f"  RESULT[{(u or {}).get('name')}] {len(txt)} chars ::", txt[:260].replace('\n',' | '))
+        EOF
+        done
+      at: 2026-09-06T20:47:37.395182Z
+      classified: other
+    - cmd: |-
+        E=/Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/panel-2026-09-06/evidence; for a in django-connparams.r1.codex_prism django-connparams.r2.codex_prism django-connparams.r2.codex_baseline; do echo "===== $a"; python3 - "$E/$a" <<'EOF'
+        import json,sys
+        a=sys.argv[1]; m=json.load(open(a+'/audit.json'))
+        print('tokens', m.get('audited_total_tokens'), 'cost', m.get('cost_usd'), 'calls', m.get('tool_calls'))
+        for c in m.get('calls',[]):
+            t=c.get('type')
+            if t=='mcp_tool_call':
+                res=c.get('result'); err=c.get('error')
+                rl=len(json.dumps(res)) if res is not None else 0
+                print('MCP', c.get('tool'), json.dumps(c.get('arguments'))[:170], '->', ('ERR '+str(err)[:90]) if err else f'{rl} chars')
+            elif t=='command_execution':
+                print('CMD', (c.get('command') or '')[:150].replace('\n',' '), '->', len(c.get('aggregated_output') or ''), 'chars')
+            else:
+                print(t, json.dumps(c)[:100])
+        EOF
+        done
+      at: 2026-09-06T20:47:42.635443Z
+      classified: other
+    - cmd: |-
+        E=/Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/panel-2026-09-06/evidence; python3 - "$E" <<'EOF'
+        import json,sys
+        E=sys.argv[1]
+        uses={}
+        for line in open(E+'/django-connparams.r1.sonnet_prism/stdout.jsonl'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use': uses[c['id']]=c
+            elif j.get('type')=='user':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_result' and uses.get(c.get('tool_use_id'),{}).get('name')=='mcp__prism__prism_change_impact':
+                        body=c['content']; print(body if isinstance(body,str) else ''.join(x.get('text','') for x in body))
+        m=json.load(open(E+'/django-connparams.r1.codex_prism/audit.json'))
+        for c in m['calls']:
+            if c.get('type')=='mcp_tool_call' and c.get('tool')=='prism_query': print('\nPRISM_QUERY ERROR:', str(c.get('error'))[:400])
+        EOF
+      at: 2026-09-06T20:48:00.818366Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism && git branch --show-current && git log --oneline -3 && git status --short | grep -v "^ M \.\|^ M [A-Z]" | head -5; echo "--- main vs origin:"; git log --oneline origin/main..main | cat; echo "--- research:"; cd ../research && git branch --show-current && git log --oneline -3 && git status --short | head -5; echo "--- running:"; pgrep -fl "run_wide|ab_gate|claude -p|codex exec" | wc -l
+      at: 2026-09-06T21:40:19.743585Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git fetch -q origin && git branch --show-current && git status --short | head -3; echo "--- grove branch:"; git log --oneline main..origin/fix-go-interface-impact | cat; git diff --stat main..origin/fix-go-interface-impact | tail -8; git tag --sort=-v:refname | head -2
+      at: 2026-09-06T22:38:01.485909Z
+      classified: other
+    - cmd: 'git fetch -q origin && git log --oneline main..origin/cand-search-context-clean | cat; echo "--- files:"; git diff --stat main..origin/cand-search-context-clean | tail -6; echo "--- evidence files in clean branch:"; git diff --name-only main..origin/cand-search-context-clean | grep -c "^docs/accuracy-efficiency-candidate/" ; git diff --name-only main..origin/cand-search-context-clean | grep -v "^docs/" '
+      at: 2026-09-06T22:38:06.259497Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git fetch -q origin && git log --oneline main..origin/accuracy-efficiency-evidence | cat; git diff --stat main..origin/accuracy-efficiency-evidence | tail -4; git log --oneline origin/main..main | cat
+      at: 2026-09-06T22:38:09.763393Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q -b fix-go-interface-impact origin/fix-go-interface-impact 2>/dev/null || git checkout -q fix-go-interface-impact; git log --oneline -1; export GOWORK=off; go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -5; echo "grove go test exit=${pipestatus[1]:-$?}"; go vet ./... 2>&1 | tail -2; echo "vet done"
+      at: 2026-09-06T22:38:39.10103Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git log main..origin/fix-go-interface-impact --format='=== %h %s%n%b' | head -80
+      at: 2026-09-06T22:38:41.913737Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git diff main..origin/fix-go-interface-impact -- internal/native/go.go internal/index/indexer.go; echo "=== go_importer.go ==="; git show origin/fix-go-interface-impact:internal/native/go_importer.go
+      at: 2026-09-06T22:38:44.674324Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git show origin/fix-go-interface-impact:internal/native/go_interfaces.go
+      at: 2026-09-06T22:38:47.473808Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; git worktree remove --force $W 2>/dev/null; git worktree add -q $W origin/cand-search-context-clean && cd $W && git log --oneline -1 && ls ~/Projects/provasign/go.work 2>/dev/null && cat ~/Projects/provasign/go.work; echo "--- prism go.mod grove pin:"; grep "provasign/grove " go.mod
+      at: 2026-09-06T22:38:50.385303Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git diff --name-only main..origin/accuracy-efficiency-evidence | grep -v "^docs/" | head -10; echo "--- top-level dirs touched:"; git diff --name-only main..origin/accuracy-efficiency-evidence | cut -d/ -f1-2 | sort -u | head -12
+      at: 2026-09-06T22:38:53.110434Z
+      classified: other
+    - cmd: ls -d /private/tmp/grove-go-interface-impact 2>/dev/null && git -C /private/tmp/grove-go-interface-impact log --oneline -1; W=~/.cache/prism-research/wt-grove-fix; git -C /Users/tapabratapal/Projects/provasign/grove worktree remove --force $W 2>/dev/null; git -C /Users/tapabratapal/Projects/provasign/grove worktree add -q --detach $W 8dad4547 && cd $W && git log --oneline -1 && export GOWORK=off && go build ./... && go test -race ./... 2>&1 | grep -v "^ok\|no test files" | tail -6; echo "grove-branch go test -race exit=${pipestatus[1]:-$?}"
+      at: 2026-09-06T22:39:50.450481Z
+      classified: test
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && rm -f go.work go.work.sum && go work init . /Users/tapabratapal/Projects/provasign/astkit ~/.cache/prism-research/wt-grove-fix 2>&1 | tail -2; cat go.work; export GOFLAGS=-mod=readonly; go build ./... 2>&1 | tail -3 && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -6; echo "prism(clean)+grove-fix go test exit=${pipestatus[1]:-$?}"; go build -o ~/.cache/prism-research/bin/prism-clean-grovefix ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-clean-grovefix | cut -c1-10
+      at: 2026-09-06T22:40:15.130539Z
+      classified: test
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && GOWORK=off GOFLAGS=-mod=mod go build -o ~/.cache/prism-research/bin/prism-clean-v0431 ./cmd/prism 2>&1 | tail -2 && shasum ~/.cache/prism-research/bin/prism-clean-v0431 | cut -c1-10; echo "--- grove-eval usage:"; ls /Users/tapabratapal/Projects/provasign/grove/eval | head; grep -n "score\|EVAL_CORPUS" /Users/tapabratapal/Projects/provasign/grove/eval/README.md 2>/dev/null | head -8; ls ~/eval-corpus 2>/dev/null | head
+      at: 2026-09-06T22:40:21.152303Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad; for b in prism-clean-v0431 prism-clean-grovefix; do python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/.cache/prism-research/bin/$b > $S/ci_inv_$b.log 2>&1; echo "== $b exit=$?"; grep -E "REGRESSION|All invariants|FAILED" $S/ci_inv_$b.log | head -12; done
+      at: 2026-09-06T22:40:41.620302Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 ab_gate.py --baseline ~/.cache/prism-research/bin/prism-v0.71.1 --candidate ~/.cache/prism-research/bin/prism-clean-grovefix --model haiku > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_grovefix.log 2>&1; echo "AB-GATE exit=$?"; tail -16 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_grovefix.log
+      at: 2026-09-06T22:40:45.307629Z
+      classified: other
+    - cmd: |-
+        G=~/.cache/prism-research/wt-grove-fix; head -12 $G/eval/go.mod; echo "--- testdata:"; ls $G/eval/testdata 2>/dev/null | head; echo "--- gin in baseline:"; python3 -c "
+        import json; b=json.load(open('$G/eval/baseline.json')); k=[x for x in b if 'gin' in str(x).lower()]; print(k[:3]); print(json.dumps({x:b[x] for x in b if 'gin' in x.lower()}, indent=1)[:600] if isinstance(b,dict) else str(b)[:600])"; ls ~/eval-corpus/gin | head -3; ls ~/eval-corpus/gin/.grove 2>/dev/null | head -2
+      at: 2026-09-06T22:40:48.045124Z
+      classified: other
+    - cmd: G=~/.cache/prism-research/wt-grove-fix; sed -n 28,50p $G/eval/README.md; echo "--- CI engine workflow gin command:"; grep -n "gin\|grove-eval" /Users/tapabratapal/Projects/provasign/research/.github/workflows/engine-invariants.yml 2>/dev/null | head -12; echo "--- build eval against the fix:"; cd $G && rm -f go.work go.work.sum && go work init . ./eval /Users/tapabratapal/Projects/provasign/astkit && GOFLAGS=-mod=readonly go build -o ~/.cache/prism-research/bin/grove-eval-fix ./eval/cmd/grove-eval 2>&1 | tail -2; ls -la ~/.cache/prism-research/bin/grove-eval-fix | awk '{print $5, $9}'
+      at: 2026-09-06T22:41:07.453733Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad; rm -rf ~/eval-corpus/gin/.grove; cd ~/eval-corpus/gin && git rev-parse --short HEAD; ~/.cache/prism-research/bin/grove-eval-fix run --repo ~/eval-corpus/gin --commit d75fcd4 --out-dir $S/gin-fix > $S/gin-fix.log 2>&1; echo "gin-eval exit=$?"; python3 -c "
+        import json; s=json.load(open('$S/gin-fix/scorecard.json')); print({k:s[k] for k in s if k in ('precision','recall','f1','tp','fp','fn','universe','matchedUniverse','ignoredDispatch')})" 2>/dev/null || tail -5 $S/gin-fix.log
+      at: 2026-09-06T22:41:20.524985Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && git diff main..HEAD -- internal/mcp/impactcoverage.go internal/mcp/graphcache.go internal/mcp/wideranchor.go internal/textsearch/textsearch.go | head -260
+      at: 2026-09-06T22:41:32.84135Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && git diff main..HEAD -- internal/mcp/rollup.go internal/cli/commands.go | head -220
+      at: 2026-09-06T22:41:35.777633Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && git diff ebda175..HEAD -- internal/mcp/lookupbatch.go internal/mcp/tools.go | head -200
+      at: 2026-09-06T22:41:38.399263Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bpctzavhq.output; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad; python3 -c "
+        import json; s=json.load(open('$S/gin-fix/scorecard.json')); print({k:v for k,v in s.items() if not isinstance(v,(list,dict))})" 2>/dev/null; echo "--- other gates:"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bwsr0rf7l.output 2>/dev/null; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bjw0jucs3.output 2>/dev/null
+      at: 2026-09-06T22:41:48.31491Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && git diff ebda175..HEAD -- internal/mcp/tools.go | grep -v "^ " | grep "^[+-]" | grep -v "^+++\|^---" | head -150
+      at: 2026-09-06T22:42:03.168918Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bwsr0rf7l.output 2>/dev/null; echo "--- ab_gate:"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bjw0jucs3.output 2>/dev/null; pgrep -fl "ci_invariants|ab_gate" | wc -l
+      at: 2026-09-06T22:43:38.02521Z
+      classified: other
+    - cmd: grep -n "TypeParameters\|Modifiers\|Language " internal/grove/types.go | head -5; grep -n "func (c \*Client) Version\|EngineVersion\|func (c \*Client) FileSymbols" internal/grove/client.go | head -5; W=~/.cache/prism-research/wt-clean; grep -n "func TestImpactCoverage\|func Test" $W/internal/mcp/impactcoverage_test.go | head
+      at: 2026-09-06T22:43:42.649569Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; sed -n 1,64p $W/internal/mcp/impactcoverage_test.go
+      at: 2026-09-06T22:43:56.805792Z
+      classified: other
+    - cmd: G=~/.cache/prism-research/wt-grove-fix; sed -n 1,30p $G/CHANGELOG.md; echo "--- astkit pin:"; grep "astkit" $G/go.mod; echo "--- grove tag msg style:"; git -C $G tag -l -n6 v0.43.1 | head -8
+      at: 2026-09-06T22:43:59.925936Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bwsr0rf7l.output; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad; echo "--- grafana rows, grove fix:"; grep -E "grafana|gin:" $S/ci_inv_prism-clean-grovefix.log | head -6
+      at: 2026-09-06T22:44:08.892743Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git status --short | grep -v "^??" | head -3; git merge -q --ff-only 8dad4547 && git log --oneline -1 && python3 - <<'EOF'
+        from pathlib import Path
+        p=Path('CHANGELOG.md'); s=p.read_text()
+        entry='''# Changelog
+
+        ## v0.43.2 - 2026-09-06
+
+        Go: interface contracts resolve through method sets, across packages.
+        The native pass type-checks sibling packages from source
+        (`goProjectImporter`; `importer.Default` could not load an unbuilt
+        package in the same module, so cross-package interface information was
+        dropped and change-impact on an imported interface method failed
+        outright). Interface methods become `<iface>#method` contract nodes:
+        `contains` from the interface, `implements`/`overrides` from every local
+        type whose method set satisfies it (`types.Implements` on `*T`, so
+        promotion and embedding are handled), and `calls` from each call through
+        an interface-typed receiver to the contract node and to every local
+        implementation (`ReasonMethodSet`, native evidence). Interfaces with
+        type parameters are skipped (design question, not narrowed unsafely).
+        Signatures containing Invalid after a best-effort check never count as
+        compatible. Cross-package change-impact on an imported Go interface goes
+        from a hard failure to the exact site set; wrong-signature decoys are
+        excluded. gin P .9339 -> .9406, R .9488 -> .9505; indexing cost neutral
+        (0.601s -> 0.598s over six alternating trials).
+
+        '''
+        assert s.startswith('# Changelog\n')
+        p.write_text(entry + s[len('# Changelog\n'):].lstrip('\n'))
+        EOF
+        sed -n 1,6p CHANGELOG.md && git add CHANGELOG.md && git commit -q -m "release: v0.43.2 — Go interface contracts through method sets, cross-package
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git tag -a v0.43.2 -m "v0.43.2: Go interface contracts resolve through method sets, across packages
+
+        Cross-package change-impact on an imported Go interface method went from
+        a hard failure to the exact site set. gin P .9339 -> .9406, R .9488 -> .9505.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git push -q origin main && git push -q origin v0.43.2 && echo GROVE-PUSHED && git log --oneline -1
+      at: 2026-09-06T22:44:44.014974Z
+      classified: other
+    - cmd: grep -n "KindInterface\|SymbolKind" ~/.cache/prism-research/wt-clean/internal/grove/types.go | head -5; W=~/.cache/prism-research/wt-clean; grep -n "func evidenceHandler" -A 3 $W/internal/mcp/evidencedelivery_test.go | head -6; sed -n 65,115p $W/internal/mcp/impactcoverage_test.go
+      at: 2026-09-06T22:44:53.136665Z
+      classified: other
+    - cmd: grep -n "Kind  *[A-Za-z]* *\`json:\"kind\"\|type SymbolKind\|Kind = \"interface\"\|\"interface\"" ~/.cache/prism-research/wt-clean/internal/grove/types.go ~/.cache/prism-research/wt-clean/internal/mcp/tools.go | head -6
+      at: 2026-09-06T22:45:07.414767Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && rm -f go.work go.work.sum && GOWORK=off GOFLAGS=-mod=mod GOPROXY=direct GONOSUMDB=github.com/provasign GONOSUMCHECK=1 go get github.com/provasign/grove@v0.43.2 2>&1 | tail -3; grep "provasign/grove " go.mod; GOWORK=off GOFLAGS=-mod=mod go mod tidy 2>&1 | tail -2; git status --short | head -5
+      at: 2026-09-06T22:45:14.045885Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bjw0jucs3.output 2>/dev/null; pgrep -fl ab_gate | wc -l
+      at: 2026-09-06T22:45:14.166777Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && export GOWORK=off GOFLAGS=-mod=readonly; gofmt -l internal/mcp/impactcoverage.go internal/mcp/impactcoverage_test.go; go vet ./internal/mcp && go test ./internal/mcp -run 'ImpactCoverage|ImpactGo|Evidence|WiderAnchor' -count=1 -v 2>&1 | grep -E "^(--- |ok|FAIL|    [a-z_]+\.go:[0-9]+:|    impactcoverage_test.go)" | head -20
+      at: 2026-09-06T22:45:57.414373Z
+      classified: lint
+    - cmd: W=~/.cache/prism-research/wt-clean; sed -n 70,100p $W/internal/mcp/wideranchor_test.go; echo "--- ab_gate:"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bjw0jucs3.output 2>/dev/null | tail -14
+      at: 2026-09-06T22:46:15.915595Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && export GOWORK=off GOFLAGS=-mod=readonly; gofmt -l internal/mcp/; go vet ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -8; echo "go test ./... exit=${pipestatus[1]:-$?}"; go test ./internal/mcp -run 'ImpactGo' -count=1 -v 2>&1 | grep -E "^(--- |    impact)" | head
+      at: 2026-09-06T22:46:54.724783Z
+      classified: lint
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bjw0jucs3.output 2>/dev/null | tail -14; echo "--- alive:"; pgrep -fl ab_gate | wc -l; ls /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/ | grep -c "attempt.json"
+      at: 2026-09-06T22:46:54.849714Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && export GOWORK=off GOFLAGS=-mod=readonly; gofmt -l internal/mcp/impactcoverage.go internal/mcp/impactcoverage_test.go internal/mcp/wideranchor_test.go; go vet ./internal/mcp && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -6; echo "go test ./... exit=${pipestatus[1]:-$?}"; go test ./internal/mcp -run 'ImpactGo|ImpactCoverage|WiderAnchor' -count=1 -v 2>&1 | grep -E "^(--- )" | head
+      at: 2026-09-06T22:47:43.724603Z
+      classified: lint
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bjw0jucs3.output 2>/dev/null | tail -14; pgrep -fl ab_gate | wc -l
+      at: 2026-09-06T22:47:43.829586Z
+      classified: other
+    - cmd: |-
+        W=~/.cache/prism-research/wt-clean; cd $W && git checkout -q -b cand-search-context-clean 2>/dev/null || git checkout -q cand-search-context-clean; git branch --show-current; git add go.mod go.sum internal/mcp/impactcoverage.go internal/mcp/impactcoverage_test.go internal/mcp/wideranchor_test.go && git commit -q -m "grove v0.43.2; Go impact coverage downgrades only generic interfaces
+
+        grove v0.43.2 resolves Go interface contracts through method sets, across
+        packages (ReasonMethodSet native edges), so the blanket 'partial' label
+        that impactCoverage put on every Go closure is stale — and it invited the
+        re-verification loop measured on Codex/Django (a closed result stapled to
+        'verify before relying'). The downgrade now applies only to what v0.43.2
+        skips by design: interfaces with type parameters, detected from the
+        signature (the indexer leaves TypeParameters empty for Go interfaces).
+        Embedded non-generic interface: engine completeness kept, no note;
+        generic interface: partial with the reason. gin scorecard with the new
+        engine: P .9339 -> .9406, R .9488 -> .9505; ci_invariants all held.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git log --oneline -1 && export GOWORK=off GOFLAGS=-mod=readonly && go build -o ~/.cache/prism-research/bin/prism-rc ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-rc | cut -c1-10 && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/.cache/prism-research/bin/prism-rc > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ci_inv_rc.log 2>&1; echo "CI-INVARIANTS(rc) exit=$?"; tail -2 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ci_inv_rc.log
+      at: 2026-09-06T22:48:07.652392Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git merge -q --no-edit origin/accuracy-efficiency-evidence 2>&1 | tail -2; git log --oneline -1; git push -q origin main && echo RESEARCH-PUSHED; git status -sb | head -1
+      at: 2026-09-06T22:48:12.756088Z
+      classified: other
+    - cmd: P=/Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/panel-2026-09-06; grep -n "add_argument\|ARMS\|arms =\|codex\b" $P/run_panel.py | head -30; echo "--- protocol arms:"; grep -n -i "arm\|codex\|sonnet\|budget" $P/protocol.md | head -20
+      at: 2026-09-06T22:48:24.569307Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bx498c153.output; echo "--- ab_gate (pre-bump):"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bjw0jucs3.output 2>/dev/null | tail -14; pgrep -fl ab_gate | wc -l
+      at: 2026-09-06T22:49:51.019013Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && git push -q origin e06c789:refs/heads/cand-search-context-clean && git fetch -q origin && git log --oneline -1 origin/cand-search-context-clean; pkill -f ab_gate.py 2>/dev/null; sleep 1; pgrep -fl ab_gate | wc -l
+      at: 2026-09-06T22:50:10.163006Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 ab_gate.py --baseline ~/.cache/prism-research/bin/prism-v0.71.1 --candidate ~/.cache/prism-research/bin/prism-rc --model haiku > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_rc.log 2>&1; echo "AB-GATE(rc) exit=$?"; tail -16 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_rc.log
+      at: 2026-09-06T22:50:19.362843Z
+      classified: other
+    - cmd: P=/Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate/panel-2026-09-06; sed -n 300,330p $P/run_panel.py; echo "--- bench.ARMS definition:"; grep -n "^ARMS\|ARMS = \|'sonnet_baseline'\|'codex_baseline'" $P/*.py | head -8; grep -n "^import\|^from\|bench" $P/run_panel.py | head -8
+      at: 2026-09-06T22:50:22.125201Z
+      classified: other
+    - cmd: git branch --show-current; git log --oneline main..cand-search-context-clean 2>/dev/null | cat; git log --oneline -1 main; echo "--- ab_gate result:"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b2aoolmau.output 2>/dev/null; pgrep -fl ab_gate | wc -l
+      at: 2026-09-06T22:58:27.281715Z
+      classified: other
+    - cmd: pkill -f ab_gate.py 2>/dev/null; sleep 1; pgrep -fl ab_gate | wc -l; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 ab_gate.py --baseline ~/.cache/prism-research/bin/prism-v0.71.1 --candidate ~/.cache/prism-research/bin/prism-rc --model sonnet > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_rc_sonnet.log 2>&1; echo "AB-GATE(rc,sonnet) exit=$?"; tail -20 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_rc_sonnet.log
+      at: 2026-09-06T23:05:46.2145Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bv6023s7n.output 2>/dev/null; echo "--- alive:"; pgrep -fl "ab_gate|claude -p" | cut -c1-90
+      at: 2026-09-06T23:08:14.399615Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bv6023s7n.output 2>/dev/null; echo "--- alive:"; ps -o pid,etime,args -p $(pgrep -f "ab_gate|claude -p" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | cut -c1-100
+      at: 2026-09-06T23:11:03.874647Z
+      classified: other
+    - cmd: ps -o pid,etime,stat,args -p $(pgrep -f "claude|codex|prism|ab_gate" | tr '\n' ',' | sed 's/,$//') 2>/dev/null | cut -c1-120; echo "--- recent gate cell files:"; ls -lt /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/*.attempt.json 2>/dev/null | head -3; echo "--- newest wide session transcript activity:"; find ~/.claude/projects -name "*.jsonl" -mmin -6 2>/dev/null | xargs -I{} sh -c 'echo {}; tail -c 300 {}' 2>/dev/null | tail -20
+      at: 2026-09-06T23:11:49.146263Z
+      classified: other
+    - cmd: date; ls -lt /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/*.attempt.json 2>/dev/null | head -6
+      at: 2026-09-06T23:11:56.788218Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bv6023s7n.output 2>/dev/null; echo "--- alive:"; pgrep -fl "ab_gate|claude -p" | wc -l; echo "--- latest cells:"; ls -lt /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/*.attempt.json 2>/dev/null | head -3
+      at: 2026-09-06T23:14:52.229997Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bv6023s7n.output 2>/dev/null; echo "--- alive:"; pgrep -fl "ab_gate|claude -p" | wc -l; echo "--- latest cells:"; ls -lt /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/*.attempt.json 2>/dev/null | head -3; date
+      at: 2026-09-06T23:20:37.305914Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, hashlib
+        from pathlib import Path
+
+        # Group attempt files by task+identity (cell), keep the latest state per cell.
+        # We need to distinguish baseline vs candidate arm. Identity hash doesn't say
+        # which binary, so pull binary_sha from manifest inside each record.
+        rows = {}
+        for f in sorted(glob.glob('runs/ab-gate/*.attempt.json')):
+            r = json.load(open(f))
+            task = r.get('task') or Path(f).name.split('.')[0]
+            binsha = (r.get('manifest') or {}).get('binary_sha256','')[:8]
+            key = (task, binsha)
+            rows.setdefault(key, []).append(r)
+
+        baseline_sha = None
+        cand_sha = None
+        for (task, sha), recs in rows.items():
+            pass
+
+        # figure out which sha is baseline vs candidate by known hashes
+        import subprocess
+        b_sha = hashlib.sha256(open('/Users/tapabratapal/.cache/prism-research/bin/prism-v0.71.1','rb').read()).hexdigest()[:8]
+        c_sha = hashlib.sha256(open('/Users/tapabratapal/.cache/prism-research/bin/prism-rc','rb').read()).hexdigest()[:8]
+        print('baseline sha', b_sha, 'candidate sha', c_sha)
+
+        by_task = {}
+        for (task, sha), recs in rows.items():
+            label = 'base' if sha == b_sha else ('cand' if sha == c_sha else sha)
+            last = recs[-1]  # latest attempt
+            by_task.setdefault(task, {})[label] = last
+
+        for task in sorted(by_task):
+            d = by_task[task]
+            b = d.get('base'); c = d.get('cand')
+            def fmt(x):
+                if not x: return 'MISSING'
+                return f"R={x.get('recall')} P={x.get('precision')} tok={x.get('tokens_request')} $={x.get('cost_usd')}"
+            print(f"{task:30} base: {fmt(b)}   cand: {fmt(c)}")
+        EOF
+      at: 2026-09-06T23:23:12.068322Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        r=json.load(open('runs/ab-gate/guava-forwarding-delegate.b5cc0d72ef36ce987044.feb4cd5317d841b588cff60b10f27a72.attempt.json'))
+        print('session_id:', r.get('session_id'), r.get('usage',{}).get('session_id'))
+        print(list(r.keys())[:20])
+        "
+      at: 2026-09-06T23:28:51.892411Z
+      classified: other
+    - cmd: find ~/.claude/projects -name "547fe1f8-5b35-47f9-8d4e-c45093af896c.jsonl" 2>/dev/null
+      at: 2026-09-06T23:28:57.229967Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bv6023s7n.output
+      at: 2026-09-06T23:37:37.078714Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json,glob
+        for f in sorted(glob.glob('runs/ab-gate/grafana-querydata-impact.*.attempt.json')):
+            r=json.load(open(f))
+            sha=(r.get('manifest') or {}).get('binary_sha256','')[:8]
+            print(f, sha, r.get('recall'), r.get('precision'), r.get('session_id'))
+        "
+      at: 2026-09-06T23:38:18.001574Z
+      classified: other
+    - cmd: |-
+        T=$(find ~/.claude/projects -name "72d83be4-5c17-4e52-af79-882399f66b8c.jsonl" 2>/dev/null); echo "$T"; python3 - "$T" <<'EOF'
+        import json,sys
+        p=sys.argv[1]; uses={}
+        for line in open(p,errors='ignore'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use':
+                        uses[c['id']]=c; print('USE', c['name'], json.dumps(c['input'])[:180])
+            elif j.get('type')=='user':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_result':
+                        u=uses.get(c.get('tool_use_id')); body=c.get('content')
+                        txt=body if isinstance(body,str) else ''.join(x.get('text','') for x in body if isinstance(x,dict)) if isinstance(body,list) else ''
+                        if u and u['name'].startswith('mcp__prism'):
+                            print(f"  RESULT[{u['name']}] {len(txt)} chars ::", txt[:280].replace('\n',' | '))
+        EOF
+      at: 2026-09-06T23:38:28.901888Z
+      classified: other
+    - cmd: |-
+        T=$(find ~/.claude/projects -name "72d83be4-5c17-4e52-af79-882399f66b8c.jsonl" 2>/dev/null); python3 - "$T" <<'EOF'
+        import json,sys
+        p=sys.argv[1]
+        last=None
+        for line in open(p,errors='ignore'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='text' and c['text'].strip(): last=c['text']
+        print(last[-2000:] if last else 'none')
+        EOF
+      at: 2026-09-06T23:39:02.395932Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        t=json.load(open('tasks/grafana-querydata-impact.json'))
+        print('PROMPT:', t.get('prompt','')[:400])
+        print('GT n=', len(t.get('ground_truth',[])))
+        for s in t.get('ground_truth',[]): print(' ', s)
+        "
+      at: 2026-09-06T23:39:05.015349Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && git log --oneline main..HEAD | cat; echo "--- was e06c789 built on top of ALL Codex commits (up through 4cebb73)?"; git merge-base --is-ancestor 4cebb73 HEAD && echo "YES - includes everything" || echo "NO - missing later Codex work"
+      at: 2026-09-07T00:38:13.272158Z
+      classified: other
+    - cmd: W=~/.cache/prism-research/wt-clean; cd $W && grep -n "fallback\|exhaustive\|wide.*fanout\|external interface\|does not declare\|type-name guess\|many types\|many implementations" internal/cli/commands.go | grep -i -A2 -B2 "steer\|impact\|search" | head -40
+      at: 2026-09-07T00:38:15.571985Z
+      classified: other
+    - cmd: git fetch -q origin 2>&1; git branch -r | cat; echo "--- clean branch latest:"; git log --oneline -5 origin/cand-search-context-clean | cat; echo "--- cand-search-context latest:"; git log --oneline -5 origin/cand-search-context | cat
+      at: 2026-09-07T01:22:26.633965Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git fetch -q origin 2>&1; git branch -r | cat; echo "--- accuracy-efficiency-evidence latest:"; git log --oneline -5 origin/accuracy-efficiency-evidence 2>/dev/null | cat; cd /Users/tapabratapal/Projects/provasign/grove && git fetch -q origin 2>&1; git branch -r | cat; git log --oneline -5 origin/fix-go-interface-impact 2>/dev/null | cat
+      at: 2026-09-07T01:22:31.359114Z
+      classified: other
+    - cmd: for b in agent-directed-query experiment/contract-delivery feature/intelligent-context-control; do echo "=== $b ==="; git log --oneline main..origin/$b | cat | head -10; done
+      at: 2026-09-07T01:22:40.224418Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git log --oneline main..origin/native-analyzers-priority | cat | head -10
+      at: 2026-09-07T01:22:43.001211Z
+      classified: other
+    - cmd: git log -1 --format='%ci %an' ec07512; echo "--- vs cand-search-context-clean tip:"; git log -1 --format='%ci' e06c789; echo "--- diff stat:"; git diff --stat main..ec07512 | tail -10; echo "--- message:"; git log -1 --format='%B' ec07512
+      at: 2026-09-07T01:22:51.548865Z
+      classified: other
+    - cmd: for r in prism research grove; do cd /Users/tapabratapal/Projects/provasign/$r && git fetch -q origin 2>&1 && echo "=== $r branches ===" && git branch -r | cat; done
+      at: 2026-09-07T01:38:56.314371Z
+      classified: other
+    - cmd: git fetch -q origin 2>&1; git log --oneline -1 origin/cand-search-context 2>&1; git log -1 --format='%H %ci' 16629ac 2>&1 || git log -1 --format='%H %ci' origin/cand-search-context 2>&1
+      at: 2026-09-07T01:39:49.407682Z
+      classified: other
+    - cmd: git branch --show-current; git log --oneline -1; git branch -a | grep -i cand; echo "--- worktrees:"; git worktree list; echo "--- is 16629ac reachable from any branch here?"; git branch --all --contains 16629ac
+      at: 2026-09-07T01:39:55.401435Z
+      classified: other
+    - cmd: git show --stat 16629ac | head -30; echo "=== full message ==="; git log -1 --format='%B' 16629ac
+      at: 2026-09-07T01:40:02.237201Z
+      classified: other
+    - cmd: git diff --stat 4cebb73..16629ac -- internal | cat
+      at: 2026-09-07T01:40:09.020146Z
+      classified: other
+    - cmd: git diff 4cebb73..16629ac -- internal/mcp/impactcoverage.go internal/mcp/wideranchor.go | head -100
+      at: 2026-09-07T01:40:20.994809Z
+      classified: other
+    - cmd: R=$(git show 16629ac --stat --name-only | grep "routing-2026-09-06/comparison/REPORT.md" | grep -v results); git show 16629ac:docs/accuracy-efficiency-candidate/routing-2026-09-06/comparison/REPORT.md 2>/dev/null | head -80
+      at: 2026-09-07T01:40:24.37992Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && for b in main accuracy-efficiency-evidence; do echo "=== $b ==="; git log -1 --format='%h %ci %an %s' $b 2>/dev/null || git log -1 --format='%h %ci %an %s' origin/$b; done
+        cd /Users/tapabratapal/Projects/provasign/grove && for b in main fix-go-interface-impact native-analyzers-priority; do echo "=== $b ==="; git log -1 --format='%h %ci %an %s' $b 2>/dev/null || git log -1 --format='%h %ci %an %s' origin/$b; done
+      at: 2026-09-07T01:46:02.759769Z
+      classified: other
+notes:
+    - text: continuation of session fb1a06ab-cd89-49e2-acfa-72188a0c2095 — events captured after its evidence was finalized
+      at: 2026-09-06T12:37:20.342979Z
+redactions: 1
