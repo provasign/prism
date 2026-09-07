@@ -19,7 +19,7 @@ func RenderSearchText(out any) (string, bool) {
 // renderSearchAsText renders a prism_search TEXT result as plain grep-style
 // "path:line: text" lines instead of JSON.
 //
-// Measured 2026-08-16 (BACKLOG.md item 1): the same hits cost 1.19-1.32x the
+// Measured 2026-08-16: the same hits cost 1.19-1.32x the
 // bytes as JSON versus plain text (+219 to +704 bytes for 8 hits across three
 // real queries). Source lines are the worst possible JSON payload — every
 // tab becomes \t, every quote \". prism_search is the highest-call-count

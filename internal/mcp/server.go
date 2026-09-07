@@ -202,7 +202,7 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		// MCP content is free-form text — JSON is not required, only what
 		// this server has always sent by default. prism_search gets a plain
 		// grep-style rendering instead: measured 1.19-1.32x fewer bytes for
-		// identical hits (BACKLOG.md item 1), on the highest-call-count tool
+		// identical hits, on the highest-call-count tool
 		// in the system, where the saving is paid back on every later turn
 		// the result sits in cache. Falls back to JSON for any shape the
 		// renderer does not fully recognise (symbol-bearing results, or an

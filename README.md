@@ -1,636 +1,152 @@
 # Prism
 
-> **The complete picture for your coding agent — in one call, at a tenth of
-> the tokens.**
->
-> Give Prism the task. It returns the edit-ready context and the complete,
-> type-resolved change set — every override, implementation, and caller —
-> as ONE deterministic call over your local code graph.
+**Semantic change intelligence for coding agents.** Prism turns repository structure into task-shaped answers: complete change-impact sets, edit-ready context, and deterministic verification of an agent-authored diff.
 
-**Full benchmark harness, raw results, and every task file are public:
-[provasign/research](https://github.com/provasign/research).**
-
-**Measured** (oracle-scored, 4 languages, blast radii 8–310 sites — see
-[provasign/research](https://github.com/provasign/research)):
-
-- Engine completeness: **0.997 recall** on change-impact closure vs a
-  compiler-grade oracle; same answer every run.
-- Agent-level, current frontier model (Opus, 6 change-impact tasks, 8–310
-  sites, 2026-08-08): **the same answer for ~1/6th the cost.** Recall 0.987
-  with Prism vs 1.000 with grep and file reads — a frontier model gets there
-  either way — but **6.4× fewer turns, 9.3× fewer input tokens, 6.1× cheaper,
-  6.7× faster** (4.2 vs 26.8 turns; 90k vs 836k tokens; $0.27 vs $1.66;
-  40s vs 271s per task).
-- On weaker and cheaper models the gap is capability, not just cost: recall
-  0.758 → 0.997 at the Haiku tier in the 2026-07 grid, where a text-search
-  agent could not reliably reach a complete change-set at all.
-- What the graph actually contributes is precision, not discovery: measured
-  over 127 symbols in 6 repositories, a whole-word grep misses **no** resolved
-  reference — but ~30% of its hits are not references at all (98% in one
-  typeorm case: 372 hits, 1 real). Against compiler oracles, file-level
-  precision goes 0.51 (grep) → 0.91 (change-impact) at comparable recall.
-
-## Product showcase: Grafana's external `QueryData` interface
-
-Grafana's datasource `QueryData` contract is declared in an external Go SDK.
-Inside Grafana, dozens of independently named types satisfy it implicitly,
-along with middleware wrappers and callers spread across the repository. This
-is a difficult case for text-only discovery: there is no local interface
-declaration from which an agent can traverse the whole family.
-
-An independent source audit expanded the production oracle from 51 to 70 sites:
-the original set omitted 14 exact middleware implementations, another external
-interface implementation, a production fake, and three direct handler callers.
-Three fresh current-Prism Sonnet runs reached all 70 sites. The best available
-no-Prism comparison remains a historical three-run study scored against the
-original 51-site subset:
-
-| Sonnet workflow | Recall | Precision | Input tokens | Estimated cost | Turns |
-|---|---:|---:|---:|---:|---:|
-| Native search/read tools, historical 3-run mean (51-site subset) | 0.967 | not recorded | 1.184M | $1.121 | 40.3 |
-| **Current Prism, fresh 3-run mean (70-site oracle)** | **1.000** | **0.950** | **99,534** | **$0.172** | **4.0** |
-| Deterministic Prism engine call (70-site oracle), no model | 1.000 | 0.946 | 30,175 response bytes | $0 | 0 |
-
-Relative to that historical native mean, the current Prism mean used **91.6%
-fewer request tokens, cost 84.7% less, and took 90% fewer turns**. The accuracy
-columns use different oracle versions, so their difference is not a paired
-accuracy estimate. The deterministic row is an engine ceiling: it proves the
-graph can return the set without model exploration; it does not prove that
-every agent will choose or relay that call correctly.
-
-The broader nine-task Sonnet result points in the same direction:
-
-| Nine-task result | Mean recall | Input tokens | Estimated cost |
-|---|---:|---:|---:|
-| Historical no-Prism, mean of 3 panels | 0.877 | 12.97M | $14.41 |
-| **Current Prism release gate** | **0.998** | **720,278** | **$1.22** |
-
-These are product-showcase numbers, not a fresh paired QueryData native-control
-study. The native panels came from an older harness/model period and used legacy
-input accounting; their precision was not recorded. In the fresh current-Prism
-sample, all three QueryData runs used one `change_impact` call and achieved full
-recall, while request tokens still varied from 70,223 to 128,006. See the
-[current gate, per-task results, and limitations](docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md#22-main-release-gate-accuracy-and-aggregate-efficiency-pass)
-and the [historical native records](https://github.com/provasign/research/tree/main/harness/runs/bench-matrix).
-
-## What Prism is
-
-Prism is an **agent-neutral semantic safety layer for code changes**. It indexes a
-repository into a measured semantic graph (symbols, calls, overrides, implements,
-test edges — via the embedded [Grove](https://github.com/provasign/grove)
-engine) and exposes that graph at **task altitude**: one deterministic call
-answers a whole question an agent would otherwise spend dozens of turns
-approximating. For bug-fix and implement tasks it delivers the answer as
-**edit-ready, line-numbered source** — verbatim windows plus each anchor's
-callers and covering tests — so the model edits without a second read
-(`prism_query`, phase-aware; `delivery="symbols"` for the compact list).
-
-Prism does not claim uniform compiler completeness across every language or
-runtime dispatch pattern. Run `prism doctor [dir]` to inspect the active engine,
-index readiness, and capability mode. Authoritative operations report their own
-completeness; stale, unsupported, or heuristic evidence must be treated as
-degraded rather than silently promoted to certainty.
-
-**The need.** Agents gather context with text search and file reads. That works
-for locating things, but it fails exactly where the stakes are highest:
-enumerating everything a change touches. Overridden methods, interface
-implementations, overload-specific callers, and indirect call chains are
-invisible to `grep` — and an agent that misses one site ships a broken build.
-How much that costs depends on the model. A 2026-08 frontier model (Opus)
-does reach a complete change-set from grep alone on 8–310-site tasks — in
-26.8 turns and 836k tokens per task, against 4.2 turns and 90k with Prism.
-Cheaper models do not get there at all: 0.758 recall at the Haiku tier in the
-2026-07 grid. See [provasign/research](https://github.com/provasign/research)
-for both.
-
-**The principles.**
-
-1. **Correctness and completeness first.** A faster or cheaper *incomplete*
-   answer is a faster broken build. Every design choice is subordinate to
-   returning the complete, type-resolved answer.
-2. **Task altitude, not primitives.** The graph is exposed as whole-task
-   operations — `change_impact` and `verify` over MCP; `rename_plan`,
-   `missing_implementations` and more via the CLI — not as node/edge
-   primitives the agent must orchestrate. Orchestrating traversals
-   is itself a frontier-model skill; a task-level call works on any model.
-3. **Determinism.** The engine solves the traversal; the agent relays the
-   result. Same query, same index, same answer — testable without an LLM, and
-   never re-filtered through grep/sed (measured to drop real sites).
-4. **Tier invariance.** Because the hard part is done by the engine, the same
-   completeness holds from a free local 30B model to a frontier model —
-   measured at recall 1.00 on both, where orchestration-based approaches
-   collapse on cheap models.
-5. **Each layer does what it's best at.** Shell tools find the first anchor
-   (they win at string location — Prism does not replace `grep`). Prism
-   answers relationship and whole-task questions. The model reasons and edits.
-6. **Evidence-backed abstraction.** Above the task ops sits a component-level
-   view (`prism map` / `prism cycles`): directories as components, dependency
-   edges induced from the real call/import/type edges crossing between them,
-   with weights, dependency cycles, and the evidence tier of every claim.
-   Every abstract edge expands back to its concrete `file:line` sites — an
-   architecture *proof surface*, not a narrative repo map. View results claim
-   `complete-at-tier`, never `closed` (see
-   `docs/DESIGN_LAYERED_INTELLIGENCE.md`).
-7. **Declared architecture, enforced.** `prism arch` validates `arch_deny:
-   "<from> -> <to>"` rules from prism.yaml against the induced view — every
-   violation cites the exact `file:line` crossings, and exit 1 makes it a CI
-   gate. Tier-aware by design: violations backed by structural-or-stronger
-   evidence fail the build; heuristic-only evidence (e.g. interface dispatch
-   attributed across a boundary — dependency inversion read backwards) is
-   reported for review, not auto-failed (`--strict` escalates). Measured at
-   the engine ceiling on injected Go violations: 10/10 detected, 0 false
-   positives (see the injection benchmark in the test suite).
-8. **Verify the diff — the completeness gate for agent-authored changes.**
-   `prism verify` deterministically checks a diff: it detects contract
-   changes (signature changes, renames, interface-member changes), computes
-   the required change set from the **base** contract, and reports every
-   dependent site the diff did not touch — line-precise. Measured on 9 real
-   corpora with seeded incomplete edits (27 trials + 9 controls), and
-   change-impact recall/precision now CI-gated on every release against 15
-   corpora across 4 languages (recall 0.997–1.0, precision ~0.9–1.0):
-   - **Verdict is fail-closed** — 0 false "complete" across every run; an
-     incomplete change is never waved through. Safe as a CI gate.
-   - **Site listing catches 88%** of forgotten files (django, grafana,
-     jackson-jsonnode, typeorm at 100%; guava 91%; serialize 88%), with
-     **zero false accusations** — verify never flags a site the diff
-     already handled. It gets there by enumerating dependents of the *old*
-     contract (base-signature family + callers, generic-aware, member-level
-     for interface blocks), not the post-edit graph the change severs.
-   The one dimension no compiler covers in dynamic languages: a Python or
-   TypeScript signature change with a forgotten caller compiles clean and
-   fails at runtime — verify reports the exact line (see
-   `docs/DESIGN_LAYERED_INTELLIGENCE.md`, Phase 3).
-
-**The surface — one route per need.** There is deliberately no natural-language
-front door: a v0.41.0 measurement showed NL-as-the-only-retrieval-key loses to
-the agent picking a route and passing its own confirmed anchors. The agent
-surface is six tools, one per question shape: `prism_query` (task + `terms=`
-anchors → edit-ready source windows), the cheap reads (`prism_read`,
-`prism_lookup`, `prism_search`), `prism_change_impact` (the complete change
-set for a symbol), and `prism_verify` (is this diff complete?). Everything
-else — `map`, `dead-code`, `rename-plan`, `missing-implementations`, `arch`,
-`node`, `references`, `index` — is a CLI command and an HTTP route, but is
-not advertised to agents (see [MCP](#mcp) for why).
-
-**Use cases** — the questions Prism answers in one call:
-
-| You are about to… | One call |
-|---|---|
-| Change or rename a method signature | `change-impact` — declaration + override family + every resolved caller |
-| Apply a rename, not just find it | `rename-plan` — every edit line, before/after, review-and-apply |
-| Make an interface method required | `missing-implementations` — every type that breaks |
-| Delete or extract code | `dead-code` — unreachable production symbols |
-| Commit an agent-authored diff | `verify` — missed change-impact sites, line-precise; exit 1 if incomplete |
-| Read code cheaply | `read` / `lookup` — session-deduped, ~30-token repeat reads |
-| Expand from a grep hit | `query` — callers, callees, tests around an anchor |
-
-**Where Prism is the wrong tool** (honesty is a feature): languages outside
-the supported set below, dispatch wired at runtime through
-frameworks/reflection/DI (Prism's edges are static and type-resolved — it
-will show you *nothing* rather than a guess), and one-line greppable changes
-where any approach ties.
-
-Locating strings is covered too: `prism_search` runs a real full-text
-rg/grep pass alongside symbol search (`scope="text"` is a pure grep), so a
-separate grep tool is never needed. Prism's distinct value is the follow-up
-questions that usually cost several file reads:
-
-- What calls this?
-- What does this call?
-- Which tests define the contract?
-- What else is in the blast radius?
-
-One steering template covers both surfaces (MCP tools as primary, CLI
-fallback for subagents that don't inherit the MCP session):
-
-```bash
-prism init .
-```
-
-**Routing is earned in-band, not forced.** Earlier versions offered denying
-Claude Code's built-in Grep/`grep`/`rg` to force routing; that model is dead
-(measured: a bare denial with no reason gets confabulated around, including
-via subagents) and `prism init` now actively cleans up those legacy deny
-entries where it finds them. What routes agents today, each measured on real
-transcripts: an unconditional load-the-tools line in steering, guidance
-INSIDE tool responses at the exact moment it matters (truncation warnings
-that point at the complete rollup, empty-result retry hints with
-closest-symbol suggestions, errors that name the fix), and tools that
-degrade instead of erroring. Grep is never blocked — it is out-competed.
-
-**Setup is project-level by default.** A plain `prism init` touches only
-files inside the repo (`.mcp.json`, steering files, the project's
-`.claude/settings.json`). Tools whose configs are user-global — Zed, Codex
-CLI, opencode — are registered only when interactive init's *"Register
-user-global tools?"* question is answered yes, or with `--global`.
-
-Agents with an active MCP session call `prism_query`, `prism_read`, and
-`prism_lookup` directly. For bug-fix and implement tasks `prism_query`
-delivers verbatim line-numbered source windows plus each anchor's callers and
-covering tests (edit-ready, phase-aware; `--delivery symbols` forces the
-compact list). Subagents and CI scripts fall back to the CLI:
-
-```bash
-prism query "why does a repeat read return a cached pointer" --terms prism_read --include graph --format text
-prism read internal/mcp/tools.go --format text
-prism lookup github.com/provasign/prism/internal/mcp.ToolSchemas --format text
-```
-
-`--format text` avoids the large JSON metadata wrappers that made early MCP
-benchmarks look expensive. Agents see plain source-like context with short
-headers, and can ask for `lean` or `json` only when automation needs it.
-
-Grove is embedded in the Prism binary. There is no separate daemon, token, or
-`grove_url` setup in current releases.
-
----
+Prism embeds the [Grove](https://github.com/provasign/grove) code graph. It runs locally as one binary, exposes CLI and MCP interfaces, and requires no hosted service or API token.
 
 ## Why Prism
 
-Shell search gives pointers. Agents still have to chase those pointers by
-reading files, guessing test names, and manually reconstructing call paths.
+Text search is excellent for locating a name. It cannot reliably distinguish references from unrelated text, follow an override family, or enumerate types that implicitly satisfy an external interface. Prism combines full-text search with a typed project graph, then exposes the result through operations that match the question an agent is trying to answer.
 
-Prism precomputes the project graph and lets the agent ask for relationships:
+| Need | Operation |
+|---|---|
+| Locate a symbol or exact text | `prism search` |
+| Gather edit-ready source around known anchors | `prism query` |
+| Read one file or symbol | `prism read` / `prism lookup` |
+| Change a method signature | `prism change-impact` |
+| Plan a rename | `prism rename-plan` |
+| Evolve an interface | `prism missing-implementations` |
+| Check an agent-authored diff | `prism verify` |
+| Enforce component boundaries | `prism arch` |
 
-```text
-prism search ToolSchemas --scope text        # a real rg pass, inside prism
-  -> prism query "write tests for ToolSchemas" \
-       --terms ToolSchemas \
-       --include graph \
-       --format text
-```
+Authoritative operations label the completeness of their answer. Unsupported, stale, or heuristic evidence is reported as such instead of being silently treated as complete.
 
-On this repository, five real maintenance scenarios were run both ways on
-2026-06-07. Shell-only baselines used `rg` plus targeted `sed` reads; Prism used
-one CLI text command per scenario.
+## Current result
 
-| Scenario | Shell bytes | Prism CLI bytes | Context reduction |
-|---|---:|---:|---:|
-| Init `agent_mode` / CLI steering impact | 19,970 | 12,818 | 35.8% |
-| `coverage_gaps` precision | 21,226 | 17,145 | 19.2% |
-| CLI text/lean/json output formatting | 15,820 | 14,198 | 10.3% |
-| Session cache / savings ledger | 33,134 | 19,922 | 39.9% |
-| Release/version/install wiring | 21,246 | 12,157 | 42.8% |
+A September 2026 paired Sonnet sample compared native search/read tools with Prism on nine change-impact tasks in Go, Java, TypeScript, and Python. Each cell below is one fresh run, so this table is a release-gate snapshot rather than a variance estimate.
 
-The average reduction was **29.6%** with one Prism command instead of 5-6 shell
-commands. (The `coverage_gaps` scenario refers to a since-removed feature:
-heuristic test-coverage edges measured 4–12% recall against real runtime
-coverage and were removed rather than shipped.)
+| Nine-task aggregate | Native tools | Prism |
+|---|---:|---:|
+| Mean recall | 0.683 | **0.998** |
+| Mean precision | 0.770 | **0.955** |
+| Total estimated cost | $3.23 | **$1.28** |
+| Cost relative to native | 1.00× | **0.40×** |
 
-A controlled A/B re-run (2026-06-12, post Grove-v0.6.2 fixes) on the payflow
-ground-truth project: total agent-token parity with the shell baseline (the
-2026-06-07 run had +27–147% overhead) and 47 vs 84 tool calls. Repeat reads
-cost 29 tokens (95% saved); a rename under the agent's feet is reported as
-one breaking `renamed` entry for ~130 tokens. Full report:
-[docs/AB-Test-Payflow-2026-06-12.md](docs/AB-Test-Payflow-2026-06-12.md).
+Prism matched or improved recall and cost less in every task in this sample. The largest structural case was Grafana's externally declared `QueryData` interface: Prism found the complete 70-site local family in a deterministic call. Three fresh agent trials all reached 1.0 recall; precision ranged from 0.933 to 0.959.
 
-More detail, including repeat-read savings: [provasign.dev/prism](https://provasign.dev/prism/).
+Repeated trials matter because agent runs vary. The published evidence also includes three paired Jackson `JsonNode.get` trials: native tools averaged 0.625 recall, 30 turns, and $0.404; Prism averaged 1.0 recall, 8.3 turns, and $0.205. Full per-task results, raw records, oracles, scoring rules, and limitations live in [provasign/research](https://github.com/provasign/research).
 
----
+## Install
 
-## How It Works
-
-```text
-Task + anchor terms
-      |
-      v
-Embedded Grove index
-  - symbols
-  - call edges
-  - dependency edges
-  - test edges
-      |
-      v
-Prism ranking
-  - graph distance
-  - ranking signals (graph distance, recency, edit frequency)
-  - recency
-  - test relevance
-  - edit frequency / learned weights
-      |
-      v
-Budgeted text context
-  - target symbols
-  - callers/callees
-  - tests
-  - docs
-```
-
-Prism supports two distinct saving mechanisms:
-
-1. **Context gathering reduction**: one graph-aware query replaces multiple
-   shell searches and file reads. This is what CLI text-mode benchmarks measure.
-2. **Session deduplication**: in persistent MCP transports, repeated reads of
-   unchanged files can become a short SHA pointer. This is where the ~99%
-   repeated-read savings come from.
-
-Direct CLI invocations are process-per-command, so they should be evaluated on
-context gathering and output wrapper size, not same-session re-read dedupe.
-
----
-
-## Installation
-
-```bash
-# Homebrew (macOS / Linux)
+```sh
+# Homebrew (macOS or Linux)
 brew install provasign/shale/prism
 
-# macOS / Linux script
+# macOS or Linux installer
 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 
 # Windows PowerShell
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
-# Pin a version
-VERSION=v0.69.1 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+# Pin the current release
+VERSION=v0.71.1 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
-The installer writes `prism` to `~/bin` by default. Set
-`INSTALL_DIR=/usr/local/bin` or another directory to override.
+The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
 
-Build from source:
+Build from source with `make build`; run the full test suite with `make test`.
 
-```bash
-make build
-make test
-make install
-```
+## Quick start
 
----
+From the root of a repository:
 
-## Quick Start: Agent CLI Text Mode
-
-Run this once at the project root:
-
-```bash
+```sh
 prism init .
 ```
 
-Indexing is automatic — the MCP server indexes at startup, a never-indexed
-repo indexes itself on first query, and whole-repo graph ops delta-refresh
-before they run. (`prism index .` still exists for warming the index
-manually, e.g. in CI.)
+This writes `prism.yaml`, registers the MCP server for detected project-local clients, and updates supported agent instruction files. Indexing happens automatically on first use and refreshes incrementally after changes.
 
-This writes:
+Use search to find an anchor, then ask the graph for the relationship you need:
 
-- `prism.yaml` (version + profile; add `arch_deny:` rules to make
-  `prism arch` a CI gate)
-- `.mcp.json` wiring the MCP server for MCP-capable clients
-- steering files such as `AGENTS.md`, `CLAUDE.md`, `.cursorrules`,
-  `.windsurfrules`, `.github/copilot-instructions.md`, and others
-- compatible tool config files where detected
+```sh
+prism search QueryData --scope text --exhaustive --files-only
+prism change-impact 'QueryDataHandler.QueryData' --format text
 
-The generated agent instructions tell agents to use commands like:
-
-```bash
-prism query "trace the payment refund flow" --terms RefundPayment --include graph --format text
-prism query "audit UpdatePayment auth" --terms UpdatePayment,RequireScope --include graph --format text
-prism read internal/payment/service.go --format text
-prism lookup github.com/example/payflow/internal/payment.(*Service).RefundPayment --format text
-```
-
-Recommended agent workflow:
-
-1. Locate the first anchor with `prism search` (`--scope text` is a pure
-   rg/grep pass).
-2. Run `prism query` with the same anchor terms.
-3. Use `prism read` for whole files only when needed.
-4. Use `prism lookup` for one known function or method.
-5. Treat task-op outputs as terminal structured results, not the start of
-   manual cross-referencing.
-
----
-
-## Other Modes
-
-```bash
-prism init .              # non-interactive; registers MCP servers and writes
-                          # one steering block covering MCP tools and the CLI
-                          # (--mode is accepted and ignored since v0.38.0)
-```
-
-### MCP
-
-MCP advertises **six** tools: the context surface (`prism_query`,
-`prism_read`, `prism_search`, `prism_lookup`), `prism_change_impact`, and
-the `prism_verify` gate. Search runs a real full-text pass
-(rg/grep/built-in) alongside symbol search, so agents never need a separate
-grep tool. All six load deferred (no resident schema cost); steering tells
-the agent to load them once, up front.
-
-What the six do today, each addition transcript-measured before shipping:
-`prism_search` batches up to 10 terms per call, scopes with
-`path=`/`glob=`/`files_only`/`exhaustive`, inlines surrounding lines with
-`context=N` (the `grep -n` shape: locate and read in one turn), attaches a
-grouped-by-symbol `hitRollup` of the FULL hit set when a result truncates
-(`rollup_only=true` skips the raw sample), and answers an all-empty search
-with retry guidance plus closest-symbol suggestions instead of a dead end.
-`prism_change_impact` disambiguates same-named types with `file=`, labels
-test callers `isTest`, and includes same-package test callers Java's split
-source roots used to hide. `prism_verify(removed_symbols=[...])` is the
-cheap mid-loop residual check for removal tasks; the plain call gates the
-finish. `prism_read` degrades oversized files to a head window plus a
-complete symbol map instead of returning a result the host rejects.
-`prism_query` returns "tested by" pointers next to each anchor — locations
-of verified test callers, never test bodies.
-
-It was fourteen until v0.53.0. A 190-cell paired A/B measured which ones
-agents actually reach for (those cells were later deleted for unrelated
-bench defects that affected cost, not tool mix — see
-`research/harness/runs/swebench-live/README.md`): `search` in 95 cells, `read` 53, `query` 35,
-`lookup` 29, `change_impact` 2 — and `map`, `dead_code`, `rename_plan`,
-`missing_implementations`, `arch_check`, `node` and `index` at **zero calls
-in all 190**. Those eight were charging ~9.4 KB of schema per session to
-never be called, and a long menu measurably mis-routes the tools that are.
-`change_impact` stays despite two calls because it carries the whole
-concentrated win (4.2 turns / $0.27 against grep's 26.8 / $1.66).
-
-Nothing was removed from the product: every demoted tool is still a CLI
-command and still an HTTP route (`docs/HTTP_API.md`), alongside the ones
-that were already CLI-only — `resolve`, `edges`, `cycles` (a field of
-`map`'s result), `drift`, and the telemetry commands (`savings`,
-`feedback`, `compact`). Use MCP when the client has first-class MCP support
-and you want persistent session deduplication.
-
-### HTTP Server
-
-`prism serve` is optional. Use it for custom automation that wants HTTP instead
-of CLI or MCP:
-
-```bash
-prism serve --port 8888 /path/to/project
-```
-
-It binds to `127.0.0.1` (local only — no auth, no TLS) and exposes every
-dispatchable tool as `POST /<tool_name>`, plus `GET /health` and
-`GET /status`. Full route, request, and status-code reference:
-[docs/HTTP_API.md](docs/HTTP_API.md).
-
-### Go library
-
-`pkg/kit` embeds the same engine in a Go program — `kit.Open(dir)`, then
-`Invoke("<tool_name>", args)` with the same argument names as MCP; used by
-downstream agents like mason. Usage and API surface:
-[docs/GO_KIT.md](docs/GO_KIT.md).
-
----
-
-## CLI Reference
-
-```bash
-prism init [--global] [dir]     # 'prism install' is an alias
-prism index [dir]
-prism status [dir]
-prism doctor [dir]
-prism config [dir]              # show resolved configuration
-
-prism map [dir] [--depth N] [--component X] [--expand 'from->to'] [--json]
-prism cycles [dir] [--depth N] [--json]
-prism arch [dir] [--deny 'from -> to'] [--strict] [--json]   # exit 1 on violation
-prism verify [dir] [--base REF] [--strict] [--json]          # exit 1 if incomplete
-
-prism query <task> [dir] \
-  --terms a,b,c \
-  --include graph,docs \
-  --delivery source|symbols \
-  --max-files 5 \
+prism query "fix request validation" \
+  --terms ValidateRequest \
+  --include graph \
   --format text
 
-prism read <file> [dir] --format text
-prism lookup <name> [dir] --format text
-prism search <keyword> [dir] [--scope text|symbols|both] [--regex] --format text
-prism node <symbol-or-file> [dir] --format text
-prism references <name> [dir] --format text
-prism resolve <name> [dir]
-prism edges <name> [dir] [--direction in|out] [--kinds calls,uses-type,...]
-
-# Task-shaped graph operations — one deterministic call each
-prism change-impact 'Type.method(ParamType, ...)' [dir]   # declaration + override family + all resolved callers
-prism rename-plan 'Type.method' NewName [dir]              # every concrete edit line, review-and-apply
-prism missing-implementations 'Type.method' [dir]         # types claiming the contract that do not implement it
-prism dead-code [dir] [--roots a,b]                       # unreachable production symbols (precision-first)
-prism assist [--model <spec>] [--apply] [--verify "<cmd>"] "<task>"   # NL task -> deterministic ops via any model
-
-prism watch [dir]      # background file-watcher: delta-reindex on save, index always warm
-prism drift [dir]
-prism savings [dir]
-prism compact [dir]
-prism feedback --tool <name> --rating <0-5> [dir]
-prism mcp [dir]
-prism serve [--port 8888] [dir]
-prism version
-prism --version
+prism verify --base main --format text
 ```
 
-Output formats:
+For MCP-capable agents, `prism init` exposes six focused tools:
 
-| Format | Use |
-|---|---|
-| `text` | Default and recommended for agents |
-| `lean` | Compact JSON without most metadata |
-| `json` | Full metadata for tooling/debugging |
+- `prism_search` locates symbols and source text. An exhaustive search returns a complete inventory of exact file paths and enclosing symbols while sampling context excerpts.
+- `prism_query` returns budgeted, line-numbered source around named anchors, including graph neighbors and relevant tests.
+- `prism_read` reads a file and deduplicates unchanged repeat reads within a session.
+- `prism_lookup` returns one named symbol's complete body.
+- `prism_change_impact` returns the declaration, override or implementation family, sibling contracts, and resolved callers. It can enumerate local implementations of an external Go interface method from its method set.
+- `prism_verify` compares a diff with its required semantic change set and exits nonzero when known sites were missed.
 
----
+CLI help is authoritative for the complete command and flag list:
 
-## Configuration
+```sh
+prism --help
+prism doctor .
+```
 
-`prism.yaml` is intentionally small:
+## Workflow for coding agents
+
+1. Locate the first anchor with `prism_search`; batch several known names into one call.
+2. Before editing an existing symbol, run `prism_change_impact` and preserve the returned set.
+3. Use `prism_query` for edit-ready context or `prism_lookup` for one complete body.
+4. Use exhaustive text search for wide concept removals and other completeness questions.
+5. Run tests and `prism_verify` before declaring a multi-site change complete.
+
+`prism search --scope text` is a real repository text search. The graph adds value after location: callers, implementations, type relationships, tests, architectural edges, and completeness checks.
+
+## Architecture and CI
+
+Add boundary rules to `prism.yaml`:
 
 ```yaml
 version: 1
-profile: "default"
+arch_deny:
+  - "internal/cli -> internal/mcp"
 ```
 
-Optional keys:
+Then run:
 
-```yaml
-model: "claude-sonnet-5"          # sizes context budgets; NO auto-detection,
-                                  # unset means a safe 200k default
-arch_deny: "cli -> mcp"           # repeatable; validated by 'prism arch'
+```sh
+prism map .
+prism arch .
+prism verify . --base main
 ```
 
-Environment overrides: `PRISM_MODEL`, `PRISM_PROFILE`. (`agent_mode` is
-accepted and ignored for backward compatibility; `grove_binary` /
-`embeddings_backend` are vestigial — Grove is embedded in-process.)
+`prism arch` reports the concrete `file:line` evidence for each forbidden component edge. `prism verify` checks the current diff for missed impact sites, new component dependencies, and introduced architecture violations.
 
----
+## Language support
 
-## Language Support
+Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, and PHP. Semantic depth varies by language and by the native toolchain available in the repository. `prism doctor` reports the active analyzer and evidence tier rather than implying uniform compiler-level coverage.
 
-Prism delegates parsing and graph construction to embedded Grove.
+## Interfaces
 
-| Language | Extensions |
-|---|---|
-| Go | `.go` |
-| TypeScript / TSX | `.ts`, `.tsx` |
-| JavaScript / JSX | `.js`, `.jsx`, `.mjs`, `.cjs` |
-| Python | `.py` |
-| Java | `.java` |
-| Rust | `.rs` |
-| C / C++ | `.c`, `.h`, `.cc`, `.cpp`, `.hpp`, ... |
-| C# | `.cs` |
-| PHP | `.php`, `.phtml`, ... |
+- **CLI:** local interactive use and CI
+- **MCP over stdio:** Claude Code, Cursor, Windsurf, VS Code, Codex, and other MCP clients
+- **HTTP:** `prism serve --port 8888`; see [docs/HTTP_API.md](docs/HTTP_API.md)
+- **Go library:** see [docs/GO_KIT.md](docs/GO_KIT.md)
 
-Markdown, YAML, JSON, shell scripts, Dockerfiles, Makefiles, SQL, GraphQL, and
-other non-code files are indexed as document symbols and can be requested with
-`--include docs`.
+Grove is embedded in the Prism binary. Prism users do not need to install or run a separate graph service.
 
----
+## Security and privacy
 
-## Benchmarks
+Prism analyzes the local working tree and stores its index locally. The default MCP transport is stdio. The optional HTTP server binds to loopback by default. See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md) for reporting and trust-boundary details.
 
-One task, three ways to search — same agent, same frontier model, only the
-tool changes. A signature change in **jackson-databind**: find all **8 call
-sites** it breaks, including callers not named after the method (invisible to
-text search). Oracle-scored.
+## Contributing
 
-| Tool | Sites found | Turns | Tokens | Cost |
-|---|---:|---:|---:|---:|
-| Plain grep — the agent's default | 8 of 8 | 32 | 1,117K | $1.60 |
-| **Prism** | **8 of 8** | **3** | **59K** | **$0.16** |
+See [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), and [SUPPORT.md](SUPPORT.md). Accuracy changes should include an oracle-backed regression case; public performance claims should link to reproducible evidence in [provasign/research](https://github.com/provasign/research).
 
-*(Re-measured 2026-08-08 on Opus + prism v0.37.0. A 2026-08 frontier model
-does grep its way to a complete change-set on this task — an earlier run of
-this table, on the models of 2026-07, had it finding 5 of 8. What Prism
-changes now is the cost: **10× fewer turns, 19× fewer tokens, 10× cheaper**.
-On cheaper models the gap is still capability.)* Run the same task through
-**Mason** (Prism built in) on a **free local 30B model**: **all 8, at $0**
-(0.997 mean recall across the 7-task change-impact benchmark). Raw runs:
-[provasign/research](https://github.com/provasign/research).
+## License
 
----
-
-The headline numbers (context reduction per scenario, repeat-read savings by
-project size, and the SHA-pointer dedup mechanism) are summarized with
-methodology at [provasign.dev/prism](https://provasign.dev/prism/). The full
-benchmark reports were trimmed from this repo to keep it lean; they remain
-available in git history (`git log --diff-filter=D -- docs/` to locate them).
-
-Current practical summary:
-
-- CLI `--format text` is the recommended default for shell-capable agents.
-- Prism is strongest on graph/blast-radius questions.
-- Shell tools remain best for locating exact strings or filenames.
-- MCP persistent transports add repeated-read deduplication that direct CLI
-  invocations do not fully exercise.
-
----
-
-## Troubleshooting
-
-**`prism query` returns nothing**: run `prism index .` from the project root.
-
-**Agent uses wrong steering**: re-run `prism init .` — it rewrites the block between the `<!-- prism:start -->` markers in CLAUDE.md/AGENTS.md and leaves everything else untouched.
-
-**Wrong Prism binary**: run `command -v prism` and `prism version`. Reinstall if
-the version is old.
-
-**macOS quarantine**:
-
-```bash
-xattr -d com.apple.quarantine "$(which prism)"
-codesign -f -s - "$(which prism)"
-```
-
-**MCP client does not connect**: restart the coding tool after `prism init`, and
-approve project MCP configuration if the tool prompts.
+Apache License 2.0. See [LICENSE](LICENSE).

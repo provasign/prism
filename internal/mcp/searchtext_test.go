@@ -9,7 +9,7 @@ import (
 )
 
 // The change this pins: prism_search's MCP response is plain text for a
-// pure-text result, not JSON. BACKLOG.md item 1 — measured 1.19-1.32x fewer
+// pure-text result, not JSON. Measured 1.19-1.32x fewer
 // bytes for identical hits (+219 to +704 bytes/call on real queries), on the
 // highest-call-count tool in the system, where the envelope compounds via
 // the session cache on every later turn.

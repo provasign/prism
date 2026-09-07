@@ -3,7 +3,7 @@
 // induced edges aggregated from the primitive edges that cross it.
 //
 // Two invariants hold for everything this package produces (see
-// docs/DESIGN_LAYERED_INTELLIGENCE.md):
+// the view contract):
 //
 //  1. Provenance — every induced edge carries the constituent primitive
 //     edges (sites) that induced it; Weight carries the full count when the
