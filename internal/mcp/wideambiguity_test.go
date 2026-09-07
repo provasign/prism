@@ -11,31 +11,36 @@ import (
 // these", issued one change_impact call per guessed receiver, and still
 // missed 6 of 51 required sites reachable only by text search (an external
 // interface with no local declaration to anchor a family query on). Past
-// wideMemberAmbiguityThreshold candidates, the error must redirect to
-// exhaustive text search instead of inviting per-candidate looping.
-func TestChangeImpact_WideAmbiguityRedirectsToTextSearch(t *testing.T) {
+// wideMemberAmbiguityThreshold candidates, Prism must synthesize one family
+// result instead of inviting per-candidate looping.
+func TestChangeImpact_WideAmbiguityReturnsOneInferredFamily(t *testing.T) {
 	files := map[string]string{"go.mod": "module example.com/wide\n\ngo 1.26\n"}
-	for i := 0; i < wideMemberAmbiguityThreshold+1; i++ {
+	for i := 0; i < wideImpactIdentityThreshold; i++ {
 		files[fmt.Sprintf("impl%02d.go", i)] = fmt.Sprintf(
 			"package wide\ntype T%02d struct{}\nfunc (t *T%02d) QueryData() int { return %d }\n", i, i, i)
 	}
 	h := evidenceHandler(t, files)
-	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "QueryData"})
-	if err == nil {
-		t.Fatal("a bare name with many receivers must still be ambiguous, not silently pick one")
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "QueryData"})
+	if err != nil {
+		t.Fatalf("wide family must resolve in one call: %v", err)
 	}
-	msg := err.Error()
-	if !strings.Contains(msg, "WIDE MEMBER") {
-		t.Fatalf("wide ambiguity must be called out, not left as a bare candidate list: %s", msg)
+	m := out.(map[string]any)
+	family := anySlice(m["family"])
+	if got := len(family); got != wideImpactIdentityThreshold {
+		t.Fatalf("family has %d sites, want %d: %v", got, wideImpactIdentityThreshold, m)
 	}
-	if !strings.Contains(msg, "one change_impact call per") {
-		t.Fatalf("must explicitly say not to loop over candidates: %s", msg)
+	if m["completeness"] != "project-local" {
+		t.Fatalf("inferred external family must be project-local: %v", m)
 	}
-	if !strings.Contains(msg, `scope="text"`) || !strings.Contains(msg, "exhaustive=true") {
-		t.Fatalf("must name the actual next call: %s", msg)
+	note, _ := m["methodFamilyNote"].(string)
+	if !strings.Contains(note, "inferred one external-interface method family") {
+		t.Fatalf("inference must be explicit: %v", m)
 	}
-	if !strings.Contains(msg, "candidates:") {
-		t.Fatalf("original candidate list must survive (small-N cases still use it): %s", msg)
+	if _, has := family[0].(map[string]any)["signature"]; has {
+		t.Fatalf("wide resolved family repeated signatures instead of compact identities: %v", family[0])
+	}
+	if evidence, _ := m["evidenceNote"].(string); !strings.Contains(evidence, "compact file:line identities") {
+		t.Fatalf("wide impact must explain adaptive evidence delivery: %v", m)
 	}
 }
 
@@ -53,6 +58,34 @@ func TestChangeImpact_FewCandidatesKeepsOriginalError(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "WIDE MEMBER") {
 		t.Fatalf("two candidates is cheap to query directly; must not redirect: %s", err)
+	}
+}
+
+func TestChangeImpact_ExternalQualifiedSignatureFiltersDecoys(t *testing.T) {
+	files := map[string]string{"go.mod": "module example.com/external\n\ngo 1.26\n"}
+	for i := 0; i < wideMemberAmbiguityThreshold; i++ {
+		files[fmt.Sprintf("impl%02d.go", i)] = fmt.Sprintf(
+			"package external\ntype T%02d struct{}\nfunc (t *T%02d) QueryData(ctx string, req int) error { return nil }\n", i, i)
+	}
+	files["decoy.go"] = "package external\ntype Decoy struct{}\nfunc (d *Decoy) QueryData(req int) error { return nil }\n"
+	h := evidenceHandler(t, files)
+	for _, args := range []map[string]any{
+		{"query": "backend.QueryDataHandler.QueryData"},
+		{"query": "backend.QueryDataHandler.QueryData", "signature": "QueryData(ctx string, req int) error"},
+	} {
+		out, err := h.Invoke("prism_change_impact", args)
+		if err != nil {
+			t.Fatalf("external method query failed: %v", err)
+		}
+		family := anySlice(out.(map[string]any)["family"])
+		if len(family) != wideMemberAmbiguityThreshold {
+			t.Fatalf("signature family has %d sites, want %d: %v", len(family), wideMemberAmbiguityThreshold, family)
+		}
+		for _, raw := range family {
+			if strings.Contains(fmt.Sprint(raw), "Decoy") {
+				t.Fatalf("incompatible same-name decoy entered external family: %v", raw)
+			}
+		}
 	}
 }
 

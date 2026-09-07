@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -54,7 +53,7 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 	// Simulate a prior full delivery of seen.txt.
 	h.Session.Record("seen.txt", compression.Hash(content), 10, "full-fresh")
 
-	out := h.renderTextMatches([]textsearch.Hit{
+	out := h.renderTextMatches(t.Context(), []textsearch.Hit{
 		{File: "seen.txt", Line: 1, Text: "alpha needle"},
 		{File: "seen.txt", Line: 3, Text: "gamma needle"},
 		{File: "fresh.txt", Line: 1, Text: "delta needle"},
@@ -95,7 +94,7 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 			hits = append(hits, textsearch.Hit{File: name, Line: l, Text: "x"})
 		}
 	}
-	out := h.renderTextMatches(hits, false)
+	out := h.renderTextMatches(t.Context(), hits, false)
 	if len(out) != textRenderFileCap+1 { // cap + omission note
 		t.Fatalf("got %d entries, want %d", len(out), textRenderFileCap+1)
 	}
@@ -109,17 +108,20 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 	}
 
 	// exhaustive=true: the files past the cap are inventoried, not dropped.
-	out = h.renderTextMatches(hits, true)
+	out = h.renderTextMatches(t.Context(), hits, true)
 	if len(out) != textRenderFileCap+1 {
 		t.Fatalf("exhaustive: got %d entries, want %d", len(out), textRenderFileCap+1)
 	}
 	last = out[len(out)-1]
-	files, ok := last["files"].([]string)
-	if !ok || len(files) != 3 {
-		t.Fatalf("exhaustive tail must list the 3 uncapped files: %v", last)
+	inventory, ok := last["inventory"].([]map[string]any)
+	if !ok || len(inventory) != textRenderFileCap+3 {
+		t.Fatalf("exhaustive inventory must list all exact files: %v", last)
 	}
-	if !strings.HasSuffix(files[0], " ("+strconv.Itoa(textRenderHitsPerFile+2)+")") {
-		t.Errorf("inventory entries carry the hit count: %v", files)
+	for _, entry := range inventory {
+		sites := anySlice(entry["sites"])
+		if len(sites) != textRenderHitsPerFile+2 {
+			t.Fatalf("%v: got %d exact sites, want %d", entry["file"], len(sites), textRenderHitsPerFile+2)
+		}
 	}
 }
 

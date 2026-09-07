@@ -10,6 +10,10 @@ import (
 
 const impactEvidenceMaxBytes = 8192
 
+// Above this size, resolved identities carry the complete answer and repeated
+// signatures/call snippets become the dominant payload (Guava delegate: 42KB).
+const wideImpactIdentityThreshold = 100
+
 // Only supplementary evidence is bounded. The impact inventory stays intact.
 func compactImpactLine(text string) string {
 	text = strings.TrimSpace(text)

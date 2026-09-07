@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -90,6 +91,35 @@ func TestRenderSearchAsText_ExhaustiveInventoryListed(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Errorf("inventory entry %q dropped from:\n%s", want, text)
 		}
+	}
+}
+
+func TestSearchExhaustiveInventoryNamesEveryFileLineAndSymbol(t *testing.T) {
+	files := map[string]string{"go.mod": "module example.com/inventory\n\ngo 1.26\n"}
+	for i := 0; i < textRenderFileCap+3; i++ {
+		files[fmt.Sprintf("pkg/group/f%02d.go", i)] = fmt.Sprintf(
+			"package group\ntype T%02d struct{}\nfunc (t T%02d) Needle() {}\n", i, i)
+	}
+	h := evidenceHandler(t, files)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Needle(", "scope": "text", "exhaustive": true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, ok := renderSearchAsText(out.(map[string]any))
+	if !ok {
+		t.Fatal("exhaustive result did not render as text")
+	}
+	for i := 0; i < textRenderFileCap+3; i++ {
+		for _, want := range []string{fmt.Sprintf("f%02d.go:", i), fmt.Sprintf("T%02d.Needle", i)} {
+			if !strings.Contains(text, want) {
+				t.Fatalf("complete inventory missing %q:\n%s", want, text)
+			}
+		}
+	}
+	if strings.Contains(text, "files, ") || strings.Contains(text, "path=<dir>") {
+		t.Fatalf("exhaustive result still requires directory expansion:\n%s", text)
 	}
 }
 

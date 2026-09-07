@@ -60,11 +60,9 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 			return "", false
 		}
 		seenNote := map[string]bool{}
-		// A batched exhaustive call used to print one overflow inventory per
-		// term — the same files, three or four times (measured: a 4-term
-		// exhaustive on dubbo, 18.6k chars, 3/4 of it inventories of the
-		// same directories). Merge them into one at the end.
-		merged := map[string]int{}
+		// A batched exhaustive call often finds the same site under several
+		// spellings. Merge its complete inventories once by file+line+symbol.
+		merged := map[string]map[string]map[string]any{}
 		mergedTerms := 0
 		// file:line lines already printed under an earlier term of this
 		// batch ("http3" and "Http3" hit the same lines): shown once,
@@ -82,12 +80,10 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 				seenNote[n] = true
 			}
 			if len(groups) > 1 {
-				if raw, rest := takeInventory(g); raw != nil {
+				if raw, rest := takeExactInventory(g); raw != nil {
 					g = rest
 					mergedTerms++
-					for f, n := range raw {
-						merged[f] += n
-					}
+					mergeExactInventory(merged, raw)
 				}
 			}
 			if !renderOneSearchText(&b, g, seenLines) {
@@ -95,16 +91,8 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 			}
 		}
 		if len(merged) > 0 {
-			files := make([]string, 0, len(merged))
-			for f := range merged {
-				files = append(files, f)
-			}
-			sort.Strings(files)
-			lines, shape := boundedInventory(files, merged, inventoryLineBudget/2)
-			fmt.Fprintf(&b, "// %d more files with matches across %d term(s) — exhaustive=true: %s\n", len(files), mergedTerms, shape)
-			for _, l := range lines {
-				b.WriteString(l + "\n")
-			}
+			fmt.Fprintf(&b, "// COMPLETE merged inventory across %d term(s); every exact file, line, and enclosing symbol:\n", mergedTerms)
+			renderExactInventory(&b, exactInventoryFromMerge(merged))
 		}
 	} else if !renderOneSearchText(&b, out, nil) {
 		return "", false
@@ -317,6 +305,10 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 			}
 			if note, _ := gm["note"].(string); note != "" && gm["file"] == nil {
 				fmt.Fprintf(b, "// %s\n", note)
+				if inventory := anySlice(gm["inventory"]); len(inventory) > 0 {
+					renderExactInventory(b, inventory)
+					continue
+				}
 				// exhaustive=true inventory (renderTextMatches): the files
 				// past the cap, one per line. Measured 2026-09-05 (dubbo
 				// retest): the note promised "every one is listed here" and
@@ -390,9 +382,34 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 	return true
 }
 
-// takeInventory splits a term's overflow inventory (the textHits entry
-// carrying rawFiles) out of the group: returns the raw file→hits map and a
-// copy of the group without that entry, or nil when there is none.
+// takeExactInventory removes a term's complete inventory so batched searches
+// can merge duplicate sites and render the inventory once.
+func takeExactInventory(g map[string]any) ([]any, map[string]any) {
+	hits := anySlice(g["textHits"])
+	for i, h := range hits {
+		hm, ok := h.(map[string]any)
+		if !ok {
+			continue
+		}
+		raw := anySlice(hm["inventory"])
+		if len(raw) == 0 {
+			continue
+		}
+		rest := make([]any, 0, len(hits)-1)
+		rest = append(rest, hits[:i]...)
+		rest = append(rest, hits[i+1:]...)
+		out := make(map[string]any, len(g))
+		for k, v := range g {
+			out[k] = v
+		}
+		out["textHits"] = rest
+		return raw, out
+	}
+	return nil, g
+}
+
+// takeInventory retains the legacy directory-count payload decoder for old
+// responses already in flight. New exhaustive searches use takeExactInventory.
 func takeInventory(g map[string]any) (map[string]int, map[string]any) {
 	hits := anySlice(g["textHits"])
 	for i, h := range hits {
@@ -415,6 +432,102 @@ func takeInventory(g map[string]any) (map[string]int, map[string]any) {
 		return raw, out
 	}
 	return nil, g
+}
+
+func mergeExactInventory(dst map[string]map[string]map[string]any, inventory []any) {
+	for _, raw := range inventory {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		file, _ := entry["file"].(string)
+		if file == "" {
+			continue
+		}
+		if dst[file] == nil {
+			dst[file] = map[string]map[string]any{}
+		}
+		for _, rs := range anySlice(entry["sites"]) {
+			site, ok := rs.(map[string]any)
+			if !ok {
+				continue
+			}
+			key := fmt.Sprintf("%v\x00%v", site["line"], site["symbol"])
+			dst[file][key] = site
+		}
+	}
+}
+
+func exactInventoryFromMerge(src map[string]map[string]map[string]any) []any {
+	files := make([]string, 0, len(src))
+	for file := range src {
+		files = append(files, file)
+	}
+	sort.Strings(files)
+	out := make([]any, 0, len(files))
+	for _, file := range files {
+		sites := make([]any, 0, len(src[file]))
+		for _, site := range src[file] {
+			sites = append(sites, site)
+		}
+		sort.Slice(sites, func(i, j int) bool {
+			li, _ := sites[i].(map[string]any)["line"].(int)
+			lj, _ := sites[j].(map[string]any)["line"].(int)
+			if li != lj {
+				return li < lj
+			}
+			return fmt.Sprint(sites[i].(map[string]any)["symbol"]) < fmt.Sprint(sites[j].(map[string]any)["symbol"])
+		})
+		out = append(out, map[string]any{"file": file, "sites": sites})
+	}
+	return out
+}
+
+// renderExactInventory repeats each directory once, then names every leaf and
+// match line beneath it. Unlike a directory count, every full path can be
+// reconstructed directly and no follow-up path= expansion is needed.
+func renderExactInventory(b *strings.Builder, inventory []any) bool {
+	lastDir := "\x00"
+	for _, raw := range inventory {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			return false
+		}
+		file, _ := entry["file"].(string)
+		if file == "" {
+			return false
+		}
+		dir, base := "", file
+		if i := strings.LastIndexByte(file, '/'); i >= 0 {
+			dir, base = file[:i+1], file[i+1:]
+		}
+		if dir != lastDir {
+			if dir == "" {
+				b.WriteString("./\n")
+			} else {
+				b.WriteString(dir + "\n")
+			}
+			lastDir = dir
+		}
+		fmt.Fprintf(b, "  %s:", base)
+		for i, rs := range anySlice(entry["sites"]) {
+			site, ok := rs.(map[string]any)
+			if !ok {
+				return false
+			}
+			if i > 0 {
+				b.WriteString(",")
+			}
+			fmt.Fprintf(b, " %v", site["line"])
+			if sym, _ := site["symbol"].(string); sym != "" {
+				fmt.Fprintf(b, " %s", sym)
+			} else {
+				b.WriteString(" [no indexed symbol]")
+			}
+		}
+		b.WriteString("\n")
+	}
+	return true
 }
 
 // withoutKey returns a shallow copy of m with one key removed.

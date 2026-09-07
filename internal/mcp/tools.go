@@ -477,7 +477,7 @@ func toolSchema(name string) map[string]any {
 				"scope": map[string]any{
 					"type":        "string",
 					"enum":        []string{"both", "text", "symbols"},
-					"description": "\"text\" = pure grep (cheapest); \"symbols\" = index only. Default \"both\".",
+					"description": "\"text\" = grep retrieval (cheapest; exhaustive results also label enclosing indexed symbols); \"symbols\" = index only. Default \"both\".",
 				},
 				"regex": map[string]any{
 					"type":        "boolean",
@@ -495,7 +495,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"exhaustive": map[string]any{
 					"type":        "boolean",
-					"description": "Raises text caps to 100000 hits / 10000 per file, symbols to 2000. Deadlines still apply. Partial results are marked; narrow path=/glob= if incomplete.",
+					"description": "Raises text caps to 100000 hits / 10000 per file, symbols to 2000. Text results include a COMPLETE compact inventory of every exact file, line, and enclosing symbol while source excerpts stay sampled. Deadlines still apply; incomplete results are marked.",
 				},
 				"files_only": map[string]any{
 					"type":        "boolean",
@@ -632,6 +632,10 @@ func toolSchema(name string) map[string]any {
 				"file": map[string]any{
 					"type":        "string",
 					"description": "Disambiguate same-named types in different packages: only types declared in a file whose path contains this seed the closure (change_impact only; the result says when this is needed).",
+				},
+				"signature": map[string]any{
+					"type":        "string",
+					"description": "Optional external-interface method signature. When no local interface declaration exists, match every compatible local implementation and union their resolved callers in one call.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
@@ -783,10 +787,10 @@ func toolDescription(name string) string {
 	case "prism_search":
 		return "Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
 			"Known symbol? Use lookup for bodies or change_impact for affected sites directly. Batch up to 10 " +
-			"terms in query=[...]. scope=\"text\" is pure grep, cheapest — use it wherever you " +
+			"terms in query=[...]. scope=\"text\" uses grep retrieval, cheapest — use it wherever you " +
 			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
-			"around each hit (grep -C) — no follow-up read. exhaustive=true requests full coverage; " +
-			"heed partial-result warnings."
+			"around each hit (grep -C) — no follow-up read. exhaustive=true adds a complete compact " +
+			"inventory of every exact file, line, and enclosing symbol while source excerpts stay sampled; heed partial-result warnings."
 	case "prism_lookup":
 		return "Read whole symbol bodies by qualified name. Batch related methods in name=[...] " +
 			"(up to 10); use name=[{\"name\":\"Type.method\",\"file\":\"path/to/file\"}] for exact per-item file scope. For a small local bug, " +
@@ -850,9 +854,10 @@ func toolDescription(name string) string {
 			"a signature change or affected-site enumeration. Includes signatures, test labels, and bounded " +
 			"matching call expressions so those facts do not need separate lookups. Read bodies only " +
 			"for behavior or evidence gaps, not routinely for site enumeration. 'partial' means coverage gaps; " +
-			"follow coverageNote. 'closed' describes indexed scope, not heuristic receiver certainty. An external/unresolved " +
-			"interface has no local family anchor: use one exhaustive text search for candidate declarations, calls, " +
-			"and interface references, then inspect signatures/receivers; do not guess concrete type names. 'project-local' " +
+			"follow coverageNote. 'closed' describes indexed scope, not heuristic receiver certainty. For a wide same-name " +
+			"member or an external/unresolved interface with no local anchor, Prism infers the compatible local method family " +
+			"and unions file-scoped resolved impacts in this call; signature= pins the external contract when known. Do not " +
+			"guess concrete type names or issue one call per receiver. 'project-local' " +
 			"+ overridesExternal = the method implements an external contract whose signature " +
 			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
 	case "prism_missing_implementations":
@@ -1029,7 +1034,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if tm := h.renderTextMatches(sel.textHits, false); tm != nil {
+		if tm := h.renderTextMatches(ctx, sel.textHits, false); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
@@ -1057,7 +1062,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
-	if tm := h.renderTextMatches(sel.textHits, false); tm != nil {
+	if tm := h.renderTextMatches(ctx, sel.textHits, false); tm != nil {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
 	}
@@ -1387,6 +1392,22 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		context:    reqContext,
 		rollupOnly: boolArg(args, "rollup_only"),
 	}
+	if len(queries) > 1 && len(sc.paths) == 0 && len(sc.glob) == 0 {
+		filtered := queries[:0]
+		var skipped []string
+		for _, q := range queries {
+			if genericSyntaxSearch(q) {
+				skipped = append(skipped, q)
+				continue
+			}
+			filtered = append(filtered, q)
+		}
+		if len(filtered) > 0 && len(skipped) > 0 {
+			queries = filtered
+			termNote = appendNote(termNote, fmt.Sprintf(
+				"skipped repository-wide syntax term(s) %q because the specific batched term supplies the declaration/call inventory; run broad syntax searches separately with path=/glob=", skipped))
+		}
+	}
 
 	// Multi-term: run each term through the same single-term path and group
 	// the results under the term that produced them, so an agent can tell
@@ -1456,6 +1477,15 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		h.attachEmptySearchGuidance(ctx, out, queries)
 	}
 	return out, nil
+}
+
+func genericSyntaxSearch(q string) bool {
+	q = strings.Join(strings.Fields(strings.TrimSpace(q)), " ")
+	switch q {
+	case "func (", "func(", "def", "class", "function", "public", "private":
+		return true
+	}
+	return false
 }
 
 // searchResultEmpty reports whether one searchOne result carries no hits of
@@ -1580,7 +1610,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			Exhaustive: sc.exhaustive, Context: sc.context,
 		})
 		out := map[string]any{
-			"textHits":    h.renderTextMatches(r.Hits, sc.exhaustive),
+			"textHits":    h.renderTextMatches(ctx, r.Hits, sc.exhaustive),
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
 		}
@@ -1638,16 +1668,9 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			}
 			delete(out, "textHits")
 			out["fileCount"] = len(files)
-			if len(files) > inventoryFlatCap {
-				// Bounded the same way as the exhaustive hit inventory:
-				// paths up to the flat cap, directory groups past it (see
-				// boundedInventory for the measurement). fileCount is the
-				// true total either way.
-				lines, shape := boundedInventory(files, nil, inventoryLineBudget)
-				out["files"] = lines
-				out["note"] = strconv.Itoa(len(files)) + " files match — " + shape
-			} else {
-				out["files"] = files
+			out["files"] = files
+			if sc.exhaustive {
+				out["note"] = strconv.Itoa(len(files)) + " files match — COMPLETE exact path inventory; no directory counts or path expansion required"
 			}
 		}
 		if len(r.RejectedPaths) > 0 {
@@ -1778,7 +1801,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			Exhaustive: sc.exhaustive, Context: sc.context,
 		})
 		if len(r.Hits) > 0 {
-			out["textHits"] = h.renderTextMatches(r.Hits, sc.exhaustive)
+			out["textHits"] = h.renderTextMatches(ctx, r.Hits, sc.exhaustive)
 			out["textBackend"] = r.Backend
 		}
 		if r.Truncated {
@@ -2597,6 +2620,25 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return nil, errors.New("query is required")
 	}
 	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
+	inferenceNote := ""
+	if err != nil {
+		// A wide bare member or a qualified external interface has no local
+		// declaration to anchor. Infer the compatible local method family once
+		// and union file-scoped resolved impacts inside this call, instead of
+		// making the agent guess dozens of receivers across dozens of turns.
+		wide := ambiguousCandidateCount.FindStringSubmatch(err.Error())
+		isWide := false
+		if len(wide) == 2 {
+			count, _ := strconv.Atoi(wide[1])
+			isWide = count >= wideMemberAmbiguityThreshold
+		}
+		externalMissing := strings.Contains(err.Error(), "no type named") && strings.Contains(query, ".")
+		if isWide || externalMissing || stringArg(args, "signature", "") != "" {
+			if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, stringArg(args, "signature", "")); inferErr == nil {
+				r, err, inferenceNote = inferred, nil, note
+			}
+		}
+	}
 	if err != nil {
 		// "declares no method" is the dead-end that abandons agents:
 		// transcript analysis (2026-09-02, grove wide-bed cell) caught an
@@ -2627,6 +2669,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	targetLeaf = leafOf(strings.TrimSpace(targetLeaf))
 	evidenceBudget := impactEvidenceMaxBytes
+	wideImpact := obligationSiteCount(r) >= wideImpactIdentityThreshold
 
 	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
@@ -2641,14 +2684,18 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				"filePath":      s.FilePath,
 				"line":          s.Span.Start,
 				"kind":          s.Kind,
-				"signature":     s.Signature,
+			}
+			if !wideImpact {
+				entry["signature"] = s.Signature
 			}
 			// Locality hint: grove attributes a call made inside a closure to
 			// the enclosing declaration, so name the nested scope that
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
-			if annotate {
+			if annotate && (!wideImpact || r.HasHeuristicRefs) {
 				addImpactCallEvidence(entry, s, targetLeaf, &evidenceBudget)
+			}
+			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
 					entry["via"] = via
 				}
@@ -2676,7 +2723,12 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"callers":      compactWithScope(r.Callers, true),
 		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
 	}
-	if len(r.Callers) > 0 {
+	if inferenceNote != "" {
+		out["methodFamilyNote"] = inferenceNote
+	}
+	if wideImpact && !r.HasHeuristicRefs {
+		out["evidenceNote"] = "Large resolved closure delivered as compact file:line identities; repeated signatures and call expressions are omitted. Site identities are complete."
+	} else if len(r.Callers) > 0 {
 		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
 	}
 	completeness, coverageNote := impactCoverage(r)

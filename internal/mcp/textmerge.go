@@ -58,6 +58,11 @@ type textMergeResult struct {
 	backend    string
 }
 
+type textMatchGroup struct {
+	file string
+	hits []textsearch.Hit
+}
+
 // mergeTextSearch runs the full-text search for each term and splits the
 // hits into symbol promotions and raw deliverable hits. Never fails: text
 // search is additive evidence, and an error here must not break retrieval.
@@ -142,27 +147,23 @@ func (h *Handler) mergeTextSearch(ctx context.Context, terms []string, seededIDs
 // with matches omitted" — the completeness the flag promises, withheld by
 // the renderer — and the agent spent the rest of a 108-turn cell grepping
 // for the inventory it had just been refused.
-func (h *Handler) renderTextMatches(rawHits []textsearch.Hit, exhaustive bool) []map[string]any {
+func (h *Handler) renderTextMatches(ctx context.Context, rawHits []textsearch.Hit, exhaustive bool) []map[string]any {
 	if len(rawHits) == 0 {
 		return nil
 	}
-	type group struct {
-		file string
-		hits []textsearch.Hit
-	}
 	var order []string
-	byFile := map[string]*group{}
+	byFile := map[string]*textMatchGroup{}
 	for _, hit := range rawHits {
 		g, ok := byFile[hit.File]
 		if !ok {
-			g = &group{file: hit.File}
+			g = &textMatchGroup{file: hit.File}
 			byFile[hit.File] = g
 			order = append(order, hit.File)
 		}
 		g.hits = append(g.hits, hit)
 	}
 
-	out := make([]map[string]any, 0, minInt(len(order), textRenderFileCap))
+	out := make([]map[string]any, 0, minInt(len(order), textRenderFileCap)+1)
 	for i, file := range order {
 		if i >= textRenderFileCap {
 			rest := len(order) - textRenderFileCap
@@ -172,20 +173,6 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit, exhaustive bool) [
 				})
 				break
 			}
-			hits := map[string]int{}
-			for _, f := range order[textRenderFileCap:] {
-				hits[f] = len(byFile[f].hits)
-			}
-			// Half the files_only budget: the ten hit groups above already
-			// spend lines, and a batched call renders one inventory per term.
-			inventory, note := boundedInventory(order[textRenderFileCap:], hits, inventoryLineBudget/2)
-			out = append(out, map[string]any{
-				"note":  strconv.Itoa(rest) + " more files with matches — exhaustive=true: " + note,
-				"files": inventory,
-				// rawFiles lets a batched call merge every term's overflow
-				// into ONE inventory (searchtext.go) instead of one per term.
-				"rawFiles": hits,
-			})
 			break
 		}
 		g := byFile[file]
@@ -232,7 +219,58 @@ func (h *Handler) renderTextMatches(rawHits []textsearch.Hit, exhaustive bool) [
 		}
 		out = append(out, entry)
 	}
+	if exhaustive {
+		// Source text above is deliberately sampled, but the inventory is not:
+		// every exact file and match line appears here with its enclosing symbol.
+		// Directory-count rollups looked compact but forced agents to expand ten
+		// paths and still lose sites (grafana QueryData/CheckHealth, 2026-09-06).
+		out = append(out, map[string]any{
+			"note":      "COMPLETE inventory — every exact file, match line, and indexed enclosing symbol; source excerpts above are only a sample. No path expansion or per-receiver change_impact calls are needed.",
+			"inventory": h.exactHitInventory(ctx, order, byFile),
+		})
+	}
 	return out
+}
+
+// exactHitInventory is the compact, lossless half of exhaustive text search.
+// One entry per file avoids repeating long paths; sites retain every line and
+// the tightest indexed symbol enclosing it. A missing symbol is explicit: text
+// search also covers comments, config and parser gaps.
+func (h *Handler) exactHitInventory(ctx context.Context, order []string, byFile map[string]*textMatchGroup) []map[string]any {
+	inventory := make([]map[string]any, 0, len(order))
+	for _, file := range order {
+		var syms []grove.SymbolRecord
+		if h.Grove != nil {
+			syms, _ = h.Grove.FileSymbols(ctx, file)
+		}
+		sites := make([]map[string]any, 0, len(byFile[file].hits))
+		seen := map[int]bool{}
+		for _, hit := range byFile[file].hits {
+			if seen[hit.Line] {
+				continue
+			}
+			seen[hit.Line] = true
+			site := map[string]any{"line": hit.Line}
+			var enclosing *grove.SymbolRecord
+			for i := range syms {
+				s := &syms[i]
+				if s.Span.Start <= hit.Line && hit.Line <= s.Span.End &&
+					(enclosing == nil || s.Span.End-s.Span.Start < enclosing.Span.End-enclosing.Span.Start) {
+					enclosing = s
+				}
+			}
+			if enclosing != nil {
+				name := enclosing.QualifiedName
+				if name == "" {
+					name = enclosing.Name
+				}
+				site["symbol"] = name
+			}
+			sites = append(sites, site)
+		}
+		inventory = append(inventory, map[string]any{"file": file, "sites": sites})
+	}
+	return inventory
 }
 
 // textFileCached reports whether this file's CURRENT content was already

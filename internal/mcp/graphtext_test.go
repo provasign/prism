@@ -155,9 +155,10 @@ func TestChangeImpactDescriptionDisclosesExternalInterfaceFallback(t *testing.T)
 	got := toolDescription("prism_change_impact")
 	for _, want := range []string{
 		"Every indexed site",
-		"external/unresolved interface has no local family anchor",
-		"exhaustive text search",
-		"do not guess concrete type names",
+		"external/unresolved interface with no local anchor",
+		"infers the compatible local method family",
+		"Do not",
+		"one call per receiver",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("change-impact description missing %q", want)

@@ -88,7 +88,8 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"declaringTypesNote": true, "completeness": true,
 		"externalSupers": true, "overridesExternal": true, "warning": true,
 		"widerAnchor": true, "hasHeuristicRefs": true,
-		"evidenceNote": true, "coverageNote": true, "staleWarning": true, "scopeNote": true, "ambiguityNote": true,
+		"evidenceNote": true, "coverageNote": true, "methodFamilyNote": true,
+		"staleWarning": true, "scopeNote": true, "ambiguityNote": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -101,6 +102,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "completeness: %s\n", c)
 	}
 	if note, _ := out["coverageNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if note, _ := out["methodFamilyNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if hr, _ := out["hasHeuristicRefs"].(bool); hr {

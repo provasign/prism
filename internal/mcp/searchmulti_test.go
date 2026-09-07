@@ -334,6 +334,30 @@ func TestToolSearch_EmptyResultCarriesCompletionEvidence(t *testing.T) {
 	}
 }
 
+func TestToolSearch_SkipsGenericSyntaxBesideSpecificTerm(t *testing.T) {
+	h := newTestHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "sample.go"), []byte(
+		"package sample\nfunc Unrelated() {}\nfunc CheckHealth() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": []any{"func (", "CheckHealth("}, "scope": "text", "exhaustive": true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, ok := renderSearchAsText(out.(map[string]any))
+	if !ok {
+		t.Fatal("search did not render")
+	}
+	if !strings.Contains(rendered, "skipped repository-wide syntax term") {
+		t.Fatalf("generic-term guard missing:\n%s", rendered)
+	}
+	if strings.Contains(rendered, "Unrelated") {
+		t.Fatalf("generic func term flooded the specific result:\n%s", rendered)
+	}
+}
+
 func TestToolSearch_ExhaustiveIsNotCapped(t *testing.T) {
 	h := newTextSearchHandler(t)
 	out, err := h.Invoke("prism_search", map[string]any{
