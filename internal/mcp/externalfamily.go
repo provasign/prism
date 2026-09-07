@@ -114,7 +114,7 @@ func (h *Handler) inferExternalMethodImpact(ctx context.Context, query, signatur
 	// enclosing symbols from one exhaustive call-shaped text pass. This is the
 	// five-site gap in grafana QueryData (QueryMetricsV2, plugin.QueryData,
 	// handlePreparedQuery, executeConcurrentQueries, handleQuerySingleDatasource).
-	textResult := textsearch.Search(ctx, h.Root, leaf+"(", textsearch.Options{
+	textResult := textsearch.Search(ctx, h.Root, "."+leaf+"(", textsearch.Options{
 		MaxHits: 100000, Timeout: textSearchTimeout, Exhaustive: true,
 	})
 	fileSymbols := map[string][]grove.SymbolRecord{}
