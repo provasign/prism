@@ -30,6 +30,45 @@
   typeorm case: 372 hits, 1 real). Against compiler oracles, file-level
   precision goes 0.51 (grep) → 0.91 (change-impact) at comparable recall.
 
+## Product showcase: Grafana's external `QueryData` interface
+
+Grafana's datasource `QueryData` contract is declared in an external Go SDK.
+Inside Grafana, dozens of independently named types satisfy it implicitly,
+along with middleware wrappers and callers spread across the repository. This
+is a difficult case for text-only discovery: there is no local interface
+declaration from which an agent can traverse the whole family.
+
+On the published 51-site production oracle, a successful current-Prism Sonnet
+run reached every scored site in four turns. The best available no-Prism
+comparison is a historical three-run Sonnet study on the same task and corpus:
+
+| Sonnet workflow | Recall | Precision | Input tokens | Estimated cost | Turns |
+|---|---:|---:|---:|---:|---:|
+| Native search/read tools, 3-run mean | 0.967 | not recorded | 1.184M | $1.121 | 40.3 |
+| **Current Prism, successful gate run** | **1.000** | **0.680** | **98,461** | **$0.153** | **4** |
+| Deterministic Prism engine call, no model | 1.000 | 0.689 | 30,175 response bytes | $0 | 0 |
+
+Relative to that historical native mean, the successful Prism agent run used
+**91.7% fewer input tokens, cost 86.4% less, and took 90% fewer turns**, while
+raising measured recall from 0.967 to 1.000. The deterministic row is an engine
+ceiling: it proves the graph can return the set without model exploration; it
+does not prove that every agent will choose or relay that call correctly.
+
+The broader nine-task Sonnet result points in the same direction:
+
+| Nine-task result | Mean recall | Input tokens | Estimated cost |
+|---|---:|---:|---:|
+| Historical no-Prism, mean of 3 panels | 0.877 | 12.97M | $14.41 |
+| **Current Prism release gate** | **0.998** | **720,278** | **$1.22** |
+
+These are product-showcase numbers, not a fresh paired native-control study.
+The native panels came from an older harness/model period and used legacy input
+accounting; their precision was not recorded. Current-Prism routing also varies
+between model executions, and the 51-site QueryData oracle undercounts valid
+production middleware and callers, making its precision provisional. See the
+[current gate, per-task results, and limitations](docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md#22-main-release-gate-accuracy-and-aggregate-efficiency-pass)
+and the [historical native records](https://github.com/provasign/research/tree/main/harness/runs/bench-matrix).
+
 ## What Prism is
 
 Prism is an **agent-neutral semantic safety layer for code changes**. It indexes a
