@@ -2553,6 +2553,44 @@ func (h *Handler) enrichNoMethodError(ctx context.Context, query string, orig er
 		orig, typeName, strings.Join(members, ", "))
 }
 
+// wideMemberAmbiguityThreshold: past this many same-named candidates, the
+// right move is one exhaustive text search, not one change_impact call per
+// candidate. Measured (2026-09-06, grafana-querydata-impact transcript):
+// "QueryData" was ambiguous across 41 candidates. The agent read "re-run
+// with one of these" literally, issued 12 separate change_impact calls
+// guessing receiver names, spent ~44KB doing it, and still missed 6 of 51
+// required sites — files reachable by a plain ".QueryData(" text search
+// (pkg/expr/nodes.go, two sqleng/sql_engine.go files) that no receiver-name
+// guess would ever reach, because the interface is external (no local
+// declaration for change_impact to anchor a family query on).
+var ambiguousCandidateCount = regexp.MustCompile(`is ambiguous — (\d+) candidates`)
+
+const wideMemberAmbiguityThreshold = 8
+
+func enrichAmbiguousImpactError(query string, orig error) error {
+	m := ambiguousCandidateCount.FindStringSubmatch(orig.Error())
+	if m == nil {
+		return nil
+	}
+	count, convErr := strconv.Atoi(m[1])
+	if convErr != nil || count < wideMemberAmbiguityThreshold {
+		return nil // few enough that querying each candidate individually is fine
+	}
+	head := query
+	if i := strings.IndexByte(head, '('); i >= 0 {
+		head = head[:i]
+	}
+	if dot := strings.LastIndexByte(head, '.'); dot >= 0 {
+		head = head[dot+1:]
+	}
+	return fmt.Errorf("%w\n\nWIDE MEMBER (%d candidates): do NOT issue one change_impact call per "+
+		"candidate — that misses call sites through interfaces this engine cannot anchor a family "+
+		"query on (an interface with no local declaration, e.g. an external SDK contract). Instead "+
+		"run prism_search(query=[\"%s(\", \".%s(\"], scope=\"text\", exhaustive=true) for the complete "+
+		"declaration and call-site inventory by text, THEN change_impact only the specific receivers "+
+		"that inventory names as ambiguous", orig, count, head, head)
+}
+
 func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (any, error) {
 	query := stringArg(args, "query", "")
 	if query == "" {
@@ -2571,6 +2609,11 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		// name the already-edited-it failure mode explicitly.
 		if strings.Contains(err.Error(), "declares no method") {
 			if enriched := h.enrichNoMethodError(ctx, query, err); enriched != nil {
+				return nil, enriched
+			}
+		}
+		if strings.Contains(err.Error(), "is ambiguous —") {
+			if enriched := enrichAmbiguousImpactError(query, err); enriched != nil {
 				return nil, enriched
 			}
 		}

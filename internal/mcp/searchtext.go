@@ -226,6 +226,15 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 	if n, _ := m["resolvedNote"].(string); n != "" {
 		fmt.Fprintf(b, "// %s\n", n)
 	}
+	// Partiality FIRST, before the sample it qualifies. Measured 2026-09-06
+	// (grafana-querydata-impact transcript): a 50-symbol cap's "a SAMPLE,
+	// more exist — use exhaustive=true" warning sat after all 50 entries;
+	// the agent read the sample as the answer and never reached the escape
+	// hatch. A truncated/incomplete result is not a complete one with a
+	// footnote — the caveat has to be read before the content, not after.
+	if w, _ := m["warning"].(string); w != "" {
+		fmt.Fprintf(b, "// %s\n", w)
+	}
 	// Symbol matches first: one location line per symbol instead of the full
 	// JSON record. Measured (Kinto, v0.55.5): a default-scope search returned
 	// 26-27 KB — full SymbolRecords with rawText bodies, blobSha, ids and
@@ -355,9 +364,6 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 		}
 	default:
 		return false
-	}
-	if w, _ := m["warning"].(string); w != "" {
-		fmt.Fprintf(b, "// %s\n", w)
 	}
 	if ru := anySlice(m["hitRollup"]); len(ru) > 0 {
 		b.WriteString("// Grouped matches by enclosing symbol (bounded graph rollup; inspect omission notes):\n")
