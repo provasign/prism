@@ -1,0 +1,79 @@
+shale_version: "0"
+id: 01a0790c-a7c5-7543-a18f-d1f822079fe4-c10
+created_at: 2026-09-07T17:44:45.662674Z
+finalized_at: 2026-09-07T17:46:00.493513Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: HANDOFF.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T17:45:31.252155Z
+commands:
+    - cmd: git push origin main
+      at: 2026-09-07T17:44:45.662674Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism read .gitignore --format text
+      at: 2026-09-07T17:44:53.644252Z
+      classified: other
+    - cmd: 'git add .gitignore && git diff --cached --check && git commit -m "chore: ignore local Prism index" && git push origin main'
+      at: 2026-09-07T17:45:04.940873Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism doctor .
+      at: 2026-09-07T17:45:11.305677Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism doctor .
+      at: 2026-09-07T17:45:11.327622Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism doctor .
+      at: 2026-09-07T17:45:11.328621Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism doctor .
+      at: 2026-09-07T17:45:11.338597Z
+      classified: other
+    - cmd: gh run list --repo provasign/provasign.github.io --limit 3 --json databaseId,status,conclusion,headSha,url
+      at: 2026-09-07T17:45:11.870155Z
+      classified: other
+    - cmd: git status --short --branch --untracked-files=no
+      at: 2026-09-07T17:45:19.238065Z
+      classified: other
+    - cmd: git status --short --branch --untracked-files=no
+      at: 2026-09-07T17:45:19.255644Z
+      classified: other
+    - cmd: git status --short --branch --untracked-files=no
+      at: 2026-09-07T17:45:19.268124Z
+      classified: other
+    - cmd: git status --short --branch --untracked-files=no
+      at: 2026-09-07T17:45:19.276781Z
+      classified: other
+    - cmd: git status --short --branch --untracked-files=no
+      at: 2026-09-07T17:45:19.287844Z
+      classified: other
+    - cmd: git status --short --branch --untracked-files=no
+      at: 2026-09-07T17:45:19.310518Z
+      classified: other
+    - cmd: gh run watch 34148848938 --repo provasign/provasign.github.io --exit-status
+      at: 2026-09-07T17:45:19.618361Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify . --base HEAD --format text
+      at: 2026-09-07T17:45:38.915734Z
+      classified: other
+    - cmd: git add HANDOFF.md
+      at: 2026-09-07T17:45:42.988367Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-07T17:45:48.044577Z
+      classified: other
+    - cmd: 'git commit -m "docs: record final setup state in handoff"'
+      at: 2026-09-07T17:45:55.57285Z
+      classified: other
+notes:
+    - text: continuation of session 01a0790c-a7c5-7543-a18f-d1f822079fe4 — events captured after its evidence was finalized
+      at: 2026-09-07T17:44:45.662674Z
+redactions: 0
