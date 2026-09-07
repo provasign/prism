@@ -85,11 +85,11 @@ func TestRenderChangeImpactAsText_FullShape(t *testing.T) {
 func TestRenderChangeImpactAsText_NothingSilentlyDropped(t *testing.T) {
 	out := map[string]any{
 		"query": "X.m", "totalSites": 1, "completeness": "project-local",
-		"declarations":      []map[string]any{{"name": "X.m", "qualifiedName": "X.m", "filePath": "x.py", "line": 1, "kind": "method", "signature": "s"}},
-		"overridesExternal": []string{"ABC"},
-		"warning":           "external contract",
-		"externalSupers":    []string{"ABC"},
-		"declaringTypes":    []map[string]any{{"name": "X", "qualifiedName": "X", "filePath": "x.py", "line": 1, "kind": "class", "signature": "s"}},
+		"declarations":       []map[string]any{{"name": "X.m", "qualifiedName": "X.m", "filePath": "x.py", "line": 1, "kind": "method", "signature": "s"}},
+		"overridesExternal":  []string{"ABC"},
+		"warning":            "external contract",
+		"externalSupers":     []string{"ABC"},
+		"declaringTypes":     []map[string]any{{"name": "X", "qualifiedName": "X", "filePath": "x.py", "line": 1, "kind": "class", "signature": "s"}},
 		"declaringTypesNote": "type blocks change too",
 		"widerAnchor": map[string]any{"qualifiedName": "Iface.m", "totalSites": 9,
 			"completeness": "closed", "note": "wider"},
@@ -110,6 +110,58 @@ func TestRenderChangeImpactAsText_FallsBackOnUnknownField(t *testing.T) {
 	out := map[string]any{"query": "X", "totalSites": 0, "newField": 1}
 	if _, ok := renderChangeImpactAsText(out); ok {
 		t.Fatal("unknown field must force JSON fallback")
+	}
+}
+
+func TestRenderChangeImpactAsText_GroupsRepeatedPathsOnlyWhenSmaller(t *testing.T) {
+	sym := func(qn, fp string, line int) map[string]any {
+		return map[string]any{"name": qn, "qualifiedName": qn, "filePath": fp, "line": line,
+			"kind": "method", "signature": "func " + qn + "()"}
+	}
+	out := map[string]any{
+		"query": "Big.m", "totalSites": 3, "completeness": "closed",
+		"callers": []map[string]any{
+			sym("LongQualifiedType.FirstCaller", "long/repeated/path/to/file.go", 10),
+			sym("LongQualifiedType.SecondCaller", "long/repeated/path/to/file.go", 20),
+			sym("LongQualifiedType.ThirdCaller", "long/repeated/path/to/file.go", 30),
+		},
+	}
+	text, ok := renderChangeImpactAsText(out)
+	if !ok {
+		t.Fatal("known shape must render")
+	}
+	if strings.Count(text, "long/repeated/path/to/file.go") != 1 {
+		t.Fatalf("repeated path was not grouped:\n%s", text)
+	}
+	for _, want := range []string{
+		"LongQualifiedType.FirstCaller  line 10",
+		"LongQualifiedType.SecondCaller  line 20",
+		"LongQualifiedType.ThirdCaller  line 30",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("grouped output lost identity %q:\n%s", want, text)
+		}
+	}
+
+	out["callers"] = []map[string]any{sym("A.m", "a.go", 1)}
+	out["totalSites"] = 1
+	text, ok = renderChangeImpactAsText(out)
+	if !ok || !strings.Contains(text, "A.m  a.go:1") {
+		t.Fatalf("small response should retain the smaller flat layout: %t\n%s", ok, text)
+	}
+}
+
+func TestChangeImpactDescriptionDisclosesExternalInterfaceFallback(t *testing.T) {
+	got := toolDescription("prism_change_impact")
+	for _, want := range []string{
+		"Every indexed site",
+		"external/unresolved interface has no local family anchor",
+		"exhaustive text search",
+		"do not guess concrete type names",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("change-impact description missing %q", want)
+		}
 	}
 }
 
@@ -167,7 +219,7 @@ func TestRenderVerifyAsText_CleanAndIncomplete(t *testing.T) {
 		"unverifiedSeeds": []string{"Y — review manually"},
 		"newDependencies": []map[string]any{{"from": "a", "to": "b", "weight": 2, "minTier": "call"}},
 		"archStatus":      "review", "archIntroduced": []string{"rule R broken"},
-		"notes":           []string{"scored against HEAD"},
+		"notes": []string{"scored against HEAD"},
 	}
 	text, ok = renderVerifyAsText(inc)
 	if !ok {
@@ -187,7 +239,7 @@ func TestRenderVerifyAsText_CleanAndIncomplete(t *testing.T) {
 
 func TestRenderQuerySourceAsText(t *testing.T) {
 	out := map[string]any{
-		"content": "**Source** — ...\n### a.py\n1\tcode\n",
+		"content":  "**Source** — ...\n### a.py\n1\tcode\n",
 		"delivery": "source", "deliveredTokens": 100, "symbolCount": 3,
 		"files": []string{"a.py"},
 		"textMatches": []map[string]any{{"file": "b.cfg",

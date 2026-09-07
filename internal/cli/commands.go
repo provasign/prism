@@ -499,7 +499,8 @@ Make your first code-discovery call the Prism tool that answers the question:
 - Affected sites or signature change: ` + "`" + `prism_change_impact` + "`" + ` directly.
 - Known methods, need their behavior: ` + "`" + `prism_lookup(name=["A","B"])` + "`" + ` for whole bodies.
 - Unknown location: ` + "`" + `prism_search` + "`" + `; need edit-ready context around terms: ` + "`" + `prism_query` + "`" + `.
-Do not search merely to locate a symbol already named for impact or lookup.
+Do not search merely to locate a symbol already named for impact or lookup,
+unless its contract is external/unresolved or its closure misses the task's wider scope.
 Read-only inspection needs no impact just because a symbol is named.
 
 Workflow rules:
@@ -507,6 +508,10 @@ Workflow rules:
 - Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
   **Relay that set as-is**; do not filter it through grep/sed.
 - Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
+- External/unresolved interface or undersized closure for a wide task?
+  Use batched ` + "`" + `prism_search(scope="text", exhaustive=true)` + "`" + ` for declarations, calls,
+  and interface refs. Inspect signatures/receivers; text matches do not prove implementation.
+  Use file-qualified identities, not guessed type names; report unresolved coverage.
 - After impact, reuse signatures and call expressions for site enumeration;
   do not fetch bodies by default. Follow up for behavior, omitted evidence, ambiguous receivers, stale/incomplete
   scope, or required non-code references. Do not rescan to reproduce the site list.

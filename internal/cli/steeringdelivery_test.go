@@ -14,6 +14,10 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 		`prism_lookup(name=["A","B"])`,
 		"Unknown location:",
 		"Do not search merely to locate a symbol already named",
+		"External/unresolved interface or undersized closure for a wide task?",
+		`prism_search(scope="text", exhaustive=true)`,
+		"text matches do not prove implementation",
+		"not guessed type names",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing direct route: %s", want)

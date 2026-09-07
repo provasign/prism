@@ -844,13 +844,15 @@ func toolDescription(name string) string {
 		// editing…") coincided with haiku opening on prism_search instead of
 		// this tool on both change tasks of the A/B gate (typeorm 2->4 turns,
 		// grafana 5->18). Descriptions are steering; this one earns its bytes.
-		return "Every site that must change when a symbol does. Pass 'Type.method' and get, in " +
+		return "Every indexed site that must change when a resolved symbol does. Pass 'Type.method' and get, in " +
 			"one call: declarations, the full override/implementation family, breaking sibling " +
 			"contracts (supers), all resolved callers, and declaringTypes. Reach for this before " +
 			"a signature change or affected-site enumeration. Includes signatures, test labels, and bounded " +
 			"matching call expressions so those facts do not need separate lookups. Read bodies only " +
 			"for behavior or evidence gaps, not routinely for site enumeration. 'partial' means coverage gaps; " +
-			"follow coverageNote. 'closed' describes indexed scope, not heuristic receiver certainty. 'project-local' " +
+			"follow coverageNote. 'closed' describes indexed scope, not heuristic receiver certainty. An external/unresolved " +
+			"interface has no local family anchor: use one exhaustive text search for candidate declarations, calls, " +
+			"and interface references, then inspect signatures/receivers; do not guess concrete type names. 'project-local' " +
 			"+ overridesExternal = the method implements an external contract whose signature " +
 			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
 	case "prism_missing_implementations":

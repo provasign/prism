@@ -63,9 +63,25 @@ func renderReadAsText(out map[string]any) (string, bool) {
 	return b.String(), true
 }
 
-// renderChangeImpactAsText renders a prism_change_impact result in the same
-// shape the CLI has always printed: grouped sites, one per line.
+// renderChangeImpactAsText preserves the flat layout unless grouping repeated
+// file paths saves bytes both in the text and in its JSON transport envelope.
 func renderChangeImpactAsText(out map[string]any) (string, bool) {
+	flat, ok := renderChangeImpactLayout(out, false)
+	if !ok {
+		return "", false
+	}
+	grouped, ok := renderChangeImpactLayout(out, true)
+	if ok && len(grouped) < len(flat) {
+		flatJSON, _ := json.Marshal(flat)
+		groupedJSON, _ := json.Marshal(grouped)
+		if len(groupedJSON) < len(flatJSON) {
+			return grouped, true
+		}
+	}
+	return flat, true
+}
+
+func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool) {
 	known := map[string]bool{
 		"query": true, "declarations": true, "supers": true, "family": true,
 		"callers": true, "totalSites": true, "declaringTypes": true,
@@ -113,6 +129,7 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 			continue
 		}
 		fmt.Fprintf(&b, "%s (%d):\n", sec.label, len(entries))
+		lastFile := ""
 		for _, e := range entries {
 			m, ok := e.(map[string]any)
 			if !ok {
@@ -129,7 +146,21 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 			if name == nil || name == "" {
 				name = m["name"]
 			}
-			fmt.Fprintf(&b, "  %v  %v:%v", name, m["filePath"], m["line"])
+			evidenceIndent := "    "
+			if groupPaths {
+				file, ok := m["filePath"].(string)
+				if !ok || file == "" || strings.ContainsAny(file, "\r\n") {
+					return "", false
+				}
+				if file != lastFile {
+					fmt.Fprintf(&b, "  %s:\n", file)
+					lastFile = file
+				}
+				fmt.Fprintf(&b, "    %v  line %v", name, m["line"])
+				evidenceIndent = "      "
+			} else {
+				fmt.Fprintf(&b, "  %v  %v:%v", name, m["filePath"], m["line"])
+			}
 			if via, _ := m["via"].(string); via != "" {
 				fmt.Fprintf(&b, "  (via %s)", via)
 			}
@@ -138,17 +169,17 @@ func renderChangeImpactAsText(out map[string]any) (string, bool) {
 			}
 			b.WriteString("\n")
 			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" {
-				fmt.Fprintf(&b, "    %s\n", compactImpactLine(sig))
+				fmt.Fprintf(&b, "%s%s\n", evidenceIndent, compactImpactLine(sig))
 			}
 			for _, raw := range anySlice(m["evidence"]) {
 				evidence, ok := raw.(map[string]any)
 				if !ok || len(evidence) != 2 || evidence["line"] == nil || evidence["text"] == nil {
 					return "", false
 				}
-				fmt.Fprintf(&b, "    %v: %v\n", evidence["line"], evidence["text"])
+				fmt.Fprintf(&b, "%s%v: %v\n", evidenceIndent, evidence["line"], evidence["text"])
 			}
 			if note, _ := m["evidenceNote"].(string); note != "" {
-				fmt.Fprintf(&b, "    // %s\n", note)
+				fmt.Fprintf(&b, "%s// %s\n", evidenceIndent, note)
 			}
 		}
 	}
