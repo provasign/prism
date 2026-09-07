@@ -1,0 +1,81 @@
+shale_version: "0"
+id: fb1a06ab-cd89-49e2-acfa-72188a0c2095-c4
+created_at: 2026-09-07T14:01:14.886838Z
+finalized_at: 2026-09-07T14:18:00.493916Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        t=json.load(open('tasks/grafana-querydata-impact.json'))
+        print(list(t.keys()))
+        print(t.get('prompt','')[:200])
+        "; echo "---"; ~/bin/prism --help 2>&1 | grep -A2 "change-impact"
+      at: 2026-09-07T14:02:26.442855Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        t=json.load(open('tasks/grafana-querydata-impact.json'))
+        print(list(t.keys()))
+        "
+        ~/bin/prism --version
+      at: 2026-09-07T14:02:35.94919Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        t=json.load(open('tasks/grafana-querydata-impact.json'))
+        print('repo=',t.get('repo')); print('workdir=',t.get('workdir')); print('pin=',t.get('pin'))
+        import os
+        d=t.get('workdir') or t.get('repo')
+        print('exists=',os.path.isdir(d))
+        "
+      at: 2026-09-07T14:02:50.176612Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m py_compile impact_oracle.py && python3 impact_oracle.py --prism ~/.cache/prism-research/bin/prism-fdf6201 tasks/grafana-querydata-impact.json tasks/grafana-checkhealth-impact.json tasks/jackson-settable-set.json tasks/typeorm-driver-escape.json 2>&1
+      at: 2026-09-07T14:03:55.404445Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && for b in prism-v0.71.1 prism-fix2 prism-fdf6201; do echo "=== $b ==="; python3 impact_oracle.py --prism ~/.cache/prism-research/bin/$b tasks/grafana-querydata-impact.json tasks/grafana-checkhealth-impact.json 2>&1; done
+      at: 2026-09-07T14:05:04.570373Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json,glob,os
+        files = sorted(glob.glob('runs/ab-gate/grafana-querydata-impact.*.attempt.json'), [REDACTED:env-secret]
+        for f in files:
+            r=json.load(open(f)); sha=(r.get('manifest') or {}).get('binary_sha256','')[:8]
+            print(os.path.basename(f)[:45], sha, 'R=',r.get('recall'),'P=',r.get('precision'), 'tok=',r.get('tokens_request'))
+        "
+      at: 2026-09-07T14:07:11.208767Z
+      classified: other
+    - cmd: git fetch -q --prune origin; git log -1 --format='%h %ci %s' main; git log -1 --format='%h %ci %s' origin/main; git status -sb | head -2
+      at: 2026-09-07T14:07:18.041026Z
+      classified: other
+    - cmd: export GOWORK=off GOFLAGS=-mod=readonly; go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "go test exit=${pipestatus[1]:-$?}"; go build -o ~/.cache/prism-research/bin/prism-17b3443 ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-17b3443 | cut -c1-10
+      at: 2026-09-07T14:08:00.91705Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && for i in 1 2 3 4 5; do python3 impact_oracle.py --prism ~/.cache/prism-research/bin/prism-17b3443 tasks/grafana-querydata-impact.json 2>&1 | head -1; done
+      at: 2026-09-07T14:09:03.452521Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/.cache/prism-research/bin/prism-17b3443 > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ci_inv_17b3443.log 2>&1; echo "CI-INVARIANTS exit=$?"; tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ci_inv_17b3443.log
+        cd harness && python3 impact_oracle.py --prism ~/.cache/prism-research/bin/prism-17b3443 tasks/*.json 2>&1
+      at: 2026-09-07T14:09:22.87506Z
+      classified: other
+    - cmd: pgrep -fl "ci_invariants|impact_oracle" | wc -l; date
+      at: 2026-09-07T14:10:58.949264Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bxlyo8l72.output
+      at: 2026-09-07T14:14:11.332412Z
+      classified: other
+notes:
+    - text: continuation of session fb1a06ab-cd89-49e2-acfa-72188a0c2095 — events captured after its evidence was finalized
+      at: 2026-09-07T14:01:14.886838Z
+redactions: 1
