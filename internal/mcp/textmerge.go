@@ -251,14 +251,7 @@ func (h *Handler) exactHitInventory(ctx context.Context, order []string, byFile 
 			}
 			seen[hit.Line] = true
 			site := map[string]any{"line": hit.Line}
-			var enclosing *grove.SymbolRecord
-			for i := range syms {
-				s := &syms[i]
-				if s.Span.Start <= hit.Line && hit.Line <= s.Span.End &&
-					(enclosing == nil || s.Span.End-s.Span.Start < enclosing.Span.End-enclosing.Span.Start) {
-					enclosing = s
-				}
-			}
+			enclosing := tightestEnclosingSymbol(syms, hit.Line)
 			if enclosing != nil {
 				name := enclosing.QualifiedName
 				if name == "" {
@@ -271,6 +264,18 @@ func (h *Handler) exactHitInventory(ctx context.Context, order []string, byFile 
 		inventory = append(inventory, map[string]any{"file": file, "sites": sites})
 	}
 	return inventory
+}
+
+func tightestEnclosingSymbol(syms []grove.SymbolRecord, line int) *grove.SymbolRecord {
+	var enclosing *grove.SymbolRecord
+	for i := range syms {
+		s := &syms[i]
+		if s.Span.Start <= line && line <= s.Span.End &&
+			(enclosing == nil || s.Span.End-s.Span.Start < enclosing.Span.End-enclosing.Span.Start) {
+			enclosing = s
+		}
+	}
+	return enclosing
 }
 
 // textFileCached reports whether this file's CURRENT content was already

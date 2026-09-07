@@ -2692,7 +2692,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// the enclosing declaration, so name the nested scope that
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
-			if annotate && (!wideImpact || r.HasHeuristicRefs) {
+			if annotate && !wideImpact {
 				addImpactCallEvidence(entry, s, targetLeaf, &evidenceBudget)
 			}
 			if annotate {
@@ -2726,8 +2726,8 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if inferenceNote != "" {
 		out["methodFamilyNote"] = inferenceNote
 	}
-	if wideImpact && !r.HasHeuristicRefs {
-		out["evidenceNote"] = "Large resolved closure delivered as compact file:line identities; repeated signatures and call expressions are omitted. Site identities are complete."
+	if wideImpact {
+		out["evidenceNote"] = "Large closure delivered as compact file:line identities; repeated signatures and call expressions are omitted. Site identities are complete; hasHeuristicRefs still marks set-level receiver uncertainty when present."
 	} else if len(r.Callers) > 0 {
 		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
 	}

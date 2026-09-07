@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/textsearch"
 )
 
 // inferExternalMethodImpact turns a wide same-name ambiguity into one
@@ -107,7 +108,38 @@ func (h *Handler) inferExternalMethodImpact(ctx context.Context, query, signatur
 		appendUnique(&result.DeclaringTypes, impact.DeclaringTypes)
 		result.HasHeuristicRefs = result.HasHeuristicRefs || impact.HasHeuristicRefs
 	}
-	note := fmt.Sprintf("inferred one external-interface method family from %d local %s implementations with compatible parameter shape %q; callers are the union of file-scoped resolved impacts", len(selected), leaf, shape)
+
+	// Resolved call edges cannot see calls through an external interface whose
+	// declaration is absent from the index. Complete the family with production
+	// enclosing symbols from one exhaustive call-shaped text pass. This is the
+	// five-site gap in grafana QueryData (QueryMetricsV2, plugin.QueryData,
+	// handlePreparedQuery, executeConcurrentQueries, handleQuerySingleDatasource).
+	textResult := textsearch.Search(ctx, h.Root, leaf+"(", textsearch.Options{
+		MaxHits: 100000, Timeout: textSearchTimeout, Exhaustive: true,
+	})
+	fileSymbols := map[string][]grove.SymbolRecord{}
+	textAdded := 0
+	for _, hit := range textResult.Hits {
+		if isVerifiedTestCaller("/" + hit.File) {
+			continue
+		}
+		syms, ok := fileSymbols[hit.File]
+		if !ok {
+			syms, _ = h.Grove.FileSymbols(ctx, hit.File)
+			fileSymbols[hit.File] = syms
+		}
+		enclosing := tightestEnclosingSymbol(syms, hit.Line)
+		if enclosing == nil || seen[symbolSiteKey(*enclosing)] {
+			continue
+		}
+		seen[symbolSiteKey(*enclosing)] = true
+		result.Callers = append(result.Callers, *enclosing)
+		textAdded++
+	}
+	if textAdded > 0 {
+		result.HasHeuristicRefs = true
+	}
+	note := fmt.Sprintf("inferred one external-interface method family from %d local %s implementations with compatible parameter shape %q; callers union file-scoped resolved impacts plus %d production enclosing symbols from one exhaustive call-shaped text pass", len(selected), leaf, shape, textAdded)
 	return result, note, nil
 }
 
