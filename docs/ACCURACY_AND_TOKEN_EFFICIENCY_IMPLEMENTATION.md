@@ -686,10 +686,69 @@ to the single bare-method family operation, followed by repeated trials. A
 single release-gate pass establishes a regression-gate result, not statistical
 reliability across model executions.
 
-The Grafana QueryData oracle also undercounts valid production sites. Its 51
-entries omit 14 middleware types that embed `backend.BaseHandler` and implement
-the exact external `QueryData` contract, plus at least one simulation handler
-and several direct production callers. The published oracle was left unchanged
-for this comparison so earlier baseline measurements remained comparable. It
-must be independently corrected before using its precision score as a product
-quality claim.
+The 51-site Grafana QueryData oracle used for this historical comparison was
+later found to undercount valid production sites. It omitted 14 middleware
+types that embed `backend.BaseHandler` and implement the exact external
+`QueryData` contract, plus a simulation handler, a production fake, and direct
+production callers. Section 23 records the independent correction and fresh
+scores; the table above remains unchanged so its released-binary comparison is
+reproducible.
+
+## 23. Corrected Oracles and Repeated Reliability Checks
+
+The Grafana oracles were audited against source rather than expanded from
+Prism's result wholesale. QueryData grew from 51 to 70 production sites: 14
+middleware implementations with the exact external SDK signature, the
+`SimulationEngine` implementation, a production fake, and three direct handler
+callers. Four same-name results with different contracts remain excluded.
+CheckHealth grew from 41 to 59 sites: 12 exact middleware implementations and
+six direct callers. Its proto transport method and two unrelated health-probe
+callers remain excluded.
+
+The research harness now runs the one-call engine ceiling through
+`impact_oracle.py`. It archives the task's pinned commit into an isolated Git
+repository, checks indexing failures, uses the same scorer as the agent gate,
+records recall/precision/F1 and fidelity flags, enforces a 65,536-byte response
+ceiling, and exits nonzero when a threshold fails. The former
+`engine_ceiling.py` command is a compatibility alias. Tests cover explicit
+metadata anchors, Java/Python query parsing, deduplication, flag preservation,
+all gate thresholds, pinned-snapshot isolation, and index failures.
+
+One deterministic call on the installed main binary passed both corrected
+Grafana tasks:
+
+| Task | GT | Recall | Precision | F1 | Response bytes | Completeness |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| grafana-querydata-impact | 70 | 1.000 | 0.946 | 0.972 | 30,175 | project-local |
+| grafana-checkhealth-impact | 59 | 1.000 | 0.952 | 0.975 | 38,473 | project-local |
+
+Three fresh Sonnet attempts per task then tested whether agents actually chose
+and relayed that operation. Every attempt used a distinct Claude session, a
+distinct archived snapshot, and a distinct project transcript directory. No
+session was resumed. Static user configuration and provider prompt caching were
+shared; cached input does not contain another trial's answer or tool results.
+
+| Task | Recall, all trials | Precision range | Mean turns | Request-token range | Mean cost |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| grafana-querydata-impact | 1.000 | 0.933–0.959 | 4.0 | 70,223–128,006 | $0.172 |
+| grafana-checkhealth-impact | 1.000 | 0.983 | 5.0 | 106,854–187,624 | $0.229 |
+
+All six runs issued exactly one `prism_change_impact` call; one CheckHealth run
+performed a symbol search first. The earlier 0.882/0.745/0.196 QueryData recall
+failures did not reproduce on current main. Agents still spent extra turns
+validating the result's explicitly heuristic same-name callers, which explains
+much of the remaining token variance.
+
+The apparent narrow JSONNode regression also changed under a fresh paired
+control. Across three Sonnet pairs, native grep/read found 5 of 8 required sites
+in every run (recall 0.625), while Prism found all 8 with precision 1.000 in
+every run. Native averaged 655,998 request tokens, 30 turns, and $0.404; Prism
+averaged 215,463 request tokens, 8.3 turns, and $0.205. Prism therefore used 67%
+fewer request tokens and cost 49% less while recovering the missing sites.
+
+No task-specific product filter was added. `JsonNode.get(int)` still exposes
+three production same-name/other-overload caller candidates with call evidence;
+agents validate and reject them. Removing those candidates safely requires a
+general receiver and overload-resolution improvement with cross-language
+fixtures. The current paired evidence does not justify a brittle optimization,
+because Prism already wins the narrow task on both correctness and mean cost.

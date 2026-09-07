@@ -38,21 +38,25 @@ along with middleware wrappers and callers spread across the repository. This
 is a difficult case for text-only discovery: there is no local interface
 declaration from which an agent can traverse the whole family.
 
-On the published 51-site production oracle, a successful current-Prism Sonnet
-run reached every scored site in four turns. The best available no-Prism
-comparison is a historical three-run Sonnet study on the same task and corpus:
+An independent source audit expanded the production oracle from 51 to 70 sites:
+the original set omitted 14 exact middleware implementations, another external
+interface implementation, a production fake, and three direct handler callers.
+Three fresh current-Prism Sonnet runs reached all 70 sites. The best available
+no-Prism comparison remains a historical three-run study scored against the
+original 51-site subset:
 
 | Sonnet workflow | Recall | Precision | Input tokens | Estimated cost | Turns |
 |---|---:|---:|---:|---:|---:|
-| Native search/read tools, 3-run mean | 0.967 | not recorded | 1.184M | $1.121 | 40.3 |
-| **Current Prism, successful gate run** | **1.000** | **0.680** | **98,461** | **$0.153** | **4** |
-| Deterministic Prism engine call, no model | 1.000 | 0.689 | 30,175 response bytes | $0 | 0 |
+| Native search/read tools, historical 3-run mean (51-site subset) | 0.967 | not recorded | 1.184M | $1.121 | 40.3 |
+| **Current Prism, fresh 3-run mean (70-site oracle)** | **1.000** | **0.950** | **99,534** | **$0.172** | **4.0** |
+| Deterministic Prism engine call (70-site oracle), no model | 1.000 | 0.946 | 30,175 response bytes | $0 | 0 |
 
-Relative to that historical native mean, the successful Prism agent run used
-**91.7% fewer input tokens, cost 86.4% less, and took 90% fewer turns**, while
-raising measured recall from 0.967 to 1.000. The deterministic row is an engine
-ceiling: it proves the graph can return the set without model exploration; it
-does not prove that every agent will choose or relay that call correctly.
+Relative to that historical native mean, the current Prism mean used **91.6%
+fewer request tokens, cost 84.7% less, and took 90% fewer turns**. The accuracy
+columns use different oracle versions, so their difference is not a paired
+accuracy estimate. The deterministic row is an engine ceiling: it proves the
+graph can return the set without model exploration; it does not prove that
+every agent will choose or relay that call correctly.
 
 The broader nine-task Sonnet result points in the same direction:
 
@@ -61,11 +65,11 @@ The broader nine-task Sonnet result points in the same direction:
 | Historical no-Prism, mean of 3 panels | 0.877 | 12.97M | $14.41 |
 | **Current Prism release gate** | **0.998** | **720,278** | **$1.22** |
 
-These are product-showcase numbers, not a fresh paired native-control study.
-The native panels came from an older harness/model period and used legacy input
-accounting; their precision was not recorded. Current-Prism routing also varies
-between model executions, and the 51-site QueryData oracle undercounts valid
-production middleware and callers, making its precision provisional. See the
+These are product-showcase numbers, not a fresh paired QueryData native-control
+study. The native panels came from an older harness/model period and used legacy
+input accounting; their precision was not recorded. In the fresh current-Prism
+sample, all three QueryData runs used one `change_impact` call and achieved full
+recall, while request tokens still varied from 70,223 to 128,006. See the
 [current gate, per-task results, and limitations](docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md#22-main-release-gate-accuracy-and-aggregate-efficiency-pass)
 and the [historical native records](https://github.com/provasign/research/tree/main/harness/runs/bench-matrix).
 
