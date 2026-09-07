@@ -1,0 +1,81 @@
+shale_version: "0"
+id: fb1a06ab-cd89-49e2-acfa-72188a0c2095-c6
+created_at: 2026-09-07T17:32:49.503941Z
+finalized_at: 2026-09-07T17:44:13.538246Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git log -1 --format='%h %s' 39085c6; git tag --sort=-v:refname | head -3; git tag -a v0.72.0 39085c6 -m "v0.72.0: change-impact ambiguity routing and external-interface family resolution
+
+        Fixes a real regression found via the Sonnet ab_gate: change_impact on a
+        bare method name ambiguous across many receivers (e.g. an interface with
+        no local declaration, only implementors) invited the agent to loop over
+        candidates one at a time and still miss sites reachable only by text
+        search. Past a candidate-count threshold, the engine now resolves one
+        inferred external-interface family in a single call instead of inviting
+        per-candidate guessing; exhaustive text search results list every exact
+        file/line/symbol instead of collapsing into directory summaries past the
+        flat cap; large impact payloads omit redundant signatures/call excerpts
+        for exact (non-heuristic) edges.
+
+        Verified on this exact commit before tagging:
+        - go test ./... green; ci_invariants (engine ceiling gate): all 13
+          invariants held.
+        - Deterministic change-impact oracle: 5/5 identical runs, recall 1.0 on
+          the regressed task (grafana-querydata-impact), byte-identical payload
+          each time — the engine fix is reproducible, not agent-noise-dependent.
+        - Full 9-task Sonnet ab_gate (fresh, no cache) vs v0.71.1: PASS. Mean
+          recall delta +0.027, mean precision delta +0.064, request tokens -45%,
+          aggregate billed cost 0.71x baseline — the first run this project has
+          measured where the candidate is cheaper than baseline in aggregate,
+          not just within the not-broken threshold.
+        - Native-tools comparison (no prism at all) on the same 9 tasks, one
+          trial each: mean recall delta +0.315, mean precision delta +0.185,
+          aggregate cost 0.40x. Best result yet against real native tools;
+          single-trial, not yet repeated for noise.
+
+        Known gaps, not fixed in this release: the same ambiguous-impact failure
+        shape (bare name, no local interface declaration to anchor a family
+        query) still reproduces on Django (quote_name, get_connection_params,
+        adapt_datetimefield_value), commons-lang (appendDetail), and gin
+        (CloseNotify) per a deterministic oracle sweep — this release's fix
+        generalizes the mechanism but has only been validated end-to-end on the
+        Grafana task class it was built for. The original wide-bed finding
+        (prism not shown cheaper at completing edits, only at locating sites)
+        was not re-tested against this build.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git push -q origin v0.72.0 && echo TAG-PUSHED && git log --oneline -1 v0.72.0
+      at: 2026-09-07T17:32:49.503941Z
+      classified: test
+    - cmd: gh run list --workflow=release.yml --limit 2 2>/dev/null | cat
+      at: 2026-09-07T17:32:52.329619Z
+      classified: other
+    - cmd: gh run watch 34148053685 --exit-status >/dev/null 2>&1; echo "RELEASE-RUN exit=$?"; gh run view 34148053685 --json conclusion,status -q '"\(.status) \(.conclusion)"'; gh release view v0.72.0 --json tagName,assets -q '"\(.tagName) assets=\(.assets|length)"' 2>/dev/null
+      at: 2026-09-07T17:32:58.400112Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b8nh5i45f.output
+      at: 2026-09-07T17:35:33.164288Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' 2>/dev/null | base64 -d 2>/dev/null | grep -E "version|url|tag" | head -6; echo "---"; gh run list -R provasign/homebrew-shale --limit 3 2>/dev/null | cat
+      at: 2026-09-07T17:36:26.084841Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      at: 2026-09-07T17:36:33.434844Z
+      classified: other
+    - cmd: gh run watch 34148313688 --exit-status -R provasign/homebrew-shale >/dev/null 2>&1; echo "REFRESH exit=$?"; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 -d | grep 'version "' | head -1
+      at: 2026-09-07T17:36:38.050904Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bpa6frrss.output
+      at: 2026-09-07T17:36:50.468853Z
+      classified: other
+notes:
+    - text: continuation of session fb1a06ab-cd89-49e2-acfa-72188a0c2095 — events captured after its evidence was finalized
+      at: 2026-09-07T17:32:49.503941Z
+redactions: 0

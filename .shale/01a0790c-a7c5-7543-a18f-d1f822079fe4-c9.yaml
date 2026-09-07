@@ -1,0 +1,251 @@
+shale_version: "0"
+id: 01a0790c-a7c5-7543-a18f-d1f822079fe4-c9
+created_at: 2026-09-07T17:38:29.096278Z
+finalized_at: 2026-09-07T17:44:13.538246Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T17:41:33.268115Z
+    - path: HANDOFF.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-07T17:42:17.891258Z
+commands:
+    - cmd: prism search 'prism init' --scope text --path README.md --context 3 --format text
+      at: 2026-09-07T17:38:39.472788Z
+      classified: other
+    - cmd: prism version
+      at: 2026-09-07T17:38:47.114346Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:38:47.135881Z
+      classified: other
+    - cmd: gh release view --repo provasign/prism --json tagName,isLatest,publishedAt,url
+      at: 2026-09-07T17:38:47.14679Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:38:47.177483Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:38:47.179016Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:38:47.178319Z
+      classified: other
+    - cmd: command -v prism
+      at: 2026-09-07T17:38:55.342289Z
+      classified: other
+    - cmd: git diff -- .cursor/mcp.json .mcp.json .windsurf/mcp.json
+      at: 2026-09-07T17:38:55.360657Z
+      classified: other
+    - cmd: gh release view --repo provasign/prism --json tagName,publishedAt,url,isPrerelease,isDraft
+      at: 2026-09-07T17:38:55.72076Z
+      classified: other
+    - cmd: brew info provasign/shale/prism --json=v2
+      at: 2026-09-07T17:38:55.989073Z
+      classified: other
+    - cmd: curl -fsSL -o /tmp/prism-v0720-install.sh https://raw.githubusercontent.com/provasign/prism/main/install.sh
+      at: 2026-09-07T17:39:04.014879Z
+      classified: other
+    - cmd: env VERSION=v0.72.0 INSTALL_DIR=/Users/tapabratapal/bin bash /tmp/prism-v0720-install.sh
+      at: 2026-09-07T17:39:11.037352Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism version
+      at: 2026-09-07T17:39:15.411681Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism init .
+      at: 2026-09-07T17:39:20.032556Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism init .
+      at: 2026-09-07T17:39:24.972146Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism init .
+      at: 2026-09-07T17:39:39.725737Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism init .
+      at: 2026-09-07T17:39:53.197296Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism init .
+      at: 2026-09-07T17:40:05.726101Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:40:16.090729Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:40:16.096812Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:40:16.10634Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T17:40:16.11881Z
+      classified: other
+    - cmd: gh release view v0.72.0 --repo provasign/prism --json tagName,publishedAt,body,url
+      at: 2026-09-07T17:40:16.374007Z
+      classified: other
+    - cmd: git diff -- .clinerules .cursor/mcp.json .cursorrules .devin/instructions.md .github/copilot-instructions.md .kiro/steering/prism.md .mcp.json .windsurf/mcp.json .windsurfrules AGENTS.md CLAUDE.md GEMINI.md
+      at: 2026-09-07T17:40:32.789648Z
+      classified: other
+    - cmd: git diff -- .claude/settings.json
+      at: 2026-09-07T17:40:32.80992Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        for p in sorted(Path('.claude').rglob('*')):
+         if p.is_file(): print(f'--- {p} ---\n{p.read_text()}')
+        PY
+      at: 2026-09-07T17:40:32.83755Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        for n in ['prism.yaml','AGENTS.md','CLAUDE.md','GEMINI.md','.clinerules','.cursorrules','.windsurfrules','.github/copilot-instructions.md','.devin/instructions.md','.kiro/steering/prism.md','.claude/settings.json']:
+         p=Path(n)
+         if p.exists(): print(f'--- {n} ---\n{p.read_text()}')
+        PY
+      at: 2026-09-07T17:40:32.837595Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism query "understand current uncommitted graph context integration" --terms GraphContext --include graph --format text
+      at: 2026-09-07T17:40:45.146821Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism config .
+      at: 2026-09-07T17:40:52.674434Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism config .
+      at: 2026-09-07T17:40:52.693627Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism config .
+      at: 2026-09-07T17:40:52.690479Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism config .
+      at: 2026-09-07T17:40:52.700919Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-09-07T17:41:05.61061Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-09-07T17:41:05.621033Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-09-07T17:41:05.621453Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-09-07T17:41:05.641189Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-09-07T17:41:05.645657Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-09-07T17:41:05.646634Z
+      classified: other
+    - cmd: git diff -- go.mod README.md internal/agent/graphcontext.go internal/agent/graphcontext_test.go
+      at: 2026-09-07T17:41:14.295866Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T17:41:14.294976Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T17:41:14.294873Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T17:41:14.309796Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T17:41:14.317472Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T17:42:34.677207Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T17:42:34.701445Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T17:42:34.717989Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T17:42:34.728309Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify . --base HEAD --format text
+      at: 2026-09-07T17:42:35.152951Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify . --base HEAD --format text
+      at: 2026-09-07T17:42:35.39634Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify . --base HEAD --format text
+      at: 2026-09-07T17:42:35.577825Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify . --base HEAD --format text
+      at: 2026-09-07T17:42:35.972258Z
+      classified: other
+    - cmd: git status --short --untracked-files=all
+      at: 2026-09-07T17:42:45.28332Z
+      classified: other
+    - cmd: git status --short --untracked-files=all
+      at: 2026-09-07T17:42:45.309469Z
+      classified: other
+    - cmd: git status --short --untracked-files=all
+      at: 2026-09-07T17:42:45.306208Z
+      classified: other
+    - cmd: git status --short --untracked-files=all
+      at: 2026-09-07T17:42:45.317565Z
+      classified: other
+    - cmd: git status --short --untracked-files=all
+      at: 2026-09-07T17:42:45.31537Z
+      classified: other
+    - cmd: git add .clinerules .cursor/mcp.json .cursorrules .devin/instructions.md .github/copilot-instructions.md .kiro/steering/prism.md .mcp.json .windsurf/mcp.json .windsurfrules AGENTS.md CLAUDE.md GEMINI.md README.md HANDOFF.md
+      at: 2026-09-07T17:42:53.97859Z
+      classified: other
+    - cmd: git diff --cached --check && git diff --cached --name-status
+      at: 2026-09-07T17:42:59.078235Z
+      classified: other
+    - cmd: 'git commit -m "docs: refresh Prism setup and research handoff"'
+      at: 2026-09-07T17:43:03.675063Z
+      classified: other
+    - cmd: git add .claude/settings.json
+      at: 2026-09-07T17:43:08.61694Z
+      classified: other
+    - cmd: git diff --cached --check && git diff --cached --name-status
+      at: 2026-09-07T17:43:14.900196Z
+      classified: other
+    - cmd: 'git commit -m "chore: refresh Prism project setup"'
+      at: 2026-09-07T17:43:21.486224Z
+      classified: other
+    - cmd: git add .claude/settings.json .clinerules .cursorrules .devin/instructions.md .github/copilot-instructions.md .kiro/steering/prism.md .windsurfrules AGENTS.md CLAUDE.md GEMINI.md prism.yaml
+      at: 2026-09-07T17:43:28.670665Z
+      classified: other
+    - cmd: git diff --cached --check && git diff --cached --name-status
+      at: 2026-09-07T17:43:34.451077Z
+      classified: other
+    - cmd: 'git commit -m "chore: initialize Prism project setup"'
+      at: 2026-09-07T17:43:41.100542Z
+      classified: other
+    - cmd: git add .claude/settings.json
+      at: 2026-09-07T17:43:44.489844Z
+      classified: other
+    - cmd: git diff --cached --check && git diff --cached --name-status
+      at: 2026-09-07T17:43:49.812671Z
+      classified: other
+    - cmd: 'git commit -m "chore: refresh Prism project setup"'
+      at: 2026-09-07T17:43:55.588416Z
+      classified: other
+    - cmd: git add prism.md && git diff --cached --check && git diff --cached --name-status
+      at: 2026-09-07T17:44:01.810917Z
+      classified: other
+    - cmd: 'git commit -m "docs: update Prism release pin"'
+      at: 2026-09-07T17:44:06.315347Z
+      classified: other
+notes:
+    - text: continuation of session 01a0790c-a7c5-7543-a18f-d1f822079fe4 — events captured after its evidence was finalized
+      at: 2026-09-07T17:38:29.096278Z
+redactions: 0
