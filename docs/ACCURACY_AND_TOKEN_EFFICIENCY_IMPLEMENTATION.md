@@ -2,11 +2,12 @@
 
 Date: 2026-09-06
 
-Status: Product changes are committed on `cand-search-context-clean`; not released.
-The earlier milestones below are a chronological record. Their references to
-uncommitted work, original branches, and temporary paths describe that stage,
-not the current integration state. See [the separation record](accuracy-efficiency-candidate/README.md).
-The proposal's product-level accuracy and cost targets have NOT been demonstrated.
+Status: Product changes are committed on `main`. A nine-cell Sonnet release
+gate passed with higher mean recall and precision and 34% lower aggregate
+estimated model cost than released Prism v0.69.2. The earlier milestones below
+are a chronological record; references to candidate branches and uncommitted
+work describe those stages, not the current integration state. See section 22
+for the current result and its limits.
 
 Companion: [original proposal](ACCURACY_AND_TOKEN_EFFICIENCY_PROPOSAL.md).
 
@@ -630,3 +631,65 @@ pushed but untagged; Prism still pins v0.43.1. The next release decision must
 first integrate a tagged Grove build, then rerun the frozen autonomous
 task-depth/cost panel rather than infer token savings from engine inventory.
 See the [cross-package replay and limits](accuracy-efficiency-candidate/go-interface-cross-package-2026-09-06/REPORT.md).
+
+## 22. Main Release Gate: Accuracy And Aggregate Efficiency Pass
+
+The product changes are now on `main` through `fdf6201`. The final behavior
+adds complete exact identities to exhaustive text search, synthesizes a local
+method family for wide Go methods implementing an external interface, unions
+production call-shaped text sites that cannot be reached through that absent
+interface declaration, and compacts impacts of at least 100 sites by omitting
+repeated signatures and call expressions. The full Go suite passes, and
+`prism verify --base HEAD` reports no missed diff sites.
+
+A nine-task Sonnet gate compared released Prism v0.69.2 with the candidate.
+Both arms used the same pinned corpora, task prompts, scorer, CLI version, and
+invocation accounting. Seventeen cells were measured fresh; the QueryData
+candidate reused the same candidate-binary measurement from an earlier
+invocation. Cached reuse incurred no new spend but retained that measurement's
+actual tokens and cost in the comparison.
+
+| Task | Baseline R / P / request tokens / cost | Candidate R / P / request tokens / cost |
+| --- | --- | --- |
+| jackson-jsonnode-get | 1.000 / 0.727 / 52,706 / $0.0624 | 1.000 / 1.000 / 156,306 / $0.1787 |
+| jackson-settable-set | 1.000 / 1.000 / 52,638 / $0.0607 | 1.000 / 1.000 / 52,768 / $0.0619 |
+| typeorm-driver-escape | 1.000 / 0.974 / 51,510 / $0.0599 | 1.000 / 0.974 / 54,119 / $0.0687 |
+| django-quotename | 1.000 / 0.865 / 51,435 / $0.0592 | 1.000 / 0.865 / 54,318 / $0.0700 |
+| jackson-writetypeprefix | 0.974 / 1.000 / 53,660 / $0.0740 | 1.000 / 1.000 / 53,634 / $0.0772 |
+| guava-forwarding-delegate | 0.984 / 0.950 / 100,148 / $0.2540 | 0.984 / 0.950 / 89,388 / $0.2298 |
+| jackson-serialize | 1.000 / 0.864 / 89,204 / $0.2015 | 1.000 / 0.864 / 89,648 / $0.2008 |
+| grafana-checkhealth-impact | 1.000 / 0.661 / 614,258 / $0.4480 | 1.000 / 0.683 / 71,636 / $0.1757 |
+| grafana-querydata-impact | 1.000 / 0.680 / 999,808 / $0.6257 | 1.000 / 0.680 / 98,461 / $0.1527 |
+
+Across the selected measurements, mean recall changed by +0.003 and mean
+precision by +0.033. Request tokens fell 65%, and aggregate estimated model
+cost fell from $1.85 to $1.22, a candidate/baseline ratio of 0.66. The gate's
+`--require-cheaper` criterion passed. Invocation record:
+`research/harness/runs/ab-gate/invocations/9a0b008482814c9ba071381cf9e04292.json`.
+
+The improvement is concentrated in the wide tasks. CheckHealth used 88% fewer
+request tokens and QueryData used 90% fewer; Guava retained the same accuracy
+with 11% fewer request tokens. Three narrow tasks remained more expensive.
+JSONNode was the largest narrow regression because the inferred same-name
+result mixed `get(int)` and `get(String)` evidence, and the agent spent lookup
+turns filtering it. Two attempted local-anchor mitigations were rejected after
+paid controls: one failed to match capped/package-qualified candidates, and a
+stronger retry reduced JSONNode precision to 0.500 and coincided with unstable
+QueryData routing. Neither experiment remains in the tree.
+
+QueryData routing is still probabilistic. The passing measurement used one
+wide `prism_change_impact` call and achieved full recall in four turns. Later
+diagnostic runs sometimes began with symbol search, issued overlapping impacts
+for concrete receivers, and reproduced recall of 0.882, 0.745, and 0.196. The
+next product target is an in-band redirect from a wide method-signature search
+to the single bare-method family operation, followed by repeated trials. A
+single release-gate pass establishes a regression-gate result, not statistical
+reliability across model executions.
+
+The Grafana QueryData oracle also undercounts valid production sites. Its 51
+entries omit 14 middleware types that embed `backend.BaseHandler` and implement
+the exact external `QueryData` contract, plus at least one simulation handler
+and several direct production callers. The published oracle was left unchanged
+for this comparison so earlier baseline measurements remained comparable. It
+must be independently corrected before using its precision score as a product
+quality claim.
