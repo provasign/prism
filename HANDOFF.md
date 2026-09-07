@@ -37,6 +37,18 @@ All completed work is on `main` and pushed. The documentation cleanup landed as:
 | Research | `3d0f882` | Made current results canonical and removed superseded study plans |
 | provasign.github.io | `d9ffb05` | Refreshed product and benchmark pages |
 
+The `v0.72.0` project setup was then committed and pushed on `main`:
+
+| Repository | Commit | Setup change |
+|---|---|---|
+| Prism | `9b944e2` | Updated generated steering and MCP paths; added this handoff; updated the release pin |
+| Prism | `f0cf95b` | Shale session evidence follow-up |
+| Grove | `41ac4664` | Committed the current Claude MCP permission file and removed legacy search denial |
+| astkit | `d3c9b7f` | Added generated Prism project configuration and steering |
+| astkit | `3163ed8` | Ignored the local `.grove/` index |
+| Mason | `ebfc5b7` | Removed legacy Claude search denial while preserving the existing graph-orientation work |
+| provasign.github.io | `4158a34` | Updated the public Prism release pin to `v0.72.0` |
+
 The public Pages build passed and the current material is live at:
 
 - https://provasign.dev/prism/
