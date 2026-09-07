@@ -1,0 +1,77 @@
+shale_version: "0"
+id: fb1a06ab-cd89-49e2-acfa-72188a0c2095-c5
+created_at: 2026-09-07T15:19:10.072193Z
+finalized_at: 2026-09-07T16:56:30.729125Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git fetch -q --prune origin; git log -1 --format='%h %ci %s' main; git log -1 --format='%h %ci %s' origin/main; git status --short | grep -v "^ M \.\|^ M [A-Z]"; echo "--- diff internal/ since 57450c0:"; git diff --stat 57450c0..main -- internal 2>/dev/null | tail -10
+      at: 2026-09-07T15:19:22.61807Z
+      classified: other
+    - cmd: git log --oneline 57450c0..main | cat
+      at: 2026-09-07T15:19:26.195316Z
+      classified: other
+    - cmd: export GOWORK=off GOFLAGS=-mod=readonly; go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "go test exit=${pipestatus[1]:-$?}"; go build -o ~/.cache/prism-research/bin/prism-release2 ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-release2 | cut -c1-10
+      at: 2026-09-07T15:19:36.791688Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 ab_gate.py --baseline ~/.cache/prism-research/bin/prism-v0.71.1 --candidate ~/.cache/prism-research/bin/prism-release2 --model sonnet --fresh > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_final2.log 2>&1; echo "AB-GATE(final2) exit=$?"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_final2.log
+      at: 2026-09-07T15:19:38.350024Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bo68tkzy2.output 2>/dev/null; echo "--- alive:"; pgrep -fl "ab_gate|claude -p" | wc -l; cd /Users/tapabratapal/Projects/provasign/research/harness && ls -lt runs/ab-gate/*.attempt.json 2>/dev/null | head -3
+      at: 2026-09-07T15:41:50.973841Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bo68tkzy2.output
+      at: 2026-09-07T15:43:56.479931Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "^ARMS\|\"baseline\":\|\"prism\":\|\"allowed\":\|def run_arm\|def arm_for" ab_agentic_mcp.py | head -20
+      at: 2026-09-07T15:45:19.740456Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.')
+        import ab_agentic_mcp as bed
+        print('baseline arm:', bed.ARMS['baseline'])
+        "
+      at: 2026-09-07T15:45:46.7144Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/native_compare.py 2>&1
+      at: 2026-09-07T15:45:53.693251Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json,glob
+        hits=[]
+        for f in glob.glob('runs/ab-gate/*.json') + glob.glob('runs/ab-gate/*.attempt.json'):
+            try: r=json.load(open(f))
+            except Exception: continue
+            if r.get('arm')=='baseline':
+                hits.append((f, r.get('task'), r.get('recall'), r.get('precision'), r.get('tokens_request') or r.get('tokens_in'), r.get('cost_usd')))
+        print(len(hits),'true-native (arm==baseline) records found')
+        for h in hits[:20]: print(h)
+        "
+      at: 2026-09-07T15:47:07.274114Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate -iname "*typeorm*task*.json" -o -iname "*jackson-settable*task*.json" 2>/dev/null
+      at: 2026-09-07T15:47:29.833411Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate -maxdepth 2 -iname "task.json" 2>/dev/null; echo "---"; find /Users/tapabratapal/Projects/provasign/prism/docs/accuracy-efficiency-candidate -maxdepth 2 -iname "*.task.json" 2>/dev/null
+      at: 2026-09-07T15:47:34.905113Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -maxdepth 3 -iname "*task*.json" 2>/dev/null | grep -i "typeorm\|jackson-settable" | head -10
+      at: 2026-09-07T15:47:39.429617Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bozmo6jqg.output 2>/dev/null; pgrep -fl "native_compare|claude -p" | wc -l
+      at: 2026-09-07T15:47:48.799896Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bozmo6jqg.output
+      at: 2026-09-07T16:08:44.270389Z
+      classified: other
+notes:
+    - text: continuation of session fb1a06ab-cd89-49e2-acfa-72188a0c2095 — events captured after its evidence was finalized
+      at: 2026-09-07T15:19:10.072193Z
+redactions: 0
