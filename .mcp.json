@@ -7,11 +7,10 @@
       ]
     },
     "prism": {
-      "command": "/opt/homebrew/bin/prism",
+      "command": "/Users/tapabratapal/bin/prism",
       "args": [
         "mcp"
-      ],
-      "alwaysLoad": true
+      ]
     }
   }
 }

@@ -7,27 +7,46 @@ changes. Before editing or committing, confirm the active branch is `main`.
 
 ## Prism — context delivery
 
-Prism indexes this repo's call and type graph. grep finds the same lines —
-prism tells you which of them matter (file-level precision 0.51 -> 0.91 on
-change tasks) and answers in one call where search-then-read takes several.
+Prism indexes this repo's call and type graph. Use its tools for code discovery;
+their schemas describe parameters and coverage limits.
 
-Route by the question. One call, and treat its result as final:
+**Before your first tool call**, run this once to load Prism's tools (they
+start deferred, not absent):
 
-| Question | Call |
-|---|---|
-| where is X? | `prism_search(query="X")` — searches symbol names AND raw text. Several names? You MUST batch: `query=["X","Y"]` — one search per name wastes a turn each. Know where to look: `path=`, `glob=`, `files_only=true` |
-| a literal string, message or config key | `prism_search(query="...", scope="text")` — pure grep, cheapest. Use it for TEXT; leave the default for code |
-| EVERY site of X (rewrite them all, count them) | `prism_search(query="X", exhaustive=true)` — results are capped at 25 by default and a capped answer to a completeness question looks complete. Say `exhaustive`; add `files_only=true` to keep it cheap |
-| X, plus the lines around it | `prism_search(query="X", context=N)` — one call instead of search-then-prism_read |
-| read one function, or one file | `prism_lookup(name="pkg.Func")` / `prism_read` |
-| give me the code for X, ready to edit | `prism_query(task="<label>", terms=["X"])` — keys on `terms`; the wording changes nothing |
-| who breaks if I change X? | `prism_change_impact(query="Type.method")` |
-| is my diff complete? | `prism_verify` |
+    ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
 
-Before editing an existing symbol, run `prism_change_impact`: declarations,
-every override and implementation, all resolved callers, type-resolved in one
-call. **Relay that set as-is** — re-verifying or filtering it through
-grep/sed/scripts measurably drops real sites.
+Make your first code-discovery call the Prism tool that answers the question:
+- Affected sites or signature change: `prism_change_impact` directly.
+- Known methods, need their behavior: `prism_lookup(name=["A","B"])` for whole bodies.
+- Unknown location: `prism_search`; need edit-ready context around terms: `prism_query`.
+Do not search merely to locate a symbol already named for impact or lookup,
+unless its contract is external/unresolved or its closure misses the task's wider scope.
+Read-only inspection needs no impact just because a symbol is named.
+
+Workflow rules:
+
+- Before editing an existing symbol: `prism_change_impact(query="Type.method")`.
+  **Relay that set as-is**; do not filter it through grep/sed.
+- Before declaring a multi-site change done: `prism_verify`.
+- External/unresolved interface or undersized closure for a wide task?
+  Use batched `prism_search(scope="text", exhaustive=true)` for declarations, calls,
+  and interface refs. Inspect signatures/receivers; text matches do not prove implementation.
+  Use file-qualified identities, not guessed type names; report unresolved coverage.
+- After impact, reuse signatures and call expressions for site enumeration;
+  do not fetch bodies by default. Follow up for behavior, omitted evidence, ambiguous receivers, stale/incomplete
+  scope, or required non-code references. Do not rescan to reproduce the site list.
+  Preserve reported sites while resolving uncertainty; if gaps remain,
+  report them instead of claiming completeness.
+- Removing symbols? Before editing, run `prism_verify(removed_symbols=["A","B"])`.
+  Re-run per edit round; plain `prism_verify` still gates the finish. Check
+  non-compiling surfaces too: comments, docs, config, and other languages.
+- Several names to find? ONE call: `prism_search(query=["A","B","C"])`.
+  Add `context=3` for surrounding lines. Use `scope="text"` for pure grep.
+- Wide removal/refactor ("remove X everywhere")? Open with
+  `prism_search(query="<concept>", scope="text", exhaustive=true, files_only=true)` —
+  inspect partial-result warnings before treating the inventory as complete.
+- Need a file or exact line range? `prism_read`. Whole named bodies? Batch
+  `prism_lookup`, not guessed search context. Reuse delivered unchanged source.
 
 Bash-only (subagents, CI) — same verbs, add `--format text`:
 
