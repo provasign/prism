@@ -1,0 +1,866 @@
+shale_version: "0"
+id: 01a0790c-a7c5-7543-a18f-d1f822079fe4-c2
+created_at: 2026-09-07T01:47:57.688341Z
+finalized_at: 2026-09-07T02:43:56.596037Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/textmerge.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:35:08.909622Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:35:35.067331Z
+    - path: internal/mcp/textmerge_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:35:38.403241Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:35:54.421412Z
+    - path: internal/mcp/externalfamily.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:37:06.159377Z
+    - path: internal/mcp/graphtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:37:37.607668Z
+    - path: internal/mcp/wideambiguity_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:38:23.455256Z
+    - path: internal/mcp/graphtext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:38:27.785431Z
+    - path: internal/mcp/searchtext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:39:25.907687Z
+    - path: internal/mcp/searchmulti_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:39:38.745055Z
+    - path: internal/mcp/impactevidence.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:39:55.240953Z
+commands:
+    - cmd: |-
+        git push origin main
+        git status -sb
+      at: 2026-09-07T01:47:57.688341Z
+      classified: other
+    - cmd: |-
+        git fetch --prune origin
+        git status -sb
+        git log -5 --oneline --decorate
+        git branch -a --list '*cand-search-context*'
+        git branch --no-merged main -vv
+        git branch -r --no-merged main
+      at: 2026-09-07T01:48:35.997434Z
+      classified: other
+    - cmd: prism search 'efficiency FAIL' 'grafana-querydata-impact' '1.48' 'median paired token' --path docs --scope text --exhaustive --format text
+      at: 2026-09-07T01:49:49.133765Z
+      classified: other
+    - cmd: |-
+        prism read docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md --start-line 320 --end-line 590 --format text
+        prism read docs/accuracy-efficiency-candidate/validation.json --format text
+      at: 2026-09-07T01:49:52.228683Z
+      classified: other
+    - cmd: |-
+        prism read --help
+        rg --files docs | rg 'validation|REPORT.md$' | sort | tail -n 30
+        sed -n '320,590p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      at: 2026-09-07T01:49:56.339697Z
+      classified: other
+    - cmd: |-
+        sed -n '590,760p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+        sed -n '1,180p' docs/accuracy-efficiency-candidate/go-interface-cross-package-2026-09-06/REPORT.md
+        sed -n '1,130p' docs/accuracy-efficiency-candidate/scoped-lookup-2026-09-06/comparison/REPORT.md
+      at: 2026-09-07T01:49:59.662443Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        from datetime import datetime
+        root = Path.home()/'.claude/projects'
+        rows=[]
+        for p in root.rglob('*.jsonl'):
+            try:
+                s=p.stat()
+            except OSError:
+                continue
+            rows.append((s.st_mtime, s.st_size, p))
+        for mtime,size,p in sorted(rows, reverse=True)[:20]:
+            print(datetime.fromtimestamp(mtime).isoformat(timespec='seconds'), size, p)
+        PY
+      at: 2026-09-07T01:59:02.212473Z
+      classified: other
+    - cmd: |-
+        rg -l '01530bae-1f40-46e8-8700-5932db5109d7' /Users/tapabratapal/Projects /Users/tapabratapal/.cache 2>/dev/null | head -n 20
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl')
+        for i,line in enumerate(p.open(errors='replace')):
+            if i<3:
+                print(i+1, line[:2000])
+        PY
+      at: 2026-09-07T01:59:26.261293Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl')
+        for n,line in enumerate(p.open(errors='replace'),1):
+            try: x=json.loads(line)
+            except: continue
+            typ=x.get('type')
+            if typ=='assistant':
+                msg=x.get('message',{})
+                usage=msg.get('usage')
+                if usage: print(f'L{n} ASSIST usage={usage}')
+                for c in msg.get('content',[]):
+                    if isinstance(c,dict) and c.get('type')=='tool_use':
+                        print(f'L{n} TOOL {c.get("name")} {json.dumps(c.get("input"),ensure_ascii=False)[:800]}')
+                    elif isinstance(c,dict) and c.get('type')=='text':
+                        print(f'L{n} TEXT {c.get("text","")[:1500]}')
+            elif typ=='user':
+                content=x.get('message',{}).get('content')
+                if isinstance(content,list):
+                    for c in content:
+                        if isinstance(c,dict) and c.get('type')=='tool_result':
+                            val=c.get('content','')
+                            if not isinstance(val,str): val=json.dumps(val,ensure_ascii=False)
+                            print(f'L{n} RESULT id={c.get("tool_use_id")} chars={len(val)} {val[:500]}')
+            elif typ in ('result','system'):
+                print(f'L{n} {typ.upper()} {json.dumps(x,ensure_ascii=False)[:1200]}')
+        PY
+      at: 2026-09-07T01:59:34.988195Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl')
+        for n,line in enumerate(p.open(errors='replace'),1):
+            if n<88: continue
+            try: x=json.loads(line)
+            except: continue
+            typ=x.get('type')
+            if typ=='assistant':
+                msg=x.get('message',{})
+                u=msg.get('usage')
+                if u: print(f'L{n} USAGE in={u.get("input_tokens")} create={u.get("cache_creation_input_tokens")} read={u.get("cache_read_input_tokens")} out={u.get("output_tokens")}')
+                for c in msg.get('content',[]):
+                    if c.get('type')=='tool_use': print(f'L{n} TOOL {c.get("name")} {json.dumps(c.get("input"),ensure_ascii=False)}')
+                    elif c.get('type')=='text': print(f'L{n} TEXT {c.get("text","")[:5000]}')
+            elif typ=='user':
+                for c in x.get('message',{}).get('content',[]) if isinstance(x.get('message',{}).get('content'),list) else []:
+                    if c.get('type')=='tool_result':
+                        v=c.get('content',''); v=v if isinstance(v,str) else json.dumps(v,ensure_ascii=False)
+                        print(f'L{n} RESULT chars={len(v)} {v[:1200]}')
+            elif typ=='result': print(f'L{n} RESULT_EVENT {json.dumps(x,ensure_ascii=False)[:3000]}')
+        PY
+      at: 2026-09-07T01:59:42.601205Z
+      classified: other
+    - cmd: |-
+        wc -l /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl
+        tail -n 12 /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl | cut -c1-1200
+      at: 2026-09-07T01:59:47.447968Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for sid,path in [
+        ('newest','/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl'),
+        ('previous','/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-eew2t8yb-repo/4ea88e85-2e18-49e7-a203-781ce341dbc1.jsonl')]:
+         p=Path(path); calls=[]; texts=[]; usages={}
+         for n,line in enumerate(p.open(errors='replace'),1):
+          try:x=json.loads(line)
+          except:continue
+          if x.get('type')=='assistant':
+           m=x.get('message',{}); u=m.get('usage')
+           if u and m.get('id') not in usages: usages[m.get('id')]=u
+           for c in m.get('content',[]):
+            if c.get('type')=='tool_use': calls.append((n,c.get('name'),c.get('input')))
+            if c.get('type')=='text': texts.append((n,c.get('text','')))
+         print('\n',sid,p.name,'lines',n,'bytes',p.stat().st_size)
+         print('calls',len(calls))
+         for c in calls: print(c)
+         print('texts',[(n,t[:500]) for n,t in texts])
+         print('usage unique messages',len(usages),'create',sum(u.get('cache_creation_input_tokens',0) for u in usages.values()),'read',sum(u.get('cache_read_input_tokens',0) for u in usages.values()),'out',sum(u.get('output_tokens',0) for u in usages.values()))
+        PY
+        find /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T -path '*/runs/ab-gate/*.attempt.json' -type f -mmin -180 -print 2>/dev/null | tail -n 30
+      at: 2026-09-07T02:00:17.75963Z
+      classified: other
+    - cmd: |-
+        stat -f '%Sm %z' -t '%Y-%m-%dT%H:%M:%S' /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl
+        ps ax -o pid=,etime=,command= | rg 'prism-gate-ti3tio0b|01530bae|ab-gate' | head -n 30
+      at: 2026-09-07T02:00:22.94733Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl')
+        want={'toolu_01FezHzYLg5hoap7cLQt4mFt','toolu_01F6YL1Mac4WCHfCfjBQ8XBD'}
+        for n,line in enumerate(p.open(errors='replace'),1):
+         try:x=json.loads(line)
+         except:continue
+         if x.get('type')!='user':continue
+         c=x.get('message',{}).get('content')
+         if not isinstance(c,list):continue
+         for item in c:
+          if item.get('type')=='tool_result' and item.get('tool_use_id') in want:
+           val=item.get('content','')
+           if isinstance(val,list): val='\n'.join(q.get('text','') for q in val if isinstance(q,dict))
+           print(f'--- line {n} {item.get("tool_use_id")} {len(val)} chars ---')
+           print(val)
+        PY
+      at: 2026-09-07T02:01:11.243786Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl')
+        results=[]; seen=set(); usage={}
+        for n,line in enumerate(p.open(errors='replace'),1):
+         try:x=json.loads(line)
+         except:continue
+         if x.get('type')=='assistant':
+          m=x.get('message',{}); mid=m.get('id')
+          if m.get('usage') and mid not in usage: usage[mid]=m['usage']
+         if x.get('type')=='user':
+          content=x.get('message',{}).get('content')
+          if not isinstance(content,list):continue
+          for c in content:
+           if c.get('type')!='tool_result':continue
+           tid=c.get('tool_use_id')
+           if tid in seen:continue
+           seen.add(tid); v=c.get('content','')
+           if not isinstance(v,str):v=json.dumps(v,ensure_ascii=False)
+           results.append((n,tid,len(v),v[:100].replace('\n',' ')))
+        print('result count',len(results),'total chars',sum(x[2] for x in results))
+        for row in results:print(row)
+        print('requests',len(usage))
+        print('input total including cache',sum(u.get('input_tokens',0)+u.get('cache_creation_input_tokens',0)+u.get('cache_read_input_tokens',0) for u in usage.values()))
+        print('cache create',sum(u.get('cache_creation_input_tokens',0) for u in usage.values()),'cache read',sum(u.get('cache_read_input_tokens',0) for u in usage.values()),'output',sum(u.get('output_tokens',0) for u in usage.values()))
+        PY
+        rg -l 'grafana-querydata-impact' /Users/tapabratapal/.cache/prism-research /Users/tapabratapal/Projects/provasign 2>/dev/null | head -n 30
+      at: 2026-09-07T02:01:30.003322Z
+      classified: other
+    - cmd: |-
+        rg -l '01530bae-1f40-46e8-8700-5932db5109d7|4ea88e85-2e18-49e7-a203-781ce341dbc1' /Users/tapabratapal/Projects/provasign/research/harness/runs | head -n 30
+        sed -n '1,240p' /Users/tapabratapal/Projects/provasign/research/harness/tasks/grafana-querydata-impact.json
+      at: 2026-09-07T02:01:35.536429Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for p in [Path('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.74a78fa0ac2bf918a1c1.json'),Path('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.74a78fa0ac2bf918a1c1.e6fe18a1a3594f58a906bcae845561f9.attempt.json')]:
+         x=json.loads(p.read_text())
+         print('\n---',p.name,'---')
+         for k in sorted(x):
+          v=x[k]
+          if isinstance(v,(dict,list)): print(k, json.dumps(v,ensure_ascii=False)[:4000])
+          else: print(k,repr(v))
+        PY
+      at: 2026-09-07T02:01:40.709668Z
+      classified: other
+    - cmd: |-
+        ls -lt /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact*.json | head -n 20
+        python3 - <<'PY'
+        import json,glob,os
+        files=glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact*.json')
+        rows=[]
+        for p in files:
+         try:x=json.load(open(p))
+         except:continue
+         if '.attempt.' in p or '.attempt.json' in p:continue
+         rows.append((os.stat(p).st_mtime,os.path.basename(p),x.get('arm'),x.get('binary_sha'),x.get('session_id'),x.get('tokens_request'),x.get('cost_usd'),x.get('recall'),x.get('precision'),x.get('turns')))
+        for row in sorted(rows,reverse=True)[:12]:print(row)
+        PY
+      at: 2026-09-07T02:01:47.427643Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.74a78fa0ac2bf918a1c1.json')
+        x=json.loads(p.read_text())
+        ans={(s.rsplit(':',1)[0],s.rsplit(':',1)[1].split('.')[-1]) for s in x['answer']['sites']}
+        gt={(i['relpath'],i['symbol']) for i in x['manifest']['task']['ground_truth']}
+        print('ground truth',len(gt),'answer normalized',len(ans),'raw',len(x['answer']['sites']))
+        print('\nMISSED',len(gt-ans))
+        for a,b in sorted(gt-ans):print(f'{a}:{b}')
+        print('\nFALSE',len(ans-gt))
+        for a,b in sorted(ans-gt):print(f'{a}:{b}')
+        print('\nUNRESOLVED',x['answer'].get('unresolved'),'COMPLETE',x['answer'].get('complete'))
+        PY
+      at: 2026-09-07T02:01:54.908824Z
+      classified: other
+    - cmd: |-
+        rg -n -o 'external/unresolved interface.{0,260}|re-run with one of these|Use one exhaustive text search.{0,200}|COMPLETE change-set' /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl | head -n 30
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.74a78fa0ac2bf918a1c1.json')
+        x=json.loads(p.read_text())
+        print('answer complete',x['answer']['complete'],'unresolved',x['answer']['unresolved'])
+        print('binary',x['binary_sha'],'turns',x['turns'],'tokens',x['tokens_request'],'cost',x['cost_usd'],'R/P/F1',x['recall'],x['precision'],x['f1'])
+        PY
+      at: 2026-09-07T02:02:02.377983Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl')
+        for n,line in enumerate(p.open(errors='replace'),1):
+         if n not in {15,23,28,34,52,66,73,90,95}: continue
+         try:x=json.loads(line)
+         except:continue
+         print('\n---',n,x.get('type'),'---')
+         print(json.dumps(x,ensure_ascii=False)[:5000])
+        PY
+      at: 2026-09-07T02:02:07.721043Z
+      classified: other
+    - cmd: |-
+        for term in 'Execute' 'executeDSNodesGrouped' 'handlePreparedQuery' 'mssql/sqleng/sql_engine.go' 'mysql/sqleng/sql_engine.go' 'parca/plugin.go'; do printf '%s: ' "$term"; rg -o "$term" /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-ti3tio0b-repo/01530bae-1f40-46e8-8700-5932db5109d7.jsonl | wc -l; done
+        rg -n 'executeDSNodesGrouped|handlePreparedQuery|parca/plugin.go|mssql/sqleng/sql_engine.go|mysql/sqleng/sql_engine.go' /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/prism-gate-ti3tio0b/repo/pkg 2>/dev/null | head -n 80
+      at: 2026-09-07T02:02:37.242487Z
+      classified: other
+    - cmd: rg -n -C 3 'func .*QueryData|\.QueryData\(' /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/prism-gate-ti3tio0b/repo/pkg/expr/nodes.go /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/prism-gate-ti3tio0b/repo/pkg/registry/apis/query/query.go /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/prism-gate-ti3tio0b/repo/pkg/tsdb/mssql/sqleng/sql_engine.go /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/prism-gate-ti3tio0b/repo/pkg/tsdb/mysql/sqleng/sql_engine.go /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/prism-gate-ti3tio0b/repo/pkg/tsdb/parca/plugin.go
+      at: 2026-09-07T02:02:46.455888Z
+      classified: other
+    - cmd: rg -n -C 3 'func .*QueryData|\.QueryData\(' /Users/tapabratapal/gvg-corpus/wt-122750/pkg/expr/nodes.go /Users/tapabratapal/gvg-corpus/wt-122750/pkg/registry/apis/query/query.go /Users/tapabratapal/gvg-corpus/wt-122750/pkg/tsdb/mssql/sqleng/sql_engine.go /Users/tapabratapal/gvg-corpus/wt-122750/pkg/tsdb/mysql/sqleng/sql_engine.go /Users/tapabratapal/gvg-corpus/wt-122750/pkg/tsdb/parca/plugin.go
+      at: 2026-09-07T02:02:51.80018Z
+      classified: other
+    - cmd: prism search 're-run with one of these' 'is ambiguous' 'a SAMPLE, more exist' 'Use exhaustive=true' --path internal --scope text --exhaustive --context 4 --format text
+      at: 2026-09-07T02:03:02.249076Z
+      classified: other
+    - cmd: prism search 're-run with' 'candidates:' 'AmbiguousSymbol' --path internal --scope text --exhaustive --context 5 --format text
+      at: 2026-09-07T02:03:05.267321Z
+      classified: other
+    - cmd: |-
+        sed -n '2500,2705p' internal/mcp/tools.go
+        rg -n 'ambiguous.*candidate|re-run with one|change-impact:' internal/grove internal/mcp
+      at: 2026-09-07T02:03:09.252401Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-az37ln4z-repo/1b1d58e1-c1b7-4500-9f8c-d54fba19192e.jsonl')
+        calls=[]; results=[]; usage={}; texts=[]
+        for n,line in enumerate(p.open(errors='replace'),1):
+         try:x=json.loads(line)
+         except:continue
+         if x.get('type')=='assistant':
+          m=x.get('message',{}); mid=m.get('id')
+          if m.get('usage') and mid not in usage: usage[mid]=m['usage']
+          for c in m.get('content',[]):
+           if c.get('type')=='tool_use':calls.append((n,c.get('name'),c.get('input')))
+           elif c.get('type')=='text':texts.append((n,c.get('text','')[:300]))
+         if x.get('type')=='user':
+          cs=x.get('message',{}).get('content')
+          if isinstance(cs,list):
+           for c in cs:
+            if c.get('type')=='tool_result':
+             v=c.get('content','');v=v if isinstance(v,str) else json.dumps(v,ensure_ascii=False)
+             results.append((n,len(v),v[:90].replace('\n',' ')))
+        print('calls',len(calls),'results chars',sum(s for _,s,_ in results),'requests',len(usage),'texts',texts)
+        for c in calls:print(c)
+        PY
+      at: 2026-09-07T02:03:27.592744Z
+      classified: other
+    - cmd: |-
+        for term in 'executeDSNodesGrouped' 'handlePreparedQuery' 'mssql/sqleng/sql_engine.go' 'mysql/sqleng/sql_engine.go' 'parca/plugin.go'; do printf '%s: ' "$term"; rg -o "$term" /Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-az37ln4z-repo/1b1d58e1-c1b7-4500-9f8c-d54fba19192e.jsonl | wc -l; done
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-az37ln4z-repo/1b1d58e1-c1b7-4500-9f8c-d54fba19192e.jsonl')
+        ids={}; results={}
+        for n,line in enumerate(p.open(errors='replace'),1):
+         try:x=json.loads(line)
+         except:continue
+         if x.get('type')=='assistant':
+          for c in x.get('message',{}).get('content',[]):
+           if c.get('type')=='tool_use': ids[c['id']]=(c['name'],c['input'])
+         if x.get('type')=='user':
+          cs=x.get('message',{}).get('content')
+          if isinstance(cs,list):
+           for c in cs:
+            if c.get('type')=='tool_result':
+             v=c.get('content',''); v=v if isinstance(v,str) else json.dumps(v,ensure_ascii=False)
+             results[c['tool_use_id']]=v
+        terms=['executeDSNodesGrouped','handlePreparedQuery','mssql/sqleng/sql_engine.go','mysql/sqleng/sql_engine.go','parca/plugin.go','pkg/expr/nodes.go']
+        for tid,v in results.items():
+         hit=[t for t in terms if t in v]
+         if hit: print(ids.get(tid), 'chars',len(v),'hits',hit)
+        PY
+      at: 2026-09-07T02:03:38.608297Z
+      classified: other
+    - cmd: |-
+        prism lookup widerAnchorHint --format text
+        sed -n '1,260p' internal/mcp/wideranchor.go
+      at: 2026-09-07T02:03:43.762358Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        base=json.loads(Path('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.0a156604c4c90ff614d4.json').read_text())
+        cand=json.loads(Path('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.74a78fa0ac2bf918a1c1.json').read_text())
+        for k in ['tokens_request','tokens_out','cost_usd','turns','recall','precision','f1','n_sites','wall_s']:
+         b=base.get(k); c=cand.get(k)
+         ratio=(c/b if isinstance(b,(int,float)) and b else None)
+         print(k,b,c,ratio)
+        PY
+      at: 2026-09-07T02:04:03.044545Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,re,subprocess
+        from pathlib import Path
+        root=Path('/Users/tapabratapal/gvg-corpus/wt-122750')
+        task=json.loads(Path('/Users/tapabratapal/Projects/provasign/research/harness/tasks/grafana-querydata-impact.json').read_text())
+        gt={x.rsplit(':',1)[0] for x in task['ground_truth']}
+        proc=subprocess.run(['rg','-l',r'(^func .* QueryData\(|\.QueryData\()','pkg'],cwd=root,text=True,capture_output=True)
+        hits=set(proc.stdout.splitlines())
+        print('ground-truth files',len(gt),'regex-hit GT files',len(gt & hits),'missed GT files',len(gt-hits),'all hit files',len(hits))
+        for f in sorted(gt-hits):print('MISS',f)
+        for f in ['pkg/expr/nodes.go','pkg/registry/apis/query/query.go','pkg/tsdb/mssql/sqleng/sql_engine.go','pkg/tsdb/mysql/sqleng/sql_engine.go','pkg/tsdb/parca/plugin.go']:
+         print(f,'hit' if f in hits else 'miss')
+        PY
+      at: 2026-09-07T02:04:35.788991Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        from datetime import datetime
+        root=Path.home()/'.claude/projects'
+        rows=[]
+        for p in root.rglob('*.jsonl'):
+         try:s=p.stat()
+         except OSError:continue
+         rows.append((s.st_mtime,s.st_size,p))
+        for m,size,p in sorted(rows,reverse=True)[:15]:
+         print(datetime.fromtimestamp(m).isoformat(timespec='seconds'),size,p)
+        PY
+        find /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate -name '*.json' -type f -mmin -240 -print 2>/dev/null | sort
+      at: 2026-09-07T02:20:57.697832Z
+      classified: other
+    - cmd: rg -l '0acf07da-327b-409d-9eda-8788a799397a|715f717f-fa3c-463e-9f65-9e8efc97d78e|9075f3a3-8682-4868-ac77-7d645437afd9' /Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate | sort
+      at: 2026-09-07T02:21:02.126766Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        pairs=[
+        ('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-58uzzwj1-repo/0acf07da-327b-409d-9eda-8788a799397a.jsonl','/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-checkhealth-impact.769d35b5e855a3839a77.json'),
+        ('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-udrzpier-repo/715f717f-fa3c-463e-9f65-9e8efc97d78e.jsonl','/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.6d7ae539e736cd419134.json'),
+        ('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-l7uf2-xi-repo/9075f3a3-8682-4868-ac77-7d645437afd9.jsonl','/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/guava-forwarding-delegate.35a5ec2982f07a890cff.json')]
+        for tp,rp in pairs:
+         x=json.loads(Path(rp).read_text()); calls=[]; results=[]; seen=set(); texts=[]
+         for n,line in enumerate(Path(tp).open(errors='replace'),1):
+          try:e=json.loads(line)
+          except:continue
+          if e.get('type')=='assistant':
+           for c in e.get('message',{}).get('content',[]):
+            if c.get('type')=='tool_use':calls.append((c.get('name'),c.get('input')))
+            elif c.get('type')=='text':texts.append(c.get('text',''))
+          if e.get('type')=='user':
+           cs=e.get('message',{}).get('content')
+           if isinstance(cs,list):
+            for c in cs:
+             if c.get('type')=='tool_result' and c.get('tool_use_id') not in seen:
+              seen.add(c.get('tool_use_id'));v=c.get('content','');v=v if isinstance(v,str) else json.dumps(v,ensure_ascii=False);results.append(len(v))
+         print('\n###',x.get('task'),Path(tp).name)
+         print({k:x.get(k) for k in ['arm','binary_sha','recall','precision','f1','n_sites','complete_claim','turns','tokens_request','tokens_out','cost_usd','wall_s']})
+         print('tool_calls',len(calls),'result_chars',sum(results),'final_texts',len(texts))
+         for i,c in enumerate(calls,1): print(i,c)
+        PY
+      at: 2026-09-07T02:21:13.916908Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,glob,os
+        ids={'0acf07da-327b-409d-9eda-8788a799397a','715f717f-fa3c-463e-9f65-9e8efc97d78e','9075f3a3-8682-4868-ac77-7d645437afd9'}
+        for p in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/*.json'):
+         try:x=json.load(open(p))
+         except:continue
+         if x.get('session_id') in ids and '.attempt.' not in p and not p.endswith('.attempt.json'):
+          print(x['session_id'],os.path.basename(p),x.get('task'),x.get('arm'),x.get('recall'),x.get('precision'),x.get('tokens_request'),x.get('cost_usd'),x.get('turns'),x.get('n_sites'))
+        PY
+      at: 2026-09-07T02:21:21.27782Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,glob,os
+        from pathlib import Path
+        tasks={'grafana-querydata-impact','grafana-checkhealth-impact','guava-forwarding-delegate'}
+        for task in sorted(tasks):
+         rows=[]
+         for p in glob.glob(f'/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/{task}*.json'):
+          if '.attempt.' in p or p.endswith('.attempt.json'):continue
+          try:x=json.load(open(p))
+          except:continue
+          if not x.get('session_id'):continue
+          rows.append((os.stat(p).st_mtime,x))
+         print('\n###',task)
+         for _,x in sorted(rows,reverse=True)[:6]:
+          print(x.get('arm'),x.get('binary_sha'),x.get('session_id'),
+                'R',x.get('recall'),'P',x.get('precision'),'F1',x.get('f1'),
+                'tok',x.get('tokens_request'),'out',x.get('tokens_out'),'$',x.get('cost_usd'),
+                'turns',x.get('turns'),'sites',x.get('n_sites'))
+        PY
+      at: 2026-09-07T02:21:33.852498Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        records={
+        'querydata':'/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-querydata-impact.6d7ae539e736cd419134.json',
+        'checkhealth':'/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/grafana-checkhealth-impact.769d35b5e855a3839a77.json',
+        'guava':'/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/guava-forwarding-delegate.35a5ec2982f07a890cff.json'}
+        for name,p in records.items():
+         x=json.loads(Path(p).read_text()); gt={(i['relpath'],i['symbol']) for i in x['manifest']['task']['ground_truth']}; ans={(s.rsplit(':',1)[0],s.rsplit(':',1)[1].split('.')[-1]) for s in x['answer']['sites']}
+         print('\n',name,'GT',len(gt),'raw',len(x['answer']['sites']),'norm',len(ans),'missed',len(gt-ans),'raw extras',len(ans-gt),'complete',x['answer'].get('complete'),'unresolved',x['answer'].get('unresolved'))
+         print('MISSED')
+         for f,s in sorted(gt-ans):print(f'{f}:{s}')
+        PY
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        transcripts={
+        'querydata':'/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-l7uf2-xi-repo/9075f3a3-8682-4868-ac77-7d645437afd9.jsonl',
+        'checkhealth':'/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-udrzpier-repo/715f717f-fa3c-463e-9f65-9e8efc97d78e.jsonl',
+        'guava':'/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-58uzzwj1-repo/0acf07da-327b-409d-9eda-8788a799397a.jsonl'}
+        for name,p in transcripts.items():
+         ids={}; seen=set(); rows=[]
+         for n,line in enumerate(Path(p).open(errors='replace'),1):
+          try:x=json.loads(line)
+          except:continue
+          if x.get('type')=='assistant':
+           for c in x.get('message',{}).get('content',[]):
+            if c.get('type')=='tool_use':ids[c['id']]=(c['name'],c['input'])
+          if x.get('type')=='user':
+           cs=x.get('message',{}).get('content')
+           if isinstance(cs,list):
+            for c in cs:
+             if c.get('type')=='tool_result' and c.get('tool_use_id') not in seen:
+              seen.add(c.get('tool_use_id'));v=c.get('content','');v=v if isinstance(v,str) else json.dumps(v,ensure_ascii=False);rows.append((ids.get(c.get('tool_use_id')),len(v)))
+         print('\n',name,'result chars',sum(n for _,n in rows))
+         for x,n in rows:print(n,x)
+        PY
+      at: 2026-09-07T02:21:49.092937Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for label,p in [
+        ('query','/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-l7uf2-xi-repo/9075f3a3-8682-4868-ac77-7d645437afd9.jsonl'),
+        ('health','/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-udrzpier-repo/715f717f-fa3c-463e-9f65-9e8efc97d78e.jsonl')]:
+         ids={}; shown=0
+         print('\n###',label)
+         for n,line in enumerate(Path(p).open(errors='replace'),1):
+          try:x=json.loads(line)
+          except:continue
+          if x.get('type')=='assistant':
+           for c in x.get('message',{}).get('content',[]):
+            if c.get('type')=='tool_use':ids[c['id']]=(c['name'],c['input'])
+          if x.get('type')=='user':
+           cs=x.get('message',{}).get('content')
+           if not isinstance(cs,list):continue
+           for c in cs:
+            if c.get('type')!='tool_result':continue
+            meta=ids.get(c.get('tool_use_id'))
+            if not meta or meta[0] not in ('mcp__prism__prism_change_impact','mcp__prism__prism_search'):continue
+            if shown>=3:continue
+            v=c.get('content','');v=v if isinstance(v,str) else json.dumps(v,ensure_ascii=False)
+            print('\n',meta,'\n',v[:5000]);shown+=1
+        PY
+      at: 2026-09-07T02:22:00.031676Z
+      classified: other
+    - cmd: for sid in 9075f3a3-8682-4868-ac77-7d645437afd9 715f717f-fa3c-463e-9f65-9e8efc97d78e 0acf07da-327b-409d-9eda-8788a799397a; do p=$(find /Users/tapabratapal/.claude/projects -name "$sid.jsonl" -print -quit); echo "$sid"; for term in handlePreparedQuery 'cloudwatch/service.go' 'ConcurrentHashMultiset.java' 'MutableClassToInstanceMap.java' 'StandardTable.java' 'Synchronized.java'; do printf '  %s ' "$term"; rg -o "$term" "$p" | wc -l; done; done
+      at: 2026-09-07T02:22:13.424506Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-l7uf2-xi-repo/9075f3a3-8682-4868-ac77-7d645437afd9.jsonl')
+        ids={}
+        for line in p.open(errors='replace'):
+         try:x=json.loads(line)
+         except:continue
+         if x.get('type')=='assistant':
+          for c in x.get('message',{}).get('content',[]):
+           if c.get('type')=='tool_use':ids[c['id']]=(c['name'],c['input'])
+         if x.get('type')=='user':
+          cs=x.get('message',{}).get('content')
+          if not isinstance(cs,list):continue
+          for c in cs:
+           meta=ids.get(c.get('tool_use_id'))
+           if c.get('type')=='tool_result' and meta and meta[0]=='mcp__prism__prism_search':
+            v=c.get('content','');v=v if isinstance(v,str) else json.dumps(v,ensure_ascii=False)
+            print(v[-6000:])
+        PY
+      at: 2026-09-07T02:22:20.431916Z
+      classified: other
+    - cmd: prism search 'more files with matches' 'grouped by directory' 'every file is in exactly one group' --path internal --scope text --exhaustive --context 5 --format text
+      at: 2026-09-07T02:22:29.27415Z
+      classified: other
+    - cmd: |-
+        git status -sb
+        git log -6 --oneline --decorate
+        rg -n 'WIDE MEMBER|do NOT issue one change_impact' internal/mcp
+      at: 2026-09-07T02:22:47.822945Z
+      classified: other
+    - cmd: git diff -- internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/wideambiguity_test.go
+      at: 2026-09-07T02:22:53.827159Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095.jsonl')
+        rows=[]
+        for n,line in enumerate(p.open(errors='replace'),1):
+         try:x=json.loads(line)
+         except:continue
+         if x.get('type') not in ('user','assistant'):continue
+         role=x.get('message',{}).get('role')
+         content=x.get('message',{}).get('content')
+         parts=[]
+         if isinstance(content,str):parts=[content]
+         elif isinstance(content,list):
+          for c in content:
+           if not isinstance(c,dict):continue
+           if c.get('type')=='text':parts.append(c.get('text',''))
+           elif c.get('type')=='tool_use':parts.append('TOOL '+str(c.get('name'))+' '+json.dumps(c.get('input'),ensure_ascii=False)[:500])
+         if parts:rows.append((n,role,'\n'.join(parts)))
+        for n,role,text in rows[-18:]:
+         print(f'\n--- L{n} {role} ---\n{text[:5000]}')
+        PY
+      at: 2026-09-07T02:23:01.268413Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,glob,os
+        for task in ['jackson-writetypeprefix']:
+         rows=[]
+         for p in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/runs/ab-gate/'+task+'*.json'):
+          if '.attempt.' in p or p.endswith('.attempt.json'):continue
+          try:x=json.load(open(p))
+          except:continue
+          if x.get('session_id'):rows.append((os.stat(p).st_mtime,p,x))
+         for _,p,x in sorted(rows,reverse=True)[:4]:
+          print(os.path.basename(p),x.get('session_id'),x.get('arm'),x.get('binary_sha'),x.get('recall'),x.get('precision'),x.get('tokens_request'),x.get('cost_usd'),x.get('turns'),x.get('n_sites'))
+        PY
+      at: 2026-09-07T02:23:08.531281Z
+      classified: other
+    - cmd: rg -n "external interface|method set|interface.*external|overridesExternal|declaringTypes|implements" internal --glob '*.go'
+      at: 2026-09-07T02:31:12.163883Z
+      classified: other
+    - cmd: rg -n "boundedInventory|PARTIAL RESULTS|WIDE MEMBER|exhaustive|change_impact|ChangeImpact|ambigu" internal/mcp --glob '*.go'
+      at: 2026-09-07T02:31:12.165256Z
+      classified: other
+    - cmd: git status --short --branch && git log -5 --oneline --decorate
+      at: 2026-09-07T02:31:12.207688Z
+      classified: other
+    - cmd: sed -n '1,180p' internal/mcp/inventory_test.go; sed -n '1,180p' internal/mcp/textmerge_test.go; sed -n '1,150p' internal/mcp/searchtext_test.go; sed -n '1,170p' internal/mcp/graphtext_test.go
+      at: 2026-09-07T02:31:20.547096Z
+      classified: other
+    - cmd: sed -n '1,230p' internal/mcp/textmerge.go; sed -n '430,570p' internal/mcp/textmerge.go
+      at: 2026-09-07T02:31:20.548869Z
+      classified: other
+    - cmd: sed -n '1,380p' internal/mcp/searchtext.go
+      at: 2026-09-07T02:31:20.548734Z
+      classified: other
+    - cmd: sed -n '1,240p' internal/mcp/graphtext.go; sed -n '2520,2760p' internal/mcp/tools.go
+      at: 2026-09-07T02:31:20.554736Z
+      classified: other
+    - cmd: sed -n '60,220p' internal/mcp/graphtext.go; sed -n '2550,2745p' internal/mcp/tools.go
+      at: 2026-09-07T02:31:28.205618Z
+      classified: other
+    - cmd: sed -n '50,145p' internal/mcp/searchtext.go; sed -n '210,370p' internal/mcp/searchtext.go
+      at: 2026-09-07T02:31:28.196843Z
+      classified: other
+    - cmd: sed -n '130,225p' internal/mcp/textmerge.go; sed -n '430,575p' internal/mcp/textmerge.go; sed -n '575,650p' internal/mcp/textmerge.go
+      at: 2026-09-07T02:31:28.197627Z
+      classified: other
+    - cmd: sed -n '1,210p' internal/grove/client.go; cat go.mod | sed -n '1,100p'; rg -n "type ChangeImpact|func .*ChangeImpact|interface.*method" $(go env GOPATH)/pkg/mod/github.com/provasign/grove* --glob '*.go'
+      at: 2026-09-07T02:31:28.353511Z
+      classified: other
+    - cmd: nl -ba internal/mcp/textmerge.go | sed -n '480,590p'
+      at: 2026-09-07T02:31:38.516525Z
+      classified: other
+    - cmd: nl -ba internal/mcp/graphtext.go | sed -n '60,215p'
+      at: 2026-09-07T02:31:38.520468Z
+      classified: other
+    - cmd: nl -ba internal/mcp/tools.go | sed -n '2550,2745p'; nl -ba internal/mcp/tools.go | sed -n '450,660p'; nl -ba internal/mcp/tools.go | sed -n '835,865p'
+      at: 2026-09-07T02:31:38.529992Z
+      classified: other
+    - cmd: cat go.mod | head -80; nl -ba internal/grove/client.go | sed -n '1,190p'; nl -ba $(go env GOPATH)/pkg/mod/github.com/provasign/grove@v0.43.2/internal/graph/changeimpact.go | sed -n '450,610p'
+      at: 2026-09-07T02:31:38.539051Z
+      classified: other
+    - cmd: go run ./cmd/prism change-impact 'boundedInventory' --format text
+      at: 2026-09-07T02:31:45.527543Z
+      classified: other
+    - cmd: env GOFLAGS= go run ./cmd/prism change-impact 'boundedInventory' --format text
+      at: 2026-09-07T02:31:49.855408Z
+      classified: other
+    - cmd: env GOWORK=off go run ./cmd/prism change-impact 'boundedInventory' --format text
+      at: 2026-09-07T02:31:58.231326Z
+      classified: other
+    - cmd: env GOWORK=off go run ./cmd/prism change-impact 'renderChangeImpactAsText' --format text
+      at: 2026-09-07T02:32:05.096865Z
+      classified: other
+    - cmd: env GOWORK=off go run ./cmd/prism change-impact 'Handler.toolChangeImpact' --format text
+      at: 2026-09-07T02:32:05.172446Z
+      classified: other
+    - cmd: env GOWORK=off go run ./cmd/prism change-impact 'renderSearchAsText' --format text
+      at: 2026-09-07T02:32:05.253307Z
+      classified: other
+    - cmd: env GOWORK=off go run ./cmd/prism change-impact 'Handler.renderTextMatches' --format text
+      at: 2026-09-07T02:32:05.354647Z
+      classified: other
+    - cmd: nl -ba internal/mcp/tools.go | sed -n '1280,1615p'; nl -ba internal/mcp/searchtext.go | sed -n '280,390p'; nl -ba internal/mcp/textmerge.go | sed -n '200,235p'
+      at: 2026-09-07T02:32:21.529159Z
+      classified: other
+    - cmd: nl -ba internal/mcp/tools.go | sed -n '1570,1695p'; nl -ba internal/mcp/textmerge.go | sed -n '145,240p'; nl -ba internal/mcp/searchtext.go | sed -n '380,460p'; rg -n "boundedInventory\(" internal/mcp --glob '*.go'
+      at: 2026-09-07T02:33:02.062684Z
+      classified: other
+    - cmd: rg -n "func \(c \*Client\) (SearchSymbols|Callers|ChangeImpact)|func normalize|Signature.*param|param.*signature" internal/grove internal/mcp --glob '*.go'; nl -ba internal/grove/client.go | sed -n '185,310p'; nl -ba internal/grove/client.go | sed -n '650,760p'; nl -ba internal/grove/types.go | sed -n '1,145p'; rg -n "SearchSymbols\(" internal/mcp/*test.go | head -30
+      at: 2026-09-07T02:33:58.890724Z
+      classified: other
+    - cmd: ls -d ../grove 2>/dev/null || true; git -C ../grove status --short --branch 2>/dev/null || true; sed -n '310,345p' internal/grove/client.go; sed -n '760,820p' internal/mcp/verify.go
+      at: 2026-09-07T02:34:04.781129Z
+      classified: other
+    - cmd: nl -ba internal/mcp/verify.go | sed -n '680,790p'; nl -ba internal/mcp/verify.go | sed -n '1035,1085p'; rg -n "func displayQN|func siteKey|dedup.*Symbol|symbolKey" internal/mcp internal/grove --glob '*.go'
+      at: 2026-09-07T02:34:14.051307Z
+      classified: other
+    - cmd: nl -ba internal/mcp/verify.go | sed -n '789,900p'; nl -ba internal/mcp/tools.go | sed -n '1900,1945p'; nl -ba internal/mcp/tools.go | sed -n '2720,2775p'
+      at: 2026-09-07T02:34:21.917613Z
+      classified: other
+    - cmd: rg -n "func paramsMatch|func normalizeParam" internal/mcp/verify.go; nl -ba internal/mcp/verify.go | sed -n '930,1038p'
+      at: 2026-09-07T02:34:27.804305Z
+      classified: other
+    - cmd: rg -n "renderTextMatches|exactHitInventory|type group" internal/mcp/textmerge.go | head -20; sed -n '140,255p' internal/mcp/textmerge.go
+      at: 2026-09-07T02:35:17.467823Z
+      classified: other
+    - cmd: rg -n "renderTextMatches\(" internal/mcp --glob '*.go'
+      at: 2026-09-07T02:35:28.394572Z
+      classified: other
+    - cmd: rg -n "genericSyntaxSearch" internal/mcp/tools.go; nl -ba internal/mcp/tools.go | sed -n '1375,1465p'
+      at: 2026-09-07T02:36:35.374664Z
+      classified: other
+    - cmd: nl -ba internal/mcp/tools.go | sed -n '2635,2715p'; nl -ba internal/mcp/tools.go | sed -n '620,645p'
+      at: 2026-09-07T02:37:31.172919Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/textmerge.go internal/mcp/searchtext.go internal/mcp/tools.go internal/mcp/graphtext.go internal/mcp/externalfamily.go && env GOWORK=off go test ./internal/mcp
+      at: 2026-09-07T02:38:01.935616Z
+      classified: test
+    - cmd: rg -n "func newTestHandler|func newIndexed|WithTokenFromDir|AutoIndexIfEmpty|Index\(" internal/mcp/*test.go | head -100; sed -n '1,120p' internal/mcp/mcp_test.go; sed -n '1,110p' internal/mcp/wideambiguity_test.go
+      at: 2026-09-07T02:38:05.356559Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/*.go && env GOWORK=off go test ./internal/mcp
+      at: 2026-09-07T02:38:48.071905Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/textmerge_test.go && env GOWORK=off go test ./internal/mcp
+      at: 2026-09-07T02:39:14.50845Z
+      classified: test
+    - cmd: rg -n "impactEvidenceMaxBytes" internal/mcp --glob '*.go'
+      at: 2026-09-07T02:39:51.615657Z
+      classified: other
+    - cmd: gofmt -w internal/mcp && env GOWORK=off go test ./internal/mcp
+      at: 2026-09-07T02:40:32.292335Z
+      classified: test
+    - cmd: git diff -- internal/mcp/externalfamily.go internal/mcp/textmerge.go internal/mcp/searchtext.go internal/mcp/tools.go internal/mcp/graphtext.go internal/mcp/impactevidence.go
+      at: 2026-09-07T02:40:49.997189Z
+      classified: other
+    - cmd: git diff --stat && git diff --check && git status --short --branch
+      at: 2026-09-07T02:40:50.044692Z
+      classified: other
+    - cmd: env GOWORK=off go test ./...
+      at: 2026-09-07T02:40:54.677489Z
+      classified: test
+    - cmd: git checkout -- internal/mcp/hypothesisledger_test.go internal/mcp/nested_test.go internal/mcp/selection.go internal/mcp/verify.go internal/mcp/verify_vs_grep_bench_test.go && git status --short
+      at: 2026-09-07T02:40:59.10731Z
+      classified: other
+    - cmd: git diff -- .cursor/mcp.json .mcp.json .windsurf/mcp.json; git show --stat --oneline HEAD; git show --format=fuller --no-patch HEAD
+      at: 2026-09-07T02:41:12.36609Z
+      classified: other
+    - cmd: git diff --numstat -- internal/mcp; git diff --check
+      at: 2026-09-07T02:41:12.36249Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/graphtext.go internal/mcp/graphtext_test.go internal/mcp/impactevidence.go internal/mcp/searchmulti_test.go internal/mcp/searchtext.go internal/mcp/searchtext_test.go internal/mcp/textmerge.go internal/mcp/textmerge_test.go internal/mcp/tools.go internal/mcp/wideambiguity_test.go internal/mcp/externalfamily.go && env GOWORK=off go test ./internal/mcp && git diff --check
+      at: 2026-09-07T02:41:31.888934Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/wideambiguity_test.go && env GOWORK=off go test ./internal/mcp -run 'Test(ChangeImpact_Wide|ChangeImpact_External|SearchExhaustive|ToolSearch_Skips)' -count=1 -v
+      at: 2026-09-07T02:41:58.509037Z
+      classified: test
+    - cmd: env GOWORK=off go run ./cmd/prism verify --base HEAD --format text
+      at: 2026-09-07T02:42:07.840626Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/searchtext.go && env GOWORK=off go test ./... && env GOWORK=off go run ./cmd/prism verify --base HEAD --format text
+      at: 2026-09-07T02:42:42.679311Z
+      classified: test
+    - cmd: rg -n "ci_invariants|invariants" Makefile scripts .github --glob '*' 2>/dev/null | head -80; git diff --check; git status --short --branch
+      at: 2026-09-07T02:42:45.608307Z
+      classified: other
+    - cmd: env GOWORK=off go run ./cmd/prism change-impact 'toolSchema' --format text
+      at: 2026-09-07T02:43:01.429436Z
+      classified: other
+    - cmd: env GOWORK=off go run ./cmd/prism change-impact 'toolDescription' --format text
+      at: 2026-09-07T02:43:01.523443Z
+      classified: other
+    - cmd: nl -ba internal/mcp/tools.go | sed -n '470,515p'; nl -ba internal/mcp/tools.go | sed -n '775,800p'
+      at: 2026-09-07T02:43:04.232262Z
+      classified: other
+    - cmd: rg -n "pure grep|scope=.*text.*grep|exhaustive.*description|complete compact" internal/mcp/*test.go
+      at: 2026-09-07T02:43:17.156228Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go && env GOWORK=off go test ./... && git diff --check && env GOWORK=off go run ./cmd/prism verify --base HEAD --format text
+      at: 2026-09-07T02:43:49.334342Z
+      classified: test
+    - cmd: git add internal/mcp/graphtext.go internal/mcp/graphtext_test.go internal/mcp/impactevidence.go internal/mcp/searchmulti_test.go internal/mcp/searchtext.go internal/mcp/searchtext_test.go internal/mcp/textmerge.go internal/mcp/textmerge_test.go internal/mcp/tools.go internal/mcp/wideambiguity_test.go internal/mcp/externalfamily.go && git diff --cached --check && git commit -m "Make wide impact discovery complete and compact" && git status --short --branch
+      at: 2026-09-07T02:43:53.680719Z
+      classified: other
+notes:
+    - text: continuation of session 01a0790c-a7c5-7543-a18f-d1f822079fe4 — events captured after its evidence was finalized
+      at: 2026-09-07T01:47:57.688341Z
+redactions: 0

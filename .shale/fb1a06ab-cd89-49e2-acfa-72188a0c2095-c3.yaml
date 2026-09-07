@@ -1,0 +1,232 @@
+shale_version: "0"
+id: fb1a06ab-cd89-49e2-acfa-72188a0c2095-c3
+created_at: 2026-09-07T01:48:06.895652Z
+finalized_at: 2026-09-07T02:43:56.596037Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:08:35.657245Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T02:09:39.534584Z
+    - path: internal/mcp/wideambiguity_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-07T02:10:48.779108Z
+commands:
+    - cmd: 'git fetch -q --prune origin; git log -1 --format=''%h %ci %an %s'' main; git log -1 --format=''%h %ci %an %s'' origin/main; git status -sb | head -3; echo "--- e06c789 and ab353cf reachable from main?"; git merge-base --is-ancestor e06c789 main && echo "e06c789: yes"; git merge-base --is-ancestor ab353cf main && echo "ab353cf: yes"; echo "--- branch list now:"; git branch -a | cat'
+      at: 2026-09-07T01:49:01.956193Z
+      classified: other
+    - cmd: export GOWORK=off GOFLAGS=-mod=readonly; git log --oneline -1 && go build ./... 2>&1 | tail -5 && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -8; echo "go test exit=${pipestatus[1]:-$?}"; go build -o ~/.cache/prism-research/bin/prism-main-verify ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-main-verify | cut -c1-10
+      at: 2026-09-07T01:52:54.655151Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "add_argument" ab_gate.py
+      at: 2026-09-07T01:52:54.752683Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py 2>&1
+      at: 2026-09-07T01:53:33.862765Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b796gpt24.output
+      at: 2026-09-07T01:53:47.824871Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py 2>&1
+      at: 2026-09-07T01:53:59.982104Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bzsx8j4b6.output
+      at: 2026-09-07T02:00:40.285364Z
+      classified: other
+    - cmd: grep -rn "re-run with one\|ambiguous:\|candidates, re-run\|too many candidates" /Users/tapabratapal/Projects/provasign/grove/internal/graph/*.go 2>/dev/null | grep -v _test | head -20
+      at: 2026-09-07T02:07:47.944959Z
+      classified: other
+    - cmd: sed -n 870,930p /Users/tapabratapal/Projects/provasign/grove/internal/graph/changeimpact.go
+      at: 2026-09-07T02:07:52.530423Z
+      classified: other
+    - cmd: grep -n '"regexp"\|"strconv"' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -3
+      at: 2026-09-07T02:08:36.266592Z
+      classified: other
+    - cmd: grep -n "declares no method\|is ambiguous —\|func (h \*Handler) toolChangeImpact" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-07T02:08:42.730863Z
+      classified: other
+    - cmd: grep -n "func renderOneSearchText\|allEmpty\|out\[\"warning\"\]\|out\[\"note\"\]" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/searchtext.go | head -20
+      at: 2026-09-07T02:09:06.899092Z
+      classified: other
+    - cmd: grep -n 'm\["warning"\]\|"warning"\].(string)' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/searchtext.go
+      at: 2026-09-07T02:09:19.756884Z
+      classified: other
+    - cmd: export GOWORK=off GOFLAGS=-mod=readonly; gofmt -l internal/mcp/tools.go internal/mcp/searchtext.go; go vet ./internal/mcp 2>&1 | tail -10
+      at: 2026-09-07T02:09:58.823877Z
+      classified: lint
+    - cmd: export GOWORK=off GOFLAGS=-mod=readonly; go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -30
+      at: 2026-09-07T02:10:20.66349Z
+      classified: test
+    - cmd: grep -n "func evidenceHandler" -A 8 /Users/tapabratapal/Projects/provasign/prism/internal/mcp/evidencedelivery_test.go
+      at: 2026-09-07T02:10:31.661413Z
+      classified: other
+    - cmd: export GOWORK=off GOFLAGS=-mod=readonly; gofmt -l internal/mcp/wideambiguity_test.go; go vet ./internal/mcp && go test ./internal/mcp -run 'WideAmbiguity|EnrichAmbiguous|FewCandidates' -count=1 -v 2>&1 | grep -E "^(--- |ok|FAIL|    [a-z_]+\.go:[0-9]+:)"
+      at: 2026-09-07T02:10:59.044609Z
+      classified: lint
+    - cmd: export GOWORK=off GOFLAGS=-mod=readonly; go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "full suite exit=${pipestatus[1]:-$?}"; go build -o ~/.cache/prism-research/bin/prism-fix2 ./cmd/prism && shasum ~/.cache/prism-research/bin/prism-fix2 | cut -c1-10
+      at: 2026-09-07T02:11:24.491079Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/.cache/prism-research/bin/prism-fix2 > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ci_inv_fix2.log 2>&1; echo "CI-INVARIANTS(fix2) exit=$?"; tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ci_inv_fix2.log
+      at: 2026-09-07T02:11:27.437522Z
+      classified: other
+    - cmd: |-
+        sed -i '' 's#prism-main-verify#prism-fix2#; s#CANDIDATE = str.*#CANDIDATE = str(Path.home() / ".cache/prism-research/bin/prism-fix2")#; s#TASKS = .*#TASKS = ["tasks/grafana-querydata-impact.json"]#' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py
+        sed -i '' 's/verify-base/verify-base2/; s/verify-cand/verify-cand2/' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py
+      at: 2026-09-07T02:11:37.478465Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py 2>&1
+      at: 2026-09-07T02:11:45.559446Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b9gqeyx45.output 2>/dev/null; pgrep -fl "verify_grafana|claude -p" | wc -l
+      at: 2026-09-07T02:12:10.625199Z
+      classified: other
+    - cmd: |-
+        sed -i '' 's#TASKS = .*#TASKS = ["tasks/grafana-checkhealth-impact.json", "tasks/grafana-querydata-impact.json"]#' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py
+        grep "^TASKS" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py
+      at: 2026-09-07T02:12:19.60263Z
+      classified: other
+    - cmd: while pgrep -f "verify_grafana" >/dev/null; do sleep 5; done; echo DONE; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b9gqeyx45.output 2>/dev/null
+      at: 2026-09-07T02:12:30.135413Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bl6vrqh33.output
+      at: 2026-09-07T02:13:30.437161Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/b9gqeyx45.output
+      at: 2026-09-07T02:15:01.049156Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py 2>&1
+      at: 2026-09-07T02:15:04.897916Z
+      classified: other
+    - cmd: |-
+        while pgrep -f "verify_grafana" >/dev/null; do sleep 5; done; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bkvy6b6kt.output 2>/dev/null
+        sed -i '' 's#TASKS = .*#TASKS = ["tasks/guava-forwarding-delegate.json", "tasks/jackson-writetypeprefix.json"]#; s/verify-base2/verify-base3/; s/verify-cand2/verify-cand3/' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py
+        grep "^TASKS" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py
+      at: 2026-09-07T02:15:54.585344Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bkvy6b6kt.output
+      at: 2026-09-07T02:18:10.503426Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/verify_grafana.py 2>&1
+      at: 2026-09-07T02:18:33.246162Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bo88ryezk.output
+      at: 2026-09-07T02:21:31.861672Z
+      classified: other
+    - cmd: git status --short | grep -v "^ M \.\|^ M [A-Z]"; git log --oneline -1; git diff --stat -- internal | tail -5
+      at: 2026-09-07T02:24:15.517207Z
+      classified: other
+    - cmd: |-
+        git add internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/wideambiguity_test.go && git commit -q -m "change_impact: redirect wide ambiguity to exhaustive text search; move search partiality warnings to the top
+
+        grafana-querydata-impact (ab_gate, sonnet, 2026-09-06): candidate recall
+        dropped to 0.882/51 vs baseline 0.98, despite an external-interface
+        coverage warning already present. Transcript root cause: 'QueryData' was
+        ambiguous across 41 candidates; the agent read grove's bare 're-run with
+        one of these', issued 12 separate change_impact calls guessing receiver
+        names, and still missed 6 sites reachable only by text search (the
+        interface has no local declaration for a family query to anchor on). A
+        50-symbol truncation warning also sat after all 50 entries, past where
+        the agent read.
+
+        Past wideMemberAmbiguityThreshold (8) candidates, the ambiguity error now
+        says explicitly not to loop over candidates and names the actual next
+        call (prism_search exhaustive text); below it, unchanged. Search
+        partiality (truncated/sample/timed-out) now renders before the result
+        it qualifies, not after.
+
+        Verified end to end: grafana-querydata-impact recall 0.882 -> 0.98
+        (matches baseline), 21% cheaper. grafana-checkhealth-impact, guava-
+        forwarding-delegate, jackson-writetypeprefix rerun for regressions: none
+        found (writetypeprefix 0.158->1.0 recall, unrelated to this fix, holds).
+        go test ./... green; ci_invariants all held.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01EmbKfexHPJPniutoFBdq6M" && git log --oneline -1
+      at: 2026-09-07T02:24:31.272512Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 ab_gate.py --baseline ~/.cache/prism-research/bin/prism-v0.71.1 --candidate ~/.cache/prism-research/bin/prism-fix2 --model sonnet --fresh > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_release.log 2>&1; echo "AB-GATE(release) exit=$?"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/scratchpad/ab_gate_release.log
+      at: 2026-09-07T02:24:35.17785Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bz893b8q3.output 2>/dev/null; echo "--- still running:"; pgrep -fl "ab_gate|claude -p" | wc -l
+      at: 2026-09-07T02:26:02.270991Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls -lt runs/ab-gate/*.attempt.json 2>/dev/null | head -8
+      at: 2026-09-07T02:26:10.644897Z
+      classified: other
+    - cmd: git log --oneline -3; git status --short | grep -v "^ M \.\|^ M [A-Z]"
+      at: 2026-09-07T02:29:33.654368Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json,glob
+        for f in ['runs/ab-gate/grafana-querydata-impact.6d7ae539e736cd419134.6e66ff4f14d140e8abb8d1821ffb851d.attempt.json',
+                  'runs/ab-gate/grafana-checkhealth-impact.769d35b5e855a3839a77.451e3b605aad4c9abd3270ec148274e3.attempt.json']:
+            r=json.load(open(f))
+            print(f.split('/')[-1][:40], r.get('session_id'), r.get('recall'), r.get('precision'))
+        "
+      at: 2026-09-07T02:29:39.701987Z
+      classified: other
+    - cmd: |-
+        T=$(find ~/.claude/projects -name "9075f3a3-8682-4868-ac77-7d645437afd9.jsonl" 2>/dev/null); echo "$T"; python3 - "$T" <<'EOF'
+        import json,sys
+        p=sys.argv[1]; uses={}
+        for line in open(p,errors='ignore'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use':
+                        uses[c['id']]=c; print('USE', c['name'], json.dumps(c['input'])[:150])
+            elif j.get('type')=='user':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_result':
+                        u=uses.get(c.get('tool_use_id')); body=c.get('content')
+                        txt=body if isinstance(body,str) else ''.join(x.get('text','') for x in body if isinstance(x,dict)) if isinstance(body,list) else ''
+                        if u and u['name'].startswith('mcp__prism'):
+                            print(f"  RESULT[{u['name']}] {len(txt)} chars ::", txt[:400].replace('\n',' | '))
+        EOF
+      at: 2026-09-07T02:29:53.052882Z
+      classified: other
+    - cmd: |-
+        T=/Users/tapabratapal/.claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-prism-gate-l7uf2-xi-repo/9075f3a3-8682-4868-ac77-7d645437afd9.jsonl
+        python3 - "$T" <<'EOF'
+        import json,sys
+        p=sys.argv[1]; uses={}
+        for line in open(p,errors='ignore'):
+            try: j=json.loads(line)
+            except: continue
+            if j.get('type')=='assistant':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_use': uses[c['id']]=c
+            elif j.get('type')=='user':
+                for c in (j.get('message') or {}).get('content') or []:
+                    if isinstance(c,dict) and c.get('type')=='tool_result':
+                        u=uses.get(c.get('tool_use_id'))
+                        if u and u['name']=='mcp__prism__prism_search':
+                            body=c['content']; txt=body if isinstance(body,str) else ''.join(x.get('text','') for x in body)
+                            print(txt)
+        EOF
+      at: 2026-09-07T02:30:07.652994Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fb1a06ab-cd89-49e2-acfa-72188a0c2095/tasks/bz893b8q3.output 2>/dev/null; echo "--- alive:"; pgrep -fl "ab_gate|claude -p" | wc -l; echo "--- git status:"; git status --short | grep -v "^ M \.\|^ M [A-Z]"
+      at: 2026-09-07T02:41:56.022182Z
+      classified: other
+notes:
+    - text: continuation of session fb1a06ab-cd89-49e2-acfa-72188a0c2095 — events captured after its evidence was finalized
+      at: 2026-09-07T01:48:06.895652Z
+redactions: 0
