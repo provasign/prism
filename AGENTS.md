@@ -1,4 +1,10 @@
 
+## Development workflow
+
+All changes must be made, committed, and pushed directly on `main`. Do not
+create or use feature, task, cleanup, or reconciliation branches for repository
+changes. Before editing or committing, confirm the active branch is `main`.
+
 ## Prism — context delivery
 
 Prism indexes this repo's call and type graph. grep finds the same lines —
