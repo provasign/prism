@@ -1,0 +1,34 @@
+shale_version: "0"
+id: 01a07f26-dfae-7ec3-98bf-6508822641e9-c9
+created_at: 2026-09-08T21:38:36.623115Z
+finalized_at: 2026-09-08T21:40:54.030332Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:40:48.115681Z
+commands:
+    - cmd: git push origin main
+      at: 2026-09-08T21:38:36.623115Z
+      classified: other
+    - cmd: git log -3 --oneline --decorate && git ls-remote --heads origin main && git status --short --branch
+      at: 2026-09-08T21:38:42.199448Z
+      classified: other
+    - cmd: git fetch origin main && gh run list --repo provasign/prism --branch main --limit 10 --json databaseId,headSha,name,status,conclusion,displayTitle,createdAt
+      at: 2026-09-08T21:38:52.605208Z
+      classified: other
+    - cmd: gh run watch 34281729774 --repo provasign/prism --exit-status --interval 10
+      at: 2026-09-08T21:40:20.31009Z
+      classified: other
+notes:
+    - text: continuation of session 01a07f26-dfae-7ec3-98bf-6508822641e9 — events captured after its evidence was finalized
+      at: 2026-09-08T21:38:36.623115Z
+redactions: 0
