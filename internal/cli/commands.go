@@ -392,6 +392,9 @@ profile: "%s"
 
 	// 2. Detect the prism binary path for use in MCP configs.
 	prismBin := detectSelfPath()
+	if warning := mcp.PrismInstallationWarning(prismBin, version.Version); warning != "" {
+		fmt.Fprintln(os.Stderr, warning)
+	}
 
 	// 3. Write steering instructions matching the chosen mode.
 	writeSteeringInstructions(abs)

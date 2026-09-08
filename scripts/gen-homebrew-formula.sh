@@ -76,6 +76,16 @@ class Prism < Formula
     end
   end
 
+  def caveats
+    <<~EOS
+      Run `prism init --global` after installing or upgrading so AI clients
+      use this Homebrew-managed executable. Run `prism init` inside existing
+      projects to refresh project-level MCP registrations.
+
+      Prism reports other installed copies when their versions differ.
+    EOS
+  end
+
   test do
     assert_match "prism", shell_output("#{bin}/prism version")
   end

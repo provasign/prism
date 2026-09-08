@@ -53,6 +53,10 @@ VERSION=v0.72.4 curl -fsSL https://raw.githubusercontent.com/provasign/prism/mai
 ```
 
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
+Use either Homebrew or the standalone installer as the authoritative installation. If both
+are present with different versions, `prism init` and the MCP server report their paths.
+After changing installation methods or upgrading Homebrew, run `prism init --global`, run
+`prism init` in existing projects, and restart the coding agent so pinned MCP paths refresh.
 
 Build from source with `make build`; run the full test suite with `make test`.
 

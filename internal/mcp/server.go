@@ -281,6 +281,9 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if note := staleBinaryNote(); note != "" {
 			content = append(content, map[string]string{"type": "text", "text": note})
 		}
+		if note := conflictingInstallationNote(); note != "" {
+			content = append(content, map[string]string{"type": "text", "text": note})
+		}
 		return map[string]any{"content": content}, nil
 	default:
 		return nil, &rpcError{Code: -32601, Message: "method not found"}
