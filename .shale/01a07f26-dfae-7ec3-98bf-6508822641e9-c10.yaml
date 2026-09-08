@@ -1,0 +1,152 @@
+shale_version: "0"
+id: 01a07f26-dfae-7ec3-98bf-6508822641e9-c10
+created_at: 2026-09-08T21:43:06.892824Z
+finalized_at: 2026-09-08T21:52:12.519387Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: .cursor/mcp.json
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:51:42.276128Z
+    - path: .mcp.json
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:51:42.276128Z
+    - path: .windsurf/mcp.json
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:51:42.276128Z
+commands:
+    - cmd: git tag -a v0.72.5 -m "v0.72.5" && git push origin v0.72.5
+      at: 2026-09-08T21:43:06.892824Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 8 --json databaseId,headSha,name,status,conclusion,displayTitle,event,createdAt
+      at: 2026-09-08T21:43:12.473526Z
+      classified: other
+    - cmd: gh run watch 34282129151 --repo provasign/prism --exit-status --interval 10
+      at: 2026-09-08T21:45:05.091017Z
+      classified: other
+    - cmd: gh release view v0.72.5 --repo provasign/prism --json tagName,isDraft,isPrerelease,url,assets && gh workflow run refresh-formulae.yml --repo provasign/homebrew-shale
+      at: 2026-09-08T21:45:17.112214Z
+      classified: other
+    - cmd: gh run watch 34282319646 --repo provasign/homebrew-shale --exit-status --interval 10
+      at: 2026-09-08T21:45:35.85673Z
+      classified: other
+    - cmd: |-
+        gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 --decode | sed -n '1,130p'
+        git status --short --branch
+        git tag --points-at HEAD
+      at: 2026-09-08T21:45:45.922425Z
+      classified: other
+    - cmd: git clone --quiet https://github.com/provasign/homebrew-shale.git /tmp/homebrew-shale-prism-fix && find /tmp/homebrew-shale-prism-fix -name AGENTS.md -print && rg -n "class Prism|Regenerate stale|prism.*Formula|formula" /tmp/homebrew-shale-prism-fix/.github /tmp/homebrew-shale-prism-fix/scripts /tmp/homebrew-shale-prism-fix/Formula 2>/dev/null | head -n 160
+      at: 2026-09-08T21:46:02.346393Z
+      classified: other
+    - cmd: sed -n '1,130p' /tmp/homebrew-shale-prism-fix/scripts/refresh-formulae.sh && sed -n '1,100p' /tmp/homebrew-shale-prism-fix/README.md && git -C /tmp/homebrew-shale-prism-fix status --short --branch
+      at: 2026-09-08T21:46:10.515881Z
+      classified: other
+    - cmd: bash -n scripts/refresh-formulae.sh && ruby -c Formula/prism.rb && git diff --check && git diff --stat && git diff
+      at: 2026-09-08T21:46:40.012263Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git remote -v && git diff --check && git diff -- Formula/prism.rb scripts/refresh-formulae.sh
+      at: 2026-09-08T21:47:54.584252Z
+      classified: other
+    - cmd: 'git add Formula/prism.rb scripts/refresh-formulae.sh && git commit -m ''fix(prism): preserve installation caveats'' && git push origin main'
+      at: 2026-09-08T21:48:02.18539Z
+      classified: other
+    - cmd: 'gh run list --repo provasign/homebrew-shale --branch main --limit 8 --json databaseId,name,displayTitle,status,conclusion,headSha,event,createdAt,url && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H ''Accept: application/vnd.github.raw+json'' | rg -n ''version|def caveats|prism init|different'' && gh api repos/provasign/homebrew-shale/contents/scripts/refresh-formulae.sh -H ''Accept: application/vnd.github.raw+json'' | rg -n ''caveats|prism init|different'''
+      at: 2026-09-08T21:48:14.141894Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml --repo provasign/homebrew-shale --ref main && sleep 3 && gh run list --repo provasign/homebrew-shale --workflow refresh-formulae.yml --branch main --limit 1 --json databaseId,status,conclusion,headSha,url
+      at: 2026-09-08T21:48:27.070017Z
+      classified: other
+    - cmd: gh run watch 34282593705 --repo provasign/homebrew-shale --exit-status
+      at: 2026-09-08T21:48:37.071326Z
+      classified: other
+    - cmd: 'git fetch origin main && git log --oneline --decorate -4 origin/main && git status --short && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H ''Accept: application/vnd.github.raw+json'' | sed -n ''44,58p'''
+      at: 2026-09-08T21:48:43.804027Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git log -5 --oneline --decorate
+      at: 2026-09-08T21:48:56.664932Z
+      classified: other
+    - cmd: gh release view v0.72.5 --repo provasign/prism --json tagName,isDraft,isPrerelease,url,publishedAt && gh run view 34282129151 --repo provasign/prism --json status,conclusion,url
+      at: 2026-09-08T21:48:57.242413Z
+      classified: other
+    - cmd: |-
+        set -u
+        command -v prism || true
+        which -a prism || true
+        for p in "$HOME/bin/prism" /opt/homebrew/bin/prism /usr/local/bin/prism; do
+          if [ -e "$p" ] || [ -L "$p" ]; then
+            ls -l "$p"
+            "$p" version || true
+          fi
+        done
+        uname -m
+        brew --prefix 2>/dev/null || true
+        brew list --versions prism 2>/dev/null || true
+        brew info provasign/shale/prism 2>/dev/null | sed -n '1,18p' || true
+        ps ax -o pid=,command= | rg '[p]rism( |$)' || true
+      at: 2026-09-08T21:50:03.751627Z
+      classified: other
+    - cmd: brew update && brew upgrade provasign/shale/prism
+      at: 2026-09-08T21:50:23.853384Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism version && /opt/homebrew/bin/prism init --help
+      at: 2026-09-08T21:50:30.346226Z
+      classified: other
+    - cmd: |-
+        backup_path="$HOME/bin/prism.v0.72.0.backup-20260908"
+        if [ -e "$backup_path" ]; then
+          backup_path="$HOME/bin/prism.v0.72.0.backup-20260908-$(date +%H%M%S)"
+        fi
+        mv "$HOME/bin/prism" "$backup_path"
+        printf 'Moved shadowing binary to %s\n' "$backup_path"
+        command -v prism
+        prism version
+        /opt/homebrew/bin/prism init --global
+        /opt/homebrew/bin/prism init /Users/tapabratapal/Projects/provasign/prism
+      at: 2026-09-08T21:50:41.501001Z
+      classified: other
+    - cmd: |-
+        git status --short
+        git diff --stat
+        git diff -- . ':(exclude)prism.yaml' | sed -n '1,220p'
+        printf '\nRegistration path matches:\n'
+        rg -n --fixed-strings '/opt/homebrew/bin/prism' "$HOME/.codex/config.toml" "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.config/opencode/opencode.json" "$HOME/.config/zed/settings.json" .mcp.json .cursor/mcp.json .windsurf/mcp.json .vscode/mcp.json 2>/dev/null || true
+        printf '\nOld path matches:\n'
+        rg -n --fixed-strings '/Users/tapabratapal/bin/prism' "$HOME/.codex/config.toml" "$HOME/.claude.json" "$HOME/.cursor/mcp.json" "$HOME/.config/opencode/opencode.json" "$HOME/.config/zed/settings.json" .mcp.json .cursor/mcp.json .windsurf/mcp.json .vscode/mcp.json 2>/dev/null || true
+      at: 2026-09-08T21:51:06.351344Z
+      classified: other
+    - cmd: |-
+        pkill -TERM -f '^/Users/tapabratapal/bin/prism mcp($| )' || true
+        pkill -TERM -f '^/opt/homebrew/bin/prism mcp($| )' || true
+        sleep 1
+        ps ax -o pid=,command= | rg '[p]rism( |$)' || true
+        command -v prism
+        which -a prism
+        prism version
+        prism init --print-config codex
+      at: 2026-09-08T21:51:25.034196Z
+      classified: other
+    - cmd: git diff --check && git diff -- .cursor/mcp.json .mcp.json .windsurf/mcp.json && git status --short
+      at: 2026-09-08T21:51:47.856937Z
+      classified: other
+    - cmd: |-
+        jq empty .cursor/mcp.json .mcp.json .windsurf/mcp.json
+        prism verify --base HEAD --format text
+      at: 2026-09-08T21:52:06.107813Z
+      classified: other
+notes:
+    - text: continuation of session 01a07f26-dfae-7ec3-98bf-6508822641e9 — events captured after its evidence was finalized
+      at: 2026-09-08T21:43:06.892824Z
+redactions: 0
