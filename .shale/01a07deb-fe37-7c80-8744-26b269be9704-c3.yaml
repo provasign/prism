@@ -1,0 +1,640 @@
+shale_version: "0"
+id: 01a07deb-fe37-7c80-8744-26b269be9704-c3
+created_at: 2026-09-08T00:55:17.449138Z
+finalized_at: 2026-09-08T04:12:22.912427Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git push origin main && git status --short --branch && git log --oneline --decorate -4 && gh run list --branch main --limit 3 --json databaseId,headSha,status,conclusion,url,displayTitle
+      at: 2026-09-08T00:55:17.449138Z
+      classified: other
+    - cmd: gh run watch 34174897365 --exit-status
+      at: 2026-09-08T00:58:15.811729Z
+      classified: other
+    - cmd: gh run view 34174897365 --log-failed | rg -n 'TestScopedDotPathsMatchUnscopedPaths|TestNodeSeesEdit|freshness|non-canonical scoped path|FAIL\s+github.com/provasign/prism/internal'
+      at: 2026-09-08T00:58:20.740631Z
+      classified: build
+    - cmd: /Users/tapabratapal/bin/prism query 'run the product-level coding suite with current Prism and native controls' --terms coding_suite --format text
+      at: 2026-09-08T01:13:27.415274Z
+      classified: other
+    - cmd: sed -n '1,90p' harness/coding_suite.py; sed -n '180,380p' harness/coding_suite.py; sed -n '396,510p' harness/coding_suite.py; sed -n '510,620p' harness/coding_suite.py
+      at: 2026-09-08T01:13:32.073406Z
+      classified: other
+    - cmd: git status --short --branch && rg -n "def run_cell|def prepare_cell|PATH|prism-v0\.72\.0|make_templates|preflight" harness/coding_suite.py harness/tests -g '*.py'
+      at: 2026-09-08T01:14:19.748835Z
+      classified: other
+    - cmd: |-
+        sed -n '1,220p' harness/coding_suite.py
+        sed -n '220,470p' harness/coding_suite.py
+        rg -n "change.?impact|impact.*suite|four.*arm|sonnet_native|gpt55_native" harness -g '*.py' -g '*.md' --glob '!runs/**'
+      at: 2026-09-08T01:14:34.509387Z
+      classified: other
+    - cmd: |-
+        sed -n '190,370p' harness/coding_suite.py
+        sed -n '1,180p' harness/runs/four-head-impact-2026-09-07-stopped/run_panel.py
+        sed -n '180,390p' harness/runs/four-head-impact-2026-09-07-stopped/run_panel.py
+      at: 2026-09-08T01:14:39.527901Z
+      classified: other
+    - cmd: |-
+        sed -n '390,760p' harness/runs/four-head-impact-2026-09-07-stopped/run_panel.py
+        sed -n '370,520p' harness/coding_suite.py
+        find harness/tests -maxdepth 2 -type f -print | sort | rg 'coding|impact|suite'
+      at: 2026-09-08T01:14:45.323232Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'run_cell' . --format text
+      at: 2026-09-08T01:14:55.606743Z
+      classified: other
+    - cmd: |-
+        /Users/tapabratapal/bin/prism change-impact 'run_cell' . --file harness/coding_suite.py --format text
+        /Users/tapabratapal/bin/prism change-impact 'main' . --file harness/coding_suite.py --format text
+      at: 2026-09-08T01:14:59.251808Z
+      classified: other
+    - cmd: sed -n '1,280p' harness/tests/test_coding_suite.py
+      at: 2026-09-08T01:15:06.735716Z
+      classified: other
+    - cmd: python3 -m pytest -q harness/tests/test_coding_suite.py && python3 -m py_compile harness/coding_suite.py
+      at: 2026-09-08T01:15:36.08641Z
+      classified: test
+    - cmd: |-
+        python3 -m unittest harness.tests.test_coding_suite -v
+        python3 -m py_compile harness/coding_suite.py
+      at: 2026-09-08T01:15:44.159203Z
+      classified: other
+    - cmd: |-
+        find harness/runs/coding-suite-pilot-2026-09-07/templates/pallets__click__pr3244/prism -maxdepth 2 \( -name AGENTS.md -o -name CLAUDE.md -o -name .mcp.json -o -path '*/.codex/*' \) -print
+        sed -n '1,180p' harness/runs/coding-suite-pilot-2026-09-07/templates/pallets__click__pr3244/prism/AGENTS.md 2>/dev/null
+        sed -n '1,180p' harness/runs/coding-suite-pilot-2026-09-07/templates/pallets__click__pr3244/prism/CLAUDE.md 2>/dev/null
+      at: 2026-09-08T01:15:54.174772Z
+      classified: other
+    - cmd: |-
+        find harness/runs/coding-suite-pilot-2026-09-07 -maxdepth 4 -type f | head -40
+        find harness/runs/daytoday-four-head-2026-09-07 -maxdepth 4 \( -name AGENTS.md -o -name CLAUDE.md -o -name .mcp.json \) -print | head -20
+      at: 2026-09-08T01:15:58.918205Z
+      classified: other
+    - cmd: git status --short --branch && git rev-parse HEAD && git log -1 --oneline && go build -o /private/tmp/prism-product-proof-current-20260908 ./cmd/prism && shasum -a 256 /private/tmp/prism-product-proof-current-20260908 && /private/tmp/prism-product-proof-current-20260908 version
+      at: 2026-09-08T01:16:04.945463Z
+      classified: build
+    - cmd: |-
+        go env GOFLAGS GOWORK
+        env GOFLAGS=-mod=readonly go build -o /private/tmp/prism-product-proof-current-20260908 ./cmd/prism
+        shasum -a 256 /private/tmp/prism-product-proof-current-20260908
+        /private/tmp/prism-product-proof-current-20260908 version
+      at: 2026-09-08T01:16:09.836847Z
+      classified: build
+    - cmd: |-
+        rg -n '^package main$' -g '*.go' | head -20
+        rg -n 'go build' Makefile* README.md .github -g '*' | head -30
+      at: 2026-09-08T01:16:14.253916Z
+      classified: build
+    - cmd: |-
+        pwd
+        ls -la | head -40
+        git rev-parse --show-toplevel
+        git ls-files | head -30
+      at: 2026-09-08T01:16:18.290929Z
+      classified: other
+    - cmd: |-
+        git status --short --branch
+        git rev-parse HEAD
+        rg -n '^package main$' -g '*.go' | head -20
+        rg -n 'go build' README.md Makefile .github -g '*' 2>/dev/null | head -30
+      at: 2026-09-08T01:16:21.772158Z
+      classified: build
+    - cmd: |-
+        env GOFLAGS=-mod=readonly go build -o /private/tmp/prism-product-proof-current-20260908 ./cmd/prism
+        shasum -a 256 /private/tmp/prism-product-proof-current-20260908
+        /private/tmp/prism-product-proof-current-20260908 version
+      at: 2026-09-08T01:16:31.633101Z
+      classified: build
+    - cmd: |-
+        proof_probe=$(mktemp -d /private/tmp/prism-product-init.XXXXXX)
+        printf 'package demo\n\nfunc Target() {}\n' > "$proof_probe/demo.go"
+        /private/tmp/prism-product-proof-current-20260908 init --no-permissions "$proof_probe" >/private/tmp/prism-product-init.stdout 2>/private/tmp/prism-product-init.stderr
+        find "$proof_probe" -maxdepth 3 -type f -print | sort
+        sed -n '1,220p' "$proof_probe/AGENTS.md" 2>/dev/null
+        sed -n '1,220p' "$proof_probe/CLAUDE.md" 2>/dev/null
+        sed -n '1,120p' /private/tmp/prism-product-init.stderr
+      at: 2026-09-08T01:16:35.490646Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'audit' . --file harness/coding_suite.py --format text
+      at: 2026-09-08T01:16:47.086036Z
+      classified: other
+    - cmd: |-
+        python3 -m unittest harness.tests.test_coding_suite -v
+        python3 -m py_compile harness/coding_suite.py
+        git diff --check -- harness/coding_suite.py harness/tests/test_coding_suite.py
+        git diff --stat -- harness/coding_suite.py harness/tests/test_coding_suite.py
+      at: 2026-09-08T01:17:00.660987Z
+      classified: other
+    - cmd: |-
+        python3 -m py_compile harness/product_impact_suite.py
+        python3 -B harness/product_impact_suite.py --help
+        git diff --check -- harness/product_impact_suite.py harness/coding_suite.py harness/tests/test_coding_suite.py
+      at: 2026-09-08T01:18:16.154829Z
+      classified: other
+    - cmd: |-
+        git status --short --branch
+        git diff -- harness/coding_suite.py harness/tests/test_coding_suite.py harness/product_impact_suite.py | sed -n '1,260p'
+        docker info --format '{{.ServerVersion}}'
+      at: 2026-09-08T01:18:20.307946Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/product_impact_suite.py --run-dir /private/tmp/product-proof-impact-preflight-20260908 --phase pilot --preflight-only
+      at: 2026-09-08T01:18:30.56085Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/coding_suite.py --run-dir /private/tmp/product-proof-coding-preflight-20260908 --phase pilot --preflight-only
+      at: 2026-09-08T01:20:43.701724Z
+      classified: other
+    - cmd: |-
+        PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 - <<'PY'
+        import io, json, shutil, sys, tempfile
+        from pathlib import Path
+        sys.path.insert(0, 'harness')
+        import product_impact_suite as p
+        root = Path(tempfile.mkdtemp(prefix='impact-construction-', dir='/private/tmp'))
+        binary = root / 'prism-v0.72.0'; shutil.copy2(p.PRISM_SOURCE, binary)
+        (root / 'bin').mkdir(); shutil.copy2(binary, root / 'bin/prism')
+        (root / 'answer-schema.json').write_text('{}')
+        task = p.base.Task.load(p.HARNESS / 'tasks/jackson-jsonnode-get.json')
+        archive, pristine, _ = p.base.pristine_archive(task)
+        native = p.prepare_cell(root, binary, task, archive, pristine, 1, 'gpt55_native')
+        prism = p.prepare_cell(root, binary, task, archive, pristine, 1, 'gpt55_prism')
+        checks = {
+          'prompts_identical': (native['out']/'prompt.txt').read_bytes() == (prism['out']/'prompt.txt').read_bytes(),
+          'native_has_agents': (native['work']/'AGENTS.md').exists(),
+          'prism_has_agents': (prism['work']/'AGENTS.md').exists(),
+          'prism_has_claude': (prism['work']/'CLAUDE.md').exists(),
+          'native_command_exposes_prism_path': any('/bin/prism' in x for x in native['cmd']),
+          'prism_command_exposes_prism_path': any(str(root/'bin') in x for x in prism['cmd']),
+          'agents_in_pristine_snapshot': 'AGENTS.md' in prism['pristine'],
+          'product_init_exit': json.loads((prism['out']/'product-init.json').read_text())['exit_code'],
+        }
+        print(json.dumps(checks, indent=2))
+        PY
+      at: 2026-09-08T01:21:05.834868Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/product_impact_suite.py --run-dir /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-impact-pilot-2026-09-08 --phase pilot --trials 1
+      at: 2026-09-08T01:28:17.355449Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        root=Path('harness/runs/product-proof-impact-pilot-2026-09-08')
+        s=json.loads((root/'summary.json').read_text())
+        for r in sorted(s['rows'], [REDACTED:env-secret] x:(x['task'],x['arm'])):
+         print(r['task'],r['arm'],'valid',r['audited_valid'],'R',r['score']['recall'],'P',r['score']['precision'],'F1',r['score']['f1'],'wall',r['wall_s'],'cost',r.get('cost_usd'),'actions',r.get('prism_actions'),'mcp',len(r.get('prism_calls',[])),'cli',len(r.get('prism_cli_commands',[])),'errors',len(r.get('tool_errors',[])),'viol',r.get('violations'))
+        print('manifest',json.loads((root/'manifest.json').read_text())['status'])
+        for task in sorted({r['task'] for r in s['rows']}):
+         rows=[r for r in s['rows'] if r['task']==task]
+         prompts=[(root/'evidence'/r['cell_id']/'prompt.txt').read_bytes() for r in rows]
+         print(task,'prompt_equal',all(p==prompts[0] for p in prompts))
+        PY
+      at: 2026-09-08T01:28:23.31231Z
+      classified: other
+    - cmd: |-
+        python3 -m unittest harness.tests.test_coding_suite -v
+        python3 -m py_compile harness/coding_suite.py harness/product_impact_suite.py
+        git diff --check -- harness/coding_suite.py harness/product_impact_suite.py harness/tests/test_coding_suite.py
+      at: 2026-09-08T01:28:36.204789Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/coding_suite.py --run-dir /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-2026-09-08 --phase pilot
+      at: 2026-09-08T01:41:33.652811Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for name in ['product-proof-coding-pilot-2026-09-08','product-proof-impact-pilot-2026-09-08']:
+         root=Path('harness/runs')/name
+         s=json.loads((root/'summary.json').read_text())
+         print('\n',name,s['status'],s.get('completed'),s.get('valid'))
+         for r in sorted(s['rows'], [REDACTED:env-secret] x:(x['task'],x['arm'])):
+          score=r.get('score') or {}
+          print(r['task'],r['arm'],'valid',r['audited_valid'],'resolved',r.get('resolved'),
+                'R',score.get('recall'),'P',score.get('precision'),'F1',score.get('f1'),
+                'f2p',score.get('f2p_ok'),'p2p',score.get('p2p_ok'),
+                'wall',r['wall_s'],'cost',r.get('cost_usd'),'tok',r.get('total_tokens'),
+                'actions',r.get('prism_actions'),'mcp',len(r.get('prism_calls',[])),
+                'cli',len(r.get('prism_cli_commands',[])),'timeout',r['timed_out'],
+                'errors',len(r.get('tool_errors',[])),'viol',r.get('violations'))
+         for task in sorted({r['task'] for r in s['rows']}):
+          rows=[r for r in s['rows'] if r['task']==task]
+          prompts=[(root/'evidence'/r['cell_id']/'prompt.txt').read_bytes() for r in rows]
+          print(task,'prompt_equal',all(p==prompts[0] for p in prompts))
+        PY
+      at: 2026-09-08T01:41:55.228385Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        root=Path('harness/runs/product-proof-coding-pilot-2026-09-08')
+        for key in ['pallets__click__pr3244.sonnet_prism','urllib3__urllib3__pr3786.sonnet_prism']:
+         m=json.loads((root/'evidence'/key/'measurement.json').read_text())
+         init=m.get('init') or {}
+         tools=init.get('tools') or []
+         print('\n',key)
+         print('mcp_servers',init.get('mcp_servers'))
+         print('prism tools visible',[x for x in tools if 'prism' in str(x).lower()])
+         print('errors',m.get('tool_errors'))
+         print('final', (root/'evidence'/key/'final.txt').read_text(errors='replace')[:500])
+         print('cli',m.get('prism_cli_commands'))
+        PY
+        for f in harness/runs/product-proof-coding-pilot-2026-09-08/evidence/pallets__click__pr3244.gpt55_prism/agent.diff harness/runs/product-proof-coding-pilot-2026-09-08/evidence/pallets__click__pr3244.gpt55_native/agent.diff; do echo "$f"; sed -n '1,220p' "$f"; done
+      at: 2026-09-08T01:42:05.863935Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        root=Path('harness/runs/product-proof-coding-pilot-2026-09-08')
+        for arm in ['sonnet_native','gpt55_native','sonnet_prism','gpt55_prism']:
+         key='urllib3__urllib3__pr3786.'+arm
+         m=json.loads((root/'evidence'/key/'measurement.json').read_text())
+         print('\n',arm,'errors',len(m.get('tool_errors',[])))
+         for e in m.get('tool_errors',[]): print(str(e)[:500])
+         print('version_exists', (root/'work'/key/'src/urllib3/_version.py').exists())
+        PY
+      at: 2026-09-08T01:42:14.798094Z
+      classified: other
+    - cmd: |-
+        python3 -m unittest harness.tests.test_coding_suite -v
+        python3 -m py_compile harness/coding_suite.py
+        git diff --check -- harness/coding_suite.py harness/tests/test_coding_suite.py
+      at: 2026-09-08T01:43:05.355271Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/coding_suite.py --run-dir /private/tmp/product-proof-coding-preflight-fixed-20260908 --phase pilot --preflight-only
+      at: 2026-09-08T01:45:24.964191Z
+      classified: other
+    - cmd: |-
+        for arm in base prism; do test -f /private/tmp/product-proof-coding-preflight-fixed-20260908/templates/urllib3__urllib3__pr3786/$arm/src/urllib3/_version.py && echo "$arm _version present"; done
+        python3 - <<'PY'
+        import sys
+        from pathlib import Path
+        sys.path.insert(0,'harness')
+        import coding_suite as c
+        root=Path('/private/tmp/product-proof-coding-preflight-fixed-20260908/templates/urllib3__urllib3__pr3786')
+        b=c.template_content(root/'base'); p=c.template_content(root/'prism')
+        print('base_files',len(b),'all_base_content_identical',all(p.get(k)==v for k,v in b.items()))
+        PY
+      at: 2026-09-08T01:45:30.409056Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/coding_suite.py --run-dir /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08 --phase pilot
+      at: 2026-09-08T01:57:52.190811Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json, statistics
+        from pathlib import Path
+        roots={
+         'impact':Path('harness/runs/product-proof-impact-pilot-2026-09-08'),
+         'coding':Path('harness/runs/product-proof-coding-pilot-fixed-2026-09-08'),
+        }
+        for kind,root in roots.items():
+         s=json.loads((root/'summary.json').read_text())
+         print('\n'+kind.upper(), 'status',s['status'],'valid',s.get('valid'),'/',s.get('completed'))
+         for treatment in ('native','prism'):
+          rows=[r for r in s['rows'] if r['arm'].endswith(treatment)]
+          print(treatment,
+           'n',len(rows),'valid',sum(r['audited_valid'] for r in rows),
+           'correct',sum(bool(r.get('resolved')) for r in rows),
+           'regressions',sum((r.get('score') or {}).get('p2p_ok') is False for r in rows),
+           'wall_total',round(sum(r['wall_s'] for r in rows),3),
+           'known_cost',round(sum(r.get('cost_usd') or 0 for r in rows),6),
+           'cost_complete',sum(r.get('cost_usd') is not None for r in rows),
+           'actions',sum(r.get('prism_actions',0) for r in rows),
+           'mean_R',round(statistics.mean((r.get('score') or {}).get('recall') for r in rows),4) if kind=='impact' else None,
+           'mean_P',round(statistics.mean((r.get('score') or {}).get('precision') for r in rows),4) if kind=='impact' else None,
+           'mean_F1',round(statistics.mean((r.get('score') or {}).get('f1') for r in rows),4) if kind=='impact' else None)
+         for task in sorted({r['task'] for r in s['rows']}):
+          rows=[r for r in s['rows'] if r['task']==task]
+          prompts=[(root/'evidence'/r['cell_id']/'prompt.txt').read_bytes() for r in rows]
+          print('prompt_equal',task,all(x==prompts[0] for x in prompts))
+         print('errors',sum(len(r.get('tool_errors',[])) for r in s['rows']),
+               'violations',sum(len(r.get('violations',[])) for r in s['rows']))
+         print('binary_hash',json.loads((root/'manifest.json').read_text()).get('hashes',{}).get('prism_binary'))
+         for r in sorted(s['rows'],[REDACTED:env-secret] x:(x['task'],x['arm'])):
+          print(r['task'],r['arm'],'valid',r['audited_valid'],'resolved',r.get('resolved'),
+                'wall',r['wall_s'],'cost',r.get('cost_usd'),'actions',r.get('prism_actions'),
+                'f2p',(r.get('score') or {}).get('f2p_ok'),'p2p',(r.get('score') or {}).get('p2p_ok'))
+        PY
+      at: 2026-09-08T01:58:12.544024Z
+      classified: other
+    - cmd: |-
+        git status --short --untracked-files=all | rg 'product-proof|coding_suite|product_impact|test_coding_suite|mason_bench' | head -200
+        du -sh harness/runs/product-proof-impact-pilot-2026-09-08 harness/runs/product-proof-coding-pilot-2026-09-08 harness/runs/product-proof-coding-pilot-fixed-2026-09-08
+      at: 2026-09-08T01:58:22.969238Z
+      classified: other
+    - cmd: |-
+        du -sh harness/runs/product-proof-impact-pilot-2026-09-08/evidence harness/runs/product-proof-impact-pilot-2026-09-08/tasks harness/runs/product-proof-impact-pilot-2026-09-08/manifest.json harness/runs/product-proof-impact-pilot-2026-09-08/summary.json harness/runs/product-proof-impact-pilot-2026-09-08/run_impact.py
+        du -sh harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence harness/runs/product-proof-coding-pilot-fixed-2026-09-08/tasks harness/runs/product-proof-coding-pilot-fixed-2026-09-08/manifest.json harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json harness/runs/product-proof-coding-pilot-fixed-2026-09-08/run_code.py
+        find harness/runs/product-proof-impact-pilot-2026-09-08/evidence harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence -type f -size +1M -print
+      at: 2026-09-08T01:59:02.453058Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify --base HEAD --format text
+      at: 2026-09-08T01:59:48.256355Z
+      classified: other
+    - cmd: |-
+        ps aux | rg '[p]rism verify|[p]rism-product-proof|[p]rism ' | head -30
+        ls -l /Users/tapabratapal/Library/Caches/prism/ledger/d3c337feb21c265ba0adcb1b4882f7075f91abc7.json.lock 2>/dev/null
+        lsof /Users/tapabratapal/Library/Caches/prism/ledger/d3c337feb21c265ba0adcb1b4882f7075f91abc7.json.lock 2>/dev/null | head -20
+      at: 2026-09-08T01:59:53.149304Z
+      classified: other
+    - cmd: |-
+        kill -TERM 22218
+        /Users/tapabratapal/bin/prism verify --help
+      at: 2026-09-08T02:00:01.651432Z
+      classified: other
+    - cmd: |-
+        verify_tree=/private/tmp/research-product-proof-verify-20260908
+        if test -e "$verify_tree"; then echo "verification path already exists"; exit 2; fi
+        git worktree add --detach "$verify_tree" HEAD
+        cp harness/coding_suite.py "$verify_tree/harness/coding_suite.py"
+        cp harness/product_impact_suite.py "$verify_tree/harness/product_impact_suite.py"
+        cp harness/tests/test_coding_suite.py "$verify_tree/harness/tests/test_coding_suite.py"
+        /Users/tapabratapal/bin/prism verify "$verify_tree" --base HEAD --format text
+      at: 2026-09-08T02:00:19.030405Z
+      classified: other
+    - cmd: |-
+        sed -n '1,35p' harness/runs/product-proof-coding-pilot-2026-09-08/manifest.json
+        find harness/runs/product-proof-coding-pilot-fixed-2026-09-08/environments -name setup.json -print
+        find harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates -name index.json -print
+      at: 2026-09-08T02:00:27.284953Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git add harness/coding_suite.py harness/product_impact_suite.py harness/tests/test_coding_suite.py harness/PRODUCT_PROOF_2026-09-08.md harness/runs/product-proof-coding-pilot-2026-09-08/INVALID.md harness/runs/product-proof-coding-pilot-2026-09-08/manifest.json
+        git add harness/runs/product-proof-impact-pilot-2026-09-08/manifest.json harness/runs/product-proof-impact-pilot-2026-09-08/summary.json harness/runs/product-proof-impact-pilot-2026-09-08/run_impact.py harness/runs/product-proof-impact-pilot-2026-09-08/answer-schema.json harness/runs/product-proof-impact-pilot-2026-09-08/tasks harness/runs/product-proof-impact-pilot-2026-09-08/evidence
+        git add harness/runs/product-proof-coding-pilot-fixed-2026-09-08/manifest.json harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json harness/runs/product-proof-coding-pilot-fixed-2026-09-08/run_code.py harness/runs/product-proof-coding-pilot-fixed-2026-09-08/tasks harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence harness/runs/product-proof-coding-pilot-fixed-2026-09-08/environments/pallets__click__pr3244/setup.json harness/runs/product-proof-coding-pilot-fixed-2026-09-08/environments/urllib3__urllib3__pr3786/setup.json harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/pallets__click__pr3244/index.json harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/index.json
+        git diff --cached --stat
+        git status --short | sed -n '1,120p'
+      at: 2026-09-08T02:00:46.863953Z
+      classified: other
+    - cmd: |-
+        git diff --cached --check
+        python3 -m unittest harness.tests.test_coding_suite -v
+        python3 -m py_compile harness/coding_suite.py harness/product_impact_suite.py
+        git diff --cached --name-only | rg '/(bin/prism|work/|lib/python|site-packages|templates/.*/(base|prism)/)' || true
+        git fetch origin main
+        git status --short --branch | sed -n '1,20p'
+        git rev-list --left-right --count main...origin/main
+      at: 2026-09-08T02:00:55.816367Z
+      classified: other
+    - cmd: |-
+        git diff --cached --check -- harness/coding_suite.py harness/product_impact_suite.py harness/tests/test_coding_suite.py harness/PRODUCT_PROOF_2026-09-08.md harness/runs/product-proof-coding-pilot-2026-09-08/INVALID.md harness/runs/product-proof-coding-pilot-2026-09-08/manifest.json
+        git diff --cached --name-only | rg 'mason_bench|ab-gate|/work/|site-packages|/bin/prism' && exit 2 || true
+        git commit -m "research: add product proof gate evidence"
+      at: 2026-09-08T02:01:04.478197Z
+      classified: other
+    - cmd: |-
+        git push origin main
+        git status --short --branch | sed -n '1,40p'
+        git log -1 --oneline
+      at: 2026-09-08T02:01:17.428036Z
+      classified: other
+    - cmd: |-
+        git worktree remove /private/tmp/research-product-proof-verify-20260908
+        git worktree list | rg 'research-product-proof-verify' || true
+        git rev-parse HEAD
+        git rev-parse origin/main
+      at: 2026-09-08T02:01:27.684409Z
+      classified: other
+    - cmd: |-
+        git worktree remove --force /private/tmp/research-product-proof-verify-20260908
+        git worktree list | rg 'research-product-proof-verify' || true
+      at: 2026-09-08T02:01:32.0016Z
+      classified: other
+    - cmd: ps aux | rg '[p]rism change-impact.*harness/(coding_suite|product_impact)'
+      at: 2026-09-08T02:18:07.537143Z
+      classified: other
+    - cmd: kill -TERM 22664 22655 2>/dev/null || true
+      at: 2026-09-08T02:18:11.641516Z
+      classified: other
+    - cmd: |-
+        python3 -m unittest harness.tests.test_coding_suite -v
+        python3 -m py_compile harness/coding_suite.py harness/product_impact_suite.py
+        git diff --check -- harness/coding_suite.py harness/product_impact_suite.py
+        verify_tree=/private/tmp/research-product-proof-remaining-verify-20260908
+        if test -e "$verify_tree"; then echo "verification path already exists"; exit 2; fi
+        git worktree add --detach "$verify_tree" HEAD
+        cp harness/coding_suite.py "$verify_tree/harness/coding_suite.py"
+        cp harness/product_impact_suite.py "$verify_tree/harness/product_impact_suite.py"
+        /Users/tapabratapal/bin/prism verify "$verify_tree" --base HEAD --format text
+      at: 2026-09-08T02:18:36.544486Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git add harness/coding_suite.py harness/product_impact_suite.py
+        git commit -m "research: add remainder phase to product suites"
+        git push origin main
+        git worktree remove --force /private/tmp/research-product-proof-remaining-verify-20260908
+        git rev-parse HEAD
+        git rev-parse origin/main
+      at: 2026-09-08T02:18:42.663412Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/product_impact_suite.py --run-dir /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-impact-remaining-2026-09-08 --phase remaining --trials 1
+      at: 2026-09-08T02:47:58.828183Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,statistics
+        from pathlib import Path
+        root=Path('harness/runs/product-proof-impact-remaining-2026-09-08')
+        s=json.loads((root/'summary.json').read_text())
+        print(s['status'],s['valid'],s['completed'])
+        for treatment in ('native','prism'):
+         rows=[r for r in s['rows'] if r['arm'].endswith(treatment)]
+         valid=[r for r in rows if r['audited_valid']]
+         print(treatment,'valid',len(valid),'/',len(rows),'meanR_all',sum(r['score']['recall'] for r in rows)/len(rows),'meanP_all',sum(r['score']['precision'] for r in rows)/len(rows),'meanF1_all',sum(r['score']['f1'] for r in rows)/len(rows),'cost_known',sum(r.get('cost_usd') or 0 for r in rows),'cost_n',sum(r.get('cost_usd') is not None for r in rows),'wall',sum(r['wall_s'] for r in rows),'actions',sum(r.get('prism_actions',0) for r in rows))
+        for r in s['rows']:
+         if r['task']=='guava-forwarding-delegate' and r['arm']=='gpt55_prism': print('guava gpt prism actions',r.get('prism_actions'),r.get('prism_cli_commands'),r.get('tool_errors'),r.get('violations'))
+        print('errors',sum(len(r.get('tool_errors',[])) for r in s['rows']),'viol',sum(len(r.get('violations',[])) for r in s['rows']))
+        PY
+      at: 2026-09-08T02:48:08.330242Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-product-proof-current-20260908 python3 -B harness/coding_suite.py --run-dir /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08 --phase remaining
+      at: 2026-09-08T03:07:30.105151Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,statistics
+        from pathlib import Path
+        runs={
+         'impact':[Path('harness/runs/product-proof-impact-pilot-2026-09-08'),Path('harness/runs/product-proof-impact-remaining-2026-09-08')],
+         'coding':[Path('harness/runs/product-proof-coding-pilot-fixed-2026-09-08'),Path('harness/runs/product-proof-coding-remaining-2026-09-08')],
+        }
+        for kind,roots in runs.items():
+         rows=[]
+         for root in roots: rows += json.loads((root/'summary.json').read_text())['rows']
+         print('\n'+kind.upper(),'cells',len(rows))
+         for model in ('sonnet','gpt55'):
+          for treatment in ('native','prism'):
+           group=[r for r in rows if r['arm']==f'{model}_{treatment}']
+           scores=[r.get('score') or {} for r in group]
+           print(model,treatment,'n',len(group),'valid',sum(r['audited_valid'] for r in group),
+            'correct',sum(bool(r.get('resolved')) for r in group),
+            'reg',sum(s.get('p2p_ok') is False for s in scores),
+            'exact',sum(s.get('recall')==1 and s.get('precision')==1 for s in scores),
+            'meanR',round(sum(s.get('recall',0) for s in scores)/len(group),4) if kind=='impact' else None,
+            'meanP',round(sum(s.get('precision',0) for s in scores)/len(group),4) if kind=='impact' else None,
+            'meanF1',round(sum(s.get('f1',0) for s in scores)/len(group),4) if kind=='impact' else None,
+            'wall',round(sum(r['wall_s'] for r in group),3),
+            'cost',round(sum(r.get('cost_usd') or 0 for r in group),6),
+            'cost_n',sum(r.get('cost_usd') is not None for r in group),
+            'actions',sum(r.get('prism_actions',0) for r in group),
+            'adopted_cells',sum(r.get('prism_actions',0)>0 for r in group),
+            'timeouts',sum(r.get('timed_out',False) for r in group))
+         for treatment in ('native','prism'):
+          group=[r for r in rows if r['arm'].endswith(treatment)]; scores=[r.get('score') or {} for r in group]
+          print('ALL',treatment,'valid',sum(r['audited_valid'] for r in group),'/',len(group),
+           'correct',sum(bool(r.get('resolved')) for r in group),'reg',sum(s.get('p2p_ok') is False for s in scores),
+           'exact',sum(s.get('recall')==1 and s.get('precision')==1 for s in scores),
+           'meanR',round(sum(s.get('recall',0) for s in scores)/len(group),4) if kind=='impact' else None,
+           'meanP',round(sum(s.get('precision',0) for s in scores)/len(group),4) if kind=='impact' else None,
+           'meanF1',round(sum(s.get('f1',0) for s in scores)/len(group),4) if kind=='impact' else None,
+           'wall',round(sum(r['wall_s'] for r in group),3),'cost',round(sum(r.get('cost_usd') or 0 for r in group),6),
+           'cost_n',sum(r.get('cost_usd') is not None for r in group),'actions',sum(r.get('prism_actions',0) for r in group),
+           'adopt',sum(r.get('prism_actions',0)>0 for r in group),'timeouts',sum(r.get('timed_out',False) for r in group))
+         print('errors',sum(len(r.get('tool_errors',[])) for r in rows),'viol',sum(len(r.get('violations',[])) for r in rows))
+         for root in roots:
+          same=True
+          sr=json.loads((root/'summary.json').read_text())['rows']
+          for task in {r['task'] for r in sr}:
+           ps=[(root/'evidence'/r['cell_id']/'prompt.txt').read_bytes() for r in sr if r['task']==task]
+           same &= all(p==ps[0] for p in ps)
+          print(root.name,'prompt_equal',same,'status',json.loads((root/'summary.json').read_text())['status'])
+        PY
+      at: 2026-09-08T03:07:56.048432Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        root=Path('harness/runs/product-proof-coding-remaining-2026-09-08')
+        for arm in ['sonnet_native','sonnet_prism','gpt55_native','gpt55_prism']:
+         key='pallets__click__pr3695.'+arm
+         r=json.loads((root/'evidence'/key/'measurement.json').read_text())
+         print('\n',arm,'changed',r['changed_files'],'non_source',r['non_source_changes'],'score',r['score'])
+         print((root/'evidence'/key/'agent.diff').read_text()[:1500])
+        PY
+        sed -n '1,220p' harness/tasks-e2e/pallets__click__pr3695.json
+      at: 2026-09-08T03:08:07.589236Z
+      classified: other
+    - cmd: |-
+        du -sh harness/runs/product-proof-impact-remaining-2026-09-08/evidence harness/runs/product-proof-impact-remaining-2026-09-08/summary.json harness/runs/product-proof-coding-remaining-2026-09-08/evidence harness/runs/product-proof-coding-remaining-2026-09-08/summary.json
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path('harness/PRODUCT_PROOF_2026-09-08.md').read_text()
+        for required in ['0.8352','0.9094','5/16','$8.500949','1/8 cells','c37a1f4']:
+         assert required in p, required
+        print('report assertions pass')
+        PY
+        git diff --check -- harness/coding_suite.py harness/product_impact_suite.py harness/PRODUCT_PROOF_2026-09-08.md
+      at: 2026-09-08T03:09:31.952701Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import hashlib,json
+        from pathlib import Path
+        for src,manifest in [
+         ('harness/coding_suite.py','harness/runs/product-proof-coding-remaining-2026-09-08/manifest.json'),
+         ('harness/product_impact_suite.py','harness/runs/product-proof-impact-remaining-2026-09-08/manifest.json')]:
+         actual=hashlib.sha256(Path(src).read_bytes()).hexdigest(); frozen=json.loads(Path(manifest).read_text())['hashes']['runner']
+         print(src,actual==frozen,actual)
+        PY
+        git add harness/PRODUCT_PROOF_2026-09-08.md
+        git add harness/runs/product-proof-impact-remaining-2026-09-08/manifest.json harness/runs/product-proof-impact-remaining-2026-09-08/summary.json harness/runs/product-proof-impact-remaining-2026-09-08/run_impact.py harness/runs/product-proof-impact-remaining-2026-09-08/answer-schema.json harness/runs/product-proof-impact-remaining-2026-09-08/tasks harness/runs/product-proof-impact-remaining-2026-09-08/evidence
+        git add harness/runs/product-proof-coding-remaining-2026-09-08/manifest.json harness/runs/product-proof-coding-remaining-2026-09-08/summary.json harness/runs/product-proof-coding-remaining-2026-09-08/run_code.py harness/runs/product-proof-coding-remaining-2026-09-08/tasks harness/runs/product-proof-coding-remaining-2026-09-08/evidence
+        git add harness/runs/product-proof-coding-remaining-2026-09-08/environments/*/setup.json harness/runs/product-proof-coding-remaining-2026-09-08/templates/*/index.json
+        git diff --cached --stat | tail -20
+        git diff --cached --name-only | rg 'mason_bench|ab-gate|/work/|site-packages|/bin/prism' && exit 2 || true
+      at: 2026-09-08T03:09:46.324161Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git rev-list --left-right --count main...origin/main
+        git diff --cached --check -- harness/PRODUCT_PROOF_2026-09-08.md
+        git status --short --branch | sed -n '1,20p'
+        git commit -m "research: complete product proof expansion"
+      at: 2026-09-08T03:09:53.493112Z
+      classified: other
+    - cmd: |-
+        git push origin main
+        git rev-parse HEAD
+        git rev-parse origin/main
+        git status --short --branch | sed -n '1,35p'
+      at: 2026-09-08T03:10:07.150652Z
+      classified: other
+    - cmd: pwd && git branch --show-current && git status --short && git log -5 --oneline --decorate
+      at: 2026-09-08T03:12:13.034168Z
+      classified: other
+    - cmd: rg -n "Guava|Jackson|adoption|Next|recommend|failure|Sonnet" harness/PRODUCT_PROOF_2026-09-08.md | head -120 && rg --files harness/runs/product-proof-impact-remaining-2026-09-08 harness/runs/product-proof-coding-remaining-2026-09-08 | head -120
+      at: 2026-09-08T03:12:19.201516Z
+      classified: other
+    - cmd: jq 'keys' harness/runs/product-proof-impact-remaining-2026-09-08/manifest.json && jq '.results[] | {task,model,arm,status,score,prism_calls,output_dir}' harness/runs/product-proof-impact-remaining-2026-09-08/manifest.json
+      at: 2026-09-08T03:12:25.157996Z
+      classified: other
+    - cmd: find harness/runs/product-proof-impact-remaining-2026-09-08 -maxdepth 3 -type f | sort | head -160 && find harness/runs/product-proof-coding-remaining-2026-09-08 -maxdepth 3 -type f | sort | grep -v '/templates/' | head -160
+      at: 2026-09-08T03:12:29.408936Z
+      classified: other
+    - cmd: for d in harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.gpt55_prism harness/runs/product-proof-impact-pilot-2026-09-08/evidence/jackson-jsonnode-get.r1.gpt55_prism; do echo "$d"; jq . "$d/measurement.json"; sed -n '1,220p' "$d/final.txt"; rg -n 'prism|delegate|JsonNode|get\(' "$d/stdout.jsonl" | head -80; done
+      at: 2026-09-08T03:12:35.202177Z
+      classified: other
+    - cmd: sed -n '1,80p' harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.gpt55_prism/final.txt; jq '{precision,recall,f1,exact_match,expected_count,predicted_count,tool_adopted,prism_calls}' harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.gpt55_prism/measurement.json; sed -n '1,80p' harness/runs/product-proof-impact-pilot-2026-09-08/evidence/jackson-jsonnode-get.r1.gpt55_prism/final.txt; jq '{precision,recall,f1,exact_match,expected_count,predicted_count,tool_adopted,prism_calls}' harness/runs/product-proof-impact-pilot-2026-09-08/evidence/jackson-jsonnode-get.r1.gpt55_prism/measurement.json
+      at: 2026-09-08T03:12:43.075638Z
+      classified: other
+    - cmd: jq 'keys, .score, .adoption' harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.gpt55_prism/measurement.json; jq 'keys, .score, .adoption' harness/runs/product-proof-impact-pilot-2026-09-08/evidence/jackson-jsonnode-get.r1.gpt55_prism/measurement.json
+      at: 2026-09-08T03:12:48.377221Z
+      classified: other
+    - cmd: rg -n "ToolSearch|deferred|Bash-only|Prism indexes|change_impact|change-impact" . --glob '!vendor/**' --glob '!**/testdata/**' | head -200
+      at: 2026-09-08T03:12:54.744591Z
+      classified: other
+    - cmd: ls -la | head -80 && git rev-parse --show-toplevel && git ls-tree --name-only HEAD | head -80
+      at: 2026-09-08T03:12:59.584145Z
+      classified: other
+    - cmd: prism search 'ToolSearch' 'deferred' 'Bash-only' 'change-impact' --scope text --exhaustive --format text
+      at: 2026-09-08T03:13:08.610145Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 450 --limit 240 --format text && prism read internal/cli/commands.go --offset 2750 --limit 360 --format text && prism read internal/cli/formattext_test.go --format text
+      at: 2026-09-08T03:13:13.722535Z
+      classified: other
+    - cmd: prism search 'printChangeImpactText' 'Every indexed site that must change' 'totalSites' --scope text --exhaustive --format text
+      at: 2026-09-08T03:13:20.418601Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 3180 --limit 90 --format text && prism read internal/mcp/graphtext.go --offset 1 --limit 180 --format text && prism read internal/mcp/tools.go --offset 820 --limit 90 --format text
+      at: 2026-09-08T03:13:25.596249Z
+      classified: other
+    - cmd: sed -n '1,160p' harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.gpt55_prism/prompt.txt; jq . harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.gpt55_prism/command.json; jq '{task,oracle_count:(.oracle|length),prompt}' harness/product_impact_tasks.json 2>/dev/null || true; rg -n 'guava-forwarding-delegate|ForwardingObject.delegate' harness -g '*.json' -g '*.py' -g '*.yaml' -g '*.toml' | head -80
+      at: 2026-09-08T03:13:33.466142Z
+      classified: other
+    - cmd: prism search 'printLeanOutput' 'formatLean' '--format' --path internal/cli --scope text --exhaustive --format text
+      at: 2026-09-08T03:13:39.721146Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 3290 --limit 170 --format text && prism read internal/cli/helpers_test.go --offset 240 --limit 90 --format text
+      at: 2026-09-08T03:13:43.477662Z
+      classified: other
+    - cmd: for f in harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.*_prism/measurement.json; do jq '{cell_id,wall_s,cost_usd,prism_cli_commands,score:{recall:.score.recall,precision:.score.precision,f1:.score.f1,found:(.score.found|length),missed:(.score.missed|length),extra:(.score.extra|length),claimed_complete:.score.claimed_complete}}' "$f"; done; wc -c harness/runs/product-proof-impact-remaining-2026-09-08/evidence/guava-forwarding-delegate.r1.*_prism/final.txt
+      at: 2026-09-08T03:13:49.634744Z
+      classified: other
+    - cmd: for root in harness/runs/product-proof-coding-pilot-fixed-2026-09-08 harness/runs/product-proof-coding-remaining-2026-09-08; do find "$root/evidence" -path '*.sonnet_prism/measurement.json' -print0 | xargs -0 -n1 jq '{cell_id,prism_actions,prism_cli_commands,wall_s,cost_usd,score}'; done
+      at: 2026-09-08T03:14:04.460565Z
+      classified: other
+    - cmd: for id in pallets__click__pr3695 pallets__click__pr3228 Textualize__rich__pr3938; do d="harness/runs/product-proof-coding-remaining-2026-09-08/evidence/${id}.sonnet_prism"; echo "CELL $id"; sed -n '1,120p' "$d/final.txt"; jq '.calls[] | {type,name,command,input}' "$d/measurement.json" 2>/dev/null | head -160; done
+      at: 2026-09-08T03:14:09.285613Z
+      classified: other
+    - cmd: jq '{cell_id,tool_calls,prism_actions,calls,native_commands}' harness/runs/product-proof-coding-remaining-2026-09-08/evidence/Textualize__rich__pr3938.sonnet_prism/measurement.json | head -240; jq '{cell_id,tool_calls,prism_actions,calls,native_commands}' harness/runs/product-proof-coding-remaining-2026-09-08/evidence/pallets__click__pr3695.sonnet_prism/measurement.json | head -240
+      at: 2026-09-08T03:14:14.578102Z
+      classified: other
+    - cmd: sed -n '1,120p' harness/runs/product-proof-coding-remaining-2026-09-08/work/Textualize__rich__pr3938.sonnet_prism/CLAUDE.md; sed -n '1,100p' harness/runs/product-proof-coding-remaining-2026-09-08/work/pallets__click__pr3695.sonnet_prism/CLAUDE.md; jq . harness/runs/product-proof-coding-remaining-2026-09-08/evidence/Textualize__rich__pr3938.sonnet_prism/command.json | head -140
+      at: 2026-09-08T03:14:20.568541Z
+      classified: other
+notes:
+    - text: continuation of session 01a07deb-fe37-7c80-8744-26b269be9704 — events captured after its evidence was finalized
+      at: 2026-09-08T00:55:17.449138Z
+redactions: 3

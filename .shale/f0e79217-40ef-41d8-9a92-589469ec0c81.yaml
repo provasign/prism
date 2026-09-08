@@ -1,0 +1,1314 @@
+shale_version: "0"
+id: f0e79217-40ef-41d8-9a92-589469ec0c81
+created_at: 2026-09-08T03:16:22.668135Z
+finalized_at: 2026-09-08T04:12:22.912427Z
+agent:
+    tool: claude-code
+    model: claude-opus-5[1m]
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: which codex 2>/dev/null; ls -d /Users/tapabratapal/Projects/provasign/*codex* 2>/dev/null; grep -ril codex /Users/tapabratapal/Projects/provasign/prism --include=*.md --include=*.go -l 2>/dev/null | head
+      at: 2026-09-08T03:16:30.367507Z
+      classified: other
+    - cmd: find . -type d -empty -not -path './.git/*' | head -50; echo "---parent---"; ls -d /Users/tapabratapal/Projects/provasign/prism/prism 2>/dev/null
+      at: 2026-09-08T03:16:47.618125Z
+      classified: other
+    - cmd: ls -laR prism | head -30; echo "--- git ---"; git ls-files prism/ | head
+      at: 2026-09-08T03:16:50.002919Z
+      classified: other
+    - cmd: find docs -type d -empty -print -delete; echo "--- remaining empty under docs ---"; find docs -type d -empty
+      at: 2026-09-08T03:17:40.719669Z
+      classified: other
+    - cmd: git status --short; echo "exit=$?"
+      at: 2026-09-08T03:17:43.912863Z
+      classified: other
+    - cmd: pwd; ls -la | head -60
+      at: 2026-09-08T03:17:59.061759Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/Projects/provasign/prism/prism/.grove && rm -rf /Users/tapabratapal/Projects/provasign/prism/prism/.grove; echo "--- after ---"; ls -la /Users/tapabratapal/Projects/provasign/prism/prism
+      at: 2026-09-08T03:18:06.539639Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && ls -lt | head -20
+      at: 2026-09-08T03:19:02.939919Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_stage1_scorer_repair.md
+      at: 2026-09-08T03:19:05.50683Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research 2>/dev/null && git log --oneline -15 && echo "--- recent files ---" && find . -newermt "2026-09-07 00:00" -type f -not -path './.git/*' | grep -iE "day|daily|d2d|everyday" | head -30
+      at: 2026-09-08T03:19:15.721536Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short | head -30 && echo "=== newest run dirs ===" && ls -lt harness/runs | head -15 && echo "=== newest files overall (today) ===" && find . -newermt "2026-09-07 12:00" -type f -not -path './.git/*' -not -name '*.pyc' -printf '' 2>/dev/null || find . -newermt "2026-09-07 12:00" -type f -not -path './.git/*' -not -name '*.pyc' | head -40
+      at: 2026-09-08T03:19:25.385886Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runs && for d in product-proof-coding-remaining-2026-09-08 product-proof-coding-pilot-2026-09-08 product-proof-coding-pilot-fixed-2026-09-08; do echo "######## $d"; ls -la $d; done
+      at: 2026-09-08T03:19:31.905946Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git show --stat ccaf6f7a | head -30; echo "=== INVALID.md ==="; cat harness/runs/product-proof-coding-pilot-2026-09-08/INVALID.md; echo "=== git log today with dates ==="; git log --format='%h %ad %s' --date=format:'%m-%d %H:%M' -8
+      at: 2026-09-08T03:19:36.890522Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git show --stat e7da6511 | head -40; echo "=== README in remaining run? ==="; ls harness/runs/product-proof-coding-remaining-2026-09-08/evidence | head; echo; find harness/runs -maxdepth 2 -name 'README.md' -newermt '2026-09-07 19:00' | head
+      at: 2026-09-08T03:19:43.725235Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n '1,140p' harness/PRODUCT_PROOF_2026-09-08.md
+      at: 2026-09-08T03:19:46.01002Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json,glob
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            s=json.load(open(f"{run}/summary.json"))
+            print("###",run, type(s), list(s)[:12] if isinstance(s,dict) else len(s))
+        EOF
+      at: 2026-09-08T03:19:52.887135Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json
+        rows=[]
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            s=json.load(open(f"{run}/summary.json"))
+            rows+= s["rows"]
+        print("n rows",len(rows)); print(json.dumps(rows[0],indent=1)[:1500])
+        EOF
+      at: 2026-09-08T03:19:56.125862Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json
+        rows=[]
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            rows+=json.load(open(f"{run}/summary.json"))["rows"]
+        print(sorted(set(k for r in rows for k in r)))
+        EOF
+      at: 2026-09-08T03:20:01.013061Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json
+        rows=[]
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            rows+=json.load(open(f"{run}/summary.json"))["rows"]
+        def f(r):
+            sc=r.get("score") or {}
+            return sc.get("resolved", r.get("resolved"))
+        hdr=f"{'task':34}{'arm':16}{'ok':4}{'cost':>7}{'wall':>7}{'turns':>6}{'pcalls':>7}{'pbytes':>8}{'files':>6}{'to':>3}"
+        print(hdr)
+        for r in sorted(rows,[REDACTED:env-secret] r:(r['task'],r['arm'])):
+            print(f"{r['task'][:33]:34}{r['arm']:16}{str(f(r))[:3]:4}{r.get('cost_usd') or 0:7.2f}{r.get('wall_s') or 0:7.0f}{r.get('turns') or 0:6}{len(r.get('prism_calls') or []):7}{r.get('prism_result_bytes') or 0:8}{len(r.get('changed_files') or []):6}{'T' if r.get('timed_out') else '':>3}")
+        EOF
+      at: 2026-09-08T03:20:06.874313Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json
+        rows=[]
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            rows+=json.load(open(f"{run}/summary.json"))["rows"]
+        for r in sorted(rows,[REDACTED:env-secret] r:(r['task'],r['arm'])):
+            if 'prism' not in r['arm']: continue
+            print(f"{r['task'][:30]:32}{r['arm']:16} mcp={len(r.get('prism_calls') or [])} cli={len(r.get('prism_cli_commands') or [])} actions={r.get('prism_actions')} bytes={r.get('prism_result_bytes')}")
+        EOF
+      at: 2026-09-08T03:20:13.944408Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json
+        rows=[]
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            rows+=json.load(open(f"{run}/summary.json"))["rows"]
+        idx={(r['task'],r['arm']):r for r in rows}
+        tasks=sorted({r['task'] for r in rows})
+        for model in ("sonnet","gpt55"):
+            print("==",model)
+            tn=tp=wn=wp=0; n=0
+            for t in tasks:
+                a=idx[(t,f"{model}_native")]; b=idx[(t,f"{model}_prism")]
+                if a.get('timed_out') or b.get('timed_out'): note=" (timeout)"
+                else: note=""
+                acts=b.get('prism_actions')
+                print(f"  {t[:30]:32} native ${a.get('cost_usd') or 0:5.2f}/{a.get('wall_s') or 0:4.0f}s  prism ${b.get('cost_usd') or 0:5.2f}/{b.get('wall_s') or 0:4.0f}s  acts={acts}{note}")
+                if not (a.get('timed_out') or b.get('timed_out')):
+                    tn+=a['cost_usd']; tp+=b['cost_usd']; wn+=a['wall_s']; wp+=b['wall_s']; n+=1
+            print(f"  -> {n} paired cells: cost ${tn:.2f} -> ${tp:.2f} ({tp/tn:.2f}x), wall {wn:.0f}s -> {wp:.0f}s ({wp/wn:.2f}x)")
+        EOF
+      at: 2026-09-08T03:20:29.800147Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json
+        rows=[]
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            rows+=json.load(open(f"{run}/summary.json"))["rows"]
+        idx={(r['task'],r['arm']):r for r in rows}
+        tasks=sorted({r['task'] for r in rows})
+        g=lambda r,k: r.get(k) or (r.get('usage') or {}).get(k) or 0
+        print(json.dumps(idx[(tasks[0],'sonnet_native')].get('usage'),indent=1)[:800])
+        print(f"{'task':32}{'in n/p':>16}{'cacheR n/p':>20}{'out n/p':>14}{'turns':>10}")
+        for t in tasks:
+            a=idx[(t,"sonnet_native")]; b=idx[(t,"sonnet_prism")]
+            if a.get('timed_out'): continue
+            print(f"{t[:30]:32}{str(g(a,'input_tokens'))+'/'+str(g(b,'input_tokens')):>16}{str(g(a,'cache_read_tokens'))+'/'+str(g(b,'cache_read_tokens')):>20}{str(g(a,'output_tokens'))+'/'+str(g(b,'output_tokens')):>14}{str(a['turns'])+'->'+str(b['turns']):>10}")
+        EOF
+      at: 2026-09-08T03:20:50.694343Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/evidence/pallets__werkzeug__pr3006.sonnet_prism && ls -la && echo "=== mcp.json ===" && cat mcp.json && echo "=== command.json ===" && cat command.json
+      at: 2026-09-08T03:26:22.874354Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/evidence/pallets__werkzeug__pr3006.sonnet_prism && head -1 stdout.jsonl | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps({k:v for k,v in d.items() if k in ('type','subtype','tools','mcp_servers','slash_commands','model','permissionMode','agents')},indent=1))"
+      at: 2026-09-08T03:26:32.188241Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/work/pallets__werkzeug__pr3006.sonnet_prism && ls -la | head -25 && echo "=== sizes of steering files ===" && for f in CLAUDE.md AGENTS.md .mcp.json prism.yaml; do [ -e "$f" ] && wc -c "$f"; done
+      at: 2026-09-08T03:26:41.23238Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json,glob,os
+        for d in sorted(glob.glob("product-proof-coding-*-2026-09-08/evidence/*.sonnet_prism")):
+            if "pilot-2026" in d: continue
+            p=os.path.join(d,"stdout.jsonl")
+            if not os.path.exists(p): continue
+            calls=[]
+            for line in open(p):
+                try: ev=json.loads(line)
+                except: continue
+                if ev.get("type")=="assistant":
+                    for c in ev["message"].get("content",[]):
+                        if c.get("type")=="tool_use":
+                            n=c["name"]
+                            a=c.get("input",{})
+                            arg=a.get("pattern") or a.get("command") or a.get("file_path") or a.get("query") or ""
+                            calls.append(f"{n}({str(arg)[:48]})")
+            print(f"--- {os.path.basename(d)}  [{len(calls)} calls]")
+            for c in calls[:6]: print("   ",c)
+        EOF
+      at: 2026-09-08T03:26:53.868265Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08 && ls tasks && python3 - <<'EOF'
+        import json,glob,os,re
+        for p in sorted(glob.glob("/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-*-2026-09-08/tasks/*.json")):
+            if "pilot-2026" in p: continue
+            d=json.load(open(p))
+            patch=d.get("patch") or d.get("gold_patch") or d.get("reference_patch") or ""
+            files=set(re.findall(r'^\+\+\+ b/(\S+)',patch,re.M))
+            src=[f for f in files if not f.startswith(("tests/","test/","docs/"))]
+            print(f"{os.path.basename(p)[:34]:36} gold src files={len(src)} {sorted(src)[:4]}")
+        EOF
+      at: 2026-09-08T03:27:06.40509Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git show --stat c9d03ac5 | head -20 && git show c9d03ac5 --name-only | grep -i readme | head -3
+      at: 2026-09-08T03:27:21.463929Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && cat harness/runs/daytoday-prism-isolation-2026-09-07/README.md
+      at: 2026-09-08T03:27:23.623324Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json,glob,re,os
+        gold={}
+        for p in glob.glob("product-proof-coding-*-2026-09-08/tasks/*.json"):
+            if "pilot-2026" in p: continue
+            d=json.load(open(p)); patch=d.get("patch") or d.get("gold_patch") or ""
+            f={x for x in re.findall(r'^\+\+\+ b/(\S+)',patch,re.M)
+               if not x.startswith(("tests/","test/","docs/")) and not x.endswith((".rst",".md"))}
+            gold[os.path.basename(p)[:-5]]=f
+        rows=[]
+        for run in ["product-proof-coding-pilot-fixed-2026-09-08","product-proof-coding-remaining-2026-09-08"]:
+            rows+=json.load(open(f"{run}/summary.json"))["rows"]
+        for r in sorted(rows,[REDACTED:env-secret] r:r['task']):
+            if r['arm']!="sonnet_prism": continue
+            g=gold.get(r['task'],set()); ch=set(r.get('changed_files') or [])
+            ok=(r.get('score') or {}).get('resolved')
+            print(f"{r['task'][:30]:32} resolved={str(ok)[:5]:6} gold_src={len(g)} touched={len(ch&g)}/{len(g)}  extra={sorted(ch-g)[:2]}")
+        EOF
+      at: 2026-09-08T03:27:40.17005Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness/runs && for d in product-proof-coding-pilot-fixed-2026-09-08 product-proof-coding-remaining-2026-09-08; do for c in $d/evidence/*sonnet_prism; do n=$(grep -c ''mcp__prism'' $c/stdout.jsonl 2>/dev/null); echo "$(basename $c): raw mcp__prism mentions=$n lines=$(wc -l < $c/stdout.jsonl)"; done; done'
+      at: 2026-09-08T03:30:01.333698Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json,glob,os
+        def turn1(cell):
+            m=json.load(open(os.path.join(cell,"measurement.json")))
+            u=m.get("usage") or {}
+            it=(u.get("raw_usage") or {}).get("iterations") or []
+            if not it: return None
+            a=it[0]
+            return a.get("input_tokens",0)+a.get("cache_read_input_tokens",0)+a.get("cache_creation_input_tokens",0)
+        for task in ["Textualize__rich__pr3882","pallets__werkzeug__pr3006","pallets__click__pr3228"]:
+            for run in glob.glob("product-proof-coding-*-2026-09-08"):
+                if "pilot-2026" in run: continue
+                n=os.path.join(run,"evidence",task+".sonnet_native"); p=os.path.join(run,"evidence",task+".sonnet_prism")
+                if not os.path.isdir(n): continue
+                a,b=turn1(n),turn1(p)
+                print(f"{task[:30]:32} turn1 native={a} prism={b} delta={None if None in (a,b) else b-a}")
+        EOF
+      at: 2026-09-08T03:30:53.294677Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad && python3 - <<'EOF'
+        import json,subprocess
+        B="/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0"
+        W="/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/work/pallets__werkzeug__pr3006.sonnet_prism"
+        p=subprocess.Popen([B,"mcp",W],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True)
+        def send(o): p.stdin.write(json.dumps(o)+"\n"); p.stdin.flush()
+        send({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"x","version":"1"}}})
+        p.stdout.readline()
+        send({"jsonrpc":"2.0","method":"notifications/initialized"})
+        send({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}})
+        r=json.loads(p.stdout.readline())
+        tools=r["result"]["tools"]
+        tot=0
+        for t in tools:
+            b=len(json.dumps(t))
+            tot+=b
+            print(f"{t['name']:32} {b:7} bytes  (~{b//4} tok)")
+        print(f"TOTAL {tot} bytes ~= {tot//4} tokens")
+        p.kill()
+        EOF
+      at: 2026-09-08T03:31:06.461194Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs && python3 - <<'EOF'
+        import json,glob,re,os
+        for name in ["pallets__click__pr3228","pallets__click__pr3695","pallets__werkzeug__pr3006","urllib3__urllib3__pr3786"]:
+            p=glob.glob(f"product-proof-coding-*-2026-09-08/tasks/{name}.json")
+            p=[x for x in p if "pilot-2026" not in x][0]
+            d=json.load(open(p))
+            patch=d.get("patch") or ""
+            gold=sorted({x for x in re.findall(r'^\+\+\+ b/(\S+)',patch,re.M)
+              if not x.startswith(("tests/","test/","docs/")) and not x.endswith((".rst",".md"))})
+            print("="*70); print(name, "| keys:", [k for k in d if k not in ("patch","test_patch")])
+            print("GOLD:", gold)
+            print("ISSUE:", (d.get("problem_statement") or d.get("issue") or d.get("prompt") or "")[:600].replace("\n"," "))
+        EOF
+      at: 2026-09-08T03:32:23.842949Z
+      classified: other
+    - cmd: |-
+        set -e
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        rm -rf $S; mkdir -p $S
+        R=/Users/tapabratapal/Projects/provasign/research/harness/runs
+        for t in pallets__click__pr3228 pallets__click__pr3695 pallets__werkzeug__pr3006 urllib3__urllib3__pr3786; do
+          for run in product-proof-coding-remaining-2026-09-08 product-proof-coding-pilot-fixed-2026-09-08; do
+            src=$R/$run/work/$t.sonnet_prism
+            [ -d "$src" ] || continue
+            cp -a "$src" $S/$t
+            break
+          done
+          base=$(python3 -c "
+        import json,glob
+        p=[x for x in glob.glob('$R/product-proof-coding-*-2026-09-08/tasks/$t.json') if 'pilot-2026' not in x][0]
+        print(json.load(open(p))['base_commit'])")
+          git -C $S/$t reset -q --hard $base
+          git -C $S/$t clean -qfd -e .grove
+          rm -rf $S/$t/.grove
+          echo "$t -> $(git -C $S/$t rev-parse --short HEAD) clean=$(git -C $S/$t status --porcelain | wc -l | tr -d ' ')"
+        done
+      at: 2026-09-08T03:32:40.565887Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        R=/Users/tapabratapal/Projects/provasign/research/harness/runs
+        for t in pallets__click__pr3228 pallets__click__pr3695 pallets__werkzeug__pr3006 urllib3__urllib3__pr3786; do
+          git -C $S/$t reset -q --hard HEAD; git -C $S/$t clean -qfd
+          python3 -c "
+        import json,glob,subprocess
+        p=[x for x in glob.glob('$R/product-proof-coding-*-2026-09-08/tasks/$t.json') if 'pilot-2026' not in x][0]
+        patch=json.load(open(p))['patch']
+        r=subprocess.run(['git','-C','$S/$t','apply','--check','-'],input=patch,text=True,capture_output=True)
+        print('$t','gold_applies_to_base=',r.returncode==0, r.stderr.strip()[:120])"
+        done
+      at: 2026-09-08T03:32:51.83532Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/pallets__werkzeug__pr3006 && time $P change-impact 'Map.bind_to_environ' --format text 2>&1 | head -40
+      at: 2026-09-08T03:33:04.76146Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/pallets__werkzeug__pr3006
+        echo "### search host_matching (text)"; $P search host_matching --scope text --format text 2>&1 | grep -oE 'src/werkzeug/[a-z/_]+\.py' | sort | uniq -c
+        echo "### change-impact Map"; $P change-impact 'Map' --format text 2>&1 | grep -oE 'src/werkzeug/[a-z/_]+\.py' | sort | uniq -c
+        echo "### query"; $P query "add subdomain_matching param to Map; bind_to_environ should not extract subdomain unless enabled" --terms subdomain_matching --format text 2>&1 | grep -oE 'src/werkzeug/[a-z/_]+\.py' | sort | uniq -c
+      at: 2026-09-08T03:33:15.736111Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/pallets__click__pr3695
+        echo "GOLD: __init__ _termui_impl core termui types utils"
+        for sym in LazyFile KeepOpenFile make_short_help PacifyFlushWrapper safecall; do
+          echo "### change-impact $sym"
+          $P change-impact "$sym" --format text 2>&1 | grep -oE 'src/click/[a-z_]+\.py' | sort -u | tr '\n' ' '; echo
+        done
+      at: 2026-09-08T03:33:25.635866Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/pallets__click__pr3695
+        echo "### does make_short_help exist?"; $P search make_short_help --scope text --format text 2>&1 | head -8
+        echo; echo "### lookup"; $P lookup make_short_help --format text 2>&1 | head -12
+      at: 2026-09-08T03:33:35.406459Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/pallets__click__pr3695
+        grep -rn "make_short_help" $S/src $S/tests 2>/dev/null | head; echo "exit=$?"
+      at: 2026-09-08T03:33:38.458724Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/pallets__click__pr3228
+        echo "GOLD: __init__ core exceptions parser"
+        echo "### search 'Did you mean' (text)"; $P search "Did you mean" --scope text --format text 2>&1 | grep -oE 'src/click/[a-z_]+\.py' | sort -u | tr '\n' ' '; echo
+        echo "### change-impact NoSuchOption"; $P change-impact NoSuchOption --format text 2>&1 | grep -oE 'src/click/[a-z_]+\.py' | sort -u | tr '\n' ' '; echo
+        echo "### change-impact UsageError"; $P change-impact UsageError --format text 2>&1 | grep -oE 'src/click/[a-z_]+\.py' | sort -u | tr '\n' ' '; echo
+        echo "### query"; $P query "provide suggestions for misspelled subcommands, like options already do" --terms NoSuchOption --format text 2>&1 | grep -oE 'src/click/[a-z_]+\.py' | sort -u | tr '\n' ' '; echo
+      at: 2026-09-08T03:33:48.006223Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/urllib3__urllib3__pr3786
+        echo "GOLD: connection.py poolmanager.py"
+        echo "### change-impact ProxyConfig"; $P change-impact ProxyConfig --format text 2>&1 | grep -oE 'src/urllib3/[a-z/_]+\.py' | sort -u | tr '\n' ' '; echo
+        echo "### search use_forwarding_for_https"; $P search use_forwarding_for_https --scope text --format text 2>&1 | grep -oE 'src/urllib3/[a-z/_]+\.py' | sort -u | tr '\n' ' '; echo
+        echo "### search proxy_ssl_context"; $P search proxy_ssl_context --scope text --format text 2>&1 | grep -oE 'src/urllib3/[a-z/_]+\.py' | sort -u | tr '\n' ' '; echo
+        echo "### query"; $P query "proxies should use proxy_ssl_context when connecting via ProxyConfig.use_forwarding_for_https" --terms proxy_ssl_context --format text 2>&1 | grep -oE 'src/urllib3/[a-z/_]+\.py' | sort -u | tr '\n' ' '; echo
+      at: 2026-09-08T03:33:57.349789Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/urllib3__urllib3__pr3786
+        grep -rn "ProxyConfig" $S/src | sed "s|$S/||" | head -20
+      at: 2026-09-08T03:34:04.057837Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/urllib3__urllib3__pr3786 && $P change-impact ProxyConfig --format text 2>&1 | head -25
+      at: 2026-09-08T03:34:11.610106Z
+      classified: other
+    - cmd: cat go.mod && echo "=== astkit/grove local? ===" && ls -d ../astkit ../grove 2>/dev/null
+      at: 2026-09-08T03:39:28.44286Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git log --oneline -5 && echo "=== version ===" && git describe --tags 2>/dev/null; echo "=== uses-type refs ===" && grep -rn "usesType\|UsesType\|uses_type" --include=*.go . | head -20
+      at: 2026-09-08T03:39:36.740213Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "usesType\|UsesType\|uses_type" --include="*.go" . 2>/dev/null | head -20; echo "=== type-level completeness string ==="; grep -rn "type-level" --include="*.go" . | head -10
+      at: 2026-09-08T03:39:39.785822Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '100,200p' internal/graph/changeimpact.go
+      at: 2026-09-08T03:39:44.459259Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func (g \*CodeGraph) typeImpactLocked" -A 80 internal/graph/*.go | head -100
+      at: 2026-09-08T03:39:46.923388Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '120,200p' internal/native/python.go
+      at: 2026-09-08T03:39:51.117355Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '40,120p' internal/native/python.go
+      at: 2026-09-08T03:39:54.582429Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '1,40p' internal/native/python.go
+      at: 2026-09-08T03:40:09.291941Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && ~/bin/prism change-impact 'pythonAnalyzer.Analyze' --format text 2>&1 | head -30
+      at: 2026-09-08T03:40:16.918959Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/pyrepro
+        rm -rf $S; mkdir -p $S/pkg; cd $S
+        cat > pyproject.toml <<'EOF'
+        [project]
+        name = "repro"
+        version = "0.1"
+        EOF
+        cat > pkg/__init__.py <<'EOF'
+        EOF
+        cat > pkg/base.py <<'EOF'
+        import typing
+
+        class ProxyThing(typing.NamedTuple):
+            host: str
+        EOF
+        cat > pkg/user_abs.py <<'EOF'
+        from pkg.base import ProxyThing
+
+        def consume(cfg: ProxyThing | None = None) -> None:
+            print(cfg)
+
+        class Sub(ProxyThing):
+            pass
+        EOF
+        cat > pkg/user_rel.py <<'EOF'
+        from .base import ProxyThing
+
+        def consume_rel(cfg: ProxyThing | None = None) -> None:
+            print(cfg)
+        EOF
+        cat > pkg/same_file.py <<'EOF'
+        class Local:
+            pass
+
+        def uses_local(x: Local) -> None:
+            print(x)
+        EOF
+        echo "--- built ---"; ls pkg
+      at: 2026-09-08T03:40:25.52792Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/pyrepro
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S && git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm base
+        echo "### ProxyThing (cross-file: absolute import, relative import, subclass)"; $P change-impact ProxyThing --format text 2>&1
+        echo; echo "### Local (same file — control)"; $P change-impact Local --format text 2>&1
+      at: 2026-09-08T03:40:32.002212Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/urllib3__urllib3__pr3786
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S
+        echo "### is the annotated free function indexed?"; $P lookup connection_requires_http_tunnel --format text 2>&1 | head -12
+        echo; echo "### a same-file python type in urllib3 (control)"; $P change-impact HTTPConnection --format text 2>&1 | head -12
+      at: 2026-09-08T03:40:56.291007Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/urllib3__urllib3__pr3786
+        P=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S
+        echo "### symbols named ProxyConfig"; $P search ProxyConfig --scope symbols --format text 2>&1 | head -20
+      at: 2026-09-08T03:41:11.181274Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/urllib3__urllib3__pr3786 && python3 - <<'EOF'
+        import ast,os
+        # replicate grove's type_name exactly
+        def type_name(node):
+            if isinstance(node, ast.Name): return node.id
+            if isinstance(node, ast.Attribute): return node.attr
+            if isinstance(node, ast.Subscript): return type_name(node.value)
+            return None
+        hits=[]; misses=[]
+        for dirp,_,fs in os.walk("src"):
+            for f in fs:
+                if not f.endswith(".py"): continue
+                p=os.path.join(dirp,f)
+                tree=ast.parse(open(p).read())
+                for node in ast.walk(tree):
+                    if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)):
+                        for arg in node.args.args+node.args.kwonlyargs:
+                            if arg.annotation is None: continue
+                            src=ast.unparse(arg.annotation)
+                            if "ProxyConfig" not in src: continue
+                            n=type_name(arg.annotation)
+                            (hits if n=="ProxyConfig" else misses).append((p,node.name,src,n))
+        print("RESOLVED by grove's type_name:",len(hits))
+        for h in hits: print("  ",h)
+        print("DROPPED:",len(misses))
+        for m in misses: print("  ",m)
+        EOF
+      at: 2026-09-08T03:41:28.694116Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "type_name\|typeUse\|TypeUse" internal/native/python*.go | head; echo "=== python tests ==="; grep -rn "python" internal/native/native_test.go | grep -i "func Test" | head
+      at: 2026-09-08T03:41:59.64882Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "Python" internal/native/native_test.go | head -20
+      at: 2026-09-08T03:42:01.824445Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '549,600p' internal/native/native_test.go
+      at: 2026-09-08T03:42:03.896893Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '41,50p;95,116p' internal/native/python.go | cat -A | sed 's/\$$//' | head -40
+      at: 2026-09-08T03:42:16.739906Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '41,50p' internal/native/python.go && echo "-----" && sed -n '93,116p' internal/native/python.go
+      at: 2026-09-08T03:42:19.196467Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PYEOF'
+        import io
+        p="internal/native/python.go"
+        s=open(p).read()
+
+        old_fn = '''def type_name(node):
+            if isinstance(node, ast.Name):
+                return node.id
+            if isinstance(node, ast.Attribute):
+                return node.attr
+            if isinstance(node, ast.Subscript):
+                return type_name(node.value)
+            return None
+        '''
+        new_fn = '''def type_names(node, out=None):
+            # Every type an annotation references, not just its outermost name.
+            # A PEP 604 union ("X | None") is an ast.BinOp and a parameterized
+            # generic ("Optional[X]", "dict[str, X]") carries its argument in the
+            # slice; the old outermost-name-only walk returned None for the first
+            # and "Optional"/"dict" for the second, so both dropped the real type.
+            # Measured on urllib3 (2026-09-07): every one of the 8 sites annotated
+            # "ProxyConfig | None" was lost, leaving change-impact on ProxyConfig
+            # reporting 1 site (its own declaration) for a type used in 7 files.
+            if out is None:
+                out = []
+            if node is None:
+                return out
+            if isinstance(node, ast.Name):
+                out.append(node.id)
+            elif isinstance(node, ast.Attribute):
+                out.append(node.attr)
+            elif isinstance(node, ast.Subscript):
+                type_names(node.value, out)
+                type_names(node.slice, out)
+            elif isinstance(node, ast.BinOp):
+                type_names(node.left, out)
+                type_names(node.right, out)
+            elif isinstance(node, (ast.Tuple, ast.List)):
+                for elt in node.elts:
+                    type_names(elt, out)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                # Forward reference: "ProxyConfig", or "ProxyConfig | None" under a
+                # quoted annotation. ast.parse only builds a tree; nothing executes.
+                try:
+                    type_names(ast.parse(node.value, mode="eval").body, out)
+                except Exception:
+                    pass
+            elif hasattr(ast, "Index") and isinstance(node, ast.Index):
+                type_names(node.value, out)
+            return out
+        def add_types(rel, from_name, node, seen):
+            for name in type_names(node):
+                key = (from_name, name)
+                if name and key not in seen:
+                    seen.add(key)
+                    types.append({"from": rel, "fromName": from_name, "to": rel, "toName": name})
+        '''
+        assert old_fn in s
+        s = s.replace(old_fn, new_fn, 1)
+
+        old_fd = '''            stack.append(node.name)
+                    for arg in node.args.args + node.args.kwonlyargs:
+                        name = type_name(arg.annotation)
+                        if name:
+                            types.append({"from": rel, "fromName": node.name, "to": rel, "toName": name})
+                    name = type_name(node.returns)
+                    if name:
+                        types.append({"from": rel, "fromName": node.name, "to": rel, "toName": name})
+        '''
+        new_fd = '''            stack.append(node.name)
+                    seen = set()
+                    for arg in node.args.args + node.args.kwonlyargs:
+                        add_types(rel, node.name, arg.annotation, seen)
+                    add_types(rel, node.name, node.returns, seen)
+        '''
+        assert old_fd in s
+        s = s.replace(old_fd, new_fd, 1)
+
+        old_cd = '''            for base in node.bases:
+                        name = type_name(base)
+                        if name:
+                            types.append({"from": rel, "fromName": node.name, "to": rel, "toName": name})
+        '''
+        new_cd = '''            seen = set()
+                    for base in node.bases:
+                        add_types(rel, node.name, base, seen)
+        '''
+        assert old_cd in s
+        s = s.replace(old_cd, new_cd, 1)
+        open(p,"w").write(s)
+        print("patched")
+        PYEOF
+        gofmt -l internal/native/python.go; sed -n '41,80p' internal/native/python.go
+      at: 2026-09-08T03:42:35.232695Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '760,800p' internal/native/native_test.go && echo "=== helpers ===" && grep -n "func assertNativeEdge\|func symbolRec\|func mkSymbol" -A 12 internal/native/native_test.go | head -30
+      at: 2026-09-08T03:42:39.878626Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PYEOF'
+        p="internal/native/native_test.go"
+        s=open(p).read()
+        anchor='''func TestRustAvailableWithCargoToml(t *testing.T) {'''
+        test='''func TestPythonUnionAndSubscriptAnnotationsProduceTypeEdges(t *testing.T) {
+        	if firstExistingExecutable("python3", "python") == "" {
+        		t.Skip("python3/python not available")
+        	}
+        	root := t.TempDir()
+        	_ = os.WriteFile(filepath.Join(root, "requirements.txt"), []byte(""), 0o644)
+        	// PEP 604 unions and parameterized generics are the ordinary way modern
+        	// Python spells an optional/contained type. Before type_names() walked
+        	// BinOp and Subscript slices, every one of these annotations resolved to
+        	// nothing (union) or to the container name (generic), so a widely used
+        	// type reported only its own declaration under change-impact.
+        	_ = os.WriteFile(filepath.Join(root, "conn.py"), []byte(`
+        import typing
+
+        class ProxyConfig(typing.NamedTuple):
+            host: str
+
+        def takes_union(cfg: ProxyConfig | None = None) -> None:
+            print(cfg)
+
+        def takes_generic(cfgs: list[ProxyConfig]) -> None:
+            print(cfgs)
+
+        def takes_forward_ref(cfg: "ProxyConfig") -> None:
+            print(cfg)
+        `), 0o644)
+
+        	symbols := []core.SymbolRecord{
+        		{ID: "conn.py::ProxyConfig@1", FilePath: "conn.py", Language: "python", Kind: core.KindClass, Name: "ProxyConfig"},
+        		{ID: "conn.py::takes_union@1", FilePath: "conn.py", Language: "python", Kind: core.KindFunction, Name: "takes_union"},
+        		{ID: "conn.py::takes_generic@1", FilePath: "conn.py", Language: "python", Kind: core.KindFunction, Name: "takes_generic"},
+        		{ID: "conn.py::takes_forward_ref@1", FilePath: "conn.py", Language: "python", Kind: core.KindFunction, Name: "takes_forward_ref"},
+        	}
+        	a := pythonAnalyzer{}
+        	result := a.Analyze(context.Background(), Request{
+        		Root:    root,
+        		Files:   []string{"conn.py"},
+        		Symbols: symbols,
+        	})
+        	for _, from := range []string{"conn.py::takes_union@1", "conn.py::takes_generic@1", "conn.py::takes_forward_ref@1"} {
+        		assertNativeEdge(t, result.Edges, from, "conn.py::ProxyConfig@1", core.EdgeUsesType)
+        	}
+        }
+
+        '''
+        assert anchor in s
+        s=s.replace(anchor, test+anchor, 1)
+        open(p,"w").write(s)
+        print("test added")
+        PYEOF
+        gofmt -l internal/native/ ; go test ./internal/native/ -run 'TestPython' -v 2>&1 | tail -25
+      at: 2026-09-08T03:42:54.982645Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOFLAGS= go test ./internal/native/ -run 'TestPython' -v 2>&1 | tail -25
+      at: 2026-09-08T03:42:58.867637Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && env | grep -i "^GOFLAGS\|^GOWORK"; go env GOFLAGS GOWORK; ls ../go.work 2>/dev/null; cat ../go.work 2>/dev/null | head
+      at: 2026-09-08T03:43:03.338398Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOFLAGS=-mod=readonly go test ./internal/native/ -run 'TestPython' -v 2>&1 | tail -20
+      at: 2026-09-08T03:43:10.273166Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git stash push -q internal/native/python.go && GOFLAGS=-mod=readonly go test ./internal/native/ -run 'TestPythonUnion' 2>&1 | tail -6; git stash pop -q && echo "--- restored ---" && git status --short
+      at: 2026-09-08T03:43:17.642917Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head -20; echo "EXIT=$?"
+      at: 2026-09-08T03:43:25.830328Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/prism-typenames ./cmd/prism && echo built && GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head -20
+      at: 2026-09-08T03:43:46.068953Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        NEW=$S/prism-typenames
+        cd $S/oracle/urllib3__urllib3__pr3786 && rm -rf .grove
+        echo "### AFTER FIX: change-impact ProxyConfig"; $NEW change-impact ProxyConfig --format text 2>&1 | head -30
+      at: 2026-09-08T03:43:52.856554Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "EdgeUsesType" --include="*.go" internal/ | grep -v "_test.go" | grep -v "internal/native/"
+      at: 2026-09-08T03:44:02.73887Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '1275,1340p' internal/graph/edges.go
+      at: 2026-09-08T03:44:05.275036Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/urllib3__urllib3__pr3786 && python3 - <<'EOF'
+        import ast,os,sys
+        from importlib.machinery import PathFinder
+        root=os.getcwd(); sys.path.insert(0,root)
+        def find_spec_no_import(mod):
+            path=None; spec=None
+            for part in mod.split("."):
+                try: spec=PathFinder.find_spec(part,path)
+                except Exception: return None
+                if spec is None: return None
+                path=spec.submodule_search_locations
+            return spec
+        tot=rel_imports=resolved=0
+        for dirp,_,fs in os.walk("src"):
+            for f in fs:
+                if not f.endswith(".py"): continue
+                p=os.path.join(dirp,f)
+                for node in ast.walk(ast.parse(open(p).read())):
+                    if isinstance(node,ast.ImportFrom) and node.module:
+                        tot+=1
+                        if node.level: rel_imports+=1
+                        spec=find_spec_no_import(node.module)
+                        o=getattr(spec,"origin",None) if spec else None
+                        if o and o not in ("built-in","frozen"):
+                            try:
+                                t=os.path.relpath(os.path.realpath(o),root)
+                                if not t.startswith("../"): resolved+=1
+                            except ValueError: pass
+        print(f"from-imports: {tot}   relative (level>0): {rel_imports}   resolved to an in-repo file: {resolved}")
+        EOF
+      at: 2026-09-08T03:44:31.254511Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '104,120p' internal/native/python.go
+      at: 2026-09-08T03:44:51.088139Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PYEOF'
+        p="internal/native/python.go"
+        s=open(p).read()
+
+        # 1. add the in-repo module resolver next to find_spec_no_import
+        anchor = '''def find_spec_no_import(mod):'''
+        helper = '''repo_modules = {}
+        def index_repo_modules():
+            # Suffix index of every in-repo Python file, keyed by dotted module path.
+            # PathFinder alone resolves only what is importable from the repo ROOT,
+            # which misses the two most common real layouts: a src/ package
+            # ("src/urllib3/connection.py" is never "connection" from the root) and
+            # any relative import. Measured on urllib3 2026-09-07: 0 of 256
+            # from-imports resolved, so the file-import graph was empty and every
+            # cross-file type reference lost its scope.
+            for rel in files:
+                if not rel.endswith(".py"):
+                    continue
+                parts = rel[:-3].split("/")
+                if parts[-1] == "__init__":
+                    parts = parts[:-1]
+                if not parts:
+                    continue
+                for i in range(len(parts)):
+                    key = ".".join(parts[i:])
+                    repo_modules.setdefault(key, set()).add(rel)
+        index_repo_modules()
+        def resolve_in_repo(mod):
+            # Unambiguous suffix match only: two files that could both answer the
+            # name are worse than no edge.
+            hits = repo_modules.get(mod)
+            if hits and len(hits) == 1:
+                return next(iter(hits))
+            return None
+        def resolve_relative(rel, mod, level):
+            # "from ..connection import X" in src/urllib3/util/proxy.py means
+            # src/urllib3/connection. level=1 is the file's own package.
+            parts = rel.split("/")[:-1]
+            if level > 1:
+                if len(parts) < level - 1:
+                    return None
+                parts = parts[: len(parts) - (level - 1)]
+            if mod:
+                parts = parts + mod.split(".")
+            base = "/".join(parts)
+            for candidate in (base + ".py", base + "/__init__.py"):
+                if candidate in file_set:
+                    return candidate
+            return None
+        def find_spec_no_import(mod):'''
+        assert anchor in s
+        s = s.replace(anchor, helper, 1)
+
+        # file_set must exist before index_repo_modules runs
+        old_files = '''files = json.loads(os.environ.get("GROVE_FILES", "[]"))'''
+        new_files = '''files = json.loads(os.environ.get("GROVE_FILES", "[]"))
+        file_set = set(files)'''
+        assert old_files in s
+        s = s.replace(old_files, new_files, 1)
+
+        # 2. carry level + module through, and try the in-repo resolvers
+        old_imports = '''    mods = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    mods.extend(alias.name for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    mods.append(node.module)
+            for mod in mods:
+                spec = find_spec_no_import(mod)
+                origin = getattr(spec, "origin", None) if spec else None
+                if not origin or origin in ("built-in", "frozen"):
+                    continue
+        '''
+        new_imports = '''    mods = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    mods.extend((alias.name, 0) for alias in node.names)
+                elif isinstance(node, ast.ImportFrom):
+                    # node.module is None for "from . import x"; the package itself
+                    # is still the import target.
+                    mods.append((node.module or "", node.level or 0))
+            for mod, level in mods:
+                if level:
+                    target = resolve_relative(rel, mod, level)
+                    if target:
+                        edges.append({"from": rel, "to": target})
+                    continue
+                if not mod:
+                    continue
+                target = resolve_in_repo(mod)
+                if target:
+                    edges.append({"from": rel, "to": target})
+                    continue
+                spec = find_spec_no_import(mod)
+                origin = getattr(spec, "origin", None) if spec else None
+                if not origin or origin in ("built-in", "frozen"):
+                    continue
+        '''
+        assert old_imports in s
+        s = s.replace(old_imports, new_imports, 1)
+        open(p,"w").write(s)
+        print("patched")
+        PYEOF
+        GOFLAGS=-mod=readonly go test ./internal/native/ -run TestPython 2>&1 | tail -5
+      at: 2026-09-08T03:45:10.227399Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        GOFLAGS=-mod=readonly go build -o $S/prism-typenames ./cmd/prism && cd $S/oracle/urllib3__urllib3__pr3786 && rm -rf .grove && $S/prism-typenames change-impact ProxyConfig --format text 2>&1 | head -30
+      at: 2026-09-08T03:45:20.770516Z
+      classified: build
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/urllib3__urllib3__pr3786 && python3 - <<'EOF'
+        import ast,os
+        files=[]
+        for dirp,_,fs in os.walk("src"):
+            for f in fs:
+                if f.endswith(".py"): files.append(os.path.join(dirp,f).replace(os.sep,"/"))
+        file_set=set(files)
+        repo_modules={}
+        for rel in files:
+            parts=rel[:-3].split("/")
+            if parts[-1]=="__init__": parts=parts[:-1]
+            if not parts: continue
+            for i in range(len(parts)):
+                repo_modules.setdefault(".".join(parts[i:]),set()).add(rel)
+        def resolve_in_repo(mod):
+            h=repo_modules.get(mod)
+            return next(iter(h)) if h and len(h)==1 else None
+        def resolve_relative(rel,mod,level):
+            parts=rel.split("/")[:-1]
+            if level>1:
+                if len(parts)<level-1: return None
+                parts=parts[:len(parts)-(level-1)]
+            if mod: parts=parts+mod.split(".")
+            base="/".join(parts)
+            for c in (base+".py", base+"/__init__.py"):
+                if c in file_set: return c
+            return None
+        res=0; tot=0; sample=[]
+        for rel in files:
+            for node in ast.walk(ast.parse(open(rel).read())):
+                if isinstance(node,ast.ImportFrom):
+                    tot+=1
+                    t=resolve_relative(rel,node.module or "",node.level) if node.level else resolve_in_repo(node.module or "")
+                    if t:
+                        res+=1
+                        if "ProxyConfig" in open(rel).read() and len(sample)<6: sample.append((rel,node.module,node.level,t))
+        print(f"from-imports {tot}, resolved in-repo {res}")
+        for s in sample: print("  ",s)
+        EOF
+      at: 2026-09-08T03:45:31.680519Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        R=$S/pyrepro2; rm -rf $R; mkdir -p $R/src/pkg/util
+        cd $R
+        printf '[project]\nname="r"\nversion="0.1"\n' > pyproject.toml
+        printf 'import typing\n\nclass ProxyThing(typing.NamedTuple):\n    host: str\n' > src/pkg/_base.py
+        printf 'from ._base import ProxyThing as ProxyThing\n\ndef in_same_pkg(cfg: ProxyThing | None = None) -> None:\n    print(cfg)\n' > src/pkg/conn.py
+        printf 'from ..conn import ProxyThing\n\ndef needs_tunnel(cfg: ProxyThing | None = None) -> bool:\n    return cfg is not None\n' > src/pkg/util/proxy.py
+        touch src/pkg/__init__.py src/pkg/util/__init__.py
+        git init -q . && git add -A && git -c user.email=t@t -c user.name=t commit -qm base
+        echo "### OLD binary"; /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0 change-impact ProxyThing --format text 2>&1 | tail -8
+        rm -rf .grove
+        echo "### NEW binary"; $S/prism-typenames change-impact ProxyThing --format text 2>&1 | tail -8
+      at: 2026-09-08T03:45:58.196181Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func (i \*edgeIndex) importedFiles" -A 40 internal/graph/edges.go | head -50
+      at: 2026-09-08T03:46:06.565825Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "importedFiles" --include="*.go" internal/ | head; echo "---"; grep -n "importedFiles" -A 35 internal/graph/edges.go | sed -n '1,60p'
+      at: 2026-09-08T03:46:09.576855Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '620,660p' internal/graph/edges.go
+      at: 2026-09-08T03:46:11.947221Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "grove EXIT=$?"; GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "prism EXIT=$?"
+      at: 2026-09-08T03:46:38.56484Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "prism suite done"
+      at: 2026-09-08T03:46:53.863706Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness/ci_invariants.py && timeout 900 python3 harness/ci_invariants.py --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/prism-typenames 2>&1 | tail -25
+      at: 2026-09-08T03:46:59.78974Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/prism-typenames 2>&1 | tail -30
+      at: 2026-09-08T03:47:04.539725Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "SCORER_VERSION" harness/score.py | head -3; grep -n "scorer_version\|_comment" harness/ci_baseline.json | head -5; git log --oneline -3 -- harness/score.py harness/ci_baseline.json
+      at: 2026-09-08T03:47:12.187497Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        OLD=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        NEW=$S/prism-typenames
+        for repo in $S/oracle/pallets__click__pr3228 $S/oracle/pallets__werkzeug__pr3006; do
+          echo "######## $(basename $repo)"
+          for q in UsageError NoSuchOption Map Rule; do
+            cd $repo; rm -rf .grove; a=$($OLD change-impact $q --format text 2>&1 | grep -c "^  ")
+            rm -rf .grove; b=$($NEW change-impact $q --format text 2>&1 | grep -c "^  ")
+            echo "  $q: old=$a new=$b"
+          done
+        done
+      at: 2026-09-08T03:47:40.541832Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        OLD=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        NEW=$S/prism-typenames
+        cd $S/oracle/pallets__werkzeug__pr3006
+        rm -rf .grove; $OLD change-impact Rule --format text 2>&1 | sort > $S/rule.old
+        rm -rf .grove; $NEW change-impact Rule --format text 2>&1 | sort > $S/rule.new
+        diff $S/rule.old $S/rule.new
+        echo "=== Go control: grove repo, should be identical ==="
+        cd /Users/tapabratapal/Projects/provasign/grove
+        $OLD change-impact 'CodeGraph.ChangeImpactScoped' --format text 2>&1 | sort > $S/go.old
+        $NEW change-impact 'CodeGraph.ChangeImpactScoped' --format text 2>&1 | sort > $S/go.new
+        diff $S/go.old $S/go.new && echo "IDENTICAL"
+      at: 2026-09-08T03:47:51.60499Z
+      classified: build
+    - cmd: sed -n '165,175p' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/oracle/pallets__werkzeug__pr3006/src/werkzeug/routing/rules.py
+      at: 2026-09-08T03:47:56.10773Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        cd $S/oracle/pallets__werkzeug__pr3006 && python3 - <<'EOF'
+        import ast
+        src=open("src/werkzeug/routing/rules.py").read()
+        tree=ast.parse(src)
+        for cls in [n for n in tree.body if isinstance(n,ast.ClassDef)]:
+            for fn in [n for n in cls.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))]:
+                ann=[]
+                for a in fn.args.args+fn.args.kwonlyargs:
+                    if a.annotation is not None: ann.append(ast.unparse(a.annotation))
+                if fn.returns is not None: ann.append("->"+ast.unparse(fn.returns))
+                if any("Rule" in x for x in ann):
+                    print(f"{cls.name}.{fn.name}  line {fn.lineno}: {ann}")
+        EOF
+      at: 2026-09-08T03:48:17.531475Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func symbolByFileAndName" -A 20 internal/native/*.go
+      at: 2026-09-08T03:48:29.077266Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '364,395p' internal/native/native.go
+      at: 2026-09-08T03:48:33.562906Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n '395,430p' internal/native/native.go; echo "=== who uses newSymbolLocator ==="; grep -rn "newSymbolLocator\|\.at(" --include="*.go" internal/native/ | grep -v _test | head
+      at: 2026-09-08T03:48:39.003822Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PYEOF'
+        p="internal/native/python.go"
+        s=open(p).read()
+
+        # script: carry the referencing node's line
+        s=s.replace('''def add_types(rel, from_name, node, seen):
+            for name in type_names(node):
+                key = (from_name, name)
+                if name and key not in seen:
+                    seen.add(key)
+                    types.append({"from": rel, "fromName": from_name, "to": rel, "toName": name})''',
+        '''def add_types(rel, from_name, from_line, node, seen):
+            for name in type_names(node):
+                key = (from_name, name)
+                if name and key not in seen:
+                    seen.add(key)
+                    types.append({"from": rel, "fromName": from_name, "fromLine": from_line,
+                                  "to": rel, "toName": name})''',1)
+
+        s=s.replace('''            seen = set()
+                    for arg in node.args.args + node.args.kwonlyargs:
+                        add_types(rel, node.name, arg.annotation, seen)
+                    add_types(rel, node.name, node.returns, seen)''',
+        '''            seen = set()
+                    for arg in node.args.args + node.args.kwonlyargs:
+                        add_types(rel, node.name, node.lineno, arg.annotation, seen)
+                    add_types(rel, node.name, node.lineno, node.returns, seen)''',1)
+
+        s=s.replace('''            seen = set()
+                    for base in node.bases:
+                        add_types(rel, node.name, base, seen)''',
+        '''            seen = set()
+                    for base in node.bases:
+                        add_types(rel, node.name, node.lineno, base, seen)''',1)
+
+        s=s.replace('''                if name:
+                            calls.append({"from": rel, "fromName": stack[-1], "to": rel, "toName": name})''',
+        '''                if name:
+                            calls.append({"from": rel, "fromName": stack[-1], "fromLine": node.lineno,
+                                          "to": rel, "toName": name})''',1)
+
+        # Go payload: accept the line
+        s=s.replace('''		Calls []struct {
+        			From     string `json:"from"`
+        			FromName string `json:"fromName"`
+        			To       string `json:"to"`
+        			ToName   string `json:"toName"`
+        		} `json:"calls"`
+        		Types []struct {
+        			From     string `json:"from"`
+        			FromName string `json:"fromName"`
+        			To       string `json:"to"`
+        			ToName   string `json:"toName"`
+        		} `json:"types"`''',
+        '''		Calls []struct {
+        			From     string `json:"from"`
+        			FromName string `json:"fromName"`
+        			FromLine int    `json:"fromLine"`
+        			To       string `json:"to"`
+        			ToName   string `json:"toName"`
+        		} `json:"calls"`
+        		Types []struct {
+        			From     string `json:"from"`
+        			FromName string `json:"fromName"`
+        			FromLine int    `json:"fromLine"`
+        			To       string `json:"to"`
+        			ToName   string `json:"toName"`
+        		} `json:"types"`''',1)
+
+        # Go resolution: span-aware, like js_ts. A file declaring six __init__ collapsed
+        # to the earliest one under the (file, name) map.
+        s=s.replace('''	symbols := symbolByFileAndName(req.Symbols, map[string]bool{"python": true})''',
+        '''	// Span-aware resolution: a (file, name) map collapses every same-named
+        	// method in a file to the earliest span, so werkzeug's six __init__ in
+        	// routing/rules.py all resolved to Subdomain.__init__ — RuleTemplate's
+        	// genuine "t.Iterable[Rule]" parameter was reported 82 lines away, on a
+        	// method that does not mention Rule. js_ts has used the locator since it
+        	// hit the same collision.
+        	symbols := newSymbolLocator(req.Symbols, map[string]bool{"python": true})''',1)
+
+        s=s.replace('''	for _, edge := range payload.Calls {
+        		from, okFrom := symbols[edge.From+"\\x00"+edge.FromName]
+        		to, okTo := symbols[edge.To+"\\x00"+edge.ToName]''',
+        '''	for _, edge := range payload.Calls {
+        		from, okFrom := symbols.at(edge.From, edge.FromName, edge.FromLine)
+        		to, okTo := symbols.at(edge.To, edge.ToName, 0)''',1)
+
+        s=s.replace('''	for _, edge := range payload.Types {
+        		from, okFrom := symbols[edge.From+"\\x00"+edge.FromName]
+        		to, okTo := symbols[edge.To+"\\x00"+edge.ToName]''',
+        '''	for _, edge := range payload.Types {
+        		from, okFrom := symbols.at(edge.From, edge.FromName, edge.FromLine)
+        		to, okTo := symbols.at(edge.To, edge.ToName, 0)''',1)
+        open(p,"w").write(s)
+        print("patched")
+        PYEOF
+        GOFLAGS=-mod=readonly go build ./... && gofmt -l internal/native/python.go; GOFLAGS=-mod=readonly go test ./internal/native/ 2>&1 | tail -3
+      at: 2026-09-08T03:49:04.138553Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'PYEOF'
+        p="internal/native/native_test.go"
+        s=open(p).read()
+        anchor="func TestRustAvailableWithCargoToml(t *testing.T) {"
+        test='''func TestPythonTypeEdgesResolveSameNamedMethodsBySpan(t *testing.T) {
+        	if firstExistingExecutable("python3", "python") == "" {
+        		t.Skip("python3/python not available")
+        	}
+        	root := t.TempDir()
+        	_ = os.WriteFile(filepath.Join(root, "requirements.txt"), []byte(""), 0o644)
+        	// Two __init__ in one file: only the SECOND references Rule. Keying
+        	// edges by (file, name) attributed it to the first (werkzeug
+        	// routing/rules.py has six __init__; the real RuleTemplate site was
+        	// reported as Subdomain, 82 lines away).
+        	_ = os.WriteFile(filepath.Join(root, "rules.py"), []byte(`
+        import typing as t
+
+        class Rule:
+            pass
+
+        class Subdomain:
+            def __init__(self, subdomain: str) -> None:
+                self.subdomain = subdomain
+
+        class RuleTemplate:
+            def __init__(self, rules: t.Iterable[Rule]) -> None:
+                self.rules = rules
+        `), 0o644)
+
+        	symbols := []core.SymbolRecord{
+        		{ID: "rules.py::Rule@1", FilePath: "rules.py", Language: "python", Kind: core.KindClass, Name: "Rule", Span: core.Span{Start: 4, End: 5}},
+        		{ID: "rules.py::Subdomain.__init__@1", FilePath: "rules.py", Language: "python", Kind: core.KindMethod, Name: "__init__", ParentSymbol: "Subdomain", Span: core.Span{Start: 8, End: 9}},
+        		{ID: "rules.py::RuleTemplate.__init__@1", FilePath: "rules.py", Language: "python", Kind: core.KindMethod, Name: "__init__", ParentSymbol: "RuleTemplate", Span: core.Span{Start: 12, End: 13}},
+        	}
+        	a := pythonAnalyzer{}
+        	result := a.Analyze(context.Background(), Request{Root: root, Files: []string{"rules.py"}, Symbols: symbols})
+        	assertNativeEdge(t, result.Edges, "rules.py::RuleTemplate.__init__@1", "rules.py::Rule@1", core.EdgeUsesType)
+        	for _, edge := range result.Edges {
+        		if edge.From == "rules.py::Subdomain.__init__@1" && edge.To == "rules.py::Rule@1" {
+        			t.Fatalf("Rule attributed to Subdomain.__init__, which never mentions it: %#v", edge)
+        		}
+        	}
+        }
+
+        '''
+        assert anchor in s
+        s=s.replace(anchor,test+anchor,1)
+        open(p,"w").write(s)
+        print("ok")
+        PYEOF
+        GOFLAGS=-mod=readonly go test ./internal/native/ -run TestPython -v 2>&1 | tail -12
+      at: 2026-09-08T03:49:17.795188Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "Span " internal/core/types.go | head -5; grep -n "type.*Span\|StartLine\|Start " internal/core/types.go | head -10
+      at: 2026-09-08T03:49:20.74046Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && sed -i '''' ''s/Span: core\.Span{/Span: core.LineRange{/g'' internal/native/native_test.go && GOFLAGS=-mod=readonly go test ./internal/native/ -run TestPython -v 2>&1 | tail -12'
+      at: 2026-09-08T03:49:26.498386Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git stash push -q internal/native/python.go && GOFLAGS=-mod=readonly go test ./internal/native/ -run 'TestPythonTypeEdgesResolveSameNamed' 2>&1 | tail -4; git stash pop -q && GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "GROVE SUITE CLEAN"
+      at: 2026-09-08T03:49:35.688755Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        GOFLAGS=-mod=readonly go build -o $S/prism-typenames ./cmd/prism && GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "PRISM SUITE CLEAN"
+        OLD=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/oracle/pallets__werkzeug__pr3006 && rm -rf .grove && $S/prism-typenames change-impact Rule --format text 2>&1 | sort > $S/rule.new2
+        diff $S/rule.old $S/rule.new2 && echo "IDENTICAL TO OLD"
+      at: 2026-09-08T03:49:59.112086Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        grep -n "RuleTemplate\|Subdomain" $S/rule.new2 | head; echo "--- old ---"; grep -n "RuleTemplate\|Subdomain" $S/rule.old | head
+      at: 2026-09-08T03:50:07.206761Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        OLD=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/prism-v0.72.0
+        cd $S/oracle/urllib3__urllib3__pr3786 && rm -rf .grove
+        echo "### FINAL binary — ProxyConfig"; $S/prism-typenames change-impact ProxyConfig --format text 2>&1
+        echo; echo "### click pr3695 fanout, old vs new"
+        cd $S/oracle/pallets__click__pr3695
+        for sym in LazyFile KeepOpenFile PacifyFlushWrapper safecall; do
+          rm -rf .grove; a=$($OLD change-impact $sym --format text 2>&1 | grep -oE 'src/click/[a-z_]+\.py' | sort -u | tr '\n' ' ')
+          rm -rf .grove; b=$($S/prism-typenames change-impact $sym --format text 2>&1 | grep -oE 'src/click/[a-z_]+\.py' | sort -u | tr '\n' ' ')
+          echo "  $sym"; echo "     old: $a"; echo "     new: $b"
+        done
+      at: 2026-09-08T03:50:24.640568Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad && python3 - <<'PYEOF'
+        p="internal/native/python.go"
+        s=open(p).read()
+        start=s.index("repo_modules = {}")
+        end=s.index("def find_spec_no_import(mod):")
+        removed_helper=s[start:end]
+        s=s[:start]+s[end:]
+        old='''    mods = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    mods.extend((alias.name, 0) for alias in node.names)
+                elif isinstance(node, ast.ImportFrom):
+                    # node.module is None for "from . import x"; the package itself
+                    # is still the import target.
+                    mods.append((node.module or "", node.level or 0))
+            for mod, level in mods:
+                if level:
+                    target = resolve_relative(rel, mod, level)
+                    if target:
+                        edges.append({"from": rel, "to": target})
+                    continue
+                if not mod:
+                    continue
+                target = resolve_in_repo(mod)
+                if target:
+                    edges.append({"from": rel, "to": target})
+                    continue
+                spec = find_spec_no_import(mod)'''
+        new='''    mods = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    mods.extend(alias.name for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    mods.append(node.module)
+            for mod in mods:
+                spec = find_spec_no_import(mod)'''
+        assert old in s
+        s=s.replace(old,new,1)
+        s=s.replace('''files = json.loads(os.environ.get("GROVE_FILES", "[]"))
+        file_set = set(files)''','''files = json.loads(os.environ.get("GROVE_FILES", "[]"))''',1)
+        open(p,"w").write(s)
+        open("/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad/python-import-resolution.parked.py","w").write(removed_helper)
+        print("reverted; parked helper saved")
+        PYEOF
+        GOFLAGS=-mod=readonly go build ./... && GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo "GROVE CLEAN"; git diff --stat
+      at: 2026-09-08T03:50:55.238889Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/f0e79217-40ef-41d8-9a92-589469ec0c81/scratchpad
+        GOFLAGS=-mod=readonly go build -o $S/prism-typenames ./cmd/prism && GOFLAGS=-mod=readonly go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "PRISM CLEAN"
+        cd $S/oracle/urllib3__urllib3__pr3786 && rm -rf .grove && $S/prism-typenames change-impact ProxyConfig --format text 2>&1 | head -8
+        cd /Users/tapabratapal/Projects/provasign/grove && $S/prism-typenames change-impact 'CodeGraph.ChangeImpactScoped' --format text 2>&1 | sort > $S/go.new2; diff $S/go.old $S/go.new2 && echo "GO CONTROL IDENTICAL"
+      at: 2026-09-08T03:51:18.612272Z
+      classified: test
+    - cmd: |-
+        M=/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_stage1_scorer_repair.md
+        python3 - <<'PYEOF'
+        p="/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_stage1_scorer_repair.md"
+        s=open(p).read()
+        add = '''
+        **2026-09-07 late — coding-suite cell audit + Python annotation defects.**
+        Product-proof coding bed (32 cells): Sonnet made ZERO prism calls in 7/8
+        prism cells (MCP connected, all 6 tools in the init list — verified in the
+        transcripts, not a plumbing failure), yet cost 1.58x native; GPT adopted
+        8/8 but CLI-only, never MCP. Fixed per-turn tax measured on equal-turn
+        pairs: +3.5k (rich pr3882) / +4.4k (werkzeug pr3006) tokens; the 6 MCP
+        schemas alone are 9,172 bytes = ~2,293 tokens. OPEN: the bed passes
+        `--setting-sources ""` + `disableAllHooks`, so it may never deliver the
+        `prism init` CLAUDE.md at all — if so every coding-suite prism number is
+        tools-without-steering. Probe (nested `claude -p` with a marker CLAUDE.md)
+        is blocked by the auto-mode classifier; Topo must run it.
+        Sonnet's diffs covered 4/14 gold source files across the 4 under-covered
+        failures; a no-LLM oracle (clean base checkouts, issue-text symbols only)
+        showed prism output can name 12/14 — but the NATURAL narrow query fails on
+        2 of 4 (`Map.bind_to_environ` misses rules.py; `ProxyConfig` misses both
+        gold files), so reachable != reached.
+        ENGINE DEFECTS FOUND AND FIXED (grove, uncommitted, workspace build):
+        (1) the embedded Python resolver's `type_name` handled Name/Attribute/
+        Subscript-value only — PEP 604 `X | None` is an ast.BinOp and returned
+        None, and `Optional[X]`/`list[X]` returned the container. urllib3: all 8
+        `ProxyConfig | None` sites dropped. Replaced with `type_names()` walking
+        BinOp/Subscript slices/Tuple/forward-ref strings.
+        (2) python edges were keyed (file, name), so a file's six `__init__`
+        collapsed to the earliest span — RuleTemplate's real `t.Iterable[Rule]`
+        was reported as `Subdomain.__init__` 82 lines away. Now uses the existing
+        `symbolLocator.at(file,name,line)` that js_ts already used.
+        Both have non-vacuous regression tests. urllib3 ProxyConfig 1 -> 3 sites,
+        all true positives; Go control byte-identical; werkzeug `Rule` identical to
+        old after (2) removed the false positive (1) had introduced.
+        STILL BROKEN (not fixed, design call): cross-file annotation refs need the
+        RE-EXPORT HOP — poolmanager imports ProxyConfig from connection.py, which
+        re-exports it from _base_connection.py, and `importedFiles` scope stops one
+        hop short, so the two GOLD files are still unnamed. Also measured: 0 of 256
+        urllib3 from-imports resolve to an in-repo file (150 are relative;
+        `node.level` is ignored; src-layout defeats PathFinder-from-root). A fix
+        for that is PARKED at scratchpad/python-import-resolution.parked.py —
+        reverted because `importedFiles` does its own string resolution and has no
+        consumer for those edges, so shipping it would be an unmeasured change.
+        GATE BROKEN (pre-existing, blocks release): `ci_invariants` refuses to run
+        — ci_baseline.json is scorer v3, score.py is now v4 ("set semantics + Maven
+        test paths"). The same-commit re-baseline rule was violated again. Must be
+        re-baselined before any tag. [[feedback_no_ship_without_testing]]
+        '''
+        s=s.rstrip()+"\n"+add
+        open(p,"w").write(s)
+        print("memory updated")
+        PYEOF
+        grep -c "" $M
+      at: 2026-09-08T03:51:43.755878Z
+      classified: other
+notes: []
+redactions: 3

@@ -1,0 +1,294 @@
+shale_version: "0"
+id: 01a07f26-dfae-7ec3-98bf-6508822641e9
+created_at: 2026-09-08T03:54:16.366136Z
+finalized_at: 2026-09-08T04:12:22.912427Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git branch --show-current && git status --short --branch && git log -5 --oneline --decorate
+      at: 2026-09-08T03:54:22.087389Z
+      classified: other
+    - cmd: git show --stat --summary c805a11 && git show --stat --summary c202075 && git show --stat --summary c37a1f4 && git show --stat --summary 9c988f9
+      at: 2026-09-08T03:54:26.403955Z
+      classified: other
+    - cmd: prism search urllib3 benchmark coding-suite --scope text --exhaustive --format text
+      at: 2026-09-08T03:55:00.496021Z
+      classified: other
+    - cmd: rg -n -i "urllib3|url3lib" . --hidden -g '!*.git*' -g '!vendor' -g '!node_modules'
+      at: 2026-09-08T03:55:05.15156Z
+      classified: other
+    - cmd: rg -n -i -C 4 "bug|invalid|contamin|wrong|void|urllib3.*(fail|error)|pr5093|pr5020|pr3786" .shale/01a07deb-fe37-7c80-8744-26b269be9704.yaml .shale/01a07deb-fe37-7c80-8744-26b269be9704-c2.yaml
+      at: 2026-09-08T03:55:10.815422Z
+      classified: other
+    - cmd: sed -n '130,310p' .shale/01a07deb-fe37-7c80-8744-26b269be9704.yaml && sed -n '500,680p' .shale/01a07deb-fe37-7c80-8744-26b269be9704.yaml
+      at: 2026-09-08T03:55:16.105023Z
+      classified: other
+    - cmd: git log --since='2026-09-07 18:00' --format='%h %ad %s%n%b' --date=iso --all -- harness internal/mcp internal/cli | head -240 && jq '{status,completed,valid,timeouts,measurement_incomplete,agent_errors,protocol_violations,harness_errors,resolved,rows:[.rows[]|{cell_id,arm,task,resolved,prism_calls,violations,score}]}' harness/runs/coding-suite-pilot-2026-09-07/summary.json && sed -n '1,240p' harness/runs/coding-suite-pilot-2026-09-07/README.md
+      at: 2026-09-08T03:55:24.444851Z
+      classified: other
+    - cmd: rg --files | rg '(^|/)harness|CODING_SUITE|freshness_test|tools.go|commands.go' | head -200 && git log --all --oneline --decorate --since='2026-09-07 18:00' -30
+      at: 2026-09-08T03:55:28.078173Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/research status --short --branch && git -C /Users/tapabratapal/Projects/provasign/research log -8 --oneline --decorate && find /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07 -maxdepth 2 -type f -print | sort | head -80
+      at: 2026-09-08T03:55:35.330662Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/research show --stat --summary e7da6511 && git -C /Users/tapabratapal/Projects/provasign/research show --stat --summary ccaf6f7a && sed -n '1,240p' /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/README.md && jq '{status,completed,valid,timeouts,measurement_incomplete,agent_errors,protocol_violations,harness_errors,resolved,rows:[.rows[]|{cell_id,arm,task,resolved,prism_calls,violations,score}]}' /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/summary.json
+      at: 2026-09-08T03:55:42.110268Z
+      classified: other
+    - cmd: rg -n -i -C 5 "urllib3|bug|stale|phantom|deferred|invalid|caveat|failure" /Users/tapabratapal/Projects/provasign/research/harness/PRODUCT_PROOF_2026-09-08.md /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-2026-09-08/summary.json /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08 /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08 2>/dev/null | head -500
+      at: 2026-09-08T03:55:48.705979Z
+      classified: other
+    - cmd: sed -n '57,106p' /Users/tapabratapal/Projects/provasign/research/harness/PRODUCT_PROOF_2026-09-08.md && git -C /Users/tapabratapal/Projects/provasign/research show --format=fuller --stat c223eb2f -- && git -C /Users/tapabratapal/Projects/provasign/research show --format=fuller --stat 4f847a2a -- | head -120
+      at: 2026-09-08T03:55:54.258599Z
+      classified: other
+    - cmd: pwd; test -f AGENTS.md && sed -n '1,220p' AGENTS.md || true; git branch --show-current; git status --short --branch | head -80
+      at: 2026-09-08T03:57:58.306203Z
+      classified: other
+    - cmd: 'test -f harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/base/src/urllib3/_version.py; echo "base _version: $?"; test -f harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/src/urllib3/_version.py; echo "prism _version: $?"; diff -qr harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/base/src harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/src; shasum -a 256 harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/{base,prism}/src/urllib3/_version.py; rg -n "copytree|dirs_exist_ok|_version|compare|mismatch|base.*prism|prism.*base" harness/coding_suite.py harness/tests/test_coding_suite.py'
+      at: 2026-09-08T03:58:06.756066Z
+      classified: other
+    - cmd: git show --format=fuller --stat --patch c202075 && git show --format= --patch 9c988f9 -- internal/mcp/tools.go internal/mcp/graphcache.go internal/mcp/freshness_test.go
+      at: 2026-09-08T03:58:15.756441Z
+      classified: other
+    - cmd: jq '[.rows[] | select(.task=="urllib3__urllib3__pr3786") | {cell_id,resolved,score,prism_calls,prism_cli_commands,tool_errors,changed_files}]' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json && for f in /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence/urllib3__urllib3__pr3786.*_prism/stdout.jsonl; do echo "FILE $f"; rg -n -i 'prism_(node|lookup|search|query|change_impact|verify)|prism (node|lookup|search|query|change-impact|verify)|stale|not found|no symbol|error' "$f"; done
+      at: 2026-09-08T03:58:24.886673Z
+      classified: other
+    - cmd: sed -n '180,290p' .shale/01a07deb-fe37-7c80-8744-26b269be9704-c2.yaml && git log --format='%h %ad %s' --date=iso -8
+      at: 2026-09-08T03:58:34.831485Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08 -type f | rg 'urllib3.*(test|score|validation|log)|(?:test|score|validation|log).*urllib3' | sort | head -100; jq '{problem_statement,fail_to_pass,pass_to_pass,test_modules}' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/tasks/urllib3__urllib3__pr3786.json
+      at: 2026-09-08T03:58:46.137071Z
+      classified: other
+    - cmd: jq '.rows[] | select(.cell_id=="urllib3__urllib3__pr3786.gpt55_prism") | .score' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json; jq '.rows[] | select(.cell_id=="urllib3__urllib3__pr3786.sonnet_prism") | .score' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json; rg -n 'test_forwarding_proxy_ssl_context_fallback|FAILED|fail_to_pass_failed|f2p' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence/urllib3__urllib3__pr3786.* /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json | head -120
+      at: 2026-09-08T03:58:52.937912Z
+      classified: other
+    - cmd: jq -r '.rows[] | [.cell_id, (.score.resolved|tostring),(.score.f2p_ok|tostring),(.score.p2p_ok|tostring),(.audited_valid|tostring)]|@tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json
+      at: 2026-09-08T03:59:00.391883Z
+      classified: other
+    - cmd: prism search Grove grove urllib3 transcript --scope text --exhaustive --format text
+      at: 2026-09-08T03:59:31.464655Z
+      classified: other
+    - cmd: rg -n -i -C 6 "grove|urllib3" .shale/01a07deb-fe37-7c80-8744-26b269be9704.yaml | sed -n '1,320p'
+      at: 2026-09-08T03:59:36.745122Z
+      classified: other
+    - cmd: sed -n '660,795p' .shale/01a07deb-fe37-7c80-8744-26b269be9704.yaml
+      at: 2026-09-08T03:59:41.381309Z
+      classified: other
+    - cmd: rg -n -i "no symbol named|stale index|not.*index|phantom|addedafterindex|staleness|prism (lookup|node|search).*" /Users/tapabratapal/Projects/provasign/research/harness/runs --glob '*urllib3*/stdout.jsonl' --glob '*urllib3*.jsonl' --glob '*urllib3*/final.txt' --glob '*urllib3*.txt' 2>/dev/null | head -240
+      at: 2026-09-08T03:59:53.766398Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -path '*urllib3*' -type f \( -name 'stdout.jsonl' -o -name 'final.txt' \) -print0 | xargs -0 rg -n -i "no symbol named|stale index|phantom|not in the index|prism (lookup|node|search|query|change-impact|verify)" | head -300
+      at: 2026-09-08T04:00:06.796495Z
+      classified: other
+    - cmd: pwd; test -f AGENTS.md && sed -n '1,220p' AGENTS.md || true; git branch --show-current; git status --short --branch; git log -8 --oneline --decorate
+      at: 2026-09-08T04:00:22.702957Z
+      classified: other
+    - cmd: prism query "Python constructor calls resolve to the concrete class constructor instead of an inherited superclass constructor family" --terms __init__,constructor,receiver --format text
+      at: 2026-09-08T04:00:31.832957Z
+      classified: other
+    - cmd: git diff --stat && git diff -- internal/native/python.go internal/native/native_test.go
+      at: 2026-09-08T04:00:34.780269Z
+      classified: other
+    - cmd: git diff --check && GOFLAGS= GOWORK=off go test ./internal/native ./internal/graph -count=1
+      at: 2026-09-08T04:00:52.257608Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T04:01:04.408289Z
+      classified: test
+    - cmd: mkdir -p /private/tmp/grove-proxyconfig-e2e/prism-src /private/tmp/grove-proxyconfig-e2e/urllib3 && git -C /Users/tapabratapal/Projects/provasign/prism archive HEAD | tar -x -C /private/tmp/grove-proxyconfig-e2e/prism-src && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/base/. /private/tmp/grove-proxyconfig-e2e/urllib3/
+      at: 2026-09-08T04:01:22.072834Z
+      classified: other
+    - cmd: go mod edit -replace github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove && GOFLAGS= GOWORK=off go build -o /private/tmp/grove-proxyconfig-e2e/prism ./cmd/prism
+      at: 2026-09-08T04:01:25.374078Z
+      classified: build
+    - cmd: GOCACHE=/private/tmp/grove-proxyconfig-e2e/go-cache GOFLAGS= GOWORK=off go build -o /private/tmp/grove-proxyconfig-e2e/prism ./cmd/prism
+      at: 2026-09-08T04:01:39.568178Z
+      classified: build
+    - cmd: XDG_CACHE_HOME=/private/tmp/grove-proxyconfig-e2e/cache /private/tmp/grove-proxyconfig-e2e/prism index . --format text && XDG_CACHE_HOME=/private/tmp/grove-proxyconfig-e2e/cache /private/tmp/grove-proxyconfig-e2e/prism change-impact ProxyConfig --format text
+      at: 2026-09-08T04:01:45.200436Z
+      classified: other
+    - cmd: rg -n "Caches/prism|UserCacheDir|ledger.*dir|PRISM_.*CACHE|XDG_CACHE" internal pkg cmd
+      at: 2026-09-08T04:01:49.116614Z
+      classified: other
+    - cmd: /private/tmp/grove-proxyconfig-e2e/prism change-impact ProxyConfig --format text
+      at: 2026-09-08T04:01:56.327046Z
+      classified: other
+    - cmd: prism lookup 'pythonAnalyzer.Analyze' --format text && prism search 'nativeImportEdge' 'symbolLocator' 'EdgeUsesType' --path internal/native --scope text --exhaustive --context 4 --format text
+      at: 2026-09-08T04:02:06.555414Z
+      classified: other
+    - cmd: rg -n "ProxyConfig\s*\|\s*None|ProxyConfig\]" src/urllib3 | sort
+      at: 2026-09-08T04:02:25.64153Z
+      classified: other
+    - cmd: prism change-impact 'pythonAnalyzer.Analyze' --format text
+      at: 2026-09-08T04:04:38.851609Z
+      classified: other
+    - cmd: gofmt -w internal/native/python.go internal/native/native_test.go && git diff --check && GOFLAGS= GOWORK=off go test ./internal/native -run 'TestPython(UnionAndSubscriptAnnotationsProduceTypeEdges|ImportedUnionAnnotationProducesCrossFileTypeEdge|TypeEdgesResolveSameNamedMethodsBySpan)$' -count=20
+      at: 2026-09-08T04:05:11.870963Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/grove-proxyconfig-test-cache GOFLAGS= GOWORK=off go test ./internal/native -run 'TestPython(UnionAndSubscriptAnnotationsProduceTypeEdges|ImportedUnionAnnotationProducesCrossFileTypeEdge|TypeEdgesResolveSameNamedMethodsBySpan)$' -count=20
+      at: 2026-09-08T04:05:25.142631Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/grove-proxyconfig-test-cache GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T04:05:42.605018Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/grove-proxyconfig-e2e/go-cache GOFLAGS= GOWORK=off go build -o /private/tmp/grove-proxyconfig-e2e/prism ./cmd/prism
+      at: 2026-09-08T04:05:48.542892Z
+      classified: build
+    - cmd: mkdir -p /private/tmp/grove-proxyconfig-e2e/urllib3-after && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/base/. /private/tmp/grove-proxyconfig-e2e/urllib3-after/
+      at: 2026-09-08T04:05:59.534242Z
+      classified: other
+    - cmd: /private/tmp/grove-proxyconfig-e2e/prism index . --format text
+      at: 2026-09-08T04:06:05.157835Z
+      classified: other
+    - cmd: /private/tmp/grove-proxyconfig-e2e/prism change-impact ProxyConfig --format text
+      at: 2026-09-08T04:06:08.551742Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text && git diff --check && git diff --stat && git status --short --branch
+      at: 2026-09-08T04:06:16.506089Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T04:06:20.267336Z
+      classified: other
+    - cmd: git diff --check && git diff --stat && git status --short --branch && git diff -- internal/native/python.go internal/native/native_test.go
+      at: 2026-09-08T04:06:24.643379Z
+      classified: other
+    - cmd: gofmt -w internal/native/python.go internal/native/native_test.go && git diff --check && GOCACHE=/private/tmp/grove-proxyconfig-test-cache GOFLAGS= GOWORK=off go test ./internal/native -run 'TestPython(UnionAndSubscriptAnnotationsProduceTypeEdges|ImportedUnionAnnotationProducesCrossFileTypeEdge|ExternalImportedAnnotationDoesNotBindUnrelatedLocalType|TypeEdgesResolveSameNamedMethodsBySpan)$' -count=20
+      at: 2026-09-08T04:07:00.580658Z
+      classified: test
+    - cmd: gofmt -w internal/native/python.go internal/native/native_test.go
+      at: 2026-09-08T04:07:21.306745Z
+      classified: other
+    - cmd: git diff --check && GOCACHE=/private/tmp/grove-proxyconfig-test-cache GOFLAGS= GOWORK=off go test ./internal/native -run 'TestPython(UnionAndSubscriptAnnotationsProduceTypeEdges|ImportedUnionAnnotationProducesCrossFileTypeEdge|ExternalImportedAnnotationDoesNotBindUnrelatedLocalType|TypeEdgesResolveSameNamedMethodsBySpan)$' -count=20
+      at: 2026-09-08T04:07:30.011767Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/grove-proxyconfig-test-cache GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T04:07:37.849852Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/grove-proxyconfig-e2e/go-cache GOFLAGS= GOWORK=off go build -o /private/tmp/grove-proxyconfig-e2e/prism ./cmd/prism
+      at: 2026-09-08T04:07:43.459024Z
+      classified: build
+    - cmd: mkdir -p /private/tmp/grove-proxyconfig-e2e/urllib3-final && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/base/. /private/tmp/grove-proxyconfig-e2e/urllib3-final/
+      at: 2026-09-08T04:07:47.036815Z
+      classified: other
+    - cmd: /private/tmp/grove-proxyconfig-e2e/prism index . --format text
+      at: 2026-09-08T04:07:52.046358Z
+      classified: other
+    - cmd: /private/tmp/grove-proxyconfig-e2e/prism change-impact ProxyConfig --format text
+      at: 2026-09-08T04:07:56.068536Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T04:08:02.100695Z
+      classified: other
+    - cmd: git add internal/native/python.go internal/native/native_test.go && git diff --cached --check && git status --short --branch && git diff --cached --stat
+      at: 2026-09-08T04:08:06.209665Z
+      classified: other
+    - cmd: git add internal/native/python.go internal/native/native_test.go
+      at: 2026-09-08T04:08:10.279365Z
+      classified: other
+    - cmd: git diff --cached --check && git status --short --branch && git diff --cached --stat
+      at: 2026-09-08T04:08:14.619691Z
+      classified: other
+    - cmd: 'git commit -m "native: resolve modern Python annotation types"'
+      at: 2026-09-08T04:08:20.11652Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-09-08T04:08:24.886177Z
+      classified: other
+    - cmd: prism search 'v0.43.2' 'internal/version' 'release:' --scope text --exhaustive --context 3 --format text
+      at: 2026-09-08T04:08:32.785156Z
+      classified: other
+    - cmd: git show --stat --summary 3b40af15 && git show --format= --patch 3b40af15 -- CHANGELOG.md README.md && git log --oneline --decorate --tags -12
+      at: 2026-09-08T04:08:37.966781Z
+      classified: other
+    - cmd: git diff --check && git diff --stat && git status --short --branch
+      at: 2026-09-08T04:09:01.299856Z
+      classified: other
+    - cmd: git add CHANGELOG.md README.md
+      at: 2026-09-08T04:09:05.701493Z
+      classified: other
+    - cmd: 'git commit -m "release: v0.43.3 — resolve modern Python annotation types"'
+      at: 2026-09-08T04:09:09.491838Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-09-08T04:09:17.109562Z
+      classified: other
+    - cmd: git tag -l v0.43.3
+      at: 2026-09-08T04:09:22.85405Z
+      classified: other
+    - cmd: git tag -a v0.43.3 -m "Grove v0.43.3"
+      at: 2026-09-08T04:09:27.568315Z
+      classified: other
+    - cmd: git push origin v0.43.3
+      at: 2026-09-08T04:09:33.284401Z
+      classified: other
+    - cmd: git branch --show-current && git status --short --branch && go get github.com/provasign/grove@v0.43.3
+      at: 2026-09-08T04:09:38.629022Z
+      classified: other
+    - cmd: go get github.com/provasign/grove@v0.43.3
+      at: 2026-09-08T04:10:04.532621Z
+      classified: other
+    - cmd: git diff --check && GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T04:10:15.922711Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T04:10:37.118675Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-grove-v0433 ./cmd/prism
+      at: 2026-09-08T04:10:42.497237Z
+      classified: build
+    - cmd: test -x /private/tmp/prism-grove-v0433 && /private/tmp/prism-grove-v0433 version
+      at: 2026-09-08T04:10:45.478858Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-grove-v0433-urllib3 && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/base/. /private/tmp/prism-grove-v0433-urllib3/
+      at: 2026-09-08T04:10:50.253295Z
+      classified: other
+    - cmd: /private/tmp/prism-grove-v0433 index . --format text
+      at: 2026-09-08T04:10:56.681857Z
+      classified: other
+    - cmd: /private/tmp/prism-grove-v0433 change-impact ProxyConfig --format text
+      at: 2026-09-08T04:11:36.588767Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-08T04:11:43.323584Z
+      classified: other
+    - cmd: git diff -- go.mod go.sum
+      at: 2026-09-08T04:11:43.345627Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-08T04:11:43.345839Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-08T04:11:43.350868Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T04:11:43.527629Z
+      classified: other
+    - cmd: go mod tidy
+      at: 2026-09-08T04:11:51.468601Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-08T04:11:57.427694Z
+      classified: other
+    - cmd: git diff --stat && git diff -- go.mod go.sum
+      at: 2026-09-08T04:11:57.457903Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T04:11:57.714266Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T04:12:12.973549Z
+      classified: test
+    - cmd: git add go.mod go.sum
+      at: 2026-09-08T04:12:18.414735Z
+      classified: other
+    - cmd: 'git commit -m "deps: update Grove to v0.43.3"'
+      at: 2026-09-08T04:12:18.5206Z
+      classified: other
+notes: []
+redactions: 0
