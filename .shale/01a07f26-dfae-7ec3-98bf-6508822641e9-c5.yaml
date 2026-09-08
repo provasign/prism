@@ -1,0 +1,193 @@
+shale_version: "0"
+id: 01a07f26-dfae-7ec3-98bf-6508822641e9-c5
+created_at: 2026-09-08T04:52:12.237903Z
+finalized_at: 2026-09-08T05:11:43.456286Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T05:10:46.221929Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T05:10:46.221929Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T05:10:46.221929Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T05:11:34.874491Z
+commands:
+    - cmd: git status -sb && git tag -l v0.72.2 && git tag -a v0.72.2 -m "Prism v0.72.2" && git push origin v0.72.2
+      at: 2026-09-08T04:52:12.237903Z
+      classified: other
+    - cmd: gh run list --workflow release.yml --limit 5 --json databaseId,headSha,headBranch,status,conclusion,url,createdAt,event
+      at: 2026-09-08T04:52:15.143689Z
+      classified: other
+    - cmd: gh run watch 34188521790 --exit-status
+      at: 2026-09-08T04:54:06.962013Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/README.md && sed -n '1,220p' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/run_code.py
+      at: 2026-09-08T04:54:17.707215Z
+      classified: other
+    - cmd: gh release view v0.72.2 --repo provasign/prism --json url,isDraft,isPrerelease,tagName,assets,publishedAt
+      at: 2026-09-08T04:54:17.988677Z
+      classified: other
+    - cmd: gh workflow run 330199422 -R provasign/homebrew-shale && gh run list -R provasign/homebrew-shale --workflow 330199422 --limit 3 --json databaseId,status,conclusion,createdAt,url,headSha
+      at: 2026-09-08T04:54:20.231181Z
+      classified: other
+    - cmd: sed -n '220,520p' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/run_code.py
+      at: 2026-09-08T04:54:26.216282Z
+      classified: other
+    - cmd: gh run view 34188643344 -R provasign/homebrew-shale --json status,conclusion,jobs,url
+      at: 2026-09-08T04:54:26.876033Z
+      classified: other
+    - cmd: rg --files -g 'AGENTS.md' /Users/tapabratapal/Projects/provasign/research /Users/tapabratapal/Projects/provasign | sort
+      at: 2026-09-08T04:54:27.809122Z
+      classified: other
+    - cmd: sed -n '1,260p' /Users/tapabratapal/Projects/provasign/research/AGENTS.md
+      at: 2026-09-08T04:54:30.46095Z
+      classified: other
+    - cmd: gh run view 34188643344 -R provasign/homebrew-shale --json status,conclusion,jobs,url && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 --decode
+      at: 2026-09-08T04:55:45.398272Z
+      classified: other
+    - cmd: |-
+        set -euo pipefail
+        BENCH_TMP_DIR=$(mktemp -d /tmp/prism-v0722-click.XXXXXX)
+        gh release download v0.72.2 --repo provasign/prism --pattern prism-v0.72.2-darwin-arm64 --dir "$BENCH_TMP_DIR"
+        chmod +x "$BENCH_TMP_DIR/prism-v0.72.2-darwin-arm64"
+        PRISM_V072_BINARY="$BENCH_TMP_DIR/prism-v0.72.2-darwin-arm64" python3 -c 'import importlib.util, sys; source="/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/run_code.py"; spec=importlib.util.spec_from_file_location("rerun", source); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); mod.PILOT_TASKS=["pallets__click__pr3244"]; sys.argv=[source,"--run-dir","/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08","--phase","pilot"]; raise SystemExit(mod.main())'
+      at: 2026-09-08T05:01:05.765579Z
+      classified: other
+    - cmd: jq '.' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/summary.json
+      at: 2026-09-08T05:01:12.948869Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stderr.txt && tail -n 40 /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T05:01:12.949365Z
+      classified: other
+    - cmd: |-
+        set -euo pipefail
+        BENCH_TMP_DIR=$(mktemp -d /tmp/prism-v0722-click-r2.XXXXXX)
+        gh release download v0.72.2 --repo provasign/prism --pattern prism-v0.72.2-darwin-arm64 --dir "$BENCH_TMP_DIR"
+        chmod +x "$BENCH_TMP_DIR/prism-v0.72.2-darwin-arm64"
+        PRISM_V072_BINARY="$BENCH_TMP_DIR/prism-v0.72.2-darwin-arm64" python3 -c 'import importlib.util, sys; source="/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/run_code.py"; spec=importlib.util.spec_from_file_location("rerun", source); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); mod.PILOT_TASKS=["pallets__click__pr3244"]; sys.argv=[source,"--run-dir","/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08","--phase","pilot"]; raise SystemExit(mod.main())'
+      at: 2026-09-08T05:04:58.233504Z
+      classified: other
+    - cmd: jq -r '.rows[0] | {cost_usd,turns,tool_calls,input_tokens,output_tokens,usage_tokens:.usage.tokens,thinking_tokens:.usage.raw_usage.output_tokens_details.thinking_tokens,prism_calls,prism_result_bytes,native_commands,wall_s,timed_out,audited_valid,resolved,score,diff_lines,changed_files}' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/summary.json
+      at: 2026-09-08T05:05:12.213983Z
+      classified: other
+    - cmd: git status --short --untracked-files=all | rg 'product-proof-coding-sonnet-v0722|^ M|^M |^\?\?' | head -200
+      at: 2026-09-08T05:05:13.441254Z
+      classified: other
+    - cmd: git status -sb && git tag --points-at HEAD && gh run view 34188338462 --json conclusion,url && gh run view 34188521790 --json conclusion,url && gh api repos/provasign/homebrew-shale/commits/main --jq '{sha:.sha,message:.commit.message,url:.html_url}'
+      at: 2026-09-08T05:05:13.529375Z
+      classified: other
+    - cmd: git status --short --untracked-files=all -- harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08 harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08
+      at: 2026-09-08T05:05:17.764361Z
+      classified: other
+    - cmd: git ls-tree -r --name-only HEAD harness/runs/product-proof-coding-sonnet-v0721-2026-09-08 | sed -n '1,160p'
+      at: 2026-09-08T05:05:23.081671Z
+      classified: other
+    - cmd: for f in harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/manifest.json harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/manifest.json; do jq -r '[input_filename,.versions.prism,.hashes.prism_binary,.status] | @tsv' "$f"; done; git branch --show-current
+      at: 2026-09-08T05:05:33.334606Z
+      classified: other
+    - cmd: git diff --cached --stat && git status --short --untracked-files=no | head -80
+      at: 2026-09-08T05:06:32.852273Z
+      classified: other
+    - cmd: pgrep -fl 'prism verify|git add harness/runs/product-proof-coding-sonnet-v0722' || true
+      at: 2026-09-08T05:06:38.179127Z
+      classified: other
+    - cmd: |-
+        kill 55636 55629 2>/dev/null || true
+        git add harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/README.md harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/environments/pallets__click__pr3244/setup.json harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/manifest.json harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/run_code.py harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/summary.json harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/tasks/pallets__click__pr3244.json harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/templates/pallets__click__pr3244/index.json harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/README.md harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/environments/pallets__click__pr3244/setup.json harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/manifest.json harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/summary.json harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/tasks/pallets__click__pr3244.json harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/templates/pallets__click__pr3244/index.json
+        git diff --cached --check
+        git diff --cached --stat
+      at: 2026-09-08T05:06:51.646088Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T05:08:26.662918Z
+      classified: other
+    - cmd: |-
+        git branch --show-current && git diff --cached --name-only | rg -v '^harness/runs/product-proof-coding-sonnet-v0722-click(-r2)?-2026-09-08/' || true
+        git commit -m "bench: record Prism v0.72.2 Click reruns" && git push origin main
+      at: 2026-09-08T05:08:32.247481Z
+      classified: other
+    - cmd: |-
+        git status -sb --untracked-files=no
+        git log -1 --oneline
+      at: 2026-09-08T05:08:38.101454Z
+      classified: other
+    - cmd: |-
+        pgrep -fl 'product-proof-coding-sonnet-v0722|gh run watch|prism verify' || true
+        git status -sb
+        git log -1 --oneline
+      at: 2026-09-08T05:08:38.141142Z
+      classified: other
+    - cmd: prism query "Trace the MCP initialize instructions and tool descriptions that Claude Code receives, especially guidance intended to make Sonnet choose Prism before native discovery" --terms instructions --terms initialize --terms prism_search --format text
+      at: 2026-09-08T05:09:14.238884Z
+      classified: other
+    - cmd: prism search 'description' 'prism_query' 'tools/list' --path internal/mcp --scope text --exhaustive --context 3 --format text
+      at: 2026-09-08T05:09:19.617653Z
+      classified: other
+    - cmd: prism lookup toolDescription --format text
+      at: 2026-09-08T05:09:22.963765Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --offset 297 --limit 60 --format text && prism change-impact 'toolDescription' --format text && prism change-impact 'serverInstructions' --format text
+      at: 2026-09-08T05:09:31.420383Z
+      classified: other
+    - cmd: prism lookup Server.dispatch --format text && prism change-impact 'Server.dispatch' --format text && prism search serverInstructions instructions --path internal/mcp --scope text --context 5 --format text
+      at: 2026-09-08T05:10:22.463338Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --offset 780 --limit 175 --format text && prism read internal/mcp/coverage_test.go --offset 115 --limit 45 --format text && prism read internal/mcp/tools_cov_test.go --offset 380 --limit 35 --format text
+      at: 2026-09-08T05:10:28.186027Z
+      classified: other
+    - cmd: git branch --show-current && git status --short
+      at: 2026-09-08T05:10:30.188507Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/tools.go internal/mcp/coverage_test.go && git diff --check && git diff --stat && go test ./internal/mcp -run 'TestDispatch_Initialize|TestAdvertisedDiscoveryDescriptionsRouteBeforeNativeTools|TestToolDescription_Default' -count=1
+      at: 2026-09-08T05:10:50.970531Z
+      classified: test
+    - cmd: env GOFLAGS= go test ./internal/mcp -run 'TestDispatch_Initialize|TestAdvertisedDiscoveryDescriptionsRouteBeforeNativeTools|TestToolDescription_Default' -count=1 && env GOFLAGS= go vet ./... && env GOFLAGS= go test ./... -count=1 -timeout 120s && env GOFLAGS= go build ./...
+      at: 2026-09-08T05:10:55.534774Z
+      classified: lint
+    - cmd: |-
+        env | rg '^(GOFLAGS|GOWORK|GOMOD)=' || true
+        go env GOFLAGS GOWORK GOMOD
+        rg --files -g 'go.work' -g 'go.env' ..
+      at: 2026-09-08T05:11:01.666583Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestDispatch_Initialize|TestAdvertisedDiscoveryDescriptionsRouteBeforeNativeTools|TestToolDescription_Default' -count=1 && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 -timeout 120s && GOWORK=off go build ./...
+      at: 2026-09-08T05:11:23.286737Z
+      classified: lint
+    - cmd: prism verify --base HEAD --format text && prism search v0.72.2 --scope text --exhaustive --format text
+      at: 2026-09-08T05:11:27.400914Z
+      classified: other
+    - cmd: prism references serverInstructions --format text
+      at: 2026-09-08T05:11:30.359397Z
+      classified: other
+    - cmd: |-
+        prism verify --base HEAD --format text
+        git diff --check
+        git diff -- README.md internal/mcp/server.go internal/mcp/tools.go internal/mcp/coverage_test.go
+        git branch --show-current
+        git status --short
+      at: 2026-09-08T05:11:38.118748Z
+      classified: other
+notes:
+    - text: continuation of session 01a07f26-dfae-7ec3-98bf-6508822641e9 — events captured after its evidence was finalized
+      at: 2026-09-08T04:52:12.237903Z
+redactions: 0
