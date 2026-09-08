@@ -244,7 +244,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		stale := h.refreshIndexBestEffort(ctx)
 		return h.graphDelivery(name, args, stale)(h.toolMissingImplementations(ctx, args))
 	case "prism_node":
-		return h.toolNode(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolNode(ctx, args) })
 	case "prism_dead_code":
 		stale := h.refreshIndexBestEffort(ctx)
 		return h.graphDelivery(name, args, stale)(h.toolDeadCode(ctx, args))

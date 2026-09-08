@@ -57,6 +57,34 @@ func AddedAfterIndex(n int) int { return n * 2 }
 	}
 }
 
+// prism_node is also index-backed: its symbol branch resolves the requested
+// name and its file branch reports indexed symbols and dependents. Keep it on
+// the same freshness boundary as lookup and the other read tools.
+func TestNodeSeesEditMadeAfterIndex(t *testing.T) {
+	h := newDeliveryFixture(t)
+	util := filepath.Join(h.Root, "util.go")
+	src, err := os.ReadFile(util)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src = append(src, []byte(`
+// AddedAfterIndex was appended after the last index ran.
+func AddedAfterIndex(n int) int { return n * 2 }
+`)...)
+	if err := os.WriteFile(util, src, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := h.Invoke("prism_node", map[string]any{"name": "AddedAfterIndex"})
+	if err != nil {
+		t.Fatalf("node: %v", err)
+	}
+	b, _ := json.Marshal(out)
+	if !strings.Contains(string(b), "AddedAfterIndex") {
+		t.Fatalf("node answered from a stale index: %s", b)
+	}
+}
+
 // A DELETED symbol must stop resolving, too — staleness cuts both ways, and
 // a phantom symbol is worse than a missing one because it reads as real.
 func TestReadToolsDropSymbolsDeletedAfterIndex(t *testing.T) {
