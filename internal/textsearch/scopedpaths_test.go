@@ -2,6 +2,7 @@ package textsearch
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -17,8 +18,10 @@ func TestScopedDotPathsMatchUnscopedPaths(t *testing.T) {
 	}
 	for _, backend := range []string{"rg", "grep", "native"} {
 		t.Run(backend, func(t *testing.T) {
-			if backend != "native" && bin(backend) == "" {
-				t.Skip(backend + " unavailable")
+			if backend != "native" {
+				if _, err := exec.LookPath(bin(backend)); err != nil {
+					t.Skip(backend + " unavailable")
+				}
 			}
 			search := func(paths []string) Result {
 				opts := (Options{Paths: paths}).withDefaults()
