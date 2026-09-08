@@ -342,15 +342,13 @@ func TestSteeringBlock_CoversBothSurfaces(t *testing.T) {
 	}
 }
 
-func TestSteeringBlock_DeferredToolsBootstrap(t *testing.T) {
-	// Regression: this line was silently dropped from steeringInstructions
-	// during the 2026-08-15 length trim while the comment above the const
-	// claimed it survived. Without it, an agent whose MCP schemas are
-	// deferred (the default since the 2026-08-29 deferral change) has no
-	// way to learn prism_* tools exist at all — a 16-cell isolated A/B
-	// (2026-08-31) confirmed the mechanism: 9/11 deferred-schema cells
-	// called ToolSearch zero times and prism zero times; the 2 that called
-	// ToolSearch went on to use prism every time.
+func TestSteeringBlock_PrismAccessFallbacks(t *testing.T) {
+	// Hosts expose Prism differently. Deferred-schema experiments in August
+	// showed that ToolSearch must be named explicitly. The 2026-09-07 coding
+	// pilot then found the opposite failure mode: Codex CLI 0.153 exposed no
+	// ToolSearch loader, while Claude exposed Prism tools directly. Both hosts
+	// abandoned Prism under the old unconditional ToolSearch instruction.
+	// Preserve an ordered direct -> ToolSearch -> CLI fallback instead.
 	got := steeringBlock()
 	if !strings.Contains(got, "ToolSearch(") {
 		t.Error("steering block missing the ToolSearch deferred-tools bootstrap line")
@@ -362,16 +360,17 @@ func TestSteeringBlock_DeferredToolsBootstrap(t *testing.T) {
 	if !strings.Contains(got, "select:mcp__prism__prism_search") {
 		t.Error("ToolSearch line must use full mcp__prism__ tool names — bare names match nothing")
 	}
-	// Unconditional imperative, not "if you do not see prism_* in your tool
-	// list" — that phrasing requires the agent to notice an absence before
-	// acting, which nothing forces. 2026-09-01 probe: conditional phrasing
-	// got ToolSearch as the literal first tool call in 2/3 sessions (one
-	// never called it at all); the imperative form got 15/15 across 4 tasks.
-	if !strings.Contains(got, "Before your first tool call") {
-		t.Error("ToolSearch line must be an unconditional imperative, not gated on the agent noticing tools are missing")
+	if !strings.Contains(got, "first available Prism route") {
+		t.Error("steering block must select the first supported Prism access route")
 	}
-	if strings.Contains(got, "If you do not see prism_*") {
-		t.Error("steering reverted to the conditional framing that measured worse first-move compliance")
+	if !strings.Contains(got, "MCP tools visible? Call one directly") {
+		t.Error("steering block must prefer already-visible Prism tools")
+	}
+	if !strings.Contains(got, "use the Bash CLI") {
+		t.Error("steering block must fall back to the CLI when no loader exists")
+	}
+	if !strings.Contains(got, "Never abandon Prism") {
+		t.Error("steering block must forbid silent abandonment when ToolSearch is unavailable")
 	}
 	if !strings.Contains(got, "deferred") {
 		t.Error("steering block missing the DEFERRED explanation")

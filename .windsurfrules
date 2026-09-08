@@ -1,20 +1,22 @@
 
 ## Prism — context delivery
 
-Prism indexes this repo's call and type graph. Use its tools for code discovery;
-their schemas describe parameters and coverage limits.
+Use Prism's call/type graph for code discovery.
 
-**Before your first tool call**, run this once to load Prism's tools (they
-start deferred, not absent):
+**Before code discovery**, use the first available Prism route:
+- Prism MCP tools visible? Call one directly.
+- `ToolSearch` available? Run once (tools may be deferred):
 
-    ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
+       ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
 
-Make your first code-discovery call the Prism tool that answers the question:
+- Otherwise use the Bash CLI. Never abandon Prism because `ToolSearch` is absent.
+
+Choose the first call by need:
 - Affected sites or signature change: `prism_change_impact` directly.
 - Known methods, need their behavior: `prism_lookup(name=["A","B"])` for whole bodies.
 - Unknown location: `prism_search`; need edit-ready context around terms: `prism_query`.
-Do not search merely to locate a symbol already named for impact or lookup,
-unless its contract is external/unresolved or its closure misses the task's wider scope.
+Do not search merely to locate a symbol already named; use impact/lookup directly.
+Search only for external/unresolved contracts or wider scope.
 Read-only inspection needs no impact just because a symbol is named.
 
 Workflow rules:

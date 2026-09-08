@@ -466,41 +466,37 @@ func mergePrismYAML(existing, profile string) string {
 // always-loaded context in nine files; the tool schemas already carry the
 // per-tool detail, and repeating it here paid for the same prose twice. The
 // long version also documented seven tools that the 190-cell A/B measured at
-// zero calls. What survives is what changed behaviour: the ToolSearch
-// deferred-tools line, one route per question, and the change_impact relay
-// rule. Do not grow this back into a manual — add detail to toolDescription
-// instead. The heading is also injectPrismSection's start marker — changing
-// its text would orphan every section already written into a user's files.
+// zero calls. What survives is what changed behaviour: an explicit access
+// bootstrap, one route per question, and the change_impact relay rule. Do not
+// grow this back into a manual — add detail to toolDescription instead. The
+// heading is also injectPrismSection's start marker — changing its text would
+// orphan every section already written into a user's files.
 //
-// The ToolSearch line is phrased as an unconditional imperative ("before
-// your first tool call, run this"), not the earlier conditional framing
-// ("if you do not see prism_* in your tool list..."). The conditional form
-// requires the agent to notice an absence before acting on it — nothing
-// forces that check, and it competes against a much stronger prior (grep
-// for the described symptom) that doesn't require noticing anything.
-// Measured 2026-09-01 on the wide-change bed (15 sessions, 4 tasks,
-// sonnet): unconditional phrasing got ToolSearch as literally the first
-// tool call in 15/15 sessions; the conditional phrasing it replaced got
-// 2/3 with one session never calling it at all. Recall was unaffected
-// either way — every task in that probe sat on its own task-inherent
-// ceiling — so this is a routing fix, not a quality claim.
+// ToolSearch remains explicit because the 2026-09-01 wide-change probe got
+// 15/15 first-call compliance from its imperative form. It is no longer the
+// only route: the 2026-09-07 coding pilot found Codex CLI 0.153 without a
+// callable ToolSearch loader and Claude with Prism tools already visible;
+// both abandoned Prism under the unconditional loader instruction. The
+// ordered direct -> ToolSearch -> CLI bootstrap covers all three host shapes.
 const steeringInstructions = `
 ## Prism — context delivery
 
-Prism indexes this repo's call and type graph. Use its tools for code discovery;
-their schemas describe parameters and coverage limits.
+Use Prism's call/type graph for code discovery.
 
-**Before your first tool call**, run this once to load Prism's tools (they
-start deferred, not absent):
+**Before code discovery**, use the first available Prism route:
+- Prism MCP tools visible? Call one directly.
+- ` + "`" + `ToolSearch` + "`" + ` available? Run once (tools may be deferred):
 
-    ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
+       ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
 
-Make your first code-discovery call the Prism tool that answers the question:
+- Otherwise use the Bash CLI. Never abandon Prism because ` + "`" + `ToolSearch` + "`" + ` is absent.
+
+Choose the first call by need:
 - Affected sites or signature change: ` + "`" + `prism_change_impact` + "`" + ` directly.
 - Known methods, need their behavior: ` + "`" + `prism_lookup(name=["A","B"])` + "`" + ` for whole bodies.
 - Unknown location: ` + "`" + `prism_search` + "`" + `; need edit-ready context around terms: ` + "`" + `prism_query` + "`" + `.
-Do not search merely to locate a symbol already named for impact or lookup,
-unless its contract is external/unresolved or its closure misses the task's wider scope.
+Do not search merely to locate a symbol already named; use impact/lookup directly.
+Search only for external/unresolved contracts or wider scope.
 Read-only inspection needs no impact just because a symbol is named.
 
 Workflow rules:
