@@ -258,7 +258,8 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 			}
 			b.WriteString("\n")
 		}
-		b.WriteString("// locations only — prism_lookup <name> or prism_read for the body\n")
+		b.WriteString("// locator result — for a coding fix, make ONE prism_query with the task and batched terms for bodies, callers, and tests; use prism_lookup only for one known body; do not chain search/read\n")
+		b.WriteString("// " + localFixBudgetGuidance + "\n")
 	} else if hasKey(m, "symbols") && !hasKey(m, "textHits") && !hasKey(m, "files") {
 		// Same completeness rule as the text-search empty case above. Symbol
 		// matching is an in-memory index lookup, not a scan with a timeout

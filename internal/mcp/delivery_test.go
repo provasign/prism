@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
@@ -42,6 +43,32 @@ func TestSymbolWindowsKeepsDistantSpansSeparate(t *testing.T) {
 	}, 100)
 	if len(wins) != 2 {
 		t.Fatalf("expected 2 windows, got %v", wins)
+	}
+}
+
+func TestReadRangeReturnsPointerForQueryDeliveredWindow(t *testing.T) {
+	h := &Handler{}
+	content := "one\ntwo\nthree\nfour\nfive\n"
+	hash := compression.Hash(content)
+	h.recordDeliveredRanges("x.go", hash, []lineWindow{{start: 2, end: 5}})
+
+	out, err := h.readRange("x.go", content, hash, 3, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := out.(map[string]any)["content"].(string)
+	if !strings.Contains(got, "[prism:cached]") || strings.Contains(got, "three") {
+		t.Fatalf("covered range should return only a cache pointer, got %q", got)
+	}
+
+	changed := compression.Hash(content + "six\n")
+	out, err = h.readRange("x.go", content+"six\n", changed, 3, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = out.(map[string]any)["content"].(string)
+	if !strings.Contains(got, "three") || strings.Contains(got, "[prism:cached]") {
+		t.Fatalf("changed content must be delivered, got %q", got)
 	}
 }
 

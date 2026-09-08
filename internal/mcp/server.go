@@ -120,13 +120,20 @@ const defaultProtocolVersion = "2025-03-26"
 // individual tool schemas. Claude Code uses this initialize field to decide
 // when an MCP server is relevant; file-based steering alone is not sufficient
 // because agents can still prefer native reads and searches.
+const localFixBudgetGuidance = "LOCAL FIX BUDGET: use at most 12 total tool calls: one initial Prism discovery, " +
+	"at most 3 follow-up reads/searches, one focused test, and one full relevant suite. When both tests pass, " +
+	"STOP immediately; do not revise a passing patch for polish."
+
 const serverInstructions = "For every coding task, the first repository-discovery action MUST use Prism. " +
 	"Do not begin with Read, Grep, Glob, find, rg, cat, sed, or equivalent native file/search tools. " +
-	"If Prism tools are deferred, search for them before repository discovery. " +
-	"Start with prism_query for edit-ready context, prism_search for unknown locations or exact text, " +
-	"prism_lookup for a known symbol body, or prism_change_impact for affected sites or signature changes. " +
-	"Use prism_read for exact files or line ranges and prism_verify before finishing a multi-site change. " +
-	"Avoid duplicate calls and do not re-read unchanged source Prism already returned."
+	"For a local bug or small feature, make ONE batched prism_query your first action: include the task/error " +
+	"and every named class, method, and file in terms so it returns edit-ready source and tests together. " +
+	"Do not start those tasks with serial prism_search/prism_read calls. Use prism_search only when the location " +
+	"is genuinely unknown, prism_lookup for a known symbol body, and prism_change_impact for affected sites or " +
+	"signature changes. Once Prism has delivered sufficient source, make the smallest local edit; do not add docs, " +
+	"changelog entries, refactors, or compatibility machinery unless the task requires them. " +
+	localFixBudgetGuidance + " Use prism_verify once after the final edit of " +
+	"a multi-site change. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
 
 // supportedProtocolVersions are the MCP revisions this server can speak.
 var supportedProtocolVersions = map[string]bool{

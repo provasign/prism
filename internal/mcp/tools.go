@@ -52,6 +52,12 @@ type Handler struct {
 
 	// once: notes already said this session (oncenotes.go).
 	once onceNotes
+
+	// deliveredRanges records source windows already placed in this session's
+	// context by prism_query/prism_read. Whole-file session caching alone cannot
+	// recognize a later ranged read of a query window.
+	rangeMu         sync.Mutex
+	deliveredRanges map[string]deliveredFileRanges
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -780,26 +786,31 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "CALL THIS FIRST for edit-ready code discovery instead of Read, Grep, Glob, or shell search. " +
-			"Returns context for the symbols in terms=[...] (the only retrieval key): " +
+		return "FOR LOCAL BUGS AND SMALL FEATURES, CALL THIS FIRST and usually only once. Batch every " +
+			"error, class, method, and file named by the prompt into terms=[...] (the only retrieval key). " +
+			"It replaces serial Search/Read turns by returning edit-ready context: " +
 			"one hop through the call graph plus a full-text pass, delivered as line-numbered " +
 			"source windows with callers and a 'tested by' file:line. Do not re-read the files " +
-			"it shows. Size with budget= and max_files=. To merely locate, use prism_search."
+			"it shows; once the relevant implementation and test are present, make the smallest local edit. " +
+			localFixBudgetGuidance + " Size with budget= and max_files=. To merely locate unknown code, use prism_search."
 	case "prism_read":
-		return "CALL THIS BEFORE native Read, cat, or sed. Read a file, whole or by line range " +
+		return "CONTINUATION TOOL, not the default first step for a coding fix; prism_query normally " +
+			"delivers the relevant source and tests in one call. Read a file, whole or by line range " +
 			"(offset/limit), line-numbered. A repeat " +
 			"read of an unchanged file returns a `// [prism:cached]` pointer — use the copy " +
 			"you already have. For one function use prism_lookup."
 	case "prism_search":
-		return "CALL THIS BEFORE Grep, Glob, find, rg, or equivalent shell search. " +
-			"Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
+		return "LOCATOR ONLY: use this before Grep, Glob, find, rg, or shell search when code location " +
+			"is genuinely unknown. For a local bug or small feature, start with one batched prism_query " +
+			"instead of chaining search and read. Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
 			"Known symbol? Use lookup for bodies or change_impact for affected sites directly. Batch up to 10 " +
 			"terms in query=[...]. scope=\"text\" uses grep retrieval, cheapest — use it wherever you " +
 			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
 			"around each hit (grep -C) — no follow-up read. exhaustive=true adds a complete compact " +
 			"inventory of every exact file, line, and enclosing symbol while source excerpts stay sampled; heed partial-result warnings."
 	case "prism_lookup":
-		return "CALL THIS BEFORE native Read when a symbol name is known. Read whole symbol bodies " +
+		return "KNOWN-SYMBOL CONTINUATION: use this instead of native Read when a symbol name is known. " +
+			"For a local bug, prefer one batched prism_query as the first step. Read whole symbol bodies " +
 			"by qualified name. Batch related methods in name=[...] " +
 			"(up to 10); use name=[{\"name\":\"Type.method\",\"file\":\"path/to/file\"}] for exact per-item file scope. For a small local bug, " +
 			"read the relevant methods together; impact is for affected-site questions. " +
@@ -869,6 +880,10 @@ func toolDescription(name string) string {
 			"guess concrete type names or issue one call per receiver. 'project-local' " +
 			"+ overridesExternal = the method implements an external contract whose signature " +
 			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
+	case "prism_verify":
+		return "FINAL GRAPH CHECK: call once after the final edit of a multi-site change. It compares the " +
+			"working diff with Prism's impact closure and reports missed sites. Do not use it between edit " +
+			"iterations or as a substitute for the project's focused test and full relevant suite."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
 			"and get every type in the subtype closure that FAILS to implement the member — " +
@@ -1128,7 +1143,7 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 // whole file, which is the silent-narrowing failure this codebase keeps
 // re-learning. Out-of-range requests clamp and say so rather than erroring —
 // a tool that errors is a tool agents route around.
-func (h *Handler) readRange(sessionPath, content string, offset, limit int) (any, error) {
+func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int) (any, error) {
 	lines := strings.Split(content, "\n")
 	if n := len(lines); n > 0 && lines[n-1] == "" {
 		lines = lines[:n-1] // trailing newline is not a line
@@ -1147,6 +1162,14 @@ func (h *Handler) readRange(sessionPath, content string, offset, limit int) (any
 	end := total
 	if limit > 0 && offset-1+limit < total {
 		end = offset - 1 + limit
+	}
+	if h.deliveredRangeCovered(sessionPath, hash, offset, end) {
+		return map[string]any{
+			"file": sessionPath, "delivery": "range", "startLine": offset,
+			"endLine": end, "totalLines": total,
+			"content": fmt.Sprintf("// [prism:cached] %s lines %d-%d — use the source already in context\n",
+				sessionPath, offset, end),
+		}, nil
 	}
 	var b strings.Builder
 	width := len(strconv.Itoa(end))
@@ -1168,6 +1191,7 @@ func (h *Handler) readRange(sessionPath, content string, offset, limit int) (any
 		out["note"] = fmt.Sprintf("lines %d-%d of %d — this is a WINDOW, not the file",
 			offset, end, total)
 	}
+	h.recordDeliveredRanges(sessionPath, hash, []lineWindow{{start: offset, end: end}})
 	return out, nil
 }
 
@@ -1198,7 +1222,7 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	// compressing them would be two lossy steps on the same content.
 	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
 	if offset > 0 || limit > 0 {
-		return h.readRange(sessionPath, string(data), offset, limit)
+		return h.readRange(sessionPath, string(data), compression.Hash(string(data)), offset, limit)
 	}
 	// The file's currently indexed symbols, by exact path (Grove v0.6.1).
 	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))

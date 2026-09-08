@@ -138,18 +138,30 @@ func TestDispatch_Initialize(t *testing.T) {
 			t.Errorf("initialize instructions must route before native %s", nativeTool)
 		}
 	}
+	for _, guidance := range []string{
+		"make ONE batched prism_query your first action",
+		"Do not start those tasks with serial prism_search/prism_read calls",
+		"make the smallest local edit",
+		"use at most 12 total tool calls",
+		"STOP immediately",
+	} {
+		if !strings.Contains(instructions, guidance) {
+			t.Errorf("initialize instructions missing cost guidance %q", guidance)
+		}
+	}
 	if len(instructions) > 2000 {
 		t.Errorf("server instructions exceed Claude Code's 2 KB limit: %d bytes", len(instructions))
 	}
 }
 
-func TestAdvertisedDiscoveryDescriptionsRouteBeforeNativeTools(t *testing.T) {
+func TestAdvertisedDiscoveryDescriptionsRouteEfficiently(t *testing.T) {
 	wants := map[string]string{
-		"prism_query":         "CALL THIS FIRST",
-		"prism_read":          "CALL THIS BEFORE native Read",
-		"prism_search":        "CALL THIS BEFORE Grep, Glob",
-		"prism_lookup":        "CALL THIS BEFORE native Read",
+		"prism_query":         "FOR LOCAL BUGS AND SMALL FEATURES, CALL THIS FIRST",
+		"prism_read":          "CONTINUATION TOOL",
+		"prism_search":        "LOCATOR ONLY",
+		"prism_lookup":        "KNOWN-SYMBOL CONTINUATION",
 		"prism_change_impact": "CALL THIS BEFORE editing",
+		"prism_verify":        "FINAL GRAPH CHECK",
 	}
 	for tool, want := range wants {
 		description := toolDescription(tool)

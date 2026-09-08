@@ -12,7 +12,7 @@ import (
 // all delivered bytes were envelope — `//` notes and headers — and the
 // worst of it was verbatim repetition inside one session: "no matches —
 // search completed (not truncated, not timed out)" 158 times (121 repeats),
-// "locations only — prism_lookup <name> or prism_read for the body" 108
+// "locator result — for a coding fix..." 108
 // times (85 repeats), a 300-char structural note for the same symbol up to
 // ten times. A field report (BACKLOG, 2026-09-04) had called exactly this
 // out and was closed on code inspection; the transcripts say otherwise.
@@ -23,9 +23,10 @@ import (
 // lines (hits, symbols, files) are never touched.
 
 var onceFixed = map[string]string{
-	"// no matches — search completed (not truncated, not timed out)":                        "// no matches",
-	"// no symbol matches (full index checked, not a partial pass)":                          "// no symbol matches",
-	"// locations only — prism_lookup <name> or prism_read for the body":                     "",
+	"// no matches — search completed (not truncated, not timed out)": "// no matches",
+	"// no symbol matches (full index checked, not a partial pass)":   "// no symbol matches",
+	"// locator result — for a coding fix, make ONE prism_query with the task and batched terms for bodies, callers, and tests; use prism_lookup only for one known body; do not chain search/read": "",
+	"// " + localFixBudgetGuidance:                                                           "",
 	"// ALL matches by enclosing symbol (graph rollup of the full set):":                     "// by enclosing symbol:",
 	"// Grouped matches by enclosing symbol (bounded graph rollup; inspect omission notes):": "// bounded rollup by enclosing symbol; inspect omissions:",
 	"// closest indexed symbols:":                                                            "// closest indexed symbols:",

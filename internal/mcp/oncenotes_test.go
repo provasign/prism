@@ -8,7 +8,8 @@ import (
 func TestOnceNotes_FixedAndLong(t *testing.T) {
 	var o onceNotes
 	first := "a.go:1: x\n// no matches — search completed (not truncated, not timed out)\n" +
-		"symbols (2):\n  method Foo.Bar  a.go:1-2\n// locations only — prism_lookup <name> or prism_read for the body\n" +
+		"symbols (2):\n  method Foo.Bar  a.go:1-2\n// locator result — for a coding fix, make ONE prism_query with the task and batched terms for bodies, callers, and tests; use prism_lookup only for one known body; do not chain search/read\n" +
+		"// " + localFixBudgetGuidance + "\n" +
 		"// 176 more files with matches omitted — narrow the term, or exhaustive=true to list every file\n" +
 		"// Scored (graph/x.go:10); 3 caller(s): Query graph/q.go:1 Query graph/q.go:2 SemanticSearch graph/s.go:3. A contract change here touches that whole set — prism_change_impact for the closed, line-precise list.\n"
 	got1 := o.apply(first)
@@ -21,8 +22,11 @@ func TestOnceNotes_FixedAndLong(t *testing.T) {
 			t.Errorf("second sighting should carry the short form %q:\n%s", want, got2)
 		}
 	}
-	if strings.Contains(got2, "locations only") {
-		t.Errorf("the locations-only instruction should be dropped after the first time:\n%s", got2)
+	if strings.Contains(got2, "locator result") {
+		t.Errorf("the locator instruction should be dropped after the first time:\n%s", got2)
+	}
+	if strings.Contains(got2, "LOCAL FIX BUDGET") {
+		t.Errorf("the local-fix budget should be dropped after the first time:\n%s", got2)
 	}
 	for _, payload := range []string{"a.go:1: x", "symbols (2):", "  method Foo.Bar  a.go:1-2"} {
 		if !strings.Contains(got2, payload) {

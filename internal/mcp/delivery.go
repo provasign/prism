@@ -128,6 +128,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		"already performed: do not re-read, go straight to the edit. A `[prism:cached]` " +
 		"line means the full file was already delivered this session — use the copy in " +
 		"context.\n\n")
+	b.WriteString("**" + localFixBudgetGuidance + "**\n\n")
 
 	delivered := ranking.EstimateTokens(b.String())
 	shown := make([]string, 0, maxFiles)
@@ -336,6 +337,57 @@ type fileGroup struct {
 	symbols []ranking.BudgetedSymbol
 }
 
+type deliveredFileRanges struct {
+	hash    string
+	windows []lineWindow
+}
+
+func (h *Handler) recordDeliveredRanges(path, hash string, windows []lineWindow) {
+	if len(windows) == 0 {
+		return
+	}
+	h.rangeMu.Lock()
+	defer h.rangeMu.Unlock()
+	if h.deliveredRanges == nil {
+		h.deliveredRanges = map[string]deliveredFileRanges{}
+	}
+	entry := h.deliveredRanges[path]
+	if entry.hash != hash {
+		entry = deliveredFileRanges{hash: hash}
+	}
+	entry.windows = append(entry.windows, windows...)
+	sort.Slice(entry.windows, func(i, j int) bool {
+		return entry.windows[i].start < entry.windows[j].start
+	})
+	merged := entry.windows[:0]
+	for _, w := range entry.windows {
+		if n := len(merged); n > 0 && w.start <= merged[n-1].end+1 {
+			if w.end > merged[n-1].end {
+				merged[n-1].end = w.end
+			}
+			continue
+		}
+		merged = append(merged, w)
+	}
+	entry.windows = merged
+	h.deliveredRanges[path] = entry
+}
+
+func (h *Handler) deliveredRangeCovered(path, hash string, start, end int) bool {
+	h.rangeMu.Lock()
+	defer h.rangeMu.Unlock()
+	entry, ok := h.deliveredRanges[path]
+	if !ok || entry.hash != hash {
+		return false
+	}
+	for _, w := range entry.windows {
+		if start >= w.start && end <= w.end {
+			return true
+		}
+	}
+	return false
+}
+
 // groupPickedByFile buckets budget-selected symbols by containing file and
 // orders files by their best symbol score, so the most relevant file renders
 // first and file caps cut from the tail.
@@ -458,9 +510,12 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 	// session: the over-budget shed loop re-rendered a trimmed section and
 	// got back a [prism:cached] pointer to content the agent never received
 	// (measured 2026-08-26 — a 64KB delivery collapsed to 6KB of pointer).
-	commit := func() {}
+	commit := func() {
+		h.recordDeliveredRanges(fg.path, hash, wins)
+	}
 	if wholeFile {
 		commit = func() {
+			h.recordDeliveredRanges(fg.path, hash, wins)
 			h.Session.Record(fg.path, hash, int64(ranking.EstimateTokens(content)), "full")
 		}
 	}
