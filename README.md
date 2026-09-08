@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | b
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin the current release
-VERSION=v0.72.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v0.72.1 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.

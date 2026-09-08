@@ -116,6 +116,17 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 // defaultProtocolVersion is the latest MCP revision these servers target.
 const defaultProtocolVersion = "2025-03-26"
 
+// serverInstructions route clients to Prism even when Tool Search defers the
+// individual tool schemas. Claude Code uses this initialize field to decide
+// when an MCP server is relevant; file-based steering alone is not sufficient
+// because agents can still prefer native reads and searches.
+const serverInstructions = "Use Prism for code discovery before native file reads or text searches. " +
+	"If Prism tools are deferred, search for them when a task involves locating, understanding, or changing code. " +
+	"Start with prism_query for edit-ready context, prism_search for unknown locations or exact text, " +
+	"prism_lookup for a known symbol body, or prism_change_impact for affected sites or signature changes. " +
+	"Use prism_read for exact files or line ranges and prism_verify before finishing a multi-site change. " +
+	"Avoid duplicate calls and do not re-read unchanged source Prism already returned."
+
 // supportedProtocolVersions are the MCP revisions this server can speak.
 var supportedProtocolVersions = map[string]bool{
 	"2024-11-05": true,
@@ -182,6 +193,7 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			"protocolVersion": negotiateProtocolVersion(params),
 			"serverInfo":      map[string]string{"name": "prism", "version": version.Version},
 			"capabilities":    map[string]any{"tools": map[string]any{}},
+			"instructions":    serverInstructions,
 		}, nil
 	case "ping":
 		return map[string]any{}, nil

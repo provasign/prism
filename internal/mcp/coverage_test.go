@@ -125,8 +125,16 @@ func TestDispatch_Initialize(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if m, ok := res.(map[string]any); !ok || m["protocolVersion"] == nil {
+	m, ok := res.(map[string]any)
+	if !ok || m["protocolVersion"] == nil {
 		t.Errorf("bad resp: %+v", res)
+	}
+	instructions, ok := m["instructions"].(string)
+	if !ok || !strings.Contains(instructions, "Use Prism for code discovery before native") {
+		t.Errorf("initialize must carry server routing instructions, got: %q", instructions)
+	}
+	if len(instructions) > 2000 {
+		t.Errorf("server instructions exceed Claude Code's 2 KB limit: %d bytes", len(instructions))
 	}
 }
 
