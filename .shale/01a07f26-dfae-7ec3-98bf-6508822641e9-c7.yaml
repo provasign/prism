@@ -1,0 +1,1409 @@
+shale_version: "0"
+id: 01a07f26-dfae-7ec3-98bf-6508822641e9-c7
+created_at: 2026-09-08T10:47:31.221955Z
+finalized_at: 2026-09-08T21:13:38.684073Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T11:33:43.917261Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T11:33:43.917261Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T11:33:43.917261Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T11:33:43.917261Z
+    - path: internal/mcp/oncenotes_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T11:33:43.917261Z
+    - path: internal/mcp/oncenotes.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T11:34:14.405614Z
+    - path: internal/mcp/fulltext.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-08T19:35:56.117768Z
+    - path: internal/mcp/fulltext_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-08T19:35:56.117768Z
+    - path: internal/mcp/searchrecovery.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-08T20:39:34.60086Z
+    - path: internal/mcp/searchrecovery_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-08T20:39:34.60086Z
+    - path: internal/mcp/delivery.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:07:52.769176Z
+commands:
+    - cmd: git tag -a v0.72.4 -m 'v0.72.4' && git push origin v0.72.4
+      at: 2026-09-08T10:47:31.221955Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --commit d8e1d796ba287c72edf8f12a17b8c1d8b3a97137 --limit 10 --json databaseId,name,event,status,conclusion,url,createdAt
+      at: 2026-09-08T10:47:34.866565Z
+      classified: other
+    - cmd: gh run watch 34217303473 --repo provasign/prism --exit-status
+      at: 2026-09-08T10:49:27.390768Z
+      classified: other
+    - cmd: gh release view v0.72.4 --repo provasign/prism --json url,isDraft,isPrerelease,tagName,publishedAt,assets
+      at: 2026-09-08T10:49:31.417418Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml --repo provasign/homebrew-shale
+      at: 2026-09-08T10:49:32.885948Z
+      classified: other
+    - cmd: |-
+        bench_tmp_dir=$(mktemp -d /tmp/prism-v0724-click.XXXXXX)
+        gh release download v0.72.4 --repo provasign/prism --pattern prism-v0.72.4-darwin-arm64 --dir "$bench_tmp_dir"
+        chmod +x "$bench_tmp_dir/prism-v0.72.4-darwin-arm64"
+        printf '%s\n' "$bench_tmp_dir/prism-v0.72.4-darwin-arm64"
+        "$bench_tmp_dir/prism-v0.72.4-darwin-arm64" version
+      at: 2026-09-08T10:49:43.622751Z
+      classified: other
+    - cmd: gh run watch 34217474026 --repo provasign/homebrew-shale --exit-status
+      at: 2026-09-08T10:49:47.529099Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 --decode | rg -n 'version|v0\.72|sha256'
+      at: 2026-09-08T10:49:50.183602Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-v0724-click.gFxEFI/prism-v0.72.4-darwin-arm64 python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; sys.argv=[str(p), "--run-dir", "harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T10:52:44.116998Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' stdout.jsonl
+      at: 2026-09-08T10:52:50.696786Z
+      classified: other
+    - cmd: jq '.rows[0] | {wall_s,cost_usd,turns,tool_calls,prism_actions,total_tokens,input_tokens,output_tokens,resolved,score}' summary.json
+      at: 2026-09-08T10:52:50.696786Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | [.message.usage.input_tokens, .message.usage.cache_creation_input_tokens, .message.usage.cache_read_input_tokens, .message.usage.output_tokens] | @tsv' stdout.jsonl
+      at: 2026-09-08T10:52:50.698496Z
+      classified: other
+    - cmd: rg --files | rg '(stdout|jsonl|transcript|events)'
+      at: 2026-09-08T10:52:55.095087Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"
+      at: 2026-09-08T10:53:02.134258Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | [.message.usage.input_tokens, .message.usage.cache_creation_input_tokens, .message.usage.cache_read_input_tokens, .message.usage.output_tokens] | @tsv' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"
+      at: 2026-09-08T10:53:02.138567Z
+      classified: other
+    - cmd: jq -r 'select(.type=="user") | .message.content[]? | select(.type=="tool_result") | [.tool_use_id, (.content|if type=="string" then length else tostring|length end), (.content|if type=="string" then .[0:300] else tostring[0:300] end)] | @tsv' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"
+      at: 2026-09-08T10:53:16.739423Z
+      classified: other
+    - cmd: prism lookup 'Handler.toolQuery' --format text
+      at: 2026-09-08T10:53:26.32348Z
+      classified: other
+    - cmd: prism lookup 'Handler.deliverSource' --format text
+      at: 2026-09-08T10:53:31.169374Z
+      classified: other
+    - cmd: prism search 'sourceDeliveryMaxFiles' 'defaultQueryBudget' 'budgetArg' --scope text --format text
+      at: 2026-09-08T10:53:37.912476Z
+      classified: other
+    - cmd: prism read internal/mcp/selection.go --start 520 --end 555 --format text && prism read internal/mcp/delivery.go --start 40 --end 60 --format text
+      at: 2026-09-08T10:53:45.040137Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-08T10:53:49.056734Z
+      classified: other
+    - cmd: rg -n -C 18 'defaultTaskBudget|sourceDeliveryMaxFiles' internal/mcp/selection.go internal/mcp/delivery.go
+      at: 2026-09-08T10:53:53.636866Z
+      classified: other
+    - cmd: 'jq -r ''select(.type=="user") | .message.content[]? | select(.type=="tool_result" and (.content|tostring|contains("Context for: CliRunner"))) | .content'' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl" | rg -n ''^.?\*\*File:|^.?[0-9]+\tclass BytesIOCopy|^.?[0-9]+\timport tempfile|^.?\*\*Also relevant|deliveredTokens|symbolCount'''
+      at: 2026-09-08T10:54:02.151903Z
+      classified: other
+    - cmd: jq -r 'select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl" | head -c 1000
+      at: 2026-09-08T10:54:07.381324Z
+      classified: other
+    - cmd: 'jq -r ''select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content[]? | select(.type=="text" and (.text|contains("Context for: CliRunner"))) | .text'' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl" | rg -n ''^\*\*File:|^[0-9]+\tclass BytesIOCopy|^[0-9]+\timport tempfile|^\*\*Also relevant|deliveredTokens|symbolCount'''
+      at: 2026-09-08T10:54:13.521536Z
+      classified: other
+    - cmd: 'jq -r ''select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content[]? | select(.type=="text" and (.text|contains("Context for: CliRunner"))) | .text'' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl" | rg -n ''testing\.py|BytesIOCopy|import tempfile|Source'' | head -80'
+      at: 2026-09-08T10:54:19.27141Z
+      classified: other
+    - cmd: 'jq -r ''select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content[]? | select(.type=="text" and (.text|contains("Context for: CliRunner"))) | .text'' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl" | sed -n ''14,130p'''
+      at: 2026-09-08T10:54:25.867651Z
+      classified: other
+    - cmd: prism search 'mergeWindows' 'windowMergeGap' 'omitted' --scope text --path internal/mcp/delivery.go --format text
+      at: 2026-09-08T10:54:33.54042Z
+      classified: other
+    - cmd: sed -n '1,220p' harness/runs/product-proof-coding-sonnet-v0723-click-r2-2026-09-08/README.md
+      at: 2026-09-08T10:54:41.23548Z
+      classified: other
+    - cmd: git branch --show-current && git status --short | head -100
+      at: 2026-09-08T10:54:41.377614Z
+      classified: other
+    - cmd: jq '{run_id,created_at,phase,models,tools,runner,prism_binary}' manifest.json
+      at: 2026-09-08T10:54:55.401291Z
+      classified: other
+    - cmd: find . -maxdepth 3 -type f | sort
+      at: 2026-09-08T10:54:55.402487Z
+      classified: other
+    - cmd: shasum -a 256 /tmp/prism-v0724-click.gFxEFI/prism-v0.72.4-darwin-arm64
+      at: 2026-09-08T10:54:55.499856Z
+      classified: other
+    - cmd: jq 'keys, .' manifest.json
+      at: 2026-09-08T10:55:00.485282Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short -- harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08
+      at: 2026-09-08T10:55:15.915224Z
+      classified: other
+    - cmd: |-
+        git add harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/README.md harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/manifest.json harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/run_code.py harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/summary.json harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/tasks/pallets__click__pr3244.json harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/templates/pallets__click__pr3244/index.json harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/environments/pallets__click__pr3244/setup.json harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism
+        git diff --cached --stat
+        git status --short -- harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08
+      at: 2026-09-08T10:55:23.860556Z
+      classified: other
+    - cmd: 'git commit -m ''bench: record Prism v0.72.4 Click cost rerun'' && git push origin main'
+      at: 2026-09-08T10:55:29.515875Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        git rev-parse HEAD
+      at: 2026-09-08T11:32:14.422565Z
+      classified: other
+    - cmd: prism change-impact 'localFixBudgetGuidance' --format text
+      at: 2026-09-08T11:32:20.410628Z
+      classified: other
+    - cmd: prism change-impact 'toolDescription' --format text
+      at: 2026-09-08T11:32:24.72349Z
+      classified: other
+    - cmd: prism change-impact 'Server.dispatch' --format text
+      at: 2026-09-08T11:32:29.502955Z
+      classified: other
+    - cmd: prism search 'localFixBudgetGuidance' 'LOCAL FIX BUDGET' 'one batched prism_query' 'smallest local edit' --scope text --exhaustive --format text
+      at: 2026-09-08T11:32:34.126879Z
+      classified: other
+    - cmd: |-
+        prism change-impact 'Handler.deliverSource' --format text
+        prism change-impact 'renderOneSearchText' --format text
+        prism lookup 'toolDescription' --format text
+        prism lookup 'Server.dispatch' --format text
+      at: 2026-09-08T11:32:45.578794Z
+      classified: other
+    - cmd: |-
+        rg -n -C 12 'localFixBudgetGuidance|serverInstructions' internal/mcp/server.go
+        rg -n -C 8 'localFixBudgetGuidance|one batched prism_query|smallest local edit' internal/mcp/tools.go internal/mcp/coverage_test.go internal/mcp/oncenotes_test.go
+      at: 2026-09-08T11:32:50.539519Z
+      classified: other
+    - cmd: prism verify --help
+      at: 2026-09-08T11:33:01.133432Z
+      classified: other
+    - cmd: rg -n -C 10 'TestAdvertisedDiscoveryDescriptionsRouteEfficiently|TestDispatch_Initialize|prism_query|LOCAL FIX BUDGET' internal/mcp/coverage_test.go internal/mcp/tools_cov_test.go internal/mcp/oncenotes_test.go | head -240
+      at: 2026-09-08T11:33:08.572655Z
+      classified: other
+    - cmd: |-
+        sed -n '115,180p' internal/mcp/coverage_test.go
+        sed -n '145,180p' internal/mcp/coverage_test.go
+        sed -n '385,405p' internal/mcp/tools_cov_test.go
+      at: 2026-09-08T11:33:13.549519Z
+      classified: other
+    - cmd: rg -n 'LOCAL FIX BUDGET|use at most 12|STOP immediately|make ONE batched prism_query|smallest local edit|CONTINUATION TOOL|LOCATOR ONLY|KNOWN-SYMBOL CONTINUATION' internal/mcp
+      at: 2026-09-08T11:33:49.814991Z
+      classified: other
+    - cmd: |-
+        git diff --check
+        git diff --stat
+        git status --short
+      at: 2026-09-08T11:33:49.857649Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/coverage_test.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go && GOWORK=off go test ./internal/mcp -count=1 -timeout 120s
+      at: 2026-09-08T11:34:05.07213Z
+      classified: test
+    - cmd: sed -n '1,55p' internal/mcp/oncenotes.go
+      at: 2026-09-08T11:34:09.248052Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/oncenotes.go && GOWORK=off go test ./internal/mcp -count=1 -timeout 120s
+      at: 2026-09-08T11:34:28.981536Z
+      classified: test
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T11:34:33.090595Z
+      classified: other
+    - cmd: |-
+        prism references localFixBudgetGuidance --format text
+        prism references serverInstructions --format text
+      at: 2026-09-08T11:34:37.435661Z
+      classified: other
+    - cmd: |-
+        GOWORK=off go build -o /tmp/prism-neutral-guidance ./cmd/prism
+        /tmp/prism-neutral-guidance version
+        git diff --check
+        git status --short
+      at: 2026-09-08T11:34:44.425676Z
+      classified: build
+    - cmd: PRISM_V072_BINARY=/tmp/prism-neutral-guidance python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; sys.argv=[str(p), "--run-dir", "harness/runs/product-proof-coding-sonnet-cost-neutral-click-r1-2026-09-08", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T11:37:58.502679Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' "/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-cost-neutral-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"
+      at: 2026-09-08T11:38:03.904934Z
+      classified: other
+    - cmd: jq '.rows[0] | {wall_s,cost_usd,turns,tool_calls,prism_actions,total_tokens,input_tokens,output_tokens,resolved,score}' summary.json
+      at: 2026-09-08T11:38:03.904945Z
+      classified: other
+    - cmd: |-
+        git status --short
+        git diff --stat
+      at: 2026-09-08T11:38:03.92836Z
+      classified: other
+    - cmd: git diff -- internal/mcp/server.go internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/coverage_test.go internal/mcp/oncenotes_test.go
+      at: 2026-09-08T11:41:21.22332Z
+      classified: other
+    - cmd: rg --files harness | rg -i '(study|studies|experiment|readme)' | head -100
+      at: 2026-09-08T11:41:21.236662Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short --untracked-files=no
+        git log -5 --oneline
+      at: 2026-09-08T11:41:21.308339Z
+      classified: other
+    - cmd: rg -n '^(ARMS|PILOT_TASKS|TRIALS|CONCURRENCY|MODEL|.*ARMS)|sonnet_native|sonnet_prism|argparse' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py | head -140
+      at: 2026-09-08T11:41:38.799465Z
+      classified: other
+    - cmd: rg -n -C 4 'arm ==|startswith\("sonnet|sonnet_native' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py | head -160
+      at: 2026-09-08T11:41:44.16017Z
+      classified: other
+    - cmd: |-
+        gofmt -w internal/mcp/server.go
+        GOWORK=off go build -o /tmp/prism-s1-quota ./cmd/prism
+        shasum -a 256 /tmp/prism-neutral-guidance /tmp/prism-s1-quota
+      at: 2026-09-08T11:42:49.224594Z
+      classified: build
+    - cmd: PRISM_V072_BINARY=/tmp/prism-neutral-guidance python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-control-t1", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T11:46:59.894268Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s1-quota python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-treatment-t1", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T11:50:36.978315Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-neutral-guidance python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-control-t2", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T11:55:27.340518Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s1-quota python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-treatment-t2", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T11:57:05.77267Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s1-quota python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-treatment-t3", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:03:49.491751Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-neutral-guidance python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-control-t3", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:03:51.474666Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-neutral-guidance python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-control-t4", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:07:55.873767Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s1-quota python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s1-treatment-t4", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:14:13.905556Z
+      classified: other
+    - cmd: for d in s1-control-t1 s1-control-t2 s1-control-t3 s1-control-t4 s1-treatment-t1 s1-treatment-t2 s1-treatment-t3 s1-treatment-t4; do jq -r --arg d "$d" '.rows[] | [$d,.arm,(.cost_usd//"null"),(.turns//"null"),(.tool_calls//"null"),(.prism_actions//0),(.resolved//false),(.valid//false)] | @tsv' "harness/runs/sonnet-prism-cost-isolation-2026-09-08/$d/summary.json"; done
+      at: 2026-09-08T12:14:35.393663Z
+      classified: other
+    - cmd: |-
+        gofmt -w internal/mcp/server.go internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go
+        GOWORK=off go build -o /tmp/prism-s2-prescriptive-noquota ./cmd/prism
+        shasum -a 256 /tmp/prism-neutral-guidance /tmp/prism-s2-prescriptive-noquota
+      at: 2026-09-08T12:15:34.48424Z
+      classified: build
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s2-prescriptive-noquota python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t1", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:19:06.718646Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s2-prescriptive-noquota python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t2", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:23:16.051321Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s2-prescriptive-noquota python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:28:43.925554Z
+      classified: other
+    - cmd: |-
+        sed -n '1,28p' internal/mcp/server.go
+        rg -n 'renderSearchAsText|if m, ok := out' internal/mcp/server.go
+      at: 2026-09-08T12:29:12.551401Z
+      classified: other
+    - cmd: |-
+        gofmt -w internal/mcp/server.go
+        GOWORK=off go test ./internal/mcp -count=1 -timeout 120s
+        GOWORK=off go build -o /tmp/prism-s3-render-switch ./cmd/prism
+        shasum -a 256 /tmp/prism-s3-render-switch
+      at: 2026-09-08T12:29:42.396506Z
+      classified: test
+    - cmd: PRISM_JSON_RESULTS=1 PRISM_V072_BINARY=/tmp/prism-s3-render-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t1", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:36:00.153848Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s3-render-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:38:56.822433Z
+      classified: other
+    - cmd: PRISM_JSON_RESULTS=1 PRISM_V072_BINARY=/tmp/prism-s3-render-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t2", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:45:02.686175Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s3-render-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t2", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:48:25.826598Z
+      classified: other
+    - cmd: PRISM_JSON_RESULTS=1 PRISM_V072_BINARY=/tmp/prism-s3-render-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:52:17.220204Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s3-render-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T12:58:05.738538Z
+      classified: other
+    - cmd: for d in s2-prescriptive-t3 s3-json-t3 s3-compact-t3; do for a in sonnet_native sonnet_prism; do echo "### $d $a"; sed -n '1,240p' "$d/evidence/pallets__click__pr3244.$a/agent.diff"; done; done
+      at: 2026-09-08T12:58:18.709131Z
+      classified: other
+    - cmd: for d in s1-control-t1 s1-control-t2 s1-control-t4 s2-prescriptive-t1 s2-prescriptive-t2 s2-prescriptive-t3 s3-json-t2 s3-json-t3 s3-compact-t1 s3-compact-t2 s3-compact-t3; do for a in sonnet_native sonnet_prism; do f="$d/evidence/pallets__click__pr3244.$a/agent.diff"; printf '%s\t%s\t' "$d" "$a"; shasum -a 256 "$f" | cut -d' ' -f1; done; done
+      at: 2026-09-08T12:58:18.994621Z
+      classified: other
+    - cmd: jq '{problem_statement,validation}' harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/tasks/pallets__click__pr3244.json
+      at: 2026-09-08T12:58:27.312702Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","print('child')"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:01.151849Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","print('child')"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:01.180513Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","print('child')"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:01.182229Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","print('child')"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:01.182121Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","print('child')"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:01.180595Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","print('child')"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:01.180619Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","import sys;sys.stdout.buffer.write(bytes([99,104,105,108,100,10]))"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:13.172753Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s2-prescriptive-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","import sys;sys.stdout.buffer.write(bytes([99,104,105,108,100,10]))"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:13.172263Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","import sys;sys.stdout.buffer.write(bytes([99,104,105,108,100,10]))"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:13.173556Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","import sys;sys.stdout.buffer.write(bytes([99,104,105,108,100,10]))"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:13.189026Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","import sys;sys.stdout.buffer.write(bytes([99,104,105,108,100,10]))"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:13.187725Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/environments/pallets__click__pr3244/bin/python" -c 'import subprocess,sys,click
+        from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True)
+         subprocess.run([sys.executable,"-c","import sys;sys.stdout.buffer.write(bytes([99,104,105,108,100,10]))"],stdout=sys.stderr,check=True)
+         click.echo("after",err=True)
+        r=CliRunner().invoke(cli,catch_exceptions=False)
+        print("exit",r.exit_code,"stderr",repr(r.stderr),"output",repr(r.output))
+        assert r.stderr=="before\\nchild\\nafter\\n"
+        assert r.output=="before\\nchild\\nafter\\n"'
+      at: 2026-09-08T12:59:13.185651Z
+      classified: other
+    - cmd: |-
+        study_root=harness/runs/sonnet-prism-cost-isolation-2026-09-08
+        for run_dir in "$study_root"/s1-* "$study_root"/s2-* "$study_root"/s3-*; do
+          test -f "$run_dir/summary.json" || continue
+          run_name=${run_dir##*/}
+          for arm in sonnet_native sonnet_prism; do
+            work_dir="$run_dir/work/pallets__click__pr3244.$arm"
+            test -f "$run_dir/evidence/pallets__click__pr3244.$arm/agent.diff" || continue
+            result=$(PYTHONPATH="$work_dir/src" "$run_dir/environments/pallets__click__pr3244/bin/python" /tmp/click_beyond_oracle.py)
+            printf '%s\t%s\t%s\n' "$run_name" "$arm" "$result"
+          done
+        done
+      at: 2026-09-08T12:59:55.840008Z
+      classified: other
+    - cmd: PRISM_JSON_RESULTS=1 PRISM_V072_BINARY=/tmp/prism-s3-render-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t4", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:05:44.369857Z
+      classified: other
+    - cmd: for d in s3-json-t1 s3-json-t2 s3-json-t3 s3-json-t4 s3-compact-t1 s3-compact-t2 s3-compact-t3; do f="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$d/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"; printf '%s\t' "$d"; jq -sc '(. as $e | reduce ($e[] | select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and (.name|startswith("mcp__prism__")))) as $t ({}; .[$t.id]=$t.name)) as $names | [$e[] | select(.type=="user") | .message.content[]? | select(.type=="tool_result" and ($names[.tool_use_id] != null)) | {name:$names[.tool_use_id],bytes:(.content|tostring|length)}]' "$f"; done
+      at: 2026-09-08T13:06:03.378438Z
+      classified: other
+    - cmd: for d in s3-json-t1 s3-json-t2 s3-json-t3 s3-json-t4 s3-compact-t1 s3-compact-t2 s3-compact-t3; do f="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$d/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"; printf '%s\t' "$d"; jq -sc '. as $e | (reduce ($e[] | select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and (.name|startswith("mcp__prism__")))) as $t ({}; .[$t.id]=$t.name)) as $names | [$e[] | select(.type=="user") | .message.content[]? | select(.type=="tool_result" and ($names[.tool_use_id] != null)) | {name:$names[.tool_use_id],bytes:(.content|tostring|length)}]' "$f"; done
+      at: 2026-09-08T13:06:11.742222Z
+      classified: other
+    - cmd: /tmp/prism-s3-render-switch --help | head -80
+      at: 2026-09-08T13:06:22.219186Z
+      classified: other
+    - cmd: prism search 'case "mcp"' 'MCP server' 'NewServer' --scope text --path cmd --exhaustive --format text
+      at: 2026-09-08T13:07:14.930244Z
+      classified: other
+    - cmd: prism lookup 'cmdMCP' --format text
+      at: 2026-09-08T13:07:19.879572Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"fileno","path":"src/click/testing.py"}}}' | PRISM_JSON_RESULTS=1 /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | [length,.] | @json'
+      at: 2026-09-08T13:07:39.16232Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"fileno","path":"src/click/testing.py"}}}' | /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | [length,.] | @json'
+      at: 2026-09-08T13:07:39.22997Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"BytesIOCopy","path":"src/click/testing.py","context":3}}}' | /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | length'
+      at: 2026-09-08T13:07:50.676987Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"BytesIOCopy","path":"src/click/testing.py","context":3}}}' | PRISM_JSON_RESULTS=1 /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | length'
+      at: 2026-09-08T13:07:50.677807Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_query","arguments":{"task":"CliRunner isolation stdout fileno UnsupportedOperation","terms":["CliRunner","isolation","fileno"]}}}' | /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | length'
+      at: 2026-09-08T13:08:00.14423Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_query","arguments":{"task":"CliRunner isolation stdout fileno UnsupportedOperation","terms":["CliRunner","isolation","fileno"]}}}' | PRISM_JSON_RESULTS=1 /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | length'
+      at: 2026-09-08T13:08:00.144029Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_lookup","arguments":{"name":"BytesIOCopy"}}}' | PRISM_JSON_RESULTS=1 /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | length'
+      at: 2026-09-08T13:08:09.409487Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_lookup","arguments":{"name":"BytesIOCopy"}}}' | /tmp/prism-s3-render-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -r 'select(.id==2) | .result.content[0].text | length'
+      at: 2026-09-08T13:08:09.407878Z
+      classified: other
+    - cmd: |-
+        gofmt -w internal/mcp/server.go
+        GOWORK=off go test ./internal/mcp -count=1 -timeout 120s
+        GOWORK=off go build -o /tmp/prism-s4-dedup-switch ./cmd/prism
+        shasum -a 256 /tmp/prism-s4-dedup-switch
+      at: 2026-09-08T13:09:10.480798Z
+      classified: test
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"fileno","path":"src/click/testing.py"}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"fileno","path":"src/click/testing.py"}}}' | /tmp/prism-s4-dedup-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:09:25.725961Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"test","path":"src/click","limit":20}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"test","path":"src/click","limit":20}}}' | PRISM_NO_ONCE_DEDUP=1 /tmp/prism-s4-dedup-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:09:25.735241Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"test","path":"src/click","limit":20}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"test","path":"src/click","limit":20}}}' | /tmp/prism-s4-dedup-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:09:25.735334Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"BytesIOCopy","path":"src/click/testing.py","context":3}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"BytesIOCopy","path":"src/click/testing.py","context":3}}}' | /tmp/prism-s4-dedup-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:09:25.756308Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"BytesIOCopy","path":"src/click/testing.py","context":3}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"BytesIOCopy","path":"src/click/testing.py","context":3}}}' | PRISM_NO_ONCE_DEDUP=1 /tmp/prism-s4-dedup-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:09:25.756496Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"fileno","path":"src/click/testing.py"}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"fileno","path":"src/click/testing.py"}}}' | PRISM_NO_ONCE_DEDUP=1 /tmp/prism-s4-dedup-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:09:25.775857Z
+      classified: other
+    - cmd: for d in harness/runs/sonnet-prism-cost-isolation-2026-09-08/s[123]-*; do f="$d/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"; test -f "$f" || continue; seq=$(jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and (.name|startswith("mcp__prism__"))) | .name' "$f" | paste -sd, -); printf '%s\t%s\n' "${d##*/}" "$seq"; done
+      at: 2026-09-08T13:09:34.763495Z
+      classified: other
+    - cmd: PRISM_NO_ONCE_DEDUP=1 PRISM_V072_BINARY=/tmp/prism-s4-dedup-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s4-dedup-off-t1", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:14:44.329733Z
+      classified: other
+    - cmd: PRISM_NO_ONCE_DEDUP=1 PRISM_V072_BINARY=/tmp/prism-s4-dedup-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s4-dedup-off-t2", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:18:48.714624Z
+      classified: other
+    - cmd: PRISM_NO_ONCE_DEDUP=1 PRISM_V072_BINARY=/tmp/prism-s4-dedup-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s4-dedup-off-t3", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:22:06.159982Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and (.name|startswith("mcp__prism__"))) | [.name,(.input|tostring)] | @tsv' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s4-dedup-off-t3/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T13:22:10.700693Z
+      classified: other
+    - cmd: |-
+        prism change-impact 'Handler.readRange' --format text
+        prism lookup 'Handler.readRange' --format text
+      at: 2026-09-08T13:22:39.841679Z
+      classified: other
+    - cmd: |-
+        gofmt -w internal/mcp/tools.go
+        GOWORK=off go test ./internal/mcp -count=1 -timeout 120s
+        GOWORK=off go build -o /tmp/prism-s5-range-switch ./cmd/prism
+        shasum -a 256 /tmp/prism-s5-range-switch
+      at: 2026-09-08T13:23:06.628825Z
+      classified: test
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":1,"limit":150}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":1,"limit":150}}}' | /tmp/prism-s5-range-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:23:19.745855Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":70,"limit":20}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":70,"limit":20}}}' | PRISM_NO_RANGE_CACHE=1 /tmp/prism-s5-range-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:23:19.772327Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":70,"limit":20}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":70,"limit":20}}}' | /tmp/prism-s5-range-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:23:19.777276Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":60,"limit":70}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":60,"limit":70}}}' | PRISM_NO_RANGE_CACHE=1 /tmp/prism-s5-range-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:23:19.806108Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":60,"limit":70}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":60,"limit":70}}}' | /tmp/prism-s5-range-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:23:19.833303Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"study","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":1,"limit":150}}}' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"src/click/testing.py","offset":1,"limit":150}}}' | PRISM_NO_RANGE_CACHE=1 /tmp/prism-s5-range-switch mcp "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/templates/pallets__click__pr3244/base" | jq -sc '[.[] | select(.id==2 or .id==3) | (.result.content[0].text|length)]'
+      at: 2026-09-08T13:23:19.832647Z
+      classified: other
+    - cmd: PRISM_NO_RANGE_CACHE=1 PRISM_V072_BINARY=/tmp/prism-s5-range-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s5-cache-off-t1", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:28:41.254766Z
+      classified: other
+    - cmd: PRISM_NO_RANGE_CACHE=1 PRISM_V072_BINARY=/tmp/prism-s5-range-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s5-cache-off-t2", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:34:51.44634Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and (.name|startswith("mcp__prism__"))) | [.name,(.input|tostring)] | @tsv' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s5-cache-off-t2/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T13:34:57.799469Z
+      classified: other
+    - cmd: PRISM_NO_RANGE_CACHE=1 PRISM_V072_BINARY=/tmp/prism-s5-range-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/s5-cache-off-t3", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:41:07.503922Z
+      classified: other
+    - cmd: rg -n 'CONCURRENCY|ThreadPoolExecutor|max_workers|PILOT_TASKS|FULL_TASKS' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py | head -80
+      at: 2026-09-08T13:41:40.643805Z
+      classified: other
+    - cmd: sed -n '490,520p' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py
+      at: 2026-09-08T13:41:54.421479Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-s5-range-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-compact", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T13:54:25.066348Z
+      classified: other
+    - cmd: PRISM_JSON_RESULTS=1 PRISM_V072_BINARY=/tmp/prism-s5-range-switch python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); s=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p), "--run-dir", "harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-json", "--phase", "pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T14:07:22.354508Z
+      classified: other
+    - cmd: PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-compact/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-compact/environments/pallets__click__pr3244/bin/python" /tmp/click_beyond_oracle.py
+      at: 2026-09-08T14:07:44.300798Z
+      classified: other
+    - cmd: PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-json/work/pallets__click__pr3244.sonnet_native/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-json/environments/pallets__click__pr3244/bin/python" /tmp/click_beyond_oracle.py
+      at: 2026-09-08T14:07:44.297809Z
+      classified: other
+    - cmd: PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-json/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-json/environments/pallets__click__pr3244/bin/python" /tmp/click_beyond_oracle.py
+      at: 2026-09-08T14:07:44.300864Z
+      classified: other
+    - cmd: PYTHONPATH="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-compact/work/pallets__click__pr3244.sonnet_prism/src" "/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/confirmation-compact/environments/pallets__click__pr3244/bin/python" /tmp/click_beyond_oracle.py
+      at: 2026-09-08T14:07:44.297811Z
+      classified: other
+    - cmd: |-
+        git status --short --untracked-files=no
+        git status --short -- harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+        sed -n '1,360p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T14:08:42.152969Z
+      classified: other
+    - cmd: |-
+        prism verify --base HEAD --format text
+        git diff --check
+        git status --short
+      at: 2026-09-08T14:08:42.958501Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        git diff --check
+        prism change-impact 'Server.dispatch' --format text
+        prism change-impact 'Handler.readRange' --format text
+      at: 2026-09-08T14:13:37.49513Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && prism change-impact 'Server.dispatch' --format text
+      at: 2026-09-08T14:14:48.337752Z
+      classified: other
+    - cmd: prism change-impact 'Handler.readRange' --format text
+      at: 2026-09-08T14:14:57.231704Z
+      classified: other
+    - cmd: git diff -- internal/mcp/server.go internal/mcp/tools.go internal/mcp/coverage_test.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go
+      at: 2026-09-08T14:15:03.459016Z
+      classified: other
+    - cmd: rg -n 'PRISM_(JSON_RESULTS|NO_ONCE_DEDUP|NO_RANGE_CACHE)|os\.' internal/mcp/server.go internal/mcp/tools.go internal/mcp/*_test.go
+      at: 2026-09-08T14:15:11.841177Z
+      classified: other
+    - cmd: sed -n '180,235p' internal/mcp/coverage_test.go && GOWORK=off go test ./internal/mcp -count=1 -timeout 120s
+      at: 2026-09-08T14:15:40.745174Z
+      classified: test
+    - cmd: prism change-impact 'TestDispatch_ToolsCall_OK' --format text
+      at: 2026-09-08T14:15:46.671458Z
+      classified: other
+    - cmd: sed -n '208,270p' internal/mcp/server.go && rg -n 'render.*AsText|PRISM_TEXT_RESULTS' internal/mcp/*_test.go internal/mcp/*.go
+      at: 2026-09-08T14:15:52.474633Z
+      classified: other
+    - cmd: sed -n '270,305p' internal/mcp/server.go && sed -n '1,90p' internal/mcp/coverage_test.go
+      at: 2026-09-08T14:16:01.299379Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/coverage_test.go internal/mcp/server.go internal/mcp/tools.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go && git diff --check && GOWORK=off go test ./internal/mcp -count=1 -timeout 120s
+      at: 2026-09-08T14:16:35.498711Z
+      classified: test
+    - cmd: GOWORK=off go build -o /tmp/prism-combined-conclusion ./cmd/prism && shasum -a 256 /tmp/prism-combined-conclusion && tail -n 120 harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T14:16:41.678963Z
+      classified: build
+    - cmd: tail -n 140 harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T14:16:50.750121Z
+      classified: other
+    - cmd: GOWORK=off go build -o /tmp/prism-combined-conclusion ./cmd/prism && shasum -a 256 /tmp/prism-combined-conclusion
+      at: 2026-09-08T14:16:53.223039Z
+      classified: build
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t1","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T14:22:24.46761Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t2","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T14:26:31.553219Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native","sonnet_prism"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t3","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T14:32:32.925956Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-confirm","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T14:43:40.703204Z
+      classified: other
+    - cmd: find harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t1 harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t2 harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t3 harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-confirm -maxdepth 3 -type f | sort
+      at: 2026-09-08T14:43:50.254931Z
+      classified: other
+    - cmd: for f in harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-{t1,t2,t3,confirm}/evidence/pallets__click__pr3244.*/agent.diff; do printf '\nFILE %s\n' "$f"; rg -n '^\+.*(stderr|stdout|output|mix_stderr|bytes|decode)' "$f" || true; done
+      at: 2026-09-08T14:43:57.278292Z
+      classified: other
+    - cmd: rg -n 'beyond-oracle|mixed|Result\.output|child output|capture check' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md harness/runs -g '*.py' -g '*.md' | head -n 120
+      at: 2026-09-08T14:44:05.010643Z
+      classified: other
+    - cmd: sed -n '35,70p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md && sed -n '145,166p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T14:44:09.963609Z
+      classified: other
+    - cmd: sed -n '380,430p' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/templates/pallets__click__pr3244/base/tests/test_stream_lifecycle.py && sed -n '1,120p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-confirm/evidence/pallets__click__pr3244.sonnet_prism/agent.diff
+      at: 2026-09-08T14:44:21.75146Z
+      classified: other
+    - cmd: |-
+        for run in s6-combined-t1 s6-combined-t2 s6-combined-t3 s6-combined-confirm; do py="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$run/environments/pallets__click__pr3244/bin/python"; for arm in sonnet_native sonnet_prism; do work="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$run/work/pallets__click__pr3244.$arm"; printf '%s %s ' "$run" "$arm"; PYTHONPATH="$work/src" "$py" -c 'import json,subprocess,sys,click; from click.testing import CliRunner
+        @click.command()
+        def cli():
+         click.echo("before",err=True); subprocess.run([sys.executable,"-c","import sys; print(\"child\", file=sys.stderr)"],stderr=sys.stderr,check=True); click.echo("after",err=True)
+        r=CliRunner().invoke(cli); print(json.dumps({"exit":r.exit_code,"stderr":r.stderr,"output":r.output}))'; done; done
+      at: 2026-09-08T14:44:43.131871Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T14:45:32.029785Z
+      classified: other
+    - cmd: prism references localFixBudgetGuidance --format text
+      at: 2026-09-08T14:45:41.920313Z
+      classified: other
+    - cmd: prism references serverInstructions --format text
+      at: 2026-09-08T14:45:41.950832Z
+      classified: other
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-08T14:45:55.290984Z
+      classified: test
+    - cmd: git status --short -- harness/mason_bench.py harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md && git diff --check -- harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T14:46:06.546815Z
+      classified: other
+    - cmd: git rev-parse HEAD && git branch --show-current && git status --short && git diff --check && git diff --stat
+      at: 2026-09-08T14:46:06.577003Z
+      classified: other
+    - cmd: tail -n 35 harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T14:55:02.793247Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism","sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s7-order-t1-prism-first","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:01:24.191757Z
+      classified: other
+    - cmd: |-
+        for arm in sonnet_native sonnet_prism; do f="harness/runs/sonnet-prism-cost-isolation-2026-09-08/s7-order-t1-prism-first/evidence/pallets__click__pr3244.$arm/command.json"; printf '\n%s\n' "$arm"; jq . "$f"; done
+        rg -n 'CLAUDE|HOME|XDG|cache|config|setting|env=|subprocess|Popen|run\(' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py | head -n 220
+      at: 2026-09-08T15:01:33.56911Z
+      classified: other
+    - cmd: sed -n '210,245p' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py && sed -n '372,402p' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py && find "$HOME/.claude" -maxdepth 2 -type d -print 2>/dev/null | sort | head -n 80
+      at: 2026-09-08T15:01:43.695421Z
+      classified: other
+    - cmd: for run in s6-combined-t1 s6-combined-t2 s6-combined-t3 s6-combined-confirm s7-order-t1-prism-first; do for arm in sonnet_native sonnet_prism; do f="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$run/evidence/pallets__click__pr3244.$arm/measurement.json"; printf '%s %-13s ' "$run" "$arm"; jq -c '{valid,cost_usd,input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens,turns,tool_calls,prism_calls,timed_out}' "$f"; done; done
+      at: 2026-09-08T15:02:04.055755Z
+      classified: other
+    - cmd: jq 'keys' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t2/evidence/pallets__click__pr3244.sonnet_prism/measurement.json && jq . harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t2/evidence/pallets__click__pr3244.sonnet_prism/measurement.json
+      at: 2026-09-08T15:02:11.041355Z
+      classified: other
+    - cmd: for run in s6-combined-t1 s6-combined-t2 s6-combined-t3 s6-combined-confirm s7-order-t1-prism-first; do for arm in sonnet_native sonnet_prism; do f="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$run/evidence/pallets__click__pr3244.$arm/stdout.jsonl"; printf '%s %-13s ' "$run" "$arm"; jq -sc '[.[] | select(.type=="assistant") | .message.usage] | .[0] | {input_tokens,cache_creation_input_tokens,cache_read_input_tokens,output_tokens}' "$f"; done; done
+      at: 2026-09-08T15:02:21.552649Z
+      classified: other
+    - cmd: |-
+        find "$HOME/.claude/projects" -maxdepth 1 -type d \( -name '*s6-combined*' -o -name '*s7-order*' \) -print | sort
+        find "$HOME/.claude" -maxdepth 2 -type f -mmin -30 -print 2>/dev/null | sort | head -n 120
+      at: 2026-09-08T15:02:35.425258Z
+      classified: other
+    - cmd: strings /Users/tapabratapal/.local/bin/claude | rg -m 5 'CLAUDE_CONFIG_DIR|DISABLE_AUTOUPDATER|DISABLE_NONESSENTIAL'
+      at: 2026-09-08T15:03:03.781227Z
+      classified: other
+    - cmd: iso_dir=$(mktemp -d /tmp/claude-bench-isolation.XXXXXX); CLAUDE_CONFIG_DIR="$iso_dir" CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 /Users/tapabratapal/.local/bin/claude auth status; status=$?; find "$iso_dir" -maxdepth 2 -print | sort; exit $status
+      at: 2026-09-08T15:03:12.719828Z
+      classified: other
+    - cmd: env | awk -F= '/^(ANTHROPIC|CLAUDE)/ {print $1}' | sort
+      at: 2026-09-08T15:03:19.653078Z
+      classified: other
+    - cmd: /Users/tapabratapal/.local/bin/claude auth status && ls -la "$HOME/.claude.json" "$HOME/.claude/.credentials.json" 2>/dev/null || true
+      at: 2026-09-08T15:03:26.18786Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p1a-prism","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:08:06.849577Z
+      classified: other
+    - cmd: f='harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p1a-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl'; jq -c 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | {name,input}' "$f"; printf '\nMCP metadata\n'; jq . harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p1a-prism/evidence/pallets__click__pr3244.sonnet_prism/mcp.json; printf '\nMeasurement discovery\n'; jq '{prism_calls,prism_result_bytes,native_commands,tool_calls,turns}' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p1a-prism/evidence/pallets__click__pr3244.sonnet_prism/measurement.json
+      at: 2026-09-08T15:09:34.76007Z
+      classified: other
+    - cmd: f='harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p1a-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl'; jq -r 'select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content' "$f" | head -n 80
+      at: 2026-09-08T15:09:44.945598Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p1b-native","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:11:04.007061Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:15:05.053874Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2b-prism","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:20:05.72202Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p3a-prism","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:24:31.798915Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p3b-native","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:28:43.623651Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p4a-native","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:29:33.643384Z
+      classified: other
+    - cmd: base='harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p4a-native/evidence/pallets__click__pr3244.sonnet_native'; printf 'stderr\n'; sed -n '1,160p' "$base/stderr.txt"; printf '\nstdout\n'; sed -n '1,80p' "$base/stdout.jsonl"; printf '\nmeasurement\n'; jq '{exit_code,timed_out,agent_error,measurement_complete,violations,usage,final:.final}' "$base/measurement.json"
+      at: 2026-09-08T15:29:45.762436Z
+      classified: other
+    - cmd: date '+%Y-%m-%d %H:%M:%S %Z'
+      at: 2026-09-08T15:30:16.469651Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/tmp/prism-combined-conclusion python3 -c 'import importlib.util, pathlib, sys; p=pathlib.Path("harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py").resolve(); spec=importlib.util.spec_from_file_location("run_code", p); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native"]; sys.argv=[str(p),"--run-dir","harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p4r-a-native","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T15:36:25.76137Z
+      classified: other
+    - cmd: |-
+        for run in s8-p1a-prism s8-p1b-native s8-p2a-native s8-p2b-prism s8-p3a-prism s8-p3b-native s8-p4a-native s8-p4r-a-native; do f="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$run/evidence/pallets__click__pr3244."*'/measurement.json'; printf '%-20s ' "$run"; jq -c '{arm,cost_usd,turns,tool_calls,prism_calls,prism_result_bytes,timed_out,agent_error,resolved,score}' $f; done
+        for run in s8-p1a-prism s8-p2b-prism s8-p3a-prism; do f="harness/runs/sonnet-prism-cost-isolation-2026-09-08/$run/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl"; printf '\n%s\n' "$run"; jq -c 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and (.name|startswith("mcp__prism"))) | {name,input}' "$f"; done
+      at: 2026-09-08T15:36:50.665349Z
+      classified: other
+    - cmd: python3 -c 'pairs=[(0.3114434,0.4758558),(0.5098718,0.5690344)]; print([round((p-n)/n*100,3) for n,p in pairs])'
+      at: 2026-09-08T15:36:59.789264Z
+      classified: other
+    - cmd: tail -n 75 harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T15:37:28.020687Z
+      classified: other
+    - cmd: rg -n '^## S[678]|^Status' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md && git diff --check -- harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T15:37:48.868596Z
+      classified: other
+    - cmd: rg -n 'unrelated work|other laptop|shared Claude|screenshot|account quota' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T15:38:35.517968Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git diff --stat && git diff --name-only
+      at: 2026-09-08T15:41:09.274176Z
+      classified: other
+    - cmd: git branch --show-current && git status --short -- harness/mason_bench.py harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md && git diff --stat -- harness/mason_bench.py && git diff --name-only -- harness/mason_bench.py
+      at: 2026-09-08T15:41:09.28463Z
+      classified: other
+    - cmd: git diff -- harness/mason_bench.py
+      at: 2026-09-08T15:41:16.673179Z
+      classified: other
+    - cmd: git diff -- internal/mcp/server.go internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/coverage_test.go internal/mcp/oncenotes_test.go
+      at: 2026-09-08T15:41:16.67287Z
+      classified: other
+    - cmd: git status --short && git branch --show-current && prism lookup Server.dispatch --format text
+      at: 2026-09-08T15:46:00.230166Z
+      classified: other
+    - cmd: sed -n '1,145p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T15:46:07.172137Z
+      classified: other
+    - cmd: rg --files harness/runs/sonnet-prism-cost-isolation-2026-09-08 -g 'measurement.json' -g '*replay*' -g '*.py' -g 'manifest.json' | rg -v '/(environments|work|templates)/'
+      at: 2026-09-08T15:46:18.549574Z
+      classified: other
+    - cmd: git branch --show-current && sed -n '240,275p' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py && sed -n '400,470p' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py && jq '{prism_binary,arms,tasks}' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t1/manifest.json
+      at: 2026-09-08T15:46:35.55572Z
+      classified: other
+    - cmd: 'python3 harness/runs/sonnet-prism-cost-isolation-2026-09-08/audit_evidence.py | jq ''{format_groups, selected: [.cells[] | select((.run | startswith("s3-")) or (.run | startswith("confirmation-")) or .run == "s8-p3b-native") | {run,arm,cost,valid,resolved,agent_error,rates,prism,native_reads,tmp_paths}]}'''
+      at: 2026-09-08T15:47:31.655172Z
+      classified: other
+    - cmd: python3 harness/runs/sonnet-prism-cost-isolation-2026-09-08/audit_evidence.py | jq -c '.cells[] | select((.run|startswith("s3-")) and .arm=="sonnet_prism") | {run,cost,valid,resolved,prism,native_reads}'
+      at: 2026-09-08T15:48:01.059252Z
+      classified: other
+    - cmd: rg -n 'test_faulthandler_enable|test_patch|test_stream_lifecycle|no.*steer|STRICT|LIMIT_S|ThreadPoolExecutor|shuffle' harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/run_code.py harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t2/templates/pallets__click__pr3244/base/tests/test_testing.py && jq -c 'select(.type=="result") | {is_error,terminal_reason,result,api_error_status}' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p3b-native/evidence/pallets__click__pr3244.sonnet_native/stdout.jsonl
+      at: 2026-09-08T15:48:01.14552Z
+      classified: other
+    - cmd: sed -n '1,160p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t2/work/pallets__click__pr3244.sonnet_prism/CLAUDE.md && sed -n '1,110p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t1/evidence/pallets__click__pr3244.sonnet_prism/prompt.txt && sed -n '1,70p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t2/tasks/pallets__click__pr3244.json
+      at: 2026-09-08T15:48:13.235618Z
+      classified: other
+    - cmd: PRISM_AUDIT_ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 GOWORK=off go test -overlay /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/format-audit-overlay.json ./internal/mcp -run '^TestStudy' -count=1 -v
+      at: 2026-09-08T15:49:47.795952Z
+      classified: test
+    - cmd: python3 harness/runs/sonnet-prism-cost-isolation-2026-09-08/audit_evidence.py | jq -c '.cells[] | select((.run|startswith("s3-")) or (.run|startswith("confirmation-"))) | select(.task|startswith("pallets")) | {run,arm,cost,valid,resolved,usage,native_reads,tmp_paths,routing:[.prism[]|select(.has_routing_note)|.tool]}'
+      at: 2026-09-08T15:49:47.988216Z
+      classified: other
+    - cmd: jq -r '.native_commands[] | select(test("clickdl|clickpkg|pip |curl|wget|http"))' harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t2/evidence/pallets__click__pr3244.sonnet_native/measurement.json harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t3/evidence/pallets__click__pr3244.sonnet_prism/measurement.json
+      at: 2026-09-08T15:49:58.39677Z
+      classified: other
+    - cmd: git diff --stat && git diff --check && git show HEAD:internal/mcp/server.go
+      at: 2026-09-08T15:49:58.508441Z
+      classified: other
+    - cmd: python3 harness/runs/sonnet-prism-cost-isolation-2026-09-08/audit_evidence.py | jq -c '{format_groups,package_access:[.cells[]|select(.external_package_commands|length>0)|{run,arm,valid,external_package_commands}],rate_rejected:[.cells[]|select(.rate_rejected)|{run,arm,cost,resolved}]}'
+      at: 2026-09-08T15:50:29.673176Z
+      classified: other
+    - cmd: PRISM_TEXT_RESULTS=1 GOWORK=off go test ./internal/mcp -run '^TestDispatch_ToolsCall_OK$' -count=1
+      at: 2026-09-08T15:50:30.746111Z
+      classified: test
+    - cmd: gofmt -w harness/runs/sonnet-prism-cost-isolation-2026-09-08/format_audit_test.go
+      at: 2026-09-08T15:52:52.532383Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-compact-t2/evidence/pallets__click__pr3244.sonnet_native/stdout.jsonl')
+        ids={}
+        for line in p.read_text().splitlines():
+         e=json.loads(line)
+         blocks=e.get('message',{}).get('content',[])
+         if not isinstance(blocks,list): continue
+         for b in blocks:
+          if b.get('type')=='tool_use' and '/tmp/clickdl' in str(b.get('input')): ids[b['id']]=b['input']
+          if b.get('type')=='tool_result' and b.get('tool_use_id') in ids:
+           print(json.dumps({'command':ids[b['tool_use_id']], 'result_excerpt':str(b.get('content'))[:1100]}))
+        PY
+      at: 2026-09-08T15:53:15.031111Z
+      classified: other
+    - cmd: git status --short && git diff --check
+      at: 2026-09-08T15:53:15.131657Z
+      classified: other
+    - cmd: git status --short -- harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md harness/runs/sonnet-prism-cost-isolation-2026-09-08/audit_evidence.py harness/runs/sonnet-prism-cost-isolation-2026-09-08/format_audit_test.go harness/runs/sonnet-prism-cost-isolation-2026-09-08/format-audit-overlay.json && rg -n '^## S9|^### [1-5]' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T15:53:15.227948Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s3-json-t3/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl')
+        calls={}
+        for line in p.read_text().splitlines():
+         e=json.loads(line); blocks=e.get('message',{}).get('content',[])
+         if not isinstance(blocks,list): continue
+         for b in blocks:
+          if b.get('type')=='tool_use': calls[b['id']]=(b['name'],b.get('input'))
+          if b.get('type')!='tool_result':continue
+          name,args=calls.get(b.get('tool_use_id'),('',{}))
+          if 'prism_search' not in name and not ('prism_lookup' in name and args.get('name')=='BytesIOCopy'):continue
+          for c in b.get('content',[]) if isinstance(b.get('content'),list) else []:
+           try:o=json.loads(c.get('text',''))
+           except ValueError:continue
+           print(name,args)
+           syms=o.get('symbols',[o.get('symbol',{})])
+           for sym in syms:
+            for k,v in sym.items():
+             s=json.dumps(v,ensure_ascii=False)
+             print(k, s[:450] + (' … ['+str(len(s))+' characters]' if len(s)>450 else ''))
+           print('top_level_keys',list(o))
+        PY
+      at: 2026-09-08T18:04:01.878672Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && prism lookup 'renderSearchResult' 'renderLookupResult' 'renderVerifyResult' --format text
+      at: 2026-09-08T19:31:20.981761Z
+      classified: other
+    - cmd: prism lookup --help
+      at: 2026-09-08T19:31:35.067119Z
+      classified: other
+    - cmd: prism read internal/mcp/searchtext.go --format text
+      at: 2026-09-08T19:31:51.66918Z
+      classified: other
+    - cmd: prism search 'RenderSearchText' 'PRISM_TEXT_RESULTS' 'json.Marshal' --path internal/mcp --scope text --context 3 --format text
+      at: 2026-09-08T19:32:16.957989Z
+      classified: other
+    - cmd: prism lookup 'Handler.dispatch' --format text
+      at: 2026-09-08T19:32:25.567262Z
+      classified: other
+    - cmd: prism change-impact 'Server.dispatch' --format text
+      at: 2026-09-08T19:32:35.10016Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/research status --short && rg --files /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 | sort
+      at: 2026-09-08T19:34:04.811197Z
+      classified: other
+    - cmd: rg 'yaml.v3|sigs.k8s.io/yaml|go-yaml' go.mod go.sum
+      at: 2026-09-08T19:34:14.575454Z
+      classified: other
+    - cmd: sed -n '1,260p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/format_audit_test.go && sed -n '1,220p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/format-audit-overlay.json
+      at: 2026-09-08T19:34:54.507146Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/fulltext.go internal/mcp/fulltext_test.go internal/mcp/server.go && GOWORK=off go test ./internal/mcp -run 'TestRenderFullText|TestDispatchToolsCallFullTextMode|TestDispatch_ToolsCall_OK' -count=1
+      at: 2026-09-08T19:36:09.113151Z
+      classified: test
+    - cmd: prism lookup 'TestDispatch_ToolsCall_OK' --format text && prism search 'NewHandler(' 'testHandler' --path internal/mcp --scope text --context 3 --format text
+      at: 2026-09-08T19:36:17.399102Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/fulltext_test.go && GOWORK=off go test ./internal/mcp -run 'TestRenderFullText|TestDispatchToolsCallFullTextMode|TestDispatch_ToolsCall_OK' -count=1
+      at: 2026-09-08T19:36:33.463374Z
+      classified: test
+    - cmd: prism lookup 'EstimateTokens' --format text
+      at: 2026-09-08T19:36:41.215702Z
+      classified: other
+    - cmd: PRISM_AUDIT_ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 GOWORK=off go test -overlay /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/format-audit-overlay.json ./internal/mcp -run '^TestStudyReplayJSONResponses$' -count=1 -v
+      at: 2026-09-08T19:37:15.84656Z
+      classified: test
+    - cmd: prism change-impact 'renderFullText' --format text
+      at: 2026-09-08T19:37:42.158165Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/fulltext.go internal/mcp/fulltext_test.go && GOWORK=off go test ./internal/mcp -run 'TestRenderFullText|TestDispatchToolsCallFullTextMode|TestDispatch_ToolsCall_OK' -count=1 && PRISM_AUDIT_ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 GOWORK=off go test -overlay /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/format-audit-overlay.json ./internal/mcp -run '^TestStudyReplayJSONResponses$' -count=1 -v
+      at: 2026-09-08T19:38:32.757828Z
+      classified: test
+    - cmd: tail -n 120 /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T19:39:11.344108Z
+      classified: other
+    - cmd: git diff --check && git status --short && git diff --stat
+      at: 2026-09-08T19:39:58.918243Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T19:39:59.48662Z
+      classified: other
+    - cmd: env -u PRISM_TEXT_RESULTS GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-08T19:40:09.632557Z
+      classified: test
+    - cmd: prism change-impact 'writeFullTextValue' --format text
+      at: 2026-09-08T19:40:33.553592Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/fulltext.go internal/mcp/fulltext_test.go && GOWORK=off go test ./internal/mcp -run 'TestRenderFullText|TestDispatchToolsCallFullTextMode|TestDispatch_ToolsCall_OK' -count=1 && PRISM_AUDIT_ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 GOWORK=off go test -overlay /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/format-audit-overlay.json ./internal/mcp -run '^TestStudyReplayJSONResponses$' -count=1 -v
+      at: 2026-09-08T19:41:27.451602Z
+      classified: test
+    - cmd: rg -n '4\.9|35,346|34,782|6\.4|Full-fidelity compact' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T19:42:00.299144Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-09-08T19:42:08.939612Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T19:42:09.48985Z
+      classified: other
+    - cmd: env -u PRISM_TEXT_RESULTS GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-08T19:42:20.770679Z
+      classified: test
+    - cmd: rg -n 'mason_bench|s3-json|s3-compact|Click|click|sonnet_native|sonnet_prism|PRISM_TEXT_RESULTS' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md | tail -n 140
+      at: 2026-09-08T19:47:37.636189Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 -maxdepth 3 -type f \( -name 'measurement.json' -o -name 'command.txt' -o -name 'manifest.json' \) | sort | tail -n 80
+      at: 2026-09-08T19:47:46.120452Z
+      classified: other
+    - cmd: jq . /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/manifest.json && jq . /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2b-prism/manifest.json
+      at: 2026-09-08T19:47:52.356913Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native -maxdepth 4 -type f | sort && find /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2b-prism -maxdepth 4 -type f | sort
+      at: 2026-09-08T19:47:59.289713Z
+      classified: other
+    - cmd: pgrep -af 'mason_bench.py|run_code.py|claude.*jackson' || true
+      at: 2026-09-08T19:48:48.709889Z
+      classified: other
+    - cmd: ps -p 3338,3459 -o pid=,ppid=,etime=,command=
+      at: 2026-09-08T19:48:53.947683Z
+      classified: other
+    - cmd: pgrep -P 3338 -af . || true
+      at: 2026-09-08T19:48:59.555299Z
+      classified: other
+    - cmd: ps -p 3502 -o pid=,ppid=,etime=,command=
+      at: 2026-09-08T19:49:04.246843Z
+      classified: other
+    - cmd: kill 3338 && sleep 1 && ps -p 3338 -o pid=,command= || true && pgrep -af 'mason_bench.py --help' || true
+      at: 2026-09-08T19:49:10.88179Z
+      classified: other
+    - cmd: ps -p 3546 -o pid=,ppid=,etime=,command=
+      at: 2026-09-08T19:49:16.022878Z
+      classified: other
+    - cmd: rg -n 'ArgumentParser|add_argument|RUN_ROOT|run_root|arms|task|timeout|concurrency|trials|PRISM_TEXT_RESULTS|subprocess' harness/mason_bench.py | tail -n 220
+      at: 2026-09-08T19:49:23.664898Z
+      classified: other
+    - cmd: rg -n 'balanced-coding-suite-v1-sonnet-prism-rerun|prompt_pairing|strict-mcp-config|no-session-persistence' harness --glob '*.py' --glob '!runs/**'
+      at: 2026-09-08T19:49:35.160237Z
+      classified: other
+    - cmd: sed -n '430,540p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/run_code.py && sed -n '1,80p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/run_code.py
+      at: 2026-09-08T19:49:43.27605Z
+      classified: other
+    - cmd: sed -n '20,55p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/run_code.py && sed -n '20,55p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2b-prism/run_code.py && rg -n 'PRISM_TEXT_RESULTS|env =|subprocess.*env|PRISM_' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2b-prism/run_code.py | head -n 80
+      at: 2026-09-08T19:49:53.921503Z
+      classified: other
+    - cmd: sed -n '145,205p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/run_code.py && sed -n '360,410p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/run_code.py
+      at: 2026-09-08T19:50:15.4173Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/fulltext.go internal/mcp/fulltext_test.go && GOWORK=off go test ./internal/mcp -run 'TestRenderFullText|TestDispatchToolsCallFullTextMode' -count=1 && PRISM_AUDIT_ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 GOWORK=off go test -overlay /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/format-audit-overlay.json ./internal/mcp -run '^TestStudyReplayJSONResponses$' -count=1 -v
+      at: 2026-09-08T19:52:10.889648Z
+      classified: test
+    - cmd: mkdir -p /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build && GOWORK=off go build -o /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build/prism-fulltext-csv ./cmd/prism && shasum -a 256 /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build/prism-fulltext-csv
+      at: 2026-09-08T19:52:37.545986Z
+      classified: build
+    - cmd: python3 -c 'import importlib.util,sys; p="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/run_code.py"; s=importlib.util.spec_from_file_location("s11runner",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native"]; sys.argv=[p,"--run-dir","/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-native","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T19:55:41.373197Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build/prism-fulltext-csv PRISM_TEXT_RESULTS=full python3 -c 'import importlib.util,sys; p="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2b-prism/run_code.py"; s=importlib.util.spec_from_file_location("s11runner",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism"]; sys.argv=[p,"--run-dir","/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-prism","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T20:00:12.123127Z
+      classified: other
+    - cmd: jq . /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-native/evidence/pallets__click__pr3244.sonnet_native/measurement.json && jq . /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-prism/evidence/pallets__click__pr3244.sonnet_prism/measurement.json
+      at: 2026-09-08T20:00:23.028927Z
+      classified: other
+    - cmd: jq -r 'select(.message.content? != null) | .message.content[]? | select((.type == "tool_use" and (.name | startswith("mcp__prism__"))) or .type == "tool_result") | if .type == "tool_use" then "USE\t" + .id + "\t" + .name + "\t" + (.input|tostring) else "RESULT\t" + .tool_use_id + "\t" + (.content|tostring) end' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T20:00:37.412947Z
+      classified: other
+    - cmd: jq -r 'select(.message.content? != null) | .message.content[]? | select(.type == "text") | .text' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl | sed -n '1,220p'
+      at: 2026-09-08T20:00:47.035508Z
+      classified: other
+    - cmd: diff -u /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-native/evidence/pallets__click__pr3244.sonnet_native/agent.diff /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-prism/evidence/pallets__click__pr3244.sonnet_prism/agent.diff || true
+      at: 2026-09-08T20:01:04.014263Z
+      classified: other
+    - cmd: jq -r 'select(.message.content? != null) | .message.content[]? | select(.type == "tool_use" or .type == "tool_result") | if .type == "tool_use" then "USE\t" + .id + "\t" + .name + "\t" + (.input|tostring) else "RESULT\t" + .tool_use_id + "\t" + (.content|tostring) end' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-csv-native/evidence/pallets__click__pr3244.sonnet_native/stdout.jsonl | sed -n '1,80p'
+      at: 2026-09-08T20:01:36.086283Z
+      classified: other
+    - cmd: pgrep -af 'find / -name testing.py' || true
+      at: 2026-09-08T20:01:43.165673Z
+      classified: other
+    - cmd: ps -p 4632 -o pid=,ppid=,etime=,command=
+      at: 2026-09-08T20:01:48.474153Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-09-08T20:03:01.950567Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T20:03:02.665328Z
+      classified: other
+    - cmd: env -u PRISM_TEXT_RESULTS GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-08T20:03:14.771098Z
+      classified: test
+    - cmd: git branch --show-current && prism lookup 'Handler.searchOne' --format text
+      at: 2026-09-08T20:36:47.953324Z
+      classified: other
+    - cmd: prism search 'SearchSymbols' 'ListSymbols' 'FilePath' --path internal/grove --scope text --context 3 --format text
+      at: 2026-09-08T20:36:56.535208Z
+      classified: other
+    - cmd: prism lookup 'Client.SearchSymbols' --format text && prism lookup 'scopedSymbolSearch' --format text
+      at: 2026-09-08T20:37:02.116861Z
+      classified: other
+    - cmd: sed -n '1,35p' internal/grove/client.go && rg -n 'func \(.*\) Symbols\(' . --glob '*.go'
+      at: 2026-09-08T20:37:13.063416Z
+      classified: other
+    - cmd: go list -m -f '{{.Dir}}' github.com/provasign/grove
+      at: 2026-09-08T20:37:20.149964Z
+      classified: other
+    - cmd: GOWORK=off go list -m -f '{{.Dir}}' github.com/provasign/grove
+      at: 2026-09-08T20:37:25.578973Z
+      classified: other
+    - cmd: rg -n 'func \(.*\) Symbols\(' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.3 --glob '*.go'
+      at: 2026-09-08T20:37:30.444183Z
+      classified: other
+    - cmd: sed -n '250,285p' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.3/pkg/grove/grove.go && rg -n 'func .*SearchSymbols|SearchSymbols\(' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.3 --glob '*.go' | head -30
+      at: 2026-09-08T20:37:37.623421Z
+      classified: other
+    - cmd: rg -n 'func \(.*\) Search\(' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.3 --glob '*.go' | head -20
+      at: 2026-09-08T20:37:44.8051Z
+      classified: other
+    - cmd: sed -n '360,425p' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.3/internal/graph/graph.go
+      at: 2026-09-08T20:37:49.765552Z
+      classified: other
+    - cmd: prism search 'type searchScope' 'func parseSearchScope' --path internal/mcp --scope text --context 5 --format text
+      at: 2026-09-08T20:37:58.527812Z
+      classified: other
+    - cmd: prism change-impact 'Handler.searchOne' --format text
+      at: 2026-09-08T20:38:05.451623Z
+      classified: other
+    - cmd: sed -n '1,45p' internal/mcp/tools.go
+      at: 2026-09-08T20:38:30.946878Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/searchrecovery.go internal/mcp/searchrecovery_test.go internal/mcp/tools.go && GOWORK=off go test ./internal/mcp -run 'TestSearchMiss|TestRenderFullText|TestDispatchToolsCallFullTextMode' -count=1 -v
+      at: 2026-09-08T20:39:42.684641Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-09-08T20:40:01.93643Z
+      classified: other
+    - cmd: env -u PRISM_TEXT_RESULTS -u PRISM_NEARBY_ON_MISS GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-08T20:40:14.574406Z
+      classified: test
+    - cmd: GOWORK=off go build -o /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build/prism-nearby-csv ./cmd/prism && shasum -a 256 /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build/prism-nearby-csv
+      at: 2026-09-08T20:40:23.868081Z
+      classified: build
+    - cmd: PRISM_V072_BINARY=/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build/prism-nearby-csv PRISM_TEXT_RESULTS=full PRISM_NEARBY_ON_MISS=1 python3 -c 'import importlib.util,sys; p="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2b-prism/run_code.py"; s=importlib.util.spec_from_file_location("s12runner",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_prism"]; sys.argv=[p,"--run-dir","/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T20:44:49.024374Z
+      classified: other
+    - cmd: python3 -c 'import importlib.util,sys; p="/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s8-p2a-native/run_code.py"; s=importlib.util.spec_from_file_location("s12runner",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.PILOT_TASKS=["pallets__click__pr3244"]; m.ARMS=["sonnet_native"]; sys.argv=[p,"--run-dir","/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-native","--phase","pilot"]; raise SystemExit(m.main())'
+      at: 2026-09-08T20:47:24.739822Z
+      classified: other
+    - cmd: jq '{cost_usd,total_tokens,input_tokens,output_tokens,turns,tool_calls,prism_calls,prism_result_bytes,native_commands,violations,wall_s,score}' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/measurement.json && jq '{cost_usd,total_tokens,input_tokens,output_tokens,turns,tool_calls,prism_calls,prism_result_bytes,native_commands,violations,wall_s,score}' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-native/evidence/pallets__click__pr3244.sonnet_native/measurement.json
+      at: 2026-09-08T20:47:38.959046Z
+      classified: other
+    - cmd: rg -n -o '.{0,220}(nearbySymbols|csv\().{0,1200}' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T20:47:48.995421Z
+      classified: other
+    - cmd: jq -r 'select(.message.content? != null) | .message.content[]? | select(.type == "tool_use" and (.name | startswith("mcp__prism__"))) | [.id,.name,(.input|tostring)] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T20:47:58.203289Z
+      classified: other
+    - cmd: jq -r 'select(.message.content? != null) | .message.content[]? | select(.type == "tool_result" and (.tool_use_id == "toolu_01H9HCEWJJKVPDpjAbzR4o6B" or .tool_use_id == "toolu_01BHYzy1ptfF4FhGaueJD2QY")) | [.tool_use_id,(.content|tostring)] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T20:48:19.931986Z
+      classified: other
+    - cmd: diff -u /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-native/evidence/pallets__click__pr3244.sonnet_native/agent.diff /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/agent.diff || true
+      at: 2026-09-08T20:48:29.655957Z
+      classified: other
+    - cmd: jq '{cost_usd, tokens:.usage.tokens}' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/measurement.json && jq '{cost_usd, tokens:.usage.tokens}' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-native/evidence/pallets__click__pr3244.sonnet_native/measurement.json
+      at: 2026-09-08T20:48:51.725507Z
+      classified: other
+    - cmd: git diff --check && git status --short && git diff --stat
+      at: 2026-09-08T20:49:39.321482Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T20:49:40.341275Z
+      classified: other
+    - cmd: rg -n '^## S12' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T20:49:48.938945Z
+      classified: other
+    - cmd: prism lookup 'ToolSchemas' --format text
+      at: 2026-09-08T20:51:15.407659Z
+      classified: other
+    - cmd: prism lookup 'toolDescription' --format text && prism lookup 'serverInstructions' --format text
+      at: 2026-09-08T20:51:20.972494Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/work/pallets__click__pr3244.sonnet_prism/CLAUDE.md && sed -n '1,240p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/work/pallets__click__pr3244.sonnet_prism/AGENTS.md && jq . /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/work/pallets__click__pr3244.sonnet_prism/.mcp.json
+      at: 2026-09-08T20:51:31.201038Z
+      classified: other
+    - cmd: prism lookup 'localFixBudgetGuidance' --format text
+      at: 2026-09-08T20:51:43.967246Z
+      classified: other
+    - cmd: |-
+        jq -r 'select(.message.content? != null) | .message.content[]? | select(.type == "tool_use") | [.name,(.input|tostring)] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl > /tmp/s12-prism-tools.txt
+        jq -r 'select(.message.content? != null) | .message.content[]? | select(.type == "tool_use") | [.name,(.input|tostring)] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-native/evidence/pallets__click__pr3244.sonnet_native/stdout.jsonl > /tmp/s12-native-tools.txt
+        sed -n '1,220p' /tmp/s12-prism-tools.txt
+        sed -n '1,180p' /tmp/s12-native-tools.txt
+      at: 2026-09-08T20:52:13.35888Z
+      classified: other
+    - cmd: |-
+        jq -rs '
+          [.[].message.content[]?] as $b |
+          $b[] | select(.type=="tool_use") as $u |
+          ($b[] | select(.type=="tool_result" and .tool_use_id==$u.id)) as $r |
+          [$u.name, ($u.input.command // $u.input.file_path // ""), (($r.content|tostring) | gsub("\\n";" ") | .[0:500])] | @tsv
+        ' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-native/evidence/pallets__click__pr3244.sonnet_native/stdout.jsonl
+      at: 2026-09-08T20:52:31.152163Z
+      classified: other
+    - cmd: |-
+        jq -rs '
+          [.[].message.content[]?] as $b |
+          $b[] | select(.type=="tool_use" and (.name=="Bash" or .name=="Read")) as $u |
+          ($b[] | select(.type=="tool_result" and .tool_use_id==$u.id)) as $r |
+          [($u.input.command // ($u.input.file_path + ":" + (($u.input.offset // 0)|tostring))), (($r.content|tostring) | gsub("\\n";" ") | .[0:700])] | @tsv
+        ' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-08T20:52:51.008539Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s11-build/prism-nearby-csv mcp | wc -c
+      at: 2026-09-08T20:53:35.053669Z
+      classified: other
+    - cmd: rg -n 'const serverInstructions|case "prism_query"|case "prism_search"|case "prism_lookup"|case "prism_change_impact"|case "prism_verify"' internal/mcp/server.go internal/mcp/tools.go && rg -n '^## Prism|Before code discovery|Before editing an existing symbol|Before declaring a multi-site|Known methods|Unknown location' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s12-recovery-prism/work/pallets__click__pr3244.sonnet_prism/CLAUDE.md
+      at: 2026-09-08T20:54:11.759523Z
+      classified: other
+    - cmd: prism lookup 'serverInstructions' --format text && git branch --show-current && git tag --list 'v0.72.4' && git rev-parse v0.72.4 HEAD && git status --short
+      at: 2026-09-08T20:58:25.562116Z
+      classified: other
+    - cmd: git log --oneline --decorate v0.72.4..HEAD && git diff --stat v0.72.4..HEAD && git diff --stat v0.72.4 && git diff --unified=3 v0.72.4 -- internal/mcp/server.go internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/coverage_test.go internal/mcp/oncenotes_test.go
+      at: 2026-09-08T21:00:28.814676Z
+      classified: other
+    - cmd: git status --short && rg -n "v0\.72\.4|0\.72\.4|production|quota|S12|S11" /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md | head -n 180 && rg --files /Users/tapabratapal/Projects/provasign/research/harness/runs | rg 'v0724|v0.72.4|click.*(measurement|summary|manifest)|measurement.json$' | head -n 250
+      at: 2026-09-08T21:00:41.273562Z
+      classified: other
+    - cmd: jq . '/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/manifest.json'
+      at: 2026-09-08T21:00:56.03122Z
+      classified: other
+    - cmd: jq . '/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/summary.json'
+      at: 2026-09-08T21:00:56.098214Z
+      classified: other
+    - cmd: jq . '/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/measurement.json'
+      at: 2026-09-08T21:00:56.163535Z
+      classified: other
+    - cmd: sed -n '130,230p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md && sed -n '330,415p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md && sed -n '892,1015p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T21:00:56.232295Z
+      classified: other
+    - cmd: sed -n '1,260p' internal/mcp/fulltext.go && sed -n '1,280p' internal/mcp/searchrecovery.go && sed -n '760,850p' internal/mcp/tools.go && git show v0.72.4:internal/mcp/tools.go | sed -n '760,850p' && git show v0.72.4:internal/mcp/server.go | sed -n '115,245p'
+      at: 2026-09-08T21:01:04.661537Z
+      classified: other
+    - cmd: sed -n '390,570p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md && rg -n "full text|full-text|34,753|37,148|16,215|S11" /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T21:01:19.9975Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08 -maxdepth 2 -type d | sort | tail -n 80 && nl -ba internal/mcp/server.go | sed -n '115,235p' && nl -ba internal/mcp/tools.go | sed -n '785,825p;1840,1875p' && nl -ba internal/mcp/fulltext.go | sed -n '1,180p' && nl -ba internal/mcp/searchrecovery.go | sed -n '1,100p'
+      at: 2026-09-08T21:01:40.787349Z
+      classified: other
+    - cmd: nl -ba internal/mcp/tools.go | sed -n '840,890p' && nl -ba /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md | sed -n '140,220p;340,465p;775,835p;838,945p' && nl -ba /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/measurement.json | sed -n '245,345p'
+      at: 2026-09-08T21:02:05.975155Z
+      classified: other
+    - cmd: rg -n "known|unknown|hasOnly|nearbySymbols|recoveryReason|renderSearchAsText" internal/mcp/searchtext.go internal/mcp/*test.go | head -n 160 && sed -n '1,120p' internal/mcp/searchtext.go && rg -n 'func ToolSchemas|advertised|toolNames|prism_query.*prism_read' internal/mcp/tools.go internal/mcp/coverage_test.go | head -n 120 && git rev-parse HEAD v0.72.4
+      at: 2026-09-08T21:02:16.231152Z
+      classified: other
+    - cmd: git show -s --format='%H %T %P %s' HEAD && git show -s --format='%H %T %P %s' v0.72.4 && git diff --quiet v0.72.4 HEAD; printf 'tree_diff_exit=%s\n' "$?" && git merge-base HEAD v0.72.4 || true && git branch --contains v0.72.4 && git tag --points-at HEAD && git status --short
+      at: 2026-09-08T21:02:29.966777Z
+      classified: other
+    - cmd: git diff --numstat v0.72.4 -- internal/mcp && wc -l internal/mcp/fulltext.go internal/mcp/fulltext_test.go internal/mcp/searchrecovery.go internal/mcp/searchrecovery_test.go && sed -n '295,335p' internal/mcp/tools.go && git show v0.72.4:internal/mcp/tools.go | sed -n '295,335p' && env | rg '^PRISM_(TEXT_RESULTS|NEARBY_ON_MISS)=' || true
+      at: 2026-09-08T21:02:42.435115Z
+      classified: other
+    - cmd: prism change-impact 'serverInstructions' --format text && git branch --show-current && rg -n "LOCAL FIX BUDGET|use at most 12 total tool calls|at most 3 follow-up|STOP immediately|one focused test|one full relevant suite" internal/mcp
+      at: 2026-09-08T21:06:45.176975Z
+      classified: other
+    - cmd: prism search serverInstructions localFixBudgetGuidance --exhaustive --scope text --format text
+      at: 2026-09-08T21:06:51.847094Z
+      classified: other
+    - cmd: git branch --show-current && rg -n "LOCAL FIX BUDGET|use at most 12 total tool calls|at most 3 follow-up|STOP immediately|one focused test|one full relevant suite" internal/mcp || true && git diff --unified=1 v0.72.4 -- internal/mcp/server.go | sed -n '1,80p'
+      at: 2026-09-08T21:06:58.262655Z
+      classified: other
+    - cmd: rg -n "localFixBudgetGuidance|LOCAL FIX BUDGET|use at most 12 total tool calls|at most 3 follow-up reads/searches|When both tests pass|STOP immediately" internal/mcp || true && git diff --check && git status --short
+      at: 2026-09-08T21:07:58.77512Z
+      classified: other
+    - cmd: prism search localFixBudgetGuidance "LOCAL FIX BUDGET" --exhaustive --scope text --format text
+      at: 2026-09-08T21:10:54.632108Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git diff --cached --quiet; printf 'index_clean=%s\n' "$?" && for f in internal/mcp/server.go internal/mcp/tools.go internal/mcp/delivery.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/coverage_test.go; do git show HEAD:$f | rg -n -C 3 'localFixBudgetGuidance|LOCAL FIX BUDGET|STOP immediately|make ONE batched prism_query|make the smallest local edit'; done
+      at: 2026-09-08T21:11:04.009269Z
+      classified: other
+    - cmd: mktemp -d /tmp/prism-quota-only.XXXXXX
+      at: 2026-09-08T21:11:19.202974Z
+      classified: other
+    - cmd: git archive HEAD | tar -x -C /tmp/prism-quota-only.MZRzOz && git grep -n 'localFixBudgetGuidance\|LOCAL FIX BUDGET\|STOP immediately' HEAD -- ':!research/**'
+      at: 2026-09-08T21:11:36.083685Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/tools.go internal/mcp/delivery.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/coverage_test.go && rg -n '^func Test' internal/mcp/*test.go | rg 'Dispatch_Initialize|AdvertisedDiscovery|OnceNotes|Deliver|SearchAsText'
+      at: 2026-09-08T21:12:25.221464Z
+      classified: other
+    - cmd: go test ./internal/mcp -run '^(TestDispatch_Initialize|TestAdvertisedDiscoveryDescriptionsRouteEfficiently|TestOnceNotes_FixedAndLong|TestToolQuery_SourceDelivery_E2E|TestRenderSearchAsText_SingleTerm|TestRenderSearchAsText_MultiTerm)$'
+      at: 2026-09-08T21:12:35.591722Z
+      classified: test
+    - cmd: |-
+        for f in internal/mcp/server.go internal/mcp/tools.go internal/mcp/delivery.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/coverage_test.go; do mode=$(git ls-files -s -- "$f" | awk '{print $1}'); blob=$(git hash-object -w "/tmp/prism-quota-only.MZRzOz/$f"); git update-index --cacheinfo "$mode,$blob,$f"; done
+        git diff --cached --check
+        git diff --cached --stat
+        git diff --cached --unified=3
+      at: 2026-09-08T21:12:56.002967Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T21:13:14.932586Z
+      classified: other
+    - cmd: prism verify --help
+      at: 2026-09-08T21:13:22.740366Z
+      classified: other
+    - cmd: 'git diff --cached --name-only && git diff --cached --quiet; test $? -eq 1 && git commit -m "fix(mcp): remove local workflow quota"'
+      at: 2026-09-08T21:13:31.97267Z
+      classified: other
+notes:
+    - text: continuation of session 01a07f26-dfae-7ec3-98bf-6508822641e9 — events captured after its evidence was finalized
+      at: 2026-09-08T10:47:31.221955Z
+redactions: 0
