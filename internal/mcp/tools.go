@@ -780,23 +780,27 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "Edit-ready context for the symbols in terms=[...] (the only retrieval key): " +
+		return "CALL THIS FIRST for edit-ready code discovery instead of Read, Grep, Glob, or shell search. " +
+			"Returns context for the symbols in terms=[...] (the only retrieval key): " +
 			"one hop through the call graph plus a full-text pass, delivered as line-numbered " +
 			"source windows with callers and a 'tested by' file:line. Do not re-read the files " +
 			"it shows. Size with budget= and max_files=. To merely locate, use prism_search."
 	case "prism_read":
-		return "Read a file, whole or by line range (offset/limit), line-numbered. A repeat " +
+		return "CALL THIS BEFORE native Read, cat, or sed. Read a file, whole or by line range " +
+			"(offset/limit), line-numbered. A repeat " +
 			"read of an unchanged file returns a `// [prism:cached]` pointer — use the copy " +
 			"you already have. For one function use prism_lookup."
 	case "prism_search":
-		return "Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
+		return "CALL THIS BEFORE Grep, Glob, find, rg, or equivalent shell search. " +
+			"Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
 			"Known symbol? Use lookup for bodies or change_impact for affected sites directly. Batch up to 10 " +
 			"terms in query=[...]. scope=\"text\" uses grep retrieval, cheapest — use it wherever you " +
 			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
 			"around each hit (grep -C) — no follow-up read. exhaustive=true adds a complete compact " +
 			"inventory of every exact file, line, and enclosing symbol while source excerpts stay sampled; heed partial-result warnings."
 	case "prism_lookup":
-		return "Read whole symbol bodies by qualified name. Batch related methods in name=[...] " +
+		return "CALL THIS BEFORE native Read when a symbol name is known. Read whole symbol bodies " +
+			"by qualified name. Batch related methods in name=[...] " +
 			"(up to 10); use name=[{\"name\":\"Type.method\",\"file\":\"path/to/file\"}] for exact per-item file scope. For a small local bug, " +
 			"read the relevant methods together; impact is for affected-site questions. " +
 			"fields=[...] narrows to signature/doc/body/...; omit for whole bodies."
@@ -852,7 +856,8 @@ func toolDescription(name string) string {
 		// editing…") coincided with haiku opening on prism_search instead of
 		// this tool on both change tasks of the A/B gate (typeorm 2->4 turns,
 		// grafana 5->18). Descriptions are steering; this one earns its bytes.
-		return "Every indexed site that must change when a resolved symbol does. Pass 'Type.method' and get, in " +
+		return "CALL THIS BEFORE editing a known symbol or enumerating affected sites. Every indexed site " +
+			"that must change when a resolved symbol does. Pass 'Type.method' and get, in " +
 			"one call: declarations, the full override/implementation family, breaking sibling " +
 			"contracts (supers), all resolved callers, and declaringTypes. Reach for this before " +
 			"a signature change or affected-site enumeration. Includes signatures, test labels, and bounded " +

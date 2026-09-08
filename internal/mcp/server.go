@@ -120,8 +120,9 @@ const defaultProtocolVersion = "2025-03-26"
 // individual tool schemas. Claude Code uses this initialize field to decide
 // when an MCP server is relevant; file-based steering alone is not sufficient
 // because agents can still prefer native reads and searches.
-const serverInstructions = "Use Prism for code discovery before native file reads or text searches. " +
-	"If Prism tools are deferred, search for them when a task involves locating, understanding, or changing code. " +
+const serverInstructions = "For every coding task, the first repository-discovery action MUST use Prism. " +
+	"Do not begin with Read, Grep, Glob, find, rg, cat, sed, or equivalent native file/search tools. " +
+	"If Prism tools are deferred, search for them before repository discovery. " +
 	"Start with prism_query for edit-ready context, prism_search for unknown locations or exact text, " +
 	"prism_lookup for a known symbol body, or prism_change_impact for affected sites or signature changes. " +
 	"Use prism_read for exact files or line ranges and prism_verify before finishing a multi-site change. " +

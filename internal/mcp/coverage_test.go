@@ -130,11 +130,32 @@ func TestDispatch_Initialize(t *testing.T) {
 		t.Errorf("bad resp: %+v", res)
 	}
 	instructions, ok := m["instructions"].(string)
-	if !ok || !strings.Contains(instructions, "Use Prism for code discovery before native") {
+	if !ok || !strings.Contains(instructions, "first repository-discovery action MUST use Prism") {
 		t.Errorf("initialize must carry server routing instructions, got: %q", instructions)
+	}
+	for _, nativeTool := range []string{"Read", "Grep", "Glob", "find", "rg", "cat", "sed"} {
+		if !strings.Contains(instructions, nativeTool) {
+			t.Errorf("initialize instructions must route before native %s", nativeTool)
+		}
 	}
 	if len(instructions) > 2000 {
 		t.Errorf("server instructions exceed Claude Code's 2 KB limit: %d bytes", len(instructions))
+	}
+}
+
+func TestAdvertisedDiscoveryDescriptionsRouteBeforeNativeTools(t *testing.T) {
+	wants := map[string]string{
+		"prism_query":         "CALL THIS FIRST",
+		"prism_read":          "CALL THIS BEFORE native Read",
+		"prism_search":        "CALL THIS BEFORE Grep, Glob",
+		"prism_lookup":        "CALL THIS BEFORE native Read",
+		"prism_change_impact": "CALL THIS BEFORE editing",
+	}
+	for tool, want := range wants {
+		description := toolDescription(tool)
+		if !strings.HasPrefix(description, want) {
+			t.Errorf("%s description must lead with adoption guidance; got %q", tool, description)
+		}
 	}
 }
 
