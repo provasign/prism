@@ -203,14 +203,18 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		return nil, err
 	}
 	switch name {
+	// The index-backed READ tools delta-reindex first, for the same reason
+	// the whole-repo tools below do: an answer computed from an index that
+	// predates the caller's own edit is a wrong answer delivered silently.
+	// prism_read is absent on purpose — it reads the file from disk.
 	case "prism_query":
-		return h.toolQuery(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolQuery(ctx, args) })
 	case "prism_read":
 		return h.toolRead(ctx, args)
 	case "prism_search":
-		return h.toolSearch(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolSearch(ctx, args) })
 	case "prism_lookup":
-		return h.toolLookup(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolLookup(ctx, args) })
 	case "prism_index":
 		return h.toolIndex(ctx, args)
 	case "prism_compact":
@@ -222,11 +226,11 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	case "prism_drift":
 		return h.toolDrift(ctx, args)
 	case "prism_references":
-		return h.toolReferences(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolReferences(ctx, args) })
 	case "prism_resolve":
-		return h.toolResolve(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolResolve(ctx, args) })
 	case "prism_edges":
-		return h.toolEdges(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolEdges(ctx, args) })
 	// The whole-repo graph tools delta-reindex FIRST, for the same reason
 	// toolVerify does: a stale index silently computes yesterday's blast
 	// radius (measured live: an added caller was invisible to change_impact

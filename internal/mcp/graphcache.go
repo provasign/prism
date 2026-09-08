@@ -60,6 +60,33 @@ func (h *Handler) refreshIndexBestEffort(ctx context.Context) string {
 	return ""
 }
 
+// freshened runs an index-backed READ tool against a delta-refreshed index.
+//
+// The whole-repo planning tools above have refreshed since the day an added
+// caller was found invisible to change_impact. The reading tools never did —
+// and they are the ones agents call constantly. Proven 2026-09-07 on the
+// mason repo: append a function to a file, then `prism lookup` it without
+// reindexing, and the answer is "no symbol named StalenessProbeXYZ in the
+// index" — silently wrong, with nothing signalling that the index predates
+// the edit. The CLI makes it permanent rather than transient, because
+// AutoIndexIfEmpty only builds when SymbolCount == 0: a CLI process answers
+// from whatever the index held when it was last written, which is why
+// `prism watch` had to exist at all.
+//
+// Affordable, measured on that repo: 0.01s when nothing changed (grove's
+// SkipNoopGraph path returns without rebuilding the graph), 0.12s after a
+// real edit. Tools that answer from DISK (prism_read, via os.ReadFile) are
+// inherently fresh and are deliberately NOT wrapped — the cost belongs only
+// where the answer comes out of the index.
+func (h *Handler) freshened(ctx context.Context, fn func() (any, error)) (any, error) {
+	stale := h.refreshIndexBestEffort(ctx)
+	out, err := fn()
+	if err != nil {
+		return nil, err
+	}
+	return attachStaleWarning(out, stale), nil
+}
+
 // attachStaleWarning adds a refresh-failure warning to a tool's map result.
 // Best-effort: non-map results pass through unchanged.
 func attachStaleWarning(out any, note string) any {
