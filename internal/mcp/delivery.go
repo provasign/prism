@@ -128,8 +128,6 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		"already performed: do not re-read, go straight to the edit. A `[prism:cached]` " +
 		"line means the full file was already delivered this session — use the copy in " +
 		"context.\n\n")
-	b.WriteString("**" + localFixBudgetGuidance + "**\n\n")
-
 	delivered := ranking.EstimateTokens(b.String())
 	shown := make([]string, 0, maxFiles)
 	var skipped []fileGroup

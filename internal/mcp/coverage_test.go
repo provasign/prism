@@ -142,11 +142,14 @@ func TestDispatch_Initialize(t *testing.T) {
 		"make ONE batched prism_query your first action",
 		"Do not start those tasks with serial prism_search/prism_read calls",
 		"make the smallest local edit",
-		"use at most 12 total tool calls",
-		"STOP immediately",
 	} {
 		if !strings.Contains(instructions, guidance) {
 			t.Errorf("initialize instructions missing cost guidance %q", guidance)
+		}
+	}
+	for _, steering := range []string{"use at most", "STOP immediately"} {
+		if strings.Contains(instructions, steering) {
+			t.Errorf("initialize instructions contain workflow quota %q", steering)
 		}
 	}
 	if len(instructions) > 2000 {

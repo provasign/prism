@@ -792,7 +792,7 @@ func toolDescription(name string) string {
 			"one hop through the call graph plus a full-text pass, delivered as line-numbered " +
 			"source windows with callers and a 'tested by' file:line. Do not re-read the files " +
 			"it shows; once the relevant implementation and test are present, make the smallest local edit. " +
-			localFixBudgetGuidance + " Size with budget= and max_files=. To merely locate unknown code, use prism_search."
+			"Size with budget= and max_files=. To merely locate unknown code, use prism_search."
 	case "prism_read":
 		return "CONTINUATION TOOL, not the default first step for a coding fix; prism_query normally " +
 			"delivers the relevant source and tests in one call. Read a file, whole or by line range " +
