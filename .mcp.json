@@ -7,7 +7,7 @@
       ]
     },
     "prism": {
-      "command": "/Users/tapabratapal/bin/prism",
+      "command": "/opt/homebrew/bin/prism",
       "args": [
         "mcp"
       ]
