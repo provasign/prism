@@ -155,7 +155,14 @@ func scopeArgs(root string, paths []string) (operands []string, rejected []strin
 			rejected = append(rejected, p)
 			continue
 		}
-		operands = append(operands, "./"+filepath.ToSlash(rel))
+		// ripgrep treats "./." differently from "." and can return no hits for
+		// the former. Canonicalize scopes that resolve to the search root while
+		// retaining the explicit ./ prefix for child paths.
+		if rel == "." {
+			operands = append(operands, ".")
+		} else {
+			operands = append(operands, "./"+filepath.ToSlash(rel))
+		}
 	}
 	if len(operands) == 0 && len(rejected) > 0 {
 		// Every requested scope was rejected. Do NOT fall back to the whole
