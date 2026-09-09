@@ -1,0 +1,43 @@
+shale_version: "0"
+id: 01a0834c-0a58-7681-bc9a-c1a54d022d3a-c2
+created_at: 2026-09-09T00:27:01.957783Z
+finalized_at: 2026-09-09T00:29:33.078881Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T00:29:12.845146Z
+commands:
+    - cmd: git tag -a v0.72.6 -m v0.72.6 && git push origin v0.72.6
+      at: 2026-09-09T00:27:01.957783Z
+      classified: other
+    - cmd: gh run list --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,event | jq '.[] | select(.workflowName=="Release")'
+      at: 2026-09-09T00:27:07.287046Z
+      classified: other
+    - cmd: gh run list --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,event
+      at: 2026-09-09T00:27:14.381227Z
+      classified: other
+    - cmd: gh run watch 34295060512 --exit-status
+      at: 2026-09-09T00:28:55.774314Z
+      classified: other
+    - cmd: 'git branch --show-current && git diff --check && git add README.md && git commit -m "docs: point installer at v0.72.6" && git push origin main'
+      at: 2026-09-09T00:29:17.740513Z
+      classified: other
+    - cmd: git add README.md
+      at: 2026-09-09T00:29:22.736691Z
+      classified: other
+    - cmd: 'git commit -m "docs: point installer at v0.72.6"'
+      at: 2026-09-09T00:29:28.23776Z
+      classified: other
+notes:
+    - text: continuation of session 01a0834c-0a58-7681-bc9a-c1a54d022d3a — events captured after its evidence was finalized
+      at: 2026-09-09T00:27:01.957783Z
+redactions: 0
