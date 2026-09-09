@@ -425,7 +425,7 @@ func toolSchema(name string) map[string]any {
 				"terms": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "REQUIRED retrieval key, e.g. [\"AccessCount\"], expanded via the call graph. No name yet? Guess ONE keyword.",
+					"description": "REQUIRED explicit anchors, e.g. [\"AccessCount\"], expanded via text and the call graph. If no anchor is known, locate one with prism_search first.",
 				},
 				"include": map[string]any{
 					"type":        "array",
@@ -786,32 +786,29 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "FOR LOCAL BUGS AND SMALL FEATURES, CALL THIS FIRST and usually only once. Batch every " +
-			"error, class, method, and file named by the prompt into terms=[...] (the only retrieval key). " +
-			"It replaces serial Search/Read turns by returning edit-ready context: " +
+		return "RELATED-CONTEXT TOOL: use when you have explicit anchors and need their related implementations, " +
+			"callers, and tests together. Batch relevant errors, classes, methods, and files into terms=[...] " +
+			"(the only retrieval key). It returns edit-ready context: " +
 			"one hop through the call graph plus a full-text pass, delivered as line-numbered " +
 			"source windows with callers and a 'tested by' file:line. Do not re-read the files " +
 			"it shows; once the relevant implementation and test are present, make the smallest local edit. " +
-			"Size with budget= and max_files=. To merely locate unknown code, use prism_search."
+			"Size with budget= and max_files=. If no anchor is known, locate one with prism_search first."
 	case "prism_read":
-		return "CONTINUATION TOOL, not the default first step for a coding fix; prism_query normally " +
-			"delivers the relevant source and tests in one call. Read a file, whole or by line range " +
+		return "KNOWN-FILE TOOL: read a file, whole or by line range " +
 			"(offset/limit), line-numbered. A repeat " +
 			"read of an unchanged file returns a `// [prism:cached]` pointer — use the copy " +
-			"you already have. For one function use prism_lookup."
+			"you already have. For known symbol bodies use prism_lookup; for a related code neighborhood use prism_query."
 	case "prism_search":
-		return "LOCATOR ONLY: use this before Grep, Glob, find, rg, or shell search when code location " +
-			"is genuinely unknown. For a local bug or small feature, start with one batched prism_query " +
-			"instead of chaining search and read. Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
+		return "LOCATOR TOOL: use this before Grep, Glob, find, rg, or shell search when code location " +
+			"is genuinely unknown. Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
 			"Known symbol? Use lookup for bodies or change_impact for affected sites directly. Batch up to 10 " +
 			"terms in query=[...]. scope=\"text\" uses grep retrieval, cheapest — use it wherever you " +
 			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
 			"around each hit (grep -C) — no follow-up read. exhaustive=true adds a complete compact " +
 			"inventory of every exact file, line, and enclosing symbol while source excerpts stay sampled; heed partial-result warnings."
 	case "prism_lookup":
-		return "KNOWN-SYMBOL CONTINUATION: use this instead of native Read when a symbol name is known. " +
-			"For a local bug, prefer one batched prism_query as the first step. Read whole symbol bodies " +
-			"by qualified name. Batch related methods in name=[...] " +
+		return "KNOWN-SYMBOL TOOL: read whole symbol bodies by qualified name instead of using native Read. " +
+			"Batch related methods in name=[...] " +
 			"(up to 10); use name=[{\"name\":\"Type.method\",\"file\":\"path/to/file\"}] for exact per-item file scope. For a small local bug, " +
 			"read the relevant methods together; impact is for affected-site questions. " +
 			"fields=[...] narrows to signature/doc/body/...; omit for whole bodies."
@@ -881,9 +878,10 @@ func toolDescription(name string) string {
 			"+ overridesExternal = the method implements an external contract whose signature " +
 			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
 	case "prism_verify":
-		return "FINAL GRAPH CHECK: call once after the final edit of a multi-site change. It compares the " +
-			"working diff with Prism's impact closure and reports missed sites. Do not use it between edit " +
-			"iterations or as a substitute for the project's focused test and full relevant suite."
+		return "CHANGE CHECK: with removed_symbols=[...] it is a mid-loop exhaustive reference check for removals. " +
+			"Without removed_symbols, call it once after the final edit of a multi-site change; it compares the " +
+			"working diff with Prism's impact closure and reports missed sites. It is not a substitute for the " +
+			"project's focused test and full relevant suite."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
 			"and get every type in the subtype closure that FAILS to implement the member — " +

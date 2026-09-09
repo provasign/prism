@@ -67,14 +67,13 @@ Usage:
                                   gate for agent-authored changes
                                   [--base REF] [--strict] [--format text|json]
                                   ([--base REF] [--json])
-  prism query <task> --terms a,b,c [dir]  Find ranked context for a task; bug-fix/
-                                  implement tasks get line-numbered source windows +
-                                  per-anchor callers (edit-ready)
+  prism query <task> --terms a,b,c [dir]  Find related implementations, callers,
+                                  and tests around explicit anchors (edit-ready)
                                   --terms a,b,c      REQUIRED: anchor on specific symbol
-                                  names (grep-precision) — guess one from the task if
-                                  you don't have a name yet
+                                  names (grep-precision); use prism search first when
+                                  no anchor is known
                                   --include a,b      Categories: graph,docs (default: graph)
-                                  --delivery source|symbols  Force delivery shape (default: phase-aware)
+                                  --delivery source|symbols  Force delivery shape (default: source)
                                   --max-files N      source delivery: max files shown (default: 5)
                                   --format text|lean|json  Output format (default: text)
   prism read <file> [dir]         Read file with compression
@@ -496,11 +495,13 @@ Use Prism's call/type graph for code discovery.
 
 Choose the first call by need:
 - Affected sites or signature change: ` + "`" + `prism_change_impact` + "`" + ` directly.
-- Known methods, need their behavior: ` + "`" + `prism_lookup(name=["A","B"])` + "`" + ` for whole bodies.
-- Unknown location: ` + "`" + `prism_search` + "`" + `; need edit-ready context around terms: ` + "`" + `prism_query` + "`" + `.
-Do not search merely to locate a symbol already named; use impact/lookup directly.
+- Known symbol bodies: ` + "`" + `prism_lookup(name=["A","B"])` + "`" + `.
+- Known file/range: ` + "`" + `prism_read` + "`" + `.
+- Unknown code/text location: ` + "`" + `prism_search` + "`" + `.
+- Related implementations, callers, and tests: ` + "`" + `prism_query` + "`" + ` with explicit anchors.
+Known symbol: use impact/lookup directly, not search.
 Search only for external/unresolved contracts or wider scope.
-Read-only inspection needs no impact just because a symbol is named.
+Read-only inspection alone needs no impact.
 
 Workflow rules:
 
@@ -1539,7 +1540,7 @@ func cmdDoctor(args []string) int {
 
 func cmdQuery(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism query <task> --terms a,b,c [dir]  (--terms is REQUIRED — guess one keyword from the task)")
+		fmt.Fprintln(os.Stderr, "usage: prism query <task> --terms a,b,c [dir]  (--terms is REQUIRED; use prism search first when no anchor is known)")
 		return 2
 	}
 	task := args[0]

@@ -27,11 +27,13 @@ Use Prism's call/type graph for code discovery.
 
 Choose the first call by need:
 - Affected sites or signature change: `prism_change_impact` directly.
-- Known methods, need their behavior: `prism_lookup(name=["A","B"])` for whole bodies.
-- Unknown location: `prism_search`; need edit-ready context around terms: `prism_query`.
-Do not search merely to locate a symbol already named; use impact/lookup directly.
+- Known symbol bodies: `prism_lookup(name=["A","B"])`.
+- Known file/range: `prism_read`.
+- Unknown code/text location: `prism_search`.
+- Related implementations, callers, and tests: `prism_query` with explicit anchors.
+Known symbol: use impact/lookup directly, not search.
 Search only for external/unresolved contracts or wider scope.
-Read-only inspection needs no impact just because a symbol is named.
+Read-only inspection alone needs no impact.
 
 Workflow rules:
 

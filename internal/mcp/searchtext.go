@@ -123,6 +123,8 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	return b.String(), true
 }
 
+const searchLocatorGuidance = "// locator result — use prism_lookup for known symbol bodies, prism_read for a known file/range, or prism_query for related implementations, callers, and tests"
+
 // renderOneSearchText renders a single search result (one term's worth) —
 // either the files_only shape or the textHits shape — plus its warnings.
 // renderContextHits prints one file's hits with their context lines the way
@@ -258,7 +260,7 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 			}
 			b.WriteString("\n")
 		}
-		b.WriteString("// locator result — for a coding fix, make ONE prism_query with the task and batched terms for bodies, callers, and tests; use prism_lookup only for one known body; do not chain search/read\n")
+		b.WriteString(searchLocatorGuidance + "\n")
 	} else if hasKey(m, "symbols") && !hasKey(m, "textHits") && !hasKey(m, "files") {
 		// Same completeness rule as the text-search empty case above. Symbol
 		// matching is an in-memory index lookup, not a scan with a timeout

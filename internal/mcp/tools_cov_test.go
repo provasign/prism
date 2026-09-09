@@ -249,6 +249,18 @@ func TestToolQuery_OK(t *testing.T) {
 	}
 }
 
+func TestToolQueryWithoutTermsRoutesUnknownLocationToSearch(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	_, err := h.Invoke("prism_query", map[string]any{"task": "find the relevant code"})
+	if err == nil {
+		t.Fatal("expected missing terms error")
+	}
+	got := err.Error()
+	if !strings.Contains(got, "prism_search") || strings.Contains(strings.ToLower(got), "guess") || strings.Contains(got, "grep") {
+		t.Fatalf("missing terms must route to advertised locator without guessing: %q", got)
+	}
+}
+
 func TestToolRead_NoFile(t *testing.T) {
 	h := newH(t)
 	if _, err := h.Invoke("prism_read", map[string]any{}); err == nil {

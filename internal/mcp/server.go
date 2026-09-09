@@ -122,14 +122,14 @@ const defaultProtocolVersion = "2025-03-26"
 // because agents can still prefer native reads and searches.
 const serverInstructions = "For every coding task, the first repository-discovery action MUST use Prism. " +
 	"Do not begin with Read, Grep, Glob, find, rg, cat, sed, or equivalent native file/search tools. " +
-	"For a local bug or small feature, make ONE batched prism_query your first action: include the task/error " +
-	"and every named class, method, and file in terms so it returns edit-ready source and tests together. " +
-	"Do not start those tasks with serial prism_search/prism_read calls. Use prism_search only when the location " +
-	"is genuinely unknown, prism_lookup for a known symbol body, and prism_change_impact for affected sites or " +
-	"signature changes. Once Prism has delivered sufficient source, make the smallest local edit; do not add docs, " +
+	"Choose by the information needed now: prism_search locates unknown code or text; prism_lookup reads known " +
+	"symbol bodies; prism_read reads a known file or range; prism_query gathers related implementations, callers, " +
+	"and tests around explicit anchors; prism_change_impact enumerates affected sites before an edit; prism_verify " +
+	"checks the resulting change. Batch related searches and lookups. Treat partial or timed-out results as incomplete. " +
+	"Once Prism has delivered sufficient source, make the smallest local edit; do not add docs, " +
 	"changelog entries, refactors, or compatibility machinery unless the task requires them. " +
-	"Use prism_verify once after the final edit of " +
-	"a multi-site change. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
+	"For removals, prism_verify with removed_symbols is a mid-loop reference check; plain prism_verify is the final " +
+	"multi-site gate. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
 
 // supportedProtocolVersions are the MCP revisions this server can speak.
 var supportedProtocolVersions = map[string]bool{

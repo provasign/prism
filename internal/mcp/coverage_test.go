@@ -139,8 +139,10 @@ func TestDispatch_Initialize(t *testing.T) {
 		}
 	}
 	for _, guidance := range []string{
-		"make ONE batched prism_query your first action",
-		"Do not start those tasks with serial prism_search/prism_read calls",
+		"Choose by the information needed now",
+		"prism_search locates unknown code or text",
+		"prism_query gathers related implementations, callers, and tests",
+		"removed_symbols is a mid-loop reference check",
 		"make the smallest local edit",
 	} {
 		if !strings.Contains(instructions, guidance) {
@@ -159,18 +161,37 @@ func TestDispatch_Initialize(t *testing.T) {
 
 func TestAdvertisedDiscoveryDescriptionsRouteEfficiently(t *testing.T) {
 	wants := map[string]string{
-		"prism_query":         "FOR LOCAL BUGS AND SMALL FEATURES, CALL THIS FIRST",
-		"prism_read":          "CONTINUATION TOOL",
-		"prism_search":        "LOCATOR ONLY",
-		"prism_lookup":        "KNOWN-SYMBOL CONTINUATION",
+		"prism_query":         "RELATED-CONTEXT TOOL",
+		"prism_read":          "KNOWN-FILE TOOL",
+		"prism_search":        "LOCATOR TOOL",
+		"prism_lookup":        "KNOWN-SYMBOL TOOL",
 		"prism_change_impact": "CALL THIS BEFORE editing",
-		"prism_verify":        "FINAL GRAPH CHECK",
+		"prism_verify":        "CHANGE CHECK",
 	}
+	allGuidance := serverInstructions
 	for tool, want := range wants {
 		description := toolDescription(tool)
 		if !strings.HasPrefix(description, want) {
 			t.Errorf("%s description must lead with adoption guidance; got %q", tool, description)
 		}
+		allGuidance += "\n" + description
+	}
+	for _, conflict := range []string{
+		"CALL THIS FIRST",
+		"prefer one batched prism_query",
+		"only for one known body",
+		"prism_references",
+	} {
+		if strings.Contains(allGuidance, conflict) {
+			t.Errorf("advertised routing guidance contains conflicting or unavailable route %q", conflict)
+		}
+	}
+	terms := toolSchema("prism_query")["properties"].(map[string]any)["terms"].(map[string]any)["description"].(string)
+	if strings.Contains(strings.ToLower(terms), "guess") || !strings.Contains(terms, "prism_search") {
+		t.Errorf("query terms schema must route unknown anchors to search without guessing: %q", terms)
+	}
+	if got := toolDescription("prism_verify"); !strings.Contains(got, "removed_symbols") || !strings.Contains(got, "mid-loop") {
+		t.Errorf("verify description must distinguish removal iterations from the final gate: %q", got)
 	}
 }
 

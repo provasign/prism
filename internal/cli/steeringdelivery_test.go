@@ -10,10 +10,12 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 	for _, want := range []string{
 		"mcp__prism__prism_lookup",
 		"Affected sites or signature change:",
-		"Known methods, need their behavior:",
+		"Known symbol bodies:",
 		`prism_lookup(name=["A","B"])`,
-		"Unknown location:",
-		"Do not search merely to locate a symbol already named",
+		"Known file/range:",
+		"Unknown code/text location:",
+		"Related implementations, callers, and tests:",
+		"Known symbol: use impact/lookup directly, not search",
 		"External/unresolved interface or undersized closure for a wide task?",
 		`prism_search(scope="text", exhaustive=true)`,
 		"text matches do not prove implementation",
@@ -23,13 +25,20 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 			t.Errorf("missing direct route: %s", want)
 		}
 	}
-	if strings.Contains(got, "FIRST discovery call a prism one (search/query)") {
-		t.Error("known names must not require a preliminary search")
+	for _, conflict := range []string{
+		"FIRST discovery call a prism one (search/query)",
+		"For a local bug or small feature",
+		"use prism_lookup only for one known body",
+		"guess ONE keyword",
+	} {
+		if strings.Contains(got, conflict) {
+			t.Errorf("steering contains conflicting route %q", conflict)
+		}
 	}
 	if strings.Contains(got, "Known symbol, affected sites") {
 		t.Error("a named symbol alone must not trigger impact")
 	}
-	for _, want := range []string{"Read-only inspection needs no impact", "do not fetch bodies by default", "site enumeration"} {
+	for _, want := range []string{"Read-only inspection alone needs no impact", "do not fetch bodies by default", "site enumeration"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing task-depth distinction: %s", want)
 		}

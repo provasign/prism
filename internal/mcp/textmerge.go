@@ -768,8 +768,8 @@ func (h *Handler) resolvedRefNote(ctx context.Context, query string, hits []text
 		}
 		return fmt.Sprintf(
 			"%d text hits, but %d different symbols share the name %q (%s%s) — most hits "+
-				"belong to the ones you did not mean. prism_references <qualified.Name> "+
-				"for just the real references to one of them.",
+				"belong to the ones you did not mean. Disambiguate by qualified name and inspect receiver/type "+
+				"evidence before acting on the text hits.",
 			len(hits), len(cands), query, strings.Join(names, ", "),
 			map[bool]string{true: ", …", false: ""}[len(cands) > 3])
 	}
@@ -784,7 +784,7 @@ func (h *Handler) resolvedRefNote(ctx context.Context, query string, hits []text
 	}
 	return fmt.Sprintf(
 		"%d text hits, but only %d are resolved references to %s — the rest match the "+
-			"name without referring to it (other types, comments, strings). "+
-			"prism_references %s for just the real ones.",
-		len(hits), n, qn, qn)
+			"name without referring to it (other types, comments, strings). Inspect receiver/type "+
+			"evidence before treating the remaining text hits as uses.",
+		len(hits), n, qn)
 }

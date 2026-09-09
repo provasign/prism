@@ -1,10 +1,10 @@
 package mcp
 
 import (
-	"sort"
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,7 +17,7 @@ import (
 // selectParams are the inputs to the shared retrieve→expand→rank→budget
 // pipeline behind prism_query and prism_explore.
 type selectParams struct {
-	minedTerms []string // identifiers mined from the task text; seed AFTER explicit terms
+	minedTerms      []string // identifiers mined from the task text; seed AFTER explicit terms
 	task            string
 	terms           []string
 	includeSet      map[string]bool
@@ -330,14 +330,13 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// agent guessing ONE keyword through lexical search already wins or
 		// ties that fallback in 12/15 cases, often by a wide margin — so the
 		// fallback was adding an unreliable extra hop, not covering a real
-        // gap. The actual fix for "I don't know any names yet" is doing what
-		// the agent would do anyway: grep or prism_search a guessed term,
-		// THEN call this with terms. Same discipline mason's own harness
+		// gap. The actual fix for "I don't know any names yet" is to use
+		// prism_search to locate an explicit anchor, THEN call this with terms.
+		// Same discipline mason's own harness
 		// already enforces (code_context requires both task and terms).
 		return nil, fmt.Errorf(
-			"no terms given — guess ONE keyword from the task (a class/function name fragment, " +
-				"a domain term) and call this again with terms=[\"<guess>\"]. If you are not sure what " +
-				"to guess, use prism_search or grep first to find an anchor, then retry with terms")
+			"no terms given — prism_query expands explicit anchors; pass known class, function, file, " +
+				"or error terms. If no anchor is known, use prism_search to locate one, then retry with terms")
 	}
 	stamp("seeds")
 	// Build candidates: the first interleave round seeds (distance 0), the
@@ -545,14 +544,14 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	stamp("rank+budget")
 
 	return &selection{
-		picked:      picked,
-		seedSyms:    seedSyms,
-		familySyms:  familySyms,
-		graphExtra:  graphExtra,
-		seeds:       seeds,
-		budget:      budget,
-		textHits:    textMerge.rawHits,
-		textBackend: textMerge.backend,
+		picked:           picked,
+		seedSyms:         seedSyms,
+		familySyms:       familySyms,
+		graphExtra:       graphExtra,
+		seeds:            seeds,
+		budget:           budget,
+		textHits:         textMerge.rawHits,
+		textBackend:      textMerge.backend,
 		testCallers:      testCallers,
 		contentOnlySeeds: contentOnlySeeds,
 	}, nil

@@ -8,7 +8,7 @@ import (
 func TestOnceNotes_FixedAndLong(t *testing.T) {
 	var o onceNotes
 	first := "a.go:1: x\n// no matches — search completed (not truncated, not timed out)\n" +
-		"symbols (2):\n  method Foo.Bar  a.go:1-2\n// locator result — for a coding fix, make ONE prism_query with the task and batched terms for bodies, callers, and tests; use prism_lookup only for one known body; do not chain search/read\n" +
+		"symbols (2):\n  method Foo.Bar  a.go:1-2\n" + searchLocatorGuidance + "\n" +
 		"// 176 more files with matches omitted — narrow the term, or exhaustive=true to list every file\n" +
 		"// Scored (graph/x.go:10); 3 caller(s): Query graph/q.go:1 Query graph/q.go:2 SemanticSearch graph/s.go:3. A contract change here touches that whole set — prism_change_impact for the closed, line-precise list.\n"
 	got1 := o.apply(first)

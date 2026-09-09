@@ -25,7 +25,7 @@ import (
 var onceFixed = map[string]string{
 	"// no matches — search completed (not truncated, not timed out)": "// no matches",
 	"// no symbol matches (full index checked, not a partial pass)":   "// no symbol matches",
-	"// locator result — for a coding fix, make ONE prism_query with the task and batched terms for bodies, callers, and tests; use prism_lookup only for one known body; do not chain search/read": "",
+	searchLocatorGuidance: "",
 	"// ALL matches by enclosing symbol (graph rollup of the full set):":                     "// by enclosing symbol:",
 	"// Grouped matches by enclosing symbol (bounded graph rollup; inspect omission notes):": "// bounded rollup by enclosing symbol; inspect omissions:",
 	"// closest indexed symbols:": "// closest indexed symbols:",

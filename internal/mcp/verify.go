@@ -277,7 +277,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			// stale reference left behind verified clean, exit 0). Surface
 			// them as unverified so the verdict degrades to "review".
 			unverifiedSeeds = append(unverifiedSeeds,
-				fmt.Sprintf("%s %s (%s) — no call-shaped blast radius to verify; check its references (prism_references %s)",
+				fmt.Sprintf("%s %s (%s) — no call-shaped blast radius to verify; check references with prism_search scope=text exhaustive=true for %s",
 					sym.Kind, displayQN(sym), reason, sym.Name))
 		default:
 			// interface/struct/class/type contract changes: real blast
@@ -1112,7 +1112,6 @@ func displayQN(s grove.SymbolRecord) string {
 	}
 	return s.Name
 }
-
 
 // staleRef is one surviving occurrence of a renamed symbol's OLD name.
 type staleRef struct {
