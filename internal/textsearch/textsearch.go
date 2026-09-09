@@ -59,6 +59,11 @@ type Result struct {
 	// most that many. Callers must present it as "at least N".
 	TotalHits    int `json:"totalHits,omitempty"`
 	FilesMatched int `json:"filesMatched,omitempty"`
+	// CountComplete distinguishes an exact count from the lower bound above.
+	// ResultsComplete additionally says Hits contains that entire exact set.
+	// Both are set only by the bounded adaptive-count path.
+	CountComplete   bool `json:"countComplete,omitempty"`
+	ResultsComplete bool `json:"resultsComplete,omitempty"`
 	// RejectedPaths lists requested scopes that resolved outside the root
 	// and were dropped. Never silent: a search that quietly widened from
 	// one directory to the whole tree returns plausible hits from the wrong
@@ -116,6 +121,10 @@ type Options struct {
 	// each hit's file directly and slices the window -- one code path,
 	// identical behaviour on every backend, by construction.
 	Context int
+	// Adaptive asks Search to count first and return the complete hit set when
+	// the exact total is small. Callers with a deliberately strict MaxHits cap
+	// leave this false; prism_search enables it for its default limit.
+	Adaptive bool
 }
 
 // scopeArgs resolves opts.Paths against root, dropping anything that escapes
@@ -310,6 +319,30 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
+	var counted CountResult
+	adaptive := opts.Adaptive && !opts.Exhaustive
+	if adaptive {
+		// Counting is a compact file:count pass, but it must not consume the
+		// search's whole deadline on a very large or slow tree. If this bounded
+		// probe cannot finish, the existing sampled search remains the fallback.
+		budget := opts.Timeout / 4
+		if budget > 2*time.Second {
+			budget = 2 * time.Second
+		}
+		if budget > 0 {
+			countCtx, countCancel := context.WithTimeout(ctx, budget)
+			counted = Count(countCtx, root, pattern, opts)
+			countCancel()
+		}
+		if counted.Complete && counted.TotalHits == 0 {
+			return Result{
+				Backend: counted.Backend, TotalHits: 0, FilesMatched: 0,
+				CountComplete: true, ResultsComplete: len(counted.RejectedPaths) == 0,
+				RejectedPaths: counted.RejectedPaths,
+			}
+		}
+	}
+
 	// SOURCE-FIRST DELIVERY. The backend emits hits in --sort path order, so
 	// on repos with early-sorting non-source trees the whole cap is spent
 	// before any code is reached — measured 2026-09-02 (BACKLOG addendum #6,
@@ -320,8 +353,18 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	// group, so the backend's deterministic order is preserved). Exhaustive
 	// searches already return everything and skip both steps.
 	fetch := opts
-	if !opts.Exhaustive && opts.MaxHits < 200 {
+	completeSmall := adaptive && counted.Complete && counted.TotalHits <= adaptiveCompleteHitLimit
+	if completeSmall {
+		// The count proves the total is bounded, so lifting the caller's display
+		// cap cannot create an unbounded response. A per-file cap equal to the
+		// global total guarantees no matching line is hidden within one file.
+		fetch.MaxHits = maxInt(counted.TotalHits, 1)
+		fetch.MaxPerFile = maxInt(counted.TotalHits, 1)
+	} else if !opts.Exhaustive && opts.MaxHits < 200 {
 		fetch.MaxHits = 200
+		if adaptive && fetch.MaxPerFile < opts.MaxHits {
+			fetch.MaxPerFile = opts.MaxHits
+		}
 	}
 
 	var res Result
@@ -341,9 +384,22 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	default:
 		res = nativeSearch(ctx, root, pattern, fetch)
 	}
+	if adaptive && counted.Complete {
+		res.TotalHits = counted.TotalHits
+		res.FilesMatched = counted.FilesMatched
+		res.CountComplete = true
+		// The line pass can still time out or fall back to a backend with
+		// different availability. Only claim a complete result when its size
+		// agrees with the independent exact count.
+		res.ResultsComplete = completeSmall && !res.TimedOut &&
+			len(res.RejectedPaths) == 0 && len(res.Hits) == counted.TotalHits
+		if len(res.Hits) < counted.TotalHits {
+			res.Truncated = true
+		}
+	}
 	if !opts.Exhaustive && len(res.Hits) > 0 {
 		res.Hits = rankSourceFirst(res.Hits)
-		if len(res.Hits) > opts.MaxHits {
+		if !res.ResultsComplete && len(res.Hits) > opts.MaxHits {
 			res.Hits = res.Hits[:opts.MaxHits]
 			res.Truncated = true
 		}
@@ -352,6 +408,15 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 		attachContext(root, res.Hits, opts.Context)
 	}
 	return res
+}
+
+const adaptiveCompleteHitLimit = 64
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // sourceExts are extensions of files an agent edits as code — the files a

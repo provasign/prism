@@ -43,6 +43,8 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"symbolsTruncated": true,
 		"root":             true,
 		"omittedTerms":     true,
+		"countComplete":    true,
+		"resultsComplete":  true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -208,6 +210,12 @@ func renderContextHits(b *strings.Builder, file string, hits []any, seen map[str
 // Returns false on any field it does not know how to render, so the caller
 // falls back to JSON rather than silently dropping content.
 func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]bool) bool {
+	if complete, _ := m["resultsComplete"].(bool); complete {
+		if total, ok := m["totalHits"].(int); ok && total > 0 {
+			files, _ := m["filesMatched"].(int)
+			fmt.Fprintf(b, "// COMPLETE — %d exact matches across %d %s\n", total, files, textMatchFileWord(files))
+		}
+	}
 	// The graph's one-line reading of the term comes FIRST. It used to trail
 	// the hit list; measured 2026-09-05 (dubbo retest transcript): the
 	// field→type headline sat at byte 3399 of a 5292-byte result, after 170

@@ -232,6 +232,49 @@ func (h *Handler) renderTextMatches(ctx context.Context, rawHits []textsearch.Hi
 	return out
 }
 
+// renderCompleteTextMatches delivers every raw line in a small result set.
+// Search calls this only after an independent exact count proves the global
+// set is within textsearch's adaptive bound, so bypassing the normal per-file
+// and file-count display caps cannot create an unbounded response.
+func (h *Handler) renderCompleteTextMatches(rawHits []textsearch.Hit) []map[string]any {
+	if len(rawHits) == 0 {
+		return nil
+	}
+	var order []string
+	byFile := map[string][]textsearch.Hit{}
+	for _, hit := range rawHits {
+		if _, ok := byFile[hit.File]; !ok {
+			order = append(order, hit.File)
+		}
+		byFile[hit.File] = append(byFile[hit.File], hit)
+	}
+	out := make([]map[string]any, 0, len(order))
+	for _, file := range order {
+		cached := h.textFileCached(file)
+		entry := map[string]any{"file": file}
+		hits := make([]map[string]any, 0, len(byFile[file]))
+		for _, hit := range byFile[file] {
+			item := map[string]any{"line": hit.Line, "text": hit.Text}
+			if !cached {
+				if len(hit.Before) > 0 {
+					item["before"] = hit.Before
+				}
+				if len(hit.After) > 0 {
+					item["after"] = hit.After
+				}
+			}
+			hits = append(hits, item)
+		}
+		entry["hits"] = hits
+		if cached {
+			entry["cached"] = true
+			entry["note"] = "file content already delivered this session (unchanged) — context lines omitted, matched lines shown"
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
 // exactHitInventory is the compact, lossless half of exhaustive text search.
 // One entry per file avoids repeating long paths; sites retain every line and
 // the tightest indexed symbol enclosing it. A missing symbol is explicit: text

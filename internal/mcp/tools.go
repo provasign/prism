@@ -1422,6 +1422,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		exhaustive: boolArg(args, "exhaustive"),
 		context:    reqContext,
 		rollupOnly: boolArg(args, "rollup_only"),
+		adaptive:   limit == defaultSearchLimit,
 	}
 	if len(queries) > 1 && len(sc.paths) == 0 && len(sc.glob) == 0 {
 		filtered := queries[:0]
@@ -1626,6 +1627,7 @@ type searchScope struct {
 	exhaustive bool
 	context    int
 	rollupOnly bool
+	adaptive   bool
 }
 
 func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
@@ -1638,13 +1640,14 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
-			Exhaustive: sc.exhaustive, Context: sc.context,
+			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
 		})
 		out := map[string]any{
-			"textHits":    h.renderTextMatches(ctx, r.Hits, sc.exhaustive),
+			"textHits":    h.renderedTextSearchHits(ctx, r, sc.exhaustive),
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
 		}
+		attachTextSearchCompleteness(out, r)
 		if r.Truncated {
 			// Truncation always carries a denominator. Without one the agent
 			// cannot tell a complete answer from a 2% sample, and the failure
@@ -1657,11 +1660,11 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			if len(ru) > 0 {
 				out["hitRollup"] = ru
 				out["warning"] = fmt.Sprintf(
-					"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not "+
+					"showing %d of %s matches across %d %s — this is a SAMPLE, not "+
 						"the full set. Check the bounded hitRollup below before re-querying; "+
 						"omitted groups and unprobed hits are noted. It is not a complete site inventory. "+
 						"Need every raw line? exhaustive=true; narrow path=/glob= for evidence gaps.",
-					len(r.Hits), r.TotalHits, r.FilesMatched)
+					len(r.Hits), textMatchCount(r, false), r.FilesMatched, textMatchFileWord(r.FilesMatched))
 				if sc.rollupOnly {
 					// The caller already knows the sample's raw lines are
 					// not what they need this call -- "how many, and where
@@ -1679,10 +1682,10 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 				}
 			} else {
 				out["warning"] = fmt.Sprintf(
-					"showing %d of AT LEAST %d matches across %d files — this is a SAMPLE, not the "+
+					"showing %d of %s matches across %d %s — this is a SAMPLE, not the "+
 						"full set. Raise limit=, narrow with path=/glob=, or use files_only=true to "+
 						"see the spread before drawing conclusions. Need every raw line? exhaustive=true.",
-					len(r.Hits), r.TotalHits, r.FilesMatched)
+					len(r.Hits), textMatchCount(r, false), r.FilesMatched, textMatchFileWord(r.FilesMatched))
 			}
 		}
 		if sc.filesOnly {
@@ -1700,7 +1703,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			delete(out, "textHits")
 			out["fileCount"] = len(files)
 			out["files"] = files
-			if sc.exhaustive {
+			if sc.exhaustive || r.ResultsComplete {
 				out["note"] = strconv.Itoa(len(files)) + " files match — COMPLETE exact path inventory; no directory counts or path expansion required"
 			}
 		}
@@ -1829,19 +1832,20 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
-			Exhaustive: sc.exhaustive, Context: sc.context,
+			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
 		})
 		if len(r.Hits) > 0 {
-			out["textHits"] = h.renderTextMatches(ctx, r.Hits, sc.exhaustive)
+			out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive)
 			out["textBackend"] = r.Backend
 		}
+		attachTextSearchCompleteness(out, r)
 		if r.Truncated {
 			out["truncated"] = true
 			out["totalHits"] = r.TotalHits
 			out["filesMatched"] = r.FilesMatched
 			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf(
-				"Text matches are a SAMPLE: showing %d of at least %d. Use exhaustive=true or narrow path=/glob=.",
-				len(r.Hits), r.TotalHits))
+				"Text matches are a SAMPLE: showing %d of %s. Use exhaustive=true or narrow path=/glob=.",
+				len(r.Hits), textMatchCount(r, true)))
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
