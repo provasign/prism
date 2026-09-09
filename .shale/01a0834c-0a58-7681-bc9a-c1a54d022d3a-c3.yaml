@@ -1,0 +1,1141 @@
+shale_version: "0"
+id: 01a0834c-0a58-7681-bc9a-c1a54d022d3a-c3
+created_at: 2026-09-09T00:29:45.565159Z
+finalized_at: 2026-09-09T17:34:12.255785Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T00:45:20.962627Z
+    - path: internal/mcp/delivery.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T00:45:20.962627Z
+    - path: internal/mcp/delivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T00:45:20.962627Z
+    - path: internal/mcp/searchmulti_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T00:45:20.962627Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T01:27:02.098801Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T01:27:02.098801Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T01:27:02.098801Z
+    - path: internal/cli/steeringdelivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T01:27:02.098801Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T01:27:02.098801Z
+    - path: internal/mcp/searchtext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T01:31:59.012591Z
+    - path: internal/mcp/oncenotes.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T01:32:49.597547Z
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T11:43:45.071396Z
+    - path: internal/mcp/tools_cov_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T11:46:57.451792Z
+    - path: internal/mcp/selection_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T12:03:10.735405Z
+commands:
+    - cmd: git push origin main
+      at: 2026-09-09T00:29:45.565159Z
+      classified: other
+    - cmd: git status -sb && git log -4 --oneline --decorate && gh release view v0.72.6 --json tagName,isDraft,isPrerelease,url,publishedAt,assets
+      at: 2026-09-09T00:31:22.287232Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' /private/tmp/prism-coding-candidate-sample-20260908/evidence/pallets__click__pr3466.sonnet_prism/stdout.jsonl; jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' /private/tmp/prism-mcp-current-run2-20260908/evidence/urllib3__urllib3__pr3786.sonnet_prism/stdout.jsonl; jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' /private/tmp/prism-mcp-current-run2-20260908/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+      at: 2026-09-09T00:34:02.57112Z
+      classified: other
+    - cmd: sed -n '24,52p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py; for f in /Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e/*.json; do jq -r '[.instance_id, (.problem_statement|split("\n")[0]), (.patch|length), (.test_patch|length)]|@tsv' "$f"; done | head -30
+      at: 2026-09-09T00:34:36.327963Z
+      classified: other
+    - cmd: jq -r '.rows[] | [.cell_id,.resolved,.tool_calls,((.prism_calls//[])|length),.total_tokens,.cost_usd] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/summary.json | sort
+      at: 2026-09-09T00:35:23.047051Z
+      classified: other
+    - cmd: rg -n 'default\|implement_feature\|fix_bug\|code_review|For local bugs|prism_query' internal/mcp/tools.go | head -40
+      at: 2026-09-09T00:43:36.683255Z
+      classified: other
+    - cmd: sed -n '420,460p' internal/mcp/tools.go; sed -n '780,810p' internal/mcp/tools.go
+      at: 2026-09-09T00:43:41.927736Z
+      classified: other
+    - cmd: rg -n 'deliverSource\(' internal/mcp; gofmt -w internal/mcp/tools.go internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/searchmulti_test.go; GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1
+      at: 2026-09-09T00:45:31.318113Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1
+      at: 2026-09-09T00:45:49.210969Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1
+      at: 2026-09-09T00:48:20.260987Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp1 ./cmd/prism
+      at: 2026-09-09T00:48:39.914568Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp1 index /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base && /private/tmp/prism-nonimpact-exp1 search _zsh_completion_source --scope text --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__click__pr3466/base
+      at: 2026-09-09T00:48:49.697162Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 search _zsh_completion_source --scope text --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:50:32.57388Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text --dir /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:50:48.458276Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:50:56.212842Z
+      classified: other
+    - cmd: git status -sb && prism change-impact 'renderVerifiedTestEvidence' --format text
+      at: 2026-09-09T00:52:20.140512Z
+      classified: other
+    - cmd: prism lookup Handler.deliverSource Handler.renderVerifiedTestEvidence Handler.toolQuery --format text
+      at: 2026-09-09T00:52:30.459224Z
+      classified: other
+    - cmd: prism lookup --help
+      at: 2026-09-09T00:52:36.424763Z
+      classified: other
+    - cmd: prism lookup Handler.renderVerifiedTestEvidence --format text
+      at: 2026-09-09T00:52:45.051494Z
+      classified: other
+    - cmd: prism lookup Handler.deliverSource --format text
+      at: 2026-09-09T00:52:45.17269Z
+      classified: other
+    - cmd: prism lookup Handler.toolQuery --format text
+      at: 2026-09-09T00:52:45.177812Z
+      classified: other
+    - cmd: prism lookup TestToolQuery_TestedByPointer --format text
+      at: 2026-09-09T00:52:54.499227Z
+      classified: other
+    - cmd: prism search 'fixBugTestMax' 'testCallers' --scope text --path internal/mcp --context 3 --format text
+      at: 2026-09-09T00:52:54.699483Z
+      classified: other
+    - cmd: prism lookup newDeliveryFixture --format text
+      at: 2026-09-09T00:52:59.706122Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --start 1 --end 90 --format text
+      at: 2026-09-09T00:53:04.645177Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-09T00:53:08.86704Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --format text
+      at: 2026-09-09T00:53:14.436565Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 query 'fix zsh CRLF output' --terms shell_complete --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:53:59.892431Z
+      classified: other
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp1 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:54:19.537412Z
+      classified: other
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp1 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:54:56.26369Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --delivery symbols --format json /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:55:06.403007Z
+      classified: other
+    - cmd: prism search shell_completion zsh_source CRLF --path /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base/tests --scope text --exhaustive --format text
+      at: 2026-09-09T00:55:15.450506Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 search shell_completion zsh_source CRLF --path tests --scope text --exhaustive --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:55:24.229709Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 search --help
+      at: 2026-09-09T00:55:29.614358Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 search shell_completion zsh_source CRLF --path tests --scope text --exhaustive --format text --dir /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:55:37.968673Z
+      classified: other
+    - cmd: prism search 'Symbols(' 'SearchSymbols' 'FilePath' --scope text --path internal/grove --context 3 --format text
+      at: 2026-09-09T00:55:45.79774Z
+      classified: other
+    - cmd: prism search 'ListFiles' 'Files(ctx' 'Status(ctx' --scope text --path internal/grove --context 3 --format text
+      at: 2026-09-09T00:55:57.464737Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp1 search source zsh shell_complete --path tests/test_shell_completion.py --scope both --format text --dir /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T00:56:07.776698Z
+      classified: other
+    - cmd: prism search 'isTestFile' 'testFile' --scope text --path internal/mcp --context 3 --format text
+      at: 2026-09-09T00:56:23.465322Z
+      classified: other
+    - cmd: prism lookup mineTaskIdentifiers --format text
+      at: 2026-09-09T00:56:42.62678Z
+      classified: other
+    - cmd: prism search 'verified direct-caller' 'fix_bug' --scope text --path internal/mcp/tools.go --context 3 --format text
+      at: 2026-09-09T01:00:51.730328Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/tools.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1
+      at: 2026-09-09T01:01:37.385885Z
+      classified: test
+    - cmd: prism change-impact 'TestToolQuery_TestedByPointer' --format text
+      at: 2026-09-09T01:01:47.05146Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery_test.go --format text
+      at: 2026-09-09T01:01:52.664433Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command | rg 'go test ./internal/mcp|delivery_test|grove'
+      at: 2026-09-09T01:04:06.263709Z
+      classified: test
+    - cmd: git status -sb && git diff --stat
+      at: 2026-09-09T01:04:06.289852Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run '^TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller$' -count=1 -v -timeout 60s
+      at: 2026-09-09T01:04:18.164603Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1 -timeout 60s
+      at: 2026-09-09T01:04:27.570264Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp2 ./cmd/prism
+      at: 2026-09-09T01:04:41.125489Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp2 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text --dir /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T01:04:49.395415Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp2 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T01:04:59.580008Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1 -timeout 60s
+      at: 2026-09-09T01:06:47.183048Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp2 ./cmd/prism
+      at: 2026-09-09T01:07:00.758466Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp2 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base | sed -n '/Tests — focused/,$p'
+      at: 2026-09-09T01:07:06.772541Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp2 search shell --path tests/test_shell_completion.py --scope symbols --format text --dir /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base
+      at: 2026-09-09T01:07:15.001172Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1 -timeout 60s
+      at: 2026-09-09T01:08:33.562883Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp2 ./cmd/prism
+      at: 2026-09-09T01:08:41.761778Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp2 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base | sed -n '/Tests — focused/,$p'
+      at: 2026-09-09T01:08:49.407908Z
+      classified: other
+    - cmd: prism lookup isVerifiedTestCaller --format text && prism lookup isTestFilePath --format text
+      at: 2026-09-09T01:09:02.08969Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1 -timeout 60s
+      at: 2026-09-09T01:09:58.414432Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp2 ./cmd/prism
+      at: 2026-09-09T01:10:08.359453Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp2 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base | sed -n '/Tests — focused/,$p'
+      at: 2026-09-09T01:10:16.138205Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go && GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp2 ./cmd/prism
+      at: 2026-09-09T01:10:44.877077Z
+      classified: build
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp2 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base 2>&1 | rg '^\[test-pick\]'
+      at: 2026-09-09T01:10:52.067878Z
+      classified: other
+    - cmd: prism lookup nearMissTokens --format text
+      at: 2026-09-09T01:11:05.553815Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1 -timeout 60s
+      at: 2026-09-09T01:11:38.383065Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp2 ./cmd/prism
+      at: 2026-09-09T01:11:47.903558Z
+      classified: build
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp2 query 'fix zsh CRLF output' --terms shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base 2>&1 | rg '^\[test-pick\]' | head -8
+      at: 2026-09-09T01:11:56.440593Z
+      classified: other
+    - cmd: jq '{instance_id,problem_statement}' harness/tasks-e2e/pallets__click__pr3466.json
+      at: 2026-09-09T01:12:06.007288Z
+      classified: other
+    - cmd: rg --files /Users/tapabratapal/Projects/provasign/research | rg 'pallets__click__pr3466\.json$'
+      at: 2026-09-09T01:12:14.988727Z
+      classified: other
+    - cmd: jq '{instance_id,problem_statement}' /Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e/pallets__click__pr3466.json
+      at: 2026-09-09T01:12:20.486709Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp2 query "zsh completion setup parse error near elif from zsh_source" --terms ZshComplete.source,shell_complete,echo --profile fix_bug --format text /private/tmp/prism-coding-candidate-sample-20260908/templates/pallets__click__pr3466/base | sed -n '/Tests — focused/,$p'
+      at: 2026-09-09T01:12:38.328968Z
+      classified: other
+    - cmd: rg -n "daytoday|four-head|PRISM.*BIN|mcp|pr3466|pr3938" harness docs -g '*.py' -g '*.md' | head -160
+      at: 2026-09-09T01:12:56.204496Z
+      classified: other
+    - cmd: if [ -f AGENTS.md ]; then sed -n '1,240p' AGENTS.md; fi
+      at: 2026-09-09T01:12:56.204483Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-09T01:12:56.359129Z
+      classified: other
+    - cmd: python3 -B harness/coding_suite.py --help
+      at: 2026-09-09T01:13:19.237557Z
+      classified: other
+    - cmd: prism search 'TASKS =' 'def main' 'PRISM_SOURCE' --path harness/coding_suite.py --scope text --context 8 --format text
+      at: 2026-09-09T01:13:31.743363Z
+      classified: other
+    - cmd: prism read harness/coding_suite.py --format text
+      at: 2026-09-09T01:13:44.510391Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command | rg '[p]rism|coding_suite|claude|codex exec'
+      at: 2026-09-09T01:13:49.828462Z
+      classified: other
+    - cmd: kill 40711
+      at: 2026-09-09T01:13:58.068303Z
+      classified: other
+    - cmd: sed -n '1,380p' harness/coding_suite.py
+      at: 2026-09-09T01:14:03.610291Z
+      classified: other
+    - cmd: sed -n '380,760p' harness/coding_suite.py
+      at: 2026-09-09T01:14:08.217144Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-nonimpact-two.py /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08 /private/tmp/prism-nonimpact-exp2
+      at: 2026-09-09T01:18:05.401442Z
+      classified: other
+    - cmd: for task in pallets__click__pr3466 Textualize__rich__pr3938; do echo "--- $task candidate diff"; sed -n '1,240p' "harness/runs/nonimpact-exp2-two-2026-09-08/evidence/$task.sonnet_prism/agent.diff"; done
+      at: 2026-09-09T01:18:32.350851Z
+      classified: other
+    - cmd: jq '.rows[] | select((.task=="pallets__click__pr3466" or .task=="Textualize__rich__pr3938") and .arm=="sonnet_prism") | {task,arm,resolved,audited_valid,wall_s,turns,total_tokens,input_tokens,cache_read_tokens,output_tokens,cost_usd,tool_calls,prism_actions,duplicate_prism_calls,changed_files,diff_lines,score}' harness/runs/product-proof-coding-remaining-2026-09-08/summary.json
+      at: 2026-09-09T01:18:32.350851Z
+      classified: other
+    - cmd: jq '.rows[] | {task,arm,resolved,audited_valid,wall_s,turns,total_tokens,input_tokens,cache_read_tokens,output_tokens,cost_usd,tool_calls,prism_actions,duplicate_prism_calls,changed_files,diff_lines,score}' harness/runs/nonimpact-exp2-two-2026-09-08/summary.json
+      at: 2026-09-09T01:18:32.350851Z
+      classified: other
+    - cmd: jq '{problem_statement,FAIL_TO_PASS,PASS_TO_PASS,test_patch}' harness/tasks-e2e/Textualize__rich__pr3938.json
+      at: 2026-09-09T01:18:47.931144Z
+      classified: other
+    - cmd: sed -n '1,240p' harness/runs/product-proof-coding-remaining-2026-09-08/evidence/Textualize__rich__pr3938.sonnet_prism/agent.diff
+      at: 2026-09-09T01:18:47.931078Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant" or .type=="user" or .type=="result") | tostring' harness/runs/nonimpact-exp2-two-2026-09-08/evidence/Textualize__rich__pr3938.sonnet_prism/stdout.jsonl | tail -80
+      at: 2026-09-09T01:18:47.931145Z
+      classified: other
+    - cmd: jq '{prism_calls,native_commands,tool_calls,prism_actions,duplicate_prism_calls}' harness/runs/nonimpact-exp2-two-2026-09-08/evidence/Textualize__rich__pr3938.sonnet_prism/measurement.json
+      at: 2026-09-09T01:19:10.159189Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' harness/runs/nonimpact-exp2-two-2026-09-08/evidence/Textualize__rich__pr3938.sonnet_prism/stdout.jsonl
+      at: 2026-09-09T01:19:10.1592Z
+      classified: other
+    - cmd: jq '{prism_calls,native_commands,turns,total_tokens,input_tokens,output_tokens,cost_usd,wall_s}' harness/runs/nonimpact-exp2-two-2026-09-08/evidence/pallets__click__pr3466.sonnet_prism/measurement.json
+      at: 2026-09-09T01:20:13.148345Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' harness/runs/nonimpact-exp2-two-2026-09-08/evidence/pallets__click__pr3466.sonnet_prism/stdout.jsonl
+      at: 2026-09-09T01:20:13.14831Z
+      classified: other
+    - cmd: sed -n '1,260p' harness/runs/nonimpact-exp2-two-2026-09-08/evidence/pallets__click__pr3466.sonnet_prism/final.txt
+      at: 2026-09-09T01:20:13.148308Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp2 query 'background color carries over following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format text /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base | sed -n '/Tests — focused/,$p'
+      at: 2026-09-09T01:20:41.35372Z
+      classified: other
+    - cmd: sed -n '1090,1125p' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base/tests/test_text.py
+      at: 2026-09-09T01:21:12.33163Z
+      classified: other
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp2 query 'background color carries over following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format text /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base 2>&1 | rg '^\[test-pick\]' | head -15
+      at: 2026-09-09T01:21:46.30423Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1 -timeout 60s
+      at: 2026-09-09T01:23:12.213434Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp3 ./cmd/prism
+      at: 2026-09-09T01:23:23.063945Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp3 query 'background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format text /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base | sed -n '/Tests — focused/,$p'
+      at: 2026-09-09T01:23:32.590391Z
+      classified: other
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp3 query 'background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format text /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base 2>&1 | rg '^\[test-pick\]' | head -15
+      at: 2026-09-09T01:23:42.429924Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller|TestNearMissTokensDecomposesGuessedIdentifiers|TestToolSearch_AllEmptyCarriesRetryGuidance' -count=1 -timeout 60s
+      at: 2026-09-09T01:24:21.111247Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp3 ./cmd/prism
+      at: 2026-09-09T01:24:32.169599Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp3 query 'background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format text /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base | sed -n '/Tests — focused/,$p'
+      at: 2026-09-09T01:24:40.485091Z
+      classified: other
+    - cmd: prism search 'Related implementations' 'fix_bug' 'prism_query' --scope text --path internal/cli/commands.go --context 5 --format text
+      at: 2026-09-09T01:24:50.533536Z
+      classified: other
+    - cmd: prism search 'const steering' 'func.*steer' 'Prism — context delivery' --scope text --regex --path internal/cli/commands.go --context 4 --format text
+      at: 2026-09-09T01:24:58.095593Z
+      classified: other
+    - cmd: prism change-impact 'steeringBlock' --format text
+      at: 2026-09-09T01:25:06.418065Z
+      classified: other
+    - cmd: prism search 'locator result' 'related implementations' --scope text --path internal/mcp --context 4 --format text
+      at: 2026-09-09T01:25:11.97618Z
+      classified: other
+    - cmd: prism change-impact 'serverInstructions' --format text
+      at: 2026-09-09T01:25:18.259042Z
+      classified: other
+    - cmd: prism lookup toolDescription --format text
+      at: 2026-09-09T01:25:29.770295Z
+      classified: other
+    - cmd: prism search 'KNOWN-SYMBOL TOOL' 'searchLocatorGuidance' 'profile="fix_bug"' --scope text --path internal --context 4 --format text
+      at: 2026-09-09T01:25:38.41489Z
+      classified: other
+    - cmd: prism lookup TestSteeringRetainsEvidenceAndEditSafeguards --format text
+      at: 2026-09-09T01:25:49.748099Z
+      classified: other
+    - cmd: prism lookup TestServerInstructionsAdvertiseCanonicalRouting --format text
+      at: 2026-09-09T01:25:49.660373Z
+      classified: other
+    - cmd: prism lookup TestSteeringRoutesKnownNamesDirectly --format text
+      at: 2026-09-09T01:25:49.853942Z
+      classified: other
+    - cmd: prism search 'Choose by the information needed now' --scope text --path internal/mcp/coverage_test.go --context 12 --format text
+      at: 2026-09-09T01:25:56.414894Z
+      classified: other
+    - cmd: sed -n '58,85p' internal/cli/commands.go && sed -n '483,540p' internal/cli/commands.go
+      at: 2026-09-09T01:26:03.55119Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/steeringdelivery_test.go internal/mcp/server.go internal/mcp/searchtext.go internal/mcp/tools.go internal/mcp/coverage_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T01:27:24.591753Z
+      classified: test
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/steeringdelivery_test.go && GOFLAGS= GOWORK=off go test ./internal/cli -run 'TestSteering|TestCmdQueryAndSearchAndLookup_Smoke' -count=1 -timeout 60s
+      at: 2026-09-09T01:28:07.183019Z
+      classified: test
+    - cmd: prism lookup TestSteeringBlock_PrismAccessFallbacks --format text
+      at: 2026-09-09T01:28:14.326145Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/steeringdelivery_test.go && GOFLAGS= GOWORK=off go test ./internal/cli -run 'TestSteering|TestCmdQueryAndSearchAndLookup_Smoke' -count=1 -timeout 60s
+      at: 2026-09-09T01:28:48.3614Z
+      classified: test
+    - cmd: prism search 'profile :=' 'case "--profile"' --scope text --path internal/cli/commands.go --context 4 --format text
+      at: 2026-09-09T01:29:11.6957Z
+      classified: other
+    - cmd: git diff --check && git diff --stat && git status -sb
+      at: 2026-09-09T01:29:21.586356Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T01:29:32.090722Z
+      classified: test
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-09T01:29:39.566868Z
+      classified: other
+    - cmd: prism references steeringInstructions --format text
+      at: 2026-09-09T01:29:50.443667Z
+      classified: other
+    - cmd: prism references serverInstructions --format text
+      at: 2026-09-09T01:29:50.456712Z
+      classified: other
+    - cmd: prism references helpText --format text
+      at: 2026-09-09T01:29:50.566878Z
+      classified: other
+    - cmd: prism references searchLocatorGuidance --format text
+      at: 2026-09-09T01:29:50.619634Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp4 ./cmd/prism
+      at: 2026-09-09T01:30:09.230817Z
+      classified: build
+    - cmd: mkdir -p /private/tmp/prism-steering-exp4-check
+      at: 2026-09-09T01:30:13.983546Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp4 init --no-permissions /private/tmp/prism-steering-exp4-check
+      at: 2026-09-09T01:30:19.046581Z
+      classified: other
+    - cmd: sed -n '1,120p' /private/tmp/prism-steering-exp4-check/AGENTS.md
+      at: 2026-09-09T01:30:24.654671Z
+      classified: other
+    - cmd: jq -r 'select(.type=="user") | .message.content[]? | select(.type=="tool_result") | if (.content|type)=="array" then .content[]?.text // empty else .content end' harness/runs/nonimpact-exp2-two-2026-09-08/evidence/pallets__click__pr3466.sonnet_prism/stdout.jsonl | sed -n '1,120p'
+      at: 2026-09-09T01:30:50.554347Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp4 search soft_wrap --path rich/console.py --scope text --format text --dir /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base | sed -n '1,90p'
+      at: 2026-09-09T01:31:02.810845Z
+      classified: other
+    - cmd: prism lookup renderOneSearchText --format text
+      at: 2026-09-09T01:31:13.348793Z
+      classified: other
+    - cmd: prism search 'renderOneSearchText' 'locator' --scope text --path internal/mcp/searchtext_test.go --context 5 --format text
+      at: 2026-09-09T01:31:31.165921Z
+      classified: other
+    - cmd: rg -n "renderOneSearchText|locator result|textHits" internal/mcp/*test.go | head -100
+      at: 2026-09-09T01:31:36.728118Z
+      classified: other
+    - cmd: sed -n '1,115p' internal/mcp/searchtext_test.go
+      at: 2026-09-09T01:31:41.738871Z
+      classified: other
+    - cmd: prism change-impact 'renderOneSearchText' --format text
+      at: 2026-09-09T01:32:05.802Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/searchtext.go internal/mcp/searchtext_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T01:32:23.882351Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/searchtext_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T01:33:06.773332Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/searchtext.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T01:33:35.19316Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp5 ./cmd/prism
+      at: 2026-09-09T01:33:43.58299Z
+      classified: build
+    - cmd: /private/tmp/prism-nonimpact-exp5 search soft_wrap --path rich/console.py --scope text --format text --dir /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base | tail -8
+      at: 2026-09-09T01:33:50.590167Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-09T01:33:56.853695Z
+      classified: other
+    - cmd: git diff --check && git status -sb && git diff --stat
+      at: 2026-09-09T01:34:02.684315Z
+      classified: other
+    - cmd: /usr/bin/time -lp /private/tmp/prism-nonimpact-exp5 query 'background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/templates/Textualize__rich__pr3938/base
+      at: 2026-09-09T11:37:27.358596Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && prism lookup Segment.split_and_crop_lines --format text && prism read rich/segment.py --format text
+      at: 2026-09-09T11:38:58.691357Z
+      classified: other
+    - cmd: prism lookup Handler.deliverSource renderFocusedTestEvidence --format text
+      at: 2026-09-09T11:39:05.830741Z
+      classified: other
+    - cmd: prism lookup 'Handler.deliverSource' --format text
+      at: 2026-09-09T11:39:12.552419Z
+      classified: other
+    - cmd: prism lookup 'renderFocusedTestEvidence' --format text
+      at: 2026-09-09T11:39:12.627505Z
+      classified: other
+    - cmd: prism query 'trace fix_bug source selection, ranking, and file fanout before deliverSource renders files' --terms deliverSource,groupPickedByFile --format text
+      at: 2026-09-09T11:39:18.708512Z
+      classified: other
+    - cmd: prism read internal/mcp/selection.go --offset 1 --limit 360 --format text && prism read internal/mcp/tools.go --offset 977 --limit 145 --format text
+      at: 2026-09-09T11:39:23.412618Z
+      classified: other
+    - cmd: prism read internal/mcp/selection.go --offset 340 --limit 360 --format text
+      at: 2026-09-09T11:39:27.863291Z
+      classified: other
+    - cmd: rg -n --hidden --glob '!**/.git/**' 'Textualize__rich__pr3938|pr3938' /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08 /Users/tapabratapal/Projects/provasign/research | head -80
+      at: 2026-09-09T11:39:38.391793Z
+      classified: other
+    - cmd: prism search 'FileSymbols' 'SymbolsByFile' 'ListSymbols' 'ParentName' --scope text --path internal --context 3 --format text
+      at: 2026-09-09T11:39:51.479959Z
+      classified: other
+    - cmd: prism lookup SymbolRecord --format text && /private/tmp/prism-nonimpact-exp5 read rich/segment.py --offset 230 --limit 145 --format text
+      at: 2026-09-09T11:39:58.222533Z
+      classified: other
+    - cmd: prism lookup grove.SymbolRecord --format text
+      at: 2026-09-09T11:40:02.885851Z
+      classified: other
+    - cmd: prism change-impact 'Handler.deliverSource' --format text && prism search 'Family — overrides' 'focused behavioral evidence' 'deliverSource(' --scope text --path internal/mcp --context 3 --format text
+      at: 2026-09-09T11:40:13.321664Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery_test.go --offset 1 --limit 430 --format text && prism read internal/mcp/delivery.go --offset 280 --limit 470 --format text
+      at: 2026-09-09T11:40:18.575218Z
+      classified: other
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp5 query 'background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq -r '.content'
+      at: 2026-09-09T11:40:35.160392Z
+      classified: other
+    - cmd: prism change-impact 'Handler.selectContext' --format text && prism lookup ranking.BudgetedSymbol --format text && prism lookup grove.SpanInfo --format text
+      at: 2026-09-09T11:41:24.970785Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --offset 1 --limit 75 --format text && prism read internal/mcp/selection_test.go --offset 1 --limit 220 --format text
+      at: 2026-09-09T11:41:30.538132Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/selection.go && git diff --check && git diff --stat && go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller' -count=1
+      at: 2026-09-09T11:43:51.431694Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller' -count=1
+      at: 2026-09-09T11:44:01.883304Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/delivery_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestFixBugDeliveryAddsAdjacentSiblingsWithoutBodyOnlyGraphFanout' -count=1 -v
+      at: 2026-09-09T11:45:12.11502Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp6 ./cmd/prism && PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp6 query 'background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq '{files, symbolCount, deliveredTokens, content}'
+      at: 2026-09-09T11:45:25.446451Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp6 ./cmd/prism
+      at: 2026-09-09T11:45:38.372992Z
+      classified: build
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp6 query 'background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq '{files, symbolCount, deliveredTokens, content}'
+      at: 2026-09-09T11:45:45.044718Z
+      classified: other
+    - cmd: prism lookup ranking.Select --format text && prism lookup categorize --format text && prism lookup isTestFilePath --format text
+      at: 2026-09-09T11:46:14.522034Z
+      classified: other
+    - cmd: prism search 'PRISM_DEBUG_PICK' --scope text --path internal --context 5 --format text
+      at: 2026-09-09T11:46:22.529313Z
+      classified: other
+    - cmd: prism change-impact 'categorize' --format text
+      at: 2026-09-09T11:46:35.024132Z
+      classified: other
+    - cmd: prism read internal/mcp/tools_cov_test.go --offset 145 --limit 75 --format text
+      at: 2026-09-09T11:46:44.703212Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/tools_cov_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestCategorize|TestFixBugDeliveryAddsAdjacentSiblingsWithoutBodyOnlyGraphFanout|TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller' -count=1
+      at: 2026-09-09T11:47:05.57363Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp7 ./cmd/prism
+      at: 2026-09-09T11:47:12.734905Z
+      classified: build
+    - cmd: '/private/tmp/prism-nonimpact-exp7 query ''background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline'' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, has_split_lines: (.content | contains("Segment.split_lines")), has_full_print: (.content | contains("if crop:")), has_styled_test: (.content | contains("white on blue")), content}'''
+      at: 2026-09-09T11:47:22.181648Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestCategorize|TestFixBugDeliveryAddsAdjacentSiblingsWithoutBodyOnlyGraphFanout|TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller' -count=1
+      at: 2026-09-09T11:48:15.006439Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp8 ./cmd/prism
+      at: 2026-09-09T11:48:21.495561Z
+      classified: build
+    - cmd: '/private/tmp/prism-nonimpact-exp8 query ''background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline'' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, has_split_lines: (.content | contains("Segment.split_lines")), has_full_print: (.content | contains("if crop:")), has_styled_test: (.content | contains("white on blue")), has_text_append: (.content | contains("def append(")), has_pretty: (.content | contains("def pprint("))}'''
+      at: 2026-09-09T11:48:30.102861Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 change-impact 'Segment.split_and_crop_lines' --format json | jq '{declarations, callers, callees, completeness, warnings}'
+      at: 2026-09-09T11:48:42.824272Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 search soft_wrap --scope symbol --format json | jq '[.results[] | {name, qualifiedName, filePath, kind, span}]'
+      at: 2026-09-09T11:49:08.195765Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 search soft_wrap --scope symbols --format json | jq '[.results[] | {name, qualifiedName, filePath, kind, span}]'
+      at: 2026-09-09T11:49:13.895337Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 search soft_wrap --scope symbols --format json
+      at: 2026-09-09T11:49:19.519448Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 node 'Segment.split_and_crop_lines' --format json
+      at: 2026-09-09T11:49:31.870057Z
+      classified: other
+    - cmd: prism search 'type Edge' 'CallNeighbors' --scope text --path internal/grove --context 5 --format text
+      at: 2026-09-09T11:49:41.388252Z
+      classified: other
+    - cmd: prism read internal/grove/types.go --offset 35 --limit 55 --format text && prism read internal/grove/client.go --offset 350 --limit 120 --format text
+      at: 2026-09-09T11:49:47.32304Z
+      classified: other
+    - cmd: prism read internal/grove/client.go --offset 452 --limit 100 --format text
+      at: 2026-09-09T11:49:56.19602Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 edges 'Segment.split_and_crop_lines' --direction out --kind calls --format json
+      at: 2026-09-09T11:50:02.747708Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 edges --help
+      at: 2026-09-09T11:50:09.01201Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp8 edges 'Segment.split_and_crop_lines' --direction out --kinds calls --format json
+      at: 2026-09-09T11:50:16.101102Z
+      classified: other
+    - cmd: prism lookup Handler.toolEdges --format text && prism search 'graphDelivery' 'renderGraph' --scope text --path internal/mcp --context 4 --format text
+      at: 2026-09-09T11:50:44.725886Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp8 query ''fix zsh shell completion CRLF output'' --terms shell_complete,echo --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, structural: (.content | contains("Structural neighbors")), tests: (.content | contains("Tests — focused behavioral evidence")), content}'''
+      at: 2026-09-09T11:51:07.863173Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestCategorize|TestFixBugDeliveryAddsAdjacentSiblingsWithoutBodyOnlyGraphFanout|TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller' -count=1
+      at: 2026-09-09T11:52:24.00519Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp9 ./cmd/prism
+      at: 2026-09-09T11:52:31.957405Z
+      classified: build
+    - cmd: '/private/tmp/prism-nonimpact-exp9 query ''fix zsh shell completion CRLF output'' --terms shell_complete,echo --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, structural: (.content | contains("Structural neighbors")), focused_tests: (.content | contains("test_full_complete"))}'''
+      at: 2026-09-09T11:52:45.914558Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp9 query ''background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline'' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, structural: (.content | contains("Segment.split_lines")), full_impl: (.content | contains("if crop:")), focused_test: (.content | contains("white on blue"))}'''
+      at: 2026-09-09T11:52:45.965237Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp9 query 'fix zsh shell completion CRLF output' --terms shell_complete,echo --profile fix_bug --format json | jq -r '.content' | rg -A45 'Structural neighbors'
+      at: 2026-09-09T11:52:53.178321Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp9 query ''fix zsh shell completion CRLF output'' --terms _main_shell_completion,zsh --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, source_method: (.content | contains("def source(")), source_template: (.content | contains("source_template")), tests: (.content | contains("test_zsh_output")), structural: (.content | contains("Structural neighbors"))}'''
+      at: 2026-09-09T11:53:35.129736Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp9 query ''fix zsh shell completion CRLF output'' --terms ShellComplete.source,zsh --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, source_method: (.content | contains("def source(")), source_template: (.content | contains("source_template")), tests: (.content | contains("test_zsh_output")), structural: (.content | contains("Structural neighbors"))}'''
+      at: 2026-09-09T11:53:35.210512Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp9 query 'fix zsh shell completion CRLF output' --terms ShellComplete.source,zsh --profile fix_bug --format json | jq -r '.content' | rg -A90 'Tests —|def source|source_template|Structural neighbors'
+      at: 2026-09-09T11:53:42.272739Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T11:54:05.55636Z
+      classified: test
+    - cmd: git diff --check && prism verify --base HEAD --format text && git status --short && git diff --stat
+      at: 2026-09-09T11:54:14.009807Z
+      classified: other
+    - cmd: rg -l --hidden --glob 'summary.json' --glob 'measurement.json' 'urllib3' /Users/tapabratapal/Projects/provasign/research/harness/runs | tail -40
+      at: 2026-09-09T11:54:32.815384Z
+      classified: other
+    - cmd: jq 'keys' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/measurement.json && jq '{task, cell_id, pass, metrics, cwd, tool_actions, command}' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/measurement.json
+      at: 2026-09-09T11:54:41.38801Z
+      classified: other
+    - cmd: 'jq ''{score, turns, tool_calls, prism_actions, total_tokens, cost_usd, wall_s, init, first_messages: [.resolved[0:5][]?]}'' ''/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/measurement.json'''
+      at: 2026-09-09T11:54:49.349318Z
+      classified: other
+    - cmd: jq '{score, turns, tool_calls, prism_actions, total_tokens, cost_usd, wall_s, resolved, prism_calls, init}' '/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/measurement.json'
+      at: 2026-09-09T11:54:57.334013Z
+      classified: other
+    - cmd: rg --files /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism
+      at: 2026-09-09T11:55:03.696053Z
+      classified: other
+    - cmd: sed -n '1,220p' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/prompt.txt && jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0721-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/stdout.jsonl
+      at: 2026-09-09T11:55:13.826237Z
+      classified: other
+    - cmd: 'jq ''{score, turns, tool_calls, prism_actions, total_tokens, cost_usd, wall_s, init_cwd: .init.cwd}'' ''/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/measurement.json'''
+      at: 2026-09-09T11:55:28.466088Z
+      classified: other
+    - cmd: 'jq ''{score, turns, tool_calls, prism_actions, total_tokens, cost_usd, wall_s, init_cwd: .init.cwd}'' ''/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-confirm/evidence/urllib3__urllib3__pr3786.sonnet_native/measurement.json'''
+      at: 2026-09-09T11:55:28.47625Z
+      classified: other
+    - cmd: 'jq ''{score, turns, tool_calls, prism_actions, total_tokens, cost_usd, wall_s, init_cwd: .init.cwd}'' ''/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_native/measurement.json'''
+      at: 2026-09-09T11:55:28.471679Z
+      classified: other
+    - cmd: 'jq ''{score, turns, tool_calls, prism_actions, total_tokens, cost_usd, wall_s, init_cwd: .init.cwd}'' ''/Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/s6-combined-confirm/evidence/urllib3__urllib3__pr3786.sonnet_prism/measurement.json'''
+      at: 2026-09-09T11:55:28.477335Z
+      classified: other
+    - cmd: rg --files /Users/tapabratapal/Projects/provasign/research/harness/runs | rg '/templates/urllib3__urllib3__pr3786/(prism/)?(pyproject.toml|setup.py)$' | tail -20
+      at: 2026-09-09T11:55:42.473926Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp5 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), connect_tls: (.content | contains("def _connect_tls_proxy")), proxy_config: (.content | contains("class ProxyConfig")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T11:55:56.377394Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp9 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), connect_tls: (.content | contains("def _connect_tls_proxy")), proxy_config: (.content | contains("class ProxyConfig")), tests: (.content | contains("Tests — focused behavioral evidence")), structural: (.content | contains("Structural neighbors"))}'''
+      at: 2026-09-09T11:56:05.90884Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestCategorize|TestFixBugDeliveryAddsAdjacentSiblingsWithoutBodyOnlyGraphFanout|TestToolQuery_TestedByPointer|TestFocusedTestEvidencePrefersIndirectBehavioralTestsOverGenericCaller' -count=1 && GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp10 ./cmd/prism
+      at: 2026-09-09T11:56:38.854008Z
+      classified: test
+    - cmd: '/private/tmp/prism-nonimpact-exp10 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T11:57:02.810518Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp10 query ''fix zsh shell completion CRLF output'' --terms ShellComplete.source,zsh --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, source: (.content | contains("def source(")), dispatch: (.content | contains("echo(comp.source())")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T11:57:02.85047Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp10 query ''background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline'' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, structural: (.content | contains("Segment.split_lines")), full_impl: (.content | contains("if crop:")), focused_test: (.content | contains("white on blue"))}'''
+      at: 2026-09-09T11:57:02.990452Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp10 query 'proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq -r '.content' | rg -A80 -B15 'use_forwarding_for_https|proxy_ssl_context'
+      at: 2026-09-09T11:57:12.741578Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp10 query 'proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq -r '.content' | rg -A90 -B5 'src/urllib3/poolmanager.py'
+      at: 2026-09-09T11:57:22.572377Z
+      classified: other
+    - cmd: /private/tmp/prism-nonimpact-exp5 query 'proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq -r '.content' | rg -A130 -B5 'src/urllib3/poolmanager.py'
+      at: 2026-09-09T11:57:31.986606Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go && GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp11 ./cmd/prism
+      at: 2026-09-09T11:58:16.752545Z
+      classified: build
+    - cmd: '/private/tmp/prism-nonimpact-exp11 query ''fix zsh shell completion CRLF output'' --terms ShellComplete.source,zsh --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, source: (.content | contains("def source(")), dispatch: (.content | contains("echo(comp.source())")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T11:58:40.340324Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp11 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T11:58:40.387011Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp11 query ''background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline'' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, structural: (.content | contains("Segment.split_lines")), full_impl: (.content | contains("if crop:")), focused_test: (.content | contains("white on blue"))}'''
+      at: 2026-09-09T11:58:40.40901Z
+      classified: other
+    - cmd: git diff -- internal/mcp/selection.go && git diff -- internal/mcp/delivery.go | sed -n '1,260p'
+      at: 2026-09-09T11:58:51.348714Z
+      classified: other
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp11 query 'proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq '{files, symbolCount, deliveredTokens}'
+      at: 2026-09-09T11:59:29.626381Z
+      classified: other
+    - cmd: PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp5 query 'proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq '{files, symbolCount, deliveredTokens}'
+      at: 2026-09-09T11:59:38.452899Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/prism-query-ab.XXXXXX
+      at: 2026-09-09T12:00:17.986891Z
+      classified: other
+    - cmd: mkdir /private/tmp/prism-query-ab.GLXQpr/exp5 /private/tmp/prism-query-ab.GLXQpr/exp11 && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/. /private/tmp/prism-query-ab.GLXQpr/exp5/ && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/. /private/tmp/prism-query-ab.GLXQpr/exp11/
+      at: 2026-09-09T12:00:27.761286Z
+      classified: other
+    - cmd: rg --files --hidden /private/tmp/prism-query-ab.GLXQpr/exp5 | rg '/\.(prism|grove)/|prism.*(session|ledger)' | head -80
+      at: 2026-09-09T12:00:35.495684Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-query-ab.GLXQpr/exp5 | sed -n '1,50p'
+      at: 2026-09-09T12:00:40.900926Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp5 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:00:55.174255Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp11 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:00:55.174307Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go && GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp12 ./cmd/prism
+      at: 2026-09-09T12:01:17.921464Z
+      classified: build
+    - cmd: mkdir /private/tmp/prism-query-ab.GLXQpr/exp12 && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/. /private/tmp/prism-query-ab.GLXQpr/exp12/
+      at: 2026-09-09T12:01:25.127532Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp12 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:01:35.358935Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/selection.go && GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp13 ./cmd/prism
+      at: 2026-09-09T12:02:24.115967Z
+      classified: build
+    - cmd: mkdir /private/tmp/prism-query-ab.GLXQpr/exp13 && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/. /private/tmp/prism-query-ab.GLXQpr/exp13/
+      at: 2026-09-09T12:02:32.302891Z
+      classified: other
+    - cmd: 'PRISM_DEBUG_PICK=1 /private/tmp/prism-nonimpact-exp13 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:02:42.987422Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go internal/mcp/selection_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T12:03:32.121928Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/delivery_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T12:04:03.625599Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp14 ./cmd/prism
+      at: 2026-09-09T12:04:15.197632Z
+      classified: build
+    - cmd: mktemp -d /private/tmp/prism-final-check.XXXXXX
+      at: 2026-09-09T12:04:19.932934Z
+      classified: other
+    - cmd: mkdir /private/tmp/prism-final-check.bKkNKi/rich /private/tmp/prism-final-check.bKkNKi/click /private/tmp/prism-final-check.bKkNKi/urllib3 && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08/templates/Textualize__rich__pr3938/prism/. /private/tmp/prism-final-check.bKkNKi/rich/ && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08/templates/pallets__click__pr3466/prism/. /private/tmp/prism-final-check.bKkNKi/click/ && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/. /private/tmp/prism-final-check.bKkNKi/urllib3/
+      at: 2026-09-09T12:04:32.381772Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp14 query ''fix zsh shell completion CRLF output'' --terms ShellComplete.source,zsh --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, source_method: (.content | contains("def source(")), dispatch: (.content | contains("echo(comp.source())")), focused_tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:04:51.112545Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp14 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), focused_tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:04:51.160514Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp14 query ''background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline'' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, split_lines: (.content | contains("Segment.split_lines")), print_branch: (.content | contains("if crop:")), styled_test: (.content | contains("white on blue"))}'''
+      at: 2026-09-09T12:04:51.215736Z
+      classified: other
+    - cmd: prism search 'groupPickedByFile' 'fileGroup{' --scope text --path internal/mcp --context 4 --format text
+      at: 2026-09-09T12:05:34.159761Z
+      classified: other
+    - cmd: prism change-impact 'groupPickedByFile' --format text
+      at: 2026-09-09T12:05:38.429919Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/selection.go internal/mcp/selection_test.go internal/mcp/tools.go internal/mcp/tools_cov_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T12:06:29.932604Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-nonimpact-exp15 ./cmd/prism
+      at: 2026-09-09T12:06:37.333512Z
+      classified: build
+    - cmd: mkdir /private/tmp/prism-final-check.bKkNKi/rich15 /private/tmp/prism-final-check.bKkNKi/click15 /private/tmp/prism-final-check.bKkNKi/urllib15 && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08/templates/Textualize__rich__pr3938/prism/. /private/tmp/prism-final-check.bKkNKi/rich15/ && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08/templates/pallets__click__pr3466/prism/. /private/tmp/prism-final-check.bKkNKi/click15/ && cp -R /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism/. /private/tmp/prism-final-check.bKkNKi/urllib15/
+      at: 2026-09-09T12:06:49.777366Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp15 query ''fix zsh shell completion CRLF output'' --terms ShellComplete.source,zsh --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, source_method: (.content | contains("def source(")), dispatch: (.content | contains("echo(comp.source())")), focused_tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:07:08.646209Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp15 query ''proxies should use proxy_ssl_context when use_forwarding_for_https is true; reject ssl_context'' --terms ProxyConfig,use_forwarding_for_https,_connect_tls_proxy --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, proxy_manager: (.content | contains("class ProxyManager")), forwarding: (.content | contains("use_forwarding_for_https")), connect_tls: (.content | contains("def _connect_tls_proxy")), focused_tests: (.content | contains("Tests — focused behavioral evidence"))}'''
+      at: 2026-09-09T12:07:08.716739Z
+      classified: other
+    - cmd: '/private/tmp/prism-nonimpact-exp15 query ''background color carries over onto following line when soft wrapping is enabled; ANSI reset before newline'' --terms soft_wrap,split_and_crop_lines --profile fix_bug --format json | jq ''{files, symbolCount, deliveredTokens, split_lines: (.content | contains("Segment.split_lines")), print_branch: (.content | contains("if crop:")), styled_test: (.content | contains("white on blue"))}'''
+      at: 2026-09-09T12:07:08.775168Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1 -timeout 120s
+      at: 2026-09-09T12:08:02.199902Z
+      classified: test
+    - cmd: git diff --check && prism verify --base HEAD --format text && git status --short && git diff --stat
+      at: 2026-09-09T12:08:09.288946Z
+      classified: other
+    - cmd: prism references 'helpText' --format text
+      at: 2026-09-09T12:08:22.301361Z
+      classified: other
+    - cmd: prism references 'serverInstructions' --format text
+      at: 2026-09-09T12:08:22.333029Z
+      classified: other
+    - cmd: prism references 'steeringInstructions' --format text
+      at: 2026-09-09T12:08:22.420375Z
+      classified: other
+    - cmd: prism references 'searchLocatorGuidance' --format text
+      at: 2026-09-09T12:08:22.472134Z
+      classified: other
+    - cmd: prism search 'query_oracle' 'oracle bed' 'swebench' --scope text --path . --context 3 --format text
+      at: 2026-09-09T12:17:46.830963Z
+      classified: other
+    - cmd: rg --files /Users/tapabratapal/Projects/provasign/research | rg 'query[_-]oracle|oracle.*query|swebench.*(query|oracle)|nonimpact|day.?to.?day' | sed -n '1,160p'
+      at: 2026-09-09T12:17:56.082813Z
+      classified: other
+    - cmd: sed -n '1,260p' /Users/tapabratapal/Projects/provasign/research/harness/query_oracle.py && sed -n '1,240p' /Users/tapabratapal/Projects/provasign/research/harness/tests/test_query_oracle.py
+      at: 2026-09-09T12:18:02.007169Z
+      classified: other
+    - cmd: sed -n '240,520p' /Users/tapabratapal/Projects/provasign/research/harness/query_oracle.py && ls -lh /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/*.json | sed -n '1,80p'
+      at: 2026-09-09T12:18:08.057187Z
+      classified: other
+    - cmd: prism version && jq -r 'length, (.[].repo)' /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-scoreable15.json | sort | uniq -c
+      at: 2026-09-09T12:18:44.316506Z
+      classified: other
+    - cmd: cp /Users/tapabratapal/Projects/provasign/research/harness/query_oracle.py /private/tmp/query_oracle_fixbug.py
+      at: 2026-09-09T12:18:56.216887Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/prism-committed-baseline.XXXXXX
+      at: 2026-09-09T12:19:12.042611Z
+      classified: other
+    - cmd: git worktree add --detach /private/tmp/prism-committed-baseline.6d0wSy HEAD
+      at: 2026-09-09T12:19:22.000678Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-baseline-committed ./cmd/prism
+      at: 2026-09-09T12:19:30.525711Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-current-study ./cmd/prism
+      at: 2026-09-09T12:19:38.783614Z
+      classified: build
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-baseline-committed --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/query-oracle-baseline15.json
+      at: 2026-09-09T12:20:21.341258Z
+      classified: other
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-current-study --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/query-oracle-current15.json
+      at: 2026-09-09T12:20:56.732896Z
+      classified: other
+    - cmd: jq -n --slurpfile b /private/tmp/query-oracle-baseline15.json --slurpfile c /private/tmp/query-oracle-current15.json '$b[0].results as $br | $c[0].results as $cr | [range(0; $br|length) | {id:$br[.].instance_id, real_b:$br[.].realistic.recall, real_c:$cr[.].realistic.recall, real_bytes_b:$br[.].realistic.delivered, real_bytes_c:$cr[.].realistic.delivered, oracle_b:$br[.].oracle.recall, oracle_c:$cr[.].oracle.recall, oracle_bytes_b:$br[.].oracle.delivered, oracle_bytes_c:$cr[.].oracle.delivered}]'
+      at: 2026-09-09T12:21:16.766697Z
+      classified: other
+    - cmd: python3 /Users/tapabratapal/Projects/provasign/research/harness/query_oracle.py --prism /private/tmp/prism-current-study --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/query-oracle-current-default15.json
+      at: 2026-09-09T12:21:54.687992Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/prism-literal-only.XXXXXX
+      at: 2026-09-09T12:22:32.233798Z
+      classified: other
+    - cmd: rsync -a --exclude .git --exclude .grove /Users/tapabratapal/Projects/provasign/prism/ /private/tmp/prism-literal-only.UDq8q4/
+      at: 2026-09-09T12:22:51.666722Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-literal-only-bin ./cmd/prism
+      at: 2026-09-09T12:23:05.82408Z
+      classified: build
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-literal-only-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/query-oracle-literal15.json
+      at: 2026-09-09T12:23:38.935332Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-test-only-bin ./cmd/prism
+      at: 2026-09-09T12:25:28.183478Z
+      classified: build
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-test-only-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/query-oracle-test-only15.json
+      at: 2026-09-09T12:26:03.603867Z
+      classified: other
+    - cmd: rg -n -C 4 'renderFocusedTestEvidence|renderAdjacentSiblingEvidence' internal/mcp/delivery.go
+      at: 2026-09-09T12:26:11.188447Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-sibling-only-bin ./cmd/prism
+      at: 2026-09-09T12:26:32.822176Z
+      classified: build
+    - cmd: sed -n '210,295p' internal/mcp/delivery.go && sed -n '310,380p' internal/mcp/delivery.go
+      at: 2026-09-09T12:26:37.302191Z
+      classified: other
+    - cmd: rg -n 'contentOnly|renderAdjacentSiblingEvidence' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/delivery.go /private/tmp/prism-literal-only.UDq8q4/internal/mcp/delivery.go
+      at: 2026-09-09T12:26:44.870067Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-sibling-only-bin ./cmd/prism
+      at: 2026-09-09T12:27:02.532055Z
+      classified: build
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-sibling-only-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/query-oracle-sibling-only15.json
+      at: 2026-09-09T12:27:30.019745Z
+      classified: other
+    - cmd: jq 'keys, .results[0] // .[0]' /private/tmp/query-oracle-literal15.json
+      at: 2026-09-09T12:27:38.729128Z
+      classified: other
+    - cmd: |-
+        jq -r -s '
+          (.[0].results | map({key:.instance_id,value:.}) | from_entries) as $lit |
+          (.[1].results | map({key:.instance_id,value:.}) | from_entries) as $test |
+          (.[2].results | map({key:.instance_id,value:.}) | from_entries) as $sib |
+          (.[3].results | map({key:.instance_id,value:.}) | from_entries) as $full |
+          ["task","real_test_delta","real_sibling_delta","oracle_test_delta","oracle_sibling_delta"],
+          ($lit | keys[] as $id |
+            [$id,
+             (($test[$id].realistic.delivered // 0)-($lit[$id].realistic.delivered // 0)),
+             (($sib[$id].realistic.delivered // 0)-($lit[$id].realistic.delivered // 0)),
+             (($test[$id].oracle.delivered // 0)-($lit[$id].oracle.delivered // 0)),
+             (($sib[$id].oracle.delivered // 0)-($lit[$id].oracle.delivered // 0))]) | @tsv
+        ' /private/tmp/query-oracle-literal15.json /private/tmp/query-oracle-test-only15.json /private/tmp/query-oracle-sibling-only15.json /private/tmp/query-oracle-current15.json
+      at: 2026-09-09T12:27:54.259561Z
+      classified: other
+    - cmd: |-
+        jq -n --slurpfile lit /private/tmp/query-oracle-literal15.json --slurpfile test /private/tmp/query-oracle-test-only15.json --slurpfile sib /private/tmp/query-oracle-sibling-only15.json '
+          ($lit[0].results | map({key:.instance_id,value:.}) | from_entries) as $l |
+          ($test[0].results | map({key:.instance_id,value:.}) | from_entries) as $t |
+          ($sib[0].results | map({key:.instance_id,value:.}) | from_entries) as $s |
+          ["realistic","oracle"] | map(. as $mode |
+            [$l|keys[] | select(($l[.][$mode].delivered // null) != null) |
+              {test:(($t[.][$mode].delivered)-($l[.][$mode].delivered)), sibling:(($s[.][$mode].delivered)-($l[.][$mode].delivered))}] as $d |
+            {mode:$mode, queries:($d|length), test_triggers:([$d[]|select(.test>0)]|length), test_bytes:([$d[].test]|add), sibling_triggers:([$d[]|select(.sibling>0)]|length), sibling_bytes:([$d[].sibling]|add)})
+        '
+      at: 2026-09-09T12:28:09.188216Z
+      classified: other
+    - cmd: ls -lh /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json /private/tmp/prism-baseline-committed /private/tmp/prism-current-study /private/tmp/prism-literal-only-bin
+      at: 2026-09-09T12:28:15.182967Z
+      classified: other
+    - cmd: python3 query_oracle.py --prism /private/tmp/prism-baseline-committed --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-oracle-baseline37.json
+      at: 2026-09-09T12:30:49.383777Z
+      classified: other
+    - cmd: python3 query_oracle.py --prism /private/tmp/prism-current-study --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-oracle-current-default37.json
+      at: 2026-09-09T12:33:16.000216Z
+      classified: other
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-literal-only-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-oracle-literal37.json
+      at: 2026-09-09T12:35:42.469111Z
+      classified: other
+    - cmd: |-
+        jq -r -s '
+         (.[0].results|map({key:.instance_id,value:.})|from_entries) as $base |
+         (.[1].results|map({key:.instance_id,value:.})|from_entries) as $core |
+         (.[2].results|map({key:.instance_id,value:.})|from_entries) as $lit |
+         ["task","real base→core→literal","oracle base→core→literal","bytes literal-core real/oracle"],
+         ($base|keys[] as $id |
+          select((($base[$id].realistic.recall//-1) != ($lit[$id].realistic.recall//-1)) or (($base[$id].oracle.recall//-1) != ($lit[$id].oracle.recall//-1))) |
+          [$id,
+           "\($base[$id].realistic.recall//"-")→\($core[$id].realistic.recall//"-")→\($lit[$id].realistic.recall//"-")",
+           "\($base[$id].oracle.recall)→\($core[$id].oracle.recall)→\($lit[$id].oracle.recall)",
+           "\((($lit[$id].realistic.delivered//0)-($core[$id].realistic.delivered//0)))/\(($lit[$id].oracle.delivered)-($core[$id].oracle.delivered))"] | @tsv)
+        ' /private/tmp/query-oracle-baseline37.json /private/tmp/query-oracle-current-default37.json /private/tmp/query-oracle-literal37.json
+      at: 2026-09-09T12:36:04.697172Z
+      classified: other
+    - cmd: jq '.results[] | select(.instance_id=="scrapinghub__dateparser-1284" or .instance_id=="matplotlib__matplotlib-29958" or .instance_id=="ipython__ipython-14872")' /private/tmp/query-oracle-literal37.json
+      at: 2026-09-09T12:36:11.559745Z
+      classified: other
+    - cmd: sed -n '1,260p' query_oracle.py
+      at: 2026-09-09T12:36:16.566628Z
+      classified: other
+    - cmd: diff -u query_oracle.py /private/tmp/query_oracle_fixbug.py | head -80
+      at: 2026-09-09T12:36:21.503428Z
+      classified: other
+    - cmd: jq -r '.[] | select(.instance_id=="scrapinghub__dateparser-1284") | [.repo,.base_commit,(.problem_statement|split("\n")[0])] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json
+      at: 2026-09-09T12:36:28.944938Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/dateparser-investigate.XXXXXX
+      at: 2026-09-09T12:36:37.904735Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/.cache/prism-research/swebench-repos/scrapinghub__dateparser worktree add --detach --force /private/tmp/dateparser-investigate.Vd5gup 0667cb357185317df55636c34af845e3aca5875d
+      at: 2026-09-09T12:36:44.287304Z
+      classified: other
+    - cmd: /private/tmp/prism-current-study index .
+      at: 2026-09-09T12:36:49.447269Z
+      classified: other
+    - cmd: /private/tmp/prism-current-study query 'support a span of time in `search_dates`' --terms search_dates --format text
+      at: 2026-09-09T12:36:54.258861Z
+      classified: other
+    - cmd: /private/tmp/prism-literal-only-bin query 'support a span of time in `search_dates`' --terms search_dates --profile fix_bug --format text
+      at: 2026-09-09T12:36:59.062192Z
+      classified: other
+    - cmd: jq -r '.[] | select(.instance_id=="scrapinghub__dateparser-1284") | .patch' /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json
+      at: 2026-09-09T12:37:05.896925Z
+      classified: other
+    - cmd: prism search fix_bug contentOnlySeeds maxTokens maxFiles --scope text --context 3 --format text
+      at: 2026-09-09T12:37:16.059121Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --offset 95 --limit 115 --format text && prism read internal/mcp/selection.go --offset 70 --limit 180 --format text
+      at: 2026-09-09T12:37:21.641285Z
+      classified: other
+    - cmd: prism search profileName WithProfile explicitProfile --scope text --path internal --context 4 --format text
+      at: 2026-09-09T12:37:26.755346Z
+      classified: other
+    - cmd: prism lookup ranking.SelectProfile --format text
+      at: 2026-09-09T12:37:30.470578Z
+      classified: other
+    - cmd: prism lookup ranking.Profiles --format text
+      at: 2026-09-09T12:37:35.28593Z
+      classified: other
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-baseline-committed --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-oracle-baseline-fixbug37.json
+      at: 2026-09-09T12:40:13.741538Z
+      classified: other
+    - cmd: |-
+        jq -r -s '
+         (.[0].results|map({key:.instance_id,value:.})|from_entries) as $base |
+         (.[1].results|map({key:.instance_id,value:.})|from_entries) as $cand |
+         ["task","real recall","oracle recall","real bytes Δ","oracle bytes Δ"],
+         ($base|keys[] as $id |
+          select((($base[$id].realistic.recall//-1) != ($cand[$id].realistic.recall//-1)) or (($base[$id].oracle.recall//-1) != ($cand[$id].oracle.recall//-1)) or (((($cand[$id].realistic.delivered//0)-($base[$id].realistic.delivered//0))|fabs)>5000) or (((($cand[$id].oracle.delivered)-($base[$id].oracle.delivered))|fabs)>5000)) |
+          [$id,
+           "\($base[$id].realistic.recall//"-")→\($cand[$id].realistic.recall//"-")",
+           "\($base[$id].oracle.recall)→\($cand[$id].oracle.recall)",
+           (($cand[$id].realistic.delivered//0)-($base[$id].realistic.delivered//0)),
+           (($cand[$id].oracle.delivered)-($base[$id].oracle.delivered))] | @tsv)
+        ' /private/tmp/query-oracle-baseline-fixbug37.json /private/tmp/query-oracle-literal37.json
+      at: 2026-09-09T12:40:30.93427Z
+      classified: other
+    - cmd: prism change-impact 'Handler.selectContext' --format text
+      at: 2026-09-09T12:41:03.690766Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-decoupled-literal-bin ./cmd/prism
+      at: 2026-09-09T12:41:27.034522Z
+      classified: build
+    - cmd: python3 /private/tmp/query_oracle_fixbug.py --prism /private/tmp/prism-decoupled-literal-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-oracle-decoupled-literal37.json
+      at: 2026-09-09T12:43:49.965262Z
+      classified: other
+    - cmd: |-
+        jq -n --slurpfile core /private/tmp/query-oracle-current-default37.json --slurpfile lit /private/tmp/query-oracle-decoupled-literal37.json '
+         ($core[0].results|map({key:.instance_id,value:.})|from_entries) as $c |
+         ($lit[0].results|map({key:.instance_id,value:.})|from_entries) as $l |
+         ["realistic","oracle"] | map(. as $mode |
+           [$c|keys[] | select(($c[.][$mode].delivered // null) != null) |
+            {id:.,delta:(($l[.][$mode].delivered)-($c[.][$mode].delivered)), recall_delta:(($l[.][$mode].recall)-($c[.][$mode].recall))}] as $d |
+           {mode:$mode,queries:($d|length),changed_payloads:([$d[]|select(.delta!=0)]|length),larger:([$d[]|select(.delta>0)]|length),smaller:([$d[]|select(.delta<0)]|length),bytes_delta:([$d[].delta]|add),recall_changes:[$d[]|select(.recall_delta!=0)]})
+        '
+      at: 2026-09-09T12:44:06.24322Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-decoupled-full-bin ./cmd/prism
+      at: 2026-09-09T12:44:53.357106Z
+      classified: build
+    - cmd: /private/tmp/prism-decoupled-full-bin query 'support a span of time in `search_dates`' --terms search_dates --profile fix_bug --format text | awk '/Tests — focused/{flag=1} flag'
+      at: 2026-09-09T12:45:02.168865Z
+      classified: other
+    - cmd: jq -r '.[] | select(.instance_id=="scrapinghub__dateparser-1284") | .patch' /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json | rg '^diff --git'
+      at: 2026-09-09T12:45:09.547117Z
+      classified: other
+    - cmd: sed -n '260,420p' query_oracle.py
+      at: 2026-09-09T12:45:28.525644Z
+      classified: other
+    - cmd: cp query_oracle.py /private/tmp/query_evidence_oracle.py
+      at: 2026-09-09T12:45:35.887437Z
+      classified: other
+    - cmd: python3 /private/tmp/query_evidence_oracle.py --prism /private/tmp/prism-decoupled-full-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-evidence-decoupled-full37.json
+      at: 2026-09-09T12:48:48.233925Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --offset 450 --limit 230 --format text
+      at: 2026-09-09T12:48:59.995248Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --offset 675 --limit 105 --format text
+      at: 2026-09-09T12:49:04.397075Z
+      classified: other
+    - cmd: find /private/tmp -maxdepth 1 -type d -iname '*rich*' -print
+      at: 2026-09-09T12:49:14.171452Z
+      classified: other
+    - cmd: find /Users/tapabratapal/.cache/prism-research/swebench-repos -maxdepth 1 -type d -iname '*rich*' -print
+      at: 2026-09-09T12:49:36.175527Z
+      classified: other
+    - cmd: jq -r '.results[] | select(.realistic != null) | [.instance_id, (.realistic.terms|join(","))] | @tsv' /private/tmp/query-oracle-current-default37.json
+      at: 2026-09-09T12:50:01.38213Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-decoupled-bounded-bin ./cmd/prism
+      at: 2026-09-09T12:51:02.207319Z
+      classified: build
+    - cmd: python3 /private/tmp/query_evidence_oracle.py --prism /private/tmp/prism-decoupled-bounded-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-evidence-decoupled-bounded37.json
+      at: 2026-09-09T12:53:25.512371Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-decoupled-triggered-bin ./cmd/prism
+      at: 2026-09-09T12:54:10.90101Z
+      classified: build
+    - cmd: python3 /private/tmp/query_evidence_oracle.py --prism /private/tmp/prism-decoupled-triggered-bin --slice /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/slice-bed37.json --out /private/tmp/query-evidence-decoupled-triggered37.json
+      at: 2026-09-09T12:56:33.047732Z
+      classified: other
+notes:
+    - text: continuation of session 01a0834c-0a58-7681-bc9a-c1a54d022d3a — events captured after its evidence was finalized
+      at: 2026-09-09T00:29:45.565159Z
+redactions: 0

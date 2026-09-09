@@ -1,0 +1,117 @@
+shale_version: "0"
+id: 01a086e1-d9c4-7063-a607-c867bed4a199
+created_at: 2026-09-09T15:56:53.170332Z
+finalized_at: 2026-09-09T17:34:12.255785Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/prism-feedback-plan.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-09T17:32:50.126292Z
+commands:
+    - cmd: prism search 'AT LEAST' 'callers-only' 'unverified contract' 'exhaustive' 'files_only' 'version' --scope text --exhaustive --format text
+      at: 2026-09-09T17:24:37.702675Z
+      classified: other
+    - cmd: prism lookup Handler.toolVerify Handler.verifyRemovedSymbols Handler.changeImpactFor Handler.toolSearch Handler.searchOne Handler.renderTextMatches renderSearchAsText onceNotes.apply staleBinaryNote findPrismInstallationConflicts --format text
+      at: 2026-09-09T17:24:56.695931Z
+      classified: other
+    - cmd: prism query 'Map implementation and tests for verification of removed or relocated symbols, text-search sampling and exhaustive inventory, repeated completeness notes, and stale binary detection' --terms toolVerify --terms verifyRemovedSymbols --terms changeImpactFor --terms toolSearch --terms searchOne --terms renderSearchAsText --terms onceNotes --terms staleBinaryNote --terms findPrismInstallationConflicts --format text
+      at: 2026-09-09T17:25:14.147757Z
+      classified: other
+    - cmd: prism lookup textsearch.Search --format text
+      at: 2026-09-09T17:25:33.434395Z
+      classified: other
+    - cmd: prism lookup Handler.changeImpactFor --format text
+      at: 2026-09-09T17:25:33.500289Z
+      classified: other
+    - cmd: prism lookup onceNotes.apply --format text
+      at: 2026-09-09T17:25:33.54591Z
+      classified: other
+    - cmd: prism lookup Handler.verifyRemovedSymbols --format text
+      at: 2026-09-09T17:25:33.621768Z
+      classified: other
+    - cmd: prism lookup Handler.toolVerify --format text
+      at: 2026-09-09T17:25:33.701505Z
+      classified: other
+    - cmd: prism query 'How file symbol diffs detect renamed removed and added symbols, including signatures body text and stable hashes; identify implementation and tests' --terms DiffFile --terms Renamed --terms Removed --terms Added --terms BodyChanged --format text
+      at: 2026-09-09T17:26:00.202766Z
+      classified: other
+    - cmd: prism query 'How MCP and CLI choose and validate the repository root, and what would need to change for multiple explicit workspace roots' --terms Handler.Root --terms Root --terms rejectedPaths --terms filepath --format text
+      at: 2026-09-09T17:26:00.416661Z
+      classified: other
+    - cmd: prism query 'Where staleBinaryNote and installation conflict warnings are invoked during MCP initialization and calls' --terms staleBinaryNote --terms PrismInstallationWarning --terms dispatch --format text
+      at: 2026-09-09T17:26:00.614247Z
+      classified: other
+    - cmd: prism query 'How verify results are rendered, especially completeness notes and unverified contract changes' --terms renderVerifyAsText --terms impactCompleteness --terms unverifiedSeeds --terms callers-only --format text
+      at: 2026-09-09T17:26:00.822152Z
+      classified: other
+    - cmd: prism lookup FileGraphDiff --format text
+      at: 2026-09-09T17:26:19.208216Z
+      classified: other
+    - cmd: prism lookup renderVerifyAsText --format text
+      at: 2026-09-09T17:26:19.260669Z
+      classified: other
+    - cmd: prism lookup Server.dispatch --format text
+      at: 2026-09-09T17:26:19.346871Z
+      classified: other
+    - cmd: prism lookup Handler.hitRollup --format text
+      at: 2026-09-09T17:26:19.42607Z
+      classified: other
+    - cmd: prism read internal/textsearch/textsearch.go --offset 1 --limit 380 --format text
+      at: 2026-09-09T17:26:44.244478Z
+      classified: other
+    - cmd: prism search 'defaultSearchLimit' 'rollupMaxHits' 'rollupFileCap' 'MaxPerFile' --scope text --path internal --exhaustive --format text
+      at: 2026-09-09T17:26:44.333063Z
+      classified: other
+    - cmd: prism read internal/textsearch/textsearch.go --offset 445 --limit 115 --format text
+      at: 2026-09-09T17:26:56.423602Z
+      classified: other
+    - cmd: prism read internal/textsearch/textsearch.go --offset 521 --limit 80 --format text
+      at: 2026-09-09T17:27:06.870008Z
+      classified: other
+    - cmd: prism search 'type Handler struct' 'func NewHandler' 'type Config struct' 'workspace' 'roots' --scope text --path internal --context 5 --exhaustive --format text
+      at: 2026-09-09T17:27:21.881676Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-09T17:30:40.574251Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-09T17:30:40.587538Z
+      classified: other
+    - cmd: prism search 'feedback plan' 'roadmap' 'relocation-aware' --scope text --path docs --exhaustive --files-only --format text
+      at: 2026-09-09T17:30:40.656679Z
+      classified: other
+    - cmd: git diff --check -- docs/prism-feedback-plan.md
+      at: 2026-09-09T17:33:09.273085Z
+      classified: other
+    - cmd: git status --short docs/prism-feedback-plan.md
+      at: 2026-09-09T17:33:09.272778Z
+      classified: other
+    - cmd: prism read docs/prism-feedback-plan.md --format text
+      at: 2026-09-09T17:33:09.316649Z
+      classified: other
+    - cmd: git add docs/prism-feedback-plan.md
+      at: 2026-09-09T17:33:26.061142Z
+      classified: other
+    - cmd: git diff --cached --name-only
+      at: 2026-09-09T17:33:44.260195Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-09T17:33:44.258925Z
+      classified: other
+    - cmd: git diff --cached --stat
+      at: 2026-09-09T17:33:44.258882Z
+      classified: other
+    - cmd: 'git commit -m "docs: add Prism feedback implementation plan"'
+      at: 2026-09-09T17:33:59.978809Z
+      classified: other
+notes: []
+redactions: 0
