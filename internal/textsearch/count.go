@@ -55,7 +55,7 @@ func Count(ctx context.Context, root, pattern string, opts Options) CountResult 
 func runRgCount(ctx context.Context, root, pattern string, opts Options) (CountResult, bool) {
 	args := []string{
 		"--count", "--with-filename", "--color", "never", "--no-messages",
-		"--no-require-git", "--hidden", "--sort", "path", "--max-filesize", "2M",
+		"--ignore-case", "--no-require-git", "--hidden", "--sort", "path", "--max-filesize", "2M",
 	}
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")

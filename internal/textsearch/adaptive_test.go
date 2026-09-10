@@ -19,7 +19,11 @@ func adaptiveFixture(t *testing.T) string {
 		var body strings.Builder
 		body.WriteString("package fixture\n\nfunc F() {\n")
 		for i := 0; i < count; i++ {
-			fmt.Fprintf(&body, "\t// Phase4Needle %02d\n", start+i)
+			needle := "Phase4Needle"
+			if i%2 == 1 {
+				needle = "phase4needle"
+			}
+			fmt.Fprintf(&body, "\t// %s %02d\n", needle, start+i)
 		}
 		body.WriteString("}\n")
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(body.String()), 0o644); err != nil {

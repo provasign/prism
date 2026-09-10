@@ -74,7 +74,7 @@ func cmdMap(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_map", callArgs)
+	out, err := invokeTool(dir, "prism_map", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "map:", err)
 		return 1
@@ -132,7 +132,7 @@ func cmdCycles(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_cycles", callArgs)
+	out, err := invokeTool(dir, "prism_cycles", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cycles:", err)
 		return 1
@@ -204,7 +204,7 @@ func cmdArch(args []string) int {
 	if len(extraDeny) > 0 {
 		callArgs["deny"] = extraDeny
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_arch_check", callArgs)
+	out, err := invokeTool(dir, "prism_arch_check", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "arch:", err)
 		return 2
@@ -328,7 +328,7 @@ func cmdVerify(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_verify", callArgs)
+	out, err := invokeTool(dir, "prism_verify", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "verify:", err)
 		return 2

@@ -80,8 +80,8 @@ func TestBuildZedConfig(t *testing.T) {
 }
 
 // TestInitProjectLevelSkipsGlobalConfigs guards the multi-project footgun:
-// a project-level init must not touch user-global configs (Zed, Codex) —
-// doing so re-points every other project's editor at this one.
+// a project-level init must write Codex's project config without touching the
+// user-global Codex or Zed configs.
 func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
@@ -105,6 +105,18 @@ func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".mcp.json")); err != nil {
 		t.Errorf("project-level init should still write .mcp.json: %v", err)
+	}
+	projectCodex, err := os.ReadFile(filepath.Join(dir, ".codex", "config.toml"))
+	if err != nil {
+		t.Fatalf("project-level init did not write Codex project config: %v", err)
+	}
+	for _, want := range []string{"[mcp_servers.prism]", `command = "/x/prism"`, `args = ["mcp"]`} {
+		if !strings.Contains(string(projectCodex), want) {
+			t.Errorf("project Codex config missing %q:\n%s", want, projectCodex)
+		}
+	}
+	if strings.Contains(string(projectCodex), dir) {
+		t.Errorf("project Codex entry must use Codex's project cwd, not pin the project path:\n%s", projectCodex)
 	}
 
 	// --global registers both, without a pinned project dir.
@@ -517,6 +529,30 @@ func TestPrintAgentConfig_WritesNothing(t *testing.T) {
 	}
 }
 
+func TestPrintAgentConfig_CodexScope(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	project := t.TempDir()
+
+	projectOutput := captureStdout(func() {
+		if rc := printAgentConfig("codex", project, "/x/prism", false); rc != 0 {
+			t.Fatalf("project codex config: rc %d", rc)
+		}
+	})
+	if !strings.Contains(projectOutput, filepath.Join(project, ".codex", "config.toml")) {
+		t.Errorf("project Codex snippet named the wrong path: %s", projectOutput)
+	}
+
+	globalOutput := captureStdout(func() {
+		if rc := printAgentConfig("codex", project, "/x/prism", true); rc != 0 {
+			t.Fatalf("global codex config: rc %d", rc)
+		}
+	})
+	if !strings.Contains(globalOutput, filepath.Join(home, ".codex", "config.toml")) {
+		t.Errorf("global Codex snippet named the wrong path: %s", globalOutput)
+	}
+}
+
 // --refresh must never introduce a config for a tool that was not already set up.
 func TestInitRegisterMCPTools_RefreshSkipsUnconfigured(t *testing.T) {
 	setHome(t, t.TempDir())
@@ -527,6 +563,9 @@ func TestInitRegisterMCPTools_RefreshSkipsUnconfigured(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".mcp.json")); err == nil {
 		t.Error("--refresh created .mcp.json")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".codex", "config.toml")); err == nil {
+		t.Error("--refresh created .codex/config.toml")
 	}
 }
 
@@ -545,6 +584,13 @@ func TestInitRegisterMCPTools_RefreshRewritesConfigured(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "/new/prism") {
 		t.Errorf("--refresh did not update the binary path: %s", raw)
+	}
+	codexRaw, err := os.ReadFile(filepath.Join(dir, ".codex", "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(codexRaw), "/new/prism") {
+		t.Errorf("--refresh did not update the Codex binary path: %s", codexRaw)
 	}
 }
 

@@ -1,6 +1,6 @@
 // Package mcp implements Prism's JSON-RPC 2.0 server (stdio transport)
 // exposing the prism_* tools (the primary set advertised via tools/list; the
-// auxiliary compact/savings/feedback/evidence/cycles tools stay dispatchable
+// auxiliary compact/feedback/evidence/cycles tools stay dispatchable
 // for the CLI and HTTP surfaces without spending schema tokens in every MCP
 // session). The
 // on-the-wire format is the Model Context Protocol stdio transport:
@@ -15,63 +15,22 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/provasign/prism/internal/ranking"
-	"github.com/provasign/prism/internal/session"
 	"github.com/provasign/prism/internal/version"
 )
 
 // Server is the JSON-RPC stdio server.
 type Server struct {
 	handler *Handler
-
-	// Ledger persistence for the long-running server: CLI invocations save
-	// per call, but an MCP session historically recorded nothing durable —
-	// which is why token-cost analysis had to be done by mining agent
-	// transcripts. The server now merges its in-memory deltas into the
-	// shared per-root ledger file after each tool call, under the same file
-	// lock CLI processes use, so concurrent sessions add rather than
-	// clobber.
-	ledgerPath string
-	ledgerMu   sync.Mutex
-	lastSaved  session.Summary
 }
 
 // NewServer wires a Handler into a stdio JSON-RPC server.
 func NewServer(h *Handler) *Server { return &Server{handler: h} }
-
-// WithLedgerPersistence enables per-call delta merging into the shared
-// ledger file at path (see Server.ledgerPath).
-func (s *Server) WithLedgerPersistence(path string) *Server {
-	s.ledgerPath = path
-	s.lastSaved = s.handler.Ledger.Snapshot()
-	return s
-}
-
-// persistLedgerDelta merges counts accumulated since the last save into the
-// on-disk ledger. Best-effort: a lock timeout or IO error drops one delta,
-// never blocks a tool response.
-func (s *Server) persistLedgerDelta() {
-	if s.ledgerPath == "" {
-		return
-	}
-	s.ledgerMu.Lock()
-	defer s.ledgerMu.Unlock()
-	delta := s.handler.Ledger.DiffSince(s.lastSaved)
-	_ = session.WithFileLock(s.ledgerPath+".lock", 2*time.Second, func() error {
-		disk, err := session.LoadLedger(s.ledgerPath)
-		if err != nil {
-			disk = session.NewLedger(time.Now().Format("20060102-150405"))
-		}
-		disk.ApplyDelta(delta)
-		return disk.Save(s.ledgerPath)
-	})
-	s.lastSaved = s.handler.Ledger.Snapshot()
-}
 
 type request struct {
 	JSONRPC string          `json:"jsonrpc"`
@@ -106,6 +65,15 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 			// Notification — no response.
 			continue
 		}
+		// Never dispatch a request through superseded code. This check precedes
+		// JSON-RPC method handling because the new client may send a parameter or
+		// method the old server cannot understand well enough to warn about.
+		if note := staleBinaryNote(); note != "" {
+			if err := writeMessage(w, req.ID, nil, &rpcError{Code: -32001, Message: note}); err != nil {
+				return err
+			}
+			return nil
+		}
 		result, rpcErr := s.dispatch(req.Method, req.Params)
 		if err := writeMessage(w, req.ID, result, rpcErr); err != nil {
 			return err
@@ -138,42 +106,64 @@ var supportedProtocolVersions = map[string]bool{
 	"2025-06-18": true,
 }
 
-// startupBinaryModTime is the mtime of the executable when this process
-// started; a later mtime on disk means the binary was replaced (brew
-// upgrade, go build) and this server is running superseded behavior.
-var startupBinaryModTime = func() int64 {
-	exe, err := os.Executable()
-	if err != nil {
-		return 0
+type binarySnapshot struct {
+	path string
+	info os.FileInfo
+}
+
+// startupBinarySnapshot records the configured launch path, not only
+// os.Executable(). Homebrew starts Prism through a stable symlink while
+// os.Executable may resolve to a versioned Cellar path; watching that resolved
+// path misses a symlink switch to the newly installed release.
+var startupBinarySnapshot = snapshotLaunchBinary()
+
+func snapshotLaunchBinary() binarySnapshot {
+	var path string
+	if len(os.Args) > 0 {
+		path, _ = exec.LookPath(os.Args[0])
 	}
-	fi, err := os.Stat(exe)
-	if err != nil {
-		return 0
+	if path == "" {
+		path, _ = os.Executable()
 	}
-	return fi.ModTime().Unix()
-}()
+	if path == "" {
+		return binarySnapshot{}
+	}
+	abs, err := filepath.Abs(path)
+	if err == nil {
+		path = abs
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return binarySnapshot{}
+	}
+	return binarySnapshot{path: path, info: info}
+}
+
+func binarySnapshotChanged(snapshot binarySnapshot) bool {
+	if snapshot.path == "" || snapshot.info == nil {
+		return false
+	}
+	current, err := os.Stat(snapshot.path)
+	if err != nil {
+		// A package manager may remove the old versioned path after switching its
+		// stable launcher. The running image is still valid, but it is superseded.
+		return true
+	}
+	return !os.SameFile(snapshot.info, current) || current.ModTime().After(snapshot.info.ModTime())
+}
 
 var staleBinaryWarned bool
 
-// staleBinaryNote reports once per session when the on-disk binary is newer
-// than the running server.
+// staleBinaryNote reports once when the configured executable was replaced
+// after this server started.
 func staleBinaryNote() string {
-	if staleBinaryWarned || startupBinaryModTime == 0 {
-		return ""
-	}
-	exe, err := os.Executable()
-	if err != nil {
-		return ""
-	}
-	fi, err := os.Stat(exe)
-	if err != nil || fi.ModTime().Unix() <= startupBinaryModTime {
+	if staleBinaryWarned || !binarySnapshotChanged(startupBinarySnapshot) {
 		return ""
 	}
 	staleBinaryWarned = true
 	return "⚠ prism was upgraded on disk after this MCP server started (running " +
-		version.Version + "). This server keeps serving the OLD behavior — " +
-		"including any bugs fixed since — until the session restarts. " +
-		"Tell the user to restart their agent to pick up the new binary."
+		version.Version + "). This request was not run with old behavior; the stale server is exiting so the client can respawn it. " +
+		"Restart the agent if Prism tools do not reconnect automatically."
 }
 
 // negotiateProtocolVersion echoes the client's requested protocolVersion when
@@ -262,7 +252,6 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		// cache re-reads on every later turn (measured: median 4.4x, mean
 		// 11x effective multiplier across real sessions).
 		s.handler.Ledger.RecordResult(call.Name, ranking.EstimateTokens(text))
-		s.persistLedgerDelta()
 		content := []map[string]string{{"type": "text", "text": text}}
 		// Stale-context delivery: when any recently delivered file changed
 		// on disk, every context-bearing response carries the warning, so
@@ -272,14 +261,6 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			if warning := s.handler.StaleContextWarning(); warning != "" {
 				content = append(content, map[string]string{"type": "text", "text": warning})
 			}
-		}
-		// Stale-SERVER delivery: an MCP server outlives upgrades. During one
-		// audit, the session's server silently dropped a parameter added two
-		// releases earlier and emitted warnings pointing at a tool that no
-		// longer existed — fixed on disk, live in the process, with nothing
-		// anywhere saying so. One stat per call is the price of saying it.
-		if note := staleBinaryNote(); note != "" {
-			content = append(content, map[string]string{"type": "text", "text": note})
 		}
 		if note := conflictingInstallationNote(); note != "" {
 			content = append(content, map[string]string{"type": "text", "text": note})

@@ -4,8 +4,6 @@ package cli
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,7 +20,6 @@ import (
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/httpapi"
 	"github.com/provasign/prism/internal/mcp"
-	"github.com/provasign/prism/internal/session"
 	"github.com/provasign/prism/internal/textsearch"
 	"github.com/provasign/prism/internal/version"
 )
@@ -121,13 +118,13 @@ Usage:
                                   Submit quality feedback for a Prism result
   prism serve [--port 8888] [dir] Start the HTTP API server (stdio MCP is 'prism mcp')
   prism mcp [dir]                 Start MCP server on stdio
-  prism savings [dir]             Show session savings dashboard
   prism drift [dir]              Report files/symbols that changed since they were delivered this session
   prism config [dir]              Show resolved configuration
   prism version                   Print version
 
 prism init [dir] flags:
-  --global            register in user-global configs (unlocks Zed, Codex, opencode)
+  --global            register in user-global configs (unlocks Zed and opencode;
+                      Codex supports both project and global registration)
   --mode <any>        accepted and IGNORED (since v0.38.0 one steering template
                       covers MCP tools and the CLI together)
   --no-permissions    skip the Claude Code tool auto-allow entry
@@ -147,7 +144,7 @@ the tool's config directory already exists:
   Windsurf     →  .windsurf/mcp.json + .windsurfrules
   Zed          →  ~/.config/zed/settings.json (context_servers)   [--global]
   VS Code      →  .vscode/mcp.json + .github/copilot-instructions.md
-  Codex CLI    →  ~/.codex/config.toml + AGENTS.md                [--global]
+  Codex CLI    →  .codex/config.toml (project) or ~/.codex/config.toml [--global]
   opencode     →  ~/.config/opencode/opencode.json                [--global]
   Hermes       →  ~/.hermes/config.yaml   (print-config only — paste it yourself)
   Gemini CLI   →  GEMINI.md
@@ -232,10 +229,6 @@ func Run(args []string) int {
 		return cmdServe(rest)
 	case "mcp":
 		return cmdMCP(rest)
-	case "stats":
-		return cmdStats(rest)
-	case "savings":
-		return cmdSavings(rest)
 	case "drift":
 		return cmdDrift(rest)
 	case "config":
@@ -692,9 +685,9 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 	var written []string
 
 	// Scope model: project-level is the default and touches ONLY files inside
-	// the repo. User-global tools (Zed, Codex CLI, opencode) and the global
-	// Claude settings are written only with --global, or after the explicit
-	// interactive question below — never silently.
+	// the repo. User-global tools (Zed, opencode, and an optional global Codex
+	// registration) and the global Claude settings are written only with
+	// --global, or after the explicit interactive question below — never silently.
 	globalTools := global
 	if !globalTools && !refresh && isInteractive() {
 		globalTools = promptGlobalTools()
@@ -865,13 +858,26 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		}
 	}
 
-	// Zed and Codex CLI keep their MCP registrations in USER-GLOBAL config
-	// files (~/.config/zed/settings.json, ~/.codex/config.toml). A
-	// project-level init must not touch them: writing this project's path
-	// there would silently re-point every other project's Zed/Codex at this
-	// one. Register them only with --global, and without a pinned project
-	// dir — `prism mcp` serves the editor's launch cwd, so one global entry
-	// is correct in every project.
+	// Codex supports trusted project-scoped MCP configuration. Write that local
+	// entry on an ordinary init so a fresh Codex install works without changing
+	// ~/.codex/config.toml. Codex launches a project config in the project's cwd,
+	// so `prism mcp` needs no absolute project argument and remains portable.
+	if !global {
+		codexPath := filepath.Join(projectDir, ".codex", "config.toml")
+		if !(refresh && !fileExists(codexPath)) {
+			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp"}); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not write project Codex config: %v\n", err)
+			} else {
+				fmt.Printf("registered with Codex CLI: %s\n", codexPath)
+				written = append(written, codexPath)
+			}
+		}
+	}
+
+	// Zed, opencode, and the optional global Codex registration live in user
+	// config. A project init must never update those paths without explicit
+	// consent. The global Codex entry has no pinned project dir: `prism mcp`
+	// serves the client's launch cwd, so one entry works across projects.
 	if globalTools {
 		zedPath := filepath.Join(home, ".config", "zed", "settings.json")
 		if _, err := os.Stat(filepath.Dir(zedPath)); err == nil && !(refresh && !fileExists(zedPath)) {
@@ -896,7 +902,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 			}
 		}
 	} else {
-		fmt.Println("note: Zed and Codex CLI use user-global configs — run `prism init --global` to register them")
+		fmt.Println("note: Zed and opencode require user-global configs; Codex is registered for this project — run `prism init --global` to register globally too")
 	}
 	// Hermes keeps its MCP servers in a nested YAML document with a separate
 	// platform_toolsets list. Prism has no YAML parser, and hand-splicing that
@@ -1003,8 +1009,8 @@ platform_toolsets:
 `, prismBin)
 }
 
-// buildCodexSnippet returns the TOML block written to ~/.codex/config.toml,
-// as text, so --print-config can show it without writing.
+// buildCodexSnippet returns the TOML block written to either Codex config.toml
+// scope, as text, so --print-config can show it without writing.
 func buildCodexSnippet(prismBin string) string {
 	return strings.Join([]string{
 		"[mcp_servers.prism]",
@@ -1047,7 +1053,7 @@ func printAgentConfig(id, projectDir, prismBin string, global bool) int {
 		path = filepath.Join(home, ".config", "zed", "settings.json")
 		body = string(buildZedConfig(prismBin))
 	case "codex":
-		path = filepath.Join(home, ".codex", "config.toml")
+		path = pick(filepath.Join(home, ".codex", "config.toml"), filepath.Join(projectDir, ".codex", "config.toml"))
 		body = buildCodexSnippet(prismBin)
 	case "opencode":
 		path = filepath.Join(home, ".config", "opencode", "opencode.json")
@@ -1240,12 +1246,12 @@ func isInteractive() bool {
 }
 
 // promptGlobalTools asks — every interactive project-level init — whether to
-// also register the tools that only have user-global configs. Default NO:
-// a project init keeps the machine untouched.
+// also register user-global tools. Default NO: Codex is already registered for
+// the project, and a project init otherwise keeps the machine untouched.
 func promptGlobalTools() bool {
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Zed, Codex CLI, and opencode keep MCP registrations in USER-GLOBAL")
-	fmt.Fprintln(os.Stderr, "config files (outside this repo). Register prism with them too?")
+	fmt.Fprintln(os.Stderr, "Zed and opencode require USER-GLOBAL MCP registrations.")
+	fmt.Fprintln(os.Stderr, "Codex is registered for this project; register it globally too?")
 	fmt.Fprintln(os.Stderr, "  Default keeps setup project-level: nothing outside this repo is")
 	fmt.Fprintln(os.Stderr, "  touched, and other projects are unaffected.")
 	fmt.Fprint(os.Stderr, "Register user-global tools? [y/N]: ")
@@ -1636,7 +1642,7 @@ func cmdQuery(args []string) int {
 	if len(include) > 0 {
 		invokeArgs["include"] = include
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_query", invokeArgs)
+	out, err := invokeTool(dir, "prism_query", invokeArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "query:", err)
 		return 1
@@ -1692,7 +1698,7 @@ func cmdRead(args []string) int {
 	if limit > 0 {
 		readArgs["limit"] = limit
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_read", readArgs)
+	out, err := invokeTool(dir, "prism_read", readArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "read:", err)
 		return 1
@@ -1850,7 +1856,7 @@ func cmdSearch(args []string) int {
 	if contextSet {
 		callArgs["context"] = contextLines
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_search", callArgs)
+	out, err := invokeTool(dir, "prism_search", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
@@ -1914,7 +1920,7 @@ func cmdLookup(args []string) int {
 	if fileHint != "" {
 		callArgs["file"] = fileHint
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_lookup", callArgs)
+	out, err := invokeTool(dir, "prism_lookup", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
 		return 1
@@ -1961,7 +1967,7 @@ func cmdNode(args []string) int {
 	if fileHint != "" {
 		callArgs["file"] = fileHint
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_node", callArgs)
+	out, err := invokeTool(dir, "prism_node", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "node:", err)
 		return 1
@@ -1992,7 +1998,7 @@ func cmdResolve(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_resolve", map[string]any{"name": name})
+	out, err := invokeTool(dir, "prism_resolve", map[string]any{"name": name})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "resolve:", err)
 		return 1
@@ -2047,7 +2053,7 @@ func cmdEdges(args []string) int {
 	if len(kinds) > 0 {
 		callArgs["kinds"] = kinds
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_edges", callArgs)
+	out, err := invokeTool(dir, "prism_edges", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "edges:", err)
 		return 1
@@ -2082,7 +2088,7 @@ func cmdReferences(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_references", map[string]any{"name": name})
+	out, err := invokeTool(dir, "prism_references", map[string]any{"name": name})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "references:", err)
 		return 1
@@ -2130,7 +2136,7 @@ func cmdChangeImpact(args []string) int {
 	if file != "" {
 		callArgs["file"] = file
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_change_impact", callArgs)
+	out, err := invokeTool(dir, "prism_change_impact", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("change-impact", err))
 		return 1
@@ -2166,7 +2172,7 @@ func cmdRenamePlan(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_rename_plan",
+	out, err := invokeTool(dir, "prism_rename_plan",
 		map[string]any{"query": query, "newName": newName})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("rename-plan", err))
@@ -2203,7 +2209,7 @@ func cmdMissingImplementations(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_missing_implementations", map[string]any{"query": query})
+	out, err := invokeTool(dir, "prism_missing_implementations", map[string]any{"query": query})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, prefixOnce("missing-implementations", err))
 		return 1
@@ -2247,7 +2253,7 @@ func cmdDeadCode(args []string) int {
 	if len(roots) > 0 {
 		callArgs["roots"] = roots
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_dead_code", callArgs)
+	out, err := invokeTool(dir, "prism_dead_code", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "dead-code:", err)
 		return 1
@@ -2264,7 +2270,7 @@ func cmdCompact(args []string) int {
 		fmt.Fprintln(os.Stderr, "compact: stdin must be a JSON array of turns:", err)
 		return 2
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_compact", map[string]any{"turns": turns})
+	out, err := invokeTool(dir, "prism_compact", map[string]any{"turns": turns})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "compact:", err)
 		return 1
@@ -2321,7 +2327,7 @@ func cmdFeedback(args []string) int {
 		tool = "prism_query"
 	}
 
-	out, err := invokeWithPersistentLedger(dir, "prism_feedback", map[string]any{
+	out, err := invokeTool(dir, "prism_feedback", map[string]any{
 		"tool":    tool,
 		"queryId": queryID,
 		"rating":  rating,
@@ -2335,72 +2341,9 @@ func cmdFeedback(args []string) int {
 	return 0
 }
 
-// cmdStats prints the per-root token-cost dashboard as a human table:
-// per tool, calls / result tokens / avg per call, plus compression savings.
-// Same data source as `prism savings` (the shared per-root ledger), different
-// audience: savings is the agent-facing JSON, stats is for the human deciding
-// where token budget goes.
-func cmdStats(args []string) int {
-	dir := dirArg(args, 0, ".")
-	root, err := filepath.Abs(dir)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "stats:", err)
-		return 1
-	}
-	ledger, err := session.LoadLedger(ledgerPathForRoot(root))
-	if err != nil {
-		fmt.Println("no ledger yet for this root — run some prism tools first")
-		return 0
-	}
-	s := ledger.Snapshot()
-	type row struct {
-		tool string
-		st   session.ToolStats
-	}
-	rows := make([]row, 0, len(s.ByTool))
-	for tool, st := range s.ByTool {
-		rows = append(rows, row{tool, st})
-	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].st.ResultTokens > rows[j].st.ResultTokens })
-	fmt.Printf("%-28s %8s %14s %10s %12s\n", "tool", "calls", "result tokens", "avg/call", "compressed")
-	for _, r := range rows {
-		calls := r.st.ResultCalls
-		if calls == 0 {
-			calls = int64(r.st.Calls) // pre-instrumentation ledgers
-		}
-		avg := int64(0)
-		if calls > 0 {
-			avg = r.st.ResultTokens / calls
-		}
-		comp := ""
-		if r.st.Original > 0 {
-			comp = fmt.Sprintf("%.0f%%", (1-float64(r.st.Delivered)/float64(r.st.Original))*100)
-		}
-		fmt.Printf("%-28s %8d %14d %10d %12s\n", r.tool, calls, r.st.ResultTokens, avg, comp)
-	}
-	fmt.Printf("\nTOTAL result tokens delivered: %d", s.TotalResults)
-	if s.TotalOriginal > 0 {
-		fmt.Printf("   (compression saved %.0f%% on the compressible paths)", s.SavingsPercent)
-	}
-	fmt.Println()
-	fmt.Println("result tokens compound: each result is re-read from cache on every later turn.")
-	return 0
-}
-
-func cmdSavings(args []string) int {
-	dir := dirArg(args, 0, ".")
-	out, err := invokeWithPersistentLedger(dir, "prism_savings", nil)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "savings:", err)
-		return 1
-	}
-	printJSON(out)
-	return 0
-}
-
 func cmdDrift(args []string) int {
 	dir := dirArg(args, 0, ".")
-	out, err := invokeWithPersistentLedger(dir, "prism_drift", nil)
+	out, err := invokeTool(dir, "prism_drift", nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "drift:", err)
 		return 1
@@ -2522,7 +2465,7 @@ func cmdMCP(args []string) int {
 	}()
 
 	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)
-	srv := mcp.NewServer(h).WithLedgerPersistence(ledgerPathForRoot(root))
+	srv := mcp.NewServer(h)
 	serveErr := srv.Serve(os.Stdin, os.Stdout)
 
 	// Stop background work and close the embedded engine before returning so no
@@ -2573,17 +2516,7 @@ func newClient(dir string) (*config.Config, *grove.Client, error) {
 	return cfg, client, nil
 }
 
-func ledgerPathForRoot(root string) string {
-	sum := sha1.Sum([]byte(root))
-	key := hex.EncodeToString(sum[:])
-	cacheDir, err := os.UserCacheDir()
-	if err != nil || cacheDir == "" {
-		cacheDir = os.TempDir()
-	}
-	return filepath.Join(cacheDir, "prism", "ledger", key+".json")
-}
-
-func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, error) {
+func invokeTool(dir, tool string, args map[string]any) (any, error) {
 	timing := os.Getenv("PRISM_TIMING") != ""
 	tInv := time.Now()
 	stamp := func(stage string) {
@@ -2603,55 +2536,8 @@ func invokeWithPersistentLedger(dir, tool string, args map[string]any) (any, err
 	}
 	stamp("autoIndex")
 
-	ledgerFile := ledgerPathForRoot(root)
-	var out any
-	var invokeErr error
-	lockFile := ledgerFile + ".lock"
-	lockErr := session.WithFileLock(lockFile, 5*time.Second, func() error {
-		ledger, err := session.LoadLedger(ledgerFile)
-		if err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				fmt.Fprintln(os.Stderr, "warning: could not load savings ledger:", err)
-			}
-			ledger = session.NewLedger(time.Now().Format("20060102-150405"))
-		}
-
-		// The lock serializes standalone CLI processes that share the savings
-		// ledger. Delivery caches remain scoped to real MCP conversations.
-		h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
-		out, invokeErr = h.Invoke(tool, args)
-		if saveErr := h.Ledger.Save(ledgerFile); saveErr != nil {
-			fmt.Fprintln(os.Stderr, "warning: could not persist savings ledger:", saveErr)
-		}
-		pruneOldLedgers(filepath.Dir(ledgerFile), 30*24*time.Hour)
-		return nil
-	})
-	if lockErr != nil {
-		return nil, lockErr
-	}
-	return out, invokeErr
-}
-
-// pruneOldLedgers removes ledger files in dir that are older than maxAge.
-// Silently ignores errors — pruning is best-effort.
-func pruneOldLedgers(dir string, maxAge time.Duration) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	cutoff := time.Now().Add(-maxAge)
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
-			continue
-		}
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		if info.ModTime().Before(cutoff) {
-			_ = os.Remove(filepath.Join(dir, e.Name()))
-		}
-	}
+	h := mcp.NewHandler(cfg, root, client)
+	return h.Invoke(tool, args)
 }
 
 func mustAbs(p string) string {
@@ -3453,17 +3339,7 @@ func cmdAssist(args []string) int {
 		return 1
 	}
 
-	// One handler for the whole session: ops record into the persistent
-	// ledger exactly as individual CLI invocations do.
-	ledgerFile := ledgerPathForRoot(root)
-	ledger, lerr := session.LoadLedger(ledgerFile)
-	if lerr != nil {
-		ledger = session.NewLedger(time.Now().Format("20060102-150405"))
-	}
-	h := mcp.NewHandlerWithLedger(cfg, root, client, ledger)
-	defer func() {
-		_ = h.Ledger.Save(ledgerFile)
-	}()
+	h := mcp.NewHandler(cfg, root, client)
 
 	fmt.Printf("assist: %s @ %s\n", provider.Name(), root)
 	_, err = assist.Run(task, provider, h.Invoke, assist.Options{

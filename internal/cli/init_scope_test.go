@@ -38,6 +38,13 @@ func TestInitProjectScopeTouchesNothingGlobal(t *testing.T) {
 			t.Errorf("project settings missing %s: %s", want, raw)
 		}
 	}
+	codexRaw, err := os.ReadFile(filepath.Join(project, ".codex", "config.toml"))
+	if err != nil {
+		t.Fatalf("project .codex/config.toml not written: %v", err)
+	}
+	if !strings.Contains(string(codexRaw), "[mcp_servers.prism]") {
+		t.Errorf("project Codex config missing prism registration: %s", codexRaw)
+	}
 }
 
 // --deny-builtin-search must land its rules SOMEWHERE in both scopes. The

@@ -28,6 +28,43 @@ need() { command -v "$1" >/dev/null 2>&1 || die "required tool not found: $1"; }
 
 need curl
 
+# Stop only long-running Prism MCP servers. An executing Unix binary can remain
+# alive after its path is replaced, so without this step an apparently
+# successful upgrade can leave every open agent serving the old release.
+stop_running_prism_mcps() {
+  command -v ps >/dev/null 2>&1 || return 0
+  local pids pid remaining attempts
+  pids="$(ps -axo pid=,command= 2>/dev/null | awk -v self="$$" '
+    $1 != self {
+      exe = $2
+      sub(/^.*\//, "", exe)
+      if ((exe == "prism" || exe == "prism.exe") && $3 == "mcp") print $1
+    }
+  ')"
+  [ -n "$pids" ] || return 0
+
+  set -- $pids
+  info "Stopping $# running Prism MCP server(s) before upgrade…"
+  for pid in "$@"; do
+    kill "$pid" 2>/dev/null || true
+  done
+
+  attempts=0
+  while [ "$attempts" -lt 20 ]; do
+    remaining=""
+    for pid in "$@"; do
+      if kill -0 "$pid" 2>/dev/null; then
+        remaining="${remaining} ${pid}"
+      fi
+    done
+    [ -z "$remaining" ] && break
+    sleep 0.1
+    attempts=$((attempts + 1))
+  done
+  [ -z "$remaining" ] || die "could not stop old Prism MCP process(es):${remaining}; close coding agents and retry"
+  ok "Stopped old Prism MCP server(s); coding agents can now respawn the installed version"
+}
+
 # ── Platform detection ───────────────────────────────────────────────────────
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
@@ -77,11 +114,15 @@ EXPECTED="$(grep -E "  (\./)?${FILE}\$" "${TMP}/checksums.txt" | awk '{print $1}
 ok "${FILE}: checksum verified"
 
 # ── Install ──────────────────────────────────────────────────────────────────
+stop_running_prism_mcps
 mkdir -p "$INSTALL_DIR"
 mv "${TMP}/${FILE}" "${INSTALL_DIR}/${PRODUCT}"
 chmod +x "${INSTALL_DIR}/${PRODUCT}"
 [ "$OS" = "darwin" ] && xattr -d com.apple.quarantine "${INSTALL_DIR}/${PRODUCT}" 2>/dev/null || true
 [ "$OS" = "darwin" ] && codesign -f -s - "${INSTALL_DIR}/${PRODUCT}" 2>/dev/null || true
+INSTALLED_VERSION="$("${INSTALL_DIR}/${PRODUCT}" version 2>/dev/null || true)"
+[ "$INSTALLED_VERSION" = "prism ${VERSION}" ] \
+  || die "installed binary verification failed: expected 'prism ${VERSION}', got '${INSTALLED_VERSION:-no output}'"
 ok "${PRODUCT} ${VERSION} → ${INSTALL_DIR}/${PRODUCT}"
 
 # ── PATH registration ────────────────────────────────────────────────────────

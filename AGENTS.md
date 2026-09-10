@@ -1,6 +1,10 @@
 
 ## Development workflow
 
+Do not commit or push any change until the user explicitly reviews the work and
+approves the commit and push. Completing implementation or validation is not
+approval. Keep changes uncommitted while awaiting that approval.
+
 All changes must be made, committed, and pushed directly on `main`. Do not
 create or use feature, task, cleanup, or reconciliation branches for repository
 changes. Before editing or committing, confirm the active branch is `main`.

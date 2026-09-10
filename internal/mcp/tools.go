@@ -846,9 +846,6 @@ func toolDescription(name string) string {
 		return "Compress a conversation history JSON array. " +
 			"Call when the context window is near capacity to summarize older turns " +
 			"while preserving recent ones."
-	case "prism_savings":
-		return "Return this session's token-savings dashboard: total delivered, " +
-			"percentage saved, per-tool breakdown."
 	case "prism_drift":
 		return "Check whether the ground shifted under you: re-verify every file " +
 			"delivered in this session against the working tree and report, symbol " +

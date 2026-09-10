@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // setHome points both HOME (unix) and USERPROFILE (what os.UserHomeDir reads
@@ -95,43 +94,6 @@ func TestPrintJSON(t *testing.T) {
 	if m["a"] != 1 {
 		t.Errorf("got %+v", m)
 	}
-}
-
-func TestLedgerPathForRoot(t *testing.T) {
-	p := ledgerPathForRoot("/x/y/z")
-	if !strings.Contains(p, "prism") {
-		t.Errorf("got %s", p)
-	}
-	if !strings.HasSuffix(p, ".json") {
-		t.Errorf("got %s", p)
-	}
-}
-
-func TestPruneOldLedgers_Cov(t *testing.T) {
-	dir := t.TempDir()
-	old := filepath.Join(dir, "old.json")
-	_ = os.WriteFile(old, []byte("{}"), 0o644)
-	past := time.Now().Add(-60 * 24 * time.Hour)
-	_ = os.Chtimes(old, past, past)
-
-	fresh := filepath.Join(dir, "fresh.json")
-	_ = os.WriteFile(fresh, []byte("{}"), 0o644)
-
-	// other files ignored
-	_ = os.WriteFile(filepath.Join(dir, "x.txt"), []byte("x"), 0o644)
-	_ = os.MkdirAll(filepath.Join(dir, "subdir"), 0o755)
-
-	pruneOldLedgers(dir, 30*24*time.Hour)
-	if _, err := os.Stat(old); !os.IsNotExist(err) {
-		t.Error("old not pruned")
-	}
-	if _, err := os.Stat(fresh); err != nil {
-		t.Error("fresh pruned")
-	}
-}
-
-func TestPruneOldLedgers_BadDir_Cov(t *testing.T) {
-	pruneOldLedgers("/nonexistent/path/xxxx", time.Hour)
 }
 
 func TestCmdConfig(t *testing.T) {

@@ -27,6 +27,24 @@ function info($msg) { Write-Host "==> $msg" -ForegroundColor Blue }
 function ok($msg)   { Write-Host "✅ $msg" -ForegroundColor Green }
 function die($msg)  { Write-Error "❌ $msg"; exit 1 }
 
+# Windows locks running executables, and every platform can otherwise leave an
+# open agent attached to the old in-memory release. Stop only `prism.exe mcp`
+# processes; watch/serve and ordinary CLI processes are left alone.
+function Stop-RunningPrismMcps {
+  $running = @(Get-CimInstance Win32_Process -Filter "Name='prism.exe'" -ErrorAction SilentlyContinue | Where-Object {
+    if (-not $_.CommandLine -or -not $_.ExecutablePath) { return $false }
+    $escapedExe = [regex]::Escape($_.ExecutablePath)
+    return $_.CommandLine -match "^(?:`"$escapedExe`"|$escapedExe)\s+mcp(?:\s|$)"
+  })
+  if ($running.Count -eq 0) { return }
+
+  info "Stopping $($running.Count) running Prism MCP server(s) before upgrade…"
+  foreach ($process in $running) {
+    Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+  }
+  ok "Stopped old Prism MCP server(s); coding agents can now respawn the installed version"
+}
+
 # ── Version resolution ───────────────────────────────────────────────────────
 if (-not $Version) {
   info "Resolving latest release…"
@@ -59,9 +77,14 @@ if ($expected.ToLower() -ne $actual) { die "CHECKSUM MISMATCH`n  expected: $expe
 ok "Checksum verified"
 
 # ── Install ──────────────────────────────────────────────────────────────────
+Stop-RunningPrismMcps
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item $tmpFile "$InstallDir\$PRODUCT.exe" -Force
 Remove-Item $tmpFile -ErrorAction SilentlyContinue
+$installedVersion = (& "$InstallDir\$PRODUCT.exe" version 2>$null | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or $installedVersion -ne "prism $Version") {
+  die "Installed binary verification failed: expected 'prism $Version', got '$installedVersion'"
+}
 ok "$PRODUCT $Version → $InstallDir\$PRODUCT.exe"
 
 # ── PATH registration ────────────────────────────────────────────────────────
