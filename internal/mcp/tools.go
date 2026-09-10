@@ -351,6 +351,77 @@ func ToolSchemas() []map[string]any {
 	return out
 }
 
+// CompactToolSchemas exposes the same six primary operations through one MCP
+// tool. This is an opt-in experiment: the legacy schemas remain the default
+// until agent-routing and token measurements justify changing the surface.
+//
+// Claude Code currently drops tools whose top-level input schema is a oneOf, so
+// the compact surface uses one typed union of the common operation fields. The
+// selected legacy handler remains the authority: Handler.Invoke validates args
+// against that operation's full schema and rejects silently ignored parameters.
+func CompactToolSchemas() []map[string]any {
+	stringOrArray := func() map[string]any {
+		return map[string]any{
+			"type":  []string{"string", "array"},
+			"items": map[string]any{"type": "string"},
+		}
+	}
+	stringArray := func() map[string]any {
+		return map[string]any{
+			"type":  "array",
+			"items": map[string]any{"type": "string"},
+		}
+	}
+	return []map[string]any{{
+		"name": "prism",
+		"description": "MANDATORY first repository-discovery tool. Choose one operation. " +
+			"Known symbol: lookup. Known file/range: read. Unknown location/text: search. Related callers/tests: query. " +
+			"Before editing: change_impact. At finish: verify. Do not substitute native Read/Grep.",
+		"inputSchema": map[string]any{
+			"type":                 "object",
+			"additionalProperties": false,
+			"required":             []string{"op", "args"},
+			"properties": map[string]any{
+				"op": map[string]any{
+					"type":        "string",
+					"enum":        []string{"lookup", "read", "search", "query", "change_impact", "verify"},
+					"description": "Use lookup for any known symbol; search only when its location is unknown.",
+				},
+				"args": map[string]any{
+					"type":                 "object",
+					"description":          "lookup{name}; read{file,offset?,limit?}; search{query}; query{task,terms}; change_impact{query}; verify{}. For search, query is one term or an array—never join identifiers with spaces.",
+					"additionalProperties": true,
+					"properties": map[string]any{
+						"name":            stringOrArray(),
+						"query":           stringOrArray(),
+						"file":            map[string]any{"type": "string"},
+						"offset":          map[string]any{"type": "integer"},
+						"limit":           map[string]any{"type": "integer"},
+						"task":            map[string]any{"type": "string"},
+						"terms":           stringArray(),
+						"fields":          stringArray(),
+						"scope":           map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}},
+						"path":            stringOrArray(),
+						"glob":            stringOrArray(),
+						"regex":           map[string]any{"type": "boolean"},
+						"exhaustive":      map[string]any{"type": "boolean"},
+						"files_only":      map[string]any{"type": "boolean"},
+						"rollup_only":     map[string]any{"type": "boolean"},
+						"context":         map[string]any{"type": "integer"},
+						"include":         stringArray(),
+						"delivery":        map[string]any{"type": "string", "enum": []string{"source", "symbols"}},
+						"max_files":       map[string]any{"type": "integer"},
+						"budget":          map[string]any{"type": "integer"},
+						"signature":       map[string]any{"type": "string"},
+						"base":            map[string]any{"type": "string"},
+						"removed_symbols": stringArray(),
+					},
+				},
+			},
+		},
+	}}
+}
+
 // modelProp is the shared "model" property injected into prism_query and
 // prism_read. Agents must pass their current model ID so Prism can correctly
 // size the context budget and session confidence thresholds.

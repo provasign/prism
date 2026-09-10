@@ -218,6 +218,26 @@ func TestCmdMCP_EOFReturnsZero(t *testing.T) {
 	}
 }
 
+func TestCmdMCPCompact_EOFReturnsZero(t *testing.T) {
+	dir := setupCLIProject(t)
+
+	r, w, _ := os.Pipe()
+	_ = w.Close()
+	oldIn := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = oldIn }()
+
+	if got := cmdMCP([]string{"--compact", dir}); got != 0 {
+		t.Fatalf("cmdMCP --compact eof=%d", got)
+	}
+}
+
+func TestCmdMCPCompactRejectsUnknownFlag(t *testing.T) {
+	if got := cmdMCP([]string{"--compcat"}); got != 2 {
+		t.Fatalf("cmdMCP unknown flag=%d, want 2", got)
+	}
+}
+
 func TestRun_SubcommandUsagePaths(t *testing.T) {
 	if got := Run([]string{"query"}); got != 2 {
 		t.Fatalf("Run query usage=%d", got)

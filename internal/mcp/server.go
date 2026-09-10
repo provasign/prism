@@ -27,10 +27,15 @@ import (
 // Server is the JSON-RPC stdio server.
 type Server struct {
 	handler *Handler
+	compact bool
 }
 
 // NewServer wires a Handler into a stdio JSON-RPC server.
 func NewServer(h *Handler) *Server { return &Server{handler: h} }
+
+// NewCompactServer exposes one prism gateway instead of six separate MCP tool
+// schemas. The underlying handlers and result renderers remain identical.
+func NewCompactServer(h *Handler) *Server { return &Server{handler: h, compact: true} }
 
 type request struct {
 	JSONRPC string          `json:"jsonrpc"`
@@ -98,6 +103,54 @@ const serverInstructions = "For every coding task, the first repository-discover
 	"changelog entries, refactors, or compatibility machinery unless the task requires them. " +
 	"For removals, prism_verify with removed_symbols is a mid-loop reference check; plain prism_verify is the final " +
 	"multi-site gate. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
+
+const compactServerInstructions = "For every coding task, the first repository-discovery action MUST call the prism tool. " +
+	"Do not begin with native Read/Grep/search. Put parameters in args. Known symbol: op=lookup. Known file/range: " +
+	"op=read. Unknown location/text: op=search. Related context around explicit terms: op=query. Before editing a " +
+	"symbol: op=change_impact. Finished multi-site change: op=verify. Batch related names."
+
+const compactSearchLocatorGuidance = "// locator result — use the prism tool with op=lookup for known symbol bodies, op=read for a known file/range, or op=query for related implementations, callers, and tests"
+
+func rewriteCompactGuidance(text string) string {
+	return strings.Replace(text, searchLocatorGuidance, compactSearchLocatorGuidance, 1)
+}
+
+var compactOperations = map[string]string{
+	"search":        "prism_search",
+	"query":         "prism_query",
+	"read":          "prism_read",
+	"lookup":        "prism_lookup",
+	"change_impact": "prism_change_impact",
+	"verify":        "prism_verify",
+}
+
+// expandCompactCall unwraps the small agent-facing envelope into the existing
+// tool name and arguments. Handler.Invoke then performs the operation-specific
+// unknown-argument validation against the legacy typed schema.
+func expandCompactCall(envelope map[string]any) (string, map[string]any, error) {
+	for key := range envelope {
+		if key != "op" && key != "args" {
+			return "", nil, fmt.Errorf("prism: unknown parameter %q — use op and args", key)
+		}
+	}
+	op, ok := envelope["op"].(string)
+	if !ok || op == "" {
+		return "", nil, fmt.Errorf("prism: op is required")
+	}
+	name, ok := compactOperations[op]
+	if !ok {
+		return "", nil, fmt.Errorf("prism: unknown op %q — use search, query, read, lookup, change_impact, or verify", op)
+	}
+	args := map[string]any{}
+	if raw, present := envelope["args"]; present {
+		var argsOK bool
+		args, argsOK = raw.(map[string]any)
+		if !argsOK {
+			return "", nil, fmt.Errorf("prism: args must be an object")
+		}
+	}
+	return name, args, nil
+}
 
 // supportedProtocolVersions are the MCP revisions this server can speak.
 var supportedProtocolVersions = map[string]bool{
@@ -183,15 +236,22 @@ func negotiateProtocolVersion(params json.RawMessage) string {
 func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError) {
 	switch method {
 	case "initialize":
+		instructions := serverInstructions
+		if s.compact {
+			instructions = compactServerInstructions
+		}
 		return map[string]any{
 			"protocolVersion": negotiateProtocolVersion(params),
 			"serverInfo":      map[string]string{"name": "prism", "version": version.Version},
 			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"instructions":    serverInstructions,
+			"instructions":    instructions,
 		}, nil
 	case "ping":
 		return map[string]any{}, nil
 	case "tools/list":
+		if s.compact {
+			return map[string]any{"tools": CompactToolSchemas()}, nil
+		}
 		return map[string]any{"tools": ToolSchemas()}, nil
 	case "tools/call":
 		var call struct {
@@ -201,7 +261,16 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if err := json.Unmarshal(params, &call); err != nil {
 			return nil, &rpcError{Code: -32602, Message: err.Error()}
 		}
-		out, err := s.handler.Invoke(call.Name, call.Arguments)
+		actualName := call.Name
+		actualArgs := call.Arguments
+		if call.Name == "prism" {
+			var err error
+			actualName, actualArgs, err = expandCompactCall(call.Arguments)
+			if err != nil {
+				return nil, &rpcError{Code: -32602, Message: err.Error()}
+			}
+		}
+		out, err := s.handler.Invoke(actualName, actualArgs)
 		if err != nil {
 			return nil, &rpcError{Code: -32000, Message: err.Error()}
 		}
@@ -216,10 +285,13 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		var text string
 		var rendered bool
 		if m, ok := out.(map[string]any); ok {
-			switch call.Name {
+			switch actualName {
 			case "prism_search":
 				text, rendered = renderSearchAsText(m)
 				if rendered {
+					if s.compact {
+						text = rewriteCompactGuidance(text)
+					}
 					text = s.handler.once.apply(text)
 				}
 			case "prism_read":
@@ -251,13 +323,13 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		// Result-size accounting: this is the number that compounds via
 		// cache re-reads on every later turn (measured: median 4.4x, mean
 		// 11x effective multiplier across real sessions).
-		s.handler.Ledger.RecordResult(call.Name, ranking.EstimateTokens(text))
+		s.handler.Ledger.RecordResult(actualName, ranking.EstimateTokens(text))
 		content := []map[string]string{{"type": "text", "text": text}}
 		// Stale-context delivery: when any recently delivered file changed
 		// on disk, every context-bearing response carries the warning, so
 		// the agent learns mid-task instead of at merge time. Cheap probe
 		// (bounded hash comparison); prism_drift gives symbol-level detail.
-		if contextBearingTool(call.Name) {
+		if contextBearingTool(actualName) {
 			if warning := s.handler.StaleContextWarning(); warning != "" {
 				content = append(content, map[string]string{"type": "text", "text": warning})
 			}

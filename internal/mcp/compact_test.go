@@ -1,0 +1,127 @@
+package mcp
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
+	compact := CompactToolSchemas()
+	if len(compact) != 1 {
+		t.Fatalf("compact schemas = %d, want 1", len(compact))
+	}
+	if got := compact[0]["name"]; got != "prism" {
+		t.Fatalf("compact tool name = %v, want prism", got)
+	}
+
+	schema := compact[0]["inputSchema"].(map[string]any)
+	properties := schema["properties"].(map[string]any)
+	ops := properties["op"].(map[string]any)["enum"].([]string)
+	wantOps := []string{"lookup", "read", "search", "query", "change_impact", "verify"}
+	if !reflect.DeepEqual(ops, wantOps) {
+		t.Fatalf("compact operations = %v, want %v", ops, wantOps)
+	}
+	if description := properties["op"].(map[string]any)["description"].(string); !strings.Contains(description, "lookup for any known symbol") {
+		t.Fatalf("compact operation guidance = %q", description)
+	}
+	args := properties["args"].(map[string]any)
+	searchQuery := args["properties"].(map[string]any)["query"].(map[string]any)
+	if got := searchQuery["type"].([]string); len(got) != 2 || got[1] != "array" {
+		t.Fatalf("compact search query types = %v, want string or array", got)
+	}
+
+	compactJSON, err := json.Marshal(compact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyJSON, err := json.Marshal(ToolSchemas())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(compactJSON)*3 >= len(legacyJSON) {
+		t.Fatalf("compact schema is not at least 3x smaller: compact=%d legacy=%d", len(compactJSON), len(legacyJSON))
+	}
+}
+
+func TestExpandCompactCall(t *testing.T) {
+	for op, want := range compactOperations {
+		got, args, err := expandCompactCall(map[string]any{
+			"op":   op,
+			"args": map[string]any{"marker": op},
+		})
+		if err != nil {
+			t.Fatalf("op %q: %v", op, err)
+		}
+		if got != want || args["marker"] != op {
+			t.Errorf("op %q expanded to %q %#v, want %q with preserved args", op, got, args, want)
+		}
+	}
+
+	for name, envelope := range map[string]map[string]any{
+		"missing op":    {},
+		"unknown op":    {"op": "remove"},
+		"non-object":    {"op": "read", "args": "file=x.go"},
+		"unknown field": {"op": "read", "file": "x.go"},
+	} {
+		if _, _, err := expandCompactCall(envelope); err == nil {
+			t.Errorf("%s: expected error", name)
+		}
+	}
+}
+
+func TestCompactServerAdvertisesAndDispatchesGateway(t *testing.T) {
+	h := newTestHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "hello.go"), []byte("package hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	srv := NewCompactServer(h)
+
+	listed, rpcErr := srv.dispatch("tools/list", nil)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	tools := listed.(map[string]any)["tools"].([]map[string]any)
+	if len(tools) != 1 || tools[0]["name"] != "prism" {
+		t.Fatalf("compact tools/list = %#v", tools)
+	}
+
+	initialized, rpcErr := srv.dispatch("initialize", nil)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	instructions := initialized.(map[string]any)["instructions"].(string)
+	if instructions != compactServerInstructions || strings.Contains(instructions, "prism_search") {
+		t.Fatalf("compact initialize instructions are not compact: %q", instructions)
+	}
+
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"file":"hello.go","offset":1,"limit":1}}}`)
+	result, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content := result.(map[string]any)["content"].([]map[string]string)
+	if len(content) == 0 || !strings.Contains(content[0]["text"], "package hello") {
+		t.Fatalf("compact read result = %#v", content)
+	}
+}
+
+func TestCompactServerRewritesSearchFollowUpGuidance(t *testing.T) {
+	text := searchLocatorGuidance + "\n"
+	got := rewriteCompactGuidance(text)
+	if strings.Contains(got, "prism_lookup") || !strings.Contains(got, "op=lookup") {
+		t.Fatalf("compact search guidance = %q", got)
+	}
+}
+
+func TestCompactServerRejectsArgumentsForWrongOperation(t *testing.T) {
+	srv := NewCompactServer(newTestHandler(t))
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"read","args":{"file":"hello.go","regex":true}}}`)
+	_, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr == nil || !strings.Contains(rpcErr.Message, "unknown parameter") {
+		t.Fatalf("wrong-operation argument error = %#v", rpcErr)
+	}
+}

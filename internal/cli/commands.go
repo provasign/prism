@@ -117,7 +117,7 @@ Usage:
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Submit quality feedback for a Prism result
   prism serve [--port 8888] [dir] Start the HTTP API server (stdio MCP is 'prism mcp')
-  prism mcp [dir]                 Start MCP server on stdio
+  prism mcp [--compact] [dir]     Start MCP server on stdio (--compact advertises one gateway tool)
   prism drift [dir]              Report files/symbols that changed since they were delivered this session
   prism config [dir]              Show resolved configuration
   prism version                   Print version
@@ -2414,7 +2414,26 @@ func cmdServe(args []string) int {
 }
 
 func cmdMCP(args []string) int {
-	dir := dirArg(args, 0, ".")
+	compact := false
+	positional := make([]string, 0, 1)
+	for _, arg := range args {
+		switch {
+		case arg == "--compact":
+			compact = true
+		case strings.HasPrefix(arg, "-"):
+			return rejectUnknownFlag("mcp", arg)
+		default:
+			positional = append(positional, arg)
+		}
+	}
+	if len(positional) > 1 {
+		fmt.Fprintln(os.Stderr, "usage: prism mcp [--compact] [dir]")
+		return 2
+	}
+	dir := "."
+	if len(positional) == 1 {
+		dir = positional[0]
+	}
 	root := mustAbs(dir)
 
 	// Validate the project root up front. Without this, a bad path would block
@@ -2466,6 +2485,9 @@ func cmdMCP(args []string) int {
 
 	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)
 	srv := mcp.NewServer(h)
+	if compact {
+		srv = mcp.NewCompactServer(h)
+	}
 	serveErr := srv.Serve(os.Stdin, os.Stdout)
 
 	// Stop background work and close the embedded engine before returning so no
