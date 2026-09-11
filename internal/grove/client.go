@@ -309,6 +309,7 @@ func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {
 		FilesPruned:  res.FilesPruned,
 		SymbolCount:  res.SymbolCount,
 		EdgeCount:    res.EdgeCount,
+		Errors:       append([]string(nil), res.Errors...),
 	}, nil
 }
 
@@ -574,6 +575,10 @@ func (c *Client) ChangeImpactScoped(ctx context.Context, query, file string) (*C
 	if err != nil {
 		return nil, err
 	}
+	return convertChangeImpact(r), nil
+}
+
+func convertChangeImpact(r groveeng.ChangeImpactResult) *ChangeImpactResult {
 	return &ChangeImpactResult{
 		Query:             r.Query,
 		Declarations:      convertSymbols(r.Declarations),
@@ -585,7 +590,7 @@ func (c *Client) ChangeImpactScoped(ctx context.Context, query, file string) (*C
 		OverridesExternal: r.OverridesExternal,
 		Completeness:      r.Completeness,
 		HasHeuristicRefs:  r.HasHeuristicRefs,
-	}, nil
+	}
 }
 
 // MissingImplementations resolves a "Type.method" query to every type in the

@@ -59,13 +59,14 @@ type StatusResult struct {
 
 // IndexResult mirrors Grove's /index response.
 type IndexResult struct {
-	Root         string `json:"root"`
-	FilesSeen    int    `json:"filesSeen"`
-	FilesUpdated int    `json:"filesUpdated"`
-	FilesSkipped int    `json:"filesSkipped"`
-	FilesPruned  int    `json:"filesPruned"`
-	SymbolCount  int    `json:"symbolCount"`
-	EdgeCount    int    `json:"edgeCount"`
+	Root         string   `json:"root"`
+	FilesSeen    int      `json:"filesSeen"`
+	FilesUpdated int      `json:"filesUpdated"`
+	FilesSkipped int      `json:"filesSkipped"`
+	FilesPruned  int      `json:"filesPruned"`
+	SymbolCount  int      `json:"symbolCount"`
+	EdgeCount    int      `json:"edgeCount"`
+	Errors       []string `json:"errors,omitempty"`
 }
 
 // ImpactNode is one entry returned by Grove's /impact endpoint.

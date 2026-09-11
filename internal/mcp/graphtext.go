@@ -90,6 +90,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"widerAnchor": true, "hasHeuristicRefs": true,
 		"evidenceNote": true, "coverageNote": true, "methodFamilyNote": true,
 		"staleWarning": true, "scopeNote": true, "ambiguityNote": true,
+		"familyCompleteness": true, "callerCoverage": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -100,6 +101,11 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	fmt.Fprintf(&b, "// %v — change-impact: %v site(s)\n", out["query"], out["totalSites"])
 	if c, _ := out["completeness"].(string); c != "" {
 		fmt.Fprintf(&b, "completeness: %s\n", c)
+	}
+	for _, key := range []string{"familyCompleteness", "callerCoverage"} {
+		if value, _ := out[key].(string); value != "" {
+			fmt.Fprintf(&b, "%s: %s\n", key, value)
+		}
 	}
 	if note, _ := out["coverageNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
@@ -414,7 +420,7 @@ func renderQuerySourceAsText(out map[string]any) (string, bool) {
 		b.WriteString("\n")
 	}
 	if tm := anySlice(out["textMatches"]); len(tm) > 0 {
-		b.WriteString("\ntext matches (outside indexed symbols):\n")
+		b.WriteString("\nmatched source lines:\n")
 		if !renderOneSearchText(&b, map[string]any{"textHits": out["textMatches"]}, nil) {
 			return "", false
 		}

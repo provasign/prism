@@ -251,7 +251,7 @@ func TestRenderQuerySourceAsText(t *testing.T) {
 	if !ok {
 		t.Fatal("source delivery must render")
 	}
-	for _, want := range []string{"### a.py", "b.cfg:4: key = 1", "text matches"} {
+	for _, want := range []string{"### a.py", "b.cfg:4: key = 1", "matched source lines"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}

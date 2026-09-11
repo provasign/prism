@@ -170,7 +170,15 @@ func TestToolVerify_CompleteChangePasses(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := out.(map[string]any)
-	if m["verdict"] != "complete" {
+	want := "complete"
+	if _, _, err := h.Grove.PreviewChangeImpacts(t.Context(), nil, nil); err == grove.ErrPreviewUnavailable {
+		want = "review"
+		gaps, ok := m["unverifiedSeeds"].([]string)
+		if !ok || len(gaps) != 1 || gaps[0] != "base-contract coverage unavailable: "+err.Error() {
+			t.Fatalf("unexpected coverage gaps: %v", m["unverifiedSeeds"])
+		}
+	}
+	if m["verdict"] != want {
 		t.Fatalf("verdict = %v, want complete; missed=%v", m["verdict"], m["missedSites"])
 	}
 }

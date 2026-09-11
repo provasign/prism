@@ -46,10 +46,8 @@ func widerAnchorFixture(t *testing.T) *Handler {
 	// One direct caller of the concrete type — the narrow anchor's whole world.
 	write("app/direct.go", "package app\n\nimport \"example.com/wa/core\"\n\n"+
 		"func Direct(x string) string { var f core.Fast; return f.Handle(x) }\n")
-	// An UNRELATED type with a same-named method and one caller: the
-	// disconnected-anchor shape (grafana's DataSourceHandler.QueryData vs
-	// Service.QueryData). Its change set is tiny; the same-named interface
-	// method holds the large closed family the agent may actually be after.
+	// An unrelated type with a same-named method is not a wider contract,
+	// regardless of the larger family belonging to Service.Handle.
 	write("gadget/widget.go", "package gadget\n\n"+
 		"type Widget struct{}\n\nfunc (Widget) Handle(x string, n int) string { return x }\n\n"+
 		"func Spin(x string) string { var w Widget; return w.Handle(x, 1) }\n")
@@ -66,11 +64,8 @@ func widerAnchorFixture(t *testing.T) *Handler {
 	return h
 }
 
-// The disconnected-anchor shape (grafana: DataSourceHandler.QueryData closed
-// at 3 sites while Service.QueryData held 50) cannot be reproduced in a small
-// fixture — the engine folds same-leaf names into one family at this scale —
-// so the hint logic is exercised directly against a synthetic narrow baseline;
-// the candidate probes still run against the real indexed graph.
+// A synthetic narrow baseline isolates the hint guard; candidate probes still
+// use the real graph. Same-name disconnected anchors must not redirect queries.
 func TestChangeImpact_WiderAnchorHintOnDisconnectedAnchor(t *testing.T) {
 	h := widerAnchorFixture(t)
 	narrow := &grove.ChangeImpactResult{
@@ -84,20 +79,25 @@ func TestChangeImpact_WiderAnchorHintOnDisconnectedAnchor(t *testing.T) {
 		Completeness: "closed",
 	}
 	hint := h.widerAnchorHint(t.Context(), narrow)
-	if hint == nil {
-		t.Fatal("no widerAnchor hint for a 1-caller anchor with a large same-name closed family in the graph")
+	if hint != nil {
+		t.Fatalf("unrelated same-name method must not be suggested as a base contract: %v", hint)
 	}
-	// grove v0.43.2 models Go interface dispatch; a non-generic Go family
-	// keeps the engine's own completeness in the hint (impactCoverage only
-	// downgrades interfaces with type parameters).
-	if hint["completeness"] != "closed" {
-		t.Errorf("widerAnchor completeness = %v, want the engine's closed for a non-generic Go family", hint["completeness"])
+}
+
+func TestChangeImpact_RelatedWiderAnchor(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"base.py": "class Base:\n    def run(self): pass\nclass First(Base):\n    def run(self): pass\nclass Second(Base):\n    def run(self): pass\n",
+	})
+	r, err := h.Grove.ChangeImpact(t.Context(), "First.run")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if note := hint["note"].(string); !strings.Contains(note, "CLOSED") || strings.Contains(note, "callers may be missing") {
-		t.Errorf("wider anchor should carry the engine's closed scope, no coverage caveat: %s", note)
+	hint := h.widerAnchorHint(t.Context(), r)
+	if hint == nil || hint["qualifiedName"] != "Base.run" {
+		t.Fatalf("expected related Base.run hint, got %v", hint)
 	}
-	if n, ok := hint["totalSites"].(int); !ok || n <= 2 {
-		t.Errorf("widerAnchor totalSites = %v, want the larger Handle family", hint["totalSites"])
+	if strings.Contains(hint["note"].(string), "CLOSED") {
+		t.Fatalf("dynamic caller coverage must not be called closed: %v", hint)
 	}
 }
 

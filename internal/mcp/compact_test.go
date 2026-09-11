@@ -7,6 +7,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/provasign/prism/internal/config"
+	"github.com/provasign/prism/internal/grove"
 )
 
 func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
@@ -123,5 +126,47 @@ func TestCompactServerRejectsArgumentsForWrongOperation(t *testing.T) {
 	_, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr == nil || !strings.Contains(rpcErr.Message, "unknown parameter") {
 		t.Fatalf("wrong-operation argument error = %#v", rpcErr)
+	}
+}
+
+func TestCompactSearchBodiesIncludesTightEnclosingMethod(t *testing.T) {
+	root := t.TempDir()
+	source := "package sample\n\nfunc target() {\n\tprintln(\"unique compact needle\")\n}\n"
+	if err := os.WriteFile(filepath.Join(root, "sample.go"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	srv := NewCompactServer(NewHandler(config.Default(), root, gc))
+
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"query":"unique compact needle"}}}`)
+	result, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if !strings.Contains(content, "Exact enclosing source") || !strings.Contains(content, "func target()") {
+		t.Fatalf("compact search did not include the enclosing body:\n%s", content)
+	}
+}
+
+func TestCompactSearchBodyEligibilityRejectsBroadOrExplicitlyShapedSearches(t *testing.T) {
+	for name, args := range map[string]map[string]any{
+		"explicit context": {"query": "needle", "context": 0},
+		"file inventory":   {"query": "needle", "files_only": true},
+		"rollup":           {"query": "needle", "rollup_only": true},
+		"exhaustive":       {"query": "needle", "exhaustive": true},
+		"symbol scope":     {"query": "needle", "scope": "symbols"},
+		"batched":          {"query": []any{"one", "two"}},
+	} {
+		if compactSearchCanIncludeBodies(args) {
+			t.Errorf("%s search unexpectedly eligible: %#v", name, args)
+		}
+	}
+	if !compactSearchCanIncludeBodies(map[string]any{"query": "needle"}) {
+		t.Error("default single-term search should be eligible")
 	}
 }

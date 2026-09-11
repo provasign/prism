@@ -109,7 +109,7 @@ func TestImpactCoveragePreservesTiersAndInput(t *testing.T) {
 		{"generic struct is fine", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "go", Kind: "struct", TypeParameters: []string{"T"}}}}, "closed"},
 		{"generic java interface is fine", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "java", FilePath: "A.java", Kind: "interface", TypeParameters: []string{"T"}}}}, "closed"},
 		{"java", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "java", FilePath: "A.java"}}}, "closed"},
-		{"python", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "python", FilePath: "a.py"}}}, "closed"},
+		{"python", &grove.ChangeImpactResult{Completeness: "closed", Declarations: []grove.SymbolRecord{{Language: "python", FilePath: "a.py"}}}, "partial"},
 		{"external", &grove.ChangeImpactResult{Completeness: "project-local", Declarations: []grove.SymbolRecord{{Language: "go"}}}, "project-local"},
 		{"callers", &grove.ChangeImpactResult{Completeness: "callers-only", Declarations: []grove.SymbolRecord{{Language: "go"}}}, "callers-only"},
 		{"unknown", &grove.ChangeImpactResult{Completeness: "future-tier", Declarations: []grove.SymbolRecord{{Language: "go"}}}, "future-tier"},

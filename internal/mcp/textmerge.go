@@ -13,7 +13,9 @@ package mcp
 //     other seed);
 //   - a text hit in no indexed symbol (comment, config, docs, string
 //     literal) is exactly what the graph structurally cannot see — it is
-//     delivered raw as a textMatches entry.
+//     delivered raw as a textMatches entry;
+//   - a hit inside a content-only seed is retained with bounded context so
+//     signature disclosure cannot hide the evidence that selected the symbol.
 //
 // Re-delivery discipline: hits in a file whose full content was already
 // delivered this session (same SHA) are listed as file:line only — the
@@ -52,9 +54,10 @@ const (
 
 // textMergeResult is what mergeTextSearch feeds back into selection.
 type textMergeResult struct {
-	extraSeeds []grove.SymbolRecord // text-promoted symbols, not already seeded
-	confirmed  map[string]bool      // seed IDs confirmed by a text hit
-	rawHits    []textsearch.Hit     // hits no indexed symbol encloses
+	extraSeeds []grove.SymbolRecord        // text-promoted symbols, not already seeded
+	confirmed  map[string]bool             // seed IDs confirmed by a text hit
+	rawHits    []textsearch.Hit            // hits no indexed symbol encloses
+	symbolHits map[string][]textsearch.Hit // bounded hits keyed by enclosing symbol ID
 	backend    string
 }
 
@@ -67,13 +70,17 @@ type textMatchGroup struct {
 // hits into symbol promotions and raw deliverable hits. Never fails: text
 // search is additive evidence, and an error here must not break retrieval.
 func (h *Handler) mergeTextSearch(ctx context.Context, terms []string, seededIDs map[string]bool) textMergeResult {
-	res := textMergeResult{confirmed: map[string]bool{}}
+	res := textMergeResult{
+		confirmed:  map[string]bool{},
+		symbolHits: map[string][]textsearch.Hit{},
+	}
 	var hits []textsearch.Hit
 	seenHit := map[string]bool{}
 	for _, term := range terms {
 		r := textsearch.Search(ctx, h.Root, term, textsearch.Options{
 			MaxHits: textHitsPerTerm,
 			Timeout: textSearchTimeout,
+			Context: 2,
 		})
 		res.backend = r.Backend
 		for _, hit := range r.Hits {
@@ -124,12 +131,21 @@ func (h *Handler) mergeTextSearch(ctx context.Context, terms []string, seededIDs
 		}
 		switch {
 		case enclosing == nil:
+			// Preserve the historical raw-hit shape. Context is requested so a
+			// selected content-only symbol can retain edit-ready evidence, not to
+			// expand every config/doc match in the response.
+			hit.Before = nil
+			hit.After = nil
 			res.rawHits = append(res.rawHits, hit)
 		case seededIDs[enclosing.ID]:
+			res.symbolHits[enclosing.ID] = append(res.symbolHits[enclosing.ID], hit)
 			res.confirmed[enclosing.ID] = true
 		case !promotedIDs[enclosing.ID]:
+			res.symbolHits[enclosing.ID] = append(res.symbolHits[enclosing.ID], hit)
 			promotedIDs[enclosing.ID] = true
 			res.extraSeeds = append(res.extraSeeds, *enclosing)
+		default:
+			res.symbolHits[enclosing.ID] = append(res.symbolHits[enclosing.ID], hit)
 		}
 	}
 	return res

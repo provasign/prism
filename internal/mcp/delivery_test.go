@@ -404,11 +404,15 @@ func TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow(t *testing.T) {
 func FrobnicateThing() string { return "x" }
 `)
 	// Content-only bystander: name has nothing to do with the term; the
-	// term appears once in a doc comment inside a LARGE body that a full
+	// term appears once deep inside a LARGE body that a full
 	// window would dump wholesale.
 	var big strings.Builder
-	big.WriteString("package p\n\nfunc Unrelated() string {\n\t_ = \"mentions frobnicate once, in passing\"\n")
+	big.WriteString("package p\n\nfunc Unrelated() string {\n")
 	for i := 0; i < 40; i++ {
+		if i == 20 {
+			big.WriteString("\t_ = \"unique frobnicate evidence\"\n")
+			continue
+		}
 		fmt.Fprintf(&big, "\t_ = \"filler line %d ------------------------------------------------\"\n", i)
 	}
 	big.WriteString("\treturn \"y\"\n}\n")
@@ -435,8 +439,14 @@ func FrobnicateThing() string { return "x" }
 	if !strings.Contains(content, "FrobnicateThing") {
 		t.Fatalf("name-matched target missing from delivery:\n%s", content)
 	}
-	if strings.Contains(content, "filler line 20") {
+	if strings.Contains(content, "filler line 10") {
 		t.Errorf("content-only bystander's full body was delivered — should be signature-level only:\n%s", content)
+	}
+	evidence := fmt.Sprint(m["textMatches"])
+	for _, want := range []string{"unique frobnicate evidence", "filler line 19", "filler line 21"} {
+		if !strings.Contains(evidence, want) {
+			t.Errorf("content-only match omitted bounded evidence %q: %s", want, evidence)
+		}
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,10 +48,11 @@ type selection struct {
 	// name — delivered at signature disclosure, not full windows (see the
 	// declaration in selectContext).
 	contentOnlySeeds map[string]bool
-	// textHits are full-text matches no indexed symbol encloses (comments,
-	// configs, docs) — the grep half of the merged search; textBackend
-	// records which engine produced them (rg/grep/native).
+	// textHits are full-text matches no indexed symbol encloses. contentHits
+	// are bounded matches inside selected content-only symbols, retained so
+	// signature disclosure does not hide the evidence that selected them.
 	textHits    []textsearch.Hit
+	contentHits []textsearch.Hit
 	textBackend string
 }
 
@@ -110,7 +112,6 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// where the good term alone scored 1.0 — valueOf's fan-out filled
 		// every seed slot and the term that named the actual fix region
 		// never seeded. Each term now gets seed representation.
-		seenTermSeeds := map[string]bool{}
 		perTermSeeds := make([][]grove.SymbolRecord, 0, len(p.terms))
 		for _, term := range p.terms {
 			// Honor --limit here too. This path hardcoded 10, so
@@ -201,24 +202,14 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			nameHits = append(realHits, doubleHits...)
 			var termSeeds []grove.SymbolRecord
 			for _, m := range append(nameHits, contentHits...) {
-				if !seenTermSeeds[m.ID] {
-					seenTermSeeds[m.ID] = true
-					termSeeds = append(termSeeds, m)
-				}
+				termSeeds = append(termSeeds, m)
 			}
 			perTermSeeds = append(perTermSeeds, termSeeds)
 		}
-		for i := 0; ; i++ {
-			any := false
-			for _, ts := range perTermSeeds {
-				if i < len(ts) {
-					seeds = append(seeds, ts[i])
-					any = true
-				}
-			}
-			if !any {
-				break
-			}
+		seeds = interleaveUniqueTermSeeds(perTermSeeds)
+		seenTermSeeds := make(map[string]bool, len(seeds))
+		for _, seed := range seeds {
+			seenTermSeeds[seed.ID] = true
 		}
 		// Mined terms (identifiers lifted from the task text) seed strictly
 		// AFTER everything the caller asked for: they only shape the
@@ -551,10 +542,65 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		seeds:            seeds,
 		budget:           budget,
 		textHits:         textMerge.rawHits,
+		contentHits:      selectedContentHits(picked, contentOnlySeeds, textMerge.symbolHits),
 		textBackend:      textMerge.backend,
 		testCallers:      testCallers,
 		contentOnlySeeds: contentOnlySeeds,
 	}, nil
+}
+
+func selectedContentHits(picked []ranking.BudgetedSymbol, contentOnly map[string]bool, bySymbol map[string][]textsearch.Hit) []textsearch.Hit {
+	seen := map[string]bool{}
+	var hits []textsearch.Hit
+	for _, pick := range picked {
+		if !contentOnly[pick.Symbol.ID] {
+			continue
+		}
+		for _, hit := range bySymbol[pick.Symbol.ID] {
+			key := hit.File + ":" + strconv.Itoa(hit.Line)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			hits = append(hits, hit)
+		}
+	}
+	return hits
+}
+
+func (s *selection) deliverableTextHits() []textsearch.Hit {
+	hits := make([]textsearch.Hit, 0, len(s.textHits)+len(s.contentHits))
+	hits = append(hits, s.textHits...)
+	return append(hits, s.contentHits...)
+}
+
+// interleaveUniqueTermSeeds gives every explicit term its best still-unseen
+// match before taking a second match from any term. Deduplication happens here,
+// after each term has ranked its own results. Deduplicating while building the
+// per-term lists lets an earlier broad qualified-name match consume a later
+// exact-name match (for example, "CliRunner" sees CliRunner.isolation before
+// the explicit term "isolation" gets its turn), demoting the named method from
+// a full seed body to a signature-only candidate.
+func interleaveUniqueTermSeeds(perTermSeeds [][]grove.SymbolRecord) []grove.SymbolRecord {
+	seen := map[string]bool{}
+	var seeds []grove.SymbolRecord
+	for i := 0; ; i++ {
+		any := false
+		for _, termSeeds := range perTermSeeds {
+			if i >= len(termSeeds) {
+				continue
+			}
+			any = true
+			seed := termSeeds[i]
+			if !seen[seed.ID] {
+				seen[seed.ID] = true
+				seeds = append(seeds, seed)
+			}
+		}
+		if !any {
+			return seeds
+		}
+	}
 }
 
 // promoteSingleTermSeeds reorders seeds for the single-term case: two

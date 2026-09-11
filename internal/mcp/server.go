@@ -11,6 +11,7 @@ package mcp
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/version"
@@ -291,6 +293,11 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 				if rendered {
 					if s.compact {
 						text = rewriteCompactGuidance(text)
+						if compactSearchCanIncludeBodies(actualArgs) {
+							ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+							text += s.handler.compactSearchBodies(ctx, m)
+							cancel()
+						}
 					}
 					text = s.handler.once.apply(text)
 				}
@@ -341,6 +348,85 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 	default:
 		return nil, &rpcError{Code: -32601, Message: "method not found"}
 	}
+}
+
+func compactSearchCanIncludeBodies(args map[string]any) bool {
+	if _, explicit := args["context"]; explicit {
+		return false
+	}
+	return !boolArg(args, "files_only") && !boolArg(args, "rollup_only") &&
+		!boolArg(args, "exhaustive") && stringArg(args, "scope", "both") != "symbols" &&
+		len(stringsArg(args, "query")) == 1
+}
+
+// compactSearchBodies folds the common search-then-Read pair into one MCP
+// turn when a complete, small literal result lands inside a bounded function
+// or method. Broad, partial, explicitly shaped, and type-sized searches remain
+// location-only so this cannot turn an inventory request into a source dump.
+func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) string {
+	if h.Grove == nil || !boolArg(out, "resultsComplete") {
+		return ""
+	}
+	groups, ok := out["textHits"].([]map[string]any)
+	if !ok {
+		return ""
+	}
+	totalHits := 0
+	for _, group := range groups {
+		totalHits += len(anySlice(group["hits"]))
+	}
+	if totalHits == 0 || totalHits > 3 {
+		return ""
+	}
+
+	seen := map[string]bool{}
+	var picked []ranking.BudgetedSymbol
+	for _, group := range groups {
+		file, _ := group["file"].(string)
+		if file == "" {
+			continue
+		}
+		syms, err := h.Grove.FileSymbols(ctx, file)
+		if err != nil {
+			continue
+		}
+		for _, raw := range anySlice(group["hits"]) {
+			hit, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			line := intArg(hit, "line", 0)
+			sym := tightestEnclosingSymbol(syms, line)
+			if sym == nil || (sym.Kind != "function" && sym.Kind != "method") ||
+				sym.Span.End-sym.Span.Start+1 > 200 {
+				continue
+			}
+			key := fmt.Sprintf("%s:%d:%d", sym.FilePath, sym.Span.Start, sym.Span.End)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			picked = append(picked, ranking.BudgetedSymbol{
+				Symbol: *sym, Score: 1, Category: ranking.CategoryTarget,
+				Disclosure: ranking.DisclosureFull,
+			})
+		}
+	}
+	if len(picked) == 0 || len(picked) > 2 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("\n// Exact enclosing source for this small, complete result (already read; do not fetch it again):\n")
+	for _, group := range groupPickedByFile(picked) {
+		section, commit, ok := h.renderFileSection(group)
+		if !ok {
+			continue
+		}
+		b.WriteString(section)
+		commit()
+	}
+	return b.String()
 }
 
 // contextBearingTool reports whether a tool delivers code context the agent

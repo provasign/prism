@@ -17,10 +17,16 @@ func TestQueryTextPrintsContentNotJustFiles(t *testing.T) {
 	var m map[string]any
 	json.Unmarshal([]byte(`{"content":"**Context for: x**\nline of source\n",
 		"files":["a.java","b.java"],"deliveredTokens":42,"symbolCount":3,
-		"delivery":"source","textBackend":"rg","textMatches":[]}`), &m)
+		"delivery":"source","textBackend":"rg","textMatches":[{"file":"a.java",
+		"hits":[{"line":103,"text":"# ORCHID_DEEP_ONLY","before":["line 102"],"after":["line 104"]}]}]}`), &m)
 	got := captureStdout(func() { printTextOutput(m) })
 	if !strings.Contains(got, "line of source") {
 		t.Fatalf("query content discarded; got %q", got)
+	}
+	for _, want := range []string{"a.java:103: # ORCHID_DEEP_ONLY", "a.java:102-  line 102", "a.java:104-  line 104"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("query text match %q discarded; got %q", want, got)
+		}
 	}
 }
 

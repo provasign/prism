@@ -2728,6 +2728,7 @@ func printTextOutput(m map[string]any) {
 			if !strings.HasSuffix(content, "\n") {
 				fmt.Println()
 			}
+			printTextMatches(m)
 			return
 		}
 	}
@@ -3105,7 +3106,7 @@ func printNotes(m map[string]any, keys ...string) {
 
 func printChangeImpactText(m map[string]any) {
 	fmt.Printf("// %v — change-impact: %d site(s)\n", m["query"], jsonInt(m["totalSites"]))
-	printNotes(m, "completeness")
+	printNotes(m, "completeness", "familyCompleteness", "callerCoverage", "coverageNote", "evidenceNote", "hasHeuristicRefs")
 	printSiteGroup("declarations", m["declarations"])
 	printSiteGroup("supers", m["supers"])
 	printSiteGroup("family", m["family"])
@@ -3113,7 +3114,7 @@ func printChangeImpactText(m map[string]any) {
 	printSiteGroup("callers", m["callers"])
 	printNotes(m, "declaringTypesNote", "externalSupers", "overridesExternal", "warning", "ambiguityNote", "scopeNote")
 	if hint, ok := m["widerAnchor"].(map[string]any); ok {
-		fmt.Printf("widerAnchor: %v\n", hint["message"])
+		fmt.Printf("widerAnchor: %v\n", hint["note"])
 	}
 }
 

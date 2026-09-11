@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/provasign/prism/internal/grove"
@@ -126,5 +127,20 @@ func TestPromoteSingleTermSeeds_FewExactTiesArePinnedEvenUnconfirmed(t *testing.
 	if got[0].Name != "quote_name" {
 		t.Errorf("top seed = %q, want the exact match to stay pinned at exactly "+
 			"the django tie count (7). Full order: %v", got[0].Name, seedNames(got))
+	}
+}
+
+func TestInterleaveUniqueTermSeedsPreservesLaterExactMatch(t *testing.T) {
+	class := seedSym("class", "CliRunner", "CliRunner")
+	isolation := seedSym("isolation", "isolation", "CliRunner.isolation")
+	invoke := seedSym("invoke", "invoke", "CliRunner.invoke")
+
+	got := interleaveUniqueTermSeeds([][]grove.SymbolRecord{
+		{class, isolation, invoke}, // broad qualified-name matches
+		{isolation},                // the later term's exact name match
+	})
+	want := []string{"CliRunner", "isolation", "invoke"}
+	if names := seedNames(got); !reflect.DeepEqual(names, want) {
+		t.Fatalf("interleaved seeds = %v, want %v", names, want)
 	}
 }

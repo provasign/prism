@@ -23,6 +23,13 @@ func impactCoverage(r *grove.ChangeImpactResult) (string, string) {
 	if r == nil {
 		return "", ""
 	}
+	if impactCallerCoverage(r) == "partial" {
+		completeness := r.Completeness
+		if completeness == "closed" {
+			completeness = "partial"
+		}
+		return completeness, "dynamic-language callers are an indexed approximation; runtime dispatch and imports may be unresolved. Family closure does not prove caller completeness. Use targeted exhaustive text search and tests."
+	}
 	if r.Completeness != "closed" {
 		return r.Completeness, ""
 	}
@@ -37,6 +44,26 @@ func impactCoverage(r *grove.ChangeImpactResult) (string, string) {
 		}
 	}
 	return r.Completeness, ""
+}
+
+func impactCallerCoverage(r *grove.ChangeImpactResult) string {
+	if r == nil {
+		return "unknown"
+	}
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Supers, r.Family, r.DeclaringTypes} {
+		for _, s := range group {
+			lang := strings.ToLower(s.Language)
+			if lang == "python" || lang == "javascript" || lang == "php" || lang == "ruby" ||
+				strings.HasSuffix(s.FilePath, ".py") || strings.HasSuffix(s.FilePath, ".js") ||
+				strings.HasSuffix(s.FilePath, ".php") || strings.HasSuffix(s.FilePath, ".rb") {
+				return "partial"
+			}
+		}
+	}
+	if r.HasHeuristicRefs {
+		return "heuristic"
+	}
+	return "indexed"
 }
 
 func isGo(sym grove.SymbolRecord) bool {

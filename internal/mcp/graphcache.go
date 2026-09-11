@@ -210,7 +210,7 @@ func graphPointerResponse(name, hash string, seenCount int, out any) map[string]
 				summary[k] = len(tv)
 			case string:
 				switch k {
-				case "query", "completeness", "coverageNote", "newName", "scope":
+				case "query", "completeness", "familyCompleteness", "callerCoverage", "coverageNote", "newName", "scope":
 					summary[k] = tv
 				}
 			}

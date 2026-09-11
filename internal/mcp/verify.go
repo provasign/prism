@@ -65,8 +65,9 @@ func gitPrefix(root string) string {
 }
 
 // gitChangedRanges parses `git diff --unified=0 <base>` into after-side
-// changed line ranges per file (work-root-relative paths). A pure deletion
-// is recorded as a one-line touch marker at its after-side position.
+// changed line ranges per file (work-root-relative paths), then adds untracked
+// non-ignored files as whole-file ranges. A pure deletion is recorded as a
+// one-line touch marker at its after-side position.
 func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 	if !validGitBase(base) {
 		return nil, fmt.Errorf("invalid git base ref")
@@ -115,6 +116,26 @@ func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 				break
 			}
 		}
+	}
+	untracked, err := exec.Command("git", "-C", root, "ls-files", "--others",
+		"--exclude-standard", "-z", "--", ".").Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files --others: %w", err)
+	}
+	for _, name := range strings.Split(string(untracked), "\x00") {
+		if name == "" {
+			continue
+		}
+		rel := strings.TrimPrefix(name, prefix)
+		if rel == ".grove" || strings.HasPrefix(rel, ".grove/") {
+			continue // verifier/index state, created by the refresh above
+		}
+		content, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if readErr != nil {
+			return nil, fmt.Errorf("read untracked file %s: %w", rel, readErr)
+		}
+		end := strings.Count(string(content), "\n") + 1
+		changed[rel] = []lineRange{{start: 1, end: end}}
 	}
 	return changed, nil
 }
@@ -226,9 +247,11 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	// exit 0). prism_drift already refreshes for exactly this reason; verify
 	// — the CI gate — must not be the one surface that trusts stale data.
 	var staleNote string
-	if _, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
+	if indexed, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
 		staleNote = "index refresh failed (" + ierr.Error() +
 			"); results computed against a possibly stale index"
+	} else if len(indexed.Errors) > 0 {
+		staleNote = "index refresh incomplete: " + strings.Join(indexed.Errors, "; ")
 	}
 
 	changed, err := gitChangedRanges(h.Root, base)
@@ -443,22 +466,40 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			"reason": fmt.Sprintf("file deleted — %d symbol(s) removed with it", deletedFileSyms[f]),
 		})
 	}
-	for _, sd := range seeds {
+	// Reconstruct the base graph once, restoring every changed/deleted file.
+	// Name/signature matches cannot establish a type family.
+	var baseImpacts []*grove.ChangeImpactResult
+	var baseFailures []string
+	if len(seeds) > 0 {
+		files := make(map[string][]byte, len(changedFiles)+len(deletedFiles))
+		for _, f := range append(append([]string{}, changedFiles...), deletedFiles...) {
+			files[f] = gitShow(h.Root, base, f)
+		}
+		queries := make([][2]string, len(seeds))
+		for i, sd := range seeds {
+			sym := sd.sym
+			if sd.before != nil {
+				sym = *sd.before
+			}
+			queries[i] = [2]string{displayQN(sym), sym.FilePath}
+		}
+		var previewErr error
+		baseImpacts, baseFailures, previewErr = h.Grove.PreviewChangeImpacts(ctx, queries, files)
+		if previewErr != nil {
+			unverifiedSeeds = append(unverifiedSeeds, "base-contract coverage unavailable: "+previewErr.Error())
+		}
+	}
+	baseSites := newBaseSiteProjector(h, changed, deletedFiles)
+	for seedIndex, sd := range seeds {
 		impact, err := h.changeImpactFor(ctx, sd.sym)
-		// BASE-CONTRACT ENUMERATION: the post-edit graph answers "who depends
-		// on the NEW signature" — but the question is who depended on the OLD
-		// one, and the edit itself severs that binding under
-		// signature-sensitive resolution (Java/TS: measured, a mutated
-		// SettableBeanProperty.set returned family=0 callers=0 while 22 real
-		// sites depended on the old contract). The old contract's family
-		// members live in UNCHANGED files and still carry the old signature
-		// in the live index, so they are recoverable: same leaf name + same
-		// base-signature parameter list, plus their (still correctly
-		// resolved) callers.
-		bc := h.baseContractImpact(ctx, sd.sym, sd.before)
-		// RENAMES: baseContractImpact looks the old signature up by the NEW
-		// name, so a rename always bails out of it — and the post-edit graph
-		// cannot see stale callers either, because they reference a name
+		var bc *grove.ChangeImpactResult
+		if seedIndex < len(baseImpacts) {
+			bc = baseImpacts[seedIndex]
+		}
+		if seedIndex < len(baseFailures) && baseFailures[seedIndex] != "" {
+			unverifiedSeeds = append(unverifiedSeeds, displayQN(sd.sym)+": base impact unresolved: "+baseFailures[seedIndex])
+		}
+		// RENAMES: the post-edit graph cannot see stale callers of a name
 		// that no longer resolves. Measured 2026-08-25 (electrum
 		// seed_type->calc_seed_type, 4 call sites reverted): verify printed
 		// "calc_seed_type renamed" and then "no missed sites". The gate was
@@ -490,14 +531,6 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 				})
 			}
 		}
-		if bc != nil && strings.HasPrefix(bc.Completeness, "base-contract-error") {
-			// Engine failure during enumeration: fail closed and SAY so.
-			unverifiedSeeds = append(unverifiedSeeds,
-				displayQN(sd.sym)+" — base-contract enumeration failed ("+
-					strings.TrimPrefix(bc.Completeness, "base-contract-error: ")+
-					"); dependents of the old signature were NOT checked")
-			bc = nil
-		}
 		if err != nil {
 			if bc == nil {
 				// FAIL CLOSED: a contract change whose blast radius could not
@@ -508,7 +541,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			}
 			impact = bc
 			notes = append(notes, displayQN(sd.sym)+": required set enumerated from the BASE contract (old-signature family + callers)")
-		} else if len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes) == 0 {
+		} else if obligationSiteCount(impact) == 0 {
 			if bc == nil {
 				// FAIL CLOSED: empty blast radius, and the base contract was
 				// not recoverable either (no before-symbol, unparsable
@@ -525,21 +558,24 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		if impact.Completeness != "" && impact.Completeness != "closed" {
 			notes = append(notes, displayQN(sd.sym)+": impact completeness is "+impact.Completeness)
 		}
+		if coverage, note := impactCoverage(impact); coverage == "partial" || impactCallerCoverage(impact) == "partial" {
+			unverifiedSeeds = append(unverifiedSeeds, displayQN(sd.sym)+": "+note)
+		}
 		if impact.HasHeuristicRefs {
 			notes = append(notes, displayQN(sd.sym)+": required set includes name-derived "+
 				"(framework template/query) references — probably right, not certain")
 		}
-		required := make([]grove.SymbolRecord, 0,
-			len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes))
-		required = append(required, impact.Family...)
-		required = append(required, impact.Callers...)
-		required = append(required, impact.DeclaringTypes...)
+		var required []grove.SymbolRecord
+		if impact != bc {
+			required = impactSites(impact, false)
+		}
 		// Augment a non-empty post-edit set with base-contract survivors the
 		// severed graph no longer links to the seed (Java overload families:
 		// measured 3/30 file catch on jackson-serialize without this).
-		if bc != nil && bc != impact {
-			required = append(required, bc.Family...)
-			required = append(required, bc.Callers...)
+		if bc != nil {
+			projected, gaps := baseSites.project(ctx, bc, sd.sym.Name)
+			required = append(required, projected...)
+			unverifiedSeeds = append(unverifiedSeeds, gaps...)
 		}
 		for _, site := range required {
 			if site.FilePath == sd.sym.FilePath && site.Span.Start == sd.sym.Span.Start {
@@ -664,7 +700,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	switch {
 	case len(missed) > 0 || archStatus == "fail":
 		verdict = "incomplete"
-	case len(unverifiedSeeds) > 0:
+	case len(unverifiedSeeds) > 0 || archStatus == "review":
 		verdict = "review"
 	}
 	h.Ledger.RecordCall("prism_verify")
@@ -680,96 +716,6 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		"archIntroduced":   archIntroduced,
 		"notes":            notes,
 	}, nil
-}
-
-// baseContractImpact enumerates dependents of the OLD contract after a
-// signature change: symbols sharing the seed's leaf name whose signature
-// parameter list still matches the BASE side (the family members in
-// unchanged files kept the old signature), plus each one's callers — both
-// still correctly type-resolved in the live index because their files did
-// not change. Returns nil when the base signature is unknown/unparsable or
-// no old-signature survivor exists. Completeness "base-contract": a
-// signature-matched enumeration, not a closed type-resolved traversal.
-func (h *Handler) baseContractImpact(ctx context.Context, sym grove.SymbolRecord, before *grove.SymbolRecord) *grove.ChangeImpactResult {
-	if before == nil {
-		return nil
-	}
-	baseParams := paramListNamed(before.Signature, sym.Name)
-	if baseParams == "" || baseParams == paramListNamed(sym.Signature, sym.Name) {
-		return nil // no signature to match, or the params did not actually change
-	}
-	// Type variables of the base declaration (Java/TS generics): a base
-	// parameter that references one matches ANY concrete type at that
-	// position in an override — `serialize(T value, ...)` must match
-	// `serialize(String value, ...)` (measured: verbatim matching held
-	// jackson-serialize to a 12% catch; every override binds T).
-	typeVars := before.TypeParameters
-	if len(typeVars) == 0 {
-		typeVars = sym.TypeParameters
-	}
-	cands, err := h.Grove.SearchSymbols(ctx, sym.Name, 200)
-	if err != nil {
-		// An engine failure here must not read as "no old-signature
-		// survivors": the caller treats nil as a normal empty enumeration
-		// and the catch rate silently drops. Report it as its own failure.
-		return &grove.ChangeImpactResult{
-			Query:        displayQN(sym),
-			Completeness: "base-contract-error: " + err.Error(),
-		}
-	}
-	const maxFamilyCallers = 60
-	var family []grove.SymbolRecord
-	seenSite := map[string]bool{}
-	for _, c := range cands {
-		if c.Name != sym.Name {
-			continue
-		}
-		switch c.Kind {
-		case "function", "method", "constructor":
-		default:
-			continue
-		}
-		if c.FilePath == sym.FilePath && c.Span.Start == sym.Span.Start {
-			continue // the mutated seed itself
-		}
-		if !paramsMatch(baseParams, paramListNamed(c.Signature, sym.Name), sym.Language, typeVars) {
-			continue
-		}
-		key := c.FilePath + ":" + fmt.Sprint(c.Span.Start)
-		if seenSite[key] {
-			continue
-		}
-		seenSite[key] = true
-		family = append(family, c)
-	}
-	if len(family) == 0 {
-		return nil
-	}
-	var callers []grove.SymbolRecord
-	for i, m := range family {
-		if i >= maxFamilyCallers {
-			break
-		}
-		cs, err := h.Grove.Callers(ctx, displayQN(m))
-		if err != nil {
-			continue
-		}
-		for _, c := range cs {
-			key := c.FilePath + ":" + fmt.Sprint(c.Span.Start)
-			if seenSite[key] {
-				continue
-			}
-			seenSite[key] = true
-			callers = append(callers, c)
-		}
-	}
-	return &grove.ChangeImpactResult{
-		Query:        displayQN(sym),
-		Declarations: []grove.SymbolRecord{sym},
-		Family:       family,
-		Callers:      callers,
-		Completeness: "base-contract",
-	}
 }
 
 // paramList extracts a normalized parameter-list string from a signature:
@@ -1052,7 +998,7 @@ func (h *Handler) changeImpactFor(ctx context.Context, sym grove.SymbolRecord) (
 	candidates = append(candidates, sym.Name)
 	var lastErr error
 	for _, q := range candidates {
-		r, err := h.Grove.ChangeImpact(ctx, q)
+		r, err := h.Grove.ChangeImpactScoped(ctx, q, sym.FilePath)
 		if err == nil && len(r.Declarations) > 0 {
 			return r, nil
 		}
@@ -1060,20 +1006,10 @@ func (h *Handler) changeImpactFor(ctx context.Context, sym grove.SymbolRecord) (
 			lastErr = err
 		}
 	}
-	// Bare function (change_impact wants Type.method): the required set is
-	// its resolved callers. Zero callers with a clean resolution is a
-	// trivially complete set, not a failure.
-	callers, err := h.Grove.Callers(ctx, sym.Name)
-	if err == nil {
-		return &grove.ChangeImpactResult{
-			Query:        sym.Name,
-			Declarations: []grove.SymbolRecord{sym},
-			Callers:      callers,
-			Completeness: "callers-only",
-		}, nil
-	}
+	// Never recover a failed scoped query by unioning global namesakes.
+	// The base graph can still resolve a removed or renamed declaration.
 	if lastErr == nil {
-		lastErr = err
+		lastErr = fmt.Errorf("no scoped impact declaration for %s in %s", displayQN(sym), sym.FilePath)
 	}
 	return nil, lastErr
 }

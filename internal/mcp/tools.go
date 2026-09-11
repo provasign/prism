@@ -1124,7 +1124,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	}
 	if delivery == "source" {
 		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if tm := h.renderTextMatches(ctx, sel.textHits, false); tm != nil {
+		if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(), false); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
@@ -1152,7 +1152,7 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		})
 	}
 	out.BudgetUsed = used
-	if tm := h.renderTextMatches(ctx, sel.textHits, false); tm != nil {
+	if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(), false); tm != nil {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
 	}
@@ -2819,12 +2819,14 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return compactWithScope(syms, false)
 	}
 	out := map[string]any{
-		"query":        r.Query,
-		"declarations": compact(r.Declarations),
-		"supers":       compact(r.Supers),
-		"family":       compact(r.Family),
-		"callers":      compactWithScope(r.Callers, true),
-		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
+		"query":              r.Query,
+		"declarations":       compact(r.Declarations),
+		"supers":             compact(r.Supers),
+		"family":             compact(r.Family),
+		"callers":            compactWithScope(r.Callers, true),
+		"totalSites":         len(impactSites(r, true)),
+		"familyCompleteness": r.Completeness,
+		"callerCoverage":     impactCallerCoverage(r),
 	}
 	if inferenceNote != "" {
 		out["methodFamilyNote"] = inferenceNote
@@ -2839,7 +2841,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		out["coverageNote"] = coverageNote
 	}
 	h.hypLedger.recordClosedImpact(completeness,
-		len(r.Declarations)+len(r.Family)+len(r.Callers)+len(r.DeclaringTypes))
+		len(impactSites(r, true)))
 	if sn := h.hypLedger.scopeNote(); sn != "" {
 		out["scopeNote"] = sn
 	}
