@@ -1,0 +1,427 @@
+shale_version: "0"
+id: 01a086e1-d9c4-7063-a607-c867bed4a199-c3
+created_at: 2026-09-09T21:49:23.097169Z
+finalized_at: 2026-09-12T04:21:48.100547Z
+agent:
+    tool: codex
+    model: gpt-5.6-luna
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/benchmarks/adaptive-search-phase4-2026-09-09.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T21:52:58.904854Z
+    - path: AGENTS.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T21:57:24.429403Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-10T00:39:57.794436Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-10T00:40:18.982418Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-10T00:41:55.034172Z
+    - path: internal/httpapi/http.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-10T00:42:39.884346Z
+commands:
+    - cmd: git push
+      at: 2026-09-09T21:49:23.097169Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-09T21:49:37.040544Z
+      classified: other
+    - cmd: gh run list --branch main --limit 5
+      at: 2026-09-09T21:49:54.335506Z
+      classified: other
+    - cmd: prism lookup EstimateTokens --format text
+      at: 2026-09-09T21:50:32.748024Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,re,subprocess; root="/private/tmp/prism-phase4-benchmark-v0725"; old="/opt/homebrew/bin/prism"; new="/private/tmp/prism-phase4-staged-candidate";
+        def run(binary,*extra):
+         p=subprocess.run([binary,"search","Phase4Needle","--scope","text","--format","text","--dir",root,*extra],capture_output=True,text=True,check=True); ids=sorted(set(map(int,re.findall(r"Phase4Needle (\\d+)",p.stdout)))); return {"bytes":len(p.stdout.encode()),"estimated_tokens":len(p.stdout.encode())//4,"unique_exact_sites_rendered":len(ids),"site_ids":ids}
+        out={"v0.72.5_default":run(old),"v0.72.5_exhaustive":run(old,"--exhaustive"),"candidate_default":run(new)}; print(json.dumps(out,indent=2))'
+      at: 2026-09-09T21:50:56.746146Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,re,subprocess; root="/private/tmp/prism-phase4-benchmark-v0725"; old="/opt/homebrew/bin/prism"; new="/private/tmp/prism-phase4-staged-candidate";
+        def run(binary,*extra):
+         p=subprocess.run([binary,"search","Phase4Needle","--scope","text","--format","text","--dir",root,*extra],capture_output=True,text=True,check=True); ids=sorted(set(map(int,re.findall(r"Phase4Needle ([0-9]+)",p.stdout)))); return {"bytes":len(p.stdout.encode()),"estimated_tokens":len(p.stdout.encode())//4,"unique_matching_lines_visible":len(ids),"site_ids":ids}
+        out={"v0.72.5_default":run(old),"v0.72.5_exhaustive":run(old,"--exhaustive"),"candidate_default":run(new)}; print(json.dumps(out,indent=2))'
+      at: 2026-09-09T21:51:21.597625Z
+      classified: other
+    - cmd: prism search 'coding_suite.py' 'benchmark cell' 'per arm' 'search task' 'PRISM_BIN' 'tool round' --scope text --path harness --path docs --path HANDOFF.md --exhaustive --format text
+      at: 2026-09-09T21:53:27.201763Z
+      classified: other
+    - cmd: prism read HANDOFF.md --offset 70 --limit 120 --format text
+      at: 2026-09-09T21:55:03.599403Z
+      classified: other
+    - cmd: rg --files harness docs | rg '(coding_suite|run_panel|tasks-e2e|benchmark|cell|adaptive)' | head -200
+      at: 2026-09-09T21:55:20.320378Z
+      classified: other
+    - cmd: rg --files /Users/tapabratapal/Projects/provasign/research/harness | rg '(coding_suite|run_panel|tasks|README|impact_oracle)' | head -250
+      at: 2026-09-09T21:55:34.217208Z
+      classified: other
+    - cmd: prism read /Users/tapabratapal/Projects/provasign/research/harness/README.md --offset 1 --limit 240 --format text
+      at: 2026-09-09T21:55:48.971166Z
+      classified: other
+    - cmd: prism read /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py --offset 1 --limit 300 --format text
+      at: 2026-09-09T21:55:48.996264Z
+      classified: other
+    - cmd: sed -n '1,260p' /Users/tapabratapal/Projects/provasign/research/harness/README.md
+      at: 2026-09-09T21:56:02.567455Z
+      classified: other
+    - cmd: sed -n '1,360p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+      at: 2026-09-09T21:56:02.573088Z
+      classified: other
+    - cmd: sed -n '360,820p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+      at: 2026-09-09T21:56:23.356278Z
+      classified: other
+    - cmd: rg -n "PRISM_(BIN|SOURCE|V072|CANDIDATE)|prism-v0|ARMS =|trials|recall|precision|turns|request_tokens" /Users/tapabratapal/Projects/provasign/research/harness/runs /Users/tapabratapal/Projects/provasign/research/harness/*.py --glob '*.py' --glob 'README.md' | head -350
+      at: 2026-09-09T21:56:38.121133Z
+      classified: other
+    - cmd: git branch --show-current && rg --files -g 'AGENTS.md' -g '!vendor' -g '!node_modules' && git status --short
+      at: 2026-09-09T21:56:57.99473Z
+      classified: other
+    - cmd: sed -n '1,80p' AGENTS.md
+      at: 2026-09-09T21:57:10.970748Z
+      classified: other
+    - cmd: git diff -- AGENTS.md && git status --short AGENTS.md
+      at: 2026-09-09T21:57:35.057175Z
+      classified: other
+    - cmd: test -x /private/tmp/prism-phase4-staged-candidate && /private/tmp/prism-phase4-staged-candidate version && /opt/homebrew/bin/prism version && /Users/tapabratapal/.local/bin/codex --version && find /private/tmp/prism-phase4-benchmark-v0725 -maxdepth 2 -type f -print
+      at: 2026-09-09T21:59:49.422078Z
+      classified: other
+    - cmd: rg -n "def summarize_codex|input_tokens|cache_read_tokens|turns" /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py | head -80 && sed -n '250,390p' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+      at: 2026-09-09T22:00:03.526255Z
+      classified: other
+    - cmd: sed -n '155,230p' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py && sed -n '1,160p' /Users/tapabratapal/Projects/provasign/research/harness/arms.py
+      at: 2026-09-09T22:00:15.924198Z
+      classified: other
+    - cmd: rg -n "PRISM_TOOLS\s*=" /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py -A20 && /private/tmp/prism-phase4-staged-candidate mcp --help | head -80
+      at: 2026-09-09T22:00:45.517684Z
+      classified: other
+    - cmd: nl -ba /private/tmp/prism-phase4-benchmark-v0725/alpha.go && nl -ba /private/tmp/prism-phase4-benchmark-v0725/beta.go
+      at: 2026-09-09T22:01:15.204819Z
+      classified: other
+    - cmd: /private/tmp/prism-phase4-staged-candidate search Phase4Needle --scope text --format text
+      at: 2026-09-09T22:01:36.625719Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism search Phase4Needle --scope text --exhaustive --format text
+      at: 2026-09-09T22:01:36.665757Z
+      classified: other
+    - cmd: prism search 'UserCacheDir' 'Caches/prism' 'ledger' --scope text --exhaustive --path internal --path cmd --format text
+      at: 2026-09-09T22:01:53.323945Z
+      classified: other
+    - cmd: prism lookup cmdMCP ledgerPathForRoot --format text
+      at: 2026-09-09T22:02:12.852994Z
+      classified: other
+    - cmd: prism lookup cmdMCP --format text
+      at: 2026-09-09T22:02:26.842159Z
+      classified: other
+    - cmd: sed -n '1,155p' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py && sed -n '390,620p' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+      at: 2026-09-09T22:04:55.978273Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07 -name summary.json -maxdepth 3 -print
+      at: 2026-09-09T22:05:33.144266Z
+      classified: other
+    - cmd: jq -r '.rows[] | select(.arm=="gpt55_prism") | [.task, (.score.recall|tostring), (.score.precision|tostring), (.turns|tostring), (.total_tokens|tostring), (.prism_calls|join(",")), (.prism_result_bytes|tostring)] | @tsv' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/read-only/summary.json
+      at: 2026-09-09T22:05:46.442847Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-prism-isolation-2026-09-07 -name summary.json -print -maxdepth 3 | while read f; do echo "$f"; jq -r '.rows[]? | [.task,.arm,(.score.recall//.resolved//null|tostring),(.score.precision//null|tostring),(.turns|tostring),(.total_tokens|tostring),(.prism_calls//[]|join(",")),(.prism_result_bytes//0|tostring)]|@tsv' "$f"; done
+      at: 2026-09-09T22:06:03.573567Z
+      classified: other
+    - cmd: for f in flaskcov-frompyfile gin-4645 flaskcov-tag flaskcov-afterrequest flaskcov-command flaskcov-loadplugincommands; do echo "=== $f"; jq '{id,prompt,ground_truth}' "/Users/tapabratapal/Projects/provasign/research/harness/tasks/$f.json"; done
+      at: 2026-09-09T22:06:26.204921Z
+      classified: other
+    - cmd: for term in prism_search exhaustive countComplete resultsComplete searchLimit files_only change_impact WithLedgerPersistence completeness; do printf '%s\t' "$term"; rg -n -F "$term" --glob '!docs/benchmarks/adaptive-search-phase4-2026-09-09.md' --glob '!AGENTS.md' . | wc -l; done
+      at: 2026-09-09T22:06:53.521027Z
+      classified: build
+    - cmd: rg -o --no-filename '\b[A-Za-z_][A-Za-z0-9_]{5,}\b' --glob '*.go' . | sort | uniq -c | awk '$1 >= 26 && $1 <= 64 {print $1, $2}' | sort -n | head -120
+      at: 2026-09-09T22:07:07.187648Z
+      classified: other
+    - cmd: for term in invokeWithPersistentLedger files_only EstimateTokens; do printf '%s\t' "$term"; git grep -n -F "$term" HEAD -- | wc -l; done
+      at: 2026-09-09T22:07:59.378791Z
+      classified: other
+    - cmd: for term in OriginalTokens renderSearchAsText NewLedger ChangeImpactResult unverifiedSeeds prismBin resultsComplete countComplete deliveredTokens filesOnly displayQN; do printf '%s\t' "$term"; git grep -n -F "$term" HEAD -- | wc -l; done
+      at: 2026-09-09T22:08:14.050146Z
+      classified: build
+    - cmd: python3 -B /private/tmp/run_prism_real_search_cells.py
+      at: 2026-09-09T22:13:22.930923Z
+      classified: other
+    - cmd: jq -r '.rows[] | [.task,.arm,(.oracle_sites|tostring),(.submitted_sites|tostring),(.true_positive|tostring),(.recall|tostring),(.precision|tostring),(.search_calls|tostring),(.input_tokens|tostring),(.cached_input_tokens|tostring),(.output_tokens|tostring),(.total_tokens|tostring),(.cost_usd|tostring),(.wall_s|tostring),(.prism_result_bytes|tostring)] | @tsv' /private/tmp/prism-real-search-cells-20260909/summary.json && for f in /private/tmp/prism-real-search-cells-20260909/evidence/*/measurement.json; do echo "=== $f"; jq '{task,arm,search_arguments,missing,extra,answer}' "$f"; done
+      at: 2026-09-09T22:13:39.269037Z
+      classified: other
+    - cmd: for d in /private/tmp/prism-real-search-cells-20260909/work/invokeWithPersistentLedger.*; do echo "=== $d"; rg -n -F invokeWithPersistentLedger "$d/internal/cli/commands.go" "$d/internal/cli/coverage_test.go" | head -30; done
+      at: 2026-09-09T22:13:57.424195Z
+      classified: other
+    - cmd: sed -n '155,180p' /private/tmp/prism-real-search-cells-20260909/work/invokeWithPersistentLedger.baseline-v0.72.5/internal/cli/coverage_test.go && jq -r '.oracle_sites,.true_positive,.missing[],.extra[]' /private/tmp/prism-real-search-cells-20260909/evidence/invokeWithPersistentLedger.baseline-v0.72.5/measurement.json | head -30
+      at: 2026-09-09T22:14:15.089771Z
+      classified: other
+    - cmd: for d in /private/tmp/prism-real-search-cells-20260909/evidence/*; do echo "=== $(basename "$d")"; jq -r 'select(.type=="item.completed" and .item.type=="mcp_tool_call") | "ARGS="+(.item.arguments|tostring)+"\nRESULT="+(.item.result|tostring)' "$d/stdout.jsonl"; done
+      at: 2026-09-09T22:14:35.49442Z
+      classified: other
+    - cmd: 'rg -n "def oracle|\.shale" /private/tmp/run_prism_real_search_cells.py -A15 && python3 -B -c ''from pathlib import Path; p=Path("/private/tmp/prism-real-search-cells-20260909/work/ChangeImpactResult.current-phase4/.shale/3b58659c-d56a-4934-bb18-a0b337259ca6-c12.yaml"); print(p.parts); print(any(part in {".git", ".grove", ".prism"} for part in p.parts))'' '
+      at: 2026-09-09T22:15:04.888474Z
+      classified: other
+    - cmd: git ls-tree -r --name-only HEAD .shale | head && git check-ignore -v .shale 2>/dev/null || true && for d in /private/tmp/prism-real-search-cells-20260909/work/*.current-phase4; do term=$(basename "$d" .current-phase4); printf '%s\t' "$term"; (cd "$d" && rg -n -F "$term" | wc -l); done
+      at: 2026-09-09T22:15:22.938126Z
+      classified: other
+    - cmd: sed -n '1,40p' .shale/.gitignore && git status --short .shale | head
+      at: 2026-09-09T22:15:34.974444Z
+      classified: other
+    - cmd: for key in invokeWithPersistentLedger.current-phase4 renderSearchAsText.current-phase4 ChangeImpactResult.current-phase4; do echo "=== $key"; jq -r 'select(.type=="item.completed" and .item.type=="mcp_tool_call") | .item.result.content[0].text' "/private/tmp/prism-real-search-cells-20260909/evidence/$key/stdout.jsonl" | rg '^// (COMPLETE|showing|[A-Za-z].*matches|Grouped|root)' ; done
+      at: 2026-09-09T22:16:11.440869Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import importlib.util,json; from pathlib import Path; p=Path("/private/tmp/run_prism_real_search_cells.py"); s=importlib.util.spec_from_file_location("bench",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); src=m.ROOT/"summary.json"; data=json.loads(src.read_text()); rows=[]
+        for row in data["rows"]:
+         expected=m.oracle(Path(row["snapshot"]),row["task"]); submitted=set(row["answer"].get("sites") or []); tp=expected&submitted; row={**row,"oracle_sites":len(expected),"submitted_sites":len(submitted),"true_positive":len(tp),"recall":len(tp)/len(expected) if expected else 1.0,"precision":len(tp)/len(submitted) if submitted else 0.0,"missing":sorted(expected-submitted),"extra":sorted(submitted-expected)}; rows.append(row)
+        m.dump(m.ROOT/"summary.corrected.json",{"status":"complete","scoring":"hidden paths excluded to match Prism search scope","rows":rows})' && jq -r '.rows[] | [.task,.arm,.oracle_sites,.recall,.precision,.search_calls,.total_tokens,.cost_usd,.wall_s,.prism_result_bytes] | @tsv' /private/tmp/prism-real-search-cells-20260909/summary.corrected.json
+      at: 2026-09-09T22:17:14.437012Z
+      classified: other
+    - cmd: "python3 -B -c 'import json,statistics; d=json.load(open(\"/private/tmp/prism-real-search-cells-20260909/summary.corrected.json\")); rows=d[\"rows\"]\nfor arm in (\"baseline-v0.72.5\",\"current-phase4\"):\n rs=[r for r in rows if r[\"arm\"]==arm]; print(arm); \n for k in (\"recall\",\"precision\",\"search_calls\",\"input_tokens\",\"cached_input_tokens\",\"output_tokens\",\"total_tokens\",\"cost_usd\",\"wall_s\",\"prism_result_bytes\"):\n  xs=[r[k] for r in rs]; print(k,\"sum\",sum(xs),\"mean\",sum(xs)/len(xs),\"median\",statistics.median(xs))\nb=[r for r in rows if r[\"arm\"]==\"baseline-v0.72.5\"]; c=[r for r in rows if r[\"arm\"]==\"current-phase4\"]\nfor k in (\"search_calls\",\"input_tokens\",\"cached_input_tokens\",\"output_tokens\",\"total_tokens\",\"cost_usd\",\"wall_s\",\"prism_result_bytes\"):\n bs=sum(r[k] for r in b); cs=sum(r[k] for r in c); print(\"delta\",k,cs-bs,(cs/bs-1)*100)'"
+      at: 2026-09-09T22:17:35.528678Z
+      classified: other
+    - cmd: tail -180 docs/benchmarks/adaptive-search-phase4-2026-09-09.md
+      at: 2026-09-09T22:17:57.609034Z
+      classified: other
+    - cmd: prism lookup renderSearchAsText --format text
+      at: 2026-09-09T22:17:57.689783Z
+      classified: other
+    - cmd: prism lookup renderCompleteSmallSearch --format text
+      at: 2026-09-09T22:17:57.736699Z
+      classified: other
+    - cmd: prism search 'COMPLETE —' 'resultsComplete' 'this is a SAMPLE' --scope text --path internal/mcp --exhaustive --format text
+      at: 2026-09-09T22:18:10.792278Z
+      classified: build
+    - cmd: prism read internal/mcp/searchtext.go --offset 190 --limit 85 --format text && prism read internal/mcp/searchadaptive.go --offset 1 --limit 100 --format text
+      at: 2026-09-09T22:18:24.067144Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --offset 1640 --limit 135 --format text
+      at: 2026-09-09T22:18:34.927443Z
+      classified: other
+    - cmd: prism read internal/textsearch/textsearch.go --offset 1 --limit 260 --format text && prism read internal/textsearch/count.go --offset 1 --limit 240 --format text
+      at: 2026-09-09T22:18:53.139832Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import importlib.util,json; from pathlib import Path; p=Path("/private/tmp/run_prism_real_search_cells.py"); s=importlib.util.spec_from_file_location("bench",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); data=json.loads((m.ROOT/"summary.json").read_text()); rows=[]
+        for row in data["rows"]:
+         expected=m.oracle(Path(row["snapshot"]),row["task"]); submitted=set(row["answer"].get("sites") or []); tp=expected&submitted; row={**row,"oracle_sites":len(expected),"submitted_sites":len(submitted),"true_positive":len(tp),"recall":len(tp)/len(expected) if expected else 1.0,"precision":len(tp)/len(submitted) if submitted else 0.0,"missing":sorted(expected-submitted),"extra":sorted(submitted-expected)}; rows.append(row)
+        m.dump(m.ROOT/"summary.corrected.json",{"status":"complete","scoring":"case-insensitive literal path:line matches; Prism state paths excluded","rows":rows})' && jq -r '.rows[] | [.task,.arm,.oracle_sites,.submitted_sites,.recall,.precision,.search_calls,.total_tokens,.cost_usd,.wall_s,.prism_result_bytes] | @tsv' /private/tmp/prism-real-search-cells-20260909/summary.corrected.json
+      at: 2026-09-09T22:19:41.315076Z
+      classified: other
+    - cmd: jq '{source_commit,model,arms,order,metric_scope}' /private/tmp/prism-real-search-cells-20260909/manifest.json && git status --short && git branch --show-current
+      at: 2026-09-09T22:20:01.117369Z
+      classified: other
+    - cmd: git diff --check -- AGENTS.md docs/benchmarks/adaptive-search-phase4-2026-09-09.md && git status --short AGENTS.md docs/benchmarks/adaptive-search-phase4-2026-09-09.md && jq -r '.status, (.rows|length)' /private/tmp/prism-real-search-cells-20260909/summary.corrected.json
+      at: 2026-09-09T22:21:27.659405Z
+      classified: other
+    - cmd: sed -n '1,280p' /Users/tapabratapal/Projects/provasign/research/harness/run_codex.py
+      at: 2026-09-09T23:45:08.034077Z
+      classified: other
+    - cmd: for f in pallets__click__pr3244 urllib3__urllib3__pr3786; do echo "=== $f"; jq '{instance_id,repo,base_commit,problem_statement,fail_to_pass,pass_to_pass}' "/Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e/$f.json"; done
+      at: 2026-09-09T23:45:08.043816Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -maxdepth 2 -type f -name 'summary.json' | rg '(coding|product-proof|daytoday)' | tail -30
+      at: 2026-09-09T23:45:08.263316Z
+      classified: other
+    - cmd: for f in /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/summary.json /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-remaining-2026-09-08/summary.json; do echo "=== $f"; jq -r '.rows[]? | select(.task|test("click|urllib3";"i")) | [.task,.arm,(.resolved//null|tostring),(.turns//null|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring),(.wall_s//null|tostring)]|@tsv' "$f"; done
+      at: 2026-09-09T23:45:18.734519Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/templates -maxdepth 3 -type d | rg '(pallets__click__pr3244|urllib3__urllib3__pr3786)' | head -20 && find /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/environments -maxdepth 2 -type f -name python | head
+      at: 2026-09-09T23:45:31.070577Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07 -maxdepth 3 -type d | head -40 && find /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08 -maxdepth 3 -type d | head -40
+      at: 2026-09-09T23:45:38.677026Z
+      classified: other
+    - cmd: ps -axo pid,etime,pcpu,command | rg '(run_click_urllib3|coding_suite|pip|uv|prism|codex)' | head -30
+      at: 2026-09-09T23:48:24.647843Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_click_urllib3_versions.py
+      at: 2026-09-10T00:00:59.820277Z
+      classified: other
+    - cmd: for d in /private/tmp/prism-click-urllib3-baseline-20260909 /private/tmp/prism-click-urllib3-current-20260909; do echo "=== $d"; jq -r '.rows[] | [.task,.arm,(.resolved|tostring),(.score.f2p_ok|tostring),(.score.p2p_ok|tostring),(.turns|tostring),(.input_tokens|tostring),(.cache_read_tokens|tostring),(.output_tokens|tostring),(.total_tokens|tostring),(.cost_usd|tostring),(.wall_s|tostring),(.tool_calls|tostring),(.prism_actions|tostring),(.prism_result_bytes|tostring)]|@tsv' "$d/summary.json"; done
+      at: 2026-09-10T00:01:10.494416Z
+      classified: other
+    - cmd: rg -n "Absent-result|gain is|Large-result|Candidate Behavior" docs/benchmarks/adaptive-search-phase4-2026-09-09.md -B8 -A5
+      at: 2026-09-10T00:01:45.314847Z
+      classified: other
+    - cmd: git diff --check -- AGENTS.md docs/benchmarks/adaptive-search-phase4-2026-09-09.md && git status --short | head -30
+      at: 2026-09-10T00:02:11.275859Z
+      classified: other
+    - cmd: for f in /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/summary.json /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-remaining-2026-09-07/summary.json /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/code/summary.json; do if test -f "$f"; then echo "=== $f"; jq -r '.rows[]? | select(.arm=="sonnet_prism" and (.task|test("click|urllib3|rich|werkzeug";"i"))) | [.task,(.resolved//null|tostring),(.score.resolved//null|tostring),(.turns//null|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring),(.wall_s//null|tostring)]|@tsv' "$f"; fi; done
+      at: 2026-09-10T00:05:37.454695Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -name summary.json -print0 | xargs -0 jq -r '.rows[]? | select(.arm=="sonnet_prism" and ((.turns//0)>=15)) | [.task,(.resolved//.score.resolved//null|tostring),(.turns|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring),(.wall_s//null|tostring)] | @tsv' 2>/dev/null | sort -k3,3nr | head -100
+      at: 2026-09-10T00:06:28.526396Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -name summary.json -print0 | xargs -0 jq -r '.rows[]? | select(.arm=="sonnet_prism") | [.task,(.resolved//.score.resolved//null|tostring),(.turns//0|tostring),(.total_tokens//0|tostring),(.cost_usd//0|tostring)] | @tsv' 2>/dev/null | sort -u | rg '(click|rich|werkzeug|urllib3)' | sort -k3,3nr | head -100
+      at: 2026-09-10T00:11:15.084802Z
+      classified: other
+    - cmd: rg -n "def cli_usage|input_total|tokens.*output|num_turns" /Users/tapabratapal/Projects/provasign/research/harness/usage_account.py -A100
+      at: 2026-09-10T00:15:34.431457Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_manyturn_current_cells.py
+      at: 2026-09-10T00:19:47.800404Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -name summary.json -print0 | xargs -0 jq -r '.rows[]? | select(.arm=="sonnet_prism" and (.task|IN("Textualize__rich__pr3938","pallets__click__pr3466","pallets__werkzeug__pr3006"))) | [.task,.arm,(.resolved//.score.resolved//null|tostring),(.turns//null|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring),(.wall_s//null|tostring)] | @tsv' 2>/dev/null | sort -u
+      at: 2026-09-10T00:20:21.364753Z
+      classified: other
+    - cmd: for f in $(find /Users/tapabratapal/Projects/provasign/research/harness/runs -name summary.json); do if jq -e '.rows[]? | select(.arm=="sonnet_prism" and (.task|IN("Textualize__rich__pr3938","pallets__click__pr3466","pallets__werkzeug__pr3006")))' "$f" >/dev/null 2>&1; then echo "=== $f"; jq -r '.rows[]? | select(.arm=="sonnet_prism" and (.task|IN("Textualize__rich__pr3938","pallets__click__pr3466","pallets__werkzeug__pr3006"))) | [.task,(.resolved//.score.resolved//null|tostring),(.turns//null|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring)]|@tsv' "$f"; jq -r '[.versions.prism,.study,.phase] | @tsv' "${f%/summary.json}/manifest.json" 2>/dev/null || true; fi; done
+      at: 2026-09-10T00:20:57.385461Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08 | head && jq '{versions,study,phase,arms}' /Users/tapabratapal/Projects/provasign/research/harness/runs/nonimpact-exp2-two-2026-09-08/manifest.json 2>/dev/null
+      at: 2026-09-10T00:21:05.815688Z
+      classified: other
+    - cmd: rg -n "rich__pr3938|pr3466|pr3006|nonimpact-exp2|coding-suite" /Users/tapabratapal/Projects/provasign/research /Users/tapabratapal/Projects/provasign/prism/docs --glob '*.md' | head -120
+      at: 2026-09-10T00:21:20.67767Z
+      classified: other
+    - cmd: sed -n '1,140p' /Users/tapabratapal/Projects/provasign/research/harness/CODING_SUITE.md
+      at: 2026-09-10T00:21:33.359516Z
+      classified: other
+    - cmd: sed -n '1,130p' /Users/tapabratapal/Projects/provasign/research/harness/PRODUCT_PROOF_2026-09-08.md
+      at: 2026-09-10T00:21:33.361698Z
+      classified: other
+    - cmd: jq -r '.rows[] | [.task,(.resolved|tostring),(.score.f2p_ok|tostring),(.score.p2p_ok|tostring),(.turns|tostring),(.input_tokens|tostring),(.output_tokens|tostring),(.total_tokens|tostring),(.cost_usd|tostring),(.wall_s|tostring),(.tool_calls|tostring),(.prism_actions|tostring)] | @tsv' /private/tmp/prism-manyturn-current2-20260909/summary.json && git status --short | head -30
+      at: 2026-09-10T00:21:42.749262Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -name summary.json -print0 | xargs -0 jq -r '.rows[]? | select(.arm=="sonnet_native" and (.task|IN("Textualize__rich__pr3938","pallets__click__pr3466","pallets__werkzeug__pr3006"))) | [.task,(.resolved//.score.resolved//null|tostring),(.turns//null|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring),(.wall_s//null|tostring)] | @tsv' 2>/dev/null | sort -u
+      at: 2026-09-10T00:24:06.58401Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -name summary.json -print0 | xargs -0 jq -r '.rows[]? | select((.arm=="sonnet_native" or .arm=="sonnet_prism") and ((.turns//0)>0 and (.turns//0)<10)) | [.task,.arm,(.resolved//.score.resolved//null|tostring),(.turns|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring)]|@tsv' 2>/dev/null | sort -u | head -100
+      at: 2026-09-10T00:26:21.334355Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research/harness/runs -name summary.json -print0 | xargs -0 jq -r '.rows[]? | select((.arm=="sonnet_native" or .arm=="sonnet_prism") and (.task|IN("Textualize__rich__pr3882","pallets__click__pr3228","pallets__click__pr3244"))) | [.task,.arm,(.resolved//.score.resolved//null|tostring),(.turns//null|tostring),(.total_tokens//null|tostring),(.cost_usd//null|tostring),(.wall_s//null|tostring)]|@tsv' 2>/dev/null | sort -u
+      at: 2026-09-10T00:26:56.681436Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_manyturn_current_cells.py
+      at: 2026-09-10T00:29:17.598626Z
+      classified: other
+    - cmd: jq -r '.rows[] | [.task,(.resolved|tostring),(.turns|tostring),(.total_tokens|tostring),(.cost_usd|tostring),(.wall_s|tostring),(.tool_calls|tostring),(.prism_actions|tostring)] | @tsv' /private/tmp/prism-lowturn-current-20260909/summary.json
+      at: 2026-09-10T00:29:33.719252Z
+      classified: other
+    - cmd: sed -n '170,235p' docs/benchmarks/adaptive-search-phase4-2026-09-09.md
+      at: 2026-09-10T00:29:57.066854Z
+      classified: other
+    - cmd: prism lookup cmdSavings --format text
+      at: 2026-09-10T00:34:45.216194Z
+      classified: other
+    - cmd: prism lookup Ledger --format text
+      at: 2026-09-10T00:34:45.293155Z
+      classified: other
+    - cmd: prism search 'TotalDeliveredTokens' 'SavingsPercent' 'prism_savings' --scope text --path internal --exhaustive --format text
+      at: 2026-09-10T00:34:45.411936Z
+      classified: other
+    - cmd: prism lookup Summary --format text
+      at: 2026-09-10T00:34:57.578127Z
+      classified: other
+    - cmd: prism lookup ToolStats --format text
+      at: 2026-09-10T00:34:57.633917Z
+      classified: other
+    - cmd: prism read internal/session/ledger.go --offset 1 --limit 220 --format text
+      at: 2026-09-10T00:34:57.662844Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --offset 2520 --limit 55 --format text
+      at: 2026-09-10T00:34:57.691889Z
+      classified: other
+    - cmd: git branch --show-current && prism search Ledger ToolStats prism_savings --scope text --exhaustive --format text
+      at: 2026-09-10T00:38:09.29651Z
+      classified: other
+    - cmd: prism change-impact 'Ledger' --format text
+      at: 2026-09-10T00:38:17.660675Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go 1:90 && prism read internal/mcp/tools.go 40:110 && prism read internal/mcp/tools.go 140:240 && prism read internal/mcp/tools.go 2520:2580 && prism read internal/cli/commands.go 2320:2410 && prism read pkg/kit/kit.go 1:120
+      at: 2026-09-10T00:38:26.021832Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-10T00:38:32.441592Z
+      classified: other
+    - cmd: prism lookup Server NewHandlerWithLedger Handler.toolSavings invokeWithPersistentLedger Kit.Close Kit.Savings cmdSavings --format text
+      at: 2026-09-10T00:38:38.281269Z
+      classified: other
+    - cmd: prism lookup --help
+      at: 2026-09-10T00:38:44.222436Z
+      classified: other
+    - cmd: sed -n '1,125p' internal/mcp/server.go; sed -n '1,115p' internal/mcp/tools.go; sed -n '210,240p' internal/mcp/tools.go; sed -n '2535,2575p' internal/mcp/tools.go; sed -n '2320,2410p' internal/cli/commands.go; sed -n '2565,2645p' internal/cli/commands.go; sed -n '1,125p' pkg/kit/kit.go
+      at: 2026-09-10T00:38:52.121046Z
+      classified: other
+    - cmd: rg -n '\.Ledger|Ledger\b|prism_savings|cmdStats|cmdSavings|WithLedgerPersistence|NewHandlerWithLedger|persistLedgerDelta' internal pkg cmd --glob '*.go'
+      at: 2026-09-10T00:38:59.691426Z
+      classified: other
+    - cmd: sed -n '200,250p' internal/mcp/tools.go; sed -n '840,870p' internal/mcp/tools.go; sed -n '210,245p' internal/cli/commands.go; sed -n '1,45p' internal/cli/commands.go; sed -n '2510,2540p' internal/cli/commands.go; sed -n '3380,3475p' internal/cli/commands.go; sed -n '245,280p' internal/mcp/server.go
+      at: 2026-09-10T00:39:13.912444Z
+      classified: other
+    - cmd: rg -n 'sha1|hex\.|session\.|sort\.|time\.' internal/cli/commands.go
+      at: 2026-09-10T00:39:22.929928Z
+      classified: other
+    - cmd: rg -n 'session\.|time\.|os\.' internal/mcp/server.go; rg -n 'crypto/sha1|encoding/hex|internal/session' pkg/kit/kit.go
+      at: 2026-09-10T00:39:29.895321Z
+      classified: other
+    - cmd: rg -n 'sync\.' internal/mcp/server.go; rg -n 'ledgerPathForRoot|pruneOldLedgers' internal/cli/commands.go
+      at: 2026-09-10T00:39:40.64785Z
+      classified: other
+    - cmd: rg -n 'session\.' internal/mcp/server.go; sed -n '10,28p' internal/mcp/server.go
+      at: 2026-09-10T00:40:04.103337Z
+      classified: other
+    - cmd: sed -n '2525,2635p' internal/cli/commands.go
+      at: 2026-09-10T00:41:07.078169Z
+      classified: other
+    - cmd: sed -n '2490,2535p' internal/cli/commands.go
+      at: 2026-09-10T00:41:18.435542Z
+      classified: other
+    - cmd: sed -n '140,160p' internal/mcp/tools.go; sed -n '220,235p' internal/mcp/tools.go
+      at: 2026-09-10T00:42:00.780264Z
+      classified: other
+    - cmd: sed -n '1,60p' internal/httpapi/http.go; rg -n 'savings|stats' internal/httpapi internal/mcp internal/cli --glob '*.go'
+      at: 2026-09-10T00:42:22.649232Z
+      classified: other
+    - cmd: rg -n 'func \(h \*Handler\) toolFeedback' internal/mcp/tools.go
+      at: 2026-09-10T00:43:54.393911Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/mcp/tools.go && GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/cli ./internal/mcp ./internal/httpapi ./pkg/kit
+      at: 2026-09-10T00:44:15.140457Z
+      classified: test
+    - cmd: rg -n -A8 'compatibility helpers' internal/cli/commands.go
+      at: 2026-09-10T00:44:34.433545Z
+      classified: other
+    - cmd: git diff --stat && git diff -- internal/mcp/server.go internal/cli/commands.go internal/httpapi/http.go | sed -n '1,240p'
+      at: 2026-09-10T00:44:56.69453Z
+      classified: other
+    - cmd: prism search registerMCPTools codexConfigPath printAgentConfig --scope symbols --exhaustive --format text
+      at: 2026-09-10T00:54:35.558053Z
+      classified: other
+    - cmd: prism lookup initRegisterMCPTools --format text
+      at: 2026-09-10T00:54:42.652828Z
+      classified: other
+    - cmd: codex mcp list
+      at: 2026-09-10T00:54:55.946984Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism version
+      at: 2026-09-10T00:55:15.159865Z
+      classified: other
+    - cmd: printf '%s\n%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /opt/homebrew/bin/prism mcp .
+      at: 2026-09-10T00:55:24.890664Z
+      classified: other
+notes:
+    - text: continuation of session 01a086e1-d9c4-7063-a607-c867bed4a199 — events captured after its evidence was finalized
+      at: 2026-09-09T21:49:23.097169Z
+redactions: 0
