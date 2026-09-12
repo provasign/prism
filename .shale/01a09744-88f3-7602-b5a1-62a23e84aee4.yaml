@@ -1,0 +1,1606 @@
+shale_version: "0"
+id: 01a09744-88f3-7602-b5a1-62a23e84aee4
+created_at: 2026-09-12T20:17:34.232622Z
+finalized_at: 2026-09-12T22:40:20.896032Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/ranking/ranking_audit_test.go
+      ops:
+        - write
+        - edit
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:28:05.605198Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:29:59.852868Z
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:29:59.852868Z
+    - path: internal/ranking/learned_weights.go
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:29:59.852868Z
+    - path: internal/ranking/learned_weights_test.go
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:29:59.852868Z
+    - path: internal/ranking/phase.go
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:29:59.852868Z
+    - path: internal/ranking/phase_test.go
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:29:59.852868Z
+    - path: internal/ranking/bench_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:29:59.852868Z
+    - path: internal/ranking/budget.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:31:56.071272Z
+    - path: internal/mcp/delivery.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:33:37.317245Z
+    - path: internal/mcp/delivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:35:08.23061Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:40:10.232924Z
+    - path: internal/ranking/signals.go
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:40:10.232924Z
+    - path: internal/ranking/signals_test.go
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:40:10.232924Z
+    - path: internal/ranking/profiles_extra_test.go
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-12T20:40:10.232924Z
+    - path: internal/ranking/profiles.go
+      ops:
+        - delete
+        - write
+      via: hook
+      first_touched: 2026-09-12T20:40:23.749695Z
+    - path: internal/ranking/budget_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:40:49.475815Z
+    - path: internal/mcp/tools_cov_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:41:05.06504Z
+    - path: internal/mcp/searchsymbolcap_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:42:41.833335Z
+    - path: internal/mcp/searchrank.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-12T20:43:55.716931Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:44:18.463622Z
+    - path: internal/textsearch/textsearch.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T20:48:50.893937Z
+    - path: internal/textsearch/ranking_audit_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-12T20:49:10.615498Z
+    - path: docs/ranking-audit-2026-09-12.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T21:39:50.465898Z
+commands:
+    - cmd: git branch --show-current
+      at: 2026-09-12T20:17:48.345658Z
+      classified: other
+    - cmd: prism --version
+      at: 2026-09-12T20:17:48.350515Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T20:18:42.685871Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T20:18:54.18104Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-12T20:25:34.094463Z
+      classified: other
+    - cmd: test -f /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py
+      at: 2026-09-12T20:25:34.09527Z
+      classified: other
+    - cmd: go test ./...
+      at: 2026-09-12T20:25:34.100775Z
+      classified: test
+    - cmd: git status --short
+      at: 2026-09-12T20:25:34.107409Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./...
+      at: 2026-09-12T20:25:53.293293Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./...
+      at: 2026-09-12T20:26:25.207067Z
+      classified: test
+    - cmd: python3 -B harness/ci_invariants.py --help
+      at: 2026-09-12T20:26:34.304771Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-baseline ./cmd/prism
+      at: 2026-09-12T20:26:37.542249Z
+      classified: build
+    - cmd: /private/tmp/prism-ranking-baseline --version
+      at: 2026-09-12T20:26:40.834791Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-baseline
+      at: 2026-09-12T20:26:44.20179Z
+      classified: other
+    - cmd: ls -ld /private/tmp/ci-corpus/jackson-databind
+      at: 2026-09-12T20:27:00.042008Z
+      classified: other
+    - cmd: 'python3 -B -c ''from pathlib import Path; p=Path("harness/ci_invariants.py"); a=p.read_text().splitlines(); print("\n".join(f"{i+1}: {a[i]}" for i in list(range(0,65))+list(range(296,min(len(a),341)))))'''
+      at: 2026-09-12T20:27:00.060158Z
+      classified: other
+    - cmd: ls -la /private/tmp/ci-corpus/jackson-databind
+      at: 2026-09-12T20:27:04.522374Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/ranking -run 'TestDirectCallerSurvivesUnrelatedFreshCommit|TestSelectChargesSeedsToBudget' -count=1
+      at: 2026-09-12T20:28:09.681207Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/ranking -run 'TestDirectCallerSurvivesUnrelatedFreshCommit|TestSelectChargesSeedsToBudget' -count=1
+      at: 2026-09-12T20:28:40.664253Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/ranking -run '^$'
+      at: 2026-09-12T20:30:06.543443Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolFeedback' -count=1
+      at: 2026-09-12T20:30:06.552976Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/ranking ./internal/mcp -run 'TestToolFeedback' -count=1
+      at: 2026-09-12T20:30:21.48373Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/ranking -run 'TestSelect|TestDirectCaller' -count=1
+      at: 2026-09-12T20:32:14.870047Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/selection.go internal/mcp/delivery.go internal/ranking/budget.go internal/ranking/bench_test.go internal/ranking/ranking_audit_test.go
+      at: 2026-09-12T20:34:17.422467Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestToolQuery_SourceDelivery_E2E|TestSourceDeliveryBoundedByGiantLine' -count=1
+      at: 2026-09-12T20:34:54.3828Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/delivery_test.go
+      at: 2026-09-12T20:35:10.925993Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run TestToolQueryBudgetBoundsRenderedResponse -count=1
+      at: 2026-09-12T20:37:23.541777Z
+      classified: test
+    - cmd: python3 -B harness/ci_invariants.py --corpus-root /private/tmp/prism-ranking-corpus --prism /private/tmp/prism-ranking-baseline
+      at: 2026-09-12T20:37:27.566792Z
+      classified: other
+    - cmd: gofmt -w internal/ranking/budget.go internal/ranking/ranking_audit_test.go internal/mcp/selection.go internal/mcp/delivery.go
+      at: 2026-09-12T20:38:38.908714Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/ranking -count=1
+      at: 2026-09-12T20:38:42.565738Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/selection.go internal/mcp/coverage_test.go internal/mcp/tools_cov_test.go internal/ranking/profiles.go internal/ranking/budget.go internal/ranking/budget_test.go internal/ranking/ranking_audit_test.go
+      at: 2026-09-12T20:41:09.878759Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/ranking -count=1
+      at: 2026-09-12T20:41:13.440985Z
+      classified: test
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSearchSymbolsPrefersRealMatchesBeforeCap|TestSearchSymbolsLabelsNameMatchTiers' -count=1
+      at: 2026-09-12T20:43:09.660193Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/searchrank.go internal/mcp/searchsymbolcap_test.go
+      at: 2026-09-12T20:44:21.441752Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T20:44:24.083879Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/delivery.go
+      at: 2026-09-12T20:45:12.884296Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSearchSymbolsPrefersRealMatchesBeforeCap|TestSearchSymbolsLabelsNameMatchTiers|TestQueryPreservesDeepCommentOutsideNamedSeedWindow' -count=1
+      at: 2026-09-12T20:46:22.102689Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go
+      at: 2026-09-12T20:47:38.037883Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSearchSymbols' -count=1
+      at: 2026-09-12T20:47:55.986731Z
+      classified: test
+    - cmd: gofmt -w internal/textsearch/textsearch.go internal/textsearch/ranking_audit_test.go internal/mcp/searchsymbolcap_test.go
+      at: 2026-09-12T20:49:14.306591Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/textsearch -count=1
+      at: 2026-09-12T20:49:20.147873Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/delivery_test.go internal/ranking/budget.go
+      at: 2026-09-12T20:50:13.79134Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run TestToolQueryBudgetBoundsRenderedResponse -count=1
+      at: 2026-09-12T20:50:20.669896Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T20:50:22.98336Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/searchsymbolcap_test.go
+      at: 2026-09-12T20:51:11.153489Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestQueryRankingIgnoresFreshUnrelatedCommit|TestSearchSymbols' -count=1
+      at: 2026-09-12T20:51:22.845419Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/searchsymbolcap_test.go
+      at: 2026-09-12T20:51:41.35807Z
+      classified: other
+    - cmd: GOCACHE=/private/tmp/prism-go-cache GOFLAGS= GOWORK=off go test ./internal/mcp -run TestQueryRankingIgnoresFreshUnrelatedCommit -count=1
+      at: 2026-09-12T20:51:59.546273Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/searchtext.go internal/mcp/searchrank.go internal/mcp/searchsymbolcap_test.go internal/mcp/coverage_test.go internal/mcp/tools_cov_test.go internal/ranking/budget.go internal/ranking/budget_test.go internal/ranking/profiles.go internal/ranking/ranking_audit_test.go internal/ranking/bench_test.go internal/textsearch/textsearch.go internal/textsearch/ranking_audit_test.go
+      at: 2026-09-12T20:52:56.353733Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T20:53:04.47436Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T20:53:04.484027Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-12T20:53:04.484049Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-candidate ./cmd/prism
+      at: 2026-09-12T20:53:20.483962Z
+      classified: build
+    - cmd: python3 -B -c 'from pathlib import Path; root=Path("harness"); print("\n".join(str(p) for p in root.rglob("*") if p.is_file() and any(term in p.name.lower() for term in ("oracle", "ab_gate", "query"))))'
+      at: 2026-09-12T20:54:38.263646Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; print("\n".join(sorted(p.name for p in Path("harness").iterdir() if p.is_file() and any(x in p.name.lower() for x in ("oracle","query","gate")))))'
+      at: 2026-09-12T20:54:45.14144Z
+      classified: other
+    - cmd: python3 -B harness/ab_gate.py --help
+      at: 2026-09-12T20:54:51.247814Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --help
+      at: 2026-09-12T20:54:51.24786Z
+      classified: other
+    - cmd: 'python3 -B -c ''from pathlib import Path; p=Path("harness/query_oracle.py"); a=p.read_text().splitlines(); print("\n".join(f"{i+1}: {x}" for i,x in enumerate(a) if i<95 or any(k in x for k in ("add_argument", "DEFAULT", "slice", "prism query", "corpus", "out_dir"))))'''
+      at: 2026-09-12T20:55:00.351854Z
+      classified: other
+    - cmd: 'python3 -B -c ''from pathlib import Path; a=Path("harness/query_oracle.py").read_text().splitlines(); print("\n".join(f"{i+1}: {a[i]}" for i in range(200,min(len(a),290))))'''
+      at: 2026-09-12T20:55:07.568247Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; p=Path("harness/runs/swebench-live/slice-java12.json"); a=json.loads(p.read_text()); print(len(a)); print(a[0]["instance_id"]); print(Path.home().joinpath(".cache/prism-research/swebench-repos").exists())'
+      at: 2026-09-12T20:55:14.559679Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T20:55:32.70587Z
+      classified: test
+    - cmd: prism search query_oracle --scope text --format text
+      at: 2026-09-12T20:55:42.564273Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-baseline --only fasterxml__jackson-core-1263 --out /private/tmp/prism-ranking-oracle-baseline.json
+      at: 2026-09-12T20:55:46.544798Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T20:57:29.473679Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-12T20:57:29.497149Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --corpus-root /private/tmp/prism-ranking-corpus --prism /private/tmp/prism-ranking-candidate
+      at: 2026-09-12T20:57:32.765299Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/coverage_test.go internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/searchsymbolcap_test.go internal/mcp/searchtext.go internal/mcp/selection.go internal/mcp/tools.go internal/mcp/tools_cov_test.go internal/mcp/searchrank.go internal/ranking/bench_test.go internal/ranking/budget.go internal/ranking/budget_test.go internal/ranking/profiles.go internal/ranking/ranking_audit_test.go internal/textsearch/textsearch.go internal/textsearch/ranking_audit_test.go
+      at: 2026-09-12T20:58:03.590842Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T20:58:10.705567Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-final ./cmd/prism
+      at: 2026-09-12T20:58:15.772696Z
+      classified: build
+    - cmd: python3 -B harness/query_oracle.py --help
+      at: 2026-09-12T20:58:25.271935Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --help
+      at: 2026-09-12T20:58:25.294224Z
+      classified: other
+    - cmd: git diff -- internal/ranking/budget.go internal/ranking/profiles.go internal/mcp/selection.go
+      at: 2026-09-12T20:58:37.035754Z
+      classified: other
+    - cmd: git diff -- internal/mcp/delivery.go internal/mcp/tools.go
+      at: 2026-09-12T20:58:37.038558Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T20:58:52.172439Z
+      classified: test
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-final --only fasterxml__jackson-core-1263 --out /private/tmp/prism-ranking-oracle-final-unit.json
+      at: 2026-09-12T20:58:52.172237Z
+      classified: other
+    - cmd: gofmt -w internal/ranking/budget.go internal/ranking/ranking_audit_test.go internal/mcp/tools.go
+      at: 2026-09-12T20:59:48.287422Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T20:59:48.311291Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-final ./cmd/prism
+      at: 2026-09-12T20:59:53.8519Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-ranking-final ./cmd/prism
+      at: 2026-09-12T21:00:04.520636Z
+      classified: build
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-final --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:00:04.520374Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T21:00:37.39137Z
+      classified: test
+    - cmd: python3 -B -c 'import json; p="/private/tmp/prism-ranking-oracle-final-unit.json"; x=json.load(open(p)); print(type(x).__name__); print(list(x) if isinstance(x,dict) else len(x)); print(str(x)[:3000])'
+      at: 2026-09-12T21:01:04.062491Z
+      classified: other
+    - cmd: ls -ld /private/tmp/prism-ranking*
+      at: 2026-09-12T21:01:08.065541Z
+      classified: other
+    - cmd: python3 -B -c 'import json; p="/private/tmp/prism-ranking-oracle-final-unit.jsonl"; xs=[json.loads(l) for l in open(p)]; print(xs)'
+      at: 2026-09-12T21:01:11.353454Z
+      classified: other
+    - cmd: python3 -B -c 'import json; p="/private/tmp/prism-ranking-oracle-baseline.jsonl"; print([json.loads(l) for l in open(p)])'
+      at: 2026-09-12T21:01:20.720427Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-final --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:01:31.203985Z
+      classified: other
+    - cmd: 'python3 -B -c ''from pathlib import Path; p=Path("harness/query_oracle.py"); s=p.read_text().splitlines(); print("\n".join(f"{i+1}: {x}" for i,x in enumerate(s[:260])))'''
+      at: 2026-09-12T21:01:45.197821Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-diff.py
+      at: 2026-09-12T21:08:38.527407Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-baseline --out /private/tmp/prism-ranking-oracle-baseline-full.json
+      at: 2026-09-12T21:08:38.527403Z
+      classified: other
+    - cmd: python3 -B -c 'import sys; sys.path.insert(0,"/Users/tapabratapal/Projects/provasign/research/harness"); import query_oracle as q; k="src/main/java/com/fasterxml/jackson/core/util/JsonRecyclerPools.java"; a=q.file_sections(open("/private/tmp/prism-ranking-baseline-unit.txt").read())[k]; b=q.file_sections(open("/private/tmp/prism-ranking-final-unit.txt").read())[k]; print("BASE\n",a[:3000],"\nFINAL\n",b[:3000])'
+      at: 2026-09-12T21:08:45.319342Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-final --out /private/tmp/prism-ranking-oracle-final-full.json
+      at: 2026-09-12T21:09:25.094022Z
+      classified: other
+    - cmd: 'python3 -B -c ''from pathlib import Path; s=Path("harness/query_oracle.py").read_text().splitlines(); print("\n".join(f"{i+1}: {x}" for i,x in enumerate(s[260:295],260)))'''
+      at: 2026-09-12T21:09:28.541807Z
+      classified: other
+    - cmd: /private/tmp/prism-ranking-final query --help
+      at: 2026-09-12T21:09:39.931295Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-diff.py
+      at: 2026-09-12T21:09:58.930528Z
+      classified: other
+    - cmd: 'python3 -B -c ''import json; k="JsonRecyclerPools.java"; [(lambda x: print(p,len(x.get("symbols",[])),[(s.get("name"),s.get("category"),len(s.get("content",""))) for s in x.get("symbols",[]) if k in s.get("filePath","")]))(json.load(open("/private/tmp/prism-ranking-"+p+"-symbols.json"))) for p in ("baseline","final")]'''
+      at: 2026-09-12T21:10:03.442484Z
+      classified: other
+    - cmd: 'python3 -B -c ''import json,collections; p="/private/tmp/prism-ranking-final-symbols.json"; x=json.load(open(p)); d=collections.defaultdict(list); [d[s["filePath"].split("/")[-1]].append(s["name"]) for s in x["symbols"]]; print("\n".join(f"{k}: {len(v)} {v[:12]}" for k,v in d.items()))'''
+      at: 2026-09-12T21:10:42.584196Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-diff.py fasterxml__jackson-core-1309
+      at: 2026-09-12T21:10:46.750556Z
+      classified: other
+    - cmd: 'python3 -B -c ''import json,collections; [(lambda x: print(p, len(x["symbols"]), [(k,len(v),v[:10]) for k,v in (lambda d: d.items())((lambda d: [d[s["filePath"].split("/")[-1]].append(s["name"]) for s in x["symbols"]] and d)(collections.defaultdict(list)))]))(json.load(open("/private/tmp/prism-ranking-"+p+"-symbols.json"))) for p in ("baseline","final")]'''
+      at: 2026-09-12T21:10:52.982766Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go
+      at: 2026-09-12T21:12:07.17676Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:12:07.199395Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/ranking -count=1
+      at: 2026-09-12T21:12:43.51106Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-ranking-captrial ./cmd/prism
+      at: 2026-09-12T21:12:52.262568Z
+      classified: build
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-captrial --only fasterxml__jackson-core-1263 --out /private/tmp/prism-ranking-oracle-captrial-1263.json
+      at: 2026-09-12T21:13:00.996093Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-captrial --only fasterxml__jackson-core-1309 --out /private/tmp/prism-ranking-oracle-captrial-1309.json
+      at: 2026-09-12T21:13:10.376023Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-captrial --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:15:06.191901Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T21:15:28.351469Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/searchsymbolcap_test.go
+      at: 2026-09-12T21:16:07.451591Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestQueryRankingIgnoresFreshUnrelatedCommit|TestSourceDeliveryCapsExpandedRelatedFile|TestToolQueryBudgetBoundsRenderedResponse' -count=1
+      at: 2026-09-12T21:18:07.602496Z
+      classified: test
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-09-12T21:19:25.11393Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-captrial --out /private/tmp/prism-ranking-oracle-captrial-full.json
+      at: 2026-09-12T21:19:28.968179Z
+      classified: other
+    - cmd: 'python3 -B -c ''from pathlib import Path; s=Path("docs/ranking-audit-2026-09-12.md").read_text().splitlines(); print("\n".join(f"{i+1}: {x}" for i,x in enumerate(s[225:246],225)))'''
+      at: 2026-09-12T21:19:33.888196Z
+      classified: other
+    - cmd: 'python3 -B -c ''import json; a=json.load(open("/private/tmp/prism-ranking-oracle-baseline-full.json"))["results"]; b=json.load(open("/private/tmp/prism-ranking-oracle-captrial-full.json"))["results"]; d={x["instance_id"]:x for x in a}; print("task                 realistic r/delta bytes        oracle r/delta bytes"); [(lambda x,y: print(x["instance_id"].split("-")[-1].rjust(6)," ",*(f"{(y[m] or {}).get(chr(114)+chr(101)+chr(99)+chr(97)+chr(108)+chr(108))} {((y[m] or {}).get(chr(100)+chr(101)+chr(108)+chr(105)+chr(118)+chr(101)+chr(114)+chr(101)+chr(100),0)-(x[m] or {}).get(chr(100)+chr(101)+chr(108)+chr(105)+chr(118)+chr(101)+chr(114)+chr(101)+chr(100),0)):+d}" for m in ("realistic","oracle"))))(d[y["instance_id"]],y) for y in b]'''
+      at: 2026-09-12T21:19:44.207538Z
+      classified: other
+    - cmd: 'python3 -B -c ''import json; a=json.load(open("/private/tmp/prism-ranking-oracle-baseline-full.json"))["results"]; b=json.load(open("/private/tmp/prism-ranking-oracle-captrial-full.json"))["results"]; d={x["instance_id"]:x for x in a}; [(lambda x,y: print(x["instance_id"].split("-")[-1], *(f"{m}:{(x[m] or {}).get(chr(100)+chr(101)+chr(108)+chr(105)+chr(118)+chr(101)+chr(114)+chr(101)+chr(100))}->{(y[m] or {}).get(chr(100)+chr(101)+chr(108)+chr(105)+chr(118)+chr(101)+chr(114)+chr(101)+chr(100))}" for m in ("realistic","oracle"))))(d[y["instance_id"]],y) for y in b]'''
+      at: 2026-09-12T21:19:54.306507Z
+      classified: other
+    - cmd: gofmt -w internal/ranking/budget.go internal/ranking/ranking_audit_test.go
+      at: 2026-09-12T21:20:33.877076Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:20:33.902954Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-ranking-weakcap ./cmd/prism
+      at: 2026-09-12T21:20:48.924534Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/ranking ./internal/mcp -count=1
+      at: 2026-09-12T21:21:04.257368Z
+      classified: test
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-weakcap --only fasterxml__jackson-databind-4365 --out /private/tmp/prism-ranking-oracle-weakcap-4365.json
+      at: 2026-09-12T21:21:36.857799Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-weakcap --only fasterxml__jackson-core-1263 --out /private/tmp/prism-ranking-oracle-weakcap-1263.json
+      at: 2026-09-12T21:21:51.898601Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-weakcap --only fasterxml__jackson-databind-4609 --out /private/tmp/prism-ranking-oracle-weakcap-4609.json
+      at: 2026-09-12T21:22:21.137827Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-diff.py fasterxml__jackson-databind-4609
+      at: 2026-09-12T21:23:38.201722Z
+      classified: other
+    - cmd: python3 -B -c 'import json,re; x=next(t for t in json.load(open("harness/runs/swebench-live/slice-java12.json")) if t["instance_id"].endswith("-4609")); print("\n".join(re.findall(r"^\+\+\+ b/(.+)$",x["patch"],re.M)))'
+      at: 2026-09-12T21:23:44.915757Z
+      classified: other
+    - cmd: cp harness/query_oracle.py /private/tmp/prism-ranking-max3-oracle.py
+      at: 2026-09-12T21:24:02.006347Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-max3-oracle.py --slice harness/runs/swebench-live/slice-java12.json --prism /private/tmp/prism-ranking-captrial --only fasterxml__jackson-databind-4365 --out /private/tmp/prism-ranking-oracle-max3-4365.json
+      at: 2026-09-12T21:25:03.666952Z
+      classified: other
+    - cmd: 'python3 -B -c ''import sys,json; sys.path.insert(0,"harness"); import query_oracle as q; ts=json.load(open("harness/runs/swebench-live/slice-java12.json")); [(lambda h: print(t["instance_id"].split("-")[-1],len(h),len(set(f for f,_ in h))))(q.gold_hunks(t)) for t in ts]'''
+      at: 2026-09-12T21:25:22.501534Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-max3-oracle.py --slice harness/runs/swebench-live/slice-java12.json --prism /private/tmp/prism-ranking-captrial --only fasterxml__jackson-databind-4609 --out /private/tmp/prism-ranking-oracle-max3-4609.json
+      at: 2026-09-12T21:25:49.665903Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-max3-oracle.py --slice harness/runs/swebench-live/slice-java12.json --prism /private/tmp/prism-ranking-captrial --only fasterxml__jackson-databind-4609 --out /private/tmp/prism-ranking-oracle-max2-4609.json
+      at: 2026-09-12T21:26:53.509458Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-max3-oracle.py --slice harness/runs/swebench-live/slice-java12.json --prism /private/tmp/prism-ranking-captrial --only fasterxml__jackson-databind-4365 --out /private/tmp/prism-ranking-oracle-max2-4365.json
+      at: 2026-09-12T21:26:53.509437Z
+      classified: other
+    - cmd: python3 -B -c 'import json; x=next(t for t in json.load(open("/private/tmp/prism-ranking-oracle-captrial-full.json"))["results"] if t["instance_id"].endswith("-4365")); print(x["oracle"]["terms"])'
+      at: 2026-09-12T21:26:59.879836Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/tools.go internal/ranking/budget.go internal/ranking/ranking_audit_test.go
+      at: 2026-09-12T21:27:37.704295Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:27:37.715483Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-ranking-seedfiles ./cmd/prism
+      at: 2026-09-12T21:27:49.667292Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/ranking -count=1
+      at: 2026-09-12T21:28:09.758114Z
+      classified: test
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-seedfiles --only fasterxml__jackson-databind-4609 --out /private/tmp/prism-ranking-oracle-seedfiles-4609.json
+      at: 2026-09-12T21:28:43.516061Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T21:29:18.094009Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:29:18.114818Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T21:29:22.826683Z
+      classified: test
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-seedfiles --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:30:17.395503Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-seedfiles --out /private/tmp/prism-ranking-oracle-seedfiles-full.json
+      at: 2026-09-12T21:34:51.72673Z
+      classified: other
+    - cmd: python3 -B -c 'import json; a={x["instance_id"]:x for x in json.load(open("/private/tmp/prism-ranking-oracle-baseline-full.json"))["results"]}; b=json.load(open("/private/tmp/prism-ranking-oracle-seedfiles-full.json"))["results"]; print("recall regressions:",[(x["instance_id"],m,a[x["instance_id"]][m]["recall"],x[m]["recall"]) for x in b for m in ("realistic","oracle") if x.get(m) and a[x["instance_id"]].get(m) and "recall" in x[m] and "recall" in a[x["instance_id"]][m] and x[m]["recall"]<a[x["instance_id"]][m]["recall"]]); print("realistic gains:",[(x["instance_id"],a[x["instance_id"]]["realistic"]["recall"],x["realistic"]["recall"]) for x in b if x.get("realistic") and a[x["instance_id"]].get("realistic") and "recall" in x["realistic"] and "recall" in a[x["instance_id"]]["realistic"] and x["realistic"]["recall"]>a[x["instance_id"]]["realistic"]["recall"]]); print("aggregate baseline",json.load(open("/private/tmp/prism-ranking-oracle-baseline-full.json"))["aggregate"]); print("aggregate candidate",json.load(open("/private/tmp/prism-ranking-oracle-seedfiles-full.json"))["aggregate"])'
+      at: 2026-09-12T21:35:04.131536Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T21:35:23.530507Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:35:23.543052Z
+      classified: other
+    - cmd: git diff --stat -- internal
+      at: 2026-09-12T21:35:23.546687Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T21:39:06.314158Z
+      classified: other
+    - cmd: shasum -a 256 harness/ci_invariants.py /private/tmp/prism-ranking-seedfiles
+      at: 2026-09-12T21:39:06.462881Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T21:39:06.588185Z
+      classified: other
+    - cmd: 'rg --files harness | rg ''slice|oracle|invariants|ab_gate'' '
+      at: 2026-09-12T21:39:09.191251Z
+      classified: other
+    - cmd: ls -ld /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:39:17.314026Z
+      classified: other
+    - cmd: 'rg --files harness/runs/swebench-live | rg ''slice|bed|task'' '
+      at: 2026-09-12T21:39:17.332669Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-09-12T21:39:17.344706Z
+      classified: other
+    - cmd: 'rg --files harness/runs | rg ''/(slice|bed)[^/]*\.json$'' '
+      at: 2026-09-12T21:39:19.891777Z
+      classified: other
+    - cmd: 'python3 -B -c ''import json,collections,os; p="harness/runs/swebench-live"; names=["slice-bed37.json","slice-bed36.json","slice-structnote5.json","slice-scoreable15.json","slice-smoke5.json","slice-flask.json"]; cache=os.path.expanduser("~/.cache/prism-research/swebench-repos"); [(lambda a: print(n,len(a),collections.Counter("py" if ".py" in t.get("patch","") else "java" if ".java" in t.get("patch","") else "other" for t in a),sum(os.path.isdir(os.path.join(cache,t["repo"].replace("/","__"))) for t in a),[t["instance_id"] for t in a[:5]]))(json.load(open(os.path.join(p,n)))) for n in names]'''
+      at: 2026-09-12T21:39:31.383779Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-baseline --slice harness/runs/swebench-live/slice-structnote5.json --only a2aproject__a2a-python-414 --out /private/tmp/prism-ranking-python-baseline-unit.json
+      at: 2026-09-12T21:40:16.609657Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-seedfiles --slice harness/runs/swebench-live/slice-structnote5.json --only a2aproject__a2a-python-414 --out /private/tmp/prism-ranking-python-candidate-unit.json
+      at: 2026-09-12T21:40:28.952181Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-js-probe.py
+      at: 2026-09-12T21:41:13.346423Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-baseline --slice harness/runs/swebench-live/slice-structnote5.json --out /private/tmp/prism-ranking-python-baseline5.json
+      at: 2026-09-12T21:41:22.409439Z
+      classified: other
+    - cmd: git rev-parse HEAD:harness/ci_invariants.py
+      at: 2026-09-12T21:41:44.288595Z
+      classified: other
+    - cmd: git hash-object harness/ci_invariants.py
+      at: 2026-09-12T21:41:44.288654Z
+      classified: other
+    - cmd: 'python3 -B -c ''import json,sys,collections; sys.path.insert(0,"harness"); import query_oracle as q; p="harness/runs/swebench-live/"; names=["slice-structnote5.json","slice-scoreable15.json","slice-bed37.json"]; [(lambda a: print(n,"tasks",len(a),"realistic-terms",sum(bool(q.title_terms(t)) for t in a),"repos",len(set(t["repo"] for t in a))))(json.load(open(p+n))) for n in names]'''
+      at: 2026-09-12T21:41:52.433417Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-seedfiles --slice harness/runs/swebench-live/slice-structnote5.json --out /private/tmp/prism-ranking-python-candidate5.json
+      at: 2026-09-12T21:41:56.758972Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-python-diff.py Kinto__kinto-3566
+      at: 2026-09-12T21:42:35.591276Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-python-diff.py sooperset__mcp-atlassian-581
+      at: 2026-09-12T21:42:35.590943Z
+      classified: other
+    - cmd: python3 -B -c 'import sys;sys.path.insert(0,"harness");import query_oracle as q; i="sooperset__mcp-atlassian-581";k="src/mcp_atlassian/jira/config.py";[(lambda s:print(x,"\n",s[:1800]))(q.file_sections(open(f"/private/tmp/prism-ranking-{i}-realistic-{x}.txt").read())[k]) for x in ("baseline","candidate")]'
+      at: 2026-09-12T21:42:48.085313Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-python-diff.py sooperset__mcp-atlassian-581
+      at: 2026-09-12T21:43:18.027733Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-seedfiles --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:43:35.320334Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:44:32.720585Z
+      classified: other
+    - cmd: gofmt -w internal/ranking/budget.go internal/ranking/ranking_audit_test.go internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/tools.go
+      at: 2026-09-12T21:44:32.722135Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-ranking-pythonfix ./cmd/prism
+      at: 2026-09-12T21:44:42.458568Z
+      classified: build
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-pythonfix --slice harness/runs/swebench-live/slice-structnote5.json --only Kinto__kinto-3566 --out /private/tmp/prism-ranking-pythonfix-Kinto__kinto-3566.json
+      at: 2026-09-12T21:44:56.932002Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/ranking ./internal/mcp -count=1
+      at: 2026-09-12T21:44:56.932039Z
+      classified: test
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-pythonfix --slice harness/runs/swebench-live/slice-structnote5.json --only sooperset__mcp-atlassian-581 --out /private/tmp/prism-ranking-pythonfix-sooperset__mcp-atlassian-581.json
+      at: 2026-09-12T21:44:56.931531Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-pythonfix --only fasterxml__jackson-core-1263 --out /private/tmp/prism-ranking-pythonfix-java-unit.json
+      at: 2026-09-12T21:45:16.048942Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-pythonfix --slice harness/runs/swebench-live/slice-structnote5.json --out /private/tmp/prism-ranking-pythonfix-five.json
+      at: 2026-09-12T21:45:38.886616Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-js-probe.py /private/tmp/prism-ranking-pythonfix
+      at: 2026-09-12T21:46:01.905835Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-baseline --slice harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/prism-ranking-python-baseline15.json
+      at: 2026-09-12T21:47:08.971707Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-pythonfix --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:47:08.971679Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T21:47:08.971659Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for p in ['/private/tmp/prism-ranking-oracle-baseline-full.json','/private/tmp/prism-ranking-python-baseline15.json']:
+         d=json.load(open(p)); print(p, type(d).__name__, list(d)[:8] if isinstance(d,dict) else len(d)); print(str(d)[:1800])
+        PY
+      at: 2026-09-12T21:47:22.339056Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T21:47:32.173647Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-12T21:47:32.181638Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:47:32.188915Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-ranking-python-baseline15.json';d=json.load(open(p))
+        for x in d['results']:
+         if 'datamodel-code-generator-2467' in x['instance_id']:
+          print(json.dumps(x,indent=2))
+        PY
+      at: 2026-09-12T21:47:46.461086Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-pythonfix --slice harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/prism-ranking-python-candidate15.json
+      at: 2026-09-12T21:47:50.831942Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        b=json.load(open('/private/tmp/prism-ranking-python-baseline15.json'));c=json.load(open('/private/tmp/prism-ranking-python-candidate15.json'))
+        for x,y in zip(b['results'],c['results']):
+         print(x['instance_id'])
+         for mode in ('realistic','oracle'):
+          a=x[mode]; z=y[mode]
+          if a and z:
+           print(' ',mode, 'recall',a['recall'],'->',z['recall'],'oversupply',a['oversupply'],'->',z['oversupply'])
+        PY
+      at: 2026-09-12T21:48:00.740927Z
+      classified: other
+    - cmd: rg -n 'def (score|run|query|oracle|main)|--only|delivery|gold|hunks|worktree|source' harness/query_oracle.py
+      at: 2026-09-12T21:48:03.430665Z
+      classified: other
+    - cmd: sed -n '45,75p;180,275p' harness/query_oracle.py
+      at: 2026-09-12T21:48:05.565125Z
+      classified: other
+    - cmd: sed -n '1,45p;75,100p' harness/query_oracle.py
+      at: 2026-09-12T21:48:08.451252Z
+      classified: other
+    - cmd: ls -1 /private/tmp/prism-ranking-*
+      at: 2026-09-12T21:48:11.85149Z
+      classified: other
+    - cmd: sed -n '1,200p' /private/tmp/prism-ranking-python-diff.py
+      at: 2026-09-12T21:48:14.026052Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='/private/tmp/prism-ranking-python-diff.py'
+        s=open(p).read().replace('slice-structnote5.json','slice-scoreable15.json').replace('/private/tmp/prism-ranking-seedfiles','/private/tmp/prism-ranking-pythonfix')
+        open('/private/tmp/prism-ranking-python-diff15.py','w').write(s)
+        PY
+      at: 2026-09-12T21:48:17.79304Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-python-diff15.py koxudaxi__datamodel-code-generator-2467
+      at: 2026-09-12T21:48:26.635534Z
+      classified: other
+    - cmd: rg -n 'desired|Disclosure|budget|anchor|select|Kind|top-level' internal/ranking/budget.go
+      at: 2026-09-12T21:48:31.817916Z
+      classified: other
+    - cmd: sed -n '95,164p;270,305p' internal/ranking/budget.go
+      at: 2026-09-12T21:48:34.02586Z
+      classified: other
+    - cmd: sed -n '1,165p' /private/tmp/prism-ranking-koxudaxi__datamodel-code-generator-2467-oracle-candidate.txt
+      at: 2026-09-12T21:48:39.238253Z
+      classified: other
+    - cmd: rg -n 'ranking.Select|Budget|SymbolBudget|14_000|14000|seed|Seeds|MaxTokens' internal/mcp/selection.go internal/mcp/tools.go internal/mcp/delivery.go
+      at: 2026-09-12T21:48:44.895926Z
+      classified: other
+    - cmd: sed -n '330,360p' internal/ranking/budget.go
+      at: 2026-09-12T21:48:51.409925Z
+      classified: other
+    - cmd: rg -n '"<top-level>"|<top-level>' internal/grove | head -40
+      at: 2026-09-12T21:48:55.851474Z
+      classified: other
+    - cmd: sed -n '1,230p' internal/ranking/ranking_audit_test.go
+      at: 2026-09-12T21:49:01.676396Z
+      classified: other
+    - cmd: gofmt -w internal/ranking/budget.go internal/ranking/ranking_audit_test.go
+      at: 2026-09-12T21:49:22.420813Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/ranking -run 'TestModuleAnchorCannotCrowdOutNamedFunction|TestNonAnchorTypeCannotConsumeBudgetWithWholeBody' -count=1
+      at: 2026-09-12T21:49:25.729147Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-modulefix ./cmd/prism
+      at: 2026-09-12T21:49:31.707457Z
+      classified: build
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-modulefix --slice harness/runs/swebench-live/slice-scoreable15.json --only koxudaxi__datamodel-code-generator-2467 --out /private/tmp/prism-ranking-modulefix-datamodel.json
+      at: 2026-09-12T21:49:45.496195Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        s=open('/private/tmp/prism-ranking-python-diff15.py').read().replace('/private/tmp/prism-ranking-pythonfix','/private/tmp/prism-ranking-modulefix')
+        open('/private/tmp/prism-ranking-python-diffmodule.py','w').write(s)
+        PY
+      at: 2026-09-12T21:49:48.756426Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-python-diffmodule.py koxudaxi__datamodel-code-generator-2467
+      at: 2026-09-12T21:49:57.545295Z
+      classified: other
+    - cmd: sed -n '110,225p;465,565p;605,695p' internal/mcp/delivery.go
+      at: 2026-09-12T21:50:01.659983Z
+      classified: other
+    - cmd: rg -n 'renderFileSection\(' internal/mcp
+      at: 2026-09-12T21:50:09.6323Z
+      classified: other
+    - cmd: sed -n '395,420p;210,245p' internal/mcp/delivery.go
+      at: 2026-09-12T21:50:18.353696Z
+      classified: other
+    - cmd: sed -n '1,210p' internal/mcp/delivery_test.go
+      at: 2026-09-12T21:50:21.686521Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go
+      at: 2026-09-12T21:50:33.704814Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-windowfix ./cmd/prism
+      at: 2026-09-12T21:50:39.48399Z
+      classified: build
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-windowfix --slice harness/runs/swebench-live/slice-scoreable15.json --only koxudaxi__datamodel-code-generator-2467 --out /private/tmp/prism-ranking-windowfix-datamodel.json
+      at: 2026-09-12T21:50:52.503265Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go
+      at: 2026-09-12T21:51:15.575788Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-onefilefix ./cmd/prism
+      at: 2026-09-12T21:51:20.644124Z
+      classified: build
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-onefilefix --slice harness/runs/swebench-live/slice-scoreable15.json --only koxudaxi__datamodel-code-generator-2467 --out /private/tmp/prism-ranking-onefilefix-datamodel.json
+      at: 2026-09-12T21:51:28.397493Z
+      classified: other
+    - cmd: rg -n 'wholeFileLines|wholeFileMaxLines|wholeFileFraction|windowPad|signatureWindowLines' internal/mcp/delivery.go
+      at: 2026-09-12T21:51:33.620368Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-pythonfix --out /private/tmp/prism-ranking-pythonfix-java12.json
+      at: 2026-09-12T21:51:49.732338Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery_test.go
+      at: 2026-09-12T21:52:23.618612Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget|TestSourceDeliverySingleAnchorFileCanUseSharedBudget' -count=1
+      at: 2026-09-12T21:52:26.614254Z
+      classified: test
+    - cmd: sed -n '60,110p' internal/mcp/delivery.go
+      at: 2026-09-12T21:52:30.047553Z
+      classified: other
+    - cmd: sed -n '245,300p' internal/mcp/delivery.go
+      at: 2026-09-12T21:52:32.370818Z
+      classified: other
+    - cmd: rg -n 'return map\[string\]any|"context"|"content"' internal/mcp/delivery.go | tail -20
+      at: 2026-09-12T21:52:35.25778Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget|TestSourceDeliverySingleAnchorFileCanUseSharedBudget' -count=1
+      at: 2026-09-12T21:52:43.4928Z
+      classified: test
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-onefilefix --slice harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/prism-ranking-onefilefix-python15.json
+      at: 2026-09-12T21:52:45.867947Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        b=json.load(open('/private/tmp/prism-ranking-python-baseline15.json'));c=json.load(open('/private/tmp/prism-ranking-onefilefix-python15.json'))
+        for mode in ('realistic','oracle'):
+         drops=[];gains=[]
+         for x,y in zip(b['results'],c['results']):
+          a=x[mode];z=y[mode]
+          if not a or not z:continue
+          d=round(z['recall']-a['recall'],3)
+          if d<0:drops.append((x['instance_id'],d))
+          if d>0:gains.append((x['instance_id'],d))
+         print(mode,'baseline',b['aggregate'][mode],'candidate',c['aggregate'][mode],'drops',drops,'gains',gains)
+        PY
+      at: 2026-09-12T21:52:56.006194Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go
+      at: 2026-09-12T21:53:19.953161Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/ranking -run 'TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget|TestSourceDeliverySingleAnchorFileCanUseSharedBudget|TestModuleAnchorCannotCrowdOutNamedFunction' -count=1
+      at: 2026-09-12T21:53:26.012279Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/ranking -run 'TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget|TestSourceDeliverySingleAnchorFileCanUseSharedBudget|TestModuleAnchorCannotCrowdOutNamedFunction' -count=1
+      at: 2026-09-12T21:53:36.362183Z
+      classified: test
+    - cmd: rg -n 'func EstimateTokens' internal/ranking/budget.go
+      at: 2026-09-12T21:53:40.134192Z
+      classified: other
+    - cmd: sed -n '380,390p' internal/ranking/budget.go
+      at: 2026-09-12T21:53:43.274286Z
+      classified: other
+    - cmd: sed -n '195,250p;575,590p' internal/mcp/delivery.go
+      at: 2026-09-12T21:53:48.127256Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/ranking -run 'TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget|TestSourceDeliverySingleAnchorFileCanUseSharedBudget|TestModuleAnchorCannotCrowdOutNamedFunction' -count=1
+      at: 2026-09-12T21:53:59.120258Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-final2 ./cmd/prism
+      at: 2026-09-12T21:54:05.611737Z
+      classified: build
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-final2 --slice harness/runs/swebench-live/slice-scoreable15.json --only koxudaxi__datamodel-code-generator-2467 --out /private/tmp/prism-ranking-final2-datamodel.json
+      at: 2026-09-12T21:54:13.831683Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-js-probe.py /private/tmp/prism-ranking-final2
+      at: 2026-09-12T21:54:29.458784Z
+      classified: other
+    - cmd: git hash-object harness/ci_invariants.py
+      at: 2026-09-12T21:54:37.493205Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:54:37.494802Z
+      classified: other
+    - cmd: git rev-parse HEAD:harness/ci_invariants.py
+      at: 2026-09-12T21:54:37.502113Z
+      classified: other
+    - cmd: prism verify
+      at: 2026-09-12T21:54:43.422775Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T21:54:45.381374Z
+      classified: test
+    - cmd: sed -n '1,14p' docs/ranking-audit-2026-09-12.md
+      at: 2026-09-12T21:54:53.949026Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-final2 --slice harness/runs/swebench-live/slice-scoreable15.json --out /private/tmp/prism-ranking-final2-python15.json
+      at: 2026-09-12T21:55:03.800448Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T21:55:22.860404Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T21:55:22.865548Z
+      classified: other
+    - cmd: sha256sum harness/ci_invariants.py
+      at: 2026-09-12T21:55:22.865549Z
+      classified: other
+    - cmd: ps -axo pid,command | rg 'query_oracle.py.*prism-ranking-onefilefix|query_oracle.py.*prism-ranking-final2'
+      at: 2026-09-12T21:55:34.787046Z
+      classified: other
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-final2 --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T21:55:49.902713Z
+      classified: other
+    - cmd: ps -p 85183,85865 -o pid,%cpu,%mem,etime,command
+      at: 2026-09-12T21:55:58.51172Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        b=json.load(open('/private/tmp/prism-ranking-python-baseline15.json'));c=json.load(open('/private/tmp/prism-ranking-final2-python15.json'))
+        for mode in ('realistic','oracle'):
+         drops=[]; gains=[]; zeros=0
+         for x,y in zip(b['results'],c['results']):
+          a=x[mode];z=y[mode]
+          if not a or not z: continue
+          if z['recall']==0: zeros+=1
+          d=round(z['recall']-a['recall'],3)
+          if d<0: drops.append((x['instance_id'],d))
+          if d>0: gains.append((x['instance_id'],d))
+         print(mode,'baseline',b['aggregate'][mode],'candidate',c['aggregate'][mode],'zeros',zeros,'drops',drops,'gains',gains)
+        PY
+      at: 2026-09-12T21:56:04.594423Z
+      classified: other
+    - cmd: git diff -- internal/ranking/budget.go internal/mcp/delivery.go internal/mcp/delivery_test.go
+      at: 2026-09-12T21:56:22.962612Z
+      classified: other
+    - cmd: ps -axo pid,ppid,%cpu,%mem,etime,command | rg 'prism-ranking-(onefilefix|final2).*index|query_oracle.py.*prism-ranking-(onefilefix|final2)'
+      at: 2026-09-12T21:56:37.282531Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for p in ['/private/tmp/prism-ranking-oracle-baseline-full.json','/private/tmp/prism-ranking-oracle-seedfiles-full.json','/private/tmp/prism-ranking-pythonfix-java12.json']:
+         d=json.load(open(p)); x=next(x for x in d['results'] if x['instance_id'].endswith('4609')); print(p,x['realistic']['recall'],x['realistic']['oversupply'],x['oracle']['recall'])
+        PY
+      at: 2026-09-12T21:57:27.375928Z
+      classified: other
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-onefilefix --slice harness/runs/swebench-live/slice-java12.json --out /private/tmp/prism-ranking-onefilefix-java12.json
+      at: 2026-09-12T21:58:39.14799Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        b=json.load(open('/private/tmp/prism-ranking-oracle-baseline-full.json'));c=json.load(open('/private/tmp/prism-ranking-onefilefix-java12.json'))
+        for mode in ('realistic','oracle'):
+         drops=[]; gains=[]; zeros=0
+         for x,y in zip(b['results'],c['results']):
+          a=x[mode]; z=y[mode]
+          if not a or not z:continue
+          if z['recall']==0:zeros+=1
+          delta=round(z['recall']-a['recall'],3)
+          if delta<0:drops.append((x['instance_id'],delta))
+          if delta>0:gains.append((x['instance_id'],delta))
+         print(mode,'baseline',b['aggregate'][mode],'candidate',c['aggregate'][mode],'zeros',zeros,'drops',drops,'gains',gains)
+        PY
+      at: 2026-09-12T21:59:06.276187Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for p in ['/private/tmp/prism-ranking-oracle-baseline-full.json','/private/tmp/prism-ranking-oracle-seedfiles-full.json']:
+         d=json.load(open(p));print(p)
+         for x in d['results']:
+          y=x['realistic'];print(x['instance_id'], None if not y else y['recall'])
+        PY
+      at: 2026-09-12T21:59:12.655817Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/delivery_test.go
+      at: 2026-09-12T21:59:50.860311Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-ranking-final3 ./cmd/prism
+      at: 2026-09-12T21:59:57.698028Z
+      classified: build
+    - cmd: shasum -a 256 /private/tmp/prism-ranking-onefilefix /private/tmp/prism-ranking-final3
+      at: 2026-09-12T22:00:00.607137Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-js-probe.py /private/tmp/prism-ranking-final3
+      at: 2026-09-12T22:00:07.3065Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-12T22:00:14.15199Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T22:00:14.157745Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-ranking-oracle-baseline-full.json';d=json.load(open(p))
+        for x in d['results']:
+         if x['instance_id'].endswith(('1309','4609','644')):
+          print(x['instance_id'])
+          for m in ('realistic','oracle'):
+           y=x[m]
+           print(m,None if y is None else y['terms'])
+        PY
+      at: 2026-09-12T22:00:24.873612Z
+      classified: other
+    - cmd: prism verify
+      at: 2026-09-12T22:00:29.440246Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T22:00:29.440251Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget|TestSourceDeliverySingleAnchorFileCanUseSharedBudget' -count=1
+      at: 2026-09-12T22:00:50.385119Z
+      classified: test
+    - cmd: python3 -B harness/query_oracle.py --prism /private/tmp/prism-ranking-final2 --slice harness/runs/swebench-live/slice-java12.json --out /private/tmp/prism-ranking-final2-java12.json
+      at: 2026-09-12T22:00:57.198022Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-12T22:01:14.34351Z
+      classified: test
+    - cmd: python3 -B harness/ci_invariants.py --prism /private/tmp/prism-ranking-final3 --corpus-root /private/tmp/prism-ranking-corpus
+      at: 2026-09-12T22:01:18.503761Z
+      classified: other
+    - cmd: cp /private/tmp/prism-ranking-onefilefix-java12.json /private/tmp/prism-ranking-final3-java12.json
+      at: 2026-09-12T22:01:29.198896Z
+      classified: other
+    - cmd: cp /private/tmp/prism-ranking-onefilefix-python15.json /private/tmp/prism-ranking-final3-python15.json
+      at: 2026-09-12T22:01:31.368919Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T22:01:35.637841Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-09-12T22:01:35.637937Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T22:01:35.643713Z
+      classified: other
+    - cmd: git status --short --branch --untracked-files=no
+      at: 2026-09-12T22:03:01.430097Z
+      classified: other
+    - cmd: rg --files -g 'AGENTS.md' -g 'CLAUDE.md' .
+      at: 2026-09-12T22:03:06.622775Z
+      classified: other
+    - cmd: rg --files harness | rg '(mason|bench|cell|coding|suite|codex)'
+      at: 2026-09-12T22:03:06.630784Z
+      classified: other
+    - cmd: rg -n 'coding-suite|mason_bench|agent cell|benchmark cells|--only|--prism' harness -g '*.py' -g '*.md' -g '*.sh'
+      at: 2026-09-12T22:03:06.622703Z
+      classified: other
+    - cmd: sed -n '1,200p' AGENTS.md
+      at: 2026-09-12T22:03:12.784754Z
+      classified: other
+    - cmd: sed -n '1,160p' CLAUDE.md
+      at: 2026-09-12T22:03:12.784741Z
+      classified: other
+    - cmd: sed -n '1,200p' harness/CODING_SUITE.md
+      at: 2026-09-12T22:03:12.790119Z
+      classified: other
+    - cmd: rg -n '^def main|ArgumentParser|add_argument|Usage:|--only|--prism|--out|--arms|--model' harness/coding_suite.py harness/swebench_ab.py harness/mason_bench.py harness/run_codex.py
+      at: 2026-09-12T22:03:12.801522Z
+      classified: other
+    - cmd: prism query "Find harness entry point for small paired Prism ranking coding benchmark cells and preflight" --terms coding_suite.py,swebench_ab.py,run_codex.py
+      at: 2026-09-12T22:03:30.986008Z
+      classified: other
+    - cmd: sed -n '1,115p;200,280p;430,490p' harness/coding_suite.py
+      at: 2026-09-12T22:03:45.33733Z
+      classified: other
+    - cmd: sed -n '1,125p;365,430p' harness/run_codex.py
+      at: 2026-09-12T22:03:45.339313Z
+      classified: other
+    - cmd: sed -n '1,115p;710,790p' harness/swebench_ab.py
+      at: 2026-09-12T22:03:45.340166Z
+      classified: other
+    - cmd: sed -n '1,160p' harness/runs/coding-suite-pilot-2026-09-07/README.md
+      at: 2026-09-12T22:03:45.345813Z
+      classified: other
+    - cmd: rg -n 'score_java_cells|java_eval|slice-java12|java12|java-oracle|prism-ranking' harness/*.py harness/*.md harness/java-oracle/*.sh
+      at: 2026-09-12T22:03:59.115828Z
+      classified: other
+    - cmd: sed -n '1,115p;300,400p' harness/run_e2e.py
+      at: 2026-09-12T22:04:02.047164Z
+      classified: other
+    - cmd: sed -n '1,205p' harness/ab_endtoend_arms.py
+      at: 2026-09-12T22:04:05.280474Z
+      classified: other
+    - cmd: sed -n '95,170p;390,470p;530,625p' harness/swebench_ab.py
+      at: 2026-09-12T22:04:09.428182Z
+      classified: other
+    - cmd: sed -n '1,115p;400,480p' harness/run_wide.py
+      at: 2026-09-12T22:04:24.480095Z
+      classified: other
+    - cmd: command -v docker
+      at: 2026-09-12T22:04:42.114521Z
+      classified: other
+    - cmd: command -v claude
+      at: 2026-09-12T22:04:42.135476Z
+      classified: other
+    - cmd: rg --files harness/tasks-wide -g '*.json'
+      at: 2026-09-12T22:04:42.159178Z
+      classified: other
+    - cmd: ls -l /private/tmp/prism-ranking-baseline /private/tmp/prism-ranking-final3
+      at: 2026-09-12T22:04:42.159696Z
+      classified: other
+    - cmd: python3 -m pytest -q harness/test_swebench_ab.py
+      at: 2026-09-12T22:04:42.551863Z
+      classified: test
+    - cmd: claude --version
+      at: 2026-09-12T22:04:48.489165Z
+      classified: other
+    - cmd: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q harness/test_swebench_ab.py
+      at: 2026-09-12T22:04:48.667305Z
+      classified: test
+    - cmd: docker info --format '{{.ServerVersion}}'
+      at: 2026-09-12T22:04:48.904426Z
+      classified: other
+    - cmd: sed -n '1,105p' harness/score_java_cells.py
+      at: 2026-09-12T22:04:53.947967Z
+      classified: other
+    - cmd: rg -n 'arm ==|arm.startswith|arm in ' harness/swebench_ab.py
+      at: 2026-09-12T22:05:02.277582Z
+      classified: other
+    - cmd: rg -n 'RUN_TIMEOUT_S|timeout=' harness/swebench_ab.py
+      at: 2026-09-12T22:05:12.208045Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        slice_path=Path('harness/runs/swebench-live/slice-java12.json')
+        task=next(t for t in json.loads(slice_path.read_text()) if t['instance_id']=='fasterxml__jackson-databind-4609')
+        out=Path('/private/tmp/prism-ranking-agentcell-4609.json')
+        out.write_text(json.dumps([task]))
+        print(task['instance_id'],task['repo'],task['base_commit'],len(task['patch']),out)
+        PY
+      at: 2026-09-12T22:05:28.263875Z
+      classified: other
+    - cmd: ps -axo pid,ppid,%cpu,etime,command | rg 'swebench_ab|prism-ranking-final3 index|claude -p' | rg -v 'rg '
+      at: 2026-09-12T22:06:23.633841Z
+      classified: other
+    - cmd: ps -axo pid,ppid,%cpu,etime,command | rg 'claude|prism-ranking|python.*-B -' | rg -v 'rg '
+      at: 2026-09-12T22:06:27.503025Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import sys
+        sys.path.insert(0, 'harness')
+        import swebench_ab
+        swebench_ab.RUN_TIMEOUT_S = 300
+        sys.argv = ['swebench_ab.py', '--tasks', '/private/tmp/prism-ranking-agentcell-4609.json', '--limit', '1', '--arms', 'prism-new', '--out', '/private/tmp/prism-ranking-agentcells/new', '--prism', '/private/tmp/prism-ranking-final3', '--model', 'sonnet']
+        swebench_ab.main()
+        PY
+      at: 2026-09-12T22:06:30.314894Z
+      classified: other
+    - cmd: sed -n '420,480p;660,710p' harness/swebench_ab.py
+      at: 2026-09-12T22:06:37.957327Z
+      classified: other
+    - cmd: claude -p 'Reply OK' --output-format stream-json --verbose --strict-mcp-config --allowedTools Read --model sonnet
+      at: 2026-09-12T22:06:45.128314Z
+      classified: other
+    - cmd: rg -n '^TOOLS_BASE|^DENIED_TOOLS|^BASE_PROMPT|^PRISM_STEERING' harness/swebench_ab.py
+      at: 2026-09-12T22:06:52.564755Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import pathlib, subprocess, tempfile
+        p=pathlib.Path(tempfile.mkdtemp(prefix='prism-ranking-init-probe-',dir='/private/tmp'))
+        subprocess.run(['git','init','-q',str(p)],check=True)
+        r=subprocess.run(['/private/tmp/prism-ranking-final3','init'],cwd=p,stdin=subprocess.DEVNULL,capture_output=True,text=True,timeout=120)
+        print('dir',p,'returncode',r.returncode,'mcp_exists',(p/'.mcp.json').exists())
+        print('stdout',r.stdout[:900]);print('stderr',r.stderr[:900])
+        PY
+      at: 2026-09-12T22:07:03.123746Z
+      classified: other
+    - cmd: /private/tmp/prism-ranking-final3 init --help
+      at: 2026-09-12T22:07:07.393546Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import pathlib, subprocess, tempfile
+        p=pathlib.Path(tempfile.mkdtemp(prefix='prism-ranking-init-fixed-',dir='/private/tmp'))
+        subprocess.run(['git','init','-q',str(p)],check=True)
+        r=subprocess.run(['/private/tmp/prism-ranking-final3','init','--harness','claude'],cwd=p,stdin=subprocess.DEVNULL,capture_output=True,text=True,timeout=120)
+        print('dir',p,'returncode',r.returncode,'mcp_exists',(p/'.mcp.json').exists())
+        print('mcp',(p/'.mcp.json').read_text()[:350] if (p/'.mcp.json').exists() else '')
+        print('stderr',r.stderr[-500:])
+        PY
+      at: 2026-09-12T22:07:22.214704Z
+      classified: other
+    - cmd: sed -n '1,220p' harness/mason_bench.py
+      at: 2026-09-12T22:08:21.549273Z
+      classified: other
+    - cmd: sed -n '1,120p' harness/README.md
+      at: 2026-09-12T22:08:21.553778Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import datetime
+        p=Path('harness/runs')
+        for x in sorted((x for x in p.iterdir() if x.is_dir()),[REDACTED:env-secret] x:x.stat().st_mtime,reverse=True)[:25]:
+         print(datetime.datetime.fromtimestamp(x.stat().st_mtime).isoformat(timespec='minutes'),x.name)
+        PY
+      at: 2026-09-12T22:08:21.57999Z
+      classified: other
+    - cmd: rg -n 'ranking|query.*delivery|selectContext|phase|learned' harness/*.py harness/*.md
+      at: 2026-09-12T22:08:21.579998Z
+      classified: other
+    - cmd: sed -n '1,230p' harness/rc_trials.py
+      at: 2026-09-12T22:08:24.92503Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import datetime
+        for n in ['swebench-live','bench-matrix','product-proof-coding-pilot-2026-09-08','mason-bench','coding-suite-pilot-2026-09-07']:
+         p=Path('harness/runs')/n
+         print(n,p.exists(),datetime.datetime.fromtimestamp(p.stat().st_mtime).isoformat(timespec='seconds') if p.exists() else '')
+        PY
+      at: 2026-09-12T22:08:33.309915Z
+      classified: other
+    - cmd: ps -axo pid,ppid,%cpu,etime,command | rg 'claude -p|python3 -B -|prism-ranking-final3' | rg -v 'rg '
+      at: 2026-09-12T22:08:46.830454Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import datetime
+        for n in ['swebench-live','product-proof-coding-remaining-2026-09-08','sonnet-prism-cost-isolation-2026-09-08']:
+         p=Path('harness/runs')/n
+         print('\n',n)
+         for x in sorted(p.iterdir(),[REDACTED:env-secret] x:x.stat().st_mtime,reverse=True)[:20]:
+          print(datetime.datetime.fromtimestamp(x.stat().st_mtime).isoformat(timespec='minutes'),x.name)
+        PY
+      at: 2026-09-12T22:08:55.374102Z
+      classified: other
+    - cmd: sed -n '1,100p' harness/runs/product-proof-coding-remaining-2026-09-08/summary.json
+      at: 2026-09-12T22:09:08.262248Z
+      classified: other
+    - cmd: sed -n '1,200p' harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-12T22:09:08.262226Z
+      classified: other
+    - cmd: sed -n '1,180p' harness/runs/product-proof-coding-pilot-fixed-2026-09-08/README.md
+      at: 2026-09-12T22:09:08.263921Z
+      classified: other
+    - cmd: sed -n '1,145p' harness/runs/nonimpact-exp2-two-2026-09-08/README.md
+      at: 2026-09-12T22:09:08.268036Z
+      classified: other
+    - cmd: rg -n 'def main|ArgumentParser|add_argument|def run_cell|def run_one|def make_templates|def prepare_environment|PRISM_SOURCE|PILOT_TASKS|ARMS' harness/runs/product-proof-coding-pilot-fixed-2026-09-08/run_code.py
+      at: 2026-09-12T22:09:21.567456Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'claude -p You are fixing a real bug in the fasterxml/jackson-databind|python3 -B -' | rg -v 'rg '
+      at: 2026-09-12T22:09:35.677078Z
+      classified: other
+    - cmd: kill -INT 92462
+      at: 2026-09-12T22:09:38.364772Z
+      classified: other
+    - cmd: |-
+        python3 -B - <<'PY'
+        import subprocess, sys
+        sys.path.insert(0, 'harness')
+        import swebench_ab
+        original_run = subprocess.run
+        def noninteractive_init(cmd, *args, **kwargs):
+            if isinstance(cmd, list) and len(cmd) == 2 and cmd[1] == 'init':
+                cmd = [*cmd, '--harness', 'claude']
+                print('harness init: explicit claude', flush=True)
+            return original_run(cmd, *args, **kwargs)
+        subprocess.run = noninteractive_init
+        swebench_ab.RUN_TIMEOUT_S = 300
+        sys.argv = ['swebench_ab.py', '--tasks', '/private/tmp/prism-ranking-agentcell-4609.json', '--limit', '1', '--arms', 'prism-new', '--out', '/private/tmp/prism-ranking-agentcells/new', '--prism', '/private/tmp/prism-ranking-final3', '--model', 'sonnet']
+        swebench_ab.main()
+        PY
+      at: 2026-09-12T22:09:40.519606Z
+      classified: other
+    - cmd: rg -n 'gpt-5([.-][0-9a-z]+)?|GPT-5' harness/*.py harness/*.md
+      at: 2026-09-12T22:09:50.329142Z
+      classified: other
+    - cmd: sed -n '1,130p' harness/PRODUCT_PROOF_2026-09-08.md
+      at: 2026-09-12T22:09:54.652235Z
+      classified: other
+    - cmd: sed -n '350,435p;485,520p' harness/runs/product-proof-coding-pilot-fixed-2026-09-08/run_code.py
+      at: 2026-09-12T22:10:04.905756Z
+      classified: other
+    - cmd: sed -n '105,170p;200,320p' harness/runs/product-proof-coding-pilot-fixed-2026-09-08/run_code.py
+      at: 2026-09-12T22:10:08.948469Z
+      classified: other
+    - cmd: codex --version
+      at: 2026-09-12T22:10:23.717465Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        root=Path('harness/runs/product-proof-coding-remaining-2026-09-08')
+        key='pallets__click__pr3466'
+        for p in [root/'tasks'/f'{key}.json',root/'templates'/key/'base',root/'environments'/key,root/'evidence'/f'{key}.gpt55_prism'/'measurement.json']:
+         print(p, p.exists())
+        PY
+      at: 2026-09-12T22:10:56.769641Z
+      classified: other
+    - cmd: python3 -m py_compile /private/tmp/prism-ranking-gpt55-cell.py
+      at: 2026-09-12T22:11:44.792938Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-final3 --tag new
+      at: 2026-09-12T22:11:48.143826Z
+      classified: other
+    - cmd: shasum -a 256 harness/coding_suite.py harness/runs/product-proof-coding-remaining-2026-09-08/run_code.py
+      at: 2026-09-12T22:11:53.412045Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path('/private/tmp/prism-ranking-gpt55-new/evidence/pallets__click__pr3466.gpt55_prism/stdout.jsonl')
+        if p.exists():
+         s=p.read_text(errors='replace')
+         print('events',s.count('\n'),'prism_mentions',s.lower().count('prism'),'bytes',len(s))
+        PY
+      at: 2026-09-12T22:12:41.052534Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-final3 --tag new
+      at: 2026-09-12T22:13:15.874175Z
+      classified: other
+    - cmd: sed -n '1,160p' /private/tmp/prism-ranking-gpt55-new/evidence/pallets__click__pr3466.gpt55_prism/agent.diff
+      at: 2026-09-12T22:13:30.850158Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-ranking-gpt55-new/evidence/pallets__click__pr3466.gpt55_prism/measurement.json'
+        r=json.load(open(p))
+        for k in ['audited_valid','resolved','cost_usd','wall_s','prism_actions','prism_calls','prism_cli_commands','score','tool_errors','violations']:
+         print(k, r.get(k))
+        PY
+      at: 2026-09-12T22:13:30.889569Z
+      classified: other
+    - cmd: sed -n '1,220p' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-12T22:13:49.691761Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-baseline --tag old
+      at: 2026-09-12T22:15:03.468258Z
+      classified: other
+    - cmd: sed -n '1,240p' /private/tmp/prism-ranking-gpt55-cell.py
+      at: 2026-09-12T22:15:19.414541Z
+      classified: other
+    - cmd: python3 -c 'import json; p="/private/tmp/prism-ranking-gpt55-old/evidence/pallets__click__pr3466.gpt55_prism/measurement.json"; d=json.load(open(p)); print({k:d.get(k) for k in ("tool_errors","prism_actions","audited_valid","resolved","cost_usd")})'
+      at: 2026-09-12T22:15:19.49133Z
+      classified: other
+    - cmd: sed -n '205,285p' harness/coding_suite.py
+      at: 2026-09-12T22:15:24.08892Z
+      classified: other
+    - cmd: 'python3 -c ''import json; from pathlib import Path; root=Path("/private/tmp"); tags=("old","new"); keys=("audited_valid","resolved","prism_actions","tool_errors","cost_usd","wall_s"); [(lambda d: print(t,{k:d.get(k) for k in keys}))(json.loads((root/f"prism-ranking-gpt55-{t}/evidence/pallets__click__pr3466.gpt55_prism/measurement.json").read_text())) for t in tags]'''
+      at: 2026-09-12T22:15:46.014885Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-final3 --tag new-mcp
+      at: 2026-09-12T22:15:47.869414Z
+      classified: other
+    - cmd: python3 -c 'import json; p="/private/tmp/prism-ranking-gpt55-new-mcp/evidence/pallets__click__pr3466.gpt55_prism/command.json"; c=json.load(open(p)); print([x for x in c if "approval_mode" in x])'
+      at: 2026-09-12T22:15:51.311259Z
+      classified: other
+    - cmd: rg -n 'approval_mode|\[mcp_servers|prism' /private/tmp/prism-ranking-gpt55-new-mcp/templates/pallets__click__pr3466/prism/.codex/config.toml
+      at: 2026-09-12T22:16:00.929929Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-final3 --tag new-mcp2
+      at: 2026-09-12T22:18:08.807599Z
+      classified: other
+    - cmd: python3 -c 'import json; from pathlib import Path; p=Path("/private/tmp/prism-ranking-gpt55-new-mcp2/evidence/pallets__click__pr3466.gpt55_prism/measurement.json"); d=json.loads(p.read_text()); print("errors",d.get("tool_errors")); print("prism",d.get("prism_actions")); print("keys",list(d.keys()))'
+      at: 2026-09-12T22:18:14.730187Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json, subprocess
+        from pathlib import Path
+        root=Path('/private/tmp/prism-ranking-gpt55-new-mcp2')
+        out=root/'evidence/pallets__click__pr3466.gpt55_prism'
+        cmd=json.loads((out/'command.json').read_text())
+        cmd[cmd.index('-o')+1]='/private/tmp/prism-ranking-mcp-smoke-final.txt'
+        cmd[-1]='Call the Prism MCP tool once to query the Click shell completion implementation. Do not use the Prism CLI or edit files. Then say whether the MCP call succeeded.'
+        cmd[-1:-1]=['-c','mcp_servers.prism.tools.prism.approval_mode="approve"']
+        r=subprocess.run(cmd,cwd=root/'work/pallets__click__pr3466.gpt55_prism',capture_output=True,text=True,timeout=120)
+        Path('/private/tmp/prism-ranking-mcp-smoke.jsonl').write_text(r.stdout)
+        Path('/private/tmp/prism-ranking-mcp-smoke.stderr').write_text(r.stderr)
+        items=[json.loads(line) for line in r.stdout.splitlines() if line.startswith('{')]
+        for e in items:
+            item=e.get('item',{})
+            if item.get('type') in ('mcp_tool_call','message'):
+                print(item.get('type'),item.get('server'),item.get('tool'),str(item.get('error') or item.get('text') or '')[:350])
+        print('exit',r.returncode,'events',len(items),'stderr',r.stderr[-300:])
+        PY
+      at: 2026-09-12T22:18:53.548286Z
+      classified: other
+    - cmd: 'python3 -c ''import json; p="/private/tmp/prism-ranking-mcp-smoke.jsonl"; [(lambda i: print(i))(json.loads(x).get("item")) for x in open(p) if x.startswith("{") and json.loads(x).get("item",{}).get("type")=="mcp_tool_call"]'''
+      at: 2026-09-12T22:18:56.814947Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-final3 --tag new-mcp3
+      at: 2026-09-12T22:21:17.856863Z
+      classified: other
+    - cmd: python3 -c 'import json; p="/private/tmp/prism-ranking-gpt55-new-mcp3/evidence/pallets__click__pr3466.gpt55_prism/measurement.json"; d=json.load(open(p)); print({k:d.get(k) for k in ("tool_errors","prism_calls","prism_cli_commands","prism_actions","audited_valid","resolved")})'
+      at: 2026-09-12T22:21:21.663254Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-baseline --tag old-mcp3
+      at: 2026-09-12T22:23:05.592632Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T22:23:14.51636Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for tag in ('old-mcp3','new-mcp3'):
+            root=Path('/private/tmp')/f'prism-ranking-gpt55-{tag}'
+            d=json.loads((root/'evidence/pallets__click__pr3466.gpt55_prism/measurement.json').read_text())
+            m=json.loads((root/'manifest.json').read_text())
+            print(tag, {'resolved':d['resolved'],'valid':d['audited_valid'],'tool_errors':d['tool_errors'],'prism_calls':len(d['prism_calls']),'prism_cli_commands':d['prism_cli_commands'],'prism_actions':d['prism_actions'],'cost_usd':d['cost_usd'],'wall_s':d['wall_s'],'diff_lines':d['diff_lines'],'task_sha256':m['task_sha256'],'prompt_sha256':m['prompt_sha256'],'runner_sha256':m['runner_sha256']})
+        PY
+      at: 2026-09-12T22:23:14.556727Z
+      classified: other
+    - cmd: rg -n 'pallets__click__pr3466|gpt55_prism|Task|task' harness/PRODUCT_PROOF_2026-09-08.md
+      at: 2026-09-12T22:23:31.749456Z
+      classified: other
+    - cmd: sed -n '57,105p' harness/PRODUCT_PROOF_2026-09-08.md
+      at: 2026-09-12T22:23:34.018391Z
+      classified: other
+    - cmd: rg --files harness/runs/product-proof-coding-remaining-2026-09-08/tasks
+      at: 2026-09-12T22:23:37.184845Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-final3 --tag rich-new --task Textualize__rich__pr3882
+      at: 2026-09-12T22:24:37.945767Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-ranking-gpt55-cell.py --binary /private/tmp/prism-ranking-baseline --tag rich-old --task Textualize__rich__pr3882
+      at: 2026-09-12T22:25:36.551Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T22:25:45.520538Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for task,tags in [('pallets__click__pr3466',('old-mcp3','new-mcp3')),('Textualize__rich__pr3882',('rich-old','rich-new'))]:
+            for tag in tags:
+                root=Path('/private/tmp')/f'prism-ranking-gpt55-{tag}'
+                d=json.loads((root/f'evidence/{task}.gpt55_prism/measurement.json').read_text())
+                score=d['score']
+                print(task,tag,'valid',d['audited_valid'],'resolved',d['resolved'],'f2p',score['f2p_ok'],'p2p',score['p2p_ok'],'tests',score['n_run'],'mcp',len(d['prism_calls']),'cli',len(d['prism_cli_commands']),'errors',len(d['tool_errors']),'cost',d['cost_usd'],'wall',d['wall_s'])
+        PY
+      at: 2026-09-12T22:25:45.561614Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T22:25:45.796113Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T22:27:03.103464Z
+      classified: other
+    - cmd: sed -n '1,120p' CLAUDE.md
+      at: 2026-09-12T22:27:03.103453Z
+      classified: other
+    - cmd: sed -n '1,100p' go.mod
+      at: 2026-09-12T22:27:03.103445Z
+      classified: other
+    - cmd: git remote -v
+      at: 2026-09-12T22:27:03.103439Z
+      classified: other
+    - cmd: git tag --sort=-version:refname
+      at: 2026-09-12T22:27:03.154421Z
+      classified: other
+    - cmd: git tag --sort=-version:refname
+      at: 2026-09-12T22:27:03.160175Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T22:27:03.180018Z
+      classified: other
+    - cmd: git log -6 --oneline
+      at: 2026-09-12T22:27:18.623633Z
+      classified: other
+    - cmd: git rev-parse HEAD v0.74.1 origin/main
+      at: 2026-09-12T22:27:18.623631Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-12T22:27:18.633159Z
+      classified: other
+    - cmd: git ls-remote origin refs/heads/main refs/tags/v0.49.2
+      at: 2026-09-12T22:27:18.855701Z
+      classified: other
+    - cmd: git ls-remote origin refs/heads/main refs/tags/v0.74.1 refs/tags/v0.75.0
+      at: 2026-09-12T22:27:18.890788Z
+      classified: other
+    - cmd: gh release view v0.74.1 --json tagName,publishedAt,isDraft,isPrerelease,url
+      at: 2026-09-12T22:27:19.208065Z
+      classified: other
+    - cmd: git rev-parse HEAD v0.49.2 origin/main
+      at: 2026-09-12T22:27:32.422025Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T22:27:32.422051Z
+      classified: other
+    - cmd: git diff -- .codex/config.toml .cursor/mcp.json .mcp.json prism.yaml
+      at: 2026-09-12T22:27:32.422038Z
+      classified: other
+    - cmd: GOWORK=off go build -o /private/tmp/prism-release-candidate ./cmd/prism
+      at: 2026-09-12T22:27:40.119731Z
+      classified: build
+    - cmd: shasum -a 256 /private/tmp/prism-release-candidate /private/tmp/prism-ranking-final3
+      at: 2026-09-12T22:28:01.35923Z
+      classified: other
+    - cmd: python3 harness/ci_invariants.py --prism /private/tmp/prism-release-candidate
+      at: 2026-09-12T22:28:01.554329Z
+      classified: other
+    - cmd: /private/tmp/prism-release-candidate verify
+      at: 2026-09-12T22:28:12.166842Z
+      classified: other
+    - cmd: GOWORK=off go test ./...
+      at: 2026-09-12T22:28:12.166836Z
+      classified: test
+    - cmd: sed -n '1,95p;145,225p;300,345p' harness/ci_invariants.py
+      at: 2026-09-12T22:28:12.202717Z
+      classified: other
+    - cmd: ls -ld /tmp/ci-corpus /tmp/ci-corpus/jackson-databind /private/tmp/ci-corpus /private/tmp/ci-corpus/jackson-databind harness/ci-corpus
+      at: 2026-09-12T22:28:12.208002Z
+      classified: other
+    - cmd: ls -d /private/tmp/*ci* /private/tmp/*invariant*
+      at: 2026-09-12T22:28:21.969705Z
+      classified: other
+    - cmd: ls -la /tmp/ci-corpus/jackson-databind
+      at: 2026-09-12T22:28:21.96971Z
+      classified: other
+    - cmd: du -sh /tmp/ci-corpus/*
+      at: 2026-09-12T22:28:21.967913Z
+      classified: other
+    - cmd: sed -n '115,150p' harness/ci_invariants.py
+      at: 2026-09-12T22:28:21.967232Z
+      classified: other
+    - cmd: du -sh /private/tmp/ci-corpus* /private/tmp/prism-v073-ci-corpus /private/tmp/prism-reconcile-full-cache
+      at: 2026-09-12T22:28:26.914181Z
+      classified: other
+    - cmd: ls /private/tmp/prism-v073-ci-corpus/jackson-databind
+      at: 2026-09-12T22:28:30.991091Z
+      classified: other
+    - cmd: sed -n '1,160p' docs/verify-findings-2026-09-12.md
+      at: 2026-09-12T22:28:48.983789Z
+      classified: other
+    - cmd: sed -n '1,220p' docs/ranking-audit-2026-09-12.md
+      at: 2026-09-12T22:28:48.983793Z
+      classified: other
+    - cmd: git diff -- internal/mcp/selection.go internal/ranking/budget.go internal/ranking/profiles.go internal/textsearch/textsearch.go
+      at: 2026-09-12T22:28:48.984571Z
+      classified: other
+    - cmd: git log v0.74.1..HEAD --oneline
+      at: 2026-09-12T22:28:48.983781Z
+      classified: other
+    - cmd: git log v0.49.2..HEAD --oneline
+      at: 2026-09-12T22:28:49.023956Z
+      classified: other
+    - cmd: git add internal/mcp internal/ranking internal/textsearch docs/ranking-audit-2026-09-12.md
+      at: 2026-09-12T22:30:17.664345Z
+      classified: other
+    - cmd: git diff --cached --name-status
+      at: 2026-09-12T22:30:23.438704Z
+      classified: other
+    - cmd: git diff --cached --stat
+      at: 2026-09-12T22:30:23.46305Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-12T22:30:23.463381Z
+      classified: other
+    - cmd: gh release view v0.74.1 --json body --jq .body
+      at: 2026-09-12T22:30:24.051994Z
+      classified: other
+    - cmd: git diff --cached -- internal/mcp/delivery.go internal/mcp/searchtext.go
+      at: 2026-09-12T22:31:08.893803Z
+      classified: other
+    - cmd: git diff --cached -- internal/mcp/tools.go internal/mcp/searchrank.go
+      at: 2026-09-12T22:31:08.893803Z
+      classified: other
+    - cmd: ps -Ao pid,ppid,etime,%cpu,%mem,command
+      at: 2026-09-12T22:37:53.888229Z
+      classified: other
+    - cmd: python3 harness/ci_invariants.py --prism /private/tmp/prism-release-candidate --corpus-root /private/tmp/prism-v073-ci-corpus
+      at: 2026-09-12T22:40:03.396792Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-12T22:40:13.372829Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-09-12T22:40:13.372838Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T22:40:13.393894Z
+      classified: other
+    - cmd: git ls-remote origin refs/heads/main refs/tags/v0.75.0
+      at: 2026-09-12T22:40:13.96093Z
+      classified: other
+    - cmd: 'git commit -m ''fix: make context ranking deterministic and budgeted'''
+      at: 2026-09-12T22:40:16.924702Z
+      classified: other
+notes: []
+redactions: 2

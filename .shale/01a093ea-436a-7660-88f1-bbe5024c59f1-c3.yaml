@@ -1,0 +1,412 @@
+shale_version: "0"
+id: 01a093ea-436a-7660-88f1-bbe5024c59f1-c3
+created_at: 2026-09-12T19:47:26.047786Z
+finalized_at: 2026-09-12T22:40:20.896032Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git push origin v0.74.1
+      at: 2026-09-12T19:47:26.047786Z
+      classified: other
+    - cmd: git ls-remote --tags origin 'v0.74.1*'
+      at: 2026-09-12T19:47:30.705379Z
+      classified: other
+    - cmd: git ls-remote --heads origin main
+      at: 2026-09-12T19:47:30.782124Z
+      classified: other
+    - cmd: gh run list -R provasign/prism --workflow release.yml --limit 3 --json databaseId,headBranch,headSha,status,conclusion,url,createdAt
+      at: 2026-09-12T19:47:30.949867Z
+      classified: other
+    - cmd: gh release view v0.74.1 -R provasign/prism --json tagName,isDraft,isPrerelease,url,assets --jq '{tagName,isDraft,isPrerelease,url,assets:[.assets[].name]}'
+      at: 2026-09-12T19:49:22.019247Z
+      classified: other
+    - cmd: gh run view 34715185933 -R provasign/prism --json status,conclusion,jobs --jq '{status,conclusion,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-09-12T19:49:22.751856Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      at: 2026-09-12T19:49:29.403454Z
+      classified: other
+    - cmd: gh run watch 34715283622 -R provasign/homebrew-shale --exit-status --interval 10
+      at: 2026-09-12T19:49:43.971486Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T19:49:48.603645Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 -d | rg -n 'version|url|sha256'
+      at: 2026-09-12T19:49:48.826894Z
+      classified: other
+    - cmd: gh run view 34715283622 -R provasign/homebrew-shale --json status,conclusion,url --jq '{status,conclusion,url}'
+      at: 2026-09-12T19:49:48.946264Z
+      classified: other
+    - cmd: git fetch origin main
+      at: 2026-09-12T19:49:53.548453Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T19:49:55.315366Z
+      classified: other
+    - cmd: sed -n '1,220p' docs/ranking-audit-2026-09-12.md
+      at: 2026-09-12T19:53:39.576918Z
+      classified: other
+    - cmd: rg --files -g 'AGENTS.md' -g '*benchmark*' -g '*coding*' -g '*cell*' -g '*results*' harness docs | head -100
+      at: 2026-09-12T19:53:39.795708Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T19:53:39.814183Z
+      classified: other
+    - cmd: rg --files -g 'AGENTS.md' -g '!harness/runs/**' -g '!harness/corpora/**' -g '!harness/data/**' | head -20
+      at: 2026-09-12T19:53:53.273648Z
+      classified: other
+    - cmd: rg -n --glob '!harness/runs/**' 'native|legacy|prism v0.73|v0.74|compact' docs/benchmarks | head -70
+      at: 2026-09-12T19:53:53.282971Z
+      classified: other
+    - cmd: rg --files harness -g '*.py' -g '!runs/**' | rg 'coding|cell|bench|pilot|ab' | head -60
+      at: 2026-09-12T19:53:53.283395Z
+      classified: other
+    - cmd: sed -n '1,180p' AGENTS.md
+      at: 2026-09-12T19:53:58.696709Z
+      classified: other
+    - cmd: rg -n 'native|legacy|benchmark|cell' docs/ranking-audit-2026-09-12.md docs/benchmarks/* | tail -90
+      at: 2026-09-12T19:53:58.700475Z
+      classified: other
+    - cmd: python3 harness/coding_suite.py --help
+      at: 2026-09-12T19:53:58.832375Z
+      classified: other
+    - cmd: sed -n '1,240p' harness/mason_bench.py
+      at: 2026-09-12T19:54:04.53901Z
+      classified: other
+    - cmd: sed -n '1,220p' harness/ab_unified.py
+      at: 2026-09-12T19:54:04.550541Z
+      classified: other
+    - cmd: rg -n --glob '*.md' --glob '!harness/runs/**' 'native.*legacy|legacy.*native|compact.*native|native.*Prism|v0.73.0|v0.74.0|Mason' . | head -100
+      at: 2026-09-12T19:54:04.553264Z
+      classified: other
+    - cmd: rg -n 'native|legacy|prism_bin|binary|codex|claude|arm' harness/coding_suite.py | head -110
+      at: 2026-09-12T19:54:10.282133Z
+      classified: other
+    - cmd: rg -n --glob '*.md' 'v0.73|compact|native|legacy' docs/benchmarks | tail -120
+      at: 2026-09-12T19:54:10.28205Z
+      classified: other
+    - cmd: rg -n 'native|legacy|prism' harness/CODING_SUITE.md | head -100
+      at: 2026-09-12T19:54:10.295408Z
+      classified: other
+    - cmd: rg -n 'full38|190-cell|native.*legacy|legacy.*prism|compact.*schema|auto mode' docs --glob '*.md' | head -80
+      at: 2026-09-12T19:54:16.35947Z
+      classified: other
+    - cmd: ls -ld harness/runs/* | tail -40
+      at: 2026-09-12T19:54:16.359099Z
+      classified: other
+    - cmd: ls -lt harness/*.py | head -25
+      at: 2026-09-12T19:54:16.359113Z
+      classified: other
+    - cmd: sed -n '1,150p' harness/CODING_SUITE.md
+      at: 2026-09-12T19:54:22.28687Z
+      classified: other
+    - cmd: sed -n '420,540p' harness/coding_suite.py
+      at: 2026-09-12T19:54:22.28736Z
+      classified: other
+    - cmd: sed -n '1,180p' harness/product_impact_suite.py
+      at: 2026-09-12T19:54:22.294236Z
+      classified: other
+    - cmd: find harness/runs -maxdepth 1 -type d -name '*compact*' -o -name '*v073*' -o -name '*v074*' -o -name '*native*' -o -name '*legacy*' | head -70
+      at: 2026-09-12T19:54:28.357656Z
+      classified: other
+    - cmd: ls -la harness/runs/product-proof-coding-pilot-fixed-2026-09-08 | head -40
+      at: 2026-09-12T19:54:34.444869Z
+      classified: other
+    - cmd: ls -la harness/runs/product-proof-impact-pilot-2026-09-08 | head -40
+      at: 2026-09-12T19:54:34.443268Z
+      classified: other
+    - cmd: sed -n '180,450p' harness/product_impact_suite.py
+      at: 2026-09-12T19:54:34.447426Z
+      classified: other
+    - cmd: ls -1 /private/tmp | rg 'prism|bench|cell|impact|ab' | tail -100
+      at: 2026-09-12T19:54:37.642938Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-schema-contract-fix-3cell-20260912 | head -50
+      at: 2026-09-12T19:54:42.981426Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-v0730-latest-compact-3cell-v2-20260912 | head -50
+      at: 2026-09-12T19:54:42.986472Z
+      classified: other
+    - cmd: sed -n '1,240p' /private/tmp/run_prism_mcp_comparison.py
+      at: 2026-09-12T19:54:42.986478Z
+      classified: other
+    - cmd: jq '{status,phase,arms,models,versions,tasks:[.tasks[].task]}' /private/tmp/prism-v0730-latest-compact-3cell-v2-20260912/manifest.json
+      at: 2026-09-12T19:54:49.200847Z
+      classified: other
+    - cmd: jq '{status,rows:[.rows[]|{cell_id,arm,resolved,turns,total_tokens,tokens_in,tokens_out,tool_calls,prism_calls,audited_valid,violations}]}' /private/tmp/prism-v0730-latest-compact-3cell-v2-20260912/summary.json
+      at: 2026-09-12T19:54:49.205391Z
+      classified: other
+    - cmd: sed -n '1,200p' /private/tmp/run_manyturn_current_cells.py
+      at: 2026-09-12T19:54:49.206312Z
+      classified: other
+    - cmd: ls -1 /private/tmp | rg '20260912|native|legacy|compact|full38|schema' | head -160
+      at: 2026-09-12T19:54:52.50599Z
+      classified: other
+    - cmd: sed -n '1,220p' /private/tmp/prism-grove-v0450-gpt55-compact-benchmark-20260910.py
+      at: 2026-09-12T19:54:58.115287Z
+      classified: other
+    - cmd: sed -n '1,240p' /private/tmp/prism-latest-compact-benchmark-20260912.py
+      at: 2026-09-12T19:54:58.114488Z
+      classified: other
+    - cmd: sed -n '1,180p' /private/tmp/prism-compact-token-savings-deep-dive-20260911.md
+      at: 2026-09-12T19:54:58.123492Z
+      classified: other
+    - cmd: jq '{status,rows:[.rows[]|{task,arm,resolved,total_tokens,gpt55_cost_usd,tool_calls,prism_calls,wall_s}]}' /private/tmp/prism-grove-v0450-gpt55-legacy-mcp-benchmark-v1-20260910/summary.json
+      at: 2026-09-12T19:55:14.125781Z
+      classified: other
+    - cmd: rg -n 'PRISM_SOURCE|PRISM_TOOLS|def agent_path|def make_prism_template|def prepare_cell|def build_command|def run_cell|def audit' /private/tmp/research-benchmark-verify.gnZSzR/repo/harness/coding_suite.py
+      at: 2026-09-12T19:55:14.131741Z
+      classified: other
+    - cmd: jq '{status,rows:[.rows[]|{task,arm,resolved,total_tokens,gpt55_cost_usd,tool_calls,prism_calls,wall_s}]}' /private/tmp/prism-compact-broad-threeway-20260910/summary.json
+      at: 2026-09-12T19:55:14.138517Z
+      classified: other
+    - cmd: for f in /private/tmp/prism-*/summary.json; do jq -e -r --arg f "$f" 'select(any(.rows[]?; .task == "Textualize__rich__pr3882" and .arm == "gpt55_native")) | $f' "$f" 2>/dev/null; done
+      at: 2026-09-12T19:55:21.303136Z
+      classified: other
+    - cmd: prism query 'Locate coding-suite benchmark runner, saved native and legacy Prism cell results, and commands for fresh current Prism cells' --terms benchmark,native,legacy,cell
+      at: 2026-09-12T19:55:41.410704Z
+      classified: other
+    - cmd: jq '{status,versions,rows:[.rows[]|{task,arm,resolved,total_tokens,cost_usd,tool_calls,wall_s,audited_valid,violations}]}' /private/tmp/prism-grove-v0450-gpt55-benchmark-20260910/summary.json
+      at: 2026-09-12T19:55:49.116908Z
+      classified: other
+    - cmd: jq '{status,versions,rows:[.rows[]|{task,arm,resolved,total_tokens,cost_usd,tool_calls,wall_s,audited_valid,violations}]}' /private/tmp/prism-grove-v0450-gpt55-legacy-mcp-benchmark-v1-20260910/summary.json
+      at: 2026-09-12T19:55:49.117926Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-gpt55-bench-tools
+      at: 2026-09-12T19:55:49.118987Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/prism-v0741-bench.XXXXXX
+      at: 2026-09-12T19:55:56.121687Z
+      classified: other
+    - cmd: gh release download v0.74.1 -R provasign/prism --pattern prism-v0.74.1-darwin-arm64 --dir /private/tmp/prism-v0741-bench.AEBHLP
+      at: 2026-09-12T19:56:02.360682Z
+      classified: other
+    - cmd: gh release download v0.74.1 -R provasign/prism --pattern checksums.txt --dir /private/tmp/prism-v0741-bench.AEBHLP
+      at: 2026-09-12T19:56:06.088807Z
+      classified: other
+    - cmd: rg 'prism-v0.74.1-darwin-arm64' checksums.txt
+      at: 2026-09-12T19:56:08.243231Z
+      classified: other
+    - cmd: shasum -a 256 prism-v0.74.1-darwin-arm64
+      at: 2026-09-12T19:56:10.837978Z
+      classified: other
+    - cmd: ls -l prism-v0.74.1-darwin-arm64 && ./prism-v0.74.1-darwin-arm64 version
+      at: 2026-09-12T19:56:15.490631Z
+      classified: other
+    - cmd: chmod 755 prism-v0.74.1-darwin-arm64
+      at: 2026-09-12T19:56:18.039864Z
+      classified: other
+    - cmd: ./prism-v0.74.1-darwin-arm64 version
+      at: 2026-09-12T19:56:20.793595Z
+      classified: other
+    - cmd: test ! -e /private/tmp/prism-v0741-compact-3cell-20260912
+      at: 2026-09-12T19:56:34.081517Z
+      classified: other
+    - cmd: python3 /private/tmp/run_prism_v0741_three_cells.py
+      at: 2026-09-12T20:00:23.974755Z
+      classified: other
+    - cmd: jq -r '.rows[] | [.task,.resolved,.total_tokens,.cost_usd,.tool_calls,.wall_s,(.prism_calls|length),.audited_valid] | @tsv' /private/tmp/prism-v0741-compact-3cell-20260912/summary.json
+      at: 2026-09-12T20:00:31.760406Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism | head -40
+      at: 2026-09-12T20:00:31.762445Z
+      classified: other
+    - cmd: jq 'keys' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/measurement.json
+      at: 2026-09-12T20:00:31.76597Z
+      classified: other
+    - cmd: jq -r '[.type,.item.type,.item.server,.item.tool,.item.arguments,.item.command] | @json' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl | head -35
+      at: 2026-09-12T20:00:44.572313Z
+      classified: other
+    - cmd: jq 'select(.item.type=="error")' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl
+      at: 2026-09-12T20:00:49.293416Z
+      classified: other
+    - cmd: jq 'select(.type=="item.completed" and .item.type=="mcp_tool_call") | .item | keys' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl | head -50
+      at: 2026-09-12T20:00:53.433332Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and .item.type=="mcp_tool_call") | [.item.arguments.op,(.item.result|tostring|length),.item.status,.item.error] | @tsv' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl
+      at: 2026-09-12T20:00:57.296689Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-grove-v0450-gpt55-legacy-mcp-benchmark-v1-20260910/evidence/pallets__click__pr3244.gpt55_prism | head -25
+      at: 2026-09-12T20:01:04.360302Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-grove-v0450-gpt55-benchmark-20260910/evidence/pallets__click__pr3244.gpt55_native | head -25
+      at: 2026-09-12T20:01:04.359861Z
+      classified: other
+    - cmd: jq '{tool_calls,prism_result_bytes,native_commands,cache_read_tokens,input_tokens,output_tokens,total_tokens,tool_errors}' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/measurement.json
+      at: 2026-09-12T20:01:04.361337Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and .item.type=="mcp_tool_call" and .item.arguments.op=="query") | .item.result | tostring | .[:5500]' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl
+      at: 2026-09-12T20:01:08.549946Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and .item.type=="mcp_tool_call" and .item.arguments.op=="query") | .item.result.content[0].text' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl | rg -n 'fileno|isolation|omitted|src/click/testing.py|Read the file|Source' | head -65
+      at: 2026-09-12T20:01:14.544884Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and (.item.type=="command_execution" or .item.type=="mcp_tool_call")) | [(.item.type),(.item.arguments.op // .item.tool // ""),(.item.command // "" | gsub("\\n";" ") | .[:90]),(.item.aggregated_output // .item.result // "" | tostring | length)] | @tsv' /private/tmp/prism-grove-v0450-gpt55-legacy-mcp-benchmark-v1-20260910/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl
+      at: 2026-09-12T20:01:24.086315Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and (.item.type=="command_execution" or .item.type=="mcp_tool_call")) | [(.item.type),(.item.arguments.op // .item.tool // ""),(.item.command // "" | gsub("\\n";" ") | .[:90]),(.item.aggregated_output // .item.result // "" | tostring | length)] | @tsv' /private/tmp/prism-grove-v0450-gpt55-benchmark-20260910/evidence/pallets__click__pr3244.gpt55_native/stdout.jsonl
+      at: 2026-09-12T20:01:24.086315Z
+      classified: other
+    - cmd: jq '{prism_calls,prism_cli_commands,prism_actions,violations,audited_valid}' /private/tmp/prism-grove-v0450-gpt55-legacy-mcp-benchmark-v1-20260910/evidence/pallets__click__pr3244.gpt55_prism/measurement.json
+      at: 2026-09-12T20:01:28.602347Z
+      classified: other
+    - cmd: jq '{status,rows:[.rows[]|{task,arm,resolved,total_tokens,cost_usd,tool_calls,wall_s,prism_calls,prism_actions,audited_valid}]}' /private/tmp/prism-legacy-grove0450-controlled-v3-20260911/summary.json
+      at: 2026-09-12T20:01:37.23169Z
+      classified: other
+    - cmd: jq '{status,rows:[.rows[]|{task,arm,resolved,total_tokens,cost_usd,tool_calls,wall_s,prism_calls,prism_actions,audited_valid}]}' /private/tmp/prism-legacy-grove0450-controlled-v2-20260910/summary.json
+      at: 2026-09-12T20:01:37.229453Z
+      classified: other
+    - cmd: jq '{status,rows:[.rows[]|{task,arm,resolved,total_tokens,cost_usd,tool_calls,wall_s,prism_calls,prism_actions,audited_valid}]}' /private/tmp/prism-grove-v0450-gpt55-compact-benchmark-v3-20260910/summary.json
+      at: 2026-09-12T20:01:37.236729Z
+      classified: other
+    - cmd: jq '{prism_result_bytes,tool_calls,prism_actions,input_tokens,cache_read_tokens,output_tokens,total_tokens,cost_usd}' /private/tmp/prism-legacy-grove0450-controlled-v3-20260911/evidence/pallets__click__pr3244.gpt55_prism/measurement.json
+      at: 2026-09-12T20:01:59.633572Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and (.item.type=="command_execution" or .item.type=="mcp_tool_call")) | [(.item.type),(.item.arguments.op // .item.tool // ""),(.item.command // "" | gsub("\\n";" ") | .[:85]),(.item.aggregated_output // .item.result // "" | tostring | length)] | @tsv' /private/tmp/prism-legacy-grove0450-controlled-v3-20260911/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl
+      at: 2026-09-12T20:01:59.637302Z
+      classified: other
+    - cmd: jq '{tool_calls,prism_actions,input_tokens,cache_read_tokens,output_tokens,total_tokens,cost_usd}' /private/tmp/prism-grove-v0450-gpt55-benchmark-20260910/evidence/pallets__click__pr3244.gpt55_native/measurement.json
+      at: 2026-09-12T20:01:59.638977Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and .item.type=="agent_message") | .item.text' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl | head -180
+      at: 2026-09-12T20:02:06.478266Z
+      classified: other
+    - cmd: sed -n '1,170p' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3244.gpt55_prism/agent.diff
+      at: 2026-09-12T20:02:13.617254Z
+      classified: other
+    - cmd: sed -n '1,170p' /private/tmp/prism-grove-v0450-gpt55-benchmark-20260910/evidence/pallets__click__pr3244.gpt55_native/agent.diff
+      at: 2026-09-12T20:02:13.646758Z
+      classified: other
+    - cmd: sed -n '1,170p' /private/tmp/prism-legacy-grove0450-controlled-v3-20260911/evidence/pallets__click__pr3244.gpt55_prism/agent.diff
+      at: 2026-09-12T20:02:13.646831Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and (.item.type=="mcp_tool_call" or .item.type=="command_execution")) | [(.item.arguments.op // .item.tool // "shell"),(.item.aggregated_output // .item.result // "" | tostring | length)] | @tsv' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/pallets__click__pr3534.gpt55_prism/stdout.jsonl
+      at: 2026-09-12T20:02:32.986415Z
+      classified: other
+    - cmd: jq -r 'select(.type=="item.completed" and (.item.type=="mcp_tool_call" or .item.type=="command_execution")) | [(.item.arguments.op // .item.tool // "shell"),(.item.aggregated_output // .item.result // "" | tostring | length)] | @tsv' /private/tmp/prism-v0741-compact-3cell-20260912/evidence/Textualize__rich__pr3882.gpt55_prism/stdout.jsonl
+      at: 2026-09-12T20:02:32.986171Z
+      classified: other
+    - cmd: jq -r '.rows[] | [.task,.resolved,.total_tokens,.cost_usd,.tool_calls,.wall_s,(.prism_calls|length)] | @tsv' /private/tmp/prism-legacy-grove0450-controlled-v3-20260911/summary.json
+      at: 2026-09-12T20:02:32.99183Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-12T20:03:00.959196Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | /private/tmp/prism-v0741-bench.AEBHLP/prism-v0.74.1-darwin-arm64 mcp --compact /Users/tapabratapal/Projects/provasign/prism | jq '.result.tools[0] | {name,schema_bytes:(.inputSchema|tojson|length),description_bytes:(.description|length)}'
+      at: 2026-09-12T20:03:30.263561Z
+      classified: build
+    - cmd: wc -c AGENTS.md CLAUDE.md && rg -n 'prism|MCP|ToolSearch' CLAUDE.md | head -35
+      at: 2026-09-12T20:03:41.744642Z
+      classified: other
+    - cmd: claude --version
+      at: 2026-09-12T20:03:41.744425Z
+      classified: other
+    - cmd: claude mcp --help
+      at: 2026-09-12T20:03:41.803249Z
+      classified: other
+    - cmd: jq '.mcpServers.prism | {command,args,alwaysLoad}' .mcp.json
+      at: 2026-09-12T20:04:01.602141Z
+      classified: other
+    - cmd: sed -n '1,90p' AGENTS.md
+      at: 2026-09-12T20:04:01.606483Z
+      classified: other
+    - cmd: rg -n -A8 '^\[mcp_servers.prism\]' .codex/config.toml
+      at: 2026-09-12T20:04:01.606531Z
+      classified: other
+    - cmd: printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}' | /private/tmp/prism-v0741-bench.AEBHLP/prism-v0.74.1-darwin-arm64 mcp --compact /Users/tapabratapal/Projects/provasign/prism | jq '.result | {instructions_bytes:(.instructions|length),instructions}'
+      at: 2026-09-12T20:04:07.538858Z
+      classified: other
+    - cmd: claude mcp get prism
+      at: 2026-09-12T20:04:40.725026Z
+      classified: other
+    - cmd: 'claude -p ''Use the connected Prism MCP tool exactly once: lookup Handler.deliverSource. Do not use shell or file tools. Then say whether the lookup succeeded.'' --model claude-sonnet-5 --effort low --output-format stream-json --verbose --max-budget-usd 0.05 --strict-mcp-config --mcp-config /private/tmp/prism-v0741-bench.AEBHLP/claude-alwaysload-mcp.json --settings ''{"disableAllHooks":true,"enabledPlugins":{}}'' --setting-sources '''' --disable-slash-commands --no-chrome --no-session-persistence --tools ''Read,Grep,Glob,Bash'' --allowedTools ''mcp__prism__prism'' | jq -r ''if .type=="assistant" then (.message.content[]? | select(.type=="tool_use") | .name) elif .type=="result" then "RESULT " + (.subtype // "") + " " + ((.result // "")|tostring|.[:160]) else empty end'''
+      at: 2026-09-12T20:05:23.81583Z
+      classified: other
+    - cmd: 'claude -p ''Use the connected Prism MCP tool exactly once: lookup Handler.deliverSource. Do not use shell or file tools. Then say whether the lookup succeeded.'' --model claude-sonnet-5 --effort low --output-format stream-json --verbose --max-budget-usd 0.20 --strict-mcp-config --mcp-config /private/tmp/prism-v0741-bench.AEBHLP/claude-alwaysload-mcp.json --settings ''{"disableAllHooks":true,"enabledPlugins":{}}'' --setting-sources '''' --disable-slash-commands --no-chrome --no-session-persistence --tools ''Read,Grep,Glob,Bash'' --allowedTools ''mcp__prism__prism'' | jq -r ''if .type=="assistant" then (.message.content[]? | if .type=="tool_use" then .name elif .type=="text" then .text[:220] else empty end) elif .type=="result" then "RESULT " + (.subtype // "") + " " + ((.result // "")|tostring|.[:160]) else empty end'''
+      at: 2026-09-12T20:05:40.026841Z
+      classified: other
+    - cmd: sed -n '220,260p' docs/ranking-audit-2026-09-12.md
+      at: 2026-09-12T20:09:44.163626Z
+      classified: other
+    - cmd: command -v prism
+      at: 2026-09-12T20:10:36.06408Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism version
+      at: 2026-09-12T20:10:36.076446Z
+      classified: other
+    - cmd: /Users/tapabratapal/Projects/provasign/prism/bin/prism version
+      at: 2026-09-12T20:10:36.081708Z
+      classified: other
+    - cmd: prism doctor --help
+      at: 2026-09-12T20:10:36.085505Z
+      classified: other
+    - cmd: prism version
+      at: 2026-09-12T20:10:36.092628Z
+      classified: other
+    - cmd: /private/tmp/prism-v0741-bench.AEBHLP/prism-v0.74.1-darwin-arm64 doctor .
+      at: 2026-09-12T20:10:53.707021Z
+      classified: other
+    - cmd: ls -l /Users/tapabratapal/bin/prism /opt/homebrew/bin/prism /Users/tapabratapal/Projects/provasign/prism/bin/prism
+      at: 2026-09-12T20:10:53.709379Z
+      classified: other
+    - cmd: prism doctor .
+      at: 2026-09-12T20:10:53.706938Z
+      classified: other
+    - cmd: brew list --versions prism
+      at: 2026-09-12T20:10:54.173123Z
+      classified: other
+    - cmd: jq '.mcpServers.prism | {command,args}' .mcp.json
+      at: 2026-09-12T20:11:09.364597Z
+      classified: other
+    - cmd: brew tap | rg 'provasign|shale'
+      at: 2026-09-12T20:11:09.374779Z
+      classified: other
+    - cmd: gh release view -R provasign/prism --json tagName,isDraft,isPrerelease,url --jq '{tagName,isDraft,isPrerelease,url}'
+      at: 2026-09-12T20:11:09.64177Z
+      classified: other
+    - cmd: brew info --formula provasign/shale/prism
+      at: 2026-09-12T20:11:09.725145Z
+      classified: other
+    - cmd: /private/tmp/prism-v0741-bench.AEBHLP/prism-v0.74.1-darwin-arm64 init --help
+      at: 2026-09-12T20:11:32.064727Z
+      classified: other
+    - cmd: sed -n '1,100p' prism.yaml
+      at: 2026-09-12T20:11:37.809836Z
+      classified: other
+    - cmd: prism version
+      at: 2026-09-12T20:14:04.885438Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T20:14:04.885619Z
+      classified: other
+    - cmd: jq '.mcpServers.prism | {command,args,alwaysLoad}' .mcp.json
+      at: 2026-09-12T20:14:04.885952Z
+      classified: other
+    - cmd: prism doctor .
+      at: 2026-09-12T20:14:04.888501Z
+      classified: other
+    - cmd: rg -n -A3 '^\[mcp_servers.prism\]' .codex/config.toml
+      at: 2026-09-12T20:14:04.888944Z
+      classified: other
+    - cmd: git diff --stat -- .codex/config.toml .cursor/mcp.json .mcp.json AGENTS.md CLAUDE.md prism.yaml
+      at: 2026-09-12T20:14:31.796591Z
+      classified: other
+    - cmd: brew --repo provasign/shale
+      at: 2026-09-12T20:14:31.895457Z
+      classified: other
+    - cmd: brew info --formula provasign/shale/prism | head -8
+      at: 2026-09-12T20:14:32.186266Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T20:15:04.682629Z
+      classified: other
+notes:
+    - text: continuation of session 01a093ea-436a-7660-88f1-bbe5024c59f1 — events captured after its evidence was finalized
+      at: 2026-09-12T19:47:26.047786Z
+redactions: 0
