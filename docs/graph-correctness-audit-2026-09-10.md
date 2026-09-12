@@ -174,6 +174,22 @@ that is not otherwise delivered, without restoring profile-specific evidence
 expansion or dumping the whole function. No product change for this separate
 finding was made in response to the user's diagnostic question.
 
+### Follow-up, 2026-09-12
+
+The exact `ORCHID_DEEP_ONLY` query against the 207-line probe now returns line
+103 with two lines of context on each side after the current Grove index is
+built. A related loss was still reproducible: when a function's **name** and a
+deep comment both match the term, a small source budget can cut off the comment,
+while the text-match path includes only content-only seeds. The response then
+contains neither the matched line nor its context.
+
+Source delivery now checks matches against the final per-file sections, after
+trimming and truncation. Matches not actually shown are delivered as bounded
+text hits; matches already shown are not duplicated. A truncated whole-file
+section no longer marks its unseen tail as fully cached. The new
+`TestQueryPreservesDeepCommentOutsideNamedSeedWindow` covers the 207-line,
+line-103 case, its context lines, and a follow-up query.
+
 ## Remaining limits and release boundary
 
 1. Python runtime dispatch, monkey-patching, wildcard imports, conditional

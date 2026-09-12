@@ -1147,8 +1147,8 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 		delivery = "source"
 	}
 	if delivery == "source" {
-		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(), false); tm != nil {
+		out, sourceSections := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
+		if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(sourceSections), false); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
@@ -1176,7 +1176,7 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 		})
 	}
 	out.BudgetUsed = used
-	if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(), false); tm != nil {
+	if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(nil), false); tm != nil {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
 	}

@@ -50,11 +50,12 @@ type selection struct {
 	// name — delivered at signature disclosure, not full windows (see the
 	// declaration in selectContext).
 	contentOnlySeeds map[string]bool
-	// textHits are full-text matches no indexed symbol encloses. contentHits
-	// are bounded matches inside selected content-only symbols, retained so
-	// signature disclosure does not hide the evidence that selected them.
+	// textHits are matches no indexed symbol encloses. contentHits preserve
+	// the compact symbols-delivery behavior; symbolHits retain all matched
+	// source lines so source delivery can recover those outside final windows.
 	textHits    []textsearch.Hit
 	contentHits []textsearch.Hit
+	symbolHits  map[string][]textsearch.Hit
 	textBackend string
 }
 
@@ -575,6 +576,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		budget:           budget,
 		textHits:         textMerge.rawHits,
 		contentHits:      selectedContentHits(picked, contentOnlySeeds, textMerge.symbolHits),
+		symbolHits:       textMerge.symbolHits,
 		textBackend:      textMerge.backend,
 		testCallers:      testCallers,
 		contentOnlySeeds: contentOnlySeeds,
@@ -600,10 +602,43 @@ func selectedContentHits(picked []ranking.BudgetedSymbol, contentOnly map[string
 	return hits
 }
 
-func (s *selection) deliverableTextHits() []textsearch.Hit {
-	hits := make([]textsearch.Hit, 0, len(s.textHits)+len(s.contentHits))
-	hits = append(hits, s.textHits...)
-	return append(hits, s.contentHits...)
+// sourceSections is nil for symbols delivery. In source delivery it holds the
+// FINAL per-file sections, after trimming, truncation, and cache-pointer
+// substitution. Only a line present in that final output counts as delivered.
+func (s *selection) deliverableTextHits(sourceSections map[string]string) []textsearch.Hit {
+	if sourceSections == nil {
+		hits := make([]textsearch.Hit, 0, len(s.textHits)+len(s.contentHits))
+		hits = append(hits, s.textHits...)
+		return append(hits, s.contentHits...)
+	}
+	seen := map[string]bool{}
+	var hits []textsearch.Hit
+	add := func(hit textsearch.Hit) {
+		if sourceSectionShowsLine(sourceSections[normalizePath(hit.File)], hit) {
+			return
+		}
+		key := hit.File + ":" + strconv.Itoa(hit.Line)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		hits = append(hits, hit)
+	}
+	for _, hit := range s.textHits {
+		add(hit)
+	}
+	for _, pick := range s.picked {
+		for _, hit := range s.symbolHits[pick.Symbol.ID] {
+			add(hit)
+		}
+	}
+	return hits
+}
+
+func sourceSectionShowsLine(section string, hit textsearch.Hit) bool {
+	// A numbered source line may itself be clamped; in that case the matched
+	// text is not actually visible and still needs its own text-hit excerpt.
+	return hit.Line > 0 && strings.Contains(section, "\n"+strconv.Itoa(hit.Line)+"\t"+hit.Text)
 }
 
 // interleaveUniqueTermSeeds gives every explicit term its best still-unseen

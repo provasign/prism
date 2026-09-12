@@ -81,7 +81,7 @@ func truncateSection(section string, maxTokens int, path string) string {
 			"Read the file directly for the remainder]\n\n", path)
 }
 
-func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection, maxFiles, budget int) map[string]any {
+func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection, maxFiles, budget int) (map[string]any, map[string]string) {
 	if maxFiles < 1 {
 		maxFiles = sourceDeliveryMaxFiles
 	}
@@ -130,6 +130,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		"context.\n\n")
 	delivered := ranking.EstimateTokens(b.String())
 	shown := make([]string, 0, maxFiles)
+	sourceSections := make(map[string]string, maxFiles)
 	var skipped []fileGroup
 	for i, fg := range files {
 		if len(shown) >= maxFiles || (delivered > budget && i > 0) {
@@ -147,6 +148,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		// exempt outright, which is how a single 89KB section got emitted and
 		// the host rejected the whole response.
 		cost := ranking.EstimateTokens(section)
+		truncated := false
 		if hard := budget * 2; delivered+cost > hard && len(shown) > 0 {
 			skipped = append(skipped, files[i:]...)
 			break
@@ -181,12 +183,20 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 				}
 			}
 			if delivered+cost > hard {
-				section = truncateSection(section, hard-delivered, fg.path)
+				cut := truncateSection(section, hard-delivered, fg.path)
+				truncated = cut != section
+				section = cut
 				cost = ranking.EstimateTokens(section)
 			}
 		}
 		b.WriteString(section)
-		commit()
+		sourceSections[fg.path] = section
+		// A whole-file render may have been byte-clamped above. Its commit
+		// closure would otherwise mark the unseen tail as fully delivered,
+		// turning the next query into a false cached pointer.
+		if !truncated {
+			commit()
+		}
 		delivered += cost
 		shown = append(shown, fg.path)
 	}
@@ -262,7 +272,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		"files":           shown,
 		"symbolCount":     len(sel.picked),
 		"deliveredTokens": deliveredTokens,
-	}
+	}, sourceSections
 }
 
 // renderAnchorSummary emits one line per anchor symbol: caller count + caller
