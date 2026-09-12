@@ -22,11 +22,10 @@ func TestBinarySnapshotChangedAfterAtomicReplacement(t *testing.T) {
 	if err := os.WriteFile(path, []byte("old"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
+	snapshot := snapshotBinary(path)
+	if snapshot.info == nil {
+		t.Fatal("failed to snapshot original binary")
 	}
-	snapshot := binarySnapshot{path: path, info: info}
 
 	replacement := filepath.Join(dir, "replacement")
 	if err := os.WriteFile(replacement, []byte("new"), 0o755); err != nil {
@@ -53,11 +52,10 @@ func TestStaleBinaryNoteFiresOnceAfterReplacement(t *testing.T) {
 	if err := os.WriteFile(path, []byte("old"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
+	startupBinarySnapshot = snapshotBinary(path)
+	if startupBinarySnapshot.info == nil {
+		t.Fatal("failed to snapshot original binary")
 	}
-	startupBinarySnapshot = binarySnapshot{path: path, info: info}
 	staleBinaryWarned = false
 
 	replacement := filepath.Join(dir, "replacement")
@@ -89,11 +87,10 @@ func TestServerRetiresBeforeDispatchAfterBinaryReplacement(t *testing.T) {
 	if err := os.WriteFile(path, []byte("old"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
+	startupBinarySnapshot = snapshotBinary(path)
+	if startupBinarySnapshot.info == nil {
+		t.Fatal("failed to snapshot original binary")
 	}
-	startupBinarySnapshot = binarySnapshot{path: path, info: info}
 	staleBinaryWarned = false
 
 	replacement := filepath.Join(dir, "replacement")

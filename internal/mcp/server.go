@@ -261,10 +261,18 @@ func snapshotLaunchBinary() binarySnapshot {
 	if err == nil {
 		path = abs
 	}
+	return snapshotBinary(path)
+}
+
+func snapshotBinary(path string) binarySnapshot {
 	info, err := os.Stat(path)
 	if err != nil {
 		return binarySnapshot{}
 	}
+	// Windows loads the file ID lazily from FileInfo's saved path. Freeze it
+	// while this file still occupies that path so a later atomic replacement
+	// cannot make both snapshots resolve to the replacement's ID.
+	os.SameFile(info, info)
 	return binarySnapshot{path: path, info: info}
 }
 
