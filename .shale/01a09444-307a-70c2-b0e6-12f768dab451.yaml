@@ -1,0 +1,14 @@
+shale_version: "0"
+id: 01a09444-307a-70c2-b0e6-12f768dab451
+created_at: 2026-09-12T06:18:13.374602Z
+finalized_at: 2026-09-12T19:25:14.416071Z
+agent:
+    tool: codex
+    model: gpt-5.5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+notes: []
+redactions: 0

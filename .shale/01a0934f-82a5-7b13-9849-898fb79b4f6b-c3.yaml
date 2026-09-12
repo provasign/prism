@@ -1,0 +1,103 @@
+shale_version: "0"
+id: 01a0934f-82a5-7b13-9849-898fb79b4f6b-c3
+created_at: 2026-09-12T04:30:57.930638Z
+finalized_at: 2026-09-12T19:25:14.416071Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git tag -a v0.73.0 -m "Prism v0.73.0" && git show --no-patch --decorate v0.73.0 && git push origin v0.73.0
+      at: 2026-09-12T04:30:57.930638Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --workflow Release --limit 5 --json databaseId,headSha,status,conclusion,url,displayTitle,createdAt
+      at: 2026-09-12T04:31:02.796899Z
+      classified: other
+    - cmd: gh run watch 34673206554 --repo provasign/prism --exit-status
+      at: 2026-09-12T04:32:53.395764Z
+      classified: other
+    - cmd: gh release view v0.73.0 --repo provasign/prism --json url,tagName,targetCommitish,isDraft,isPrerelease,assets --jq '{url,tag:.tagName,target:.targetCommitish,draft:.isDraft,prerelease:.isPrerelease,assets:[.assets[]|{name,size:.size}]}' && git status --short --branch && git rev-parse HEAD && git rev-list -n 1 v0.73.0 && git ls-remote origin refs/heads/main refs/tags/v0.73.0 refs/tags/v0.73.0^{}
+      at: 2026-09-12T04:33:02.021096Z
+      classified: other
+    - cmd: git status --short --branch && git rev-parse HEAD && git rev-parse origin/main && git rev-list -n 1 v0.49.0 && gh release view v0.49.0 --repo provasign/grove --json url,isDraft,isPrerelease --jq '{url,draft:.isDraft,prerelease:.isPrerelease}'
+      at: 2026-09-12T04:33:07.961951Z
+      classified: other
+    - cmd: git status --short --branch && git rev-parse HEAD && git rev-parse origin/main && git rev-list -n 1 v0.11.0 && gh release view v0.11.0 --repo provasign/astkit --json url,isDraft,isPrerelease --jq '{url,draft:.isDraft,prerelease:.isPrerelease}'
+      at: 2026-09-12T04:33:08.00598Z
+      classified: other
+    - cmd: git ls-remote origin refs/heads/main refs/tags/v0.11.0 refs/tags/v0.11.0^{} && git tag --list --sort=-version:refname | head -12 && gh release list --repo provasign/astkit --limit 12 && find .github/workflows -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
+      at: 2026-09-12T04:33:20.313553Z
+      classified: other
+    - cmd: gh release create v0.11.0 --repo provasign/astkit --verify-tag --generate-notes --latest --title "astkit v0.11.0"
+      at: 2026-09-12T04:33:28.483696Z
+      classified: other
+    - cmd: git status --short --branch && printf 'HEAD ' && git rev-parse HEAD && printf 'ORIGIN ' && git rev-parse origin/main && printf 'TAG ' && git rev-list -n 1 v0.11.0 && gh release view v0.11.0 --repo provasign/astkit --json url,isDraft,isPrerelease --jq '[.url,.isDraft,.isPrerelease] | @tsv'
+      at: 2026-09-12T04:33:38.036832Z
+      classified: other
+    - cmd: git status --short --branch && printf 'HEAD ' && git rev-parse HEAD && printf 'ORIGIN ' && git rev-parse origin/main && printf 'TAG ' && git rev-list -n 1 v0.49.0 && gh release view v0.49.0 --repo provasign/grove --json url,isDraft,isPrerelease --jq '[.url,.isDraft,.isPrerelease] | @tsv'
+      at: 2026-09-12T04:33:38.078068Z
+      classified: other
+    - cmd: git status --short --branch && printf 'HEAD ' && git rev-parse HEAD && printf 'ORIGIN ' && git rev-parse origin/main && printf 'TAG ' && git rev-list -n 1 v0.73.0 && gh release view v0.73.0 --repo provasign/prism --json url,isDraft,isPrerelease --jq '[.url,.isDraft,.isPrerelease] | @tsv'
+      at: 2026-09-12T04:33:38.089013Z
+      classified: other
+    - cmd: ls -1 /Users/tapabratapal/Projects/provasign | rg 'homebrew|shale' || true && gh workflow list --repo provasign/homebrew-shale && gh run list --repo provasign/homebrew-shale --limit 10 --json databaseId,workflowName,status,conclusion,createdAt,url,headSha,event
+      at: 2026-09-12T04:34:05.072056Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula --jq '.[].name' && for formula in prism grove astkit; do gh api "repos/provasign/homebrew-shale/contents/Formula/${formula}.rb" --jq '.content' 2>/dev/null | base64 --decode | rg -n 'class |version|url |sha256'; done
+      at: 2026-09-12T04:34:11.378804Z
+      classified: other
+    - cmd: gh workflow view "Refresh formulae" --repo provasign/homebrew-shale --yaml
+      at: 2026-09-12T04:34:19.758275Z
+      classified: other
+    - cmd: gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 2 && gh run list --repo provasign/homebrew-shale --workflow "Refresh formulae" --event workflow_dispatch --limit 3 --json databaseId,status,conclusion,createdAt,url,headSha
+      at: 2026-09-12T04:34:28.638409Z
+      classified: other
+    - cmd: gh run watch 34673359292 --repo provasign/homebrew-shale --exit-status
+      at: 2026-09-12T04:34:40.91594Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 --decode
+      at: 2026-09-12T04:34:58.330169Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/commits/main --jq '{sha:.sha,message:.commit.message,url:.html_url}'
+      at: 2026-09-12T04:34:58.442294Z
+      classified: other
+    - cmd: gh release download v0.73.0 --repo provasign/prism --pattern checksums.txt --output -
+      at: 2026-09-12T04:34:58.57068Z
+      classified: other
+    - cmd: brew --repository provasign/shale 2>/dev/null || true && brew tap-info provasign/shale --json=v2 2>/dev/null || true
+      at: 2026-09-12T04:35:08.225075Z
+      classified: other
+    - cmd: git status --short --branch && git log --oneline --decorate -5 && (test -f AGENTS.md && sed -n '1,260p' AGENTS.md || true) && rg -n 'init --global|Run `prism init|caveats|prism.rb' . --glob '!Formula/prism.rb'
+      at: 2026-09-12T04:35:11.908852Z
+      classified: other
+    - cmd: git pull --ff-only && git status --short --branch && git log --oneline --decorate -4 && sed -n '38,66p' scripts/refresh-formulae.sh && sed -n '44,66p' Formula/prism.rb
+      at: 2026-09-12T04:35:19.381017Z
+      classified: other
+    - cmd: bash -n scripts/refresh-formulae.sh && scripts/refresh-formulae.sh && git diff --check && git diff --stat && git diff -- scripts/refresh-formulae.sh Formula/prism.rb && ruby -c Formula/prism.rb && brew audit --formula --strict Formula/prism.rb
+      at: 2026-09-12T04:35:41.152308Z
+      classified: other
+    - cmd: brew style Formula/prism.rb && brew audit --formula --strict provasign/shale/prism && brew fetch --force provasign/shale/prism && git status --short --branch
+      at: 2026-09-12T04:35:54.819724Z
+      classified: other
+    - cmd: brew fetch --force provasign/shale/prism && git diff --check && git status --short --branch
+      at: 2026-09-12T04:36:09.704232Z
+      classified: other
+    - cmd: 'git add Formula/prism.rb scripts/refresh-formulae.sh && git diff --cached --check && git commit -m "fix(prism): update project-scoped setup caveat" && git push origin main'
+      at: 2026-09-12T04:36:14.303368Z
+      classified: other
+    - cmd: gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 2 && gh run list --repo provasign/homebrew-shale --workflow "Refresh formulae" --event workflow_dispatch --limit 1 --json databaseId,status,conclusion,url,createdAt
+      at: 2026-09-12T04:36:24.750891Z
+      classified: other
+    - cmd: gh run watch 34673445420 --repo provasign/homebrew-shale --exit-status
+      at: 2026-09-12T04:36:33.601441Z
+      classified: other
+    - cmd: git fetch origin && git status --short --branch && git rev-parse HEAD && git rev-parse origin/main && gh api repos/provasign/homebrew-shale/commits/main --jq '{sha:.sha,message:.commit.message,url:.html_url}' && brew info provasign/shale/prism --json=v2 | jq '{formulae:[.formulae[]|{name,versions,installed:[.installed[]?.version]}]}'
+      at: 2026-09-12T04:36:41.732987Z
+      classified: other
+notes:
+    - text: continuation of session 01a0934f-82a5-7b13-9849-898fb79b4f6b — events captured after its evidence was finalized
+      at: 2026-09-12T04:30:57.930638Z
+redactions: 0
