@@ -96,7 +96,7 @@ if ($currentPath -notlike "*$InstallDir*") {
 
 # ── Legacy global-registration cleanup ──────────────────────────────────────────
 info "Removing legacy user-global Prism MCP registrations…"
-& "$InstallDir\$PRODUCT.exe" cleanup-global 2>$null
+& "$InstallDir\$PRODUCT.exe" cleanup-global
 if ($LASTEXITCODE -eq 0) {
   ok "legacy user-global Prism registrations removed"
 } else {

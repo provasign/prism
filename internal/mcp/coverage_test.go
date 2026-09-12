@@ -225,15 +225,12 @@ func TestDispatch_ToolsCall_InvokeError(t *testing.T) {
 	}
 }
 
-func TestDispatch_ToolsCall_OK(t *testing.T) {
+func TestDispatch_ToolsCall_HiddenToolRejected(t *testing.T) {
 	h := newH(t)
 	s := NewServer(h)
-	res, e := s.dispatch("tools/call", json.RawMessage(`{"name":"prism_savings"}`))
-	if e != nil {
-		t.Fatal(e)
-	}
-	if res == nil {
-		t.Error("nil")
+	_, e := s.dispatch("tools/call", json.RawMessage(`{"name":"prism_savings"}`))
+	if e == nil || e.Code != -32601 {
+		t.Fatalf("hidden tool was callable: %#v", e)
 	}
 }
 

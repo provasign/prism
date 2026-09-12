@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | b
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin the current release
-VERSION=v0.72.6 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v0.73.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
@@ -71,11 +71,16 @@ From the root of a repository:
 prism init .
 ```
 
-This asks which harnesses you use (Claude Code, Codex, Cursor, Windsurf, VS Code,
-Gemini, or opencode), then writes `prism.yaml`, the selected project-local MCP
-configs, and their instruction files. For automation, pass a comma-separated list,
-for example `prism init --harness claude,codex .`. Indexing happens automatically
-on first use and refreshes incrementally after changes.
+This detects installed and previously configured harnesses, recommends those as the
+default, and asks which to configure. It writes `prism.yaml`, compact project-local
+MCP configs, and current instruction files while replacing Prism-owned legacy setup.
+For automation, pass a comma-separated list such as
+`prism init --harness claude,codex .`; a first-time non-interactive init never assumes
+all harnesses. Later runs can use `prism init --yes .` to reuse the selection recorded
+in `prism.yaml`. Windsurf receives `AGENTS.md` steering only because its documented MCP
+configuration is user-global, which Prism does not modify.
+Codex loads the generated `.codex/config.toml` after the repository is trusted;
+accept Codex's project-trust prompt, then restart or reload the session.
 
 Use search to find an anchor, then ask the graph for the relationship you need:
 
@@ -91,14 +96,18 @@ prism query "fix request validation" \
 prism verify --base main --format text
 ```
 
-For MCP-capable agents, `prism init` exposes six focused tools:
+For MCP-capable agents, `prism init` exposes one compact `prism` gateway with six
+operations:
 
-- `prism_search` locates symbols and source text. An exhaustive search returns a complete inventory of exact file paths and enclosing symbols while sampling context excerpts.
-- `prism_query` returns budgeted, line-numbered source around named anchors, including graph neighbors and relevant tests.
-- `prism_read` reads a file and deduplicates unchanged repeat reads within a session.
-- `prism_lookup` returns one named symbol's complete body.
-- `prism_change_impact` returns the declaration, override or implementation family, sibling contracts, and resolved callers. It can enumerate local implementations of an external Go interface method from its method set.
-- `prism_verify` compares a diff with its required semantic change set and exits nonzero when known sites were missed.
+- `search` locates symbols and source text.
+- `query` returns budgeted source around named anchors, callers, and tests.
+- `read` reads a known file or range and deduplicates unchanged repeat reads.
+- `lookup` returns complete bodies for known symbols.
+- `change_impact` returns declarations, implementation families, and resolved callers.
+- `verify` compares a diff with its required semantic change set.
+
+Run `prism mcp --legacy` only for compatibility testing with the former six-tool
+surface; normal and init-generated MCP launches use the compact gateway.
 
 CLI help is authoritative for the complete command and flag list:
 
@@ -122,7 +131,9 @@ prism doctor .
 Add boundary rules to `prism.yaml`:
 
 ```yaml
-version: 1
+version: 2
+harnesses: "claude,codex"
+mcp_surface: "compact"
 arch_deny:
   - "internal/cli -> internal/mcp"
 ```
@@ -144,7 +155,7 @@ Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#,
 ## Interfaces
 
 - **CLI:** local interactive use and CI
-- **MCP over stdio:** Claude Code, Cursor, Windsurf, VS Code, Codex, and other MCP clients
+- **MCP over stdio:** Claude Code, Cursor, VS Code, Codex, Gemini, OpenCode, and other MCP clients
 - **HTTP:** `prism serve --port 8888`; see [docs/HTTP_API.md](docs/HTTP_API.md)
 - **Go library:** see [docs/GO_KIT.md](docs/GO_KIT.md)
 

@@ -31,28 +31,20 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	if description := properties["op"].(map[string]any)["description"].(string); !strings.Contains(description, "lookup for any known symbol") {
 		t.Fatalf("compact operation guidance = %q", description)
 	}
-	branches := schema["oneOf"].([]map[string]any)
-	if len(branches) != len(wantOps) {
-		t.Fatalf("compact schema branches = %d, want %d", len(branches), len(wantOps))
+	if _, ok := schema["oneOf"]; ok {
+		t.Fatal("compact schema must not use top-level oneOf; older MCP hosts drop the tool")
 	}
-	argsByOp := make(map[string]map[string]any, len(branches))
-	for _, branch := range branches {
-		branchProperties := branch["properties"].(map[string]any)
-		op := branchProperties["op"].(map[string]any)["const"].(string)
-		argsByOp[op] = branchProperties["args"].(map[string]any)
+	argsSchema := properties["args"].(map[string]any)
+	if got := argsSchema["additionalProperties"]; got != false {
+		t.Fatalf("compact args additionalProperties = %v, want false", got)
 	}
-	searchQuery := argsByOp["search"]["properties"].(map[string]any)["query"].(map[string]any)
+	argProperties := argsSchema["properties"].(map[string]any)
+	searchQuery := argProperties["query"].(map[string]any)
 	if got := searchQuery["type"].([]string); len(got) != 2 || got[1] != "array" {
 		t.Fatalf("compact search query types = %v, want string or array", got)
 	}
-	readProperties := argsByOp["read"]["properties"].(map[string]any)
-	if got := readProperties["limit"].(map[string]any)["maximum"]; got != 240 {
+	if got := argProperties["limit"].(map[string]any)["maximum"]; got != 240 {
 		t.Fatalf("compact read limit maximum = %v, want 240", got)
-	}
-	for _, op := range []string{"lookup", "change_impact"} {
-		if _, ok := argsByOp[op]["properties"].(map[string]any)["limit"]; ok {
-			t.Fatalf("compact %s schema incorrectly accepts read/search limit", op)
-		}
 	}
 
 	compactJSON, err := json.Marshal(compact)
@@ -63,21 +55,37 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(compactJSON)*3 >= len(legacyJSON) {
-		t.Fatalf("compact schema is not at least 3x smaller: compact=%d legacy=%d", len(compactJSON), len(legacyJSON))
+	if len(compactJSON)*2 >= len(legacyJSON) {
+		t.Fatalf("compact schema is not at least 2x smaller: compact=%d legacy=%d", len(compactJSON), len(legacyJSON))
+	}
+}
+
+func TestCompactServerRejectsLegacyToolName(t *testing.T) {
+	srv := NewCompactServer(newTestHandler(t))
+	_, rpcErr := srv.dispatch("tools/call", json.RawMessage(`{"name":"prism_search","arguments":{"query":"x"}}`))
+	if rpcErr == nil || rpcErr.Code != -32601 {
+		t.Fatalf("hidden legacy tool was callable: %#v", rpcErr)
 	}
 }
 
 func TestExpandCompactCall(t *testing.T) {
+	validArgs := map[string]map[string]any{
+		"lookup":        {"name": "Thing"},
+		"read":          {"file": "thing.go"},
+		"search":        {"query": "Thing"},
+		"query":         {"task": "inspect Thing", "terms": []any{"Thing"}},
+		"change_impact": {"query": "Thing.Run"},
+		"verify":        {},
+	}
 	for op, want := range compactOperations {
 		got, args, err := expandCompactCall(map[string]any{
 			"op":   op,
-			"args": map[string]any{"marker": op},
+			"args": validArgs[op],
 		})
 		if err != nil {
 			t.Fatalf("op %q: %v", op, err)
 		}
-		if got != want || args["marker"] != op {
+		if got != want || !reflect.DeepEqual(args, validArgs[op]) {
 			t.Errorf("op %q expanded to %q %#v, want %q with preserved args", op, got, args, want)
 		}
 	}
@@ -87,6 +95,8 @@ func TestExpandCompactCall(t *testing.T) {
 		"unknown op":    {"op": "remove"},
 		"non-object":    {"op": "read", "args": "file=x.go"},
 		"unknown field": {"op": "read", "file": "x.go"},
+		"missing arg":   {"op": "read", "args": map[string]any{}},
+		"wrong op type": {"op": "change_impact", "args": map[string]any{"query": []any{"Thing.Run"}}},
 	} {
 		if _, _, err := expandCompactCall(envelope); err == nil {
 			t.Errorf("%s: expected error", name)

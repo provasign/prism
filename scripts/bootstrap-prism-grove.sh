@@ -62,9 +62,10 @@ fi
 if [[ "$GLOBAL_INIT" == "1" ]]; then
   echo "[bootstrap] note: GLOBAL_INIT is obsolete; Prism configs are project-local"
 fi
-echo "[bootstrap] running prism init --harness ${HARNESS:-all} $WORKSPACE_DIR"
+: "${HARNESS:?set HARNESS to a comma-separated list such as claude,codex; bootstrap never assumes all harnesses}"
+echo "[bootstrap] running prism init --harness $HARNESS $WORKSPACE_DIR"
 "$PRISM_BIN" cleanup-global
-"$PRISM_BIN" init --harness "${HARNESS:-all}" "$WORKSPACE_DIR"
+"$PRISM_BIN" init --harness "$HARNESS" "$WORKSPACE_DIR"
 
 echo "[bootstrap] done"
 echo "[bootstrap] next steps:"
@@ -72,7 +73,7 @@ echo "  1) prism index $WORKSPACE_DIR"
 echo "  2) prism query \"your task\" $WORKSPACE_DIR"
 echo
 echo "[bootstrap] agent steering files written into $WORKSPACE_DIR:"
-echo "  - CLAUDE.md, AGENTS.md, GEMINI.md, .cursorrules, .windsurfrules"
+echo "  - CLAUDE.md, AGENTS.md, GEMINI.md"
 echo "  - .github/copilot-instructions.md"
 echo "  - .vscode/mcp.json (VS Code native MCP host)"
-echo "  - per-tool .mcp.json (Claude Code) / .cursor/mcp.json / .windsurf/mcp.json"
+echo "  - compact .mcp.json (Claude Code) / .cursor/mcp.json"

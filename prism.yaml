@@ -1,10 +1,12 @@
-version: 1
+version: 2
 # model: ""    # Optional: name the model driving this repo (e.g. "claude-sonnet-4-6")
 #               # to size context budgets. There is NO auto-detection — the MCP
 #               # initialize handshake does not carry the model — so unset means
 #               # the default 200k-token window. Agents can also pass model= per
 #               # call, which overrides this.
 profile: "default"
+harnesses: "claude,codex,cursor"
+mcp_surface: "compact"
 
 # Declared architecture — enforced by `prism arch` (exit 1 on violation).
 # Each violation cites the exact file:line crossings.

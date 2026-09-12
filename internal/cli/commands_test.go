@@ -17,12 +17,11 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 
 	written := initRegisterMCPTools(projectDir, prismBin, supportedHarnesses, true, false, false)
 
-	// All project-local configs must be written, including Codex's trusted
-	// project configuration (Codex also supports a separate global config).
+	// Every supported project-local config is written. Windsurf is excluded:
+	// its documented MCP config is user-global, which init must not touch.
 	wantPaths := []string{
 		filepath.Join(projectDir, ".mcp.json"),
 		filepath.Join(projectDir, ".cursor", "mcp.json"),
-		filepath.Join(projectDir, ".windsurf", "mcp.json"),
 		filepath.Join(projectDir, ".codex", "config.toml"),
 	}
 	writtenSet := make(map[string]bool, len(written))
@@ -40,7 +39,7 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 }
 
 // The written .mcp.json must contain a valid mcpServers entry pointing to the
-// given prism binary with cwd-rooted args (["mcp"], no pinned project path) —
+// given prism binary with cwd-rooted compact args (no pinned project path) —
 // Claude Code launches project-scope servers with cwd at the project root.
 func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	setHome(t, t.TempDir())
@@ -70,8 +69,8 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	if entry.Command != prismBin {
 		t.Errorf("command: got %q want %q", entry.Command, prismBin)
 	}
-	if len(entry.Args) != 1 || entry.Args[0] != "mcp" {
-		t.Errorf("args: got %v, want [\"mcp\"] (cwd-rooted, no pinned path)", entry.Args)
+	if len(entry.Args) != 2 || entry.Args[0] != "mcp" || entry.Args[1] != "--compact" {
+		t.Errorf("args: got %v, want [\"mcp\", \"--compact\"] (cwd-rooted, no pinned path)", entry.Args)
 	}
 
 	// IDE configs keep the explicit project dir: their launch cwd is not guaranteed.
@@ -87,8 +86,8 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	if err := json.Unmarshal(cursorRaw, &cursorCfg); err != nil {
 		t.Fatalf("unmarshal cursor config: %v", err)
 	}
-	if got := cursorCfg.MCPServers["prism"].Args; len(got) != 2 || got[1] != projectDir {
-		t.Errorf("cursor args: got %v, want [\"mcp\", %q]", got, projectDir)
+	if got := cursorCfg.MCPServers["prism"].Args; len(got) != 3 || got[1] != "--compact" || got[2] != projectDir {
+		t.Errorf("cursor args: got %v, want [\"mcp\", \"--compact\", %q]", got, projectDir)
 	}
 }
 
@@ -116,6 +115,31 @@ func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 	}
 	if _, ok := cfg.MCPServers["prism"]; !ok {
 		t.Error("prism entry not added during merge")
+	}
+}
+
+func TestInitRegisterMCPToolsUpgradesLegacyProjectEntry(t *testing.T) {
+	setHome(t, t.TempDir())
+	projectDir := t.TempDir()
+	existing := `{"mcpServers":{"prism":{"command":"/old/prism","args":["mcp"],"alwaysLoad":true},"other":{"command":"keep"}}}`
+	path := filepath.Join(projectDir, ".mcp.json")
+	if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	initRegisterMCPTools(projectDir, "/new/prism", []string{"claude"}, false, false, false)
+	var doc struct {
+		MCPServers map[string]mcpEntry `json:"mcpServers"`
+	}
+	raw, _ := os.ReadFile(path)
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	got := doc.MCPServers["prism"]
+	if got.Command != "/new/prism" || len(got.Args) != 2 || got.Args[1] != "--compact" || got.AlwaysLoad {
+		t.Fatalf("legacy entry was not upgraded: %#v", got)
+	}
+	if _, ok := doc.MCPServers["other"]; !ok {
+		t.Fatal("unrelated server was removed during upgrade")
 	}
 }
 

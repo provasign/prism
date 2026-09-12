@@ -3,12 +3,14 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -119,7 +121,8 @@ Usage:
   prism feedback --tool <name> --rating <0-5> [--notes <text>] [--query-id <id>] [dir]
                                   Submit quality feedback for a Prism result
   prism serve [--port 8888] [dir] Start the HTTP API server (stdio MCP is 'prism mcp')
-  prism mcp [--compact] [dir]     Start MCP server on stdio (--compact advertises one gateway tool)
+  prism mcp [--compact|--legacy] [dir]
+                                  Start MCP server on stdio (compact gateway is default)
   prism drift [dir]              Report files/symbols that changed since they were delivered this session
   prism config [dir]              Show resolved configuration
   prism version                   Print version
@@ -127,7 +130,9 @@ Usage:
 prism init [dir] flags:
   --harness <ids>     harnesses to configure, comma-separated or repeated
                       ids: claude, codex, cursor, windsurf, vscode, gemini, opencode
-                      interactive init asks; non-interactive init configures all
+                      interactive init recommends detected/existing harnesses;
+                      non-interactive init requires this flag
+  --yes, -y           reuse harnesses recorded in prism.yaml without prompting
   --global            removed: MCP configuration is project-local only
   --mode <any>        accepted and IGNORED (since v0.38.0 one steering template
                       covers MCP tools and the CLI together)
@@ -145,8 +150,8 @@ steering file is stored in the repository. Re-running updates in place and also
 removes stale Prism-owned user-global MCP registrations from older releases:
   Claude Code  →  .mcp.json + CLAUDE.md
   Codex CLI    →  .codex/config.toml + AGENTS.md
-  Cursor       →  .cursor/mcp.json + .cursorrules
-  Windsurf     →  .windsurf/mcp.json + .windsurfrules
+  Cursor       →  .cursor/mcp.json + AGENTS.md
+  Windsurf     →  AGENTS.md steering only (no documented project MCP config)
   VS Code      →  .vscode/mcp.json + .github/copilot-instructions.md
   Gemini CLI   →  .gemini/settings.json + GEMINI.md
   opencode     →  opencode.json + AGENTS.md
@@ -179,7 +184,10 @@ func Run(args []string) int {
 	case "init", "install":
 		return cmdInit(rest)
 	case "cleanup-global":
-		removeLegacyGlobalMCPRegistrations()
+		if _, err := removeLegacyGlobalMCPRegistrations(); err != nil {
+			fmt.Fprintln(os.Stderr, "cleanup-global:", err)
+			return 1
+		}
 		return 0
 	case "watch":
 		return cmdWatch(rest)
@@ -311,6 +319,7 @@ func cmdInit(args []string) int {
 	printConfig := ""
 	refresh := false
 	denyBuiltinSearch := false
+	yes := false
 	var harnessArgs []string
 	filtered := args[:0]
 	for i := 0; i < len(args); i++ {
@@ -332,6 +341,8 @@ func cmdInit(args []string) int {
 			denyBuiltinSearch = true
 		case "--refresh":
 			refresh = true
+		case "--yes", "-y":
+			yes = true
 		case "--print-config":
 			if i+1 < len(args) {
 				printConfig = args[i+1]
@@ -357,6 +368,8 @@ func cmdInit(args []string) int {
 	dir := dirArg(args, 0, ".")
 	abs, _ := filepath.Abs(dir)
 	cfg := config.Default()
+	prismYAML := filepath.Join(abs, "prism.yaml")
+	recordedHarnesses := readRecordedHarnesses(prismYAML)
 
 	// --print-config is a pure query: render one agent's snippet and exit
 	// without touching a single file.
@@ -370,14 +383,21 @@ func cmdInit(args []string) int {
 		return 2
 	}
 	if len(harnesses) == 0 {
-		if isInteractive() {
-			harnesses, err = promptHarnesses()
+		if yes {
+			if len(recordedHarnesses) == 0 {
+				fmt.Fprintln(os.Stderr, "init: --yes cannot choose harnesses because prism.yaml has no recorded selection; pass --harness <ids>")
+				return 2
+			}
+			harnesses = recordedHarnesses
+		} else if isInteractive() {
+			harnesses, err = promptHarnesses(abs, recordedHarnesses)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "init:", err)
 				return 2
 			}
 		} else {
-			harnesses = append([]string(nil), supportedHarnesses...)
+			fmt.Fprintln(os.Stderr, "init: no harness selected in non-interactive mode; pass --harness <ids> (or --yes to reuse harnesses recorded in prism.yaml)")
+			return 2
 		}
 	}
 
@@ -385,22 +405,23 @@ func cmdInit(args []string) int {
 	// stdin is not a terminal, e.g. in CI or when piped).
 	// 1. Write prism.yaml into the project. Grove is embedded in-process now,
 	// so the file no longer needs grove_url / grove_binary.
-	yaml := fmt.Sprintf(`version: 1
+	yaml := fmt.Sprintf(`version: 2
 # model: ""    # Optional: name the model driving this repo (e.g. "claude-sonnet-4-6")
 #               # to size context budgets. There is NO auto-detection — the MCP
 #               # initialize handshake does not carry the model — so unset means
 #               # the default 200k-token window. Agents can also pass model= per
 #               # call, which overrides this.
 profile: "%s"
-`, cfg.Profile)
-	prismYAML := filepath.Join(abs, "prism.yaml")
+%s
+mcp_surface: "compact"
+`, cfg.Profile, harnessYAMLLine(harnesses))
 	// NEVER clobber an existing prism.yaml. It holds user content init knows
 	// nothing about — arch_deny rules above all, which are the CI gate for
 	// declared architecture. A plain WriteFile deleted them on every re-init,
-	// silently turning the arch check into a no-op. Only the three keys init
+	// silently turning the arch check into a no-op. Only init-owned keys
 	// manages are rewritten; every other line survives byte-for-byte.
 	if existing, err := os.ReadFile(prismYAML); err == nil {
-		yaml = mergePrismYAML(string(existing), cfg.Profile)
+		yaml = mergePrismYAML(string(existing), cfg.Profile, harnesses)
 	}
 	if err := os.WriteFile(prismYAML, []byte(yaml), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)
@@ -431,28 +452,43 @@ profile: "%s"
 	// available to those who ask for it: --deny-builtin-search.
 
 	// 4. Register with every detected AI coding tool.
-	removeLegacyGlobalMCPRegistrations()
+	if _, err := removeLegacyGlobalMCPRegistrations(); err != nil {
+		fmt.Fprintln(os.Stderr, "warning: legacy global Prism registration cleanup was incomplete:", err)
+	}
 	registered := initRegisterMCPTools(abs, prismBin, harnesses, permissions, refresh, denyBuiltinSearch)
 	if len(registered) == 0 {
 		fmt.Println("tip: add prism to your AI tool's MCP config (see README)")
+	} else {
+		if harnessSelected(harnesses, "codex") {
+			fmt.Println("Codex note: project .codex/config.toml loads after the repository is trusted in Codex")
+		}
+		fmt.Printf("restart or reload %s so it replaces any running older Prism MCP process\n", strings.Join(harnesses, ", "))
 	}
 	return 0
 }
 
 // mergePrismYAML rewrites only the keys init manages (version, profile,
-// agent_mode) and preserves every other line — comments, arch_deny rules,
+// harnesses, mcp_surface), removes retired agent_mode, and preserves every other line — comments, arch_deny rules,
 // anything a user or a later prism version put there. Keys init manages but
 // the file lacks are appended.
-func mergePrismYAML(existing, profile string) string {
+func mergePrismYAML(existing, profile string, harnesses []string) string {
 	managed := []struct{ key, val string }{
-		{"version", "1"},
+		{"version", "2"},
 		{"profile", strconv.Quote(profile)},
+		{"harnesses", strconv.Quote(strings.Join(harnesses, ","))},
+		{"mcp_surface", strconv.Quote("compact")},
 	}
 	seen := map[string]bool{}
 	lines := strings.Split(existing, "\n")
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if line == trimmed && strings.HasPrefix(trimmed, "agent_mode:") {
+			// Retired init-owned v1 setting. Keeping it makes an upgraded project
+			// look as if it can still select a legacy steering mode.
+			lines[i] = ""
 			continue
 		}
 		for _, m := range managed {
@@ -478,6 +514,32 @@ func mergePrismYAML(existing, profile string) string {
 		out += strings.Join(missing, "\n") + "\n"
 	}
 	return out
+}
+
+func harnessYAMLLine(harnesses []string) string {
+	return "harnesses: " + strconv.Quote(strings.Join(harnesses, ","))
+}
+
+func readRecordedHarnesses(path string) []string {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if line != trimmed || !strings.HasPrefix(trimmed, "harnesses:") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "harnesses:"))
+		if unquoted, err := strconv.Unquote(value); err == nil {
+			value = unquoted
+		}
+		harnesses, err := parseHarnesses([]string{value})
+		if err == nil {
+			return harnesses
+		}
+	}
+	return nil
 }
 
 // steeringInstructions is injected into every agent instruction file.
@@ -506,27 +568,27 @@ const steeringInstructions = `
 Use Prism's call/type graph for code discovery.
 
 Before code discovery, use the first available Prism route:
-- Prism MCP tools visible? Call one directly. For the compact ` + "`" + `mcp__prism__prism` + "`" + ` gateway use
-  ` + "`" + `prism(op="lookup", args={"name":["A","B"]})` + "`" + `; its schema gives each op's valid args.
+- Compact Prism MCP visible? Call ` + "`" + `mcp__prism__prism` + "`" + ` directly, for example
+  ` + "`" + `prism(op="lookup", args={"name":["A","B"]})` + "`" + `.
 - ` + "`" + `ToolSearch` + "`" + ` available? Run once; tools may be deferred:
 
-       ToolSearch("select:mcp__prism__prism,mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
+       ToolSearch("select:mcp__prism__prism")
 
 - Otherwise use the Bash CLI. Never abandon Prism because ` + "`" + `ToolSearch` + "`" + ` is absent.
 
-Choose op/tool by need: affected sites, signature change, or pre-edit check -> ` + "`" + `prism_change_impact` + "`" + `;
-known bodies -> ` + "`" + `prism_lookup(name=["A","B"])` + "`" + `; known file/range -> ` + "`" + `prism_read` + "`" + `; unknown location/text ->
-` + "`" + `prism_search` + "`" + `; related implementations/callers/tests -> ` + "`" + `prism_query` + "`" + ` with explicit anchors.
+Choose op by need: affected sites, signature change, or pre-edit check -> ` + "`" + `change_impact` + "`" + `;
+known bodies -> ` + "`" + `lookup` + "`" + `; known file/range -> ` + "`" + `read` + "`" + `; unknown location/text ->
+` + "`" + `search` + "`" + `; related implementations/callers/tests -> ` + "`" + `query` + "`" + ` with explicit anchors.
 Known symbol: use impact/lookup directly, not search.
 Read-only inspection alone needs no impact.
 
 Before editing an existing symbol, call impact and relay its sites as-is. Reuse its signatures/calls for site
 enumeration; fetch bodies only for behavior or unclear evidence. For external interfaces or incomplete wide scope,
-use batched ` + "`" + `prism_search(scope="text", exhaustive=true)` + "`" + `; inspect signatures/receivers because
+use batched ` + "`" + `prism(op="search", args={"scope":"text","exhaustive":true,...})` + "`" + `; inspect signatures/receivers because
 text matches do not prove implementation. Preserve reported sites, resolve uncertainty, and report remaining gaps.
 
-For removals, run ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + ` before editing and check docs/config/comments too.
-Run plain ` + "`" + `prism_verify` + "`" + ` before finishing multi-site, signature, removal, or unresolved-coverage changes—not every
+For removals, run ` + "`" + `prism(op="verify", args={"removed_symbols":["A","B"]})` + "`" + ` before editing and check docs/config/comments too.
+Run ` + "`" + `prism(op="verify", args={})` + "`" + ` before finishing multi-site, signature, removal, or unresolved-coverage changes—not every
 small local edit. Batch related names, inspect partial-result warnings, and reuse delivered unchanged source.
 
 Bash fallback: ` + "`" + `prism query "<task>" --terms X` + "`" + `, ` + "`" + `prism lookup <pkg.Func>` + "`" + `,
@@ -580,26 +642,170 @@ func parseHarnesses(values []string) ([]string, error) {
 	return selected, nil
 }
 
-func promptHarnesses() ([]string, error) {
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Which agent harnesses should Prism configure for this project?")
-	fmt.Fprintln(os.Stderr, "  claude, codex, cursor, windsurf, vscode, gemini, opencode")
-	fmt.Fprint(os.Stderr, "Harnesses (comma-separated, Enter = all): ")
-	var line string
-	if _, err := fmt.Scanln(&line); err != nil {
-		// Scanln returns an error for an empty line; Enter deliberately means all.
-		return append([]string(nil), supportedHarnesses...), nil
+type harnessStatus struct {
+	id          string
+	label       string
+	command     string
+	configPaths []string
+	projectMCP  bool
+}
+
+var harnessStatuses = []harnessStatus{
+	{id: "claude", label: "Claude Code", command: "claude", configPaths: []string{".mcp.json"}, projectMCP: true},
+	{id: "codex", label: "Codex CLI", command: "codex", configPaths: []string{".codex/config.toml"}, projectMCP: true},
+	{id: "cursor", label: "Cursor", command: "cursor", configPaths: []string{".cursor/mcp.json", ".cursorrules"}, projectMCP: true},
+	{id: "windsurf", label: "Windsurf", command: "windsurf", configPaths: []string{".windsurf/mcp.json", ".windsurfrules"}, projectMCP: false},
+	{id: "vscode", label: "VS Code", command: "code", configPaths: []string{".vscode/mcp.json"}, projectMCP: true},
+	{id: "gemini", label: "Gemini CLI", command: "gemini", configPaths: []string{".gemini/settings.json"}, projectMCP: true},
+	{id: "opencode", label: "OpenCode", command: "opencode", configPaths: []string{"opencode.json"}, projectMCP: true},
+}
+
+func detectedHarnesses(projectDir string, recorded []string) []string {
+	want := map[string]bool{}
+	for _, id := range recorded {
+		want[id] = true
 	}
-	if strings.TrimSpace(line) == "" {
-		return append([]string(nil), supportedHarnesses...), nil
+	for _, h := range harnessStatuses {
+		if _, err := exec.LookPath(h.command); err == nil {
+			want[h.id] = true
+		}
+		for _, rel := range h.configPaths {
+			if fileExists(filepath.Join(projectDir, filepath.FromSlash(rel))) {
+				want[h.id] = true
+			}
+		}
 	}
-	return parseHarnesses([]string{line})
+	var selected []string
+	for _, id := range supportedHarnesses {
+		if want[id] {
+			selected = append(selected, id)
+		}
+	}
+	return selected
+}
+
+func harnessProjectState(projectDir string, h harnessStatus) string {
+	for _, rel := range h.configPaths {
+		raw, err := os.ReadFile(filepath.Join(projectDir, filepath.FromSlash(rel)))
+		if err != nil {
+			continue
+		}
+		text := string(raw)
+		if strings.Contains(strings.ToLower(text), "prism") {
+			if strings.Contains(text, "--compact") {
+				return "current compact setup"
+			}
+			return "legacy Prism setup (will upgrade)"
+		}
+		return "existing project config"
+	}
+	return ""
+}
+
+func parseHarnessSelection(line string) ([]string, error) {
+	parts := strings.FieldsFunc(strings.TrimSpace(line), func(r rune) bool {
+		return r == ',' || r == ' ' || r == '\t'
+	})
+	if len(parts) == 0 {
+		return nil, nil
+	}
+	var values []string
+	for _, part := range parts {
+		lower := strings.ToLower(part)
+		if lower == "a" || lower == "all" {
+			return append([]string(nil), supportedHarnesses...), nil
+		}
+		if lower == "n" || lower == "none" {
+			return []string{}, nil
+		}
+		if n, err := strconv.Atoi(part); err == nil {
+			if n < 1 || n > len(supportedHarnesses) {
+				return nil, fmt.Errorf("harness number %d is out of range", n)
+			}
+			values = append(values, supportedHarnesses[n-1])
+			continue
+		}
+		values = append(values, part)
+	}
+	return parseHarnesses(values)
+}
+
+func promptHarnesses(projectDir string, recorded []string) ([]string, error) {
+	defaults := detectedHarnesses(projectDir, recorded)
+	defaultNums := make([]string, 0, len(defaults))
+	fmt.Fprintln(os.Stderr, "\nPrism found these coding harnesses:")
+	for i, h := range harnessStatuses {
+		var status []string
+		if _, err := exec.LookPath(h.command); err == nil {
+			status = append(status, "installed")
+		}
+		if projectState := harnessProjectState(projectDir, h); projectState != "" {
+			status = append(status, projectState)
+		}
+		if !h.projectMCP {
+			status = append(status, "steering only; no documented project-local MCP config")
+		}
+		if len(status) == 0 {
+			status = append(status, "not detected")
+		}
+		if harnessSelected(defaults, h.id) {
+			defaultNums = append(defaultNums, strconv.Itoa(i+1))
+		}
+		fmt.Fprintf(os.Stderr, "  [%d] %-12s %s\n", i+1, h.label, strings.Join(status, " · "))
+	}
+	fmt.Fprintf(os.Stderr, "Select harnesses [default: %s]: ", strings.Join(defaultNums, ","))
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil && len(line) == 0 {
+		return nil, err
+	}
+	selected, err := parseHarnessSelection(line)
+	if err != nil {
+		return nil, err
+	}
+	if len(strings.TrimSpace(line)) == 0 {
+		selected = defaults
+	}
+	if len(selected) == 0 {
+		return nil, errors.New("no harness selected")
+	}
+	fmt.Fprintf(os.Stderr, "Prism will configure project-local compact MCP and steering for: %s\n", strings.Join(selected, ", "))
+	if harnessSelected(selected, "windsurf") {
+		fmt.Fprintln(os.Stderr, "  Windsurf: steering only; its documented MCP config is user-global and Prism will not write it.")
+	}
+	fmt.Fprint(os.Stderr, "Proceed? [Y/n] ")
+	answer, readErr := reader.ReadString('\n')
+	if readErr != nil && len(answer) == 0 {
+		return nil, readErr
+	}
+	answer = strings.ToLower(strings.TrimSpace(answer))
+	if answer == "n" || answer == "no" {
+		return nil, errors.New("cancelled")
+	}
+	return selected, nil
 }
 
 func harnessSelected(harnesses []string, id string) bool {
 	for _, harness := range harnesses {
 		if harness == id {
 			return true
+		}
+	}
+	return false
+}
+
+func selectedHarnessHasExistingSetup(projectDir string, harnesses []string, target string) bool {
+	for _, h := range harnessStatuses {
+		if !harnessSelected(harnesses, h.id) {
+			continue
+		}
+		if target != "shared" && h.id != target {
+			continue
+		}
+		for _, rel := range h.configPaths {
+			if fileExists(filepath.Join(projectDir, filepath.FromSlash(rel))) {
+				return true
+			}
 		}
 	}
 	return false
@@ -615,21 +821,29 @@ func writeSteeringInstructions(projectDir string, harnesses []string, refresh bo
 	}
 	targets := []instrFile{
 		{name: "Claude Code", relPath: "CLAUDE.md", harness: "claude"},
-		{name: "Codex/opencode", relPath: "AGENTS.md", harness: "codex"},
-		{name: "Cursor", relPath: ".cursorrules", harness: "cursor"},
-		{name: "Windsurf", relPath: ".windsurfrules", harness: "windsurf"},
+		{name: "Codex/Cursor/Windsurf/OpenCode", relPath: "AGENTS.md", harness: "shared"},
 		{name: "GitHub Copilot", relPath: ".github/copilot-instructions.md", harness: "vscode"},
 		{name: "Gemini CLI", relPath: "GEMINI.md", harness: "gemini"},
+		// Deprecated locations are migration-only: Prism sections are removed,
+		// never inserted. Current Cursor and Windsurf read AGENTS.md.
+		{name: "legacy Cursor", relPath: ".cursorrules", harness: ""},
+		{name: "legacy Windsurf", relPath: ".windsurfrules", harness: ""},
 	}
 
 	block := steeringBlock()
 
 	for _, t := range targets {
-		if !harnessSelected(harnesses, t.harness) && !(t.relPath == "AGENTS.md" && harnessSelected(harnesses, "opencode")) {
-			continue
+		selected := harnessSelected(harnesses, t.harness)
+		if t.harness == "shared" {
+			selected = harnessSelected(harnesses, "codex") || harnessSelected(harnesses, "cursor") ||
+				harnessSelected(harnesses, "windsurf") || harnessSelected(harnesses, "opencode")
 		}
 		path := filepath.Join(projectDir, t.relPath)
-		if refresh && !fileExists(path) {
+		exists := fileExists(path)
+		if !selected && !exists {
+			continue
+		}
+		if selected && refresh && !exists && !selectedHarnessHasExistingSetup(projectDir, harnesses, t.harness) {
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -637,11 +851,28 @@ func writeSteeringInstructions(projectDir string, harnesses []string, refresh bo
 			continue
 		}
 
-		var content string
-		if existing, err := os.ReadFile(path); err == nil {
-			// File exists — replace stale Prism section or append if absent.
-			content = injectPrismSection(string(existing), block)
-		} else {
+		var existing string
+		if raw, err := os.ReadFile(path); err == nil {
+			existing = string(raw)
+		}
+		content := stripPrismSections(existing)
+		if selected {
+			content = injectPrismSection(content, block)
+		}
+		if content == existing {
+			continue
+		}
+		if content == "" {
+			// Preserve an existing empty instruction file; no Prism-owned content
+			// remains and removing the user's file is outside init's authority.
+			if exists {
+				if err := os.WriteFile(path, nil, 0o644); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: could not clean %s instructions: %v\n", t.name, err)
+				}
+			}
+			continue
+		}
+		if existing == "" && selected {
 			content = block
 		}
 
@@ -676,50 +907,48 @@ func steeringBlock() string { return steeringInstructions }
 // those are replaced up to the next top-level "## " heading, which preserves
 // the user's following sections instead of eating them.
 func injectPrismSection(content, block string) string {
-	const marker = "## Prism — context delivery"
+	clean := stripPrismSections(content)
+	if strings.TrimSpace(clean) == "" {
+		return block
+	}
+	return strings.TrimRight(clean, "\n") + block
+}
+
+// stripPrismSections removes every Prism-owned steering section, including
+// historical headings and duplicate blocks left by older re-init behavior.
+func stripPrismSections(content string) string {
+	const marker = "## Prism —"
 	const endMarker = "<!-- prism:end -->"
-
-	// Older inits wrote different section headers; match them too, or a
-	// re-init APPENDS a second section and leaves the old one standing —
-	// including the v0.50-era "grep/rg/Grep are BLOCKED in this project"
-	// denial text, which that architecture's revert was supposed to retire.
-	markers := []string{
-		marker,
-		"## Prism — code intelligence (ALWAYS use these tools)",
-	}
-	start, prefixLen := -1, 1 // the leading newline belongs to the preceding content
-	for _, m := range markers {
-		if s := strings.Index(content, "\n"+m); s >= 0 {
-			start = s
+	for {
+		start := -1
+		if strings.HasPrefix(content, marker) {
+			start = 0
+		} else if i := strings.Index(content, "\n"+marker); i >= 0 {
+			start = i + 1
+		}
+		if start < 0 {
 			break
 		}
-		if strings.HasPrefix(content, m) {
-			start, prefixLen = 0, 0
-			break
+		rest := content[start:]
+		nextHeading := strings.Index(rest[1:], "\n## ")
+		if nextHeading >= 0 {
+			nextHeading++
+		}
+		end := len(rest)
+		if markerEnd := strings.Index(rest, endMarker); markerEnd >= 0 && (nextHeading < 0 || markerEnd < nextHeading) {
+			end = markerEnd + len(endMarker)
+		} else if nextHeading >= 0 {
+			end = nextHeading + 1
+		}
+		head := strings.TrimRight(content[:start], "\n")
+		tail := strings.TrimLeft(rest[end:], "\n")
+		if head != "" && tail != "" {
+			content = head + "\n\n" + tail
+		} else {
+			content = head + tail
 		}
 	}
-	if start < 0 {
-		return strings.TrimRight(content, "\n") + block
-	}
-	head := content[:start]
-	rest := content[start+prefixLen:]
-
-	// Bounded section: everything through the end marker is ours. Trim ALL
-	// leading newlines off the tail and re-join with exactly one blank line,
-	// so repeated re-init is byte-stable instead of accreting whitespace.
-	if e := strings.Index(rest, endMarker); e >= 0 {
-		tail := strings.TrimLeft(rest[e+len(endMarker):], "\n")
-		if tail == "" {
-			return head + block
-		}
-		return head + block + "\n" + tail
-	}
-	// Legacy unbounded section: end it at the next top-level heading so the
-	// user's later sections survive the upgrade.
-	if n := strings.Index(rest, "\n## "); n >= 0 {
-		return head + block + "\n" + strings.TrimLeft(rest[n+1:], "\n")
-	}
-	return head + block
+	return content
 }
 
 // detectSelfPath returns the absolute path to the running prism binary, or
@@ -766,19 +995,20 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 		cleanupLegacyDenyEntries(claudeSettings)
 	}
 
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact", projectDir}}
 	// Claude Code launches project-scope MCP servers with cwd at the project
 	// root, so its entry needs no pinned absolute path — this keeps .mcp.json
 	// portable and correct after the repo moves. The IDE writers below keep
 	// the explicit dir because their launch cwd is not guaranteed.
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact"}}
 
-	// Wrap in the per-tool envelope format and write.
+	// Build each harness's compact gateway registration and write it.
 	type writer struct {
 		harness string
 		name    string
 		path    string
-		build   func() []byte
+		build   func(string) []byte
+		maps    [][]string
 	}
 
 	writers := []writer{
@@ -786,49 +1016,46 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 			harness: "claude",
 			name:    "Claude Code",
 			path:    filepath.Join(projectDir, ".mcp.json"),
-			build: func() []byte {
+			build: func(string) []byte {
 				return buildMCPConfig("prism", claudeEntry)
 			},
+			maps: [][]string{{"mcpServers"}},
 		},
 		{
 			harness: "cursor",
 			name:    "Cursor",
 			path:    filepath.Join(projectDir, ".cursor", "mcp.json"),
-			build: func() []byte {
+			build: func(string) []byte {
 				return buildMCPConfig("prism", entry)
 			},
-		},
-		{
-			harness: "windsurf",
-			name:    "Windsurf",
-			path:    filepath.Join(projectDir, ".windsurf", "mcp.json"),
-			build: func() []byte {
-				return buildMCPConfig("prism", entry)
-			},
+			maps: [][]string{{"mcpServers"}},
 		},
 		{
 			harness: "vscode",
 			name:    "VS Code",
 			path:    filepath.Join(projectDir, ".vscode", "mcp.json"),
-			build: func() []byte {
+			build: func(string) []byte {
 				return buildVSCodeConfig(prismBin, projectDir)
 			},
+			maps: [][]string{{"servers"}},
 		},
 		{
 			harness: "gemini",
 			name:    "Gemini CLI",
 			path:    filepath.Join(projectDir, ".gemini", "settings.json"),
-			build: func() []byte {
+			build: func(string) []byte {
 				return buildMCPConfig("prism", claudeEntry)
 			},
+			maps: [][]string{{"mcpServers"}},
 		},
 		{
 			harness: "opencode",
 			name:    "opencode",
 			path:    filepath.Join(projectDir, "opencode.json"),
-			build: func() []byte {
-				return buildOpencodeConfig(prismBin)
+			build: func(path string) []byte {
+				return buildOpencodeConfigForPath(prismBin, path)
 			},
+			maps: [][]string{{"mcp"}, {"mcp", "servers"}},
 		},
 	}
 
@@ -860,9 +1087,13 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 			continue
 		}
 		isClaudeCode := w.name == "Claude Code"
-		content := w.build()
+		content := w.build(p)
 		// Merge rather than overwrite existing configs.
-		merged := mergeOrCreate(p, content)
+		merged, err := mergeOrCreate(p, content, w.maps...)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not migrate %s config (%s): %v\n", w.name, p, err)
+			continue
+		}
 		if err := os.WriteFile(p, merged, 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not write %s config (%s): %v\n", w.name, p, err)
 			continue
@@ -877,13 +1108,24 @@ func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permi
 	if harnessSelected(harnesses, "codex") {
 		codexPath := filepath.Join(projectDir, ".codex", "config.toml")
 		if !(refresh && !fileExists(codexPath)) {
-			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp"}); err != nil {
+			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp", "--compact"}); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: could not write project Codex config: %v\n", err)
 			} else {
 				fmt.Printf("registered with Codex CLI: %s\n", codexPath)
 				written = append(written, codexPath)
 			}
 		}
+	}
+
+	if harnessSelected(harnesses, "windsurf") {
+		legacyPath := filepath.Join(projectDir, ".windsurf", "mcp.json")
+		removed, err := removeJSONMapEntry(legacyPath, []string{"mcpServers"}, "prism")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not migrate legacy Windsurf config %s: %v\n", legacyPath, err)
+		} else if removed {
+			fmt.Printf("removed unsupported project-local Windsurf Prism registration: %s\n", legacyPath)
+		}
+		fmt.Fprintln(os.Stderr, "warning: Windsurf does not document a project-local MCP config; Prism wrote project steering only and did not modify user-global Windsurf settings")
 	}
 
 	return written
@@ -958,11 +1200,70 @@ func buildOpencodeConfig(prismBin string) []byte {
 	c := opencodeConfig{
 		Schema: "https://opencode.ai/config.json",
 		MCP: map[string]opencodeServer{
-			"prism": {Type: "local", Command: []string{prismBin, "mcp"}, Enabled: true},
+			"prism": {Type: "local", Command: []string{prismBin, "mcp", "--compact"}, Enabled: true},
 		},
 	}
 	b, _ := json.MarshalIndent(c, "", "  ")
 	return b
+}
+
+func buildOpencodeConfigForPath(prismBin, path string) []byte {
+	useV2 := false
+	raw, err := os.ReadFile(path)
+	if err == nil {
+		var doc map[string]any
+		if json.Unmarshal(raw, &doc) == nil {
+			if mcpMap, ok := doc["mcp"].(map[string]any); ok {
+				if _, ok := mcpMap["servers"].(map[string]any); ok {
+					useV2 = true
+				}
+			}
+		}
+	}
+	if !useV2 {
+		useV2 = commandMajorVersion("opencode") >= 2
+	}
+	if useV2 {
+		entry := map[string]any{"type": "local", "command": []string{prismBin, "mcp", "--compact"}, "disabled": false}
+		out, _ := json.MarshalIndent(map[string]any{"mcp": map[string]any{"servers": map[string]any{"prism": entry}}}, "", "  ")
+		return out
+	}
+	return buildOpencodeConfig(prismBin)
+}
+
+func commandMajorVersion(name string) int {
+	tempHome, err := os.MkdirTemp("", "prism-version-probe-")
+	if err != nil {
+		return 0
+	}
+	defer os.RemoveAll(tempHome)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, "--version")
+	blocked := map[string]bool{"HOME": true, "USERPROFILE": true, "XDG_CONFIG_HOME": true, "APPDATA": true}
+	for _, value := range os.Environ() {
+		key, _, _ := strings.Cut(value, "=")
+		if !blocked[strings.ToUpper(key)] {
+			cmd.Env = append(cmd.Env, value)
+		}
+	}
+	cmd.Env = append(cmd.Env,
+		"HOME="+tempHome,
+		"USERPROFILE="+tempHome,
+		"XDG_CONFIG_HOME="+filepath.Join(tempHome, ".config"),
+		"APPDATA="+filepath.Join(tempHome, "AppData"),
+	)
+	output, err := cmd.Output()
+	if err != nil {
+		return 0
+	}
+	for _, field := range strings.Fields(string(output)) {
+		majorText := strings.SplitN(strings.TrimPrefix(field, "v"), ".", 2)[0]
+		if major, err := strconv.Atoi(majorText); err == nil {
+			return major
+		}
+	}
+	return 0
 }
 
 // buildCodexSnippet returns the project-local Codex TOML block as text.
@@ -970,7 +1271,7 @@ func buildCodexSnippet(prismBin string) string {
 	return strings.Join([]string{
 		"[mcp_servers.prism]",
 		fmt.Sprintf("command = %q", prismBin),
-		prismTOMLStringArray("args", []string{"mcp"}),
+		prismTOMLStringArray("args", []string{"mcp", "--compact"}),
 	}, "\n") + "\n"
 }
 
@@ -978,8 +1279,8 @@ func buildCodexSnippet(prismBin string) string {
 // config snippet for one agent and exit WITHOUT writing anything. Mirrors the
 // targets initRegisterMCPTools writes.
 func printAgentConfig(id, projectDir, prismBin string) int {
-	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
-	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
+	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact", projectDir}}
+	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp", "--compact"}}
 
 	var path, body string
 	switch strings.ToLower(id) {
@@ -990,8 +1291,8 @@ func printAgentConfig(id, projectDir, prismBin string) int {
 		path = filepath.Join(projectDir, ".cursor", "mcp.json")
 		body = string(buildMCPConfig("prism", entry))
 	case "windsurf":
-		path = filepath.Join(projectDir, ".windsurf", "mcp.json")
-		body = string(buildMCPConfig("prism", entry))
+		fmt.Println("# Windsurf has no documented project-local MCP config. Prism writes AGENTS.md steering and does not modify user-global settings.")
+		return 0
 	case "vscode", "vs-code":
 		path = filepath.Join(projectDir, ".vscode", "mcp.json")
 		body = string(buildVSCodeConfig(prismBin, projectDir))
@@ -1003,7 +1304,7 @@ func printAgentConfig(id, projectDir, prismBin string) int {
 		body = string(buildMCPConfig("prism", claudeEntry))
 	case "opencode":
 		path = filepath.Join(projectDir, "opencode.json")
-		body = string(buildOpencodeConfig(prismBin))
+		body = string(buildOpencodeConfigForPath(prismBin, filepath.Join(projectDir, "opencode.json")))
 	default:
 		fmt.Fprintf(os.Stderr, "unknown harness %q. Known: %s\n", id, strings.Join(supportedHarnesses, ", "))
 		return 2
@@ -1024,7 +1325,7 @@ func buildVSCodeConfig(prismBin, projectDir string) []byte {
 		Servers map[string]vscodeServer `json:"servers"`
 	}
 	s := vscodeMCP{Servers: map[string]vscodeServer{
-		"prism": {Type: "stdio", Command: prismBin, Args: []string{"mcp", projectDir}},
+		"prism": {Type: "stdio", Command: prismBin, Args: []string{"mcp", "--compact", projectDir}},
 	}}
 	b, _ := json.MarshalIndent(s, "", "  ")
 	return b
@@ -1085,13 +1386,32 @@ func stripPrismTOMLBlock(lines []string, section, targetName string) []string {
 	return out
 }
 
-// stripPrismNamedTable removes a [section.target] table and its body.
+// stripPrismNamedTable removes a [section.target] table and its complete
+// subtree. Older Codex configs can contain only child tables such as
+// [mcp_servers.prism.tools.search]; leaving those behind makes TOML recreate
+// an implicit prism server with no transport and breaks Codex startup.
 func stripPrismNamedTable(lines []string, section, targetName string) []string {
-	header := "[" + section + "." + targetName + "]"
+	prefixes := []string{
+		"[" + section + "." + targetName + "]",
+		"[" + section + "." + targetName + ".",
+		"[" + section + ".\"" + targetName + "\"]",
+		"[" + section + ".\"" + targetName + "\".",
+		"[" + section + ".'" + targetName + "']",
+		"[" + section + ".'" + targetName + "'.",
+	}
+	isPrismHeader := func(line string) bool {
+		trimmed := strings.TrimSpace(line)
+		for _, prefix := range prefixes {
+			if trimmed == prefix || (strings.HasSuffix(prefix, ".") && strings.HasPrefix(trimmed, prefix)) {
+				return true
+			}
+		}
+		return false
+	}
 	var out []string
 	i := 0
 	for i < len(lines) {
-		if strings.TrimSpace(lines[i]) != header {
+		if !isPrismHeader(lines[i]) {
 			out = append(out, lines[i])
 			i++
 			continue
@@ -1113,93 +1433,55 @@ func prismTOMLStringArray(key string, vals []string) string {
 	return key + " = [" + strings.Join(quoted, ", ") + "]"
 }
 
-// mergeOrCreate reads the existing JSON at path and deep-merges content into
-// it. If the file does not exist, content is returned verbatim.
-// Only keys from content are upserted; existing unrelated keys are preserved.
-func mergeOrCreate(path string, content []byte) []byte {
+// mergeOrCreate reads the existing JSON at path, removes Prism from every
+// historical server-map location, and deep-merges the current entry. Invalid
+// user JSON is never overwritten: it is backed up and returned as an error.
+func mergeOrCreate(path string, content []byte, prismMaps ...[]string) ([]byte, error) {
 	existing, err := os.ReadFile(path)
 	if err != nil {
-		return content // file does not exist yet
+		if errors.Is(err, os.ErrNotExist) {
+			return content, nil
+		}
+		return nil, err
 	}
-	var base, overlay map[string]json.RawMessage
+	var base, overlay map[string]any
 	if err := json.Unmarshal(existing, &base); err != nil {
-		return content // existing file is not valid JSON — overwrite
+		backup := path + ".prism-backup"
+		for n := 1; fileExists(backup); n++ {
+			backup = fmt.Sprintf("%s.prism-backup.%d", path, n)
+		}
+		if writeErr := os.WriteFile(backup, existing, 0o644); writeErr != nil {
+			return nil, fmt.Errorf("invalid JSON (also could not write backup: %v): %w", writeErr, err)
+		}
+		return nil, fmt.Errorf("invalid JSON; original left unchanged and backup written to %s: %w", backup, err)
 	}
 	if err := json.Unmarshal(content, &overlay); err != nil {
-		return content
+		return nil, fmt.Errorf("internal generated config is invalid: %w", err)
+	}
+	for _, keys := range prismMaps {
+		deleteNestedMapEntry(base, keys, "prism")
 	}
 	if base == nil {
-		base = make(map[string]json.RawMessage)
+		base = make(map[string]any)
 	}
-	for k, v := range overlay {
-		// For "mcpServers" / "context_servers": merge nested map rather than replace.
-		if existing, ok := base[k]; ok {
-			var baseNested, newNested map[string]json.RawMessage
-			if json.Unmarshal(existing, &baseNested) == nil && json.Unmarshal(v, &newNested) == nil {
-				for nk, nv := range newNested {
-					baseNested[nk] = nv
-				}
-				merged, _ := json.Marshal(baseNested)
-				base[k] = merged
-				continue
-			}
-		}
-		base[k] = v
-	}
+	deepMergeJSON(base, overlay)
 	out, _ := json.MarshalIndent(base, "", "  ")
-	return out
+	return append(out, '\n'), nil
 }
 
-// removeLegacyGlobalMCPRegistrations migrates installations from the old
-// user-global model. It removes only the Prism server entry and preserves all
-// unrelated servers and settings. Project init calls this before writing the
-// selected repository configs so an already-installed global server cannot
-// shadow the project's binary or working directory.
-func removeLegacyGlobalMCPRegistrations() []string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return nil
-	}
-	targets := []struct {
-		path string
-		keys []string
-	}{
-		{filepath.Join(home, ".claude.json"), []string{"mcpServers"}},
-		{filepath.Join(home, ".cursor", "mcp.json"), []string{"mcpServers"}},
-		{filepath.Join(home, ".windsurf", "mcp.json"), []string{"mcpServers"}},
-		{filepath.Join(home, ".gemini", "settings.json"), []string{"mcpServers"}},
-		{filepath.Join(home, ".config", "zed", "settings.json"), []string{"context_servers"}},
-		{filepath.Join(home, ".config", "opencode", "opencode.json"), []string{"mcp"}},
-		{filepath.Join(home, ".config", "opencode", "opencode.json"), []string{"mcp", "servers"}},
-	}
-	var changed []string
-	seen := map[string]bool{}
-	for _, target := range targets {
-		if removeJSONMapEntry(target.path, target.keys, "prism") && !seen[target.path] {
-			seen[target.path] = true
-			changed = append(changed, target.path)
+func deepMergeJSON(base, overlay map[string]any) {
+	for key, value := range overlay {
+		newMap, newIsMap := value.(map[string]any)
+		oldMap, oldIsMap := base[key].(map[string]any)
+		if newIsMap && oldIsMap {
+			deepMergeJSON(oldMap, newMap)
+			continue
 		}
+		base[key] = value
 	}
-	codexPath := filepath.Join(home, ".codex", "config.toml")
-	if removePrismCodexConfig(codexPath) {
-		changed = append(changed, codexPath)
-	}
-	for _, path := range changed {
-		fmt.Printf("removed legacy user-global Prism registration: %s\n", path)
-	}
-	return changed
 }
 
-func removeJSONMapEntry(path string, keys []string, entry string) bool {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	var doc map[string]any
-	if json.Unmarshal(raw, &doc) != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not migrate invalid global config %s\n", path)
-		return false
-	}
+func deleteNestedMapEntry(doc map[string]any, keys []string, entry string) bool {
 	var current any = doc
 	for _, key := range keys {
 		object, ok := current.(map[string]any)
@@ -1219,38 +1501,204 @@ func removeJSONMapEntry(path string, keys []string, entry string) bool {
 		return false
 	}
 	delete(entries, entry)
-	out, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil || os.WriteFile(path, append(out, '\n'), 0o644) != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not remove legacy Prism registration from %s\n", path)
-		return false
-	}
 	return true
 }
 
-func removePrismCodexConfig(path string) bool {
+// removeLegacyGlobalMCPRegistrations migrates installations from the old
+// user-global model. It removes only the Prism server entry and preserves all
+// unrelated servers and settings. Project init calls this before writing the
+// selected repository configs so an already-installed global server cannot
+// shadow the project's binary or working directory.
+func removeLegacyGlobalMCPRegistrations() ([]string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return nil, err
+	}
+	targets := []struct {
+		path string
+		keys []string
+	}{
+		{filepath.Join(home, ".claude.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".cursor", "mcp.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".windsurf", "mcp.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".codeium", "windsurf", "mcp_config.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".codeium", "mcp_config.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".gemini", "settings.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".config", "zed", "settings.json"), []string{"context_servers"}},
+		{filepath.Join(home, ".config", "opencode", "opencode.json"), []string{"mcp"}},
+		{filepath.Join(home, ".config", "opencode", "opencode.json"), []string{"mcp", "servers"}},
+	}
+	var changed []string
+	var failures []string
+	seen := map[string]bool{}
+	for _, target := range targets {
+		removed, removeErr := removeJSONMapEntry(target.path, target.keys, "prism")
+		if removeErr != nil {
+			failures = append(failures, removeErr.Error())
+		}
+		if removed && !seen[target.path] {
+			seen[target.path] = true
+			changed = append(changed, target.path)
+		}
+	}
+	codexPath := filepath.Join(home, ".codex", "config.toml")
+	removed, removeErr := removePrismCodexConfig(codexPath)
+	if removeErr != nil {
+		failures = append(failures, removeErr.Error())
+	}
+	if removed {
+		changed = append(changed, codexPath)
+	}
+	claudeSettings := filepath.Join(home, ".claude", "settings.json")
+	removed, removeErr = removeClaudeGlobalApproval(claudeSettings)
+	if removeErr != nil {
+		failures = append(failures, removeErr.Error())
+	}
+	if removed && !seen[claudeSettings] {
+		changed = append(changed, claudeSettings)
+	}
+	for _, path := range changed {
+		fmt.Printf("removed legacy user-global Prism registration: %s\n", path)
+	}
+	if len(failures) > 0 {
+		return changed, errors.New(strings.Join(failures, "; "))
+	}
+	return changed, nil
+}
+
+func removeClaudeGlobalApproval(path string) (bool, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return false
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("read %s: %w", path, err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return false, fmt.Errorf("invalid JSON in %s", path)
+	}
+	changed := false
+	if servers, ok := doc["enabledMcpjsonServers"].([]any); ok {
+		kept := servers[:0]
+		for _, value := range servers {
+			if name, _ := value.(string); name == "prism" {
+				changed = true
+				continue
+			}
+			kept = append(kept, value)
+		}
+		doc["enabledMcpjsonServers"] = kept
+	}
+	if permissions, ok := doc["permissions"].(map[string]any); ok {
+		denyValues, _ := permissions["deny"].([]any)
+		removeLegacyDeny := true
+		for _, rule := range prismDenyEntries {
+			removeLegacyDeny = removeLegacyDeny && containsString(denyValues, rule)
+		}
+		for _, key := range []string{"allow", "deny"} {
+			values, _ := permissions[key].([]any)
+			kept := values[:0]
+			removedFromKey := false
+			for _, value := range values {
+				rule, _ := value.(string)
+				prismRule := rule == "mcp__prism" || strings.HasPrefix(rule, "mcp__prism__")
+				legacyDeny := key == "deny" && removeLegacyDeny && containsString2(prismDenyEntries, rule)
+				if prismRule || legacyDeny {
+					changed = true
+					removedFromKey = true
+					continue
+				}
+				kept = append(kept, value)
+			}
+			if !removedFromKey {
+				continue
+			}
+			if len(kept) == 0 {
+				delete(permissions, key)
+			} else {
+				permissions[key] = kept
+			}
+		}
+		doc["permissions"] = permissions
+	}
+	if !changed {
+		return false, nil
+	}
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return false, err
+	}
+	if err := os.WriteFile(path, append(out, '\n'), 0o644); err != nil {
+		return false, fmt.Errorf("remove legacy Prism approval from %s: %w", path, err)
+	}
+	return true, nil
+}
+
+func removeJSONMapEntry(path string, keys []string, entry string) (bool, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("read %s: %w", path, err)
+	}
+	var doc map[string]any
+	if json.Unmarshal(raw, &doc) != nil {
+		return false, fmt.Errorf("invalid JSON in %s", path)
+	}
+	var current any = doc
+	for _, key := range keys {
+		object, ok := current.(map[string]any)
+		if !ok {
+			return false, nil
+		}
+		current, ok = object[key]
+		if !ok {
+			return false, nil
+		}
+	}
+	entries, ok := current.(map[string]any)
+	if !ok {
+		return false, nil
+	}
+	if _, ok := entries[entry]; !ok {
+		return false, nil
+	}
+	delete(entries, entry)
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil || os.WriteFile(path, append(out, '\n'), 0o644) != nil {
+		return false, fmt.Errorf("could not remove legacy Prism registration from %s", path)
+	}
+	return true, nil
+}
+
+func removePrismCodexConfig(path string) (bool, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("read %s: %w", path, err)
 	}
 	before := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
 	after := stripPrismTOMLBlock(before, "mcp_servers", "prism")
 	after = stripPrismNamedTable(after, "mcp_servers", "prism")
 	if strings.Join(before, "\n") == strings.Join(after, "\n") {
-		return false
+		return false, nil
 	}
 	content := strings.TrimRight(strings.Join(after, "\n"), "\n")
 	if content != "" {
 		content += "\n"
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not remove legacy Prism registration from %s: %v\n", path, err)
-		return false
+		return false, fmt.Errorf("remove legacy Prism registration from %s: %w", path, err)
 	}
-	return true
+	return true, nil
 }
 
 // ensureClaudeCodeApproval makes Claude Code both TRUST and AUTO-ALLOW the
-// server in ~/.claude/settings.json:
+// server in the project's .claude/settings.json:
 //
 //   - enabledMcpjsonServers: server trust (no re-approval prompt per run)
 //   - permissions.allow: "mcp__<server>" — the server-wide grant, so the
@@ -2418,12 +2866,14 @@ func cmdServe(args []string) int {
 }
 
 func cmdMCP(args []string) int {
-	compact := false
+	compact := true
 	positional := make([]string, 0, 1)
 	for _, arg := range args {
 		switch {
 		case arg == "--compact":
 			compact = true
+		case arg == "--legacy":
+			compact = false
 		case strings.HasPrefix(arg, "-"):
 			return rejectUnknownFlag("mcp", arg)
 		default:
@@ -2431,7 +2881,7 @@ func cmdMCP(args []string) int {
 		}
 	}
 	if len(positional) > 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism mcp [--compact] [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism mcp [--compact|--legacy] [dir]")
 		return 2
 	}
 	dir := "."

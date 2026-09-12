@@ -8,16 +8,16 @@ import (
 func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
-		"mcp__prism__prism_lookup",
+		"mcp__prism__prism",
 		"affected sites, signature change, or pre-edit check",
 		"known bodies",
-		`prism_lookup(name=["A","B"])`,
+		`prism(op="lookup", args={"name":["A","B"]})`,
 		"known file/range",
 		"unknown location/text",
 		"related implementations/callers/tests",
 		"Known symbol: use impact/lookup directly, not search",
 		"external interfaces or incomplete wide scope",
-		`prism_search(scope="text", exhaustive=true)`,
+		`prism(op="search", args={"scope":"text","exhaustive":true,...})`,
 		"text matches do not prove implementation",
 	} {
 		if !strings.Contains(got, want) {
@@ -54,7 +54,7 @@ func TestSteeringRetainsEvidenceAndEditSafeguards(t *testing.T) {
 		"Before editing an existing symbol",
 		"relay its sites as-is",
 		"before finishing multi-site",
-		`prism_verify(removed_symbols=["A","B"])`,
+		`prism(op="verify", args={"removed_symbols":["A","B"]})`,
 		"unclear evidence",
 		"Preserve reported sites, resolve uncertainty",
 		"report remaining gaps",

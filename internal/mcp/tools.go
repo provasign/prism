@@ -351,14 +351,10 @@ func ToolSchemas() []map[string]any {
 	return out
 }
 
-// CompactToolSchemas exposes the same six primary operations through one MCP
-// tool. This is an opt-in experiment: the legacy schemas remain the default
-// until agent-routing and token measurements justify changing the surface.
-//
-// Claude Code currently drops tools whose top-level input schema is a oneOf, so
-// the compact surface uses one typed union of the common operation fields. The
-// selected legacy handler remains the authority: Handler.Invoke validates args
-// against that operation's full schema and rejects silently ignored parameters.
+// CompactToolSchemas exposes the six primary operations through one MCP tool.
+// It avoids top-level composition keywords because older MCP hosts have
+// dropped tools carrying oneOf even when the JSON Schema is valid. The
+// selected legacy handler remains the operation-specific authority.
 func CompactToolSchemas() []map[string]any {
 	operations := []struct {
 		op   string
@@ -372,10 +368,8 @@ func CompactToolSchemas() []map[string]any {
 		{op: "verify", tool: "prism_verify"},
 	}
 
-	// Keep the gateway small without weakening its contract. Each oneOf branch
-	// carries the selected legacy operation's real schema, minus prose already
-	// covered by the gateway routing description. This makes invalid cross-op
-	// arguments visible to the model before a call reaches Handler.Invoke.
+	// Keep one union of argument properties. Operation-specific required and
+	// unknown-field checks happen after expandCompactCall selects the handler.
 	var compactSchemaValue func(any) any
 	compactSchemaValue = func(value any) any {
 		switch value := value.(type) {
@@ -402,7 +396,7 @@ func CompactToolSchemas() []map[string]any {
 	}
 
 	ops := make([]string, 0, len(operations))
-	branches := make([]map[string]any, 0, len(operations))
+	argProperties := map[string]any{}
 	for _, operation := range operations {
 		ops = append(ops, operation.op)
 		args := compactSchemaValue(toolSchema(operation.tool)).(map[string]any)
@@ -412,12 +406,11 @@ func CompactToolSchemas() []map[string]any {
 			// cover the target instead of front-loading an entire large file.
 			args["properties"].(map[string]any)["limit"].(map[string]any)["maximum"] = 240
 		}
-		branches = append(branches, map[string]any{
-			"properties": map[string]any{
-				"op":   map[string]any{"const": operation.op},
-				"args": args,
-			},
-		})
+		for name, property := range args["properties"].(map[string]any) {
+			if _, exists := argProperties[name]; !exists {
+				argProperties[name] = property
+			}
+		}
 	}
 
 	return []map[string]any{{
@@ -437,11 +430,12 @@ func CompactToolSchemas() []map[string]any {
 					"description": "Use lookup for any known symbol; search only when its location is unknown.",
 				},
 				"args": map[string]any{
-					"type":        "object",
-					"description": "Arguments must match the selected operation. Search query accepts one term or an array; never join identifiers with spaces.",
+					"type":                 "object",
+					"additionalProperties": false,
+					"properties":           argProperties,
+					"description":          "Arguments must match the selected operation. Search query accepts one term or an array; never join identifiers with spaces.",
 				},
 			},
-			"oneOf": branches,
 		},
 	}}
 }

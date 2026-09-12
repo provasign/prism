@@ -1,3 +1,3 @@
 [mcp_servers.prism]
-command = "/opt/homebrew/bin/prism"
-args = ["mcp"]
+command = "/tmp/prism-v0730-rc"
+args = ["mcp", "--compact"]

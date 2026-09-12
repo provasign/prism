@@ -141,16 +141,17 @@ export PATH="${INSTALL_DIR}:$PATH"
 
 # ── Legacy global-registration cleanup ──────────────────────────────────────────
 info "Removing legacy user-global Prism MCP registrations…"
-"${INSTALL_DIR}/prism" cleanup-global 2>/dev/null \
+"${INSTALL_DIR}/prism" cleanup-global \
   && ok "legacy user-global Prism registrations removed" \
   || info "legacy global cleanup skipped (run: prism cleanup-global)"
 
 # ── Optional project initialization ─────────────────────────────────────────
 if [ -n "${PROJECT:-}" ]; then
   [ -d "$PROJECT" ] || die "project dir not found: $PROJECT"
+  [ -n "${HARNESS:-}" ] || die "PROJECT requires HARNESS (for example HARNESS=claude,codex); Prism never assumes all harnesses"
   info "Initializing project: $PROJECT"
   ( cd "$PROJECT"
-    "${INSTALL_DIR}/prism" init --harness "${HARNESS:-all}" >/dev/null 2>&1 \
+    "${INSTALL_DIR}/prism" init --harness "$HARNESS" \
       && ok "prism: project initialized" \
       || err "prism init failed — run manually: prism init"
     "${INSTALL_DIR}/prism" index >/dev/null 2>&1 \

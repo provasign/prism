@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,6 +109,71 @@ func TestParseHarnesses_AliasesOrderAndValidation(t *testing.T) {
 	}
 }
 
+func TestParseHarnessSelectionAcceptsNumbersNamesAndWhitespace(t *testing.T) {
+	got, err := parseHarnessSelection("1, 2   vscode")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "claude,codex,vscode"; strings.Join(got, ",") != want {
+		t.Fatalf("selection = %v, want %s", got, want)
+	}
+	if _, err := parseHarnessSelection("99"); err == nil {
+		t.Fatal("out-of-range harness number was accepted")
+	}
+}
+
+func TestPromptHarnessesReadsWholeLineAndConfirms(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("1, 2, 5\ny\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	oldIn := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = oldIn
+		_ = r.Close()
+	})
+	got, err := promptHarnesses(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "claude,codex,vscode"; strings.Join(got, ",") != want {
+		t.Fatalf("prompt selection = %v, want %s", got, want)
+	}
+}
+
+func TestCmdInitNonInteractiveRequiresHarness(t *testing.T) {
+	setHome(t, t.TempDir())
+	project := t.TempDir()
+	if rc := cmdInit([]string{project}); rc != 2 {
+		t.Fatalf("cmdInit without harness = %d, want 2", rc)
+	}
+	if fileExists(filepath.Join(project, "prism.yaml")) {
+		t.Fatal("rejected init wrote prism.yaml")
+	}
+}
+
+func TestCmdInitYesReusesRecordedHarnesses(t *testing.T) {
+	setHome(t, t.TempDir())
+	project := t.TempDir()
+	if err := os.WriteFile(filepath.Join(project, "prism.yaml"), []byte("version: 2\nharnesses: \"codex\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rc := cmdInit([]string{"--yes", project}); rc != 0 {
+		t.Fatalf("cmdInit --yes = %d", rc)
+	}
+	if !fileExists(filepath.Join(project, ".codex", "config.toml")) {
+		t.Fatal("recorded Codex selection was not reused")
+	}
+	if fileExists(filepath.Join(project, ".mcp.json")) {
+		t.Fatal("unrecorded Claude harness was configured")
+	}
+}
+
 func TestRemoveLegacyGlobalMCPRegistrations_PreservesUnrelatedConfig(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
@@ -133,10 +199,21 @@ func TestRemoveLegacyGlobalMCPRegistrations_PreservesUnrelatedConfig(t *testing.
 	if err := os.WriteFile(opencodePath, []byte(opencode), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	claudeSettings := filepath.Join(home, ".claude", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(claudeSettings), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settings := `{"enabledMcpjsonServers":["prism","keep"],"permissions":{"allow":["mcp__prism","mcp__other"],"deny":["Grep","Bash(grep:*)","Bash(rg:*)","keep-deny"]}}`
+	if err := os.WriteFile(claudeSettings, []byte(settings), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
-	changed := removeLegacyGlobalMCPRegistrations()
-	if len(changed) != 3 {
-		t.Fatalf("changed = %v, want three global config files", changed)
+	changed, err := removeLegacyGlobalMCPRegistrations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changed) != 4 {
+		t.Fatalf("changed = %v, want four global config files", changed)
 	}
 	for _, path := range []string{claudePath, codexPath, opencodePath} {
 		raw, err := os.ReadFile(path)
@@ -146,5 +223,98 @@ func TestRemoveLegacyGlobalMCPRegistrations_PreservesUnrelatedConfig(t *testing.
 		if strings.Contains(string(raw), "prism") || !strings.Contains(string(raw), "keep") {
 			t.Errorf("migration did not remove only Prism from %s:\n%s", path, raw)
 		}
+	}
+	settingsRaw, err := os.ReadFile(claudeSettings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(settingsRaw), "mcp__prism") || strings.Contains(string(settingsRaw), `"prism"`) || strings.Contains(string(settingsRaw), `"Grep"`) {
+		t.Fatalf("legacy global Claude approval survived:\n%s", settingsRaw)
+	}
+	for _, want := range []string{"mcp__other", "keep-deny", `"keep"`} {
+		if !strings.Contains(string(settingsRaw), want) {
+			t.Fatalf("unrelated global Claude setting %q was removed:\n%s", want, settingsRaw)
+		}
+	}
+}
+
+func TestWritePrismCodexConfigRemovesNestedLegacySubtree(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	existing := `[mcp_servers.prism.tools.search]
+enabled = false
+
+[mcp_servers."prism".tools.lookup]
+enabled = true
+
+[mcp_servers.other]
+command = "keep"
+`
+	if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writePrismCodexConfig(path, "/new/prism", []string{"mcp", "--compact"}); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(path)
+	got := string(raw)
+	if strings.Contains(got, "tools.search") || strings.Contains(got, "tools.lookup") {
+		t.Fatalf("legacy Prism subtree survived:\n%s", got)
+	}
+	if !strings.Contains(got, "[mcp_servers.other]") || !strings.Contains(got, `args = ["mcp", "--compact"]`) {
+		t.Fatalf("unrelated/current config missing:\n%s", got)
+	}
+}
+
+func TestMergeOrCreatePreservesInvalidJSONAndWritesBackup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	bad := []byte(`{"mcpServers":`)
+	if err := os.WriteFile(path, bad, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mergeOrCreate(path, buildMCPConfig("prism", mcpEntry{Command: "prism"}), []string{"mcpServers"}); err == nil {
+		t.Fatal("invalid JSON was accepted")
+	}
+	if got, _ := os.ReadFile(path); string(got) != string(bad) {
+		t.Fatalf("invalid user config was overwritten: %q", got)
+	}
+	if got, err := os.ReadFile(path + ".prism-backup"); err != nil || string(got) != string(bad) {
+		t.Fatalf("backup = %q, %v", got, err)
+	}
+}
+
+func TestWindsurfSelectionRemovesUnsupportedLegacyProjectEntry(t *testing.T) {
+	project := t.TempDir()
+	path := filepath.Join(project, ".windsurf", "mcp.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(`{"mcpServers":{"prism":{"command":"old"},"keep":{"command":"x"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	initRegisterMCPTools(project, "prism", []string{"windsurf"}, false, false, false)
+	raw, _ := os.ReadFile(path)
+	if strings.Contains(string(raw), `"prism"`) || !strings.Contains(string(raw), `"keep"`) {
+		t.Fatalf("legacy Windsurf cleanup was not scoped:\n%s", raw)
+	}
+}
+
+func TestOpenCodeV2SchemaIsPreserved(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "opencode.json")
+	if err := os.WriteFile(path, []byte(`{"mcp":{"servers":{"other":{"type":"local","command":["x"]}}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	overlay := buildOpencodeConfigForPath("/x/prism", path)
+	merged, err := mergeOrCreate(path, overlay, []string{"mcp"}, []string{"mcp", "servers"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(merged, &doc); err != nil {
+		t.Fatal(err)
+	}
+	mcpMap := doc["mcp"].(map[string]any)
+	servers := mcpMap["servers"].(map[string]any)
+	if servers["prism"] == nil || servers["other"] == nil || mcpMap["prism"] != nil {
+		t.Fatalf("OpenCode v2 merge shape is wrong: %s", merged)
 	}
 }

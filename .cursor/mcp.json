@@ -1,11 +1,12 @@
 {
   "mcpServers": {
     "prism": {
-      "command": "/opt/homebrew/bin/prism",
       "args": [
         "mcp",
+        "--compact",
         "/Users/tapabratapal/Projects/provasign/prism"
-      ]
+      ],
+      "command": "/tmp/prism-v0730-rc"
     }
   }
 }

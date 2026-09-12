@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -152,7 +153,79 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 			return "", nil, fmt.Errorf("prism: args must be an object")
 		}
 	}
+	if err := validateCompactArguments(name, args); err != nil {
+		return "", nil, err
+	}
 	return name, args, nil
+}
+
+func validateCompactArguments(name string, args map[string]any) error {
+	schema := toolSchema(name)
+	required, _ := schema["required"].([]string)
+	for _, key := range required {
+		if _, ok := args[key]; !ok {
+			return fmt.Errorf("prism: %s requires args.%s", strings.TrimPrefix(name, "prism_"), key)
+		}
+	}
+	properties, _ := schema["properties"].(map[string]any)
+	for key, value := range args {
+		property, ok := properties[key].(map[string]any)
+		if !ok || schemaAcceptsValue(property, value) {
+			continue
+		}
+		return fmt.Errorf("prism: args.%s has the wrong type for %s", key, strings.TrimPrefix(name, "prism_"))
+	}
+	return nil
+}
+
+func schemaAcceptsValue(schema map[string]any, value any) bool {
+	if alternatives, ok := schema["oneOf"].([]map[string]any); ok {
+		for _, alternative := range alternatives {
+			if schemaAcceptsValue(alternative, value) {
+				return true
+			}
+		}
+		return false
+	}
+	var types []string
+	switch declared := schema["type"].(type) {
+	case string:
+		types = []string{declared}
+	case []string:
+		types = declared
+	default:
+		return true
+	}
+	for _, declared := range types {
+		switch declared {
+		case "string":
+			if _, ok := value.(string); ok {
+				return true
+			}
+		case "boolean":
+			if _, ok := value.(bool); ok {
+				return true
+			}
+		case "array":
+			if _, ok := value.([]any); ok {
+				return true
+			}
+		case "object":
+			if _, ok := value.(map[string]any); ok {
+				return true
+			}
+		case "integer":
+			switch number := value.(type) {
+			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+				return true
+			case float64:
+				if !math.IsNaN(number) && !math.IsInf(number, 0) && math.Trunc(number) == number {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // supportedProtocolVersions are the MCP revisions this server can speak.
@@ -243,6 +316,9 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if s.compact {
 			instructions = compactServerInstructions
 		}
+		if warning := legacyProjectWarning(s.handler.Root); warning != "" {
+			instructions += " " + warning
+		}
 		return map[string]any{
 			"protocolVersion": negotiateProtocolVersion(params),
 			"serverInfo":      map[string]string{"name": "prism", "version": version.Version},
@@ -263,6 +339,12 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		}
 		if err := json.Unmarshal(params, &call); err != nil {
 			return nil, &rpcError{Code: -32602, Message: err.Error()}
+		}
+		if s.compact && call.Name != "prism" {
+			return nil, &rpcError{Code: -32601, Message: fmt.Sprintf("tool %q is not exposed by the compact Prism MCP; call prism with op and args", call.Name)}
+		}
+		if !s.compact && !legacyMCPTool(call.Name) {
+			return nil, &rpcError{Code: -32601, Message: fmt.Sprintf("tool %q is not exposed by the Prism MCP", call.Name)}
 		}
 		actualName := call.Name
 		actualArgs := call.Arguments
@@ -348,6 +430,15 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		return map[string]any{"content": content}, nil
 	default:
 		return nil, &rpcError{Code: -32601, Message: "method not found"}
+	}
+}
+
+func legacyMCPTool(name string) bool {
+	switch name {
+	case "prism_query", "prism_read", "prism_search", "prism_lookup", "prism_change_impact", "prism_verify":
+		return true
+	default:
+		return false
 	}
 }
 
