@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,110 @@ import (
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 )
+
+func TestSourceDeliveryCapsExpandedRelatedFile(t *testing.T) {
+	h := newTestHandler(t)
+	seedBody := "package p\nfunc Target() {}\n"
+	if err := os.WriteFile(filepath.Join(h.Root, "target.go"), []byte(seedBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var dependency strings.Builder
+	dependency.WriteString("package p\n")
+	for i := 1; i <= 100; i++ {
+		fmt.Fprintf(&dependency, "// related line %03d: %s\n", i, strings.Repeat("x", 48))
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "related.go"), []byte(dependency.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const budget = 1200
+	sel := &selection{picked: []ranking.BudgetedSymbol{
+		{Symbol: grove.SymbolRecord{ID: "target", Name: "Target", FilePath: "target.go", Span: grove.SpanInfo{Start: 2, End: 2}}, Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1},
+		{Symbol: grove.SymbolRecord{ID: "related", Name: "Related", FilePath: "related.go", Span: grove.SpanInfo{Start: 2, End: 101}}, Relation: ranking.RelationDirectCall, Disclosure: ranking.DisclosureFull, Score: 0.9},
+	}}
+	_, sections := h.deliverSource(t.Context(), "Target", sel, 5, budget)
+	if !strings.Contains(sections["target.go"], "func Target") {
+		t.Fatalf("named target missing: %q", sections["target.go"])
+	}
+	section := sections["related.go"]
+	if section == "" || strings.Contains(section, "related line 100") {
+		t.Fatalf("related file was omitted or expanded too far: %q", section)
+	}
+	cap := int(float64(budget)*ranking.FileBudgetFraction) / 2
+	if got := ranking.EstimateTokens(section); got > cap {
+		t.Fatalf("related file used %d tokens, cap=%d", got, cap)
+	}
+}
+
+func TestSourceDeliveryKeepsEveryNamedAnchorFile(t *testing.T) {
+	h := newTestHandler(t)
+	sel := &selection{}
+	for i, name := range []string{"first", "second", "third"} {
+		path := name + ".go"
+		if err := os.WriteFile(filepath.Join(h.Root, path), []byte("package p\nfunc "+name+"() {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		sel.picked = append(sel.picked, ranking.BudgetedSymbol{
+			Symbol:   grove.SymbolRecord{ID: name, Name: name, FilePath: path, Span: grove.SpanInfo{Start: 2, End: 2}},
+			Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: float64(3 - i),
+		})
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "related.go"), []byte("package p\nfunc related() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sel.picked = append(sel.picked, ranking.BudgetedSymbol{
+		Symbol:   grove.SymbolRecord{ID: "related", Name: "related", FilePath: "related.go", Span: grove.SpanInfo{Start: 2, End: 2}},
+		Relation: ranking.RelationDirectCall, Disclosure: ranking.DisclosureFull, Score: 0.1,
+	})
+	_, sections := h.deliverSource(t.Context(), "three anchors", sel, 0, 1200)
+	for _, name := range []string{"first.go", "second.go", "third.go", "related.go"} {
+		if sections[name] == "" {
+			t.Fatalf("default file limit omitted named anchor %s: %v", name, sections)
+		}
+	}
+}
+
+func TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget(t *testing.T) {
+	h := newTestHandler(t)
+	var body strings.Builder
+	for i := 1; i <= 75; i++ {
+		fmt.Fprintf(&body, "line %03d: %s\n", i, strings.Repeat("x", 90))
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "module.py"), []byte(body.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sel := &selection{picked: []ranking.BudgetedSymbol{{
+		Symbol:   grove.SymbolRecord{ID: "target", Name: "target", FilePath: "module.py", Span: grove.SpanInfo{Start: 30, End: 55}},
+		Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1,
+	}}}
+	_, sections := h.deliverSource(t.Context(), "target", sel, 1, 1500)
+	if section := sections["module.py"]; !strings.Contains(section, "line 050:") || strings.Contains(section, "line 075:") {
+		t.Fatalf("expected the full named window without the oversized whole file: %q", section)
+	}
+}
+
+func TestSourceDeliverySingleAnchorFileCanUseSharedBudget(t *testing.T) {
+	h := newTestHandler(t)
+	var body strings.Builder
+	for i := 1; i <= 200; i++ {
+		fmt.Fprintf(&body, "anchor line %03d: %s\n", i, strings.Repeat("x", 60))
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "module.py"), []byte(body.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sel := &selection{picked: []ranking.BudgetedSymbol{
+		{Symbol: grove.SymbolRecord{ID: "first", Name: "first", FilePath: "module.py", Span: grove.SpanInfo{Start: 20, End: 50}}, Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1},
+		{Symbol: grove.SymbolRecord{ID: "second", Name: "second", FilePath: "module.py", Span: grove.SpanInfo{Start: 100, End: 130}}, Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1},
+	}}
+	const budget = 1900
+	out, sections := h.deliverSource(t.Context(), "two named anchors", sel, 1, budget)
+	section := sections["module.py"]
+	if !strings.Contains(section, "anchor line 045:") || !strings.Contains(section, "anchor line 125:") {
+		t.Fatalf("expected both named windows within shared budget: %q", section)
+	}
+	if got := ranking.EstimateTokens(out["content"].(string)); got > budget {
+		t.Fatalf("source used %d tokens, budget=%d", got, budget)
+	}
+}
 
 // ─── symbolWindows (pure) ─────────────────────────────────────────────────
 
@@ -109,6 +214,17 @@ func TestSymbolWindowsSkipsInvalidSpans(t *testing.T) {
 	}
 }
 
+func TestGroupPickedByFileKeepsDirectNeighborAheadOfHotFile(t *testing.T) {
+	picked := []ranking.BudgetedSymbol{
+		{Symbol: grove.SymbolRecord{FilePath: "hot.go", Span: grove.SpanInfo{Start: 1}}, Relation: ranking.RelationRetrieval, Score: 0.9},
+		{Symbol: grove.SymbolRecord{FilePath: "caller.go", Span: grove.SpanInfo{Start: 1}}, Relation: ranking.RelationDirectCall, Score: 0.2},
+	}
+	files := groupPickedByFile(picked)
+	if len(files) != 2 || files[0].path != "caller.go" {
+		t.Fatalf("source file order lost direct-call evidence: %+v", files)
+	}
+}
+
 // ─── toolExplore E2E over an indexed fixture ──────────────────────────────
 
 func newDeliveryFixture(t *testing.T) *Handler {
@@ -194,6 +310,47 @@ func TestToolQuery_SourceDelivery_E2E(t *testing.T) {
 	// Steering framing that makes the delivery edit-ready.
 	if !strings.Contains(content, "Read you have already performed") {
 		t.Errorf("content should carry the already-read steering:\n%s", content)
+	}
+}
+
+func TestToolQueryBudgetBoundsRenderedResponse(t *testing.T) {
+	const budget = 350
+	for _, delivery := range []string{"source", "symbols"} {
+		t.Run(delivery, func(t *testing.T) {
+			h := newDeliveryFixture(t)
+			out, err := h.Invoke("prism_query", map[string]any{
+				"task": "find greeting callers", "terms": []string{"FormatGreeting"},
+				"delivery": delivery, "budget": budget,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var rendered string
+			var reported int
+			switch v := out.(type) {
+			case map[string]any:
+				var ok bool
+				rendered, ok = renderQuerySourceAsText(v)
+				if !ok {
+					t.Fatal("source response did not render as MCP text")
+				}
+				reported, _ = v["deliveredTokens"].(int)
+			case queryResult:
+				encoded, err := json.Marshal(v)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rendered = string(encoded)
+				reported = v.BudgetUsed
+			default:
+				t.Fatalf("unexpected response %T", out)
+			}
+			if got := ranking.EstimateTokens(rendered); got > budget {
+				t.Fatalf("%s delivered %d tokens under budget=%d: %s", delivery, got, budget, rendered)
+			} else if reported != got {
+				t.Fatalf("%s reported %d delivered tokens, rendered %d", delivery, reported, got)
+			}
+		})
 	}
 }
 

@@ -1,11 +1,14 @@
 package mcp
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
@@ -74,7 +77,7 @@ func TestSearchSymbols_ExhaustiveLiftsTheCap(t *testing.T) {
 	}
 }
 
-func TestSearchSymbols_NonPositiveLimitClampsToDefault(t *testing.T) {
+func TestSearchSymbols_NonPositiveLimitUsesAdaptiveDefault(t *testing.T) {
 	// Review 2026-09-06: limit=-1 reached syms[:-1] and panicked the handler.
 	h := symbolCapFixture(t, 40)
 	for _, lim := range []int{-1, 0} {
@@ -84,11 +87,11 @@ func TestSearchSymbols_NonPositiveLimitClampsToDefault(t *testing.T) {
 			t.Fatalf("limit=%d: %v", lim, err)
 		}
 		m := out.(map[string]any)
-		if n := len(anySlice(m["symbols"])); n != defaultSearchLimit {
-			t.Errorf("limit=%d: want the default %d, got %d", lim, defaultSearchLimit, n)
+		if n := len(anySlice(m["symbols"])); n != 40 {
+			t.Errorf("limit=%d: small payload should deliver all 40, got %d", lim, n)
 		}
-		if m["symbolsTruncated"] != true {
-			t.Errorf("limit=%d: 40 matches under a %d cap must be flagged", lim, defaultSearchLimit)
+		if m["symbolsTruncated"] == true {
+			t.Errorf("limit=%d: complete small result must not be flagged", lim)
 		}
 	}
 }
@@ -152,7 +155,16 @@ func TestSearchSymbols_ScopedSearchSeesPastOutOfScopeMatches(t *testing.T) {
 }
 
 func TestSearchSymbols_CappedResultSaysSo(t *testing.T) {
-	h := symbolCapFixture(t, 40)
+	small := symbolCapFixture(t, 40)
+	complete, err := small.Invoke("prism_search", map[string]any{"query": "FooThing", "scope": "symbols"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := complete.(map[string]any); len(anySlice(m["symbols"])) != 40 || m["symbolsTruncated"] == true {
+		t.Fatalf("40 compact symbols should arrive complete in one call: %#v", m)
+	}
+
+	h := symbolCapFixture(t, 160)
 	out, err := h.Invoke("prism_search", map[string]any{"query": "FooThing", "scope": "symbols"})
 	if err != nil {
 		t.Fatal(err)
@@ -176,5 +188,159 @@ func TestSearchSymbols_CappedResultSaysSo(t *testing.T) {
 	m = out.(map[string]any)
 	if _, ok := m["symbolsTruncated"]; ok {
 		t.Error("a result under the cap must not be flagged")
+	}
+}
+
+func symbolRankingFixture(t *testing.T) *Handler {
+	t.Helper()
+	dir := t.TempDir()
+	var production strings.Builder
+	production.WriteString("package p\n\nfunc Select() {}\nfunc SelectProfile() {}\nfunc PreSelect() {}\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&production, "func RankReal%02d() {}\n", i)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "prod.go"), []byte(production.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var doubles strings.Builder
+	doubles.WriteString("package p\n\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&doubles, "func RankFake%02d() {}\n", i)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "bench_test.go"), []byte(doubles.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+func TestSearchSymbolsPrefersRealMatchesBeforeCap(t *testing.T) {
+	h := symbolRankingFixture(t)
+	out, err := h.Invoke("prism_search", map[string]any{"query": "Rank", "scope": "symbols", "limit": 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	syms := anySlice(out.(map[string]any)["symbols"])
+	if len(syms) != 5 {
+		t.Fatalf("got %d symbols, want 5", len(syms))
+	}
+	for _, s := range syms {
+		m := s.(map[string]any)
+		if m["testDouble"] == true {
+			t.Fatalf("test double displaced a production match: %v", syms)
+		}
+	}
+}
+
+func TestSearchSymbolsLabelsNameMatchTiers(t *testing.T) {
+	h := symbolRankingFixture(t)
+	out, err := h.Invoke("prism_search", map[string]any{"query": "Select", "scope": "symbols", "limit": 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	syms := anySlice(out.(map[string]any)["symbols"])
+	want := []struct{ name, kind string }{{"Select", "name-exact"}, {"SelectProfile", "name-prefix"}, {"PreSelect", "name-substring"}}
+	if len(syms) != len(want) {
+		t.Fatalf("got %d symbols, want %d", len(syms), len(want))
+	}
+	for i, w := range want {
+		m := syms[i].(map[string]any)
+		if m["name"] != w.name || m["matchKind"] != w.kind {
+			t.Fatalf("rank %d: got %s (%v), want %s (%s)", i, m["name"], m["matchKind"], w.name, w.kind)
+		}
+	}
+	text, ok := renderSearchAsText(out.(map[string]any))
+	if !ok || !strings.Contains(text, "[name-prefix]") {
+		t.Fatalf("match reason missing from rendered search: %s", text)
+	}
+}
+
+func TestQueryRankingIgnoresFreshUnrelatedCommit(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git unavailable")
+	}
+	h := symbolScopeFixture(t, 30, 30)
+	root := h.Root
+	git := func(date string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = root
+		if date != "" {
+			cmd.Env = append(os.Environ(), "GIT_AUTHOR_DATE="+date, "GIT_COMMITTER_DATE="+date)
+		}
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	git("", "init", "-q")
+	git("", "config", "user.name", "Ranking Test")
+	git("", "config", "user.email", "ranking@example.test")
+	git("", "add", "foo.go", "sub/sub.go")
+	git(time.Now().Add(-400*24*time.Hour).Format(time.RFC3339), "commit", "-qm", "old source")
+	args := map[string]any{"task": "find FooThing code", "terms": []string{"FooThing"}, "delivery": "symbols", "budget": 1200}
+	query := func() string {
+		t.Helper()
+		fresh := NewHandler(config.Default(), root, h.Grove)
+		out, err := fresh.Invoke("prism_query", args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, ok := out.(queryResult)
+		if !ok || len(result.Symbols) < 6 {
+			t.Fatalf("fixture needs ranked candidates beyond its five seeds: %#v", out)
+		}
+		seenSub := false
+		for _, symbol := range result.Symbols {
+			seenSub = seenSub || strings.HasPrefix(symbol.FilePath, "sub/")
+		}
+		if !seenSub {
+			t.Fatal("fixture needs a candidate from the subsequently edited file")
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	search := func() string {
+		t.Helper()
+		out, err := h.Invoke("prism_search", map[string]any{"query": "FooThing", "scope": "symbols"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := json.Marshal(out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	before := query()
+	searchBefore := search()
+	path := filepath.Join(root, "sub", "sub.go")
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(append([]byte{}, original...), []byte("\n// unrelated edit\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("", "add", "sub/sub.go")
+	git("", "commit", "-qm", "fresh unrelated edit")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if after := query(); after != before {
+		t.Fatalf("same source/index/arguments changed after a fresh unrelated commit\nbefore: %s\nafter: %s", before, after)
+	}
+	if after := search(); after != searchBefore {
+		t.Fatalf("symbol sampling changed after a fresh unrelated commit\nbefore: %s\nafter: %s", searchBefore, after)
 	}
 }

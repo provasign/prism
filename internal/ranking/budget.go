@@ -28,27 +28,31 @@ const (
 	CategorySummary    Category = "summary"
 )
 
-// CategoryShares maps the budget fraction per category.
-var CategoryShares = map[Category]float64{
-	CategoryTarget:     0.35,
-	CategoryDependency: 0.25,
-	CategoryTest:       0.20,
-	CategoryDoc:        0.10,
-	CategorySummary:    0.10,
-}
-
 // BudgetedSymbol is the output of the selector for one chosen symbol.
 type BudgetedSymbol struct {
 	Symbol     grove.SymbolRecord
+	Relation   RelationTier
 	Score      float64
 	Category   Category
 	Disclosure DisclosureLevel
 	TokenCost  int
 }
 
+// RelationTier preserves verified structural evidence ahead of file-level or
+// retrieval-order signals. Seeds outrank direct call neighbors, which outrank
+// symbols found only by lexical retrieval.
+type RelationTier uint8
+
+const (
+	RelationRetrieval RelationTier = iota
+	RelationDirectCall
+	RelationSeed
+)
+
 // Candidate is one input symbol with a precomputed score and category.
 type Candidate struct {
 	Symbol   grove.SymbolRecord
+	Relation RelationTier
 	Score    float64
 	Category Category
 	// PreviouslySeen indicates the symbol's file has already been delivered
@@ -58,18 +62,16 @@ type Candidate struct {
 }
 
 // ScoreCliffFactor is the multiplier applied to the highest candidate score
-// seen so far to derive the cutoff for subsequent candidates. When a
-// candidate's score drops below (peakScore * ScoreCliffFactor), selection
-// stops — the remaining candidates are noise relative to the top of the list.
+// seen in the retrieval-only tier to derive its cutoff. Verified direct call
+// neighbors never encounter this cliff.
 // 0.6 means: stop when score falls more than 40% below the peak.
 const ScoreCliffFactor = 0.6
 
 // FileBudgetFraction caps how much of the total budget one FILE's selected
-// content may consume (seeds included in the accounting, though seeds are
-// never themselves demoted — they are the targets). Same rationale as the
+// content may consume (seeds included in the accounting). Same rationale as the
 // type-seed 40% rule above, applied to the aggregate: without it, every
 // method of a well-matching class arrives as its own graph-connected
-// candidate, each individually fits its category budget, and collectively
+// candidate, each individually fits its own budget check, and collectively
 // they tile the entire file — measured 2026-08-31 (werkzeug routing/map.py,
 // budget=14000): merged candidate windows covered 913 of 951 lines, a
 // whole-file delivery in all but name. Past the cap, further candidates
@@ -79,21 +81,40 @@ const FileBudgetFraction = 0.4
 
 // Select runs the budget-aware greedy selector.
 //
-//   - Seeds are always included at DisclosureFull and are NOT charged against
-//     the budget (they ARE the targets).
+//   - Seeds are charged to the same pool as candidates, with room reserved for
+//     later seed references when the budget permits.
 //   - Remaining candidates are sorted by score desc and assigned a disclosure
-//     level that fits each per-category budget.
+//     level that fits the unspent budget.
 //   - Candidates below RelevanceThreshold are forced to DisclosureSignature
 //     even if a higher level would fit.
 //   - Previously-seen items are demoted by confidence.
-//   - Selection stops when a candidate's score drops more than ScoreCliffFactor
-//     below the peak score seen so far (score cliff cutoff).
+//   - Retrieval-only selection stops at the score cliff; verified call
+//     neighbors are retained while budget permits.
 func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int) []BudgetedSymbol {
 	out := make([]BudgetedSymbol, 0, len(seeds)+len(candidates))
 	perFile := map[string]int{}
 	fileCap := int(float64(totalBudget) * FileBudgetFraction)
-	for _, s := range seeds {
+	remaining := totalBudget
+	if remaining < 0 {
+		remaining = 0
+	}
+	minimumTail := make([]int, len(seeds)+1)
+	for i := len(seeds) - 1; i >= 0; i-- {
+		minimumTail[i] = minimumTail[i+1] + EstimateTokens(Render(seeds[i], DisclosureReference))
+	}
+	for i, s := range seeds {
 		disc := DisclosureFull
+		// A module-wide pseudo-symbol overlaps the named anchors in its file.
+		// Keep it as a pointer so it cannot spend the budget needed to show
+		// the body of a specific function the query named.
+		if s.Name == "<top-level>" {
+			for _, other := range seeds {
+				if other.FilePath == s.FilePath && other.ID != s.ID && other.Name != "<top-level>" {
+					disc = DisclosureSignature
+					break
+				}
+			}
+		}
 		// TYPE seeds are budget-aware. Full disclosure of a 2,000-line class
 		// blew the section budget and truncated away the METHOD seeds at
 		// high line numbers (BeanDeserializerBase: class window 29-1986
@@ -109,33 +130,42 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 		// large classes in one file (measured 2026-08-31, "Map" -> Map +
 		// MapAdapter in werkzeug routing/map.py, budget=14000) passed the
 		// old per-symbol check twice and tiled 913 of 951 lines. Method
-		// seeds stay unconditionally full — they are small, named targets.
+		// seeds are tried at full disclosure first, subject to the shared pool.
 		switch s.Kind {
 		case "class", "interface", "struct", "enum", "type":
-			if perFile[s.FilePath]+EstimateTokens(Render(s, DisclosureFull)) > fileCap {
+			if disc == DisclosureFull && perFile[s.FilePath]+EstimateTokens(Render(s, DisclosureFull)) > fileCap {
 				disc = DisclosureSignature
 			}
 		}
-		cost := EstimateTokens(Render(s, disc))
+		var cost int
+		picked := DisclosureLevel("")
+		reserve := minimumTail[i+1]
+		if minimumTail[i] > remaining {
+			// When all remaining seed references cannot fit, keep the
+			// earliest named anchor instead of discarding every seed.
+			reserve = 0
+		}
+		for _, level := range []DisclosureLevel{disc, DisclosureSignature, DisclosureReference} {
+			cost = EstimateTokens(Render(s, level))
+			if cost <= remaining-reserve {
+				picked = level
+				break
+			}
+		}
+		if picked == "" {
+			continue
+		}
+		disc = picked
+		remaining -= cost
 		perFile[s.FilePath] += cost
 		out = append(out, BudgetedSymbol{
 			Symbol:     s,
+			Relation:   RelationSeed,
 			Score:      1.0,
 			Category:   CategoryTarget,
 			Disclosure: disc,
 			TokenCost:  cost,
 		})
-	}
-
-	// Per-category budgets. Targets share is reserved for seeds in this
-	// simple model; the budget allocator treats it as already spent and
-	// distributes the rest among non-target categories proportionally.
-	perCat := map[Category]int{}
-	for c, share := range CategoryShares {
-		if c == CategoryTarget {
-			continue
-		}
-		perCat[c] = int(float64(totalBudget) * share)
 	}
 
 	// Total order, not just score: with a score-only stable sort, tie order
@@ -145,6 +175,9 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 	// recurring, exactly the signature of ties resolved by map order. A
 	// ranking that depends on runtime map layout is not a ranking.
 	sort.SliceStable(candidates, func(i, j int) bool {
+		if candidates[i].Relation != candidates[j].Relation {
+			return candidates[i].Relation > candidates[j].Relation
+		}
 		if candidates[i].Score != candidates[j].Score {
 			return candidates[i].Score > candidates[j].Score
 		}
@@ -158,17 +191,34 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 	})
 
 	var peakScore float64
+	var currentRelation RelationTier
+	haveRelation := false
 	for _, cand := range candidates {
+		if !haveRelation || cand.Relation != currentRelation {
+			currentRelation = cand.Relation
+			haveRelation = true
+			peakScore = 0
+		}
 		// Score-cliff cutoff: stop when relevance falls off sharply from the
 		// peak. This prevents budget-filling with low-signal noise once the
 		// genuinely relevant symbols have been selected.
-		if cand.Score > peakScore {
+		if cand.Relation == RelationDirectCall {
+			// A verified neighbor is never cut by a score cliff caused by a
+			// different signal or an earlier retrieval position.
+		} else if cand.Score > peakScore {
 			peakScore = cand.Score
 		} else if peakScore > 0 && cand.Score < peakScore*ScoreCliffFactor {
 			break
 		}
 
 		desired := chooseDisclosure(cand)
+		// A non-anchor type body can contain hundreds of unrelated members.
+		// Keep its contract as a pointer; named type seeds retain their own
+		// budget-aware full-disclosure path above.
+		switch cand.Symbol.Kind {
+		case "class", "interface", "struct", "enum", "type":
+			desired = DisclosureSignature
+		}
 		// Per-file cap: once this candidate's file has spent its share of
 		// the budget, the best it can get is signature disclosure — the
 		// aggregate-tiling failure mode this prevents is bodies, not
@@ -183,7 +233,7 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 		var cost int
 		for _, lvl := range levels {
 			cost = EstimateTokens(Render(cand.Symbol, lvl))
-			if cost <= perCat[cand.Category] {
+			if cost <= remaining {
 				picked = lvl
 				break
 			}
@@ -191,10 +241,11 @@ func Select(seeds []grove.SymbolRecord, candidates []Candidate, totalBudget int)
 		if picked == "" {
 			continue // does not fit even at reference level
 		}
-		perCat[cand.Category] -= cost
+		remaining -= cost
 		perFile[cand.Symbol.FilePath] += cost
 		out = append(out, BudgetedSymbol{
 			Symbol:     cand.Symbol,
+			Relation:   cand.Relation,
 			Score:      cand.Score,
 			Category:   cand.Category,
 			Disclosure: picked,

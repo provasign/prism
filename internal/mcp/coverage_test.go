@@ -25,7 +25,7 @@ func newH(t *testing.T) *Handler {
 
 func TestNewHandler(t *testing.T) {
 	h := newH(t)
-	if h.Cfg == nil || h.Session == nil || h.Ledger == nil || h.Signals == nil {
+	if h.Cfg == nil || h.Session == nil || h.Ledger == nil {
 		t.Error("nil field")
 	}
 }

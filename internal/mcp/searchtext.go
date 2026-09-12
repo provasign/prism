@@ -263,6 +263,9 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 				}
 				fmt.Fprintf(b, "  %s", sig)
 			}
+			if match, _ := sm["matchKind"].(string); match != "" {
+				fmt.Fprintf(b, "  [%s]", match)
+			}
 			if td, _ := sm["testDouble"].(bool); td {
 				b.WriteString("  [test double]")
 			}

@@ -1,19 +1,10 @@
 package ranking
 
 import (
-	"math"
 	"testing"
 
 	"github.com/provasign/prism/internal/grove"
 )
-
-func TestScore_LinearCombination(t *testing.T) {
-	p := Profile{GraphDistance: 0.5, Recency: 0.5}
-	got := Score(SignalValues{GraphDistance: 1, Recency: 0.5}, p)
-	if math.Abs(got-0.75) > 1e-9 {
-		t.Fatalf("score: want 0.75, got %v", got)
-	}
-}
 
 func TestSelectProfile_FallbackToDefault(t *testing.T) {
 	p := SelectProfile("nonexistent")

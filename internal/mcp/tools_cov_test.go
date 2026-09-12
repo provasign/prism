@@ -388,8 +388,7 @@ func TestMinFloat(t *testing.T) {
 
 func TestToolQuery_TestWritingTask(t *testing.T) {
 	h := newHWithGrove(t, nil)
-	// A test-writing task should trigger the TestRelevance boost and budget expansion
-	// without error.
+	// Test-writing phrasing is accepted without changing ranking or budget.
 	out, err := h.Invoke("prism_query", map[string]any{
 		"task":  "write tests for toolQuery",
 		"terms": []any{"toolQuery"},

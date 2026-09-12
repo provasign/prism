@@ -26,7 +26,7 @@ type selectParams struct {
 	limit           int
 	contextUsed     int64
 	model           string
-	budgetArg       int // >0 is honored exactly; 0 = task-sized default with phase shaping
+	budgetArg       int // >0 is honored exactly; 0 uses the fixed default
 	paths           []string
 	glob            []string
 }
@@ -65,7 +65,7 @@ type selection struct {
 func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection, error) {
 	// The task string does NOT choose the profile or the budget.
 	//
-	// It used to: DetectPhase() keyword-matched the English task and picked a
+	// It used to: phase inference keyword-matched the English task and picked a
 	// ranking profile plus a budget multiplier from it, so rewording the same
 	// request changed which files came back and how many. That is a natural-
 	// language retrieval key, which is exactly what this surface elsewhere
@@ -75,9 +75,9 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	// used both, which is what an unpredictable result looks like from the
 	// outside.
 	//
-	// Retrieval now keys on terms; sizing keys on budget; ranking keys on the
-	// profile. All three are the caller's to set, and identical arguments
-	// produce an identical selection no matter how the task is phrased.
+	// Retrieval now keys on terms; sizing keys on budget; ranking uses verified
+	// call edges and stable retrieval order. Identical arguments produce an
+	// identical selection no matter how the task is phrased.
 	profileName := p.explicitProfile
 	if profileName == "" {
 		profileName = h.Cfg.Profile
@@ -367,15 +367,8 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	candidateSyms := seeds[seedCount:]
 
 	profile := ranking.SelectProfile(profileName)
-	profile = h.Weights.Apply(profile)
 
-	// Test-relevance used to be boosted when the task string looked like it
-	// was about writing tests. Ask for it with profile="code_review" or a
-	// terms list that names the tests; phrasing is not a control surface.
-
-	graphDist := make(map[string]int)
-	hasTestEdgeID := make(map[string]bool)
-	testFilePaths := make(map[string]bool)
+	directCallIDs := make(map[string]bool)
 	// testCallers is pointer-only (delivery.go renders locations, never
 	// bodies): a verified `calls` edge from a real test file into a seed.
 	// Deliberately outside the budget/disclosure pipeline entirely -- the
@@ -410,9 +403,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// call chain; CallNeighbors returns exactly the resolved calls edges.
 			if neighbors, err := h.Grove.CallNeighbors(ctx, seedQuery); err == nil {
 				for _, nb := range neighbors {
-					if _, exists := graphDist[nb.ID]; !exists {
-						graphDist[nb.ID] = 1
-					}
+					directCallIDs[nb.ID] = true
 					if !seenIDs[nb.ID] {
 						seenIDs[nb.ID] = true
 						graphExtra = append(graphExtra, nb)
@@ -426,7 +417,6 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 						if !isVerifiedTestCaller(caller.FilePath) {
 							continue
 						}
-						hasTestEdgeID[seed.ID] = true
 						if len(testCallers[seed.ID]) < testCallersPerSeedCap {
 							testCallers[seed.ID] = append(testCallers[seed.ID], caller)
 						}
@@ -527,15 +517,15 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 
 	candidates := make([]ranking.Candidate, 0, len(merged))
 	for i, sym := range merged {
-		dist, inGraph := graphDist[sym.ID]
-		if !inGraph {
-			// Not reached by BFS: fall back to retrieval position as distance
-			// proxy so semantically adjacent symbols still score above
-			// unrelated ones.
-			dist = 3 + (i / 10)
-		}
-		sv := h.Signals.Compute(ctx, sym, dist, hasTestEdgeID[sym.ID], testFilePaths[sym.FilePath])
+		inGraph := directCallIDs[sym.ID]
+		// Grove's retrieval order is the only within-tier signal. It is
+		// deterministic for a fixed index and does not read live Git history.
+		sv := ranking.SignalValues{RetrievalOrder: 1.0 / (1.0 + float64(i)/50.0)}
 		score := ranking.Score(sv, profile)
+		relation := ranking.RelationRetrieval
+		if inGraph {
+			relation = ranking.RelationDirectCall
+		}
 		cat := categorize(sym)
 		sessionPath := normalizePath(sym.FilePath)
 		entry, seen, _ := h.Session.Lookup(sessionPath, "")
@@ -545,6 +535,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 		candidates = append(candidates, ranking.Candidate{
 			Symbol:         sym,
+			Relation:       relation,
 			Score:          score,
 			Category:       cat,
 			PreviouslySeen: seen,

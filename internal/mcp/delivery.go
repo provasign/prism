@@ -18,8 +18,7 @@ import (
 // grouped by file (identical framing to a Read the agent already performed),
 // headed by a per-anchor summary (callers + covering tests). Files whose full
 // content was already delivered this session return a one-line sha pointer
-// instead of a resend. prism_query picks this delivery phase-aware (debug and
-// implement tasks) unless the caller passes delivery explicitly.
+// instead of a resend.
 
 const (
 	// windowPad is the context padding (lines) around each symbol span.
@@ -51,9 +50,9 @@ const (
 	signatureWindowLines = 8
 	// anchorSummaryMax is how many top anchor symbols get a summary line.
 	anchorSummaryMax = 5
-	// sourceDeliveryMaxFiles caps how many files get source windows;
-	// the rest are listed by name.
-	sourceDeliveryMaxFiles = 5
+	// sourceDeliveryMaxFiles is the default minimum number of source files.
+	// Every named-anchor file and one related file can be kept beyond it.
+	sourceDeliveryMaxFiles = 2
 )
 
 type lineWindow struct{ start, end int }
@@ -65,36 +64,48 @@ type lineWindow struct{ start, end int }
 // one: the host rejects the entire tool result, so the agent gets NOTHING and
 // is told to fall back to grep.
 func truncateSection(section string, maxTokens int, path string) string {
-	if maxTokens < 200 {
-		maxTokens = 200
-	}
 	maxBytes := maxTokens * 4
+	if maxBytes <= 0 {
+		return ""
+	}
 	if len(section) <= maxBytes {
 		return section
 	}
-	cut := strings.LastIndexByte(section[:maxBytes], '\n')
-	if cut < 0 {
-		cut = maxBytes
+	marker := fmt.Sprintf("\n… [prism truncated %s here — Read the file directly for the remainder]\n", path)
+	if len(marker) >= maxBytes {
+		return ""
 	}
-	return section[:cut] + fmt.Sprintf(
-		"\n… [prism truncated %s here to stay within the response budget — "+
-			"Read the file directly for the remainder]\n\n", path)
+	cut := strings.LastIndexByte(section[:maxBytes-len(marker)], '\n')
+	if cut < 0 {
+		cut = maxBytes - len(marker)
+	}
+	return section[:cut] + marker
 }
 
 func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection, maxFiles, budget int) (map[string]any, map[string]string) {
+	automaticFileLimit := maxFiles < 1
 	if maxFiles < 1 {
 		maxFiles = sourceDeliveryMaxFiles
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "**Context for: %s**\n\n", summarize(task, 120))
+	compact := budget < 256
+	if compact {
+		b.WriteString("**Context** — budget-limited; use prism_read for source.\n")
+	} else {
+		fmt.Fprintf(&b, "**Context for: %s**\n\n", summarize(task, 120))
 
-	// ── Anchor summary ────────────────────────────────────────────────────
-	anchors := h.renderAnchorSummary(ctx, sel.seedSyms, sel.testCallers)
-	if anchors != "" {
-		b.WriteString("**Anchors — callers (verify before editing)**\n\n")
-		b.WriteString(anchors)
-		b.WriteString("\n")
+		// ── Anchor summary ────────────────────────────────────────────────────
+		anchors := h.renderAnchorSummary(ctx, sel.seedSyms, sel.testCallers)
+		if anchors != "" {
+			b.WriteString("**Anchors — callers (verify before editing)**\n\n")
+			b.WriteString(anchors)
+			b.WriteString("\n")
+		}
+		if ranking.EstimateTokens(b.String()) > budget {
+			b.Reset()
+			fmt.Fprintf(&b, "budget=%d is too small for anchor summaries; use prism_lookup.\n", budget)
+		}
 	}
 
 	// ── Source windows, grouped by file, ranked ──────────────────────────
@@ -119,21 +130,37 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		picked = append(picked, p)
 	}
 	files := groupPickedByFile(picked)
+	seedFiles := 0
+	for _, fg := range files {
+		if fg.relation == ranking.RelationSeed {
+			seedFiles++
+		}
+	}
+	if automaticFileLimit {
+		if seedFiles+1 > maxFiles {
+			maxFiles = seedFiles + 1
+		}
+	}
 
-	b.WriteString("**Source** — current on-disk, line-numbered like the Read tool " +
-		"(re-read from disk on this call; NOT a summary or stale cache). Every line " +
-		"under 1200 chars is byte-for-byte verbatim; longer lines (generated/minified) " +
-		"are cut with an in-band `[line truncated by prism: N chars]` marker — Read the " +
-		"file before editing THOSE lines. Treat everything else as a Read you have " +
-		"already performed: do not re-read, go straight to the edit. A `[prism:cached]` " +
-		"line means the full file was already delivered this session — use the copy in " +
-		"context.\n\n")
-	delivered := ranking.EstimateTokens(b.String())
+	if !compact {
+		b.WriteString("**Source** — current on-disk, line-numbered like the Read tool " +
+			"(re-read from disk on this call; NOT a summary or stale cache). Every line " +
+			"under 1200 chars is byte-for-byte verbatim; longer lines (generated/minified) " +
+			"are cut with an in-band `[line truncated by prism: N chars]` marker — Read the " +
+			"file before editing THOSE lines. Treat everything else as a Read you have " +
+			"already performed: do not re-read, go straight to the edit. A `[prism:cached]` " +
+			"line means the full file was already delivered this session — use the copy in " +
+			"context. Files are ordered by their best structural match and score; " +
+			"windows within each file follow source-line order.\n\n")
+	}
+	fits := func(extra string) bool {
+		return ranking.EstimateTokens(b.String()+extra) <= budget
+	}
 	shown := make([]string, 0, maxFiles)
 	sourceSections := make(map[string]string, maxFiles)
 	var skipped []fileGroup
 	for i, fg := range files {
-		if len(shown) >= maxFiles || (delivered > budget && i > 0) {
+		if len(shown) >= maxFiles {
 			skipped = append(skipped, files[i:]...)
 			break
 		}
@@ -142,17 +169,42 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 			skipped = append(skipped, fg)
 			continue
 		}
+		// Selector costs do not include expanded source windows. Apply the
+		// file share to the rendered section; related files get half the
+		// share so they cannot displace a named target with a broad class.
+		sectionCap := int(float64(budget) * ranking.FileBudgetFraction)
+		// When every named anchor is in this one file, the global budget
+		// already bounds it. A fractional file cap would collapse several
+		// explicitly named functions to signatures while leaving most of
+		// the global budget unused.
+		if fg.relation == ranking.RelationSeed && seedFiles == 1 {
+			sectionCap = budget - ranking.EstimateTokens(b.String())
+		}
+		if fg.relation != ranking.RelationSeed {
+			sectionCap /= 2
+		}
+		if sectionCap < 1 {
+			sectionCap = 1
+		}
+		fitsSection := func(s string) bool {
+			return fits(s) && ranking.EstimateTokens(s) <= sectionCap
+		}
 		// A section is measured BEFORE it is committed. The old code checked
 		// the running total on entry only, so one oversized file could
 		// overshoot the budget by its entire length — and the first file was
 		// exempt outright, which is how a single 89KB section got emitted and
 		// the host rejected the whole response.
-		cost := ranking.EstimateTokens(section)
 		truncated := false
-		if hard := budget * 2; delivered+cost > hard && len(shown) > 0 {
-			skipped = append(skipped, files[i:]...)
-			break
-		} else if delivered+cost > hard {
+		if !fitsSection(section) {
+			// A whole-file shortcut can exceed the section cap even when the
+			// selected symbol windows would fit. Try those exact windows
+			// before degrading named anchors to signatures.
+			fg.noWholeFile = true
+			if sec2, commit2, ok2 := h.renderFileSection(fg); ok2 {
+				section, commit = sec2, commit2
+			}
+		}
+		if !fitsSection(section) {
 			// Over budget: shed the LOWEST-scored symbols and re-render,
 			// never byte-truncate first. Byte truncation cuts the tail, and
 			// windows render in line order — so the windows that died were
@@ -163,30 +215,45 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 			// low-score text-hit windows above it). Seeds are named by the
 			// caller; they are the last thing to shed, not the first.
 			trimmed := fg
-			for len(trimmed.symbols) > 1 && delivered+cost > hard {
+			for len(trimmed.symbols) > 1 && !fitsSection(section) {
 				worst, wi := trimmed.symbols[0], 0
 				for j, ps := range trimmed.symbols {
-					if ps.Score < worst.Score {
+					if ps.Relation < worst.Relation ||
+						(ps.Relation == worst.Relation && ps.Score < worst.Score) {
 						worst, wi = ps, j
 					}
 				}
-				if worst.Score >= 1.0 {
+				if worst.Relation == ranking.RelationSeed {
 					break // only seeds left — take the truncation below
 				}
 				trimmed.symbols = append(append([]ranking.BudgetedSymbol{},
 					trimmed.symbols[:wi]...), trimmed.symbols[wi+1:]...)
 				if sec2, commit2, ok2 := h.renderFileSection(trimmed); ok2 {
 					section, commit = sec2, commit2
-					cost = ranking.EstimateTokens(section)
 				} else {
 					break
 				}
 			}
-			if delivered+cost > hard {
-				cut := truncateSection(section, hard-delivered, fg.path)
+			if !fitsSection(section) {
+				for j := range trimmed.symbols {
+					trimmed.symbols[j].Disclosure = ranking.DisclosureSignature
+				}
+				if sec2, commit2, ok2 := h.renderFileSection(trimmed); ok2 {
+					section, commit = sec2, commit2
+				}
+			}
+			if !fitsSection(section) {
+				remaining := budget - ranking.EstimateTokens(b.String())
+				if remaining > sectionCap {
+					remaining = sectionCap
+				}
+				cut := truncateSection(section, remaining, fg.path)
 				truncated = cut != section
 				section = cut
-				cost = ranking.EstimateTokens(section)
+				if section == "" || !fitsSection(section) {
+					skipped = append(skipped, fg)
+					continue
+				}
 			}
 		}
 		b.WriteString(section)
@@ -197,17 +264,24 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 		if !truncated {
 			commit()
 		}
-		delivered += cost
 		shown = append(shown, fg.path)
 	}
 	if len(skipped) > 0 {
-		b.WriteString("**Also relevant (not shown):**\n")
+		var omitted strings.Builder
+		omitted.WriteString("**Also relevant (not shown):**\n")
 		for _, fg := range skipped {
 			names := make([]string, 0, len(fg.symbols))
 			for _, s := range fg.symbols {
 				names = append(names, s.Symbol.Name)
 			}
-			fmt.Fprintf(&b, "- `%s` — %s\n", fg.path, strings.Join(dedupeStrings(names), ", "))
+			line := fmt.Sprintf("- `%s` — %s\n", fg.path, strings.Join(dedupeStrings(names), ", "))
+			if !fits(omitted.String() + line) {
+				break
+			}
+			omitted.WriteString(line)
+		}
+		if omitted.Len() > len("**Also relevant (not shown):**\n") {
+			b.WriteString(omitted.String())
 		}
 	}
 
@@ -255,7 +329,11 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 			if name == "" {
 				name = fs.Name
 			}
-			fmt.Fprintf(&fb, "\n`%s` — %s:%d\n```\n%s\n```\n", name, fs.FilePath, fs.Span.Start, strings.TrimRight(body, "\n"))
+			entry := fmt.Sprintf("\n`%s` — %s:%d\n```\n%s\n```\n", name, fs.FilePath, fs.Span.Start, strings.TrimRight(body, "\n"))
+			if !fits("\n**Family — overrides/overloads of the anchors (fixes often touch these too):**\n" + fb.String() + entry) {
+				continue
+			}
+			fb.WriteString(entry)
 			wrote++
 		}
 		if wrote > 0 {
@@ -340,9 +418,11 @@ func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.Symbo
 }
 
 type fileGroup struct {
-	path    string // normalized, root-relative
-	best    float64
-	symbols []ranking.BudgetedSymbol
+	path        string // normalized, root-relative
+	relation    ranking.RelationTier
+	best        float64
+	symbols     []ranking.BudgetedSymbol
+	noWholeFile bool
 }
 
 type deliveredFileRanges struct {
@@ -413,7 +493,10 @@ func groupPickedByFile(picked []ranking.BudgetedSymbol) []fileGroup {
 			byPath[rel] = g
 			order = append(order, rel)
 		}
-		if p.Score > g.best {
+		if p.Relation > g.relation {
+			g.relation = p.Relation
+			g.best = p.Score
+		} else if p.Relation == g.relation && p.Score > g.best {
 			g.best = p.Score
 		}
 		g.symbols = append(g.symbols, p)
@@ -423,6 +506,9 @@ func groupPickedByFile(picked []ranking.BudgetedSymbol) []fileGroup {
 		out = append(out, *byPath[rel])
 	}
 	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].relation != out[j].relation {
+			return out[i].relation > out[j].relation
+		}
 		if out[i].best != out[j].best {
 			return out[i].best > out[j].best
 		}
@@ -482,7 +568,7 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 			break
 		}
 	}
-	wholeFile := !allSignature && (len(lines) <= wholeFileLines ||
+	wholeFile := !fg.noWholeFile && !allSignature && (len(lines) <= wholeFileLines ||
 		(len(lines) <= wholeFileMaxLines &&
 			float64(covered) >= wholeFileFraction*float64(len(lines))))
 	if wholeFile {

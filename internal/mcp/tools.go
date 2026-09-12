@@ -29,8 +29,6 @@ type Handler struct {
 	Grove   *grove.Client
 	Session *session.Tracker
 	Ledger  *session.Ledger
-	Signals *ranking.SignalComputer
-	Weights *ranking.LearnedWeights // A: per-repo outcome-conditioned weights
 
 	// driftBase records the symbols delivered with each full file read this
 	// session, so prism_drift can diff structurally (renames, breaking
@@ -87,9 +85,7 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		Session:   tr,
 		Ledger:    ledger,
 		driftBase: map[string][]grove.SymbolRecord{},
-		Weights:   ranking.LoadLearnedWeights(root), // A: load per-repo learned weights
 	}
-	h.Signals = ranking.NewSignalComputer(root)
 	return h
 }
 
@@ -523,11 +519,11 @@ func toolSchema(name string) map[string]any {
 				},
 				"max_files": map[string]any{
 					"type":        "integer",
-					"description": "source only: max files shown as windows. Default 5.",
+					"description": "source only: max files shown as windows. Default is at least 2, with room for one related file after the named-anchor files.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"profile":      map[string]any{"type": "string", "description": "default|implement_feature|fix_bug|code_review"},
+				"profile":      map[string]any{"type": "string", "description": "Compatibility name: default|implement_feature|fix_bug|code_review currently share one deterministic edge/retrieval ranking rule"},
 				"budget":       map[string]any{"type": "integer", "description": "Token budget (default 8000)."},
 				"limit":        map[string]any{"type": "integer", "description": "Max candidates before ranking cutoff (default 50)."},
 			},
@@ -1138,7 +1134,7 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 	// (edit-ready); "symbols" = the compact per-symbol list.
 	//
 	// Source is the default, unconditionally. It used to depend on
-	// DetectPhase(task) — so "fix the timeout bug" returned editable windows
+	// task keyword inference — so "fix the timeout bug" returned editable windows
 	// and "look at the timeout handling" returned a symbol list, from the same
 	// seeds. Delivering context for an edit is what this tool is for; ask for
 	// delivery="symbols" when you want the compact list.
@@ -1147,12 +1143,42 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 		delivery = "source"
 	}
 	if delivery == "source" {
-		out, sourceSections := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
+		sourceBudget := sel.budget
+		if sel.budget <= 256 && len(sel.deliverableTextHits(nil)) > 0 {
+			// Tiny budgets must leave room for a matched line that the source
+			// window cannot show. Otherwise the source preamble consumes the
+			// whole allowance and the explicit text evidence disappears.
+			sourceBudget = sel.budget / 3
+		}
+		out, sourceSections := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sourceBudget)
 		if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(sourceSections), false); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
-		delivered, _ := out["deliveredTokens"].(int)
+		// Text hits are appended after source delivery, so charge their rendered
+		// form as well. Remove lowest-priority hits until the actual MCP text fits.
+		var delivered int
+		for {
+			rendered, ok := renderQuerySourceAsText(out)
+			if !ok {
+				return nil, errors.New("could not render query source response")
+			}
+			delivered = ranking.EstimateTokens(rendered)
+			if delivered <= sel.budget {
+				break
+			}
+			hits := anySlice(out["textMatches"])
+			if len(hits) == 0 {
+				return nil, fmt.Errorf("query source response exceeds budget=%d", sel.budget)
+			}
+			if len(hits) == 1 {
+				delete(out, "textMatches")
+				delete(out, "textBackend")
+			} else {
+				out["textMatches"] = hits[:len(hits)-1]
+			}
+		}
+		out["deliveredTokens"] = delivered
 		h.Ledger.Record("prism_query", h.queryBaselineTokens(sel.picked, delivered), delivered)
 		return out, nil
 	}
@@ -1175,7 +1201,6 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 			Span:          p.Symbol.Span,
 		})
 	}
-	out.BudgetUsed = used
 	if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(nil), false); tm != nil {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
@@ -1195,6 +1220,38 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 	// Baseline for the savings ledger: the token cost of reading each
 	// containing file once in full — what assembling the same context by
 	// file reads would have cost. Measured from on-disk sizes, never assumed.
+	for {
+		out.BudgetUsed = used
+		encoded, err := json.Marshal(out)
+		if err != nil {
+			return nil, err
+		}
+		measured := ranking.EstimateTokens(string(encoded))
+		if measured != used {
+			used = measured
+			continue
+		}
+		if used <= sel.budget {
+			break
+		}
+		if n := len(out.TextMatches); n > 0 {
+			out.TextMatches = out.TextMatches[:n-1]
+			if len(out.TextMatches) == 0 {
+				out.TextBackend = ""
+			}
+			continue
+		}
+		if n := len(out.Symbols); n > 0 {
+			ref := ranking.Render(picked[n-1].Symbol, ranking.DisclosureReference)
+			if out.Symbols[n-1].Content != ref {
+				out.Symbols[n-1].Content = ref
+			} else {
+				out.Symbols = out.Symbols[:n-1]
+			}
+			continue
+		}
+		return nil, fmt.Errorf("query symbols response cannot fit budget=%d", sel.budget)
+	}
 	h.Ledger.Record("prism_query", h.queryBaselineTokens(picked, used), used)
 	return out, nil
 }
@@ -1513,8 +1570,9 @@ const searchContextCap = 15
 // symbol pass: a completeness answer, but one the transport can carry — a
 // bigger set gets the cap plus a warning to narrow, never a silent cut.
 const (
-	defaultSearchLimit  = 25
-	exhaustiveSymbolCap = 2000
+	defaultSearchLimit        = 25
+	exhaustiveSymbolCap       = 2000
+	searchSymbolPayloadBudget = 2000
 	// defaultSearchContext: lines around each text hit when the caller sets
 	// no context=. This makes the compact search result useful without a read.
 	defaultSearchContext = 2
@@ -1906,9 +1964,9 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		return out, nil
 	}
 
-	// Grove's symbol search is ranked (exact name > prefix > substring,
-	// v0.6.0) — deliver it directly, matching this tool's contract of
-	// searching symbol names rather than re-ranking semantically.
+	// Grove supplies a candidate stream; Prism labels and re-tiers it before
+	// capping so a test double or signature-only match cannot displace a
+	// better name match from the delivered sample.
 	// exhaustive=true lifts the SYMBOL cap too. Until 2026-09-06 only the
 	// text pass honoured it: scope="symbols", exhaustive=true returned the
 	// default 25 with no marker at all. Measured (ab_gate, grafana
@@ -1942,21 +2000,18 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// marker). Fetch in growing batches until the filtered result exceeds
 	// the cap or the source itself is exhausted (it returned fewer than
 	// asked); only then is "not truncated" a fact.
-	syms, sourceExhausted, err := scopedSymbolSearch(ctx, h.Grove.SearchSymbols, q, sc, symCap, symbolFetchHardMax)
+	scanCap := symCap
+	if !sc.exhaustive {
+		scanCap = minInt(exhaustiveSymbolCap, maxInt(symCap*4, 64))
+	}
+	syms, sourceExhausted, err := scopedSymbolSearch(ctx, h.Grove.SearchSymbols, q, sc, scanCap, symbolFetchHardMax)
 	if err != nil {
 		return nil, err
 	}
-	moreKnown := len(syms) > symCap
-	symbolsTruncated := moreKnown || !sourceExhausted
-	if len(syms) > symCap {
-		syms = syms[:symCap]
-	}
-	// Real implementations first, test doubles tagged and last — the
-	// disambiguation prism_resolve used to provide, folded into the one
-	// locate tool so agents never need a second call to tell them apart.
-	annotated := make([]map[string]any, 0, len(syms))
-	var doubles []map[string]any
-	for _, s := range syms {
+	ranked := rankSearchSymbols(syms, q)
+	annotated := make([]map[string]any, 0, len(ranked))
+	for _, item := range ranked {
+		s := item.symbol
 		var m map[string]any
 		if b, err := json.Marshal(s); err == nil {
 			_ = json.Unmarshal(b, &m)
@@ -1964,14 +2019,12 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		if m == nil {
 			continue
 		}
+		m["matchKind"] = item.matchKind
 		if isTestDouble(s.FilePath) {
 			m["testDouble"] = true
-			doubles = append(doubles, m)
-		} else {
-			annotated = append(annotated, m)
 		}
+		annotated = append(annotated, m)
 	}
-	annotated = append(annotated, doubles...)
 	// LOCATE returns locations, not bodies. The text renderer already drops
 	// rawText (v0.55.6), but the JSON payload still carried whole symbol
 	// bodies — measured on jackson (2026-08-25): one `search anySetter`
@@ -1986,6 +2039,19 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		delete(m, "id")
 		delete(m, "imports")
 	}
+	// A small complete result is cheaper to deliver once than to force an
+	// exhaustive follow-up solely because it crossed the default count cap.
+	if sc.adaptive && sourceExhausted && !sc.exhaustive && len(annotated) > symCap {
+		if preview, ok := renderSearchAsText(map[string]any{"symbols": annotated}); ok &&
+			ranking.EstimateTokens(preview) <= searchSymbolPayloadBudget {
+			symCap = len(annotated)
+		}
+	}
+	moreKnown := len(annotated) > symCap
+	symbolsTruncated := moreKnown || !sourceExhausted
+	if moreKnown {
+		annotated = annotated[:symCap]
+	}
 	// No "locations only" note here: the text renderer states it once
 	// under the symbol list (searchtext.go); carrying it in the envelope
 	// too printed two near-identical pointers on every symbol result.
@@ -1993,6 +2059,10 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	if symbolsTruncated {
 		out["symbolsTruncated"] = true
 		out["warning"] = symbolSearchWarning(len(annotated), symCap, sc.exhaustive, sourceExhausted, moreKnown)
+		if !sourceExhausted {
+			out["warning"] = appendNote(out["warning"].(string), fmt.Sprintf(
+				"match tiers were evaluated over the first %d in-scope candidates; later candidates may change the top ranks. Narrow query/path or use exhaustive=true", len(syms)))
+		}
 	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
@@ -2711,16 +2781,6 @@ func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, err
 	h.fbMu.Lock()
 	h.feedback = append(h.feedback, entry)
 	h.fbMu.Unlock()
-
-	// A: treat explicit low rating (0-1) as a weak negative outcome signal
-	// and high rating (4-5) as a weak positive one, applied to the default profile.
-	if tool == "prism_query" {
-		if rating <= 1 {
-			h.Weights.RecordOutcome("default", nil, nil, false)
-		} else if rating >= 4 {
-			h.Weights.RecordOutcome("default", []string{"__positive_feedback__"}, []string{"__positive_feedback__"}, false)
-		}
-	}
 
 	return map[string]any{"recorded": entry, "totalRatings": len(h.feedback)}, nil
 }

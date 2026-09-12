@@ -518,21 +518,44 @@ var sourceExts = map[string]bool{
 	".m": true, ".mm": true, ".sql": true, ".sh": true, ".proto": true,
 }
 
-// rankSourceFirst stably partitions hits so source-code files come before
-// manifests/docs/config. Order within each partition is untouched — the
-// backend's deterministic path order still applies.
+// rankSourceFirst puts declarations before uses, source before tests, and
+// source before manifests/docs/config. Backend path/line order breaks ties.
+// Ranking runs before the sample cap, so a definition in a later file cannot
+// be hidden by early-path uses.
 func rankSourceFirst(hits []Hit) []Hit {
-	src := make([]Hit, 0, len(hits))
-	var rest []Hit
-	for _, h := range hits {
-		ext := strings.ToLower(filepath.Ext(h.File))
-		if sourceExts[ext] {
-			src = append(src, h)
-		} else {
-			rest = append(rest, h)
+	sort.SliceStable(hits, func(i, j int) bool { return textHitRank(hits[i]) > textHitRank(hits[j]) })
+	return hits
+}
+
+func textHitRank(hit Hit) int {
+	ext := strings.ToLower(filepath.Ext(hit.File))
+	if !sourceExts[ext] {
+		return 0
+	}
+	path := strings.ToLower(filepath.ToSlash(hit.File))
+	if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/test/") ||
+		strings.Contains(path, "/tests/") || strings.Contains(path, "/__tests__/") {
+		return 1
+	}
+	if isDeclarationLine(hit.Text) {
+		return 3
+	}
+	return 2
+}
+
+func isDeclarationLine(line string) bool {
+	line = strings.TrimSpace(line)
+	for _, prefix := range []string{
+		"func ", "type ", "class ", "def ", "async def ",
+		"function ", "export function ", "export class ",
+		"interface ", "export interface ", "struct ", "enum ",
+		"const ", "var ", "let ", "public class ", "private class ",
+	} {
+		if strings.HasPrefix(line, prefix) {
+			return true
 		}
 	}
-	return append(src, rest...)
+	return false
 }
 
 // attachContext fills each hit's Before/After with up to n lines of
