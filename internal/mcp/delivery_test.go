@@ -93,6 +93,15 @@ func TestSymbolWindowsSignatureDisclosureCapsSpan(t *testing.T) {
 	}
 }
 
+func TestSymbolWindowsTopLevelLocatorDoesNotInlineWholeModule(t *testing.T) {
+	module := bs(1, 900, ranking.DisclosureFull)
+	module.Symbol.Name = "<top-level>"
+	wins := symbolWindows([]ranking.BudgetedSymbol{module}, 900)
+	if len(wins) != 1 || wins[0].start != 1 || wins[0].end != signatureWindowLines+windowPad {
+		t.Fatalf("module locator should disclose only its head, got %v", wins)
+	}
+}
+
 func TestSymbolWindowsSkipsInvalidSpans(t *testing.T) {
 	wins := symbolWindows([]ranking.BudgetedSymbol{bs(0, 0, ranking.DisclosureFull)}, 100)
 	if len(wins) != 0 {

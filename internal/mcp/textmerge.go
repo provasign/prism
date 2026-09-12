@@ -70,6 +70,10 @@ type textMatchGroup struct {
 // hits into symbol promotions and raw deliverable hits. Never fails: text
 // search is additive evidence, and an error here must not break retrieval.
 func (h *Handler) mergeTextSearch(ctx context.Context, terms []string, seededIDs map[string]bool) textMergeResult {
+	return h.mergeTextSearchScoped(ctx, terms, seededIDs, searchScope{})
+}
+
+func (h *Handler) mergeTextSearchScoped(ctx context.Context, terms []string, seededIDs map[string]bool, scope searchScope) textMergeResult {
 	res := textMergeResult{
 		confirmed:  map[string]bool{},
 		symbolHits: map[string][]textsearch.Hit{},
@@ -81,6 +85,8 @@ func (h *Handler) mergeTextSearch(ctx context.Context, terms []string, seededIDs
 			MaxHits: textHitsPerTerm,
 			Timeout: textSearchTimeout,
 			Context: 2,
+			Paths:   scope.paths,
+			Glob:    scope.glob,
 		})
 		res.backend = r.Backend
 		for _, hit := range r.Hits {

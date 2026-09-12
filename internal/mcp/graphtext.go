@@ -25,11 +25,34 @@ import (
 // renderReadAsText renders a prism_read result: a short header line, then
 // the content verbatim (it is already line-numbered / compressed upstream).
 func renderReadAsText(out map[string]any) (string, bool) {
+	if out["delivery"] == "ranges" {
+		for key := range out {
+			if key != "delivery" && key != "ranges" && key != "note" {
+				return "", false
+			}
+		}
+		ranges, ok := out["ranges"].([]map[string]any)
+		if !ok || len(ranges) == 0 {
+			return "", false
+		}
+		var b strings.Builder
+		for _, item := range ranges {
+			part, rendered := renderReadAsText(item)
+			if !rendered {
+				return "", false
+			}
+			b.WriteString(part)
+		}
+		if note, ok := out["note"].(string); ok && note != "" {
+			fmt.Fprintf(&b, "// %s\n", note)
+		}
+		return b.String(), true
+	}
 	known := map[string]bool{
 		"file": true, "strategy": true, "originalTokens": true,
 		"deliveredTokens": true, "savingsPercent": true, "content": true,
 		"delivery": true, "startLine": true, "endLine": true,
-		"totalLines": true, "warning": true, "note": true,
+		"totalLines": true, "warning": true, "note": true, "formatNote": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -38,7 +61,10 @@ func renderReadAsText(out map[string]any) (string, bool) {
 	}
 	content, ok := out["content"].(string)
 	if !ok {
-		return "", false
+		if _, warned := out["warning"].(string); !warned {
+			return "", false
+		}
+		content = ""
 	}
 	var b strings.Builder
 	if sl, haveRange := out["startLine"]; haveRange {
@@ -58,6 +84,9 @@ func renderReadAsText(out map[string]any) (string, bool) {
 		fmt.Fprintf(&b, "// %s\n", w)
 	}
 	if n, _ := out["note"].(string); n != "" {
+		fmt.Fprintf(&b, "// %s\n", n)
+	}
+	if n, _ := out["formatNote"].(string); n != "" {
 		fmt.Fprintf(&b, "// %s\n", n)
 	}
 	return b.String(), true

@@ -179,7 +179,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 		t.Error("stale instructions not replaced")
 	}
 	// New guidance must be present.
-	if !strings.Contains(s, "relay its sites as-is") {
+	if !strings.Contains(s, "Relay its sites as-is") {
 		t.Error("new instructions not written")
 	}
 	// Content before the Prism section must be preserved.
@@ -399,20 +399,17 @@ func TestSteeringBlock_PrismAccessFallbacks(t *testing.T) {
 	if !strings.Contains(got, `ToolSearch("select:mcp__prism__prism")`) {
 		t.Error("ToolSearch line must select only the compact gateway's full MCP name")
 	}
-	if !strings.Contains(got, "first available Prism route") {
+	if !strings.Contains(got, "Stop at the first that works") {
 		t.Error("steering block must select the first supported Prism access route")
 	}
-	if !strings.Contains(got, "Compact Prism MCP visible?") {
+	if !strings.Contains(got, "The `prism` MCP tool") {
 		t.Error("steering block must prefer already-visible Prism tools")
 	}
-	if !strings.Contains(got, "use the Bash CLI") {
+	if !strings.Contains(got, "The `prism` CLI") {
 		t.Error("steering block must fall back to the CLI when no loader exists")
 	}
-	if !strings.Contains(got, "Never abandon Prism") {
+	if !strings.Contains(got, "Prism not being listed does not mean it is absent") {
 		t.Error("steering block must forbid silent abandonment when ToolSearch is unavailable")
-	}
-	if !strings.Contains(got, "deferred") {
-		t.Error("steering block missing the DEFERRED explanation")
 	}
 }
 
@@ -569,6 +566,9 @@ func TestPrintAgentConfig_CodexIsProjectScoped(t *testing.T) {
 	})
 	if !strings.Contains(projectOutput, filepath.Join(project, ".codex", "config.toml")) {
 		t.Errorf("project Codex snippet named the wrong path: %s", projectOutput)
+	}
+	if !strings.Contains(projectOutput, "[mcp_servers.prism.tools.prism]\n"+`approval_mode = "approve"`) {
+		t.Errorf("project Codex snippet does not approve the compact read-only tool: %s", projectOutput)
 	}
 }
 

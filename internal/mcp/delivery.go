@@ -533,7 +533,9 @@ func symbolWindows(symbols []ranking.BudgetedSymbol, maxLine int) []lineWindow {
 		if end < start {
 			end = start
 		}
-		if s.Disclosure != ranking.DisclosureFull && end-start+1 > signatureWindowLines {
+		// A synthetic module-level symbol can span an entire file. Its name
+		// is a locator, not a request to inline every unrelated definition.
+		if (s.Disclosure != ranking.DisclosureFull || s.Symbol.Name == "<top-level>") && end-start+1 > signatureWindowLines {
 			end = start + signatureWindowLines - 1
 		}
 		start -= windowPad

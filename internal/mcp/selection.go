@@ -27,6 +27,8 @@ type selectParams struct {
 	contextUsed     int64
 	model           string
 	budgetArg       int // >0 is honored exactly; 0 = task-sized default with phase shaping
+	paths           []string
+	glob            []string
 }
 
 // selection is the pipeline output: the budgeted picks plus the intermediate
@@ -89,6 +91,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 	}
 	var seeds []grove.SymbolRecord
+	scope := searchScope{paths: p.paths, glob: p.glob}
 	var textMerge textMergeResult
 	// contentOnlySeeds marks seeds whose only claim is that a term appears
 	// somewhere in their BODY (RawText), not in their name — a license
@@ -121,7 +124,20 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			if perTerm <= 0 {
 				perTerm = 10
 			}
-			matches, err := h.Grove.SearchSymbols(ctx, term, perTerm)
+			var matches []grove.SymbolRecord
+			var err error
+			if len(p.paths) > 0 || len(p.glob) > 0 {
+				var exhausted bool
+				matches, exhausted, err = scopedSymbolSearch(ctx, h.Grove.SearchSymbols, term, scope, perTerm, symbolFetchHardMax)
+				if err == nil && !exhausted && len(matches) <= perTerm {
+					return nil, fmt.Errorf("scoped query for %q reached the symbol fetch cap before finding a complete in-scope set; narrow paths/glob", term)
+				}
+				if len(matches) > perTerm {
+					matches = matches[:perTerm]
+				}
+			} else {
+				matches, err = h.Grove.SearchSymbols(ctx, term, perTerm)
+			}
 			if err != nil {
 				continue
 			}
@@ -219,7 +235,16 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// quality, and the task text usually names the fix region
 		// (issue titles carry the type/method being discussed).
 		for _, term := range p.minedTerms {
-			matches, err := h.Grove.SearchSymbols(ctx, term, 5)
+			var matches []grove.SymbolRecord
+			var err error
+			if len(p.paths) > 0 || len(p.glob) > 0 {
+				matches, _, err = scopedSymbolSearch(ctx, h.Grove.SearchSymbols, term, scope, 5, symbolFetchHardMax)
+				if len(matches) > 5 {
+					matches = matches[:5]
+				}
+			} else {
+				matches, err = h.Grove.SearchSymbols(ctx, term, 5)
+			}
 			if err != nil {
 				continue
 			}
@@ -245,7 +270,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		for _, s := range seeds {
 			seededIDs[s.ID] = true
 		}
-		textMerge = h.mergeTextSearch(ctx, p.terms, seededIDs)
+		textMerge = h.mergeTextSearchScoped(ctx, p.terms, seededIDs, scope)
 		if len(textMerge.extraSeeds) > 0 {
 			extra := filterGeneratedPrismContext(textMerge.extraSeeds)
 			// extraSeeds are pure text hits promoted to a seed by whatever
@@ -465,6 +490,13 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 		return familySyms[i].Span.Start < familySyms[j].Span.Start
 	})
+	if len(p.paths) > 0 || len(p.glob) > 0 {
+		graphExtra = filterSymbolsByScope(graphExtra, scope)
+		familySyms = filterSymbolsByScope(familySyms, scope)
+		for seedID, callers := range testCallers {
+			testCallers[seedID] = filterSymbolsByScope(callers, scope)
+		}
+	}
 	stamp("graph-expand")
 	// Merge candidates and graph-enriched symbols, then filter by include set.
 	merged := make([]grove.SymbolRecord, 0, len(candidateSyms)+len(graphExtra))

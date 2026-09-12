@@ -273,7 +273,7 @@ func toSlice(v any) []any {
 // checks that nothing is resident. If that changes, bring call-count
 // evidence that agents open with the tool being made resident.
 func TestToolSchemas_NoResidency(t *testing.T) {
-	for _, tool := range ToolSchemas() {
+	for _, tool := range append(ToolSchemas(), CompactToolSchemas()...) {
 		name, _ := tool["name"].(string)
 		loaded := false
 		if meta, ok := tool["_meta"].(map[string]any); ok {

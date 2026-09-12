@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | b
 irm https://raw.githubusercontent.com/provasign/prism/main/install.ps1 | iex
 
 # Pin the current release
-VERSION=v0.73.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
+VERSION=v0.74.0 curl -fsSL https://raw.githubusercontent.com/provasign/prism/main/install.sh | bash
 ```
 
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
@@ -118,8 +118,8 @@ prism doctor .
 
 ## Workflow for coding agents
 
-1. Locate the first anchor with `prism_search`; batch several known names into one call.
-2. Before editing an existing symbol, run `prism_change_impact` and preserve the returned set.
+1. Use `prism_lookup` for a known symbol or `prism_search` for an unknown location; batch related names.
+2. Use `prism_change_impact` when callers, overrides, contracts, or other affected sites need checking; a clearly local body-only edit need not call it. Preserve the returned set when used.
 3. Use `prism_query` for edit-ready context or `prism_lookup` for one complete body.
 4. Use exhaustive text search for wide concept removals and other completeness questions.
 5. Run tests and `prism_verify` before declaring a multi-site change complete.

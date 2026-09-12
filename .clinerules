@@ -23,8 +23,10 @@ Read-only inspection alone needs no impact.
 
 Workflow rules:
 
-- Before editing an existing symbol: `prism_change_impact(query="Type.method")`.
-  **Relay that set as-is**; do not filter it through grep/sed.
+- Decide whether `prism_change_impact` helps before an edit. Prefer it for
+  changed signatures, public contracts, overrides, multi-site edits, or uncertain
+  callers; a clearly local body-only edit can proceed without it. When called,
+  **relay the set as-is**; do not filter it through grep/sed.
 - Before declaring a multi-site change done: `prism_verify`.
 - External/unresolved interface or undersized closure for a wide task?
   Use batched `prism_search(scope="text", exhaustive=true)` for declarations, calls,

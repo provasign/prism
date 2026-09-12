@@ -4,7 +4,8 @@ go 1.26
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/provasign/grove v0.49.0
+	github.com/provasign/grove v0.49.2
+	modernc.org/sqlite v1.51.0
 )
 
 require (
@@ -21,5 +22,4 @@ require (
 	modernc.org/libc v1.72.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.51.0 // indirect
 )

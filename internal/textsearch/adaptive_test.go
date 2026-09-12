@@ -81,14 +81,48 @@ func TestSearchAdaptiveReturnsCompleteSmallResult(t *testing.T) {
 	}
 }
 
+func TestSearchAdaptiveReturnsCompletePayloadAboveFormerCountThreshold(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "many.txt"),
+		[]byte(strings.Repeat("ShortNeedle\n", 100)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Search(context.Background(), dir, "ShortNeedle", Options{
+		MaxHits: 25, MaxPerFile: 20, Timeout: 5 * time.Second, Adaptive: true,
+	})
+	if !r.CountComplete || !r.ResultsComplete || r.Truncated {
+		t.Fatalf("small-payload adaptive result is not complete: %+v", r)
+	}
+	if r.TotalHits != 100 || len(r.Hits) != 100 {
+		t.Fatalf("small-payload adaptive search = %d/%d hits, want 100/100", len(r.Hits), r.TotalHits)
+	}
+}
+
+func TestSearchAdaptiveCompletesShortInventoryAboveTwoHundredHits(t *testing.T) {
+	for _, count := range []int{210, 1000} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "a"), []byte(strings.Repeat("X\n", count)), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			r := Search(context.Background(), dir, "X", Options{
+				MaxHits: 25, MaxPerFile: 20, Timeout: 5 * time.Second, Context: 2, Adaptive: true,
+			})
+			if !r.CountComplete || !r.ResultsComplete || r.Truncated || r.TotalHits != count || len(r.Hits) != count {
+				t.Fatalf("short %d-hit inventory should fit the token budget: %+v", count, r)
+			}
+		})
+	}
+}
+
 func TestSearchAdaptiveKeepsLargeResultBoundedWithExactCount(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "many.txt"),
-		[]byte(strings.Repeat("LargeNeedle\n", 100)), 0o644); err != nil {
+		[]byte(strings.Repeat("LargeNeedle "+strings.Repeat("long line ", 100)+"\n", 100)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	r := Search(context.Background(), dir, "LargeNeedle", Options{
-		MaxHits: 25, MaxPerFile: 20, Timeout: 5 * time.Second, Adaptive: true,
+		MaxHits: 25, MaxPerFile: 20, Timeout: 5 * time.Second, Context: 2, Adaptive: true,
 	})
 	if !r.CountComplete || r.ResultsComplete || !r.Truncated {
 		t.Fatalf("large adaptive result has wrong completeness: %+v", r)

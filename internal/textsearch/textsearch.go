@@ -19,10 +19,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/provasign/prism/internal/ranking"
 )
 
 // Hit is one matching line. File is root-relative with forward slashes.
@@ -353,11 +356,10 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	// group, so the backend's deterministic order is preserved). Exhaustive
 	// searches already return everything and skip both steps.
 	fetch := opts
-	completeSmall := adaptive && counted.Complete && counted.TotalHits <= adaptiveCompleteHitLimit
-	if completeSmall {
-		// The count proves the total is bounded, so lifting the caller's display
-		// cap cannot create an unbounded response. A per-file cap equal to the
-		// global total guarantees no matching line is hidden within one file.
+	completeCandidate := adaptive && counted.Complete && counted.TotalHits <= adaptiveCandidateHitLimit
+	if completeCandidate {
+		// Fetch a bounded exact set before deciding whether to deliver it all.
+		// A per-file cap equal to the total prevents one file from hiding hits.
 		fetch.MaxHits = maxInt(counted.TotalHits, 1)
 		fetch.MaxPerFile = maxInt(counted.TotalHits, 1)
 	} else if !opts.Exhaustive && opts.MaxHits < 200 {
@@ -391,7 +393,7 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 		// The line pass can still time out or fall back to a backend with
 		// different availability. Only claim a complete result when its size
 		// agrees with the independent exact count.
-		res.ResultsComplete = completeSmall && !res.TimedOut &&
+		res.ResultsComplete = completeCandidate && !res.TimedOut &&
 			len(res.RejectedPaths) == 0 && len(res.Hits) == counted.TotalHits
 		if len(res.Hits) < counted.TotalHits {
 			res.Truncated = true
@@ -399,18 +401,104 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	}
 	if !opts.Exhaustive && len(res.Hits) > 0 {
 		res.Hits = rankSourceFirst(res.Hits)
+	}
+	contextAttached := false
+	if !opts.Exhaustive && len(res.Hits) > 0 {
+		// An exact set above the display cap is delivered only when its actual
+		// payload is modest. A long line or large context window can therefore
+		// keep even a low-count search sampled, without claiming completeness.
+		if res.ResultsComplete && len(res.Hits) > opts.MaxHits {
+			if !adaptiveHitsFitBudget(res.Hits) {
+				res.ResultsComplete = false
+			} else if opts.Context > 0 {
+				attachContext(root, res.Hits, opts.Context)
+				contextAttached = true
+				res.ResultsComplete = adaptiveHitsFitBudget(res.Hits)
+			}
+		}
 		if !res.ResultsComplete && len(res.Hits) > opts.MaxHits {
 			res.Hits = res.Hits[:opts.MaxHits]
 			res.Truncated = true
 		}
 	}
-	if opts.Context > 0 && len(res.Hits) > 0 {
+	if opts.Context > 0 && len(res.Hits) > 0 && !contextAttached {
 		attachContext(root, res.Hits, opts.Context)
 	}
 	return res
 }
 
-const adaptiveCompleteHitLimit = 64
+const (
+	adaptiveDeliveryTokenLimit = 4000
+	// Each rendered hit costs at least one estimated token, so an inventory
+	// larger than the token budget cannot fit. The check below decides for all
+	// smaller candidates after neighboring context lines are deduplicated.
+	adaptiveCandidateHitLimit = adaptiveDeliveryTokenLimit
+)
+
+func adaptiveHitsFitBudget(hits []Hit) bool {
+	files := make(map[string]map[int]string)
+	withContext := make(map[string]bool)
+	for _, hit := range hits {
+		lines := files[hit.File]
+		if lines == nil {
+			lines = make(map[int]string)
+			files[hit.File] = lines
+		}
+		if len(hit.Before) > 0 || len(hit.After) > 0 {
+			withContext[hit.File] = true
+		}
+		for i, line := range hit.Before {
+			n := hit.Line - len(hit.Before) + i
+			if _, exists := lines[n]; !exists {
+				lines[n] = line
+			}
+		}
+		lines[hit.Line] = hit.Text
+		for i, line := range hit.After {
+			n := hit.Line + 1 + i
+			if _, exists := lines[n]; !exists {
+				lines[n] = line
+			}
+		}
+	}
+	// Reserve space for the result heading and completeness notes. Estimate the
+	// assembled lines, as the MCP renderer does: applying the estimator to each
+	// tiny fragment separately overcounts a short inventory by several times.
+	tokens := 128
+	for file, lines := range files {
+		var rendered strings.Builder
+		if withContext[file] {
+			rendered.WriteString(file)
+			rendered.WriteString(":\n")
+		}
+		nums := make([]int, 0, len(lines))
+		for n := range lines {
+			nums = append(nums, n)
+		}
+		sort.Ints(nums)
+		for i, n := range nums {
+			line := lines[n]
+			if withContext[file] {
+				if i > 0 && n != nums[i-1]+1 {
+					rendered.WriteString("  --\n")
+				}
+				rendered.WriteString("  ")
+			} else {
+				rendered.WriteString(file)
+				rendered.WriteByte(':')
+			}
+			rendered.WriteString(strconv.Itoa(n))
+			rendered.WriteString(": ")
+			rendered.WriteString(strings.TrimRight(line, "\r\n"))
+			rendered.WriteByte('\n')
+		}
+		tokens += ranking.EstimateTokens(rendered.String()) + 4
+		if tokens > adaptiveDeliveryTokenLimit {
+			return false
+		}
+	}
+	return true
+}
 
 func maxInt(a, b int) int {
 	if a > b {

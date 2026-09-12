@@ -83,26 +83,31 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	return nil
 }
 
-// AutoIndexIfEmpty builds the index once for a never-indexed repo. Without
-// it, queries against such a repo answer from an empty graph ("no type named
-// X" — indistinguishable from a typo). Query paths call this after
-// EnsureRunning; index paths skip it and index explicitly.
+// AutoIndexIfEmpty builds the index for a never-indexed repo or refreshes one
+// whose extractor/resolver version is old (or whose edge write was interrupted).
+// Query paths call this after EnsureRunning; index paths index explicitly.
 func (c *Client) AutoIndexIfEmpty(ctx context.Context) error {
 	e, err := c.requireEngine()
 	if err != nil {
 		return err
 	}
-	st, err := e.Status(ctx)
+	stale, err := e.IndexNeedsRefresh(ctx)
 	if err != nil {
-		// A store that cannot report status is broken, not empty: every
-		// downstream query would return empty-with-nil-error. Fail loudly.
-		return fmt.Errorf("grove status: %w", err)
+		return fmt.Errorf("grove index version: %w", err)
 	}
-	if st.SymbolCount == 0 {
-		fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
+	if stale {
+		st, err := e.Status(ctx)
+		if err != nil {
+			return fmt.Errorf("grove status: %w", err)
+		}
+		if st.SymbolCount == 0 {
+			fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
+		} else {
+			fmt.Fprintln(os.Stderr, "prism: index is incomplete or from an older engine — rebuilding it (one-time)")
+		}
 		res, err := e.Index(ctx, c.root)
 		if err != nil {
-			return fmt.Errorf("initial index failed: %w", err)
+			return fmt.Errorf("index refresh failed: %w", err)
 		}
 		// An index that came back EMPTY is the real problem, and saying so
 		// here saves the caller from a downstream "no type named X in the

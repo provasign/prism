@@ -2,12 +2,14 @@ package grove
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	groveeng "github.com/provasign/grove/pkg/grove"
+	_ "modernc.org/sqlite"
 )
 
 func writePrismFile(t *testing.T, root, rel, content string) string {
@@ -20,6 +22,46 @@ func writePrismFile(t *testing.T, root, rel, content string) string {
 		t.Fatal(err)
 	}
 	return p
+}
+
+func TestClient_AutoIndexRefreshesOldResolverVersion(t *testing.T) {
+	root := t.TempDir()
+	writePrismFile(t, root, "main.go", "package main\n\nfunc A() {}\nfunc B() { A() }\n")
+	ctx := context.Background()
+	first := NewClient("", "").WithTokenFromDir(root)
+	if err := first.EnsureRunning(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.AutoIndexIfEmpty(ctx); err != nil {
+		t.Fatal(err)
+	}
+	first.Shutdown()
+
+	db, err := sql.Open("sqlite", filepath.Join(root, ".grove", "grove.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "UPDATE meta SET value = 'old' WHERE key = 'resolver-version'"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	second := NewClient("", "").WithTokenFromDir(root)
+	if err := second.EnsureRunning(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer second.Shutdown()
+	if err := second.AutoIndexIfEmpty(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if stale, err := second.eng.IndexNeedsRefresh(ctx); err != nil || stale {
+		t.Fatalf("auto-index did not refresh resolver version: stale=%v err=%v", stale, err)
+	}
+	if got, err := second.ChangeImpact(ctx, "A"); err != nil || len(got.Callers) == 0 {
+		t.Fatalf("refreshed graph lost caller: result=%+v err=%v", got, err)
+	}
 }
 
 func TestClient_RequiresEnsureRunning(t *testing.T) {

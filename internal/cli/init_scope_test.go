@@ -260,7 +260,8 @@ command = "keep"
 	if strings.Contains(got, "tools.search") || strings.Contains(got, "tools.lookup") {
 		t.Fatalf("legacy Prism subtree survived:\n%s", got)
 	}
-	if !strings.Contains(got, "[mcp_servers.other]") || !strings.Contains(got, `args = ["mcp", "--compact"]`) {
+	if !strings.Contains(got, "[mcp_servers.other]") || !strings.Contains(got, `args = ["mcp", "--compact"]`) ||
+		!strings.Contains(got, "[mcp_servers.prism.tools.prism]\n"+`approval_mode = "approve"`) {
 		t.Fatalf("unrelated/current config missing:\n%s", got)
 	}
 }

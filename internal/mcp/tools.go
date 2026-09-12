@@ -205,8 +205,10 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	// names the valid parameters produces a one-step correction instead.
 	// Validated against the tool's own published schema (the same source
 	// tools/list serves), so the check can never drift from what agents see.
-	if err := rejectUnknownArgs(name, args); err != nil {
-		return nil, err
+	if name != "prism_read_compact" && name != "prism_query_compact" {
+		if err := rejectUnknownArgs(name, args); err != nil {
+			return nil, err
+		}
 	}
 	switch name {
 	// The index-backed READ tools delta-reindex first, for the same reason
@@ -217,6 +219,12 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		return h.freshened(ctx, func() (any, error) { return h.toolQuery(ctx, args) })
 	case "prism_read":
 		return h.toolRead(ctx, args)
+	case "prism_read_compact":
+		return h.readRanges(ctx, args)
+	case "prism_query_compact":
+		return h.freshened(ctx, func() (any, error) {
+			return h.toolQueryScoped(ctx, args, searchScope{paths: stringsArg(args, "paths"), glob: stringsArg(args, "glob")})
+		})
 	case "prism_search":
 		return h.freshened(ctx, func() (any, error) { return h.toolSearch(ctx, args) })
 	case "prism_lookup":
@@ -351,90 +359,77 @@ func ToolSchemas() []map[string]any {
 	return out
 }
 
+const compactReadLimit = 240
+
 // CompactToolSchemas exposes the six primary operations through one MCP tool.
 // It avoids top-level composition keywords because older MCP hosts have
 // dropped tools carrying oneOf even when the JSON Schema is valid. The
 // selected legacy handler remains the operation-specific authority.
 func CompactToolSchemas() []map[string]any {
-	operations := []struct {
-		op   string
-		tool string
-	}{
-		{op: "lookup", tool: "prism_lookup"},
-		{op: "read", tool: "prism_read"},
-		{op: "search", tool: "prism_search"},
-		{op: "query", tool: "prism_query"},
-		{op: "change_impact", tool: "prism_change_impact"},
-		{op: "verify", tool: "prism_verify"},
+	prop := func(ops, note string, schema map[string]any) map[string]any {
+		schema["description"] = "ops: " + ops + ". " + note
+		return schema
 	}
-
-	// Keep one union of argument properties. Operation-specific required and
-	// unknown-field checks happen after expandCompactCall selects the handler.
-	var compactSchemaValue func(any) any
-	compactSchemaValue = func(value any) any {
-		switch value := value.(type) {
-		case map[string]any:
-			copy := make(map[string]any, len(value))
-			for key, child := range value {
-				if key == "description" {
-					continue
-				}
-				copy[key] = compactSchemaValue(child)
-			}
-			return copy
-		case []any:
-			copy := make([]any, len(value))
-			for i, child := range value {
-				copy[i] = compactSchemaValue(child)
-			}
-			return copy
-		case []string:
-			return append([]string(nil), value...)
-		default:
-			return value
-		}
+	stringOrList := func() map[string]any {
+		return map[string]any{"type": []string{"string", "array"}, "minItems": 1,
+			"maxItems": 10, "items": map[string]any{"type": "string"}}
 	}
-
-	ops := make([]string, 0, len(operations))
-	argProperties := map[string]any{}
-	for _, operation := range operations {
-		ops = append(ops, operation.op)
-		args := compactSchemaValue(toolSchema(operation.tool)).(map[string]any)
-		if operation.op == "read" {
-			// Large early reads multiply across every later model turn. Compact
-			// callers should request another focused window when 240 lines do not
-			// cover the target instead of front-loading an entire large file.
-			args["properties"].(map[string]any)["limit"].(map[string]any)["maximum"] = 240
-		}
-		for name, property := range args["properties"].(map[string]any) {
-			if _, exists := argProperties[name]; !exists {
-				argProperties[name] = property
-			}
-		}
+	name := map[string]any{"oneOf": []map[string]any{
+		{"type": "string"},
+		{"type": "array", "minItems": 1, "maxItems": 10, "items": map[string]any{
+			"oneOf": []map[string]any{
+				{"type": "string"},
+				{"type": "object", "required": []string{"name", "file"}, "additionalProperties": false,
+					"properties": map[string]any{"name": map[string]any{"type": "string"},
+						"file": map[string]any{"type": "string"}}},
+			},
+		}},
+	}}
+	args := map[string]any{
+		"name":        prop("lookup,change_impact", "Symbol(s); impact takes one.", name),
+		"symbol_file": prop("lookup,change_impact", "Disambiguating file.", map[string]any{"type": "string"}),
+		"fields": prop("lookup", "Projection.", map[string]any{"type": "array",
+			"items": map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}}}),
+		"signature": prop("change_impact", "External method signature.", map[string]any{"type": "string"}),
+		"file":      prop("read", "Repo-relative path.", map[string]any{"type": "string"}),
+		"from":      prop("read", "Inclusive first line.", map[string]any{"type": "integer", "minimum": 1}),
+		"to":        prop("read", "Inclusive last line; clamped to 240 lines.", map[string]any{"type": "integer", "minimum": 1}),
+		"ranges": prop("read", "Up to 10 {file,from,to} windows.", map[string]any{
+			"type": "array", "minItems": 1, "maxItems": 10,
+			"items": map[string]any{"type": "object", "additionalProperties": false,
+				"required": []string{"file", "from", "to"},
+				"properties": map[string]any{
+					"file": map[string]any{"type": "string"},
+					"from": map[string]any{"type": "integer", "minimum": 1},
+					"to":   map[string]any{"type": "integer", "minimum": 1},
+				}},
+		}),
+		"terms":           prop("search,query", "Batch task phrases (up to 10).", stringOrList()),
+		"task":            prop("query", "Natural-language task.", map[string]any{"type": "string"}),
+		"scope":           prop("search", "both|text|symbols.", map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}}),
+		"paths":           prop("search,query", "Repo-relative paths.", stringOrList()),
+		"glob":            prop("search,query", "File glob(s).", stringOrList()),
+		"regex":           prop("search", "Regex text match.", map[string]any{"type": "boolean"}),
+		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
+		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
+		"removed_symbols": prop("verify", "Identifiers to check before removal.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
+		"exhaustive":      prop("search", "Force complete inventory.", map[string]any{"type": "boolean"}),
 	}
-
+	const opMap = "lookup: name[,symbol_file,fields] | read: file,from,to or ranges | " +
+		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive] | " +
+		"query: task,terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
+		"verify: removed_symbols. Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{
-		"name": "prism",
-		"description": "MANDATORY first repository-discovery tool. Choose one operation. " +
-			"Known symbol: lookup. Known file/range: read. Unknown location/text: search. Related callers/tests: query. " +
-			"Before editing: change_impact. For multi-site, signature, removal, or unresolved-coverage changes: verify before finish. " +
-			"Do not substitute native Read/Grep.",
+		"name":        "prism",
+		"description": "Repository discovery starts with Prism. Use the op map; do not use shell tools to find code.",
 		"inputSchema": map[string]any{
-			"type":                 "object",
-			"additionalProperties": false,
-			"required":             []string{"op", "args"},
+			"type": "object", "additionalProperties": false, "required": []string{"op", "args"},
 			"properties": map[string]any{
-				"op": map[string]any{
-					"type":        "string",
-					"enum":        ops,
-					"description": "Use lookup for any known symbol; search only when its location is unknown.",
-				},
-				"args": map[string]any{
-					"type":                 "object",
-					"additionalProperties": false,
-					"properties":           argProperties,
-					"description":          "Arguments must match the selected operation. Search query accepts one term or an array; never join identifiers with spaces.",
-				},
+				"op": map[string]any{"type": "string",
+					"enum":        []string{"lookup", "read", "search", "query", "change_impact", "verify"},
+					"description": opMap},
+				"args": map[string]any{"type": "object", "additionalProperties": false,
+					"properties": args, "description": "Use only fields owned by the selected op."},
 			},
 		},
 	}}
@@ -1053,6 +1048,10 @@ type rankedSymbol struct {
 }
 
 func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, error) {
+	return h.toolQueryScoped(ctx, args, searchScope{})
+}
+
+func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scope searchScope) (any, error) {
 	task := stringArg(args, "task", stringArg(args, "intent", ""))
 	if task == "" {
 		return nil, errors.New("task is required")
@@ -1067,6 +1066,11 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	defer stamp("toolQuery total")
 
 	// --- Agent-directed parameters ---
+	for _, path := range scope.paths {
+		if _, _, err := safePathWithinRoot(h.Root, path); err != nil {
+			return nil, fmt.Errorf("query path %q: %w", path, err)
+		}
+	}
 
 	// terms: agent-supplied grep-style search terms used to seed retrieval
 	// instead of relying purely on TF-IDF over the task string. When provided,
@@ -1122,6 +1126,8 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		contextUsed:     int64(intArg(args, "context_used", 0)),
 		model:           stringArg(args, "model", ""),
 		budgetArg:       intArg(args, "budget", 0),
+		paths:           scope.paths,
+		glob:            scope.glob,
 	})
 	if err != nil {
 		return nil, err
@@ -1395,6 +1401,86 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	}, nil
 }
 
+const compactReadTotalLines = 600
+
+func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, error) {
+	raw := args["ranges"].([]any) // compact argument validation ran before dispatch
+	type window struct {
+		file, content, hash string
+		from, limit         int
+		warning             string
+	}
+	windows := make([]window, 0, len(raw))
+	var notes []string
+	remainingLines, remainingBytes := compactReadTotalLines, 20*1024
+	for i, entry := range raw {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		r := entry.(map[string]any)
+		path := r["file"].(string)
+		abs, sessionPath, err := safePathWithinRoot(h.Root, path)
+		if err != nil {
+			return nil, err
+		}
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", path, err)
+		}
+		content := string(data)
+		lines := strings.Split(content, "\n")
+		if len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		from, requestedTo := intArg(r, "from", 0), intArg(r, "to", 0)
+		w := window{file: sessionPath, content: content, hash: compression.Hash(content), from: from}
+		if from > len(lines) {
+			w.limit = 1 // readRange will report the past-EOF warning
+			windows = append(windows, w)
+			continue
+		}
+		requestedLines := requestedTo - from + 1
+		w.limit = minInt(requestedLines, minInt(compactReadLimit, remainingLines))
+		w.limit = minInt(w.limit, len(lines)-from+1)
+		for j := 0; j < w.limit; j++ {
+			cost := len(lines[from-1+j]) + 16
+			if cost > remainingBytes {
+				w.limit = j
+				break
+			}
+			remainingBytes -= cost
+		}
+		if w.limit == 0 {
+			w.warning = fmt.Sprintf("range %d (%s:%d-%d) omitted by the compact read budget", i+1, path, from, requestedTo)
+			notes = append(notes, w.warning)
+		} else {
+			remainingLines -= w.limit
+			if w.limit < requestedLines {
+				notes = append(notes, fmt.Sprintf("range %d (%s:%d-%d) clamped to %d-%d",
+					i+1, path, from, requestedTo, from, from+w.limit-1))
+			}
+		}
+		windows = append(windows, w)
+	}
+	results := make([]map[string]any, 0, len(windows))
+	for _, w := range windows {
+		if w.warning != "" {
+			results = append(results, map[string]any{"file": w.file, "delivery": "range", "warning": w.warning})
+			continue
+		}
+		result, err := h.readRange(w.file, w.content, w.hash, w.from, w.limit)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result.(map[string]any))
+	}
+	out := map[string]any{"delivery": "ranges", "ranges": results}
+	if len(notes) > 0 {
+		out["note"] = strings.Join(notes, "; ")
+	}
+	return out, nil
+}
+
 // searchTermCap bounds how many terms one prism_search call will run. The
 // point of batching is to collapse a run of turns, not to let one result
 // become the payload that dominates every later turn (cache reads compound:
@@ -1429,8 +1515,8 @@ const searchContextCap = 15
 const (
 	defaultSearchLimit  = 25
 	exhaustiveSymbolCap = 2000
-	// defaultSearchContext: lines around each text hit when the caller set
-	// no context= (candidate under test; 0 restores the shipped behaviour).
+	// defaultSearchContext: lines around each text hit when the caller sets
+	// no context=. This makes the compact search result useful without a read.
 	defaultSearchContext = 2
 	// symbolFetchHardMax bounds the scoped fetch loop: past it the result
 	// is reported truncated rather than the index scanned without end.
