@@ -9,17 +9,16 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
 		"mcp__prism__prism_lookup",
-		"Affected sites or signature change:",
-		"Known symbol bodies:",
+		"affected sites, signature change, or pre-edit check",
+		"known bodies",
 		`prism_lookup(name=["A","B"])`,
-		"Known file/range:",
-		"Unknown code/text location:",
-		"Related implementations, callers, and tests:",
+		"known file/range",
+		"unknown location/text",
+		"related implementations/callers/tests",
 		"Known symbol: use impact/lookup directly, not search",
-		"External/unresolved interface or undersized closure for a wide task?",
+		"external interfaces or incomplete wide scope",
 		`prism_search(scope="text", exhaustive=true)`,
 		"text matches do not prove implementation",
-		"not guessed type names",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing direct route: %s", want)
@@ -38,7 +37,7 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 	if strings.Contains(got, "Known symbol, affected sites") {
 		t.Error("a named symbol alone must not trigger impact")
 	}
-	for _, want := range []string{"Read-only inspection alone needs no impact", "do not fetch bodies by default", "site enumeration"} {
+	for _, want := range []string{"Read-only inspection alone needs no impact", "fetch bodies only", "site\nenumeration"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing task-depth distinction: %s", want)
 		}
@@ -52,14 +51,15 @@ func TestSteeringRoutesKnownNamesDirectly(t *testing.T) {
 func TestSteeringRetainsEvidenceAndEditSafeguards(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
-		"Before editing an existing symbol:",
-		"Relay that set as-is",
-		"Before declaring a multi-site change done:",
+		"Before editing an existing symbol",
+		"relay its sites as-is",
+		"before finishing multi-site",
 		`prism_verify(removed_symbols=["A","B"])`,
-		"omitted evidence, ambiguous receivers, stale/incomplete",
-		"Preserve reported sites while resolving uncertainty",
-		"report them instead of claiming completeness",
+		"unclear evidence",
+		"Preserve reported sites, resolve uncertainty",
+		"report remaining gaps",
 		"inspect partial-result warnings",
+		"not every\nsmall local edit",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing accuracy safeguard: %s", want)

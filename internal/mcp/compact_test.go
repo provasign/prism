@@ -31,10 +31,28 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	if description := properties["op"].(map[string]any)["description"].(string); !strings.Contains(description, "lookup for any known symbol") {
 		t.Fatalf("compact operation guidance = %q", description)
 	}
-	args := properties["args"].(map[string]any)
-	searchQuery := args["properties"].(map[string]any)["query"].(map[string]any)
+	branches := schema["oneOf"].([]map[string]any)
+	if len(branches) != len(wantOps) {
+		t.Fatalf("compact schema branches = %d, want %d", len(branches), len(wantOps))
+	}
+	argsByOp := make(map[string]map[string]any, len(branches))
+	for _, branch := range branches {
+		branchProperties := branch["properties"].(map[string]any)
+		op := branchProperties["op"].(map[string]any)["const"].(string)
+		argsByOp[op] = branchProperties["args"].(map[string]any)
+	}
+	searchQuery := argsByOp["search"]["properties"].(map[string]any)["query"].(map[string]any)
 	if got := searchQuery["type"].([]string); len(got) != 2 || got[1] != "array" {
 		t.Fatalf("compact search query types = %v, want string or array", got)
+	}
+	readProperties := argsByOp["read"]["properties"].(map[string]any)
+	if got := readProperties["limit"].(map[string]any)["maximum"]; got != 240 {
+		t.Fatalf("compact read limit maximum = %v, want 240", got)
+	}
+	for _, op := range []string{"lookup", "change_impact"} {
+		if _, ok := argsByOp[op]["properties"].(map[string]any)["limit"]; ok {
+			t.Fatalf("compact %s schema incorrectly accepts read/search limit", op)
+		}
 	}
 
 	compactJSON, err := json.Marshal(compact)

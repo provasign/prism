@@ -139,18 +139,18 @@ if ! grep -qsF "$LINE" "$SHELL_RC" 2>/dev/null; then
 fi
 export PATH="${INSTALL_DIR}:$PATH"
 
-# ── Global AI tool registration ──────────────────────────────────────────────
-info "Registering prism with detected AI coding tools (global)…"
-"${INSTALL_DIR}/prism" init --global 2>/dev/null \
-  && ok "prism registered globally with detected AI tools" \
-  || info "prism global init skipped (run: prism init --global)"
+# ── Legacy global-registration cleanup ──────────────────────────────────────────
+info "Removing legacy user-global Prism MCP registrations…"
+"${INSTALL_DIR}/prism" cleanup-global 2>/dev/null \
+  && ok "legacy user-global Prism registrations removed" \
+  || info "legacy global cleanup skipped (run: prism cleanup-global)"
 
 # ── Optional project initialization ─────────────────────────────────────────
 if [ -n "${PROJECT:-}" ]; then
   [ -d "$PROJECT" ] || die "project dir not found: $PROJECT"
   info "Initializing project: $PROJECT"
   ( cd "$PROJECT"
-    "${INSTALL_DIR}/prism" init >/dev/null 2>&1 \
+    "${INSTALL_DIR}/prism" init --harness "${HARNESS:-all}" >/dev/null 2>&1 \
       && ok "prism: project initialized" \
       || err "prism init failed — run manually: prism init"
     "${INSTALL_DIR}/prism" index >/dev/null 2>&1 \
@@ -159,5 +159,5 @@ if [ -n "${PROJECT:-}" ]; then
   )
 fi
 
-printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nAI tool note:\n  Restart or reload your coding agent / IDE so it respawns MCP servers from the updated config.\n  For Claude Code, approve the .mcp.json servers if prompted, then verify with: claude mcp list\n\nNext: cd /your/project && prism init && prism index\n' \
+printf '\n%s %s installed. Open a new terminal or run:\n  export PATH="%s:$PATH"\n\nAI tool note:\n  MCP configuration is project-local. Restart or reload your coding agent / IDE after running init.\n  For Claude Code, approve the .mcp.json servers if prompted, then verify with: claude mcp list\n\nNext: cd /your/project && prism init && prism index\n' \
   "$PRODUCT" "$VERSION" "$INSTALL_DIR"

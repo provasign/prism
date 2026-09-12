@@ -191,10 +191,9 @@ finding was made in response to the user's diagnostic question.
 4. This was a targeted correctness audit plus full regression suites, not a
    proof of every resolver for every supported language. No new token-savings
    estimate follows from these changes.
-5. Prism's checked-in dependency still pins Grove v0.43.3. The optional preview
-   adapter reports missing base coverage as review with that version. The full
-   fix requires reviewing/releasing Grove first, then updating Prism's dependency
-   and releasing Prism. No absolute local replacement was added to `go.mod`.
+5. Grove v0.45.0 is now released and this unreleased Prism worktree pins that
+   version. The coordinated graph fix is therefore exercised without a local
+   replacement; Prism itself remains unreleased and unpushed.
 6. Resolver stamps rebuild stored data when a corrected binary opens/indexes it;
    they cannot update code inside an already-running old MCP process. Such
    processes must still restart into the new binary through the host lifecycle.

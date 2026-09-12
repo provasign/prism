@@ -71,7 +71,7 @@ func PrismInstallationWarning(runningPath, runningVersion string) string {
 	return "⚠ multiple Prism installations have different versions. This process is running " +
 		runningVersion + " from " + runningPath + "; also found " + strings.Join(parts, ", ") + ". " +
 		"MCP clients pin executable paths, so updating one installation may leave agents on another. " +
-		"Run the intended Prism executable with `init --global`, run `prism init` in affected projects, then restart the agent."
+		"Run the intended Prism executable with `cleanup-global`, run `prism init` in each affected project, then restart the agent."
 }
 
 func findPrismInstallationConflicts(

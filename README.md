@@ -55,10 +55,11 @@ VERSION=v0.72.6 curl -fsSL https://raw.githubusercontent.com/provasign/prism/mai
 The installer writes to `~/bin` by default. Set `INSTALL_DIR` to choose another directory.
 Use either Homebrew or the standalone installer as the authoritative installation. If both
 are present with different versions, `prism init` and the MCP server report their paths.
-The standalone installer stops running Prism MCP servers before replacing the binary and
-verifies the installed version afterward. After changing installation methods or upgrading
-Homebrew, run `prism init --global`, run `prism init` in existing projects, and restart the
-coding agent so pinned MCP paths and long-running servers refresh.
+The standalone installer stops running Prism MCP servers before replacing the binary,
+verifies the installed version, and removes Prism registrations left by the old global
+configuration model. After changing installation methods or upgrading Homebrew, run
+`prism cleanup-global`, run `prism init` in each project, choose the harnesses to configure,
+and restart the coding agent so pinned MCP paths and long-running servers refresh.
 
 Build from source with `make build`; run the full test suite with `make test`.
 
@@ -70,7 +71,11 @@ From the root of a repository:
 prism init .
 ```
 
-This writes `prism.yaml`, registers the MCP server for detected project-local clients, and updates supported agent instruction files. Indexing happens automatically on first use and refreshes incrementally after changes.
+This asks which harnesses you use (Claude Code, Codex, Cursor, Windsurf, VS Code,
+Gemini, or opencode), then writes `prism.yaml`, the selected project-local MCP
+configs, and their instruction files. For automation, pass a comma-separated list,
+for example `prism init --harness claude,codex .`. Indexing happens automatically
+on first use and refreshes incrementally after changes.
 
 Use search to find an anchor, then ask the graph for the relationship you need:
 

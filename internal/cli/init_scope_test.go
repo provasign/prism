@@ -21,7 +21,7 @@ func TestInitProjectScopeTouchesNothingGlobal(t *testing.T) {
 	}
 	project := t.TempDir()
 
-	initRegisterMCPTools(project, "prism", false, true, false, false)
+	initRegisterMCPTools(project, "prism", supportedHarnesses, true, false, false)
 
 	if _, err := os.Stat(filepath.Join(home, ".config", "opencode", "opencode.json")); err == nil {
 		t.Error("project init wrote the user-global opencode config")
@@ -47,14 +47,8 @@ func TestInitProjectScopeTouchesNothingGlobal(t *testing.T) {
 	}
 }
 
-// --deny-builtin-search must land its rules SOMEWHERE in both scopes. The
-// approval step used to be keyed on the config file name (".mcp.json"), which
-// is only how Claude Code is registered at project scope — under --global it
-// registers via ~/.claude.json, so the whole approval/permissions step was
-// skipped and `init --global --deny-builtin-search` wrote the deny rules to
-// no file at all. Silent, and invisible to every existing test because they
-// only covered the project path. Keyed on the writer now; this pins both.
-func TestInitDenyBuiltinSearch_LandsInTheScopedSettingsFile(t *testing.T) {
+// --deny-builtin-search must land only in the project's Claude settings.
+func TestInitDenyBuiltinSearch_LandsInProjectSettings(t *testing.T) {
 	denyRules := []string{"Grep", "Bash(" + "grep:*)", "Bash(" + "rg:*)"}
 
 	t.Run("project scope", func(t *testing.T) {
@@ -63,7 +57,7 @@ func TestInitDenyBuiltinSearch_LandsInTheScopedSettingsFile(t *testing.T) {
 		t.Setenv("USERPROFILE", home)
 		project := t.TempDir()
 
-		initRegisterMCPTools(project, "prism", false, true, false, true) // global=false, deny=true
+		initRegisterMCPTools(project, "prism", []string{"claude"}, true, false, true)
 
 		raw, err := os.ReadFile(filepath.Join(project, ".claude", "settings.json"))
 		if err != nil {
@@ -78,23 +72,79 @@ func TestInitDenyBuiltinSearch_LandsInTheScopedSettingsFile(t *testing.T) {
 			t.Error("project-scoped deny leaked into machine-global settings")
 		}
 	})
+}
 
-	t.Run("global scope", func(t *testing.T) {
-		home := t.TempDir()
-		setHome(t, home)
-		t.Setenv("USERPROFILE", home)
-		project := t.TempDir()
+func TestCmdInit_ConfiguresOnlySelectedHarnesses(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	project := t.TempDir()
 
-		initRegisterMCPTools(project, "prism", true, true, false, true) // global=true, deny=true
+	if rc := cmdInit([]string{"--harness", "codex", project}); rc != 0 {
+		t.Fatalf("cmdInit rc = %d", rc)
+	}
+	for _, want := range []string{"prism.yaml", "AGENTS.md", filepath.Join(".codex", "config.toml")} {
+		if _, err := os.Stat(filepath.Join(project, want)); err != nil {
+			t.Errorf("selected Codex file %s missing: %v", want, err)
+		}
+	}
+	for _, unwanted := range []string{"CLAUDE.md", ".mcp.json", ".cursorrules", filepath.Join(".cursor", "mcp.json"), "GEMINI.md", "opencode.json"} {
+		if _, err := os.Stat(filepath.Join(project, unwanted)); err == nil {
+			t.Errorf("unselected harness file %s was written", unwanted)
+		}
+	}
+}
 
-		raw, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+func TestParseHarnesses_AliasesOrderAndValidation(t *testing.T) {
+	got, err := parseHarnesses([]string{"VS-Code,claude-code", "codex", "claude"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"claude", "codex", "vscode"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("parseHarnesses = %v, want %v", got, want)
+	}
+	if _, err := parseHarnesses([]string{"unknown"}); err == nil {
+		t.Fatal("unknown harness was accepted")
+	}
+}
+
+func TestRemoveLegacyGlobalMCPRegistrations_PreservesUnrelatedConfig(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	t.Setenv("USERPROFILE", home)
+
+	claudePath := filepath.Join(home, ".claude.json")
+	if err := os.WriteFile(claudePath, []byte(`{"theme":"dark","mcpServers":{"prism":{"command":"old"},"other":{"command":"keep"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	codexPath := filepath.Join(home, ".codex", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(codexPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	codex := "model = \"keep\"\n\n[mcp_servers.prism]\ncommand = \"old\"\nargs = [\"mcp\"]\n\n[mcp_servers.other]\ncommand = \"keep\"\n"
+	if err := os.WriteFile(codexPath, []byte(codex), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	opencodePath := filepath.Join(home, ".config", "opencode", "opencode.json")
+	if err := os.MkdirAll(filepath.Dir(opencodePath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	opencode := `{"mcp":{"prism":{"command":["old"]},"other":{"command":["keep"]},"servers":{"prism":{"command":["old2"]},"other2":{"command":["keep2"]}}}}`
+	if err := os.WriteFile(opencodePath, []byte(opencode), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed := removeLegacyGlobalMCPRegistrations()
+	if len(changed) != 3 {
+		t.Fatalf("changed = %v, want three global config files", changed)
+	}
+	for _, path := range []string{claudePath, codexPath, opencodePath} {
+		raw, err := os.ReadFile(path)
 		if err != nil {
-			t.Fatalf("global settings not written under --global: %v", err)
+			t.Fatal(err)
 		}
-		for _, want := range denyRules {
-			if !strings.Contains(string(raw), want) {
-				t.Errorf("global settings missing deny rule %q: %s", want, raw)
-			}
+		if strings.Contains(string(raw), "prism") || !strings.Contains(string(raw), "keep") {
+			t.Errorf("migration did not remove only Prism from %s:\n%s", path, raw)
 		}
-	})
+	}
 }

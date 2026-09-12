@@ -360,23 +360,72 @@ func ToolSchemas() []map[string]any {
 // selected legacy handler remains the authority: Handler.Invoke validates args
 // against that operation's full schema and rejects silently ignored parameters.
 func CompactToolSchemas() []map[string]any {
-	stringOrArray := func() map[string]any {
-		return map[string]any{
-			"type":  []string{"string", "array"},
-			"items": map[string]any{"type": "string"},
+	operations := []struct {
+		op   string
+		tool string
+	}{
+		{op: "lookup", tool: "prism_lookup"},
+		{op: "read", tool: "prism_read"},
+		{op: "search", tool: "prism_search"},
+		{op: "query", tool: "prism_query"},
+		{op: "change_impact", tool: "prism_change_impact"},
+		{op: "verify", tool: "prism_verify"},
+	}
+
+	// Keep the gateway small without weakening its contract. Each oneOf branch
+	// carries the selected legacy operation's real schema, minus prose already
+	// covered by the gateway routing description. This makes invalid cross-op
+	// arguments visible to the model before a call reaches Handler.Invoke.
+	var compactSchemaValue func(any) any
+	compactSchemaValue = func(value any) any {
+		switch value := value.(type) {
+		case map[string]any:
+			copy := make(map[string]any, len(value))
+			for key, child := range value {
+				if key == "description" {
+					continue
+				}
+				copy[key] = compactSchemaValue(child)
+			}
+			return copy
+		case []any:
+			copy := make([]any, len(value))
+			for i, child := range value {
+				copy[i] = compactSchemaValue(child)
+			}
+			return copy
+		case []string:
+			return append([]string(nil), value...)
+		default:
+			return value
 		}
 	}
-	stringArray := func() map[string]any {
-		return map[string]any{
-			"type":  "array",
-			"items": map[string]any{"type": "string"},
+
+	ops := make([]string, 0, len(operations))
+	branches := make([]map[string]any, 0, len(operations))
+	for _, operation := range operations {
+		ops = append(ops, operation.op)
+		args := compactSchemaValue(toolSchema(operation.tool)).(map[string]any)
+		if operation.op == "read" {
+			// Large early reads multiply across every later model turn. Compact
+			// callers should request another focused window when 240 lines do not
+			// cover the target instead of front-loading an entire large file.
+			args["properties"].(map[string]any)["limit"].(map[string]any)["maximum"] = 240
 		}
+		branches = append(branches, map[string]any{
+			"properties": map[string]any{
+				"op":   map[string]any{"const": operation.op},
+				"args": args,
+			},
+		})
 	}
+
 	return []map[string]any{{
 		"name": "prism",
 		"description": "MANDATORY first repository-discovery tool. Choose one operation. " +
 			"Known symbol: lookup. Known file/range: read. Unknown location/text: search. Related callers/tests: query. " +
-			"Before editing: change_impact. At finish: verify. Do not substitute native Read/Grep.",
+			"Before editing: change_impact. For multi-site, signature, removal, or unresolved-coverage changes: verify before finish. " +
+			"Do not substitute native Read/Grep.",
 		"inputSchema": map[string]any{
 			"type":                 "object",
 			"additionalProperties": false,
@@ -384,40 +433,15 @@ func CompactToolSchemas() []map[string]any {
 			"properties": map[string]any{
 				"op": map[string]any{
 					"type":        "string",
-					"enum":        []string{"lookup", "read", "search", "query", "change_impact", "verify"},
+					"enum":        ops,
 					"description": "Use lookup for any known symbol; search only when its location is unknown.",
 				},
 				"args": map[string]any{
-					"type":                 "object",
-					"description":          "lookup{name}; read{file,offset?,limit?}; search{query}; query{task,terms}; change_impact{query}; verify{}. For search, query is one term or an array—never join identifiers with spaces.",
-					"additionalProperties": true,
-					"properties": map[string]any{
-						"name":            stringOrArray(),
-						"query":           stringOrArray(),
-						"file":            map[string]any{"type": "string"},
-						"offset":          map[string]any{"type": "integer"},
-						"limit":           map[string]any{"type": "integer"},
-						"task":            map[string]any{"type": "string"},
-						"terms":           stringArray(),
-						"fields":          stringArray(),
-						"scope":           map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}},
-						"path":            stringOrArray(),
-						"glob":            stringOrArray(),
-						"regex":           map[string]any{"type": "boolean"},
-						"exhaustive":      map[string]any{"type": "boolean"},
-						"files_only":      map[string]any{"type": "boolean"},
-						"rollup_only":     map[string]any{"type": "boolean"},
-						"context":         map[string]any{"type": "integer"},
-						"include":         stringArray(),
-						"delivery":        map[string]any{"type": "string", "enum": []string{"source", "symbols"}},
-						"max_files":       map[string]any{"type": "integer"},
-						"budget":          map[string]any{"type": "integer"},
-						"signature":       map[string]any{"type": "string"},
-						"base":            map[string]any{"type": "string"},
-						"removed_symbols": stringArray(),
-					},
+					"type":        "object",
+					"description": "Arguments must match the selected operation. Search query accepts one term or an array; never join identifiers with spaces.",
 				},
 			},
+			"oneOf": branches,
 		},
 	}}
 }
@@ -2691,6 +2715,8 @@ func (h *Handler) enrichNoMethodError(ctx context.Context, query string, orig er
 // declaration for change_impact to anchor a family query on).
 var ambiguousCandidateCount = regexp.MustCompile(`is ambiguous — (\d+) candidates`)
 
+const crossLanguageAmbiguityMarker = "ambiguous across language families"
+
 const wideMemberAmbiguityThreshold = 8
 
 func enrichAmbiguousImpactError(query string, orig error) error {
@@ -2717,6 +2743,63 @@ func enrichAmbiguousImpactError(query string, orig error) error {
 		"that inventory names as ambiguous", orig, count, head, head)
 }
 
+// crossLanguageImpactChoice converts Grove's cross-language ambiguity into a
+// successful, actionable MCP response. Returning the raw error is a dead end
+// for agents, while merging the language families (or guessing the first one)
+// would make the change set actively unsafe. Resolve supplies structured file
+// identities without parsing Grove's human-readable candidate list.
+func (h *Handler) crossLanguageImpactChoice(ctx context.Context, query string, orig error) (map[string]any, bool) {
+	if orig == nil || !strings.Contains(orig.Error(), crossLanguageAmbiguityMarker) {
+		return nil, false
+	}
+	candidates, err := h.Grove.Resolve(ctx, query)
+	if err != nil || len(candidates) == 0 {
+		return nil, false
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].File != candidates[j].File {
+			return candidates[i].File < candidates[j].File
+		}
+		if candidates[i].Name != candidates[j].Name {
+			return candidates[i].Name < candidates[j].Name
+		}
+		return candidates[i].Line < candidates[j].Line
+	})
+	seen := map[string]bool{}
+	alternatives := make([]map[string]any, 0, len(candidates))
+	for _, candidate := range candidates {
+		key := candidate.File + "\x00" + candidate.Name + "\x00" + strconv.Itoa(candidate.Line)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		entry := map[string]any{
+			"name":     candidate.Name,
+			"kind":     candidate.Kind,
+			"language": candidate.Language,
+			"filePath": candidate.File,
+			"line":     candidate.Line,
+		}
+		if candidate.TestDouble {
+			entry["testDouble"] = true
+		}
+		alternatives = append(alternatives, entry)
+	}
+	if len(alternatives) == 0 {
+		return nil, false
+	}
+	return map[string]any{
+		"query":             query,
+		"status":            "needs_file_scope",
+		"requiresFileScope": true,
+		"candidateCount":    len(alternatives),
+		"alternatives":      alternatives,
+		"ambiguityNote": "The query matches declarations in multiple language families. " +
+			"No change sets were merged and Prism did not guess. Re-run prism_change_impact " +
+			"with file set to one alternative's filePath (or a unique path fragment).",
+	}, true
+}
+
 func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (any, error) {
 	query := stringArg(args, "query", "")
 	if query == "" {
@@ -2725,6 +2808,10 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
 	inferenceNote := ""
 	if err != nil {
+		if choice, ok := h.crossLanguageImpactChoice(ctx, query, err); ok {
+			h.Ledger.RecordCall("prism_change_impact")
+			return choice, nil
+		}
 		// A wide bare member or a qualified external interface has no local
 		// declaration to anchor. Infer the compatible local method family once
 		// and union file-scoped resolved impacts inside this call, instead of

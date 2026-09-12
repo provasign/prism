@@ -60,12 +60,11 @@ if [[ ! -x "$PRISM_BIN" ]]; then
 fi
 
 if [[ "$GLOBAL_INIT" == "1" ]]; then
-  echo "[bootstrap] running prism init --global $WORKSPACE_DIR"
-  "$PRISM_BIN" init --global "$WORKSPACE_DIR"
-else
-  echo "[bootstrap] running prism init $WORKSPACE_DIR"
-  "$PRISM_BIN" init "$WORKSPACE_DIR"
+  echo "[bootstrap] note: GLOBAL_INIT is obsolete; Prism configs are project-local"
 fi
+echo "[bootstrap] running prism init --harness ${HARNESS:-all} $WORKSPACE_DIR"
+"$PRISM_BIN" cleanup-global
+"$PRISM_BIN" init --harness "${HARNESS:-all}" "$WORKSPACE_DIR"
 
 echo "[bootstrap] done"
 echo "[bootstrap] next steps:"

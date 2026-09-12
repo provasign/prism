@@ -109,7 +109,8 @@ const serverInstructions = "For every coding task, the first repository-discover
 const compactServerInstructions = "For every coding task, the first repository-discovery action MUST call the prism tool. " +
 	"Do not begin with native Read/Grep/search. Put parameters in args. Known symbol: op=lookup. Known file/range: " +
 	"op=read. Unknown location/text: op=search. Related context around explicit terms: op=query. Before editing a " +
-	"symbol: op=change_impact. Finished multi-site change: op=verify. Batch related names."
+	"symbol: op=change_impact. For multi-site, signature, removal, or unresolved-coverage changes: op=verify before finish. " +
+	"Batch related names."
 
 const compactSearchLocatorGuidance = "// locator result — use the prism tool with op=lookup for known symbol bodies, op=read for a known file/range, or op=query for related implementations, callers, and tests"
 

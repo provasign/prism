@@ -60,7 +60,7 @@ func (h *Handler) widerAnchorHint(ctx context.Context, r *grove.ChangeImpactResu
 		}
 		tried[qn] = true
 		probes++
-		alt, err := h.Grove.ChangeImpact(ctx, qn)
+		alt, err := h.Grove.ChangeImpactScoped(ctx, qn, c.File)
 		if err != nil || len(alt.Declarations) == 0 || !relatedImpactAnchors(r, alt) {
 			continue
 		}

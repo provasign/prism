@@ -432,6 +432,7 @@ type EdgeRecord struct {
 type ResolvedSymbol struct {
 	Name       string `json:"name"` // qualified name
 	Kind       string `json:"kind"`
+	Language   string `json:"language,omitempty"`
 	File       string `json:"file"`
 	Line       int    `json:"line"`
 	TestDouble bool   `json:"testDouble,omitempty"`
@@ -535,7 +536,7 @@ func (c *Client) Resolve(ctx context.Context, name string) ([]ResolvedSymbol, er
 		if !match {
 			continue
 		}
-		rs := ResolvedSymbol{Name: s.QualifiedName, Kind: string(s.Kind), File: s.FilePath, Line: s.Span.Start}
+		rs := ResolvedSymbol{Name: s.QualifiedName, Kind: string(s.Kind), Language: s.Language, File: s.FilePath, Line: s.Span.Start}
 		if rs.Name == "" {
 			rs.Name = s.Name
 		}

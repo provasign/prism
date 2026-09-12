@@ -36,9 +36,11 @@ const (
 const helpText = `prism - semantic change intelligence for coding agents (embedded Grove)
 
 Usage:
-  prism init [--global] [dir]     Write prism.yaml + register MCP with detected AI tools
-                                  --global writes to user-level config (~/.claude, ~/.cursor, etc.)
-  prism install [--global] [dir]  Alias for 'prism init'
+  prism init [--harness <ids>] [dir]
+                                  Write prism.yaml + project-local MCP config
+  prism install [--harness <ids>] [dir]
+                                  Alias for 'prism init'
+  prism cleanup-global            Remove Prism entries written by old global setup
   prism index [dir]               Index codebase via Grove (delta-aware)
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
@@ -123,8 +125,10 @@ Usage:
   prism version                   Print version
 
 prism init [dir] flags:
-  --global            register in user-global configs (unlocks Zed and opencode;
-                      Codex supports both project and global registration)
+  --harness <ids>     harnesses to configure, comma-separated or repeated
+                      ids: claude, codex, cursor, windsurf, vscode, gemini, opencode
+                      interactive init asks; non-interactive init configures all
+  --global            removed: MCP configuration is project-local only
   --mode <any>        accepted and IGNORED (since v0.38.0 one steering template
                       covers MCP tools and the CLI together)
   --no-permissions    skip the Claude Code tool auto-allow entry
@@ -133,24 +137,19 @@ prism init [dir] flags:
                       reach prism (asked interactively; Claude Code only —
                       no other agent exposes a tool-denial setting)
   --refresh           rewrite ONLY agents already configured (never adds new ones)
-  --print-config <id> print one agent's snippet and exit, writing nothing
-                      ids: claude, cursor, windsurf, vscode, zed, codex, opencode, hermes
+  --print-config <id> print one project-local harness snippet and exit, writing nothing
+                      ids: claude, codex, cursor, windsurf, vscode, gemini, opencode
 
-Supported AI tools. Steering files are written unconditionally (harmless if the
-tool is absent; re-running updates in place). MCP configs are written only where
-the tool's config directory already exists:
+The Prism executable is installed globally; every harness registration and
+steering file is stored in the repository. Re-running updates in place and also
+removes stale Prism-owned user-global MCP registrations from older releases:
   Claude Code  →  .mcp.json + CLAUDE.md
-  Cursor       →  .cursor/mcp.json + .cursorrules + AGENTS.md
+  Codex CLI    →  .codex/config.toml + AGENTS.md
+  Cursor       →  .cursor/mcp.json + .cursorrules
   Windsurf     →  .windsurf/mcp.json + .windsurfrules
-  Zed          →  ~/.config/zed/settings.json (context_servers)   [--global]
   VS Code      →  .vscode/mcp.json + .github/copilot-instructions.md
-  Codex CLI    →  .codex/config.toml (project) or ~/.codex/config.toml [--global]
-  opencode     →  ~/.config/opencode/opencode.json                [--global]
-  Hermes       →  ~/.hermes/config.yaml   (print-config only — paste it yourself)
-  Gemini CLI   →  GEMINI.md
-  Cline        →  .clinerules
-  Devin        →  .devin/instructions.md
-  Kiro         →  .kiro/steering/prism.md
+  Gemini CLI   →  .gemini/settings.json + GEMINI.md
+  opencode     →  opencode.json + AGENTS.md
 `
 
 // Run is the CLI entry point. Returns the exit code.
@@ -179,6 +178,9 @@ func Run(args []string) int {
 		return 0
 	case "init", "install":
 		return cmdInit(rest)
+	case "cleanup-global":
+		removeLegacyGlobalMCPRegistrations()
+		return 0
 	case "watch":
 		return cmdWatch(rest)
 	case "index":
@@ -301,22 +303,29 @@ func commandHelp(cmd string) string {
 // --- per-command implementations ---------------------------------------
 
 func cmdInit(args []string) int {
-	// Flags: --global (write to ~/.config/... instead of project dir)
-	// --mode mcp|cli|both  (skip interactive prompt)
+	// --mode mcp|cli|both  (legacy no-op)
 	// --no-permissions     (skip the Claude Code tool auto-allow entry)
 	// --print-config <id>  (print one agent's snippet, write nothing, exit)
 	// --refresh            (rewrite ONLY agents already configured)
-	global := false
 	permissions := true
 	printConfig := ""
 	refresh := false
 	denyBuiltinSearch := false
+	var harnessArgs []string
 	filtered := args[:0]
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--global":
-			global = true
+			fmt.Fprintln(os.Stderr, "init: --global was removed; Prism MCP configuration is project-local. Use --harness to select clients.")
+			return 2
+		case "--harness":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "init: --harness requires a comma-separated value")
+				return 2
+			}
+			harnessArgs = append(harnessArgs, args[i+1])
+			i++
 		case "--no-permissions":
 			permissions = false
 		case "--deny-builtin-search":
@@ -352,7 +361,24 @@ func cmdInit(args []string) int {
 	// --print-config is a pure query: render one agent's snippet and exit
 	// without touching a single file.
 	if printConfig != "" {
-		return printAgentConfig(printConfig, abs, detectSelfPath(), global)
+		return printAgentConfig(printConfig, abs, detectSelfPath())
+	}
+
+	harnesses, err := parseHarnesses(harnessArgs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "init:", err)
+		return 2
+	}
+	if len(harnesses) == 0 {
+		if isInteractive() {
+			harnesses, err = promptHarnesses()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "init:", err)
+				return 2
+			}
+		} else {
+			harnesses = append([]string(nil), supportedHarnesses...)
+		}
 	}
 
 	// If mode not set by flag, prompt interactively (or default to "both" if
@@ -389,7 +415,7 @@ profile: "%s"
 	}
 
 	// 3. Write steering instructions matching the chosen mode.
-	writeSteeringInstructions(abs)
+	writeSteeringInstructions(abs, harnesses, refresh)
 
 	// Routing is the one thing steering cannot do. Measured at 12:1 in the
 	// benchmark and observed live: an agent listed prism's connected tools,
@@ -405,7 +431,8 @@ profile: "%s"
 	// available to those who ask for it: --deny-builtin-search.
 
 	// 4. Register with every detected AI coding tool.
-	registered := initRegisterMCPTools(abs, prismBin, global, permissions, refresh, denyBuiltinSearch)
+	removeLegacyGlobalMCPRegistrations()
+	registered := initRegisterMCPTools(abs, prismBin, harnesses, permissions, refresh, denyBuiltinSearch)
 	if len(registered) == 0 {
 		fmt.Println("tip: add prism to your AI tool's MCP config (see README)")
 	}
@@ -478,89 +505,133 @@ const steeringInstructions = `
 
 Use Prism's call/type graph for code discovery.
 
-**Before code discovery**, use the first available Prism route:
-- Prism MCP tools visible? Call one directly.
-- ` + "`" + `ToolSearch` + "`" + ` available? Run once (tools may be deferred):
+Before code discovery, use the first available Prism route:
+- Prism MCP tools visible? Call one directly. For the compact ` + "`" + `mcp__prism__prism` + "`" + ` gateway use
+  ` + "`" + `prism(op="lookup", args={"name":["A","B"]})` + "`" + `; its schema gives each op's valid args.
+- ` + "`" + `ToolSearch` + "`" + ` available? Run once; tools may be deferred:
 
-       ToolSearch("select:mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
+       ToolSearch("select:mcp__prism__prism,mcp__prism__prism_search,mcp__prism__prism_query,mcp__prism__prism_change_impact,mcp__prism__prism_lookup")
 
 - Otherwise use the Bash CLI. Never abandon Prism because ` + "`" + `ToolSearch` + "`" + ` is absent.
 
-Choose the first call by need:
-- Affected sites or signature change: ` + "`" + `prism_change_impact` + "`" + ` directly.
-- Known symbol bodies: ` + "`" + `prism_lookup(name=["A","B"])` + "`" + `.
-- Known file/range: ` + "`" + `prism_read` + "`" + `.
-- Unknown code/text location: ` + "`" + `prism_search` + "`" + `.
-- Related implementations, callers, and tests: ` + "`" + `prism_query` + "`" + ` with explicit anchors.
+Choose op/tool by need: affected sites, signature change, or pre-edit check -> ` + "`" + `prism_change_impact` + "`" + `;
+known bodies -> ` + "`" + `prism_lookup(name=["A","B"])` + "`" + `; known file/range -> ` + "`" + `prism_read` + "`" + `; unknown location/text ->
+` + "`" + `prism_search` + "`" + `; related implementations/callers/tests -> ` + "`" + `prism_query` + "`" + ` with explicit anchors.
 Known symbol: use impact/lookup directly, not search.
-Search only for external/unresolved contracts or wider scope.
 Read-only inspection alone needs no impact.
 
-Workflow rules:
+Before editing an existing symbol, call impact and relay its sites as-is. Reuse its signatures/calls for site
+enumeration; fetch bodies only for behavior or unclear evidence. For external interfaces or incomplete wide scope,
+use batched ` + "`" + `prism_search(scope="text", exhaustive=true)` + "`" + `; inspect signatures/receivers because
+text matches do not prove implementation. Preserve reported sites, resolve uncertainty, and report remaining gaps.
 
-- Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
-  **Relay that set as-is**; do not filter it through grep/sed.
-- Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
-- External/unresolved interface or undersized closure for a wide task?
-  Use batched ` + "`" + `prism_search(scope="text", exhaustive=true)` + "`" + ` for declarations, calls,
-  and interface refs. Inspect signatures/receivers; text matches do not prove implementation.
-  Use file-qualified identities, not guessed type names; report unresolved coverage.
-- After impact, reuse signatures and call expressions for site enumeration;
-  do not fetch bodies by default. Follow up for behavior, omitted evidence, ambiguous receivers, stale/incomplete
-  scope, or required non-code references. Do not rescan to reproduce the site list.
-  Preserve reported sites while resolving uncertainty; if gaps remain,
-  report them instead of claiming completeness.
-- Removing symbols? Before editing, run ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + `.
-  Re-run per edit round; plain ` + "`" + `prism_verify` + "`" + ` still gates the finish. Check
-  non-compiling surfaces too: comments, docs, config, and other languages.
-- Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
-  Add ` + "`" + `context=3` + "`" + ` for surrounding lines. Use ` + "`" + `scope="text"` + "`" + ` for pure grep.
-- Wide removal/refactor ("remove X everywhere")? Open with
-  ` + "`" + `prism_search(query="<concept>", scope="text", exhaustive=true, files_only=true)` + "`" + ` —
-  inspect partial-result warnings before treating the inventory as complete.
-- Need a file or exact line range? ` + "`" + `prism_read` + "`" + `. Whole named bodies? Batch
-  ` + "`" + `prism_lookup` + "`" + `, not guessed search context. Reuse delivered unchanged source.
+For removals, run ` + "`" + `prism_verify(removed_symbols=["A","B"])` + "`" + ` before editing and check docs/config/comments too.
+Run plain ` + "`" + `prism_verify` + "`" + ` before finishing multi-site, signature, removal, or unresolved-coverage changes—not every
+small local edit. Batch related names, inspect partial-result warnings, and reuse delivered unchanged source.
 
-Bash-only (subagents, CI) — same verbs, add ` + "`" + `--format text` + "`" + `:
-
-    prism search <term>... [--path <file-or-dir>] [--exhaustive] --scope text
-    prism query "<task>" --terms X
-    prism change-impact 'Type.method'
-    prism lookup <pkg.Func>   |   prism read <file>   |   prism verify --base <ref>
+Bash fallback: ` + "`" + `prism query "<task>" --terms X` + "`" + `, ` + "`" + `prism lookup <pkg.Func>` + "`" + `,
+` + "`" + `prism change-impact Type.method` + "`" + `, or ` + "`" + `prism search <term> --scope text --format text` + "`" + `.
 
 <!-- prism:end -->
 `
 
-// writeSteeringInstructions writes per-tool instruction files into the project
-// so agents know how to use Prism tools correctly.
-// On re-init it replaces a stale Prism section rather than skipping.
-func writeSteeringInstructions(projectDir string) {
+var supportedHarnesses = []string{"claude", "codex", "cursor", "windsurf", "vscode", "gemini", "opencode"}
+
+var harnessAliases = map[string]string{
+	"claude":      "claude",
+	"claude-code": "claude",
+	"codex":       "codex",
+	"cursor":      "cursor",
+	"windsurf":    "windsurf",
+	"vscode":      "vscode",
+	"vs-code":     "vscode",
+	"gemini":      "gemini",
+	"gemini-cli":  "gemini",
+	"opencode":    "opencode",
+}
+
+func parseHarnesses(values []string) ([]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	want := map[string]bool{}
+	for _, value := range values {
+		for _, raw := range strings.Split(value, ",") {
+			id := strings.ToLower(strings.TrimSpace(raw))
+			if id == "all" {
+				for _, harness := range supportedHarnesses {
+					want[harness] = true
+				}
+				continue
+			}
+			canonical, ok := harnessAliases[id]
+			if !ok {
+				return nil, fmt.Errorf("unknown harness %q (choose %s)", raw, strings.Join(supportedHarnesses, ", "))
+			}
+			want[canonical] = true
+		}
+	}
+	var selected []string
+	for _, harness := range supportedHarnesses {
+		if want[harness] {
+			selected = append(selected, harness)
+		}
+	}
+	return selected, nil
+}
+
+func promptHarnesses() ([]string, error) {
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Which agent harnesses should Prism configure for this project?")
+	fmt.Fprintln(os.Stderr, "  claude, codex, cursor, windsurf, vscode, gemini, opencode")
+	fmt.Fprint(os.Stderr, "Harnesses (comma-separated, Enter = all): ")
+	var line string
+	if _, err := fmt.Scanln(&line); err != nil {
+		// Scanln returns an error for an empty line; Enter deliberately means all.
+		return append([]string(nil), supportedHarnesses...), nil
+	}
+	if strings.TrimSpace(line) == "" {
+		return append([]string(nil), supportedHarnesses...), nil
+	}
+	return parseHarnesses([]string{line})
+}
+
+func harnessSelected(harnesses []string, id string) bool {
+	for _, harness := range harnesses {
+		if harness == id {
+			return true
+		}
+	}
+	return false
+}
+
+// writeSteeringInstructions writes only the instruction files used by the
+// selected project harnesses. On re-init it replaces a stale Prism section.
+func writeSteeringInstructions(projectDir string, harnesses []string, refresh bool) {
 	type instrFile struct {
 		name    string // description for log
 		relPath string // path relative to projectDir
+		harness string
 	}
 	targets := []instrFile{
-		// File-based agent instruction formats
-		{name: "Claude Code", relPath: "CLAUDE.md"},
-		{name: "Cursor", relPath: ".cursorrules"},
-		{name: "Windsurf", relPath: ".windsurfrules"},
-		{name: "GitHub Copilot", relPath: ".github/copilot-instructions.md"},
-		// AGENTS.md: cross-vendor spec (OpenAI Codex, etc.)
-		{name: "AGENTS.md", relPath: "AGENTS.md"},
-		// Gemini CLI / Gemini Code Assist
-		{name: "Gemini CLI", relPath: "GEMINI.md"},
-		// Cline agent steering
-		{name: "Cline", relPath: ".clinerules"},
-		// Devin
-		{name: "Devin", relPath: ".devin/instructions.md"},
-		// Kiro (Amazon): each file in .kiro/steering/ is a topic steering doc
-		{name: "Kiro", relPath: ".kiro/steering/prism.md"},
+		{name: "Claude Code", relPath: "CLAUDE.md", harness: "claude"},
+		{name: "Codex/opencode", relPath: "AGENTS.md", harness: "codex"},
+		{name: "Cursor", relPath: ".cursorrules", harness: "cursor"},
+		{name: "Windsurf", relPath: ".windsurfrules", harness: "windsurf"},
+		{name: "GitHub Copilot", relPath: ".github/copilot-instructions.md", harness: "vscode"},
+		{name: "Gemini CLI", relPath: "GEMINI.md", harness: "gemini"},
 	}
 
 	block := steeringBlock()
 
 	for _, t := range targets {
+		if !harnessSelected(harnesses, t.harness) && !(t.relPath == "AGENTS.md" && harnessSelected(harnesses, "opencode")) {
+			continue
+		}
 		path := filepath.Join(projectDir, t.relPath)
+		if refresh && !fileExists(path) {
+			continue
+		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not create directory for %s instructions: %v\n", t.name, err)
 			continue
@@ -675,32 +746,13 @@ type mcpEntry struct {
 	AlwaysLoad bool     `json:"alwaysLoad,omitempty"`
 }
 
-// initRegisterMCPTools writes MCP server config for every detected tool.
-// It returns the list of files written.
-// initRegisterMCPTools writes prism's MCP server entry into every AI coding
-// tool's config. permissions=false skips Claude Code's tool auto-allow;
-// refresh=true rewrites ONLY tools already configured (never adds a new one),
-// which is what an upgrade wants.
-func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refresh, denyBuiltinSearch bool) []string {
+// initRegisterMCPTools writes Prism into the selected harnesses' project-local
+// config. The executable may be global, but its registration never is.
+// permissions=false skips Claude Code's tool auto-allow; refresh=true rewrites
+// only selected configs that already exist.
+func initRegisterMCPTools(projectDir, prismBin string, harnesses []string, permissions, refresh, denyBuiltinSearch bool) []string {
 	var written []string
-
-	// Scope model: project-level is the default and touches ONLY files inside
-	// the repo. User-global tools (Zed, opencode, and an optional global Codex
-	// registration) and the global Claude settings are written only with
-	// --global, or after the explicit interactive question below — never silently.
-	globalTools := global
-	if !globalTools && !refresh && isInteractive() {
-		globalTools = promptGlobalTools()
-	}
-	// Claude Code approval/permissions target: the PROJECT settings file by
-	// default, so allow/deny/trust stay with the repo; machine-global only
-	// under --global.
 	claudeSettings := filepath.Join(projectDir, ".claude", "settings.json")
-	if global {
-		if home, err := os.UserHomeDir(); err == nil {
-			claudeSettings = filepath.Join(home, ".claude", "settings.json")
-		}
-	}
 
 	// Legacy denial cleanup: v0.50-era inits wrote Grep/Bash(grep:*)/Bash(rg:*)
 	// into permissions.deny, and upgrading prism never removed them — so a
@@ -710,7 +762,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 	// denial, surface any stale trio: offer removal interactively, warn
 	// loudly otherwise. Never silent either way — the entries are in a file
 	// the user owns and may have authored deliberately.
-	if !denyBuiltinSearch {
+	if harnessSelected(harnesses, "claude") && !denyBuiltinSearch {
 		cleanupLegacyDenyEntries(claudeSettings)
 	}
 
@@ -723,85 +775,68 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 
 	// Wrap in the per-tool envelope format and write.
 	type writer struct {
-		name  string
-		path  func() string // path to config file
-		build func() []byte // full config content
+		harness string
+		name    string
+		path    string
+		build   func() []byte
 	}
-
-	home, _ := os.UserHomeDir()
 
 	writers := []writer{
 		{
-			// Claude Code: .mcp.json at project root (project) or ~/.claude.json (global).
-			// Claude Code reads project MCP servers from .mcp.json in the repo root;
-			// global user-level servers live in ~/.claude.json under "mcpServers".
-			name: "Claude Code",
-			path: func() string {
-				if global {
-					return filepath.Join(home, ".claude.json")
-				}
-				return filepath.Join(projectDir, ".mcp.json")
-			},
+			harness: "claude",
+			name:    "Claude Code",
+			path:    filepath.Join(projectDir, ".mcp.json"),
 			build: func() []byte {
 				return buildMCPConfig("prism", claudeEntry)
 			},
 		},
 		{
-			// Cursor: .cursor/mcp.json (project) or ~/.cursor/mcp.json (global)
-			name: "Cursor",
-			path: func() string {
-				if global {
-					return filepath.Join(home, ".cursor", "mcp.json")
-				}
-				return filepath.Join(projectDir, ".cursor", "mcp.json")
-			},
+			harness: "cursor",
+			name:    "Cursor",
+			path:    filepath.Join(projectDir, ".cursor", "mcp.json"),
 			build: func() []byte {
 				return buildMCPConfig("prism", entry)
 			},
 		},
 		{
-			// Windsurf: .windsurf/mcp.json (project) or ~/.windsurf/mcp.json (global)
-			name: "Windsurf",
-			path: func() string {
-				if global {
-					return filepath.Join(home, ".windsurf", "mcp.json")
-				}
-				return filepath.Join(projectDir, ".windsurf", "mcp.json")
-			},
+			harness: "windsurf",
+			name:    "Windsurf",
+			path:    filepath.Join(projectDir, ".windsurf", "mcp.json"),
 			build: func() []byte {
 				return buildMCPConfig("prism", entry)
 			},
 		},
 		{
-			// VS Code (GitHub Copilot Chat / Continue): .vscode/mcp.json
-			// VS Code natively reads workspace-scoped MCP servers from this file.
-			name: "VS Code",
-			path: func() string {
-				return filepath.Join(projectDir, ".vscode", "mcp.json")
-			},
+			harness: "vscode",
+			name:    "VS Code",
+			path:    filepath.Join(projectDir, ".vscode", "mcp.json"),
 			build: func() []byte {
 				return buildVSCodeConfig(prismBin, projectDir)
 			},
 		},
-	}
-	if globalTools {
-		// opencode: ~/.config/opencode/opencode.json. USER-GLOBAL — written
-		// only when global registration was requested (flag or interactive
-		// consent). A project init must never touch machine-wide configs;
-		// this writer used to sit in the always-on list and leaked.
-		writers = append(writers, writer{
-			name: "opencode",
-			path: func() string {
-				return filepath.Join(home, ".config", "opencode", "opencode.json")
+		{
+			harness: "gemini",
+			name:    "Gemini CLI",
+			path:    filepath.Join(projectDir, ".gemini", "settings.json"),
+			build: func() []byte {
+				return buildMCPConfig("prism", claudeEntry)
 			},
+		},
+		{
+			harness: "opencode",
+			name:    "opencode",
+			path:    filepath.Join(projectDir, "opencode.json"),
 			build: func() []byte {
 				return buildOpencodeConfig(prismBin)
 			},
-		})
+		},
 	}
 
 	for _, w := range writers {
-		p := w.path()
+		if !harnessSelected(harnesses, w.harness) {
+			continue
+		}
+		p := w.path
 		// --refresh rewrites only what a previous install configured: if the
 		// config file does not exist yet, this tool was never set up and must
 		// not be added now.
@@ -810,22 +845,10 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 				continue
 			}
 		}
-		// For project-local configs (.claude, .cursor, .windsurf): create the
-		// parent directory so first-time init works without a pre-existing tool
-		// installation. For global user configs (Zed ~/.config/zed): only write
-		// if the directory already exists (i.e. the tool is installed).
 		parent := filepath.Dir(p)
-		isGlobalUserDir := strings.HasPrefix(parent, home)
-		if _, err := os.Stat(parent); err != nil {
-			if !global && !isGlobalUserDir {
-				// Project-local: create it.
-				if mkErr := os.MkdirAll(parent, 0o755); mkErr != nil {
-					fmt.Fprintf(os.Stderr, "warning: could not create %s config dir: %v\n", w.name, mkErr)
-					continue
-				}
-			} else {
-				continue // global user tool not installed — skip
-			}
+		if err := os.MkdirAll(parent, 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not create %s config dir: %v\n", w.name, err)
+			continue
 		}
 		// Skip writing .mcp.json if the prism entry is already correct.
 		// Writing the file resets Claude Code's MCP approval state, which
@@ -836,13 +859,6 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 			ensureClaudeCodeApproval(claudeSettings, "prism", permissions, denyBuiltinSearch)
 			continue
 		}
-		// Approval/permissions follow the Claude Code WRITER, not the file
-		// name. Keying on ".mcp.json" silently skipped them under --global,
-		// where Claude Code registers via ~/.claude.json instead: verified
-		// that `init --global --deny-builtin-search` wrote the deny rules
-		// nowhere at all — not to the project settings, not to the global
-		// ones. claudeSettings already resolves to the right target for the
-		// scope, so the only thing missing was reaching this call.
 		isClaudeCode := w.name == "Claude Code"
 		content := w.build()
 		// Merge rather than overwrite existing configs.
@@ -858,11 +874,7 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 		}
 	}
 
-	// Codex supports trusted project-scoped MCP configuration. Write that local
-	// entry on an ordinary init so a fresh Codex install works without changing
-	// ~/.codex/config.toml. Codex launches a project config in the project's cwd,
-	// so `prism mcp` needs no absolute project argument and remains portable.
-	if !global {
+	if harnessSelected(harnesses, "codex") {
 		codexPath := filepath.Join(projectDir, ".codex", "config.toml")
 		if !(refresh && !fileExists(codexPath)) {
 			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp"}); err != nil {
@@ -873,42 +885,6 @@ func initRegisterMCPTools(projectDir, prismBin string, global, permissions, refr
 			}
 		}
 	}
-
-	// Zed, opencode, and the optional global Codex registration live in user
-	// config. A project init must never update those paths without explicit
-	// consent. The global Codex entry has no pinned project dir: `prism mcp`
-	// serves the client's launch cwd, so one entry works across projects.
-	if globalTools {
-		zedPath := filepath.Join(home, ".config", "zed", "settings.json")
-		if _, err := os.Stat(filepath.Dir(zedPath)); err == nil && !(refresh && !fileExists(zedPath)) {
-			merged := mergeOrCreate(zedPath, buildZedConfig(prismBin))
-			if err := os.WriteFile(zedPath, merged, 0o644); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: could not write Zed config (%s): %v\n", zedPath, err)
-			} else {
-				fmt.Printf("registered with Zed: %s\n", zedPath)
-				written = append(written, zedPath)
-			}
-		}
-
-		// Codex CLI (~/.codex/config.toml) uses TOML, not JSON.
-		// Only write when ~/.codex/ already exists (i.e. Codex CLI is installed).
-		codexPath := filepath.Join(home, ".codex", "config.toml")
-		if _, err := os.Stat(filepath.Dir(codexPath)); err == nil && !(refresh && !fileExists(codexPath)) {
-			if err := writePrismCodexConfig(codexPath, prismBin, []string{"mcp"}); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: could not write Codex CLI config: %v\n", err)
-			} else {
-				fmt.Printf("registered with Codex CLI: %s\n", codexPath)
-				written = append(written, codexPath)
-			}
-		}
-	} else {
-		fmt.Println("note: Zed and opencode require user-global configs; Codex is registered for this project — run `prism init --global` to register globally too")
-	}
-	// Hermes keeps its MCP servers in a nested YAML document with a separate
-	// platform_toolsets list. Prism has no YAML parser, and hand-splicing that
-	// structure risks corrupting a working config, so Hermes is print-only:
-	// `prism init --print-config hermes` emits the snippet to paste.
-	fmt.Println("note: for Hermes, run `prism init --print-config hermes` and paste the snippet")
 
 	return written
 }
@@ -966,8 +942,8 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-// buildOpencodeConfig returns opencode's MCP stanza. opencode expects a
-// "local" server whose command is a single argv array.
+// buildOpencodeConfig returns a project opencode MCP stanza. opencode expects
+// a "local" server whose command is a single argv array.
 func buildOpencodeConfig(prismBin string) []byte {
 	type opencodeServer struct {
 		Type    string   `json:"type"`
@@ -978,8 +954,7 @@ func buildOpencodeConfig(prismBin string) []byte {
 		Schema string                    `json:"$schema"`
 		MCP    map[string]opencodeServer `json:"mcp"`
 	}
-	// No pinned project dir: this is opencode's user-global config and
-	// `prism mcp` serves the launch cwd.
+	// No pinned project dir: opencode launches the project config in repo cwd.
 	c := opencodeConfig{
 		Schema: "https://opencode.ai/config.json",
 		MCP: map[string]opencodeServer{
@@ -990,31 +965,10 @@ func buildOpencodeConfig(prismBin string) []byte {
 	return b
 }
 
-// buildHermesSnippet returns the YAML block a user pastes into Hermes'
-// ~/.hermes/config.yaml. Hermes needs BOTH the server entry and its toolset
-// registration, and prism does not write this file (see initRegisterMCPTools).
-func buildHermesSnippet(prismBin string) string {
-	return fmt.Sprintf(`mcp_servers:
-  prism:
-    command: %s
-    args:
-      - mcp
-    timeout: 120
-    connect_timeout: 60
-    enabled: true
-
-platform_toolsets:
-  cli:
-    - mcp-prism
-`, prismBin)
-}
-
-// buildCodexSnippet returns the TOML block written to either Codex config.toml
-// scope, as text, so --print-config can show it without writing.
+// buildCodexSnippet returns the project-local Codex TOML block as text.
 func buildCodexSnippet(prismBin string) string {
 	return strings.Join([]string{
 		"[mcp_servers.prism]",
-		`type = "stdio"`,
 		fmt.Sprintf("command = %q", prismBin),
 		prismTOMLStringArray("args", []string{"mcp"}),
 	}, "\n") + "\n"
@@ -1022,69 +976,40 @@ func buildCodexSnippet(prismBin string) string {
 
 // printAgentConfig implements `prism init --print-config <id>`: render the
 // config snippet for one agent and exit WITHOUT writing anything. Mirrors the
-// targets initRegisterMCPTools writes, plus print-only Hermes.
-func printAgentConfig(id, projectDir, prismBin string, global bool) int {
-	home, _ := os.UserHomeDir()
+// targets initRegisterMCPTools writes.
+func printAgentConfig(id, projectDir, prismBin string) int {
 	entry := mcpEntry{Command: prismBin, Args: []string{"mcp", projectDir}}
 	claudeEntry := mcpEntry{Command: prismBin, Args: []string{"mcp"}}
-
-	pick := func(globalPath, projectPath string) string {
-		if global {
-			return globalPath
-		}
-		return projectPath
-	}
 
 	var path, body string
 	switch strings.ToLower(id) {
 	case "claude", "claude-code":
-		path = pick(filepath.Join(home, ".claude.json"), filepath.Join(projectDir, ".mcp.json"))
+		path = filepath.Join(projectDir, ".mcp.json")
 		body = string(buildMCPConfig("prism", claudeEntry))
 	case "cursor":
-		path = pick(filepath.Join(home, ".cursor", "mcp.json"), filepath.Join(projectDir, ".cursor", "mcp.json"))
+		path = filepath.Join(projectDir, ".cursor", "mcp.json")
 		body = string(buildMCPConfig("prism", entry))
 	case "windsurf":
-		path = pick(filepath.Join(home, ".windsurf", "mcp.json"), filepath.Join(projectDir, ".windsurf", "mcp.json"))
+		path = filepath.Join(projectDir, ".windsurf", "mcp.json")
 		body = string(buildMCPConfig("prism", entry))
 	case "vscode", "vs-code":
 		path = filepath.Join(projectDir, ".vscode", "mcp.json")
 		body = string(buildVSCodeConfig(prismBin, projectDir))
-	case "zed":
-		path = filepath.Join(home, ".config", "zed", "settings.json")
-		body = string(buildZedConfig(prismBin))
 	case "codex":
-		path = pick(filepath.Join(home, ".codex", "config.toml"), filepath.Join(projectDir, ".codex", "config.toml"))
+		path = filepath.Join(projectDir, ".codex", "config.toml")
 		body = buildCodexSnippet(prismBin)
+	case "gemini", "gemini-cli":
+		path = filepath.Join(projectDir, ".gemini", "settings.json")
+		body = string(buildMCPConfig("prism", claudeEntry))
 	case "opencode":
-		path = filepath.Join(home, ".config", "opencode", "opencode.json")
+		path = filepath.Join(projectDir, "opencode.json")
 		body = string(buildOpencodeConfig(prismBin))
-	case "hermes":
-		path = filepath.Join(home, ".hermes", "config.yaml")
-		body = buildHermesSnippet(prismBin)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown agent %q. Known: claude, cursor, windsurf, vscode, zed, codex, opencode, hermes\n", id)
+		fmt.Fprintf(os.Stderr, "unknown harness %q. Known: %s\n", id, strings.Join(supportedHarnesses, ", "))
 		return 2
 	}
 	fmt.Printf("# Add to %s\n\n%s\n", path, strings.TrimRight(body, "\n"))
 	return 0
-}
-
-// buildZedConfig returns the minimal Zed context_servers stanza.
-func buildZedConfig(prismBin string) []byte {
-	type zedServer struct {
-		Command string   `json:"command"`
-		Args    []string `json:"args"`
-	}
-	type zedSettings struct {
-		ContextServers map[string]zedServer `json:"context_servers"`
-	}
-	// No pinned project dir: the entry lives in Zed's user-global settings,
-	// and `prism mcp` serves the launch cwd (the open worktree).
-	s := zedSettings{ContextServers: map[string]zedServer{
-		"prism": {Command: prismBin, Args: []string{"mcp"}},
-	}}
-	b, _ := json.MarshalIndent(s, "", "  ")
-	return b
 }
 
 // buildVSCodeConfig returns the .vscode/mcp.json stanza VS Code's native
@@ -1125,7 +1050,6 @@ func writePrismCodexConfig(path, prismBin string, args []string) error {
 	}
 	lines = append(lines,
 		"[mcp_servers.prism]",
-		`type = "stdio"`,
 		fmt.Sprintf("command = %q", prismBin),
 		prismTOMLStringArray("args", args),
 	)
@@ -1226,6 +1150,105 @@ func mergeOrCreate(path string, content []byte) []byte {
 	return out
 }
 
+// removeLegacyGlobalMCPRegistrations migrates installations from the old
+// user-global model. It removes only the Prism server entry and preserves all
+// unrelated servers and settings. Project init calls this before writing the
+// selected repository configs so an already-installed global server cannot
+// shadow the project's binary or working directory.
+func removeLegacyGlobalMCPRegistrations() []string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return nil
+	}
+	targets := []struct {
+		path string
+		keys []string
+	}{
+		{filepath.Join(home, ".claude.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".cursor", "mcp.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".windsurf", "mcp.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".gemini", "settings.json"), []string{"mcpServers"}},
+		{filepath.Join(home, ".config", "zed", "settings.json"), []string{"context_servers"}},
+		{filepath.Join(home, ".config", "opencode", "opencode.json"), []string{"mcp"}},
+		{filepath.Join(home, ".config", "opencode", "opencode.json"), []string{"mcp", "servers"}},
+	}
+	var changed []string
+	seen := map[string]bool{}
+	for _, target := range targets {
+		if removeJSONMapEntry(target.path, target.keys, "prism") && !seen[target.path] {
+			seen[target.path] = true
+			changed = append(changed, target.path)
+		}
+	}
+	codexPath := filepath.Join(home, ".codex", "config.toml")
+	if removePrismCodexConfig(codexPath) {
+		changed = append(changed, codexPath)
+	}
+	for _, path := range changed {
+		fmt.Printf("removed legacy user-global Prism registration: %s\n", path)
+	}
+	return changed
+}
+
+func removeJSONMapEntry(path string, keys []string, entry string) bool {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var doc map[string]any
+	if json.Unmarshal(raw, &doc) != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not migrate invalid global config %s\n", path)
+		return false
+	}
+	var current any = doc
+	for _, key := range keys {
+		object, ok := current.(map[string]any)
+		if !ok {
+			return false
+		}
+		current, ok = object[key]
+		if !ok {
+			return false
+		}
+	}
+	entries, ok := current.(map[string]any)
+	if !ok {
+		return false
+	}
+	if _, ok := entries[entry]; !ok {
+		return false
+	}
+	delete(entries, entry)
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil || os.WriteFile(path, append(out, '\n'), 0o644) != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not remove legacy Prism registration from %s\n", path)
+		return false
+	}
+	return true
+}
+
+func removePrismCodexConfig(path string) bool {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	before := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	after := stripPrismTOMLBlock(before, "mcp_servers", "prism")
+	after = stripPrismNamedTable(after, "mcp_servers", "prism")
+	if strings.Join(before, "\n") == strings.Join(after, "\n") {
+		return false
+	}
+	content := strings.TrimRight(strings.Join(after, "\n"), "\n")
+	if content != "" {
+		content += "\n"
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not remove legacy Prism registration from %s: %v\n", path, err)
+		return false
+	}
+	return true
+}
+
 // ensureClaudeCodeApproval makes Claude Code both TRUST and AUTO-ALLOW the
 // server in ~/.claude/settings.json:
 //
@@ -1243,25 +1266,6 @@ func mergeOrCreate(path string, content []byte) []byte {
 func isInteractive() bool {
 	fi, err := os.Stdin.Stat()
 	return err == nil && (fi.Mode()&os.ModeCharDevice) != 0
-}
-
-// promptGlobalTools asks — every interactive project-level init — whether to
-// also register user-global tools. Default NO: Codex is already registered for
-// the project, and a project init otherwise keeps the machine untouched.
-func promptGlobalTools() bool {
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Zed and opencode require USER-GLOBAL MCP registrations.")
-	fmt.Fprintln(os.Stderr, "Codex is registered for this project; register it globally too?")
-	fmt.Fprintln(os.Stderr, "  Default keeps setup project-level: nothing outside this repo is")
-	fmt.Fprintln(os.Stderr, "  touched, and other projects are unaffected.")
-	fmt.Fprint(os.Stderr, "Register user-global tools? [y/N]: ")
-	var line string
-	fmt.Scanln(&line)
-	switch strings.ToLower(strings.TrimSpace(line)) {
-	case "y", "yes":
-		return true
-	}
-	return false
 }
 
 // prismDenyEntries is the exact trio historic inits wrote; cleanup matches

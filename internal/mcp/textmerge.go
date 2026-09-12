@@ -399,7 +399,7 @@ func (h *Handler) structuralNote(ctx context.Context, query string) string {
 	if n := h.fieldTypeNote(ctx, query, real[0]); n != "" {
 		return n
 	}
-	r, err := h.Grove.ChangeImpact(ctx, real[0].Name)
+	r, err := h.Grove.ChangeImpactScoped(ctx, real[0].Name, real[0].File)
 	if err != nil || r == nil {
 		return ""
 	}
@@ -496,7 +496,7 @@ func (h *Handler) fieldTypeNote(ctx context.Context, query string, field grove.R
 	if len(types) != 1 {
 		return ""
 	}
-	r, err := h.Grove.ChangeImpact(ctx, types[0].Name)
+	r, err := h.Grove.ChangeImpactScoped(ctx, types[0].Name, types[0].File)
 	if err != nil || r == nil {
 		return ""
 	}

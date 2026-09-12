@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -512,6 +513,85 @@ func (e *Engine) Query(v int) int { return v }
 	decls := mustJSON(t, m["declarations"])
 	if len(decls) != 1 || decls[0]["filePath"] != "pkg/one/one.go" {
 		t.Errorf("scoped declarations = %v, want exactly pkg/one/one.go", decls)
+	}
+}
+
+func TestToolChangeImpact_CrossLanguageAmbiguityRequiresFileScope(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/polyglot\n\ngo 1.26\n")
+	write("go/user.go", `package user
+
+type User struct{}
+
+func (User) Close() {}
+`)
+	write("py/user.py", `class User:
+    def Close(self):
+        pass
+`)
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	m, ok := h.crossLanguageImpactChoice(t.Context(), "User.Close", errors.New(
+		`change-impact: "User.Close" is ambiguous across language families; scope the query by declaring file`))
+	if !ok {
+		t.Fatal("cross-language ambiguity was not converted to an actionable response")
+	}
+	if m["status"] != "needs_file_scope" || m["requiresFileScope"] != true {
+		t.Fatalf("ambiguity status = %#v", m)
+	}
+	alternatives := mustJSON(t, m["alternatives"])
+	if len(alternatives) != 2 {
+		t.Fatalf("alternatives = %v, want the Go and Python declarations", alternatives)
+	}
+	files := map[string]bool{}
+	languages := map[string]bool{}
+	for _, alternative := range alternatives {
+		files[alternative["filePath"].(string)] = true
+		languages[alternative["language"].(string)] = true
+	}
+	if !files["go/user.go"] || !files["py/user.py"] {
+		t.Fatalf("alternative files = %v", files)
+	}
+	if !languages["go"] || !languages["python"] {
+		t.Fatalf("alternative languages = %v", languages)
+	}
+	if note, _ := m["ambiguityNote"].(string); !strings.Contains(note, "did not guess") || !strings.Contains(note, "filePath") {
+		t.Fatalf("ambiguity note is not actionable: %q", note)
+	}
+
+	out, err := h.Invoke("prism_change_impact", map[string]any{
+		"query": "User.Close",
+		"file":  "go/user.go",
+	})
+	if err != nil {
+		t.Fatalf("file-scoped retry: %v", err)
+	}
+	m = out.(map[string]any)
+	if _, needsScope := m["requiresFileScope"]; needsScope {
+		t.Fatalf("file-scoped retry remained ambiguous: %#v", m)
+	}
+	decls := mustJSON(t, m["declarations"])
+	if len(decls) != 1 || decls[0]["filePath"] != "go/user.go" {
+		t.Fatalf("scoped declarations = %v, want exactly go/user.go", decls)
 	}
 }
 

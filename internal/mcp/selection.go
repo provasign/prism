@@ -420,7 +420,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// enrichment into displacement. Family is therefore carried
 			// separately and rendered as its own appended section
 			// (delivery.go), where it can only add coverage.
-			if r, err := h.Grove.ChangeImpact(ctx, seedQuery); err == nil && r != nil && os.Getenv("PRISM_NO_FAMILY") == "" {
+			if r, err := h.Grove.ChangeImpactScoped(ctx, seedQuery, seed.FilePath); err == nil && r != nil && os.Getenv("PRISM_NO_FAMILY") == "" {
 				for _, fs := range r.Family {
 					if len(familySyms) >= 12 {
 						break

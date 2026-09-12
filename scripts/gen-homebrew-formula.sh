@@ -78,9 +78,9 @@ class Prism < Formula
 
   def caveats
     <<~EOS
-      Run `prism init --global` after installing or upgrading so AI clients
-      use this Homebrew-managed executable. Run `prism init` inside existing
-      projects to refresh project-level MCP registrations.
+      Prism MCP configuration is project-local. Run `prism cleanup-global`
+      once after upgrading from an older release, then run `prism init` inside
+      each project and select the harnesses to configure.
 
       Prism reports other installed copies when their versions differ.
     EOS
