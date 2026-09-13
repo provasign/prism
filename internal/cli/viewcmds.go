@@ -424,6 +424,12 @@ func renderVerifyText(m map[string]any) {
 			fmt.Printf("  %v\n", u)
 		}
 	}
+	if advisories := asSliceAny(m["contentAdvisories"]); len(advisories) > 0 {
+		fmt.Printf("\nCONTENT ADVISORIES (%d) — behavior not verified:\n", len(advisories))
+		for _, advisory := range advisories {
+			fmt.Printf("  %v\n", advisory)
+		}
+	}
 
 	if deps := asSliceAny(m["newDependencies"]); len(deps) > 0 {
 		fmt.Println("\ncross-component dependency candidates (all evidence in changed code; no base-graph comparison):")
@@ -463,7 +469,11 @@ func renderVerifyText(m map[string]any) {
 	}
 	switch verdict {
 	case "complete":
-		fmt.Println("\nno missed sites — the diff covers its own blast radius")
+		if len(asSliceAny(m["contentAdvisories"])) > 0 {
+			fmt.Println("\nno missed contract sites identified; content behavior above was not assessed")
+		} else {
+			fmt.Println("\nno missed sites — the diff covers its own blast radius")
+		}
 	case "review":
 		fmt.Println("\nverdict: review — some contract changes could not be verified (--strict exits 1)")
 	}

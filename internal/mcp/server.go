@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/provasign/prism/internal/compression"
+	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/version"
 )
@@ -118,7 +120,9 @@ const compactServerInstructions = "Repository discovery starts with Prism. Readi
 	"Optional op=verify: consider for Python, unchecked JavaScript, and PHP contract changes; use for TypeScript or checked " +
 	"JavaScript only if affected files lack a complete typecheck. Skip after a complete affected-target build/typecheck in " +
 	"Go, Java, Rust, C/C++, or C#. For removals, removed_symbols optionally checks exact identifier mentions. " +
-	"Batch known task phrases in one search. Do not re-read unchanged source already included in a Prism result."
+	"Batch known task phrases in one search. Search returns bounded enclosing bodies or labeled windows for located hits by default (one per term first); set include_bodies=false for locators only." +
+	"In hosts that require a native Read before Edit, use one tight native Read at the edit site; use Prism read/lookup for other follow-ups. " +
+	"Do not re-read unchanged source already included in a Prism result."
 
 const compactSearchLocatorGuidance = "// locator result — use the prism tool with op=lookup for known symbol bodies, op=read for a known file/range, or op=query for related implementations, callers, and tests"
 
@@ -295,7 +299,7 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 	case "search":
 		legacy["query"] = args["terms"]
 		for compact, old := range map[string]string{"paths": "path", "max_results": "limit",
-			"scope": "scope", "glob": "glob", "regex": "regex", "files_only": "files_only", "exhaustive": "exhaustive"} {
+			"scope": "scope", "glob": "glob", "regex": "regex", "files_only": "files_only", "exhaustive": "exhaustive", "include_bodies": "include_bodies"} {
 			if v, ok := args[compact]; ok {
 				legacy[old] = v
 			}
@@ -560,13 +564,29 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 				if rendered {
 					if s.compact {
 						text = rewriteCompactGuidance(text)
-						if compactSearchCanIncludeBodies(actualArgs) {
+						_, explicitBodies := actualArgs["include_bodies"]
+						if compactSearchCanIncludeBodies(actualArgs) && !explicitBodies {
 							ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-							if bodies := s.handler.compactSearchBodies(ctx, m); bodies != "" {
-								if _, batched := m["results"]; !batched {
+							bodies, delivered := s.handler.compactSearchBodiesPicked(ctx, m)
+							if bodies != "" {
+								// Preserve the established unique-small-result layout.
+								// The general default-on delivery is already in m, so
+								// render this one without that section before appending it.
+								withoutInline := make(map[string]any, len(m))
+								for key, value := range m {
+									if key != "inlineBodies" {
+										withoutInline[key] = value
+									}
+								}
+								text, rendered = renderSearchAsText(withoutInline)
+								text = rewriteCompactGuidance(text)
+								if _, batched := m["results"]; !batched && !strings.Contains(bodies, "other matches remain locators") {
 									text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
 								}
 								text += bodies
+								// The small-result rule serves one symbol; the other
+								// terms' hits still get their bounded bodies/windows.
+								text += s.handler.compactSearchBodiesEnclosingExcept(ctx, m, delivered)
 							}
 							cancel()
 						}
@@ -645,8 +665,16 @@ func compactSearchCanIncludeBodies(args map[string]any) bool {
 // or method. Batched searches may also inline the first term's unique exact
 // symbol; other broad, partial, and explicitly shaped hits stay locators.
 func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) string {
+	body, _ := h.compactSearchBodiesPicked(ctx, out)
+	return body
+}
+
+// compactSearchBodiesPicked also reports the symbols whose source it delivered
+// so the default enclosing pass can serve the remaining hits without repeating
+// them.
+func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]any) (string, []grove.SymbolRecord) {
 	if h.Grove == nil {
-		return ""
+		return "", nil
 	}
 	// A batched search may have many substring hits yet one exact match for
 	// its first, most specific term. A qualified query such as "class Foo"
@@ -655,7 +683,7 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 	if results, ok := out["results"].([]map[string]any); ok && len(results) > 0 {
 		first := results[0]
 		if boolArg(first, "symbolsTruncated") {
-			return ""
+			return "", nil
 		}
 		term, _ := first["query"].(string)
 		symbols, _ := first["symbols"].([]map[string]any)
@@ -665,7 +693,7 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 				continue
 			}
 			if exact != nil {
-				return "" // ambiguous exact name
+				return "", nil // ambiguous exact name
 			}
 			exact = item
 		}
@@ -676,32 +704,32 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 			label = "the unique small symbol match in the first batched term; other hits remain locators"
 		}
 		if selected == nil {
-			return ""
+			return "", nil
 		}
 		file, _ := selected["filePath"].(string)
 		name, _ := selected["qualifiedName"].(string)
 		span, _ := selected["span"].(map[string]any)
 		if file == "" || name == "" || span == nil {
-			return ""
+			return "", nil
 		}
 		syms, err := h.Grove.FileSymbols(ctx, file)
 		if err != nil {
-			return ""
+			return "", nil
 		}
 		for _, sym := range syms {
 			if sym.QualifiedName == name && sym.Span.Start == intArg(span, "start", 0) &&
 				sym.Span.End == intArg(span, "end", 0) {
 				if exact == nil && (sym.Span.End-sym.Span.Start+1 > 40 || len(sym.RawText) > 2400) {
-					return ""
+					return "", nil
 				}
 				pick := ranking.BudgetedSymbol{Symbol: sym, Score: 1,
 					Category: ranking.CategoryTarget, Disclosure: ranking.DisclosureFull}
-				return h.renderCompactSearchBodies([]ranking.BudgetedSymbol{pick}, label)
+				return h.renderCompactSearchBodies([]ranking.BudgetedSymbol{pick}, label), []grove.SymbolRecord{sym}
 			}
 		}
-		return ""
+		return "", nil
 	}
-	if symbols, ok := out["symbols"].([]map[string]any); ok && len(symbols) > 0 && len(symbols) <= 3 && !boolArg(out, "symbolsTruncated") {
+	if symbols, ok := out["symbols"].([]map[string]any); ok && len(symbols) == 1 && !boolArg(out, "symbolsTruncated") {
 		picked := make([]ranking.BudgetedSymbol, 0, len(symbols))
 		for _, item := range symbols {
 			file, _ := item["filePath"].(string)
@@ -733,23 +761,23 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 		}
 		if len(picked) == len(symbols) {
 			if body := h.renderCompactSearchBodies(picked); body != "" {
-				return body
+				return body, budgetedSymbols(picked)
 			}
 		}
 	}
 	if !boolArg(out, "resultsComplete") {
-		return ""
+		return "", nil
 	}
 	groups, ok := out["textHits"].([]map[string]any)
 	if !ok {
-		return ""
+		return "", nil
 	}
 	totalHits := 0
 	for _, group := range groups {
 		totalHits += len(anySlice(group["hits"]))
 	}
-	if totalHits == 0 || totalHits > 3 {
-		return ""
+	if totalHits != 1 {
+		return "", nil
 	}
 
 	seen := map[string]bool{}
@@ -771,7 +799,7 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 			line := intArg(hit, "line", 0)
 			sym := tightestEnclosingSymbol(syms, line)
 			if sym == nil || (sym.Kind != "function" && sym.Kind != "method") ||
-				sym.Span.End-sym.Span.Start+1 > 200 {
+				sym.Span.End-sym.Span.Start+1 > 160 || len(sym.RawText) > 10000 {
 				continue
 			}
 			key := fmt.Sprintf("%s:%d:%d", sym.FilePath, sym.Span.Start, sym.Span.End)
@@ -786,14 +814,299 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 		}
 	}
 	if len(picked) == 0 || len(picked) > 2 {
-		return ""
+		return "", nil
 	}
 
-	return h.renderCompactSearchBodies(picked)
+	return h.renderCompactSearchBodies(picked), budgetedSymbols(picked)
+}
+
+func budgetedSymbols(picked []ranking.BudgetedSymbol) []grove.SymbolRecord {
+	syms := make([]grove.SymbolRecord, 0, len(picked))
+	for _, item := range picked {
+		syms = append(syms, item.Symbol)
+	}
+	return syms
+}
+
+type searchSourceRegion struct {
+	file      string
+	hit       int
+	start     int
+	end       int
+	symbol    grove.SymbolRecord
+	hasSymbol bool
+	window    bool
+}
+
+// compactSearchBodiesEnclosing delivers bounded source for visible file:line
+// hits even when the enclosing symbol is too large for a full body. The
+// inventory's own completeness and scope labels remain intact.
+func (h *Handler) compactSearchBodiesEnclosing(ctx context.Context, out map[string]any) string {
+	return h.compactSearchBodiesEnclosingExcept(ctx, out, nil)
+}
+
+// compactSearchBodiesEnclosingExcept is compactSearchBodiesEnclosing with
+// symbols already delivered by another rule left out.
+//
+// Allocation: a batched query is several questions, so every term gets one
+// region before any term gets a second (a live click cell batched four terms
+// and only the first was ever served). A single term keeps its two regions.
+// Slots count delivered regions, not visited candidates: a symbol reached
+// through both its text hit and its symbols entry must not consume two slots.
+func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out map[string]any, skip []grove.SymbolRecord) string {
+	if h.Grove == nil {
+		return ""
+	}
+	const maxBodyLines = 160
+	const maxBodyBytes = 10000
+	const perTermRegions = 2
+	const maxRegions = 4
+	const maxVisited = 128
+	files := map[string][]grove.SymbolRecord{}
+	var picked []searchSourceRegion
+	visitedHits := 0
+	full := func() bool { return len(picked) >= maxRegions || visitedHits >= maxVisited }
+	skipped := func(file string, start, end int) bool {
+		for _, sym := range skip {
+			if sym.FilePath == file && sym.Span.Start <= start && end <= sym.Span.End {
+				return true
+			}
+		}
+		return false
+	}
+	fileSymbols := func(file string) []grove.SymbolRecord {
+		if file == "" {
+			return nil
+		}
+		if syms, ok := files[file]; ok {
+			return syms
+		}
+		syms, err := h.Grove.FileSymbols(ctx, file)
+		if err != nil {
+			syms = nil
+		}
+		files[file] = syms
+		return syms
+	}
+	// add reports whether a new region was picked for this hit.
+	add := func(file string, hit int, sym *grove.SymbolRecord) bool {
+		if file == "" || hit < 1 || full() {
+			return false
+		}
+		visitedHits++
+		region := searchSourceRegion{file: file, hit: hit}
+		if sym != nil && sym.Span.Start > 0 && sym.Span.End >= sym.Span.Start {
+			region.symbol, region.hasSymbol = *sym, true
+			if sym.Span.End-sym.Span.Start+1 <= maxBodyLines && len(sym.RawText) <= maxBodyBytes {
+				region.start, region.end = sym.Span.Start, sym.Span.End
+			} else {
+				region.window = true
+				region.start = maxInt(sym.Span.Start, hit-50)
+				region.end = minInt(sym.Span.End, hit+50)
+			}
+		} else {
+			region.window = true
+			region.start = maxInt(1, hit-50)
+			region.end = hit + 50
+		}
+		if skipped(file, hit, hit) {
+			return false // delivered by the small-result rule already
+		}
+		for _, selected := range picked {
+			if selected.file == file && region.start <= selected.end && selected.start <= region.end {
+				if hit >= selected.start && hit <= selected.end {
+					return false // this hit's source was already delivered
+				}
+				// Nearby windows can overlap while the second hit itself is
+				// still outside the first. Trim only the repeated part.
+				region.window = true
+				if hit > selected.end {
+					region.start = selected.end + 1
+				} else {
+					region.end = selected.start - 1
+				}
+			}
+		}
+		if region.start > region.end || hit < region.start || hit > region.end {
+			return false
+		}
+		picked = append(picked, region)
+		return true
+	}
+	// visit picks up to allow regions from one term's result.
+	visit := func(result map[string]any, allow int) int {
+		taken := 0
+		for _, group := range anySlice(result["textHits"]) {
+			g, ok := group.(map[string]any)
+			if !ok {
+				continue
+			}
+			file, _ := g["file"].(string)
+			for _, raw := range anySlice(g["hits"]) {
+				hit, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				line := intArg(hit, "line", 0)
+				if add(file, line, tightestEnclosingSymbol(fileSymbols(file), line)) {
+					taken++
+				}
+				if taken >= allow || full() {
+					return taken
+				}
+			}
+		}
+		for _, item := range anySlice(result["symbols"]) {
+			entry, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			file, _ := entry["filePath"].(string)
+			name, _ := entry["qualifiedName"].(string)
+			span, _ := entry["span"].(map[string]any)
+			line := intArg(span, "start", 0)
+			var matched *grove.SymbolRecord
+			for i := range fileSymbols(file) {
+				sym := &files[file][i]
+				if sym.QualifiedName == name && span != nil &&
+					sym.Span.Start == line && sym.Span.End == intArg(span, "end", 0) {
+					matched = sym
+					break
+				}
+			}
+			if add(file, line, matched) {
+				taken++
+			}
+			if taken >= allow || full() {
+				return taken
+			}
+		}
+		return taken
+	}
+	if groups, ok := out["results"].([]map[string]any); ok {
+		served := make([]int, len(groups))
+		for pass := 1; pass <= perTermRegions && !full(); pass++ {
+			for i, group := range groups {
+				if served[i] < pass {
+					served[i] += visit(group, pass-served[i])
+				}
+				if full() {
+					break
+				}
+			}
+		}
+	} else {
+		visit(out, perTermRegions)
+	}
+	if len(picked) == 0 {
+		for _, result := range anySlice(out["fallbackResults"]) {
+			if group, ok := result.(map[string]any); ok {
+				visit(group, perTermRegions)
+			}
+			if full() {
+				break
+			}
+		}
+	}
+	if len(picked) == 0 {
+		return ""
+	}
+	return h.renderEnclosingSearchBodies(picked)
+}
+
+// renderEnclosingSearchBodies uses exact source spans. Oversized symbols are
+// represented by labeled windows rather than silently disappearing.
+func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) string {
+	const budget = 4000
+	var sections []string
+	var commits []func()
+	tokens := 0
+	for _, region := range picked {
+		data, err := os.ReadFile(filepath.Join(h.Root, filepath.FromSlash(region.file)))
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		lines := strings.Split(content, "\n")
+		if len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		if region.hit > len(lines) || region.start < 1 {
+			continue
+		}
+		start, end, isWindow := region.start, minInt(region.end, len(lines)), region.window
+		if end < start {
+			continue
+		}
+		if !isWindow && (end-start+1 > 160 || len(strings.Join(lines[start-1:end], "\n")) > 10000) {
+			isWindow = true
+			start = maxInt(region.symbol.Span.Start, region.hit-50)
+			end = minInt(len(lines), minInt(region.symbol.Span.End, region.hit+50))
+		}
+		for start <= end {
+			var b strings.Builder
+			fmt.Fprintf(&b, "**`%s`**\n", region.file)
+			if isWindow {
+				if region.hasSymbol {
+					fmt.Fprintf(&b, "// WINDOW %s:%d-%d around hit line %d; enclosing %s spans %d-%d (full body not included)\n",
+						region.file, start, end, region.hit, region.symbol.QualifiedName,
+						region.symbol.Span.Start, region.symbol.Span.End)
+				} else {
+					fmt.Fprintf(&b, "// WINDOW %s:%d-%d around hit line %d; no indexed enclosing symbol for this hit\n",
+						region.file, start, end, region.hit)
+				}
+			} else {
+				fmt.Fprintf(&b, "// Full enclosing body %s spans %d-%d\n",
+					region.symbol.QualifiedName, region.symbol.Span.Start, region.symbol.Span.End)
+			}
+			fmt.Fprintf(&b, "\n```%s\n", langTag(region.file))
+			for line := start; line <= end; line++ {
+				fmt.Fprintf(&b, "%d\t%s\n", line, clampSourceLine(lines[line-1]))
+			}
+			b.WriteString("```\n\n")
+			section := b.String()
+			if len(section) <= 10000 && tokens+ranking.EstimateTokens(section) <= budget {
+				tokens += ranking.EstimateTokens(section)
+				sections = append(sections, section)
+				path, hash, delivered := region.file, compression.Hash(content), lineWindow{start: start, end: end}
+				commits = append(commits, func() {
+					h.recordDeliveredRanges(path, hash, []lineWindow{delivered})
+				})
+				break
+			}
+			if !isWindow {
+				isWindow = true
+				start = maxInt(region.symbol.Span.Start, region.hit-50)
+				end = minInt(len(lines), minInt(region.symbol.Span.End, region.hit+50))
+				continue
+			}
+			if end-start+1 <= 20 {
+				break // a smaller window is not worth a slot; leave the hit as a locator
+			}
+			if region.hit-start >= end-region.hit {
+				start++
+			} else {
+				end--
+			}
+		}
+	}
+	if len(sections) == 0 {
+		return ""
+	}
+	for _, commit := range commits {
+		commit()
+	}
+	return "\n// Exact source for bounded enclosing hits (one per term first); other matches remain locators, and inventory completeness is reported above:\n" +
+		strings.Join(sections, "")
 }
 
 func (h *Handler) renderCompactSearchBodies(picked []ranking.BudgetedSymbol, note ...string) string {
 	const budget = 4000
+	for _, item := range picked {
+		if item.Symbol.Span.End-item.Symbol.Span.Start+1 > 160 || len(item.Symbol.RawText) > 10000 {
+			return ""
+		}
+	}
 	var sections []string
 	var commits []func()
 	tokens := 0

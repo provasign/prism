@@ -49,6 +49,7 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"omittedTerms":     true,
 		"countComplete":    true,
 		"resultsComplete":  true,
+		"inlineBodies":     true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -142,6 +143,9 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	}
 	if omitted := anySlice(out["omittedTerms"]); len(omitted) > 0 {
 		fmt.Fprintf(&b, "// NOT searched: %v\n", omitted)
+	}
+	if bodies, _ := out["inlineBodies"].(string); bodies != "" {
+		b.WriteString(bodies)
 	}
 	return b.String(), true
 }

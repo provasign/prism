@@ -27,11 +27,11 @@ func TestSearchCLIExplicitZeroContextAndMergedDefault(t *testing.T) {
 			}
 		})
 	}
-	plain := run("--context", "0")
+	plain := run("--context", "0", "--no-bodies")
 	if strings.Contains(plain, "before") || strings.Contains(plain, "after") {
 		t.Fatalf("explicit context=0 was ignored: %s", plain)
 	}
-	contextual := run()
+	contextual := run("--no-bodies")
 	for _, text := range []string{"before", "after", "MATCH one", "MATCH two", "// root: " + dir} {
 		if strings.Count(contextual, text) != 1 {
 			t.Fatalf("expected exactly one %q in merged context: %s", text, contextual)
@@ -46,6 +46,35 @@ func TestSearchCLIInvalidContextFails(t *testing.T) {
 		if got := cmdSearch(args); got != 2 {
 			t.Fatalf("%v: expected usage error, got %d", args, got)
 		}
+	}
+}
+
+func TestSearchCLIIncludeBodiesMatchesMCPOption(t *testing.T) {
+	dir := t.TempDir()
+	dir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sample.go"),
+		[]byte("package sample\n\nfunc Target() int {\n\treturn 7\n}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := captureStdout(func() {
+		if rc := cmdSearch([]string{"Target", "--dir", dir, "--scope", "symbols", "--format", "text"}); rc != 0 {
+			t.Fatalf("search exited %d", rc)
+		}
+	})
+	if !strings.Contains(out, "Exact source for bounded enclosing hits") ||
+		!strings.Contains(out, "return 7") {
+		t.Fatalf("CLI did not deliver the bounded body: %s", out)
+	}
+	locator := captureStdout(func() {
+		if rc := cmdSearch([]string{"Target", "--dir", dir, "--scope", "symbols", "--no-bodies", "--format", "text"}); rc != 0 {
+			t.Fatalf("search exited %d", rc)
+		}
+	})
+	if strings.Contains(locator, "Exact source") || !strings.Contains(locator, "func Target()") {
+		t.Fatalf("CLI --no-bodies did not retain only the locator: %s", locator)
 	}
 }
 

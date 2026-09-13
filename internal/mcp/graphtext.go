@@ -353,7 +353,8 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 	known := map[string]bool{
 		"verdict": true, "gateFailure": true, "base": true, "note": true, "changedFiles": true,
 		"signatureChanges": true, "missedSites": true, "unverifiedSeeds": true,
-		"newDependencies": true, "archStatus": true, "archIntroduced": true,
+		"contentAdvisories": true,
+		"newDependencies":   true, "archStatus": true, "archIntroduced": true,
 		"notes": true,
 	}
 	for k := range out {
@@ -395,6 +396,12 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 			fmt.Fprintf(&b, "  %v\n", u)
 		}
 	}
+	if advisories := anySlice(out["contentAdvisories"]); len(advisories) > 0 {
+		fmt.Fprintf(&b, "\nCONTENT ADVISORIES (%d) — behavior not verified:\n", len(advisories))
+		for _, advisory := range advisories {
+			fmt.Fprintf(&b, "  %v\n", advisory)
+		}
+	}
 	if deps := anySlice(out["newDependencies"]); len(deps) > 0 {
 		b.WriteString("\ncross-component dependency candidates:\n")
 		for _, d := range deps {
@@ -417,7 +424,11 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 	}
 	switch verdict {
 	case "complete":
-		b.WriteString("\nno missed sites — the diff covers its own blast radius\n")
+		if len(anySlice(out["contentAdvisories"])) > 0 {
+			b.WriteString("\nno missed contract sites identified; content behavior above was not assessed\n")
+		} else {
+			b.WriteString("\nno missed sites — the diff covers its own blast radius\n")
+		}
 	case "review":
 		b.WriteString("\nverdict: review — some contract changes could not be verified\n")
 		if failed, _ := out["gateFailure"].(bool); failed {

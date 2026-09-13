@@ -408,13 +408,14 @@ func CompactToolSchemas() []map[string]any {
 		"regex":           prop("search", "Regex text match.", map[string]any{"type": "boolean"}),
 		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
 		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
+		"include_bodies":  prop("search", "Default true: return up to two bounded bodies or labeled windows with search locations; false returns locators only.", map[string]any{"type": "boolean", "default": true}),
 		"removed_symbols": prop("verify", "Optional exact-identifier text check after removal; includes comments and docs.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
 		"base":            prop("verify", "Git ref for the full diff check (default HEAD).", map[string]any{"type": "string"}),
 		"strict":          prop("verify", "Treat a review verdict as a gate failure; the verdict and evidence stay unchanged.", map[string]any{"type": "boolean"}),
 		"exhaustive":      prop("search", "Request expanded inventory; check completion status.", map[string]any{"type": "boolean"}),
 	}
 	const opMap = "lookup: name[,symbol_file,fields] | read: file,from,to or ranges | " +
-		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive] | " +
+		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies] | " +
 		"query: task,terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
 		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{
@@ -601,6 +602,11 @@ func toolSchema(name string) map[string]any {
 				"context": map[string]any{
 					"type":        "integer",
 					"description": "Lines around each match (grep -C N, max 15) — instead of a follow-up read. Whole function? prism_lookup.",
+				},
+				"include_bodies": map[string]any{
+					"type":        "boolean",
+					"default":     true,
+					"description": "By default, return bounded enclosing bodies or labeled windows for located hits in this search call (one per term first, up to four). Set false for locators only.",
 				},
 			},
 		}
@@ -1594,6 +1600,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			return nil, errors.New("task must be a string label; query supplies the search terms")
 		}
 	}
+	includeBodies := true
+	if value, present := args["include_bodies"]; present {
+		includeBodies = value == true
+	}
 	queries := stringsArg(args, "query")
 	if len(queries) == 0 {
 		// The schema declares query required; without this an empty string
@@ -1726,6 +1736,11 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		if allEmpty && !searchResultPartial(out) {
 			h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		}
+		if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			if bodies := h.compactSearchBodiesEnclosing(ctx, out); bodies != "" {
+				out["inlineBodies"] = bodies
+			}
+		}
 		return out, nil
 	}
 
@@ -1765,6 +1780,11 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 					out["fallbackOmitted"] = omitted
 				}
 			}
+		}
+	}
+	if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+		if bodies := h.compactSearchBodiesEnclosing(ctx, out); bodies != "" {
+			out["inlineBodies"] = bodies
 		}
 	}
 	return out, nil

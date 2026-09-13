@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -48,7 +49,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 		"file": "read", "from": "read", "to": "read", "ranges": "read",
 		"terms": "search,query", "task": "query", "scope": "search",
 		"paths": "search,query", "glob": "search,query", "regex": "search",
-		"files_only": "search", "max_results": "search", "exhaustive": "search",
+		"files_only": "search", "max_results": "search", "exhaustive": "search", "include_bodies": "search",
 		"base": "verify", "removed_symbols": "verify", "strict": "verify",
 	}
 	if len(argProperties) != len(owners) {
@@ -409,7 +410,7 @@ func TestCompactSymbolLocatorInlinesSmallBodies(t *testing.T) {
 		inline     bool
 	}{
 		{"TargetOne", "func TargetOne()", true},
-		{"Target", "func TargetOne()", false},
+		{"Target", "func TargetOne()", true},
 	} {
 		params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"` + tc.term + `","scope":"symbols"}}}`)
 		result, rpcErr := srv.dispatch("tools/call", params)
@@ -420,9 +421,212 @@ func TestCompactSymbolLocatorInlinesSmallBodies(t *testing.T) {
 		if got := strings.Contains(content, "Exact source"); got != tc.inline {
 			t.Errorf("%s inline=%v, want %v:\n%s", tc.term, got, tc.inline, content)
 		}
-		if tc.inline && (strings.Contains(content, "locator result — use") || !strings.Contains(content, tc.body)) {
+		if tc.term == "TargetOne" && (strings.Contains(content, "locator result — use") || !strings.Contains(content, tc.body)) {
 			t.Errorf("small symbol result failed to replace locator note:\n%s", content)
 		}
+	}
+}
+
+func TestCompactBroadSearchDeliversOnlyTopTwoEnclosingBodies(t *testing.T) {
+	root := t.TempDir()
+	source := "package sample\n" + strings.Repeat("// filler\n", 330) +
+		"func TargetOne() {\n\tprintln(\"body one\")\n}\n" +
+		"func TargetTwo() {\n\tprintln(\"body two\")\n}\n" +
+		"func TargetThree() {\n\tprintln(\"body three\")\n}\n" +
+		"func TargetLong() {\n" + strings.Repeat("\tprintln(\"long body\")\n", 165) + "}\n"
+	if err := os.WriteFile(filepath.Join(root, "sample.go"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "outside.go"), []byte("package sample\nfunc TargetOutside() { println(\"outside body\") }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), root, gc)
+	srv := NewCompactServer(h)
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"Target","scope":"symbols","paths":"sample.go","include_bodies":true}}}`)
+	result, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if !strings.Contains(content, "body one") || !strings.Contains(content, "body two") ||
+		strings.Contains(content, "body three") || strings.Contains(content, "outside body") ||
+		!strings.Contains(content, "other matches remain locators") {
+		t.Fatalf("bounded enclosing source missing or over-expanded:\n%s", content)
+	}
+	if len(content) > 12*1024 {
+		t.Fatalf("search payload exceeded cap: %d bytes", len(content))
+	}
+	legacy, err := h.Invoke("prism_search", map[string]any{"query": "Target", "scope": "symbols", "path": "sample.go", "include_bodies": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyText, ok := RenderSearchText(legacy)
+	if !ok || !strings.Contains(legacyText, "other matches remain locators") {
+		t.Fatalf("CLI/legacy search did not render the same body option:\n%s", legacyText)
+	}
+	longParams := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"TargetLong","scope":"symbols","include_bodies":true}}}`)
+	longResult, rpcErr := srv.dispatch("tools/call", longParams)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	longText := longResult.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if !strings.Contains(longText, "WINDOW sample.go:") || !strings.Contains(longText, "TargetLong spans 341-507") ||
+		!strings.Contains(longText, "long body") || strings.Contains(longText, "507\t}") {
+		t.Fatalf("oversized enclosing body did not produce a bounded, labeled window:\n%s", longText)
+	}
+}
+
+func TestSearchDefaultsToTwoWindowsForHitsInOversizedMethod(t *testing.T) {
+	root := t.TempDir()
+	var source strings.Builder
+	source.WriteString("class CliRunner:\n    def isolation(self):\n")
+	for i := 0; i < 195; i++ {
+		if i == 45 || i == 165 {
+			source.WriteString("        sys.stdout = stream\n")
+		} else if i == 55 || i == 115 {
+			source.WriteString("        sys.stderr = stream\n")
+		} else {
+			fmt.Fprintf(&source, "        value_%03d = %d\n", i, i)
+		}
+	}
+	source.WriteString("    def unrelated(self):\n")
+	for i := 0; i < 199; i++ {
+		fmt.Fprintf(&source, "        filler_%03d = %d\n", i, i)
+	}
+	if err := os.WriteFile(filepath.Join(root, "sample.py"), []byte(source.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), root, gc)
+	args := map[string]any{"query": "sys.stdout =", "scope": "text", "path": "sample.py"}
+	out, err := h.Invoke("prism_search", args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, ok := RenderSearchText(out)
+	if !ok || strings.Count(text, "// WINDOW sample.py:") != 2 ||
+		!strings.Contains(text, "CliRunner.isolation spans 2-197") ||
+		!strings.Contains(text, "48\t        sys.stdout = stream") ||
+		!strings.Contains(text, "168\t        sys.stdout = stream") ||
+		!strings.Contains(text, "full body not included") {
+		t.Fatalf("default search did not deliver both bounded hit windows:\n%s", text)
+	}
+	if len(text) > 20*1024 {
+		t.Fatalf("two windows exceeded bounded response size: %d bytes", len(text))
+	}
+	nearOut, err := h.Invoke("prism_search", map[string]any{"query": "sys.stderr =", "scope": "text", "path": "sample.py"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nearText, ok := RenderSearchText(nearOut)
+	if !ok || strings.Count(nearText, "// WINDOW sample.py:") != 2 ||
+		!strings.Contains(nearText, "58\t        sys.stderr = stream") ||
+		!strings.Contains(nearText, "118\t        sys.stderr = stream") ||
+		!strings.Contains(nearText, "// WINDOW sample.py:109-") {
+		t.Fatalf("nearby hits did not retain both lines without repeated source:\n%s", nearText)
+	}
+	args["include_bodies"] = false
+	locatorOnly, err := h.Invoke("prism_search", args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locatorText, ok := RenderSearchText(locatorOnly)
+	if !ok || strings.Contains(locatorText, "// WINDOW") || !strings.Contains(locatorText, "48:         sys.stdout = stream") {
+		t.Fatalf("include_bodies=false did not opt out while retaining locators:\n%s", locatorText)
+	}
+	srv := NewCompactServer(h)
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"sys.stdout =","scope":"text","paths":"sample.py"}}}`)
+	result, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	compactText := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if strings.Count(compactText, "// WINDOW sample.py:") != 2 {
+		t.Fatalf("compact MCP default did not deliver two windows:\n%s", compactText)
+	}
+	noBodyParams := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"sys.stdout =","scope":"text","paths":"sample.py","include_bodies":false}}}`)
+	noBodyResult, rpcErr := srv.dispatch("tools/call", noBodyParams)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	noBodyText := noBodyResult.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if strings.Contains(noBodyText, "// WINDOW") || !strings.Contains(noBodyText, "48:         sys.stdout = stream") {
+		t.Fatalf("compact MCP include_bodies=false did not opt out:\n%s", noBodyText)
+	}
+	classOut, err := h.Invoke("prism_search", map[string]any{"query": "CliRunner", "scope": "symbols", "path": "sample.py"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	classText, ok := RenderSearchText(classOut)
+	if !ok || !strings.Contains(classText, "CliRunner spans 1-397") || !strings.Contains(classText, "// WINDOW") {
+		t.Fatalf("oversized class did not deliver a labeled window:\n%s", classText)
+	}
+}
+
+// A symbol reached through both its text hit and its symbols entry must use
+// one slot, so a batched query still delivers the second term's window.
+// Shape taken from a live click cell: terms ["class _NamedTextIOWrapper",
+// "def isolation"] delivered only the small class and no window.
+func TestCompactBatchedTermsKeepSecondSlotAfterDuplicateHit(t *testing.T) {
+	root := t.TempDir()
+	var source strings.Builder
+	source.WriteString("class SmallOne:\n    def m(self):\n        return 'small one body'\n\n\nclass CliRunner:\n    def isolation(self):\n")
+	for i := 0; i < 195; i++ {
+		fmt.Fprintf(&source, "        value_%03d = %d\n", i, i)
+	}
+	if err := os.WriteFile(filepath.Join(root, "sample.py"), []byte(source.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	srv := NewCompactServer(NewHandler(config.Default(), root, gc))
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":["class SmallOne","def isolation"],"paths":"sample.py"}}}`)
+	result, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if !strings.Contains(content, "small one body") || !strings.Contains(content, "// WINDOW sample.py:") ||
+		!strings.Contains(content, "CliRunner.isolation spans 7-202") || strings.Count(content, "**`sample.py`**") != 2 {
+		t.Fatalf("batched terms did not deliver the small body plus the second term's window:\n%s", content)
+	}
+}
+
+func TestCompactEnclosingBodiesDoNotRepeatNestedMethod(t *testing.T) {
+	root := t.TempDir()
+	source := "class Target:\n    def TargetMethod(self):\n        return 'method body'\n\ndef TargetOther():\n    return 'other body'\n"
+	if err := os.WriteFile(filepath.Join(root, "sample.py"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	srv := NewCompactServer(NewHandler(config.Default(), root, gc))
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"Target","scope":"symbols","include_bodies":true}}}`)
+	result, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	// The class body already contains the nested method, so that hit takes no
+	// slot; the freed slot goes to the next distinct symbol.
+	if strings.Count(content, "method body") != 1 || strings.Count(content, "**`sample.py`**") != 2 ||
+		!strings.Contains(content, "other body") {
+		t.Fatalf("nested body should be delivered once and the freed slot reused:\n%s", content)
 	}
 }
 

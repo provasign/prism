@@ -83,7 +83,8 @@ Usage:
                                   --scope text is a pure grep
                                   ([--scope text|symbols|both] [--regex] [--limit N])
                                   [--path <file-or-dir>]  scope the search (repeatable)
-                                  [--glob '*.py'] [--files-only] [--exhaustive] [--context N]
+	                                  [--glob '*.py'] [--files-only] [--exhaustive] [--context N]
+	                                  [--include-bodies|--no-bodies]  bounded source by default
                                   [--rollup-only]  on a truncated search, skip the raw
                                   sample and return only the grouped-by-symbol rollup
                                   [--dir <path>]  where to search (default: .)
@@ -2186,6 +2187,7 @@ func cmdSearch(args []string) int {
 	regex := false
 	var paths, globs []string
 	filesOnly := false
+	includeBodies := true
 	exhaustive := false
 	rollupOnly := false
 	contextLines := 0
@@ -2232,6 +2234,10 @@ func cmdSearch(args []string) int {
 				globs = append(globs, args[i+1])
 				i++
 			}
+		case "--include-bodies":
+			includeBodies = true
+		case "--no-bodies":
+			includeBodies = false
 		case "--files-only", "-l":
 			filesOnly = true
 		case "--exhaustive", "--all":
@@ -2314,6 +2320,7 @@ func cmdSearch(args []string) int {
 	if filesOnly {
 		callArgs["files_only"] = true
 	}
+	callArgs["include_bodies"] = includeBodies
 	if exhaustive {
 		callArgs["exhaustive"] = true
 	}
