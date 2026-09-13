@@ -1,0 +1,112 @@
+shale_version: "0"
+id: 01a09744-88f3-7602-b5a1-62a23e84aee4-c3
+created_at: 2026-09-13T03:21:27.019266Z
+finalized_at: 2026-09-13T03:28:58.798017Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/textsearch/timeout_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-13T03:24:57.038123Z
+commands:
+    - cmd: git push origin main
+      at: 2026-09-13T03:21:27.019266Z
+      classified: other
+    - cmd: gh run list --branch main --limit 5 --json databaseId,workflowName,status,conclusion,headSha,url,createdAt
+      at: 2026-09-13T03:21:30.553419Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T03:21:33.244673Z
+      classified: other
+    - cmd: git show --stat --oneline --decorate -1 HEAD
+      at: 2026-09-13T03:21:36.313364Z
+      classified: other
+    - cmd: git reset --mixed 827b3b3
+      at: 2026-09-13T03:21:43.436685Z
+      classified: other
+    - cmd: gh run list --branch main --limit 5 --json databaseId,workflowName,status,conclusion,headSha,url,createdAt
+      at: 2026-09-13T03:21:47.942286Z
+      classified: other
+    - cmd: git ls-remote origin refs/heads/main
+      at: 2026-09-13T03:21:51.69013Z
+      classified: other
+    - cmd: gh run watch 34735280781 --exit-status
+      at: 2026-09-13T03:23:36.552222Z
+      classified: other
+    - cmd: gh run view 34735280781 --job 103665488841 --log-failed
+      at: 2026-09-13T03:23:41.525569Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-13T03:24:26.528178Z
+      classified: other
+    - cmd: git pull --ff-only origin main
+      at: 2026-09-13T03:24:30.00416Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/prism-shale-untracked.XXXXXX
+      at: 2026-09-13T03:24:34.186523Z
+      classified: other
+    - cmd: mv .shale/01a09744-88f3-7602-b5a1-62a23e84aee4-c2.yaml /private/tmp/prism-shale-untracked.xJurRn/
+      at: 2026-09-13T03:24:37.507407Z
+      classified: other
+    - cmd: git pull --ff-only origin main
+      at: 2026-09-13T03:24:39.809473Z
+      classified: other
+    - cmd: gofmt -w internal/textsearch/timeout_test.go
+      at: 2026-09-13T03:25:01.037094Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/textsearch -run TestRunLineTool -count=10
+      at: 2026-09-13T03:25:05.599565Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-09-13T03:25:10.729731Z
+      classified: other
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-13T03:25:10.973061Z
+      classified: lint
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 120s
+      at: 2026-09-13T03:25:27.694134Z
+      classified: test
+    - cmd: git diff -- internal/textsearch/timeout_test.go
+      at: 2026-09-13T03:25:30.327199Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T03:25:39.382103Z
+      classified: other
+    - cmd: git add internal/textsearch/timeout_test.go
+      at: 2026-09-13T03:25:42.292744Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-13T03:25:44.573941Z
+      classified: other
+    - cmd: git write-tree
+      at: 2026-09-13T03:25:47.821443Z
+      classified: other
+    - cmd: git diff --cached --binary > /private/tmp/prism-v0.75.1-windows-ci-fix.patch
+      at: 2026-09-13T03:25:51.972927Z
+      classified: other
+    - cmd: shasum -a 256 /private/tmp/prism-v0.75.1-windows-ci-fix.patch
+      at: 2026-09-13T03:25:54.361331Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-13T03:28:49.886903Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T03:28:51.949741Z
+      classified: other
+    - cmd: git write-tree
+      at: 2026-09-13T03:28:54.049334Z
+      classified: other
+    - cmd: 'git commit -m ''test(textsearch): make timeout coverage reliable on Windows'''
+      at: 2026-09-13T03:28:56.337128Z
+      classified: other
+notes:
+    - text: continuation of session 01a09744-88f3-7602-b5a1-62a23e84aee4 — events captured after its evidence was finalized
+      at: 2026-09-13T03:21:27.019266Z
+redactions: 0
