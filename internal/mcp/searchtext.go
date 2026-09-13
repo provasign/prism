@@ -41,6 +41,10 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"failedTerms": true, "note": true, "query": true,
 		"symbols": true, "hitRollup": true, "didYouMean": true,
 		"symbolsTruncated": true,
+		"scopeNote":        true,
+		"fallbackResults":  true,
+		"fallbackOmitted":  true,
+		"fallbackFailed":   true,
 		"root":             true,
 		"omittedTerms":     true,
 		"countComplete":    true,
@@ -55,6 +59,9 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	var b strings.Builder
 	if root, _ := out["root"].(string); root != "" {
 		fmt.Fprintf(&b, "// root: %s\n", root)
+	}
+	if scopeNote, _ := out["scopeNote"].(string); scopeNote != "" {
+		fmt.Fprintf(&b, "// %s\n", scopeNote)
 	}
 	if raw, ok := out["results"]; ok {
 		groups, ok := raw.([]map[string]any)
@@ -99,7 +106,6 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	} else if !renderOneSearchText(&b, out, nil) {
 		return "", false
 	}
-
 	if note, _ := out["note"].(string); note != "" {
 		if strings.HasPrefix(note, "no matches — search completed") {
 			// The all-empty guidance already states completion; drop the
@@ -109,6 +115,21 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 			b.WriteString(s)
 		}
 		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	if fallback, ok := out["fallbackResults"].([]map[string]any); ok && len(fallback) > 0 {
+		b.WriteString("// Exact phrase matched nothing; bounded token fallback searched these terms independently with the same scope and filters (at most 3 hits per term):\n")
+		for _, result := range fallback {
+			fmt.Fprintf(&b, "── token: %v ──\n", result["query"])
+			if !renderOneSearchText(&b, result, nil) {
+				return "", false
+			}
+		}
+	}
+	if omitted := anySlice(out["fallbackOmitted"]); len(omitted) > 0 {
+		fmt.Fprintf(&b, "// token fallback NOT searched individually: %v\n", omitted)
+	}
+	for _, failed := range anySlice(out["fallbackFailed"]) {
+		fmt.Fprintf(&b, "// token fallback failed: %v\n", failed)
 	}
 	if dym := anySlice(out["didYouMean"]); len(dym) > 0 {
 		b.WriteString("// closest indexed symbols:\n")
@@ -272,15 +293,11 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 			b.WriteString("\n")
 		}
 		b.WriteString(searchLocatorGuidance + "\n")
-	} else if hasKey(m, "symbols") && !hasKey(m, "textHits") && !hasKey(m, "files") {
-		// Same completeness rule as the text-search empty case above. Symbol
-		// matching is an in-memory index lookup, not a scan with a timeout
-		// risk, so the reassurance is simpler: the whole index was checked,
-		// not a partial/truncated pass.
-		if searchResultPartial(m) {
-			b.WriteString("// no symbol matches in the inspected portion; results are INCOMPLETE\n")
+	} else if hasKey(m, "symbols") {
+		if truncated, _ := m["symbolsTruncated"].(bool); truncated {
+			b.WriteString("// no indexed symbol matches in the inspected symbol sample; INCOMPLETE\n")
 		} else {
-			b.WriteString("// no symbol matches (full index checked, not a partial pass)\n")
+			b.WriteString("// no indexed symbol matches in the requested symbol scope\n")
 		}
 	}
 	switch {

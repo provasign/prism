@@ -649,8 +649,9 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 		return ""
 	}
 	// A batched search may have many substring hits yet one exact match for
-	// its first, most specific term. Deliver that body without implying that
-	// the remaining locator inventory is complete or already read.
+	// its first, most specific term. A qualified query such as "class Foo"
+	// can also have one unambiguous small symbol without equalling its name.
+	// Deliver that body without implying the other terms were read.
 	if results, ok := out["results"].([]map[string]any); ok && len(results) > 0 {
 		first := results[0]
 		if boolArg(first, "symbolsTruncated") {
@@ -668,12 +669,19 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 			}
 			exact = item
 		}
-		if exact == nil {
+		selected := exact
+		label := "the unique exact-name match in the first batched term; other hits remain locators"
+		if selected == nil && len(symbols) == 1 {
+			selected = symbols[0]
+			label = "the unique small symbol match in the first batched term; other hits remain locators"
+		}
+		if selected == nil {
 			return ""
 		}
-		file, _ := exact["filePath"].(string)
-		span, _ := exact["span"].(map[string]any)
-		if file == "" || span == nil {
+		file, _ := selected["filePath"].(string)
+		name, _ := selected["qualifiedName"].(string)
+		span, _ := selected["span"].(map[string]any)
+		if file == "" || name == "" || span == nil {
 			return ""
 		}
 		syms, err := h.Grove.FileSymbols(ctx, file)
@@ -681,12 +689,14 @@ func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) s
 			return ""
 		}
 		for _, sym := range syms {
-			if sym.QualifiedName == term && sym.Span.Start == intArg(span, "start", 0) &&
+			if sym.QualifiedName == name && sym.Span.Start == intArg(span, "start", 0) &&
 				sym.Span.End == intArg(span, "end", 0) {
+				if exact == nil && (sym.Span.End-sym.Span.Start+1 > 40 || len(sym.RawText) > 2400) {
+					return ""
+				}
 				pick := ranking.BudgetedSymbol{Symbol: sym, Score: 1,
 					Category: ranking.CategoryTarget, Disclosure: ranking.DisclosureFull}
-				return h.renderCompactSearchBodies([]ranking.BudgetedSymbol{pick},
-					"the unique exact-name match in the first batched term; other hits remain locators")
+				return h.renderCompactSearchBodies([]ranking.BudgetedSymbol{pick}, label)
 			}
 		}
 		return ""

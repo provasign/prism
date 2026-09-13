@@ -1693,6 +1693,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		}
 		wg.Wait()
 		out := map[string]any{"root": h.Root}
+		if disclosure := searchScopeDisclosure(scope, sc); disclosure != "" {
+			out["scopeNote"] = disclosure
+		}
 		if len(omittedTerms) > 0 {
 			out["omittedTerms"] = omittedTerms
 		}
@@ -1721,7 +1724,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			}
 		}
 		if allEmpty && !searchResultPartial(out) {
-			h.attachEmptySearchGuidance(ctx, out, queries)
+			h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		}
 		return out, nil
 	}
@@ -1731,13 +1734,94 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		return nil, err
 	}
 	out["root"] = h.Root
+	if disclosure := searchScopeDisclosure(scope, sc); disclosure != "" {
+		out["scopeNote"] = disclosure
+	}
 	if termNote != "" {
 		out["note"] = termNote
 	}
 	if searchResultEmpty(out) && !searchResultPartial(out) {
-		h.attachEmptySearchGuidance(ctx, out, queries)
+		h.attachEmptySearchGuidance(ctx, out, queries, sc)
+		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			selected, omitted := tokenFallbackTerms(queries[0])
+			if len(selected) > 0 {
+				fallbackScope := sc
+				fallbackScope.context = 0
+				fallbackScope.adaptive = false
+				fallback := make([]map[string]any, 0, len(selected))
+				for _, term := range selected {
+					r, err := h.searchOne(ctx, term, scope, minInt(limit, 3), false, fallbackScope)
+					if err != nil {
+						out["fallbackFailed"] = append(anySlice(out["fallbackFailed"]), term+": "+err.Error())
+						continue
+					}
+					r["query"] = term
+					fallback = append(fallback, r)
+				}
+				if len(fallback) > 0 {
+					out["fallbackResults"] = fallback
+				}
+				if len(omitted) > 0 {
+					out["fallbackOmitted"] = omitted
+				}
+			}
+		}
 	}
 	return out, nil
+}
+
+// tokenFallbackTerms picks a few distinct code-like words from a failed
+// literal phrase. The fallback is separately labeled and never replaces the
+// original search or silently expands its path/glob filters.
+func tokenFallbackTerms(q string) (selected, omitted []string) {
+	words := strings.Fields(q)
+	if len(words) < 2 || len(q) > 160 {
+		return nil, nil
+	}
+	type candidate struct {
+		term  string
+		score int
+	}
+	var candidates []candidate
+	seen := map[string]bool{}
+	for i, word := range words {
+		term := strings.Trim(word, "`'\"()[]{}.,:;!?")
+		lower := strings.ToLower(term)
+		if seen[lower] {
+			continue
+		}
+		if len(term) < 3 || strings.ContainsAny(term, "/\\") {
+			if term != "" {
+				omitted = append(omitted, term)
+			}
+			continue
+		}
+		switch lower {
+		case "class", "def", "func", "function", "method", "interface", "struct", "with", "for", "the", "and", "from":
+			omitted = append(omitted, term)
+			continue
+		}
+		seen[lower] = true
+		score := minInt(len(term)/3, 4)
+		if term != lower || strings.ContainsAny(term, "._") {
+			score += 4
+		}
+		if i == len(words)-1 {
+			score += 3
+		}
+		candidates = append(candidates, candidate{term: term, score: score})
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return candidates[i].score > candidates[j].score
+	})
+	for i, item := range candidates {
+		if i < 3 {
+			selected = append(selected, item.term)
+		} else {
+			omitted = append(omitted, item.term)
+		}
+	}
+	return selected, omitted
 }
 
 func genericSyntaxSearch(q string) bool {
@@ -1778,7 +1862,7 @@ func searchResultEmpty(m map[string]any) bool {
 // index has near-miss candidates for the identifier tokens inside the
 // failed terms -- lists them, so the retry is one obvious step instead of
 // a fresh guess.
-func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]any, terms []string) {
+func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]any, terms []string, sc searchScope) {
 	// One line carries the completion evidence AND the retry: the
 	// per-term "no matches — search completed" line is suppressed by the
 	// renderer when this note is present (they said the same thing twice,
@@ -1786,9 +1870,13 @@ func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]
 	guidance := "no matches — search completed, not truncated, not timed out in the requested scope; " +
 		"NOT that the tool is done. Excluded files and unindexed symbols are not covered. Retry broader/shorter (drop punctuation and " +
 		"qualifiers: \"e.Query(\" -> \"Query\") or reuse a term that matched earlier."
-	if dym := h.nearMissSymbols(ctx, terms); len(dym) > 0 {
-		out["didYouMean"] = dym
-		guidance += " Closest indexed symbols below."
+	// nearMissSymbols searches the whole index. On path/glob-scoped calls it
+	// could suggest a test outside the requested files as if it were in scope.
+	if len(sc.paths) == 0 && len(sc.glob) == 0 {
+		if dym := h.nearMissSymbols(ctx, terms); len(dym) > 0 {
+			out["didYouMean"] = dym
+			guidance += " Closest indexed symbols below."
+		}
 	}
 	h.hypLedger.recordEmptySearch(terms)
 	if sn := h.hypLedger.scopeNote(); sn != "" {
@@ -1857,6 +1945,24 @@ type searchScope struct {
 	context    int
 	rollupOnly bool
 	adaptive   bool
+}
+
+func searchScopeDisclosure(scope string, sc searchScope) string {
+	var filters []string
+	if len(sc.paths) > 0 {
+		filters = append(filters, fmt.Sprintf("path=%q", sc.paths))
+	}
+	if len(sc.glob) > 0 {
+		filters = append(filters, fmt.Sprintf("glob=%q", sc.glob))
+	}
+	var notes []string
+	if len(filters) > 0 {
+		notes = append(notes, "match lists restricted to "+strings.Join(filters, ", ")+"; files outside these filters, including tests outside them, were not searched for matches")
+	}
+	if scope == "symbols" {
+		notes = append(notes, "indexed-symbol search only; text search was not run. Use scope=text to check references")
+	}
+	return strings.Join(notes, "; ")
 }
 
 func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
@@ -1955,10 +2061,14 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// (implementations + callers with sites) outranks the noise-ratio
 		// note — full38 showed missed fan-out sites, not noisy greps, are
 		// where searches go wrong.
-		if n := h.structuralNote(ctx, q); n != "" {
-			out["resolvedNote"] = n
-		} else if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
-			out["resolvedNote"] = n
+		// Structural hints are repository-wide. A path/glob filter must not
+		// quietly add evidence from files outside the requested match scope.
+		if len(sc.paths) == 0 && len(sc.glob) == 0 {
+			if n := h.structuralNote(ctx, q); n != "" {
+				out["resolvedNote"] = n
+			} else if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
+				out["resolvedNote"] = n
+			}
 		}
 		return out, nil
 	}
@@ -2075,10 +2185,8 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
 		})
-		if len(r.Hits) > 0 {
-			out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive)
-			out["textBackend"] = r.Backend
-		}
+		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive)
+		out["textBackend"] = r.Backend
 		attachTextSearchCompleteness(out, r)
 		if r.Truncated {
 			out["truncated"] = true
@@ -2100,8 +2208,10 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// Same structural hint as scope=text: the symbol list above says the
 	// name exists, but not that changing it fans out — and the fan-out is
 	// the part agents were measured never to ask for on their own.
-	if n := h.structuralNote(ctx, q); n != "" {
-		out["resolvedNote"] = n
+	if len(sc.paths) == 0 && len(sc.glob) == 0 {
+		if n := h.structuralNote(ctx, q); n != "" {
+			out["resolvedNote"] = n
+		}
 	}
 	return out, nil
 }

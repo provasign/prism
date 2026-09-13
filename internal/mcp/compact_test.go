@@ -455,6 +455,81 @@ func TestCompactBatchedSearchInlinesUniqueExactFirstSymbol(t *testing.T) {
 	}
 }
 
+func TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope(t *testing.T) {
+	root := t.TempDir()
+	sourceFile := filepath.Join(root, "src", "click", "testing.py")
+	if err := os.MkdirAll(filepath.Dir(sourceFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	source := "class _NamedTextIOWrapper:\n" +
+		"    def __init__(self):\n" +
+		"        self.name = 'stdout'\n" +
+		"\n" +
+		"    def read(self):\n" +
+		"        return self.name\n"
+	if err := os.WriteFile(sourceFile, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testFile := filepath.Join(root, "tests", "test_testing.py")
+	if err := os.MkdirAll(filepath.Dir(testFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(testFile, []byte("def test_fileno():\n    assert True\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	srv := NewCompactServer(NewHandler(config.Default(), root, gc))
+
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":["class _NamedTextIOWrapper","fileno"],"scope":"symbols","paths":"src/click/testing.py"}}}`)
+	result, rpcErr := srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	for _, want := range []string{"Exact source for the unique small symbol match", "return self.name", "match lists restricted to path=", "text search was not run", "no indexed symbol matches"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("missing %q from scoped batched search:\n%s", want, content)
+		}
+	}
+	if strings.Contains(content, "test_fileno") || strings.Contains(content, "text search completed") {
+		t.Errorf("symbol-only search claimed or included evidence outside its scope:\n%s", content)
+	}
+
+	params = json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"fileno","scope":"both","paths":"src/click/testing.py"}}}`)
+	result, rpcErr = srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content = result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if !strings.Contains(content, "no indexed symbol matches") ||
+		!strings.Contains(content, "no matches — search completed") ||
+		strings.Contains(content, "test_fileno") {
+		t.Fatalf("combined search must distinguish completed scoped text from indexed symbols:\n%s", content)
+	}
+
+	params = json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"class _NamedTextIOWrapper isolation stdout stderr fileno","paths":"src/click/testing.py"}}}`)
+	result, rpcErr = srv.dispatch("tools/call", params)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	content = result.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if len(content) > 4000 {
+		t.Errorf("bounded token fallback grew to %d bytes", len(content))
+	}
+	for _, want := range []string{"Exact phrase matched nothing", "── token: _NamedTextIOWrapper ──", "── token: fileno ──", "token fallback NOT searched individually", "no matches — search completed"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("missing %q from bounded token fallback:\n%s", want, content)
+		}
+	}
+	if strings.Contains(content, "test_fileno") {
+		t.Errorf("token fallback widened the path filter to tests:\n%s", content)
+	}
+}
+
 func TestCompactSearchDefaultsToTwoContextLines(t *testing.T) {
 	h := newTestHandler(t)
 	if err := os.WriteFile(filepath.Join(h.Root, "sample.txt"), []byte("before-two\nbefore-one\nUniqueNeedle\nafter-one\nafter-two\n"), 0o644); err != nil {
