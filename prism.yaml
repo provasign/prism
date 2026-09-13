@@ -5,7 +5,7 @@ version: 2
 #               # the default 200k-token window. Agents can also pass model= per
 #               # call, which overrides this.
 profile: "default"
-harnesses: "claude,codex,cursor"
+harnesses: "claude,codex"
 mcp_surface: "compact"
 
 # Declared architecture — enforced by `prism arch` (exit 1 on violation).

@@ -6,7 +6,7 @@
         "--compact",
         "/Users/tapabratapal/Projects/provasign/prism"
       ],
-      "command": "/tmp/prism-v0730-rc"
+      "command": "/Users/tapabratapal/Projects/provasign/prism/bin/prism"
     }
   }
 }

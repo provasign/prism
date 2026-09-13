@@ -1,3 +1,6 @@
 [mcp_servers.prism]
-command = "/tmp/prism-v0730-rc"
+command = "/opt/homebrew/bin/prism"
 args = ["mcp", "--compact"]
+
+[mcp_servers.prism.tools.prism]
+approval_mode = "approve"

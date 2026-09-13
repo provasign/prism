@@ -11,7 +11,7 @@
         "mcp",
         "--compact"
       ],
-      "command": "/tmp/prism-v0730-rc"
+      "command": "/opt/homebrew/bin/prism"
     }
   }
 }
