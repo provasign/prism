@@ -736,6 +736,9 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		res.Hits = append(res.Hits, Hit{File: file, Line: ln, Text: truncateLine(parts[2])})
 	}
 	res.FilesMatched = len(files)
+	// A searcher can emit partial output before the deadline kills it. Those
+	// hits are useful, but they must never look like a complete inventory.
+	res.TimedOut = ctx.Err() != nil
 	if err != nil && len(res.Hits) == 0 {
 		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
 			return res, true // exit 1 = no matches: a real, empty answer

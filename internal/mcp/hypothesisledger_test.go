@@ -8,11 +8,11 @@ import (
 // The two measured session shapes from BACKLOG addendum 2 item 12, replayed
 // against the ledger directly (deterministic, no engine):
 //
-//   A (pathological, ms-vfs18): 5 same-stem empty searches (Tuple3, Triple<,
-//     class Triple, ImmutableTriple, commons.lang3.tuple) + 5 change_impact
-//     results all closed with 1-6 sites -> the note MUST fire, once.
-//   B (benign, ddtb4dv8): 4 empties on assorted stems + ONE closed impact ->
-//     must never fire.
+//	A (pathological, ms-vfs18): 5 same-stem empty searches (Tuple3, Triple<,
+//	  class Triple, ImmutableTriple, commons.lang3.tuple) + 5 change_impact
+//	  results all closed with 1-6 sites -> the note MUST fire, once.
+//	B (benign, ddtb4dv8): 4 empties on assorted stems + ONE closed impact ->
+//	  must never fire.
 func TestHypothesisLedger_PathologicalSessionTrips(t *testing.T) {
 	var l hypothesisLedger
 	empties := [][]string{
@@ -45,6 +45,9 @@ func TestHypothesisLedger_PathologicalSessionTrips(t *testing.T) {
 		if !strings.Contains(strings.ToLower(note), strings.ToLower(want)) {
 			t.Errorf("note missing %q: %s", want, note)
 		}
+	}
+	if strings.Contains(note, "nothing in this repo") || !strings.Contains(note, "does not rule one out") {
+		t.Errorf("scope note must not turn sampled searches into a repository-wide negative: %s", note)
 	}
 	if again := l.scopeNote(); again != "" {
 		t.Error("note must fire at most once per session")
@@ -83,13 +86,13 @@ func TestHypothesisLedger_WideImpactDoesNotCount(t *testing.T) {
 
 func TestStemOf(t *testing.T) {
 	cases := map[string]string{
-		"Triple<":                 "triple",
-		"ImmutableTriple":         "immutabletriple",
-		"class Triple":            "triple", // longest token wins ("Triple" > "class")
-		"commons.lang3.tuple":     "commons",
-		`") Search("`:             "search",
-		"e.Query(":                "query",
-		"..":                      "",
+		"Triple<":             "triple",
+		"ImmutableTriple":     "immutabletriple",
+		"class Triple":        "triple", // longest token wins ("Triple" > "class")
+		"commons.lang3.tuple": "commons",
+		`") Search("`:         "search",
+		"e.Query(":            "query",
+		"..":                  "",
 	}
 	for in, want := range cases {
 		if got := stemOf(in); got != want {

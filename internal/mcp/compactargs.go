@@ -11,7 +11,7 @@ var compactFields = map[string][]string{
 	"search":        {"terms", "scope", "paths", "glob", "regex", "files_only", "max_results", "exhaustive"},
 	"query":         {"task", "terms", "paths", "glob"},
 	"change_impact": {"name", "symbol_file", "signature"},
-	"verify":        {"removed_symbols"},
+	"verify":        {"base", "removed_symbols", "strict"},
 }
 
 func compactFieldError(op, field string) error {

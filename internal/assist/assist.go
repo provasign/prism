@@ -14,7 +14,6 @@ import (
 // loop testable with a fake.
 type Invoker func(tool string, args map[string]any) (any, error)
 
-
 // asSlice normalizes a result group to []any: h.Invoke returns typed Go
 // slices ([]map[string]any, []grove.RenameEdit rendered via JSON round-trip
 // upstream), not []any — a bare type assertion silently missed every group.
@@ -46,13 +45,13 @@ func asSlice(v any) []any {
 
 // Options configures one assist session.
 type Options struct {
-	Model    string // provider spec, e.g. "ollama:qwen2.5-coder:14b", "claude:claude-haiku-4-5-20251001"
-	Apply    bool   // apply rename_plan confirmed edits to the working tree
-	ApplyAmbiguous bool // ALSO apply Ambiguous edits (verify is the safety net)
-	Verify   string // shell command to run after apply (build/tests); "" = skip
-	Root     string // project root (edits are applied relative to it)
-	MaxTurns int
-	Out      *os.File // rendering destination (default os.Stdout)
+	Model          string // provider spec, e.g. "ollama:qwen2.5-coder:14b", "claude:claude-haiku-4-5-20251001"
+	Apply          bool   // apply rename_plan confirmed edits to the working tree
+	ApplyAmbiguous bool   // ALSO apply Ambiguous edits (verify is the safety net)
+	Verify         string // shell command to run after apply (build/tests); "" = skip
+	Root           string // project root (edits are applied relative to it)
+	MaxTurns       int
+	Out            *os.File // rendering destination (default os.Stdout)
 }
 
 // systemPrompt is the ENTIRE model-facing contract. There are no steering
@@ -64,10 +63,10 @@ const systemPrompt = `You route a natural-language code task to deterministic co
 Rules:
 - If the target symbol is ambiguous or not yet known, call search_symbols first.
 - Pick the operation by task shape:
-  * change_impact     — a method/interface signature changes, a deprecation, or "find every site that must change / every caller"
-  * rename_plan       — a rename where the user wants the concrete edits
-  * missing_implementations — "who fails to implement X / who breaks if X becomes required"
-  * dead_code         — unused/unreachable code cleanup
+  * change_impact     — a method/interface signature changes, a deprecation, or "inspect indexed affected sites / callers"
+  * rename_plan       — a rename where the user wants proposed edits to review
+  * missing_implementations — "which indexed subtypes may need X if it becomes required"
+  * dead_code         — review static unreachable-code candidates
 - For a multi-method interface change, call change_impact once per method.
 - Symbols are written Type.method (parameter types optional).
 - The harness prints every operation's full result itself. NEVER enumerate
@@ -85,17 +84,17 @@ func toolDefs() []ToolDef {
 			Parameters: map[string]any{"type": "object",
 				"properties": map[string]any{"query": map[string]any{"type": "string"}},
 				"required":   []string{"query"}}},
-		{Name: "change_impact", Description: "Complete change-set for a method signature change: declaration, override family, callers, declaring types.",
+		{Name: "change_impact", Description: "Indexed potential impact sites for a method signature change: declaration, override family, callers, declaring types; check coverage.",
 			Parameters: sym},
-		{Name: "rename_plan", Description: "Rename a method: every concrete edit line, review-and-apply.",
+		{Name: "rename_plan", Description: "Proposed line edits for resolved rename sites; review ambiguity and coverage before applying.",
 			Parameters: map[string]any{"type": "object",
 				"properties": map[string]any{
 					"symbol":  map[string]any{"type": "string"},
 					"newName": map[string]any{"type": "string"}},
 				"required": []string{"symbol", "newName"}}},
-		{Name: "missing_implementations", Description: "Every type in the contract's closure lacking an implementation.",
+		{Name: "missing_implementations", Description: "Indexed subtype candidates that may lack the contract member; check coverage.",
 			Parameters: sym},
-		{Name: "dead_code", Description: "Unreachable production symbols, safe-to-delete list with caveats.",
+		{Name: "dead_code", Description: "Static deletion candidates from indexed reachability; check dynamic uses and tests before removal.",
 			Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
 		{Name: "submit", Description: "Finish: a 2-3 sentence summary (totals + warnings; never site lists).",
 			Parameters: map[string]any{"type": "object",

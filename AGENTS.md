@@ -33,8 +33,16 @@ one lookup you did not batch.
 Obligations:
   - change_impact before editing a signature, public contract, override, or any
     symbol whose callers you have not enumerated. Relay its sites as-is.
-  - verify({removed_symbols:[...]}) before a removal; verify({}) before finishing
-    a multi-site or signature change.
   - Report gaps; never narrow scope to fit what was found.
+
+Optional checks:
+  - verify({removed_symbols:[...]}) after a removal finds exact identifier
+    mentions in code, comments, and docs; inspect the reported sites.
+  - Consider verify({}) for Python, unchecked JavaScript, or PHP contract
+    changes: syntax checks can miss callers. For TypeScript or checked JavaScript,
+    use it only if the affected files lack a complete typecheck. For Go, Java,
+    Rust, C/C++, or C#, skip it after a complete build/typecheck of affected
+    targets. In any language, use it when that check cannot cover the callers.
+    It is never a required closing step; run relevant tests.
 
 <!-- prism:end -->

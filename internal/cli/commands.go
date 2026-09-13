@@ -60,14 +60,12 @@ Usage:
                                   against the component view; violations cite
                                   file:line sites; exit 1 on violation — a CI
                                   gate ([--deny 'A -> B'] [--depth N] [--json])
-  prism verify [dir]              Verify a diff's completeness (working tree vs
-                                  --base, default HEAD): missed change-impact
-                                  sites (line-precise), new
-                                  cross-component deps, introduced arch
-                                  violations; exit 1 if incomplete — the CI
-                                  gate for agent-authored changes
-                                  [--base REF] [--strict] [--format text|json]
-                                  ([--base REF] [--json])
+  prism verify [dir]              Optionally review a diff (working tree vs
+                                  --base, default HEAD) for missed sites and
+                                  architecture changes. Exit 1 if incomplete;
+                                  --strict also exits 1 on review.
+                                  [--base REF] [--removed a,b,c] [--strict]
+                                  [--format text|json]
   prism query <task> --terms a,b,c [dir]  Find related implementations, callers,
                                   and tests around explicit anchors (edit-ready)
                                   --terms a,b,c      REQUIRED: anchor on specific symbol
@@ -95,15 +93,15 @@ Usage:
                                   its neighbours, or a file's source + the
                                   symbols it defines + the files depending on it
                                   --format text|lean|json  Output format (default: text)
-  prism references <name> [dir]   Find where a symbol is USED (every code occurrence,
-                                  comments/strings excluded), grouped by file
+  prism references <name> [dir]   Find indexed syntactic uses of a name
+	                                  (comments/strings excluded), grouped by file
                                   --format text|lean|json  Output format (default: text)
   prism resolve <name> [dir]      Resolve a name to its definition(s): file:line + kind
   prism edges <name> [dir]        Walk the graph one hop from a symbol
                                   ([--direction in|out] [--kinds calls,uses-type,...])
-  prism change-impact <query> [dir]  Deterministic change-set for a method signature change:
-                                  declaration(s), override/implementation family (subtype
-                                  closure), super-declarations, and all resolved callers.
+  prism change-impact <query> [dir]  Indexed potential impact sites for a method signature change:
+	                                  declaration(s), override/implementation family (subtype
+	                                  closure), super-declarations, and indexed callers.
                                   query format: Type.method or Type.method(ParamType, ...)
                                   --format text|lean|json  Output format (default: json)
   prism rename-plan <query> <NewName> [dir]     Change-set as line edits with substitutions
@@ -588,9 +586,17 @@ one lookup you did not batch.
 Obligations:
   - change_impact before editing a signature, public contract, override, or any
     symbol whose callers you have not enumerated. Relay its sites as-is.
-  - verify({removed_symbols:[...]}) before a removal; verify({}) before finishing
-    a multi-site or signature change.
   - Report gaps; never narrow scope to fit what was found.
+
+Optional checks:
+  - verify({removed_symbols:[...]}) after a removal finds exact identifier
+    mentions in code, comments, and docs; inspect the reported sites.
+  - Consider verify({}) for Python, unchecked JavaScript, or PHP contract
+    changes: syntax checks can miss callers. For TypeScript or checked JavaScript,
+    use it only if the affected files lack a complete typecheck. For Go, Java,
+    Rust, C/C++, or C#, skip it after a complete build/typecheck of affected
+    targets. In any language, use it when that check cannot cover the callers.
+    It is never a required closing step; run relevant tests.
 
 <!-- prism:end -->
 `
@@ -3494,9 +3500,8 @@ func printTextOutput(m map[string]any) {
 
 // ─── task-shaped renderers ───────────────────────────────────────────────────
 //
-// These render the complete set, never a truncated one: the whole point of
-// change-impact and friends is that the returned sites ARE every site, so an
-// elided text view would misrepresent the one property the command sells.
+// These render every returned site rather than truncating the view. Coverage
+// remains bounded by the indexed graph and the result's completeness notes.
 
 // siteLine renders one change-set entry as "qualifiedName  file:line".
 func siteLine(v any) string {

@@ -142,7 +142,7 @@ func TestDispatch_Initialize(t *testing.T) {
 		"Choose by the information needed now",
 		"prism_search locates unknown code or text",
 		"prism_query gathers related implementations, callers, and tests",
-		"removed_symbols is a mid-loop reference check",
+		"removed_symbols optionally checks exact identifier mentions",
 		"make the smallest local edit",
 	} {
 		if !strings.Contains(instructions, guidance) {
@@ -190,8 +190,16 @@ func TestAdvertisedDiscoveryDescriptionsRouteEfficiently(t *testing.T) {
 	if strings.Contains(strings.ToLower(terms), "guess") || !strings.Contains(terms, "prism_search") {
 		t.Errorf("query terms schema must route unknown anchors to search without guessing: %q", terms)
 	}
-	if got := toolDescription("prism_verify"); !strings.Contains(got, "removed_symbols") || !strings.Contains(got, "mid-loop") {
-		t.Errorf("verify description must distinguish removal iterations from the final gate: %q", got)
+	if got := toolDescription("prism_verify"); !strings.Contains(got, "removed_symbols") || !strings.Contains(got, "mid-loop") ||
+		!strings.Contains(got, "optional") || strings.Contains(got, "call it once after the final edit") {
+		t.Errorf("verify description must be optional and distinguish removal checks: %q", got)
+	}
+	for _, guidance := range []string{serverInstructions, toolDescription("prism_verify")} {
+		for _, want := range []string{"Python", "unchecked JavaScript", "PHP", "TypeScript", "checked JavaScript", "Go, Java, Rust, C/C++, and C#", "complete"} {
+			if !strings.Contains(guidance, want) {
+				t.Errorf("verify guidance omits %q: %q", want, guidance)
+			}
+		}
 	}
 }
 

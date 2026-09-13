@@ -27,7 +27,11 @@ Workflow rules:
   changed signatures, public contracts, overrides, multi-site edits, or uncertain
   callers; a clearly local body-only edit can proceed without it. When called,
   **relay the set as-is**; do not filter it through grep/sed.
-- Before declaring a multi-site change done: `prism_verify`.
+- Consider `prism_verify` for Python, unchecked JavaScript, or PHP contract
+  changes. For TypeScript or checked JavaScript, use it only if affected files
+  lack a complete typecheck. For Go, Java, Rust, C/C++, or C#, skip it after a
+  complete build/typecheck of affected targets. It remains optional when
+  callers are unchecked; run relevant tests.
 - External/unresolved interface or undersized closure for a wide task?
   Use batched `prism_search(scope="text", exhaustive=true)` for declarations, calls,
   and interface refs. Inspect signatures/receivers; text matches do not prove implementation.
@@ -37,9 +41,9 @@ Workflow rules:
   scope, or required non-code references. Do not rescan to reproduce the site list.
   Preserve reported sites while resolving uncertainty; if gaps remain,
   report them instead of claiming completeness.
-- Removing symbols? Before editing, run `prism_verify(removed_symbols=["A","B"])`.
-  Re-run per edit round; plain `prism_verify` still gates the finish. Check
-  non-compiling surfaces too: comments, docs, config, and other languages.
+- After removing symbols, `prism_verify(removed_symbols=["A","B"])` can find
+  exact identifier mentions in code, comments, and docs. Inspect the sites;
+  the check is optional and does not prove a live code reference.
 - Several names to find? ONE call: `prism_search(query=["A","B","C"])`.
   Add `context=3` for surrounding lines. Use `scope="text"` for pure grep.
 - Wide removal/refactor ("remove X everywhere")? Open with

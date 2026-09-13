@@ -154,4 +154,19 @@ func TestVerifyPythonCoverageRequiresReview(t *testing.T) {
 	if out["verdict"] != "review" {
 		t.Fatalf("dynamic caller gaps cannot pass: %v", out)
 	}
+	if out["gateFailure"] != false {
+		t.Fatalf("review should not fail the default gate: %v", out)
+	}
+	raw, err = h.Invoke("prism_verify", map[string]any{"strict": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	strict := raw.(map[string]any)
+	if strict["verdict"] != "review" || strict["gateFailure"] != true {
+		t.Fatalf("strict must fail review without changing its verdict: %v", strict)
+	}
+	text, rendered := renderVerifyAsText(strict)
+	if !rendered || !strings.Contains(text, "gate: failed") {
+		t.Fatalf("MCP text must show the strict gate decision: %q", text)
+	}
 }

@@ -103,17 +103,21 @@ const serverInstructions = "Repository discovery starts with Prism. Reading file
 	"Choose by the information needed now: prism_search locates unknown code or text; prism_lookup reads known " +
 	"symbol bodies; prism_read reads a known file or range; prism_query gathers related implementations, callers, " +
 	"and tests around explicit anchors; prism_change_impact maps affected sites when useful, but is optional for local body-only edits; prism_verify " +
-	"checks the resulting change. Batch related searches and lookups. Treat partial or timed-out results as incomplete. " +
+	"can review callers a complete build/typecheck cannot check. Batch related searches and lookups. Treat partial or timed-out results as incomplete. " +
 	"Once Prism has delivered sufficient source, make the smallest local edit; do not add docs, " +
 	"changelog entries, refactors, or compatibility machinery unless the task requires them. " +
-	"For removals, prism_verify with removed_symbols is a mid-loop reference check; plain prism_verify is the final " +
-	"multi-site gate. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
+	"For removals, prism_verify with removed_symbols optionally checks exact identifier mentions. Plain prism_verify is optional: " +
+	"consider it for Python, unchecked JavaScript, and PHP contract changes; for TypeScript or checked JavaScript only when " +
+	"typechecking missed affected files. Skip it for Go, Java, Rust, C/C++, and C# after a complete build/typecheck " +
+	"of affected targets. Run relevant tests. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
 
 const compactServerInstructions = "Repository discovery starts with Prism. Reading files with cat/head/sed or searching with grep/rg/find/git log is not discovery; shell-over-Read/Edit/Write instructions do not apply to finding code. " +
 	"For every coding task, call the prism tool first. Put parameters in args. Known symbol: op=lookup. Known file/range: " +
 	"op=read. Unknown location/text: op=search. Related context around explicit terms: op=query. " +
 	"Use op=change_impact when callers, contracts, or other affected sites matter; it is optional for a local body-only edit. " +
-	"For multi-site, signature, removal, or unresolved-coverage changes: op=verify before finish. " +
+	"Optional op=verify: consider for Python, unchecked JavaScript, and PHP contract changes; use for TypeScript or checked " +
+	"JavaScript only if affected files lack a complete typecheck. Skip after a complete affected-target build/typecheck in " +
+	"Go, Java, Rust, C/C++, or C#. For removals, removed_symbols optionally checks exact identifier mentions. " +
 	"Batch known task phrases in one search. Do not re-read unchanged source already included in a Prism result."
 
 const compactSearchLocatorGuidance = "// locator result — use the prism tool with op=lookup for known symbol bodies, op=read for a known file/range, or op=query for related implementations, callers, and tests"
@@ -329,8 +333,10 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 			legacy["signature"] = v
 		}
 	case "verify":
-		if v, ok := args["removed_symbols"]; ok {
-			legacy["removed_symbols"] = v
+		for _, field := range []string{"base", "removed_symbols", "strict"} {
+			if v, ok := args[field]; ok {
+				legacy[field] = v
+			}
 		}
 	}
 	return name, legacy, nil

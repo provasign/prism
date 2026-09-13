@@ -1,6 +1,6 @@
 # Prism
 
-**Semantic change intelligence for coding agents.** Prism turns repository structure into task-shaped answers: complete change-impact sets, edit-ready context, and deterministic verification of an agent-authored diff.
+**Semantic change intelligence for coding agents.** Prism turns indexed repository structure into task-shaped answers: potential change-impact sites, source context, and a review of an agent-authored diff.
 
 Prism embeds the [Grove](https://github.com/provasign/grove) code graph. It runs locally as one binary, exposes CLI and MCP interfaces, and requires no hosted service or API token.
 
@@ -19,7 +19,7 @@ Text search is excellent for locating a name. It cannot reliably distinguish ref
 | Check an agent-authored diff | `prism verify` |
 | Enforce component boundaries | `prism arch` |
 
-Authoritative operations label the completeness of their answer. Unsupported, stale, or heuristic evidence is reported as such instead of being silently treated as complete.
+Structural results report indexed coverage and known stale, partial, or heuristic evidence. A closed indexed result does not prove that every runtime caller or required edit is known.
 
 ## Current result
 
@@ -102,9 +102,9 @@ operations:
 - `search` locates symbols and source text.
 - `query` returns budgeted source around named anchors, callers, and tests.
 - `read` reads a known file or range and deduplicates unchanged repeat reads.
-- `lookup` returns complete bodies for known symbols.
-- `change_impact` returns declarations, implementation families, and resolved callers.
-- `verify` compares a diff with its required semantic change set.
+- `lookup` returns known symbol bodies, marking any omitted content.
+- `change_impact` returns indexed declarations, implementation families, and caller candidates.
+- `verify` reviews a diff against indexed potential impact sites.
 
 Run `prism mcp --legacy` only for compatibility testing with the former six-tool
 surface; normal and init-generated MCP launches use the compact gateway.
@@ -120,9 +120,9 @@ prism doctor .
 
 1. Use `prism_lookup` for a known symbol or `prism_search` for an unknown location; batch related names.
 2. Use `prism_change_impact` when callers, overrides, contracts, or other affected sites need checking; a clearly local body-only edit need not call it. Preserve the returned set when used.
-3. Use `prism_query` for edit-ready context or `prism_lookup` for one complete body.
+3. Use `prism_query` for related source context or `prism_lookup` for a known symbol body; inspect omission markers.
 4. Use exhaustive text search for wide concept removals and other completeness questions.
-5. Run tests and `prism_verify` before declaring a multi-site change complete.
+5. Run relevant tests. Consider `prism_verify` for Python, unchecked JavaScript, or PHP contract changes; for TypeScript or checked JavaScript, use it only when affected files lack a complete typecheck. Skip it after a complete build/typecheck of affected Go, Java, Rust, C/C++, or C# targets. It is optional in every language.
 
 `prism search --scope text` is a real repository text search. The graph adds value after location: callers, implementations, type relationships, tests, architectural edges, and completeness checks.
 

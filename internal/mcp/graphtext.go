@@ -351,7 +351,7 @@ func symbolToMap(v any) map[string]any {
 // (internal/cli/viewcmds.go renderVerifyText) on the MCP surface.
 func renderVerifyAsText(out map[string]any) (string, bool) {
 	known := map[string]bool{
-		"verdict": true, "base": true, "note": true, "changedFiles": true,
+		"verdict": true, "gateFailure": true, "base": true, "note": true, "changedFiles": true,
 		"signatureChanges": true, "missedSites": true, "unverifiedSeeds": true,
 		"newDependencies": true, "archStatus": true, "archIntroduced": true,
 		"notes": true,
@@ -419,7 +419,10 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 	case "complete":
 		b.WriteString("\nno missed sites — the diff covers its own blast radius\n")
 	case "review":
-		b.WriteString("\nverdict: review — some contract changes could not be verified (--strict exits 1)\n")
+		b.WriteString("\nverdict: review — some contract changes could not be verified\n")
+		if failed, _ := out["gateFailure"].(bool); failed {
+			b.WriteString("gate: failed (--strict treats review as a failure)\n")
+		}
 	}
 	return b.String(), true
 }

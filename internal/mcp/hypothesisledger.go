@@ -127,9 +127,10 @@ func (l *hypothesisLedger) scopeNote() string {
 	terms := append([]string(nil), l.stemTerms[stem]...)
 	sort.Strings(terms)
 	return fmt.Sprintf(
-		"scope note: %d negative searches on stem %q (%s) and %d change_impact results all "+
-			"closed with <=%d sites — nothing in this repo has a wide blast radius matching "+
-			"your terms. If the task describes a WIDE change, your reading of the task term "+
-			"is probably wrong: restate the term (what else could it name?), don't re-search it.",
+		"scope note: %d searches on stem %q (%s) returned no matches, and %d indexed "+
+			"change_impact results each reported <=%d sites. This evidence does not establish "+
+			"a wide blast radius for the terms tried; it does not rule one out elsewhere. "+
+			"If the task describes a wide change, restate the term or check another anchor "+
+			"before repeating the same search.",
 		n, stem, strings.Join(terms, ", "), l.closedSmall, scopeNoteSmallSites)
 }

@@ -291,9 +291,11 @@ func cmdVerify(args []string) int {
 				callArgs["base"] = args[i+1]
 				i++
 			}
+		case "--strict":
+			callArgs["strict"] = true
 		case "--removed":
-			// Mid-loop residual check: --removed a,b,c reports remaining
-			// references to each removed identifier instead of the full gate.
+			// Mid-loop residual check: --removed a,b,c reports exact
+			// identifier mentions instead of running the full diff check.
 			if i+1 < len(args) {
 				var syms []string
 				for _, s := range strings.Split(args[i+1], ",") {
@@ -350,7 +352,7 @@ func cmdVerify(args []string) int {
 					fmt.Printf("  %v: clean\n", rm["symbol"])
 					continue
 				}
-				fmt.Printf("  %v: %v remaining\n", rm["symbol"], rm["count"])
+				fmt.Printf("  %v: %v mention(s)\n", rm["symbol"], rm["count"])
 				for _, s := range asSliceAny(rm["sites"]) {
 					sm, _ := s.(map[string]any)
 					if sm == nil {
@@ -364,7 +366,7 @@ func cmdVerify(args []string) int {
 				}
 			}
 		}
-		if c, _ := m["clean"].(float64); int(c) != len(asSliceAny(m["residuals"])) {
+		if failed, _ := m["gateFailure"].(bool); failed {
 			return 1
 		}
 		return 0
@@ -374,24 +376,10 @@ func cmdVerify(args []string) int {
 	} else {
 		renderVerifyText(m)
 	}
-	switch v, _ := m["verdict"].(string); v {
-	case "incomplete":
+	if failed, _ := m["gateFailure"].(bool); failed {
 		return 1
-	case "review":
-		if hasFlag(args, "--strict") {
-			return 1
-		}
 	}
 	return 0
-}
-
-func hasFlag(args []string, flag string) bool {
-	for _, a := range args {
-		if a == flag {
-			return true
-		}
-	}
-	return false
 }
 
 func renderVerifyText(m map[string]any) {

@@ -154,7 +154,7 @@ func TestRenderChangeImpactAsText_GroupsRepeatedPathsOnlyWhenSmaller(t *testing.
 func TestChangeImpactDescriptionDisclosesExternalInterfaceFallback(t *testing.T) {
 	got := toolDescription("prism_change_impact")
 	for _, want := range []string{
-		"Every indexed site",
+		"Reports indexed potential impact sites",
 		"external/unresolved interface with no local anchor",
 		"infers the compatible local method family",
 		"Do not",

@@ -440,7 +440,7 @@ func (h *Handler) structuralNote(ctx context.Context, query string) string {
 		}
 	}
 	if n := len(r.Callers); n > 0 {
-		fmt.Fprintf(&b, "; %d caller(s):", n)
+		fmt.Fprintf(&b, "; %d indexed caller site(s):", n)
 		for i, s := range r.Callers {
 			if i == 3 {
 				fmt.Fprintf(&b, " +%d more", n-3)
@@ -449,8 +449,7 @@ func (h *Handler) structuralNote(ctx context.Context, query string) string {
 			fmt.Fprintf(&b, " %s %s", leafOf(s.Name), site(s))
 		}
 	}
-	b.WriteString(". A contract change here touches that whole set — " +
-		"prism_change_impact for the closed, line-precise list.")
+	b.WriteString(".")
 	return b.String()
 }
 

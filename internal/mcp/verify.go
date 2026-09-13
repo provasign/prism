@@ -227,6 +227,7 @@ func missedSiteMaps(ms []missedSite) []map[string]any {
 
 func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, error) {
 	base := stringArg(args, "base", "HEAD")
+	strict := boolArg(args, "strict")
 
 	// FAST PATH — removed_symbols: a cheap mid-loop residual-reference
 	// check, no diff walk. Measured (BACKLOG addendum #8, 2026-09-02, two
@@ -261,7 +262,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	deletedFiles := gitDeletedFiles(h.Root, base)
 	if len(changed) == 0 && len(deletedFiles) == 0 {
 		return map[string]any{"verdict": "clean", "base": base,
-			"note": "no changes vs " + base}, nil
+			"gateFailure": false, "note": "no changes vs " + base}, nil
 	}
 	changedFiles := make([]string, 0, len(changed))
 	for f := range changed {
@@ -706,6 +707,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	h.Ledger.RecordCall("prism_verify")
 	return map[string]any{
 		"verdict":          verdict,
+		"gateFailure":      verdict == "incomplete" || (strict && verdict == "review"),
 		"base":             base,
 		"changedFiles":     changedFiles,
 		"signatureChanges": sigChanges,
@@ -1181,10 +1183,8 @@ func stripCommentsAndStringsLine(s string) string {
 	return b.String()
 }
 
-// verifyRemovedSymbols reports, per removed identifier, every place it is
-// still referenced in the working tree — an exhaustive text pass (a capped
-// answer to a residual-reference question looks complete and is not) with
-// per-file grouping. The loop-shaped sibling of the full verify gate.
+// verifyRemovedSymbols reports exact identifier mentions in searchable files.
+// A bounded or interrupted scan must not claim that a removed name is clean.
 func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any, error) {
 	type residual struct {
 		Symbol string           `json:"symbol"`
@@ -1195,34 +1195,84 @@ func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any,
 	var out []residual
 	clean := 0
 	for _, s := range syms {
+		if strings.TrimSpace(s) == "" {
+			return nil, fmt.Errorf("removed_symbols contains an empty identifier")
+		}
 		r := textsearch.Search(ctx, h.Root, s, textsearch.Options{Exhaustive: true})
-		res := residual{Symbol: s, Count: len(r.Hits)}
-		for i, hit := range r.Hits {
-			if i >= perSymbolSiteCap {
-				res.Sites = append(res.Sites, map[string]any{
-					"note": fmt.Sprintf("+%d more sites", len(r.Hits)-perSymbolSiteCap)})
-				break
+		// Exhaustive search still has a 10,000-hit per-file cap, a 100,000-hit
+		// total cap, and a deadline. A file at the per-file cap may hide an
+		// exact mention after thousands of longer-name matches.
+		if r.TimedOut || r.Truncated || len(r.RejectedPaths) > 0 || len(r.Hits) >= 10000 {
+			return nil, fmt.Errorf("removed-symbol check for %q is incomplete (timed out: %t, truncated: %t, returned hits: %d); inspect or retry", s, r.TimedOut, r.Truncated, len(r.Hits))
+		}
+		// Search is a literal substring pass: Foo also finds Foo1 and FooImpl.
+		// Keep only whole identifier mentions, including those in comments and
+		// docs, without treating a surviving longer name as a removed symbol.
+		// Search previews long lines; read the full line before applying the
+		// boundary rule so a mention past the preview is not missed.
+		identifier := regexp.MustCompile(`(^|[^\pL\pN\pM_$])` + regexp.QuoteMeta(s) + `($|[^\pL\pN\pM_$])`)
+		res := residual{Symbol: s}
+		linesByFile := map[string][]string{}
+		for _, hit := range r.Hits {
+			lines, ok := linesByFile[hit.File]
+			if !ok {
+				content, err := os.ReadFile(filepath.Join(h.Root, filepath.FromSlash(hit.File)))
+				if err != nil {
+					return nil, fmt.Errorf("removed-symbol check for %q cannot read %s: %w", s, hit.File, err)
+				}
+				lines = strings.Split(string(content), "\n")
+				linesByFile[hit.File] = lines
+			}
+			if hit.Line < 1 || hit.Line > len(lines) {
+				return nil, fmt.Errorf("removed-symbol check for %q cannot read %s:%d", s, hit.File, hit.Line)
+			}
+			line := strings.TrimRight(lines[hit.Line-1], "\r")
+			span := identifier.FindStringIndex(line)
+			if span == nil {
+				continue
+			}
+			res.Count++
+			if len(res.Sites) >= perSymbolSiteCap {
+				continue
+			}
+			// Keep the actual identifier visible even when the search backend
+			// returned only a prefix preview of a long line.
+			if len(line) > 250 {
+				start := max(0, span[0]-80)
+				end := min(len(line), span[1]+80)
+				line = line[start:end]
+				if start > 0 {
+					line = "…" + line
+				}
+				if end < len(lines[hit.Line-1]) {
+					line += "…"
+				}
 			}
 			res.Sites = append(res.Sites, map[string]any{
-				"file": hit.File, "line": hit.Line, "text": hit.Text})
+				"file": hit.File, "line": hit.Line, "text": line})
+		}
+		if res.Count > perSymbolSiteCap {
+			res.Sites = append(res.Sites, map[string]any{
+				"note": fmt.Sprintf("+%d more sites", res.Count-perSymbolSiteCap)})
 		}
 		if res.Count == 0 {
 			clean++
 		}
 		out = append(out, res)
 	}
-	verdict := "residual references remain"
+	verdict := "exact identifier mentions remain"
 	if clean == len(syms) {
-		verdict = "clean — no references to any removed symbol remain"
+		verdict = "clean — no exact identifier mentions remain"
 	}
 	return map[string]any{
-		"mode":      "removed_symbols",
-		"verdict":   verdict,
-		"clean":     clean,
-		"checked":   len(syms),
-		"residuals": out,
-		"note": "exhaustive text pass over the working tree (comments and docs included — " +
-			"a doc mentioning a removed symbol usually needs updating too). This is the " +
-			"loop check; run plain prism_verify before declaring the change done.",
+		"mode":        "removed_symbols",
+		"verdict":     verdict,
+		"gateFailure": clean != len(syms),
+		"clean":       clean,
+		"checked":     len(syms),
+		"residuals":   out,
+		"note": "whole-identifier text pass over searchable working-tree files, including comments and docs. " +
+			"Mentions are not proof of live code references; inspect reported sites. Full verify is optional when " +
+			"build/typecheck does not cover affected callers.",
 	}, nil
 }

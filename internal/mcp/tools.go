@@ -408,13 +408,15 @@ func CompactToolSchemas() []map[string]any {
 		"regex":           prop("search", "Regex text match.", map[string]any{"type": "boolean"}),
 		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
 		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
-		"removed_symbols": prop("verify", "Identifiers to check before removal.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
-		"exhaustive":      prop("search", "Force complete inventory.", map[string]any{"type": "boolean"}),
+		"removed_symbols": prop("verify", "Optional exact-identifier text check after removal; includes comments and docs.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
+		"base":            prop("verify", "Git ref for the full diff check (default HEAD).", map[string]any{"type": "string"}),
+		"strict":          prop("verify", "Treat a review verdict as a gate failure; the verdict and evidence stay unchanged.", map[string]any{"type": "boolean"}),
+		"exhaustive":      prop("search", "Request expanded inventory; check completion status.", map[string]any{"type": "boolean"}),
 	}
 	const opMap = "lookup: name[,symbol_file,fields] | read: file,from,to or ranges | " +
 		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive] | " +
 		"query: task,terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
-		"verify: removed_symbols. Known symbol → lookup; search only when location is unknown."
+		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{
 		"name":        "prism",
 		"description": "Repository discovery starts with Prism. Use the op map; do not use shell tools to find code.",
@@ -585,7 +587,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"exhaustive": map[string]any{
 					"type":        "boolean",
-					"description": "Raises text caps to 100000 hits / 10000 per file, symbols to 2000. Text results include a COMPLETE compact inventory of every exact file, line, and enclosing symbol while source excerpts stay sampled. Deadlines still apply; incomplete results are marked.",
+					"description": "Raises text caps to 100000 hits / 10000 per file, symbols to 2000. Requests a compact file/line inventory while source excerpts stay sampled. Deadlines still apply; check the reported completeness.",
 				},
 				"files_only": map[string]any{
 					"type":        "boolean",
@@ -725,7 +727,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"signature": map[string]any{
 					"type":        "string",
-					"description": "Optional external-interface method signature. When no local interface declaration exists, match every compatible local implementation and union their resolved callers in one call.",
+					"description": "Optional external-interface method signature. When no local interface declaration exists, match indexed compatible local implementations and union their reported callers in one call; check coverage.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
@@ -772,10 +774,14 @@ func toolSchema(name string) map[string]any {
 				"removed_symbols": map[string]any{
 					"type":  "array",
 					"items": map[string]any{"type": "string"},
-					"description": "MID-LOOP fast path: instead of the full diff gate, report every remaining " +
-						"reference to each listed removed identifier (exhaustive, comments/docs included) — " +
-						"one call replacing the repeated per-identifier greps of a removal task. Run the " +
-						"plain (no-arg) verify before declaring the change done.",
+					"description": "Optional mid-loop exact-identifier text check after removal. " +
+						"Reports mentions in code, comments, and docs; inspect them rather than " +
+						"assuming each is a live reference. Full verify is not a required final gate.",
+				},
+				"strict": map[string]any{
+					"type": "boolean",
+					"description": "Treat a review verdict as a gate failure without changing the verdict or evidence. " +
+						"The response's gateFailure matches the CLI exit decision. Has no effect with removed_symbols.",
 				},
 			},
 		}
@@ -850,7 +856,7 @@ func toolSchema(name string) map[string]any {
 				"context_used": contextUsedProp,
 				"from": map[string]any{
 					"type":        "string",
-					"description": "With to: expand one induced edge into its FULL constituent site list.",
+					"description": "With to: expand one induced edge into its reported indexed constituent sites.",
 				},
 				"to": map[string]any{
 					"type":        "string",
@@ -868,9 +874,9 @@ func toolDescription(name string) string {
 	case "prism_query":
 		return "RELATED-CONTEXT TOOL: use when you have explicit anchors and need their related implementations, " +
 			"callers, and tests together. Batch relevant errors, classes, methods, and files into terms=[...] " +
-			"(the only retrieval key). It returns edit-ready context: " +
+			"(the only retrieval key). It returns budgeted source context: " +
 			"one hop through the call graph plus a full-text pass, delivered as line-numbered " +
-			"source windows with callers and a 'tested by' file:line. Do not re-read the files " +
+			"source windows with callers and a 'tested by' file:line. Check omission markers; do not re-read unchanged source " +
 			"it shows; once the relevant implementation and test are present, make the smallest local edit. " +
 			"Size with budget= and max_files=. If no anchor is known, locate one with prism_search first."
 	case "prism_read":
@@ -884,18 +890,18 @@ func toolDescription(name string) string {
 			"Known symbol? Use lookup for bodies or change_impact for affected sites directly. Batch up to 10 " +
 			"terms in query=[...]. scope=\"text\" uses grep retrieval, cheapest — use it wherever you " +
 			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
-			"around each hit (grep -C) — no follow-up read. exhaustive=true adds a complete compact " +
-			"inventory of every exact file, line, and enclosing symbol while source excerpts stay sampled; heed partial-result warnings."
+			"around each hit (grep -C). exhaustive=true requests a compact file/line inventory " +
+			"while source excerpts stay sampled; check completion and partial-result warnings."
 	case "prism_lookup":
-		return "KNOWN-SYMBOL TOOL: read whole symbol bodies by qualified name instead of using native Read. " +
+		return "KNOWN-SYMBOL TOOL: read known symbol bodies by qualified name, with explicit omission markers for oversized results. " +
 			"Batch related methods in name=[...] " +
 			"(up to 10); use name=[{\"name\":\"Type.method\",\"file\":\"path/to/file\"}] for exact per-item file scope. For a small local bug, " +
 			"read the relevant methods together; impact is for affected-site questions. " +
 			"fields=[...] narrows to signature/doc/body/...; omit for whole bodies."
 	case "prism_resolve":
 		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
-			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
-			"The file:line is AUTHORITATIVE — trust it, don't re-grep to verify. " +
+			"indexed file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
+			"Inspect ambiguous or stale locations before editing. " +
 			"NOTE: resolve does not DISCOVER. If you don't yet know a symbol name (you only have a concept, " +
 			"like 'where a secret is read'), first FIND the anchor with grep/prism_search/prism_references, " +
 			"then resolve/traverse from it. Never guess names by trying resolve repeatedly."
@@ -905,14 +911,14 @@ func toolDescription(name string) string {
 			"implements/extends/overrides, contains, defines, imports. direction=out gives edges FROM " +
 			"the seed (its callees, the types it uses); direction=in gives edges INTO it (its " +
 			"callers). Recipes: what does X call → (out, [calls]); who calls X → (in, [calls]); " +
-			"interface dispatch resolves: (out, [calls]) returns the " +
-			"implementors actually called. Results are grouped by '<kind> <direction>' and capped with a " +
-			"true total. Each neighbor's file:line is AUTHORITATIVE — trust it, don't re-grep to verify. " +
+			"interface dispatch: (out, [calls]) reports indexed candidate implementors. " +
+			"Results are grouped by '<kind> <direction>' and capped with a reported total. " +
+			"Locations point to indexed source; inspect ambiguous or stale edges. " +
 			"This is the precise primitive — prefer it over prism_query when you know the anchor."
 	case "prism_references":
-		return "Find where a symbol (class/type/function/constant) is USED across the codebase — " +
-			"every code occurrence of the name, grouped by file, excluding comments and strings. " +
-			"Use for 'where is X used' and 'is X still used / safe to delete'. " +
+		return "Find indexed syntactic occurrences of a symbol name (class/type/function/constant), " +
+			"grouped by file, excluding comments and strings. Check result completeness. " +
+			"Use for 'where is X used' and as evidence when considering a removal. " +
 			"Reports 'ambiguous' when several definitions share the name. " +
 			"Catches syntactic uses only — reflection/dynamic usage is not seen, so an empty " +
 			"result is best-effort, not proof of dead code."
@@ -927,10 +933,9 @@ func toolDescription(name string) string {
 			"Call when the context window is near capacity to summarize older turns " +
 			"while preserving recent ones."
 	case "prism_drift":
-		return "Check whether the ground shifted under you: re-verify every file " +
-			"delivered in this session against the working tree and report, symbol " +
-			"by symbol, what changed/was removed/was added since you saw it — with " +
-			"merge provenance when a Fuse merge caused it. Call this when a stale-" +
+		return "Check whether the ground shifted under you: re-check up to 500 recent files " +
+			"delivered in this session against the working tree and report file changes, with symbol " +
+			"detail and Fuse merge provenance when available. Call this when a stale-" +
 			"context warning appears, before editing files you read a while ago, " +
 			"or after another agent's branch lands."
 	case "prism_feedback":
@@ -941,77 +946,71 @@ func toolDescription(name string) string {
 		// editing…") coincided with haiku opening on prism_search instead of
 		// this tool on both change tasks of the A/B gate (typeorm 2->4 turns,
 		// grafana 5->18). Descriptions are steering; this one earns its bytes.
-		return "CALL THIS BEFORE editing a known symbol or enumerating affected sites. Every indexed site " +
-			"that must change when a resolved symbol does. Pass 'Type.method' and get, in " +
-			"one call: declarations, the full override/implementation family, breaking sibling " +
-			"contracts (supers), all resolved callers, and declaringTypes. Reach for this before " +
-			"a signature change or affected-site enumeration. Includes signatures, test labels, and bounded " +
-			"matching call expressions so those facts do not need separate lookups. Read bodies only " +
+		return "CALL THIS BEFORE editing a known symbol's signature or enumerating affected sites. " +
+			"Reports indexed potential impact sites, not a list of edits all required by the change. " +
+			"Pass 'Type.method' for declarations, the indexed override/implementation family, " +
+			"super-declarations, callers, and declaringTypes in one call. May include signatures, test labels, and bounded " +
+			"matching call expressions; large results omit some evidence and mark this in evidenceNote. Read bodies " +
 			"for behavior or evidence gaps, not routinely for site enumeration. 'partial' means coverage gaps; " +
-			"follow coverageNote. 'closed' describes indexed scope, not heuristic receiver certainty. For a wide same-name " +
+			"follow coverageNote. 'closed' describes indexed scope, not proof of runtime completeness or receiver certainty. For a wide same-name " +
 			"member or an external/unresolved interface with no local anchor, Prism infers the compatible local method family " +
 			"and unions file-scoped resolved impacts in this call; signature= pins the external contract when known. Do not " +
 			"guess concrete type names or issue one call per receiver. 'project-local' " +
-			"+ overridesExternal = the method implements an external contract whose signature " +
-			"must not change. Relay the set as-is — re-filtering through grep drops real sites."
+			"+ overridesExternal = the method implements an external contract; a local signature edit may break it. " +
+			"Relay the sites with their coverage notes and inspect ambiguous evidence."
 	case "prism_verify":
-		return "CHANGE CHECK: with removed_symbols=[...] it is a mid-loop exhaustive reference check for removals. " +
-			"Without removed_symbols, call it once after the final edit of a multi-site change; it compares the " +
-			"working diff with Prism's impact closure and reports missed sites. It is not a substitute for the " +
-			"project's focused test and full relevant suite."
+		return "CHANGE CHECK (optional): with removed_symbols=[...] it is a mid-loop exact-identifier " +
+			"mention check after removals; inspect code, comments, and docs. Without removed_symbols, it compares the " +
+			"working diff with Prism's impact closure and reports potentially missed sites. Consider it for Python, " +
+			"unchecked JavaScript, and PHP contract changes; for TypeScript or checked JavaScript, use it only when " +
+			"affected files lack a complete typecheck. Skip it for Go, Java, Rust, C/C++, and C# after a complete " +
+			"build/typecheck of affected targets. strict=true marks a review verdict as gateFailure without changing " +
+			"the verdict. It is not a required closing step; run relevant tests."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
-			"and get every type in the subtype closure that FAILS to implement the member — " +
-			"the types the compiler will reject once the member is required. Use when adding " +
-			"a method to an interface/base class ('which implementors are now broken?'), " +
+			"and get indexed subtype candidates that appear to lack the member. " +
+			"Some may fail a compiler or typecheck when the member becomes required. Use when adding " +
+			"a method to an interface/base class ('which implementors may need work?'), " +
 			"auditing a contract, or after change_impact to plan the implementation work. " +
 			"Result groups: missing (concrete types with no implementation, own or inherited " +
-			"— each is a compile error), abstractMissing (abstract classes, informational), " +
+			"— potential required edits), abstractMissing (abstract classes, informational), " +
 			"unverifiable (superclass chain leaves the index; an external base may provide " +
 			"it — verify before treating as broken), implementedCount (coverage evidence). " +
-			"defaultProvided=true means the contract ships a body: nothing is broken today, and " +
-			"'missing' reads as 'inherits the default — breaks if the member becomes required'. " +
-			"Same completeness reporting as change_impact. RELAY the result as-is: do not " +
-			"re-verify through grep — the closure and inheritance walk are already solved."
+			"defaultProvided=true means the indexed contract supplies a body; 'missing' may " +
+			"inherit that default until the member becomes required. Check completeness and " +
+			"runtime/external behavior before treating a candidate as broken."
 	case "prism_node":
 		return "One-shot orientation on a single thing. Pass a SYMBOL name and get its source " +
 			"plus its immediate graph neighbours (callers, callees, implementors) in one call — " +
 			"the 'what is this and what touches it' view, without a lookup-then-edges round-trip. " +
 			"Pass a repo-relative FILE PATH instead and get the file's source, the symbols it " +
-			"defines, and the files that DEPEND on it. Ambiguous symbol names return the candidate " +
+			"defines, and indexed dependent files. Ambiguous symbol names return the candidate " +
 			"list unchanged rather than guessing. Use this to orient; use change_impact when you " +
-			"need the complete set of sites a signature change must touch."
+			"need indexed potential impact sites for a signature change."
 	case "prism_rename_plan":
-		return "The rename executed as a plan: pass 'Type.method' and newName, get the " +
-			"complete change-impact set converted to concrete line edits — file, line, " +
-			"before, after — for every declaration, override, and resolved call site. " +
-			"Your job becomes review-and-apply, not discover: apply 'edits' as-is, then " +
-			"check 'ambiguous' (lines in methods that ALSO call a same-named method on an " +
-			"unrelated type — verify the receiver type before editing those). Same " +
-			"completeness reporting as change_impact; if completeness is 'project-local' " +
-			"the member overrides an external contract and must NOT be renamed. RELAY and " +
-			"apply the edits as given: do not re-derive the set through grep — the " +
-			"traversal is already solved and re-processing measurably corrupts it."
+		return "Proposed rename plan: pass 'Type.method' and newName for concrete line edits " +
+			"(file, line, before, after) at indexed resolved sites. First review coverage, 'unresolved', " +
+			"and 'ambiguous' before applying edits; ambiguous lines may call a same-named method " +
+			"on an unrelated type, so check receiver types. 'project-local' may indicate an " +
+			"external contract requiring a coordinated rename. RELAY proposed sites and gaps, " +
+			"then validate the resulting code with the relevant build or tests."
 	case "prism_dead_code":
-		return "Deletion-candidate list: production functions/methods unreachable from every " +
-			"entry point (main/init, tests, exported symbols, plus optional roots=[...] for " +
-			"framework hooks registered by name). Precision-first: a symbol is 'dead' only if " +
-			"it is unreachable AND non-exported AND its name appears nowhere else in the " +
-			"codebase text — so callbacks passed as values are never flagged, and every entry " +
-			"is safe to delete without breaking compilation (transitively-dead clusters " +
-			"surface top-down across re-runs). exportedUnreferenced lists public API with " +
-			"zero in-project references — dead only if nothing external links against it; " +
-			"do not delete those without checking consumers. ALWAYS relay the caveats field: " +
-			"reflection, DI, serialization hooks, and codegen call symbols invisibly."
+		return "Static deletion candidates: production functions/methods unreachable from " +
+			"indexed roots (main/init, tests, exported symbols, plus optional roots=[...] for " +
+			"framework hooks). Non-exported candidates also have no indexed name occurrence. " +
+			"This is not proof that deletion is safe: callbacks, reflection, DI, serialization, " +
+			"and codegen can use symbols invisibly. exportedUnreferenced lists public APIs with " +
+			"no indexed project references; check external consumers. Relay the caveats and " +
+			"validate deletions with a build and relevant tests."
 	case "prism_map":
 		return "Architecture map in ONE call: the repository's components (directories) and " +
-			"every component-level dependency, aggregated from the real call/import/type edges " +
+			"reported indexed component dependencies, aggregated from call/import/type edges " +
 			"crossing between them — with weights, per-kind breakdown, dependency cycles, and " +
-			"the evidence tier of every claim. Use for: 'map/explain this repo', refactor and " +
+			"the evidence tier of each reported claim. Use for: 'map/explain this repo', refactor and " +
 			"extraction planning, layering questions, 'what depends on X'. Every edge is " +
-			"evidence-backed, not narrative: pass from+to to expand one edge into the full " +
+			"evidence-backed within the indexed graph: pass from+to to expand one edge into the " +
 			"list of concrete crossing sites (file:line). depth=1 gives the top-level view of " +
-			"a large repo. The result is complete over indexed project edges at the reported " +
+			"a large repo. The result covers indexed project edges at the reported " +
 			"tier; external dependencies are excluded — this is the project's internal shape. " +
 			"A repeat call whose recomputed result is IDENTICAL to one already delivered this " +
 			"session returns a one-line [prism:cached] pointer — use the prior delivery."
@@ -3059,7 +3058,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		out["methodFamilyNote"] = inferenceNote
 	}
 	if wideImpact {
-		out["evidenceNote"] = "Large closure delivered as compact file:line identities; repeated signatures and call expressions are omitted. Site identities are complete; hasHeuristicRefs still marks set-level receiver uncertainty when present."
+		out["evidenceNote"] = "Large indexed result delivered as compact file:line identities; repeated signatures and call expressions are omitted. Every returned site is shown, but graph coverage and receiver uncertainty remain as reported."
 	} else if len(r.Callers) > 0 {
 		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
 	}
@@ -3100,9 +3099,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if len(r.DeclaringTypes) > 0 {
 		out["declaringTypes"] = compact(r.DeclaringTypes)
 		out["declaringTypesNote"] = "these type declaration blocks contain member " +
-			"signatures that must change (Go/TS interface members are not separate " +
-			"symbols, so the type itself is the change site) — include each as a " +
-			"site in your answer"
+			"signatures that may need coordinated edits for a contract change " +
+			"(Go/TS interface members are not separate symbols); inspect each and " +
+			"include it as a potential site in your answer"
 	}
 	if completeness != "" {
 		out["completeness"] = completeness

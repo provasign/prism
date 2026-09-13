@@ -10,13 +10,13 @@ func TestOnceNotes_FixedAndLong(t *testing.T) {
 	first := "a.go:1: x\n// no matches — search completed (not truncated, not timed out)\n" +
 		"symbols (2):\n  method Foo.Bar  a.go:1-2\n" + searchLocatorGuidance + "\n" +
 		"// 176 more files with matches omitted — narrow the term, or exhaustive=true to list every file\n" +
-		"// Scored (graph/x.go:10); 3 caller(s): Query graph/q.go:1 Query graph/q.go:2 SemanticSearch graph/s.go:3. A contract change here touches that whole set — prism_change_impact for the closed, line-precise list.\n"
+		"// Scored (graph/x.go:10); 3 indexed caller site(s): Query graph/q.go:1 Query graph/q.go:2 SemanticSearch graph/s.go:3.\n"
 	got1 := o.apply(first)
 	if got1 != first {
 		t.Fatalf("first sighting must be verbatim:\n%s\n---\n%s", first, got1)
 	}
 	got2 := o.apply(first)
-	for _, want := range []string{"// no matches\n", "// 176 more files omitted (exhaustive=true lists them)", "// (as noted earlier) Scored (graph/x.go:10); 3 caller(s)"} {
+	for _, want := range []string{"// no matches\n", "// 176 more files omitted (exhaustive=true lists them)", "// (as noted earlier) Scored (graph/x.go:10); 3 indexed caller site(s)"} {
 		if !strings.Contains(got2, want) {
 			t.Errorf("second sighting should carry the short form %q:\n%s", want, got2)
 		}

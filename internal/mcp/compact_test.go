@@ -31,7 +31,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	}
 	opMap := properties["op"].(map[string]any)["description"].(string)
 	for _, want := range []string{"lookup: name[,symbol_file,fields]", "read: file,from,to or ranges",
-		"search: terms[", "query: task,terms[", "change_impact: name[", "verify: removed_symbols",
+		"search: terms[", "query: task,terms[", "change_impact: name[", "verify: base,removed_symbols,strict",
 		"Known symbol → lookup; search only when location is unknown"} {
 		if !strings.Contains(opMap, want) {
 			t.Errorf("op map omits %q: %q", want, opMap)
@@ -49,7 +49,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 		"terms": "search,query", "task": "query", "scope": "search",
 		"paths": "search,query", "glob": "search,query", "regex": "search",
 		"files_only": "search", "max_results": "search", "exhaustive": "search",
-		"removed_symbols": "verify",
+		"base": "verify", "removed_symbols": "verify", "strict": "verify",
 	}
 	if len(argProperties) != len(owners) {
 		t.Fatalf("compact fields = %d, want %d: %#v", len(argProperties), len(owners), argProperties)
@@ -61,7 +61,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 		}
 	}
 	for _, removed := range []string{"limit", "offset", "query", "context", "budget", "delivery",
-		"max_files", "rollup_only", "include", "model", "profile", "context_used", "base"} {
+		"max_files", "rollup_only", "include", "model", "profile", "context_used"} {
 		if _, exists := argProperties[removed]; exists {
 			t.Errorf("removed compact field %q was re-advertised", removed)
 		}
@@ -90,6 +90,26 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	}
 }
 
+func TestVerifyMCPArgumentContractsMatch(t *testing.T) {
+	want := []string{"base", "removed_symbols", "strict"}
+	if !reflect.DeepEqual(compactFields["verify"], want) {
+		t.Fatalf("compact verify accepted fields = %v, want %v", compactFields["verify"], want)
+	}
+	legacy := toolSchema("prism_verify")["properties"].(map[string]any)
+	compact := CompactToolSchemas()[0]["inputSchema"].(map[string]any)["properties"].(map[string]any)["args"].(map[string]any)["properties"].(map[string]any)
+	for _, field := range want {
+		if _, ok := legacy[field]; !ok {
+			t.Errorf("legacy MCP verify omits %s", field)
+		}
+		if _, ok := compact[field]; !ok {
+			t.Errorf("compact MCP verify omits %s", field)
+		}
+	}
+	if len(legacy) != len(want) {
+		t.Errorf("legacy MCP verify has unexpected fields: %v", legacy)
+	}
+}
+
 func TestCompactGuidanceBatchesKnownPhrasesAndReusesSource(t *testing.T) {
 	properties := CompactToolSchemas()[0]["inputSchema"].(map[string]any)["properties"].(map[string]any)
 	args := properties["args"].(map[string]any)["properties"].(map[string]any)
@@ -101,6 +121,14 @@ func TestCompactGuidanceBatchesKnownPhrasesAndReusesSource(t *testing.T) {
 		if !strings.Contains(compactServerInstructions, want) {
 			t.Errorf("compact initialize instructions omit %q", want)
 		}
+	}
+	for _, want := range []string{"Optional op=verify", "Python", "unchecked JavaScript", "PHP", "TypeScript", "checked JavaScript", "Go, Java, Rust, C/C++, or C#"} {
+		if !strings.Contains(compactServerInstructions, want) {
+			t.Errorf("compact initialize instructions omit %q: %q", want, compactServerInstructions)
+		}
+	}
+	if strings.Contains(compactServerInstructions, "op=verify before finish") {
+		t.Errorf("compact initialize instructions still mandate verify: %q", compactServerInstructions)
 	}
 }
 
@@ -128,7 +156,8 @@ func TestExpandCompactCall(t *testing.T) {
 			map[string]any{"task": "inspect", "terms": []any{"Thing"}, "paths": "src", "glob": "*.go"}},
 		{"change_impact", map[string]any{"name": "Thing.Run", "symbol_file": "a.go"},
 			map[string]any{"query": "Thing.Run", "file": "a.go"}},
-		{"verify", map[string]any{}, map[string]any{}},
+		{"verify", map[string]any{"base": "main", "removed_symbols": []any{"Foo"}, "strict": true},
+			map[string]any{"base": "main", "removed_symbols": []any{"Foo"}, "strict": true}},
 	}
 	for _, tc := range cases {
 		got, args, err := expandCompactCall(map[string]any{"op": tc.op, "args": tc.in})

@@ -7,9 +7,11 @@ before tagging a release:
 
 - `go test ./...` — unit suite; must be green.
 - Engine ceiling regression (no LLM): from the research repo,
-  `python3 harness/ci_invariants.py --prism ~/bin/prism` — asserts change-impact
+  `python3 harness/scoring/ci_invariants.py --corpus-root /tmp/ci-corpus --prism /path/to/candidate` — asserts change-impact
   recall/precision, missing-implementations==[], and index determinism against
-  committed ground truth. A drop here is a real completeness regression.
+  committed ground truth. Use a fresh corpus root or check that cached corpus
+  directories contain source; the harness treats any existing directory as
+  fetched. A measured drop here is a real completeness regression.
 
 Do NOT tag a release with either red.
 ## Prism — context delivery
@@ -37,8 +39,16 @@ one lookup you did not batch.
 Obligations:
   - change_impact before editing a signature, public contract, override, or any
     symbol whose callers you have not enumerated. Relay its sites as-is.
-  - verify({removed_symbols:[...]}) before a removal; verify({}) before finishing
-    a multi-site or signature change.
   - Report gaps; never narrow scope to fit what was found.
+
+Optional checks:
+  - verify({removed_symbols:[...]}) after a removal finds exact identifier
+    mentions in code, comments, and docs; inspect the reported sites.
+  - Consider verify({}) for Python, unchecked JavaScript, or PHP contract
+    changes: syntax checks can miss callers. For TypeScript or checked JavaScript,
+    use it only if the affected files lack a complete typecheck. For Go, Java,
+    Rust, C/C++, or C#, skip it after a complete build/typecheck of affected
+    targets. In any language, use it when that check cannot cover the callers.
+    It is never a required closing step; run relevant tests.
 
 <!-- prism:end -->

@@ -35,18 +35,28 @@ func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
 	t.Logf("steering UTF-8 bytes: %d", len(got))
 }
 
-func TestSteeringRetainsImpactAndVerificationObligations(t *testing.T) {
+func TestSteeringKeepsImpactMandatoryAndVerificationOptional(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
 		"change_impact before editing a signature, public contract, override",
 		"symbol whose callers you have not enumerated",
 		"Relay its sites as-is",
-		"verify({removed_symbols:[...]}) before a removal",
-		"verify({}) before finishing",
 		"Report gaps; never narrow scope to fit what was found",
+		"Optional checks:",
+		"verify({removed_symbols:[...]}) after a removal",
+		"Consider verify({}) for Python, unchecked JavaScript, or PHP",
+		"For TypeScript or checked JavaScript",
+		"For Go, Java,",
+		"Rust, C/C++, or C#, skip it after a complete build/typecheck",
+		"It is never a required closing step",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("steering omits %q", want)
+		}
+	}
+	for _, mandate := range []string{"verify({}) before finishing", "verify({removed_symbols:[...]}) before a removal"} {
+		if strings.Contains(got, mandate) {
+			t.Errorf("steering still mandates optional verification: %q", mandate)
 		}
 	}
 	if strings.Contains(got, "change_impact before editing every symbol") {

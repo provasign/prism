@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -288,6 +289,14 @@ func TestToolVerify_PythonMissedCallers(t *testing.T) {
 	// is forgotten. Every file still compiles.
 	write("svc/core.py", "class Store:\n    def put(self, key, ttl):\n        return key\n")
 	write("app/writer.py", "from svc.core import Store\n\ndef save(k):\n    s = Store()\n    return s.put(k, 60)\n")
+	if python, err := exec.LookPath("python3"); err == nil {
+		cmd := exec.Command(python, "-m", "py_compile", "svc/core.py", "app/writer.py", "app/backup.py")
+		cmd.Dir = dir
+		cmd.Env = append(cmd.Environ(), "PYTHONPYCACHEPREFIX="+t.TempDir())
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("Python syntax compilation rejected the missed-caller fixture: %v\n%s", err, out)
+		}
+	}
 
 	gc := grove.NewClient("", "").WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
@@ -304,26 +313,33 @@ func TestToolVerify_PythonMissedCallers(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := out.(map[string]any)
-	if m["verdict"] == "complete" || m["verdict"] == "clean" {
-		t.Fatalf("verdict = %v — the forgotten backup.py caller must not pass", m["verdict"])
+	if m["verdict"] != "incomplete" {
+		t.Fatalf("verdict = %v — report the forgotten backup.py caller, not just a coverage caution: %v", m["verdict"], m)
 	}
-	if m["verdict"] == "incomplete" {
-		found := false
-		for _, ms := range mustJSON(t, m["missedSites"]) {
-			if ms["file"] == "app/backup.py" {
-				found = true
-			}
-			if ms["file"] == "app/writer.py" {
-				t.Errorf("updated caller writer.py falsely accused: %v", ms)
-			}
+	found := false
+	for _, ms := range mustJSON(t, m["missedSites"]) {
+		if ms["file"] == "app/backup.py" {
+			found = true
 		}
-		if !found {
-			t.Fatalf("backup.py missed site not reported: %v", m["missedSites"])
+		if ms["file"] == "app/writer.py" {
+			t.Errorf("updated caller writer.py falsely accused: %v", ms)
 		}
 	}
-	// verdict "review" (unverified seed) is acceptable fail-closed behavior;
-	// "incomplete" with the exact site is the target.
-	t.Logf("python verdict: %v missed=%v unverified=%v", m["verdict"], m["missedSites"], m["unverifiedSeeds"])
+	if !found {
+		t.Fatalf("backup.py missed site not reported: %v", m["missedSites"])
+	}
+	// A complete migration must remove the concrete accusation. Dynamic
+	// caller coverage may still require review; that is a separate limit.
+	write("app/backup.py", "from svc.core import Store\n\ndef mirror(k):\n    s = Store()\n    return s.put(k, 60)\n")
+	out, err = h.Invoke("prism_verify", map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrected := out.(map[string]any)
+	if got := mustJSON(t, corrected["missedSites"]); len(got) != 0 {
+		t.Fatalf("fully updated Python callers falsely accused: %v", got)
+	}
+	t.Logf("python incomplete=%v corrected=%v", m["verdict"], corrected["verdict"])
 }
 
 // A bare function (not a method) must be verified through the callers
@@ -513,6 +529,8 @@ func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
 	}
 	write("a.go", "package p\n\nfunc keep() { stillHere() }\n\nfunc stillHere() {}\n")
 	write("b.go", "package p\n\n// mentions stillHere in a comment too\n")
+	write("variants.go", "package p\n\nfunc Foo1() {}\nfunc Foo2() {}\nfunc FooImpl() {}\n")
+	write("README.md", "Foo1 and Foo2 remain supported.\n")
 	gc := grove.NewClient("", "").WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
 		t.Fatalf("grove ensure: %v", err)
@@ -521,7 +539,7 @@ func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
 	h := NewHandler(config.Default(), dir, gc)
 
 	out, err := h.Invoke("prism_verify", map[string]any{
-		"removed_symbols": []any{"stillHere", "trulyGone"}})
+		"removed_symbols": []any{"stillHere", "trulyGone", "Foo"}})
 	if err != nil {
 		t.Fatalf("verify: %v", err)
 	}
@@ -529,8 +547,8 @@ func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
 	if m["mode"] != "removed_symbols" {
 		t.Fatalf("want fast-path mode, got %v", m["mode"])
 	}
-	if m["clean"] != 1 || m["checked"] != 2 {
-		t.Errorf("clean/checked = %v/%v, want 1/2", m["clean"], m["checked"])
+	if m["clean"] != 2 || m["checked"] != 3 {
+		t.Errorf("clean/checked = %v/%v, want 2/3", m["clean"], m["checked"])
 	}
 	res := mustJSON(t, m["residuals"])
 	byName := map[string]map[string]any{}
@@ -543,5 +561,41 @@ func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
 	}
 	if c, _ := byName["trulyGone"]["count"].(float64); int(c) != 0 {
 		t.Errorf("trulyGone count = %v, want 0", byName["trulyGone"]["count"])
+	}
+	if c, _ := byName["Foo"]["count"].(float64); int(c) != 0 {
+		t.Errorf("Foo count = %v, want 0: longer identifiers are not references", byName["Foo"]["count"])
+	}
+	write("call.go", "package p\n\nfunc useFoo() { Foo() }\n")
+	out, err = h.Invoke("prism_verify", map[string]any{"removed_symbols": []any{"Foo"}})
+	if err != nil {
+		t.Fatalf("verify exact caller: %v", err)
+	}
+	res = mustJSON(t, out.(map[string]any)["residuals"])
+	if c, _ := res[0]["count"].(float64); int(c) != 1 {
+		t.Errorf("Foo count = %v, want the exact call only", res[0]["count"])
+	}
+	write("long.go", "package p\n// "+strings.Repeat("x", 300)+" Foo\n")
+	out, err = h.Invoke("prism_verify", map[string]any{"removed_symbols": []any{"Foo"}})
+	if err != nil {
+		t.Fatalf("verify long line: %v", err)
+	}
+	res = mustJSON(t, out.(map[string]any)["residuals"])
+	if c, _ := res[0]["count"].(float64); int(c) != 2 {
+		t.Errorf("Foo count = %v, want the call and mention past a truncated preview", res[0]["count"])
+	}
+	if sites := mustJSON(t, res[0]["sites"]); len(sites) < 2 || !strings.Contains(fmt.Sprint(sites[1]["text"]), "Foo") {
+		t.Errorf("long-line evidence must show the matched identifier: %v", sites)
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := h.verifyRemovedSymbols(cancelled, []string{"Foo"}); err == nil {
+		t.Error("canceled scan must not return a clean or complete result")
+	}
+	if _, err := h.verifyRemovedSymbols(context.Background(), []string{" "}); err == nil {
+		t.Error("empty identifier must not return a clean result")
+	}
+	write("cap.go", "package p\n// "+strings.Repeat("Foo1\n// ", 10000)+"Foo()\n")
+	if _, err := h.verifyRemovedSymbols(context.Background(), []string{"Foo"}); err == nil {
+		t.Error("per-file search cap must not hide a later exact mention behind prefix matches")
 	}
 }
