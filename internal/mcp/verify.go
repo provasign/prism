@@ -279,6 +279,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	}
 	var seeds []seed
 	var unverifiedSeeds []string
+	var contentAdvisories []string
 	// Symbols in test files are NOT contracts: a deleted test function has no
 	// callers that must migrate, yet each one used to surface as "review its
 	// old-contract dependents manually" — measured on a real diff, 3 deleted
@@ -332,6 +333,12 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			continue
 		}
 		for _, c := range fd.Changed {
+			if goUnexportedStringConstValueOnly(c.Before, c.After) {
+				contentAdvisories = append(contentAdvisories,
+					fmt.Sprintf("%s:%d %s — string content changed; verify does not assess its behavior; run relevant tests",
+						c.After.FilePath, c.After.Span.Start, displayQN(*c.After)))
+				continue
+			}
 			if c.SignatureChanged && c.After != nil {
 				// "signature of X changed" is wrong for a const whose VALUE
 				// changed; say what actually happened per kind.
@@ -706,17 +713,18 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	}
 	h.Ledger.RecordCall("prism_verify")
 	return map[string]any{
-		"verdict":          verdict,
-		"gateFailure":      verdict == "incomplete" || (strict && verdict == "review"),
-		"base":             base,
-		"changedFiles":     changedFiles,
-		"signatureChanges": sigChanges,
-		"missedSites":      missedSiteMaps(missed),
-		"unverifiedSeeds":  unverifiedSeeds,
-		"newDependencies":  newDeps,
-		"archStatus":       archStatus,
-		"archIntroduced":   archIntroduced,
-		"notes":            notes,
+		"verdict":           verdict,
+		"gateFailure":       verdict == "incomplete" || (strict && verdict == "review"),
+		"base":              base,
+		"changedFiles":      changedFiles,
+		"signatureChanges":  sigChanges,
+		"missedSites":       missedSiteMaps(missed),
+		"unverifiedSeeds":   unverifiedSeeds,
+		"contentAdvisories": contentAdvisories,
+		"newDependencies":   newDeps,
+		"archStatus":        archStatus,
+		"archIntroduced":    archIntroduced,
+		"notes":             notes,
 	}, nil
 }
 
