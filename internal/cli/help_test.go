@@ -57,7 +57,7 @@ func TestRun_HelpFlagDoesNotRunTheCommand(t *testing.T) {
 func TestCommandHelp_PerCommandBlocks(t *testing.T) {
 	for cmd, want := range map[string]string{
 		"search":        "prism search <term>...",
-		"query":         "prism query <task>",
+		"query":         "prism query --terms",
 		"change-impact": "prism change-impact <query>",
 		"refs":          "prism references <name>",
 		"arch-check":    "prism arch [dir]",

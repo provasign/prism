@@ -9,7 +9,7 @@ var compactFields = map[string][]string{
 	"lookup":        {"name", "symbol_file", "fields"},
 	"read":          {"file", "from", "to", "ranges"},
 	"search":        {"terms", "scope", "paths", "glob", "regex", "files_only", "max_results", "exhaustive", "include_bodies"},
-	"query":         {"task", "terms", "paths", "glob"},
+	"query":         {"terms", "paths", "glob"},
 	"change_impact": {"name", "symbol_file", "signature"},
 	"verify":        {"base", "removed_symbols", "strict"},
 }
@@ -20,7 +20,7 @@ func compactFieldError(op, field string) error {
 		"lookup":        {"file": "symbol_file"},
 		"read":          {"offset": "from", "limit": "to", "lines": "from and to"},
 		"search":        {"query": "terms", "path": "paths", "limit": "max_results"},
-		"query":         {"query": "terms", "path": "paths", "limit": "task and terms"},
+		"query":         {"query": "terms", "path": "paths", "limit": "terms"},
 		"change_impact": {"query": "name", "file": "symbol_file"},
 	}
 	if next := replacement[op][field]; next != "" {

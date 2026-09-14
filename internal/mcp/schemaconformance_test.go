@@ -57,7 +57,6 @@ func TestSchemaAdvertisesEveryArgTheToolFuncReads(t *testing.T) {
 	allow := map[string]map[string]bool{
 		"toolNode":   {"symbol": true},        // pre-rename alias for "name"
 		"toolLookup": {"qualifiedName": true}, // pre-rename alias for "name"
-		"toolQuery":  {"intent": true},        // pre-rename alias for "task"
 		"toolRead":   {"path": true},          // pre-rename alias for "file"
 	}
 

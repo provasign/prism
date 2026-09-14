@@ -38,7 +38,7 @@ func TestQueryPreservesDeepCommentOutsideNamedSeedWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task": "inspect rounding convention", "terms": []string{"ORCHID_DEEP_ONLY"}, "budget": 150,
+		"terms": []string{"ORCHID_DEEP_ONLY"}, "budget": 150,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +58,7 @@ func TestQueryPreservesDeepCommentOutsideNamedSeedWindow(t *testing.T) {
 	// query should deliver the deep line as source, without repeating it in
 	// the separate text-match section.
 	out, err = h.Invoke("prism_query", map[string]any{
-		"task": "inspect rounding convention", "terms": []string{"ORCHID_DEEP_ONLY"},
+		"terms": []string{"ORCHID_DEEP_ONLY"},
 	})
 	if err != nil {
 		t.Fatal(err)

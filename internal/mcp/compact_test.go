@@ -32,7 +32,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	}
 	opMap := properties["op"].(map[string]any)["description"].(string)
 	for _, want := range []string{"lookup: name[,symbol_file,fields]", "read: file,from,to or ranges",
-		"search: terms[", "query: task,terms[", "change_impact: name[", "verify: base,removed_symbols,strict",
+		"search: terms[", "query: terms[", "change_impact: name[", "verify: base,removed_symbols,strict",
 		"Known symbol → lookup; search only when location is unknown"} {
 		if !strings.Contains(opMap, want) {
 			t.Errorf("op map omits %q: %q", want, opMap)
@@ -47,7 +47,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 		"name": "lookup,change_impact", "symbol_file": "lookup,change_impact",
 		"fields": "lookup", "signature": "change_impact",
 		"file": "read", "from": "read", "to": "read", "ranges": "read",
-		"terms": "search,query", "task": "query", "scope": "search",
+		"terms": "search,query", "scope": "search",
 		"paths": "search,query", "glob": "search,query", "regex": "search",
 		"files_only": "search", "max_results": "search", "exhaustive": "search", "include_bodies": "search",
 		"base": "verify", "removed_symbols": "verify", "strict": "verify",
@@ -111,14 +111,14 @@ func TestVerifyMCPArgumentContractsMatch(t *testing.T) {
 	}
 }
 
-func TestCompactGuidanceBatchesKnownPhrasesAndReusesSource(t *testing.T) {
+func TestCompactGuidanceBatchesExactTermsAndReusesSource(t *testing.T) {
 	properties := CompactToolSchemas()[0]["inputSchema"].(map[string]any)["properties"].(map[string]any)
 	args := properties["args"].(map[string]any)["properties"].(map[string]any)
 	terms := args["terms"].(map[string]any)["description"].(string)
-	if !strings.Contains(terms, "Batch task phrases") {
+	if !strings.Contains(terms, "Batch identifiers or exact substrings") {
 		t.Fatalf("terms field does not suggest one batched search: %q", terms)
 	}
-	for _, want := range []string{"Batch known task phrases in one search", "Do not re-read unchanged source"} {
+	for _, want := range []string{"Batch known identifiers or exact substrings in one search", "Do not re-read unchanged source"} {
 		if !strings.Contains(compactServerInstructions, want) {
 			t.Errorf("compact initialize instructions omit %q", want)
 		}
@@ -153,8 +153,8 @@ func TestExpandCompactCall(t *testing.T) {
 			map[string]any{"file": "a.go", "offset": 7, "limit": 3}},
 		{"search", map[string]any{"terms": "Thing", "paths": "src", "max_results": 100},
 			map[string]any{"query": "Thing", "path": "src", "limit": 100}},
-		{"query", map[string]any{"task": "inspect", "terms": "Thing", "paths": "src", "glob": "*.go"},
-			map[string]any{"task": "inspect", "terms": []any{"Thing"}, "paths": "src", "glob": "*.go"}},
+		{"query", map[string]any{"terms": "Thing", "paths": "src", "glob": "*.go"},
+			map[string]any{"terms": []any{"Thing"}, "paths": "src", "glob": "*.go"}},
 		{"change_impact", map[string]any{"name": "Thing.Run", "symbol_file": "a.go"},
 			map[string]any{"query": "Thing.Run", "file": "a.go"}},
 		{"verify", map[string]any{"base": "main", "removed_symbols": []any{"Foo"}, "strict": true},
@@ -185,11 +185,12 @@ func TestExpandCompactCall(t *testing.T) {
 	}{
 		{"change_impact", map[string]any{"query": "Thing.Run"}, "use name. Accepted fields: name, symbol_file, signature"},
 		{"search", map[string]any{"terms": "Thing", "limit": 50}, "use max_results. Accepted fields: terms, scope, paths"},
-		{"query", map[string]any{"task": "inspect", "terms": "Thing", "max_results": 20}, "Accepted fields: task, terms, paths, glob"},
+		{"query", map[string]any{"terms": "Thing", "max_results": 20}, "Accepted fields: terms, paths, glob"},
+		{"query", map[string]any{"task": "inspect", "terms": "Thing"}, "Accepted fields: terms, paths, glob"},
 		{"read", map[string]any{"file": "a.go", "offset": 1}, "use from. Accepted fields: file, from, to, ranges"},
 		{"change_impact", map[string]any{"name": []any{"A", "B"}}, "exactly one symbol"},
 		{"read", map[string]any{}, "requires args.file"},
-		{"query", map[string]any{"task": "inspect"}, "requires args.terms"},
+		{"query", map[string]any{}, "requires args.terms"},
 	} {
 		_, _, err := expandCompactCall(map[string]any{"op": tc.op, "args": tc.args})
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -768,7 +769,7 @@ func TestCompactQueryHonorsPathsAndGlob(t *testing.T) {
 	}
 	t.Cleanup(gc.Shutdown)
 	srv := NewCompactServer(NewHandler(config.Default(), root, gc))
-	params := json.RawMessage(`{"name":"prism","arguments":{"op":"query","args":{"task":"inspect relevant functions","terms":"Relevant","paths":"inside.go","glob":"*.go"}}}`)
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"query","args":{"terms":"Relevant","paths":"inside.go","glob":"*.go"}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
 		t.Fatal(rpcErr.Message)

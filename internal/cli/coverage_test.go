@@ -55,10 +55,10 @@ func TestCmdQueryAndSearchAndLookup_Smoke(t *testing.T) {
 		t.Fatalf("cmdIndex=%d", got)
 	}
 	// No terms must fail closed with guidance, not silently guess.
-	if got := cmdQuery([]string{"main entry point", "--limit", "10", "--profile", "default", dir}); got == 0 {
+	if got := cmdQuery([]string{"--limit", "10", "--profile", "default", dir}); got == 0 {
 		t.Fatal("cmdQuery with no terms should fail closed, got exit 0")
 	}
-	if got := cmdQuery([]string{"main entry point", "--terms", "Main,init", dir}); got != 0 {
+	if got := cmdQuery([]string{"--terms", "Main,init", dir}); got != 0 {
 		t.Fatalf("cmdQuery --terms=%d", got)
 	}
 	if got := cmdSearch([]string{"Main", "--limit", "5", dir}); got != 0 {

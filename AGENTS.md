@@ -18,7 +18,7 @@ First action on any code task, in this order. Stop at the first that works:
   1. The `prism` MCP tool (`mcp__prism__prism` in Claude Code), if callable.
   2. If a `ToolSearch` tool exists: `ToolSearch("select:mcp__prism__prism")`, once.
      Prism not being listed does not mean it is absent.
-  3. The `prism` CLI: `prism query "<task>" --terms X`, `prism lookup <pkg.Func>`,
+  3. The `prism` CLI: `prism query --terms X`, `prism lookup <pkg.Func>`,
      `prism search <term> --scope text --format text`, `prism change-impact Type.method`.
 
 Pick the op:

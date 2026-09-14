@@ -400,8 +400,7 @@ func CompactToolSchemas() []map[string]any {
 					"to":   map[string]any{"type": "integer", "minimum": 1},
 				}},
 		}),
-		"terms":           prop("search,query", "Batch task phrases (up to 10).", stringOrList()),
-		"task":            prop("query", "Natural-language task.", map[string]any{"type": "string"}),
+		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10).", stringOrList()),
 		"scope":           prop("search", "both|text|symbols.", map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}}),
 		"paths":           prop("search,query", "Repo-relative paths.", stringOrList()),
 		"glob":            prop("search,query", "File glob(s).", stringOrList()),
@@ -416,7 +415,7 @@ func CompactToolSchemas() []map[string]any {
 	}
 	const opMap = "lookup: name[,symbol_file,fields] | read: file,from,to or ranges | " +
 		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies] | " +
-		"query: task,terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
+		"query: terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
 		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{
 		"name":        "prism",
@@ -455,8 +454,7 @@ var contextUsedProp = map[string]any{
 // in the published schema: legacy spellings the handlers still honor, plus
 // "dir" which Invoke itself validates for every tool.
 var argAliases = map[string]map[string]bool{
-	"prism_query": {"intent": true},
-	"prism_read":  {"path": true},
+	"prism_read": {"path": true},
 }
 
 // rejectUnknownArgs errors on any argument key the tool's published schema
@@ -499,12 +497,8 @@ func toolSchema(name string) map[string]any {
 	case "prism_query":
 		return map[string]any{
 			"type":     "object",
-			"required": []string{"task", "terms"},
+			"required": []string{"terms"},
 			"properties": map[string]any{
-				"task": map[string]any{
-					"type":        "string",
-					"description": "Label for the response header only.",
-				},
 				"terms": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
@@ -1053,10 +1047,6 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 }
 
 func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scope searchScope) (any, error) {
-	task := stringArg(args, "task", stringArg(args, "intent", ""))
-	if task == "" {
-		return nil, errors.New("task is required")
-	}
 	timing := os.Getenv("PRISM_TIMING") != ""
 	tQuery := time.Now()
 	stamp := func(stage string) {
@@ -1073,8 +1063,7 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 		}
 	}
 
-	// terms: agent-supplied grep-style search terms used to seed retrieval
-	// instead of relying purely on TF-IDF over the task string. When provided,
+	// terms: agent-supplied grep-style search terms used to seed retrieval.
 	// Prism searches for each term as a symbol name/substring and uses the
 	// matches as seeds — same precision as the agent's own grep, plus graph expansion.
 	var terms []string
@@ -1118,9 +1107,7 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 	// Expansion is a fixed one-hop typed call neighborhood (selectContext).
 	stamp("pre-selectContext")
 	sel, err := h.selectContext(ctx, selectParams{
-		task:            task,
 		terms:           terms,
-		minedTerms:      mineTaskIdentifiers(task, terms),
 		includeSet:      includeSet,
 		explicitProfile: stringArg(args, "profile", ""),
 		limit:           intArg(args, "limit", 50),
@@ -1155,7 +1142,7 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 			// whole allowance and the explicit text evidence disappears.
 			sourceBudget = sel.budget / 3
 		}
-		out, sourceSections := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sourceBudget)
+		out, sourceSections := h.deliverSource(ctx, strings.Join(terms, ", "), sel, intArg(args, "max_files", 0), sourceBudget)
 		if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(sourceSections), false); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
@@ -1213,10 +1200,8 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 
 	if len(out.Symbols) == 0 && len(out.TextMatches) == 0 {
 		switch {
-		case len(sel.seeds) == 0 && len(terms) > 0:
-			out.Note = fmt.Sprintf("no symbols matched terms %v under project root %s; check term spelling and that the code lives under this root", terms, h.Root)
 		case len(sel.seeds) == 0:
-			out.Note = fmt.Sprintf("no symbols matched this task under project root %s", h.Root)
+			out.Note = fmt.Sprintf("no symbols matched terms %v under project root %s; check term spelling and that the code lives under this root", terms, h.Root)
 		default:
 			out.Note = "seeds matched but nothing fit the requested include categories/budget; try include=[\"graph\"] or a larger budget"
 		}
@@ -3685,38 +3670,6 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 		}
 	}
 	return keep
-}
-
-// mineTaskIdentifiers lifts identifier-shaped tokens (CamelCase, snake_case,
-// Dotted.Names, backtick-quoted) out of a task description, excluding the
-// caller's explicit terms. These seed AFTER explicit terms — pure fallback
-// signal, capped small.
-func mineTaskIdentifiers(task string, explicit []string) []string {
-	have := make(map[string]bool, len(explicit))
-	for _, t := range explicit {
-		have[strings.ToLower(t)] = true
-	}
-	re := regexp.MustCompile("[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*")
-	seen := map[string]bool{}
-	var out []string
-	for _, tok := range re.FindAllString(task, -1) {
-		if len(out) >= 4 {
-			break
-		}
-		lt := strings.ToLower(tok)
-		if len(tok) < 5 || have[lt] || seen[lt] {
-			continue
-		}
-		// identifier-shaped: mixed case beyond the first rune, an
-		// underscore, or a dotted path — plain words don't qualify.
-		mixed := strings.ToLower(tok) != tok && strings.ToUpper(tok) != tok
-		if !mixed && !strings.ContainsAny(tok, "._") {
-			continue
-		}
-		seen[lt] = true
-		out = append(out, tok)
-	}
-	return out
 }
 
 // tabIndentNote returns the delimiter disambiguation for tab-indented

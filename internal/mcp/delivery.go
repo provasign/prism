@@ -82,7 +82,7 @@ func truncateSection(section string, maxTokens int, path string) string {
 	return section[:cut] + marker
 }
 
-func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection, maxFiles, budget int) (map[string]any, map[string]string) {
+func (h *Handler) deliverSource(ctx context.Context, label string, sel *selection, maxFiles, budget int) (map[string]any, map[string]string) {
 	automaticFileLimit := maxFiles < 1
 	if maxFiles < 1 {
 		maxFiles = sourceDeliveryMaxFiles
@@ -93,7 +93,7 @@ func (h *Handler) deliverSource(ctx context.Context, task string, sel *selection
 	if compact {
 		b.WriteString("**Context** — budget-limited; use prism_read for source.\n")
 	} else {
-		fmt.Fprintf(&b, "**Context for: %s**\n\n", summarize(task, 120))
+		fmt.Fprintf(&b, "**Context for: %s**\n\n", summarize(label, 120))
 
 		// ── Anchor summary ────────────────────────────────────────────────────
 		anchors := h.renderAnchorSummary(ctx, sel.seedSyms, sel.testCallers)

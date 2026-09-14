@@ -285,9 +285,8 @@ func queryContent(t *testing.T, h *Handler, args map[string]any) string {
 
 func TestToolQuery_SourceDelivery_E2E(t *testing.T) {
 	h := newDeliveryFixture(t)
-	// "wrong" + "fix" phrasing -> debug phase -> source delivery by default.
+	// Query defaults to source delivery for a matched symbol.
 	content := queryContent(t, h, map[string]any{
-		"task":  "fix the bug: greeting is wrong for empty names",
 		"terms": []string{"FormatGreeting"},
 	})
 	if content == "" {
@@ -319,7 +318,7 @@ func TestToolQueryBudgetBoundsRenderedResponse(t *testing.T) {
 		t.Run(delivery, func(t *testing.T) {
 			h := newDeliveryFixture(t)
 			out, err := h.Invoke("prism_query", map[string]any{
-				"task": "find greeting callers", "terms": []string{"FormatGreeting"},
+				"terms":    []string{"FormatGreeting"},
 				"delivery": delivery, "budget": budget,
 			})
 			if err != nil {
@@ -357,7 +356,6 @@ func TestToolQueryBudgetBoundsRenderedResponse(t *testing.T) {
 func TestToolQuery_SourceRepeatDeliveryUsesCachedPointer(t *testing.T) {
 	h := newDeliveryFixture(t)
 	args := map[string]any{
-		"task":     "fix the bug: greeting is wrong for empty names",
 		"terms":    []string{"FormatGreeting"},
 		"delivery": "source",
 	}
@@ -380,12 +378,9 @@ func TestToolQuery_SourceRepeatDeliveryUsesCachedPointer(t *testing.T) {
 }
 
 func TestToolQuery_SymbolsDeliveryIsExplicitOnly(t *testing.T) {
-	// The compact symbols delivery is now something you ASK for. It used to be
-	// inferred from the task reading like review or orientation, which meant
-	// the same seeds returned different shapes depending on wording.
+	// The compact symbols delivery must be requested explicitly.
 	h := newDeliveryFixture(t)
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":     "review the greeting code",
 		"terms":    []string{"FormatGreeting"},
 		"delivery": "symbols",
 	})
@@ -397,43 +392,11 @@ func TestToolQuery_SymbolsDeliveryIsExplicitOnly(t *testing.T) {
 	}
 }
 
-// The point of the change: phrasing is not a control surface. Same terms,
-// wildly different task wording — including wordings that used to select
-// different phases, profiles and budgets — must produce the same delivery.
-func TestToolQuery_PhrasingDoesNotChangeTheResult(t *testing.T) {
+func TestToolQuery_HeadingUsesTerms(t *testing.T) {
 	h := newDeliveryFixture(t)
-	phrasings := []string{
-		"fix the crash in the greeting code", // was PhaseDebug   -> source
-		"review the greeting code",           // was PhaseReview  -> symbols
-		"write tests for the greeting code",  // was test-writing -> +25% budget
-		"understand how greeting works",      // was orientation
-		"greeting",                           // no phase signal at all
-	}
-	var first map[string]any
-	for _, task := range phrasings {
-		out, err := h.Invoke("prism_query", map[string]any{
-			"task": task, "terms": []string{"FormatGreeting"},
-		})
-		if err != nil {
-			t.Fatalf("query(%q): %v", task, err)
-		}
-		m, ok := out.(map[string]any)
-		if !ok {
-			t.Fatalf("query(%q): want the source delivery for every phrasing, got %T", task, out)
-		}
-		if first == nil {
-			first = m
-			continue
-		}
-		// "content" legitimately differs: its header echoes the task back as
-		// a label. What must not differ is the SELECTION — which files and
-		// how many symbols were chosen.
-		for _, k := range []string{"files", "symbolCount", "delivery"} {
-			if fmt.Sprint(first[k]) != fmt.Sprint(m[k]) {
-				t.Errorf("query(%q): %s = %v, but the first phrasing got %v — the task string is still steering the result",
-					task, k, m[k], first[k])
-			}
-		}
+	content := queryContent(t, h, map[string]any{"terms": []string{"FormatGreeting", "greeting"}})
+	if !strings.Contains(content, "**Context for: FormatGreeting, greeting**") {
+		t.Fatalf("source heading must name the supplied terms:\n%s", content)
 	}
 }
 
@@ -452,7 +415,7 @@ func TestToolQuery_TestedByPointer(t *testing.T) {
 	// newDeliveryFixture's util_test.go already has TestFormatGreeting
 	// calling FormatGreeting directly -- a real verified test caller.
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task": "how does the greeting work", "terms": []string{"FormatGreeting"},
+		"terms": []string{"FormatGreeting"},
 	})
 	if err != nil {
 		t.Fatalf("query: %v", err)
@@ -596,7 +559,7 @@ func FrobnicateThing() string { return "x" }
 	}
 
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task": "fix frobnicate", "terms": []string{"frobnicate"},
+		"terms": []string{"frobnicate"},
 	})
 	if err != nil {
 		t.Fatalf("query: %v", err)

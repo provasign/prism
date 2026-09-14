@@ -70,7 +70,7 @@ echo "[bootstrap] running prism init --harness $HARNESS $WORKSPACE_DIR"
 echo "[bootstrap] done"
 echo "[bootstrap] next steps:"
 echo "  1) prism index $WORKSPACE_DIR"
-echo "  2) prism query \"your task\" $WORKSPACE_DIR"
+echo "  2) prism query --terms YourSymbol $WORKSPACE_DIR"
 echo
 echo "[bootstrap] agent steering files written into $WORKSPACE_DIR:"
 echo "  - CLAUDE.md, AGENTS.md, GEMINI.md"

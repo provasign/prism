@@ -75,9 +75,9 @@ with the tool's own message.
 curl -s localhost:8888/prism_change_impact \
   -d '{"query": "ResponseWriter.Status"}'
 
-# Task context with anchor terms (terms is REQUIRED)
+# Context around anchor terms (terms is REQUIRED)
 curl -s localhost:8888/prism_query \
-  -d '{"task": "fix the savings ledger rollover", "terms": ["ledger"]}'
+  -d '{"terms": ["ledger"]}'
 
 # Pure grep over the repo
 curl -s localhost:8888/prism_search \

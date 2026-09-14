@@ -18,8 +18,6 @@ import (
 // selectParams are the inputs to the shared retrieve→expand→rank→budget
 // pipeline behind prism_query and prism_explore.
 type selectParams struct {
-	minedTerms      []string // identifiers mined from the task text; seed AFTER explicit terms
-	task            string
 	terms           []string
 	includeSet      map[string]bool
 	explicitProfile string
@@ -63,21 +61,8 @@ type selection struct {
 // expansion, scoring, and budgeted selection. It is the single pipeline both
 // prism_query and prism_explore deliver from; only the delivery format differs.
 func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection, error) {
-	// The task string does NOT choose the profile or the budget.
-	//
-	// It used to: phase inference keyword-matched the English task and picked a
-	// ranking profile plus a budget multiplier from it, so rewording the same
-	// request changed which files came back and how many. That is a natural-
-	// language retrieval key, which is exactly what this surface elsewhere
-	// refuses to have — the v0.41.0 measurement that killed the NL front door
-	// applies with equal force to an NL back door. Measured downstream: agents
-	// called query and then searched anyway in 14 of the 32 cells where they
-	// used both, which is what an unpredictable result looks like from the
-	// outside.
-	//
-	// Retrieval now keys on terms; sizing keys on budget; ranking uses verified
-	// call edges and stable retrieval order. Identical arguments produce an
-	// identical selection no matter how the task is phrased.
+	// Retrieval keys on explicit terms; sizing keys on budget; ranking uses
+	// verified call edges and stable retrieval order.
 	profileName := p.explicitProfile
 	if profileName == "" {
 		profileName = h.Cfg.Profile
@@ -224,43 +209,6 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			perTermSeeds = append(perTermSeeds, termSeeds)
 		}
 		seeds = interleaveUniqueTermSeeds(perTermSeeds)
-		seenTermSeeds := make(map[string]bool, len(seeds))
-		for _, seed := range seeds {
-			seenTermSeeds[seed.ID] = true
-		}
-		// Mined terms (identifiers lifted from the task text) seed strictly
-		// AFTER everything the caller asked for: they only shape the
-		// selection when explicit terms are weak, so a caller with good
-		// terms loses nothing. Measured motivation: realistic-terms gold
-		// recall is 0.31 vs 0.49 with oracle terms — the gap IS term
-		// quality, and the task text usually names the fix region
-		// (issue titles carry the type/method being discussed).
-		for _, term := range p.minedTerms {
-			var matches []grove.SymbolRecord
-			var err error
-			if len(p.paths) > 0 || len(p.glob) > 0 {
-				matches, _, err = scopedSymbolSearch(ctx, h.Grove.SearchSymbols, term, scope, 5, symbolFetchHardMax)
-				if len(matches) > 5 {
-					matches = matches[:5]
-				}
-			} else {
-				matches, err = h.Grove.SearchSymbols(ctx, term, 5)
-			}
-			if err != nil {
-				continue
-			}
-			tl := strings.ToLower(term)
-			for _, m := range matches {
-				if !strings.Contains(strings.ToLower(m.Name), tl) &&
-					!strings.Contains(strings.ToLower(m.QualifiedName), tl) {
-					continue
-				}
-				if !seenTermSeeds[m.ID] {
-					seenTermSeeds[m.ID] = true
-					seeds = append(seeds, m)
-				}
-			}
-		}
 		seeds = filterGeneratedPrismContext(seeds)
 
 		// Full-text merge: run the real grep (rg/grep/native) for the same
@@ -349,8 +297,6 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// fallback was adding an unreliable extra hop, not covering a real
 		// gap. The actual fix for "I don't know any names yet" is to use
 		// prism_search to locate an explicit anchor, THEN call this with terms.
-		// Same discipline mason's own harness
-		// already enforces (code_context requires both task and terms).
 		return nil, fmt.Errorf(
 			"no terms given — prism_query expands explicit anchors; pass known class, function, file, " +
 				"or error terms. If no anchor is known, use prism_search to locate one, then retry with terms")

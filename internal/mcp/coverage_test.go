@@ -51,7 +51,7 @@ func TestInvoke_Savings(t *testing.T) {
 func TestInvoke_DirMismatchRejected(t *testing.T) {
 	h := newH(t)
 	other := t.TempDir()
-	_, err := h.Invoke("prism_query", map[string]any{"task": "x", "dir": other})
+	_, err := h.Invoke("prism_query", map[string]any{"terms": []string{"x"}, "dir": other})
 	if err == nil {
 		t.Fatal("expected error for dir outside server root")
 	}
@@ -62,7 +62,7 @@ func TestInvoke_DirMismatchRejected(t *testing.T) {
 
 func TestInvoke_DirMatchingRootAccepted(t *testing.T) {
 	h := newH(t)
-	if _, err := h.Invoke("prism_query", map[string]any{"task": "x", "terms": []string{"x"}, "dir": h.Root}); err != nil {
+	if _, err := h.Invoke("prism_query", map[string]any{"terms": []string{"x"}, "dir": h.Root}); err != nil {
 		t.Errorf("dir equal to server root must pass, got: %v", err)
 	}
 	// prism_index keeps its own dir semantics and is exempt from the guard.
@@ -84,7 +84,6 @@ func TestSameRoot(t *testing.T) {
 func TestQueryEmptyResultCarriesNote(t *testing.T) {
 	h := newH(t)
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":  "find callers",
 		"terms": []any{"noSuchSymbolAnywhere"},
 	})
 	if err != nil {

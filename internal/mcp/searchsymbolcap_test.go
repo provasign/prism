@@ -285,7 +285,7 @@ func TestQueryRankingIgnoresFreshUnrelatedCommit(t *testing.T) {
 	git("", "config", "user.email", "ranking@example.test")
 	git("", "add", "foo.go", "sub/sub.go")
 	git(time.Now().Add(-400*24*time.Hour).Format(time.RFC3339), "commit", "-qm", "old source")
-	args := map[string]any{"task": "find FooThing code", "terms": []string{"FooThing"}, "delivery": "symbols", "budget": 1200}
+	args := map[string]any{"terms": []string{"FooThing"}, "delivery": "symbols", "budget": 1200}
 	query := func() string {
 		t.Helper()
 		fresh := NewHandler(config.Default(), root, h.Grove)

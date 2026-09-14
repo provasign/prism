@@ -66,7 +66,7 @@ Usage:
                                   --strict also exits 1 on review.
                                   [--base REF] [--removed a,b,c] [--strict]
                                   [--format text|json]
-  prism query <task> --terms a,b,c [dir]  Find related implementations, callers,
+  prism query --terms a,b,c [dir]  Find related implementations, callers,
                                   and tests around explicit anchors (edit-ready)
                                   --terms a,b,c      REQUIRED: anchor on specific symbol
                                   names (grep-precision); use prism search first when
@@ -572,7 +572,7 @@ First action on any code task, in this order. Stop at the first that works:
   1. The ` + "`" + `prism` + "`" + ` MCP tool (` + "`" + `mcp__prism__prism` + "`" + ` in Claude Code), if callable.
   2. If a ` + "`" + `ToolSearch` + "`" + ` tool exists: ` + "`" + `ToolSearch("select:mcp__prism__prism")` + "`" + `, once.
      Prism not being listed does not mean it is absent.
-  3. The ` + "`" + `prism` + "`" + ` CLI: ` + "`" + `prism query "<task>" --terms X` + "`" + `, ` + "`" + `prism lookup <pkg.Func>` + "`" + `,
+  3. The ` + "`" + `prism` + "`" + ` CLI: ` + "`" + `prism query --terms X` + "`" + `, ` + "`" + `prism lookup <pkg.Func>` + "`" + `,
      ` + "`" + `prism search <term> --scope text --format text` + "`" + `, ` + "`" + `prism change-impact Type.method` + "`" + `.
 
 Pick the op:
@@ -2014,10 +2014,9 @@ func cmdDoctor(args []string) int {
 
 func cmdQuery(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism query <task> --terms a,b,c [dir]  (--terms is REQUIRED; use prism search first when no anchor is known)")
+		fmt.Fprintln(os.Stderr, "usage: prism query --terms a,b,c [dir]  (--terms is REQUIRED; use prism search first when no anchor is known)")
 		return 2
 	}
-	task := args[0]
 	dir := "."
 	profile := ""
 	limit := 50
@@ -2026,7 +2025,7 @@ func cmdQuery(args []string) int {
 	format := formatText
 	var terms []string
 	var include []string
-	for i := 1; i < len(args); i++ {
+	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
 		case "--profile":
@@ -2094,7 +2093,11 @@ func cmdQuery(args []string) int {
 			dir = a
 		}
 	}
-	invokeArgs := map[string]any{"task": task, "limit": limit}
+	if len(terms) == 0 {
+		fmt.Fprintln(os.Stderr, "query: --terms is required; use prism search first when no anchor is known")
+		return 2
+	}
+	invokeArgs := map[string]any{"terms": terms, "limit": limit}
 	if delivery != "" {
 		invokeArgs["delivery"] = delivery
 	}
@@ -2103,9 +2106,6 @@ func cmdQuery(args []string) int {
 	}
 	if profile != "" {
 		invokeArgs["profile"] = profile
-	}
-	if len(terms) > 0 {
-		invokeArgs["terms"] = terms
 	}
 	if len(include) > 0 {
 		invokeArgs["include"] = include

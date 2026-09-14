@@ -120,7 +120,7 @@ const compactServerInstructions = "Repository discovery starts with Prism. Readi
 	"Optional op=verify: consider for Python, unchecked JavaScript, and PHP contract changes; use for TypeScript or checked " +
 	"JavaScript only if affected files lack a complete typecheck. Skip after a complete affected-target build/typecheck in " +
 	"Go, Java, Rust, C/C++, or C#. For removals, removed_symbols optionally checks exact identifier mentions. " +
-	"Batch known task phrases in one search. Search returns bounded enclosing bodies or labeled windows for located hits by default (one per term first); set include_bodies=false for locators only." +
+	"Batch known identifiers or exact substrings in one search. Search returns bounded enclosing bodies or labeled windows for located hits by default (one per term first); set include_bodies=false for locators only." +
 	"In hosts that require a native Read before Edit, use one tight native Read at the edit site; use Prism read/lookup for other follow-ups. " +
 	"Do not re-read unchanged source already included in a Prism result."
 
@@ -239,14 +239,8 @@ func validateCompactArguments(op string, args map[string]any) error {
 			return err
 		}
 	case "query":
-		if err := require("task"); err != nil {
-			return err
-		}
 		if err := require("terms"); err != nil {
 			return err
-		}
-		if args["task"].(string) == "" {
-			return fmt.Errorf("prism: query args.task cannot be empty")
 		}
 	}
 	return nil
@@ -305,7 +299,6 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 			}
 		}
 	case "query":
-		legacy["task"] = args["task"]
 		if s, ok := args["terms"].(string); ok {
 			legacy["terms"] = []any{s}
 		} else {

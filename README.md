@@ -88,8 +88,7 @@ Use search to find an anchor, then ask the graph for the relationship you need:
 prism search QueryData --scope text --exhaustive --files-only
 prism change-impact 'QueryDataHandler.QueryData' --format text
 
-prism query "fix request validation" \
-  --terms ValidateRequest \
+prism query --terms ValidateRequest \
   --include graph \
   --format text
 

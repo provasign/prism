@@ -14,7 +14,7 @@ func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
 		"mcp__prism__prism",
 		`ToolSearch("select:mcp__prism__prism")`,
 		"Prism not being listed does not mean it is absent",
-		`prism query "<task>" --terms X`,
+		`prism query --terms X`,
 		"known symbol      -> lookup",
 		"known file/range  -> read",
 		"unknown location/text -> search",
