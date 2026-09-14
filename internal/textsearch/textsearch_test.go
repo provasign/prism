@@ -47,6 +47,60 @@ func hitFiles(hits []Hit) []string {
 	return out
 }
 
+func TestRankSourceFirstPrefersIdentifierUseOverComments(t *testing.T) {
+	var hits []Hit
+	for i := 0; i < 205; i++ {
+		hits = append(hits, Hit{File: "a.go", Line: i + 1, Text: "// WidgetCache is mentioned here"})
+	}
+	hits = append(hits, Hit{File: "z.go", Line: 1, Text: "value := WidgetCache.Get()"})
+	got := rankSourceFirst(hits, "WidgetCache", false)
+	if got[0].File != "z.go" {
+		t.Fatalf("identifier use buried under comment mentions: first hit = %+v", got[0])
+	}
+
+	phrase := rankSourceFirst([]Hit{
+		{File: "a.go", Text: "// cache failed"},
+		{File: "z.go", Text: "return cache failed"},
+	}, "cache failed", false)
+	if phrase[0].File != "a.go" {
+		t.Fatalf("exact phrase search unexpectedly demoted a comment: first hit = %+v", phrase[0])
+	}
+}
+
+func TestRankSourceFirstPrefersProductionUseOverRootTests(t *testing.T) {
+	hits := []Hit{
+		{File: "tests/test_console.py", Line: 10, Text: "def test_soft_wrap():"},
+		{File: "rich/console.py", Line: 20, Text: "if soft_wrap:"},
+	}
+	got := rankSourceFirst(hits, "soft_wrap", false)
+	if got[0].File != "rich/console.py" {
+		t.Fatalf("root tests displaced production code: first hit = %+v", got[0])
+	}
+}
+
+func TestSearchIdentifierUseSurvivesCommentHeavySample(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte(strings.Repeat("// WidgetCache mention\n", 205)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "z.go"), []byte("package cache\nvar widget = WidgetCache.Get()\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := Search(t.Context(), root, "WidgetCache", Options{MaxHits: 5, Adaptive: true, Timeout: 5 * time.Second})
+	if len(result.Hits) == 0 || result.Hits[0].File != "z.go" {
+		t.Fatalf("code use missing from the first search hit: %+v", result.Hits)
+	}
+}
+
+func TestCommentDetectionKeepsJavaScriptPrivateFieldAsCode(t *testing.T) {
+	if isCommentLine("#WidgetCache = value", ".js") {
+		t.Fatal("JavaScript private field was classified as a comment")
+	}
+	if !isCommentLine("# WidgetCache note", ".py") {
+		t.Fatal("Python comment was not classified as a comment")
+	}
+}
+
 // assertFixtureResult checks the invariants every backend must satisfy on
 // the fixture: both real files found (case-insensitively), excluded and
 // binary files absent, correct line numbers.

@@ -50,6 +50,8 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"countComplete":    true,
 		"resultsComplete":  true,
 		"inlineBodies":     true,
+		"searchLeads":      true,
+		"searchLeadNote":   true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -63,6 +65,19 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 	}
 	if scopeNote, _ := out["scopeNote"].(string); scopeNote != "" {
 		fmt.Fprintf(&b, "// %s\n", scopeNote)
+	}
+	if leads := anySlice(out["searchLeads"]); len(leads) > 0 {
+		b.WriteString("// First source anchors from search matches (ranked, not an exhaustive inventory):\n")
+		for _, raw := range leads {
+			item, ok := raw.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			fmt.Fprintf(&b, "//   %v:%v  [%v; %v term(s)]\n", item["file"], item["line"], item["match"], item["terms"])
+		}
+	}
+	if note, _ := out["searchLeadNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if raw, ok := out["results"]; ok {
 		groups, ok := raw.([]map[string]any)
@@ -118,9 +133,17 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if fallback, ok := out["fallbackResults"].([]map[string]any); ok && len(fallback) > 0 {
-		b.WriteString("// Exact phrase matched nothing; bounded token fallback searched these terms independently with the same scope and filters (at most 3 hits per term):\n")
+		if _, batched := out["results"]; batched {
+			b.WriteString("// Failed exact term(s); bounded fallback searched these shorter terms independently with the same scope and filters (locators only):\n")
+		} else {
+			b.WriteString("// Exact term matched nothing; bounded fallback searched these shorter terms independently with the same scope and filters (at most 2 hits per term; locators only):\n")
+		}
 		for _, result := range fallback {
-			fmt.Fprintf(&b, "── token: %v ──\n", result["query"])
+			if from, _ := result["fallbackFrom"].(string); from != "" {
+				fmt.Fprintf(&b, "── fallback: %v → %v ──\n", from, result["query"])
+			} else {
+				fmt.Fprintf(&b, "── token: %v ──\n", result["query"])
+			}
 			if !renderOneSearchText(&b, result, nil) {
 				return "", false
 			}

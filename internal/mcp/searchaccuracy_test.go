@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/ranking"
 )
 
 func TestSearchRootAndBothPassesRemainVisible(t *testing.T) {
@@ -43,6 +44,56 @@ func TestSearchBatchedEmptyResultsNameTheirRoot(t *testing.T) {
 	txt, ok := renderSearchAsText(out.(map[string]any))
 	if !ok || strings.Count(txt, "// root: "+h.Root) != 1 {
 		t.Fatalf("batch must state one actual root: %s", txt)
+	}
+}
+
+func TestSearchBatchedPhraseFallbackPreservesExactResult(t *testing.T) {
+	h := symbolCapFixture(t, 1)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": []string{"FooThing nonsense", "definitelyMissing"}, "scope": "text"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	results := m["results"].([]map[string]any)
+	if len(results) != 2 || !searchResultEmpty(results[0]) {
+		t.Fatalf("the exact phrase must remain a reported miss: %v", results)
+	}
+	fallback := anySlice(m["fallbackResults"])
+	if len(fallback) == 0 {
+		t.Fatalf("batched phrase miss had no fallback: %v", m)
+	}
+	first := fallback[0].(map[string]any)
+	if first["query"] != "FooThing" || first["fallbackFrom"] != "FooThing nonsense" || searchResultEmpty(first) {
+		t.Fatalf("fallback did not identify the matching shorter term and its origin: %v", fallback)
+	}
+}
+
+func TestSearchBatchedPhraseFallbackSurvivesLargeExistingAnswer(t *testing.T) {
+	h := symbolCapFixture(t, 1)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": []string{"FooThing nonsense", "definitelyMissing"},
+		"scope": "text", "include_bodies": false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	delete(m, "fallbackResults")
+	m["inlineBodies"] = strings.Repeat("// Existing exact source section with line-numbered content.\n", 260)
+	base, ok := renderSearchAsText(m)
+	if !ok || ranking.EstimateTokens(base) <= 3200 {
+		t.Fatal("fixture must exceed the old total-answer gate")
+	}
+	h.appendBatchedSearchFallback(t.Context(), m, m["results"].([]map[string]any),
+		"text", searchScope{}, defaultSearchLimit)
+	fallback := anySlice(m["fallbackResults"])
+	if len(fallback) == 0 || fallback[0].(map[string]any)["query"] != "FooThing" {
+		t.Fatalf("large existing answer suppressed the bounded fallback: %v", fallback)
+	}
+	result, ok := renderSearchAsText(m)
+	if !ok || ranking.EstimateTokens(result)-ranking.EstimateTokens(base) > 450 {
+		t.Fatal("fallback exceeded its marginal output budget")
 	}
 }
 

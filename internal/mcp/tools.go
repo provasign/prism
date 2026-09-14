@@ -1705,6 +1705,11 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			results = append(results, perTerm[i])
 		}
 		out["results"] = results
+		if leads := searchLeads(results); len(leads) > 0 {
+			out["searchLeads"] = leads
+		} else if len(results) > 1 {
+			out["searchLeadNote"] = "No indexed-name or cross-term source anchor; the results below are independent term matches."
+		}
 		if len(failed) > 0 {
 			out["failedTerms"] = failed
 		}
@@ -1726,6 +1731,13 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 				out["inlineBodies"] = bodies
 			}
 		}
+		if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			boundSearchPresentation(out)
+			boundSymbolPresentation(out)
+		}
+		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			h.appendBatchedSearchFallback(ctx, out, results, scope, sc, limit)
+		}
 		return out, nil
 	}
 
@@ -1743,14 +1755,14 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	if searchResultEmpty(out) && !searchResultPartial(out) {
 		h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-			selected, omitted := tokenFallbackTerms(queries[0])
+			selected, omitted := searchFallbackTerms(queries[0])
 			if len(selected) > 0 {
 				fallbackScope := sc
 				fallbackScope.context = 0
 				fallbackScope.adaptive = false
 				fallback := make([]map[string]any, 0, len(selected))
 				for _, term := range selected {
-					r, err := h.searchOne(ctx, term, scope, minInt(limit, 3), false, fallbackScope)
+					r, err := h.searchOne(ctx, term, scope, minInt(limit, 2), false, fallbackScope)
 					if err != nil {
 						out["fallbackFailed"] = append(anySlice(out["fallbackFailed"]), term+": "+err.Error())
 						continue
@@ -1764,6 +1776,16 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 				if len(omitted) > 0 {
 					out["fallbackOmitted"] = omitted
 				}
+				for len(fallback) > 0 {
+					text, ok := renderSearchAsText(out)
+					if ok && ranking.EstimateTokens(text) <= 2000 {
+						break
+					}
+					last := fallback[len(fallback)-1]
+					out["fallbackOmitted"] = append(anySlice(out["fallbackOmitted"]), last["query"])
+					fallback = fallback[:len(fallback)-1]
+					out["fallbackResults"] = fallback
+				}
 			}
 		}
 	}
@@ -1771,6 +1793,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		if bodies := h.compactSearchBodiesEnclosing(ctx, out); bodies != "" {
 			out["inlineBodies"] = bodies
 		}
+	}
+	if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+		boundSearchPresentation(out)
+		boundSymbolPresentation(out)
 	}
 	return out, nil
 }

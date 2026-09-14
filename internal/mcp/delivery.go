@@ -96,7 +96,7 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 		fmt.Fprintf(&b, "**Context for: %s**\n\n", summarize(label, 120))
 
 		// ── Anchor summary ────────────────────────────────────────────────────
-		anchors := h.renderAnchorSummary(ctx, sel.seedSyms, sel.testCallers)
+		anchors := h.renderAnchorSummary(ctx, sel.seedSyms, sel.testCallers, sel.anchorMatchKinds)
 		if anchors != "" {
 			b.WriteString("**Anchors — callers (verify before editing)**\n\n")
 			b.WriteString(anchors)
@@ -356,7 +356,7 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 // renderAnchorSummary emits one line per anchor symbol: caller count + caller
 // files (from the typed calls graph, incoming edges only) and covering tests,
 // with an explicit warning when none exist.
-func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.SymbolRecord, testCallers map[string][]grove.SymbolRecord) string {
+func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.SymbolRecord, testCallers map[string][]grove.SymbolRecord, matchKinds map[string]string) string {
 	var b strings.Builder
 	seen := map[string]bool{}
 	count := 0
@@ -391,6 +391,9 @@ func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.Symbo
 			}
 		}
 		fmt.Fprintf(&b, "- `%s` (%s:%d)", a.Name, a.FilePath, a.Span.Start)
+		if kind := matchKinds[a.ID]; kind != "" {
+			fmt.Fprintf(&b, " [match: %s]", kind)
+		}
 		if callerN > 0 {
 			fmt.Fprintf(&b, " — %d caller%s in %s", callerN, plural(callerN), joinCapped(callerFiles, 3))
 		} else {

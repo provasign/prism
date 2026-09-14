@@ -28,7 +28,43 @@ func rankSearchSymbols(symbols []grove.SymbolRecord, query string) []rankedSearc
 		out[i] = rankedSearchSymbol{symbol: sym, matchKind: kind, tier: tier}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].tier > out[j].tier })
-	return out
+	// For weaker path/signature/body matches, give each file a first slot
+	// before taking a second from the same file. Keep exact/name matches in
+	// Grove order: an explicitly named symbol must not lose its position.
+	var diversified []rankedSearchSymbol
+	for start := 0; start < len(out); {
+		end := start + 1
+		for end < len(out) && out[end].tier == out[start].tier {
+			end++
+		}
+		if out[start].tier > 5 {
+			diversified = append(diversified, out[start:end]...)
+		} else {
+			byFile := make(map[string][]rankedSearchSymbol)
+			var files []string
+			for _, item := range out[start:end] {
+				path := item.symbol.FilePath
+				if len(byFile[path]) == 0 {
+					files = append(files, path)
+				}
+				byFile[path] = append(byFile[path], item)
+			}
+			for round := 0; ; round++ {
+				added := false
+				for _, path := range files {
+					if round < len(byFile[path]) {
+						diversified = append(diversified, byFile[path][round])
+						added = true
+					}
+				}
+				if !added {
+					break
+				}
+			}
+		}
+		start = end
+	}
+	return diversified
 }
 
 func symbolMatchTier(sym grove.SymbolRecord, q string) (string, int) {

@@ -169,19 +169,22 @@ func TestChangeImpactDescriptionDisclosesExternalInterfaceFallback(t *testing.T)
 func TestRenderLookupAsText_FoundSymbol(t *testing.T) {
 	out := map[string]any{
 		"symbol": map[string]any{"qualifiedName": "CacheBase.get", "kind": "method",
-			"filePath": "cache/__init__.py", "span": map[string]any{"start": 58, "end": 66},
-			"rawText": "def get(self, key): ...", "blobSha": "beef", "id": "s1"},
-		"content": "def get(self, key): ...",
+			"filePath": "cache/__init__.py", "span": map[string]any{"start": 58, "end": 59},
+			"rawText": "def get(self, key):\n    return key\n", "blobSha": "beef", "id": "s1"},
+		"content": "def get(self, key):\n    return key\n",
 	}
 	text, ok := renderLookupAsText(out)
 	if !ok {
 		t.Fatal("found shape must render")
 	}
-	if !strings.Contains(text, "CacheBase.get") || !strings.Contains(text, "cache/__init__.py:58-66") {
+	if !strings.Contains(text, "CacheBase.get") || !strings.Contains(text, "cache/__init__.py:58-59") {
 		t.Errorf("header missing: %q", text)
 	}
 	if strings.Count(text, "def get(self, key)") != 1 {
 		t.Errorf("body must appear exactly once (JSON shipped it twice): %q", text)
+	}
+	if !strings.Contains(text, "58\tdef get(self, key):\n59\t    return key\n") {
+		t.Errorf("lookup body must carry exact source line numbers: %q", text)
 	}
 	if strings.Contains(text, "beef") {
 		t.Error("index internals must not leak")

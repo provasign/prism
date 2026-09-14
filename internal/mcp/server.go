@@ -829,6 +829,7 @@ type searchSourceRegion struct {
 	symbol    grove.SymbolRecord
 	hasSymbol bool
 	window    bool
+	evidence  string
 }
 
 // compactSearchBodiesEnclosing delivers bounded source for visible file:line
@@ -846,7 +847,7 @@ func (h *Handler) compactSearchBodiesEnclosing(ctx context.Context, out map[stri
 // and only the first was ever served). A single term keeps its two regions.
 // Slots count delivered regions, not visited candidates: a symbol reached
 // through both its text hit and its symbols entry must not consume two slots.
-func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out map[string]any, skip []grove.SymbolRecord) string {
+func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]any, skip []grove.SymbolRecord) string {
 	if h.Grove == nil {
 		return ""
 	}
@@ -927,7 +928,7 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		return true
 	}
 	// visit picks up to allow regions from one term's result.
-	visit := func(result map[string]any, allow int) int {
+	visit := func(result map[string]any, allow int, productionOnly bool) int {
 		taken := 0
 		for _, group := range anySlice(result["textHits"]) {
 			g, ok := group.(map[string]any)
@@ -935,6 +936,9 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 				continue
 			}
 			file, _ := g["file"].(string)
+			if productionOnly && !isProductionSourcePath(file) {
+				continue
+			}
 			for _, raw := range anySlice(g["hits"]) {
 				hit, ok := raw.(map[string]any)
 				if !ok {
@@ -955,6 +959,9 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 				continue
 			}
 			file, _ := entry["filePath"].(string)
+			if productionOnly && !isProductionSourcePath(file) {
+				continue
+			}
 			name, _ := entry["qualifiedName"].(string)
 			span, _ := entry["span"].(map[string]any)
 			line := intArg(span, "start", 0)
@@ -978,27 +985,25 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 	}
 	if groups, ok := out["results"].([]map[string]any); ok {
 		served := make([]int, len(groups))
-		for pass := 1; pass <= perTermRegions && !full(); pass++ {
-			for i, group := range groups {
-				if served[i] < pass {
-					served[i] += visit(group, pass-served[i])
+		for _, productionOnly := range []bool{true, false} {
+			for pass := 1; pass <= perTermRegions && !full(); pass++ {
+				for i, group := range groups {
+					if served[i] < pass {
+						served[i] += visit(group, pass-served[i], productionOnly)
+					}
+					if full() {
+						break
+					}
 				}
-				if full() {
-					break
-				}
-			}
-		}
-	} else {
-		visit(out, perTermRegions)
-	}
-	if len(picked) == 0 {
-		for _, result := range anySlice(out["fallbackResults"]) {
-			if group, ok := result.(map[string]any); ok {
-				visit(group, perTermRegions)
 			}
 			if full() {
 				break
 			}
+		}
+	} else {
+		visit(out, perTermRegions, true)
+		if !full() && len(picked) < perTermRegions {
+			visit(out, perTermRegions-len(picked), false)
 		}
 	}
 	if len(picked) == 0 {
@@ -1010,7 +1015,7 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 // renderEnclosingSearchBodies uses exact source spans. Oversized symbols are
 // represented by labeled windows rather than silently disappearing.
 func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) string {
-	const budget = 4000
+	const budget = 1800
 	var sections []string
 	var commits []func()
 	tokens := 0
@@ -1052,6 +1057,9 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 				fmt.Fprintf(&b, "// Full enclosing body %s spans %d-%d\n",
 					region.symbol.QualifiedName, region.symbol.Span.Start, region.symbol.Span.End)
 			}
+			if region.evidence != "" {
+				fmt.Fprintf(&b, "// Evidence: %s\n", region.evidence)
+			}
 			fmt.Fprintf(&b, "\n```%s\n", langTag(region.file))
 			for line := start; line <= end; line++ {
 				fmt.Fprintf(&b, "%d\t%s\n", line, clampSourceLine(lines[line-1]))
@@ -1089,7 +1097,7 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 	for _, commit := range commits {
 		commit()
 	}
-	return "\n// Exact source for bounded enclosing hits (one per term first); other matches remain locators, and inventory completeness is reported above:\n" +
+	return "\n// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:\n" +
 		strings.Join(sections, "")
 }
 

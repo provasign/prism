@@ -3309,7 +3309,19 @@ func printTextOutput(m map[string]any) {
 			name, _ := sym["name"].(string)
 			fp, _ := sym["filePath"].(string)
 			fmt.Printf("// %s — %s\n", fp, name)
-			fmt.Print(content)
+			span, _ := sym["span"].(map[string]any)
+			start, end := jsonInt(span["start"]), jsonInt(span["end"])
+			lines := strings.SplitAfter(content, "\n")
+			if lines[len(lines)-1] == "" {
+				lines = lines[:len(lines)-1]
+			}
+			if start > 0 && end >= start && len(lines) <= end-start+1 {
+				for i, line := range lines {
+					fmt.Printf("%d\t%s", start+i, line)
+				}
+			} else {
+				fmt.Print(content)
+			}
 			if !strings.HasSuffix(content, "\n") {
 				fmt.Println()
 			}

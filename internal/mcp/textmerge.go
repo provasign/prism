@@ -410,15 +410,19 @@ func (h *Handler) structuralNote(ctx context.Context, query string) string {
 		return ""
 	}
 	if len(r.Family) == 0 && len(r.Callers) < 2 {
-		return ""
+		// A single caller is useful next-step evidence for an exact callable
+		// search, but it would be noise for a loose name fragment or field.
+		callable := real[0].Kind == "function" || real[0].Kind == "method"
+		exact := query == real[0].Name || query == leafOf(real[0].Name)
+		if !callable || !exact || len(r.Callers) == 0 {
+			return ""
+		}
 	}
 	site := func(s grove.SymbolRecord) string {
-		parts := strings.Split(s.FilePath, "/")
-		p := s.FilePath
-		if len(parts) > 2 {
-			p = strings.Join(parts[len(parts)-2:], "/")
+		if s.Span.End > s.Span.Start {
+			return fmt.Sprintf("%s:%d-%d", s.FilePath, s.Span.Start, s.Span.End)
 		}
-		return fmt.Sprintf("%s:%d", p, s.Span.Start)
+		return fmt.Sprintf("%s:%d", s.FilePath, s.Span.Start)
 	}
 	var b strings.Builder
 	if query == r.Query {
@@ -441,12 +445,41 @@ func (h *Handler) structuralNote(ctx context.Context, query string) string {
 	}
 	if n := len(r.Callers); n > 0 {
 		fmt.Fprintf(&b, "; %d indexed caller site(s):", n)
-		for i, s := range r.Callers {
-			if i == 3 {
-				fmt.Fprintf(&b, " +%d more", n-3)
+		var displayed []grove.SymbolRecord
+		for _, s := range r.Callers {
+			if !isVerifiedTestCaller(s.FilePath) && len(displayed) < 2 {
+				displayed = append(displayed, s)
+			}
+		}
+		for _, s := range r.Callers {
+			if isVerifiedTestCaller(s.FilePath) && len(displayed) < 3 {
+				displayed = append(displayed, s)
 				break
 			}
+		}
+		for _, s := range r.Callers {
+			if len(displayed) >= 3 {
+				break
+			}
+			found := false
+			for _, shown := range displayed {
+				if shown.FilePath == s.FilePath && shown.Span.Start == s.Span.Start {
+					found = true
+					break
+				}
+			}
+			if !found {
+				displayed = append(displayed, s)
+			}
+		}
+		for _, s := range displayed {
 			fmt.Fprintf(&b, " %s %s", leafOf(s.Name), site(s))
+			if isVerifiedTestCaller(s.FilePath) {
+				b.WriteString(" [test]")
+			}
+		}
+		if len(displayed) < n {
+			fmt.Fprintf(&b, " +%d more", n-len(displayed))
 		}
 	}
 	b.WriteString(".")

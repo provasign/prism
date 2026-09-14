@@ -268,12 +268,14 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		}
 	}
 	var b strings.Builder
+	contentStart, contentEnd := 0, 0
 	if sym, ok := out["symbol"].(map[string]any); ok {
 		name := sym["qualifiedName"]
 		if name == nil || name == "" {
 			name = sym["name"]
 		}
 		span, _ := sym["span"].(map[string]any)
+		contentStart, contentEnd = intArg(span, "start", 0), intArg(span, "end", 0)
 		fmt.Fprintf(&b, "// %v %v  %v", sym["kind"], name, sym["filePath"])
 		if span != nil {
 			fmt.Fprintf(&b, ":%v-%v", span["start"], span["end"])
@@ -294,6 +296,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 			name = m["name"]
 		}
 		span, _ := m["span"].(map[string]any)
+		contentStart, contentEnd = intArg(span, "start", 0), intArg(span, "end", 0)
 		fmt.Fprintf(&b, "// %v %v  %v", m["kind"], name, m["filePath"])
 		if span != nil {
 			fmt.Fprintf(&b, ":%v-%v", span["start"], span["end"])
@@ -301,7 +304,19 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		b.WriteString("\n")
 	}
 	if c, ok := out["content"].(string); ok && c != "" {
-		b.WriteString(c)
+		lines := strings.SplitAfter(c, "\n")
+		if lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		if contentStart > 0 && contentEnd >= contentStart+len(lines)-1 {
+			for i, line := range lines {
+				fmt.Fprintf(&b, "%d\t%s", contentStart+i, line)
+			}
+		} else {
+			// Do not invent source locations when index metadata is missing or
+			// inconsistent with the delivered body.
+			b.WriteString(c)
+		}
 		if !strings.HasSuffix(c, "\n") {
 			b.WriteString("\n")
 		}

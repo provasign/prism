@@ -400,7 +400,7 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 		}
 	}
 	if !opts.Exhaustive && len(res.Hits) > 0 {
-		res.Hits = rankSourceFirst(res.Hits)
+		res.Hits = rankSourceFirst(res.Hits, pattern, opts.Regex)
 	}
 	contextAttached := false
 	if !opts.Exhaustive && len(res.Hits) > 0 {
@@ -522,25 +522,63 @@ var sourceExts = map[string]bool{
 // source before manifests/docs/config. Backend path/line order breaks ties.
 // Ranking runs before the sample cap, so a definition in a later file cannot
 // be hidden by early-path uses.
-func rankSourceFirst(hits []Hit) []Hit {
-	sort.SliceStable(hits, func(i, j int) bool { return textHitRank(hits[i]) > textHitRank(hits[j]) })
+func rankSourceFirst(hits []Hit, pattern string, regex bool) []Hit {
+	identifier := !regex && identifierPattern(pattern)
+	sort.SliceStable(hits, func(i, j int) bool {
+		return textHitRank(hits[i], identifier) > textHitRank(hits[j], identifier)
+	})
 	return hits
 }
 
-func textHitRank(hit Hit) int {
+func textHitRank(hit Hit, identifier bool) int {
 	ext := strings.ToLower(filepath.Ext(hit.File))
 	if !sourceExts[ext] {
 		return 0
 	}
 	path := strings.ToLower(filepath.ToSlash(hit.File))
-	if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/test/") ||
-		strings.Contains(path, "/tests/") || strings.Contains(path, "/__tests__/") {
+	if strings.HasSuffix(path, "_test.go") || strings.HasPrefix(path, "test/") ||
+		strings.HasPrefix(path, "tests/") || strings.HasPrefix(path, "__tests__/") ||
+		strings.Contains(path, "/test/") || strings.Contains(path, "/tests/") ||
+		strings.Contains(path, "/__tests__/") || strings.HasPrefix(filepath.Base(path), "test_") ||
+		strings.Contains(filepath.Base(path), ".test.") || strings.Contains(filepath.Base(path), ".spec.") {
 		return 1
 	}
 	if isDeclarationLine(hit.Text) {
 		return 3
 	}
+	if identifier && isCommentLine(hit.Text, ext) {
+		return 1
+	}
 	return 2
+}
+
+func identifierPattern(pattern string) bool {
+	if pattern == "" {
+		return false
+	}
+	for i, r := range pattern {
+		if r == '_' || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+			continue
+		}
+		if i > 0 && ((r >= '0' && r <= '9') || r == '.') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isCommentLine(line, ext string) bool {
+	line = strings.TrimSpace(line)
+	if strings.HasPrefix(line, "#") {
+		return ext == ".py" || ext == ".rb" || ext == ".sh" || ext == ".php"
+	}
+	if strings.HasPrefix(line, "--") {
+		return ext == ".sql"
+	}
+	return strings.HasPrefix(line, "//") ||
+		strings.HasPrefix(line, "/*") || line == "*" ||
+		strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "*/")
 }
 
 func isDeclarationLine(line string) bool {

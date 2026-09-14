@@ -33,12 +33,13 @@ type selectParams struct {
 // sets that response assembly needs (seeds for empty-result notes, seedSyms +
 // graphExtra for coverage gaps and blast radius).
 type selection struct {
-	picked     []ranking.BudgetedSymbol
-	seedSyms   []grove.SymbolRecord
-	familySyms []grove.SymbolRecord
-	graphExtra []grove.SymbolRecord
-	seeds      []grove.SymbolRecord
-	budget     int
+	picked           []ranking.BudgetedSymbol
+	seedSyms         []grove.SymbolRecord
+	anchorMatchKinds map[string]string
+	familySyms       []grove.SymbolRecord
+	graphExtra       []grove.SymbolRecord
+	seeds            []grove.SymbolRecord
+	budget           int
 	// testCallers maps a seed's symbol ID to its verified test callers
 	// (real test files, doubles excluded) -- pointer-only, see the
 	// declaration in selectContext for why this never enters the
@@ -110,22 +111,31 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			if perTerm <= 0 {
 				perTerm = 10
 			}
+			fetchLimit := minInt(exhaustiveSymbolCap, maxInt(minInt(perTerm, exhaustiveSymbolCap/4)*4, 64))
 			var matches []grove.SymbolRecord
 			var err error
 			if len(p.paths) > 0 || len(p.glob) > 0 {
 				var exhausted bool
-				matches, exhausted, err = scopedSymbolSearch(ctx, h.Grove.SearchSymbols, term, scope, perTerm, symbolFetchHardMax)
-				if err == nil && !exhausted && len(matches) <= perTerm {
+				matches, exhausted, err = scopedSymbolSearch(ctx, h.Grove.SearchSymbols, term, scope, fetchLimit, symbolFetchHardMax)
+				if err == nil && !exhausted && len(matches) <= fetchLimit {
 					return nil, fmt.Errorf("scoped query for %q reached the symbol fetch cap before finding a complete in-scope set; narrow paths/glob", term)
 				}
-				if len(matches) > perTerm {
-					matches = matches[:perTerm]
-				}
 			} else {
-				matches, err = h.Grove.SearchSymbols(ctx, term, perTerm)
+				matches, err = h.Grove.SearchSymbols(ctx, term, fetchLimit)
 			}
 			if err != nil {
 				continue
+			}
+			ranked := rankSearchSymbols(matches, term)
+			matches = matches[:0]
+			for _, item := range ranked {
+				if item.symbol.Kind == "document" && !p.includeSet["docs"] {
+					continue
+				}
+				matches = append(matches, item.symbol)
+			}
+			if len(matches) > perTerm {
+				matches = matches[:perTerm]
 			}
 			// Prioritise symbols whose Name/QualifiedName contains the term
 			// (grep-level precision). Content-only matches (term appears only
@@ -234,6 +244,9 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// symbol via this list on the identical fixture).
 			kept := extra[:0]
 			for _, s := range extra {
+				if s.Kind == "document" && !p.includeSet["docs"] {
+					continue
+				}
 				if isTestFilePath(s.FilePath) {
 					continue
 				}
@@ -507,6 +520,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	return &selection{
 		picked:           picked,
 		seedSyms:         seedSyms,
+		anchorMatchKinds: seedMatchKinds(seedSyms, p.terms),
 		familySyms:       familySyms,
 		graphExtra:       graphExtra,
 		seeds:            seeds,
@@ -518,6 +532,21 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		testCallers:      testCallers,
 		contentOnlySeeds: contentOnlySeeds,
 	}, nil
+}
+
+func seedMatchKinds(seeds []grove.SymbolRecord, terms []string) map[string]string {
+	kinds := make(map[string]string, len(seeds))
+	for _, seed := range seeds {
+		bestKind, bestTier := "unclassified", 0
+		for _, term := range terms {
+			kind, tier := symbolMatchTier(seed, strings.ToLower(strings.TrimSpace(term)))
+			if tier > bestTier {
+				bestKind, bestTier = kind, tier
+			}
+		}
+		kinds[seed.ID] = bestKind
+	}
+	return kinds
 }
 
 func selectedContentHits(picked []ranking.BudgetedSymbol, contentOnly map[string]bool, bySymbol map[string][]textsearch.Hit) []textsearch.Hit {

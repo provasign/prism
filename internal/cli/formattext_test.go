@@ -142,3 +142,16 @@ func TestFormatTextRendersUnmatchedLookup(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatTextNumbersLookupBodyLines(t *testing.T) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(`{"symbol":{"name":"Thing","filePath":"a.go","span":{"start":12,"end":13}},"content":"func Thing() {\n}\n"}`), &m); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() { printOutput(m, formatText) })
+	for _, want := range []string{"12\tfunc Thing() {", "13\t}"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in lookup text:\n%s", want, out)
+		}
+	}
+}

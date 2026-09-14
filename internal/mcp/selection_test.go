@@ -1,9 +1,13 @@
 package mcp
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
 )
 
@@ -142,5 +146,38 @@ func TestInterleaveUniqueTermSeedsPreservesLaterExactMatch(t *testing.T) {
 	want := []string{"CliRunner", "isolation", "invoke"}
 	if names := seedNames(got); !reflect.DeepEqual(names, want) {
 		t.Fatalf("interleaved seeds = %v, want %v", names, want)
+	}
+}
+
+func TestQueryGraphDefaultDoesNotSeedHistoricalDocument(t *testing.T) {
+	root := t.TempDir()
+	for name, body := range map[string]string{
+		"audit.md":  "# ranking audit\nHistorical ranking notes.\n",
+		"sample.go": "package sample\nfunc rankingHandler() { println(\"current source\") }\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), root, gc)
+	out, err := h.Invoke("prism_query", map[string]any{"terms": []string{"ranking"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Raw text matches may still mention docs; the graph-only source-window
+	// selection must start from code unless include=[docs] is requested.
+	source, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("query returned %T, want source delivery", out)
+	}
+	text := source["content"].(string)
+	if strings.Contains(text, "**`audit.md`**") || !strings.Contains(text, "**`sample.go`**") ||
+		!strings.Contains(text, "[match: name-prefix]") {
+		t.Fatalf("graph-only query did not select the code source over the historical document: %s", text)
 	}
 }

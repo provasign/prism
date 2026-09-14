@@ -725,7 +725,7 @@ func TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope(t *testing.T) {
 	if len(content) > 4000 {
 		t.Errorf("bounded token fallback grew to %d bytes", len(content))
 	}
-	for _, want := range []string{"Exact phrase matched nothing", "── token: _NamedTextIOWrapper ──", "── token: fileno ──", "token fallback NOT searched individually", "no matches — search completed"} {
+	for _, want := range []string{"Exact term matched nothing", "── token: _NamedTextIOWrapper ──", "── token: fileno ──", "token fallback NOT searched individually", "no matches — search completed"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("missing %q from bounded token fallback:\n%s", want, content)
 		}
