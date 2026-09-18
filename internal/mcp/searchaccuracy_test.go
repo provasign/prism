@@ -69,6 +69,28 @@ func TestSearchBatchedPhraseFallbackPreservesExactResult(t *testing.T) {
 	}
 }
 
+func TestSearchSingleMissIncludesFallbackSource(t *testing.T) {
+	h := symbolCapFixture(t, 1)
+	out, err := h.Invoke("prism_search", map[string]any{
+		"query": "Prefix_FooThing00", "scope": "both"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	txt, ok := renderSearchAsText(out.(map[string]any))
+	if !ok {
+		t.Fatal("search fell back to JSON")
+	}
+	for _, want := range []string{
+		"token: FooThing00",
+		"shorter fallback term matched after the supplied term returned no exact matches",
+		"func FooThing00() int { return 0 }",
+	} {
+		if !strings.Contains(txt, want) {
+			t.Fatalf("fallback search did not include %q in actionable source output:\n%s", want, txt)
+		}
+	}
+}
+
 func TestSearchBatchedPhraseFallbackSurvivesLargeExistingAnswer(t *testing.T) {
 	h := symbolCapFixture(t, 1)
 	out, err := h.Invoke("prism_search", map[string]any{

@@ -49,6 +49,10 @@ type selection struct {
 	// name — delivered at signature disclosure, not full windows (see the
 	// declaration in selectContext).
 	contentOnlySeeds map[string]bool
+	// lexicalOwners are small enclosing types for field/constant anchors.
+	// They are additive source context: a feature flag or policy constant often
+	// names the concept while the required behavior lives in sibling methods.
+	lexicalOwners []grove.SymbolRecord
 	// textHits are matches no indexed symbol encloses. contentHits preserve
 	// the compact symbols-delivery behavior; symbolHits retain all matched
 	// source lines so source delivery can recover those outside final windows.
@@ -146,12 +150,13 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 				nameLower, qualLower := strings.ToLower(m.Name), strings.ToLower(m.QualifiedName)
 				nameContains := strings.Contains(nameLower, termLower) || strings.Contains(qualLower, termLower)
 				switch {
-				case nameContains && isTestFilePath(m.FilePath) && nameLower != termLower && qualLower != termLower:
+				case nameContains && isTestFilePath(m.FilePath) && !explicitTestTerm(termLower):
 					// A test whose name merely CONTAINS the term as a
 					// substring -- the common case for any TestFoo-style
 					// naming convention, which trivially contains "Foo" --
-					// is not a deliberate ask the way an EXACT name match
-					// is (terms=["TestFoo"] still seeds normally below).
+					// is not a deliberate ask. Exact common method names such as
+					// `skip` are excluded too; terms that explicitly say test/spec
+					// (for example TestFoo) still seed normally below.
 					// Seeds are force-stamped CategoryTarget in
 					// ranking.Select, bypassing the CategoryTest delivery
 					// guard entirely, so an incidental substring match
@@ -324,6 +329,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 	seedCount := minInt(maxInt(5, len(p.terms)), minInt(10, len(seeds)))
 	seedSyms := seeds[:seedCount]
 	candidateSyms := seeds[seedCount:]
+	lexicalOwners := h.lexicalOwnerContexts(ctx, seeds, seedSyms, p.terms)
 
 	profile := ranking.SelectProfile(profileName)
 
@@ -531,7 +537,78 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		textBackend:      textMerge.backend,
 		testCallers:      testCallers,
 		contentOnlySeeds: contentOnlySeeds,
+		lexicalOwners:    lexicalOwners,
 	}, nil
+}
+
+const (
+	lexicalOwnerMax      = 2
+	lexicalOwnerMaxLines = 320
+	lexicalOwnerMaxBytes = 16000
+)
+
+// lexicalOwnerContexts recovers the behavioral neighborhood around a matched
+// field or constant without guessing beyond the indexed enclosing type. This
+// is intentionally capped and delivered only when the normal result has room,
+// so it can add recall but cannot evict named anchors.
+func (h *Handler) lexicalOwnerContexts(ctx context.Context, seeds, primary []grove.SymbolRecord, terms []string) []grove.SymbolRecord {
+	seen := map[string]bool{}
+	fileSymbols := map[string][]grove.SymbolRecord{}
+	primaryFiles := map[string]bool{}
+	for _, seed := range primary {
+		primaryFiles[normalizePath(seed.FilePath)] = true
+	}
+	var owners []grove.SymbolRecord
+	for _, seed := range seeds {
+		if len(owners) >= lexicalOwnerMax {
+			break
+		}
+		if seed.ParentSymbol == "" || isTestFilePath(seed.FilePath) || !seedNameMatchesAnyTerm(seed, terms) {
+			continue
+		}
+		switch strings.ToLower(seed.Kind) {
+		case "field", "const", "constant", "property":
+		default:
+			continue
+		}
+		fileSyms, ok := fileSymbols[seed.FilePath]
+		if !ok {
+			var err error
+			fileSyms, err = h.Grove.FileSymbols(ctx, seed.FilePath)
+			if err != nil {
+				continue
+			}
+			fileSymbols[seed.FilePath] = fileSyms
+		}
+		candidate := lexicalOwnerSymbol(seed, fileSyms)
+		if candidate == nil || primaryFiles[normalizePath(candidate.FilePath)] || seen[candidate.ID] {
+			continue
+		}
+		seen[candidate.ID] = true
+		owners = append(owners, *candidate)
+	}
+	return owners
+}
+
+func lexicalOwnerSymbol(seed grove.SymbolRecord, fileSyms []grove.SymbolRecord) *grove.SymbolRecord {
+	parentLeaf := leafOf(seed.ParentSymbol)
+	for i := range fileSyms {
+		candidate := &fileSyms[i]
+		switch strings.ToLower(candidate.Kind) {
+		case "class", "interface", "struct", "enum", "type":
+		default:
+			continue
+		}
+		if candidate.Name != parentLeaf && candidate.QualifiedName != seed.ParentSymbol {
+			continue
+		}
+		if candidate.RawText == "" || len(candidate.RawText) > lexicalOwnerMaxBytes ||
+			strings.Count(candidate.RawText, "\n")+1 > lexicalOwnerMaxLines {
+			return nil
+		}
+		return candidate
+	}
+	return nil
 }
 
 func seedMatchKinds(seeds []grove.SymbolRecord, terms []string) map[string]string {
@@ -727,4 +804,13 @@ func seedNameMatchesAnyTerm(s grove.SymbolRecord, terms []string) bool {
 		}
 	}
 	return false
+}
+
+// explicitTestTerm keeps a test symbol eligible only when the caller's term
+// itself expresses test intent. An exact common method name such as `skip`
+// inside a test is not a deliberate test request merely because it is exact;
+// explicit terms such as TestFoo, test_foo, or widget.spec remain eligible.
+func explicitTestTerm(term string) bool {
+	term = strings.ToLower(term)
+	return strings.Contains(term, "test") || strings.Contains(term, "spec")
 }

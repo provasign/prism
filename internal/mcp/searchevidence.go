@@ -102,8 +102,19 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		return ""
 	}
 	groups := []map[string]any{out}
+	fallbackEvidence := false
 	if batch, ok := out["results"].([]map[string]any); ok {
 		groups = batch
+	} else if searchResultEmpty(out) {
+		// A single-term miss may already carry a bounded shorter-term fallback.
+		// Treat that fallback as source evidence so the caller receives the
+		// enclosing implementation in the same turn instead of having to repeat
+		// discovery with grep or a second Prism call. The rendered inventory still
+		// labels the exact term as a miss and the source evidence as a fallback.
+		if fallback, ok := out["fallbackResults"].([]map[string]any); ok && len(fallback) > 0 {
+			groups = fallback
+			fallbackEvidence = true
+		}
 	}
 	var terms []string
 	for _, group := range groups {
@@ -319,7 +330,11 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 			value -= 8 // local spelling probes remain secondary to exact evidence
 		}
 		if len(groups) > 1 && item.hasSymbol && item.symbol.Kind == "field" {
-			value -= 7
+			if item.nameMatch {
+				value += 4 // the enclosing type is useful behavior context below
+			} else {
+				value -= 7
+			}
 		}
 		if isTestFilePath(item.file) && item.hasSymbol {
 			entry := files[item.file]
@@ -420,12 +435,26 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 				region.start, region.end, region.window = item.symbol.Span.Start, item.symbol.Span.End, false
 			}
 		}
+		if item.hasSymbol && item.symbol.Kind == "field" && item.nameMatch {
+			if owner := lexicalOwnerSymbol(item.symbol, files[item.file].symbols); owner != nil {
+				region.symbol, region.hasSymbol = *owner, true
+				region.start, region.end, region.window = owner.Span.Start, owner.Span.End, false
+				region.ownerContext = true
+			}
+		}
 		if len(item.terms) > 0 {
-			region.evidence = fmt.Sprintf("exact match for %d supplied term(s)", len(item.terms))
+			if fallbackEvidence {
+				region.evidence = "shorter fallback term matched after the supplied term returned no exact matches"
+			} else {
+				region.evidence = fmt.Sprintf("exact match for %d supplied term(s)", len(item.terms))
+			}
 		} else if name := referenceFiles[item.file]; name != "" {
 			region.evidence = fmt.Sprintf("indexed reference to %s plus a related spelling; relationship unverified", name)
 		} else {
 			region.evidence = "related spelling in a file with an exact match; relationship unverified"
+		}
+		if region.ownerContext {
+			region.evidence += "; small enclosing type included for behavioral context"
 		}
 		if len(item.related) > 0 && len(item.terms) > 0 {
 			region.evidence += "; nearby related spelling, relationship unverified"

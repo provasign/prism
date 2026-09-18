@@ -3585,8 +3585,8 @@ func printNotes(m map[string]any, keys ...string) {
 				fmt.Printf("%s: %s\n", k, v)
 			}
 		case bool:
-			if v {
-				fmt.Printf("%s: true\n", k)
+			if v || k == "safeToClaimComplete" {
+				fmt.Printf("%s: %t\n", k, v)
 			}
 		case []any:
 			if len(v) > 0 {
@@ -3602,7 +3602,8 @@ func printNotes(m map[string]any, keys ...string) {
 
 func printChangeImpactText(m map[string]any) {
 	fmt.Printf("// %v — change-impact: %d site(s)\n", m["query"], jsonInt(m["totalSites"]))
-	printNotes(m, "completeness", "familyCompleteness", "callerCoverage", "coverageNote", "evidenceNote", "hasHeuristicRefs")
+	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "familyCompleteness", "callerCoverage", "coverageNote", "evidenceNote", "hasHeuristicRefs")
+	fmt.Print(mcp.FormatImpactRelaySitesText(m))
 	printSiteGroup("declarations", m["declarations"])
 	printSiteGroup("supers", m["supers"])
 	printSiteGroup("family", m["family"])
@@ -3616,7 +3617,7 @@ func printChangeImpactText(m map[string]any) {
 
 func printRenamePlanText(m map[string]any) {
 	fmt.Printf("// %v → %v — rename-plan: %d site(s)\n", m["query"], m["newName"], jsonInt(m["totalSites"]))
-	printNotes(m, "completeness")
+	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary")
 	printEditGroup("edits", m["edits"])
 	printEditGroup("ambiguous", m["ambiguous"])
 	printSiteGroup("unresolved", m["unresolved"])
@@ -3653,7 +3654,7 @@ func printMissingImplText(m map[string]any) {
 	printSiteGroup("missing", m["missing"])
 	printSiteGroup("abstractMissing", m["abstractMissing"])
 	printSiteGroup("unverifiable", m["unverifiable"])
-	printNotes(m, "unverifiableNote", "defaultProvided", "note")
+	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "unverifiableNote", "defaultProvided", "note")
 }
 
 func printDeadCodeText(m map[string]any) {

@@ -149,6 +149,19 @@ func TestInterleaveUniqueTermSeedsPreservesLaterExactMatch(t *testing.T) {
 	}
 }
 
+func TestExplicitTestTermRejectsExactCommonMethodName(t *testing.T) {
+	for _, term := range []string{"skip", "JsonSetter", "handler"} {
+		if explicitTestTerm(term) {
+			t.Errorf("%q should not express test intent", term)
+		}
+	}
+	for _, term := range []string{"TestHandler", "test_handler", "widget.spec"} {
+		if !explicitTestTerm(term) {
+			t.Errorf("%q should express test intent", term)
+		}
+	}
+}
+
 func TestQueryGraphDefaultDoesNotSeedHistoricalDocument(t *testing.T) {
 	root := t.TempDir()
 	for name, body := range map[string]string{
@@ -179,5 +192,34 @@ func TestQueryGraphDefaultDoesNotSeedHistoricalDocument(t *testing.T) {
 	if strings.Contains(text, "**`audit.md`**") || !strings.Contains(text, "**`sample.go`**") ||
 		!strings.Contains(text, "[match: name-prefix]") {
 		t.Fatalf("graph-only query did not select the code source over the historical document: %s", text)
+	}
+}
+
+func TestQueryFieldAnchorIncludesSmallLexicalOwner(t *testing.T) {
+	root := t.TempDir()
+	body := `package sample;
+class Policy {
+    private Mode SKIP;
+    void unrelated() {}
+    void applyPolicy() { System.out.println("behavioral sibling"); }
+}
+enum Mode { SKIP, KEEP }
+`
+	if err := os.WriteFile(filepath.Join(root, "Policy.java"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(root)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), root, gc)
+	out, err := h.Invoke("prism_query", map[string]any{"terms": []string{"SKIP"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := out.(map[string]any)["content"].(string)
+	if !strings.Contains(text, "applyPolicy") || !strings.Contains(text, "behavioral sibling") {
+		t.Fatalf("field anchor did not include its small lexical owner: %s", text)
 	}
 }

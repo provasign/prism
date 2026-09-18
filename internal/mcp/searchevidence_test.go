@@ -62,6 +62,26 @@ func TestSearchEvidenceShowsLocalRelatedUseAndSkippedTest(t *testing.T) {
 	}
 }
 
+func TestSearchEvidenceFieldMatchIncludesSmallOwner(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"Policy.java": `class Policy {
+    private Mode SKIP;
+    void unrelated() {}
+    void applyPolicy() { System.out.println("behavioral sibling"); }
+}
+enum Mode { SKIP, KEEP }
+`,
+	})
+	out, err := h.Invoke("prism_search", map[string]any{"query": []any{"SKIP", "Mode"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := h.compactSearchBodiesEnclosing(t.Context(), out.(map[string]any))
+	if !strings.Contains(got, "applyPolicy") || !strings.Contains(got, "small enclosing type included") {
+		t.Fatalf("field match did not include its lexical owner:\n%s", got)
+	}
+}
+
 func TestEvidenceLineScorePrefersUseOverDeclarationAndComment(t *testing.T) {
 	if evidenceLineScore("ssl_context=self.ssl_context,") <= evidenceLineScore("ssl_context: ssl.SSLContext | None = None,") ||
 		evidenceLineScore("and proxy_config.use_forwarding_for_https") <= evidenceLineScore("# use_forwarding_for_https") {

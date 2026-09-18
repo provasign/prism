@@ -1024,17 +1024,25 @@ func (h *Handler) changeImpactFor(ctx context.Context, sym grove.SymbolRecord) (
 	return nil, lastErr
 }
 
+var versionedTestSourceDir = regexp.MustCompile(`(?:^|/)src/test-(?:jdk|java|kotlin|scala|groovy|python|php|go|rust|js|ts)[0-9]*(?:/|$)`)
+
 // isTestFilePath matches test files across the supported languages.
 func isTestFilePath(p string) bool {
+	p = strings.ToLower(filepath.ToSlash(p))
 	base := p
 	if i := strings.LastIndexByte(p, '/'); i >= 0 {
 		base = p[i+1:]
 	}
 	return strings.HasSuffix(base, "_test.go") ||
 		strings.HasPrefix(base, "test_") ||
+		strings.Contains(base, "_test.") ||
 		strings.Contains(base, ".test.") || strings.Contains(base, ".spec.") ||
+		strings.HasSuffix(base, "test.java") || strings.HasSuffix(base, "tests.java") ||
+		strings.HasSuffix(base, "test.cs") || strings.HasSuffix(base, "tests.cs") ||
+		strings.HasSuffix(base, "test.php") || strings.HasSuffix(base, "tests.php") ||
 		strings.Contains(p, "/test/") || strings.Contains(p, "/tests/") ||
-		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/")
+		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/") ||
+		versionedTestSourceDir.MatchString(p)
 }
 
 // isVerifiedTestCaller reports whether a caller found via InboundCallers is

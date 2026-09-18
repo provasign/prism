@@ -136,7 +136,7 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		if _, batched := out["results"]; batched {
 			b.WriteString("// Failed exact term(s); bounded fallback searched these shorter terms independently with the same scope and filters (locators only):\n")
 		} else {
-			b.WriteString("// Exact term matched nothing; bounded fallback searched these shorter terms independently with the same scope and filters (at most 2 hits per term; locators only):\n")
+			b.WriteString("// Exact term matched nothing; bounded fallback searched these shorter terms independently with the same scope and filters (at most 2 hits per term; bounded source follows when available):\n")
 		}
 		for _, result := range fallback {
 			if from, _ := result["fallbackFrom"].(string); from != "" {

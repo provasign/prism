@@ -62,4 +62,38 @@ func use(c DataKeyCache) {
 	if got := m["totalSites"].(int); got != 4 {
 		t.Errorf("totalSites = %d, want 4 (declaringTypes counted)", got)
 	}
+	if safe, ok := m["safeToClaimComplete"].(bool); !ok || safe {
+		t.Fatalf("change-impact must not authorize a global completeness claim: %v", m)
+	}
+	if scope := m["completenessScope"]; scope != "indexed-project-only" {
+		t.Fatalf("completenessScope = %v", scope)
+	}
+	if relay := anySlice(m["relaySites"]); len(relay) != 4 {
+		t.Fatalf("relaySites = %v, want the four de-duplicated affected sites", relay)
+	}
+}
+
+func TestImpactRelaySitesPreservesSameNamedSites(t *testing.T) {
+	r := &grove.ChangeImpactResult{Callers: []grove.SymbolRecord{
+		{FilePath: "src/Overloads.java", Name: "run", Kind: "method", Span: grove.SpanInfo{Start: 10}},
+		{FilePath: "src/Overloads.java", Name: "run", Kind: "method", Span: grove.SpanInfo{Start: 20}},
+		{FilePath: "src/Overloads.java", Name: "run", Kind: "field", Span: grove.SpanInfo{Start: 20}},
+	}}
+	got := impactRelaySites(r, 40)
+	if len(got) != 3 {
+		t.Fatalf("same-named sites collapsed: %v", got)
+	}
+	for _, want := range []string{
+		"src/Overloads.java:10:run [method]",
+		"src/Overloads.java:20:run [method]",
+		"src/Overloads.java:20:run [field]",
+	} {
+		found := false
+		for _, site := range got {
+			found = found || site == want
+		}
+		if !found {
+			t.Errorf("relaySites missing %q: %v", want, got)
+		}
+	}
 }

@@ -823,14 +823,15 @@ func budgetedSymbols(picked []ranking.BudgetedSymbol) []grove.SymbolRecord {
 }
 
 type searchSourceRegion struct {
-	file      string
-	hit       int
-	start     int
-	end       int
-	symbol    grove.SymbolRecord
-	hasSymbol bool
-	window    bool
-	evidence  string
+	file         string
+	hit          int
+	start        int
+	end          int
+	symbol       grove.SymbolRecord
+	hasSymbol    bool
+	window       bool
+	evidence     string
+	ownerContext bool
 }
 
 // compactSearchBodiesEnclosing delivers bounded source for visible file:line
@@ -1016,7 +1017,7 @@ func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]
 // renderEnclosingSearchBodies uses exact source spans. Oversized symbols are
 // represented by labeled windows rather than silently disappearing.
 func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) string {
-	const budget = 1800
+	const budget = 2400
 	var sections []string
 	var commits []func()
 	tokens := 0
@@ -1037,7 +1038,11 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 		if end < start {
 			continue
 		}
-		if !isWindow && (end-start+1 > 160 || len(strings.Join(lines[start-1:end], "\n")) > 10000) {
+		fullBodyLines := 160
+		if region.ownerContext {
+			fullBodyLines = 240
+		}
+		if !isWindow && (end-start+1 > fullBodyLines || len(strings.Join(lines[start-1:end], "\n")) > 10000) {
 			isWindow = true
 			start = maxInt(region.symbol.Span.Start, region.hit-50)
 			end = minInt(len(lines), minInt(region.symbol.Span.End, region.hit+50))

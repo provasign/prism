@@ -182,7 +182,8 @@ func graphDeliveryKey(name string, args map[string]any) string {
 // graphPointerResponse is the cached-delivery rendering: the compressor's
 // [prism:cached] contract plus a structural summary (top-level list counts
 // and identity scalars) so the agent can sanity-check WHAT it already has
-// without Prism re-sending a single site.
+// without Prism re-sending ordinary result groups. A bounded relaySites list
+// is the exception because it is the canonical copyable inventory.
 func graphPointerResponse(name, hash string, seenCount int, out any) map[string]any {
 	short := hash
 	if len(short) > 8 {
@@ -207,10 +208,22 @@ func graphPointerResponse(name, hash string, seenCount int, out any) map[string]
 		for k, v := range m {
 			switch tv := v.(type) {
 			case []any:
-				summary[k] = len(tv)
+				if k == "relaySites" {
+					// relaySites is a bounded canonical inventory, not an
+					// ordinary result group. Preserve both its shape and values
+					// on a cache hit so "copy this inventory" never points at a
+					// bare integer count.
+					summary[k] = tv
+				} else {
+					summary[k] = len(tv)
+				}
 			case string:
 				switch k {
-				case "query", "completeness", "familyCompleteness", "callerCoverage", "coverageNote", "newName", "scope":
+				case "query", "completeness", "familyCompleteness", "callerCoverage", "coverageNote", "newName", "scope", "completenessScope", "scopeBoundary", "relayNote":
+					summary[k] = tv
+				}
+			case bool:
+				if k == "safeToClaimComplete" {
 					summary[k] = tv
 				}
 			}

@@ -174,6 +174,8 @@ func TestCategorize(t *testing.T) {
 		{"javascript tests dir", grove.SymbolRecord{FilePath: "/__tests__/x.js"}, ranking.CategoryTest},
 		{"python test", grove.SymbolRecord{FilePath: "x_test.py"}, ranking.CategoryTest},
 		{"java test", grove.SymbolRecord{FilePath: "src/UserServiceTest.java"}, ranking.CategoryTest},
+		{"java versioned test tree", grove.SymbolRecord{FilePath: "src/test-jdk17/java/p/RecordTest.java"}, ranking.CategoryTest},
+		{"production test utilities", grove.SymbolRecord{FilePath: "src/test-utils/Loader.java", Kind: "class"}, ranking.CategoryDependency},
 		{"rust test", grove.SymbolRecord{FilePath: "src/service_test.rs"}, ranking.CategoryTest},
 		{"c test", grove.SymbolRecord{FilePath: "tests/service_test.c"}, ranking.CategoryTest},
 		{"cpp test", grove.SymbolRecord{FilePath: "tests/service_test.cpp"}, ranking.CategoryTest},

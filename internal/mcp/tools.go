@@ -952,7 +952,8 @@ func toolDescription(name string) string {
 			"super-declarations, callers, and declaringTypes in one call. May include signatures, test labels, and bounded " +
 			"matching call expressions; large results omit some evidence and mark this in evidenceNote. Read bodies " +
 			"for behavior or evidence gaps, not routinely for site enumeration. 'partial' means coverage gaps; " +
-			"follow coverageNote. 'closed' describes indexed scope, not proof of runtime completeness or receiver certainty. For a wide same-name " +
+			"follow coverageNote. For bounded results, relaySites is the canonical answer-shaped inventory: copy it instead of manually rebuilding the groups. " +
+			"safeToClaimComplete is false because 'closed' describes indexed project scope, not proof of runtime completeness or receiver certainty. For a wide same-name " +
 			"member or an external/unresolved interface with no local anchor, Prism infers the compatible local method family " +
 			"and unions file-scoped resolved impacts in this call; signature= pins the external contract when known. Do not " +
 			"guess concrete type names or issue one call per receiver. 'project-local' " +
@@ -977,7 +978,7 @@ func toolDescription(name string) string {
 			"unverifiable (superclass chain leaves the index; an external base may provide " +
 			"it — verify before treating as broken), implementedCount (coverage evidence). " +
 			"defaultProvided=true means the indexed contract supplies a body; 'missing' may " +
-			"inherit that default until the member becomes required. Check completeness and " +
+			"inherit that default until the member becomes required. safeToClaimComplete is false: check completeness and " +
 			"runtime/external behavior before treating a candidate as broken."
 	case "prism_node":
 		return "One-shot orientation on a single thing. Pass a SYMBOL name and get its source " +
@@ -992,7 +993,7 @@ func toolDescription(name string) string {
 			"(file, line, before, after) at indexed resolved sites. First review coverage, 'unresolved', " +
 			"and 'ambiguous' before applying edits; ambiguous lines may call a same-named method " +
 			"on an unrelated type, so check receiver types. 'project-local' may indicate an " +
-			"external contract requiring a coordinated rename. RELAY proposed sites and gaps, " +
+			"external contract requiring a coordinated rename. safeToClaimComplete is false. RELAY proposed sites and gaps, " +
 			"then validate the resulting code with the relevant build or tests."
 	case "prism_dead_code":
 		return "Static deletion candidates: production functions/methods unreachable from " +
@@ -3200,6 +3201,11 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"familyCompleteness": r.Completeness,
 		"callerCoverage":     impactCallerCoverage(r),
 	}
+	addIndexedCompletenessSafety(out)
+	if relay := impactRelaySites(r, 40); len(relay) > 0 {
+		out["relaySites"] = relay
+		out["relayNote"] = "Copy relaySites when reporting the affected-site inventory; do not manually reconstruct a partial list from the grouped evidence below."
+	}
 	if inferenceNote != "" {
 		out["methodFamilyNote"] = inferenceNote
 	}
@@ -3274,6 +3280,55 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	return out, nil
 }
 
+// impactRelaySites is an answer-shaped, de-duplicated inventory for result
+// sets small enough to relay without materially duplicating a wide payload.
+// Detailed groups remain authoritative for overloads and evidence.
+func impactRelaySites(r *grove.ChangeImpactResult, limit int) []string {
+	sites := impactSites(r, true)
+	if len(sites) == 0 || len(sites) > limit {
+		return nil
+	}
+	seen := map[string]bool{}
+	out := make([]string, 0, len(sites))
+	for _, site := range sites {
+		name := site.Name
+		if name == "" {
+			name = displayQN(site)
+		}
+		path := normalizePath(site.FilePath)
+		if path == "" && name == "" {
+			continue
+		}
+		// Preserve overloads and same-named sites. impactSites intentionally
+		// distinguishes these by file+line+kind; the answer-shaped relay must
+		// retain the same identity or its advertised canonical inventory is
+		// silently incomplete.
+		identity := fmt.Sprintf("%s:%d:%s:%s", path, site.Span.Start, site.Kind, name)
+		if seen[identity] {
+			continue
+		}
+		seen[identity] = true
+		label := fmt.Sprintf("%s:%d:%s", path, site.Span.Start, name)
+		if site.Kind != "" {
+			label += " [" + site.Kind + "]"
+		}
+		out = append(out, label)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// addIndexedCompletenessSafety keeps task-shaped graph tools honest about the
+// boundary shared by change-impact, missing-implementations, and rename-plan.
+// Their engine completeness is useful inside the indexed project, but none can
+// prove the absence of runtime, generated, or external consumers.
+func addIndexedCompletenessSafety(out map[string]any) {
+	out["completenessScope"] = "indexed-project-only"
+	out["safeToClaimComplete"] = false
+	out["scopeBoundary"] = "Do not claim global completeness from this result. It closes the indexed project graph only; " +
+		"external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof."
+}
+
 func (h *Handler) toolMissingImplementations(ctx context.Context, args map[string]any) (any, error) {
 	query := stringArg(args, "query", "")
 	if query == "" {
@@ -3308,6 +3363,7 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 		"missing":          compact(r.Missing),
 		"implementedCount": r.ImplementedCount,
 	}
+	addIndexedCompletenessSafety(out)
 	if len(r.AbstractMissing) > 0 {
 		out["abstractMissing"] = compact(r.AbstractMissing)
 	}
@@ -3360,6 +3416,7 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 		"totalSites": r.SitesTotal,
 		"edits":      r.Edits,
 	}
+	addIndexedCompletenessSafety(out)
 	if len(r.Unresolved) > 0 {
 		out["unresolved"] = r.Unresolved
 		out["unresolvedNote"] = "no line edit could be derived for these " +
@@ -3433,11 +3490,7 @@ func (h *Handler) toolDeadCode(ctx context.Context, args map[string]any) (any, e
 func categorize(s grove.SymbolRecord) ranking.Category {
 	// Tests usually live in language-specific test file patterns.
 	p := strings.ToLower(s.FilePath)
-	if strings.Contains(p, "_test.") || strings.Contains(p, ".test.") ||
-		strings.Contains(p, ".spec.") || strings.Contains(p, "/__tests__/") ||
-		strings.HasSuffix(p, "_test.py") ||
-		strings.HasSuffix(p, "test.java") || strings.HasSuffix(p, "tests.java") ||
-		strings.Contains(p, "/tests/") || strings.Contains(p, "/test/") ||
+	if isTestFilePath(p) || strings.HasSuffix(p, "test.java") || strings.HasSuffix(p, "tests.java") ||
 		strings.HasSuffix(p, "_test.rs") || strings.HasSuffix(p, "tests.rs") ||
 		strings.HasSuffix(p, "_test.c") || strings.HasSuffix(p, "_test.h") ||
 		strings.HasSuffix(p, "_test.cc") || strings.HasSuffix(p, "_test.cpp") ||

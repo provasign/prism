@@ -120,6 +120,8 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"evidenceNote": true, "coverageNote": true, "methodFamilyNote": true,
 		"staleWarning": true, "scopeNote": true, "ambiguityNote": true,
 		"familyCompleteness": true, "callerCoverage": true,
+		"completenessScope": true, "safeToClaimComplete": true,
+		"scopeBoundary": true, "relaySites": true, "relayNote": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -131,6 +133,16 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if c, _ := out["completeness"].(string); c != "" {
 		fmt.Fprintf(&b, "completeness: %s\n", c)
 	}
+	if scope, _ := out["completenessScope"].(string); scope != "" {
+		fmt.Fprintf(&b, "completenessScope: %s\n", scope)
+	}
+	if safe, ok := out["safeToClaimComplete"].(bool); ok {
+		fmt.Fprintf(&b, "safeToClaimComplete: %t\n", safe)
+	}
+	if boundary, _ := out["scopeBoundary"].(string); boundary != "" {
+		fmt.Fprintf(&b, "// %s\n", boundary)
+	}
+	b.WriteString(FormatImpactRelaySitesText(out))
 	for _, key := range []string{"familyCompleteness", "callerCoverage"} {
 		if value, _ := out[key].(string); value != "" {
 			fmt.Fprintf(&b, "%s: %s\n", key, value)
@@ -244,6 +256,25 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 			wa["qualifiedName"], wa["totalSites"], wa["completeness"], wa["note"])
 	}
 	return b.String(), true
+}
+
+// FormatImpactRelaySitesText renders the canonical bounded site inventory for
+// both MCP and CLI text delivery. Keeping this in one place prevents either
+// surface from silently losing the copy instruction or changing its shape.
+func FormatImpactRelaySitesText(out map[string]any) string {
+	relay := anySlice(out["relaySites"])
+	if len(relay) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "relaySites (%d; copy this inventory):\n", len(relay))
+	for _, site := range relay {
+		fmt.Fprintf(&b, "  %v\n", site)
+	}
+	if note, _ := out["relayNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
+	return b.String()
 }
 
 // renderLookupAsText renders a prism_lookup result. The JSON form shipped

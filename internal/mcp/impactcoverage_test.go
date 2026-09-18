@@ -131,13 +131,23 @@ func TestImpactCoveragePreservesTiersAndInput(t *testing.T) {
 }
 
 func TestImpactCoverageSurvivesCachedPointer(t *testing.T) {
-	out := map[string]any{"query": "W.Notify", "completeness": "partial", "coverageNote": "interface callers may be missing"}
+	out := map[string]any{
+		"query": "W.Notify", "completeness": "partial", "coverageNote": "interface callers may be missing",
+		"relaySites": []string{"w.go:10:W.Notify [method]"}, "relayNote": "copy the canonical inventory",
+	}
 	got := graphPointerResponse("prism_change_impact", "hash", 2, out)
 	if got["completeness"] != "partial" || got["coverageNote"] != out["coverageNote"] {
 		t.Fatalf("cached pointer lost the coverage boundary: %v", got)
 	}
 	if got["summary"].(map[string]any)["coverageNote"] != out["coverageNote"] {
 		t.Fatal("nested pointer summary lost coverage note")
+	}
+	if got["relayNote"] != out["relayNote"] {
+		t.Fatalf("cached pointer lost relay instruction: %v", got)
+	}
+	relay, ok := got["relaySites"].([]any)
+	if !ok || len(relay) != 1 || relay[0] != "w.go:10:W.Notify [method]" {
+		t.Fatalf("cached pointer replaced canonical relay inventory with a count: %v", got)
 	}
 }
 

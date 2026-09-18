@@ -114,6 +114,7 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 	// delivery with noise (measured on the pr3493 probe: unrelated help-
 	// rendering tests earned whole windows).
 	picked := make([]ranking.BudgetedSymbol, 0, len(sel.picked))
+	pickedIDs := make(map[string]bool, len(sel.picked)+len(sel.lexicalOwners))
 	for _, p := range sel.picked {
 		if p.Category == ranking.CategoryTest {
 			continue
@@ -128,6 +129,19 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 			p.Disclosure = ranking.DisclosureSignature
 		}
 		picked = append(picked, p)
+		pickedIDs[p.Symbol.ID] = true
+	}
+	ownerFiles := map[string]bool{}
+	for _, owner := range sel.lexicalOwners {
+		if pickedIDs[owner.ID] {
+			continue
+		}
+		picked = append(picked, ranking.BudgetedSymbol{
+			Symbol: owner, Relation: ranking.RelationDirectCall, Score: 1,
+			Category: ranking.CategoryDependency, Disclosure: ranking.DisclosureFull,
+		})
+		pickedIDs[owner.ID] = true
+		ownerFiles[normalizePath(owner.FilePath)] = true
 	}
 	files := groupPickedByFile(picked)
 	seedFiles := 0
@@ -137,8 +151,8 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 		}
 	}
 	if automaticFileLimit {
-		if seedFiles+1 > maxFiles {
-			maxFiles = seedFiles + 1
+		if seedFiles+1+len(ownerFiles) > maxFiles {
+			maxFiles = seedFiles + 1 + len(ownerFiles)
 		}
 	}
 
@@ -180,7 +194,7 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 		if fg.relation == ranking.RelationSeed && seedFiles == 1 {
 			sectionCap = budget - ranking.EstimateTokens(b.String())
 		}
-		if fg.relation != ranking.RelationSeed {
+		if fg.relation != ranking.RelationSeed && !ownerFiles[fg.path] {
 			sectionCap /= 2
 		}
 		if sectionCap < 1 {
