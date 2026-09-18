@@ -112,6 +112,7 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 	files := map[string]*evidenceFile{}
 	fileOrder := []string{}
 	readFile := func(file string) *evidenceFile {
+		file = filepath.ToSlash(file)
 		if entry, ok := files[file]; ok {
 			return entry
 		}
@@ -131,12 +132,13 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 	candidates := map[string]*searchEvidence{}
 	var order []*searchEvidence
 	add := func(file string, line, term int, related string, nameMatch bool) {
+		file = filepath.ToSlash(file)
 		entry := readFile(file)
 		if entry == nil || line < 1 || line > len(entry.lines) {
 			return
 		}
 		for _, delivered := range skip {
-			if delivered.FilePath == file && delivered.Span.Start <= line && line <= delivered.Span.End {
+			if filepath.ToSlash(delivered.FilePath) == file && delivered.Span.Start <= line && line <= delivered.Span.End {
 				return
 			}
 		}
@@ -243,16 +245,17 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 						continue
 					}
 					for _, ref := range refs.Refs {
-						if !isProductionSourcePath(ref.File) {
+						file := filepath.ToSlash(ref.File)
+						if !isProductionSourcePath(file) {
 							continue
 						}
-						if referenceFiles[ref.File] == "" {
-							if files[ref.File] != nil || len(referenceFiles) >= 4 || readFile(ref.File) == nil {
+						if referenceFiles[file] == "" {
+							if files[file] != nil || len(referenceFiles) >= 4 || readFile(file) == nil {
 								continue
 							}
-							referenceFiles[ref.File] = name
+							referenceFiles[file] = name
 						}
-						add(ref.File, ref.Line, -1, name, false)
+						add(file, ref.Line, -1, name, false)
 					}
 				}
 			}

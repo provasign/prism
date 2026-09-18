@@ -15,8 +15,11 @@ func TestSearchCLIExplicitZeroContextAndMergedDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "sample.txt"), []byte("before\nMATCH one\nMATCH two\nafter\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "sample.txt"), []byte("CONTEXT_BEFORE\nMATCH one\nMATCH two\nCONTEXT_AFTER\n"), 0o600); err != nil {
 		t.Fatal(err)
+	}
+	if rc := cmdIndex([]string{dir}); rc != 0 {
+		t.Fatalf("index exited %d", rc)
 	}
 	run := func(extra ...string) string {
 		t.Helper()
@@ -28,11 +31,11 @@ func TestSearchCLIExplicitZeroContextAndMergedDefault(t *testing.T) {
 		})
 	}
 	plain := run("--context", "0", "--no-bodies")
-	if strings.Contains(plain, "before") || strings.Contains(plain, "after") {
+	if strings.Contains(plain, "CONTEXT_BEFORE") || strings.Contains(plain, "CONTEXT_AFTER") {
 		t.Fatalf("explicit context=0 was ignored: %s", plain)
 	}
 	contextual := run("--no-bodies")
-	for _, text := range []string{"before", "after", "MATCH one", "MATCH two", "// root: " + dir} {
+	for _, text := range []string{"CONTEXT_BEFORE", "CONTEXT_AFTER", "MATCH one", "MATCH two", "// root: " + dir} {
 		if strings.Count(contextual, text) != 1 {
 			t.Fatalf("expected exactly one %q in merged context: %s", text, contextual)
 		}
