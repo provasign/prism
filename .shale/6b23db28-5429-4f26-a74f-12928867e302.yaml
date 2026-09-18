@@ -1,0 +1,1221 @@
+shale_version: "0"
+id: 6b23db28-5429-4f26-a74f-12928867e302
+created_at: 2026-09-14T22:19:45.633305Z
+finalized_at: 2026-09-18T00:22:40.867826Z
+agent:
+    tool: claude-code
+    model: claude-fable-5-1
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/PRISM-2.0.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-14T23:25:12.853788Z
+commands:
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/prism/docs/PRISM-2.0.md <<'EOF'
+        # Prism 2.0 — plan
+
+        Date: 2026-09-14
+        Status: proposal, not started
+
+        ## Why
+
+        Two months of paired runs (through 2026-09-06) found no cost win and a recall
+        tie for Prism as a context-delivery layer. change_impact was reached in 2 of
+        190 cells. Discovery through Prism does not beat the shell, and agents route
+        around the "Prism first on every task" steering. The one failure shape the
+        graph can catch that the compiler cannot — a wrong-scope edit through
+        interface dispatch, dynamic-language callers, or a mandated wide fix taken
+        narrow — is the one agents did not consult the graph for (full38,
+        2026-08-17: graph consulted 8/198 calls; failures edit the right file with the
+        wrong fix).
+
+        Prism 2.0 narrows the product to that failure shape. The thesis changes from
+        "deliver context cheaper" to "keep the agent from being confidently wrong
+        about what its change touches." Token savings are not the goal and are not
+        expected. The measurable claim is a lower rate of wrong-scope diffs on tasks
+        where the compiler cannot enumerate the sites.
+
+        ## What stays, what goes
+
+        Stays, unmandated: lookup, read, search, query, verify. They are
+        substitutable by the shell in most cases and cost more than they return when
+        forced. They remain available for the cases where they beat the shell (noisy
+        grep, unknown location, dynamic-language removals).
+
+        Goes: the steering and server instructions that make Prism the first action
+        on every task, and the unconditional full-verify closing step (already argued
+        in docs/verify-findings-2026-09-12.md, item 2).
+
+        Steering after 2.0 is one obligation:
+
+        > Before editing an exported, overridden, or dynamic-language symbol, call
+        > impact on it and relay its sites and gaps. Use the shell for everything
+        > else. Use prism search when the literal grep is noisy or empty.
+
+        ## The product: impact as a decision, delivered at the edit moment
+
+        ### 1. Reshape the impact payload (rendering only, no engine change)
+
+        Today toolChangeImpact (internal/mcp/tools.go) returns declarations, supers,
+        family, callers with an isTest flag and call evidence, completeness,
+        callerCoverage, and prose coverage notes. Everything needed is present; it
+        reads as a list, not a decision.
+
+        New shape, three top-level sections:
+
+        - `sites` — every affected site with a role tag: declaration, override,
+          implementation, caller, declaring-type. File, line, kind, call evidence
+          where it exists.
+        - `tests` — inbound callers in test files, separated out. Empty list is a
+          finding, not an omission.
+        - `gaps` — structured, not prose. One entry per unresolved thing:
+          `{kind: dynamic-callers|generic-interface|external-contract|heuristic-refs|
+          ambiguous-declaration, detail, suggested-check}`.
+
+        Plus `completeness` and `callerCoverage` as today. The existing coverage
+        notes in internal/mcp/impactcoverage.go become gap entries.
+
+        Both JSON and the text renderer (internal/mcp/graphtext.go) change. Tests
+        that pin the current shape (evidencedelivery_test, impactcoverage_test,
+        wideranchor_test) are updated, not weakened: every site they assert today
+        must still appear.
+
+        Gate: `go test ./...` and ci_invariants (site recall/precision must not
+        move). No A/B — rendering only.
+
+        ### 2. Summary mode (the cheap negative)
+
+        Same op, flag `summary: true`. Returns counts per section, completeness,
+        callerCoverage, and gap kinds. Target: under 100 tokens. Reuses the computed
+        result; only the emit changes.
+
+        Purpose: makes the pre-edit call cheap enough to make on every contract
+        edit, and lets the agent skip the full payload with evidence ("one caller,
+        same file, no tests, indexed") instead of on a hunch.
+
+        Gate: unit tests. No A/B.
+
+        ### 3. Diff-based impact (reframe the verify seed walk)
+
+        internal/mcp/verify.go already derives seeds from `git diff --unified=0
+        <base>` plus untracked files, filters to function/method/constructor in
+        non-test files, and runs a per-seed impact walk. It is framed and priced as a
+        terminal gate and fires in ~7% of cells, at the end.
+
+        New: `op=impact` accepting either `name` (pre-edit, symbol known) or `base`
+        (post-draft, diff known). The `base` form runs the seed walk and returns the
+        section-1 payload per seed, with no verdict and no gateFailure. verify keeps
+        its verdict semantics for the closing-gate use and for removed_symbols.
+
+        Two moments, one payload:
+
+        - before drafting: `impact(name=X, summary=true)` — decide scope before
+          choosing a design. This is the call that catches narrow-fix-where-wide-was-
+          mandated; the diff form is too late for that.
+        - after drafting: `impact(base=HEAD)` — what the actual patch touches.
+
+        Cost note: the diff form delta-reindexes first. Measure it on a large repo
+        before advertising it as mid-loop.
+
+        Gate: unit tests; ci_invariants unchanged; one-unit probe on a real task
+        before any fleet run.
+
+        ### 4. Delta payloads through the session cache
+
+        internal/mcp/graphcache.go already dedupes whole-repo results per session
+        and the read path emits `[prism:cached]` for delivered files. Extend to
+        impact: a repeat impact on the same symbol in a session returns site
+        identities plus a content hash, not bodies or call evidence, unless the
+        index changed. Cache reads compound per turn, so repeated payloads are the
+        expensive kind.
+
+        Gate: unit tests. Small.
+
+        ### 5. Delivery at the edit moment
+
+        This item decides whether 1–3 get used. Without it the obligation is a
+        sentence in a file, and 2/190 is what a sentence in a file gets.
+
+        Evidence to respect:
+
+        - Blocking channel with consequence steered ~100% (v0.50 deny hook).
+        - Advisory nudge in the same channel failed replication at n=2.
+        - The substitution hook (deny grep on every call) lost to a plain context
+          cap on cost (R1, 2026-08-30). Do not rebuild that.
+
+        This hook is different in scope: it fires on Edit/Write only, and acts only
+        when the enclosing symbol at the edit range is exported, an override, or in a
+        partial-coverage language, and impact has not been called for that symbol
+        this session. Then it denies once with the summary-mode payload as the
+        reason and passes on the retry. Every other edit passes silently.
+
+        Per-harness adapters over one shared path (resolve symbol at file:range →
+        summary → decide):
+
+        | Harness     | Mechanism available          | Adapter                                  |
+        |-------------|------------------------------|------------------------------------------|
+        | Claude Code | PreToolUse on Edit/Write     | deny-once with summary in reason         |
+        | Codex       | PostToolUse (no pre-edit)    | post-edit report against diff since last firing |
+        | Cursor      | afterFileEdit                | same as Codex                            |
+        | none / CI   | —                            | `prism impact --base` as a check humans see |
+
+        Codex agents often edit via apply_patch or shell, so the post-edit adapter
+        must recover changed ranges from the working tree, not tool args. The diff
+        seed walk from item 3 already does this; use it for both post-edit adapters.
+
+        Prerequisite: a warm path. Hooks run the CLI, and the CLI reopens the index
+        (4.05s cold vs 0.06s warm on a 1.1GB index). A hook that adds seconds to
+        every edit gets turned off. Options: a socket to the running MCP process, or
+        a small daemon the CLI dials before falling back to opening the index.
+        Build and measure this first; item 5 does not ship without it.
+
+        Gate: this is the only item with a behavioral claim. It needs the fail-fast
+        A/B gate (research/harness/ab_gate.py) before any tag, and the bed must be
+        mandated-wide-fix and dynamic-dispatch tasks — the only bed where the effect
+        can exist. Baseline arm carries zero Prism steering. n=2 is not evidence.
+        Post-edit report adapters need the same gate separately; "fact about your
+        edit" is not the advisory nudge that failed, but that is a hypothesis.
+
+        ## What is not built
+
+        - Ranking callers by "would change my diff." Needs dataflow. Call-expression
+          evidence is the cheap approximation and already exists.
+        - Making prism read satisfy the host's read-before-edit rule. Host-enforced;
+          keep the one tight native Read at the edit site.
+        - Any discovery-side work (query ranking, search budgets). Not the product.
+
+        ## Order and effort
+
+        1. Items 1 and 2 — rendering + summary flag. About a day. No A/B.
+        2. Item 3 — impact op with name|base. Reuses verify. Measure diff-form
+           latency on a large repo.
+        3. Item 4 — cache extension. Small.
+        4. Warm path (socket/daemon). Measure hook latency before writing the hook.
+        5. Item 5 adapters, Claude Code first, then Codex/Cursor, then CLI.
+        6. Steering rewrite: cut to the one obligation. Cross-layer sweep
+           (CLAUDE.md, serverInstructions in internal/mcp/server.go,
+           steeringInstructions in internal/cli/commands.go, HANDOFF.md, harness
+           isolation lists).
+
+        ## Success criterion
+
+        On a bed of mandated-wide-fix and dynamic-dispatch tasks, the Prism arm
+        produces fewer wrong-scope diffs than baseline, with tokens flat or lower.
+        If it does not, the graph does not pay for agents and the program stops.
+        That answer is worth as much as the other one.
+
+        ## Standing rules that apply
+
+        - No tag without `go test ./...` and ci_invariants green.
+        - One unit through the identical pipeline before any paid run.
+        - Behavioral claims need the fail-fast A/B gate; PASS means "not broken."
+        - Cross-layer sweep before declaring done.
+        EOF
+        echo written
+      at: 2026-09-14T22:38:54.327093Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign && find . -maxdepth 2 -type d -iname "*research*" -o -maxdepth 2 -type d -iname "*harness*" 2>/dev/null; echo "---"; find . -type d -path "*harness/runs*" 2>/dev/null | head -20
+      at: 2026-09-14T22:40:38.375734Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && find . -maxdepth 3 -type d -name "runs" 2>/dev/null; echo "---all run dirs---"; find . -type d -iname "run*" 2>/dev/null | head -30
+      at: 2026-09-14T22:40:40.602623Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/prism-accuracy-efficiency-2026-09-06/artifacts/legacy-references/harness/runs && ls -la | head -30 && echo "---" && du -sh . 2>/dev/null
+      at: 2026-09-14T22:40:42.636935Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/prism-accuracy-efficiency-2026-09-06/artifacts/legacy-references/harness/runs/wide && ls -la
+        echo "=== ab-gate ==="
+        ls -la ../ab-gate
+        echo "=== sample file ==="
+        find . -type f | head -20
+      at: 2026-09-14T22:40:46.202175Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && find . -type d \( -iname "*transcript*" -o -iname "*sessions*" -o -iname "*full38*" -o -iname "*swebench*" \) 2>/dev/null | grep -v node_modules | head -30
+        echo "=== find large json/jsonl files that might be transcripts ==="
+        find . -type f \( -iname "*.jsonl" -o -iname "*transcript*" \) 2>/dev/null | grep -v node_modules | head -30
+      at: 2026-09-14T22:40:50.506374Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && ls -la | head -20
+        echo "=== count files ==="
+        find . -type f | wc -l
+        find . -type f | sed 's/.*\.//' | sort | uniq -c
+      at: 2026-09-14T22:40:52.921318Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json
+        d = json.load(open('a2aproject__a2a-python-443.prism.json'))
+        print(type(d))
+        if isinstance(d, dict):
+            print(list(d.keys()))
+        "
+      at: 2026-09-14T22:40:57.085335Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json
+        d = json.load(open('a2aproject__a2a-python-443.prism.json'))
+        print('turns', d['turns'], 'cost', d['cost_usd'], 'prism_used', d['prism_used'])
+        print('tool_calls sample:')
+        for tc in d['tool_calls'][:10]:
+            print(tc if isinstance(tc,str) else json.dumps(tc)[:200])
+        "
+      at: 2026-09-14T22:41:01.717465Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json, glob, collections
+
+        op_counts = collections.Counter()
+        per_cell = []
+        for f in sorted(glob.glob('*.prism.json')):
+            d = json.load(open(f))
+            ops = collections.Counter()
+            for tc in d.get('tool_calls', []):
+                name = tc.get('name','') if isinstance(tc, dict) else ''
+                if name.startswith('mcp__prism__'):
+                    ops[name.replace('mcp__prism__prism_','')] += 1
+            for k,v in ops.items():
+                op_counts[k]+=v
+            per_cell.append((f, dict(ops), d.get('cost_usd'), d.get('turns'), d.get('prism_used')))
+
+        print('=== aggregate op counts across all cells ===')
+        for k,v in op_counts.most_common():
+            print(f'{k:20s} {v}')
+        print()
+        print('total cells:', len(per_cell))
+        print()
+        print('=== cells with change_impact calls ===')
+        for f, ops, cost, turns, used in per_cell:
+            if ops.get('change_impact',0) > 0:
+                print(f, ops, cost, turns)
+        "
+      at: 2026-09-14T22:41:07.684501Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json, glob
+
+        for f in sorted(glob.glob('*.prism.json')):
+            d = json.load(open(f))
+            for tc in d.get('tool_calls', []):
+                name = tc.get('name','') if isinstance(tc, dict) else ''
+                if name == 'mcp__prism__prism_search':
+                    inp = tc.get('input',{})
+                    q = inp.get('query','')
+                    regex = inp.get('regex', False)
+                    scope = inp.get('scope','')
+                    print(f'{f[:35]:35s} regex={str(regex):5s} scope={scope:8s} q={q!r}')
+        " | head -60
+      at: 2026-09-14T22:41:15.548615Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json, glob
+
+        batched = 0
+        single = 0
+        regex_used = 0
+        for f in sorted(glob.glob('*.prism.json')):
+            d = json.load(open(f))
+            for tc in d.get('tool_calls', []):
+                name = tc.get('name','') if isinstance(tc, dict) else ''
+                if name == 'mcp__prism__prism_search':
+                    inp = tc.get('input',{})
+                    q = inp.get('query','')
+                    if isinstance(q, list):
+                        batched += 1
+                    else:
+                        single += 1
+                    if inp.get('regex'):
+                        regex_used += 1
+        print('batched (multi-term) search calls:', batched)
+        print('single-term search calls:', single)
+        print('regex search calls:', regex_used)
+        "
+      at: 2026-09-14T22:41:24.650154Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json, glob
+
+        pairs = []
+        for f in sorted(glob.glob('*.prism.json')):
+            base_f = f.replace('.prism.json', '.baseline.json')
+            try:
+                p = json.load(open(f))
+                b = json.load(open(base_f))
+            except FileNotFoundError:
+                continue
+            grep_calls_base = sum(1 for tc in b.get('tool_calls',[]) if isinstance(tc,dict) and tc.get('name') in ('Grep','Bash') and 'grep' in json.dumps(tc.get('input',{})).lower())
+            pairs.append((f[:40], p['turns'], b['turns'], p['cost_usd'], b['cost_usd'], grep_calls_base))
+
+        print(f'{\"instance\":40s} {\"p_turns\":8s} {\"b_turns\":8s} {\"p_cost\":8s} {\"b_cost\":8s} {\"b_grep\":6s}')
+        for row in pairs:
+            print(f'{row[0]:40s} {row[1]:<8} {row[2]:<8} {row[3]:<8.3f} {row[4]:<8.3f} {row[5]:<6}')
+        "
+      at: 2026-09-14T22:41:31.757227Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json, glob, statistics
+
+        rows = []
+        for f in sorted(glob.glob('*.prism.json')):
+            base_f = f.replace('.prism.json', '.baseline.json')
+            try:
+                p = json.load(open(f))
+                b = json.load(open(base_f))
+            except FileNotFoundError:
+                continue
+            grep_calls_base = sum(1 for tc in b.get('tool_calls',[]) if isinstance(tc,dict) and tc.get('name') in ('Grep','Bash') and 'grep' in json.dumps(tc.get('input',{})).lower())
+            delta = b['cost_usd'] - p['cost_usd']  # positive = prism cheaper
+            rows.append((grep_calls_base, delta, f))
+
+        rows.sort()
+        xs = [r[0] for r in rows]
+        ys = [r[1] for r in rows]
+        n = len(xs)
+        mx, my = statistics.mean(xs), statistics.mean(ys)
+        cov = sum((x-mx)*(y-my) for x,y in zip(xs,ys))/n
+        sx = statistics.pstdev(xs); sy = statistics.pstdev(ys)
+        corr = cov/(sx*sy) if sx>0 and sy>0 else float('nan')
+        print('n=', n, 'pearson r (grep_count vs prism_saving) =', round(corr,3))
+        print()
+        # bucket
+        low = [d for g,d,f in rows if g<=2]
+        high = [d for g,d,f in rows if g>2]
+        print('cells with baseline grep<=2:', len(low), 'mean saving', round(statistics.mean(low),3))
+        print('cells with baseline grep>2 :', len(high), 'mean saving', round(statistics.mean(high),3))
+        "
+      at: 2026-09-14T22:41:43.117064Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json
+        d = json.load(open('IBM__mcp-context-forge-562.prism.json'))
+        print('turns', d['turns'], 'cost', d['cost_usd'], 'fresh', d['fresh_input_tokens'], 'cache_read', d['cache_read_tokens'])
+        print('permission_denials', d.get('permission_denials'))
+        print('denied_search_attempts', d.get('denied_search_attempts'))
+        print()
+        from collections import Counter
+        c = Counter()
+        for tc in d['tool_calls']:
+            c[tc.get('name','?')] += 1
+        for k,v in c.most_common():
+            print(k,v)
+        "
+      at: 2026-09-14T22:41:49.474602Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json
+        d = json.load(open('a2aproject__a2a-python-443.prism.json'))
+        print(list(d.keys()))
+        print('empty_patch', d.get('empty_patch'))
+        print('timed_out', d.get('timed_out'))
+        "
+        find .. -maxdepth 1 -iname "*score*" -o -iname "*resolved*" 2>/dev/null
+        find . -iname "*.md" -o -iname "*summary*" 2>/dev/null | head
+      at: 2026-09-14T22:41:57.91596Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && head -c 2000 full38.scored.log; echo; echo "..."; wc -l full38.scored.log
+      at: 2026-09-14T22:41:59.653413Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && python3 -c "
+        import re
+
+        text = open('full38.scored.log').read()
+        cells = text.split('==============================================================================\nCELL')[1:]
+        print('num cells', len(cells))
+
+        both_resolved=0; only_prism=0; only_baseline=0; neither=0
+        prism_fewer_redundant=0; base_fewer_redundant=0; tie_redundant=0
+        disagree = []
+        for c in cells:
+            name = c.strip().split()[0]
+            bm = re.search(r'baseline\s+(RESOLVED|FAIL)', c)
+            pm = re.search(r'prism\s+(RESOLVED|FAIL)', c)
+            if not bm or not pm: continue
+            b_res = bm.group(1)=='RESOLVED'
+            p_res = pm.group(1)=='RESOLVED'
+            if b_res and p_res: both_resolved+=1
+            elif b_res and not p_res: only_baseline+=1; disagree.append((name,'baseline_only'))
+            elif p_res and not b_res: only_prism+=1; disagree.append((name,'prism_only'))
+            else: neither+=1
+
+            br = re.search(r'baseline\s+bash=.*?retry_loops=(\d+) \((\d+) redundant\)', c, re.S)
+            pr = re.search(r'prism\s+bash=.*?retry_loops=(\d+) \((\d+) redundant\)', c, re.S)
+            if br and pr:
+                b_red = int(br.group(2)); p_red = int(pr.group(2))
+                if p_red < b_red: prism_fewer_redundant+=1
+                elif p_red > b_red: base_fewer_redundant+=1
+                else: tie_redundant+=1
+
+        print('both resolved:', both_resolved)
+        print('only baseline resolved:', only_baseline)
+        print('only prism resolved:', only_prism)
+        print('neither resolved:', neither)
+        print('disagreements:', disagree)
+        print()
+        print('redundant retry_loops: prism fewer=',prism_fewer_redundant,'baseline fewer=',base_fewer_redundant,'tie=',tie_redundant)
+        "
+      at: 2026-09-14T22:42:08.452708Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && grep -oE '(baseline|prism)\s+[A-Z_]+\s+\(' full38.scored.log | sort | uniq -c
+        echo "---retry_loops lines---"
+        grep -oE 'retry_loops=[0-9]+ \([0-9]+ redundant\)' full38.scored.log | sort | uniq -c
+      at: 2026-09-14T22:42:12.600249Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && sed -n '/CELL  a2aproject__a2a-python-394/,/^====/p' full38.scored.log | head -40
+        echo "====="
+        grep -B2 -A5 "CORRECTNESS" full38.scored.log | grep -v "^--$" | head -60
+      at: 2026-09-14T22:42:18.662953Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && python3 -c "
+        import re
+
+        text = open('full38.scored.log').read()
+        cells = text.split('==============================================================================\nCELL')[1:]
+        print('num cells', len(cells))
+
+        both_resolved=0; only_prism=0; only_baseline=0; neither=0; unequal=[]
+        for c in cells:
+            name = c.strip().split()[0]
+            bm = re.search(r'baseline\s+(RESOLVED|not resolved|VOID)', c)
+            pm = re.search(r'prism\s+(RESOLVED|not resolved|VOID)', c)
+            if not bm or not pm:
+                print('NOMATCH', name); continue
+            b_res = bm.group(1)=='RESOLVED'
+            p_res = pm.group(1)=='RESOLVED'
+            if b_res and p_res: both_resolved+=1
+            elif b_res and not p_res: only_baseline+=1; unequal.append((name,'baseline_only', bm.group(1), pm.group(1)))
+            elif p_res and not b_res: only_prism+=1; unequal.append((name,'prism_only', bm.group(1), pm.group(1)))
+            else: neither+=1
+
+        print('both resolved:', both_resolved)
+        print('only baseline resolved:', only_baseline)
+        print('only prism resolved:', only_prism)
+        print('neither resolved:', neither)
+        print()
+        for u in unequal: print(u)
+        "
+      at: 2026-09-14T22:42:25.489262Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && sed -n '/CELL  a2aproject__a2a-python-443/,/^====/p' full38.scored.log | head -40
+        echo "############"
+        sed -n '/CELL  sooperset__mcp-atlassian-581/,/^====/p' full38.scored.log | head -40
+      at: 2026-09-14T22:42:31.574964Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && awk '/CELL  a2aproject__a2a-python-443/{flag=1} flag{print} /CELL  a2aproject__a2a-python-443/{next} flag && /^====/ && NR>1 && count++{if(count>1) exit}' full38.scored.log | head -50
+      at: 2026-09-14T22:42:36.489732Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && awk '/CELL  sooperset__mcp-atlassian-581/{flag=1} flag{print; if(/^====/ && ++n==2) exit}' full38.scored.log
+      at: 2026-09-14T22:42:44.779013Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live && python3 -c "
+        import re
+        text = open('full38.scored.log').read()
+        cells = text.split('==============================================================================\nCELL')[1:]
+        print('cells', len(cells))
+        pf=bf=tie=0
+        missing=0
+        rows=[]
+        for c in cells:
+            name = c.strip().split()[0]
+            br = re.search(r'baseline\s+bash=.*?retry_loops=(\d+) \((\d+) redundant\)', c, re.S)
+            pr = re.search(r'prism\s+bash=.*?retry_loops=(\d+) \((\d+) redundant\)', c, re.S)
+            if not br or not pr:
+                missing+=1; continue
+            b_red=int(br.group(2)); p_red=int(pr.group(2))
+            rows.append((name,b_red,p_red))
+            if p_red<b_red: pf+=1
+            elif p_red>b_red: bf+=1
+            else: tie+=1
+        print('missing',missing,'prism_fewer',pf,'baseline_fewer',bf,'tie',tie)
+        for r in rows: print(r)
+        "
+      at: 2026-09-14T22:42:59.217237Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -rn "redundant" harness/*.py harness/scoring/*.py 2>/dev/null | grep -i "retry_loop\|def.*redundant" | head -10
+      at: 2026-09-14T22:43:03.976569Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "retry_redundant\|retry_runs\|def.*retry" harness/scoring/score_cell.py | head -20
+      at: 2026-09-14T22:43:06.10153Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 -c "
+        import json, collections
+        c = collections.Counter()
+        for line in open('pr-replay-netty-v3.jsonl'):
+            try:
+                d = json.loads(line)
+            except: continue
+            for tc in d.get('tool_calls', []) or []:
+                name = tc.get('name','') if isinstance(tc,dict) else ''
+                if 'prism' in name.lower():
+                    c[name]+=1
+        print(c)
+        "
+      at: 2026-09-14T22:43:23.306384Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -rl "3882\|Textualize\|on_validate_error" --include="*.json" --include="*.jsonl" --include="*.log" --include="*.md" . 2>/dev/null | grep -v node_modules | head -10
+      at: 2026-09-14T23:24:32.843947Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,40p' RESULTS-E2E.md
+      at: 2026-09-14T23:24:34.410913Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json, glob, collections
+        c = collections.Counter()
+        for f in glob.glob('*.prism.json'):
+            d = json.load(open(f))
+            for tc in d.get('tool_calls', []):
+                name = tc.get('name','') if isinstance(tc, dict) else ''
+                if name.startswith('mcp__prism__'):
+                    c[name] += 1
+        print(c)
+        "
+      at: 2026-09-14T23:34:04.460875Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json
+        d = json.load(open('a2aproject__a2a-python-443.prism.json'))
+        tt = d.get('tool_trace')
+        print(type(tt))
+        if isinstance(tt, list) and tt:
+            print(json.dumps(tt[0], indent=2)[:800])
+        elif isinstance(tt, dict):
+            print(list(tt.keys()))
+            print(json.dumps(tt, indent=2)[:800])
+        "
+      at: 2026-09-14T23:34:12.019038Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json, glob, collections
+
+        dup_files = 0
+        total_read_calls = 0
+        sessions_with_dup = 0
+        for f in glob.glob('*.prism.json'):
+            d = json.load(open(f))
+            files = collections.Counter()
+            for tc in d.get('tool_calls', []):
+                if tc.get('name') == 'mcp__prism__prism_read':
+                    total_read_calls += 1
+                    fp = tc.get('input',{}).get('file','')
+                    files[fp]+=1
+            session_dup = sum(v-1 for v in files.values() if v>1)
+            dup_files += session_dup
+            if session_dup>0: sessions_with_dup+=1
+
+        print('total prism_read calls:', total_read_calls)
+        print('calls that are a repeat of an earlier read in the SAME session:', dup_files)
+        print('sessions with at least one repeat read:', sessions_with_dup, '/', len(glob.glob('*.prism.json')))
+        "
+      at: 2026-09-14T23:34:19.532717Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/scoring && sed -n '1,40p' score_cell.py | head -40
+        echo "=== categorize ==="
+        grep -n "def categorize" -A 20 score_cell.py
+      at: 2026-09-14T23:37:47.632089Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json
+        d = json.load(open('a2aproject__a2a-python-443.prism.json'))
+        tt = d.get('tool_trace')
+        print('tool_trace len', len(tt), 'sample:', tt[:20])
+        "
+      at: 2026-09-14T23:37:51.917311Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rln "is_error\|tool_result" runners/*.py 2>/dev/null | head -5
+        echo "---"
+        grep -n "tool_trace\|tool_calls\s*=" runners/*.py 2>/dev/null | head -20
+      at: 2026-09-14T23:37:56.420459Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "is_error\|tool_result\|def.*session\|jsonl" runners/swebench_ab.py | head -30
+      at: 2026-09-14T23:37:58.286524Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "tool_calls\b" runners/swebench_ab.py | head -20
+      at: 2026-09-14T23:38:00.961521Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '370,415p' runners/swebench_ab.py
+      at: 2026-09-14T23:38:02.656188Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "\.stdout\|raw.*log\|save.*stdout\|write.*stdout" runners/swebench_ab.py | head -20
+      at: 2026-09-14T23:38:13.897197Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "def parse_stream\|tool_use\|tool_result\|is_error" runners/run_e2e.py | head -20
+      at: 2026-09-14T23:38:34.759629Z
+      classified: other
+    - cmd: grep -n "What is not built" -A 6 /Users/tapabratapal/Projects/provasign/prism/docs/PRISM-2.0.md
+      at: 2026-09-15T00:19:06.436315Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "cost_usd\|fresh_input\|cache_read\|cache_creation\|output_tokens\|total_cost\|usage" runners/swebench_ab.py | head -40
+      at: 2026-09-15T01:48:08.299973Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '625,680p' runners/swebench_ab.py; echo "=== how claude is invoked ==="; grep -n "output-format\|--model\|stream-json\|--max-turns\|subprocess\|\"claude\"\|'claude'" runners/swebench_ab.py | head -20
+      at: 2026-09-15T01:48:12.663888Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short harness | head -20; echo "=== uncommitted diff summary ==="; git diff --stat harness | tail -5; echo "=== billing mentions in uncommitted diff ==="; git diff harness | grep -n "^+.*\(billing\|cost_usd\|cache_creation\|cache_read\|long.context\|200k\|pricing\)" | head -30
+      at: 2026-09-15T01:48:41.78723Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rn -i "console\|invoice\|reconcil\|long.context\|200k\|200,000\|pricing\|price table\|cost.*wrong\|double.count" docs/*.md scoring/*.py aggregate/*.py runners/swebench_ab.py runners/run_e2e.py 2>/dev/null | grep -v node_modules | head -40
+      at: 2026-09-15T01:48:45.382125Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,120p' aggregate/usage_account.py
+      at: 2026-09-15T01:48:49.597349Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,60p' lib/pricing.py; echo "=== long-context handling ==="; grep -n -i "long\|200\|tier\|premium\|1h\|ttl\|cache_creation\|write" lib/pricing.py | head -20
+      at: 2026-09-15T01:49:06.76117Z
+      classified: other
+    - cmd: ls -d ~/.claude/projects/*swebench* 2>/dev/null | head; echo "=== jsonl counts per swebench project dir ==="; for d in ~/.claude/projects/*swebench*; do echo "$(ls "$d"/*.jsonl 2>/dev/null | wc -l) $d"; done 2>/dev/null | sort -rn | head -10; echo "=== total ==="; ls ~/.claude/projects/*swebench*/*.jsonl 2>/dev/null | wc -l
+      at: 2026-09-15T01:49:14.394655Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '120,220p' aggregate/usage_account.py; echo "=== CODING_SUITE pricing note ==="; sed -n '55,95p' docs/CODING_SUITE.md
+      at: 2026-09-15T01:49:29.242343Z
+      classified: other
+    - cmd: |-
+        mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/recompute_full38.py <<'EOF'
+        import json, glob, os, sys, datetime
+        from pathlib import Path
+        sys.path.insert(0, '/Users/tapabratapal/Projects/provasign/research/harness')
+        from aggregate.usage_account import analyze_transcript
+
+        FULL38 = Path('/Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38')
+        PROJ = Path.home() / '.claude' / 'projects'
+
+        def proj_dir(instance, arm):
+            return PROJ / f"-private-tmp-swebench-wt-{instance.replace('__','--')}--{arm}"
+
+        rows = []
+        missing = 0
+        for f in sorted(FULL38.glob('*.json')):
+            rec = json.load(open(f))
+            inst, arm = rec['instance_id'], rec['arm']
+            d = proj_dir(inst, arm)
+            if not d.exists():
+                missing += 1; continue
+            # candidate transcripts: pick the one whose assistant message count is closest to rec turns
+            best = None
+            for jl in d.glob('*.jsonl'):
+                a = analyze_transcript(jl)
+                # per-request max context
+                maxctx = 0; n_over200k = 0; n_req = 0
+                for line in open(jl, errors='replace'):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get('type') != 'assistant' or j.get('isSidechain') or j.get('parent_tool_use_id'): continue
+                    u = (j.get('message') or {}).get('usage') or {}
+                    ctx = sum(u.get(k, 0) or 0 for k in ('input_tokens','cache_creation_input_tokens','cache_read_input_tokens'))
+                    if ctx > maxctx: maxctx = ctx
+                mtime = datetime.datetime.fromtimestamp(jl.stat().st_mtime).date().isoformat()
+                cand = (abs(a['messages'] - (rec['turns'] or 0)), mtime, a, maxctx, jl.name)
+                if best is None or cand[0] < best[0]: best = cand
+            if best is None:
+                missing += 1; continue
+            diff, mtime, a, maxctx, name = best
+            t = a['tokens']
+            rec_fresh = rec['fresh_input_tokens']; rec_cache = rec['cache_read_tokens']; rec_out = rec['output_tokens']
+            tr_fresh = (t['input_uncached'] or 0) + (t['cache_creation'] or 0)
+            rows.append(dict(inst=inst[:28], arm=arm, turns=rec['turns'], msgs=a['messages'], mtime=mtime,
+                             rec_fresh=rec_fresh, tr_fresh=tr_fresh,
+                             rec_cache=rec_cache, tr_cache=t['cache_read'],
+                             rec_out=rec_out, tr_out_step=a['step_output_observed'],
+                             maxctx=maxctx, cost=rec['cost_usd'], dup=a['duplicate_lines'], warn=len(a['warnings'])))
+
+        print(f"cells matched: {len(rows)}  missing transcript dir: {missing}")
+        print(f"{'inst':28} {'arm':8} {'turns':>5} {'msgs':>5} {'mtime':10} {'rec_fresh':>9} {'tr_fresh':>9} {'rec_cache':>10} {'tr_cache':>10} {'rec_out':>7} {'tr_out':>7} {'maxctx':>7} {'cost':>6}")
+        for r in rows:
+            print(f"{r['inst']:28} {r['arm']:8} {r['turns']:>5} {r['msgs']:>5} {r['mtime']:10} {r['rec_fresh']:>9} {r['tr_fresh']:>9} {r['rec_cache']:>10} {str(r['tr_cache']):>10} {r['rec_out']:>7} {str(r['tr_out_step']):>7} {r['maxctx']:>7} {r['cost']:>6.2f}")
+        # summary ratios where transcript date matches Aug 2026 and turn diff small
+        import statistics
+        ok = [r for r in rows if r['tr_cache'] is not None and r['rec_cache']]
+        if ok:
+            print()
+            print("cache_read ratio transcript/recorded:", [round(r['tr_cache']/r['rec_cache'],2) for r in ok][:20])
+            print("fresh ratio transcript/recorded:", [round(r['tr_fresh']/r['rec_fresh'],2) if r['rec_fresh'] else None for r in ok][:20])
+            print("cells with any request context > 200k:", sum(1 for r in rows if r['maxctx'] > 200_000), "/", len(rows))
+            print("max single-request context overall:", max(r['maxctx'] for r in rows))
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/recompute_full38.py 2>&1 | head -100
+      at: 2026-09-15T01:49:53.750784Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -i '' "s|for f in sorted(FULL38.glob('\*.json')):|for f in sorted(list(FULL38.glob('*.baseline.json')) + list(FULL38.glob('*.prism.json'))):|" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/recompute_full38.py && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/recompute_full38.py 2>&1 | head -100
+      at: 2026-09-15T01:50:01.856308Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/fit_cost.py <<'EOF'
+        import json, sys, datetime
+        from pathlib import Path
+        sys.path.insert(0, '/Users/tapabratapal/Projects/provasign/research/harness')
+        from aggregate.usage_account import analyze_transcript
+        FULL38 = Path('/Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38')
+        PROJ = Path.home()/'.claude'/'projects'
+        X=[]; y=[]; names=[]
+        for f in sorted(list(FULL38.glob('*.baseline.json'))+list(FULL38.glob('*.prism.json'))):
+            rec=json.load(open(f)); inst,arm=rec['instance_id'],rec['arm']
+            d=PROJ/f"-private-tmp-swebench-wt-{inst.replace('__','--')}--{arm}"
+            for jl in d.glob('*.jsonl'):
+                a=analyze_transcript(jl); t=a['tokens']
+                if t['cache_read']==rec['cache_read_tokens'] and (t['input_uncached'] or 0)+(t['cache_creation'] or 0)==rec['fresh_input_tokens'] and rec['cost_usd']:
+                    X.append([t['input_uncached'],t['cache_creation'],t['cache_read'],rec['output_tokens']]); y.append(rec['cost_usd']); names.append(f.name); break
+        import numpy as np
+        X=np.array(X,float); y=np.array(y)
+        print("exact-match cells used for fit:",len(y))
+        coef,res,rank,sv=np.linalg.lstsq(X,y,rcond=None)
+        pred=X@coef; resid=y-pred
+        print("implied $/Mtok  input=%.3f cache_write=%.3f cache_read=%.4f output=%.3f"%tuple(coef*1e6))
+        print("max |resid| $%.4f  mean |resid| $%.4f  max rel err %.2f%%"%(abs(resid).max(),abs(resid).mean(),100*abs(resid/y).max()))
+        print("share of cost by category (sum over cells): input %.1f%% cache_write %.1f%% cache_read %.1f%% output %.1f%%"%tuple(100*(X*coef).sum(0)/(X@coef).sum()))
+        # also: how much of fresh is cache_creation
+        print("cache_creation / (input+cache_creation) overall: %.2f"%(X[:,1].sum()/(X[:,0].sum()+X[:,1].sum())))
+        worst=np.argsort(-abs(resid))[:5]
+        for i in worst: print("  worst:",names[i],"cost",y[i],"pred %.3f"%pred[i])
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/fit_cost.py
+      at: 2026-09-15T01:50:40.077635Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/meta_check.py <<'EOF'
+        import json, sys, collections
+        from pathlib import Path
+        sys.path.insert(0, '/Users/tapabratapal/Projects/provasign/research/harness')
+        from aggregate.usage_account import analyze_transcript
+        FULL38 = Path('/Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38')
+        PROJ = Path.home()/'.claude'/'projects'
+        models=collections.Counter(); versions=collections.Counter(); sidechain_lines=0; sidechain_cells=0; ttl=collections.Counter(); sc_tokens=0
+        for f in sorted(list(FULL38.glob('*.baseline.json'))+list(FULL38.glob('*.prism.json'))):
+            rec=json.load(open(f)); inst,arm=rec['instance_id'],rec['arm']
+            d=PROJ/f"-private-tmp-swebench-wt-{inst.replace('__','--')}--{arm}"
+            for jl in d.glob('*.jsonl'):
+                a=analyze_transcript(jl); t=a['tokens']
+                if t['cache_read']!=rec['cache_read_tokens']: continue
+                sc=0
+                for line in open(jl, errors='replace'):
+                    try: j=json.loads(line)
+                    except: continue
+                    if j.get('version'): versions[j['version']]+=1
+                    if j.get('isSidechain') or j.get('parent_tool_use_id'):
+                        sc+=1
+                        u=((j.get('message') or {}).get('usage') or {})
+                        sc_tokens+=sum(u.get(k,0) or 0 for k in ('input_tokens','cache_creation_input_tokens','cache_read_input_tokens','output_tokens'))
+                    if j.get('type')=='assistant':
+                        m=j.get('message') or {}
+                        if m.get('model'): models[m['model']]+=1
+                        u=m.get('usage') or {}
+                        cc=u.get('cache_creation') or {}
+                        if isinstance(cc,dict):
+                            for k,v in cc.items():
+                                if v: ttl[k]+=v
+                sidechain_lines+=sc; sidechain_cells+= (1 if sc else 0)
+                break
+        print("models:",dict(models))
+        print("claude versions:",dict(versions))
+        print("sidechain lines:",sidechain_lines,"cells with sidechain:",sidechain_cells,"sidechain tokens(all cats):",sc_tokens)
+        print("cache_creation breakdown by TTL (tokens):",dict(ttl))
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/6b23db28-5429-4f26-a74f-12928867e302/scratchpad/meta_check.py
+      at: 2026-09-15T01:51:19.985034Z
+      classified: other
+    - cmd: grep -n -i "1h\|1-hour\|2x\|2×\|1.25\|0.1x\|10%\|multipl\|write.*price\|cache read.*\$" /private/tmp/claude-501/bundled-skills/2.1.270/b33a4b3fed046349a21a15bb521b3c04/claude-api/shared/prompt-caching.md | head -15
+      at: 2026-09-15T01:51:34.090659Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md'; s=open(p).read()
+        line='- [Cost accounting verified (full38)](project_cost_accounting_verified.md) — 2026-09-14: token counts match transcript recompute exactly; CLI cost = Opus 5 list with 1h cache at 2x, fit error 0.65%; arithmetic is not the noise source; transcripts survive in ~/.claude/projects\n'
+        if 'project_cost_accounting_verified' not in s:
+            s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1); open(p,'w').write(s)
+        print('ok')
+        EOF
+      at: 2026-09-15T01:52:05.522778Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/swebench-live/full38 && python3 -c "
+        import json,glob
+        recs=[json.load(open(f)) for f in glob.glob('*.baseline.json')+glob.glob('*.prism.json')]
+        print('cells',len(recs))
+        for k in ('fresh_input_tokens','cache_read_tokens','output_tokens'):
+            print(k, sum(r[k] for r in recs))
+        print('cost_usd total', round(sum(r['cost_usd'] for r in recs),2))
+        "; echo "=== requestId / retry evidence in one transcript ==="; f=$(ls ~/.claude/projects/-private-tmp-swebench-wt-sooperset--mcp-atlassian-581--baseline/*.jsonl | head -1); python3 -c "
+        import json,sys,collections
+        c=collections.Counter(); rids=set(); mids=set(); stop=collections.Counter()
+        for line in open('$f'):
+            try: j=json.loads(line)
+            except: continue
+            c[j.get('type')]+=1
+            if j.get('type')=='assistant':
+                m=j['message']; mids.add(m.get('id')); rids.add(j.get('requestId')); stop[m.get('stop_reason')]+=1
+        print(dict(c)); print('assistant message ids',len(mids),'requestIds',len(rids)); print('stop_reasons',dict(stop))
+        "
+      at: 2026-09-15T01:55:07.954905Z
+      classified: other
+    - cmd: git status --short | head -20; echo "=== diff stat ==="; git diff --stat | tail -8; echo "=== recent commits ==="; git log --oneline -5
+      at: 2026-09-15T11:46:58.47901Z
+      classified: other
+    - cmd: git diff internal/cli/commands.go internal/mcp/server.go internal/mcp/tools.go
+      at: 2026-09-15T11:47:01.13301Z
+      classified: other
+    - cmd: git diff internal/cli/steeringdelivery_test.go
+      at: 2026-09-15T11:47:17.519011Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -25
+      at: 2026-09-15T11:47:56.906114Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/cli/ ./internal/mcp/ 2>&1 | grep -E "^(--- FAIL|ok |FAIL)" | sort | uniq -c
+      at: 2026-09-15T11:48:22.86579Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/cli/ -run 'TestSteeringRoutesDiscoveryFromNativeAnchors|TestSteeringBlock_PrismAccessFallbacks|TestSteeringBlock_CoversBothSurfaces|TestWriteSteeringInstructions_UpgradesStaleSection|TestCmdInit_ModeFlagAcceptedAndIgnored' 2>&1 | grep -v "^=== RUN" | head -40
+      at: 2026-09-15T11:48:32.041141Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/cli/ -run 'TestSteeringRoutesDiscoveryFromNativeAnchors$' -v 2>&1 | grep -v "^=== RUN" | head -15
+      at: 2026-09-15T11:48:41.767253Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign && echo "=== root repo status ==="; git status --short | head; echo "=== old phrase still present in checked-in files ==="; grep -rl "Repository discovery starts with Prism" --include="*.md" --include="*.json" --include="*.toml" --include="*.yaml" . 2>/dev/null | grep -v node_modules | grep -v "/research/harness/results/" | head -20
+      at: 2026-09-15T11:48:59.154117Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re, subprocess
+        def desc(src):
+            m = re.search(r'"name":\s+"prism",\s*\n\s*"description": "((?:[^"\\]|\\.)*)"', src)
+            return len(m.group(1).encode()) if m else None
+        def instr(src, name):
+            m = re.search(r'const '+name+r' = ((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+)', src)
+            if not m: return None
+            return sum(len(s.encode()) for s in re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1)))
+        old_tools = subprocess.run(['git','show','HEAD:internal/mcp/tools.go'],capture_output=True,text=True).stdout
+        new_tools = open('internal/mcp/tools.go').read()
+        old_srv = subprocess.run(['git','show','HEAD:internal/mcp/server.go'],capture_output=True,text=True).stdout
+        new_srv = open('internal/mcp/server.go').read()
+        print("tool description bytes: old", desc(old_tools), "new", desc(new_tools))
+        print("serverInstructions bytes: old", instr(old_srv,'serverInstructions'), "new", instr(new_srv,'serverInstructions'))
+        print("compactServerInstructions bytes: old", instr(old_srv,'compactServerInstructions'), "new = serverInstructions")
+        EOF
+      at: 2026-09-15T11:49:11.329187Z
+      classified: other
+    - cmd: find internal -maxdepth 1 -type d | sort
+      at: 2026-09-15T22:11:36.996728Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/mcp && wc -l tools.go verify.go server.go impactcoverage.go graphcache.go hypothesisledger.go textmerge.go externalfamily.go lookupbatch.go graphtext.go 2>/dev/null
+      at: 2026-09-15T22:12:02.268345Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/mcp && ls *_test.go
+      at: 2026-09-15T22:12:08.510485Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism/internal/grove
+      at: 2026-09-15T22:12:10.404335Z
+      classified: other
+    - cmd: wc -l /Users/tapabratapal/Projects/provasign/prism/internal/grove/client.go /Users/tapabratapal/Projects/provasign/prism/internal/grove/preview.go /Users/tapabratapal/Projects/provasign/prism/internal/grove/types.go
+      at: 2026-09-15T22:12:12.014932Z
+      classified: other
+    - cmd: for d in internal/assist internal/compression internal/config internal/httpapi internal/ranking internal/session internal/textsearch internal/version internal/view; do echo "== $d =="; find "$d" -name '*.go' ! -name '*_test.go'; done
+      at: 2026-09-15T22:12:17.854799Z
+      classified: other
+    - cmd: |-
+        for f in internal/assist/provider.go internal/assist/assist.go internal/compression/compressor.go internal/config/config.go internal/httpapi/http.go internal/ranking/budget.go internal/ranking/profiles.go internal/session/confidence.go internal/session/ledger.go internal/session/tracker.go internal/session/file_lock.go internal/textsearch/native.go internal/textsearch/textsearch.go internal/textsearch/count.go internal/version/version.go internal/view/arch.go internal/view/view.go; do
+          echo "=== $f ==="
+          grep -nE '//.*([0-9]|always|never|must|guarantee|see |matches|ensures|only|exactly|invariant)' "$f" -i
+        done
+      at: 2026-09-15T22:12:22.739287Z
+      classified: other
+    - cmd: grep -n "grove " go.mod | head -5; echo ---; go list -m github.com/provasign/grove 2>/dev/null; echo ---; find / -maxdepth 6 -iname "grove" -type d 2>/dev/null | grep -v provasign/prism
+      at: 2026-09-15T22:12:30.831347Z
+      classified: other
+    - cmd: go env GOMODCACHE 2>/dev/null; find $(go env GOMODCACHE 2>/dev/null) -maxdepth 1 -iname "grove@*" 2>/dev/null
+      at: 2026-09-15T22:12:34.104345Z
+      classified: other
+    - cmd: grep -n "replace\|provasign/grove" go.mod
+      at: 2026-09-15T22:12:36.07816Z
+      classified: other
+    - cmd: grep -n "SavingsPercent" internal/session/ledger.go
+      at: 2026-09-15T22:12:36.903047Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '1,500p'
+      at: 2026-09-15T22:12:37.545861Z
+      classified: other
+    - cmd: find /Users/tapabratapal/go/pkg/mod/github.com/provasign -maxdepth 1 2>/dev/null; ls /Users/tapabratapal/Projects/provasign/prism/vendor 2>/dev/null; cat /Users/tapabratapal/Projects/provasign/prism/go.sum 2>/dev/null | grep grove
+      at: 2026-09-15T22:12:38.705563Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && grep -rn "EdgeType\b" pkg/grove/*.go | grep -i "= \"" | head -30
+      at: 2026-09-15T22:12:40.97633Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && grep -rn "EdgeCalls\|EdgeUsesType\|EdgeTests\|\"tests\"" pkg/grove/*.go internal/**/*.go 2>/dev/null | head -30
+      at: 2026-09-15T22:12:42.799489Z
+      classified: other
+    - cmd: grep -n "MaxHits\s*=\|MaxPerFile\s*=\|DefaultMaxHits\|DefaultMaxPerFile\|== 0 {" internal/textsearch/textsearch.go | head -40
+      at: 2026-09-15T22:12:43.200371Z
+      classified: other
+    - cmd: sleep 1
+      at: 2026-09-15T22:12:43.760334Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '500,1000p'
+      at: 2026-09-15T22:12:44.149057Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && sed -n '40,70p' pkg/grove/grove.go; echo ---; grep -rn "EdgeTests" --include=*.go . | grep -v _test.go
+      at: 2026-09-15T22:12:45.791535Z
+      classified: other
+    - cmd: sleep 2
+      at: 2026-09-15T22:12:47.269067Z
+      classified: other
+    - cmd: grep -n "MaxSites" internal/view/*.go
+      at: 2026-09-15T22:12:49.01433Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && grep -n "func.*ChangeImpact\|Callers\b" internal/graph/changeimpact.go | head -30
+      at: 2026-09-15T22:12:50.29411Z
+      classified: other
+    - cmd: grep -n "include_bodies\|maxBodies\|bodyCap\|up to two\|up to four" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-15T22:12:50.319656Z
+      classified: other
+    - cmd: echo waiting
+      at: 2026-09-15T22:12:51.039972Z
+      classified: other
+    - cmd: grep -rn "include_bodies\|IncludeBodies\|maxBodies\|bodyLimit\|bodiesLimit" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go | grep -v _test.go
+      at: 2026-09-15T22:12:52.331467Z
+      classified: other
+    - cmd: grep -n "func.*toolSearch\|func.*searchevidence\|bodies\b" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -50
+      at: 2026-09-15T22:12:54.62232Z
+      classified: other
+    - cmd: grep -n "compactSearchBodiesEnclosing\|func.*BodiesEnclosing" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go
+      at: 2026-09-15T22:12:56.512314Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/prism/internal/cli/*.go | grep -v _test
+      at: 2026-09-15T22:12:57.428953Z
+      classified: other
+    - cmd: sed -n '280,420p' internal/textsearch/textsearch.go
+      at: 2026-09-15T22:12:57.579814Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && grep -n "SymbolKind\|LineRange" pkg/grove/grove.go
+      at: 2026-09-15T22:12:57.631199Z
+      classified: other
+    - cmd: grep -n "'-e'\|\"-e\"\|exec.Command.*grep\|exec.Command.*rg" internal/textsearch/textsearch.go
+      at: 2026-09-15T22:12:58.67966Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && grep -rn "func QuickStatus\|func.*Status(ctx" pkg/grove/*.go
+      at: 2026-09-15T22:12:59.311586Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && sed -n '240,320p' pkg/grove/grove.go
+      at: 2026-09-15T22:13:00.735674Z
+      classified: other
+    - cmd: grep -n "perTerm\|maxCandidates\|len(order)\|cap :=\|firstSeen\|:= 2\b\|:= 4\b\|MaxBodies\|budget" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/searchevidence.go | head -60
+      at: 2026-09-15T22:13:00.810013Z
+      classified: other
+    - cmd: sed -n '1,60p' internal/assist/provider.go
+      at: 2026-09-15T22:13:01.763346Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.2 && grep -n "func Diff(" pkg/grove/*.go internal/**/*.go 2>/dev/null
+      at: 2026-09-15T22:13:02.767155Z
+      classified: other
+    - cmd: grep -rn "SavingsPercent()" --include=*.go | grep -v _test.go
+      at: 2026-09-15T22:13:04.202059Z
+      classified: other
+    - cmd: grep -rn "SavingsPercent()" --include='*.go' . | grep -v _test.go
+      at: 2026-09-15T22:13:05.984934Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/grove && grep -n "v0\.\|grove v\|version" client.go client_test.go graph_test.go preview.go types.go
+      at: 2026-09-15T22:13:06.106816Z
+      classified: other
+    - cmd: grep -n "func steeringInstructions\|const steeringInstructions" -A2 /Users/tapabratapal/Projects/provasign/prism/internal/cli/commands.go | head -5; echo ---; grep -rn "name.*impact takes one\|takes one" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go | head
+      at: 2026-09-15T22:13:07.489895Z
+      classified: other
+    - cmd: grep -rn "compactSearchBodiesEnclosingExcept\|compactSearchBodiesLegacy\|compactSearchBodiesEnclosing\b\|prism_drift\|func.*graphtext\|renderQuerySourceAsText\|renderSearchAsText\|renderReadAsText\|renderChangeImpactAsText\|renderLookupAsText\|renderVerifyAsText" internal/mcp/*.go
+      at: 2026-09-15T22:13:09.406639Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/grove && sed -n '85,135p' graph_test.go
+      at: 2026-09-15T22:13:10.384019Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '1000,1600p'
+      at: 2026-09-15T22:13:13.935791Z
+      classified: other
+    - cmd: grep -n "rawText" -r /Users/tapabratapal/Projects/provasign/prism/internal/mcp/ 2>/dev/null
+      at: 2026-09-15T22:13:14.524483Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/grove && grep -n "^\s*//" client_test.go | head -60
+      at: 2026-09-15T22:13:15.309815Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/grove && grep -n "^\s*//" client.go | wc -l
+      at: 2026-09-15T22:13:17.897468Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '1600,2200p'
+      at: 2026-09-15T22:13:18.27806Z
+      classified: other
+    - cmd: grep -rn "anySlice" internal/mcp/ | head -30
+      at: 2026-09-15T22:13:19.694568Z
+      classified: other
+    - cmd: grep -n "func.*lookupSymbol\|\"symbol\":\|\"content\":" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -50
+      at: 2026-09-15T22:13:19.769425Z
+      classified: other
+    - cmd: grep -n "// .*\(always\|never\|must\|guaranteed\|exactly\|see \|matches \|same as\|handles this\)" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-09-15T22:13:21.332561Z
+      classified: other
+    - cmd: grep -rn "^func anySlice" internal/mcp/
+      at: 2026-09-15T22:13:21.566463Z
+      classified: other
+    - cmd: grep -n "RawText" -r /Users/tapabratapal/Projects/provasign/prism/internal/grove/*.go | grep -i "json:\|struct" | head -20
+      at: 2026-09-15T22:13:23.62786Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '2370,2460p'
+      at: 2026-09-15T22:13:24.531589Z
+      classified: other
+    - cmd: grep -rn "10000\|100000\|10,000\|100,000\|PerFileCap\|TotalCap\|maxHits\|MaxHits" internal/textsearch/*.go | head -40
+      at: 2026-09-15T22:13:25.082165Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '2600,2700p'
+      at: 2026-09-15T22:13:26.823138Z
+      classified: other
+    - cmd: grep -rn "isVerifiedTestCaller" internal/mcp/*.go
+      at: 2026-09-15T22:13:27.698014Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '2200,2380p'
+      at: 2026-09-15T22:13:29.24023Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '2700,3170p'
+      at: 2026-09-15T22:13:31.356257Z
+      classified: other
+    - cmd: cat -n /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | sed -n '3170,3717p'
+      at: 2026-09-15T22:13:33.643209Z
+      classified: other
+    - cmd: grep -n "max_files\|maxFiles" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go | grep -v _test.go
+      at: 2026-09-15T22:13:37.966624Z
+      classified: other
+    - cmd: grep -rln "prism_arch_check\|ArchDeny\|MinTier\|heuristic" internal/mcp/*.go | grep -v _test
+      at: 2026-09-15T22:13:39.166464Z
+      classified: other
+    - cmd: grep -n "sourceDeliveryMaxFiles" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/*.go
+      at: 2026-09-15T22:13:39.928631Z
+      classified: other
+    - cmd: grep -n "archStatus\|MinTier\|heuristic\|CheckRules\|func.*[Aa]rch" internal/mcp/viewtools.go | head -60
+      at: 2026-09-15T22:13:40.822751Z
+      classified: other
+    - cmd: grep -n "func toolSchema\|toolSchema(name)" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head
+      at: 2026-09-15T22:13:45.520757Z
+      classified: other
+    - cmd: echo waiting
+      at: 2026-09-15T22:13:56.893885Z
+      classified: other
+    - cmd: grep -n "always\|never\|must\|guarantee\|exactly\|Exactly\|Never\|Always\|Must" internal/mcp/verify.go internal/mcp/verify_test.go
+      at: 2026-09-15T22:13:56.990041Z
+      classified: other
+    - cmd: echo waiting
+      at: 2026-09-15T22:14:00.408612Z
+      classified: other
+    - cmd: echo waiting
+      at: 2026-09-15T22:14:05.643191Z
+      classified: other
+    - cmd: grep -n "FIRST\|LAST\|first\|last" internal/mcp/verify.go
+      at: 2026-09-15T22:14:11.730925Z
+      classified: other
+    - cmd: GOWORK=off go run /tmp/t.go
+      at: 2026-09-15T22:14:21.716491Z
+      classified: other
+    - cmd: |-
+        cat <<'EOF' > /tmp/t2.go
+        package main
+
+        import "fmt"
+
+        func isIdentByte(b byte) bool {
+        	return b == '_' || ('a' <= b && b <= 'z') || ('A' <= b && b <= 'Z') || ('0' <= b && b <= '9')
+        }
+
+        func methodLeafInSig(sig string) string {
+        	for k := 0; k < len(sig); k++ {
+        		if sig[k] != '(' {
+        			continue
+        		}
+        		e := k
+        		s := e
+        		for s > 0 && isIdentByte(sig[s-1]) {
+        			s--
+        		}
+        		if s < e {
+        			return sig[s:e]
+        		}
+        	}
+        	return ""
+        }
+
+        func main() {
+        	// Realistic Go method signature: a handler-registration method taking a
+        	// function-typed parameter. "func(" is itself an ident-preceded paren
+        	// (the keyword "func" is made of ident bytes), and it comes BEFORE the
+        	// real method name's paren.
+        	sig := "func (p *Plugin) Register(handler func(x int) string)"
+        	fmt.Println("got:", methodLeafInSig(sig))
+        }
+        EOF
+        GOWORK=off go run /tmp/t2.go
+      at: 2026-09-15T22:14:33.88834Z
+      classified: other
+    - cmd: grep -n "see \|handles this\|same as\|matches \|matches the\|as does\|like X\|handled by\|handled in" internal/mcp/verify.go
+      at: 2026-09-15T22:14:46.111948Z
+      classified: other
+    - cmd: grep -n "\"exhaustive\"\|\"scope\"\|Exhaustive" internal/mcp/searchtext.go internal/mcp/tools.go 2>/dev/null | head -20
+      at: 2026-09-15T22:15:04.089316Z
+      classified: other
+    - cmd: rm -f /tmp/t.go /tmp/t2.go
+      at: 2026-09-15T22:15:07.358634Z
+      classified: other
+    - cmd: echo "=== branch/status ===" && git status && echo && echo "=== unpushed commits ===" && git log --oneline @{u}..HEAD 2>&1 && echo && echo "=== upstream vs local ===" && git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>&1
+      at: 2026-09-17T21:22:12.519058Z
+      classified: other
+    - cmd: echo "=== commit 9e6b80f ===" && git show --stat 9e6b80f | head -20 && echo && echo "=== commit 6110016 ===" && git show --stat 6110016 | head -20
+      at: 2026-09-17T21:22:20.611823Z
+      classified: other
+    - cmd: echo "=== build ===" && GOWORK=off go build ./... 2>&1 | head -50
+      at: 2026-09-17T21:22:33.187627Z
+      classified: build
+    - cmd: git diff --stat
+      at: 2026-09-17T21:22:35.582375Z
+      classified: other
+    - cmd: GOWORK=off go test ./... 2>&1 | grep -Ev "^ok" | head -80
+      at: 2026-09-17T21:22:59.097449Z
+      classified: test
+    - cmd: git diff internal/cli/commands.go
+      at: 2026-09-17T21:23:03.758502Z
+      classified: other
+    - cmd: git diff internal/mcp/server.go
+      at: 2026-09-17T21:23:10.646159Z
+      classified: other
+    - cmd: echo "=== native grep ===" && grep -rn "grepProxyMode" --include="*.go" . | tee /tmp/grep_out.txt | wc -c; echo "--- lines ---"; wc -l /tmp/grep_out.txt
+      at: 2026-09-17T21:25:43.73335Z
+      classified: other
+    - cmd: GOWORK=off go build -o /tmp/prismbin ./cmd/prism 2>&1 | tail -20 && /tmp/prismbin search grepProxyMode --scope text --no-bodies --format text . 2>&1 | tee /tmp/prism_text.txt | wc -c && echo "--- json ---" && /tmp/prismbin search grepProxyMode --scope text --no-bodies --format json . 2>&1 | tee /tmp/prism_json.txt | wc -c
+      at: 2026-09-17T21:25:54.588759Z
+      classified: build
+    - cmd: cat /tmp/prism_text.txt; echo; echo "=== JSON ==="; cat /tmp/prism_json.txt
+      at: 2026-09-17T21:25:58.626111Z
+      classified: other
+    - cmd: |-
+        /tmp/prismbin search --dir . --scope text --no-bodies grepProxyMode --format text > /tmp/prism_text2.txt 2>&1; wc -c /tmp/prism_text2.txt; echo "---content---"; cat /tmp/prism_text2.txt
+        echo
+        echo "=== breaking down the fixed overhead lines ==="
+        head -3 /tmp/prism_text2.txt | awk '{print length, $0}'
+      at: 2026-09-17T21:26:11.972457Z
+      classified: other
+notes: []
+redactions: 0
