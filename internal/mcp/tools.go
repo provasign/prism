@@ -400,7 +400,7 @@ func CompactToolSchemas() []map[string]any {
 					"to":   map[string]any{"type": "integer", "minimum": 1},
 				}},
 		}),
-		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10).", stringOrList()),
+		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10). For multiple terms, use comma-delimited JSON string values in an array, for example [\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string.", stringOrList()),
 		"scope":           prop("search", "both|text|symbols.", map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}}),
 		"paths":           prop("search,query", "Repo-relative paths.", stringOrList()),
 		"glob":            prop("search,query", "File glob(s).", stringOrList()),
@@ -1046,6 +1046,11 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	return h.toolQueryScoped(ctx, args, searchScope{})
 }
 
+func formatQueryTerms(terms []string) string {
+	encoded, _ := json.Marshal(terms)
+	return string(encoded)
+}
+
 func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scope searchScope) (any, error) {
 	timing := os.Getenv("PRISM_TIMING") != ""
 	tQuery := time.Now()
@@ -1201,7 +1206,7 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 	if len(out.Symbols) == 0 && len(out.TextMatches) == 0 {
 		switch {
 		case len(sel.seeds) == 0:
-			out.Note = fmt.Sprintf("no symbols matched terms %v under project root %s; check term spelling and that the code lives under this root", terms, h.Root)
+			out.Note = fmt.Sprintf("no symbols matched terms %s under project root %s; check term spelling and that the code lives under this root", formatQueryTerms(terms), h.Root)
 		default:
 			out.Note = "seeds matched but nothing fit the requested include categories/budget; try include=[\"graph\"] or a larger budget"
 		}

@@ -118,9 +118,19 @@ func TestCompactGuidanceBatchesExactTermsAndReusesSource(t *testing.T) {
 	if !strings.Contains(terms, "Batch identifiers or exact substrings") {
 		t.Fatalf("terms field does not suggest one batched search: %q", terms)
 	}
+	for _, want := range []string{`["alpha","beta"]`, "never combine distinct terms in one space-delimited string"} {
+		if !strings.Contains(terms, want) {
+			t.Errorf("terms field omits term-boundary guidance %q: %q", want, terms)
+		}
+	}
 	for _, want := range []string{"Batch known identifiers or exact substrings in one search", "Do not re-read unchanged source"} {
 		if !strings.Contains(compactServerInstructions, want) {
 			t.Errorf("compact initialize instructions omit %q", want)
+		}
+	}
+	for _, want := range []string{`terms:["alpha","beta"]`, "never combine distinct terms in one space-delimited string"} {
+		if !strings.Contains(compactServerInstructions, want) {
+			t.Errorf("compact initialize instructions omit term-boundary guidance %q", want)
 		}
 	}
 	for _, want := range []string{"Optional op=verify", "Python", "unchecked JavaScript", "PHP", "TypeScript", "checked JavaScript", "Go, Java, Rust, C/C++, or C#"} {
@@ -130,6 +140,14 @@ func TestCompactGuidanceBatchesExactTermsAndReusesSource(t *testing.T) {
 	}
 	if strings.Contains(compactServerInstructions, "op=verify before finish") {
 		t.Errorf("compact initialize instructions still mandate verify: %q", compactServerInstructions)
+	}
+}
+
+func TestFormatQueryTermsPreservesBoundaries(t *testing.T) {
+	got := formatQueryTerms([]string{"benchmark", "native", "compact", "legacy", "pilot", "click"})
+	want := `["benchmark","native","compact","legacy","pilot","click"]`
+	if got != want {
+		t.Fatalf("formatQueryTerms() = %q, want %q", got, want)
 	}
 }
 

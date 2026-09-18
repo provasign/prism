@@ -120,7 +120,8 @@ const compactServerInstructions = "Repository discovery starts with Prism. Readi
 	"Optional op=verify: consider for Python, unchecked JavaScript, and PHP contract changes; use for TypeScript or checked " +
 	"JavaScript only if affected files lack a complete typecheck. Skip after a complete affected-target build/typecheck in " +
 	"Go, Java, Rust, C/C++, or C#. For removals, removed_symbols optionally checks exact identifier mentions. " +
-	"Batch known identifiers or exact substrings in one search. Search returns bounded enclosing bodies or labeled windows for located hits by default (one per term first); set include_bodies=false for locators only." +
+	"Batch known identifiers or exact substrings in one search. For multiple terms, use comma-delimited JSON string values in the terms array, for example terms:[\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string. " +
+	"Search returns bounded enclosing bodies or labeled windows for located hits by default (one per term first); set include_bodies=false for locators only. " +
 	"In hosts that require a native Read before Edit, use one tight native Read at the edit site; use Prism read/lookup for other follow-ups. " +
 	"Do not re-read unchanged source already included in a Prism result."
 

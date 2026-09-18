@@ -417,6 +417,19 @@ func TestSteeringBlock_PrismAccessFallbacks(t *testing.T) {
 	}
 }
 
+func TestSteeringBlock_PreservesTermBoundaries(t *testing.T) {
+	got := strings.Join(strings.Fields(steeringBlock()), " ")
+	for _, want := range []string{
+		`terms:["alpha","beta"]`,
+		"never combine distinct terms in one space-delimited string",
+		"For CLI, use --terms alpha,beta",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("steering block missing term-boundary guidance %q", want)
+		}
+	}
+}
+
 func TestCmdInit_ModeFlagAcceptedAndIgnored(t *testing.T) {
 	// --mode is kept for one release so existing scripts do not break; it must
 	// not fail, and must not write an agent_mode key back into prism.yaml.
