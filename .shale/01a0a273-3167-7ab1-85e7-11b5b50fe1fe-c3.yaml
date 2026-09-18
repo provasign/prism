@@ -1,0 +1,551 @@
+shale_version: "0"
+id: 01a0a273-3167-7ab1-85e7-11b5b50fe1fe-c3
+created_at: 2026-09-18T00:29:35.676562Z
+finalized_at: 2026-09-18T01:08:11.146518Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T00:39:19.615818Z
+    - path: internal/cli/init_scope_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T00:39:19.615818Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T00:39:19.615818Z
+commands:
+    - cmd: 'git ls-remote --tags origin refs/tags/v0.77.1 && git tag -a v0.77.1 -m "v0.77.1: fix search evidence portability on Windows" && git push origin v0.77.1'
+      at: 2026-09-18T00:29:35.676562Z
+      classified: other
+    - cmd: gh release create v0.77.1 --repo provasign/prism --title v0.77.1 --target main --notes "Normalizes ranked search-evidence paths across platforms and makes the explicit search-context regression test reliable on Windows."
+      at: 2026-09-18T00:29:40.000713Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --commit 2f3c881f598d983d14aa62868b2b5550088779c2 --limit 3 --json databaseId,name,status,conclusion,headSha,url,createdAt
+      at: 2026-09-18T00:29:44.648151Z
+      classified: other
+    - cmd: gh run watch 35291408983 --repo provasign/prism --exit-status
+      at: 2026-09-18T00:31:53.25662Z
+      classified: other
+    - cmd: gh run view 35291420439 --repo provasign/prism --json status,conclusion,url,jobs
+      at: 2026-09-18T00:31:59.61916Z
+      classified: other
+    - cmd: gh release view v0.77.1 --repo provasign/prism --json url,isLatest,tagName,targetCommitish,publishedAt,assets
+      at: 2026-09-18T00:32:05.326782Z
+      classified: other
+    - cmd: git ls-remote origin refs/heads/main refs/tags/v0.77.1 refs/tags/v0.77.1^{} && git status --branch --short && git log --oneline --decorate -6
+      at: 2026-09-18T00:32:05.537586Z
+      classified: other
+    - cmd: gh release view v0.77.1 --repo provasign/prism --json url,tagName,targetCommitish,publishedAt,isDraft,isPrerelease,isImmutable,assets
+      at: 2026-09-18T00:32:09.524671Z
+      classified: other
+    - cmd: prism query . --terms "init harness MCP registration stdio initialize tools list"
+      at: 2026-09-18T00:34:13.55061Z
+      classified: other
+    - cmd: prism init --help
+      at: 2026-09-18T00:34:19.600595Z
+      classified: other
+    - cmd: rg -n '^func Test.*(Init|MCP|Register|Harness|Config|Server|Initialize|Tool)' internal/cli internal/mcp --glob '*_test.go'
+      at: 2026-09-18T00:34:19.606306Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/prism-mcp-audit.XXXXXX
+      at: 2026-09-18T00:34:19.606379Z
+      classified: other
+    - cmd: uname -m
+      at: 2026-09-18T00:34:24.663353Z
+      classified: other
+    - cmd: gh release download v0.77.1 --repo provasign/prism --pattern prism-v0.77.1-darwin-arm64 --pattern checksums.txt --dir /private/tmp/prism-mcp-audit.RpJNi6
+      at: 2026-09-18T00:34:35.104299Z
+      classified: other
+    - cmd: rg 'prism-v0.77.1-darwin-arm64' checksums.txt && shasum -a 256 prism-v0.77.1-darwin-arm64 && chmod +x prism-v0.77.1-darwin-arm64 && ./prism-v0.77.1-darwin-arm64 version
+      at: 2026-09-18T00:34:41.600582Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-mcp-audit.RpJNi6/project
+      at: 2026-09-18T00:34:46.738734Z
+      classified: other
+    - cmd: ../prism-v0.77.1-darwin-arm64 init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions .
+      at: 2026-09-18T00:34:58.351707Z
+      classified: other
+    - cmd: |-
+        audit_root=/private/tmp/prism-mcp-audit.RpJNi6
+        project_dir="$audit_root/project"
+        printf '%s\n' 'Generated non-Markdown files:'
+        rg --files --hidden "$project_dir" -g '!*.md' -g '!**/.git/**' | sort
+        printf '%s\n' 'JSON validation:'
+        for f in "$project_dir/.mcp.json" "$project_dir/.cursor/mcp.json" "$project_dir/.vscode/mcp.json" "$project_dir/.gemini/settings.json" "$project_dir/opencode.json"; do jq empty "$f" && printf 'OK %s\n' "$f"; done
+        printf '%s\n' 'Config contents:'
+        for f in "$project_dir/.mcp.json" "$project_dir/.cursor/mcp.json" "$project_dir/.vscode/mcp.json" "$project_dir/.gemini/settings.json" "$project_dir/opencode.json" "$project_dir/.codex/config.toml"; do printf '\nFILE %s\n' "$f"; jq . "$f" 2>/dev/null || awk '!/^[[:space:]]*#/' "$f"; done
+      at: 2026-09-18T00:36:02.604752Z
+      classified: other
+    - cmd: |-
+        audit_root=/private/tmp/prism-mcp-audit.RpJNi6
+        project_dir="$audit_root/project"
+        printf '%s\n' 'Claude settings:'
+        jq . "$project_dir/.claude/settings.json"
+        printf '%s\n' 'Executable resolution:'
+        for f in "$project_dir/.mcp.json" "$project_dir/.cursor/mcp.json" "$project_dir/.vscode/mcp.json" "$project_dir/.gemini/settings.json" "$project_dir/opencode.json"; do jq -r '.. | .command? // empty | if type == "array" then .[0] else . end' "$f"; done
+        awk -F' = ' '$1 == "command" {gsub(/"/, "", $2); print $2}' "$project_dir/.codex/config.toml" | while IFS= read -r p; do test -x "$p" && "$p" version; done
+        printf '%s\n' 'Init/help contracts:'
+        "$audit_root/prism-v0.77.1-darwin-arm64" mcp --help
+        "$audit_root/prism-v0.77.1-darwin-arm64" init --help
+      at: 2026-09-18T00:36:10.67327Z
+      classified: other
+    - cmd: |-
+        audit_root=/private/tmp/prism-mcp-audit.RpJNi6
+        project_dir="$audit_root/project"
+        bin="$audit_root/prism-v0.77.1-darwin-arm64"
+        cd "$project_dir"
+        files_before=$(rg --files --hidden -g '!**/.git/**' | sort)
+        printf '%s\n' "$files_before" | while IFS= read -r f; do shasum -a 256 "$f"; done > "$audit_root/before.sha"
+        "$bin" init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . > "$audit_root/reinit.out" 2>&1
+        files_after=$(rg --files --hidden -g '!**/.git/**' | sort)
+        printf '%s\n' "$files_after" | while IFS= read -r f; do shasum -a 256 "$f"; done > "$audit_root/after.sha"
+        printf '%s\n' 'Idempotency diff:'
+        diff -u "$audit_root/before.sha" "$audit_root/after.sha" || true
+        printf '%s\n' 'Second-init outcome:'
+        awk '!/\.md/' "$audit_root/reinit.out"
+        printf '%s\n' 'Print-config outputs:'
+        for h in claude codex cursor windsurf vscode gemini opencode; do
+          printf '\nHARNESS %s\n' "$h"
+          "$bin" init --print-config "$h" .
+        done
+        files_print=$(rg --files --hidden -g '!**/.git/**' | sort)
+        printf '%s\n' 'File inventory changed by print-config:'
+        if test "$files_after" = "$files_print"; then printf '%s\n' 'NO'; else diff -u <(printf '%s\n' "$files_after") <(printf '%s\n' "$files_print") || true; fi
+      at: 2026-09-18T00:36:27.131885Z
+      classified: other
+    - cmd: |-
+        audit_root=/private/tmp/prism-mcp-audit.RpJNi6
+        project_dir="$audit_root/project"
+        bin="$audit_root/prism-v0.77.1-darwin-arm64"
+        cd "$project_dir"
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$audit_root/absolute-1.sha"
+        "$bin" init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . > "$audit_root/reinit-absolute.out" 2>&1
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$audit_root/absolute-2.sha"
+        printf '%s\n' 'Identical invocation diff:'
+        diff -u "$audit_root/absolute-1.sha" "$audit_root/absolute-2.sha" || true
+        "$bin" init --refresh . > "$audit_root/refresh.out" 2>&1
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$audit_root/refresh.sha"
+        printf '%s\n' 'Refresh diff:'
+        diff -u "$audit_root/absolute-2.sha" "$audit_root/refresh.sha" || true
+        printf '%s\n' 'Refresh outcome:'
+        awk '!/\.md/' "$audit_root/refresh.out"
+      at: 2026-09-18T00:36:47.807206Z
+      classified: other
+    - cmd: prism query . --terms "cmdInit refresh harness selection prompt yes non-interactive"
+      at: 2026-09-18T00:36:52.947005Z
+      classified: other
+    - cmd: |-
+        rg -l --glob '*.go' 'refresh' internal cmd | sort
+        rg -l --glob '*.go' 'print-config' internal cmd | sort
+      at: 2026-09-18T00:36:58.88824Z
+      classified: other
+    - cmd: prism lookup internal/cli.cmdInit internal/cli.runInit internal/cli.parseInitArgs
+      at: 2026-09-18T00:37:02.470648Z
+      classified: other
+    - cmd: prism lookup cmdInit .
+      at: 2026-09-18T00:37:07.086906Z
+      classified: other
+    - cmd: |-
+        audit_root=/private/tmp/prism-mcp-audit.RpJNi6
+        project_dir="$audit_root/project"
+        bin="$audit_root/prism-v0.77.1-darwin-arm64"
+        cd "$project_dir"
+        printf '%s\n' \
+        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"prism-release-audit","version":"1.0"}}}' \
+        '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}' \
+        '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+        '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism","arguments":{"op":"lookup","args":{"name":"greet"}}}}' \
+        | "$bin" mcp --compact .
+      at: 2026-09-18T00:37:16.745364Z
+      classified: other
+    - cmd: prism lookup detectSelfPath .
+      at: 2026-09-18T00:37:29.543082Z
+      classified: other
+    - cmd: |-
+        prism change-impact cmdInit .
+        prism change-impact detectSelfPath .
+      at: 2026-09-18T00:37:36.239685Z
+      classified: other
+    - cmd: |-
+        prism lookup TestCmdInitYesReusesRecordedHarnesses .
+        prism lookup TestDetectSelfPath .
+      at: 2026-09-18T00:37:40.370266Z
+      classified: other
+    - cmd: awk '{print}' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-18T00:37:50.63153Z
+      classified: other
+    - cmd: |-
+        for c in claude codex cursor-agent code gemini opencode windsurf; do
+          if command -v "$c" >/dev/null 2>&1; then
+            printf '%s\t' "$c"
+            "$c" --version 2>&1 | awk 'NR==1 {print; exit}'
+          else
+            printf '%s\t%s\n' "$c" 'not installed'
+          fi
+        done
+        printf '%s\n' 'OpenCode config validation:'
+        if command -v opencode >/dev/null 2>&1; then (cd /private/tmp/prism-mcp-audit.RpJNi6/project && opencode mcp list 2>&1); fi
+        printf '%s\n' 'Codex MCP config loading:'
+        if command -v codex >/dev/null 2>&1; then (cd /private/tmp/prism-mcp-audit.RpJNi6/project && codex mcp list 2>&1); fi
+        printf '%s\n' 'Claude MCP config loading:'
+        if command -v claude >/dev/null 2>&1; then (cd /private/tmp/prism-mcp-audit.RpJNi6/project && claude mcp list 2>&1); fi
+      at: 2026-09-18T00:38:27.91107Z
+      classified: other
+    - cmd: |-
+        env GOFLAGS=-mod=readonly go test ./internal/cli -run 'Test(CmdInit|Init|WritePrism|BuildVSCode|BuildOpencode|PrintAgent|ParseHarness|MCPEntry|DetectSelfPath)' -count=1
+        env GOFLAGS=-mod=readonly go test ./internal/mcp -run 'Test(ServerInitializeHandshake|ServerToolsList|Dispatch_Initialize|Dispatch_ToolsList|CompactServerAdvertisesAndDispatchesGateway|SchemaAdvertisesEveryArg)' -count=1
+      at: 2026-09-18T00:38:48.498978Z
+      classified: test
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        awk 'NR<=25 && $0 !~ /^[[:space:]]*\/\//' internal/cli/init_scope_test.go
+        awk 'NR<=20 && $0 !~ /^[[:space:]]*\/\//' internal/cli/init_test.go
+      at: 2026-09-18T00:38:58.449194Z
+      classified: other
+    - cmd: |-
+        gofmt -w internal/cli/commands.go internal/cli/init_scope_test.go internal/cli/init_test.go
+        env GOFLAGS=-mod=readonly go test ./internal/cli -run 'Test(CmdInitRefreshReusesRecordedHarnesses|CmdInitYesReusesRecordedHarnesses|DetectSelfPath)' -count=1
+      at: 2026-09-18T00:39:28.785724Z
+      classified: test
+    - cmd: |-
+        gofmt -w internal/cli/init_scope_test.go
+        env GOFLAGS=-mod=readonly go test ./internal/cli -run 'Test(CmdInitRefreshReusesRecordedHarnesses|CmdInitYesReusesRecordedHarnesses|DetectSelfPath)' -count=1
+      at: 2026-09-18T00:39:58.111716Z
+      classified: test
+    - cmd: |-
+        git diff --check
+        env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-18T00:40:15.084296Z
+      classified: test
+    - cmd: |-
+        candidate_root=$(mktemp -d /private/tmp/prism-mcp-candidate.XXXXXX)
+        mkdir "$candidate_root/project"
+        go build -o "$candidate_root/prism-candidate" ./cmd/prism
+        printf '%s\n' "$candidate_root"
+      at: 2026-09-18T00:40:26.935958Z
+      classified: build
+    - cmd: |-
+        candidate_root=/private/tmp/prism-mcp-candidate.dJHcUO
+        env GOFLAGS=-mod=readonly go build -o "$candidate_root/prism-candidate" ./cmd/prism
+        cd "$candidate_root/project"
+        ../prism-candidate init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . > "$candidate_root/first.out" 2>&1
+        printf '%s\n' 'Stored executable paths:'
+        for f in .mcp.json .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json; do jq -r '.. | .command? // empty | if type == "array" then .[0] else . end' "$f"; done
+        awk -F' = ' '$1 == "command" {gsub(/"/, "", $2); print $2}' .codex/config.toml
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$candidate_root/first.sha"
+        ../prism-candidate init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . > "$candidate_root/second.out" 2>&1
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$candidate_root/second.sha"
+        printf '%s\n' 'Repeat-init diff:'
+        diff -u "$candidate_root/first.sha" "$candidate_root/second.sha" || true
+        ../prism-candidate init --refresh . > "$candidate_root/refresh.out" 2>&1
+        refresh_rc=$?
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$candidate_root/refresh.sha"
+        printf 'Refresh exit: %d\n' "$refresh_rc"
+        printf '%s\n' 'Refresh diff:'
+        diff -u "$candidate_root/second.sha" "$candidate_root/refresh.sha" || true
+        printf '%s\n' 'Refresh non-Markdown outcome:'
+        awk '!/\.md/' "$candidate_root/refresh.out"
+      at: 2026-09-18T00:40:44.24983Z
+      classified: build
+    - cmd: |-
+        candidate_root=/private/tmp/prism-mcp-candidate.dJHcUO
+        cd "$candidate_root/project"
+        printf '%s\n' 'Current project-bearing configs:'
+        for f in .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json; do printf '\n%s\n' "$f"; jq . "$f"; done
+        ../prism-candidate init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . > "$candidate_root/third.out" 2>&1
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$candidate_root/third.sha"
+        printf '%s\n' 'Second-to-third diff:'
+        diff -u "$candidate_root/second.sha" "$candidate_root/third.sha" || true
+      at: 2026-09-18T00:40:57.396077Z
+      classified: other
+    - cmd: prism lookup initRegisterMCPTools .
+      at: 2026-09-18T00:41:05.810161Z
+      classified: other
+    - cmd: prism lookup mergeOrCreate .
+      at: 2026-09-18T00:41:11.253054Z
+      classified: other
+    - cmd: |-
+        candidate_root=/private/tmp/prism-mcp-candidate.dJHcUO
+        second_project="$candidate_root/project-idempotency"
+        mkdir "$second_project"
+        cd "$second_project"
+        ../prism-candidate init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . >/dev/null 2>&1
+        mkdir "$candidate_root/snapshot-first"
+        for f in .mcp.json .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json .codex/config.toml .claude/settings.json prism.yaml; do mkdir -p "$candidate_root/snapshot-first/$(dirname "$f")"; cp "$f" "$candidate_root/snapshot-first/$f"; done
+        ../prism-candidate init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . >/dev/null 2>&1
+        printf '%s\n' 'Byte-level config diff after identical second init:'
+        for f in .mcp.json .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json .codex/config.toml .claude/settings.json prism.yaml; do diff -u "$candidate_root/snapshot-first/$f" "$f" || true; done
+        printf '%s\n' 'Semantic JSON comparison:'
+        for f in .mcp.json .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json .claude/settings.json; do
+          if diff -q <(jq -S . "$candidate_root/snapshot-first/$f") <(jq -S . "$f") >/dev/null; then printf 'SAME %s\n' "$f"; else printf 'DIFFERENT %s\n' "$f"; fi
+        done
+      at: 2026-09-18T00:41:32.556209Z
+      classified: other
+    - cmd: rg -n --glob '*_test.go' 'mergeOrCreate|MergeOrCreate' internal/cli
+      at: 2026-09-18T00:41:42.646119Z
+      classified: other
+    - cmd: |-
+        prism lookup TestMergeOrCreatePreservesInvalidJSONAndWritesBackup .
+        prism lookup TestMergeOrCreateRemovesLegacyAndCurrentOpencodeEntries .
+      at: 2026-09-18T00:41:46.016029Z
+      classified: other
+    - cmd: awk 'NR>=280 && NR<=350 && $0 !~ /^[[:space:]]*\/\//' internal/cli/init_scope_test.go
+      at: 2026-09-18T00:41:51.863794Z
+      classified: other
+    - cmd: |-
+        gofmt -w internal/cli/commands.go internal/cli/init_scope_test.go
+        git diff --check
+        env GOFLAGS=-mod=readonly go test ./internal/cli -run 'Test(MergeOrCreateIsByteStableAfterCreation|MergeOrCreatePreservesInvalidJSONAndWritesBackup|OpenCodeV2SchemaIsPreserved|CmdInitRefreshReusesRecordedHarnesses|DetectSelfPath)' -count=1
+        env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-18T00:42:15.086333Z
+      classified: test
+    - cmd: |-
+        final_root=$(mktemp -d /private/tmp/prism-mcp-final.XXXXXX)
+        project_dir="$final_root/project with space"
+        mkdir "$project_dir"
+        env GOFLAGS=-mod=readonly go build -o "$final_root/prism-candidate" ./cmd/prism
+        printf '%s\n' "$final_root"
+      at: 2026-09-18T00:42:28.198311Z
+      classified: build
+    - cmd: |-
+        final_root=/private/tmp/prism-mcp-final.kS5WBR
+        project_dir="$final_root/project with space"
+        bin="$final_root/prism-candidate"
+        cd "$project_dir"
+        "$bin" init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . > "$final_root/first.out" 2>&1
+        for f in .mcp.json .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json .claude/settings.json; do jq empty "$f"; done
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$final_root/first.sha"
+        "$bin" init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . > "$final_root/second.out" 2>&1
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$final_root/second.sha"
+        printf '%s\n' 'Repeat byte diff:'
+        diff -u "$final_root/first.sha" "$final_root/second.sha" || true
+        "$bin" init --refresh --no-permissions . > "$final_root/refresh.out" 2>&1
+        refresh_rc=$?
+        rg --files --hidden -g '!**/.git/**' | sort | while IFS= read -r f; do shasum -a 256 "$f"; done > "$final_root/refresh.sha"
+        printf 'Refresh exit: %d\n' "$refresh_rc"
+        printf '%s\n' 'Refresh byte diff:'
+        diff -u "$final_root/second.sha" "$final_root/refresh.sha" || true
+        printf '%s\n' 'Canonical command paths:'
+        for f in .mcp.json .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json; do jq -r '.. | .command? // empty | if type == "array" then .[0] else . end' "$f"; done
+        printf '%s\n' 'OpenCode client check:'
+        opencode mcp list 2>&1
+      at: 2026-09-18T00:42:42.431666Z
+      classified: other
+    - cmd: |-
+        final_root=/private/tmp/prism-mcp-final.kS5WBR
+        project_dir="$final_root/project with space"
+        bin="$final_root/prism-candidate"
+        cd "$project_dir"
+        printf '%s\n' \
+        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"final-audit","version":"1.0"}}}' \
+        '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}' \
+        '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+        '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism","arguments":{"op":"lookup","args":{"name":"greet"}}}}' \
+        | "$bin" mcp --compact . > "$final_root/protocol.ndjson"
+        printf '%s\n' 'Protocol summary:'
+        jq -c 'if .id == 1 then {id, protocol:.result.protocolVersion, server:.result.serverInfo, toolCapability:.result.capabilities.tools} elif .id == 2 then {id, tools:[.result.tools[].name], schemaRequired:.result.tools[0].inputSchema.required} elif .id == 3 then {id, text:.result.content[0].text} else . end' "$final_root/protocol.ndjson"
+        printf '%s\n' 'Cross-builds:'
+        for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64; do
+          target_os=${target%/*}
+          target_arch=${target#*/}
+          suffix=""
+          if test "$target_os" = windows; then suffix=.exe; fi
+          GOOS="$target_os" GOARCH="$target_arch" GOFLAGS=-mod=readonly go build -o "$final_root/prism-$target_os-$target_arch$suffix" ./cmd/prism
+          printf 'OK %s/%s\n' "$target_os" "$target_arch"
+        done
+      at: 2026-09-18T00:42:59.334196Z
+      classified: build
+    - cmd: |-
+        set -e
+        final_root=/private/tmp/prism-mcp-final.kS5WBR
+        for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64; do
+          target_os=${target%/*}
+          target_arch=${target#*/}
+          suffix=""
+          if test "$target_os" = windows; then suffix=.exe; fi
+          GOOS="$target_os" GOARCH="$target_arch" GOFLAGS=-mod=readonly go build -o "$final_root/prism-$target_os-$target_arch$suffix" ./cmd/prism
+          test -s "$final_root/prism-$target_os-$target_arch$suffix"
+          printf 'OK %s/%s\n' "$target_os" "$target_arch"
+        done
+      at: 2026-09-18T00:43:13.772205Z
+      classified: build
+    - cmd: |-
+        git status --short
+        git diff --stat
+        rg -n '^func (cmdInit|detectSelfPath|mergeOrCreate|TestCmdInitRefreshReusesRecordedHarnesses|TestMergeOrCreateIsByteStableAfterCreation|TestDetectSelfPath)' internal/cli/commands.go internal/cli/init_scope_test.go internal/cli/init_test.go
+        git diff --check
+      at: 2026-09-18T00:43:44.578634Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-opencode-v2-audit
+      at: 2026-09-18T00:43:59.958449Z
+      classified: other
+    - cmd: opencode mcp list 2>&1
+      at: 2026-09-18T00:44:08.356193Z
+      classified: other
+    - cmd: |-
+        prism lookup buildOpencodeConfigForPath .
+        prism lookup buildOpencodeConfig .
+      at: 2026-09-18T00:44:12.147951Z
+      classified: other
+    - cmd: rg -n --glob '*_test.go' 'commandMajorVersion|OpenCodeV2|opencode.*version|version.*opencode' internal/cli
+      at: 2026-09-18T00:44:17.024413Z
+      classified: other
+    - cmd: prism lookup commandMajorVersion .
+      at: 2026-09-18T00:44:20.795002Z
+      classified: other
+    - cmd: |-
+        set -e
+        audit_root='/private/tmp/prism binary path audit'
+        project_dir="$audit_root/project with space"
+        mkdir -p "$project_dir"
+        cp /private/tmp/prism-mcp-final.kS5WBR/prism-candidate "$audit_root/prism candidate"
+        cd "$project_dir"
+        "$audit_root/prism candidate" init --harness claude,codex,cursor,vscode,gemini,opencode --no-permissions . >/dev/null
+        for f in .mcp.json .cursor/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json .claude/settings.json; do jq empty "$f"; done
+        opencode mcp list 2>&1
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"space-path-audit","version":"1"}}}' | "$audit_root/prism candidate" mcp --compact . | jq -c '{protocol:.result.protocolVersion,server:.result.serverInfo.name}'
+      at: 2026-09-18T00:44:34.440094Z
+      classified: other
+    - cmd: prism query . --terms "grove version embedded release dependency module init release workflow"
+      at: 2026-09-18T01:02:26.891155Z
+      classified: other
+    - cmd: |-
+        git status --short
+        git diff --stat
+        rg -n --glob '!*.md' --glob '!go.sum' 'grove|Grove' go.mod internal cmd .github 2>/dev/null | awk '$0 !~ /^[^:]+:[0-9]+:[[:space:]]*\/\//'
+      at: 2026-09-18T01:02:33.521287Z
+      classified: other
+    - cmd: |-
+        GOWORK=off GOFLAGS=-mod=readonly go list -m -versions github.com/provasign/grove
+        GOWORK=off GOFLAGS=-mod=readonly go list -m -json github.com/provasign/grove@latest
+      at: 2026-09-18T01:02:58.142848Z
+      classified: other
+    - cmd: |-
+        gh api repos/provasign/grove/compare/v0.49.2...v0.49.4 --jq '{status,ahead_by,commits:[.commits[]|{sha:(.sha[0:7]),message:(.commit.message|split("\n")[0])}],files:[.files[]|{filename,status,additions,deletions}]}'
+        printf '%s\n' 'Release metadata:'
+        for tag in v0.49.3 v0.49.4; do gh api "repos/provasign/grove/releases/tags/$tag" --jq '{tag_name,published_at,name,prerelease,draft}'; done
+      at: 2026-09-18T01:03:11.258075Z
+      classified: other
+    - cmd: |-
+        awk '$1 == "go" || $1 == "toolchain" || $1 == "github.com/provasign/grove" {print}' go.mod
+        go version
+        gh api repos/provasign/grove/compare/v0.49.2...v0.49.4 --jq '[.files[] | select(.filename|startswith("pkg/")) | .filename]'
+        gh api repos/provasign/grove/compare/v0.49.2...v0.49.4 --jq '[.files[] | select(.filename=="go.mod") | {filename,patch}]'
+      at: 2026-09-18T01:03:24.774068Z
+      classified: other
+    - cmd: |-
+        rg -n 'github.com/provasign/astkit' go.mod go.sum
+        go list -m github.com/provasign/astkit github.com/provasign/grove
+      at: 2026-09-18T01:03:29.078741Z
+      classified: other
+    - cmd: env GOFLAGS=-mod=readonly go list -m github.com/provasign/astkit github.com/provasign/grove
+      at: 2026-09-18T01:03:34.344305Z
+      classified: other
+    - cmd: |-
+        go env GOWORK
+        awk '$1 == "use" || $1 == "replace" || $1 ~ /^\.\.?\// {print}' "$(go env GOWORK)" 2>/dev/null || true
+      at: 2026-09-18T01:03:40.630322Z
+      classified: other
+    - cmd: |-
+        git -C ../grove status --short --branch
+        git -C ../grove describe --tags --exact-match HEAD 2>/dev/null || git -C ../grove rev-parse --short HEAD
+        printf '%s\n' 'Pinned-module suite:'
+        GOWORK=off GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-18T01:04:11.517492Z
+      classified: test
+    - cmd: |-
+        set -e
+        mod_root=$(mktemp -d /private/tmp/prism-grove-latest.XXXXXX)
+        cp go.mod "$mod_root/prism.mod"
+        cp go.sum "$mod_root/prism.sum"
+        GOWORK=off GOFLAGS=-mod=mod go get -modfile="$mod_root/prism.mod" github.com/provasign/grove@v0.49.4
+        printf '%s\n' 'Candidate module versions:'
+        awk '$1 == "github.com/provasign/grove" || $1 == "github.com/provasign/astkit" {print}' "$mod_root/prism.mod"
+        printf '%s\n' 'Latest-Grove suite:'
+        GOWORK=off GOFLAGS=-mod=readonly go test -modfile="$mod_root/prism.mod" ./...
+      at: 2026-09-18T01:04:43.389408Z
+      classified: test
+    - cmd: |-
+        gh run list --repo provasign/grove --commit 33838f4 --limit 10 --json databaseId,name,status,conclusion,headSha,event,createdAt,url
+        gh api repos/provasign/grove/commits/33838f4/status --jq '{state,total_count,statuses:[.statuses[]|{context,state,target_url}]}'
+      at: 2026-09-18T01:04:56.836033Z
+      classified: other
+    - cmd: |-
+        tag_obj=$(gh api repos/provasign/grove/git/ref/tags/v0.49.4 --jq .object.sha)
+        printf 'tag object: %s\n' "$tag_obj"
+        gh api "repos/provasign/grove/git/tags/$tag_obj" --jq '{tag,object}' 2>/dev/null || true
+        commit_sha=$(gh api "repos/provasign/grove/git/tags/$tag_obj" --jq .object.sha 2>/dev/null || printf '%s' "$tag_obj")
+        printf 'commit: %s\n' "$commit_sha"
+        gh run list --repo provasign/grove --commit "$commit_sha" --limit 10 --json databaseId,name,status,conclusion,headSha,event,createdAt,url
+      at: 2026-09-18T01:05:05.141616Z
+      classified: other
+    - cmd: prism read go.mod:1-25
+      at: 2026-09-18T01:06:25.677652Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        GOWORK=off GOFLAGS=-mod=mod go get github.com/provasign/grove@v0.49.4
+        GOWORK=off GOFLAGS=-mod=mod go mod tidy
+        rg -n 'github.com/provasign/(grove|astkit)' go.mod go.sum
+      at: 2026-09-18T01:06:32.480357Z
+      classified: other
+    - cmd: |-
+        git diff --check
+        GOWORK=off GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-18T01:06:41.543622Z
+      classified: test
+    - cmd: |-
+        GOWORK=off GOFLAGS=-mod=readonly go vet ./...
+        GOWORK=off GOFLAGS=-mod=readonly go test -race ./internal/cli ./internal/mcp
+      at: 2026-09-18T01:07:37.004444Z
+      classified: lint
+    - cmd: rg -n --glob '*.yml' --glob '*.yaml' 'ldflags|Version=' .github
+      at: 2026-09-18T01:07:41.652193Z
+      classified: other
+    - cmd: |-
+        set -e
+        release_audit=$(mktemp -d /private/tmp/prism-v0772.XXXXXX)
+        mkdir "$release_audit/project"
+        GOWORK=off GOFLAGS=-mod=readonly go build -ldflags='-s -w -X github.com/provasign/prism/internal/version.Version=v0.77.2' -o "$release_audit/prism" ./cmd/prism
+        "$release_audit/prism" version
+        cd "$release_audit/project"
+        "$release_audit/prism" init --harness claude,codex,cursor,windsurf,vscode,gemini,opencode --no-permissions . >/dev/null 2>"$release_audit/init.err"
+        "$release_audit/prism" init --refresh --no-permissions . >/dev/null 2>"$release_audit/refresh.err"
+        printf '%s\n' \
+        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release-audit","version":"1"}}}' \
+        '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+        | "$release_audit/prism" mcp --compact . | jq -c 'if .id == 1 then {version:.result.serverInfo.version,protocol:.result.protocolVersion} else {tools:[.result.tools[].name]} end'
+        printf 'audit=%s\n' "$release_audit"
+      at: 2026-09-18T01:07:55.753902Z
+      classified: build
+    - cmd: |-
+        git status --short
+        git diff --stat
+        git diff --check
+        git diff -- go.mod
+      at: 2026-09-18T01:08:00.437987Z
+      classified: other
+    - cmd: |-
+        git add go.mod go.sum internal/cli/commands.go internal/cli/init_scope_test.go internal/cli/init_test.go
+        git commit -m "Harden MCP initialization and update Grove"
+      at: 2026-09-18T01:08:06.107967Z
+      classified: other
+notes:
+    - text: continuation of session 01a0a273-3167-7ab1-85e7-11b5b50fe1fe — events captured after its evidence was finalized
+      at: 2026-09-18T00:29:35.676562Z
+redactions: 0
