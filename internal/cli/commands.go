@@ -382,7 +382,13 @@ func cmdInit(args []string) int {
 		return 2
 	}
 	if len(harnesses) == 0 {
-		if yes {
+		if refresh {
+			if len(recordedHarnesses) == 0 {
+				fmt.Fprintln(os.Stderr, "init: --refresh cannot choose harnesses because prism.yaml has no recorded selection; pass --harness <ids>")
+				return 2
+			}
+			harnesses = recordedHarnesses
+		} else if yes {
 			if len(recordedHarnesses) == 0 {
 				fmt.Fprintln(os.Stderr, "init: --yes cannot choose harnesses because prism.yaml has no recorded selection; pass --harness <ids>")
 				return 2
@@ -963,7 +969,7 @@ func detectSelfPath() string {
 	if err != nil {
 		return "prism"
 	}
-	return exe
+	return filepath.Clean(exe)
 }
 
 // mcpEntry is the JSON structure every MCP-compatible tool expects.
@@ -1456,9 +1462,10 @@ func mergeOrCreate(path string, content []byte, prismMaps ...[]string) ([]byte, 
 	existing, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return content, nil
+			existing = []byte("{}")
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
 	var base, overlay map[string]any
 	if err := json.Unmarshal(existing, &base); err != nil {

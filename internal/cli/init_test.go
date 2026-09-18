@@ -50,8 +50,12 @@ func TestCmdInit_BadDir(t *testing.T) {
 }
 
 func TestDetectSelfPath(t *testing.T) {
-	if detectSelfPath() == "" {
+	p := detectSelfPath()
+	if p == "" {
 		t.Error("empty")
+	}
+	if p != filepath.Clean(p) {
+		t.Errorf("path is not clean: %q", p)
 	}
 }
 

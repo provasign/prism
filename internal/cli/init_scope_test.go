@@ -174,6 +174,31 @@ func TestCmdInitYesReusesRecordedHarnesses(t *testing.T) {
 	}
 }
 
+func TestCmdInitRefreshReusesRecordedHarnesses(t *testing.T) {
+	setHome(t, t.TempDir())
+	project := t.TempDir()
+	if rc := cmdInit([]string{"--harness", "codex", project}); rc != 0 {
+		t.Fatalf("initial cmdInit = %d", rc)
+	}
+	configPath := filepath.Join(project, ".codex", "config.toml")
+	if err := os.WriteFile(configPath, []byte("invalid = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rc := cmdInit([]string{"--refresh", project}); rc != 0 {
+		t.Fatalf("cmdInit --refresh = %d", rc)
+	}
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "[mcp_servers.prism]") {
+		t.Fatal("recorded Codex selection was not refreshed")
+	}
+	if fileExists(filepath.Join(project, ".mcp.json")) {
+		t.Fatal("unrecorded Claude harness was configured")
+	}
+}
+
 func TestRemoveLegacyGlobalMCPRegistrations_PreservesUnrelatedConfig(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
@@ -280,6 +305,25 @@ func TestMergeOrCreatePreservesInvalidJSONAndWritesBackup(t *testing.T) {
 	}
 	if got, err := os.ReadFile(path + ".prism-backup"); err != nil || string(got) != string(bad) {
 		t.Fatalf("backup = %q, %v", got, err)
+	}
+}
+
+func TestMergeOrCreateIsByteStableAfterCreation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	overlay := buildMCPConfig("prism", mcpEntry{Command: "/x/prism", Args: []string{"mcp", "--compact"}})
+	first, err := mergeOrCreate(path, overlay, []string{"mcpServers"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, first, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	second, err := mergeOrCreate(path, overlay, []string{"mcpServers"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(first) != string(second) {
+		t.Fatalf("fresh and repeated config differ:\nfirst:\n%s\nsecond:\n%s", first, second)
 	}
 }
 
