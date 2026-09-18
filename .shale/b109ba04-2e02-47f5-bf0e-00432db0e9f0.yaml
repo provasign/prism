@@ -1,0 +1,53 @@
+shale_version: "0"
+id: b109ba04-2e02-47f5-bf0e-00432db0e9f0
+created_at: 2026-09-18T01:42:18.192599Z
+finalized_at: 2026-09-18T02:45:36.085582Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: grep -rn "codex" --include="*.go" -i . | head -80
+      at: 2026-09-18T01:44:54.16921Z
+      classified: other
+    - cmd: grep -n "func writePrismCodexConfig" -A 80 internal/cli/commands.go | head -120
+      at: 2026-09-18T01:44:58.226495Z
+      classified: other
+    - cmd: echo "--- prism.yaml ---"; cat prism.yaml 2>/dev/null || echo "(none)"; echo "--- .codex/config.toml ---"; cat .codex/config.toml 2>/dev/null || echo "(none)"; echo "--- .mcp.json ---"; cat .mcp.json 2>/dev/null || echo "(none)"
+      at: 2026-09-18T02:24:23.469644Z
+      classified: other
+    - cmd: echo "--- binary check ---"; ls -la /opt/homebrew/bin/prism 2>&1; file /opt/homebrew/bin/prism 2>&1; echo "--- version ---"; /opt/homebrew/bin/prism version 2>&1; echo "--- codex trust config ---"; cat ~/.codex/config.toml 2>/dev/null || echo "(no global codex config)"; echo "--- codex projects/trust state ---"; find ~/.codex -maxdepth 2 -iname "*trust*" -o -iname "*project*" 2>/dev/null
+      at: 2026-09-18T02:25:10.679155Z
+      classified: other
+    - cmd: echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}' | timeout 5 /opt/homebrew/bin/prism mcp --compact /Users/tapabratapal/Projects/provasign/prism 2>&1 | head -50
+      at: 2026-09-18T02:25:17.447285Z
+      classified: other
+    - cmd: |-
+        echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}' | /opt/homebrew/bin/prism mcp --compact /Users/tapabratapal/Projects/provasign/prism &
+        PID=$!
+        sleep 3
+        kill $PID 2>/dev/null
+        wait $PID 2>/dev/null
+        echo "exit done"
+      at: 2026-09-18T02:25:25.96086Z
+      classified: other
+    - cmd: |-
+        codex --version 2>&1; echo "---"; python3 -c "
+        import tomllib
+        with open('/Users/tapabratapal/Projects/provasign/prism/.codex/config.toml','rb') as f:
+            print(tomllib.load(f))
+        " 2>&1
+      at: 2026-09-18T02:26:26.860394Z
+      classified: other
+    - cmd: codex --help 2>&1 | head -40; echo "---mcp subcommand---"; codex mcp --help 2>&1 | head -40
+      at: 2026-09-18T02:26:39.807956Z
+      classified: other
+    - cmd: codex mcp list 2>&1
+      at: 2026-09-18T02:26:45.360226Z
+      classified: other
+notes: []
+redactions: 0

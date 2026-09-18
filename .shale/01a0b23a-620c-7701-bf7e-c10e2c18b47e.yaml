@@ -1,0 +1,268 @@
+shale_version: "0"
+id: 01a0b23a-620c-7701-bf7e-c10e2c18b47e
+created_at: 2026-09-18T01:56:18.718418Z
+finalized_at: 2026-09-18T02:45:36.085582Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T02:00:19.251059Z
+    - path: internal/mcp/searchmulti_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T02:00:19.251059Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T02:41:59.952684Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T02:41:59.952684Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T02:41:59.952684Z
+    - path: internal/mcp/compact_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T02:41:59.952684Z
+commands:
+    - cmd: prism search 'search ranking' --scope text --format text
+      at: 2026-09-18T01:56:22.584567Z
+      classified: other
+    - cmd: prism query --terms ranking,rank,score,Search
+      at: 2026-09-18T01:56:25.655692Z
+      classified: other
+    - cmd: pwd && git branch --show-current && git status -sb && sed -n '1,240p' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-18T01:59:03.949425Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/searchmulti_test.go && GOWORK=off go test ./internal/mcp ./internal/cli
+      at: 2026-09-18T02:00:25.416261Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/mcp ./internal/cli
+      at: 2026-09-18T02:02:10.327451Z
+      classified: test
+    - cmd: git diff --check && git diff -- internal/mcp/tools.go internal/mcp/searchmulti_test.go && git status -sb
+      at: 2026-09-18T02:02:20.569434Z
+      classified: other
+    - cmd: git diff --check && git status -sb
+      at: 2026-09-18T02:05:00.982181Z
+      classified: other
+    - cmd: ls -ld ../research ../harness /Users/tapabratapal/Projects/provasign/research /Users/tapabratapal/Projects/provasign/harness
+      at: 2026-09-18T02:06:14.585515Z
+      classified: other
+    - cmd: ls -la && ls -la harness && if [ -f AGENTS.md ]; then sed -n '1,240p' AGENTS.md; fi && if [ -f harness/AGENTS.md ]; then sed -n '1,240p' harness/AGENTS.md; fi
+      at: 2026-09-18T02:06:21.273817Z
+      classified: other
+    - cmd: git status -sb && python3 bench.py run --help
+      at: 2026-09-18T02:06:28.049671Z
+      classified: other
+    - cmd: rg -n -i 'legacy|compact|prism mcp|mcp.*prism' bench.py lib runners README.md docs
+      at: 2026-09-18T02:07:24.536229Z
+      classified: other
+    - cmd: sed -n '360,435p' lib/runner_core.py && sed -n '430,490p' bench.py && sed -n '60,110p' docs/BENCH.md && sed -n '1,130p' docs/BASELINE-PRISM-COMPARISON-2026-09-12.md
+      at: 2026-09-18T02:07:29.303902Z
+      classified: other
+    - cmd: rg -n 'add_argument\("--(phase|trials|agents|tools|tasks|concurrency|timeout-s|max-budget-usd)' bench.py && rg -n 'def make_prism_template|mcp_stdio|init_args|prism mcp|\["mcp"' lib/runner_core.py
+      at: 2026-09-18T02:07:47.132757Z
+      classified: other
+    - cmd: rg --files -g 'main.go' -g 'go.mod'
+      at: 2026-09-18T02:07:55.382669Z
+      classified: other
+    - cmd: GOWORK=off go build -o /private/tmp/prism-bench-20260917 ./cmd/prism && shasum -a 256 /private/tmp/prism-bench-20260917 && /private/tmp/prism-bench-20260917 version
+      at: 2026-09-18T02:08:14.02741Z
+      classified: build
+    - cmd: chmod +x /private/tmp/prism-bench-compact-20260917 /private/tmp/prism-bench-legacy-20260917 && /private/tmp/prism-bench-compact-20260917 version && /private/tmp/prism-bench-legacy-20260917 version
+      at: 2026-09-18T02:08:33.295984Z
+      classified: other
+    - cmd: sed -n '600,660p' bench.py && rg -n 'def select|phase.*pilot|PILOT' bench.py lib
+      at: 2026-09-18T02:08:38.140486Z
+      classified: other
+    - cmd: sed -n '60,100p' lib/suites.py && ls tasks/e2e
+      at: 2026-09-18T02:08:42.071657Z
+      classified: other
+    - cmd: sed -n '1,130p' lib/suites.py && sed -n '1,160p' tasks/e2e/SUITE.json
+      at: 2026-09-18T02:08:45.888847Z
+      classified: other
+    - cmd: python3 bench.py run --suite e2e --phase pilot --agents claude,codex --tools native --trials 1 --concurrency 1 --out /private/tmp/prism-three-native-preflight-20260917 --preflight-only
+      at: 2026-09-18T02:08:55.285375Z
+      classified: other
+    - cmd: python3 bench.py run --suite e2e --phase pilot --agents claude,codex --tools native --trials 1 --concurrency 1 --out /private/tmp/prism-three-native-preflight-20260917 --preflight-only
+      at: 2026-09-18T02:09:05.371618Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-three-native-preflight2-20260917 && if [ -f /private/tmp/prism-three-native-preflight2-20260917/manifest.json ]; then sed -n '1,80p' /private/tmp/prism-three-native-preflight2-20260917/manifest.json; fi
+      at: 2026-09-18T02:09:45.232493Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker_eval|e2e-wt'
+      at: 2026-09-18T02:10:30.272527Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker run.*e2e-wt'
+      at: 2026-09-18T02:10:38.73242Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker run.*e2e-wt'
+      at: 2026-09-18T02:10:44.263537Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker run.*e2e-wt'; ls /private/tmp/prism-three-native-preflight2-20260917
+      at: 2026-09-18T02:13:13.144873Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker run.*e2e-wt'
+      at: 2026-09-18T02:14:01.110086Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker run.*e2e-wt'
+      at: 2026-09-18T02:14:05.176369Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker run.*e2e-wt'
+      at: 2026-09-18T02:14:09.814962Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'bench.py|docker run.*e2e-wt'
+      at: 2026-09-18T02:14:14.797208Z
+      classified: other
+    - cmd: test -f /private/tmp/prism-three-compact-preflight-20260917/manifest.json && python3 bench.py run --suite e2e --phase pilot --agents claude,codex --tools prism --prism-binary /private/tmp/prism-bench-legacy-20260917 --trials 1 --concurrency 1 --out /private/tmp/prism-three-legacy-preflight-20260917 --preflight-only
+      at: 2026-09-18T02:15:16.629725Z
+      classified: other
+    - cmd: 'for d in /private/tmp/prism-three-native-preflight2-20260917 /private/tmp/prism-three-compact-preflight-20260917 /private/tmp/prism-three-legacy-preflight-20260917; do test -f "$d/manifest.json" && echo "$d: ready" || echo "$d: incomplete"; done'
+      at: 2026-09-18T02:15:21.085318Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-(compact|legacy)-preflight|docker run.*e2e-wt'
+      at: 2026-09-18T02:15:31.719445Z
+      classified: other
+    - cmd: find /private/tmp/prism-three-compact-preflight-20260917 -maxdepth 2 -type f -print; find /private/tmp/prism-three-legacy-preflight-20260917 -maxdepth 2 -type f -print
+      at: 2026-09-18T02:15:36.13595Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-legacy-preflight|docker run.*e2e-wt'; ls -la /private/tmp/prism-three-legacy-preflight-20260917
+      at: 2026-09-18T02:18:29.472909Z
+      classified: other
+    - cmd: sed -n '900,955p' lib/runner_core.py && find /private/tmp/prism-three-legacy-preflight-20260917/templates -path '*/.codex/config.toml' -o -name .mcp.json | head -20 | xargs -I{} sh -c 'echo {}; sed -n "1,30p" "{}"'
+      at: 2026-09-18T02:18:38.250029Z
+      classified: other
+    - cmd: sed -n '1135,1205p' lib/runner_core.py && sed -n '740,810p' lib/runner_core.py
+      at: 2026-09-18T02:18:44.591827Z
+      classified: other
+    - cmd: sed -n '810,890p' lib/runner_core.py
+      at: 2026-09-18T02:18:47.490924Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec|docker run.*e2e-wt'
+      at: 2026-09-18T02:20:01.748026Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-three-native-pilot-20260917; if [ -f /private/tmp/prism-three-native-pilot-20260917/summary.json ]; then sed -n '1,120p' /private/tmp/prism-three-native-pilot-20260917/summary.json; fi; ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:21:14.838807Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:22:07.712424Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:22:51.381671Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:23:36.473462Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:24:19.315845Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'; test -f /private/tmp/prism-three-native-pilot-20260917/summary.json && echo COMPLETE
+      at: 2026-09-18T02:25:12.575129Z
+      classified: other
+    - cmd: sed -n '1,160p' /private/tmp/prism-three-native-pilot-20260917/summary.json
+      at: 2026-09-18T02:25:16.393247Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:25:59.733926Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:26:40.130292Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:27:23.941032Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-three-native-pilot-20260917/summary.json'
+        d=json.load(open(p))
+        print(d.get('status'), len(d.get('rows', [])))
+        for x in d.get('rows',[]): print(x.get('cell_id'),x.get('resolved'),x.get('agent_error'),x.get('measurement_complete'),x.get('cost_usd'))
+        PY
+      at: 2026-09-18T02:28:26.270925Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-three-native-pilot-20260917/evidence/urllib3__urllib3__pr3786.r1.sonnet_native && tail -80 /private/tmp/prism-three-native-pilot-20260917/evidence/urllib3__urllib3__pr3786.r1.sonnet_native/stdout.jsonl
+      at: 2026-09-18T02:29:15.150714Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-click-native|claude -p|codex exec|docker run.*e2e-wt'
+      at: 2026-09-18T02:30:47.536487Z
+      classified: other
+    - cmd: kill 1622; ps -axo pid,ppid,etime,command | rg 'prism-three-click-native|prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:31:01.208623Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'prism-three-native-pilot|claude -p|codex exec'
+      at: 2026-09-18T02:31:52.935949Z
+      classified: other
+    - cmd: pgrep -af 'prism-three-click-native-20260917|prism-three-native-pilot-20260917'
+      at: 2026-09-18T02:31:58.930224Z
+      classified: other
+    - cmd: ps -p 1428,1719,99859 -o pid=,ppid=,etime=,command=
+      at: 2026-09-18T02:32:06.34584Z
+      classified: other
+    - cmd: |-
+        pkill -TERM -f 'prism-three-native-pilot-20260917' || true
+        pkill -TERM -f 'prism-three-click-native-20260917' || true
+        pgrep -af 'prism-three-(native-pilot|click-native|compact|legacy)' || true
+      at: 2026-09-18T02:32:50.583341Z
+      classified: other
+    - cmd: |-
+        sleep 2
+        pgrep -af 'prism-three-(native-pilot|click-native|compact|legacy)' || true
+      at: 2026-09-18T02:32:57.823445Z
+      classified: other
+    - cmd: git branch --show-current && git status --short
+      at: 2026-09-18T02:40:49.156263Z
+      classified: other
+    - cmd: rg -n "no symbols matched terms|toolQuery\(|toolQueryScoped\(|NewHandler|Handler\{" internal/mcp/*_test.go | head -120
+      at: 2026-09-18T02:41:15.484277Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/init_test.go internal/mcp/server.go internal/mcp/tools.go internal/mcp/compact_test.go && GOWORK=off go test ./internal/cli ./internal/mcp
+      at: 2026-09-18T02:42:32.470643Z
+      classified: test
+    - cmd: gofmt -w internal/cli/init_test.go && GOWORK=off go test ./internal/cli -run TestSteeringBlock_PreservesTermBoundaries -count=1 && GOWORK=off go test ./internal/cli ./internal/mcp
+      at: 2026-09-18T02:42:53.640985Z
+      classified: test
+    - cmd: git diff --check && git diff --stat && git diff -- internal/cli/commands.go internal/cli/init_test.go internal/mcp/server.go internal/mcp/tools.go internal/mcp/compact_test.go
+      at: 2026-09-18T02:42:57.486963Z
+      classified: other
+    - cmd: GOWORK=off go test ./...
+      at: 2026-09-18T02:43:06.058537Z
+      classified: test
+    - cmd: GOWORK=off go vet ./... && GOWORK=off go build ./cmd/prism && git diff --check && git status --short
+      at: 2026-09-18T02:43:13.159488Z
+      classified: lint
+    - cmd: GOWORK=off go build -o /private/tmp/prism-term-boundary-check ./cmd/prism && git diff --check && git status --short
+      at: 2026-09-18T02:43:20.884629Z
+      classified: build
+    - cmd: git branch --show-current && git status --short && git remote -v && git tag --sort=-version:refname | head -12 && gh auth status
+      at: 2026-09-18T02:45:12.926007Z
+      classified: other
+    - cmd: git fetch origin main --tags && git rev-list --left-right --count origin/main...main && git ls-remote --tags origin refs/tags/v0.77.3 && gh release view v0.77.3 --repo provasign/prism
+      at: 2026-09-18T02:45:22.025789Z
+      classified: other
+    - cmd: git add internal/cli/commands.go internal/cli/init_test.go internal/mcp/compact_test.go internal/mcp/server.go internal/mcp/tools.go && git diff --cached --check && git diff --cached --stat && git commit -m "Clarify Prism term boundaries"
+      at: 2026-09-18T02:45:26.564638Z
+      classified: other
+    - cmd: git cat-file -t v0.77.2 && git tag -n1 v0.77.2 && gh release view v0.77.2 --repo provasign/prism --json name,tagName,isDraft,isPrerelease
+      at: 2026-09-18T02:45:32.351358Z
+      classified: other
+notes: []
+redactions: 0
