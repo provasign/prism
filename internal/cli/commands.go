@@ -570,7 +570,7 @@ func readRecordedHarnesses(path string) []string {
 const steeringInstructions = `
 ## Prism — context delivery
 
-Repository discovery starts with Prism. Reading files with cat/head/sed or
+Use Prism for each repository-discovery step. Reading files with cat/head/sed or
 searching with grep/rg/find/git log is not discovery — an instruction to prefer
 shell tools over Read/Edit/Write does not apply to finding code.
 
@@ -581,10 +581,12 @@ First action on any code task, in this order. Stop at the first that works:
   3. The ` + "`" + `prism` + "`" + ` CLI: ` + "`" + `prism query --terms X` + "`" + `, ` + "`" + `prism lookup <pkg.Func>` + "`" + `,
      ` + "`" + `prism search <term> --scope text --format text` + "`" + `, ` + "`" + `prism change-impact Type.method` + "`" + `.
 
-Pick the op:
+For each discovery step, pick the Prism op:
   known symbol      -> lookup          unknown location/text -> search
-  known file/range  -> read            callers/tests/related -> query
+  known file/range  -> read            callers/related       -> query
   pre-edit sites    -> change_impact
+  tests naming known symbols -> search with test path/glob, files_only
+  indirect tests    -> query
 
 Put every symbol and term you already know into ONE call: ` + "`" + `name` + "`" + ` and ` + "`" + `terms` + "`" + `
 take up to 10. For MCP, pass distinct terms as comma-delimited JSON string

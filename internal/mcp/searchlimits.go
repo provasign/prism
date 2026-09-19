@@ -3,25 +3,43 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
 )
+
+const scopedSymbolSearchTimeout = 5 * time.Second
 
 // Fetch prefixes until the scoped result is known or the work bound is reached.
 // A work bound says nothing about how many additional in-scope matches exist.
 func scopedSymbolSearch(ctx context.Context, search func(context.Context, string, int) ([]grove.SymbolRecord, error),
 	query string, sc searchScope, cap, hardMax int) ([]grove.SymbolRecord, bool, error) {
+	return scopedSymbolSearchBounded(ctx, search, query, sc, cap, hardMax, scopedSymbolSearchTimeout)
+}
+
+func scopedSymbolSearchBounded(ctx context.Context, search func(context.Context, string, int) ([]grove.SymbolRecord, error),
+	query string, sc searchScope, cap, hardMax int, timeout time.Duration) ([]grove.SymbolRecord, bool, error) {
+	boundedCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	fetch := minInt(cap+1, hardMax)
+	var last []grove.SymbolRecord
 	for {
-		if err := ctx.Err(); err != nil {
+		if err := boundedCtx.Err(); err != nil {
+			if ctx.Err() == nil && err == context.DeadlineExceeded {
+				return last, false, nil
+			}
 			return nil, false, err
 		}
-		raw, err := search(ctx, query, fetch)
+		raw, err := search(boundedCtx, query, fetch)
 		if err != nil {
+			if boundedCtx.Err() == context.DeadlineExceeded && ctx.Err() == nil {
+				return last, false, nil
+			}
 			return nil, false, err
 		}
 		exhausted := len(raw) < fetch
 		syms := filterSymbolsByScope(filterGeneratedPrismContext(raw), sc)
+		last = syms
 		if len(syms) > cap || exhausted || fetch == hardMax {
 			return syms, exhausted, nil
 		}

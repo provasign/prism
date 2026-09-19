@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
@@ -185,6 +186,39 @@ func TestScopedSymbolScanChecksCancellation(t *testing.T) {
 	}, "Foo", searchScope{}, 2, 5)
 	if err != context.Canceled {
 		t.Fatalf("want cancellation, got %v", err)
+	}
+}
+
+func TestScopedSymbolScanHasItsOwnDeadlineAndKeepsLastPrefix(t *testing.T) {
+	requests := 0
+	fetch := func(ctx context.Context, _ string, n int) ([]grove.SymbolRecord, error) {
+		requests++
+		if requests == 1 {
+			result := make([]grove.SymbolRecord, n)
+			for i := range result {
+				result[i].FilePath = "outside/file.go"
+			}
+			result[0].FilePath = "inside/kept.go"
+			return result, nil
+		}
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	started := time.Now()
+	syms, exhausted, err := scopedSymbolSearchBounded(context.Background(), fetch, "Foo",
+		searchScope{paths: []string{"inside"}}, 2, 100, 20*time.Millisecond)
+	if err != nil || exhausted {
+		t.Fatalf("internal deadline should produce an incomplete prefix, got syms=%v exhausted=%v err=%v", syms, exhausted, err)
+	}
+	if len(syms) != 1 || syms[0].FilePath != "inside/kept.go" {
+		t.Fatalf("last completed prefix was lost: %v", syms)
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("bounded scan behaved like a hang: %v", elapsed)
+	}
+	warning := symbolSearchWarning(len(syms), 2, false, exhausted, false)
+	if !strings.Contains(warning, "INCOMPLETE") || !strings.Contains(warning, "Narrow") {
+		t.Fatalf("incomplete deadline result lacks narrowing guidance: %q", warning)
 	}
 }
 

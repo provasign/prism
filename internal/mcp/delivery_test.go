@@ -256,6 +256,28 @@ func TestFormatGreeting(t *testing.T) {
 	}
 }
 `), 0o644)
+	os.WriteFile(filepath.Join(dir, "requirements.go"), []byte(`package p
+
+func MissingRequiredError() string { return "missing required argument" }
+
+func ValidateRequired() string { return MissingRequiredError() }
+
+func GetRequiredUsageFrom() string { return "usage" }
+
+func dispatchRequired() string { return ValidateRequired() }
+
+func parseRequired() string { return dispatchRequired() }
+`), 0o644)
+	os.WriteFile(filepath.Join(dir, "require_test.go"), []byte(`package p
+
+import "testing"
+
+func TestMissingRequiredOutput(t *testing.T) {
+	if parseRequired() == "" {
+		t.Fatal("empty")
+	}
+}
+`), 0o644)
 
 	gc := grove.NewClient("", "").WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
@@ -433,6 +455,47 @@ func TestToolQuery_TestedByPointer(t *testing.T) {
 	// staying a location-only pointer.
 	if strings.Contains(content, `if FormatGreeting("")`) {
 		t.Error("test body leaked into delivery -- this must stay pointer-only (file:line), not a source window")
+	}
+	if strings.Contains(content, "lexical candidates") {
+		t.Errorf("a verified direct test caller must not be diluted with lexical candidates:\n%s", content)
+	}
+}
+
+// The regression behind clap-rs/clap#4006: the target test reached the
+// private error formatter through parser entry points, so there was no direct
+// calls edge from the test to any supplied anchor. A narrow name-filtered test
+// passed while the containing integration-test file still had six failures.
+func TestToolQuery_IndirectRelatedTestFileIsPointerOnly(t *testing.T) {
+	h := newDeliveryFixture(t)
+	content := queryContent(t, h, map[string]any{
+		"terms": []string{"MissingRequiredError", "ValidateRequired", "GetRequiredUsageFrom"},
+	})
+	if !strings.Contains(content, "Related test files — lexical candidates, not verified callers") {
+		t.Fatalf("missing honest indirect-test label:\n%s", content)
+	}
+	if !strings.Contains(content, "require_test.go") || !strings.Contains(content, "TestMissingRequiredOutput") {
+		t.Fatalf("missing related integration-test pointer:\n%s", content)
+	}
+	if !strings.Contains(content, "containing test file/module or the affected package suite") {
+		t.Fatalf("missing broad-validation guidance:\n%s", content)
+	}
+	if strings.Contains(content, `if parseRequired() == ""`) {
+		t.Fatalf("lexical test body leaked into production context:\n%s", content)
+	}
+}
+
+func TestRelatedTestProbesRecoverCompoundWithoutGenericEdges(t *testing.T) {
+	probes := relatedTestProbes([]string{"missing_required_error", "validate_required", "get_required_usage_from"})
+	var labels []string
+	for _, probe := range probes {
+		labels = append(labels, probe.label)
+	}
+	joined := strings.Join(labels, ",")
+	if !strings.Contains(joined, "missing_required") || !strings.Contains(joined, "required_usage") {
+		t.Fatalf("compound probes did not preserve discriminating cores: %v", probes)
+	}
+	if strings.Contains(joined, "get_required_usage_from") || strings.Contains(joined, "missing_required_error") {
+		t.Fatalf("generic edge words remained in probes: %v", probes)
 	}
 }
 

@@ -129,7 +129,7 @@ func TestDispatch_Initialize(t *testing.T) {
 		t.Errorf("bad resp: %+v", res)
 	}
 	instructions, ok := m["instructions"].(string)
-	if !ok || !strings.Contains(instructions, "first repository-discovery action MUST use Prism") {
+	if !ok || !strings.Contains(instructions, "Use Prism for each repository-discovery step") {
 		t.Errorf("initialize must carry server routing instructions, got: %q", instructions)
 	}
 	for _, nativeTool := range []string{"Read", "Grep", "Glob", "find", "rg", "cat", "sed"} {

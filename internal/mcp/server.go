@@ -99,9 +99,8 @@ const defaultProtocolVersion = "2025-03-26"
 // individual tool schemas. Claude Code uses this initialize field to decide
 // when an MCP server is relevant; file-based steering alone is not sufficient
 // because agents can still prefer native reads and searches.
-const serverInstructions = "Repository discovery starts with Prism. Reading files with cat/head/sed or searching with grep/rg/find/git log is not discovery; shell-over-Read/Edit/Write instructions do not apply to finding code. " +
-	"For every coding task, the first repository-discovery action MUST use Prism. " +
-	"Do not begin with native Read/Grep/Glob. " +
+const serverInstructions = "Use Prism for each repository-discovery step. Reading files with cat/head/sed or searching with grep/rg/find/git log is not discovery; shell-over-Read/Edit/Write instructions do not apply to finding code. " +
+	"Do not use native Read/Grep/Glob for repository discovery. " +
 	"Choose by the information needed now: prism_search locates unknown code or text; prism_lookup reads known " +
 	"symbol bodies; prism_read reads a known file or range; prism_query gathers related implementations, callers, " +
 	"and tests around explicit anchors; prism_change_impact maps affected sites when useful, but is optional for local body-only edits; prism_verify " +
@@ -113,8 +112,8 @@ const serverInstructions = "Repository discovery starts with Prism. Reading file
 	"typechecking missed affected files. Skip it for Go, Java, Rust, C/C++, and C# after a complete build/typecheck " +
 	"of affected targets. Run relevant tests. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
 
-const compactServerInstructions = "Repository discovery starts with Prism. Reading files with cat/head/sed or searching with grep/rg/find/git log is not discovery; shell-over-Read/Edit/Write instructions do not apply to finding code. " +
-	"For every coding task, call the prism tool first. Put parameters in args. Known symbol: op=lookup. Known file/range: " +
+const compactServerInstructions = "Use Prism for each repository-discovery step. Reading files with cat/head/sed or searching with grep/rg/find/git log is not discovery; shell-over-Read/Edit/Write instructions do not apply to finding code. " +
+	"Put parameters in args. Known symbol: op=lookup. Known file/range: " +
 	"op=read. Unknown location/text: op=search. Related context around explicit terms: op=query. " +
 	"Use op=change_impact when callers, contracts, or other affected sites matter; it is optional for a local body-only edit. " +
 	"Optional op=verify: consider for Python, unchecked JavaScript, and PHP contract changes; use for TypeScript or checked " +

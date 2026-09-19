@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
@@ -45,6 +46,11 @@ type selection struct {
 	// declaration in selectContext for why this never enters the
 	// budget/disclosure pipeline.
 	testCallers map[string][]grove.SymbolRecord
+	// relatedTests are bounded lexical leads used only when the call graph
+	// finds no verified test caller. They are deliberately separate from
+	// testCallers: a similar test name is useful validation guidance, but it
+	// is not proof that the test reaches an anchor.
+	relatedTests []relatedTestHint
 	// contentOnlySeeds: seed IDs matched only by body content, never by
 	// name — delivered at signature disclosure, not full windows (see the
 	// declaration in selectContext).
@@ -120,9 +126,12 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			var err error
 			if len(p.paths) > 0 || len(p.glob) > 0 {
 				var exhausted bool
-				matches, exhausted, err = scopedSymbolSearch(ctx, h.Grove.SearchSymbols, term, scope, fetchLimit, symbolFetchHardMax)
+				searchScoped := func(ctx context.Context, query string, limit int) ([]grove.SymbolRecord, error) {
+					return h.Grove.SearchSymbolsScoped(ctx, query, limit, scope.paths, scope.glob)
+				}
+				matches, exhausted, err = scopedSymbolSearch(ctx, searchScoped, term, scope, fetchLimit, symbolFetchHardMax)
 				if err == nil && !exhausted && len(matches) <= fetchLimit {
-					return nil, fmt.Errorf("scoped query for %q reached the symbol fetch cap before finding a complete in-scope set; narrow paths/glob", term)
+					return nil, fmt.Errorf("scoped query for %q could not complete its bounded symbol scan; narrow paths/glob or use a longer term", term)
 				}
 			} else {
 				matches, err = h.Grove.SearchSymbols(ctx, term, fetchLimit)
@@ -453,6 +462,10 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			testCallers[seedID] = filterSymbolsByScope(callers, scope)
 		}
 	}
+	var relatedTests []relatedTestHint
+	if p.includeSet["graph"] && !hasAnyTestCallers(testCallers) {
+		relatedTests = h.relatedTestHints(ctx, p.terms, scope)
+	}
 	stamp("graph-expand")
 	// Merge candidates and graph-enriched symbols, then filter by include set.
 	merged := make([]grove.SymbolRecord, 0, len(candidateSyms)+len(graphExtra))
@@ -536,9 +549,219 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		symbolHits:       textMerge.symbolHits,
 		textBackend:      textMerge.backend,
 		testCallers:      testCallers,
+		relatedTests:     relatedTests,
 		contentOnlySeeds: contentOnlySeeds,
 		lexicalOwners:    lexicalOwners,
 	}, nil
+}
+
+type relatedTestHint struct {
+	file     string
+	line     int
+	names    []string
+	probes   []string
+	score    int
+	firstHit int
+}
+
+func hasAnyTestCallers(callers map[string][]grove.SymbolRecord) bool {
+	for _, sites := range callers {
+		if len(sites) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// relatedTestHints recovers indirect integration-test leads without claiming
+// a graph relationship. A test named missing_required_output is often the
+// right validation target for missing_required_error even when it reaches the
+// private formatter only through Parser::try_get_matches_from. Exact compound
+// probes score strongly; otherwise a file must match two distinct identifier
+// components. The result is pointer-only and tightly capped, so lexical test
+// noise cannot displace production source.
+func (h *Handler) relatedTestHints(ctx context.Context, terms []string, scope searchScope) []relatedTestHint {
+	probes := relatedTestProbes(terms)
+	if len(probes) == 0 || h.Grove == nil {
+		return nil
+	}
+	type candidate struct {
+		relatedTestHint
+		seenNames  map[string]bool
+		seenProbes map[string]bool
+		bestWeight int
+	}
+	byFile := map[string]*candidate{}
+	order := 0
+	for _, probe := range probes {
+		if err := ctx.Err(); err != nil {
+			break
+		}
+		syms, err := h.Grove.SearchSymbols(ctx, probe.text, 64)
+		if err != nil {
+			continue
+		}
+		syms = filterSymbolsByScope(syms, scope)
+		for _, sym := range syms {
+			if !isVerifiedTestCaller(sym.FilePath) || !symbolNameContains(sym, probe.text) {
+				continue
+			}
+			file := normalizePath(sym.FilePath)
+			c := byFile[file]
+			if c == nil {
+				c = &candidate{relatedTestHint: relatedTestHint{file: file, line: sym.Span.Start, firstHit: order}, seenNames: map[string]bool{}, seenProbes: map[string]bool{}, bestWeight: probe.weight}
+				if relatedTestPathAffinity(file, terms) {
+					c.score += 2
+				}
+				byFile[file] = c
+				order++
+			}
+			if !c.seenProbes[probe.label] {
+				c.seenProbes[probe.label] = true
+				c.probes = append(c.probes, probe.label)
+				c.score += probe.weight
+			}
+			if sym.Name != "" && !c.seenNames[sym.Name] && len(c.names) < 3 {
+				c.seenNames[sym.Name] = true
+				c.names = append(c.names, sym.Name)
+			}
+			// Point at the strongest matching test symbol, not merely the
+			// earliest generic "required" helper in the same file.
+			if probe.weight > c.bestWeight && sym.Span.Start > 0 {
+				c.line = sym.Span.Start
+				c.bestWeight = probe.weight
+			}
+		}
+	}
+	var out []relatedTestHint
+	for _, c := range byFile {
+		// One compound match or two independent component matches. A lone
+		// generic word such as "required" is too weak to steer validation.
+		if c.score < 2 {
+			continue
+		}
+		out = append(out, c.relatedTestHint)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].score != out[j].score {
+			return out[i].score > out[j].score
+		}
+		if out[i].firstHit != out[j].firstHit {
+			return out[i].firstHit < out[j].firstHit
+		}
+		return out[i].file < out[j].file
+	})
+	if len(out) > 3 {
+		out = out[:3]
+	}
+	return out
+}
+
+func relatedTestPathAffinity(file string, terms []string) bool {
+	base := file
+	if slash := strings.LastIndexByte(base, '/'); slash >= 0 {
+		base = base[slash+1:]
+	}
+	if dot := strings.IndexByte(base, '.'); dot >= 0 {
+		base = base[:dot]
+	}
+	for _, pathPart := range identifierParts(base) {
+		if len(pathPart) < 5 || pathPart == "test" || pathPart == "tests" {
+			continue
+		}
+		for _, term := range terms {
+			for _, termPart := range identifierParts(term) {
+				shorter := minInt(len(pathPart), len(termPart))
+				if shorter >= 5 && (strings.HasPrefix(pathPart, termPart) || strings.HasPrefix(termPart, pathPart)) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+type relatedTestProbe struct {
+	text   string
+	label  string
+	weight int
+}
+
+func relatedTestProbes(terms []string) []relatedTestProbe {
+	edgeNoise := map[string]bool{
+		"get": true, "set": true, "from": true, "to": true, "with": true,
+		"error": true, "errors": true, "err": true, "validate": true,
+		"validation": true, "check": true, "make": true, "new": true,
+	}
+	seen := map[string]bool{}
+	var compound, component []relatedTestProbe
+	add := func(dst *[]relatedTestProbe, text, label string, weight int) {
+		key := strings.ToLower(text)
+		if len(key) < 5 || seen[key] {
+			return
+		}
+		seen[key] = true
+		*dst = append(*dst, relatedTestProbe{text: text, label: label, weight: weight})
+	}
+	for _, term := range terms {
+		parts := identifierParts(term)
+		for len(parts) > 1 && edgeNoise[parts[0]] {
+			parts = parts[1:]
+		}
+		for len(parts) > 1 && edgeNoise[parts[len(parts)-1]] {
+			parts = parts[:len(parts)-1]
+		}
+		if len(parts) > 1 {
+			label := strings.Join(parts, "_")
+			add(&compound, label, label, 2)
+			add(&compound, strings.Join(parts, ""), label, 2)
+		}
+		for _, part := range parts {
+			if len(part) >= 5 && !edgeNoise[part] {
+				add(&component, part, part, 1)
+			}
+		}
+	}
+	out := append(compound, component...)
+	if len(out) > 6 {
+		out = out[:6]
+	}
+	return out
+}
+
+func identifierParts(s string) []string {
+	runes := []rune(s)
+	var parts []string
+	start := -1
+	flush := func(end int) {
+		if start >= 0 && end > start {
+			parts = append(parts, strings.ToLower(string(runes[start:end])))
+		}
+		start = -1
+	}
+	for i, r := range runes {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			flush(i)
+			continue
+		}
+		if start < 0 {
+			start = i
+			continue
+		}
+		prev := runes[i-1]
+		nextLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+		if unicode.IsUpper(r) && (unicode.IsLower(prev) || unicode.IsDigit(prev) || (unicode.IsUpper(prev) && nextLower)) {
+			flush(i)
+			start = i
+		}
+	}
+	flush(len(runes))
+	return parts
+}
+
+func symbolNameContains(sym grove.SymbolRecord, probe string) bool {
+	probe = strings.ToLower(probe)
+	return strings.Contains(strings.ToLower(sym.Name), probe) || strings.Contains(strings.ToLower(sym.QualifiedName), probe)
 }
 
 const (

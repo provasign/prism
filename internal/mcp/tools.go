@@ -419,7 +419,7 @@ func CompactToolSchemas() []map[string]any {
 		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{
 		"name":        "prism",
-		"description": "Repository discovery starts with Prism. Use the op map; do not use shell tools to find code.",
+		"description": "Use the op map for each discovery step; do not use shell tools to find code.",
 		"inputSchema": map[string]any{
 			"type": "object", "additionalProperties": false, "required": []string{"op", "args"},
 			"properties": map[string]any{
@@ -1572,9 +1572,10 @@ const (
 	// defaultSearchContext: lines around each text hit when the caller sets
 	// no context=. This makes the compact search result useful without a read.
 	defaultSearchContext = 2
-	// symbolFetchHardMax bounds the scoped fetch loop: past it the result
-	// is reported truncated rather than the index scanned without end.
-	symbolFetchHardMax = 1 << 18
+	// symbolFetchHardMax is a defensive backstop. Normal scoped searches are
+	// filtered inside Grove and therefore stop after the first cap+1 fetch;
+	// this bound prevents a future fallback from growing without end.
+	symbolFetchHardMax = 1 << 13
 )
 
 func appendNote(existing, add string) string {
@@ -2150,7 +2151,10 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	if !sc.exhaustive {
 		scanCap = minInt(exhaustiveSymbolCap, maxInt(symCap*4, 64))
 	}
-	syms, sourceExhausted, err := scopedSymbolSearch(ctx, h.Grove.SearchSymbols, q, sc, scanCap, symbolFetchHardMax)
+	searchScoped := func(ctx context.Context, query string, limit int) ([]grove.SymbolRecord, error) {
+		return h.Grove.SearchSymbolsScoped(ctx, query, limit, sc.paths, sc.glob)
+	}
+	syms, sourceExhausted, err := scopedSymbolSearch(ctx, searchScoped, q, sc, scanCap, symbolFetchHardMax)
 	if err != nil {
 		return nil, err
 	}

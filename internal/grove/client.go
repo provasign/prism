@@ -331,6 +331,21 @@ func (c *Client) SearchSymbols(ctx context.Context, query string, limit int) ([]
 	return convertSymbols(syms), nil
 }
 
+// SearchSymbolsScoped applies repository-relative path and glob filters inside
+// Grove before ranking and limiting. Filtering a global prefix afterward is
+// both incomplete and prohibitively slow for broad terms on large indexes.
+func (c *Client) SearchSymbolsScoped(ctx context.Context, query string, limit int, paths, globs []string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	syms, err := e.SymbolsScoped(ctx, query, limit, paths, globs)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
+}
+
 // Deps returns dependency edges for file.
 func (c *Client) Deps(ctx context.Context, file string) ([]Edge, error) {
 	e, err := c.requireEngine()

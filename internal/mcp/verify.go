@@ -1040,6 +1040,8 @@ func isTestFilePath(p string) bool {
 		strings.HasSuffix(base, "test.java") || strings.HasSuffix(base, "tests.java") ||
 		strings.HasSuffix(base, "test.cs") || strings.HasSuffix(base, "tests.cs") ||
 		strings.HasSuffix(base, "test.php") || strings.HasSuffix(base, "tests.php") ||
+		strings.HasPrefix(p, "test/") || strings.HasPrefix(p, "tests/") ||
+		strings.HasPrefix(p, "__tests__/") ||
 		strings.Contains(p, "/test/") || strings.Contains(p, "/tests/") ||
 		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/") ||
 		versionedTestSourceDir.MatchString(p)

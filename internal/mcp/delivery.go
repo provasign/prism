@@ -102,6 +102,9 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 			b.WriteString(anchors)
 			b.WriteString("\n")
 		}
+		if hints := renderRelatedTestHints(sel.relatedTests); hints != "" {
+			b.WriteString(hints)
+		}
 		if ranking.EstimateTokens(b.String()) > budget {
 			b.Reset()
 			fmt.Fprintf(&b, "budget=%d is too small for anchor summaries; use prism_lookup.\n", budget)
@@ -365,6 +368,26 @@ func (h *Handler) deliverSource(ctx context.Context, label string, sel *selectio
 		"symbolCount":     len(sel.picked),
 		"deliveredTokens": deliveredTokens,
 	}, sourceSections
+}
+
+func renderRelatedTestHints(hints []relatedTestHint) string {
+	if len(hints) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("**Related test files — lexical candidates, not verified callers**\n\n")
+	for _, hint := range hints {
+		fmt.Fprintf(&b, "- `%s:%d`", hint.file, hint.line)
+		if len(hint.names) > 0 {
+			fmt.Fprintf(&b, " (%s)", joinCapped(hint.names, 3))
+		}
+		if len(hint.probes) > 0 {
+			fmt.Fprintf(&b, " — matched %s", joinCapped(hint.probes, 3))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("  Validation guidance: run the containing test file/module or the affected package suite; a single name-filtered test can miss neighboring regressions.\n\n")
+	return b.String()
 }
 
 // renderAnchorSummary emits one line per anchor symbol: caller count + caller

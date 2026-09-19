@@ -8,16 +8,20 @@ import (
 func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
-		"Repository discovery starts with Prism",
+		"Use Prism for each repository-discovery step",
 		"cat/head/sed", "grep/rg/find/git log",
 		"shell tools over Read/Edit/Write does not apply",
 		"mcp__prism__prism",
 		`ToolSearch("select:mcp__prism__prism")`,
 		"Prism not being listed does not mean it is absent",
 		`prism query --terms X`,
+		"For each discovery step, pick the Prism op",
 		"known symbol      -> lookup",
 		"known file/range  -> read",
 		"unknown location/text -> search",
+		"callers/related       -> query",
+		"tests naming known symbols -> search with test path/glob, files_only",
+		"indirect tests    -> query",
 		"Put every symbol and term you already know into ONE call",
 		"Two lookups in a row is",
 		"<!-- prism:end -->",
@@ -31,6 +35,9 @@ func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
 	}
 	if len(got) > 3000 {
 		t.Errorf("always-loaded steering grew beyond 3000 bytes: %d", len(got))
+	}
+	if strings.Contains(got, "callers/tests/related") {
+		t.Error("steering collapsed narrow direct-test search into broad query routing")
 	}
 	t.Logf("steering UTF-8 bytes: %d", len(got))
 }
