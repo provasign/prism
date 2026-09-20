@@ -1,0 +1,131 @@
+shale_version: "0"
+id: 01a0bfab-792c-70c3-b0ac-447e52a036d1-c2
+created_at: 2026-09-20T16:42:09.608746Z
+finalized_at: 2026-09-20T16:51:08.776855Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-20T16:48:54.715495Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-20T16:48:54.715495Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-20T16:48:54.715495Z
+    - path: AGENTS.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-20T16:48:54.715495Z
+    - path: CLAUDE.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-20T16:48:54.715495Z
+    - path: internal/cli/searchdelivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-20T16:48:54.715495Z
+commands:
+    - cmd: git push origin v0.80.0
+      at: 2026-09-20T16:42:09.608746Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --workflow release.yml --branch v0.80.0 --limit 1 --json databaseId,status,conclusion,url,headSha,displayTitle
+      at: 2026-09-20T16:42:13.593968Z
+      classified: other
+    - cmd: gh run watch 35523542944 --repo provasign/prism --exit-status
+      at: 2026-09-20T16:44:41.152591Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T16:44:46.961983Z
+      classified: other
+    - cmd: gh release view v0.80.0 --repo provasign/prism --json tagName,url,isDraft,isPrerelease,publishedAt,assets
+      at: 2026-09-20T16:44:47.223033Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --commit 1d5dd85742831ffcc65413b447b66cfc79997b8a --limit 20 --json databaseId,workflowName,status,conclusion,url,headBranch,headSha,createdAt
+      at: 2026-09-20T16:46:00.238037Z
+      classified: other
+    - cmd: gh run view 35523542944 --repo provasign/prism --json status,conclusion,url,headSha,workflowName,jobs
+      at: 2026-09-20T16:46:00.432994Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-20T16:48:01.167305Z
+      classified: other
+    - cmd: prism query --terms cmdSearch,invokeCompactSearch,ExpandCompactOperation,validateCompactArguments,compactStringList,SteeringBlock_PreservesTermBoundaries --format text
+      at: 2026-09-20T16:48:01.298368Z
+      classified: other
+    - cmd: prism change-impact ExpandCompactOperation --format text
+      at: 2026-09-20T16:48:09.482426Z
+      classified: other
+    - cmd: prism search "For CLI, use --terms alpha,beta" --scope text --format text
+      at: 2026-09-20T16:48:13.840972Z
+      classified: other
+    - cmd: prism read internal/cli/searchdelivery_test.go . --format text
+      at: 2026-09-20T16:48:17.745008Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/searchdelivery_test.go internal/cli/init_test.go internal/mcp/server.go
+      at: 2026-09-20T16:49:04.408354Z
+      classified: other
+    - cmd: /bin/zsh -lc 'GOWORK=off go test ./internal/cli ./internal/mcp -count=1'
+      at: 2026-09-20T16:49:22.272265Z
+      classified: test
+    - cmd: prism verify --removed-symbols ExpandCompactOperation --format text
+      at: 2026-09-20T16:49:29.320937Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-20T16:49:29.331275Z
+      classified: other
+    - cmd: /bin/zsh -lc 'GOFLAGS= GOWORK=off go test ./... -count=1 -timeout 180s'
+      at: 2026-09-20T16:49:43.871908Z
+      classified: test
+    - cmd: prism verify --help
+      at: 2026-09-20T16:49:48.94492Z
+      classified: other
+    - cmd: prism verify --removed ExpandCompactOperation --format text
+      at: 2026-09-20T16:49:53.326018Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T16:50:02.683101Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-20T16:50:02.691739Z
+      classified: other
+    - cmd: prism verify --removed ExpandCompactOperation --format text
+      at: 2026-09-20T16:50:02.699232Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-20T16:51:00.161028Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T16:51:00.181818Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-20T16:51:00.185497Z
+      classified: other
+    - cmd: gh release view v0.80.1 --repo provasign/prism --json tagName,url
+      at: 2026-09-20T16:51:00.424836Z
+      classified: other
+    - cmd: git add AGENTS.md CLAUDE.md internal/cli/commands.go internal/cli/init_test.go internal/cli/searchdelivery_test.go internal/mcp/server.go
+      at: 2026-09-20T16:51:03.269618Z
+      classified: other
+    - cmd: 'git commit -m "fix: preserve uncapped CLI search inputs"'
+      at: 2026-09-20T16:51:05.7404Z
+      classified: other
+notes:
+    - text: continuation of session 01a0bfab-792c-70c3-b0ac-447e52a036d1 — events captured after its evidence was finalized
+      at: 2026-09-20T16:42:09.608746Z
+redactions: 0

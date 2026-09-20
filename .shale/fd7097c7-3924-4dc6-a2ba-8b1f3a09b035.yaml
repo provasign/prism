@@ -1,0 +1,108 @@
+shale_version: "0"
+id: fd7097c7-3924-4dc6-a2ba-8b1f3a09b035
+created_at: 2026-09-20T16:43:17.679921Z
+finalized_at: 2026-09-20T16:51:08.776855Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git status && echo --- && git log --oneline -15 && echo --- && git diff HEAD~5 --stat
+      at: 2026-09-20T16:43:56.108006Z
+      classified: other
+    - cmd: git log -5 --format='%h %an %s' && echo --- && git show --stat fe9d1b32
+      at: 2026-09-20T16:43:59.836611Z
+      classified: other
+    - cmd: git show --stat fe9d1b32 | head -50
+      at: 2026-09-20T16:44:06.310963Z
+      classified: other
+    - cmd: git show fe9d1b32 -- internal/cli/commands.go internal/mcp/compactargs.go internal/mcp/server.go internal/mcp/tools.go internal/cli/searchdelivery_test.go internal/mcp/compact_test.go
+      at: 2026-09-20T16:44:09.905099Z
+      classified: other
+    - cmd: cat internal/mcp/compactargs.go
+      at: 2026-09-20T16:44:16.395529Z
+      classified: other
+    - cmd: sed -n '1,120p' internal/mcp/server.go
+      at: 2026-09-20T16:44:20.410066Z
+      classified: other
+    - cmd: grep -n "stringsArg\|func stringArg\|func intArg" internal/mcp/*.go | head -30
+      at: 2026-09-20T16:44:23.139874Z
+      classified: other
+    - cmd: sed -n '3589,3650p' internal/mcp/tools.go
+      at: 2026-09-20T16:44:25.547018Z
+      classified: other
+    - cmd: grep -n "compactSearchCanIncludeBodies\|searchContextCap\|func compactSearchBodiesPicked\|contextLines\|\"context\"" internal/mcp/*.go | grep -v _test
+      at: 2026-09-20T16:44:31.183734Z
+      classified: other
+    - cmd: grep -n "func invokeTool\b" -A 40 internal/cli/commands.go | head -60
+      at: 2026-09-20T16:44:35.429634Z
+      classified: other
+    - cmd: sed -n '230,345p' internal/mcp/server.go
+      at: 2026-09-20T16:44:40.407629Z
+      classified: other
+    - cmd: sed -n '2340,2395p' internal/cli/commands.go
+      at: 2026-09-20T16:44:51.051438Z
+      classified: other
+    - cmd: grep -n "validateCompactArguments" -A 80 internal/mcp/server.go | sed -n '1,90p'
+      at: 2026-09-20T16:44:58.224018Z
+      classified: other
+    - cmd: sed -n '2190,2260p' internal/cli/commands.go
+      at: 2026-09-20T16:45:08.606671Z
+      classified: other
+    - cmd: grep -n "\"prism_search\"" -A 60 internal/mcp/tools.go | grep -n "path\|query\|maxItems\|items" | head -30
+      at: 2026-09-20T16:45:14.178864Z
+      classified: other
+    - cmd: sed -n '540,610p' internal/mcp/tools.go
+      at: 2026-09-20T16:45:16.589522Z
+      classified: other
+    - cmd: sed -n '625,680p' internal/mcp/server.go
+      at: 2026-09-20T16:45:28.241144Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/capcheck.go << 'EOF'
+        package main
+        EOF
+        grep -n "exhaustiveSymbolCap" internal/mcp/*.go | head -5
+      at: 2026-09-20T16:45:35.72113Z
+      classified: other
+    - cmd: go build -o /tmp/prismbin ./cmd/prism 2>&1 | tail -30
+      at: 2026-09-20T16:45:38.24873Z
+      classified: build
+    - cmd: GOWORK=off go build -o /tmp/prismbin ./cmd/prism 2>&1 | tail -30 && ls -la /tmp/prismbin
+      at: 2026-09-20T16:45:43.362192Z
+      classified: build
+    - cmd: |-
+        mkdir -p /tmp/capcheckrepo && cd /tmp/capcheckrepo && rm -rf ./* 2>/dev/null; for i in 1 2 3 4 5 6 7 8 9 10 11 12; do printf 'package p%s\n' "$i" > "f$i.go"; done && ls
+        /tmp/prismbin search foo bar baz qux quux corge grault garply waldo fred plugh xyzzy --dir /tmp/capcheckrepo --format text 2>&1 | tail -20
+      at: 2026-09-20T16:45:52.579388Z
+      classified: other
+    - cmd: cd /tmp/capcheckrepo && /tmp/prismbin search foo --path f1.go --path f2.go --path f3.go --path f4.go --path f5.go --path f6.go --path f7.go --path f8.go --path f9.go --path f10.go --path f11.go --dir /tmp/capcheckrepo --format text 2>&1 | tail -20
+      at: 2026-09-20T16:45:57.074659Z
+      classified: other
+    - cmd: git show fe9d1b32 -- CLAUDE.md AGENTS.md
+      at: 2026-09-20T16:46:01.521009Z
+      classified: other
+    - cmd: sed -n '2260,2320p' internal/cli/commands.go
+      at: 2026-09-20T16:46:05.234573Z
+      classified: other
+    - cmd: git show fe9d1b32 -- go.mod go.sum
+      at: 2026-09-20T16:46:14.70384Z
+      classified: other
+    - cmd: grep -n "\-\-terms\|CLI" docs/PRISM-2.0.md | head -20
+      at: 2026-09-20T16:46:17.863257Z
+      classified: other
+    - cmd: git log --oneline -1 -- internal/mcp/compact_test.go && sed -n '1,40p' internal/mcp/compact_test.go
+      at: 2026-09-20T16:46:22.334226Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/cli/... ./internal/mcp/... 2>&1 | tail -40
+      at: 2026-09-20T16:46:44.228049Z
+      classified: test
+    - cmd: rm -rf /tmp/capcheckrepo /tmp/capcheck.go /tmp/prismbin
+      at: 2026-09-20T16:46:50.085976Z
+      classified: other
+notes: []
+redactions: 0
