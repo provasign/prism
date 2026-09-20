@@ -1,0 +1,195 @@
+shale_version: "0"
+id: 01a0bfc2-c0e0-7581-8914-504f41fcaab6
+created_at: 2026-09-20T17:00:13.101972Z
+finalized_at: 2026-09-20T21:17:41.891106Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git branch --show-current
+      at: 2026-09-20T17:01:57.995912Z
+      classified: other
+    - cmd: test -d ../research/harness && pwd -P
+      at: 2026-09-20T17:02:15.818121Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-09-20T17:06:14.312008Z
+      classified: other
+    - cmd: prism search "suite e2e" "resolved" "native" "tasks" --scope text --format text
+      at: 2026-09-20T17:06:26.967495Z
+      classified: other
+    - cmd: 'prism search ''"resolved": true'' ''"tool": "native"'' --scope text --glob ''**/measurement.json'' --files-only --max-results 200 --format text'
+      at: 2026-09-20T17:06:31.333664Z
+      classified: other
+    - cmd: 'prism search ''"resolved": true'' ''"tool": "native"'' --scope text --glob ''**/measurement.json'' --files-only --format text'
+      at: 2026-09-20T17:06:39.465145Z
+      classified: other
+    - cmd: prism read bench.py:385-606 docs/BENCH.md:1-142 lib/suites.py:1-93
+      at: 2026-09-20T17:06:44.712757Z
+      classified: other
+    - cmd: prism search "--tasks" "--tools" "--trials" "--out" "--prism-binary" --scope text --path bench.py --path docs/BENCH.md --format text
+      at: 2026-09-20T17:06:48.756411Z
+      classified: other
+    - cmd: prism search tasks tools trials out prism-binary --scope text --path bench.py --path docs/BENCH.md --format text
+      at: 2026-09-20T17:06:53.212323Z
+      classified: other
+    - cmd: command -v prism
+      at: 2026-09-20T17:07:01.589897Z
+      classified: other
+    - cmd: python3 bench.py run --suite e2e --tasks Textualize__rich__pr3882,pallets__click__pr3466 --agents claude --tools native,prism --trials 1 --concurrency 1 --out /private/tmp/prism-two-resolved-native-prism-20260920 --prism-binary /opt/homebrew/bin/prism
+      at: 2026-09-20T17:14:05.475973Z
+      classified: other
+    - cmd: prism search resolved turns input_tokens output_tokens cache_read_input_tokens total_tokens --scope text --glob '**/measurement.json' --format text
+      at: 2026-09-20T17:14:34.394354Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-20T17:14:38.738658Z
+      classified: other
+    - cmd: 'prism search ''"resolved": true'' --scope text --path evidence/Textualize__rich__pr3882.r1.sonnet_native/measurement.json --path evidence/Textualize__rich__pr3882.r1.sonnet_prism/measurement.json --path evidence/pallets__click__pr3466.r1.sonnet_native/measurement.json --path evidence/pallets__click__pr3466.r1.sonnet_prism/measurement.json --format text'
+      at: 2026-09-20T17:14:47.03281Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T17:14:59.291969Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T17:14:59.375001Z
+      classified: other
+    - cmd: prism search 'mcp__prism__prism' Bash Read Edit Write pytest shell_completion error failed passed source_output SOURCE_ZSH --scope text --path evidence/pallets__click__pr3466.r1.sonnet_native/measurement.json --path evidence/pallets__click__pr3466.r1.sonnet_prism/measurement.json --format text
+      at: 2026-09-20T17:15:42.195684Z
+      classified: test
+    - cmd: prism read evidence/pallets__click__pr3466.r1.sonnet_prism/measurement.json --format text
+      at: 2026-09-20T17:15:49.540685Z
+      classified: other
+    - cmd: prism read evidence/pallets__click__pr3466.r1.sonnet_native/measurement.json --format text
+      at: 2026-09-20T17:15:54.500836Z
+      classified: other
+    - cmd: prism search _ZSH_COMPLETE_TEMPLATE complete_func 'prog_name =' elif tool_result 'Inspect raw bytes' 'installed click' 'hidden characters' --scope text --path evidence/pallets__click__pr3466.r1.sonnet_prism/stdout.jsonl --format text
+      at: 2026-09-20T17:17:57.432538Z
+      classified: other
+    - cmd: prism read evidence/pallets__click__pr3466.r1.sonnet_prism/stdout.jsonl --format text
+      at: 2026-09-20T17:18:06.84953Z
+      classified: other
+    - cmd: jq -r 'select(.type == "assistant") | .message.content[]? | if .type == "thinking" then "THINK\t" + (.thinking | gsub("\n"; " ")) elif .type == "tool_use" then "TOOL\t" + .name + "\t" + (.input | tostring) else empty end' evidence/pallets__click__pr3466.r1.sonnet_prism/stdout.jsonl
+      at: 2026-09-20T17:18:19.929527Z
+      classified: other
+    - cmd: jq -r 'select(.type == "user") | .message.content[]? | select(.type == "tool_result" and (.content|type)=="array") | .content[]? | select(.type=="text") | "PRISM_RESULT\n" + .text' evidence/pallets__click__pr3466.r1.sonnet_prism/stdout.jsonl
+      at: 2026-09-20T17:18:26.141155Z
+      classified: other
+    - cmd: 'prism search ''"language"'' ''"total_tokens"'' ''"audited_valid": true'' ''"resolved": true'' --scope text --glob ''results/**/measurement.json'' --files-only --format text'
+      at: 2026-09-20T20:46:05.693431Z
+      classified: other
+    - cmd: prism search total_tokens resolved audited_valid arm task language --scope text --path results/java-resolved-native-2026-09-20 --path results/java-resolved-prism-grove0581-2026-09-20 --path results/java-resolved-prism-interleaved-2026-09-20 --format text
+      at: 2026-09-20T20:46:14.79498Z
+      classified: other
+    - cmd: prism search input_tokens turns cost_usd tool arm score --scope text --glob 'results/java-resolved-*-2026-09-20/**/*.json' --files-only --format text
+      at: 2026-09-20T20:46:24.284216Z
+      classified: other
+    - cmd: prism read results/java-resolved-prism-grove0581-2026-09-20/jackson-serialize/summary.json --format text
+      at: 2026-09-20T20:46:34.612697Z
+      classified: other
+    - cmd: prism read results/java-resolved-prism-grove0581-2026-09-20/guava-forwarding-delegate/summary.json --format text
+      at: 2026-09-20T20:46:34.617366Z
+      classified: other
+    - cmd: prism read results/java-resolved-prism-interleaved-2026-09-20/guava-forwarding-delegate/summary.json --format text
+      at: 2026-09-20T20:46:34.629583Z
+      classified: other
+    - cmd: prism read results/java-resolved-prism-interleaved-2026-09-20/jackson-serialize/summary.json --format text
+      at: 2026-09-20T20:46:34.635852Z
+      classified: other
+    - cmd: prism read results/java-resolved-native-2026-09-20/guava-forwarding-delegate/summary.json --format text
+      at: 2026-09-20T20:46:34.678661Z
+      classified: other
+    - cmd: prism read results/java-resolved-native-2026-09-20/jackson-serialize/summary.json --format text
+      at: 2026-09-20T20:46:34.67922Z
+      classified: other
+    - cmd: prism search input_tokens total_tokens turns --scope text --path results/java-resolved-prism-grove0581-2026-09-20 --path results/java-resolved-prism-interleaved-2026-09-20 --files-only --format text
+      at: 2026-09-20T20:46:40.15692Z
+      classified: other
+    - cmd: prism read results/java-resolved-prism-interleaved-2026-09-20/jackson-serialize/r1/grove0.50.0/evidence/jackson-serialize.r1.gpt55_prism/measurement.json --format text
+      at: 2026-09-20T20:47:06.931516Z
+      classified: other
+    - cmd: test -x ./prism && ./prism version
+      at: 2026-09-20T20:55:21.345068Z
+      classified: other
+    - cmd: go build -o /private/tmp/prism-claude-fix-20260920 ./cmd/prism
+      at: 2026-09-20T20:55:33.352369Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-claude-fix-20260920 ./cmd/prism
+      at: 2026-09-20T20:55:39.119133Z
+      classified: build
+    - cmd: /private/tmp/prism-claude-fix-20260920 version
+      at: 2026-09-20T20:55:43.776583Z
+      classified: other
+    - cmd: python3 bench.py run --suite e2e --tasks Textualize__rich__pr3882,pallets__click__pr3466 --agents claude --tools native,prism --trials 1 --concurrency 1 --out /private/tmp/prism-two-resolved-claude-fix-20260920 --prism-binary /private/tmp/prism-claude-fix-20260920
+      at: 2026-09-20T21:07:38.06714Z
+      classified: other
+    - cmd: prism search total_tokens turns resolved audited_valid timed_out agent_error prism_result_bytes --scope text --glob '**/measurement.json' --format text
+      at: 2026-09-20T21:08:05.130292Z
+      classified: other
+    - cmd: prism read evidence/pallets__click__pr3466.r1.sonnet_prism/measurement.json --format text
+      at: 2026-09-20T21:08:14.21657Z
+      classified: other
+    - cmd: jq -r 'select(.type == "user") | .message.content[]? | select(.type == "tool_result" and (.content|type)=="array") | .content[]? | select(.type=="text") | .text' evidence/pallets__click__pr3466.r1.sonnet_prism/stdout.jsonl
+      at: 2026-09-20T21:08:21.991599Z
+      classified: other
+    - cmd: python3 bench.py run --suite e2e --tasks pallets__click__pr3466 --agents claude --tools native --trials 1 --concurrency 1 --out /private/tmp/prism-click3466-native-retry-20260920 --prism-binary /private/tmp/prism-claude-fix-20260920
+      at: 2026-09-20T21:14:01.659591Z
+      classified: other
+    - cmd: prism search total_tokens turns resolved audited_valid --scope text --glob '**/measurement.json' --format text
+      at: 2026-09-20T21:14:18.585051Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-20T21:15:14.207309Z
+      classified: other
+    - cmd: git diff --cached --stat
+      at: 2026-09-20T21:15:14.220362Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T21:15:14.222768Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-20T21:15:14.228983Z
+      classified: other
+    - cmd: gh release view --repo provasign/prism --json tagName,publishedAt,name
+      at: 2026-09-20T21:15:14.656345Z
+      classified: other
+    - cmd: git diff -- internal/mcp/searchevidence.go internal/mcp/searchevidence_test.go
+      at: 2026-09-20T21:15:23.067943Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/searchevidence.go internal/mcp/searchevidence_test.go
+      at: 2026-09-20T21:15:30.568075Z
+      classified: other
+    - cmd: python3 harness/ci_invariants.py
+      at: 2026-09-20T21:15:35.207361Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-20T21:15:51.01556Z
+      classified: test
+    - cmd: test -f scoring/ci_invariants.py && python3 scoring/ci_invariants.py
+      at: 2026-09-20T21:16:01.376608Z
+      classified: other
+    - cmd: python3 scoring/ci_invariants.py --help
+      at: 2026-09-20T21:16:06.510841Z
+      classified: other
+    - cmd: python3 scoring/ci_invariants.py --prism /private/tmp/prism-claude-fix-20260920
+      at: 2026-09-20T21:17:19.75252Z
+      classified: other
+    - cmd: git diff --check -- internal/mcp/searchevidence.go internal/mcp/searchevidence_test.go
+      at: 2026-09-20T21:17:27.170058Z
+      classified: other
+    - cmd: 'git commit --only -m "fix: rank embedded-language search evidence" -- internal/mcp/searchevidence.go internal/mcp/searchevidence_test.go'
+      at: 2026-09-20T21:17:30.854273Z
+      classified: other
+    - cmd: git tag --list v0.80.2
+      at: 2026-09-20T21:17:36.801626Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T21:17:36.810385Z
+      classified: other
+notes: []
+redactions: 0
