@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -49,6 +50,28 @@ func TestSearchCLIInvalidContextFails(t *testing.T) {
 		if got := cmdSearch(args); got != 2 {
 			t.Fatalf("%v: expected usage error, got %d", args, got)
 		}
+	}
+}
+
+func TestSearchCLIDoesNotInheritCompactListCaps(t *testing.T) {
+	dir := t.TempDir()
+	terms := make([]string, 11)
+	args := make([]string, 0, 11+2+22+22)
+	for i := range terms {
+		terms[i] = "TERM_" + strconv.Itoa(i)
+		name := "sample_" + strconv.Itoa(i) + ".txt"
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(terms[i]+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		args = append(args, terms[i])
+	}
+	args = append(args, "--dir", dir, "--scope", "text", "--no-bodies")
+	for i := range terms {
+		args = append(args, "--path", "sample_"+strconv.Itoa(i)+".txt")
+		args = append(args, "--glob", "*.txt")
+	}
+	if rc := cmdSearch(args); rc != 0 {
+		t.Fatalf("search with 11 terms, paths, and globs exited %d", rc)
 	}
 }
 

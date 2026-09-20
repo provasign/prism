@@ -37,7 +37,8 @@ For each discovery step, pick the Prism op:
 Put every symbol and term you already know into ONE call: `name` and `terms`
 take up to 10. For MCP, pass distinct terms as comma-delimited JSON string
 values, for example terms:["alpha","beta"]; never combine distinct terms in
-one space-delimited string. For CLI, use --terms alpha,beta. `ranges` reads several
+one space-delimited string. For CLI search, use positional terms: prism search alpha beta.
+`ranges` reads several
 windows at once. Two lookups in a row is one lookup you did not batch.
 
 Obligations:

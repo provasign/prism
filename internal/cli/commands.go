@@ -591,7 +591,8 @@ For each discovery step, pick the Prism op:
 Put every symbol and term you already know into ONE call: ` + "`" + `name` + "`" + ` and ` + "`" + `terms` + "`" + `
 take up to 10. For MCP, pass distinct terms as comma-delimited JSON string
 values, for example terms:["alpha","beta"]; never combine distinct terms in
-one space-delimited string. For CLI, use --terms alpha,beta. ` + "`" + `ranges` + "`" + ` reads several
+one space-delimited string. For CLI search, use positional terms: prism search alpha beta.
+` + "`" + `ranges` + "`" + ` reads several
 windows at once. Two lookups in a row is one lookup you did not batch.
 
 Obligations:
@@ -2314,39 +2315,39 @@ func cmdSearch(args []string) int {
 	if dir == "" {
 		dir = "."
 	}
-	var terms any = bare[0]
+	var query any = bare[0]
 	if len(bare) > 1 {
-		terms = bare
+		query = bare
 	}
-	compactArgs := map[string]any{"terms": terms, "max_results": limit}
+	searchArgs := map[string]any{"query": query, "limit": limit}
 	if scope != "" {
-		compactArgs["scope"] = scope
+		searchArgs["scope"] = scope
 	}
 	if regex {
-		compactArgs["regex"] = true
+		searchArgs["regex"] = true
 	}
 	if len(paths) > 0 {
-		compactArgs["paths"] = paths
+		searchArgs["path"] = paths
 	}
 	if len(globs) > 0 {
-		compactArgs["glob"] = globs
+		searchArgs["glob"] = globs
 	}
 	if filesOnly {
-		compactArgs["files_only"] = true
+		searchArgs["files_only"] = true
 	}
 	if includeBodiesSet {
-		compactArgs["include_bodies"] = includeBodies
+		searchArgs["include_bodies"] = includeBodies
 	}
 	if exhaustive {
-		compactArgs["exhaustive"] = true
+		searchArgs["exhaustive"] = true
 	}
 	if rollupOnly {
-		compactArgs["rollup_only"] = true
+		searchArgs["rollup_only"] = true
 	}
 	if contextSet {
-		compactArgs["context"] = contextLines
+		searchArgs["context"] = contextLines
 	}
-	out, compactText, rendered, err := invokeCompactSearch(dir, compactArgs, format == formatText)
+	out, compactText, rendered, err := invokeSearchWithCompactRendering(dir, searchArgs, format == formatText)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
@@ -2361,11 +2362,7 @@ func cmdSearch(args []string) int {
 	return 0
 }
 
-func invokeCompactSearch(dir string, compactArgs map[string]any, renderText bool) (any, string, bool, error) {
-	actualName, args, err := mcp.ExpandCompactOperation("search", compactArgs)
-	if err != nil {
-		return nil, "", false, err
-	}
+func invokeSearchWithCompactRendering(dir string, args map[string]any, renderText bool) (any, string, bool, error) {
 	root := mustAbs(dir)
 	cfg, client, err := newClient(root)
 	if err != nil {
@@ -2376,7 +2373,7 @@ func invokeCompactSearch(dir string, compactArgs map[string]any, renderText bool
 		return nil, "", false, err
 	}
 	h := mcp.NewHandler(cfg, root, client)
-	out, err := h.Invoke(actualName, args)
+	out, err := h.Invoke("prism_search", args)
 	if err != nil || !renderText {
 		return out, "", false, err
 	}

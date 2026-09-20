@@ -422,7 +422,7 @@ func TestSteeringBlock_PreservesTermBoundaries(t *testing.T) {
 	for _, want := range []string{
 		`terms:["alpha","beta"]`,
 		"never combine distinct terms in one space-delimited string",
-		"For CLI, use --terms alpha,beta",
+		"For CLI search, use positional terms: prism search alpha beta",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("steering block missing term-boundary guidance %q", want)

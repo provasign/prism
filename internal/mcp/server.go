@@ -340,13 +340,6 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 	return name, legacy, nil
 }
 
-// ExpandCompactOperation is the shared compact argument contract used by the
-// MCP gateway and the CLI. Keeping the translation here prevents the two
-// entry points from acquiring different defaults or accepted fields.
-func ExpandCompactOperation(op string, args map[string]any) (string, map[string]any, error) {
-	return expandCompactCall(map[string]any{"op": op, "args": args})
-}
-
 func schemaAcceptsValue(schema map[string]any, value any) bool {
 	if alternatives, ok := schema["oneOf"].([]map[string]any); ok {
 		for _, alternative := range alternatives {
@@ -640,8 +633,7 @@ func compactSearchCanIncludeBodies(args map[string]any) bool {
 }
 
 // RenderCompactSearchText is the canonical compact search renderer shared by
-// MCP and CLI. The input args are the normalized legacy arguments returned by
-// ExpandCompactOperation.
+// MCP and CLI. The input args use the normalized legacy prism_search fields.
 func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]any, args map[string]any) (string, bool) {
 	text, rendered := renderSearchAsText(out)
 	if !rendered {
