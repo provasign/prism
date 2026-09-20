@@ -88,3 +88,68 @@ func TestEvidenceLineScorePrefersUseOverDeclarationAndComment(t *testing.T) {
 		t.Fatal("executable use must rank above declarations and comments")
 	}
 }
+
+// Reproduces pallets/click#3466 (src/click/shell_completion.py): a generic
+// term ("elif") matches both a real Python elif clause and a Zsh elif
+// embedded in a Python triple-quoted template string. evidenceLineScore must
+// not systematically under-score the embedded-shell line just because it
+// doesn't fit Python's own statement shapes ("if "/"return "/assignment),
+// or the ranking promotes the unrelated Python branch as "Exact source" and
+// buries the actually relevant template line as a locator.
+func TestEvidenceLineScoreDoesNotPenalizeEmbeddedShellConditional(t *testing.T) {
+	pythonElif := `elif "=" in incomplete and _start_of_option(ctx, incomplete):`
+	zshElif := `elif [[ "$type" == "dir" ]]; then`
+	if evidenceLineScore(zshElif) < evidenceLineScore(pythonElif) {
+		t.Fatalf("embedded shell elif (%d) scored below unrelated Python elif (%d); "+
+			"a generic term match should not be tie-broken in favor of host-language shape",
+			evidenceLineScore(zshElif), evidenceLineScore(pythonElif))
+	}
+}
+
+// The shape rules were written against Python/JS statements; every line here
+// is an executable use in its own language that used to score like a bare
+// declaration (0) or a comment (-3). Each must clear the declaration
+// baseline, and the declaration/comment baselines must stay where they are.
+func TestEvidenceLineScoreExecutableUseAcrossLanguages(t *testing.T) {
+	declaration := evidenceLineScore("ssl_context: ssl.SSLContext | None = None,")
+	if declaration != 0 {
+		t.Fatalf("declaration baseline moved: %d", declaration)
+	}
+	uses := []string{
+		// Go: `:=` is not a type annotation; pointer writes are not comments.
+		`x, err := f()`, `for i := 0; i < n; i++ {`, `for _, v := range xs {`,
+		`switch v := x.(type) {`, `ch <- v`, `*p = v`, `*count++`,
+		// Rust / C++ / PHP: `::` paths and match arms.
+		`Self::helper(x);`, `std::process::exit(1);`, `ns::call(x);`,
+		`Foo::Bar => baz(x),`, `std::string s = f();`,
+		// Typed bindings whose initializer is a call.
+		`let x: Foo = f();`, `val x: Int = f()`, `const x: Foo = f()`, `x: int = f()`,
+		// Branch and loop headers beyond if/return.
+		`elif foo(x):`, `for item in items:`, `while pending:`, `with open(p) as fh:`,
+		`except ValueError as e:`, `for (String s : list) {`, `elseif x then`,
+		`for f in *.txt; do`, `while read line; do`, `case "$x" in`,
+		// Paren-less and operator-only statements.
+		`cond ? a : b`, `foo.bar arg`, `puts x`, `raise ArgumentError`,
+		`echo "$x" | grep foo`, `cd dir && make`, `exit 1`,
+	}
+	for _, line := range uses {
+		if got := evidenceLineScore(line); got <= declaration {
+			t.Errorf("%q scored %d, not above a declaration (%d)", line, got, declaration)
+		}
+	}
+	for _, line := range []string{
+		`def foo(a, b):`, `foo(a: string): void {`, `"key": value,`, `x: Foo`,
+	} {
+		if got := evidenceLineScore(line); got != 0 {
+			t.Errorf("declaration %q scored %d, want 0", line, got)
+		}
+	}
+	for _, line := range []string{`# note`, `// note`, `-- note`, `* continuation`, `*/`, `:param x: the x`} {
+		if got := evidenceLineScore(line); got != -3 {
+			t.Errorf("comment %q scored %d, want -3", line, got)
+		}
+	}
+	if evidenceLineScore(`x = f()`) <= evidenceLineScore(`if f(x):`) {
+		t.Error("an assignment with a call must still outrank a branch header")
+	}
+}

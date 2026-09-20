@@ -43,33 +43,98 @@ func evidenceDistance(a, b int) int {
 	return b - a
 }
 
+// Statement-opening keywords across the indexed languages. Each is a use of
+// whatever it names, even when the line has no "(" or "=" for the shape
+// rules below to catch (Python `for x in xs:`, shell `case "$x" in`, Lua
+// `elseif x then`, Ruby `raise Err`).
+var evidenceFlowPrefixes = []string{
+	"if ", "elif ", "else if", "elsif ", "elseif ", "unless ", "until ",
+	"for ", "while ", "with ", "except ", "case ", "switch ",
+	"return ", "raise ", "throw ", "yield ", "defer ", "await ",
+	"and ", "or ", "&& ", "|| ",
+}
+
+var evidenceStatementPrefixes = []string{"puts ", "print ", "echo ", "exit "}
+
+var evidenceMemberAccess = regexp.MustCompile(`\w\.\w`)
+
+// evidenceCommentLine recognizes comment and doc lines. A leading "*" is a
+// block-comment continuation only when followed by a space, "/" or nothing;
+// `*p = v` and `*count++` are pointer writes, not prose.
+func evidenceCommentLine(line string) bool {
+	switch {
+	case strings.HasPrefix(line, "#"), strings.HasPrefix(line, "//"), strings.HasPrefix(line, "--"),
+		strings.HasPrefix(line, ":param"):
+		return true
+	case strings.HasPrefix(line, "*"):
+		rest := strings.TrimLeft(line, "*")
+		return rest == "" || rest[0] == ' ' || rest[0] == '/'
+	}
+	return false
+}
+
+// evidenceAnnotationLine recognizes declarations whose colon introduces a
+// type (`x: Foo`, `def f(a, b):`, `ssl_context: SSLContext | None = None,`).
+// It is deliberately blind to the colon's other jobs: Go `:=`, Rust/C++/PHP
+// `::` paths, ternaries, and a typed binding whose initializer is a call
+// (`let x: Foo = f();`), all of which are behavior, not declaration.
+func evidenceAnnotationLine(line string) bool {
+	colon := strings.IndexByte(line, ':')
+	if colon < 0 || strings.Contains(line, ":=") || strings.Contains(line, "::") ||
+		strings.Contains(line, " ? ") {
+		return false
+	}
+	if eq := strings.IndexByte(line, '='); eq >= 0 && eq < colon {
+		return false
+	}
+	return !strings.Contains(line[colon:], "(")
+}
+
 func evidenceLineScore(line string) int {
 	line = strings.TrimSpace(line)
-	if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") ||
-		strings.HasPrefix(line, "*") || strings.HasPrefix(line, ":param") ||
-		strings.HasPrefix(line, "///") {
+	if line == "" || evidenceCommentLine(line) {
 		return -3
+	}
+	for _, prefix := range evidenceFlowPrefixes {
+		if strings.HasPrefix(line, prefix) {
+			return 4
+		}
 	}
 	// Type annotations and parameter declarations name values but do not
 	// show the behavior that consumes them. This matters in large classes
 	// where declarations precede the operative assignments by many lines.
-	if colon := strings.IndexByte(line, ':'); colon >= 0 &&
-		(strings.IndexByte(line, '=') < 0 || colon < strings.IndexByte(line, '=')) &&
-		!strings.HasPrefix(line, "if ") && !strings.HasPrefix(line, "return ") {
+	if evidenceAnnotationLine(line) {
 		return 0
 	}
-	if strings.HasPrefix(line, "and ") || strings.HasPrefix(line, "or ") {
-		return 4
-	}
-	if strings.Contains(line, "=") && (strings.Contains(line, ".") || strings.Contains(line, "(")) {
+	// "(" signals an expression is being evaluated (call, condition, test).
+	// "[[" is the same signal in shell-family syntax — common in templates
+	// embedded as string constants (e.g. click's Zsh/Bash completion
+	// scripts) — and must not be scored as if it were a bare declaration
+	// just because it doesn't match the host language's own shape.
+	looksLikeExpr := strings.Contains(line, "(") || strings.Contains(line, "[[")
+	if strings.Contains(line, "=") && (strings.Contains(line, ".") || looksLikeExpr) {
 		return 5
 	}
-	if strings.HasPrefix(line, "return ") || strings.HasPrefix(line, "if ") ||
-		strings.Contains(line, "(") {
+	if looksLikeExpr {
 		return 4
 	}
-	if strings.Contains(line, "=") || strings.Contains(line, "{") {
+	for _, prefix := range evidenceStatementPrefixes {
+		if strings.HasPrefix(line, prefix) {
+			return 3
+		}
+	}
+	// Assignment, block open, or an operator statement (pipeline, channel
+	// send, ternary, increment) with no call on the line.
+	if strings.ContainsAny(line, "={") || strings.Contains(line, " | ") ||
+		strings.Contains(line, " && ") || strings.Contains(line, " || ") ||
+		strings.Contains(line, "<-") || strings.Contains(line, "->") ||
+		strings.Contains(line, " ? ") || strings.Contains(line, "++") ||
+		strings.Contains(line, "--") {
 		return 3
+	}
+	// Member access alone is weak evidence of use, but it is not a declaration.
+	if evidenceMemberAccess.MatchString(line) {
+		return 2
 	}
 	return 0
 }
