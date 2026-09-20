@@ -1,0 +1,132 @@
+shale_version: "0"
+id: 01a0bfab-792c-70c3-b0ac-447e52a036d1
+created_at: 2026-09-20T16:35:00.863855Z
+finalized_at: 2026-09-20T16:41:46.835738Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git branch --show-current
+      at: 2026-09-20T16:35:42.607925Z
+      classified: other
+    - cmd: prism query --terms init,mcp,registration,claude,codex --format text
+      at: 2026-09-20T16:35:46.521688Z
+      classified: other
+    - cmd: prism read .codex/config.toml internal/cli/commands_test.go internal/cli/init_scope_test.go --ranges 1:120,1:180,1:280 --format text
+      at: 2026-09-20T16:35:50.516727Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-20T16:35:53.924642Z
+      classified: other
+    - cmd: prism read .codex/config.toml . --format text
+      at: 2026-09-20T16:35:57.093656Z
+      classified: other
+    - cmd: codex mcp list
+      at: 2026-09-20T16:36:01.530692Z
+      classified: other
+    - cmd: prism search "Codex note" --scope text --format text
+      at: 2026-09-20T16:36:08.848473Z
+      classified: other
+    - cmd: prism search "restart or reload,project .codex/config.toml,registered with Codex CLI" --scope text --format text
+      at: 2026-09-20T16:36:15.461584Z
+      classified: other
+    - cmd: prism read internal/cli/init_test.go . --format text
+      at: 2026-09-20T16:36:18.756578Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-20T16:36:57.938097Z
+      classified: other
+    - cmd: prism query --terms grove,version,release,dependency,tag --format text
+      at: 2026-09-20T16:36:58.062127Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T16:37:04.035708Z
+      classified: other
+    - cmd: prism read go.mod . --format text
+      at: 2026-09-20T16:37:04.067476Z
+      classified: other
+    - cmd: prism search "goreleaser,release workflow,gh release,git tag" --scope text --format text
+      at: 2026-09-20T16:37:04.153731Z
+      classified: other
+    - cmd: prism read .github/workflows/release.yml . --format text
+      at: 2026-09-20T16:37:11.410539Z
+      classified: other
+    - cmd: gh release view --repo provasign/grove --json tagName,publishedAt,url,name
+      at: 2026-09-20T16:37:11.660745Z
+      classified: other
+    - cmd: gh release view v0.58.1 --repo provasign/grove --json tagName,body,targetCommitish,publishedAt
+      at: 2026-09-20T16:37:16.920791Z
+      classified: other
+    - cmd: go get github.com/provasign/grove@v0.58.1
+      at: 2026-09-20T16:37:20.05679Z
+      classified: other
+    - cmd: go get github.com/provasign/grove@v0.58.1
+      at: 2026-09-20T16:37:59.49801Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T16:38:07.018589Z
+      classified: other
+    - cmd: git diff -- go.mod go.sum
+      at: 2026-09-20T16:38:07.023348Z
+      classified: other
+    - cmd: /bin/zsh -lc 'GOFLAGS= GOWORK=off go mod tidy'
+      at: 2026-09-20T16:38:10.344129Z
+      classified: other
+    - cmd: /bin/zsh -lc 'GOFLAGS= GOWORK=off go test ./... -count=1 -timeout 180s'
+      at: 2026-09-20T16:38:36.296067Z
+      classified: test
+    - cmd: git diff --stat
+      at: 2026-09-20T16:38:46.22989Z
+      classified: other
+    - cmd: gh release view --repo provasign/prism --json tagName,publishedAt,url,name
+      at: 2026-09-20T16:38:46.604226Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --workflow release.yml --limit 5 --json databaseId,displayTitle,headBranch,status,conclusion,createdAt,url
+      at: 2026-09-20T16:38:46.835819Z
+      classified: other
+    - cmd: git diff -- go.mod go.sum
+      at: 2026-09-20T16:38:51.927988Z
+      classified: other
+    - cmd: /bin/zsh -lc 'GOWORK=off go vet ./...'
+      at: 2026-09-20T16:38:59.777561Z
+      classified: lint
+    - cmd: /bin/zsh -lc 'GOFLAGS= GOWORK=off go test ./... -race -count=1 -timeout 180s'
+      at: 2026-09-20T16:40:13.379099Z
+      classified: test
+    - cmd: go build -ldflags=-X=github.com/provasign/prism/internal/version.Version=v0.80.0 -o /private/tmp/prism-v0.80.0 ./cmd/prism
+      at: 2026-09-20T16:40:19.964041Z
+      classified: build
+    - cmd: /bin/zsh -lc 'GOFLAGS= GOWORK=off go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=v0.80.0" -o /private/tmp/prism-v0.80.0 ./cmd/prism'
+      at: 2026-09-20T16:40:24.867138Z
+      classified: build
+    - cmd: /private/tmp/prism-v0.80.0 version
+      at: 2026-09-20T16:40:29.187108Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-20T16:41:26.335727Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-20T16:41:26.341272Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-20T16:41:26.352928Z
+      classified: other
+    - cmd: gh release view v0.80.0 --repo provasign/prism --json tagName,url
+      at: 2026-09-20T16:41:26.70059Z
+      classified: other
+    - cmd: git diff --unified=1 -- AGENTS.md CLAUDE.md internal/cli/commands.go internal/cli/searchdelivery_test.go internal/mcp/compact_test.go internal/mcp/compactargs.go internal/mcp/server.go internal/mcp/tools.go docs/PRISM-2.0.md
+      at: 2026-09-20T16:41:31.708006Z
+      classified: other
+    - cmd: git add AGENTS.md CLAUDE.md docs/PRISM-2.0.md go.mod go.sum internal/cli/commands.go internal/cli/searchdelivery_test.go internal/mcp/compact_test.go internal/mcp/compactargs.go internal/mcp/server.go internal/mcp/tools.go
+      at: 2026-09-20T16:41:39.085296Z
+      classified: other
+    - cmd: 'git commit -m "feat: unify compact search delivery"'
+      at: 2026-09-20T16:41:41.665583Z
+      classified: other
+notes: []
+redactions: 0
