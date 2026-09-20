@@ -293,7 +293,8 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 	case "search":
 		legacy["query"] = args["terms"]
 		for compact, old := range map[string]string{"paths": "path", "max_results": "limit",
-			"scope": "scope", "glob": "glob", "regex": "regex", "files_only": "files_only", "exhaustive": "exhaustive", "include_bodies": "include_bodies"} {
+			"scope": "scope", "glob": "glob", "regex": "regex", "files_only": "files_only", "exhaustive": "exhaustive",
+			"include_bodies": "include_bodies", "context": "context", "rollup_only": "rollup_only"} {
 			if v, ok := args[compact]; ok {
 				legacy[old] = v
 			}
@@ -339,6 +340,13 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 	return name, legacy, nil
 }
 
+// ExpandCompactOperation is the shared compact argument contract used by the
+// MCP gateway and the CLI. Keeping the translation here prevents the two
+// entry points from acquiring different defaults or accepted fields.
+func ExpandCompactOperation(op string, args map[string]any) (string, map[string]any, error) {
+	return expandCompactCall(map[string]any{"op": op, "args": args})
+}
+
 func schemaAcceptsValue(schema map[string]any, value any) bool {
 	if alternatives, ok := schema["oneOf"].([]map[string]any); ok {
 		for _, alternative := range alternatives {
@@ -369,6 +377,9 @@ func schemaAcceptsValue(schema map[string]any, value any) bool {
 			}
 		case "array":
 			if _, ok := value.([]any); ok {
+				return true
+			}
+			if _, ok := value.([]string); ok {
 				return true
 			}
 		case "object":
@@ -553,38 +564,13 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if m, ok := out.(map[string]any); ok {
 			switch actualName {
 			case "prism_search":
-				text, rendered = renderSearchAsText(m)
-				if rendered {
-					if s.compact {
-						text = rewriteCompactGuidance(text)
-						_, explicitBodies := actualArgs["include_bodies"]
-						if compactSearchCanIncludeBodies(actualArgs) && !explicitBodies {
-							ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-							bodies, delivered := s.handler.compactSearchBodiesPicked(ctx, m)
-							if bodies != "" {
-								// Preserve the established unique-small-result layout.
-								// The general default-on delivery is already in m, so
-								// render this one without that section before appending it.
-								withoutInline := make(map[string]any, len(m))
-								for key, value := range m {
-									if key != "inlineBodies" {
-										withoutInline[key] = value
-									}
-								}
-								text, rendered = renderSearchAsText(withoutInline)
-								text = rewriteCompactGuidance(text)
-								if _, batched := m["results"]; !batched && !strings.Contains(bodies, "other matches remain locators") {
-									text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
-								}
-								text += bodies
-								// The small-result rule serves one symbol; the other
-								// terms' hits still get their bounded bodies/windows.
-								text += s.handler.compactSearchBodiesEnclosingExcept(ctx, m, delivered)
-							}
-							cancel()
-						}
+				if s.compact {
+					text, rendered = s.handler.RenderCompactSearchText(context.Background(), m, actualArgs)
+				} else {
+					text, rendered = renderSearchAsText(m)
+					if rendered {
+						text = s.handler.once.apply(text)
 					}
-					text = s.handler.once.apply(text)
 				}
 			case "prism_read":
 				// +7-18% JSON escaping over whole source bodies, on the
@@ -651,6 +637,42 @@ func compactSearchCanIncludeBodies(args map[string]any) bool {
 	return !boolArg(args, "files_only") && !boolArg(args, "rollup_only") &&
 		!boolArg(args, "exhaustive") &&
 		len(stringsArg(args, "query")) > 0
+}
+
+// RenderCompactSearchText is the canonical compact search renderer shared by
+// MCP and CLI. The input args are the normalized legacy arguments returned by
+// ExpandCompactOperation.
+func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]any, args map[string]any) (string, bool) {
+	text, rendered := renderSearchAsText(out)
+	if !rendered {
+		return "", false
+	}
+	text = rewriteCompactGuidance(text)
+	_, explicitBodies := args["include_bodies"]
+	if compactSearchCanIncludeBodies(args) && !explicitBodies {
+		bodyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		bodies, delivered := h.compactSearchBodiesPicked(bodyCtx, out)
+		if bodies != "" {
+			withoutInline := make(map[string]any, len(out))
+			for key, value := range out {
+				if key != "inlineBodies" {
+					withoutInline[key] = value
+				}
+			}
+			text, rendered = renderSearchAsText(withoutInline)
+			if !rendered {
+				return "", false
+			}
+			text = rewriteCompactGuidance(text)
+			if _, batched := out["results"]; !batched && !strings.Contains(bodies, "other matches remain locators") {
+				text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
+			}
+			text += bodies
+			text += h.compactSearchBodiesEnclosingExcept(bodyCtx, out, delivered)
+		}
+	}
+	return h.once.apply(text), true
 }
 
 // compactSearchBodies folds the common search-then-Read pair into one MCP

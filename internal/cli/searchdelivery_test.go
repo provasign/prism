@@ -67,9 +67,12 @@ func TestSearchCLIIncludeBodiesMatchesMCPOption(t *testing.T) {
 			t.Fatalf("search exited %d", rc)
 		}
 	})
-	if !strings.Contains(out, "Exact source for bounded enclosing hits") ||
+	if !strings.Contains(out, "Exact source for this small, complete locator result") ||
 		!strings.Contains(out, "return 7") {
-		t.Fatalf("CLI did not deliver the bounded body: %s", out)
+		t.Fatalf("CLI did not use compact MCP's default small-result delivery: %s", out)
+	}
+	if strings.Contains(out, "locator result — use") {
+		t.Fatalf("CLI retained locator guidance after delivering the complete compact result: %s", out)
 	}
 	locator := captureStdout(func() {
 		if rc := cmdSearch([]string{"Target", "--dir", dir, "--scope", "symbols", "--no-bodies", "--format", "text"}); rc != 0 {

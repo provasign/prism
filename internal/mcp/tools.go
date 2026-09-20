@@ -408,13 +408,15 @@ func CompactToolSchemas() []map[string]any {
 		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
 		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
 		"include_bodies":  prop("search", "Default true: return up to two bounded bodies or labeled windows with search locations; false returns locators only.", map[string]any{"type": "boolean", "default": true}),
+		"context":         prop("search", "Lines around each match (grep -C N, max 15). Explicit context disables enclosing-body delivery.", map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap}),
+		"rollup_only":     prop("search", "Return the compact hit rollup without source excerpts.", map[string]any{"type": "boolean"}),
 		"removed_symbols": prop("verify", "Optional exact-identifier text check after removal; includes comments and docs.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
 		"base":            prop("verify", "Git ref for the full diff check (default HEAD).", map[string]any{"type": "string"}),
 		"strict":          prop("verify", "Treat a review verdict as a gate failure; the verdict and evidence stay unchanged.", map[string]any{"type": "boolean"}),
 		"exhaustive":      prop("search", "Request expanded inventory; check completion status.", map[string]any{"type": "boolean"}),
 	}
 	const opMap = "lookup: name[,symbol_file,fields] | read: file,from,to or ranges | " +
-		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies] | " +
+		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies,context,rollup_only] | " +
 		"query: terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
 		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{

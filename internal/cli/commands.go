@@ -2199,6 +2199,7 @@ func cmdSearch(args []string) int {
 	var paths, globs []string
 	filesOnly := false
 	includeBodies := true
+	includeBodiesSet := false
 	exhaustive := false
 	rollupOnly := false
 	contextLines := 0
@@ -2247,8 +2248,10 @@ func cmdSearch(args []string) int {
 			}
 		case "--include-bodies":
 			includeBodies = true
+			includeBodiesSet = true
 		case "--no-bodies":
 			includeBodies = false
+			includeBodiesSet = true
 		case "--files-only", "-l":
 			filesOnly = true
 		case "--exhaustive", "--all":
@@ -2311,49 +2314,78 @@ func cmdSearch(args []string) int {
 	if dir == "" {
 		dir = "."
 	}
-	var query any = bare[0]
+	var terms any = bare[0]
 	if len(bare) > 1 {
-		query = bare
+		terms = bare
 	}
-	callArgs := map[string]any{"query": query, "limit": limit}
+	compactArgs := map[string]any{"terms": terms, "max_results": limit}
 	if scope != "" {
-		callArgs["scope"] = scope
+		compactArgs["scope"] = scope
 	}
 	if regex {
-		callArgs["regex"] = true
+		compactArgs["regex"] = true
 	}
 	if len(paths) > 0 {
-		callArgs["path"] = paths
+		compactArgs["paths"] = paths
 	}
 	if len(globs) > 0 {
-		callArgs["glob"] = globs
+		compactArgs["glob"] = globs
 	}
 	if filesOnly {
-		callArgs["files_only"] = true
+		compactArgs["files_only"] = true
 	}
-	callArgs["include_bodies"] = includeBodies
+	if includeBodiesSet {
+		compactArgs["include_bodies"] = includeBodies
+	}
 	if exhaustive {
-		callArgs["exhaustive"] = true
+		compactArgs["exhaustive"] = true
 	}
 	if rollupOnly {
-		callArgs["rollup_only"] = true
+		compactArgs["rollup_only"] = true
 	}
 	if contextSet {
-		callArgs["context"] = contextLines
+		compactArgs["context"] = contextLines
 	}
-	out, err := invokeTool(dir, "prism_search", callArgs)
+	out, compactText, rendered, err := invokeCompactSearch(dir, compactArgs, format == formatText)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "search:", err)
 		return 1
 	}
 	if format == formatText {
-		if text, ok := mcp.RenderSearchText(out); ok {
-			fmt.Print(text)
+		if rendered {
+			fmt.Print(compactText)
 			return 0
 		}
 	}
 	printOutput(out, format)
 	return 0
+}
+
+func invokeCompactSearch(dir string, compactArgs map[string]any, renderText bool) (any, string, bool, error) {
+	actualName, args, err := mcp.ExpandCompactOperation("search", compactArgs)
+	if err != nil {
+		return nil, "", false, err
+	}
+	root := mustAbs(dir)
+	cfg, client, err := newClient(root)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer client.Shutdown()
+	if err := client.AutoIndexIfEmpty(context.Background()); err != nil {
+		return nil, "", false, err
+	}
+	h := mcp.NewHandler(cfg, root, client)
+	out, err := h.Invoke(actualName, args)
+	if err != nil || !renderText {
+		return out, "", false, err
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		return out, "", false, nil
+	}
+	text, rendered := h.RenderCompactSearchText(context.Background(), m, args)
+	return out, text, rendered, nil
 }
 
 func cmdLookup(args []string) int {

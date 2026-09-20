@@ -8,7 +8,7 @@ import (
 var compactFields = map[string][]string{
 	"lookup":        {"name", "symbol_file", "fields"},
 	"read":          {"file", "from", "to", "ranges"},
-	"search":        {"terms", "scope", "paths", "glob", "regex", "files_only", "max_results", "exhaustive", "include_bodies"},
+	"search":        {"terms", "scope", "paths", "glob", "regex", "files_only", "max_results", "exhaustive", "include_bodies", "context", "rollup_only"},
 	"query":         {"terms", "paths", "glob"},
 	"change_impact": {"name", "symbol_file", "signature"},
 	"verify":        {"base", "removed_symbols", "strict"},
@@ -40,6 +40,16 @@ func compactStringList(value any) bool {
 		for _, item := range v {
 			s, ok := item.(string)
 			if !ok || s == "" {
+				return false
+			}
+		}
+		return true
+	case []string:
+		if len(v) < 1 || len(v) > 10 {
+			return false
+		}
+		for _, item := range v {
+			if item == "" {
 				return false
 			}
 		}

@@ -50,6 +50,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 		"terms": "search,query", "scope": "search",
 		"paths": "search,query", "glob": "search,query", "regex": "search",
 		"files_only": "search", "max_results": "search", "exhaustive": "search", "include_bodies": "search",
+		"context": "search", "rollup_only": "search",
 		"base": "verify", "removed_symbols": "verify", "strict": "verify",
 	}
 	if len(argProperties) != len(owners) {
@@ -61,8 +62,8 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 			t.Errorf("%s description lacks exact ops: owner prefix: %q", field, description)
 		}
 	}
-	for _, removed := range []string{"limit", "offset", "query", "context", "budget", "delivery",
-		"max_files", "rollup_only", "include", "model", "profile", "context_used"} {
+	for _, removed := range []string{"limit", "offset", "query", "budget", "delivery",
+		"max_files", "include", "model", "profile", "context_used"} {
 		if _, exists := argProperties[removed]; exists {
 			t.Errorf("removed compact field %q was re-advertised", removed)
 		}
@@ -169,8 +170,8 @@ func TestExpandCompactCall(t *testing.T) {
 			map[string]any{"name": "Thing", "file": "a.go"}},
 		{"read", map[string]any{"file": "a.go", "from": 7, "to": 9},
 			map[string]any{"file": "a.go", "offset": 7, "limit": 3}},
-		{"search", map[string]any{"terms": "Thing", "paths": "src", "max_results": 100},
-			map[string]any{"query": "Thing", "path": "src", "limit": 100}},
+		{"search", map[string]any{"terms": []string{"Thing", "Other"}, "paths": []string{"src", "tests"}, "max_results": 100, "context": 3, "rollup_only": true},
+			map[string]any{"query": []string{"Thing", "Other"}, "path": []string{"src", "tests"}, "limit": 100, "context": 3, "rollup_only": true}},
 		{"query", map[string]any{"terms": "Thing", "paths": "src", "glob": "*.go"},
 			map[string]any{"terms": []any{"Thing"}, "paths": "src", "glob": "*.go"}},
 		{"change_impact", map[string]any{"name": "Thing.Run", "symbol_file": "a.go"},

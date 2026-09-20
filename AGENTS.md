@@ -29,8 +29,10 @@ For each discovery step, pick the Prism op:
   indirect tests    -> query
 
 Put every symbol and term you already know into ONE call: `name` and `terms`
-take up to 10; `ranges` reads several windows at once. Two lookups in a row is
-one lookup you did not batch.
+take up to 10. For MCP, pass distinct terms as comma-delimited JSON string
+values, for example terms:["alpha","beta"]; never combine distinct terms in
+one space-delimited string. For CLI, use --terms alpha,beta. `ranges` reads several
+windows at once. Two lookups in a row is one lookup you did not batch.
 
 Obligations:
   - change_impact before editing a signature, public contract, override, or any
