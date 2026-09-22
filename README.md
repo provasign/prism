@@ -149,7 +149,7 @@ prism verify . --base main
 
 ## Language support
 
-Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, and PHP. Semantic depth varies by language and by the native toolchain available in the repository. `prism doctor` reports the active analyzer and evidence tier rather than implying uniform compiler-level coverage.
+Prism indexes Go, TypeScript/TSX, JavaScript/JSX, Python, Java, Rust, C/C++, C#, PHP, Swift, Kotlin, Objective-C, COBOL, and JCL (via the embedded Grove engine). Semantic depth varies by language and by the native toolchain available in the repository; COBOL and JCL are structural/heuristic only, with no published accuracy oracle yet. Run `grove doctor` in the repository for the full per-language resolution tier and limitations breakdown -- `prism doctor` currently reports index/engine status only, not per-language detail.
 
 ## Interfaces
 
