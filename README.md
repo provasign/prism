@@ -115,6 +115,32 @@ prism --help
 prism doctor .
 ```
 
+### Read-guard hook (Claude Code)
+
+```sh
+prism init --read-guard .      # install
+prism init --no-read-guard .   # uninstall
+```
+
+Installs a hook that denies a native `Read` once prism has already delivered
+that exact line range earlier in the same session, pointing the agent back
+at what it already has instead of paying for it twice. Measured (13-task
+controlled A/B, same tasks run hook-on vs hook-off): ~11% fewer tokens with
+no change in resolve rate. Claude Code only — hooks are a Claude Code
+mechanism.
+
+`--read-guard` writes `.claude/hooks/prism_read_tracker.py` and
+`.claude/hooks/prism_read_guard.py`, and adds one `PostToolUse` entry (on
+`mcp__prism__prism`) and one `PreToolUse` entry (on `Read`) to
+`.claude/settings.json`. It only ever adds entries — an existing hook you
+already have on `Read` or elsewhere is never modified or replaced, prism's
+just runs alongside it. `--no-read-guard` removes exactly what
+`--read-guard` added: the two script files, only the settings.json entries
+whose command is prism's own (any other hook on the same matcher is left in
+place), and the `.prism-read-tracker.json` state file. Both are standalone
+actions — running either does not require selecting harnesses or otherwise
+running the rest of `init`.
+
 ## Workflow for coding agents
 
 1. Use `prism_lookup` for a known symbol or `prism_search` for an unknown location; batch related names.

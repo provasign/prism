@@ -140,6 +140,15 @@ prism init [dir] flags:
                       deny Claude Code's Grep/Bash(grep|rg) so agents actually
                       reach prism (asked interactively; Claude Code only —
                       no other agent exposes a tool-denial setting)
+  --read-guard        install a hook that denies a native Read once prism has
+                      already delivered that range this session (measured:
+                      ~11% fewer tokens, no change in resolve rate; Claude
+                      Code only). Writes .claude/hooks/prism_read_*.py and
+                      registers them in .claude/settings.json.
+  --no-read-guard     cleanly remove the read-guard hook: its two script
+                      files, its settings.json entries (only the ones it
+                      owns — any other hook on the same matcher survives),
+                      and .prism-read-tracker.json
   --refresh           rewrite ONLY agents already configured (never adds new ones)
   --print-config <id> print one project-local harness snippet and exit, writing nothing
                       ids: claude, codex, cursor, windsurf, vscode, gemini, opencode
@@ -318,6 +327,8 @@ func cmdInit(args []string) int {
 	printConfig := ""
 	refresh := false
 	denyBuiltinSearch := false
+	readGuard := false
+	noReadGuard := false
 	yes := false
 	var harnessArgs []string
 	filtered := args[:0]
@@ -338,6 +349,10 @@ func cmdInit(args []string) int {
 			permissions = false
 		case "--deny-builtin-search":
 			denyBuiltinSearch = true
+		case "--read-guard":
+			readGuard = true
+		case "--no-read-guard":
+			noReadGuard = true
 		case "--refresh":
 			refresh = true
 		case "--yes", "-y":
@@ -374,6 +389,31 @@ func cmdInit(args []string) int {
 	// without touching a single file.
 	if printConfig != "" {
 		return printAgentConfig(printConfig, abs, detectSelfPath())
+	}
+
+	// --read-guard / --no-read-guard are standalone actions, like
+	// --print-config: they target .claude/settings.json directly and don't
+	// depend on harness selection, so requiring a full init run (and its
+	// interactive harness prompt) around a one-line toggle would be
+	// needless friction. Mutually exclusive; neither touches any hook the
+	// user did not ask prism to install (see addHookEntry/removeHookEntry).
+	if readGuard && noReadGuard {
+		fmt.Fprintln(os.Stderr, "init: --read-guard and --no-read-guard are mutually exclusive")
+		return 2
+	}
+	if readGuard {
+		if err := installReadGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+			return 1
+		}
+		return 0
+	}
+	if noReadGuard {
+		if err := uninstallReadGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+			return 1
+		}
+		return 0
 	}
 
 	harnesses, err := parseHarnesses(harnessArgs)
