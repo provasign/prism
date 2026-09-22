@@ -1,0 +1,376 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54
+created_at: 2026-09-22T21:23:29.37896Z
+finalized_at: 2026-09-22T23:54:16.001081Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/assets/prism_read_tracker.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-22T23:43:09.564947Z
+    - path: internal/cli/assets/prism_read_guard.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-22T23:43:19.749757Z
+    - path: internal/cli/readguard.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-22T23:43:50.026919Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-22T23:44:04.94978Z
+    - path: internal/cli/readguard_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-22T23:45:21.710418Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-22T23:45:57.279593Z
+commands:
+    - cmd: find /Users/tapabratapal/Projects/provasign/prism -maxdepth 1 -iname "HANDOFF-2026-09-22.md"
+      at: 2026-09-22T21:23:41.191435Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign -maxdepth 3 -iname "*HANDOFF-2026-09-22*" 2>/dev/null
+      at: 2026-09-22T21:23:42.671759Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "prism_init_deferred\|prism_init\b\|_install_read_guard_hook\|def ARMS\|ARMS =" harness/runners/ab_endtoend_arms.py | head -60
+      at: 2026-09-22T22:26:21.987666Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "read_guard\|_install_read_guard_hook\|prism_init_deferred\|alwaysLoad\|def _index_graph\|def _run_cloud\|arm ==\|arm_name\|ARMS\[" harness/runners/run_e2e.py | head -80
+      at: 2026-09-22T22:26:26.85103Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -rn '"prism_init", "prism_init_deferred"\|prism_init_deferred' harness/ --include=*.py
+      at: 2026-09-22T22:26:58.815463Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -rln "prism_init_deferred" harness/ 2>/dev/null
+      at: 2026-09-22T22:27:02.633422Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 -c "
+        import ast
+        for f in ['harness/runners/ab_endtoend_arms.py','harness/runners/run_e2e.py']:
+            ast.parse(open(f).read())
+        print('ok')
+        "
+        grep -n "prism-arm\|native-arm\|choices=\|add_argument.*arm" harness/runners/run_overnight.py | head -30
+      at: 2026-09-22T22:27:06.514138Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness/results/guard-fix-run harness/results/residency-ab 2>/dev/null; echo ---; grep -n "manifest\|--manifest" harness/runners/run_overnight.py | head -20
+      at: 2026-09-22T22:27:11.245923Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 -c "
+        import json
+        d=json.load(open('harness/results/residency-ab/results.json'))
+        print(type(d), len(d) if hasattr(d,'__len__') else '')
+        print(json.dumps(d,indent=2)[:800])
+        "
+      at: 2026-09-22T22:27:14.712285Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -rl "residency-ab\|residency_ab" harness/runners/*.py 2>/dev/null
+      at: 2026-09-22T22:27:17.335708Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -rln "residency" harness/ --include="*.py" 2>/dev/null; find harness -iname "*residency*"
+      at: 2026-09-22T22:27:19.656275Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "residency" harness/runners/run_e2e.py
+      at: 2026-09-22T22:27:21.557225Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness/runners/ | grep -i run; echo ---; cat harness/results/residency-ab/state.json | head -5; echo ---; head -40 harness/runners/run_overnight.py
+      at: 2026-09-22T22:27:25.174807Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n '40,130p' harness/runners/run_overnight.py
+      at: 2026-09-22T22:27:28.070608Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness/results/residency-ab-manifest.json && cat harness/results/residency-ab-manifest.json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))"
+      at: 2026-09-22T22:34:33.510305Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/runners/run_overnight.py \
+          --manifest harness/results/residency-ab-manifest.json \
+          --out-dir harness/results/guard-hook-ab \
+          --native-arm prism_init_no_guard \
+          --prism-arm prism_init \
+          --model sonnet \
+          > harness/results/guard-hook-ab.launch.log 2>&1 &
+        echo "PID $!"
+      at: 2026-09-22T22:34:38.428814Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && find . -iname "pallets__click__pr3678*" 2>/dev/null; echo ---; ls tasks 2>/dev/null | head; find . -maxdepth 3 -iname "e2e" -type d 2>/dev/null
+      at: 2026-09-22T22:34:46.178944Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 runners/run_overnight.py \
+          --manifest ../harness/results/residency-ab-manifest.json \
+          --out-dir results/guard-hook-ab \
+          --native-arm prism_init_no_guard \
+          --prism-arm prism_init \
+          --model sonnet \
+          > results/guard-hook-ab.launch.log 2>&1 &
+        echo "PID $!"
+      at: 2026-09-22T22:34:52.610714Z
+      classified: other
+    - cmd: sleep 5; tail -20 /Users/tapabratapal/Projects/provasign/research/harness/results/guard-hook-ab.launch.log 2>/dev/null; ps -p 75958 -o pid,etime,command 2>/dev/null
+      at: 2026-09-22T22:35:01.455143Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 75958 -o pid,etime,command 2>/dev/null; echo ---STATE---; cat results/guard-hook-ab/state.json 2>/dev/null; echo; echo ---LOG-TAIL---; tail -40 results/guard-hook-ab.launch.log 2>/dev/null
+      at: 2026-09-22T23:01:04.519146Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 75958 -o pid,etime,command 2>/dev/null; echo ---STATE---; cat results/guard-hook-ab/state.json 2>/dev/null; echo; echo ---LOG-TAIL---; tail -40 results/guard-hook-ab.launch.log 2>/dev/null
+      at: 2026-09-22T23:27:09.457783Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 75958 -o pid,etime,command 2>/dev/null; echo ---STATE---; cat results/guard-hook-ab/state.json 2>/dev/null; echo; echo ---LOG-TAIL---; tail -10 results/guard-hook-ab.launch.log 2>/dev/null
+      at: 2026-09-22T23:35:06.976071Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('results/guard-hook-ab/results.json'))
+        print('n =', len(d))
+        nat_resolved = sum(1 for r in d if r['native']['resolved'])
+        prism_resolved = sum(1 for r in d if r['prism']['resolved'])
+        nat_tok = sum(r['native']['tokens'] for r in d)
+        prism_tok = sum(r['prism']['tokens'] for r in d)
+        print(f'native(no_guard) resolved: {nat_resolved}/{len(d)}')
+        print(f'prism(guard)      resolved: {prism_resolved}/{len(d)}')
+        print(f'native(no_guard) total tokens: {nat_tok}')
+        print(f'prism(guard)     total tokens: {prism_tok}')
+        print(f'ratio (guard/no_guard): {prism_tok/nat_tok:.3f}')
+        print()
+        for r in d:
+            n,p = r['native'], r['prism']
+            print(f\"{r['task']:35s} no_guard={n['tokens']:>9} guard={p['tokens']:>9} ratio={p['tokens']/n['tokens']:.2f} resolved(nog/g)={n['resolved']}/{p['resolved']}\")
+        "
+      at: 2026-09-22T23:35:15.505213Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('results/guard-hook-ab/results.json'))
+        flagged = {'pallets__click__pr3534','pallets__click__pr3653','akheron__jansson__pr731'}
+        sub = [r for r in d if r['task'] not in flagged]
+        nat_tok = sum(r['native']['tokens'] for r in sub)
+        prism_tok = sum(r['prism']['tokens'] for r in sub)
+        print('n excl flagged =', len(sub))
+        print(f'no_guard tokens: {nat_tok}  guard tokens: {prism_tok}  ratio: {prism_tok/nat_tok:.3f}')
+        "
+      at: 2026-09-22T23:35:24.491476Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short
+      at: 2026-09-22T23:37:48.369983Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git diff -- harness/runners/ab_endtoend_arms.py harness/runners/run_e2e.py | head -300
+      at: 2026-09-22T23:37:58.106778Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git add harness/runners/ab_endtoend_arms.py harness/runners/run_e2e.py harness/results/guard-hook-ab/ harness/results/residency-ab-manifest.json && git status --short | grep -E "^[AM]"
+      at: 2026-09-22T23:38:04.640975Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git commit -m "$(cat <<'EOF'
+        feat(harness): add prism_init_no_guard arm to isolate read-guard hook effect
+
+        Byte-identical to prism_init (resident alwaysLoad, same CLAUDE.md steering)
+        except the read-guard hook is withheld, so the same task set can run
+        hook-on vs hook-off instead of comparing across different runs.
+
+        Ran the 13-task residency-ab manifest both ways (harness/results/guard-hook-ab/):
+        hook-on used 0.89x the tokens of hook-off with identical resolve (10/13 both
+        arms, same 3 tasks failed in both) -- the hook is a resolve-neutral token win.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git log --oneline -1
+      at: 2026-09-22T23:38:13.593481Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('results/guard-fix-run/results.json'))
+        print(type(d), len(d))
+        print(json.dumps(d[0], indent=2)[:600])
+        "
+      at: 2026-09-22T23:38:19.210158Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('results/guard-fix-run/results.json'))
+        cells = [(r['task'], r['prism'].get('prism_calls'), r['prism'].get('session_id'), r['prism']['tokens']) for r in d if r['prism'].get('prism_calls') in (3,4,5)]
+        print(len(cells))
+        for c in cells: print(c)
+        "
+      at: 2026-09-22T23:38:25.101887Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        for f in ['results/residency-ab/results.json','results/guard-hook-ab/results.json']:
+            d = json.load(open(f))
+            print(f, len(d))
+            for r in d:
+                p = r.get('prism') or {}
+                print(' ', r['task'], p.get('prism_calls'), p.get('session_id'), p.get('tokens'))
+        "
+      at: 2026-09-22T23:38:32.609133Z
+      classified: other
+    - cmd: find ~/.claude/projects -iname "d30f3bed-125e-479d-a6b9-65b66b02b9c6.jsonl" 2>/dev/null
+      at: 2026-09-22T23:38:37.840582Z
+      classified: other
+    - cmd: pwd
+      at: 2026-09-22T23:38:59.214521Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/payload_scaling.py
+      at: 2026-09-22T23:39:08.259753Z
+      classified: other
+    - cmd: |
+        python3 -c "
+        import json
+        from pathlib import Path
+        RES='/Users/tapabratapal/Projects/provasign/research/harness/results'
+        rows=[]
+        for f in [f'{RES}/residency-ab/results.json', f'{RES}/guard-hook-ab/results.json']:
+            for r in json.load(open(f)):
+                p = r.get('prism') or {}
+                if p.get('session_id') and p.get('prism_calls'):
+                    rows.append((p['prism_calls'], p['tokens']))
+        import statistics
+        xs=[r[0] for r in rows]; ys=[r[1] for r in rows]
+        n=len(xs)
+        mx=sum(xs)/n; my=sum(ys)/n
+        cov=sum((x-mx)*(y-my) for x,y in zip(xs,ys))/n
+        sx=statistics.pstdev(xs); sy=statistics.pstdev(ys)
+        print('n=',n,'corr(calls,tokens)=', cov/(sx*sy))
+        "
+      at: 2026-09-22T23:39:20.657182Z
+      classified: other
+    - cmd: grep -rn "read_guard\|read-guard\|prism_read_tracker\|ReadGuard" --include="*.go" . 2>/dev/null | grep -v _test | head -30
+      at: 2026-09-22T23:39:42.420244Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -rln "read.guard\|read_guard" docs/ harness/hooks/ 2>/dev/null | head -20
+      at: 2026-09-22T23:40:07.467596Z
+      classified: other
+    - cmd: find . -iname "*.go" | xargs grep -ln "func.*[Ii]nit\b" 2>/dev/null | grep -v _test | head -20
+      at: 2026-09-22T23:41:19.059447Z
+      classified: other
+    - cmd: grep -rln "\"init\"\|cmdInit\|func.*Init(" internal/cli/*.go 2>/dev/null
+      at: 2026-09-22T23:41:21.677547Z
+      classified: other
+    - cmd: ls internal/cli | head -40 && echo --- && go env GOVERSION 2>/dev/null && head -5 go.mod
+      at: 2026-09-22T23:42:55.329852Z
+      classified: other
+    - cmd: mkdir -p /Users/tapabratapal/Projects/provasign/prism/internal/cli/assets
+      at: 2026-09-22T23:42:58.872558Z
+      classified: other
+    - cmd: ls *.md docs/*.md 2>/dev/null; echo ---; grep -n "deny-builtin-search\|--refresh\|## " README.md | head -60
+      at: 2026-09-22T23:44:33.170196Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -60
+      at: 2026-09-22T23:44:48.084678Z
+      classified: build
+    - cmd: GOFLAGS="" GOWORK=off go build ./... 2>&1 | head -80
+      at: 2026-09-22T23:44:55.546907Z
+      classified: build
+    - cmd: GOWORK=off go test ./internal/cli/... -run 'ReadGuard|TestCmdInit_ReadGuardFlags' -v 2>&1 | tail -100
+      at: 2026-09-22T23:45:27.761526Z
+      classified: test
+    - cmd: GOWORK=off go test ./... 2>&1 | tail -60
+      at: 2026-09-22T23:45:48.382505Z
+      classified: test
+    - cmd: grep -n "deny-builtin-search\|MCP tools\|init flags\|## " HANDOFF.md | head -40
+      at: 2026-09-22T23:46:01.424217Z
+      classified: other
+    - cmd: gofmt -l internal/cli/readguard.go internal/cli/readguard_test.go internal/cli/commands.go; GOWORK=off go vet ./internal/cli/... 2>&1
+      at: 2026-09-22T23:46:07.408036Z
+      classified: lint
+    - cmd: |-
+        GOWORK=off go build -o /tmp/prism-smoke ./cmd/prism && D=$(mktemp -d) && \
+        /tmp/prism-smoke init --read-guard "$D" && echo "--- settings.json ---" && cat "$D/.claude/settings.json" && \
+        echo "--- files ---" && ls "$D/.claude/hooks" && \
+        echo "=== uninstall ===" && /tmp/prism-smoke init --no-read-guard "$D" && \
+        echo "--- settings.json after ---" && cat "$D/.claude/settings.json" 2>/dev/null || echo "(no settings.json left)" && \
+        ls "$D/.claude/hooks" 2>/dev/null || echo "(hooks dir empty/gone)"
+        rm -rf "$D" /tmp/prism-smoke
+      at: 2026-09-22T23:46:16.100514Z
+      classified: build
+    - cmd: git status --short
+      at: 2026-09-22T23:46:21.249513Z
+      classified: other
+    - cmd: |-
+        git add README.md internal/cli/commands.go internal/cli/assets/ internal/cli/readguard.go internal/cli/readguard_test.go && git commit -m "$(cat <<'EOF'
+        feat(init): add --read-guard / --no-read-guard for the read-guard hook
+
+        Ships the hook that was measured harness-side on 2026-09-22 (13-task
+        controlled A/B: ~11% fewer tokens, no change in resolve rate) as an actual
+        product feature instead of a benchmark-only artifact.
+
+        `prism init --read-guard <dir>` writes .claude/hooks/prism_read_tracker.py
+        and prism_read_guard.py (embedded in the binary) and registers them in
+        .claude/settings.json (PostToolUse on mcp__prism__prism, PreToolUse on
+        Read). `prism init --no-read-guard <dir>` removes exactly what install
+        added -- the two scripts, .prism-read-tracker.json, and only the
+        settings.json entries whose command is prism's own, leaving any of the
+        user's own hooks on the same matchers untouched. Both are standalone
+        actions, like --print-config: they don't require harness selection.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git log --oneline -1
+      at: 2026-09-22T23:46:30.523728Z
+      classified: other
+    - cmd: grep -n "denyBuiltinSearch\|isInteractive()" internal/cli/commands.go | grep -v "_test"
+      at: 2026-09-22T23:47:47.79832Z
+      classified: other
+    - cmd: cat internal/version/version.go 2>/dev/null | head -20; echo ---; git tag --sort=-creatordate | head -5; echo ---; git log --oneline -5
+      at: 2026-09-22T23:48:24.587281Z
+      classified: other
+    - cmd: ls .github/workflows/
+      at: 2026-09-22T23:48:38.078387Z
+      classified: other
+    - cmd: git remote -v; echo ---; git fetch origin --quiet 2>&1; git status -sb; echo ---; git log origin/main..HEAD --oneline
+      at: 2026-09-22T23:48:55.80753Z
+      classified: other
+    - cmd: grep -n -i "semver\|version bump\|minor\|patch" CONTRIBUTING.md 2>/dev/null | head -20
+      at: 2026-09-22T23:49:00.33255Z
+      classified: other
+    - cmd: GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 -timeout 120s && GOWORK=off go build ./... && echo ALL_GREEN
+      at: 2026-09-22T23:49:31.423454Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness/scoring/ci_invariants.py 2>/dev/null && python3 harness/scoring/ci_invariants.py --help 2>&1 | head -30
+      at: 2026-09-22T23:49:36.49338Z
+      classified: other
+    - cmd: ls -la /tmp/ci-corpus 2>/dev/null | head; find /tmp -maxdepth 1 -iname "*ci-corpus*" -o -iname "*corpus*" 2>/dev/null | head -10
+      at: 2026-09-22T23:49:42.871432Z
+      classified: other
+    - cmd: 'for d in /tmp/ci-corpus/*/; do n=$(find "$d" -maxdepth 2 -type f | wc -l); echo "$d: $n files"; done'
+      at: 2026-09-22T23:49:49.54882Z
+      classified: other
+    - cmd: GOWORK=off go build -o /tmp/prism-candidate ./cmd/prism && /tmp/prism-candidate version 2>&1 | head -5
+      at: 2026-09-22T23:49:57.299541Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root /tmp/ci-corpus --prism /tmp/prism-candidate 2>&1 | tail -100
+      at: 2026-09-22T23:51:15.110678Z
+      classified: other
+    - cmd: git log v0.80.2..HEAD --oneline
+      at: 2026-09-22T23:51:18.925248Z
+      classified: other
+notes: []
+redactions: 0
