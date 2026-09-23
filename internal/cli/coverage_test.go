@@ -35,8 +35,18 @@ func TestCmdIndexAndStatus_Smoke(t *testing.T) {
 	if got := cmdStatus([]string{dir}); got != 0 {
 		t.Fatalf("cmdStatus=%d", got)
 	}
-	if got := cmdDoctor([]string{dir}); got != 0 {
-		t.Fatalf("cmdDoctor=%d", got)
+	out := captureStdout(func() {
+		if got := cmdDoctor([]string{dir}); got != 0 {
+			t.Fatalf("cmdDoctor=%d", got)
+		}
+	})
+	// `prism doctor` must surface Grove's per-language capability manifest so
+	// "does prism support X" has an answer without a separate `grove doctor`
+	// run (2026-09-22 handoff gap).
+	for _, want := range []string{`"languages"`, `"schemaVersion"`, `"resolution"`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("cmdDoctor output missing %s: %s", want, out)
+		}
 	}
 	if got := cmdMap([]string{dir}); got != 0 {
 		t.Fatalf("cmdMap=%d", got)

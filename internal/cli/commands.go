@@ -2060,6 +2060,12 @@ func cmdDoctor(args []string) int {
 			// large repos; install ripgrep to upgrade it.
 			"textSearch": textsearch.Backend(),
 		},
+		// grove.Capabilities() is Grove's own release-level per-language and
+		// per-operation quality manifest (indexing/resolution tier,
+		// limitations, caveats) -- `grove doctor` reports it directly; a user
+		// asking "does prism support X" had no answer from `prism doctor`
+		// before this, only from a separate `grove doctor` run.
+		"languages": grove.Capabilities(),
 	})
 	return 0
 }
