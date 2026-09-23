@@ -496,7 +496,21 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		if item.hasSymbol {
 			region.start = maxInt(region.start, item.symbol.Span.Start)
 			region.end = minInt(region.end, item.symbol.Span.End)
-			if item.symbol.Span.End-item.symbol.Span.Start+1 <= 20 && len(item.terms) > 0 {
+			// Full body instead of a ±radius window for an EXACT term match
+			// (len(item.terms) > 0, never a fuzzy "related spelling" guess)
+			// whose enclosing symbol isn't huge. Measured 2026-09-23: 95.5%
+			// of a session's tokens are cache_read (context re-billed every
+			// turn), so a windowed hit the agent immediately re-Reads in
+			// full costs a whole extra turn (~50K tokens) to save nothing —
+			// the window was never going to be cheaper once re-read. Bound
+			// matches compactSearchBodiesLegacy's existing full-body
+			// threshold (maxBodyLines/maxBodyBytes) so this isn't a new,
+			// separately-tuned cap; a query with 20+ hits still windows
+			// every one of them (selected is already capped upstream), so
+			// this can't blow up a broad search.
+			spanLines := item.symbol.Span.End - item.symbol.Span.Start + 1
+			if len(item.terms) > 0 && spanLines <= searchFullBodyMaxLines &&
+				len(item.symbol.RawText) <= searchFullBodyMaxBytes {
 				region.start, region.end, region.window = item.symbol.Span.Start, item.symbol.Span.End, false
 			}
 		}

@@ -53,6 +53,13 @@ const (
 	// sourceDeliveryMaxFiles is the default minimum number of source files.
 	// Every named-anchor file and one related file can be kept beyond it.
 	sourceDeliveryMaxFiles = 2
+	// searchFullBodyMaxLines/searchFullBodyMaxBytes bound when a search hit's
+	// enclosing symbol is delivered in full instead of windowed. Shared by
+	// compactSearchBodiesLegacy (server.go) and the evidence-ranked path
+	// (searchevidence.go) so there is one full-body threshold, not two
+	// independently tuned ones.
+	searchFullBodyMaxLines = 160
+	searchFullBodyMaxBytes = 10000
 )
 
 type lineWindow struct{ start, end int }

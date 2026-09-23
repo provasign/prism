@@ -866,8 +866,8 @@ func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]
 	if h.Grove == nil {
 		return ""
 	}
-	const maxBodyLines = 160
-	const maxBodyBytes = 10000
+	const maxBodyLines = searchFullBodyMaxLines
+	const maxBodyBytes = searchFullBodyMaxBytes
 	const perTermRegions = 2
 	const maxRegions = 4
 	const maxVisited = 128
