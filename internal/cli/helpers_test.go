@@ -114,11 +114,24 @@ func captureStdout(fn func()) string {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+
+	// Drain the pipe WHILE fn runs, not after: an anonymous pipe's OS buffer
+	// is finite (much smaller on Windows than Linux/macOS), so a write past
+	// that size blocks until something reads. Reading only after fn()
+	// returns deadlocks fn() on any output larger than that buffer -- hit in
+	// CI (windows-latest only) once cmdDoctor's output grew past a few KB
+	// (2026-09-23, prism doctor's new per-language capability manifest).
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(&buf, r)
+		close(done)
+	}()
+
 	fn()
 	_ = w.Close()
 	os.Stdout = old
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
+	<-done
 	return buf.String()
 }
 

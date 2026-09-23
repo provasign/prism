@@ -9,7 +9,10 @@ import (
 	"testing"
 )
 
-// capture runs f with stdout redirected and returns what it printed.
+// capture runs f with stdout redirected and returns what it printed. Drains
+// the pipe WHILE f runs (see captureStdout in helpers_test.go for why: a
+// synchronous read-after-write deadlocks once output exceeds the OS pipe
+// buffer, which is much smaller on Windows).
 func capture(t *testing.T, f func()) string {
 	t.Helper()
 	orig := os.Stdout
@@ -18,13 +21,18 @@ func capture(t *testing.T, f func()) string {
 		t.Fatal(err)
 	}
 	os.Stdout = w
+
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(&buf, r)
+		close(done)
+	}()
+
 	f()
 	w.Close()
 	os.Stdout = orig
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, r); err != nil {
-		t.Fatal(err)
-	}
+	<-done
 	return buf.String()
 }
 
