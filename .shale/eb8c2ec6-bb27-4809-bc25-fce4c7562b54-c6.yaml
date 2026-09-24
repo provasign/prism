@@ -1,0 +1,107 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c6
+created_at: 2026-09-24T01:36:40.432247Z
+finalized_at: 2026-09-24T01:41:33.811929Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/verify.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-24T01:40:58.605378Z
+commands:
+    - cmd: |-
+        git tag -a v0.82.0 675ddd93 -m "$(cat <<'EOF'
+        v0.82.0
+
+        - feat(search): exact-term hits deliver the full enclosing body (160 lines /
+          10000 bytes, the bound compactSearchBodiesLegacy already used) instead of a
+          +/-9-line window. 50-task A/B: resolved 31/50 -> 33/50, tokens flat.
+        - feat(verify): new informational `testCoverage` field -- for every changed
+          function/method, which verified tests call it; explicit warning when none.
+          Body-only changes were previously invisible to verify. Never affects verdict.
+        - fix(cli): `prism verify` text output renders testCoverage.
+        EOF
+        )" && git push origin v0.82.0 2>&1 | grep -v "^shale:" | tail -2 && git checkout -q -b h3-verify-steering && git add internal/cli/commands.go internal/cli/steeringdelivery_test.go && git commit -q -m "$(cat <<'EOF'
+        steering: mandate a verify testCoverage read before declaring a change finished
+
+        TREATMENT ARM for the H3 A/B -- not merged to main until measured. Every one
+        of the 12 hard-core benchmark failures stopped on a test run that never
+        exercised the changed function; this makes the testCoverage read a required
+        closing step (the contract check stays optional) and tells the agent what to
+        do with a "no verified test caller" warning, including when it concludes the
+        fix is already present.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git checkout -q main && git log --oneline -1 h3-verify-steering && git status -sb | head -1
+      at: 2026-09-24T01:36:40.432247Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && PRISM_BODY_EXP_BIN=/tmp/prism-h3-treatment python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.load(open('tasks/e2e/pallets__click__pr3678.json'))
+        r = run_e2e.run_cell(task, 'prism_body_exp', 'sonnet')
+        print('resolved:', r.get('resolved'), '| tools:', r.get('tool_trace'), '| session:', r['usage']['session_id'])
+        " > /tmp/h3_probe.log 2>&1; tail -3 /tmp/h3_probe.log
+      at: 2026-09-24T01:36:57.671723Z
+      classified: other
+    - cmd: tail -3 /tmp/h3_probe.log
+      at: 2026-09-24T01:40:17.385421Z
+      classified: other
+    - cmd: |-
+        python3 - << 'EOF'
+        import json
+        from pathlib import Path
+        sid="27437748-6241-43ea-94bf-38ab86494bcf"
+        f=list((Path.home()/".claude"/"projects").glob(f"*/{sid}.jsonl"))[0]
+        tu={}; order=[]
+        for line in f.read_text(errors="ignore").splitlines():
+            try: j=json.loads(line)
+            except Exception: continue
+            m=j.get("message") or {}
+            if j.get("type")=="assistant":
+                for c in (m.get("content") or []):
+                    if isinstance(c,dict) and c.get("type")=="tool_use":
+                        tu[c["id"]]=len(order); order.append({"name":c.get("name"),"input":c.get("input"),"res":""})
+            elif j.get("type")=="user":
+                for c in (m.get("content") or []):
+                    if isinstance(c,dict) and c.get("type")=="tool_result" and c.get("tool_use_id") in tu:
+                        ct=c.get("content"); order[tu[c["tool_use_id"]]]["res"]=ct if isinstance(ct,str) else "\n".join(i.get("text","") for i in ct if isinstance(i,dict))
+        for i,e in enumerate(order):
+            if e["name"].startswith("mcp__prism"):
+                op=e["input"].get("op"); print(f"{i:2d} prism op={op} args={json.dumps(e['input'].get('args'))[:90]}")
+                if op=="verify":
+                    r=e["res"]; k=r.find("test coverage"); print("    VERIFY RESULT:", r[k:k+600].replace("\n","\n    ") if k>=0 else r[:400])
+            else:
+                print(f"{i:2d} {e['name']} {json.dumps(e['input'])[:80]}")
+        EOF
+        echo "--- release status ---"; cd /Users/tapabratapal/Projects/provasign/prism && gh run list --limit 3 2>&1 | grep -i "v0.82.0\|CI" | head -3
+      at: 2026-09-24T01:40:33.958599Z
+      classified: other
+    - cmd: |-
+        go build ./... && go vet ./... && go test ./internal/mcp/... -run TestToolVerify -count=1 2>&1 | tail -1 && git add internal/mcp/verify.go && git commit -q -m "$(cat <<'EOF'
+        fix(verify): skip module-level pseudo-symbols in testCoverage
+
+        "<top-level>" is how the parser attributes import/constant edits; it is not a
+        function a test could call, and a "no verified test caller" warning on it sent
+        the agent hunting for coverage that cannot exist (first H3 probe, click pr3678).
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-24T01:41:18.016361Z
+      classified: lint
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-24T01:36:40.432247Z
+redactions: 0
