@@ -1,0 +1,68 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c5
+created_at: 2026-09-24T01:16:48.846494Z
+finalized_at: 2026-09-24T01:36:39.138876Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-24T01:34:26.218254Z
+    - path: internal/cli/steeringdelivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-24T01:35:44.87333Z
+commands:
+    - cmd: git push origin main 2>&1 | grep -v "^shale:" | tail -4
+      at: 2026-09-24T01:16:48.846494Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git push origin main 2>&1 | grep -v "^shale:" | tail -3
+      at: 2026-09-24T01:16:59.618108Z
+      classified: other
+    - cmd: |-
+        go build -o /tmp/prism-h3-control ./cmd/prism && cp /tmp/prism-h3-control /tmp/prism-v082-candidate && cd /Users/tapabratapal/Projects/provasign/research && (python3 harness/scoring/ci_invariants.py --corpus-root /tmp/ci-corpus --prism /tmp/prism-v082-candidate > /tmp/ci_invariants_v082.log 2>&1; echo "rc=$?" >> /tmp/ci_invariants_v082.log) &
+        echo "gate started in background"
+      at: 2026-09-24T01:34:14.8364Z
+      classified: build
+    - cmd: go build ./... && go vet ./... && go build -o /tmp/prism-h3-treatment ./cmd/prism && go test ./internal/cli/... -count=1 2>&1 | tail -3 && /tmp/prism-h3-treatment init --print-config claude /tmp 2>/dev/null | head -3; echo "---steering check---"; D=$(mktemp -d) && /tmp/prism-h3-treatment init --harness claude --yes "$D" >/dev/null 2>&1; grep -c "testCoverage" "$D/CLAUDE.md"; rm -rf "$D"
+      at: 2026-09-24T01:35:00.979093Z
+      classified: lint
+    - cmd: go test ./internal/cli/... -count=1 2>&1 | grep -B2 -A12 "^--- FAIL" | head -60
+      at: 2026-09-24T01:35:13.601187Z
+      classified: test
+    - cmd: sed -n '40,70p' internal/cli/steeringdelivery_test.go
+      at: 2026-09-24T01:35:24.297059Z
+      classified: other
+    - cmd: go test ./internal/cli/... -count=1 2>&1 | tail -2
+      at: 2026-09-24T01:35:57.045036Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - << 'EOF'
+        import json
+        hard = ["FasterXML__jackson-databind__pr6018","FasterXML__jackson-databind__pr6044",
+         "FasterXML__jackson-databind__pr6052","FasterXML__jackson-databind__pr6076",
+         "akheron__jansson__pr740","apache__commons-lang__pr1655","apache__commons-lang__pr1703",
+         "gin-gonic__gin__pr4535","gin-gonic__gin__pr4805","pallets__click__pr3473",
+         "pallets__click__pr3504","pallets__click__pr3678"]
+        flaky = ["FasterXML__jackson-databind__pr6019","FasterXML__jackson-databind__pr6030",
+         "FasterXML__jackson-databind__pr6061","akheron__jansson__pr731","pallets__click__pr3434",
+         "pallets__click__pr3471","pallets__click__pr3653"]
+        m = hard + flaky
+        json.dump(m, open("results/h3-movable-manifest.json","w"), indent=2)
+        print(len(m), "tasks")
+        EOF
+        cat /tmp/ci_invariants_v082.log 2>/dev/null | tail -4
+      at: 2026-09-24T01:36:10.54467Z
+      classified: other
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-24T01:16:48.846494Z
+redactions: 0
