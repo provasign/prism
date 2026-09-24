@@ -599,3 +599,101 @@ func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
 		t.Error("per-file search cap must not hide a later exact mention behind prefix matches")
 	}
 }
+
+// TestToolVerify_TestCoverageForBodyOnlyChange: a pure body edit (no
+// signature change) never becomes a `seed` (addSeed only fires on
+// signature/rename/removal), so it was invisible to verify before this --
+// verdict stays "complete" with zero missed sites regardless. testCoverage
+// is the separate, non-gating signal: does a verified test call the
+// function whose body changed. One function has a real test caller, one
+// doesn't -- the second must carry a warning, not silently pass as if it
+// were covered.
+func TestToolVerify_TestCoverageForBodyOnlyChange(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/cov\n\ngo 1.26\n")
+	write("core.go", "package cov\n\n"+
+		"func Add(a, b int) int {\n\treturn a + b\n}\n\n"+
+		"func Sub(a, b int) int {\n\treturn a - b\n}\n")
+	write("core_test.go", "package cov\n\nimport \"testing\"\n\n"+
+		"func TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fail()\n\t}\n}\n")
+
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir,
+			"-c", "user.email=t@t", "-c", "user.name=t"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q")
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+
+	// Body-only changes to BOTH functions -- neither is a signature change,
+	// so neither should ever become a seed or a missed site.
+	write("core.go", "package cov\n\n"+
+		"func Add(a, b int) int {\n\treturn a + b + 0\n}\n\n"+
+		"func Sub(a, b int) int {\n\treturn a - b - 0\n}\n")
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	out, err := h.Invoke("prism_verify", map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["verdict"] != "complete" {
+		t.Fatalf("verdict = %v, want complete (body-only changes are never seeds): missed=%v",
+			m["verdict"], m["missedSites"])
+	}
+	tc, _ := m["testCoverage"].([]map[string]any)
+	if len(tc) != 2 {
+		t.Fatalf("testCoverage = %v, want 2 entries (Add, Sub)", m["testCoverage"])
+	}
+	byName := map[string]map[string]any{}
+	for _, e := range tc {
+		byName[fmt.Sprint(e["symbol"])] = e
+	}
+	add, ok := byName["Add"]
+	if !ok {
+		t.Fatalf("no testCoverage entry for Add: %v", tc)
+	}
+	covered, _ := add["coveredBy"].([]string)
+	if len(covered) == 0 || !strings.Contains(covered[0], "core_test.go") {
+		t.Errorf("Add coveredBy = %v, want core_test.go:<line>", add["coveredBy"])
+	}
+	if add["warning"] != nil {
+		t.Errorf("Add has a real test caller, must not carry a warning: %v", add["warning"])
+	}
+	sub, ok := byName["Sub"]
+	if !ok {
+		t.Fatalf("no testCoverage entry for Sub: %v", tc)
+	}
+	if sub["coveredBy"] != nil {
+		t.Errorf("Sub has no test caller, coveredBy must be absent: %v", sub["coveredBy"])
+	}
+	if sub["warning"] == nil {
+		t.Error("Sub has no verified test caller, must carry a warning")
+	}
+	text, ok := renderVerifyAsText(m)
+	if !ok {
+		t.Fatal("renderVerifyAsText rejected a valid testCoverage payload")
+	}
+	if !strings.Contains(text, "Add") || !strings.Contains(text, "Sub") || !strings.Contains(text, "no verified test caller") {
+		t.Errorf("text rendering missing test-coverage section: %s", text)
+	}
+}

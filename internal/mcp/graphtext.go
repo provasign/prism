@@ -401,7 +401,7 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 		"signatureChanges": true, "missedSites": true, "unverifiedSeeds": true,
 		"contentAdvisories": true,
 		"newDependencies":   true, "archStatus": true, "archIntroduced": true,
-		"notes": true,
+		"notes": true, "testCoverage": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -467,6 +467,21 @@ func renderVerifyAsText(out map[string]any) (string, bool) {
 	}
 	for _, n := range anySlice(out["notes"]) {
 		fmt.Fprintf(&b, "note: %v\n", n)
+	}
+	if tc := anySlice(out["testCoverage"]); len(tc) > 0 {
+		b.WriteString("\ntest coverage of changed functions (informational, does not affect verdict):\n")
+		for _, e := range tc {
+			em, ok := e.(map[string]any)
+			if !ok {
+				return "", false
+			}
+			if covered := anySlice(em["coveredBy"]); len(covered) > 0 {
+				fmt.Fprintf(&b, "  %v:%v  %v — covered by %d test(s): %v\n",
+					em["file"], em["line"], em["symbol"], len(covered), covered)
+			} else {
+				fmt.Fprintf(&b, "  %v:%v  %v — %v\n", em["file"], em["line"], em["symbol"], em["warning"])
+			}
+		}
 	}
 	switch verdict {
 	case "complete":

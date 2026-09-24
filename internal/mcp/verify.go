@@ -280,6 +280,25 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	var seeds []seed
 	var unverifiedSeeds []string
 	var contentAdvisories []string
+	// testCoverage answers a DIFFERENT question than the seeds above: not
+	// "did every caller of a changed CONTRACT get updated" but "does a
+	// verified test exercise the function/method whose BODY changed" — a
+	// pure body edit (the common shape of a bug fix) never becomes a seed
+	// at all (addSeed only fires on signature change/rename/removal/member-
+	// contract extraction), so it was previously invisible to verify.
+	// Measured (2026-09-23, 12-task hard-core-failure review): every
+	// unsolved task was a body-only change, and the agent's own test run
+	// was the thing that gave a false pass — this is informational, not
+	// gating (never affects verdict), so a coverage miss on a change this
+	// can't resolve (e.g. a new file, a symbol change_impact can't scope)
+	// degrades to a silent skip, never a wrong verdict.
+	type testCoverageEntry struct {
+		symbol, file string
+		line         int
+		coveredBy    []string
+		checked      bool
+	}
+	var testCoverage []testCoverageEntry
 	// Symbols in test files are NOT contracts: a deleted test function has no
 	// callers that must migrate, yet each one used to surface as "review its
 	// old-contract dependents manually" — measured on a real diff, 3 deleted
@@ -388,6 +407,40 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 							"member "+after.QualifiedName+" of declaration block changed")
 					}
 				}
+			}
+		}
+		// Test-coverage check: every changed function/method/constructor,
+		// contract-changed or not (this is the whole point — body-only
+		// changes are excluded from `seeds` above). Non-fatal by design:
+		// a lookup failure (ambiguous name, unscoped symbol) just skips
+		// that entry rather than degrading the verdict, since this signal
+		// has never been validated as gating-safe the way the seed/impact
+		// logic has.
+		for _, c := range fd.Changed {
+			if c.After == nil || isTestFilePath(c.After.FilePath) {
+				continue
+			}
+			switch c.After.Kind {
+			case "function", "method", "constructor":
+			default:
+				continue
+			}
+			name := c.After.QualifiedName
+			if name == "" {
+				name = c.After.Name
+			}
+			entry := testCoverageEntry{symbol: displayQN(*c.After), file: f, line: c.After.Span.Start}
+			if r, err := h.Grove.ChangeImpactScoped(ctx, name, f); err == nil {
+				entry.checked = true
+				for _, caller := range r.Callers {
+					if isVerifiedTestCaller("/" + filepath.ToSlash(caller.FilePath)) {
+						entry.coveredBy = append(entry.coveredBy,
+							fmt.Sprintf("%s:%d", caller.FilePath, caller.Span.Start))
+					}
+				}
+			}
+			if entry.checked {
+				testCoverage = append(testCoverage, entry)
 			}
 		}
 		for _, c := range fd.Renamed {
@@ -712,6 +765,17 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		verdict = "review"
 	}
 	h.Ledger.RecordCall("prism_verify")
+	testCoverageOut := make([]map[string]any, 0, len(testCoverage))
+	for _, tc := range testCoverage {
+		e := map[string]any{"symbol": tc.symbol, "file": tc.file, "line": tc.line}
+		if len(tc.coveredBy) > 0 {
+			e["coveredBy"] = tc.coveredBy
+		} else {
+			e["warning"] = "no verified test caller found in the graph for this changed function — " +
+				"confirm you ran a test that actually exercises it, not just a passing suite"
+		}
+		testCoverageOut = append(testCoverageOut, e)
+	}
 	return map[string]any{
 		"verdict":           verdict,
 		"gateFailure":       verdict == "incomplete" || (strict && verdict == "review"),
@@ -725,6 +789,10 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		"archStatus":        archStatus,
 		"archIntroduced":    archIntroduced,
 		"notes":             notes,
+		// Informational only, never affects verdict/gateFailure — see
+		// testCoverage's declaration comment above for why body-only
+		// changes need this separately from the seed/missedSites pipeline.
+		"testCoverage": testCoverageOut,
 	}, nil
 }
 
