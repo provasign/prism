@@ -467,6 +467,20 @@ func renderVerifyText(m map[string]any) {
 	for _, n := range asSliceAny(m["notes"]) {
 		fmt.Printf("note: %v\n", n)
 	}
+	if tc := asSliceAny(m["testCoverage"]); len(tc) > 0 {
+		fmt.Println("\ntest coverage of changed functions (informational, does not affect verdict):")
+		for _, e := range tc {
+			em, _ := e.(map[string]any)
+			if em == nil {
+				continue
+			}
+			if covered := asSliceAny(em["coveredBy"]); len(covered) > 0 {
+				fmt.Printf("  %v:%v  %v — covered by %d test(s): %v\n", em["file"], em["line"], em["symbol"], len(covered), covered)
+			} else {
+				fmt.Printf("  %v:%v  %v — %v\n", em["file"], em["line"], em["symbol"], em["warning"])
+			}
+		}
+	}
 	switch verdict {
 	case "complete":
 		if len(asSliceAny(m["contentAdvisories"])) > 0 {
@@ -618,8 +632,23 @@ func renderCyclesText(m map[string]any) {
 }
 
 func asSliceAny(v any) []any {
-	s, _ := v.([]any)
-	return s
+	switch x := v.(type) {
+	case []any:
+		return x
+	case []map[string]any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = e
+		}
+		return out
+	case []string:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = e
+		}
+		return out
+	}
+	return nil
 }
 
 // kindLine renders a {kind: count} map as "calls 80, imports 7",
