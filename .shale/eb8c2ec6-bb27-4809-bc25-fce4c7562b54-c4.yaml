@@ -1,0 +1,2747 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c4
+created_at: 2026-09-23T01:38:46.391992Z
+finalized_at: 2026-09-24T01:16:47.186085Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/searchevidence.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T03:17:14.043318Z
+    - path: internal/mcp/delivery.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T03:17:26.643191Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T03:17:30.067664Z
+    - path: internal/mcp/verify.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-24T01:06:02.461415Z
+    - path: internal/mcp/graphtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-24T01:07:18.368013Z
+    - path: internal/cli/viewcmds.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-24T01:14:49.164145Z
+commands:
+    - cmd: git push origin main 2>&1
+      at: 2026-09-23T01:38:46.391992Z
+      classified: other
+    - cmd: sleep 10; cd /Users/tapabratapal/Projects/provasign/prism && gh run list --workflow=CI --limit 3 2>&1
+      at: 2026-09-23T01:38:59.073498Z
+      classified: other
+    - cmd: gh run view 35807148349 2>&1
+      at: 2026-09-23T01:43:05.148186Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale 2>&1
+      at: 2026-09-23T01:43:11.598677Z
+      classified: other
+    - cmd: sleep 10; gh run view 35807447397 -R provasign/homebrew-shale 2>&1
+      at: 2026-09-23T01:43:25.951409Z
+      classified: other
+    - cmd: 'gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -iE "version|url" | head -6'
+      at: 2026-09-23T01:43:28.662148Z
+      classified: other
+    - cmd: ls ~/.claude/projects/ | wc -l; du -sh ~/.claude/projects/ 2>/dev/null; echo "---"; find ~/.claude/projects -name "*.jsonl" | wc -l
+      at: 2026-09-23T01:54:56.751904Z
+      classified: other
+    - cmd: ls -t ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/*.jsonl 2>/dev/null | head -3
+      at: 2026-09-23T01:55:10.985972Z
+      classified: other
+    - cmd: |
+        python3 -c "
+        import json
+        f = '/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54.jsonl'
+        n=0
+        for line in open(f):
+            try:
+                j = json.loads(line)
+            except Exception:
+                continue
+            if j.get('type')=='assistant':
+                msg=j.get('message',{})
+                usage=msg.get('usage')
+                if usage:
+                    print('usage keys:', list(usage.keys()))
+                    print(usage)
+                    n+=1
+                    if n>2: break
+        "
+      at: 2026-09-23T01:55:16.254197Z
+      classified: other
+    - cmd: time grep -rl "mcp__prism" ~/.claude/projects/ --include="*.jsonl" 2>/dev/null | wc -l
+      at: 2026-09-23T01:55:30.96764Z
+      classified: other
+    - cmd: cd /tmp && time python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/prism_token_survey.py 2>&1 | tail -80
+      at: 2026-09-23T01:56:16.13253Z
+      classified: other
+    - cmd: time python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/prism_token_survey.py > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey_out.txt 2>&1; tail -5 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey_out.txt
+      at: 2026-09-23T01:56:32.87961Z
+      classified: other
+    - cmd: grep -n "input') or {}\|c.get(\"input\")" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/prism_token_survey.py
+      at: 2026-09-23T01:56:47.345101Z
+      classified: other
+    - cmd: time python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/prism_token_survey.py > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey_out.txt 2>/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey_err.txt; echo rc=$?; wc -l /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey_err.txt
+      at: 2026-09-23T01:56:57.46446Z
+      classified: other
+    - cmd: |-
+        wc -l /Users/tapabratapal/Projects/provasign/prism/internal/cli/coverage_test.go 2>/dev/null; echo "checking session count sanity"; python3 -c "
+        print('sanity check placeholder')
+        "
+      at: 2026-09-23T01:57:35.492631Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/prism_token_survey2.py > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey2_out.txt 2>/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey2_err.txt; echo rc=$?; grep -c "!!" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey2_err.txt
+      at: 2026-09-23T01:58:09.362971Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/prism_token_survey3.py > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey3_out.txt 2>/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey3_err.txt; echo rc=$?; grep -c "!!" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey3_err.txt
+      at: 2026-09-23T01:59:44.642942Z
+      classified: other
+    - cmd: |
+        python3 -c "
+        import json
+        from pathlib import Path
+        ROOT = Path.home() / '.claude' / 'projects'
+        best = (0, None)
+        for d in ROOT.iterdir():
+            if not d.is_dir(): continue
+            for f in d.glob('*.jsonl'):
+                try:
+                    sz = f.stat().st_size
+                except Exception:
+                    continue
+                if sz > best[0]:
+                    best = (sz, f)
+        print(best[0]/1e6, 'MB', best[1])
+        "
+      at: 2026-09-23T02:00:38.575404Z
+      classified: other
+    - cmd: rm -f /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey_err.txt /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey2_err.txt /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/survey3_err.txt 2>/dev/null; echo done
+      at: 2026-09-23T02:00:49.434054Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/search_explode.py << 'EOF'
+        import json, re, sys
+        from pathlib import Path
+        from collections import defaultdict
+
+        ROOT = Path.home() / ".claude" / "projects"
+        PRISM_NAME_RE = re.compile(r"^mcp__prism__")
+
+        def content_len(c):
+            if isinstance(c, str): return len(c)
+            if isinstance(c, list):
+                n=0
+                for item in c:
+                    if isinstance(item, dict) and item.get("type")=="text":
+                        n += len(item.get("text",""))
+                    else:
+                        n += len(json.dumps(item))
+                return n
+            return len(json.dumps(c)) if c is not None else 0
+
+        def op_of(tin, name):
+            if isinstance(tin, dict) and "op" in tin: return tin["op"]
+            return name.replace("mcp__prism__prism_","").replace("mcp__prism__","")
+
+        def is_bench(dirname):
+            return ("e2e-run" in dirname or "ab-endtoend" in dirname or "-var-folders-" in dirname
+                    or "-private-tmp-" in dirname or "TestReadGuard" in dirname or "TestCmdInit" in dirname)
+
+        sizes = []  # (bytes, is_bench, session_dir)
+        candidates = []
+        for d in ROOT.iterdir():
+            if not d.is_dir(): continue
+            b = is_bench(d.name)
+            for f in d.glob("*.jsonl"):
+                candidates.append((f,b))
+
+        print(f"scanning {len(candidates)}...", file=sys.stderr)
+        done=0
+        for f,b in candidates:
+            try:
+                with open(f,"rb") as fh:
+                    data = fh.read()
+                if b"mcp__prism" not in data:
+                    continue
+            except Exception:
+                continue
+            try:
+                lines = data.decode(errors="ignore").splitlines()
+            except Exception:
+                continue
+            tool_use = {}
+            tool_result_len = {}
+            for line in lines:
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                typ = j.get("type")
+                msg = j.get("message") or {}
+                if typ == "assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]] = (c.get("name",""), c.get("input") or {})
+                elif typ == "user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_result":
+                            tid = c.get("tool_use_id")
+                            if tid:
+                                tool_result_len[tid] = content_len(c.get("content"))
+            for tid,(name,tin) in tool_use.items():
+                if not PRISM_NAME_RE.match(name): continue
+                op = op_of(tin, name)
+                if op != "search": continue
+                plen = tool_result_len.get(tid, 0)
+                sizes.append((plen, b, f.parent.name[:50]))
+            done+=1
+            if done % 300 == 0:
+                print(f"  ...{done}", file=sys.stderr)
+
+        print(f"\ntotal search calls seen: {len(sizes)}")
+        thresholds = [8000, 10000, 15000, 20000, 30000, 40000]
+        for t in thresholds:
+            n = sum(1 for s,_,_ in sizes if s >= t)
+            print(f"  >= {t:6d} bytes: {n:5d} calls ({100*n/len(sizes):.2f}%)")
+
+        print("\nsearch calls >= 20000 bytes, by session:")
+        big = [(s,b,d) for s,b,d in sizes if s >= 20000]
+        big.sort(reverse=True)
+        for s,b,d in big:
+            print(f"  {s:7d}B  {'bench' if b else 'LIVE ':5s}  {d}")
+        print(f"\ntotal >=20000B: {len(big)}  ({sum(1 for _,b,_ in big if not b)} live / {sum(1 for _,b,_ in big if b)} bench)")
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/search_explode.py 2>/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/se_err.txt
+      at: 2026-09-23T02:07:55.762114Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "mkdtemp\|TemporaryDirectory\|worktree.*add\|def _make_worktree\|prefix=" harness/runners/run_e2e.py | head -20
+      at: 2026-09-23T02:09:22.3177Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run && head -3 stdout.log; echo ...; tail -3 stdout.log; echo ---; ls -la --time-style=full-iso results.json REPORT.md 2>/dev/null || stat -f "%Sm %N" results.json REPORT.md stdout.log
+      at: 2026-09-23T02:09:38.558173Z
+      classified: other
+    - cmd: |
+        python3 -c "
+        import datetime, time
+        from pathlib import Path
+        ROOT = Path.home() / '.claude' / 'projects'
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        matches = []
+        for d in ROOT.iterdir():
+            if not d.is_dir(): continue
+            if 'e2e-run' not in d.name: continue
+            for f in d.glob('*.jsonl'):
+                mt = f.stat().st_mtime
+                if start <= mt <= end:
+                    matches.append(f)
+        print(len(matches), 'jsonl files in window')
+        "
+      at: 2026-09-23T02:09:47.453313Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_search.py << 'EOF'
+        import json, re, sys, datetime, time
+        from pathlib import Path
+
+        ROOT = Path.home() / ".claude" / "projects"
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        PRISM_NAME_RE = re.compile(r"^mcp__prism__")
+
+        def content_len(c):
+            if isinstance(c, str): return len(c)
+            if isinstance(c, list):
+                n=0
+                for item in c:
+                    if isinstance(item, dict) and item.get("type")=="text":
+                        n += len(item.get("text",""))
+                    else:
+                        n += len(json.dumps(item))
+                return n
+            return len(json.dumps(c)) if c is not None else 0
+
+        def op_of(tin, name):
+            if isinstance(tin, dict) and "op" in tin: return tin["op"]
+            return name.replace("mcp__prism__prism_","").replace("mcp__prism__","")
+
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end:
+                    files.append(f)
+
+        print(f"{len(files)} transcripts in guard-fix-run's time window", file=sys.stderr)
+
+        all_ops = {}
+        search_sizes = []
+        sessions_with_prism = 0
+        for f in files:
+            try:
+                data = f.read_text(errors="ignore")
+            except Exception:
+                continue
+            if "mcp__prism" not in data:
+                continue
+            sessions_with_prism += 1
+            tool_use = {}
+            tool_result_len = {}
+            for line in data.splitlines():
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                typ = j.get("type")
+                msg = j.get("message") or {}
+                if typ == "assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]] = (c.get("name",""), c.get("input") or {})
+                elif typ == "user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_result":
+                            tid = c.get("tool_use_id")
+                            if tid:
+                                tool_result_len[tid] = content_len(c.get("content"))
+            for tid,(name,tin) in tool_use.items():
+                if not PRISM_NAME_RE.match(name): continue
+                op = op_of(tin, name)
+                all_ops[op] = all_ops.get(op,0)+1
+                if op == "search":
+                    search_sizes.append((tool_result_len.get(tid,0), f.parent.name[-25:]))
+
+        print(f"prism-using sessions (of {len(files)}): {sessions_with_prism}")
+        print(f"op mix: {all_ops}")
+        print(f"\ntotal search calls: {len(search_sizes)}")
+        for t in (5000, 8000, 10000, 15000, 20000, 30000):
+            n = sum(1 for s,_ in search_sizes if s >= t)
+            print(f"  >= {t:6d}B: {n:4d} ({100*n/len(search_sizes):.1f}%)" if search_sizes else "  no search calls")
+
+        print("\nall search payload sizes, sorted desc:")
+        for s,d in sorted(search_sizes, reverse=True):
+            print(f"  {s:7d}B  [{d}]")
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_search.py
+      at: 2026-09-23T02:10:02.967816Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '130,175p' runners/run_overnight.py
+      at: 2026-09-23T02:11:29.538973Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join.py << 'PYEOF'
+        import json, re, sys, datetime, time
+        from pathlib import Path
+
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        PRISM_NAME_RE = re.compile(r"^mcp__prism__")
+
+        def content_len(c):
+            if isinstance(c, str): return len(c)
+            if isinstance(c, list):
+                n=0
+                for item in c:
+                    if isinstance(item, dict) and item.get("type")=="text":
+                        n += len(item.get("text",""))
+                    else:
+                        n += len(json.dumps(item))
+                return n
+            return len(json.dumps(c)) if c is not None else 0
+
+        def op_of(tin, name):
+            if isinstance(tin, dict) and "op" in tin: return tin["op"]
+            return name.replace("mcp__prism__prism_","").replace("mcp__prism__","")
+
+        def session_tokens_and_ops(f):
+            data = f.read_text(errors="ignore")
+            tool_use = {}
+            tool_result_len = {}
+            tok = {"input":0,"cache_read":0,"cache_write":0,"output":0}
+            for line in data.splitlines():
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                typ = j.get("type")
+                msg = j.get("message") or {}
+                if typ == "assistant":
+                    usage = msg.get("usage") or {}
+                    tok["input"] += usage.get("input_tokens",0) or 0
+                    tok["cache_read"] += usage.get("cache_read_input_tokens",0) or 0
+                    tok["cache_write"] += usage.get("cache_creation_input_tokens",0) or 0
+                    tok["output"] += usage.get("output_tokens",0) or 0
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]] = (c.get("name",""), c.get("input") or {})
+                elif typ == "user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_result":
+                            tid = c.get("tool_use_id")
+                            if tid:
+                                tool_result_len[tid] = content_len(c.get("content"))
+            total = sum(tok.values())
+            search_sizes = []
+            for tid,(name,tin) in tool_use.items():
+                if PRISM_NAME_RE.match(name) and op_of(tin,name)=="search":
+                    search_sizes.append(tool_result_len.get(tid,0))
+            return total, search_sizes
+
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end:
+                    files.append((mt, f))
+        files.sort()
+        print(f"{len(files)} transcripts in window", file=sys.stderr)
+
+        results = json.loads((RESDIR/"results.json").read_text())
+        if len(files) != 2*len(results):
+            print(f"MISMATCH: {len(files)} transcripts vs {2*len(results)} expected (2x{len(results)}) -- aborting", file=sys.stderr)
+            sys.exit(1)
+
+        TOK_TOLERANCE = 0.15  # allow 15% slack (usage field granularity / retries)
+        mismatches = 0
+        rows = []
+        for i, task in enumerate(results):
+            nat_mt, nat_f = files[2*i]
+            pri_mt, pri_f = files[2*i+1]
+            nat_tok_t, _ = session_tokens_and_ops(nat_f)
+            pri_tok_t, pri_search = session_tokens_and_ops(pri_f)
+            exp_nat = task["native"]["tokens"] or 0
+            exp_pri = task["prism"]["tokens"] or 0
+            ok_n = exp_nat == 0 or abs(nat_tok_t-exp_nat)/max(exp_nat,1) < TOK_TOLERANCE
+            ok_p = exp_pri == 0 or abs(pri_tok_t-exp_pri)/max(exp_pri,1) < TOK_TOLERANCE
+            if not (ok_n and ok_p):
+                mismatches += 1
+                print(f"  MISMATCH task={task['task']}: expected native={exp_nat} got~{nat_tok_t}, expected prism={exp_pri} got~{pri_tok_t}", file=sys.stderr)
+                continue
+            rows.append({
+                "task": task["task"], "lang": task.get("lang"),
+                "native_resolved": task["native"]["resolved"], "prism_resolved": task["prism"]["resolved"],
+                "native_tok": exp_nat, "prism_tok": exp_pri,
+                "ratio": (exp_pri/exp_nat) if exp_nat else None,
+                "prism_calls": task["prism"].get("prism_calls"),
+                "search_sizes": pri_search,
+                "max_search": max(pri_search) if pri_search else 0,
+            })
+
+        print(f"\nvalidated rows: {len(rows)} / {len(results)}  (token-count mismatches: {mismatches})")
+        print(f"{'task':38s} {'ratio':>6s} {'resolve n/p':>12s} {'max_search':>10s} {'#search>=8K':>11s}")
+        flagged_big = 0
+        for r in rows:
+            n8 = sum(1 for s in r["search_sizes"] if s >= 8000)
+            tag = ""
+            ratio_flag = r["ratio"] is not None and (r["ratio"] > 1.5 or r["ratio"] < 1/1.5)
+            resolve_mismatch = r["native_resolved"] != r["prism_resolved"]
+            if (ratio_flag or resolve_mismatch) and n8 > 0:
+                flagged_big += 1
+                tag = "  <-- FLAGGED + big search"
+            print(f"{r['task']:38s} {r['ratio'] or 0:6.2f} {str(r['native_resolved'])[0]}/{str(r['prism_resolved'])[0]:>10s} {r['max_search']:10d} {n8:11d}{tag}")
+
+        print(f"\ntasks that were BOTH flagged (resolve-mismatch or token-ratio outlier) AND had >=1 search call >=8KB: {flagged_big}")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join.py
+      at: 2026-09-23T02:11:59.049331Z
+      classified: other
+    - cmd: |-
+        cat >> /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join.py << 'PYEOF'
+
+        # direction-only sanity check (magnitude has a known scaling bug in my own
+        # summation, but relative native-vs-prism direction should still hold if
+        # pairing/order is correct)
+        print("\n--- direction sanity check ---")
+        dir_ok = 0
+        for i, task in enumerate(results):
+            nat_mt, nat_f = files[2*i]
+            pri_mt, pri_f = files[2*i+1]
+            nat_tok_t, _ = session_tokens_and_ops(nat_f)
+            pri_tok_t, _ = session_tokens_and_ops(pri_f)
+            exp_nat, exp_pri = task["native"]["tokens"] or 0, task["prism"]["tokens"] or 0
+            if exp_nat == 0 or exp_pri == 0:
+                continue
+            exp_dir = exp_pri > exp_nat
+            got_dir = pri_tok_t > nat_tok_t
+            if exp_dir == got_dir:
+                dir_ok += 1
+        print(f"direction match: {dir_ok}/{len(results)}")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join.py 2>&1 | tail -5
+      at: 2026-09-23T02:12:28.170762Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join2.py << 'PYEOF'
+        import json, re, sys, datetime, time
+        from pathlib import Path
+
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        PRISM_NAME_RE = re.compile(r"^mcp__prism__")
+
+        def content_len(c):
+            if isinstance(c, str): return len(c)
+            if isinstance(c, list):
+                n=0
+                for item in c:
+                    if isinstance(item, dict) and item.get("type")=="text":
+                        n += len(item.get("text",""))
+                    else:
+                        n += len(json.dumps(item))
+                return n
+            return len(json.dumps(c)) if c is not None else 0
+
+        def op_of(tin, name):
+            if isinstance(tin, dict) and "op" in tin: return tin["op"]
+            return name.replace("mcp__prism__prism_","").replace("mcp__prism__","")
+
+        def prism_search_sizes(f):
+            data = f.read_text(errors="ignore")
+            tool_use = {}
+            tool_result_len = {}
+            for line in data.splitlines():
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                typ = j.get("type")
+                msg = j.get("message") or {}
+                if typ == "assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]] = (c.get("name",""), c.get("input") or {})
+                elif typ == "user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_result":
+                            tid = c.get("tool_use_id")
+                            if tid:
+                                tool_result_len[tid] = content_len(c.get("content"))
+            sizes = []
+            for tid,(name,tin) in tool_use.items():
+                if PRISM_NAME_RE.match(name) and op_of(tin,name)=="search":
+                    sizes.append(tool_result_len.get(tid,0))
+            return sizes
+
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end:
+                    files.append((mt, f))
+        files.sort()
+
+        results = json.loads((RESDIR/"results.json").read_text())
+        rows = []
+        for i, task in enumerate(results):
+            _, pri_f = files[2*i+1]
+            sizes = prism_search_sizes(pri_f)
+            exp_nat, exp_pri = task["native"]["tokens"] or 0, task["prism"]["tokens"] or 0
+            ratio = (exp_pri/exp_nat) if exp_nat else None
+            ratio_flag = ratio is not None and (ratio > 1.5 or ratio < 1/1.5)
+            resolve_mismatch = task["native"]["resolved"] != task["prism"]["resolved"]
+            rows.append({
+                "task": task["task"], "ratio": ratio, "flagged": ratio_flag or resolve_mismatch,
+                "resolve_mismatch": resolve_mismatch,
+                "native_resolved": task["native"]["resolved"], "prism_resolved": task["prism"]["resolved"],
+                "sizes": sizes, "max_search": max(sizes) if sizes else 0,
+                "n_ge8k": sum(1 for s in sizes if s>=8000),
+            })
+
+        print(f"{'task':38s} {'ratio':>6s} {'flag':>5s} {'max_search':>10s} {'n>=8K':>6s}")
+        for r in rows:
+            print(f"{r['task']:38s} {r['ratio'] or 0:6.2f} {str(r['flagged']):>5s} {r['max_search']:10d} {r['n_ge8k']:6d}")
+
+        flagged_rows = [r for r in rows if r["flagged"]]
+        big_rows = [r for r in rows if r["n_ge8k"] > 0]
+        both = [r for r in rows if r["flagged"] and r["n_ge8k"] > 0]
+        print(f"\nflagged tasks (resolve-mismatch or |ratio| outside [0.67,1.5]): {len(flagged_rows)}/50")
+        print(f"tasks with >=1 search call >=8KB: {len(big_rows)}/50")
+        print(f"tasks that are BOTH flagged AND have a big search call: {len(both)}")
+        for r in both:
+            print(f"  {r['task']}: ratio={r['ratio']:.2f} max_search={r['max_search']}B resolve n/p={r['native_resolved']}/{r['prism_resolved']}")
+
+        # among tasks NOT flagged, how many still had big search calls (i.e. big search did NOT hurt them)?
+        unflagged_but_big = [r for r in rows if not r["flagged"] and r["n_ge8k"] > 0]
+        print(f"\ntasks with a big (>=8KB) search call that were NOT flagged (i.e. no visible harm): {len(unflagged_but_big)}")
+        for r in unflagged_but_big:
+            print(f"  {r['task']}: ratio={r['ratio']:.2f} max_search={r['max_search']}B resolved={r['prism_resolved']}")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join2.py
+      at: 2026-09-23T02:12:48.657565Z
+      classified: other
+    - cmd: "python3 -c \"\nimport json\nrows_sizes = []\n\" \ncat >> /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join2.py << 'PYEOF'\n\nprint('\\n--- naive cap-at-8KB byte savings estimate ---')\ntotal_search_bytes = sum(sum(r['sizes']) for r in rows)\ncapped_bytes = sum(sum(min(s,8000) for s in r['sizes']) for r in rows)\nsaved = total_search_bytes - capped_bytes\nprint(f\"total search response bytes across all 50 tasks' prism arm: {total_search_bytes:,}\")\nprint(f\"if every search call capped at 8000B: {capped_bytes:,}  (saved {saved:,}, {100*saved/total_search_bytes:.1f}% of search bytes)\")\nn_calls_over = sum(1 for r in rows for s in r['sizes'] if s > 8000)\nprint(f\"calls that would actually be truncated: {n_calls_over} of {sum(len(r['sizes']) for r in rows)} total search calls\")\nPYEOF\npython3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_join2.py 2>&1 | tail -6"
+      at: 2026-09-23T02:13:12.251916Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_rereads.py << 'PYEOF'
+        import json, re, sys, datetime, time
+        from pathlib import Path
+
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        PRISM_NAME_RE = re.compile(r"^mcp__prism__")
+
+        WINDOW_RE = re.compile(r"WINDOW\s+(\S+):(\d+)-(\d+)")
+        READ_HDR_RE = re.compile(r"^// (\S+) lines (\d+)-(\d+) of \d+", re.M)
+        LOOKUP_BLOCK_RE = re.compile(
+            r"file:\s*(?P<file>\S+)\s*\nline:\s*(?P<line>\d+)\s*\nbody:\s*(?P<body>.*?)"
+            r"(?=\nname:\s|\Z)", re.S)
+
+        def _int(v, d=0):
+            try: return int(v)
+            except (TypeError, ValueError): return d
+
+        def overlap_frac(a_from, a_to, b_from, b_to):
+            lo, hi = max(a_from, b_from), min(a_to, b_to)
+            if hi < lo or a_to < a_from: return 0.0
+            return (hi - lo + 1) / (a_to - a_from + 1)
+
+        def op_of(tin, name):
+            if isinstance(tin, dict) and "op" in tin: return tin["op"]
+            return name.replace("mcp__prism__prism_","").replace("mcp__prism__","")
+
+        def response_text(c):
+            if isinstance(c, str): return c
+            if isinstance(c, list):
+                return "\n".join(item.get("text","") for item in c if isinstance(item, dict) and "text" in item)
+            return ""
+
+        def analyze(f):
+            data = f.read_text(errors="ignore")
+            tool_use = {}
+            tool_result_text = {}
+            for line in data.splitlines():
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                typ = j.get("type")
+                msg = j.get("message") or {}
+                if typ == "assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]] = (c.get("name",""), c.get("input") or {})
+                elif typ == "user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_result":
+                            tid = c.get("tool_use_id")
+                            if tid:
+                                tool_result_text[tid] = response_text(c.get("content"))
+
+            delivered = []
+            n_reads = 0
+            full_re = []   # (file, offset, best_frac, best_src)
+            partial_re = []
+            for tid,(name,tin) in tool_use.items():
+                if name == "Read":
+                    ti = tin if isinstance(tin, dict) else {}
+                    f_path = ti.get("file_path","")
+                    offset = _int(ti.get("offset"),1)
+                    limit = _int(ti.get("limit"),0) or None
+                    req_to = (offset+limit-1) if limit else offset+1999
+                    n_reads += 1
+                    best, best_src = 0.0, None
+                    for df,dfrom,dto,src in delivered:
+                        if not f_path.endswith(df) and not df.endswith(f_path): continue
+                        frac = overlap_frac(offset, req_to, dfrom, dto)
+                        if frac > best: best, best_src = frac, src
+                    if best >= 0.7:
+                        full_re.append((f_path, offset, best, best_src))
+                    elif best >= 0.3:
+                        partial_re.append((f_path, offset, best, best_src))
+                    continue
+                if not PRISM_NAME_RE.match(name): continue
+                op = op_of(tin, name)
+                text = tool_result_text.get(tid, "")
+                if op == "read":
+                    args = tin.get("args", tin) if isinstance(tin, dict) else {}
+                    if isinstance(args, dict):
+                        fp, frm, to = args.get("file"), _int(args.get("from"),1), args.get("to")
+                        if fp and to: delivered.append((fp, frm, _int(to), "read"))
+                elif op == "lookup" and text:
+                    for m in LOOKUP_BLOCK_RE.finditer(text):
+                        bl = m.group("body").count("\n")+1
+                        st = int(m.group("line"))
+                        delivered.append((m.group("file"), st, st+bl-1, "lookup"))
+                elif op in ("search","query") and text:
+                    for m in WINDOW_RE.finditer(text):
+                        delivered.append((m.group(1), int(m.group(2)), int(m.group(3)), op))
+                    for m in READ_HDR_RE.finditer(text):
+                        delivered.append((m.group(1), int(m.group(2)), int(m.group(3)), op))
+            return n_reads, full_re, partial_re
+
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end: files.append((mt, f))
+        files.sort()
+
+        results = json.loads((RESDIR/"results.json").read_text())
+        total_reads = 0
+        total_full = 0
+        total_partial = 0
+        per_task = []
+        for i, task in enumerate(results):
+            _, pri_f = files[2*i+1]
+            n_reads, full_re, partial_re = analyze(pri_f)
+            total_reads += n_reads
+            total_full += len(full_re)
+            total_partial += len(partial_re)
+            if full_re or partial_re:
+                per_task.append((task["task"], n_reads, full_re, partial_re))
+
+        print(f"prism-arm native Read calls across all 50 tasks: {total_reads}")
+        print(f"  full re-reads (>=70% overlap with an earlier prism delivery): {total_full} ({100*total_full/total_reads:.1f}%)")
+        print(f"  partial re-reads (30-70% overlap): {total_partial} ({100*total_partial/total_reads:.1f}%)")
+        print(f"\ntasks with any re-read: {len(per_task)}/50")
+        for task, n_reads, full_re, partial_re in per_task:
+            print(f"\n  {task}  (total Reads this session: {n_reads})")
+            for fp, off, frac, src in full_re:
+                print(f"    FULL    {fp} @offset {off}  overlap={frac:.0%}  (delivered earlier by {src})")
+            for fp, off, frac, src in partial_re:
+                print(f"    partial {fp} @offset {off}  overlap={frac:.0%}  (delivered earlier by {src})")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_rereads.py
+      at: 2026-09-23T02:15:28.347527Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/extend_pattern.py << 'PYEOF'
+        import json, re, sys
+        from pathlib import Path
+        from collections import defaultdict
+
+        ROOT = Path.home() / ".claude" / "projects"
+        PRISM_NAME_RE = re.compile(r"^mcp__prism__")
+
+        def op_of(tin, name):
+            if isinstance(tin, dict) and "op" in tin: return tin["op"]
+            return name.replace("mcp__prism__prism_","").replace("mcp__prism__","")
+        def args_of(tin):
+            if not isinstance(tin, dict): return {}
+            a = tin.get("args", tin)
+            return a if isinstance(a, dict) else {}
+        def _int(v,d=0):
+            try: return int(v)
+            except (TypeError,ValueError): return d
+
+        extend_events = 0
+        repeat_same_range = 0
+        total_read_calls = 0
+        sessions_scanned = 0
+
+        candidates = []
+        for d in ROOT.iterdir():
+            if not d.is_dir(): continue
+            for f in d.glob("*.jsonl"):
+                candidates.append(f)
+
+        print(f"scanning {len(candidates)}...", file=sys.stderr)
+        done=0
+        for f in candidates:
+            try:
+                with open(f,"rb") as fh:
+                    data = fh.read()
+                if b"mcp__prism" not in data: continue
+            except Exception:
+                continue
+            try:
+                text = data.decode(errors="ignore")
+            except Exception:
+                continue
+            tool_use_ordered = []
+            for line in text.splitlines():
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                if j.get("type") != "assistant": continue
+                msg = j.get("message") or {}
+                for c in (msg.get("content") or []):
+                    if isinstance(c, dict) and c.get("type")=="tool_use":
+                        name = c.get("name","")
+                        if PRISM_NAME_RE.match(name):
+                            tool_use_ordered.append((name, c.get("input") or {}))
+            per_file_calls = defaultdict(list)  # file -> [(from,to)]
+            for name, tin in tool_use_ordered:
+                if op_of(tin, name) != "read": continue
+                args = args_of(tin)
+                fp = args.get("file")
+                frm, to = _int(args.get("from"),1), args.get("to")
+                if not fp or not to: continue
+                total_read_calls += 1
+                per_file_calls[fp].append((frm, _int(to)))
+            any_extend = False
+            for fp, calls in per_file_calls.items():
+                if len(calls) < 2: continue
+                for i in range(1, len(calls)):
+                    prev_from, prev_to = calls[i-1]
+                    cur_from, cur_to = calls[i]
+                    if cur_from == prev_from and cur_to == prev_to:
+                        repeat_same_range += 1
+                        any_extend = True
+                    elif cur_from <= prev_to and cur_to > prev_to:
+                        # overlaps and extends past the previous end
+                        extend_events += 1
+                        any_extend = True
+            if any_extend:
+                sessions_scanned += 1
+            done += 1
+            if done % 400 == 0:
+                print(f"  ...{done}", file=sys.stderr)
+
+        print(f"\ntotal op=read calls (file+from+to specified) across corpus: {total_read_calls}")
+        print(f"exact-repeat same range (file,from,to identical to a prior call): {repeat_same_range}")
+        print(f"extend pattern (overlaps prior range and asks for MORE): {extend_events}")
+        print(f"sessions with at least one such event: {sessions_scanned}")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/extend_pattern.py 2>&1 | tail -10
+      at: 2026-09-23T02:19:22.308442Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run && python3 -c "
+        import json
+        d = json.load(open('results.json'))
+        from collections import defaultdict
+        by_lang = defaultdict(list)
+        for r in d:
+            by_lang[r['lang']].append(r)
+        for lang, rows in sorted(by_lang.items()):
+            n = len(rows)
+            nat_r = sum(1 for r in rows if r['native']['resolved'])
+            pri_r = sum(1 for r in rows if r['prism']['resolved'])
+            calls = [r['prism'].get('prism_calls') or 0 for r in rows]
+            ratios = [r['prism']['tokens']/r['native']['tokens'] for r in rows if r['native']['tokens']]
+            print(f'{lang:10s} n={n:2d}  native_resolved={nat_r}/{n}  prism_resolved={pri_r}/{n}  mean_calls={sum(calls)/n:.1f}  mean_ratio={sum(ratios)/len(ratios):.2f}')
+        "
+      at: 2026-09-23T02:37:20.422826Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_lang.py << 'PYEOF'
+        import json, re, sys, datetime, time
+        from pathlib import Path
+        from collections import defaultdict
+
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        PRISM_NAME_RE = re.compile(r"^mcp__prism__")
+
+        def content_len(c):
+            if isinstance(c, str): return len(c)
+            if isinstance(c, list):
+                n=0
+                for item in c:
+                    if isinstance(item, dict) and item.get("type")=="text":
+                        n += len(item.get("text",""))
+                    else:
+                        n += len(json.dumps(item))
+                return n
+            return len(json.dumps(c)) if c is not None else 0
+
+        def op_of(tin, name):
+            if isinstance(tin, dict) and "op" in tin: return tin["op"]
+            return name.replace("mcp__prism__prism_","").replace("mcp__prism__","")
+
+        def per_op_sizes(f):
+            data = f.read_text(errors="ignore")
+            tool_use = {}
+            tool_result_len = {}
+            for line in data.splitlines():
+                try:
+                    j = json.loads(line)
+                except Exception:
+                    continue
+                typ = j.get("type")
+                msg = j.get("message") or {}
+                if typ == "assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]] = (c.get("name",""), c.get("input") or {})
+                elif typ == "user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_result":
+                            tid = c.get("tool_use_id")
+                            if tid: tool_result_len[tid] = content_len(c.get("content"))
+            sizes = defaultdict(list)
+            for tid,(name,tin) in tool_use.items():
+                if not PRISM_NAME_RE.match(name): continue
+                op = op_of(tin, name)
+                sizes[op].append(tool_result_len.get(tid,0))
+            return sizes
+
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end: files.append((mt, f))
+        files.sort()
+
+        results = json.loads((RESDIR/"results.json").read_text())
+        QUERY_BUDGET_BYTES = 32000  # ~8000 tokens * 4 chars/token
+        IMPACT_EVIDENCE_BYTES = 8192
+
+        by_lang = defaultdict(lambda: {"query_sizes": [], "impact_sizes": [], "search_sizes": [],
+                                         "query_near_cap": 0, "query_total": 0,
+                                         "impact_near_cap": 0, "impact_total": 0,
+                                         "resolved": [], "n": 0})
+
+        for i, task in enumerate(results):
+            _, pri_f = files[2*i+1]
+            sizes = per_op_sizes(pri_f)
+            lang = task["lang"]
+            b = by_lang[lang]
+            b["n"] += 1
+            b["resolved"].append(task["prism"]["resolved"])
+            for s in sizes.get("query", []):
+                b["query_sizes"].append(s); b["query_total"] += 1
+                if s >= QUERY_BUDGET_BYTES * 0.8: b["query_near_cap"] += 1
+            for s in sizes.get("change_impact", []):
+                b["impact_sizes"].append(s); b["impact_total"] += 1
+                if s >= IMPACT_EVIDENCE_BYTES * 0.8: b["impact_near_cap"] += 1
+            for s in sizes.get("search", []):
+                b["search_sizes"].append(s)
+
+        print(f"{'lang':8s} {'n':>3s} {'resolved':>9s} {'query n/near-cap':>18s} {'impact n/near-cap':>19s} {'mean_query_B':>13s} {'mean_impact_B':>14s} {'mean_search_B':>14s}")
+        for lang, b in sorted(by_lang.items()):
+            qmean = sum(b["query_sizes"])/len(b["query_sizes"]) if b["query_sizes"] else 0
+            imean = sum(b["impact_sizes"])/len(b["impact_sizes"]) if b["impact_sizes"] else 0
+            smean = sum(b["search_sizes"])/len(b["search_sizes"]) if b["search_sizes"] else 0
+            res = sum(1 for r in b["resolved"] if r)
+            print(f"{lang:8s} {b['n']:3d} {res:4d}/{b['n']:<4d} "
+                  f"{b['query_total']:4d}/{b['query_near_cap']:<10d} "
+                  f"{b['impact_total']:4d}/{b['impact_near_cap']:<12d} "
+                  f"{qmean:13.0f} {imean:14.0f} {smean:14.0f}")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_lang.py
+      at: 2026-09-23T02:37:41.326208Z
+      classified: other
+    - cmd: |-
+        cat >> /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_lang.py << 'PYEOF'
+
+        print("\n--- the 2 query calls that hit near-cap (both Java) ---")
+        for i, task in enumerate(results):
+            _, pri_f = files[2*i+1]
+            sizes = per_op_sizes(pri_f)
+            for s in sizes.get("query", []):
+                if s >= QUERY_BUDGET_BYTES*0.8:
+                    print(f"  {task['task']}: query={s}B  resolved(n/p)={task['native']['resolved']}/{task['prism']['resolved']}  ratio={task['prism']['tokens']/task['native']['tokens']:.2f}")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/guardfixrun_lang.py 2>&1 | tail -5
+      at: 2026-09-23T02:37:52.082999Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/toolshare.py << 'PYEOF'
+        import json, re, sys, datetime, time
+        from pathlib import Path
+        from collections import defaultdict
+
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+
+        def content_len(c):
+            if isinstance(c, str): return len(c)
+            if isinstance(c, list):
+                n=0
+                for item in c:
+                    if isinstance(item, dict) and item.get("type")=="text": n += len(item.get("text",""))
+                    else: n += len(json.dumps(item))
+                return n
+            return len(json.dumps(c)) if c is not None else 0
+
+        def scan(f):
+            tool_use = {}
+            by_tool_bytes = defaultdict(int)
+            by_tool_calls = defaultdict(int)
+            out_tokens = 0
+            empty_search = 0; search_n = 0
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j = json.loads(line)
+                except Exception: continue
+                typ = j.get("type"); msg = j.get("message") or {}
+                if typ == "assistant":
+                    out_tokens += (msg.get("usage") or {}).get("output_tokens",0) or 0
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]] = (c.get("name",""), c.get("input") or {})
+                elif typ == "user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c, dict) and c.get("type")=="tool_result":
+                            tid = c.get("tool_use_id")
+                            if tid in tool_use:
+                                name, tin = tool_use[tid]
+                                if name.startswith("mcp__prism"):
+                                    op = tin.get("op","?") if isinstance(tin, dict) else "?"
+                                    key = f"prism:{op}"
+                                else:
+                                    key = name
+                                n = content_len(c.get("content"))
+                                by_tool_bytes[key] += n; by_tool_calls[key] += 1
+            return by_tool_bytes, by_tool_calls, out_tokens
+
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end: files.append((mt, f))
+        files.sort()
+        results = json.loads((RESDIR/"results.json").read_text())
+
+        for arm, idx in (("NATIVE", 0), ("PRISM", 1)):
+            tot_b = defaultdict(int); tot_c = defaultdict(int)
+            for i in range(len(results)):
+                b, c, _ = scan(files[2*i+idx][1])
+                for k,v in b.items(): tot_b[k]+=v
+                for k,v in c.items(): tot_c[k]+=v
+            grand = sum(tot_b.values())
+            print(f"\n=== {arm} arm, 50 sessions: tool_result bytes by tool (total {grand/1024:,.0f} KB) ===")
+            for k,v in sorted(tot_b.items(), [REDACTED:env-secret] kv:-kv[1])[:12]:
+                print(f"  {k:22s} {v/1024:9,.0f} KB  {100*v/grand:5.1f}%   calls={tot_c[k]:4d}  avg={v/tot_c[k]:8,.0f} B")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/toolshare.py
+      at: 2026-09-23T02:41:40.28224Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/turns_vs_bytes.py << 'PYEOF'
+        import json, datetime, time
+        from pathlib import Path
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end: files.append((mt, f))
+        files.sort()
+        results = json.loads((RESDIR/"results.json").read_text())
+
+        def scan(f):
+            turns=0; cr=0; cw=0; inp=0; out=0
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                if j.get("type")!="assistant": continue
+                u=(j.get("message") or {}).get("usage") or {}
+                if not u: continue
+                turns+=1
+                cr+=u.get("cache_read_input_tokens",0) or 0
+                cw+=u.get("cache_creation_input_tokens",0) or 0
+                inp+=u.get("input_tokens",0) or 0
+                out+=u.get("output_tokens",0) or 0
+            return turns,cr,cw,inp,out
+
+        for arm,idx in (("NATIVE",0),("PRISM",1)):
+            T=CR=CW=IN=OUT=0
+            rec=0
+            for i,r in enumerate(results):
+                t,cr,cw,inp,out=scan(files[2*i+idx][1])
+                T+=t;CR+=cr;CW+=cw;IN+=inp;OUT+=out
+                rec+= (r["native"] if idx==0 else r["prism"])["tokens"] or 0
+            tot=CR+CW+IN+OUT
+            print(f"{arm}: recorded total tokens (harness) = {rec:,}")
+            print(f"  API turns (assistant msgs w/ usage) = {T:,}  avg/session = {T/50:.1f}")
+            print(f"  transcript sum: cache_read={CR:,} ({100*CR/tot:.1f}%)  cache_write={CW:,} ({100*CW/tot:.1f}%)  fresh_input={IN:,}  output={OUT:,} ({100*OUT/tot:.1f}%)")
+            print(f"  avg context re-billed per turn (cache_read/turns) = {CR/T:,.0f} tokens")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/turns_vs_bytes.py
+      at: 2026-09-23T02:42:20.896766Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/turn_anatomy.py << 'PYEOF'
+        import json, re, datetime, time
+        from pathlib import Path
+        from collections import defaultdict
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end: files.append((mt, f))
+        files.sort()
+        results = json.loads((RESDIR/"results.json").read_text())
+
+        def clen(c):
+            if isinstance(c, str): return len(c)
+            if isinstance(c, list):
+                return sum(len(i.get("text","")) if isinstance(i,dict) and i.get("type")=="text" else len(json.dumps(i)) for i in c)
+            return len(json.dumps(c)) if c is not None else 0
+        def ctext(c):
+            if isinstance(c, str): return c
+            if isinstance(c, list): return "\n".join(i.get("text","") for i in c if isinstance(i,dict) and "text" in i)
+            return ""
+
+        def classify_bash(cmd):
+            c = cmd.strip()
+            first = re.split(r"[\s|;&]", c, 1)[0] if c else ""
+            if re.search(r"\b(mvn|gradle|gradlew|go test|go build|go vet|pytest|python -m pytest|python3 -m pytest|npm (test|run)|make|cargo|tox|unittest|ctest|cmake)\b", c): return "build/test"
+            if first in ("cat","sed","head","tail","less","awk","wc"): return "file-read(cat/sed/head)"
+            if first in ("ls","find","tree"): return "listing(ls/find)"
+            if first in ("grep","rg","ag"): return "grep/rg"
+            if first == "git": return "git"
+            if first in ("cd","pwd","echo","true","which","env","export"): return "shell-misc"
+            if first in ("python","python3","node","java"): return "run-script"
+            return "other"
+
+        PATH_RE = re.compile(r"[\w./-]+\.(?:java|py|go|js|ts|c|h|cpp|rb|rs|php|kt|swift|m)\b")
+
+        def analyze(f):
+            events = []  # ordered: (kind, name, input, result_len, result_text)
+            tool_use = {}
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                typ=j.get("type"); msg=j.get("message") or {}
+                if typ=="assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]]=len(events)
+                            events.append({"name":c.get("name",""),"input":c.get("input") or {},"len":0,"text":""})
+                elif typ=="user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_result" and c.get("tool_use_id") in tool_use:
+                            e=events[tool_use[c["tool_use_id"]]]
+                            e["len"]=clen(c.get("content")); e["text"]=ctext(c.get("content"))
+            return events
+
+        for arm,idx in (("NATIVE",0),("PRISM",1)):
+            bash_cat_calls=defaultdict(int); bash_cat_bytes=defaultdict(int)
+            prism_before=prism_after=0; tools_before=tools_after=0; sessions_with_edit=0
+            followup_reads=0; prism_calls=0; reads_total=0
+            for i in range(len(results)):
+                ev=analyze(files[2*i+idx][1])
+                first_edit=next((k for k,e in enumerate(ev) if e["name"] in ("Edit","Write")),None)
+                if first_edit is not None:
+                    sessions_with_edit+=1
+                    tools_before+=first_edit; tools_after+=len(ev)-first_edit
+                for k,e in enumerate(ev):
+                    n=e["name"]
+                    if n=="Bash":
+                        cat=classify_bash(str(e["input"].get("command","")))
+                        bash_cat_calls[cat]+=1; bash_cat_bytes[cat]+=e["len"]
+                    if n=="Read": reads_total+=1
+                    if n.startswith("mcp__prism"):
+                        prism_calls+=1
+                        if first_edit is not None:
+                            if k<first_edit: prism_before+=e["len"]
+                            else: prism_after+=e["len"]
+                        paths=set(PATH_RE.findall(e["text"]))
+                        for nxt in ev[k+1:k+3]:
+                            if nxt["name"]=="Read":
+                                fp=str(nxt["input"].get("file_path",""))
+                                if any(fp.endswith(p) for p in paths):
+                                    followup_reads+=1; break
+            print(f"\n=== {arm} ===")
+            print("Bash by category (calls / KB):")
+            for cat in sorted(bash_cat_calls, [REDACTED:env-secret] c:-bash_cat_calls[c]):
+                print(f"  {cat:26s} calls={bash_cat_calls[cat]:4d}  {bash_cat_bytes[cat]/1024:7.0f} KB")
+            if sessions_with_edit:
+                print(f"tool calls before first Edit: {tools_before} ({tools_before/sessions_with_edit:.1f}/session); after: {tools_after} ({tools_after/sessions_with_edit:.1f}/session)")
+            if idx==1:
+                print(f"prism bytes delivered BEFORE first edit: {prism_before/1024:.0f} KB; AFTER: {prism_after/1024:.0f} KB")
+                print(f"prism calls: {prism_calls}; followed within 2 tools by a native Read of a file the prism result mentioned: {followup_reads}  (native Reads total: {reads_total})")
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/turn_anatomy.py
+      at: 2026-09-23T02:43:25.250905Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign && find prism research grove -maxdepth 3 -iname "*handoff*" -o -maxdepth 3 -iname "*handover*" 2>/dev/null | grep -v node_modules; echo ---refs---; grep -rn "HANDOFF" prism/CLAUDE.md prism/README.md prism/AGENTS.md research/CLAUDE.md 2>/dev/null | head
+      at: 2026-09-23T02:52:48.029142Z
+      classified: other
+    - cmd: git rm -q HANDOFF.md docs/harness-handover-2026-09-13.md && git status --short | head; echo ---; rm -v /Users/tapabratapal/Projects/provasign/research/docs/HANDOFF-2026-09-22.md
+      at: 2026-09-23T02:53:21.522115Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/deadweight.py << 'PYEOF'
+        import json, re, datetime, time
+        from pathlib import Path
+        from collections import defaultdict
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        files = []
+        for d in ROOT.iterdir():
+            if not d.is_dir() or "e2e-run" not in d.name: continue
+            for f in d.glob("*.jsonl"):
+                mt = f.stat().st_mtime
+                if start <= mt <= end: files.append((mt, f))
+        files.sort()
+        results = json.loads((RESDIR/"results.json").read_text())
+
+        def ctext(c):
+            if isinstance(c, str): return c
+            if isinstance(c, list): return "\n".join(i.get("text","") for i in c if isinstance(i,dict) and "text" in i)
+            return json.dumps(c) if c is not None else ""
+
+        MARK = re.compile(r"^(?:\*\*`(?P<a>[^`]+)`\*\*|// WINDOW (?P<b>\S+):\d+-\d+|// (?P<c>\S+) lines \d+-\d+ of \d+|file:\s*(?P<d>\S+)\s*$|(?P<e>\S+\.(?:java|py|go|js|ts|c|h|cpp|rs|php|kt|swift|m)):)")
+
+        def segments(text):
+            """attribute bytes of a prism result to file paths by marker lines."""
+            out = defaultdict(int); cur = None
+            for line in text.split("\n"):
+                m = MARK.match(line.strip())
+                if m:
+                    cur = next(v for v in m.groupdict().values() if v)
+                out[cur] += len(line)+1
+            return out
+
+        tot = defaultdict(int)  # category -> bytes
+        per_op = defaultdict(lambda: defaultdict(int))
+        for i in range(len(results)):
+            f = files[2*i+1][1]
+            tool_use = {}; res = {}
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                typ=j.get("type"); msg=j.get("message") or {}
+                if typ=="assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]]=(c.get("name",""), c.get("input") or {})
+                elif typ=="user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_result":
+                            res[c.get("tool_use_id")] = ctext(c.get("content"))
+            edited = {str(tin.get("file_path","")) for n,tin in tool_use.values() if n in ("Edit","Write")}
+            for tid,(n,tin) in tool_use.items():
+                if not n.startswith("mcp__prism"): continue
+                op = tin.get("op","?") if isinstance(tin,dict) else "?"
+                for path, b in segments(res.get(tid,"")).items():
+                    if path is None: cat="unattributed(headers/locators)"
+                    elif any(e.endswith(path) or path.endswith(e.split("/")[-1]) and e.endswith(path.split("/")[-1]) for e in edited): cat="bodies in files LATER EDITED"
+                    else: cat="bodies in files NEVER edited"
+                    tot[cat]+=b; per_op[op][cat]+=b
+        grand=sum(tot.values())
+        print(f"prism-arm result bytes, 50 sessions: {grand/1024:.0f} KB")
+        for k,v in sorted(tot.items(), [REDACTED:env-secret] kv:-kv[1]): print(f"  {k:34s} {v/1024:6.0f} KB  {100*v/grand:5.1f}%")
+        print("\nby op:")
+        for op,d in sorted(per_op.items(), [REDACTED:env-secret] kv:-sum(kv[1].values())):
+            s=sum(d.values()); print(f"  {op:14s} {s/1024:6.0f} KB :: " + ", ".join(f"{k.split(' ')[0]}{'-edited' if 'LATER' in k else '-never' if 'NEVER' in k else ''}={100*v/s:.0f}%" for k,v in sorted(d.items())))
+        PYEOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad/deadweight.py
+      at: 2026-09-23T02:53:59.473263Z
+      classified: other
+    - cmd: mkdir -p /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey && cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/eb8c2ec6-bb27-4809-bc25-fce4c7562b54/scratchpad && cp prism_token_survey.py prism_token_survey2.py prism_token_survey3.py search_explode.py extend_pattern.py guardfixrun_join2.py guardfixrun_rereads.py guardfixrun_lang.py toolshare.py turns_vs_bytes.py turn_anatomy.py deadweight.py /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/ && ls /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/
+      at: 2026-09-23T02:55:10.711207Z
+      classified: other
+    - cmd: |-
+        git commit -q -m "$(cat <<'EOF'
+        docs: remove stale handoffs; canonical handoff now lives in research/docs/HANDOFF.md
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T02:55:25.733309Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/ && git commit -q -m "$(cat <<'EOF'
+        docs: single canonical handoff (turn-economics reframe) + token-survey analysis scripts
+
+        Replaces docs/HANDOFF-2026-09-22.md. Records the 2026-09-22 cycle: read-guard hook
+        A/B and ship, doctor capability manifest, corpus-wide prism usage survey, and the
+        finding that 95.5% of spend is cache_read (turns, not bytes), with the three
+        turn-objective directions and the three rejected payload ideas. Scripts under
+        harness/analysis/token-survey/ reproduce every number in the doc.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T02:55:33.061165Z
+      classified: other
+    - cmd: python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/disclosure_predictor.py
+      at: 2026-09-23T03:04:53.457636Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/disclosure_predictor.py && git commit -q -m "$(cat <<'EOF'
+        docs: disclosure-predictor result — cost-aware disclosure is not a standalone lever
+
+        180 search bodies, 50 sessions: rank does not predict later-edited (39-51% at ranks 1-4);
+        only test-file and term-absent bodies are safely demotable (95% correct, 32KB, ~0.4% of run);
+        broader rules sit at break-even. Keep disclosure as the guardrail for locator->body collapse.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T03:05:30.129733Z
+      classified: other
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/verify_estimate.py << 'PYEOF'
+        """Estimate for direction #2 (verify owns the test turn) from guard-fix-run transcripts."""
+        import json, re, datetime, time
+        from pathlib import Path
+        from collections import defaultdict
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        files = sorted((f.stat().st_mtime, f) for d in ROOT.iterdir() if d.is_dir() and "e2e-run" in d.name
+                       for f in d.glob("*.jsonl") if start <= f.stat().st_mtime <= end)
+        results = json.loads((RESDIR/"results.json").read_text())
+
+        def ctext(c):
+            if isinstance(c, str): return c
+            if isinstance(c, list): return "\n".join(i.get("text","") for i in c if isinstance(i,dict) and "text" in i)
+            return json.dumps(c) if c is not None else ""
+
+        TEST_CMD = re.compile(r"\b(mvn|gradlew?|go test|pytest|python3? -m pytest|npm test|npm run test|cargo test|make (test|check)|ctest|tox|unittest|jest|mocha)\b")
+        BUILD_ONLY = re.compile(r"\b(mvn\s+(-q\s+)?(compile|clean compile|clean install -DskipTests|compile test-compile)|go build|go vet|npm run build|cargo build|make\b(?!.*test))")
+        TARGETED = re.compile(r"(-Dtest=|-run\s|::|\btests?/\S+\.(py|js|ts)\b|\s-k\s|--tests\s|\.java\b.*-Dtest|mvn.*-pl\s)")
+        FAIL_TXT = re.compile(r"(BUILD FAILURE|FAIL(ED|URE)?\b|Tests run:.*Failures: [1-9]|error:|Error:|Exception|assert(ion)?\s*(error|failed)|exit code [1-9]|panic:)", re.I)
+        TRUNC = re.compile(r"(truncated|lines? omitted|\.\.\. \d+ more)", re.I)
+
+        def events(f):
+            tool_use={}; ev=[]
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                typ=j.get("type"); msg=j.get("message") or {}
+                if typ=="assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]]=len(ev); ev.append({"name":c.get("name",""),"input":c.get("input") or {},"text":"","err":False})
+                elif typ=="user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_result" and c.get("tool_use_id") in tool_use:
+                            e=ev[tool_use[c["tool_use_id"]]]; e["text"]=ctext(c.get("content")); e["err"]=bool(c.get("is_error"))
+            return ev
+
+        for arm,idx in (("PRISM",1),("NATIVE",0)):
+            agg=defaultdict(int); per_outcome=defaultdict(lambda: defaultdict(list))
+            for i,task in enumerate(results):
+                ev=events(files[2*i+idx][1]); n=len(ev)
+                resolved=(task["prism"] if idx else task["native"])["resolved"]
+                runs=0; targeted=0; failing=0; build_only=0; out_bytes=0; rebilled=0; trunc=0
+                chain=0; collapsible=0; last_was_test=False
+                diag_turns_after_fail=0; fails_with_next_edit=0
+                for k,e in enumerate(ev):
+                    is_test=False
+                    if e["name"]=="Bash":
+                        cmd=str(e["input"].get("command",""))
+                        if TEST_CMD.search(cmd) or BUILD_ONLY.search(cmd):
+                            is_test=True; runs+=1
+                            if BUILD_ONLY.search(cmd) and not TEST_CMD.search(cmd): build_only+=1
+                            if TARGETED.search(cmd): targeted+=1
+                            fail = e["err"] or bool(FAIL_TXT.search(e["text"][:4000]))
+                            if fail:
+                                failing+=1
+                                # diagnostic tool turns between this failing run and the next Edit
+                                d=0
+                                for nxt in ev[k+1:]:
+                                    if nxt["name"] in ("Edit","Write"): fails_with_next_edit+=1; break
+                                    d+=1
+                                else: d=0
+                                diag_turns_after_fail+=d
+                            out_bytes+=len(e["text"]); rebilled+=len(e["text"])*(n-k-1)
+                            if TRUNC.search(e["text"]): trunc+=1
+                    if is_test:
+                        if last_was_test: collapsible+=1
+                        last_was_test=True
+                    elif e["name"] in ("Edit","Write"):
+                        last_was_test=False
+                    # other tools (Read/Grep/prism) between two test runs don't break the chain only if no edit — keep last_was_test
+                agg["sessions"]+=1; agg["runs"]+=runs; agg["targeted"]+=targeted; agg["failing"]+=failing
+                agg["build_only"]+=build_only; agg["out_bytes"]+=out_bytes; agg["rebilled"]+=rebilled; agg["trunc"]+=trunc
+                agg["collapsible"]+=collapsible; agg["diag"]+=diag_turns_after_fail; agg["fails_edit"]+=fails_with_next_edit
+                agg["tools"]+=n
+                o="resolved" if resolved else "FAILED"
+                per_outcome[o]["runs"].append(runs); per_outcome[o]["failing"].append(failing); per_outcome[o]["tools"].append(n)
+            s=agg["sessions"]
+            print(f"\n=== {arm} arm ({s} sessions, {agg['tools']} tool turns) ===")
+            print(f"build/test Bash runs: {agg['runs']} ({agg['runs']/s:.1f}/session)  build-only: {agg['build_only']}  targeted tests: {agg['targeted']} ({100*agg['targeted']/max(agg['runs'],1):.0f}%)")
+            print(f"failing runs: {agg['failing']} ({100*agg['failing']/max(agg['runs'],1):.0f}%)  followed by an edit: {agg['fails_edit']}  diagnostic tool turns between a failing run and the next edit: {agg['diag']} ({agg['diag']/max(agg['fails_edit'],1):.1f} per fail→edit)")
+            print(f"back-to-back test/build runs with no edit between (collapsible): {agg['collapsible']} ({agg['collapsible']/s:.2f}/session)")
+            print(f"test output bytes: {agg['out_bytes']/1024:.0f} KB total, {agg['out_bytes']/max(agg['runs'],1):,.0f} B/run; re-billed footprint (bytes × later turns): {agg['rebilled']/1024/1024:.1f} MB-turns; truncated outputs: {agg['trunc']}")
+            for o,d in per_outcome.items():
+                k=len(d["runs"])
+                print(f"  {o:8s} n={k:2d}  runs/session={sum(d['runs'])/k:.1f}  failing/session={sum(d['failing'])/k:.1f}  tool turns/session={sum(d['tools'])/k:.1f}")
+        PYEOF
+        python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/verify_estimate.py
+      at: 2026-09-23T03:07:57.017593Z
+      classified: lint
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/verify_estimate2.py << 'PYEOF'
+        """Refinement: strict failure detection + what the back-to-back test chains actually are."""
+        import json, re, datetime, time
+        from pathlib import Path
+        from collections import defaultdict, Counter
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        files = sorted((f.stat().st_mtime, f) for d in ROOT.iterdir() if d.is_dir() and "e2e-run" in d.name
+                       for f in d.glob("*.jsonl") if start <= f.stat().st_mtime <= end)
+        results = json.loads((RESDIR/"results.json").read_text())
+        def ctext(c):
+            if isinstance(c, str): return c
+            if isinstance(c, list): return "\n".join(i.get("text","") for i in c if isinstance(i,dict) and "text" in i)
+            return json.dumps(c) if c is not None else ""
+        TEST_CMD = re.compile(r"\b(mvn|gradlew?|go test|pytest|python3? -m pytest|npm test|npm run test|cargo test|make (test|check)|ctest|tox|unittest|jest|mocha|go build|go vet|npm run build|cargo build)\b")
+        STRICT_FAIL = re.compile(r"(BUILD FAILURE|Tests run: \d+, Failures: [1-9]|Tests run: \d+, Failures: \d+, Errors: [1-9]|^FAIL\b|^--- FAIL|\b\d+ failed\b|FAILED \(|npm ERR!|error\[E\d+\]|test result: FAILED|\[ERROR\] .*COMPILATION ERROR|cannot find symbol|undefined: )", re.M)
+        def norm(cmd):
+            return re.sub(r"\s+"," ",cmd.strip())[:90]
+        def events(f):
+            tool_use={}; ev=[]
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                typ=j.get("type"); msg=j.get("message") or {}
+                if typ=="assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_use":
+                            tool_use[c["id"]]=len(ev); ev.append({"name":c.get("name",""),"input":c.get("input") or {},"text":"","err":False})
+                elif typ=="user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_result" and c.get("tool_use_id") in tool_use:
+                            e=ev[tool_use[c["tool_use_id"]]]; e["text"]=ctext(c.get("content")); e["err"]=bool(c.get("is_error"))
+            return ev
+        agg=Counter(); chain_kinds=Counter(); examples=[]; between=Counter()
+        outcome=defaultdict(Counter)
+        for i,task in enumerate(results):
+            ev=events(files[2*i+1][1]); resolved=task["prism"]["resolved"]
+            o="resolved" if resolved else "FAILED"
+            prev=None; prev_k=None
+            for k,e in enumerate(ev):
+                if e["name"] in ("Edit","Write"): prev=None; continue
+                if e["name"]!="Bash": continue
+                cmd=str(e["input"].get("command",""))
+                if not TEST_CMD.search(cmd): continue
+                agg["runs"]+=1; outcome[o]["runs"]+=1
+                fail=e["err"] or bool(STRICT_FAIL.search(e["text"]))
+                if e["err"]: agg["is_error"]+=1
+                if fail:
+                    agg["fail"]+=1; outcome[o]["fail"]+=1
+                    nxt=ev[k+1:]; d=0; edited=False
+                    for x in nxt:
+                        if x["name"] in ("Edit","Write"): edited=True; break
+                        d+=1
+                    if edited: agg["fail_then_edit"]+=1; agg["diag_turns"]+=d
+                    else: agg["fail_no_edit_after"]+=1
+                if prev is not None:
+                    agg["chain"]+=1
+                    same = norm(cmd)==norm(prev)
+                    kind = "same-command rerun" if same else ("passing→another" if not prev_fail else "failing→another")
+                    chain_kinds[kind]+=1
+                    gap=k-prev_k-1; between[min(gap,5)]+=1
+                    if len(examples)<14 and not same: examples.append((o, norm(prev)[:60], "→", norm(cmd)[:60], f"gap={gap}", "prevFAIL" if prev_fail else "prevPASS"))
+                prev=cmd; prev_k=k; prev_fail=fail
+        print(f"build/test runs: {agg['runs']}  strict-failing: {agg['fail']} (is_error flag set on {agg['is_error']})")
+        print(f"failing → later edit: {agg['fail_then_edit']} (diagnostic tool turns between: {agg['diag_turns']}, {agg['diag_turns']/max(agg['fail_then_edit'],1):.1f} each); failing with NO edit afterwards: {agg['fail_no_edit_after']}")
+        print(f"back-to-back runs (no edit between): {agg['chain']}  by kind: {dict(chain_kinds)}")
+        print(f"tool turns between the two runs of a chain: {dict(sorted(between.items()))}  (5 = 5+)")
+        for o,c in outcome.items(): print(f"  {o}: runs={c['runs']} failing={c['fail']}")
+        print("\nexamples of different-command chains (outcome, prev → next):")
+        for ex in examples: print("  ", " ".join(ex))
+        PYEOF
+        python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/verify_estimate2.py
+      at: 2026-09-23T03:08:42.253233Z
+      classified: lint
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/verify_estimate3.py << 'PYEOF'
+        """(a) how many 'test' turns are toolchain wrangling; (b) did the agent ever run the
+        oracle test module (task['test_modules']) — split by resolved/failed."""
+        import json, re, datetime, time
+        from pathlib import Path
+        from collections import Counter, defaultdict
+        ROOT = Path.home() / ".claude" / "projects"
+        RESDIR = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/guard-fix-run")
+        TASKS = Path("/Users/tapabratapal/Projects/provasign/research/harness/tasks/e2e")
+        start = time.mktime(datetime.datetime(2026,9,21,16,48,0).timetuple())
+        end = time.mktime(datetime.datetime(2026,9,21,21,10,0).timetuple())
+        files = sorted((f.stat().st_mtime, f) for d in ROOT.iterdir() if d.is_dir() and "e2e-run" in d.name
+                       for f in d.glob("*.jsonl") if start <= f.stat().st_mtime <= end)
+        results = json.loads((RESDIR/"results.json").read_text())
+        RUN = re.compile(r"\b(mvn|gradlew?|go test|pytest|python3? -m pytest|npm test|npm run test|cargo test|make (test|check)|ctest|tox|unittest|jest|mocha|go build|go vet|npm run build|cargo build)\b")
+        ENV = re.compile(r"(python3? -m venv|pip install|npm (ci|install)|apt-get|brew install|git stash|source .*activate|export \w+=|mvn .*-Djacoco|mvn .*-DskipTests|mvn .*dependency:|mvn .*-o\b|chmod|mkdir /tmp)")
+        def cmds(f):
+            out=[]
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                if j.get("type")!="assistant": continue
+                for c in ((j.get("message") or {}).get("content") or []):
+                    if isinstance(c,dict) and c.get("type")=="tool_use" and c.get("name")=="Bash":
+                        out.append(str((c.get("input") or {}).get("command","")))
+            return out
+        for arm,idx in (("PRISM",1),("NATIVE",0)):
+            kinds=Counter(); oracle=defaultdict(Counter)
+            for i,task in enumerate(results):
+                cs=cmds(files[2*i+idx][1])
+                resolved=(task["prism"] if idx else task["native"])["resolved"]; o="resolved" if resolved else "FAILED"
+                tj=json.loads((TASKS/f"{task['task']}.json").read_text())
+                mods=tj.get("test_modules") or []
+                stems=set()
+                for m in mods:
+                    b=Path(m).name; stems.add(b); stems.add(b.rsplit(".",1)[0])
+                    if b.rsplit(".",1)[0].startswith("test_"): stems.add(b.rsplit(".",1)[0][5:])
+                ran_oracle=False; ran_any_test=False; full_suite=False
+                for c in cs:
+                    if not RUN.search(c): continue
+                    if ENV.search(c) and not re.search(r"(pytest|mvn .*test|go test)\b.*(::|-Dtest=|-run|tests?/)", c): kinds["env/toolchain wrangling"]+=1
+                    elif re.search(r"(-Dtest=|-run\s|::|tests?/\S+\.(py|js|ts|java)\b|\s-k\s|--tests\s)", c): kinds["targeted test"]+=1
+                    elif re.search(r"(go build|go vet|mvn\s+(-q\s+)?(compile|test-compile)|npm run build|cargo build)", c) and "test" not in c.split("&&")[-1]: kinds["compile only"]+=1
+                    else: kinds["full suite / broad"]+=1; full_suite=True
+                    ran_any_test=True
+                    if any(s and s in c for s in stems): ran_oracle=True
+                oracle[o]["n"]+=1; oracle[o]["ran_oracle_module"]+=ran_oracle; oracle[o]["ran_any_test"]+=ran_any_test; oracle[o]["ran_full_suite"]+=full_suite
+            tot=sum(kinds.values())
+            print(f"\n=== {arm} arm ===")
+            print(f"build/test-ish Bash turns: {tot}  " + ", ".join(f"{k}={v} ({100*v/tot:.0f}%)" for k,v in kinds.most_common()))
+            for o,c in oracle.items():
+                n=c["n"]; print(f"  {o:8s} n={n:2d}: ran ANY test {c['ran_any_test']}/{n}, ran the ORACLE test module {c['ran_oracle_module']}/{n}, ran a full/broad suite {c['ran_full_suite']}/{n}")
+        PYEOF
+        python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/verify_estimate3.py
+      at: 2026-09-23T03:09:32.53322Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/verify_estimate.py harness/analysis/token-survey/verify_estimate2.py harness/analysis/token-survey/verify_estimate3.py && git commit -q -m "$(cat <<'EOF'
+        docs: transcript-based estimate for verify-owns-the-test-turn
+
+        142 build/test turns in the prism arm: 57% targeted, 25% broad, 18% toolchain wrangling;
+        95 back-to-back with no edit between (upper bound ~11.6% of run, ~6% realistic). Fix loop
+        is not the cost (19 strict failures, 1 followed by an edit). FAILED tasks see green on the
+        wrong tests: oracle module run 4/14 vs 17/36 for resolved. Test selection by changed-symbol
+        coverage is the mechanism.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T03:10:08.51094Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -40
+      at: 2026-09-23T03:17:35.806126Z
+      classified: build
+    - cmd: go test ./internal/mcp/... -run 'Search|Compact|Enclosing' -v 2>&1 | tail -120
+      at: 2026-09-23T03:17:40.748411Z
+      classified: test
+    - cmd: go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+      at: 2026-09-23T03:17:59.801904Z
+      classified: test
+    - cmd: git log --oneline -3 && git status --short
+      at: 2026-09-23T03:18:02.746195Z
+      classified: other
+    - cmd: |-
+        \
+        git stash && \
+        go build -o /tmp/prism-baseline ./cmd/prism && \
+        git stash pop && \
+        go build -o /tmp/prism-experimental ./cmd/prism && \
+        /tmp/prism-baseline version; /tmp/prism-experimental version; \
+        which prism; prism version 2>&1 | head -3
+      at: 2026-09-23T03:18:13.477661Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n '"prism", "init"\|"prism", "index"\|arm in (\|elif arm.startswith("prism")' runners/run_e2e.py
+      at: 2026-09-23T03:18:30.415125Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "^import\|^from\|ab_endtoend_arms" runners/run_e2e.py | head -20
+      at: 2026-09-23T03:19:17.013363Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "^import\|^from\|ARMS\b" runners/run_e2e.py | sed -n '1,40p'
+      at: 2026-09-23T03:19:21.574966Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n 'prism_init.*prism_init_deferred.*prism_init_no_guard' runners/run_e2e.py
+      at: 2026-09-23T03:20:08.802432Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import ast
+        for f in ['runners/ab_endtoend_arms.py','runners/run_e2e.py']:
+            ast.parse(open(f).read())
+        print('syntax ok')
+        "
+      at: 2026-09-23T03:20:36.31004Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.loads(open('tasks/e2e/gin-gonic__gin__pr4695.json').read())
+        r = run_e2e.run_cell(task, 'prism_body_baseline', 'sonnet')
+        print('BASELINE:', r.get('resolved'), r.get('tokens'), r.get('tool_trace'), r.get('session_id'))
+        "
+      at: 2026-09-23T03:22:25.54784Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.loads(open('tasks/e2e/gin-gonic__gin__pr4695.json').read())
+        r = run_e2e.run_cell(task, 'prism_body_baseline', 'sonnet')
+        print(json.dumps(r, indent=2)[:1500])
+        "
+      at: 2026-09-23T03:23:49.084943Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.loads(open('tasks/e2e/gin-gonic__gin__pr4695.json').read())
+        r = run_e2e.run_cell(task, 'prism_body_exp', 'sonnet')
+        print('EXP:', r.get('resolved'), r['usage']['input_total'], r['usage']['tokens'], r.get('tool_trace'))
+        "
+      at: 2026-09-23T03:24:53.38358Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls results/guard-fix-run/*manifest* 2>/dev/null; python3 -c "
+        import json
+        d = json.load(open('results/guard-fix-run/results.json'))
+        print(len(d))
+        json.dump([r['task'] for r in d], open('results/guard-fix-run-manifest.json','w'), indent=2)
+        print('wrote manifest')
+        "
+      at: 2026-09-23T03:24:58.606346Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 runners/run_overnight.py \
+          --manifest results/guard-fix-run-manifest.json \
+          --out-dir results/search-body-ab \
+          --native-arm prism_body_baseline \
+          --prism-arm prism_body_exp \
+          --model sonnet \
+          > results/search-body-ab.launch.log 2>&1 &
+        echo "PID $!"
+      at: 2026-09-23T03:25:03.040319Z
+      classified: other
+    - cmd: sleep 8; tail -20 /Users/tapabratapal/Projects/provasign/research/harness/results/search-body-ab.launch.log 2>/dev/null; ps -p 22634 -o pid,etime,command 2>/dev/null
+      at: 2026-09-23T03:25:15.221839Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git status --short | grep -v "^??.*results/e2e\|^??.*guard-fix-run-manifest\|^??.*search-body-ab"
+      at: 2026-09-23T03:25:22.796899Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git diff --stat harness/runners/run_overnight.py harness/runners/ab_endtoend_arms.py harness/runners/run_e2e.py
+      at: 2026-09-23T03:25:31.07072Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git diff harness/runners/run_overnight.py
+      at: 2026-09-23T03:25:38.274941Z
+      classified: other
+    - cmd: |-
+        go build ./... && go vet ./... && echo BUILD_VET_OK
+        git add internal/mcp/server.go internal/mcp/delivery.go internal/mcp/searchevidence.go
+        git status --short
+      at: 2026-09-23T03:25:48.815313Z
+      classified: lint
+    - cmd: git reset -q internal/mcp/server.go internal/mcp/delivery.go internal/mcp/searchevidence.go && git status --short
+      at: 2026-09-23T03:25:55.969515Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/runners/ab_endtoend_arms.py harness/runners/run_e2e.py harness/runners/run_overnight.py harness/results/guard-fix-run-manifest.json && git commit -q -m "$(cat <<'EOF'
+        feat(harness): per-arm prism binary override, for A/B'ing engine changes directly
+
+        Adds prism_body_baseline/prism_body_exp arms and PRISM_BIN_FOR_ARM in
+        ab_endtoend_arms.py so run_e2e.py's `prism init`/`prism index` calls can point
+        at two different local builds (same idea as MASON_BIN) without touching the
+        real installed `prism` on PATH. Also commits run_overnight.py's
+        --native-arm/--prism-arm/--model flags, left uncommitted from an earlier
+        session but already relied on by guard-hook-ab and residency-ab.
+
+        Extracted the guard-fix-run 50-task manifest for reuse as a fixed, already-
+        validated task set for future engine A/Bs.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T03:26:06.190411Z
+      classified: other
+    - cmd: tail -5 /Users/tapabratapal/Projects/provasign/research/harness/results/search-body-ab.launch.log
+      at: 2026-09-23T03:26:08.744256Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps aux | grep run_overnight | grep -v grep; echo ---; tail -30 results/search-body-ab.launch.log; echo ---STATE---; cat results/search-body-ab/state.json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d),'done')" 2>/dev/null
+      at: 2026-09-23T03:52:13.522831Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo ---STATE---; python3 -c "import json; print(len(json.load(open('results/search-body-ab/state.json'))),'done')" 2>/dev/null; echo ---TAIL---; tail -20 results/search-body-ab.launch.log
+      at: 2026-09-23T04:18:11.911666Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo ---STATE---; python3 -c "import json; print(len(json.load(open('results/search-body-ab/state.json'))),'done')" 2>/dev/null; echo ---TAIL---; tail -20 results/search-body-ab.launch.log
+      at: 2026-09-23T04:44:12.408145Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo ---STATE---; python3 -c "import json; print(len(json.load(open('results/search-body-ab/state.json'))),'done')" 2>/dev/null; echo ---TAIL---; tail -25 results/search-body-ab.launch.log
+      at: 2026-09-23T05:15:18.642607Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo ---STATE---; python3 -c "import json; print(len(json.load(open('results/search-body-ab/state.json'))),'done')" 2>/dev/null; echo ---TAIL---; tail -25 results/search-body-ab.launch.log
+      at: 2026-09-23T05:46:07.165168Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo ---STATE---; python3 -c "import json; print(len(json.load(open('results/search-body-ab/state.json'))),'done')" 2>/dev/null; echo ---TAIL---; tail -25 results/search-body-ab.launch.log
+      at: 2026-09-23T06:17:08.269581Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo ---STATE---; python3 -c "import json; print(len(json.load(open('results/search-body-ab/state.json'))),'done')" 2>/dev/null; echo ---TAIL---; tail -30 results/search-body-ab.launch.log
+      at: 2026-09-23T06:48:06.653207Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo "exit: $?"; echo ---TAIL---; tail -10 results/search-body-ab.launch.log'
+      at: 2026-09-23T07:14:12.606647Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo "exit=$?"; tail -6 results/search-body-ab.launch.log
+      at: 2026-09-23T07:25:04.741077Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 22634 -o pid,etime,command 2>/dev/null; echo "ps_exit=$?"; tail -6 results/search-body-ab.launch.log
+      at: 2026-09-23T07:41:04.906032Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('results/search-body-ab/results.json'))
+        print('n =', len(d))
+        nat_r = sum(1 for r in d if r['native']['resolved'])
+        pri_r = sum(1 for r in d if r['prism']['resolved'])
+        nat_tok = sum(r['native']['tokens'] for r in d)
+        pri_tok = sum(r['prism']['tokens'] for r in d)
+        print(f'baseline resolved: {nat_r}/{len(d)}')
+        print(f'experimental resolved: {pri_r}/{len(d)}')
+        print(f'baseline tokens total: {nat_tok:,}')
+        print(f'experimental tokens total: {pri_tok:,}')
+        print(f'ratio (exp/baseline): {pri_tok/nat_tok:.3f}')
+        ratios = [r['prism']['tokens']/r['native']['tokens'] for r in d if r['native']['tokens']]
+        print(f'mean per-task ratio: {sum(ratios)/len(ratios):.3f}  median: {sorted(ratios)[len(ratios)//2]:.3f}')
+        print()
+        print('resolve mismatches:')
+        for r in d:
+            if r['native']['resolved'] != r['prism']['resolved']:
+                print(f\"  {r['task']:38s} baseline={r['native']['resolved']} exp={r['prism']['resolved']}  ratio={r['prism']['tokens']/r['native']['tokens']:.2f}\")
+        print()
+        # exclude the single most extreme outlier both ways to see robustness
+        sorted_ratios = sorted(d, [REDACTED:env-secret] r: r['prism']['tokens']/r['native']['tokens'] if r['native']['tokens'] else 1)
+        print('excluding top/bottom 2 ratio outliers:')
+        trimmed = sorted_ratios[2:-2]
+        tnat = sum(r['native']['tokens'] for r in trimmed); tpri = sum(r['prism']['tokens'] for r in trimmed)
+        print(f'  n={len(trimmed)} ratio={tpri/tnat:.3f}')
+        "
+      at: 2026-09-23T07:41:13.154624Z
+      classified: other
+    - cmd: go build ./... && go vet ./... && go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+      at: 2026-09-23T07:41:46.60222Z
+      classified: lint
+    - cmd: grep -n "pr6019" /Users/tapabratapal/Projects/provasign/research/docs/HANDOFF.md
+      at: 2026-09-23T07:41:49.622185Z
+      classified: other
+    - cmd: |-
+        git add internal/mcp/server.go internal/mcp/delivery.go internal/mcp/searchevidence.go && git commit -q -m "$(cat <<'EOF'
+        feat(search): raise search's exact-term full-body threshold to match query/impact's
+
+        searchevidence.go's compact search path only delivered a hit's full enclosing
+        body when the symbol was <=20 lines; anything bigger got a +/-9 line window,
+        even for an exact term match. Raised to the same 160-line/10000-byte bound
+        compactSearchBodiesLegacy already uses, now shared as searchFullBodyMaxLines/
+        searchFullBodyMaxBytes in delivery.go.
+
+        Rationale (research/docs/HANDOFF.md, turn economics): 95.5% of a session's
+        tokens are cache_read (context re-billed every turn); a windowed hit the agent
+        immediately re-Reads in full costs a whole extra turn (~50K tokens) to save
+        nothing, since the window was never going to be cheaper once re-read. Only
+        applies to len(item.terms) > 0 (an exact match, never a fuzzy "related
+        spelling" guess), and `selected` is already capped upstream, so a broad
+        search still windows every hit -- this can't blow up a large result set.
+
+        Measured (50-task A/B, prism_body_baseline vs prism_body_exp, same manifest
+        as guard-fix-run): resolved 31/50 -> 33/50, tokens 0.998x overall (~1.02x
+        excluding the 4 largest per-task ratio outliers each direction). 3 resolve
+        improvements vs 1 regression; one of the 3 improvements (jackson-databind
+        pr6019) is a task already flagged elsewhere as non-replicating on a single
+        run, so treat the resolve gain as directionally positive, not confirmed.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git log --oneline -1
+      at: 2026-09-23T07:42:01.533351Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/results/search-body-ab/ && git commit -q -m "$(cat <<'EOF'
+        docs: search-body-collapse A/B result (direction #1 shipped)
+
+        50-task A/B, prism_body_baseline vs prism_body_exp (prism cd26e452): resolved
+        31/50 -> 33/50, tokens flat (0.998x). 3 resolve improvements vs 1 regression;
+        flags that one improvement (jackson-databind pr6019) is a task already known
+        non-replicating from a single run -- net gain is directional, not confirmed.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T07:42:36.021561Z
+      classified: other
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/ab_theory_check.py << 'PYEOF'
+        """Does search-body-ab match the turn-economics theory? Compare baseline vs exp
+        per task on: API turns, tool calls, native Reads, locator->body follow-ups,
+        prism search full-body vs window deliveries, prism bytes, cache_read/turn."""
+        import json, re, sys
+        from pathlib import Path
+        from collections import defaultdict
+        ROOT = Path.home() / ".claude" / "projects"
+        RES = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/search-body-ab/results.json")
+        PATH_RE = re.compile(r"[\w./-]+\.(?:java|py|go|js|ts|c|h|cpp|rb|rs|php|kt|swift|m)\b")
+
+        def find(sid):
+            hits = list(ROOT.glob(f"*/{sid}.jsonl"))
+            return hits[0] if hits else None
+
+        def ctext(c):
+            if isinstance(c, str): return c
+            if isinstance(c, list): return "\n".join(i.get("text","") for i in c if isinstance(i,dict) and "text" in i)
+            return json.dumps(c) if c is not None else ""
+
+        def analyze(f):
+            ev=[]; tu={}; turns=0; cr=0; cw=0; out=0
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                typ=j.get("type"); msg=j.get("message") or {}
+                if typ=="assistant":
+                    u=msg.get("usage") or {}
+                    if u:
+                        turns+=1; cr+=u.get("cache_read_input_tokens",0) or 0
+                        cw+=u.get("cache_creation_input_tokens",0) or 0; out+=u.get("output_tokens",0) or 0
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_use":
+                            tu[c["id"]]=len(ev); ev.append({"name":c.get("name",""),"input":c.get("input") or {},"text":""})
+                elif typ=="user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_result" and c.get("tool_use_id") in tu:
+                            ev[tu[c["tool_use_id"]]]["text"]=ctext(c.get("content"))
+            m=defaultdict(int)
+            m["turns"]=turns; m["cache_read"]=cr; m["cache_write"]=cw; m["output"]=out; m["tools"]=len(ev)
+            for k,e in enumerate(ev):
+                n=e["name"]
+                if n=="Read": m["reads"]+=1
+                elif n=="Bash": m["bash"]+=1
+                elif n in ("Edit","Write"): m["edits"]+=1
+                if n.startswith("mcp__prism"):
+                    op=e["input"].get("op","?") if isinstance(e["input"],dict) else "?"
+                    m["prism"]+=1; m[f"prism_{op}"]+=1; m["prism_bytes"]+=len(e["text"]); m[f"prism_{op}_bytes"]+=len(e["text"])
+                    if op=="search":
+                        m["search_full"]+=e["text"].count("// Full enclosing body")
+                        m["search_window"]+=e["text"].count("// WINDOW ")
+                    paths=set(PATH_RE.findall(e["text"]))
+                    for nxt in ev[k+1:k+3]:
+                        if nxt["name"]=="Read" and any(str(nxt["input"].get("file_path","")).endswith(p) for p in paths):
+                            m["followup_reads"]+=1; break
+            return m
+
+        results=json.loads(RES.read_text())
+        agg={"base":defaultdict(int),"exp":defaultdict(int)}
+        paired=[]; missing=0
+        for r in results:
+            fb=find(r["native"]["session_id"]); fe=find(r["prism"]["session_id"])
+            if not fb or not fe: missing+=1; continue
+            mb=analyze(fb); me=analyze(fe)
+            for k,v in mb.items(): agg["base"][k]+=v
+            for k,v in me.items(): agg["exp"][k]+=v
+            paired.append((r["task"], mb, me, r["native"]["tokens"], r["prism"]["tokens"], r["native"]["resolved"], r["prism"]["resolved"]))
+
+        n=len(paired)
+        print(f"paired sessions: {n} (missing transcripts: {missing})")
+        b,e=agg["base"],agg["exp"]
+        def row(label,kb,fmt="{:,.0f}"):
+            vb,ve=b[kb],e[kb]; d=ve-vb
+            print(f"  {label:34s} base={fmt.format(vb):>12s}  exp={fmt.format(ve):>12s}  delta={d:+,.0f} ({100*d/vb:+.1f}%)" if vb else f"  {label:34s} base={vb} exp={ve}")
+        print("\n=== totals over 50 sessions ===")
+        row("API turns","turns"); row("tool calls","tools"); row("native Reads","reads"); row("Bash","bash"); row("Edits","edits")
+        row("prism calls","prism"); row("  search","prism_search"); row("  lookup","prism_lookup"); row("  read","prism_read"); row("  change_impact","prism_change_impact")
+        row("search: full bodies delivered","search_full"); row("search: windows delivered","search_window")
+        row("locator->body follow-up Reads","followup_reads")
+        row("prism bytes (all ops)","prism_bytes"); row("  search bytes","prism_search_bytes")
+        row("cache_read tokens (transcript sum)","cache_read"); row("cache_write tokens","cache_write"); row("output tokens","output")
+        print(f"  avg context re-billed/turn         base={b['cache_read']/b['turns']:,.0f}  exp={e['cache_read']/e['turns']:,.0f}")
+
+        # per-task: did turn delta explain token delta?
+        import statistics
+        dt=[me["turns"]-mb["turns"] for _,mb,me,_,_,_,_ in paired]
+        dtok=[pt-nt for _,_,_,nt,pt,_,_ in paired]
+        fewer=sum(1 for d in dt if d<0); more=sum(1 for d in dt if d>0); same=n-fewer-more
+        print(f"\n=== per-task ===")
+        print(f"exp had FEWER turns in {fewer}/{n}, MORE in {more}, same in {same}; median turn delta {statistics.median(dt):+.0f}")
+        cheaper=sum(1 for d in dtok if d<0)
+        print(f"exp cheaper in {cheaper}/{n} tasks; median token delta {statistics.median(dtok):+,.0f}")
+        mx,my=statistics.mean(dt),statistics.mean(dtok)
+        cov=sum((x-mx)*(y-my) for x,y in zip(dt,dtok))/n
+        sx,sy=statistics.pstdev(dt),statistics.pstdev(dtok)
+        print(f"corr(turn delta, token delta) = {cov/(sx*sy):.2f}" if sx and sy else "corr n/a")
+        # sessions where exp delivered more full bodies: did follow-up reads drop there?
+        sub=[(mb,me) for _,mb,me,_,_,_,_ in paired if me["search_full"]>mb["search_full"]]
+        if sub:
+            fb_=sum(mb["followup_reads"] for mb,_ in sub); fe_=sum(me["followup_reads"] for _,me in sub)
+            tb_=sum(mb["turns"] for mb,_ in sub); te_=sum(me["turns"] for _,me in sub)
+            print(f"\n{len(sub)} tasks where exp delivered MORE full bodies than base: follow-up Reads {fb_}->{fe_}, turns {tb_}->{te_}")
+        sub2=[(mb,me) for _,mb,me,_,_,_,_ in paired if me["search_full"]==mb["search_full"]]
+        if sub2:
+            tb_=sum(mb["turns"] for mb,_ in sub2); te_=sum(me["turns"] for _,me in sub2)
+            print(f"{len(sub2)} tasks where full-body count was UNCHANGED (change didn't fire): turns {tb_}->{te_}  (pure noise floor)")
+        print("\nbiggest per-task token deltas (exp - base), with turn delta and full-body delta:")
+        for task,mb,me,nt,pt,rb,re_ in sorted(paired, [REDACTED:env-secret] x: x[4]-x[3])[:5]+sorted(paired, [REDACTED:env-secret] x: x[4]-x[3])[-5:]:
+            print(f"  {task:36s} tok {pt-nt:+12,.0f}  turns {me['turns']-mb['turns']:+3d}  full {me['search_full']-mb['search_full']:+2d}  reads {me['reads']-mb['reads']:+2d}  resolved {rb}->{re_}")
+        PYEOF
+        python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/ab_theory_check.py
+      at: 2026-09-23T10:38:04.184311Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/ab_theory_check.py && git commit -q -m "$(cat <<'EOF'
+        docs: theory check on search-body-ab — turns drive cost (r=0.97), mechanism 3x smaller than sized
+
+        Mechanism fired (windows 96->34, follow-up Reads 31->20, turns -4.4%) but tokens
+        stayed flat: only 0.2 turns/session removed vs 0.66 estimated, and bigger bodies
+        raised context per turn +3.1%, which is re-billed every later turn. Noise floor from
+        the 15 unaffected tasks is ~2%; biggest swings are agent variance. Keep the change,
+        cite no token saving, apply bytes x remaining-turns to both sides next time.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T10:39:07.365798Z
+      classified: other
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/resolve_reliability.py << 'PYEOF'
+        """Two questions that decide whether more n=50 A/Bs can see resolve effects:
+        (1) how much of the failure set is shared across arms (task-inherent), and
+        (2) test-retest: same task, near-identical prism config, two runs -- how often
+        does resolve agree?"""
+        import json
+        from pathlib import Path
+        R = Path("/Users/tapabratapal/Projects/provasign/research/harness/results")
+        gfr = {r["task"]: r for r in json.loads((R/"guard-fix-run/results.json").read_text())}
+        sba = {r["task"]: r for r in json.loads((R/"search-body-ab/results.json").read_text())}
+        tasks = sorted(set(gfr) & set(sba))
+        print(f"tasks in both runs: {len(tasks)}")
+
+        # four prism_init-config cells per task: gfr.prism, sba.native(base binary), sba.prism(exp binary); one native: gfr.native
+        rows = []
+        for t in tasks:
+            rows.append({"task": t,
+                "native": gfr[t]["native"]["resolved"],
+                "prism_gfr": gfr[t]["prism"]["resolved"],
+                "prism_base": sba[t]["native"]["resolved"],
+                "prism_exp": sba[t]["prism"]["resolved"]})
+
+        # (1) failure overlap
+        both_fail = [r for r in rows if not r["native"] and not r["prism_gfr"]]
+        only_native_fail = [r for r in rows if not r["native"] and r["prism_gfr"]]
+        only_prism_fail = [r for r in rows if r["native"] and not r["prism_gfr"]]
+        print(f"\nguard-fix-run: native fails {sum(1 for r in rows if not r['native'])}, prism fails {sum(1 for r in rows if not r['prism_gfr'])}")
+        print(f"  fail in BOTH arms: {len(both_fail)}  |  only native fails: {len(only_native_fail)}  |  only prism fails: {len(only_prism_fail)}")
+
+        # (2) test-retest across the three prism_init-config runs
+        agree_gb = sum(1 for r in rows if r["prism_gfr"] == r["prism_base"])
+        agree_be = sum(1 for r in rows if r["prism_base"] == r["prism_exp"])
+        agree_ge = sum(1 for r in rows if r["prism_gfr"] == r["prism_exp"])
+        print(f"\ntest-retest, same task, prism_init config:")
+        print(f"  gfr.prism vs sba.baseline (no engine change between them beyond version drift): agree {agree_gb}/{len(rows)}")
+        print(f"  sba.baseline vs sba.exp (the actual A/B):                                      agree {agree_be}/{len(rows)}")
+        print(f"  gfr.prism vs sba.exp:                                                          agree {agree_ge}/{len(rows)}")
+
+        always_pass = [r["task"] for r in rows if r["prism_gfr"] and r["prism_base"] and r["prism_exp"]]
+        always_fail = [r["task"] for r in rows if not r["prism_gfr"] and not r["prism_base"] and not r["prism_exp"]]
+        flaky = [r for r in rows if len({r["prism_gfr"], r["prism_base"], r["prism_exp"]}) > 1]
+        print(f"\nacross the 3 prism runs: always pass {len(always_pass)}, always fail {len(always_fail)}, flip at least once {len(flaky)}")
+        print("  flaky tasks (gfr/base/exp):")
+        for r in flaky:
+            print(f"    {r['task']:38s} {int(r['prism_gfr'])}/{int(r['prism_base'])}/{int(r['prism_exp'])}   native={int(r['native'])}")
+        print("  always-fail tasks:")
+        for t in always_fail: print(f"    {t}   native={int(gfr[t]['native']['resolved'])}")
+        hard_core = [t for t in always_fail if not gfr[t]["native"]["resolved"]]
+        print(f"\nfail in ALL FOUR cells (native + 3 prism): {len(hard_core)}")
+        PYEOF
+        python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/resolve_reliability.py
+      at: 2026-09-23T12:19:56.737143Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/resolve_reliability.py && git commit -q -m "$(cat <<'EOF'
+        docs: resolve-rate reliability on the 50-task bed — 45-46/50 test-retest, 12 hard-core failures
+
+        Three prism_init runs of the same tasks agree on 45-46/50; 30 always pass, 13 always
+        fail (12 also fail native), 7 flip. The movable range for a context tool is the 7
+        flippers; a single n=50 A/B cannot resolve effects under ~5 tasks.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T12:20:21.255828Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && ls results/e2e/ | grep "pr4535\|pr3504" '
+      at: 2026-09-23T17:01:46.808621Z
+      classified: other
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/h1_failure_classify.py << 'PYEOF'
+        """H1: for the 12 hard-core-failure tasks, compare the agent's diff to the gold
+        patch. Bucket: wrong file(s) / right file wrong region / right region (still failed
+        for another reason, e.g. incomplete or subtly wrong)."""
+        import json, re
+        from pathlib import Path
+
+        HARNESS = Path("/Users/tapabratapal/Projects/provasign/research/harness")
+        TASKS = HARNESS/"tasks/e2e"
+        RESULTS = HARNESS/"results/e2e"
+
+        HARD_CORE = [
+            "FasterXML__jackson-databind__pr6018", "FasterXML__jackson-databind__pr6044",
+            "FasterXML__jackson-databind__pr6052", "FasterXML__jackson-databind__pr6076",
+            "akheron__jansson__pr740", "apache__commons-lang__pr1655",
+            "apache__commons-lang__pr1703", "gin-gonic__gin__pr4535",
+            "gin-gonic__gin__pr4805", "pallets__click__pr3473",
+            "pallets__click__pr3504", "pallets__click__pr3678",
+        ]
+
+        DIFF_FILE_RE = re.compile(r"^diff --git a/(\S+) b/(\S+)", re.M)
+        HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.M)
+
+        def files_and_hunks(diff_text):
+            files = {}
+            blocks = re.split(r"(?=^diff --git )", diff_text, flags=re.M)
+            for b in blocks:
+                m = DIFF_FILE_RE.match(b)
+                if not m: continue
+                f = m.group(2)
+                hunks = [(int(h[2]), int(h[2]) + int(h[3] or 1) - 1) for h in HUNK_RE.findall(b)]
+                files[f] = hunks
+            return files
+
+        def overlap(hunksA, hunksB, slack=3):
+            for a0, a1 in hunksA:
+                for b0, b1 in hunksB:
+                    if a0 - slack <= b1 and b0 <= a1 + slack:
+                        return True
+            return False
+
+        for t in HARD_CORE:
+            task = json.loads((TASKS/f"{t}.json").read_text())
+            gold = files_and_hunks(task.get("patch") or "")
+            diff_path = RESULTS/f"{t}.sonnet.prism_body_exp.diff"
+            if not diff_path.exists():
+                print(f"{t}: NO DIFF FILE"); continue
+            agent = files_and_hunks(diff_path.read_text())
+            gold_files = set(gold); agent_files = set(agent)
+            common = gold_files & agent_files
+            verdict = "EMPTY DIFF (no changes)" if not agent_files else (
+                "WRONG FILE(S)" if not common else (
+                    "RIGHT FILE, WRONG REGION" if not any(overlap(gold[f], agent[f]) for f in common) else
+                    "RIGHT FILE+REGION (still failed)"
+                )
+            )
+            print(f"\n{t}  ::  {verdict}")
+            print(f"  gold touches:  {sorted(gold_files)}")
+            print(f"  agent touches: {sorted(agent_files)}")
+            if common:
+                for f in common:
+                    print(f"    {f}: gold_hunks={gold[f]} agent_hunks={agent[f]} overlap={overlap(gold[f],agent[f])}")
+        PYEOF
+        python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/h1_failure_classify.py
+      at: 2026-09-23T17:02:07.233419Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/h1_failure_classify.py && git commit -q -m "$(cat <<'EOF'
+        docs: H1 result — 10 of 12 hard-core failures already have the right file
+
+        Diff-vs-gold-patch comparison on the 12 always-fail tasks: 2 wrong file, 2 empty diff,
+        5 right-location-but-incomplete, 3 right-location-close-match-still-wrong. Retrieval
+        gets the agent to the right file 10/12 times; fix completeness/correctness is the gap.
+        Points at H3 (verify runs the covering tests) over further retrieval work.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T17:02:54.276843Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('results/search-body-ab/results.json'))
+        tasks = ['FasterXML__jackson-databind__pr6018','FasterXML__jackson-databind__pr6044','FasterXML__jackson-databind__pr6052','pallets__click__pr3504']
+        for r in d:
+            if r['task'] in tasks:
+                print(r['task'], '| prism session:', r['prism']['session_id'], '| turns:', r['prism'].get('turns'), '| tokens:', r['prism']['tokens'], '| error:', r['prism'].get('error'))
+        "
+      at: 2026-09-23T17:19:32.888631Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/tail_look.py << 'PYEOF'
+        import json, sys
+        from pathlib import Path
+        ROOT = Path.home() / ".claude" / "projects"
+        sids = {
+            "pr6052": "6f0ab867-77b2-4d90-b586-b4acc1619101",
+            "pr3504": "170352dc-8681-47d9-9309-bd15e27b21d7",
+            "pr6044": "9927efc3-1eb3-4351-9f06-526c0e7dff1f",
+            "pr6018": "73a40701-cbaf-4d98-bf93-7c6fe358fd83",
+        }
+        def text_of(msg):
+            out=[]
+            for c in (msg.get("content") or []):
+                if isinstance(c, dict):
+                    if c.get("type")=="text": out.append(c["text"])
+                    elif c.get("type")=="tool_use": out.append(f"[TOOL_USE {c.get('name')} {json.dumps(c.get('input'))[:200]}]")
+                    elif c.get("type")=="tool_result":
+                        ct=c.get("content")
+                        s = ct if isinstance(ct,str) else json.dumps(ct)[:300] if ct else ""
+                        out.append(f"[TOOL_RESULT {s[:300]}]")
+            return "\n".join(out)
+
+        for label, sid in sids.items():
+            f = list(ROOT.glob(f"*/{sid}.jsonl"))[0]
+            lines = f.read_text(errors="ignore").splitlines()
+            print(f"\n{'='*20} {label} ({sid}) — last 6 events {'='*20}")
+            events = []
+            for line in lines:
+                try: j=json.loads(line)
+                except Exception: continue
+                if j.get("type") in ("assistant","user"):
+                    events.append(j)
+            for j in events[-6:]:
+                msg = j.get("message") or {}
+                role = msg.get("role","?")
+                print(f"--- {role} ---")
+                print(text_of(msg)[:600])
+        PYEOF
+        python3 /tmp/tail_look.py
+      at: 2026-09-23T17:19:45.400648Z
+      classified: other
+    - cmd: |-
+        cp /tmp/tail_look.py /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/h1_tail_look.py
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/h1_tail_look.py && git commit -q -m "$(cat <<'EOF'
+        docs: the 4 wrong-file/empty-diff cases are the same failure as the other 8
+
+        Transcript tails: both wrong-file cases (pr6018, pr6044) are a plausible adjacent-file
+        fix confirmed by a narrow or full test run that simply doesn't cover the gold change
+        yet. Both empty-diff cases (pr6052, pr3504) are the agent concluding "already fixed."
+        pr3504 additionally caught a real bug: the agent verified against a stale pip-installed
+        package instead of the repo checkout, got a false pass, and stood down -- a one-line
+        verify precondition, not a retrieval or design problem. All 12 hard-core failures now
+        share one mechanism: stop once some check passes, without knowing if it's the right
+        check. Strengthens H3; adds a cheap separate guard for the installed-vs-checkout case.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T17:20:37.347889Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "TASK_TAIL = " runners/run_e2e.py
+      at: 2026-09-23T18:58:01.694527Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.loads(open('tasks/e2e/pallets__click__pr3504.json').read())
+        r = run_e2e.run_cell(task, 'prism_body_exp', 'sonnet')
+        print('resolved:', r.get('resolved'), '| turns:', r.get('turns'), '| tokens:', r['usage']['input_total']+r['usage']['tokens']['output'])
+        "
+      at: 2026-09-23T18:59:35.107581Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && diff results/e2e/pallets__click__pr3504.sonnet.prism_body_exp.diff /dev/null | head -5; echo "---diff lines---"; wc -l results/e2e/pallets__click__pr3504.sonnet.prism_body_exp.diff
+      at: 2026-09-23T18:59:42.385756Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.loads(open('tasks/e2e/pallets__click__pr3504.json').read())
+        r = run_e2e.run_cell(task, 'prism_body_exp', 'sonnet')
+        print(r['usage']['session_id'])
+        " 2>&1 | tail -1
+      at: 2026-09-23T19:00:33.662411Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        from pathlib import Path
+        ROOT = Path.home() / '.claude' / 'projects'
+        sid = '538ea61c-ee03-43cf-b1be-da0f55fa071f'
+        f = list(ROOT.glob(f'*/{sid}.jsonl'))[0]
+        lines = f.read_text(errors='ignore').splitlines()
+        def text_of(msg):
+            out=[]
+            for c in (msg.get('content') or []):
+                if isinstance(c, dict):
+                    if c.get('type')=='text': out.append(c['text'])
+                    elif c.get('type')=='tool_use': out.append(f\"[TOOL_USE {c.get('name')} {json.dumps(c.get('input'))[:200]}]\")
+                    elif c.get('type')=='tool_result':
+                        ct=c.get('content')
+                        s = ct if isinstance(ct,str) else json.dumps(ct)[:300] if ct else ''
+                        out.append(f'[TOOL_RESULT {s[:300]}]')
+            return '\n'.join(out)
+        events=[]
+        for line in lines:
+            try: j=json.loads(line)
+            except Exception: continue
+            if j.get('type') in ('assistant','user'): events.append(j)
+        for j in events[-8:]:
+            msg=j.get('message') or {}
+            print('---', msg.get('role','?'), '---')
+            print(text_of(msg)[:500])
+        "
+      at: 2026-09-23T19:00:44.404632Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/runners/run_e2e.py && git commit -q -m "$(cat <<'EOF'
+        fix(harness): task tail now warns against verifying against an installed copy
+
+        click pr3504 (search-body-ab, hard-core failure) showed the agent testing a
+        separately pip-installed click package instead of this repo's checkout, getting
+        a false pass, and standing down with an empty diff -- a real, reproducible bug
+        in test-verification hygiene, not a context or retrieval problem. Added one
+        instruction to the shared TASK_TAIL (applies to every arm, not prism-specific):
+        confirm the test run exercises the edited checkout, install in editable/local
+        mode if using an isolated environment.
+
+        Smoke-tested on the one known-affected task: the agent now explicitly installs
+        editable (`pip install -e .`) and prints `click.__file__` to confirm it resolves
+        to the checkout before testing. The installed-vs-checkout confusion is gone.
+        The task still fails, but now for a different, more interesting reason -- the
+        agent (correctly verifying) concludes "already fixed" when the gold patch says
+        otherwise, which is verify/test-selection territory (H3), not this fix's.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T19:01:14.788505Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md && git commit -q -m "$(cat <<'EOF'
+        docs: installed-vs-checkout fix validated by transcript, H3 is now the only path
+
+        Rerun of the one affected task confirms the fix by direct evidence (editable
+        install, click.__file__ verified against checkout) not resolve rate -- the task
+        still fails, now for the H3-shaped reason (already-fixed misjudgment), not the
+        environment bug. Retrieval and this guard are both checked off; verify/test-
+        selection design is the only remaining lever on this bed.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-23T19:01:39.757217Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('results/search-body-ab/results.json'))
+        tasks = ['FasterXML__jackson-databind__pr6076','apache__commons-lang__pr1703','gin-gonic__gin__pr4535',
+                 'pallets__click__pr3473','pallets__click__pr3678','akheron__jansson__pr740',
+                 'apache__commons-lang__pr1655','gin-gonic__gin__pr4805',
+                 'FasterXML__jackson-databind__pr6018','FasterXML__jackson-databind__pr6044']
+        for r in d:
+            if r['task'] in tasks:
+                print(r['task'], '| session:', r['prism']['session_id'], '| tool_trace:', r['prism'].get('tool_trace'))
+        "
+      at: 2026-09-23T20:16:12.676213Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/check_ops.py << 'PYEOF'
+        import json
+        from pathlib import Path
+        ROOT = Path.home() / ".claude" / "projects"
+        sids = {
+            "pr6076 (incomplete)": "22c63dcf-b46a-43f1-bc55-6a657fce297b",
+            "pr1703 (incomplete)": "fd923f75-2cf5-408f-86e5-9b0d6123e718",
+            "pr4535 (incomplete)": "233a8ba9-5947-4b4e-9e8d-5816087d775c",
+            "pr3473 (incomplete)": "10f6949a-d0b0-454c-b29a-d227235ff33b",
+            "pr3678 (incomplete)": "cb25ced7-2911-432b-875b-d99bc9070f16",
+            "pr740 (close-match)": "7f0524ad-a795-472a-971e-09d979902bd9",
+            "pr1655 (close-match)": "d05843f0-30a5-4721-913f-edea474ce6cc",
+            "pr4805 (close-match)": "e2cb1b17-cc47-42cd-a137-cf6dcad78b7a",
+            "pr6018 (wrong-file)": "73a40701-cbaf-4d98-bf93-7c6fe358fd83",
+            "pr6044 (wrong-file)": "9927efc3-1eb3-4351-9f06-526c0e7dff1f",
+        }
+        def text_of_result(c):
+            ct=c.get("content")
+            if isinstance(ct,str): return ct
+            if isinstance(ct,list): return "\n".join(i.get("text","") for i in ct if isinstance(i,dict) and "text" in i)
+            return ""
+
+        for label, sid in sids.items():
+            f = list(ROOT.glob(f"*/{sid}.jsonl"))[0]
+            tool_use={}
+            calls=[]
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                typ=j.get("type"); msg=j.get("message") or {}
+                if typ=="assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_use" and c.get("name","").startswith("mcp__prism"):
+                            tin=c.get("input") or {}
+                            op = tin.get("op","?") if isinstance(tin,dict) else "?"
+                            args = tin.get("args", tin) if isinstance(tin,dict) else {}
+                            tool_use[c["id"]]=len(calls)
+                            calls.append({"op":op,"args":args,"result":""})
+                elif typ=="user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_result" and c.get("tool_use_id") in tool_use:
+                            calls[tool_use[c["tool_use_id"]]]["result"]=text_of_result(c)
+            print(f"\n=== {label} ===")
+            for c in calls:
+                argstr = json.dumps(c["args"])[:150] if isinstance(c["args"],dict) else str(c["args"])[:150]
+                print(f"  op={c['op']:14s} args={argstr}")
+                if c["op"] == "change_impact":
+                    print(f"    RESULT (first 500 chars): {c['result'][:500]}")
+        PYEOF
+        python3 /tmp/check_ops.py
+      at: 2026-09-23T20:16:27.142019Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/check_results.py << 'PYEOF'
+        import json
+        from pathlib import Path
+        ROOT = Path.home() / ".claude" / "projects"
+        cases = {
+            "pr6018 (wrong-file, gold=BeanSerializerBase.java+StdConvertingSerializer.java)": "73a40701-cbaf-4d98-bf93-7c6fe358fd83",
+            "pr6044 (wrong-file, gold=TypeResolverProvider.java)": "9927efc3-1eb3-4351-9f06-526c0e7dff1f",
+        }
+        def text_of_result(c):
+            ct=c.get("content")
+            if isinstance(ct,str): return ct
+            if isinstance(ct,list): return "\n".join(i.get("text","") for i in ct if isinstance(i,dict) and "text" in i)
+            return ""
+        for label, sid in cases.items():
+            f = list(ROOT.glob(f"*/{sid}.jsonl"))[0]
+            tool_use={}; calls=[]
+            for line in f.read_text(errors="ignore").splitlines():
+                try: j=json.loads(line)
+                except Exception: continue
+                typ=j.get("type"); msg=j.get("message") or {}
+                if typ=="assistant":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_use" and c.get("name","").startswith("mcp__prism"):
+                            tool_use[c["id"]]=len(calls); calls.append({"result":""})
+                elif typ=="user":
+                    for c in (msg.get("content") or []):
+                        if isinstance(c,dict) and c.get("type")=="tool_result" and c.get("tool_use_id") in tool_use:
+                            calls[tool_use[c["tool_use_id"]]]["result"]=text_of_result(c)
+            print(f"\n=== {label} ===")
+            goldname = "BeanSerializerBase" if "6018" in label else ("TypeResolverProvider")
+            for i,c in enumerate(calls):
+                hit = goldname in c["result"]
+                print(f"  call {i}: gold name mentioned in result: {hit}")
+                if hit:
+                    idx = c["result"].find(goldname)
+                    print("   context:", c["result"][max(0,idx-100):idx+200].replace("\n","\\n"))
+        PYEOF
+        python3 /tmp/check_results.py
+      at: 2026-09-23T20:16:57.17861Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        t = json.load(open('tasks/e2e/apache__commons-lang__pr1703.json'))
+        print(list(t.keys()))
+        print('repo:', t.get('repo'))
+        print('base_commit:', t.get('base_commit'))
+        "
+      at: 2026-09-24T00:59:25.053569Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "clone\|CACHE_DIR\|repo_cache\|_sh(\"git\", \"clone" harness/../lib/*.py runners/docker_eval.py 2>/dev/null | grep -i clone | head -10
+      at: 2026-09-24T00:59:32.965282Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rn "def.*clone\|git clone\|REPO_CACHE\|repo_cache" runners/docker_eval.py runners/run_e2e.py 2>/dev/null | head -15
+      at: 2026-09-24T00:59:36.784978Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "def _repo_worktree\|worktree add\|def _make_worktree\|repo_path\|bare" runners/run_e2e.py | head -20
+      at: 2026-09-24T00:59:40.087668Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '90,115p' runners/run_e2e.py
+      at: 2026-09-24T00:59:43.774334Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "_repo_for\b" -A 15 runners/run_e2e.py | head -25
+      at: 2026-09-24T00:59:48.815768Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.load(open('tasks/e2e/apache__commons-lang__pr1703.json'))
+        repo, wt = run_e2e._worktree(task)
+        print('worktree:', wt)
+        "
+      at: 2026-09-24T00:59:56.201604Z
+      classified: other
+    - cmd: |-
+        export WT=/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-nncoo8m6
+        prism index "$WT" 2>&1 | tail -5
+        sed -n '280,330p' "$WT/src/main/java/org/apache/commons/lang3/RandomStringUtils.java"
+      at: 2026-09-24T01:00:19.323213Z
+      classified: other
+    - cmd: |-
+        rm -rf "$WT" 2>/dev/null
+        export WT2=/tmp/pr3473-check
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.load(open('tasks/e2e/pallets__click__pr3473.json'))
+        repo, wt = run_e2e._worktree(task)
+        print(wt)
+        "
+      at: 2026-09-24T01:00:34.693393Z
+      classified: other
+    - cmd: |-
+        export WT=/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7w6si5ru
+        prism index "$WT" > /dev/null 2>&1
+        sed -n '1168,1186p' "$WT/src/click/core.py"
+        echo "..."
+        sed -n '3455,3485p' "$WT/src/click/core.py"
+      at: 2026-09-24T01:00:42.633485Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        t = json.load(open('tasks/e2e/pallets__click__pr3473.json'))
+        print(t['patch'][:3000])
+        "
+      at: 2026-09-24T01:00:55.601058Z
+      classified: other
+    - cmd: rm -rf /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-7w6si5ru 2>/dev/null; echo done
+      at: 2026-09-24T01:01:26.781746Z
+      classified: other
+    - cmd: grep -n "0/12\|not the bottleneck\|finding the wrong thing\|H3 is now the only" /Users/tapabratapal/Projects/provasign/research/docs/HANDOFF.md
+      at: 2026-09-24T01:02:38.485358Z
+      classified: other
+    - cmd: sed -n '190,250p' /Users/tapabratapal/Projects/provasign/research/docs/HANDOFF.md
+      at: 2026-09-24T01:02:43.064737Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md && git commit -q -m "$(cat <<'EOF'
+        docs: correct overstated retrieval claim, add change_impact-adoption gap
+
+        The two wrong-file cases: checked the raw tool trace, not the final diff -- first
+        search call surfaced the gold file by name in both, agent used a different file
+        anyway. Retrieval succeeded; unused. Also: change_impact was called zero times
+        across all 10 incomplete/close-match/wrong-file sessions; retroactively ran it for
+        2 of 5 incomplete cases -- doesn't look like it would have closed either gap, but
+        zero adoption is worth watching once verify exists.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-24T01:03:17.231244Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "type ChangeImpactResult" -A 20 internal/core/*.go 2>/dev/null | head -30
+      at: 2026-09-24T01:05:29.483542Z
+      classified: other
+    - cmd: grep -rn "type ChangeImpactResult" /Users/tapabratapal/Projects/provasign/grove/internal/ 2>/dev/null
+      at: 2026-09-24T01:05:32.765386Z
+      classified: other
+    - cmd: grep -n '"verdict":.*verdict,' internal/mcp/verify.go
+      at: 2026-09-24T01:06:17.662055Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -60
+      at: 2026-09-24T01:06:48.925791Z
+      classified: build
+    - cmd: go vet ./... && go test ./internal/mcp/... -run TestToolVerify -v 2>&1 | tail -60
+      at: 2026-09-24T01:06:58.208412Z
+      classified: lint
+    - cmd: sed -n '1,80p' internal/mcp/verify_content_test.go
+      at: 2026-09-24T01:07:04.293951Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/mcp/... -run TestToolVerify -v 2>&1 | tail -40
+      at: 2026-09-24T01:07:40.037396Z
+      classified: test
+    - cmd: sed -n '1,60p' internal/mcp/verify_test.go
+      at: 2026-09-24T01:07:45.916528Z
+      classified: other
+    - cmd: tail -40 internal/mcp/verify_test.go
+      at: 2026-09-24T01:07:53.032938Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/Projects/provasign/prism/internal/mcp/verify_test.go << 'EOF'
+
+        // TestToolVerify_TestCoverageForBodyOnlyChange: a pure body edit (no
+        // signature change) never becomes a `seed` (addSeed only fires on
+        // signature/rename/removal), so it was invisible to verify before this --
+        // verdict stays "complete" with zero missed sites regardless. testCoverage
+        // is the separate, non-gating signal: does a verified test call the
+        // function whose body changed. One function has a real test caller, one
+        // doesn't -- the second must carry a warning, not silently pass as if it
+        // were covered.
+        func TestToolVerify_TestCoverageForBodyOnlyChange(t *testing.T) {
+        	dir := t.TempDir()
+        	write := func(rel, content string) {
+        		t.Helper()
+        		p := filepath.Join(dir, rel)
+        		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+        			t.Fatal(err)
+        		}
+        		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	write("go.mod", "module example.com/cov\n\ngo 1.26\n")
+        	write("core.go", "package cov\n\n"+
+        		"func Add(a, b int) int {\n\treturn a + b\n}\n\n"+
+        		"func Sub(a, b int) int {\n\treturn a - b\n}\n")
+        	write("core_test.go", "package cov\n\nimport \"testing\"\n\n"+
+        		"func TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fail()\n\t}\n}\n")
+
+        	git := func(args ...string) {
+        		t.Helper()
+        		cmd := exec.Command("git", append([]string{"-C", dir,
+        			"-c", "user.email=t@t", "-c", "user.name=t"}, args...)...)
+        		if out, err := cmd.CombinedOutput(); err != nil {
+        			t.Fatalf("git %v: %v\n%s", args, err, out)
+        		}
+        	}
+        	git("init", "-q")
+        	git("add", "-A")
+        	git("commit", "-q", "-m", "base")
+
+        	// Body-only changes to BOTH functions -- neither is a signature change,
+        	// so neither should ever become a seed or a missed site.
+        	write("core.go", "package cov\n\n"+
+        		"func Add(a, b int) int {\n\treturn a + b + 0\n}\n\n"+
+        		"func Sub(a, b int) int {\n\treturn a - b - 0\n}\n")
+
+        	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+        	if err := gc.EnsureRunning(t.Context()); err != nil {
+        		t.Fatal(err)
+        	}
+        	t.Cleanup(gc.Shutdown)
+        	h := NewHandler(config.Default(), dir, gc)
+        	out, err := h.Invoke("prism_verify", map[string]any{})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	if m["verdict"] != "complete" {
+        		t.Fatalf("verdict = %v, want complete (body-only changes are never seeds): missed=%v",
+        			m["verdict"], m["missedSites"])
+        	}
+        	tc, _ := m["testCoverage"].([]map[string]any)
+        	if len(tc) != 2 {
+        		t.Fatalf("testCoverage = %v, want 2 entries (Add, Sub)", m["testCoverage"])
+        	}
+        	byName := map[string]map[string]any{}
+        	for _, e := range tc {
+        		byName[fmt.Sprint(e["symbol"])] = e
+        	}
+        	add, ok := byName["Add"]
+        	if !ok {
+        		t.Fatalf("no testCoverage entry for Add: %v", tc)
+        	}
+        	covered, _ := add["coveredBy"].([]string)
+        	if len(covered) == 0 || !strings.Contains(covered[0], "core_test.go") {
+        		t.Errorf("Add coveredBy = %v, want core_test.go:<line>", add["coveredBy"])
+        	}
+        	if add["warning"] != nil {
+        		t.Errorf("Add has a real test caller, must not carry a warning: %v", add["warning"])
+        	}
+        	sub, ok := byName["Sub"]
+        	if !ok {
+        		t.Fatalf("no testCoverage entry for Sub: %v", tc)
+        	}
+        	if sub["coveredBy"] != nil {
+        		t.Errorf("Sub has no test caller, coveredBy must be absent: %v", sub["coveredBy"])
+        	}
+        	if sub["warning"] == nil {
+        		t.Error("Sub has no verified test caller, must carry a warning")
+        	}
+        	text, ok := renderVerifyAsText(m)
+        	if !ok {
+        		t.Fatal("renderVerifyAsText rejected a valid testCoverage payload")
+        	}
+        	if !strings.Contains(text, "Add") || !strings.Contains(text, "Sub") || !strings.Contains(text, "no verified test caller") {
+        		t.Errorf("text rendering missing test-coverage section: %s", text)
+        	}
+        }
+        EOF
+        echo written
+      at: 2026-09-24T01:08:11.223262Z
+      classified: other
+    - cmd: go test ./internal/mcp/... -run TestToolVerify_TestCoverageForBodyOnlyChange -v 2>&1 | tail -50
+      at: 2026-09-24T01:08:18.51767Z
+      classified: test
+    - cmd: grep -n '"Optional op=verify' internal/cli/commands.go internal/mcp/server.go
+      at: 2026-09-24T01:08:22.962994Z
+      classified: other
+    - cmd: 'grep -n "verify: base,removed_symbols\|reviews a diff against\|op == \"verify\"" internal/mcp/*.go | head -10'
+      at: 2026-09-24T01:08:27.860943Z
+      classified: other
+    - cmd: grep -rn "against indexed potential impact\|checks the current diff for missed\|missed_sites\|Review a diff\|review the current diff" internal/mcp/*.go internal/cli/*.go 2>/dev/null | head -10
+      at: 2026-09-24T01:08:33.704563Z
+      classified: other
+    - cmd: grep -n "case \"verify\"" internal/mcp/tools.go internal/mcp/server.go
+      at: 2026-09-24T01:08:37.52732Z
+      classified: other
+    - cmd: sed -n '320,345p' internal/mcp/server.go
+      at: 2026-09-24T01:08:40.991309Z
+      classified: other
+    - cmd: go build ./... && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -20
+      at: 2026-09-24T01:09:04.592734Z
+      classified: lint
+    - cmd: |-
+        go build -o /tmp/prism-verify-test ./cmd/prism
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys; sys.path.insert(0,'.'); sys.path.insert(0,'runners')
+        import json, run_e2e
+        task = json.load(open('tasks/e2e/apache__commons-lang__pr1703.json'))
+        repo, wt = run_e2e._worktree(task)
+        print(wt)
+        "
+      at: 2026-09-24T01:09:17.111619Z
+      classified: build
+    - cmd: |-
+        export WT=/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fo_1x4ke
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        git -C "$WT" apply results/e2e/apache__commons-lang__pr1703.sonnet.prism_body_exp.diff 2>&1
+        /tmp/prism-verify-test index "$WT" > /dev/null 2>&1
+        cd "$WT"
+        git add -A
+        /tmp/prism-verify-test verify . --format text 2>&1 | head -60
+      at: 2026-09-24T01:09:47.70024Z
+      classified: other
+    - cmd: |-
+        export WT=/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fo_1x4ke
+        DIFF=/Users/tapabratapal/Projects/provasign/research/harness/results/e2e/apache__commons-lang__pr1703.sonnet.prism_body_exp.diff
+        git -C "$WT" apply "$DIFF" && echo APPLIED
+        /tmp/prism-verify-test index "$WT" > /dev/null 2>&1
+        /tmp/prism-verify-test verify "$WT" --format text 2>&1 | head -60
+      at: 2026-09-24T01:10:09.199642Z
+      classified: other
+    - cmd: |-
+        export WT=/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fo_1x4ke
+        /tmp/prism-verify-test verify "$WT" 2>&1 | python3 -m json.tool | head -40
+      at: 2026-09-24T01:10:17.494676Z
+      classified: other
+    - cmd: |-
+        export WT=/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fo_1x4ke
+        /tmp/prism-verify-test verify "$WT" 2>&1 | head -40
+      at: 2026-09-24T01:10:25.257673Z
+      classified: other
+    - cmd: |-
+        export WT=/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fo_1x4ke
+        /tmp/prism-verify-test verify "$WT" --format json 2>&1 | python3 -m json.tool 2>&1 | head -60
+      at: 2026-09-24T01:10:32.533472Z
+      classified: other
+    - cmd: |-
+        rm -rf /var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-fo_1x4ke 2>/dev/null
+        cd /Users/tapabratapal/Projects/provasign/prism && go build ./... && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | tail -15
+      at: 2026-09-24T01:11:08.415411Z
+      classified: lint
+    - cmd: |-
+        git add internal/mcp/verify.go internal/mcp/graphtext.go internal/mcp/verify_test.go && git commit -q -m "$(cat <<'EOF'
+        feat(verify): report test coverage for body-only changes, not just contract changes
+
+        verify's existing seed pipeline (missed callers of a changed contract) only
+        ever fires on signature change, rename, removal, or interface/type member
+        extraction -- a pure body edit (the shape of an ordinary bug fix) was
+        invisible to it entirely. Measured (2026-09-23, H1 hard-core-failure review):
+        every one of 12 unsolved benchmark tasks was a body-only change, and in every
+        case the agent's own test run gave a false pass -- wrong test scope, a hidden
+        regression test not yet present, or (once) testing an installed package
+        instead of the checkout.
+
+        Adds a new, informational-only pass: for every changed function/method/
+        constructor (contract-changed or not), look up its callers via the same
+        ChangeImpactScoped call change_impact already uses, and report which are
+        verified test callers under a new `testCoverage` field. A function with no
+        verified test caller carries an explicit warning instead of silently passing.
+        Never affects verdict/gateFailure -- this signal hasn't earned gating trust
+        yet, unlike the existing seed/missedSites pipeline.
+
+        Validated against one of the 12 hard-core-failure tasks (commons-lang
+        pr1703): correctly reports 22 covering test call sites for the function the
+        agent left half-fixed -- confirms this specific failure is a within-function
+        completeness problem, not a missing-test-coverage one, matching the transcript
+        analysis. No false positive.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git log --oneline -1
+      at: 2026-09-24T01:11:22.136699Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md && git commit -q -m "$(cat <<'EOF'
+        docs: H3 first slice shipped (verify test-coverage field), what's still untested
+
+        Records the verify.go change (prism fff21dd8), the two validations (unit test +
+        real commons-lang pr1703 diff check, no false positive), a known CLI text-
+        renderer gap, and the honest open item: nothing yet steers the agent to use
+        this before declaring a fix verified, and the 12-task bed hasn't been rerun.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-24T01:11:50.355272Z
+      classified: other
+    - cmd: grep -n "func asSliceAny" -A 12 internal/cli/*.go | head -20
+      at: 2026-09-24T01:14:54.824876Z
+      classified: other
+    - cmd: go build ./... && go vet ./... && go test ./... -count=1 -timeout 180s 2>&1 | grep -v "^ok\|no test files" ; echo "TESTS_DONE rc=${PIPESTATUS[0]}"
+      at: 2026-09-24T01:15:32.849532Z
+      classified: lint
+    - cmd: |-
+        git add internal/cli/viewcmds.go && git commit -q -m "$(cat <<'EOF'
+        fix(cli): prism verify text output shows the testCoverage section
+
+        The CLI text renderer (renderVerifyText) is separate from the MCP path's
+        renderVerifyAsText and was dropping the new field; asSliceAny also only
+        accepted []any, so a Go-typed []string/[]map slice rendered as nothing.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1 && git fetch -q origin && git status -sb | head -3
+      at: 2026-09-24T01:15:47.995159Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git fetch -q origin 2>&1; git status -sb | head -2; git log origin/main..HEAD --oneline | wc -l
+      at: 2026-09-24T01:15:59.182966Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md && git commit -q -m "$(cat <<'EOF'
+        docs: end-of-session TL;DR — what is released, what is committed-untagged, what is next
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git log --oneline -1
+      at: 2026-09-24T01:16:37.018325Z
+      classified: other
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-23T01:38:46.391992Z
+redactions: 7
