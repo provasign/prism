@@ -425,6 +425,13 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			default:
 				continue
 			}
+			// Module-level pseudo-symbols ("<top-level>", "<module>") are how
+			// some parsers attribute import/constant edits; they are not a
+			// function a test could call, and a warning on one sends the agent
+			// hunting for coverage that cannot exist (seen on the first probe).
+			if strings.HasPrefix(c.After.Name, "<") {
+				continue
+			}
 			name := c.After.QualifiedName
 			if name == "" {
 				name = c.After.Name
