@@ -287,7 +287,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 	}
 	known := map[string]bool{
 		"symbol": true, "content": true, "ambiguous": true, "candidates": true,
-		"matched": true, "name": true, "note": true,
+		"matched": true, "name": true, "note": true, "overloads": true,
 		// projectSymbol fields= shapes
 		"file": true, "line": true, "signature": true, "sig": true,
 		"doc": true, "docstring": true, "body": true, "source": true,
@@ -361,6 +361,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 			}
 		}
 	}
+	writeLookupOverloads(&b, anySlice(out["overloads"]))
 	if m, ok := out["matched"].(bool); ok && !m {
 		if content, _ := out["content"].(string); content != "" {
 			b.WriteString("// NO EXACT MATCH — closest shown above; candidates:\n")
@@ -377,6 +378,51 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		fmt.Fprintf(&b, "// %s\n", n)
 	}
 	return b.String(), true
+}
+
+// writeLookupOverloads renders the other overloads lookup delivered with the
+// primary symbol: each with its span and line-numbered body, or its signature
+// when the body budget was spent.
+func writeLookupOverloads(b *strings.Builder, overloads []any) {
+	if len(overloads) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "// %d more overload(s) with the same name in this file:\n", len(overloads))
+	for _, raw := range overloads {
+		o, _ := raw.(map[string]any)
+		if o == nil {
+			continue
+		}
+		start, end := intArg(o, "line", 0), intArg(o, "end", 0)
+		fmt.Fprintf(b, "// overload %v  %v:%d-%d\n", o["name"], o["file"], start, end)
+		body, _ := o["content"].(string)
+		if body == "" {
+			body, _ = o["body"].(string)
+		}
+		if body == "" {
+			if sig, _ := o["signature"].(string); sig != "" {
+				fmt.Fprintf(b, "// signature: %s\n", sig)
+			}
+			if omitted, _ := o["bodyOmitted"].(bool); omitted {
+				fmt.Fprintf(b, "// body not delivered (lookup body budget); read %v lines %d-%d\n", o["file"], start, end)
+			}
+			continue
+		}
+		lines := strings.SplitAfter(body, "\n")
+		if lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		if start > 0 && end >= start+len(lines)-1 {
+			for i, line := range lines {
+				fmt.Fprintf(b, "%d\t%s", start+i, line)
+			}
+		} else {
+			b.WriteString(body)
+		}
+		if !strings.HasSuffix(body, "\n") {
+			b.WriteString("\n")
+		}
+	}
 }
 
 // symbolToMap round-trips a concrete symbol value through its JSON encoding

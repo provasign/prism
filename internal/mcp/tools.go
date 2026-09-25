@@ -2422,6 +2422,65 @@ func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
 	return out
 }
 
+// lookupCandidateLabel names a tied lookup candidate with its line span, so two
+// same-named symbols in one file never render as identical lines.
+func lookupCandidateLabel(s grove.SymbolRecord) string {
+	return fmt.Sprintf("%s (%s:%d-%d)", lookupSymbolName(s), s.FilePath, s.Span.Start, s.Span.End)
+}
+
+// lookupOverloads returns the other overloads of a looked-up symbol, in source
+// order. Bodies are included while the total delivered body text (the primary
+// body plus overloads) stays within searchFullBodyMaxBytes; past that, an
+// overload keeps its signature and span so the agent can read it by range.
+// fields= projections apply to each overload the same way as the primary.
+func lookupOverloads(overloads []grove.SymbolRecord, fields []string, primaryBytes int) []map[string]any {
+	sorted := append([]grove.SymbolRecord(nil), overloads...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Span.Start < sorted[j].Span.Start })
+	wantBody := len(fields) == 0
+	for _, f := range fields {
+		if lf := strings.ToLower(f); lf == "body" || lf == "source" {
+			wantBody = true
+		}
+	}
+	used := primaryBytes
+	out := make([]map[string]any, 0, len(sorted))
+	for _, s := range sorted {
+		var entry map[string]any
+		if len(fields) > 0 {
+			entry = projectSymbol(s, fields)
+			delete(entry, "body")
+		} else {
+			entry = map[string]any{"name": lookupSymbolName(s), "file": s.FilePath, "line": s.Span.Start,
+				"signature": s.Signature}
+		}
+		entry["end"] = s.Span.End
+		if wantBody {
+			if used+len(s.RawText) <= searchFullBodyMaxBytes {
+				used += len(s.RawText)
+				if len(fields) > 0 {
+					entry["body"] = s.RawText
+				} else {
+					entry["content"] = s.RawText
+				}
+			} else {
+				entry["bodyOmitted"] = true
+				if _, ok := entry["signature"]; !ok {
+					entry["signature"] = s.Signature
+				}
+			}
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+func lookupSymbolName(s grove.SymbolRecord) string {
+	if s.QualifiedName != "" {
+		return s.QualifiedName
+	}
+	return s.Name
+}
+
 // toolNode is the one-shot orientation view: everything you need about ONE
 // symbol (or ONE file) without a chain of round-trips. Composed entirely from
 // existing primitives — lookup + edges for a symbol, read + file symbols +
@@ -2752,19 +2811,46 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 		// A real tie at the top (same score, different symbols sharing the name)
 		// is genuine ambiguity the qualifier couldn't resolve — surface it with
 		// candidates rather than silently picking one.
+		//
+		// Same-file ties with the same qualified name are overloads (Java/C#/C++/
+		// Kotlin). No name or file argument can select one of them, so listing
+		// them as candidates printed N identical lines and the agent edited only
+		// the overload it was shown (commons-lang pr1713: half the fix missing;
+		// 67/614 benchmark sessions hit this). Deliver their bodies instead.
 		if tied > 1 {
+			best := syms[bestIdx]
 			cands := make([]string, 0, tied)
+			var overloads []grove.SymbolRecord
 			for i := range syms {
-				if score(syms[i]) == bestScore {
-					n := syms[i].QualifiedName
-					if n == "" {
-						n = syms[i].Name
+				if score(syms[i]) != bestScore {
+					continue
+				}
+				if i != bestIdx && syms[i].QualifiedName == best.QualifiedName && syms[i].FilePath == best.FilePath {
+					overloads = append(overloads, syms[i])
+					continue
+				}
+				cands = append(cands, lookupCandidateLabel(syms[i]))
+			}
+			if len(overloads) > 0 && fileScope == "" {
+				// The name search caps at 25 hits, which can cut a large overload
+				// family short (StringUtils.join has 26). Take the complete set
+				// from the declaring file.
+				if fileSyms, ferr := h.Grove.FileSymbols(ctx, best.FilePath); ferr == nil {
+					overloads = overloads[:0]
+					for _, s := range dedupeSymbolsByID(fileSyms) {
+						if s.Span.Start != best.Span.Start && s.QualifiedName == best.QualifiedName && s.Kind == best.Kind {
+							overloads = append(overloads, s)
+						}
 					}
-					cands = append(cands, n+" ("+syms[i].FilePath+")")
 				}
 			}
-			out["ambiguous"] = true
-			out["candidates"] = cands
+			if len(overloads) > 0 {
+				out["overloads"] = lookupOverloads(overloads, fields, len(best.RawText))
+			}
+			if len(cands) > 1 {
+				out["ambiguous"] = true
+				out["candidates"] = cands
+			}
 		}
 		return out, nil
 	}

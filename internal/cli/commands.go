@@ -3411,6 +3411,7 @@ func printTextOutput(m map[string]any) {
 			if !strings.HasSuffix(content, "\n") {
 				fmt.Println()
 			}
+			printLookupOverloadsText(m)
 			return
 		}
 	}
@@ -3780,6 +3781,57 @@ func printTaskText(m map[string]any, mode string) {
 }
 
 // jsonInt coerces a JSON number (float64 after round-trip) or int to int.
+// printLookupOverloadsText prints what lookup delivers beside the primary body:
+// same-file overloads (body, or signature when the budget was spent) and
+// cross-symbol ambiguity candidates. Text mode used to stop after the primary
+// body, so a CLI caller never learned other overloads or candidates existed.
+func printLookupOverloadsText(m map[string]any) {
+	if overloads := asSliceAny(m["overloads"]); len(overloads) > 0 {
+		fmt.Printf("// %d more overload(s) with the same name in this file:\n", len(overloads))
+		for _, raw := range overloads {
+			o, _ := raw.(map[string]any)
+			if o == nil {
+				continue
+			}
+			start, end := jsonInt(o["line"]), jsonInt(o["end"])
+			fmt.Printf("// overload %v  %v:%d-%d\n", o["name"], o["file"], start, end)
+			body, _ := o["content"].(string)
+			if body == "" {
+				body, _ = o["body"].(string)
+			}
+			if body == "" {
+				if sig, _ := o["signature"].(string); sig != "" {
+					fmt.Printf("// signature: %s\n", sig)
+				}
+				if omitted, _ := o["bodyOmitted"].(bool); omitted {
+					fmt.Printf("// body not delivered (lookup body budget); read %v lines %d-%d\n", o["file"], start, end)
+				}
+				continue
+			}
+			lines := strings.SplitAfter(body, "\n")
+			if lines[len(lines)-1] == "" {
+				lines = lines[:len(lines)-1]
+			}
+			if start > 0 && end >= start+len(lines)-1 {
+				for i, line := range lines {
+					fmt.Printf("%d\t%s", start+i, line)
+				}
+			} else {
+				fmt.Print(body)
+			}
+			if !strings.HasSuffix(body, "\n") {
+				fmt.Println()
+			}
+		}
+	}
+	if amb, _ := m["ambiguous"].(bool); amb {
+		fmt.Println("// AMBIGUOUS — same score for:")
+		for _, c := range asSliceAny(m["candidates"]) {
+			fmt.Printf("//   %v\n", c)
+		}
+	}
+}
+
 func jsonInt(v any) int {
 	switch n := v.(type) {
 	case int:
