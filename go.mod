@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/provasign/grove v0.59.1
+	github.com/provasign/grove v0.60.0
 	modernc.org/sqlite v1.51.0
 )
 
