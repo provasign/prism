@@ -104,7 +104,7 @@ func (h *Handler) toolLookupBatch(ctx context.Context, args map[string]any, requ
 		result, err := h.lookupSymbol(ctx, one, request.file)
 		if err == nil {
 			// Delivered-body size cap (bodycap.go), before the batch budget.
-			result = h.capLookupResult(ctx, result)
+			result = h.addLookupCallerSignal(ctx, h.capLookupResult(ctx, result), false)
 		}
 		entry := map[string]any{"name": request.name}
 		if request.file != "" {

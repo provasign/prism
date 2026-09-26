@@ -314,6 +314,9 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 		if v, ok := args["fields"]; ok {
 			legacy["fields"] = v
 		}
+		if v, ok := args["signature"]; ok {
+			legacy["signature"] = v
+		}
 	case "read":
 		if v, ok := args["ranges"]; ok {
 			legacy["ranges"] = v
