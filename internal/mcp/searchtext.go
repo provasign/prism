@@ -52,6 +52,7 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"inlineBodies":     true,
 		"searchLeads":      true,
 		"searchLeadNote":   true,
+		"condensedNote":    true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -316,8 +317,13 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 			}
 			if td, _ := sm["testDouble"].(bool); td {
 				b.WriteString("  [test double]")
+			} else if tc, _ := sm["testCode"].(bool); tc {
+				b.WriteString("  [test]")
 			}
 			b.WriteString("\n")
+		}
+		if note, _ := m["condensedNote"].(string); note != "" {
+			fmt.Fprintf(b, "// %s\n", note)
 		}
 		b.WriteString(searchLocatorGuidance + "\n")
 	} else if hasKey(m, "symbols") {

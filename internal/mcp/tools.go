@@ -1207,7 +1207,13 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 	}
 
 	if len(out.Symbols) == 0 && len(out.TextMatches) == 0 {
+		var filterMiss scopeFilterReport
+		if len(scope.paths) > 0 || len(scope.glob) > 0 {
+			filterMiss = scopeFilterCheck(h.Root, scope.paths, scope.glob, true)
+		}
 		switch {
+		case filterMiss.noFiles:
+			out.Note = filterMiss.note
 		case len(sel.seeds) == 0:
 			out.Note = fmt.Sprintf("no symbols matched terms %s under project root %s; check term spelling and that the code lives under this root", formatQueryTerms(terms), h.Root)
 		default:
@@ -1732,7 +1738,8 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 				break
 			}
 		}
-		if allEmpty && !searchResultPartial(out) {
+		filterMiss := h.attachScopeFilterNote(out, sc, allEmpty)
+		if allEmpty && !searchResultPartial(out) && !filterMiss {
 			h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		}
 		if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
@@ -1761,7 +1768,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	if termNote != "" {
 		out["note"] = termNote
 	}
-	if searchResultEmpty(out) && !searchResultPartial(out) {
+	if h.attachScopeFilterNote(out, sc, searchResultEmpty(out)) {
+		// The filter selected no file: no term was tested, so neither the
+		// retry-the-terms guidance nor the token fallback applies.
+	} else if searchResultEmpty(out) && !searchResultPartial(out) {
 		h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
 			selected, omitted := searchFallbackTerms(queries[0])
@@ -1799,7 +1809,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		}
 	}
 	if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-		if bodies := h.compactSearchBodiesEnclosing(ctx, out); bodies != "" {
+		// The flat single-term shape carries no "query"; body selection
+		// needs the term to recognise the definition of a named symbol.
+		if bodies := h.compactSearchBodiesEnclosing(ctx, withSearchQuery(out, queries[0])); bodies != "" {
 			out["inlineBodies"] = bodies
 		}
 	}
@@ -1808,6 +1820,23 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		boundSymbolPresentation(out)
 	}
 	return out, nil
+}
+
+// withSearchQuery returns a shallow copy of a flat single-term search result
+// labeled with its term, leaving the delivered shape untouched.
+func withSearchQuery(out map[string]any, q string) map[string]any {
+	if _, batched := out["results"]; batched {
+		return out
+	}
+	if _, has := out["query"]; has {
+		return out
+	}
+	labeled := make(map[string]any, len(out)+1)
+	for k, v := range out {
+		labeled[k] = v
+	}
+	labeled["query"] = q
+	return labeled
 }
 
 // tokenFallbackTerms picks a few distinct code-like words from a failed
@@ -1875,6 +1904,21 @@ func genericSyntaxSearch(q string) bool {
 
 // searchResultEmpty reports whether one searchOne result carries no hits of
 // any shape (symbols, text hits, or files).
+// attachScopeFilterNote puts a path=/glob= filter miss at the top of a search
+// result and reports whether the filters selected no file at all.
+func (h *Handler) attachScopeFilterNote(out map[string]any, sc searchScope, empty bool) bool {
+	rep := scopeFilterCheck(h.Root, sc.paths, sc.glob, empty)
+	if rep.note == "" {
+		return false
+	}
+	if existing, _ := out["scopeNote"].(string); existing != "" {
+		out["scopeNote"] = rep.note + "; " + existing
+	} else {
+		out["scopeNote"] = rep.note
+	}
+	return rep.noFiles
+}
+
 func searchResultEmpty(m map[string]any) bool {
 	if m == nil {
 		return true
@@ -2160,7 +2204,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	if err != nil {
 		return nil, err
 	}
-	ranked := rankSearchSymbols(syms, q)
+	ranked, condensed := condenseSearchSymbols(rankSearchSymbols(syms, q))
 	annotated := make([]map[string]any, 0, len(ranked))
 	for _, item := range ranked {
 		s := item.symbol
@@ -2172,8 +2216,11 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			continue
 		}
 		m["matchKind"] = item.matchKind
-		if isTestDouble(s.FilePath) {
+		switch searchTestLabel(s) {
+		case "test double":
 			m["testDouble"] = true
+		case "test":
+			m["testCode"] = true
 		}
 		annotated = append(annotated, m)
 	}
@@ -2208,6 +2255,9 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// under the symbol list (searchtext.go); carrying it in the envelope
 	// too printed two near-identical pointers on every symbol result.
 	out := map[string]any{"symbols": annotated}
+	if condensed != "" {
+		out["condensedNote"] = condensed
+	}
 	if symbolsTruncated {
 		out["symbolsTruncated"] = true
 		out["warning"] = symbolSearchWarning(len(annotated), symCap, sc.exhaustive, sourceExhausted, moreKnown)
@@ -2390,6 +2440,24 @@ func isTestDouble(path string) bool {
 	return strings.HasSuffix(lp, "_test.go") ||
 		strings.Contains(lp, "mock") || strings.Contains(lp, "fake") ||
 		strings.Contains(lp, "stub") || strings.Contains(lp, "/testdata/")
+}
+
+// searchTestLabel distinguishes a test double (mock/fake/stub) from other
+// test code for search locator lines. isTestDouble also covers every
+// _test.go file, which is right for demoting candidates but labelled real
+// test functions (TestErrorSlice, TestContextGetErrorSlice) "[test double]".
+func searchTestLabel(s grove.SymbolRecord) string {
+	lp := strings.ToLower(filepath.ToSlash(s.FilePath))
+	ln := strings.ToLower(s.Name)
+	for _, marker := range []string{"mock", "fake", "stub"} {
+		if strings.Contains(lp, marker) || strings.Contains(ln, marker) {
+			return "test double"
+		}
+	}
+	if isTestDouble(s.FilePath) || isTestFilePath(s.FilePath) {
+		return "test"
+	}
+	return ""
 }
 
 // projectSymbol returns only the requested columns of a symbol. file, line and
@@ -2649,7 +2717,12 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	} else if batch {
 		return h.toolLookupBatch(ctx, args, requests)
 	}
-	return h.lookupSymbol(ctx, args, "")
+	out, err := h.lookupSymbol(ctx, args, "")
+	if err != nil {
+		return out, err
+	}
+	// Delivered-body size cap (bodycap.go), kept outside lookupSymbol.
+	return h.capLookupResult(ctx, out), nil
 }
 
 func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileScope string) (any, error) {
@@ -3859,7 +3932,9 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 		if ok && len(sc.glob) > 0 {
 			ok = false
 			for _, g := range sc.glob {
-				if m, _ := filepath.Match(g, filepath.Base(p)); m {
+				// Same glob semantics as the text pass (rg --glob): "**"
+				// crosses directories, a slash-free glob matches the base name.
+				if textsearch.MatchGlob(g, p) {
 					ok = true
 					break
 				}

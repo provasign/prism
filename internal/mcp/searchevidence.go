@@ -26,7 +26,11 @@ type searchEvidence struct {
 	related      map[string]bool
 	relatedLines map[string][]int
 	nameMatch    bool
-	firstSeen    int
+	// definition: the section is the declaration of a symbol the term names
+	// exactly (its declaration line was a hit, or it was a name-exact
+	// symbol match). It outranks call sites of the same name.
+	definition bool
+	firstSeen  int
 }
 
 type evidenceFile struct {
@@ -243,6 +247,12 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 			candidate.relatedLines[related] = append(candidate.relatedLines[related], line)
 		}
 		candidate.nameMatch = candidate.nameMatch || nameMatch
+		if term >= 0 && sym != nil && related == "" {
+			q := strings.TrimSpace(stringArg(groups[term], "query", ""))
+			if declaresTerm(entry.lines, *sym, line, q) || nameMatch && q != "" && (sym.Name == q || sym.QualifiedName == q) {
+				candidate.definition = true
+			}
+		}
 		score := evidenceLineScore(entry.lines[line-1])
 		if term >= 0 {
 			score += 2
@@ -369,6 +379,13 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		value := len(item.terms)*9 + len(fileTerms[item.file])*3 + item.bestScore
 		if item.nameMatch {
 			value += 3
+		}
+		if item.definition {
+			// jackson pr6019: "search readRootValue" named the definition
+			// in its headline but delivered two callers' bodies, because
+			// assignment-shaped call lines outscored the declaration line.
+			// The definition of an exactly named symbol comes first.
+			value += 20
 		}
 		if len(item.related) > 0 {
 			value += 2
@@ -547,4 +564,27 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		return rendered
 	}
 	return h.compactSearchBodiesLegacy(ctx, out, skip)
+}
+
+// declaresTerm reports whether line is the declaration line of sym and sym is
+// named exactly by term: the first line of sym's span that mentions its name
+// is this line. Leading doc comments and annotations inside the span are
+// skipped by the same rule.
+func declaresTerm(lines []string, sym grove.SymbolRecord, line int, term string) bool {
+	term = strings.TrimSpace(term)
+	if term == "" || sym.Name == "" {
+		return false
+	}
+	if sym.Name != term && sym.QualifiedName != term {
+		return false
+	}
+	for l := sym.Span.Start; l <= line && l <= len(lines); l++ {
+		if l < 1 {
+			continue
+		}
+		if strings.Contains(lines[l-1], sym.Name) {
+			return l == line
+		}
+	}
+	return false
 }

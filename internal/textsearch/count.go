@@ -55,7 +55,7 @@ func Count(ctx context.Context, root, pattern string, opts Options) CountResult 
 func runRgCount(ctx context.Context, root, pattern string, opts Options) (CountResult, bool) {
 	args := []string{
 		"--count", "--with-filename", "--color", "never", "--no-messages",
-		"--ignore-case", "--no-require-git", "--hidden", "--sort", "path", "--max-filesize", "2M",
+		caseFlagRg(opts), "--no-require-git", "--hidden", "--sort", "path", "--max-filesize", "2M",
 	}
 	if !regexUsable(pattern, opts) {
 		args = append(args, "--fixed-strings")
@@ -82,7 +82,10 @@ func runGrepCount(ctx context.Context, root, pattern string, opts Options) (Coun
 	if regexUsable(pattern, opts) {
 		mode = "-E"
 	}
-	args := []string{"-rHIc", mode, "-i"}
+	args := []string{"-rHIc", mode}
+	if !opts.CaseSensitive {
+		args = append(args, "-i")
+	}
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
@@ -185,14 +188,11 @@ func nativeCount(ctx context.Context, root, pattern string, opts Options) CountR
 				return nil
 			}
 			if len(opts.Glob) > 0 {
-				matched := false
-				for _, glob := range opts.Glob {
-					if ok, _ := filepath.Match(glob, d.Name()); ok {
-						matched = true
-						break
-					}
+				rel, relErr := filepath.Rel(root, path)
+				if relErr != nil {
+					rel = d.Name()
 				}
-				if !matched {
+				if !MatchAnyGlob(opts.Glob, rel) {
 					return nil
 				}
 			}
@@ -224,8 +224,14 @@ func nativeCount(ctx context.Context, root, pattern string, opts Options) CountR
 
 func countMatcher(pattern string, opts Options) func(string) bool {
 	if regexUsable(pattern, opts) {
+		if opts.CaseSensitive {
+			return regexp.MustCompile(pattern).MatchString
+		}
 		re := regexp.MustCompile("(?i)" + pattern)
 		return re.MatchString
+	}
+	if opts.CaseSensitive {
+		return func(line string) bool { return strings.Contains(line, pattern) }
 	}
 	needle := strings.ToLower(pattern)
 	return func(line string) bool { return strings.Contains(strings.ToLower(line), needle) }

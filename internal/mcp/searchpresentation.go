@@ -115,6 +115,35 @@ func boundSearchPresentation(out map[string]any) {
 			high = mid - 1
 		}
 	}
+	// Text matches keep a floor of textHitFloor lines per term (or all of
+	// them, if fewer). Symbols are bounded next by boundSymbolPresentation,
+	// so a symbol-heavy term cannot push its own text matches to zero:
+	// jackson pr6030 showed "displayed 0 of 8 retrieved text matches" while
+	// eleven member symbols of one test class filled the budget, and the
+	// hidden text line was the edit site.
+	const textHitFloor = 3
+	totals := make([]int, len(results))
+	for _, g := range groups {
+		totals[g.result] += len(g.hits)
+	}
+	floor, have := 0, make([]int, len(results))
+	for floor < len(order) {
+		satisfied := true
+		for ri := range results {
+			if have[ri] < minInt(textHitFloor, totals[ri]) {
+				satisfied = false
+				break
+			}
+		}
+		if satisfied {
+			break
+		}
+		have[groups[order[floor].group].result]++
+		floor++
+	}
+	if low < floor {
+		low = floor
+	}
 	shown := apply(low)
 	for ri, result := range results {
 		total := 0
