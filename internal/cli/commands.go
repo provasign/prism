@@ -3679,6 +3679,10 @@ func printNotes(m map[string]any, keys ...string) {
 }
 
 func printChangeImpactText(m map[string]any) {
+	if text, ok := mcp.FormatMemberImpactText(m); ok {
+		fmt.Print(text)
+		return
+	}
 	fmt.Printf("// %v — change-impact: %d site(s)\n", m["query"], jsonInt(m["totalSites"]))
 	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "familyCompleteness", "callerCoverage", "coverageNote", "evidenceNote", "hasHeuristicRefs")
 	fmt.Print(mcp.FormatImpactRelaySitesText(m))
@@ -3694,7 +3698,11 @@ func printChangeImpactText(m map[string]any) {
 }
 
 func printRenamePlanText(m map[string]any) {
-	fmt.Printf("// %v → %v — rename-plan: %d site(s)\n", m["query"], m["newName"], jsonInt(m["totalSites"]))
+	edits, _ := m["edits"].([]any)
+	amb, _ := m["ambiguous"].([]any)
+	unres, _ := m["unresolved"].([]any)
+	fmt.Printf("// %v → %v — rename-plan: %d site(s): %d edit(s), %d ambiguous, %d unresolved\n",
+		m["query"], m["newName"], len(edits)+len(amb)+len(unres), len(edits), len(amb), len(unres))
 	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary")
 	printEditGroup("edits", m["edits"])
 	printEditGroup("ambiguous", m["ambiguous"])
@@ -3721,6 +3729,9 @@ func printEditGroup(label string, v any) {
 		}
 		if after, ok := e["after"].(string); ok {
 			fmt.Printf("    + %s\n", after)
+		}
+		if reason, ok := e["reason"].(string); ok && reason != "" {
+			fmt.Printf("    // %s\n", reason)
 		}
 	}
 }

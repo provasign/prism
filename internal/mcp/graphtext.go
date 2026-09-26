@@ -95,6 +95,9 @@ func renderReadAsText(out map[string]any) (string, bool) {
 // renderChangeImpactAsText preserves the flat layout unless grouping repeated
 // file paths saves bytes both in the text and in its JSON transport envelope.
 func renderChangeImpactAsText(out map[string]any) (string, bool) {
+	if text, ok := FormatMemberImpactText(out); ok {
+		return text, true
+	}
 	flat, ok := renderChangeImpactLayout(out, false)
 	if !ok {
 		return "", false
