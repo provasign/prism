@@ -1,0 +1,833 @@
+shale_version: "0"
+id: 4c69cd72-5bfb-48d7-8455-3d1158f12b39-c2
+created_at: 2026-09-26T19:17:52.572472Z
+finalized_at: 2026-09-26T22:08:01.41356Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git add internal/cli/commands.go internal/cli/init_test.go && git commit -q -m "fix(init): steering survives a CLAUDE.md -> AGENTS.md symlink
+
+        writeSteeringInstructions handled each instruction file by name. With the
+        common CLAUDE.md -> AGENTS.md symlink (zod), the CLAUDE.md pass inserted the
+        Prism section and the AGENTS.md pass, whose harness wasn't selected,
+        stripped it again. Claude Code then had the prism tool but no steering, and
+        the 2026-09-26 benchmark's zod prism cells made zero Prism calls. Each real
+        file is now written once, selected if any of its names is. The symlink is
+        preserved and a second run is a no-op.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01X4iDGjueYh9MhLP57FiMzU" && git checkout -q main && git pull -q --ff-only origin main 2>/dev/null; git merge -q --ff-only fix/steering-symlink && git tag -a v0.83.2 -m "v0.83.2: prism init keeps its steering when CLAUDE.md is a symlink to AGENTS.md" && git push -q origin main 2>&1 | grep -v '^remote:\|^shale'; git push -q origin v0.83.2 2>&1 | grep -v '^shale'; git ls-remote --tags origin v0.83.2; cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T19:17:52.572472Z
+      classified: other
+    - cmd: for i in $(seq 1 30); do s=$(gh run list -R provasign/prism --workflow release.yml --limit 1 --json status,conclusion,headBranch --jq '.[0] | .status+" "+.conclusion+" "+.headBranch'); case "$s" in completed*v0.83.2*) break;; esac; sleep 20; done; echo "$s"; gh workflow run "Refresh formulae" -R provasign/homebrew-shale >/dev/null 2>&1; sleep 45; brew update -q >/dev/null 2>&1; brew info provasign/shale/prism 2>/dev/null | head -1; gh run list -R provasign/prism --workflow ci.yml --limit 1
+      at: 2026-09-26T19:20:51.883965Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"; cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_release_v083_2026_09_26.md <<'EOF'
+
+        **v0.83.2 (2026-09-26 15:20):** fix(init): steering survives a CLAUDE.md ->
+        AGENTS.md symlink. writeSteeringInstructions handled files by name: the
+        CLAUDE.md pass inserted the section and the AGENTS.md pass stripped it, so zod
+        prism cells had the tool but zero steering and made 0 calls. Tap refreshed to
+        0.83.2. The lang71 run (results/v0831-lang-2026-09-26, released v0.83.1)
+        carries the bug on its 5 zod tasks. Plan: rerun those pairs with v0.83.2 after
+        the main run.
+        EOF
+      at: 2026-09-26T19:21:00.305519Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T19:21:38.044013Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "import json;print(len(json.load(open('headline/results.json'))))"; tail -1 headline.log; date '+%T'
+      at: 2026-09-26T19:29:21.23701Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T19:33:40.339761Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'],x['native']['turns'],x['prism']['turns'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T19:52:06.747954Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T19:56:48.635803Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "import json;print(len(json.load(open('headline/results.json'))))"; tail -1 headline.log
+      at: 2026-09-26T19:59:26.337838Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:12:01.679243Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:13:54.071921Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "import json;print(len(json.load(open('headline/results.json'))))"; tail -1 headline.log
+      at: 2026-09-26T20:29:31.924162Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'],x['native']['turns'],x['prism']['turns'],x['prism'].get('error'),x['prism']['wall_s'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:39:08.828734Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:46:12.036656Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:49:09.614344Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:52:07.366931Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:55:51.85212Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T20:58:37.357533Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "import json;print(len(json.load(open('headline/results.json'))))"; tail -1 headline.log
+      at: 2026-09-26T20:59:37.055295Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T21:03:32.28113Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T21:10:37.82025Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T21:26:19.000295Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "import json;print(len(json.load(open('headline/results.json'))))"; tail -1 headline.log
+      at: 2026-09-26T21:29:42.176638Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'],x['native']['turns'],x['prism']['turns'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T21:34:22.042173Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T21:36:19.664986Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'],x['native']['turns'],x['prism']['turns'],x['prism']['tool_trace'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T21:46:25.410573Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && for t in FasterXML__jackson-databind__pr5977 FasterXML__jackson-dataformat-xml__pr827 colinhacks__zod__pr6129; do echo "=================== $t"; python3 -c "
+        import json;t=json.load(open('tasks/e2e/$t.json'));print('ISSUE:',t['problem_statement'][:700].replace(chr(10),' '));print('F2P:',t['fail_to_pass'][:4]);print('--- GOLD (src only):')
+        import re
+        p=t['patch']; print(p[:2200])"; for a in baseline prism_init; do echo "--- $a diff (stat):"; git diff --no-index --stat /dev/null results/e2e/$t.sonnet.$a.diff 2>/dev/null | tail -1; grep -E '^\+\+\+ ' results/e2e/$t.sonnet.$a.diff | head -6; done; done 2>&1 | cut -c1-400
+      at: 2026-09-26T21:51:57.206267Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; sed -i '' 's#results/sweep-2026-09-26/headline/results.json#results/v0831-lang-2026-09-26/headline/results.json#' $S/seq.py; python3 $S/seq.py FasterXML__jackson-databind__pr5977 2>&1 | sed -E 's#/private/var/folders/[^ ]*/e2e-run-[a-z0-9_]+/?##g' | cut -c1-200 | sed -n '/prism resolved/,$p'; cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 - <<'EOF'
+        import json,glob,os
+        x=[y for y in json.load(open('headline/results.json')) if y['task']=='FasterXML__jackson-databind__pr5977'][0]
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{x['prism']['session_id']}.jsonl"))[0]
+        last=None
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='text' and c['text'].strip(): last=c['text']
+        print('FINAL TEXT:', (last or '')[:900])
+        EOF
+      at: 2026-09-26T21:52:15.03224Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 - <<'EOF'
+        import json,glob,os
+        x=[y for y in json.load(open('headline/results.json')) if y['task']=='FasterXML__jackson-databind__pr5977'][0]
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{x['prism']['session_id']}.jsonl"))[0]
+        calls={}
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use' and 'prism' in c['name']: calls[c['id']]=c['input']
+            if m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_result' and b['tool_use_id'] in calls and 'findSerializationTyping' in json.dumps(calls[b['tool_use_id']]):
+                        t=b['content'] if isinstance(b['content'],str) else ''.join(c.get('text','') for c in b['content'])
+                        print('ObjectArraySerializer mentioned:', t.count('ObjectArraySerializer'))
+                        for line in t.split('\n'):
+                            if line.startswith(('//','──','**')) or 'staticTyping' in line and '.java' in line: print(line[:170])
+                        break
+        EOF
+      at: 2026-09-26T21:52:28.029164Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; python3 $S/seq.py FasterXML__jackson-dataformat-xml__pr827 2>&1 | sed -E 's#/private/var/folders/[^ ]*/e2e-run-[a-z0-9_]+/?##g' | cut -c1-180 | sed -n '/prism resolved/,$p' | head -30; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/FasterXML__jackson-dataformat-xml__pr827.json'));print(t['problem_statement'][700:1800])"
+      at: 2026-09-26T21:52:40.912585Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '/^TOOL_ARTIFACTS = /,/)$/p' runners/run_e2e.py | tail -8; grep -n "TOOL_ARTIFACTS" runners/run_e2e.py | head
+      at: 2026-09-26T21:56:17.214401Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        p='runners/run_e2e.py'; s=open(p).read()
+        old='''                  ".prism-read-tracker.json")'''
+        new='''                  ".prism-read-tracker.json",
+                          # Every agent-instruction file prism init can write. With
+                          # zod's CLAUDE.md -> AGENTS.md symlink, init's edit lands in
+                          # AGENTS.md -- a tracked file the CLAUDE.md exclusion above
+                          # never covered -- so the prism arm's scored diff carried it
+                          # (zod pr6129, 2026-09-26). Excluded for both arms; no task's
+                          # tests read these files.
+                          "AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md",
+                          ".cursorrules", ".windsurfrules")'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        python3 -m py_compile runners/run_e2e.py && python3 -m unittest discover -s tests 2>&1 | grep -E "^(Ran|OK|FAILED)" && cd .. && git add harness/runners/run_e2e.py && git commit -q -m "run_e2e: agent-instruction files never enter the scored diff
+
+        prism init can write AGENTS.md, GEMINI.md, copilot-instructions and the
+        legacy rule files. With zod's CLAUDE.md -> AGENTS.md symlink, its edit
+        landed in tracked AGENTS.md, which the CLAUDE.md exclusion never covered, so
+        the prism arm's diff carried it (zod pr6129). Now excluded for both arms. No
+        task's tests read these files. The running lang71 process predates this
+        change; the zod rerun uses it.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01X4iDGjueYh9MhLP57FiMzU" && git log --oneline -1
+      at: 2026-09-26T21:56:27.901323Z
+      classified: other
+    - cmd: git status --short | grep -v '^??' | head -3; git log --oneline -1 main; W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist && git worktree add -q -b fix/search-file-inventory $W main && ls $W | head -3; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "import json;t=json.load(open('tasks/e2e/FasterXML__jackson-databind__pr5977.json'));print(t['base_commit'])"
+      at: 2026-09-26T21:56:36.988994Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && git status --short | head; git log --oneline -1; prism search "SAMPLE, not the full set" showing --scope text --format text 2>&1 | head -60
+      at: 2026-09-26T21:57:02.267191Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 1960,2320p internal/mcp/tools.go
+      at: 2026-09-26T21:57:05.448631Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && ls internal/textsearch; grep -n "type Result\|type Options" -A40 internal/textsearch/*.go | grep -v _test | head -120
+      at: 2026-09-26T21:57:09.003064Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 119,420p internal/textsearch/textsearch.go; wc -l internal/textsearch/*.go
+      at: 2026-09-26T21:57:12.395391Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 1,263p internal/textsearch/count.go; sed -n 420,520p internal/textsearch/textsearch.go
+      at: 2026-09-26T21:57:16.900449Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && grep -n "adaptive\|hitRollup\|filesMatched\|Budget\|budget" internal/mcp/tools.go | head -80; ls internal/mcp/ | head -100
+      at: 2026-09-26T21:57:23.315029Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 1600,1935p internal/mcp/tools.go
+      at: 2026-09-26T21:57:26.986788Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && cat internal/mcp/searchpresentation.go; wc -l internal/mcp/searchtext.go internal/mcp/rollup.go
+      at: 2026-09-26T21:57:33.24521Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && cat internal/mcp/searchtext.go
+      at: 2026-09-26T21:57:33.319566Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; cd $W && GOWORK=off go build -o $S/prism-base ./cmd/prism && git -C ~/gvg-corpus/jackson-databind worktree add --detach $S/jd 6bb7201243865d5820eb1e3a7304f08c3f338d5e >/dev/null 2>&1; ls $S/jd | head -3; time $S/prism-base index $S/jd 2>&1 | tail -2
+      at: 2026-09-26T21:58:35.785921Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; cat > $S/mcpq.sh <<'EOF'
+        #!/bin/bash
+        # usage: mcpq.sh <bin> <dir>
+        BIN=$1; DIR=$2
+        cd $DIR
+        {
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}'
+        printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+        printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism","arguments":{"op":"search","args":{"terms":["findSerializationTyping","USE_STATIC_TYPING","staticTyping"],"scope":"text"}}}}'
+        sleep 8
+        } | $BIN mcp --compact 2>/dev/null | python3 -c '
+        import sys,json
+        for l in sys.stdin:
+            try: m=json.loads(l)
+            except: continue
+            if m.get("id")==2:
+                t="".join(c.get("text","") for c in m["result"]["content"])
+                print(t)
+        '
+        EOF
+        chmod +x $S/mcpq.sh; $S/mcpq.sh $S/prism-base $S/jd > $S/before.txt; wc -c $S/before.txt; grep -c ObjectArraySerializer $S/before.txt; cat $S/before.txt | cut -c1-200 | head -150
+      at: 2026-09-26T21:58:51.393703Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && grep -n "^func [A-Z]" internal/textsearch/*.go | grep -v _test; grep -n "func (h \*Handler) renderedTextSearchHits\|func attachTextSearchCompleteness\|func textMatchCount\|func renderTextMatches" -A30 internal/mcp/*.go | head -150
+      at: 2026-09-26T21:59:18.766837Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && grep -rn "RenderSearchText\|textsearch.Search(" internal/ cmd/ | grep -v _test; grep -n "compact" internal/mcp/oncenotes.go | head; grep -rn "func renderTextMatches\|func (h \*Handler) renderTextMatches" -A60 internal/mcp/*.go | head -90
+      at: 2026-09-26T21:59:24.197377Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && grep -rn "RenderSearchText\|toolSearch\|\"search\"" internal/cli/*.go | grep -v _test | head; grep -n "oncenote\|compactOnce\|func .*[Cc]ompact" internal/mcp/server.go internal/mcp/oncenotes.go | head -20
+      at: 2026-09-26T21:59:29.366081Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 120,178p internal/mcp/server.go; sed -n 660,720p internal/mcp/server.go; sed -n 210,240p internal/cli/commands.go; grep -n "RenderCompactSearchText\|renderSearchAsText" internal/*/*.go | grep -v _test
+      at: 2026-09-26T21:59:33.943305Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'))
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(len(r),n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2)); [print(y['task'],y['native']['resolved'],y['prism']['resolved'],round((y['prism']['tokens'] or 0)/max(1,y['native']['tokens'] or 1),2)) for y in r[38:]]"; tail -1 headline.log
+      at: 2026-09-26T21:59:49.068111Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && grep -n "func (h \*Handler) renderCompleteTextMatches" -A40 internal/mcp/*.go; grep -n "textRenderFileCap\s*=\|textRenderHitsPerFile\s*=" internal/mcp/*.go
+      at: 2026-09-26T21:59:55.427519Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 1,120p internal/mcp/oncenotes.go
+      at: 2026-09-26T22:00:12.441979Z
+      classified: other
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/textsearch/textsearch.go'
+        s=open(p).read()
+        s=s.replace('''	CountComplete   bool `json:"countComplete,omitempty"`
+        	ResultsComplete bool `json:"resultsComplete,omitempty"`
+        ''','''	CountComplete   bool `json:"countComplete,omitempty"`
+        	ResultsComplete bool `json:"resultsComplete,omitempty"`
+        	// FileCounts is the exact per-file match count from the adaptive count
+        	// pass, set only with CountComplete. It names every matching file even
+        	// when Hits is a sample, so a caller can show where the rest live.
+        	FileCounts []FileCount `json:"fileCounts,omitempty"`
+        ''',1)
+        s=s.replace('''		res.CountComplete = true
+        		// The line pass''','''		res.CountComplete = true
+        		res.FileCounts = counted.Files
+        		// The line pass''',1)
+        open(p,'w').write(s)
+        EOF
+        git diff --stat
+      at: 2026-09-26T22:00:25.153233Z
+      classified: build
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/tools.go'
+        s=open(p).read()
+        old_text='''	if scope == "text" {
+        		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+        		})
+        '''
+        new_text='''	if scope == "text" {
+        		opts := textsearch.Options{
+        			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+        		}
+        		r := textsearch.Search(ctx, h.Root, q, opts)
+        '''
+        assert old_text in s; s=s.replace(old_text,new_text,1)
+        # after the truncation warning block in text scope, attach inventory. Insert before "if sc.filesOnly {" first occurrence after new_text
+        anchor='''		if sc.filesOnly {
+        			// Locations without lines: the cheapest answer to "where does'''
+        assert anchor in s
+        ins='''		if r.Truncated && !sc.exhaustive && !sc.filesOnly {
+        			// The lines are a sample; the files must not be. Every matching
+        			// file is named with its hit count (see searchinventory.go).
+        			if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+        				out["fileInventory"] = inv
+        				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
+        			}
+        		}
+        '''
+        s=s.replace(anchor, ins+anchor,1)
+        old_both='''		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+        		})
+        		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive)'''
+        new_both='''		opts := textsearch.Options{
+        			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+        		}
+        		r := textsearch.Search(ctx, h.Root, q, opts)
+        		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive)'''
+        assert old_both in s; s=s.replace(old_both,new_both,1)
+        old_w='''				"Text matches are a SAMPLE: showing %d of %s. Use exhaustive=true or narrow path=/glob=.",
+        				len(r.Hits), textMatchCount(r, true)))
+        '''
+        new_w=old_w+'''			if !sc.exhaustive && !sc.filesOnly {
+        				if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+        					out["fileInventory"] = inv
+        					out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
+        				}
+        			}
+        '''
+        assert old_w in s; s=s.replace(old_w,new_w,1)
+        open(p,'w').write(s)
+        EOF
+        grep -n "func appendNote" -A12 internal/mcp/*.go
+      at: 2026-09-26T22:01:05.228263Z
+      classified: other
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/searchtext.go'
+        s=open(p).read()
+        old='''		"condensedNote":    true,
+        	}'''
+        assert old in s
+        s=s.replace(old,'''		"condensedNote":    true,
+        		"fileInventory":    true,
+        	}''',1)
+        old='''	if ru := anySlice(m["hitRollup"]); len(ru) > 0 {
+        		b.WriteString("// Grouped'''
+        assert old in s
+        s=s.replace(old,'''	if inv, ok := m["fileInventory"]; ok && inv != nil {
+        		if !renderFileInventory(b, inv) {
+        			return false
+        		}
+        	}
+        '''+old,1)
+        open(p,'w').write(s)
+        EOF
+        GOWORK=off go build -o prism-bin ./cmd/prism && echo ok
+      at: 2026-09-26T22:01:16.066346Z
+      classified: build
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/searchpresentation.go'
+        s=open(p).read()
+        old_start='''	low, high := 0, len(order)
+        	warningReserve := 120 * len(results)
+        	for low < high {'''
+        old_end='''	shown := apply(low)
+        	for ri, result := range results {
+        		total := 0'''
+        i=s.index(old_start); j=s.index(old_end)
+        body=s[i:j]
+        # body contains binary search + floor; turn into fit function
+        new='''	warningReserve := 120 * len(results)
+        	// Text matches keep a floor of textHitFloor lines per term (or all of
+        	// them, if fewer). Symbols are bounded next by boundSymbolPresentation,
+        	// so a symbol-heavy term cannot push its own text matches to zero:
+        	// jackson pr6030 showed "displayed 0 of 8 retrieved text matches" while
+        	// eleven member symbols of one test class filled the budget, and the
+        	// hidden text line was the edit site.
+        	const textHitFloor = 3
+        	totals := make([]int, len(results))
+        	for _, g := range groups {
+        		totals[g.result] += len(g.hits)
+        	}
+        	floor, have := 0, make([]int, len(results))
+        	for floor < len(order) {
+        		satisfied := true
+        		for ri := range results {
+        			if have[ri] < minInt(textHitFloor, totals[ri]) {
+        				satisfied = false
+        				break
+        			}
+        		}
+        		if satisfied {
+        			break
+        		}
+        		have[groups[order[floor].group].result]++
+        		floor++
+        	}
+        	fit := func() int {
+        		low, high := 0, len(order)
+        		for low < high {
+        			mid := (low + high + 1) / 2
+        			apply(mid)
+        			if fits(warningReserve) {
+        				low = mid
+        			} else {
+        				high = mid - 1
+        			}
+        		}
+        		if low < floor {
+        			low = floor
+        		}
+        		return low
+        	}
+        	low := fit()
+        	// A file whose every line the display dropped would be named nowhere.
+        	// Name each matching file once (exact: these groups are the retrieved
+        	// set) and fit the lines again around that inventory.
+        	if hidden := hiddenFileResults(groupsHidden(len(results), low, order, func(i int) (int, int) {
+        		return groups[order[i].group].result, order[i].group
+        	}, len(groups), func(gi int) (int, int) { return groups[gi].result, len(groups[gi].hits) })); len(hidden) > 0 {
+        		attached := false
+        		for _, ri := range hidden {
+        			result := results[ri]
+        			if _, has := result["fileInventory"]; has {
+        				continue
+        			}
+        			var all []any
+        			for _, g := range groups {
+        				if g.result == ri {
+        					all = append(all, g.value)
+        				}
+        			}
+        			counts := textHitsFileCounts(all)
+        			if len(counts) == 0 {
+        				continue
+        			}
+        			truncated, _ := result["truncated"].(bool)
+        			result["fileInventory"] = buildFileInventory(counts, !truncated)
+        			attached = true
+        		}
+        		if attached {
+        			low = fit()
+        		}
+        	}
+        '''
+        s=s[:i]+new+s[j:]
+        s=s.replace('''	shown := apply(low)
+        	for ri, result := range results {
+        		total := 0''','''	shown := apply(low)
+        	for ri, result := range results {
+        		total := 0''')
+        open(p,'w').write(s)
+        EOF
+        sed -n 95,150p internal/mcp/searchpresentation.go
+      at: 2026-09-26T22:01:36.693033Z
+      classified: other
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/searchpresentation.go'
+        s=open(p).read()
+        old_i=s.index('	if hidden := hiddenFileResults(')
+        old_j=s.index('		attached := false')
+        new='''	shownGroup := make([]bool, len(groups))
+        	for _, item := range order[:low] {
+        		shownGroup[item.group] = true
+        	}
+        	hidden := map[int]bool{}
+        	for gi, g := range groups {
+        		if len(g.hits) > 0 && !shownGroup[gi] {
+        			hidden[g.result] = true
+        		}
+        	}
+        	if len(hidden) > 0 {
+        '''
+        s=s[:old_i]+new+s[old_j:]
+        s=s.replace('''		for _, ri := range hidden {
+        			result := results[ri]''','''		for ri := range results {
+        			result := results[ri]
+        			if !hidden[ri] {
+        				continue
+        			}''',1)
+        open(p,'w').write(s)
+        EOF
+        sed -n 150,200p internal/mcp/searchpresentation.go; GOWORK=off go build -o prism-bin ./cmd/prism && echo ok
+      at: 2026-09-26T22:01:46.707706Z
+      classified: build
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/tools.go'
+        s=open(p).read()
+        a='''		if r.Truncated && !sc.exhaustive && !sc.filesOnly {
+        			// The lines are a sample; the files must not be.'''
+        assert a in s
+        s=s.replace(a,'''		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+        			// The lines are a sample; the files must not be.''',1)
+        b='''			if !sc.exhaustive && !sc.filesOnly {
+        				if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {'''
+        assert b in s
+        s=s.replace(b,'''		}
+        		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+        			{
+        				if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {''',1)
+        open(p,'w').write(s)
+        EOF
+        grep -n 'textHitsOmitFiles(out\["textHits"\])) && !sc.exhaustive && !sc.filesOnly {$' -B8 -A10 internal/mcp/tools.go | sed -n 25,60p
+      at: 2026-09-26T22:01:57.038179Z
+      classified: other
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/tools.go'
+        s=open(p).read()
+        s=s.replace('''		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+        			{
+        				if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+        					out["fileInventory"] = inv
+        					out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
+        				}
+        			}
+        		}''','''		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+        			if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+        				out["fileInventory"] = inv
+        				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
+        			}
+        		}''',1)
+        open(p,'w').write(s)
+        EOF
+        cat >> internal/mcp/searchinventory.go <<'EOF'
+
+        // textHitsOmitFiles reports whether rendered text hits dropped whole files
+        // at the per-response file cap (renderTextMatches' "more files" note).
+        func textHitsOmitFiles(textHits any) bool {
+        	for _, raw := range anySlice(textHits) {
+        		g, ok := raw.(map[string]any)
+        		if !ok || g["file"] != nil {
+        			continue
+        		}
+        		if note, _ := g["note"].(string); strings.Contains(note, "more files with matches omitted") {
+        			return true
+        		}
+        	}
+        	return false
+        }
+        EOF
+        gofmt -l internal/; GOWORK=off go vet ./internal/mcp/ ./internal/textsearch/ && GOWORK=off go build -o prism-bin ./cmd/prism && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && $S/mcpq.sh $W/prism-bin $S/jd > $S/after.txt; wc -c $S/before.txt $S/after.txt; grep -n ObjectArraySerializer $S/after.txt; sed -n '/── staticTyping ──/,/^\/\/   +54/p' $S/after.txt | cut -c1-220
+      at: 2026-09-26T22:02:20.269538Z
+      classified: lint
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; grep -o "Every matching file[^;]*" $S/after.txt; cd $S/jd && $W/prism-bin search staticTyping --scope text --format text 2>&1 | grep -n "matching files\|ObjectArraySerializer\|showing" | cut -c1-160; $W/prism-bin search staticTyping USE_STATIC_TYPING 2>&1 | grep -n "matching files\|ObjectArraySerializer\|SAMPLE" | cut -c1-160
+      at: 2026-09-26T22:02:30.794458Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 1,110p internal/mcp/searchadaptive_test.go
+      at: 2026-09-26T22:02:36.790499Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T22:03:13.1422Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && GOWORK=off go test ./internal/mcp/ -run 'Inventory|NamesEvery|NamesFilesItHides|BothScopeAndExplicit' -count=1 2>&1 | tail -40
+      at: 2026-09-26T22:03:14.772018Z
+      classified: test
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/searchinventory_test.go'
+        s=open(p).read()
+        s=s.replace('''	for i := 0; i < 60; i++ {
+        		var hits''','''	for i := 0; i < 120; i++ {
+        		var hits''')
+        s=s.replace('"pkg/f%02d.go"','"pkg/f%03d.go"')
+        s=s.replace('"countComplete": true, "totalHits": 240, "filesMatched": 60,','"countComplete": true, "totalHits": 480, "filesMatched": 120,')
+        s=s.replace('''	if !strings.Contains(text, "  f59.go (4)") || !strings.Contains(text, "// all 60 matching files") {
+        		t.Fatalf("budget-trimmed files are not named:\\n%s", text)
+        	}''','''	if strings.Contains(text, "pkg/f119.go:1:") {
+        		t.Fatalf("fixture invalid: the budget displayed every file")
+        	}
+        	if !strings.Contains(text, "  f119.go (4)") || !strings.Contains(text, "// all 120 matching files") {
+        		t.Fatalf("budget-trimmed files are not named:\\n%.2000s", text[strings.LastIndex(text, "pkg/f"):])
+        	}''')
+        open(p,'w').write(s)
+        EOF
+        GOWORK=off go test ./internal/mcp/ -run 'Inventory|NamesEvery|NamesFilesItHides|BothScopeAndExplicit' -count=1 -v 2>&1 | grep -E "^(=== RUN|--- |FAIL|ok|PASS)|fixture|not named|hides|inventory" | cut -c1-200 | head -40
+      at: 2026-09-26T22:03:25.687148Z
+      classified: test
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && grep -n "func newTestHandler" -A25 internal/mcp/*_test.go | head -40; grep -ln "newGroveTestHandler\|func new.*Handler(t" internal/mcp/*_test.go | head
+      at: 2026-09-26T22:03:30.939828Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && grep -n "func new.*Handler\|grove.Open\|Grove\b" internal/mcp/searchmulti_test.go | head; grep -rn "func newIndexedHandler\|func indexedHandler\|func newGroveHandler" internal/mcp/*_test.go | head
+      at: 2026-09-26T22:03:35.268776Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -n 545,600p internal/mcp/searchmulti_test.go
+      at: 2026-09-26T22:03:38.726558Z
+      classified: other
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/searchinventory_test.go'
+        s=open(p).read()
+        s=s.replace('''func TestSearchSampledBothScopeAndExplicitLimitNameEveryFile(t *testing.T) {
+        	h := newTestHandler(t)
+        	target := writeInventoryFixture(t, h.Root)
+        ''','''func TestSearchSampledBothScopeAndExplicitLimitNameEveryFile(t *testing.T) {
+        	dir := t.TempDir()
+        	target := writeInventoryFixture(t, dir)
+        	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+        	if err := gc.EnsureRunning(t.Context()); err != nil {
+        		t.Fatalf("grove ensure: %v", err)
+        	}
+        	defer gc.Shutdown()
+        	h := NewHandler(config.Default(), dir, gc)
+        	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+        		t.Fatalf("index: %v", err)
+        	}
+        ''')
+        s=s.replace('''	"github.com/provasign/prism/internal/textsearch"
+        )''','''	"github.com/provasign/prism/internal/config"
+        	"github.com/provasign/prism/internal/grove"
+        	"github.com/provasign/prism/internal/textsearch"
+        )''')
+        s=s.replace('''		t.Fatalf("budget-trimmed files are not named:\\n%.2000s", text[strings.LastIndex(text, "pkg/f"):])''','''		t.Fatalf("budget-trimmed files are not named:\\n%s", text[strings.Index(text, "matching files")-200:])''')
+        open(p,'w').write(s)
+        EOF
+        grep -n '"github.com/provasign/prism/internal/grove"\|internal/config"' internal/mcp/searchmulti_test.go; GOWORK=off go test ./internal/mcp/ -run 'NamesFilesItHides|BothScopeAndExplicit' -count=1 2>&1 | cut -c1-200 | grep -v "xxxxxxxxxxxxxxxx" | head -40
+      at: 2026-09-26T22:03:49.543977Z
+      classified: test
+    - cmd: 'W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && sed -i '''' -e ''s/for i := 0; i < 120; i++ {/for i := 0; i < 75; i++ {/'' -e ''s/"totalHits": 480, "filesMatched": 120,/"totalHits": 300, "filesMatched": 75,/'' -e ''s/pkg\/f119.go:1:/pkg\/f074.go:1:/'' -e ''s/"  f119.go (4)"/"  f074.go (4)"/'' -e ''s/"\/\/ all 120 matching files"/"\/\/ all 75 matching files, hits per file"/'' internal/mcp/searchinventory_test.go && GOWORK=off go test ./internal/mcp/ -run ''Inventory|NamesEvery|NamesFilesItHides|BothScopeAndExplicit|CarriesNo'' -count=1 2>&1 | cut -c1-200 | grep -v "xxxxxxxxxxxxxxxx" | tail -20'
+      at: 2026-09-26T22:03:58.994409Z
+      classified: test
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && python3 - <<'EOF'
+        p='internal/mcp/searchinventory_test.go'
+        s=open(p).read()
+        s=s.replace('''	var counts []textsearch.FileCount
+        	for i := 0; i < 75; i++ {''','''	var counts []textsearch.FileCount
+        	for i := 0; i < 120; i++ {''')
+        open(p,'w').write(s)
+        EOF
+        GOWORK=off go test ./internal/mcp/ -run 'Inventory|NamesEvery|NamesFilesItHides|BothScopeAndExplicit|CarriesNo' -count=1 -v 2>&1 | cut -c1-200 | grep -v "xxxxxxxxxxxxxxxx" | grep -E "^(---|ok|FAIL)|:[0-9]+:" | head
+      at: 2026-09-26T22:04:06.941786Z
+      classified: test
+    - cmd: "W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; cd $W && cp internal/mcp/tools.go $S/tools.go.bak && cp internal/mcp/searchpresentation.go $S/sp.go.bak && sed -i '' 's/if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {/if inv := map[string]any(nil); inv != nil \\&\\& q != \"\" \\&\\& opts.MaxHits >= 0 {/' internal/mcp/tools.go && sed -i '' 's/\tif len(hidden) > 0 {/\tif len(hidden) > 1<<30 {/' internal/mcp/searchpresentation.go && GOWORK=off go test ./internal/mcp/ -run 'Inventory|NamesEvery|NamesFilesItHides|BothScopeAndExplicit|CarriesNo' -count=1 -v 2>&1 | grep -E \"^--- \" ; cp $S/tools.go.bak internal/mcp/tools.go; cp $S/sp.go.bak internal/mcp/searchpresentation.go; git diff --stat"
+      at: 2026-09-26T22:04:18.489256Z
+      classified: test
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; cd $W && python3 - <<'EOF'
+        p='internal/mcp/searchinventory_test.go'
+        s=open(p).read()
+        s=s.replace('''	sample := text[:strings.Index(text, "matching files")]
+        ''','''	sample := text
+        	if i := strings.Index(text, "matching files"); i >= 0 {
+        		sample = text[:i]
+        	}
+        ''')
+        s=s.replace('''		t.Fatalf("budget-trimmed files are not named:\\n%s", text[strings.Index(text, "matching files")-200:])''','''		t.Fatalf("budget-trimmed files are not named:\\n%.3000s", text)''')
+        open(p,'w').write(s)
+        EOF
+        sed -i '' 's/if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {/if inv := map[string]any(nil); inv != nil \&\& q != "" \&\& opts.MaxHits >= 0 {/' internal/mcp/tools.go && sed -i '' 's/	if len(hidden) > 0 {/	if len(hidden) > 1<<30 {/' internal/mcp/searchpresentation.go && GOWORK=off go test ./internal/mcp/ -run 'Inventory|NamesEvery|NamesFilesItHides|BothScopeAndExplicit|CarriesNo' -count=1 -v 2>&1 | grep -E "^--- " ; cp $S/tools.go.bak internal/mcp/tools.go; cp $S/sp.go.bak internal/mcp/searchpresentation.go; GOWORK=off go test ./internal/mcp/ -run 'Inventory|NamesEvery|NamesFilesItHides|BothScopeAndExplicit|CarriesNo' -count=1 -v 2>&1 | grep -E "^--- "
+      at: 2026-09-26T22:04:32.280352Z
+      classified: test
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && gofmt -l internal/mcp/searchinventory*.go internal/mcp/searchpresentation.go internal/mcp/tools.go internal/mcp/searchtext.go internal/textsearch/textsearch.go; GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | cut -c1-250 | grep -v xxxxxxxxxxxx | head -60
+      at: 2026-09-26T22:04:54.683572Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v0831-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'));x=r[-1]
+        print(len(r),x['task'],x['lang'])
+        n=sum(1 for y in r if y['native']['resolved']);p=sum(1 for y in r if y['prism']['resolved'])
+        nt=sum(y['native']['tokens'] or 0 for y in r);pt=sum(y['prism']['tokens'] or 0 for y in r);print(n,p,round(nt/1e6,2),round(pt/1e6,2),round(pt/nt,2))"
+      at: 2026-09-26T22:06:05.78462Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; cd $W && GOWORK=off go build -o $W/prism-bin ./cmd/prism && $S/mcpq.sh $W/prism-bin $S/jd > $S/after.txt; $S/mcpq.sh ~/prism-ab-bins/prism-v0.83.1-darwin-arm64 $S/jd > $S/before831.txt; wc -c $S/before.txt $S/before831.txt $S/after.txt; grep -c ObjectArraySerializer $S/before831.txt $S/after.txt; cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism $W/prism-bin 2>&1 | tail -8
+      at: 2026-09-26T22:06:43.762291Z
+      classified: build
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; git -C ~/gvg-corpus/jackson-databind worktree remove --force $S/jd && git -C ~/gvg-corpus/jackson-databind worktree prune; cd $W && git status --short && git add internal/mcp/searchinventory.go internal/mcp/searchinventory_test.go internal/mcp/searchpresentation.go internal/mcp/searchtext.go internal/mcp/tools.go internal/textsearch/textsearch.go && git commit -q -F - <<'EOF'
+        fix(search): name every matching file when text lines are sampled
+
+        A sampled text search showed 25 lines plus a rollup of the densest
+        enclosing symbols, so sparse matching files were named nowhere
+        (jackson-databind pr5977: staticTyping, 147 matches in 31 files; the fix
+        file ObjectArraySerializer.java never appeared and the agent submitted an
+        empty diff while grep found it).
+
+        When a term's text lines are truncated (scope text, and the text half of
+        scope both), the response now carries a file inventory: every matching
+        file once, grouped by directory, with its hit count. Counts come from the
+        adaptive count pass (textsearch.Result.FileCounts) or a bounded 2s count
+        pass otherwise. Past 80 files the highest-hit files are listed and the
+        rest roll up by directory. The shared response budget re-fits sample
+        lines around the inventory, and attaches one when it hides whole files of
+        a complete result. Unsampled results are unchanged.
+
+        Real query (3 terms, compact MCP): 14,850 -> 15,027 bytes; the file is
+        now named.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01X4iDGjueYh9MhLP57FiMzU
+        EOF
+        git log --oneline -1; git status --short
+      at: 2026-09-26T22:06:54.262514Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/filelist; cd $W && git log --oneline -1 && git diff --stat main..HEAD | tail -8 && GOWORK=off go vet ./internal/mcp ./internal/textsearch && GOWORK=off go test -count=1 ./internal/mcp -run 'Inventory|SampledText|NamesFilesItHides|CompleteTextCarries' 2>&1 | tail -2 && GOWORK=off go test -count=1 ./... 2>&1 | grep -v '^ok\|no test files' | tail -3; echo checked
+      at: 2026-09-26T22:07:34.994109Z
+      classified: lint
+notes:
+    - text: continuation of session 4c69cd72-5bfb-48d7-8455-3d1158f12b39 — events captured after its evidence was finalized
+      at: 2026-09-26T19:17:52.572472Z
+redactions: 0
