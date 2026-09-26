@@ -164,3 +164,39 @@ func TestFormatTextNumbersLookupBodyLines(t *testing.T) {
 		}
 	}
 }
+
+// The CLI text path ignored matched:false, so `prism lookup` — the Bash
+// fallback the steering prescribes — printed the closest body with no marker
+// at all. The flag and candidates must come BEFORE the body.
+func TestFormatTextFlagsNoExactLookupBeforeBody(t *testing.T) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(`{"symbol":{"name":"SetAccepted","filePath":"context.go","span":{"start":5,"end":5}},
+		"content":"func (c *Context) SetAccepted() {}\n","matched":false,"name":"Context.Accepted",
+		"note":"NO EXACT MATCH for \"Context.Accepted\"; the candidates are related names",
+		"candidates":["Context.SetAccepted (context.go:5)"]}`), &m); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() { printOutput(m, formatText) })
+	flag := strings.Index(out, "NO EXACT MATCH")
+	body := strings.Index(out, "func (c *Context) SetAccepted")
+	if flag < 0 || body < 0 || flag > body || !strings.Contains(out, "Context.SetAccepted (context.go:5)") {
+		t.Fatalf("flag must precede the body:\n%s", out)
+	}
+	out = capture(t, func() { printOutput(m, formatLean) })
+	if !strings.Contains(strings.ReplaceAll(out, " ", ""), `"matched":false`) || !strings.Contains(out, "NO EXACT MATCH") {
+		t.Fatalf("lean output dropped the no-exact flag:\n%s", out)
+	}
+}
+
+func TestFormatTextShowsLookupResolutionNoteFirst(t *testing.T) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(`{"symbol":{"name":"route","filePath":"scaffold.py","span":{"start":3,"end":4}},
+		"content":"def route(self):\n    pass\n","matchKind":"inherited",
+		"note":"inherited: Flask declares no route; delivered Scaffold.route from its supertype chain Flask -> App -> Scaffold"}`), &m); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() { printOutput(m, formatText) })
+	if !strings.HasPrefix(out, "// inherited: Flask declares no route") || !strings.Contains(out, "3\tdef route(self):") {
+		t.Fatalf("resolution note must lead:\n%s", out)
+	}
+}
