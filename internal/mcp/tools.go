@@ -2860,7 +2860,10 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 				if fileSyms, ferr := h.Grove.FileSymbols(ctx, best.FilePath); ferr == nil {
 					overloads = overloads[:0]
 					for _, s := range dedupeSymbolsByID(fileSyms) {
-						if s.Span.Start != best.Span.Start && s.QualifiedName == best.QualifiedName && s.Kind == best.Kind {
+						// Any kind: a PHP property and its same-named getter
+						// (Bound.isInclusive) share the qualified name, and a
+						// kind filter hid one of them entirely.
+						if s.Span.Start != best.Span.Start && s.QualifiedName == best.QualifiedName {
 							overloads = append(overloads, s)
 						}
 					}
