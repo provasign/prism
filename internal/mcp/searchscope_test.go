@@ -35,6 +35,14 @@ func TestFilterSymbolsByScope(t *testing.T) {
 	if len(filterSymbolsByScope(syms, searchScope{glob: []string{"*Test.java"}})) != 1 {
 		t.Error("glob by basename failed")
 	}
+	// "**" crosses directories, as in text scope (click pr3471: **/types.py
+	// returned zero symbols).
+	if got := filterSymbolsByScope(syms, searchScope{glob: []string{"**/deep/*.java"}}); len(got) != 1 || got[0].Name != "C" {
+		t.Errorf("** glob failed: %v", names(got))
+	}
+	if got := filterSymbolsByScope(syms, searchScope{glob: []string{"**/D.java"}}); len(got) != 1 || got[0].Name != "D" {
+		t.Errorf("**/ prefix glob failed: %v", names(got))
+	}
 	// empty scope passes everything through untouched
 	if len(filterSymbolsByScope(syms, searchScope{})) != 4 {
 		t.Error("empty scope must not filter")

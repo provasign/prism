@@ -185,14 +185,11 @@ func nativeCount(ctx context.Context, root, pattern string, opts Options) CountR
 				return nil
 			}
 			if len(opts.Glob) > 0 {
-				matched := false
-				for _, glob := range opts.Glob {
-					if ok, _ := filepath.Match(glob, d.Name()); ok {
-						matched = true
-						break
-					}
+				rel, relErr := filepath.Rel(root, path)
+				if relErr != nil {
+					rel = d.Name()
 				}
-				if !matched {
+				if !MatchAnyGlob(opts.Glob, rel) {
 					return nil
 				}
 			}

@@ -96,14 +96,11 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 				return nil // unreadable or >2MB: same cap as the rg invocation
 			}
 			if len(globs) > 0 {
-				ok := false
-				for _, g := range globs {
-					if m, _ := filepath.Match(g, name); m {
-						ok = true
-						break
-					}
+				rel, rerr := filepath.Rel(root, path)
+				if rerr != nil {
+					rel = name
 				}
-				if !ok {
+				if !MatchAnyGlob(globs, rel) {
 					return nil
 				}
 			}

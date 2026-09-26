@@ -1207,7 +1207,13 @@ func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scop
 	}
 
 	if len(out.Symbols) == 0 && len(out.TextMatches) == 0 {
+		var filterMiss scopeFilterReport
+		if len(scope.paths) > 0 || len(scope.glob) > 0 {
+			filterMiss = scopeFilterCheck(h.Root, scope.paths, scope.glob, true)
+		}
 		switch {
+		case filterMiss.noFiles:
+			out.Note = filterMiss.note
 		case len(sel.seeds) == 0:
 			out.Note = fmt.Sprintf("no symbols matched terms %s under project root %s; check term spelling and that the code lives under this root", formatQueryTerms(terms), h.Root)
 		default:
@@ -1732,7 +1738,8 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 				break
 			}
 		}
-		if allEmpty && !searchResultPartial(out) {
+		filterMiss := h.attachScopeFilterNote(out, sc, allEmpty)
+		if allEmpty && !searchResultPartial(out) && !filterMiss {
 			h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		}
 		if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
@@ -1761,7 +1768,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	if termNote != "" {
 		out["note"] = termNote
 	}
-	if searchResultEmpty(out) && !searchResultPartial(out) {
+	if h.attachScopeFilterNote(out, sc, searchResultEmpty(out)) {
+		// The filter selected no file: no term was tested, so neither the
+		// retry-the-terms guidance nor the token fallback applies.
+	} else if searchResultEmpty(out) && !searchResultPartial(out) {
 		h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
 			selected, omitted := searchFallbackTerms(queries[0])
@@ -1875,6 +1885,21 @@ func genericSyntaxSearch(q string) bool {
 
 // searchResultEmpty reports whether one searchOne result carries no hits of
 // any shape (symbols, text hits, or files).
+// attachScopeFilterNote puts a path=/glob= filter miss at the top of a search
+// result and reports whether the filters selected no file at all.
+func (h *Handler) attachScopeFilterNote(out map[string]any, sc searchScope, empty bool) bool {
+	rep := scopeFilterCheck(h.Root, sc.paths, sc.glob, empty)
+	if rep.note == "" {
+		return false
+	}
+	if existing, _ := out["scopeNote"].(string); existing != "" {
+		out["scopeNote"] = rep.note + "; " + existing
+	} else {
+		out["scopeNote"] = rep.note
+	}
+	return rep.noFiles
+}
+
 func searchResultEmpty(m map[string]any) bool {
 	if m == nil {
 		return true
@@ -3859,7 +3884,9 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 		if ok && len(sc.glob) > 0 {
 			ok = false
 			for _, g := range sc.glob {
-				if m, _ := filepath.Match(g, filepath.Base(p)); m {
+				// Same glob semantics as the text pass (rg --glob): "**"
+				// crosses directories, a slash-free glob matches the base name.
+				if textsearch.MatchGlob(g, p) {
 					ok = true
 					break
 				}

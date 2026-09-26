@@ -17,6 +17,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -718,7 +719,26 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
+	// grep --include matches base names only. A path-shaped glob
+	// ("**/types.py", "tests/**") narrows by its last segment here and is
+	// applied exactly to the parsed hits below; one that has no usable last
+	// segment disables --include so nothing it selects is dropped.
+	pathGlobs := false
+	var includes []string
 	for _, g := range opts.Glob {
+		if !strings.Contains(g, "/") {
+			includes = append(includes, g)
+			continue
+		}
+		pathGlobs = true
+		last := path.Base(strings.TrimSuffix(g, "/"))
+		if last == "**" || strings.HasSuffix(g, "/") {
+			includes = nil
+			break
+		}
+		includes = append(includes, last)
+	}
+	for _, g := range includes {
 		args = append(args, "--include="+g)
 	}
 	operands, rejected := scopeArgs(root, opts.Paths)
@@ -729,6 +749,15 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	args = append(args, operands...)
 	r, ok := runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)
 	r.RejectedPaths = rejected
+	if ok && pathGlobs {
+		kept := r.Hits[:0]
+		for _, h := range r.Hits {
+			if MatchAnyGlob(opts.Glob, h.File) {
+				kept = append(kept, h)
+			}
+		}
+		r.Hits = kept
+	}
 	return r, ok
 }
 
