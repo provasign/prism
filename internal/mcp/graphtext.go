@@ -125,6 +125,8 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"familyCompleteness": true, "callerCoverage": true,
 		"completenessScope": true, "safeToClaimComplete": true,
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
+		"inheritedNote": true, "signatureNote": true, "testOnly": true,
+		"reExports": true, "related": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -133,6 +135,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "// %v — change-impact: %v site(s)\n", out["query"], out["totalSites"])
+	b.WriteString(FormatImpactHeaderNotesText(out))
 	if c, _ := out["completeness"].(string); c != "" {
 		fmt.Fprintf(&b, "completeness: %s\n", c)
 	}
@@ -146,6 +149,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// %s\n", boundary)
 	}
 	b.WriteString(FormatImpactRelaySitesText(out))
+	b.WriteString(FormatImpactExtrasText(out))
 	for _, key := range []string{"familyCompleteness", "callerCoverage"} {
 		if value, _ := out[key].(string); value != "" {
 			fmt.Fprintf(&b, "%s: %s\n", key, value)
@@ -295,6 +299,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		"file": true, "line": true, "signature": true, "sig": true,
 		"doc": true, "docstring": true, "body": true, "source": true,
 		"kind": true, "parent": true, "modifiers": true,
+		"testOnly": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -336,6 +341,12 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		// inherited / case-insensitive resolutions say so up front.
 		fmt.Fprintf(&b, "// %s\n", note)
 		noteShown = true
+	}
+	if lines := anySlice(out["testOnly"]); len(lines) > 0 {
+		b.WriteString("// TEST-ONLY API (callers are all tests):\n")
+		for _, l := range lines {
+			fmt.Fprintf(&b, "//   %v\n", l)
+		}
 	}
 	contentStart, contentEnd := 0, 0
 	if sym, ok := out["symbol"].(map[string]any); ok {

@@ -139,6 +139,24 @@ type ChangeImpactResult struct {
 	// AccessCoverage: receiver-typed | partial | name-matched | declaration-only.
 	AccessCoverage string `json:"accessCoverage,omitempty"`
 	AccessNote     string `json:"accessNote,omitempty"`
+
+	// Related is grove's bounded related-but-not-affected group: other
+	// callers of what the target calls, and same-named methods in one
+	// hierarchy that lack a helper call their peers share. Never part of
+	// the change set or relaySites.
+	Related []RelatedSite `json:"related,omitempty"`
+	// ReExports are TS/JS export-specifier lines re-exporting or aliasing
+	// the queried function; they ARE reference sites (a rename must edit
+	// them) but not symbols.
+	ReExports []MemberAccess `json:"reExports,omitempty"`
+}
+
+// RelatedSite is one related-but-not-affected pointer (see Related).
+type RelatedSite struct {
+	Symbol   SymbolRecord `json:"symbol"`
+	Relation string       `json:"relation"` // co-caller | peer-lacks | target-lacks
+	Via      string       `json:"via,omitempty"`
+	Detail   string       `json:"detail,omitempty"`
 }
 
 // MemberAccess is one source line touching a data member.

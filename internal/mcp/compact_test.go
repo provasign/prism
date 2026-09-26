@@ -31,7 +31,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 		t.Fatalf("compact operations = %v, want %v", ops, want)
 	}
 	opMap := properties["op"].(map[string]any)["description"].(string)
-	for _, want := range []string{"lookup: name[,symbol_file,fields]", "read: file,from,to or ranges",
+	for _, want := range []string{"lookup: name[,symbol_file,fields,signature]", "read: file,from,to or ranges",
 		"search: terms[", "query: terms[", "change_impact: name[", "verify: base,removed_symbols,strict",
 		"Known symbol → lookup; search only when location is unknown"} {
 		if !strings.Contains(opMap, want) {
@@ -45,7 +45,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	argProperties := argsSchema["properties"].(map[string]any)
 	owners := map[string]string{
 		"name": "lookup,change_impact", "symbol_file": "lookup,change_impact",
-		"fields": "lookup", "signature": "change_impact",
+		"fields": "lookup", "signature": "lookup,change_impact",
 		"file": "read", "from": "read", "to": "read", "ranges": "read",
 		"terms": "search,query", "scope": "search",
 		"paths": "search,query", "glob": "search,query", "regex": "search",

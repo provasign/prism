@@ -6,7 +6,7 @@ import (
 )
 
 var compactFields = map[string][]string{
-	"lookup":        {"name", "symbol_file", "fields"},
+	"lookup":        {"name", "symbol_file", "fields", "signature"},
 	"read":          {"file", "from", "to", "ranges"},
 	"search":        {"terms", "scope", "paths", "glob", "regex", "files_only", "max_results", "exhaustive", "include_bodies", "context", "rollup_only"},
 	"query":         {"terms", "paths", "glob"},

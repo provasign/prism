@@ -387,7 +387,7 @@ func CompactToolSchemas() []map[string]any {
 		"symbol_file": prop("lookup,change_impact", "Disambiguating file.", map[string]any{"type": "string"}),
 		"fields": prop("lookup", "Projection.", map[string]any{"type": "array",
 			"items": map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}}}),
-		"signature": prop("change_impact", "External method signature.", map[string]any{"type": "string"}),
+		"signature": prop("lookup,change_impact", "Method signature: selects one overload.", map[string]any{"type": "string"}),
 		"file":      prop("read", "Repo-relative path.", map[string]any{"type": "string"}),
 		"from":      prop("read", "Inclusive first line.", map[string]any{"type": "integer", "minimum": 1}),
 		"to":        prop("read", "Inclusive last line; clamped to 240 lines.", map[string]any{"type": "integer", "minimum": 1}),
@@ -416,7 +416,7 @@ func CompactToolSchemas() []map[string]any {
 		"strict":          prop("verify", "Treat a review verdict as a gate failure; the verdict and evidence stay unchanged.", map[string]any{"type": "boolean"}),
 		"exhaustive":      prop("search", "Request expanded inventory; check completion status.", map[string]any{"type": "boolean"}),
 	}
-	const opMap = "lookup: name[,symbol_file,fields] | read: file,from,to or ranges | " +
+	const opMap = "lookup: name[,symbol_file,fields,signature] | read: file,from,to or ranges | " +
 		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies,context,rollup_only] | " +
 		"query: terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
 		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
@@ -637,6 +637,10 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Legacy soft path/substring hint for string names; ignored if no candidate matches. Use {name,file} batch items for exact scope.",
 				},
+				"signature": map[string]any{
+					"type":        "string",
+					"description": "Declaration-shaped signature selecting one of several same-named overloads, e.g. \"Parser(JsonNode n, ObjectReadContext c)\".",
+				},
 			},
 		}
 	case "prism_references":
@@ -730,7 +734,7 @@ func toolSchema(name string) map[string]any {
 				},
 				"signature": map[string]any{
 					"type":        "string",
-					"description": "Optional external-interface method signature. When no local interface declaration exists, match indexed compatible local implementations and union their reported callers in one call; check coverage.",
+					"description": "Optional method signature. Selects one of several same-named overloads; when no local interface declaration exists, match indexed compatible local implementations and union their reported callers in one call; check coverage.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
@@ -2759,8 +2763,14 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	if err != nil {
 		return out, err
 	}
+	selected := false
+	if sig := stringArg(args, "signature", ""); sig != "" {
+		if m, ok := out.(map[string]any); ok {
+			selected = h.selectLookupOverload(ctx, m, sig)
+		}
+	}
 	// Delivered-body size cap (bodycap.go), kept outside lookupSymbol.
-	return h.capLookupResult(ctx, out), nil
+	return h.addLookupCallerSignal(ctx, h.capLookupResult(ctx, out), selected), nil
 }
 
 func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileScope string) (any, error) {
@@ -3061,7 +3071,14 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return nil, errors.New("query is required")
 	}
 	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
-	inferenceNote := ""
+	inferenceNote, inheritedNote := "", ""
+	if err != nil && strings.Contains(err.Error(), "declares no method") {
+		// The override being added does not exist yet: answer with the
+		// inherited declaration's change set instead of a dead end.
+		if ir, note, ok := h.inheritedImpact(ctx, query, stringArg(args, "file", "")); ok {
+			r, err, inheritedNote = ir, nil, note
+		}
+	}
 	if err != nil {
 		if choice, ok := h.crossLanguageImpactChoice(ctx, query, err); ok {
 			h.Ledger.RecordCall("prism_change_impact")
@@ -3109,6 +3126,14 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	h.Ledger.RecordCall("prism_change_impact")
 	if r.MemberKind != "" {
 		return memberImpactOutput(r, stringArg(args, "file", "") != ""), nil
+	}
+	signatureNote := ""
+	if sig := stringArg(args, "signature", ""); sig != "" && inferenceNote == "" {
+		var narrowed *grove.ChangeImpactResult
+		narrowed, signatureNote = h.selectOverloadBySignature(ctx, query, stringArg(args, "file", ""), sig, r)
+		if narrowed != nil {
+			r = narrowed
+		}
 	}
 	// The member being changed, used to locate its call sites inside callers.
 	targetLeaf := r.Query
@@ -3169,14 +3194,33 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"supers":             compact(r.Supers),
 		"family":             compact(r.Family),
 		"callers":            compactWithScope(r.Callers, true),
-		"totalSites":         len(impactSites(r, true)),
+		"totalSites":         len(impactSites(r, true)) + len(r.ReExports),
 		"familyCompleteness": r.Completeness,
 		"callerCoverage":     impactCallerCoverage(r),
 	}
 	addIndexedCompletenessSafety(out)
 	if relay := impactRelaySites(r, 40); len(relay) > 0 {
+		if rex := reExportRelayLabels(r); len(rex) > 0 && len(relay)+len(rex) <= 40 {
+			relay = append(relay, rex...)
+			sort.Strings(relay)
+		}
 		out["relaySites"] = relay
 		out["relayNote"] = "Copy relaySites when reporting the affected-site inventory; do not manually reconstruct a partial list from the grouped evidence below."
+	}
+	if rex := impactReExportOutput(r); len(rex) > 0 {
+		out["reExports"] = rex
+	}
+	if rel := impactRelatedOutput(r); len(rel) > 0 {
+		out["related"] = rel
+	}
+	if inheritedNote != "" {
+		out["inheritedNote"] = inheritedNote
+	}
+	if signatureNote != "" {
+		out["signatureNote"] = signatureNote
+	}
+	if testOnly := h.testOnlySignal(ctx, r.Declarations); len(testOnly) > 0 {
+		out["testOnly"] = testOnly
 	}
 	if inferenceNote != "" {
 		out["methodFamilyNote"] = inferenceNote

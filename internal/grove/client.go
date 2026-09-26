@@ -617,7 +617,20 @@ func convertChangeImpact(r groveeng.ChangeImpactResult) *ChangeImpactResult {
 		ExcludedAccesses:  r.ExcludedAccesses,
 		AccessCoverage:    r.AccessCoverage,
 		AccessNote:        r.AccessNote,
+		Related:           convertRelatedSites(r.Related),
+		ReExports:         convertMemberAccesses(r.ReExports),
 	}
+}
+
+func convertRelatedSites(in []groveeng.RelatedSite) []RelatedSite {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]RelatedSite, 0, len(in))
+	for _, s := range in {
+		out = append(out, RelatedSite{Symbol: convertSymbol(s.Symbol), Relation: s.Relation, Via: s.Via, Detail: s.Detail})
+	}
+	return out
 }
 
 func convertMemberAccesses(in []groveeng.MemberAccess) []MemberAccess {
