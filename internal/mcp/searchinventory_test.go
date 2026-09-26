@@ -65,13 +65,10 @@ func TestSearchSampledTextNamesEveryMatchingFile(t *testing.T) {
 	if m["truncated"] != true {
 		t.Fatalf("fixture must produce a sampled result: %#v", m["warning"])
 	}
-	sample := text
-	if i := strings.Index(text, "matching files"); i >= 0 {
-		sample = text[:i]
-	}
-	if strings.Contains(sample, target) {
-		t.Fatalf("fixture invalid: target already visible in the sampled lines")
-	}
+	// Which lines the sample shows depends on walk order and evidence ranking,
+	// which differ across platforms (the target was sampled on Linux CI), so
+	// the test asserts only what the fix guarantees: the inventory names every
+	// matching file. Without the fix there is no inventory and this fails.
 	if !strings.Contains(text, "// all 31 matching files, hits per file; the lines above are a SAMPLE:") {
 		t.Fatalf("missing file inventory header:\n%s", text)
 	}
