@@ -10,6 +10,7 @@ import (
 
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/ranking"
 )
 
 // Regression tests for search/query/output gaps seen in real benchmark runs
@@ -207,5 +208,82 @@ func TestSearchDeliversTheNamedDefinitionFirst(t *testing.T) {
 		if call >= 0 && call < def {
 			t.Fatalf("scope=%s: a caller body came before the definition:\n%s", scope, out)
 		}
+	}
+}
+
+// jackson pr6030 #33: term "2883" matched UnwrappedPropertyConflict2883Test
+// and then every nested member through its qualified name; the text match in
+// BeanSerializerBase (the real edit site) was not displayed (0 of 8).
+func TestNumericTermDoesNotFloodWithMembersAndKeepsTextMatches(t *testing.T) {
+	var test strings.Builder
+	test.WriteString("package x;\n\npublic class Conflict2883Test {\n")
+	for i := 0; i < 40; i++ {
+		fmt.Fprintf(&test, "    public void testUnwrappedPropertyConflictScenarioNumber%02dWithAVeryLongDescriptiveName(Object first, Object second, Object third) {\n        run(%d);\n    }\n", i, i)
+	}
+	test.WriteString("}\n")
+	files := map[string]string{"src/test/java/x/Conflict2883Test.java": test.String(),
+		"src/main/java/x/BeanSerializerBase.java": "package x;\n\npublic class BeanSerializerBase {\n    void check() {\n        // [databind#2883]: multiple properties map to same unwrapped name\n        run();\n    }\n}\n"}
+	for i := 0; i < 7; i++ {
+		files[fmt.Sprintf("src/test/java/x/Other%d.java", i)] = fmt.Sprintf("package x;\n// see #2883 %s\nclass Other%d {}\n", strings.Repeat("filler ", 40), i)
+	}
+	srv := compactFixture(t, files)
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"2883", "UnwrappedPropertyHandler"}, "scope": "both"})
+	if strings.Contains(out, "Conflict2883Test.testUnwrappedPropertyConflictScenarioNumber") {
+		t.Fatalf("members listed through the class name:\n%s", out)
+	}
+	if !strings.Contains(out, "member(s) of Conflict2883Test matched only through its name") {
+		t.Fatalf("collapsed members not disclosed:\n%s", out)
+	}
+	if !strings.Contains(out, "BeanSerializerBase.java:5") && !strings.Contains(out, "[databind#2883]") {
+		t.Fatalf("the text match at the edit site was not displayed:\n%s", out)
+	}
+}
+
+// Text matches keep a floor under the shared budget even when symbols of the
+// same term are too large to be collapsed.
+func TestSearchPresentationKeepsATextFloorPerTerm(t *testing.T) {
+	var symbols []map[string]any
+	for i := 0; i < 150; i++ {
+		symbols = append(symbols, map[string]any{
+			"name": fmt.Sprintf("Needle%d", i), "qualifiedName": fmt.Sprintf("Needle%d", i), "kind": "class",
+			"filePath": fmt.Sprintf("src/very/long/path/to/Needle%d.java", i), "matchKind": "name-prefix",
+			"span":      map[string]any{"start": 1, "end": 40},
+			"signature": "public class Needle " + strings.Repeat("LongGenericParameter", 4),
+		})
+	}
+	var groups []map[string]any
+	for i := 0; i < 8; i++ {
+		groups = append(groups, map[string]any{"file": fmt.Sprintf("src/main/F%d.java", i), "hits": []any{
+			map[string]any{"line": 5, "text": "// Needle " + strings.Repeat("context ", 60)},
+		}})
+	}
+	out := map[string]any{"symbols": symbols, "textHits": groups}
+	boundSearchPresentation(out)
+	boundSymbolPresentation(out)
+	if n := len(anySlice(out["textHits"])); n < 3 {
+		t.Fatalf("text matches displayed = %d, want at least 3", n)
+	}
+	text, _ := renderSearchAsText(out)
+	if ranking.EstimateTokens(text) > 4000 {
+		t.Fatalf("budget exceeded: %d tokens", ranking.EstimateTokens(text))
+	}
+}
+
+// gin: symbol search for "Errors" listed every symbol in errors.go (matched
+// by path) after the two name matches.
+func TestSymbolSearchCapsPathOnlyMatches(t *testing.T) {
+	var errs strings.Builder
+	errs.WriteString("package gin\n\ntype errorMsgs []string\n\nfunc (a errorMsgs) Errors() []string { return a }\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&errs, "\nfunc helper%d() int { return %d }\n", i, i)
+	}
+	srv := compactFixture(t, map[string]string{"errors.go": errs.String(),
+		"context.go": "package gin\n\ntype Context struct {\n\tErrors errorMsgs\n}\n"})
+	out := callCompact(t, srv, "search", map[string]any{"terms": "Errors", "scope": "symbols"})
+	if strings.Count(out, "[path]") > pathOnlySymbolCap {
+		t.Fatalf("path-only matches not capped:\n%s", out)
+	}
+	if !strings.Contains(out, "matched only by file path (errors.go)") || !strings.Contains(out, "errorMsgs.Errors") {
+		t.Fatalf("path cap not disclosed or name match lost:\n%s", out)
 	}
 }

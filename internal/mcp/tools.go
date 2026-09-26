@@ -2204,7 +2204,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	if err != nil {
 		return nil, err
 	}
-	ranked := rankSearchSymbols(syms, q)
+	ranked, condensed := condenseSearchSymbols(rankSearchSymbols(syms, q))
 	annotated := make([]map[string]any, 0, len(ranked))
 	for _, item := range ranked {
 		s := item.symbol
@@ -2252,6 +2252,9 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// under the symbol list (searchtext.go); carrying it in the envelope
 	// too printed two near-identical pointers on every symbol result.
 	out := map[string]any{"symbols": annotated}
+	if condensed != "" {
+		out["condensedNote"] = condensed
+	}
 	if symbolsTruncated {
 		out["symbolsTruncated"] = true
 		out["warning"] = symbolSearchWarning(len(annotated), symCap, sc.exhaustive, sourceExhausted, moreKnown)
