@@ -137,7 +137,10 @@ func renderFileInventory(b *strings.Builder, raw any) bool {
 	files := anySlice(inv["files"])
 	total, _ := inv["total"].(int)
 	complete, _ := inv["complete"].(bool)
+	bestLines, _ := inv["bestLines"].(bool)
 	switch {
+	case bestLines && complete:
+		fmt.Fprintf(b, "// all %d matching files, hits per file and the file's best match line:\n", total)
 	case !complete:
 		fmt.Fprintf(b, "// matching files found before the count deadline (%d; INCOMPLETE, more may exist), hits per file; the lines above are a SAMPLE:\n", total)
 	case len(files) < total:
@@ -165,7 +168,11 @@ func renderFileInventory(b *strings.Builder, raw any) bool {
 			}
 			lastDir = dir
 		}
-		fmt.Fprintf(b, "  %s (%v)\n", base, entry["hits"])
+		if line, ok := entry["line"].(int); ok && line > 0 {
+			fmt.Fprintf(b, "  %s (%v)  %d: %v\n", base, entry["hits"], line, entry["text"])
+		} else {
+			fmt.Fprintf(b, "  %s (%v)\n", base, entry["hits"])
+		}
 	}
 	if dirs := anySlice(inv["dirs"]); len(dirs) > 0 {
 		b.WriteString("// other matching files by directory:\n")

@@ -4,13 +4,20 @@ import (
 	"fmt"
 
 	"github.com/provasign/prism/internal/ranking"
+	"github.com/provasign/prism/internal/textsearch"
 )
 
 // boundSearchPresentation limits the default discovery answer across every
 // term. The search itself is unchanged: exact counts and completion remain
 // available, and a smaller displayed inventory is explicitly labeled.
 func boundSearchPresentation(out map[string]any) {
-	const tokenBudget = 4000
+	fitTextPresentation(out, 4000, false)
+}
+
+// fitTextPresentation fits the text-hit display to tokenBudget. concise is
+// the default-budget form (searchbudget.go): the undisplayed lines are
+// counted in one short line instead of a sentence per term.
+func fitTextPresentation(out map[string]any, tokenBudget int, concise bool) {
 	fits := func(reserve int) bool {
 		text, ok := renderSearchAsText(out)
 		return ok && ranking.EstimateTokens(text) <= tokenBudget-reserve
@@ -178,6 +185,14 @@ func boundSearchPresentation(out map[string]any) {
 				}
 			}
 			counts := textHitsFileCounts(all)
+			// Test-file hits collapsed by the default budget still belong
+			// to the matching-file set.
+			for _, raw := range anySlice(result["testFileCounts"]) {
+				if e, ok := raw.(map[string]any); ok {
+					file, _ := e["file"].(string)
+					counts = append(counts, textsearch.FileCount{File: file, Count: intArg(e, "hits", 0)})
+				}
+			}
 			if len(counts) == 0 {
 				continue
 			}
@@ -197,7 +212,9 @@ func boundSearchPresentation(out map[string]any) {
 				total += len(g.hits)
 			}
 		}
-		if shown[ri] < total {
+		if shown[ri] < total && concise {
+			result["budgetHidden"] = intArg(result, "budgetHidden", 0) + total - shown[ri]
+		} else if shown[ri] < total {
 			result["warning"] = appendNote(stringArg(result, "warning", ""), fmt.Sprintf(
 				"Search completion/counts are unchanged; displayed %d of %d retrieved text matches under the shared response budget. Use exhaustive=true or narrow path=/glob= for the undisplayed lines.", shown[ri], total))
 		}
@@ -208,7 +225,12 @@ func boundSearchPresentation(out map[string]any) {
 // searches and symbol-heavy batches. It runs after text-hit compaction, so
 // exact text counts and the strongest source windows remain untouched.
 func boundSymbolPresentation(out map[string]any) {
-	const tokenBudget = 4000
+	fitSymbolPresentation(out, 4000, false)
+}
+
+// fitSymbolPresentation fits the symbol lists to tokenBudget; concise uses
+// the short default-budget note.
+func fitSymbolPresentation(out map[string]any, tokenBudget int, concise bool) {
 	renderedTokens := func() int {
 		text, ok := renderSearchAsText(out)
 		if !ok {
@@ -267,9 +289,22 @@ func boundSymbolPresentation(out map[string]any) {
 			high = mid - 1
 		}
 	}
+	if concise {
+		// The default budget keeps a floor of locators per term: symbol
+		// lines are the cheap part of a locate answer.
+		floor := 0
+		for _, list := range lists {
+			floor += minInt(searchBudgetSymbolFloor, len(list))
+		}
+		low = maxInt(low, floor)
+	}
 	shown := apply(low)
 	for i, result := range results {
-		if shown[i] < len(lists[i]) {
+		if shown[i] < len(lists[i]) && concise {
+			result["symbolsTruncated"] = true
+			result["warning"] = appendNote(stringArg(result, "warning", ""), fmt.Sprintf(
+				"%d of %d symbols shown; exhaustive=true or paths=/glob= for the rest", shown[i], len(lists[i])))
+		} else if shown[i] < len(lists[i]) {
 			result["symbolsTruncated"] = true
 			result["warning"] = appendNote(stringArg(result, "warning", ""), fmt.Sprintf(
 				"Displayed %d of %d retrieved indexed symbols under the shared response budget; use exhaustive=true or narrow path=/glob= for the undisplayed symbols.", shown[i], len(lists[i])))

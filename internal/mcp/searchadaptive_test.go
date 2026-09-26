@@ -75,7 +75,7 @@ func TestToolSearchLargeSampleReportsExactCount(t *testing.T) {
 		t.Fatalf("count = %v in %v files, want 100 in 1", m["totalHits"], m["filesMatched"])
 	}
 	warning, _ := m["warning"].(string)
-	if !strings.Contains(warning, "showing 25 of 100 matches") || strings.Contains(warning, "AT LEAST") {
+	if !strings.Contains(warning, "100 matches") || strings.Contains(warning, "AT LEAST") {
 		t.Fatalf("large-result warning does not carry its exact count: %q", warning)
 	}
 }
@@ -115,15 +115,31 @@ func TestToolSearchDefaultContextCompletesOverTwoHundredShortHits(t *testing.T) 
 			if err := os.WriteFile(filepath.Join(h.Root, "a"), []byte(strings.Repeat("X\n", count)), 0o644); err != nil {
 				t.Fatal(err)
 			}
+			// The default budget shows at most searchBudgetTermLines lines
+			// and counts the rest; completion is still reported exactly.
 			out, err := h.Invoke("prism_search", map[string]any{"query": "X", "scope": "text"})
 			if err != nil {
 				t.Fatal(err)
 			}
 			m := out.(map[string]any)
 			if m["resultsComplete"] != true || m["totalHits"] != count || m["truncated"] == true {
-				t.Fatalf("default-context search was not complete: %#v", m)
+				t.Fatalf("default search was not complete: %#v", m)
 			}
 			text, ok := RenderSearchText(m)
+			if !ok || strings.Count(text, ": X\n") != searchBudgetTermLines ||
+				!strings.Contains(text, fmt.Sprintf("+%d more matching line(s)", count-searchBudgetTermLines)) {
+				t.Fatalf("default search did not bound its lines with a count of the rest:\n%s", text)
+			}
+			// An explicit context= leaves the shape to the caller: every hit.
+			out, err = h.Invoke("prism_search", map[string]any{"query": "X", "scope": "text", "context": 0})
+			if err != nil {
+				t.Fatal(err)
+			}
+			m = out.(map[string]any)
+			if m["resultsComplete"] != true || m["totalHits"] != count || m["truncated"] == true {
+				t.Fatalf("default-context search was not complete: %#v", m)
+			}
+			text, ok = RenderSearchText(m)
 			if !ok || strings.Count(text, ": X\n") != count || strings.Contains(text, "SAMPLE") {
 				t.Fatalf("complete search did not deliver all %d hits:\n%s", count, text)
 			}

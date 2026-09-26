@@ -121,7 +121,7 @@ const compactServerInstructions = "Use Prism for each repository-discovery step.
 	"JavaScript only if affected files lack a complete typecheck. Skip after a complete affected-target build/typecheck in " +
 	"Go, Java, Rust, C/C++, or C#. For removals, removed_symbols optionally checks exact identifier mentions. " +
 	"Batch known identifiers or exact substrings in one search. For multiple terms, use comma-delimited JSON string values in the terms array, for example terms:[\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string. " +
-	"Search returns bounded enclosing bodies or labeled windows for located hits by default (one per term first); set include_bodies=false for locators only. " +
+	"Search returns match lines and one bounded body (the top non-test match) by default; include_bodies=false for locators only, true for more bodies. " +
 	"In hosts that require a native Read before Edit, use one tight native Read at the edit site; use Prism read/lookup for other follow-ups. " +
 	"Do not re-read unchanged source already included in a Prism result."
 
@@ -684,6 +684,14 @@ func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]an
 		bodyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		bodies, delivered := h.compactSearchBodiesPicked(bodyCtx, out)
+		budget := searchBudgetFor(args, searchScope{paths: stringsArg(args, "path"), glob: stringsArg(args, "glob"),
+			rollupOnly: boolArg(args, "rollup_only")}, stringsArg(args, "query"), boolArg(args, "regex"))
+		if budget.on && !budgetPickFits(delivered, budget.testsTargeted) {
+			// The default budget keeps its one bounded body (inlineBodies);
+			// a picked body that is a second one, a test, or oversized is
+			// not added on top of it.
+			bodies = ""
+		}
 		if bodies != "" {
 			withoutInline := make(map[string]any, len(out))
 			for key, value := range out {
@@ -700,7 +708,9 @@ func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]an
 				text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
 			}
 			text += bodies
-			if terms := stringsArg(args, "query"); len(terms) == 1 {
+			if budget.on {
+				// The picked body is the default budget's one body.
+			} else if terms := stringsArg(args, "query"); len(terms) == 1 {
 				text += h.compactSearchBodiesEnclosingExcept(bodyCtx, withSearchQuery(out, terms[0]), delivered)
 			} else {
 				text += h.compactSearchBodiesEnclosingExcept(bodyCtx, out, delivered)
@@ -888,6 +898,9 @@ type searchSourceRegion struct {
 	window       bool
 	evidence     string
 	ownerContext bool
+	// maxLines bounds a full body (0: the default 160-line bound); past it
+	// the region is a window of about maxLines*2/3 lines around the hit.
+	maxLines int
 }
 
 // compactSearchBodiesEnclosing delivers bounded source for visible file:line
@@ -906,13 +919,21 @@ func (h *Handler) compactSearchBodiesEnclosing(ctx context.Context, out map[stri
 // Slots count delivered regions, not visited candidates: a symbol reached
 // through both its text hit and its symbols entry must not consume two slots.
 func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]any, skip []grove.SymbolRecord) string {
+	return h.compactSearchBodiesLegacyWith(ctx, out, skip, searchBodyOptions{})
+}
+
+func (h *Handler) compactSearchBodiesLegacyWith(ctx context.Context, out map[string]any, skip []grove.SymbolRecord, opts searchBodyOptions) string {
 	if h.Grove == nil {
 		return ""
 	}
-	const maxBodyLines = searchFullBodyMaxLines
-	const maxBodyBytes = searchFullBodyMaxBytes
-	const perTermRegions = 2
-	const maxRegions = 4
+	maxBodyLines, maxBodyBytes := searchFullBodyMaxLines, searchFullBodyMaxBytes
+	perTermRegions, maxRegions, radius := 2, 4, 50
+	if opts.maxLines > 0 {
+		maxBodyLines, maxBodyBytes, radius = opts.maxLines, opts.maxLines*80, opts.maxLines/3
+	}
+	if opts.single {
+		perTermRegions, maxRegions = 1, 1
+	}
 	const maxVisited = 128
 	files := map[string][]grove.SymbolRecord{}
 	var picked []searchSourceRegion
@@ -946,20 +967,20 @@ func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]
 			return false
 		}
 		visitedHits++
-		region := searchSourceRegion{file: file, hit: hit}
+		region := searchSourceRegion{file: file, hit: hit, maxLines: opts.maxLines}
 		if sym != nil && sym.Span.Start > 0 && sym.Span.End >= sym.Span.Start {
 			region.symbol, region.hasSymbol = *sym, true
 			if sym.Span.End-sym.Span.Start+1 <= maxBodyLines && len(sym.RawText) <= maxBodyBytes {
 				region.start, region.end = sym.Span.Start, sym.Span.End
 			} else {
 				region.window = true
-				region.start = maxInt(sym.Span.Start, hit-50)
-				region.end = minInt(sym.Span.End, hit+50)
+				region.start = maxInt(sym.Span.Start, hit-radius)
+				region.end = minInt(sym.Span.End, hit+radius)
 			}
 		} else {
 			region.window = true
-			region.start = maxInt(1, hit-50)
-			region.end = hit + 50
+			region.start = maxInt(1, hit-radius)
+			region.end = hit + radius
 		}
 		if skipped(file, hit, hit) {
 			return false // delivered by the small-result rule already
@@ -1044,6 +1065,9 @@ func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]
 	if groups, ok := out["results"].([]map[string]any); ok {
 		served := make([]int, len(groups))
 		for _, productionOnly := range []bool{true, false} {
+			if !productionOnly && opts.single && !opts.allowTests {
+				break
+			}
 			for pass := 1; pass <= perTermRegions && !full(); pass++ {
 				for i, group := range groups {
 					if served[i] < pass {
@@ -1060,7 +1084,7 @@ func (h *Handler) compactSearchBodiesLegacy(ctx context.Context, out map[string]
 		}
 	} else {
 		visit(out, perTermRegions, true)
-		if !full() && len(picked) < perTermRegions {
+		if !full() && len(picked) < perTermRegions && (!opts.single || opts.allowTests) {
 			visit(out, perTermRegions-len(picked), false)
 		}
 	}
@@ -1094,23 +1118,27 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 		if end < start {
 			continue
 		}
-		fullBodyLines := 160
+		fullBodyLines, fullBodyBytes, radius := 160, 10000, 50
 		if region.ownerContext {
 			fullBodyLines = 240
 		}
-		if !isWindow && (end-start+1 > fullBodyLines || len(strings.Join(lines[start-1:end], "\n")) > 10000) {
+		if region.maxLines > 0 {
+			fullBodyLines, fullBodyBytes, radius = region.maxLines, region.maxLines*80, region.maxLines/3
+		}
+		if !isWindow && (end-start+1 > fullBodyLines || len(strings.Join(lines[start-1:end], "\n")) > fullBodyBytes) {
 			isWindow = true
-			start = maxInt(region.symbol.Span.Start, region.hit-50)
-			end = minInt(len(lines), minInt(region.symbol.Span.End, region.hit+50))
+			start = maxInt(region.symbol.Span.Start, region.hit-radius)
+			end = minInt(len(lines), minInt(region.symbol.Span.End, region.hit+radius))
 		}
 		for start <= end {
 			var b strings.Builder
 			fmt.Fprintf(&b, "**`%s`**\n", region.file)
 			if isWindow {
 				if region.hasSymbol {
-					fmt.Fprintf(&b, "// WINDOW %s:%d-%d around hit line %d; enclosing %s spans %d-%d (full body not included)\n",
+					fmt.Fprintf(&b, "// WINDOW %s:%d-%d around hit line %d; enclosing %s spans %d-%d (full body not included; %s)\n",
 						region.file, start, end, region.hit, region.symbol.QualifiedName,
-						region.symbol.Span.Start, region.symbol.Span.End)
+						region.symbol.Span.Start, region.symbol.Span.End,
+						narrowReadHint(region.file, region.symbol.Span.Start, region.symbol.Span.End, start, end))
 				} else {
 					fmt.Fprintf(&b, "// WINDOW %s:%d-%d around hit line %d; no indexed enclosing symbol for this hit\n",
 						region.file, start, end, region.hit)
@@ -1139,8 +1167,8 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 			}
 			if !isWindow {
 				isWindow = true
-				start = maxInt(region.symbol.Span.Start, region.hit-50)
-				end = minInt(len(lines), minInt(region.symbol.Span.End, region.hit+50))
+				start = maxInt(region.symbol.Span.Start, region.hit-radius)
+				end = minInt(len(lines), minInt(region.symbol.Span.End, region.hit+radius))
 				continue
 			}
 			if end-start+1 <= 20 {

@@ -408,7 +408,7 @@ func CompactToolSchemas() []map[string]any {
 		"regex":           prop("search", "Regex text match.", map[string]any{"type": "boolean"}),
 		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
 		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
-		"include_bodies":  prop("search", "Default true: return up to two bounded bodies or labeled windows with search locations; false returns locators only.", map[string]any{"type": "boolean", "default": true}),
+		"include_bodies":  prop("search", "Default: one bounded body or window for the top non-test match; false returns locators only; true returns up to two per term.", map[string]any{"type": "boolean", "default": true}),
 		"context":         prop("search", "Lines around each match (grep -C N, max 15). Explicit context disables enclosing-body delivery.", map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap}),
 		"rollup_only":     prop("search", "Return the compact hit rollup without source excerpts.", map[string]any{"type": "boolean"}),
 		"removed_symbols": prop("verify", "Optional exact-identifier text check after removal; includes comments and docs.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
@@ -603,7 +603,7 @@ func toolSchema(name string) map[string]any {
 				"include_bodies": map[string]any{
 					"type":        "boolean",
 					"default":     true,
-					"description": "By default, return bounded enclosing bodies or labeled windows for located hits in this search call (one per term first, up to four). Set false for locators only.",
+					"description": "By default, return one bounded enclosing body or labeled window for the top non-test hit. Set true for more (one per term first, up to four); false for locators only.",
 				},
 			},
 		}
@@ -1664,6 +1664,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		rollupOnly: boolArg(args, "rollup_only"),
 		adaptive:   limit == defaultSearchLimit,
 	}
+	budget := searchBudgetFor(args, sc, queries, regex)
+	sc.budget = budget.on
+	budget.sc = sc
 	if len(queries) > 1 && len(sc.paths) == 0 && len(sc.glob) == 0 {
 		filtered := queries[:0]
 		var skipped []string
@@ -1723,7 +1726,7 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		out["results"] = results
 		if leads := searchLeads(results); len(leads) > 0 {
 			out["searchLeads"] = leads
-		} else if len(results) > 1 {
+		} else if len(results) > 1 && !sc.filesOnly {
 			out["searchLeadNote"] = "No indexed-name or cross-term source anchor; the results below are independent term matches."
 		}
 		if len(failed) > 0 {
@@ -1744,11 +1747,13 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		}
 		if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-			if bodies := h.compactSearchBodiesEnclosing(ctx, out); bodies != "" {
+			if bodies := h.searchBodies(ctx, out, budget); bodies != "" {
 				out["inlineBodies"] = bodies
 			}
 		}
-		if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+		if budget.on {
+			h.applySearchBudget(ctx, out, queries, budget)
+		} else if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
 			boundSearchPresentation(out)
 			boundSymbolPresentation(out)
 		}
@@ -1812,11 +1817,13 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 	if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
 		// The flat single-term shape carries no "query"; body selection
 		// needs the term to recognise the definition of a named symbol.
-		if bodies := h.compactSearchBodiesEnclosing(ctx, withSearchQuery(out, queries[0])); bodies != "" {
+		if bodies := h.searchBodies(ctx, withSearchQuery(out, queries[0]), budget); bodies != "" {
 			out["inlineBodies"] = bodies
 		}
 	}
-	if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+	if budget.on {
+		h.applySearchBudget(ctx, out, queries, budget)
+	} else if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
 		boundSearchPresentation(out)
 		boundSymbolPresentation(out)
 	}
@@ -2030,6 +2037,9 @@ type searchScope struct {
 	context    int
 	rollupOnly bool
 	adaptive   bool
+	// budget: the default response budget applies (searchbudget.go); the
+	// sampling warnings use their short form.
+	budget bool
 }
 
 func searchScopeDisclosure(scope string, sc searchScope) string {
@@ -2117,6 +2127,9 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
 			}
 		}
+		if sc.budget && r.Truncated {
+			out["warning"] = budgetSampleWarning(r, out["fileInventory"] != nil)
+		}
 		if sc.filesOnly {
 			// Locations without lines: the cheapest answer to "where does
 			// this live". Done here rather than via rg --files-with-matches,
@@ -2157,7 +2170,8 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// where searches go wrong.
 		// Structural hints are repository-wide. A path/glob filter must not
 		// quietly add evidence from files outside the requested match scope.
-		if len(sc.paths) == 0 && len(sc.glob) == 0 {
+		// files_only asked for paths alone.
+		if len(sc.paths) == 0 && len(sc.glob) == 0 && !sc.filesOnly {
 			if n := h.structuralNote(ctx, q); n != "" {
 				out["resolvedNote"] = n
 			} else if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
@@ -2300,11 +2314,20 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 				"Text matches are a SAMPLE: showing %d of %s. Use exhaustive=true or narrow path=/glob=.",
 				len(r.Hits), textMatchCount(r, true)))
 		}
+		textWarning := stringArg(out, "warning", "")
 		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
 			if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
 				out["fileInventory"] = inv
 				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
 			}
+		}
+		if sc.budget && r.Truncated {
+			// Replace the long text-sampling sentences, keep the symbol ones.
+			symWarning := textWarning
+			if i := strings.Index(textWarning, "Text matches are a SAMPLE"); i >= 0 {
+				symWarning = strings.TrimSuffix(strings.TrimSpace(textWarning[:i]), ";")
+			}
+			out["warning"] = appendNote(symWarning, budgetSampleWarning(r, out["fileInventory"] != nil))
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
@@ -2315,6 +2338,13 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf("Paths outside the root were NOT searched: %v", r.RejectedPaths))
 		}
 	}
+	if sc.filesOnly {
+		// files_only means paths without lines in every scope. Until
+		// v0.83.4 only scope=text honored it: a default-scope call returned
+		// the symbol list, caller notes and match lines (3,036 vs 593 chars;
+		// jackson pr5959 asked for test file names and got 18,246 chars).
+		return filesOnlySearchResult(out, sc.exhaustive), nil
+	}
 	// Same structural hint as scope=text: the symbol list above says the
 	// name exists, but not that changing it fans out — and the fan-out is
 	// the part agents were measured never to ask for on their own.
@@ -2324,6 +2354,46 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		}
 	}
 	return out, nil
+}
+
+// filesOnlySearchResult reduces a symbol/merged search result to its file
+// paths: symbol files in rank order, then text-match files. Warnings about
+// sampling and completeness are kept.
+func filesOnlySearchResult(out map[string]any, exhaustive bool) map[string]any {
+	seen := map[string]bool{}
+	var files []string
+	add := func(file string) {
+		if file != "" && !seen[file] {
+			seen[file] = true
+			files = append(files, file)
+		}
+	}
+	for _, raw := range anySlice(out["symbols"]) {
+		if sym, ok := raw.(map[string]any); ok {
+			file, _ := sym["filePath"].(string)
+			add(file)
+		}
+	}
+	for _, raw := range anySlice(out["textHits"]) {
+		if g, ok := raw.(map[string]any); ok {
+			file, _ := g["file"].(string)
+			add(file)
+		}
+	}
+	res := map[string]any{"files": files, "fileCount": len(files)}
+	for _, key := range []string{"warning", "truncated", "totalHits", "filesMatched", "timedOut",
+		"rejectedPaths", "symbolsTruncated", "countComplete", "resultsComplete"} {
+		if v, ok := out[key]; ok {
+			res[key] = v
+		}
+	}
+	symbolsComplete := !boolArg(out, "symbolsTruncated")
+	_, hadText := out["textHits"]
+	textComplete := !hadText || boolArg(out, "resultsComplete") || (exhaustive && !boolArg(out, "truncated"))
+	if symbolsComplete && textComplete && !boolArg(out, "timedOut") {
+		res["note"] = strconv.Itoa(len(files)) + " files match — COMPLETE path inventory"
+	}
+	return res
 }
 
 func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any, error) {

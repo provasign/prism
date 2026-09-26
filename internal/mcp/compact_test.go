@@ -501,7 +501,9 @@ func TestCompactBroadSearchDeliversOnlyTopTwoEnclosingBodies(t *testing.T) {
 	}
 }
 
-func TestSearchDefaultsToTwoWindowsForHitsInOversizedMethod(t *testing.T) {
+// Explicit include_bodies=true keeps the two-window shape; the default
+// budget delivers one (searchbudget_test.go).
+func TestSearchIncludeBodiesDeliversTwoWindowsForHitsInOversizedMethod(t *testing.T) {
 	root := t.TempDir()
 	var source strings.Builder
 	source.WriteString("class CliRunner:\n    def isolation(self):\n")
@@ -527,7 +529,7 @@ func TestSearchDefaultsToTwoWindowsForHitsInOversizedMethod(t *testing.T) {
 	}
 	t.Cleanup(gc.Shutdown)
 	h := NewHandler(config.Default(), root, gc)
-	args := map[string]any{"query": "sys.stdout =", "scope": "text", "path": "sample.py"}
+	args := map[string]any{"query": "sys.stdout =", "scope": "text", "path": "sample.py", "include_bodies": true}
 	out, err := h.Invoke("prism_search", args)
 	if err != nil {
 		t.Fatal(err)
@@ -543,7 +545,7 @@ func TestSearchDefaultsToTwoWindowsForHitsInOversizedMethod(t *testing.T) {
 	if len(text) > 20*1024 {
 		t.Fatalf("two windows exceeded bounded response size: %d bytes", len(text))
 	}
-	nearOut, err := h.Invoke("prism_search", map[string]any{"query": "sys.stderr =", "scope": "text", "path": "sample.py"})
+	nearOut, err := h.Invoke("prism_search", map[string]any{"query": "sys.stderr =", "scope": "text", "path": "sample.py", "include_bodies": true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -564,14 +566,23 @@ func TestSearchDefaultsToTwoWindowsForHitsInOversizedMethod(t *testing.T) {
 		t.Fatalf("include_bodies=false did not opt out while retaining locators:\n%s", locatorText)
 	}
 	srv := NewCompactServer(h)
-	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"sys.stdout =","scope":"text","paths":"sample.py"}}}`)
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"sys.stdout =","scope":"text","paths":"sample.py","include_bodies":true}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
 		t.Fatal(rpcErr.Message)
 	}
 	compactText := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
-	if strings.Count(compactText, "// WINDOW sample.py:") != 2 {
-		t.Fatalf("compact MCP default did not deliver two windows:\n%s", compactText)
+	if strings.Count(compactText, "// WINDOW sample.py:") != 2 || !strings.Contains(compactText, "rest: op=read") {
+		t.Fatalf("compact MCP include_bodies=true did not deliver two windows with narrow reads for the rest:\n%s", compactText)
+	}
+	defaultParams := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"sys.stdout =","scope":"text","paths":"sample.py"}}}`)
+	defaultResult, rpcErr := srv.dispatch("tools/call", defaultParams)
+	if rpcErr != nil {
+		t.Fatal(rpcErr.Message)
+	}
+	defaultText := defaultResult.(map[string]any)["content"].([]map[string]string)[0]["text"]
+	if strings.Count(defaultText, "WINDOW sample.py:") != 1 {
+		t.Fatalf("compact MCP default did not deliver one window:\n%s", defaultText)
 	}
 	noBodyParams := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"sys.stdout =","scope":"text","paths":"sample.py","include_bodies":false}}}`)
 	noBodyResult, rpcErr := srv.dispatch("tools/call", noBodyParams)
@@ -612,7 +623,7 @@ func TestCompactBatchedTermsKeepSecondSlotAfterDuplicateHit(t *testing.T) {
 	}
 	t.Cleanup(gc.Shutdown)
 	srv := NewCompactServer(NewHandler(config.Default(), root, gc))
-	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":["class SmallOne","def isolation"],"paths":"sample.py"}}}`)
+	params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":["class SmallOne","def isolation"],"paths":"sample.py","include_bodies":true}}}`)
 	result, rpcErr := srv.dispatch("tools/call", params)
 	if rpcErr != nil {
 		t.Fatal(rpcErr.Message)

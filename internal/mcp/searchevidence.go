@@ -167,6 +167,27 @@ func evidenceRelatedSpellings(terms []string) []string {
 }
 
 func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out map[string]any, skip []grove.SymbolRecord) string {
+	return h.compactSearchBodiesWith(ctx, out, skip, searchBodyOptions{})
+}
+
+// searchBodyOptions shapes enclosing-body delivery. The zero value is the
+// explicit include_bodies=true shape (up to two regions for one term, five
+// for a batch). single is the default search budget (searchbudget.go): one
+// region, the top-ranked non-test match, at most maxLines lines.
+type searchBodyOptions struct {
+	single     bool
+	allowTests bool
+	maxLines   int
+}
+
+// compactSearchBodiesBudgeted is the default-budget body: at most one bounded
+// region, from production source unless the request targets tests.
+func (h *Handler) compactSearchBodiesBudgeted(ctx context.Context, out map[string]any, allowTests bool) string {
+	return h.compactSearchBodiesWith(ctx, out, nil,
+		searchBodyOptions{single: true, allowTests: allowTests, maxLines: searchBudgetBodyLines})
+}
+
+func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]any, skip []grove.SymbolRecord, opts searchBodyOptions) string {
 	if h.Grove == nil {
 		return ""
 	}
@@ -298,7 +319,7 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		}
 	}
 	if len(order) == 0 {
-		return h.compactSearchBodiesLegacy(ctx, out, skip)
+		return h.compactSearchBodiesLegacyWith(ctx, out, skip, opts)
 	}
 	// One unambiguous indexed reference hop can reach a consumer file that
 	// shares no literal term with the request. Only consider a call appearing
@@ -375,12 +396,43 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 			fileTerms[item.file][term] = true
 		}
 	}
+	// One body for a batch: the rarest term with any match is the most
+	// specific clue (commons-lang pr1750: a 9-hit phrase inside the fixed
+	// method vs a 57-hit helper whose 3-line definition took the slot).
+	rarest := -1
+	if opts.single && len(groups) > 1 {
+		best, tied := 0, false
+		for term, group := range groups {
+			n := intArg(group, "totalHits", 0)
+			if n == 0 {
+				for _, raw := range anySlice(group["textHits"]) {
+					if g, ok := raw.(map[string]any); ok {
+						n += len(anySlice(g["hits"]))
+					}
+				}
+			}
+			n += len(anySlice(group["symbols"]))
+			switch {
+			case n == 0:
+			case best == 0 || n < best:
+				rarest, best, tied = term, n, false
+			case n == best:
+				tied = true
+			}
+		}
+		if tied {
+			rarest = -1 // no single most specific term
+		}
+	}
 	score := func(item *searchEvidence) int {
 		value := len(item.terms)*9 + len(fileTerms[item.file])*3 + item.bestScore
 		if item.nameMatch {
 			value += 3
 		}
-		if item.definition {
+		if rarest >= 0 && item.terms[rarest] {
+			value += 10
+		}
+		if item.definition && (rarest < 0 || item.terms[rarest]) {
 			// jackson pr6019: "search readRootValue" named the definition
 			// in its headline but delivered two callers' bodies, because
 			// assignment-shaped call lines outscored the declaration line.
@@ -389,6 +441,12 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		}
 		if len(item.related) > 0 {
 			value += 2
+		}
+		if opts.single && len(item.terms) > 1 {
+			// One body only: the place where several of the caller's terms
+			// meet outranks the plain definition of one of them (jansson
+			// pr731: the error messages met in unpack, not in set_error).
+			value += (len(item.terms) - 1) * 20
 		}
 		if refName := referenceFiles[item.file]; refName != "" {
 			nearest := 1 << 30
@@ -476,11 +534,17 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 			chosen[item], seenFiles[item.file] = true, true
 		}
 	}
+	if opts.single {
+		maxSections = 1
+	}
 	choose(false, true, minInt(3, maxSections))
+	if opts.single && len(selected) == 0 && opts.allowTests {
+		choose(true, true, 1)
+	}
 	// A short related spelling in a file with an exact hit can expose a
 	// consumer outside the directly matched symbol. Reserve one slot only
 	// when that line is executable, and keep its uncertainty explicit.
-	if len(groups) > 1 {
+	if len(groups) > 1 && !opts.single {
 		for _, item := range order {
 			if len(selected) >= maxSections || chosen[item] || len(item.terms) > 0 ||
 				len(item.related) == 0 || item.bestScore < 9 ||
@@ -493,15 +557,28 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 		}
 	}
 	choose(false, false, maxSections)
-	if len(groups) > 1 {
+	if len(groups) > 1 && !opts.single {
 		choose(true, true, maxSections+1)
 	}
 	if len(selected) == 0 { // a documentation or config search still needs context
-		selected = append(selected, order[0])
+		for _, item := range order {
+			if opts.single && !opts.allowTests && isTestFilePath(item.file) {
+				continue // the default budget never spends its one body on a test
+			}
+			selected = append(selected, item)
+			break
+		}
+		if len(selected) == 0 {
+			return ""
+		}
+	}
+	fullLines, fullBytes := searchFullBodyMaxLines, searchFullBodyMaxBytes
+	if opts.maxLines > 0 {
+		fullLines, fullBytes = opts.maxLines, opts.maxLines*80
 	}
 	regions := make([]searchSourceRegion, 0, len(selected))
 	for _, item := range selected {
-		region := searchSourceRegion{file: item.file, hit: item.bestLine, window: true}
+		region := searchSourceRegion{file: item.file, hit: item.bestLine, window: true, maxLines: opts.maxLines}
 		if item.hasSymbol {
 			region.symbol, region.hasSymbol = item.symbol, true
 		}
@@ -526,13 +603,14 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 			// every one of them (selected is already capped upstream), so
 			// this can't blow up a broad search.
 			spanLines := item.symbol.Span.End - item.symbol.Span.Start + 1
-			if len(item.terms) > 0 && spanLines <= searchFullBodyMaxLines &&
-				len(item.symbol.RawText) <= searchFullBodyMaxBytes {
+			if len(item.terms) > 0 && spanLines <= fullLines &&
+				len(item.symbol.RawText) <= fullBytes {
 				region.start, region.end, region.window = item.symbol.Span.Start, item.symbol.Span.End, false
 			}
 		}
 		if item.hasSymbol && item.symbol.Kind == "field" && item.nameMatch {
-			if owner := lexicalOwnerSymbol(item.symbol, files[item.file].symbols); owner != nil {
+			if owner := lexicalOwnerSymbol(item.symbol, files[item.file].symbols); owner != nil &&
+				(opts.maxLines == 0 || owner.Span.End-owner.Span.Start+1 <= opts.maxLines) {
 				region.symbol, region.hasSymbol = *owner, true
 				region.start, region.end, region.window = owner.Span.Start, owner.Span.End, false
 				region.ownerContext = true
@@ -563,7 +641,7 @@ func (h *Handler) compactSearchBodiesEnclosingExcept(ctx context.Context, out ma
 	if rendered := h.renderEnclosingSearchBodies(regions); rendered != "" {
 		return rendered
 	}
-	return h.compactSearchBodiesLegacy(ctx, out, skip)
+	return h.compactSearchBodiesLegacyWith(ctx, out, skip, opts)
 }
 
 // declaresTerm reports whether line is the declaration line of sym and sym is
