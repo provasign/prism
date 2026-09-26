@@ -287,7 +287,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 	}
 	known := map[string]bool{
 		"symbol": true, "content": true, "ambiguous": true, "candidates": true,
-		"matched": true, "name": true, "note": true, "overloads": true, "matchKind": true,
+		"matched": true, "name": true, "note": true, "overloads": true, "matchKind": true, "declarations": true,
 		// projectSymbol fields= shapes
 		"file": true, "line": true, "signature": true, "sig": true,
 		"doc": true, "docstring": true, "body": true, "source": true,
@@ -397,6 +397,9 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		}
 	}
 	writeLookupOverloads(&b, anySlice(out["overloads"]))
+	for _, d := range anySlice(out["declarations"]) {
+		fmt.Fprintf(&b, "// declared: %v\n", d)
+	}
 	if m, ok := out["matched"].(bool); !ok || m {
 		if amb, _ := out["ambiguous"].(bool); amb {
 			b.WriteString("// AMBIGUOUS — same score for:\n")

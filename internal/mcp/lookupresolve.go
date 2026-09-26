@@ -136,6 +136,13 @@ func (h *Handler) bestLookup(ctx context.Context, loc *lookupLocator, q lookupQu
 			scores[i] = -1
 			continue
 		}
+		if cFamilyDefinition(s) {
+			// A C/C++ header prototype and its definition share a name; the
+			// definition's body is the one to read (jansson's json_object_get
+			// showed the 2-line jansson.h prototype). The prototype stays
+			// listed under "declarations".
+			sc += cFamilyDefinitionBonus
+		}
 		scores[i] = sc
 		if best == -1 || sc > scores[best] {
 			best = i
@@ -160,6 +167,18 @@ func (h *Handler) deliverLookup(ctx context.Context, syms []grove.SymbolRecord, 
 		out = projectSymbol(best, fields)
 	} else {
 		out = map[string]any{"symbol": best, "content": best.RawText}
+	}
+	if cFamilyDefinition(best) {
+		var decls []string
+		for i := range syms {
+			if i != bestIdx && scores[i] == bestScore-cFamilyDefinitionBonus && cFamilyDeclaration(syms[i]) &&
+				syms[i].QualifiedName == best.QualifiedName {
+				decls = append(decls, lookupCandidateLabel(syms[i]))
+			}
+		}
+		if len(decls) > 0 {
+			out["declarations"] = decls
+		}
 	}
 	tied := 0
 	for _, sc := range scores {

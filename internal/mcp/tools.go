@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -2492,6 +2493,27 @@ func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
 
 // lookupCandidateLabel names a tied lookup candidate with its line span, so two
 // same-named symbols in one file never render as identical lines.
+// cFamilyDefinitionBonus breaks a lookup tie between a C/C++ definition and
+// its prototypes in the definition's favor; it is smaller than every other
+// ranking signal.
+const cFamilyDefinitionBonus = 2
+
+func cFamilyDeclaration(s grove.SymbolRecord) bool {
+	return (s.Language == "c" || s.Language == "cpp") && slices.Contains(s.Annotations, "declaration")
+}
+
+// cFamilyDefinition reports a C/C++ callable with a body (not a prototype).
+func cFamilyDefinition(s grove.SymbolRecord) bool {
+	if s.Language != "c" && s.Language != "cpp" || cFamilyDeclaration(s) {
+		return false
+	}
+	switch s.Kind {
+	case "function", "method", "constructor":
+		return true
+	}
+	return false
+}
+
 func lookupCandidateLabel(s grove.SymbolRecord) string {
 	return fmt.Sprintf("%s (%s:%d-%d)", lookupSymbolName(s), s.FilePath, s.Span.Start, s.Span.End)
 }
