@@ -2700,11 +2700,12 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 	// matched against Grove's Type.Method QualifiedName. This lets a caller pass
 	// a type-qualified name (pkg.Type.Method) and still hit the right method when
 	// several types in the repo declare a method of the same bare name.
-	typeQualified := ""
+	typeQualified, qualifier := "", ""
 	if parts := strings.Split(name, "."); len(parts) >= 2 {
 		last := parts[len(parts)-1]
 		if !strings.Contains(last, "/") {
-			typeQualified = parts[len(parts)-2] + "." + last
+			qualifier = parts[len(parts)-2]
+			typeQualified = qualifier + "." + last
 		}
 	}
 
@@ -2763,6 +2764,27 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 	// method and not one of the thousands of other Get's. Package-hint and
 	// real-vs-test-double then break ties, so a name still lands on the
 	// production symbol rather than a mock that shares it.
+	// ownerConflicts reports a bare-name hit whose owning type contradicts the
+	// qualifier the caller gave: "Context.Errors" must not resolve to
+	// errorMsgs.Errors. Unfixed, lookup returned that method as a confident
+	// match because Go struct fields were not indexed (gin, 2026-09-25). A
+	// package-path qualifier ("internal/cli.Foo") or a package-name qualifier
+	// that matches the symbol's directory is not an owner, so it never conflicts.
+	ownerConflicts := func(s grove.SymbolRecord) bool {
+		if qualifier == "" || strings.Contains(qualifier, "/") || (pkgHint != "" && pkgMatches(s)) {
+			return false
+		}
+		owner := s.QualifiedName
+		i := strings.LastIndex(owner, ".")
+		if i < 0 {
+			return false
+		}
+		owner = owner[:i]
+		if j := strings.LastIndex(owner, "."); j >= 0 {
+			owner = owner[j+1:]
+		}
+		return owner != qualifier
+	}
 	score := func(s grove.SymbolRecord) int {
 		if fileScope != "" && typeQualified != "" && s.QualifiedName != typeQualified &&
 			s.QualifiedName != name && !(s.QualifiedName == searchName && pkgMatches(s)) {
@@ -2774,7 +2796,7 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 			sc += 1000
 		case s.QualifiedName == searchName:
 			sc += 500
-		case s.Name == searchName:
+		case s.Name == searchName && !ownerConflicts(s):
 			sc += 1
 		default:
 			return -1 // not an exact match at all
@@ -2863,6 +2885,9 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 	if len(syms) > 0 {
 		// No exact match — returning the closest hit silently would hand the
 		// agent the wrong symbol body. Flag it and list the alternatives.
+		// Hits owned by the named type go first: for "Context.Accepted" the
+		// closest useful body is Context.SetAccepted, not another type's member.
+		sort.SliceStable(syms, func(i, j int) bool { return !ownerConflicts(syms[i]) && ownerConflicts(syms[j]) })
 		candidates := make([]string, 0, minInt(5, len(syms)))
 		for _, s := range syms[:minInt(5, len(syms))] {
 			n := s.QualifiedName
