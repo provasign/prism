@@ -3824,6 +3824,9 @@ func printLookupOverloadsText(m map[string]any) {
 			}
 		}
 	}
+	for _, d := range asSliceAny(m["declarations"]) {
+		fmt.Printf("// declared: %v\n", d)
+	}
 	if amb, _ := m["ambiguous"].(bool); amb {
 		fmt.Println("// AMBIGUOUS — same score for:")
 		for _, c := range asSliceAny(m["candidates"]) {

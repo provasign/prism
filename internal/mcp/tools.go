@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -2424,6 +2425,27 @@ func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
 
 // lookupCandidateLabel names a tied lookup candidate with its line span, so two
 // same-named symbols in one file never render as identical lines.
+// cFamilyDefinitionBonus breaks a lookup tie between a C/C++ definition and
+// its prototypes in the definition's favor; it is smaller than every other
+// ranking signal.
+const cFamilyDefinitionBonus = 2
+
+func cFamilyDeclaration(s grove.SymbolRecord) bool {
+	return (s.Language == "c" || s.Language == "cpp") && slices.Contains(s.Annotations, "declaration")
+}
+
+// cFamilyDefinition reports a C/C++ callable with a body (not a prototype).
+func cFamilyDefinition(s grove.SymbolRecord) bool {
+	if s.Language != "c" && s.Language != "cpp" || cFamilyDeclaration(s) {
+		return false
+	}
+	switch s.Kind {
+	case "function", "method", "constructor":
+		return true
+	}
+	return false
+}
+
 func lookupCandidateLabel(s grove.SymbolRecord) string {
 	return fmt.Sprintf("%s (%s:%d-%d)", lookupSymbolName(s), s.FilePath, s.Span.Start, s.Span.End)
 }
@@ -2807,6 +2829,13 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 		if isTestDouble(s.FilePath) {
 			sc -= 10
 		}
+		if cFamilyDefinition(s) {
+			// A C/C++ header prototype and its definition share a name;
+			// the definition's body is the one to read (jansson's
+			// json_object_get showed the 2-line jansson.h prototype).
+			// The prototype stays listed under "declarations".
+			sc += cFamilyDefinitionBonus
+		}
 		return sc
 	}
 	bestIdx, bestScore, tied := -1, 0, 0
@@ -2839,6 +2868,18 @@ func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileSco
 		// them as candidates printed N identical lines and the agent edited only
 		// the overload it was shown (commons-lang pr1713: half the fix missing;
 		// 67/614 benchmark sessions hit this). Deliver their bodies instead.
+		if cFamilyDefinition(syms[bestIdx]) {
+			var decls []string
+			for i := range syms {
+				if i != bestIdx && score(syms[i]) == bestScore-cFamilyDefinitionBonus && cFamilyDeclaration(syms[i]) &&
+					syms[i].QualifiedName == syms[bestIdx].QualifiedName {
+					decls = append(decls, lookupCandidateLabel(syms[i]))
+				}
+			}
+			if len(decls) > 0 {
+				out["declarations"] = decls
+			}
+		}
 		if tied > 1 {
 			best := syms[bestIdx]
 			cands := make([]string, 0, tied)
