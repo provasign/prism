@@ -7,13 +7,15 @@ import (
 	"github.com/provasign/prism/internal/grove"
 )
 
-// TestToolChangeImpact_RelaysDeclaringTypes drives a Go interface fixture
-// end-to-end through the MCP handler: interface member specs are not indexed
-// symbols, so the engine surfaces the declaring TYPE as a change site and the
-// tool must relay it (group + note + totalSites). This is the grafana
+// TestToolChangeImpact_RelaysGoInterfaceMember drives a Go interface fixture
+// end-to-end through the MCP handler. This is the grafana
 // DataKeyCache/RouteService regression: every G* run at every tier missed the
-// interface declaration because the relay payload never carried it.
-func TestToolChangeImpact_RelaysDeclaringTypes(t *testing.T) {
+// interface declaration because the relay payload never carried it. Go
+// interface member specs were then unindexed, so the engine surfaced the
+// declaring TYPE (declaringTypes) as the change site. Since astkit indexes
+// interface methods as symbols (2026-09-26), the member itself is the
+// declaration and is relayed at its own line; declaringTypes stays empty.
+func TestToolChangeImpact_RelaysGoInterfaceMember(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, dir, "cache.go", `package p
 
@@ -48,19 +50,12 @@ func use(c DataKeyCache) {
 	}
 	m := out.(map[string]any)
 
-	dts, ok := m["declaringTypes"].([]map[string]any)
-	if !ok || len(dts) != 1 {
-		t.Fatalf("declaringTypes = %v, want exactly the DataKeyCache interface", m["declaringTypes"])
+	if dts, ok := m["declaringTypes"].([]map[string]any); ok && len(dts) > 0 {
+		t.Errorf("declaringTypes = %v, want none: the interface member is indexed", dts)
 	}
-	if dts[0]["name"] != "DataKeyCache" || dts[0]["kind"] != "interface" {
-		t.Errorf("declaringTypes[0] = %v, want DataKeyCache interface", dts[0])
-	}
-	if _, ok := m["declaringTypesNote"]; !ok {
-		t.Error("declaringTypesNote missing — the relay instruction is part of the payload")
-	}
-	// totalSites counts declaringTypes: decl(1) + family(1) + caller(1) + type(1).
-	if got := m["totalSites"].(int); got != 4 {
-		t.Errorf("totalSites = %d, want 4 (declaringTypes counted)", got)
+	// decl(1) + family(1) + caller(1).
+	if got := m["totalSites"].(int); got != 3 {
+		t.Errorf("totalSites = %d, want 3", got)
 	}
 	if safe, ok := m["safeToClaimComplete"].(bool); !ok || safe {
 		t.Fatalf("change-impact must not authorize a global completeness claim: %v", m)
@@ -68,8 +63,13 @@ func use(c DataKeyCache) {
 	if scope := m["completenessScope"]; scope != "indexed-project-only" {
 		t.Fatalf("completenessScope = %v", scope)
 	}
-	if relay := anySlice(m["relaySites"]); len(relay) != 4 {
-		t.Fatalf("relaySites = %v, want the four de-duplicated affected sites", relay)
+	relay := anySlice(m["relaySites"])
+	found := false
+	for _, site := range relay {
+		found = found || site == "cache.go:4:GetById [method]"
+	}
+	if len(relay) != 3 || !found {
+		t.Fatalf("relaySites = %v, want the interface member at cache.go:4 among three sites", relay)
 	}
 }
 

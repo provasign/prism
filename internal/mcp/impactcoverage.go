@@ -35,7 +35,7 @@ func impactCoverage(r *grove.ChangeImpactResult) (string, string) {
 	}
 	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Supers, r.Family, r.DeclaringTypes} {
 		for _, sym := range group {
-			if isGo(sym) && strings.EqualFold(sym.Kind, "interface") && isGenericGoInterface(sym) {
+			if isGo(sym) && (strings.EqualFold(sym.Kind, "interface") && isGenericGoInterface(sym) || isGenericGoInterfaceMethod(sym)) {
 				return "partial", "a generic Go interface is in this contract; the engine does not " +
 					"model dispatch through interfaces with type parameters, so implementations " +
 					"and callers via that interface may be missing. Use targeted text search " +
@@ -76,6 +76,16 @@ func isGo(sym grove.SymbolRecord) bool {
 // the field was empty while the signature carried the parameter list), so
 // the signature is the authoritative evidence.
 var goGenericDecl = regexp.MustCompile(`^\s*type\s+[A-Za-z_][A-Za-z0-9_]*\s*\[`)
+
+// isGenericGoInterfaceMethod reports a member of a generic Go interface.
+// Interface methods are indexed as symbols since astkit's 2026-09-26 sweep and
+// carry their interface's type parameters (a Go method declares none of its
+// own; a concrete method on a generic receiver is indexed without them), so
+// a generic contract is visible from its member even when the interface
+// type itself is not in the result.
+func isGenericGoInterfaceMethod(sym grove.SymbolRecord) bool {
+	return strings.EqualFold(sym.Kind, "method") && sym.ParentSymbol != "" && len(sym.TypeParameters) > 0
+}
 
 func isGenericGoInterface(sym grove.SymbolRecord) bool {
 	return len(sym.TypeParameters) > 0 || goGenericDecl.MatchString(sym.Signature)
