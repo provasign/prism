@@ -122,7 +122,9 @@ func TestLookupNames_QualifierNeverSelectsUnrelatedSymbol(t *testing.T) {
 			{"Engine.JSON", ""},
 			{"Params.JSON", ""},
 			{"render.Context", ""},
-			{"IRoutes.GET", ""},
+			// Go interface methods are indexed (astkit, 2026-09-26), so this
+			// resolves to the interface's own method -- never ginS.GET.
+			{"IRoutes.GET", "IRoutes.GET@routergroup.go"},
 			{"Engine.GET", "RouterGroup.GET@routergroup.go"},
 			{"render.Context.JSON", ""},
 			{"Engine.Default", ""},
