@@ -888,13 +888,39 @@ func writeSteeringInstructions(projectDir string, harnesses []string, refresh bo
 
 	block := steeringBlock()
 
-	for _, t := range targets {
-		selected := harnessSelected(harnesses, t.harness)
+	selectedFor := func(t instrFile) bool {
 		if t.harness == "shared" {
-			selected = harnessSelected(harnesses, "codex") || harnessSelected(harnesses, "cursor") ||
+			return harnessSelected(harnesses, "codex") || harnessSelected(harnesses, "cursor") ||
 				harnessSelected(harnesses, "windsurf") || harnessSelected(harnesses, "opencode")
 		}
+		return harnessSelected(harnesses, t.harness)
+	}
+	// Several names can be one file: `CLAUDE.md -> AGENTS.md` is a common
+	// convention (zod). Handled name by name, the CLAUDE.md pass inserted the
+	// section and the AGENTS.md pass (its harness unselected) stripped it
+	// again, so Claude Code got no steering at all. Each real file is written
+	// once, selected if any of its names is.
+	realPath := func(p string) string {
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			return r
+		}
+		return p
+	}
+	selectedReal := map[string]bool{}
+	for _, t := range targets {
+		if selectedFor(t) {
+			selectedReal[realPath(filepath.Join(projectDir, t.relPath))] = true
+		}
+	}
+	handled := map[string]bool{}
+
+	for _, t := range targets {
 		path := filepath.Join(projectDir, t.relPath)
+		real := realPath(path)
+		if handled[real] {
+			continue
+		}
+		selected := selectedReal[real]
 		exists := fileExists(path)
 		if !selected && !exists {
 			continue
@@ -902,6 +928,7 @@ func writeSteeringInstructions(projectDir string, harnesses []string, refresh bo
 		if selected && refresh && !exists && !selectedHarnessHasExistingSetup(projectDir, harnesses, t.harness) {
 			continue
 		}
+		handled[real] = true
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not create directory for %s instructions: %v\n", t.name, err)
 			continue

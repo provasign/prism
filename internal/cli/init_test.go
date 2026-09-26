@@ -681,3 +681,40 @@ func TestInjectPrismSection_PreservesTrailingUserContent(t *testing.T) {
 		}
 	})
 }
+
+// TestWriteSteeringInstructions_SymlinkedClaudeMD: `CLAUDE.md -> AGENTS.md` is
+// a common convention (zod). Handled name by name, the CLAUDE.md pass wrote
+// the Prism section and the AGENTS.md pass (its harness unselected) stripped
+// it, so Claude Code got no steering at all (2026-09-26 benchmark: zod prism
+// cells made zero Prism calls).
+func TestWriteSteeringInstructions_SymlinkedClaudeMD(t *testing.T) {
+	dir := t.TempDir()
+	user := "# AGENTS.md\n\nUse Nub for everything.\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(user), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("AGENTS.md", filepath.Join(dir, "CLAUDE.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeSteeringInstructions(dir, []string{"claude"}, false)
+
+	got, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(got), "<!-- prism:end -->"); n != 1 {
+		t.Fatalf("want exactly one Prism section in the shared file, got %d:\n%s", n, got)
+	}
+	if !strings.Contains(string(got), "Use Nub for everything.") {
+		t.Fatalf("user content lost:\n%s", got)
+	}
+	if fi, err := os.Lstat(filepath.Join(dir, "CLAUDE.md")); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("CLAUDE.md is no longer a symlink (err=%v)", err)
+	}
+	// Idempotent: a second run leaves the file byte-identical.
+	writeSteeringInstructions(dir, []string{"claude"}, false)
+	again, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if string(again) != string(got) {
+		t.Fatalf("second init changed the file:\n%s", again)
+	}
+}
