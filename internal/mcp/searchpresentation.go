@@ -104,17 +104,7 @@ func boundSearchPresentation(out map[string]any) {
 		}
 		return shown
 	}
-	low, high := 0, len(order)
 	warningReserve := 120 * len(results)
-	for low < high {
-		mid := (low + high + 1) / 2
-		apply(mid)
-		if fits(warningReserve) {
-			low = mid
-		} else {
-			high = mid - 1
-		}
-	}
 	// Text matches keep a floor of textHitFloor lines per term (or all of
 	// them, if fewer). Symbols are bounded next by boundSymbolPresentation,
 	// so a symbol-heavy term cannot push its own text matches to zero:
@@ -141,8 +131,63 @@ func boundSearchPresentation(out map[string]any) {
 		have[groups[order[floor].group].result]++
 		floor++
 	}
-	if low < floor {
-		low = floor
+	fit := func() int {
+		low, high := 0, len(order)
+		for low < high {
+			mid := (low + high + 1) / 2
+			apply(mid)
+			if fits(warningReserve) {
+				low = mid
+			} else {
+				high = mid - 1
+			}
+		}
+		if low < floor {
+			low = floor
+		}
+		return low
+	}
+	low := fit()
+	// A file whose every line the display dropped would be named nowhere.
+	// Name each matching file once (exact: these groups are the retrieved
+	// set) and fit the lines again around that inventory.
+	shownGroup := make([]bool, len(groups))
+	for _, item := range order[:low] {
+		shownGroup[item.group] = true
+	}
+	hidden := map[int]bool{}
+	for gi, g := range groups {
+		if len(g.hits) > 0 && !shownGroup[gi] {
+			hidden[g.result] = true
+		}
+	}
+	if len(hidden) > 0 {
+		attached := false
+		for ri := range results {
+			result := results[ri]
+			if !hidden[ri] {
+				continue
+			}
+			if _, has := result["fileInventory"]; has {
+				continue
+			}
+			var all []any
+			for _, g := range groups {
+				if g.result == ri {
+					all = append(all, g.value)
+				}
+			}
+			counts := textHitsFileCounts(all)
+			if len(counts) == 0 {
+				continue
+			}
+			truncated, _ := result["truncated"].(bool)
+			result["fileInventory"] = buildFileInventory(counts, !truncated)
+			attached = true
+		}
+		if attached {
+			low = fit()
+		}
 	}
 	shown := apply(low)
 	for ri, result := range results {

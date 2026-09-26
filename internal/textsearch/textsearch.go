@@ -68,6 +68,10 @@ type Result struct {
 	// Both are set only by the bounded adaptive-count path.
 	CountComplete   bool `json:"countComplete,omitempty"`
 	ResultsComplete bool `json:"resultsComplete,omitempty"`
+	// FileCounts is the exact per-file match count from the adaptive count
+	// pass, set only with CountComplete. It names every matching file even
+	// when Hits is a sample, so a caller can show where the rest live.
+	FileCounts []FileCount `json:"fileCounts,omitempty"`
 	// RejectedPaths lists requested scopes that resolved outside the root
 	// and were dropped. Never silent: a search that quietly widened from
 	// one directory to the whole tree returns plausible hits from the wrong
@@ -396,6 +400,7 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 		res.TotalHits = counted.TotalHits
 		res.FilesMatched = counted.FilesMatched
 		res.CountComplete = true
+		res.FileCounts = counted.Files
 		// The line pass can still time out or fall back to a backend with
 		// different availability. Only claim a complete result when its size
 		// agrees with the independent exact count.

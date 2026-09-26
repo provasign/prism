@@ -2057,11 +2057,12 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 	// agent pricing its own request (measured: routing every locate through
 	// the enriched path cost ~1.5× on ordinary bug fixes for zero benefit).
 	if scope == "text" {
-		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+		opts := textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
-		})
+		}
+		r := textsearch.Search(ctx, h.Root, q, opts)
 		out := map[string]any{
 			"textHits":    h.renderedTextSearchHits(ctx, r, sc.exhaustive),
 			"textBackend": r.Backend,
@@ -2106,6 +2107,14 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 						"full set. Raise limit=, narrow with path=/glob=, or use files_only=true to "+
 						"see the spread before drawing conclusions. Need every raw line? exhaustive=true.",
 					len(r.Hits), textMatchCount(r, false), r.FilesMatched, textMatchFileWord(r.FilesMatched))
+			}
+		}
+		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+			// The lines are a sample; the files must not be. Every matching
+			// file is named with its hit count (see searchinventory.go).
+			if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+				out["fileInventory"] = inv
+				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
 			}
 		}
 		if sc.filesOnly {
@@ -2274,11 +2283,12 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		// The merged pass previously ran at MaxHits 50 — double the symbol
 		// limit the caller asked for, on the default scope of the highest-
 		// call-count tool. The caller's limit bounds both passes now.
-		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+		opts := textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
 			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
 			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
-		})
+		}
+		r := textsearch.Search(ctx, h.Root, q, opts)
 		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive)
 		out["textBackend"] = r.Backend
 		attachTextSearchCompleteness(out, r)
@@ -2289,6 +2299,12 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf(
 				"Text matches are a SAMPLE: showing %d of %s. Use exhaustive=true or narrow path=/glob=.",
 				len(r.Hits), textMatchCount(r, true)))
+		}
+		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+			if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+				out["fileInventory"] = inv
+				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
+			}
 		}
 		if r.TimedOut {
 			out["timedOut"] = true

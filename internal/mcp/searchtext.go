@@ -53,6 +53,7 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"searchLeads":      true,
 		"searchLeadNote":   true,
 		"condensedNote":    true,
+		"fileInventory":    true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -419,6 +420,11 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 		}
 	default:
 		return false
+	}
+	if inv, ok := m["fileInventory"]; ok && inv != nil {
+		if !renderFileInventory(b, inv) {
+			return false
+		}
 	}
 	if ru := anySlice(m["hitRollup"]); len(ru) > 0 {
 		b.WriteString("// Grouped matches by enclosing symbol (bounded graph rollup; inspect omission notes):\n")
