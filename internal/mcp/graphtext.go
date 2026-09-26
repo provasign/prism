@@ -287,7 +287,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 	}
 	known := map[string]bool{
 		"symbol": true, "content": true, "ambiguous": true, "candidates": true,
-		"matched": true, "name": true, "note": true, "overloads": true,
+		"matched": true, "name": true, "note": true, "overloads": true, "matchKind": true,
 		// projectSymbol fields= shapes
 		"file": true, "line": true, "signature": true, "sig": true,
 		"doc": true, "docstring": true, "body": true, "source": true,
@@ -299,6 +299,41 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		}
 	}
 	var b strings.Builder
+	// Flags come BEFORE any body: an agent reads top-down, and a NO EXACT
+	// MATCH printed after a full unrelated body arrived too late (the body
+	// had already been taken as the answer).
+	note, _ := out["note"].(string)
+	noteShown := false
+	if m, ok := out["matched"].(bool); ok && !m {
+		switch {
+		case strings.HasPrefix(note, "NO EXACT MATCH"):
+			fmt.Fprintf(&b, "// %s\n", note)
+		case note != "":
+			fmt.Fprintf(&b, "// NO EXACT MATCH — %s\n", note)
+		default:
+			b.WriteString("// NO EXACT MATCH\n")
+		}
+		noteShown = true
+		if cands := anySlice(out["candidates"]); len(cands) > 0 {
+			b.WriteString("// candidates:\n")
+			for _, c := range cands {
+				fmt.Fprintf(&b, "//   %v\n", c)
+			}
+		}
+		if content, _ := out["content"].(string); content != "" {
+			b.WriteString("// closest symbol shown below; it does NOT exactly match the requested name\n")
+		}
+	} else if amb, _ := out["ambiguous"].(bool); amb {
+		b.WriteString("// AMBIGUOUS — several symbols fit equally; the first is shown, all are listed at the end\n")
+		if note != "" {
+			fmt.Fprintf(&b, "// %s\n", note)
+			noteShown = true
+		}
+	} else if note != "" {
+		// inherited / case-insensitive resolutions say so up front.
+		fmt.Fprintf(&b, "// %s\n", note)
+		noteShown = true
+	}
 	contentStart, contentEnd := 0, 0
 	if sym, ok := out["symbol"].(map[string]any); ok {
 		name := sym["qualifiedName"]
@@ -362,20 +397,16 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		}
 	}
 	writeLookupOverloads(&b, anySlice(out["overloads"]))
-	if m, ok := out["matched"].(bool); ok && !m {
-		if content, _ := out["content"].(string); content != "" {
-			b.WriteString("// NO EXACT MATCH — closest shown above; candidates:\n")
-		} else {
-			b.WriteString("// NO EXACT MATCH\n")
+	if m, ok := out["matched"].(bool); !ok || m {
+		if amb, _ := out["ambiguous"].(bool); amb {
+			b.WriteString("// AMBIGUOUS — same score for:\n")
 		}
-	} else if amb, _ := out["ambiguous"].(bool); amb {
-		b.WriteString("// AMBIGUOUS — same score for:\n")
+		for _, c := range anySlice(out["candidates"]) {
+			fmt.Fprintf(&b, "//   %v\n", c)
+		}
 	}
-	for _, c := range anySlice(out["candidates"]) {
-		fmt.Fprintf(&b, "//   %v\n", c)
-	}
-	if n, _ := out["note"].(string); n != "" {
-		fmt.Fprintf(&b, "// %s\n", n)
+	if note != "" && !noteShown {
+		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	return b.String(), true
 }

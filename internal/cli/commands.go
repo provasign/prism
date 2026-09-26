@@ -3392,6 +3392,7 @@ func printTextOutput(m map[string]any) {
 	// prism_lookup: top-level "content" + "symbol" subkey
 	if sym, hasSym := m["symbol"].(map[string]any); hasSym && sym != nil {
 		if content, ok := m["content"].(string); ok {
+			printLookupFlagsText(m)
 			name, _ := sym["name"].(string)
 			fp, _ := sym["filePath"].(string)
 			fmt.Printf("// %s — %s\n", fp, name)
@@ -3832,6 +3833,38 @@ func printLookupOverloadsText(m map[string]any) {
 	}
 }
 
+// printLookupFlagsText prints a lookup's NO EXACT MATCH / AMBIGUOUS /
+// inherited / case-insensitive flags BEFORE the body. This path used to
+// ignore matched:false entirely, so the Bash fallback route showed a wrong
+// body exactly as if it were the answer.
+func printLookupFlagsText(m map[string]any) {
+	note, _ := m["note"].(string)
+	if matched, present := m["matched"].(bool); present && !matched {
+		switch {
+		case strings.HasPrefix(note, "NO EXACT MATCH"):
+			fmt.Println("// " + note)
+		case note != "":
+			fmt.Println("// NO EXACT MATCH — " + note)
+		default:
+			fmt.Printf("// NO EXACT MATCH for %v — the symbol below is only the closest hit\n", m["name"])
+		}
+		if cands := asSliceAny(m["candidates"]); len(cands) > 0 {
+			fmt.Println("// candidates:")
+			for _, c := range cands {
+				fmt.Printf("//   %v\n", c)
+			}
+		}
+		fmt.Println("// closest symbol shown below; it does NOT exactly match the requested name")
+		return
+	}
+	if amb, _ := m["ambiguous"].(bool); amb {
+		fmt.Println("// AMBIGUOUS — several symbols fit equally; the first is shown, all are listed at the end")
+	}
+	if note != "" {
+		fmt.Println("// " + note)
+	}
+}
+
 func jsonInt(v any) int {
 	switch n := v.(type) {
 	case int:
@@ -3877,6 +3910,13 @@ func printLeanOutput(m map[string]any) {
 			lean["symbol"] = map[string]any{
 				"name":     sym["name"],
 				"filePath": sym["filePath"],
+			}
+			// Never strip the flags that say the symbol is NOT an exact
+			// answer (or how it was resolved).
+			for _, k := range []string{"matched", "ambiguous", "matchKind", "note", "candidates"} {
+				if v, ok := m[k]; ok {
+					lean[k] = v
+				}
 			}
 		}
 		if content, ok := m["content"]; ok {

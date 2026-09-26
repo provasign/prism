@@ -266,3 +266,28 @@ func TestRenderQuerySourceAsText(t *testing.T) {
 		t.Error("unknown field must force JSON fallback")
 	}
 }
+
+// NO EXACT MATCH used to print only AFTER the full closest body, so an agent
+// reading top-down took the body as the answer.
+func TestRenderLookupAsText_NoExactFlagFirst(t *testing.T) {
+	out := map[string]any{
+		"symbol":     map[string]any{"qualifiedName": "Context.SetAccepted", "kind": "method", "filePath": "context.go", "span": map[string]any{"start": 5.0, "end": 5.0}},
+		"content":    "func (c *Context) SetAccepted() {}\n",
+		"matched":    false,
+		"name":       "Context.Accepted",
+		"note":       "NO EXACT MATCH for \"Context.Accepted\"; the candidates are related names",
+		"candidates": []string{"Context.SetAccepted (context.go:5)"},
+	}
+	text, ok := renderLookupAsText(out)
+	if !ok {
+		t.Fatal("render refused")
+	}
+	flag, body := strings.Index(text, "NO EXACT MATCH"), strings.Index(text, "func (c *Context)")
+	if flag != 3 || body < flag || !strings.Contains(text, "//   Context.SetAccepted (context.go:5)") {
+		t.Fatalf("flag must open the text:\n%s", text)
+	}
+	inherited := map[string]any{"symbol": out["symbol"], "content": out["content"], "matchKind": "inherited", "note": "inherited: X declares no Y"}
+	if text, ok := renderLookupAsText(inherited); !ok || !strings.HasPrefix(text, "// inherited: X declares no Y") {
+		t.Fatalf("inherited note must lead: %v %q", ok, text)
+	}
+}
