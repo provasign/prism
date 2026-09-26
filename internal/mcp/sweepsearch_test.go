@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,5 +131,55 @@ func TestSymbolScopeHonorsDoubleStarGlob(t *testing.T) {
 		if strings.Contains(out, "Option.shell_complete") {
 			t.Fatalf("scope=%s: glob leaked core.py:\n%s", scope, out)
 		}
+	}
+}
+
+// jackson pr6039 #51: `lookup BeanDeserializerBase fields:[signature,body]`
+// returned 82,816 chars and the host rejected the result. A class over the
+// cap delivers its header plus a member outline; a function over the cap
+// delivers its first lines and the read call for the rest.
+func TestLookupCapsOversizedBodies(t *testing.T) {
+	var cls strings.Builder
+	cls.WriteString("package big;\n\npublic class Big {\n    private int count;\n")
+	for i := 0; i < 120; i++ {
+		fmt.Fprintf(&cls, "    public int method%03d(int x) {\n        int y = x + %d;\n        return y * 2;\n    }\n", i, i)
+	}
+	cls.WriteString("}\n")
+	var fn strings.Builder
+	fn.WriteString("package p\n\nfunc Huge() int {\n\tx := 0\n")
+	for i := 0; i < 400; i++ {
+		fmt.Fprintf(&fn, "\tx += %d\n", i)
+	}
+	fn.WriteString("\treturn x\n}\n")
+	srv := compactFixture(t, map[string]string{"src/big/Big.java": cls.String(), "huge.go": fn.String()})
+
+	for _, args := range []map[string]any{
+		{"name": "Big"},
+		{"name": "Big", "fields": []any{"signature", "body"}},
+		{"name": []any{"Big", "Huge"}},
+	} {
+		out := callCompact(t, srv, "lookup", args)
+		if len(out) > bodyCapMaxBytes {
+			t.Fatalf("lookup %v delivered %d chars, over the %d cap", args, len(out), bodyCapMaxBytes)
+		}
+		if !strings.Contains(out, "BODY CAPPED") || !strings.Contains(out, "method119(int x)") || !strings.Contains(out, "private int count") {
+			t.Fatalf("lookup %v: capped class lacks the member outline:\n%s", args, out)
+		}
+		if strings.Contains(out, "int y = x + 7;") {
+			t.Fatalf("lookup %v: member bodies delivered past the cap", args)
+		}
+	}
+	out := callCompact(t, srv, "lookup", map[string]any{"name": "Huge"})
+	if !strings.Contains(out, "BODY CAPPED") || !strings.Contains(out, "op=read") || strings.Contains(out, "x += 399") {
+		t.Fatalf("oversized function not capped with a read continuation:\n%s", out)
+	}
+	// Numbered lines stay truthful: the first delivered line is the header.
+	if !strings.Contains(out, "3\tfunc Huge() int {") {
+		t.Fatalf("capped function lost its line numbers:\n%s", out[:minInt(len(out), 400)])
+	}
+	// Small bodies are untouched.
+	small := callCompact(t, compactFixture(t, map[string]string{"a.go": "package p\n\nfunc Small() int { return 1 }\n"}), "lookup", map[string]any{"name": "Small"})
+	if strings.Contains(small, "BODY CAPPED") || !strings.Contains(small, "return 1") {
+		t.Fatalf("small body changed:\n%s", small)
 	}
 }

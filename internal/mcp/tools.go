@@ -2674,7 +2674,12 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	} else if batch {
 		return h.toolLookupBatch(ctx, args, requests)
 	}
-	return h.lookupSymbol(ctx, args, "")
+	out, err := h.lookupSymbol(ctx, args, "")
+	if err != nil {
+		return out, err
+	}
+	// Delivered-body size cap (bodycap.go), kept outside lookupSymbol.
+	return h.capLookupResult(ctx, out), nil
 }
 
 func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileScope string) (any, error) {
