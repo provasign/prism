@@ -661,7 +661,11 @@ func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]an
 				text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
 			}
 			text += bodies
-			text += h.compactSearchBodiesEnclosingExcept(bodyCtx, out, delivered)
+			if terms := stringsArg(args, "query"); len(terms) == 1 {
+				text += h.compactSearchBodiesEnclosingExcept(bodyCtx, withSearchQuery(out, terms[0]), delivered)
+			} else {
+				text += h.compactSearchBodiesEnclosingExcept(bodyCtx, out, delivered)
+			}
 		}
 	}
 	return h.once.apply(text), true

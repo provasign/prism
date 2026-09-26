@@ -183,3 +183,29 @@ func TestLookupCapsOversizedBodies(t *testing.T) {
 		t.Fatalf("small body changed:\n%s", small)
 	}
 }
+
+// jackson pr6019 #92: `search readRootValue` (scope=text) named the
+// definition in its headline but inlined two callers' bodies, because
+// assignment-shaped call lines outscored the declaration line.
+func TestSearchDeliversTheNamedDefinitionFirst(t *testing.T) {
+	caller := func(cls string) string {
+		return "package x;\n\npublic class " + cls + " {\n    Object _readValue(Ctx ctxt, Object p) {\n        Object result;\n        if (p == null) {\n            result = null;\n        } else {\n            result = ctxt.readRootValue(p, null);\n        }\n        return result;\n    }\n}\n"
+	}
+	srv := compactFixture(t, map[string]string{
+		"src/main/java/x/AMapper.java": caller("AMapper"),
+		"src/main/java/x/BReader.java": caller("BReader"),
+		"src/main/java/x/Ctx.java":     "package x;\n\npublic class Ctx {\n    /*\n     * Extended API\n     */\n\n    public Object readRootValue(Object p,\n            Object valueToUpdate)\n    {\n        return p;\n    }\n}\n",
+	})
+	for _, scope := range []string{"text", "both"} {
+		out := callCompact(t, srv, "search", map[string]any{"terms": []any{"readRootValue"}, "scope": scope})
+		// Numbered source lines are delivered bodies; grep lines are not.
+		def := strings.Index(out, "8\t    public Object readRootValue(Object p,")
+		call := strings.Index(out, "9\t            result = ctxt.readRootValue(p, null);")
+		if def < 0 {
+			t.Fatalf("scope=%s: definition body not delivered:\n%s", scope, out)
+		}
+		if call >= 0 && call < def {
+			t.Fatalf("scope=%s: a caller body came before the definition:\n%s", scope, out)
+		}
+	}
+}

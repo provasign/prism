@@ -1809,7 +1809,9 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		}
 	}
 	if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-		if bodies := h.compactSearchBodiesEnclosing(ctx, out); bodies != "" {
+		// The flat single-term shape carries no "query"; body selection
+		// needs the term to recognise the definition of a named symbol.
+		if bodies := h.compactSearchBodiesEnclosing(ctx, withSearchQuery(out, queries[0])); bodies != "" {
 			out["inlineBodies"] = bodies
 		}
 	}
@@ -1818,6 +1820,23 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		boundSymbolPresentation(out)
 	}
 	return out, nil
+}
+
+// withSearchQuery returns a shallow copy of a flat single-term search result
+// labeled with its term, leaving the delivered shape untouched.
+func withSearchQuery(out map[string]any, q string) map[string]any {
+	if _, batched := out["results"]; batched {
+		return out
+	}
+	if _, has := out["query"]; has {
+		return out
+	}
+	labeled := make(map[string]any, len(out)+1)
+	for k, v := range out {
+		labeled[k] = v
+	}
+	labeled["query"] = q
+	return labeled
 }
 
 // tokenFallbackTerms picks a few distinct code-like words from a failed
