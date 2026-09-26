@@ -3091,6 +3091,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_change_impact")
+	if r.MemberKind != "" {
+		return memberImpactOutput(r, stringArg(args, "file", "") != ""), nil
+	}
 	// The member being changed, used to locate its call sites inside callers.
 	targetLeaf := r.Query
 	if i := strings.IndexByte(targetLeaf, '('); i >= 0 {
@@ -3381,7 +3384,18 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 		out["ambiguousNote"] = "these lines sit in methods that also call a same-named " +
 			"method on an unrelated type — verify the receiver resolves to the renamed " +
 			"member before applying"
+		if r.Ambiguous[0].Reason != "" {
+			// Data-member plans say per edit why it is unconfirmed; the
+			// method-plan explanation above would be false for them.
+			out["ambiguousNote"] = "these lines name the member but their receiver could not be " +
+				"typed (each edit's reason says why) — verify the receiver is the renamed " +
+				"member's owner before applying"
+		}
 	}
+	// Bucket counts: the header must agree with what the buckets hold.
+	out["editCount"] = len(r.Edits)
+	out["ambiguousCount"] = len(r.Ambiguous)
+	out["unresolvedCount"] = len(r.Unresolved)
 	if r.Completeness != "" {
 		out["completeness"] = r.Completeness
 	}

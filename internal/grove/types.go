@@ -125,6 +125,31 @@ type ChangeImpactResult struct {
 	// rather than silently incomplete, but is not certain in the way a
 	// bare "closed" implies.
 	HasHeuristicRefs bool `json:"hasHeuristicRefs,omitempty"`
+
+	// Data-member anchors only (fields, properties, constants, variables).
+	// MemberKind is non-empty exactly for those. Accesses are the source
+	// lines confirmed (by receiver type or declaring scope) to read, write,
+	// initialize, or declare the member; AmbiguousAccesses match the name
+	// without receiver evidence; ExcludedAccesses counts same-named
+	// occurrences evidence attributes to something else.
+	MemberKind        string         `json:"memberKind,omitempty"`
+	Accesses          []MemberAccess `json:"accesses,omitempty"`
+	AmbiguousAccesses []MemberAccess `json:"ambiguousAccesses,omitempty"`
+	ExcludedAccesses  int            `json:"excludedAccesses,omitempty"`
+	// AccessCoverage: receiver-typed | partial | name-matched | declaration-only.
+	AccessCoverage string `json:"accessCoverage,omitempty"`
+	AccessNote     string `json:"accessNote,omitempty"`
+}
+
+// MemberAccess is one source line touching a data member.
+type MemberAccess struct {
+	FilePath      string `json:"filePath"`
+	Line          int    `json:"line"`
+	Enclosing     string `json:"enclosing,omitempty"` // qualified name of the enclosing symbol
+	EnclosingKind string `json:"enclosingKind,omitempty"`
+	Access        string `json:"access"`             // decl | read | write | init | call
+	Evidence      string `json:"evidence,omitempty"` // confirming evidence, or the ambiguity reason
+	Text          string `json:"text,omitempty"`
 }
 
 // MissingImplementationsResult answers "which types claiming this contract do
@@ -161,6 +186,9 @@ type RenameEdit struct {
 	Before   string `json:"before"`
 	After    string `json:"after"`
 	Site     string `json:"site"`
+	// Reason: for data-member plans, the evidence confirming the edit or
+	// why it is ambiguous (receiver not typed).
+	Reason string `json:"reason,omitempty"`
 }
 
 // RenamePlanResult converts a change-impact set into concrete line edits.

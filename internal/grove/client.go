@@ -611,7 +611,31 @@ func convertChangeImpact(r groveeng.ChangeImpactResult) *ChangeImpactResult {
 		OverridesExternal: r.OverridesExternal,
 		Completeness:      r.Completeness,
 		HasHeuristicRefs:  r.HasHeuristicRefs,
+		MemberKind:        r.MemberKind,
+		Accesses:          convertMemberAccesses(r.Accesses),
+		AmbiguousAccesses: convertMemberAccesses(r.AmbiguousAccesses),
+		ExcludedAccesses:  r.ExcludedAccesses,
+		AccessCoverage:    r.AccessCoverage,
+		AccessNote:        r.AccessNote,
 	}
+}
+
+func convertMemberAccesses(in []groveeng.MemberAccess) []MemberAccess {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]MemberAccess, 0, len(in))
+	for _, a := range in {
+		qn := a.Enclosing.QualifiedName
+		if qn == "" {
+			qn = a.Enclosing.Name
+		}
+		out = append(out, MemberAccess{
+			FilePath: a.FilePath, Line: a.Line, Enclosing: qn, EnclosingKind: string(a.Enclosing.Kind),
+			Access: a.Access, Evidence: a.Evidence, Text: a.Text,
+		})
+	}
+	return out
 }
 
 // MissingImplementations resolves a "Type.method" query to every type in the
@@ -655,7 +679,7 @@ func (c *Client) RenamePlan(ctx context.Context, query, newName string) (*Rename
 		for _, e := range in {
 			out = append(out, RenameEdit{
 				FilePath: e.FilePath, Line: e.Line,
-				Before: e.Before, After: e.After, Site: e.Site,
+				Before: e.Before, After: e.After, Site: e.Site, Reason: e.Reason,
 			})
 		}
 		return out
