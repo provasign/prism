@@ -30,12 +30,24 @@ const (
 	bodyCapOutlineMax    = 150
 	bodyCapOutlineBytes  = 12000
 	bodyCapSignatureWide = 140
+	// typeOutlineLines: a container (class/struct/interface/...) body over
+	// this many lines returns its header plus the member outline, well below
+	// the general cap. Measured 2026-09-26 (dubbo pr16395): `lookup
+	// AbstractStateRouter` returned the whole 7.4k-char class because it was
+	// under 240 lines; the agent needed one method. Functions keep full
+	// bodies up to the general cap: they are what agents edit.
+	typeOutlineLines = 80
 )
 
 // containerKinds are the symbol kinds whose body is a list of members.
 var containerKinds = map[string]bool{
 	"class": true, "struct": true, "interface": true, "enum": true, "trait": true,
 	"module": true, "namespace": true, "type": true, "object": true, "record": true, "impl": true,
+}
+
+// bodyLineCount counts a body's lines.
+func bodyLineCount(body string) int {
+	return strings.Count(strings.TrimRight(body, "\n"), "\n") + 1
 }
 
 // bodyOverCap reports whether a delivered body exceeds the shared cap.
@@ -52,7 +64,9 @@ func bodyOverCap(body string) bool {
 // of body, so callers that number lines from start stay truthful — and an
 // explanatory note (with the outline), or ok=false when no cap applies.
 func capBody(body, file, kind string, start, end int, members []grove.SymbolRecord) (head, note string, ok bool) {
-	if !bodyOverCap(body) {
+	over := bodyOverCap(body)
+	container := containerKinds[strings.ToLower(kind)]
+	if !over && !(container && bodyLineCount(body) > typeOutlineLines) {
 		return body, "", false
 	}
 	lines := strings.SplitAfter(body, "\n")
@@ -64,8 +78,11 @@ func capBody(body, file, kind string, start, end int, members []grove.SymbolReco
 		end = start + total - 1
 	}
 	var outline []grove.SymbolRecord
-	if containerKinds[strings.ToLower(kind)] {
+	if container {
 		outline = directMembers(members, start, end)
+	}
+	if len(outline) == 0 && !over {
+		return body, "", false // a type with no indexed members stays whole under the general cap
 	}
 	if len(outline) > 0 {
 		keep := bodyCapHeaderLines
@@ -75,10 +92,13 @@ func capBody(body, file, kind string, start, end int, members []grove.SymbolReco
 		head = boundedPrefix(lines, keep, bodyCapMaxBytes/4)
 		shown := strings.Count(head, "\n")
 		var b strings.Builder
-		fmt.Fprintf(&b, "BODY CAPPED: %s %s:%d-%d is %d lines / %d chars, over the delivery cap (%d lines / %d chars). "+
-			"Delivered lines %d-%d and the member outline below; get a member with op=lookup (Type.member) "+
-			"or a range with op=read (file, from, to).",
-			kind, file, start, end, total, len(body), bodyCapMaxLines, bodyCapMaxBytes, start, start+shown-1)
+		capLines := typeOutlineLines
+		if over {
+			capLines = bodyCapMaxLines
+		}
+		fmt.Fprintf(&b, "BODY CAPPED: %s %s:%d-%d is %d lines; a type over %d lines returns its header and member outline. "+
+			"Delivered lines %d-%d; a member body: op=lookup name=Type.member, or op=read file=%q from=<start> to=<end> with its span below.",
+			kind, file, start, end, total, capLines, start, start+shown-1, file)
 		b.WriteString("\nmembers (" + fmt.Sprint(len(outline)) + "):")
 		used := 0
 		for i, m := range outline {
@@ -175,7 +195,7 @@ func (h *Handler) capLookupResult(ctx context.Context, result any) any {
 		}
 		return syms
 	}
-	if content, _ := out["content"].(string); content != "" && bodyOverCap(content) {
+	if content, _ := out["content"].(string); content != "" {
 		var file, kind string
 		var start, end int
 		switch sym := out["symbol"].(type) {
@@ -221,7 +241,7 @@ func (h *Handler) capLookupResult(ctx context.Context, result any) any {
 	}
 	for _, key := range []string{"body", "source"} {
 		body, _ := out[key].(string)
-		if body == "" || !bodyOverCap(body) {
+		if body == "" || (!bodyOverCap(body) && bodyLineCount(body) <= typeOutlineLines) {
 			continue
 		}
 		file, _ := out["file"].(string)

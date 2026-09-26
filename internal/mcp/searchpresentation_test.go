@@ -61,7 +61,7 @@ func TestSearchBatchSharesPresentationBudget(t *testing.T) {
 			t.Fatalf("a term lost every displayed hit: %#v", result)
 		}
 	}
-	if !strings.Contains(text, "displayed ") {
+	if !strings.Contains(text, "displayed ") && !strings.Contains(text, "more matching line(s) not shown") {
 		t.Fatalf("sampled delivery has no explicit disclosure:\n%s", text)
 	}
 }

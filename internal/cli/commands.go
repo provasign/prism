@@ -2265,7 +2265,7 @@ func cmdSearch(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: prism search <term> [term...] [--dir <path>]")
 		return 2
 	}
-	limit := 25
+	limit, limitSet := 25, false
 	dir := ""
 	format := formatText
 	scope := ""
@@ -2347,7 +2347,7 @@ func cmdSearch(args []string) int {
 		case "--limit":
 			if i+1 < len(args) {
 				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-					limit = n
+					limit, limitSet = n, true
 				}
 				i++
 			}
@@ -2392,7 +2392,12 @@ func cmdSearch(args []string) int {
 	if len(bare) > 1 {
 		query = bare
 	}
-	searchArgs := map[string]any{"query": query, "limit": limit}
+	// An explicit --limit is a caller-chosen shape; without it the MCP
+	// default response budget applies (internal/mcp/searchbudget.go).
+	searchArgs := map[string]any{"query": query}
+	if limitSet {
+		searchArgs["limit"] = limit
+	}
 	if scope != "" {
 		searchArgs["scope"] = scope
 	}

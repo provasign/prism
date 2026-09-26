@@ -69,7 +69,7 @@ func TestSearchSampledTextNamesEveryMatchingFile(t *testing.T) {
 	// which differ across platforms (the target was sampled on Linux CI), so
 	// the test asserts only what the fix guarantees: the inventory names every
 	// matching file. Without the fix there is no inventory and this fails.
-	if !strings.Contains(text, "// all 31 matching files, hits per file; the lines above are a SAMPLE:") {
+	if !strings.Contains(text, "// all 31 matching files, hits per file") {
 		t.Fatalf("missing file inventory header:\n%s", text)
 	}
 	if !strings.Contains(text, "  "+target+" (1)") || !strings.Contains(text, "src/zz/jdk/\n") {
@@ -78,7 +78,7 @@ func TestSearchSampledTextNamesEveryMatchingFile(t *testing.T) {
 	if !strings.Contains(text, "  Dense29.java (5)") {
 		t.Fatalf("inventory lacks per-file hit counts:\n%s", text)
 	}
-	if w, _ := m["warning"].(string); !strings.Contains(w, fileInventoryWarning) {
+	if w, _ := m["warning"].(string); !strings.Contains(w, fileInventoryWarning) && !strings.Contains(w, "every matching file is listed below") {
 		t.Fatalf("sample warning does not point at the file list: %q", w)
 	}
 }

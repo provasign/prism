@@ -78,6 +78,9 @@ func (h *Handler) appendBatchedSearchFallback(ctx context.Context, out map[strin
 			}
 			found["query"] = candidate
 			found["fallbackFrom"] = original
+			if sc.budget {
+				budgetRollup(found)
+			}
 			fallback = append(fallback, found)
 			if len(empty) > 1 {
 				break // spread the two slots across failed terms

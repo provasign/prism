@@ -54,6 +54,8 @@ func renderSearchAsText(out map[string]any) (string, bool) {
 		"searchLeadNote":   true,
 		"condensedNote":    true,
 		"fileInventory":    true,
+		"testFileCounts":   true,
+		"budgetHidden":     true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -347,7 +349,9 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 		}
 	case hasKey(m, "textHits"):
 		groups := anySlice(m["textHits"])
-		if len(groups) == 0 {
+		if len(groups) == 0 && m["fileInventory"] != nil {
+			// Default budget: the inventory below carries one line per file.
+		} else if len(groups) == 0 {
 			// A bare "no matches" is indistinguishable from "the search
 			// didn't finish" or "the index missed it" -- an agent that
 			// doesn't trust the null rationally re-verifies with grep,
@@ -420,6 +424,23 @@ func renderOneSearchText(b *strings.Builder, m map[string]any, seen map[string]b
 		}
 	default:
 		return false
+	}
+	if hidden := intArg(m, "budgetHidden", 0); hidden > 0 {
+		fmt.Fprintf(b, "// +%d more matching line(s) not shown; exhaustive=true lists every line, paths=<file> shows one file's\n", hidden)
+	}
+	if raw, ok := m["testFileCounts"]; ok {
+		inInventory := map[string]bool{}
+		if inv, ok := m["fileInventory"].(map[string]any); ok {
+			for _, f := range anySlice(inv["files"]) {
+				if e, ok := f.(map[string]any); ok {
+					file, _ := e["file"].(string)
+					inInventory[file] = true
+				}
+			}
+		}
+		if !renderTestFileCounts(b, raw, inInventory) {
+			return false
+		}
 	}
 	if inv, ok := m["fileInventory"]; ok && inv != nil {
 		if !renderFileInventory(b, inv) {
