@@ -317,3 +317,33 @@ func TestSearchLabelsTestFunctionsAsTestsNotDoubles(t *testing.T) {
 		t.Fatalf("test function missing:\n%s", out)
 	}
 }
+
+// gin: `query --terms Errors` labelled the Context.Errors field "no resolved
+// callers" (read as unused; it has 27 uses) and its text section was 49
+// case-insensitive lines of the errors package.
+func TestQueryFieldAnchorsAndExactCaseText(t *testing.T) {
+	var other strings.Builder
+	other.WriteString("package gin\n\nimport \"errors\"\n\nfunc check(n int) error {\n\tswitch n {\n")
+	for i := 0; i < 20; i++ {
+		fmt.Fprintf(&other, "\tcase %d:\n\t\treturn errors.New(\"failure %d\")\n", i, i)
+	}
+	other.WriteString("\t}\n\treturn nil\n}\n")
+	srv := compactFixture(t, map[string]string{
+		"context.go": "package gin\n\ntype Context struct {\n\t// Errors is a list of errors.\n\tErrors []error\n}\n\nfunc (c *Context) Error(err error) {\n\tc.Errors = append(c.Errors, err)\n}\n",
+		"other.go":   other.String(),
+	})
+	out := callCompact(t, srv, "query", map[string]any{"terms": []any{"Errors"}})
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "`Errors` (context.go:5)") {
+			if strings.Contains(line, "no resolved callers") || !strings.Contains(line, "accesses are not tracked as callers") {
+				t.Fatalf("field anchor reads as unused: %q", line)
+			}
+		}
+	}
+	if !strings.Contains(out, "accesses are not tracked as callers") {
+		t.Fatalf("field anchor note missing:\n%s", out)
+	}
+	if strings.Contains(out, "errors.New(\"failure") {
+		t.Fatalf("case-insensitive errors lines flooded the text section:\n%s", out)
+	}
+}

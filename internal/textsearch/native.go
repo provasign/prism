@@ -27,11 +27,18 @@ func nativeSearch(ctx context.Context, root, pattern string, opts Options) Resul
 	// already degraded to literal in regexUsable.
 	var re *regexp.Regexp
 	if regexUsable(pattern, opts) {
-		re = regexp.MustCompile("(?i)" + pattern)
+		if opts.CaseSensitive {
+			re = regexp.MustCompile(pattern)
+		} else {
+			re = regexp.MustCompile("(?i)" + pattern)
+		}
 	}
 	match := func(line string) bool {
 		if re != nil {
 			return re.MatchString(line)
+		}
+		if opts.CaseSensitive {
+			return strings.Contains(line, pattern)
 		}
 		return strings.Contains(strings.ToLower(line), needle)
 	}

@@ -81,13 +81,24 @@ func (h *Handler) mergeTextSearchScoped(ctx context.Context, terms []string, see
 	var hits []textsearch.Hit
 	seenHit := map[string]bool{}
 	for _, term := range terms {
-		r := textsearch.Search(ctx, h.Root, term, textsearch.Options{
+		opts := textsearch.Options{
 			MaxHits: textHitsPerTerm,
 			Timeout: textSearchTimeout,
 			Context: 2,
 			Paths:   scope.paths,
 			Glob:    scope.glob,
-		})
+			// A term with an uppercase letter is an identifier spelling:
+			// match its case first. Measured (gin, query Errors): the
+			// case-insensitive pass delivered 49 "errors" import/call lines
+			// around the 2 real Context.Errors uses. No exact-case hit
+			// falls back to the case-insensitive pass.
+			CaseSensitive: strings.ToLower(term) != term,
+		}
+		r := textsearch.Search(ctx, h.Root, term, opts)
+		if opts.CaseSensitive && len(r.Hits) == 0 && !r.TimedOut {
+			opts.CaseSensitive = false
+			r = textsearch.Search(ctx, h.Root, term, opts)
+		}
 		res.backend = r.Backend
 		for _, hit := range r.Hits {
 			key := hit.File + ":" + strconv.Itoa(hit.Line)

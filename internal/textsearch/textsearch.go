@@ -101,6 +101,11 @@ type Options struct {
 	// Glob restricts the search to files matching these shell globs
 	// (rg --glob / grep --include), e.g. "*.py".
 	Glob []string
+	// CaseSensitive matches the pattern's exact case. The default is
+	// case-insensitive (grep -i semantics). Query uses it for terms with an
+	// uppercase letter, where "Errors" must not pull in every "errors"
+	// import line.
+	CaseSensitive bool
 	// Exhaustive removes both caps: every match, from every file. The agent
 	// declares this -- prism does not guess. A "where is X" question wants a
 	// sample and a count; "rewrite every .format() call" wants all 1,024
@@ -648,7 +653,7 @@ func attachContext(root string, hits []Hit, n int) {
 func runRg(ctx context.Context, root, pattern string, opts Options) (Result, bool) {
 	args := []string{
 		"--no-config", "--line-number", "--no-heading", "--color=never",
-		"--ignore-case",
+		caseFlagRg(opts),
 		// Force the filename onto every line. With a SINGLE FILE operand rg
 		// (and grep) omit it, emitting "988:text" instead of
 		// "path:988:text" -- runLineTool parses path:line:text, so a search
@@ -715,7 +720,10 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	if regexUsable(pattern, opts) {
 		mode = "-E"
 	}
-	args := []string{"-rnHI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+	args := []string{"-rnHI", mode, "--max-count", strconv.Itoa(opts.MaxPerFile)}
+	if !opts.CaseSensitive {
+		args = append(args, "-i")
+	}
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
@@ -833,4 +841,11 @@ func truncateLine(s string) string {
 		return s[:maxLineLen] + "…"
 	}
 	return s
+}
+
+func caseFlagRg(opts Options) string {
+	if opts.CaseSensitive {
+		return "--case-sensitive"
+	}
+	return "--ignore-case"
 }

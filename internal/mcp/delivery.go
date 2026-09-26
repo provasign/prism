@@ -440,6 +440,11 @@ func (h *Handler) renderAnchorSummary(ctx context.Context, anchors []grove.Symbo
 		}
 		if callerN > 0 {
 			fmt.Fprintf(&b, " — %d caller%s in %s", callerN, plural(callerN), joinCapped(callerFiles, 3))
+		} else if dataSymbolKind(a.Kind) {
+			// A field/variable/const has readers and writers, not callers;
+			// the call graph does not track accesses. "no resolved callers"
+			// read as "unused" (gin Context.Errors has 27 uses).
+			fmt.Fprintf(&b, " — %s: accesses are not tracked as callers; op=search terms=[%q] scope=text lists its uses", a.Kind, a.Name)
 		} else {
 			b.WriteString(" — no resolved callers")
 		}
@@ -768,4 +773,13 @@ func dedupeStrings(in []string) []string {
 		}
 	}
 	return out
+}
+
+// dataSymbolKind reports kinds whose uses are reads/writes, not calls.
+func dataSymbolKind(kind string) bool {
+	switch kind {
+	case "field", "variable", "const", "property", "constant", "enum_member", "attribute":
+		return true
+	}
+	return false
 }
