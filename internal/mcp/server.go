@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -127,7 +128,40 @@ const compactServerInstructions = "Use Prism for each repository-discovery step.
 const compactSearchLocatorGuidance = "// locator result — use the prism tool with op=lookup for known symbol bodies, op=read for a known file/range, or op=query for related implementations, callers, and tests"
 
 func rewriteCompactGuidance(text string) string {
-	return strings.Replace(text, searchLocatorGuidance, compactSearchLocatorGuidance, 1)
+	return strings.ReplaceAll(text, searchLocatorGuidance, compactSearchLocatorGuidance)
+}
+
+var (
+	// compactSourceLine matches delivered source: numbered Read-style lines,
+	// grep context lines, and path:line: hits. Their text is verbatim code
+	// and is never reworded.
+	compactSourceLine  = regexp.MustCompile(`^(\d+\t|\s+\d+[:-] |[^\s:]+:\d+[:-] )`)
+	compactReadOffset  = regexp.MustCompile(`prism_read\(file, offset=(\d+), limit=(\d+)\)`)
+	compactLegacyTools = regexp.MustCompile(`\bprism_(lookup|read|search|query|change_impact|verify)\b`)
+)
+
+// compactToolWording rewrites legacy tool names in Prism's own notes and
+// footers to the single-tool form (op=lookup, op=read from=/to=) so one
+// response does not alternate "op=lookup" and "prism_lookup" wording for
+// the same call. Source lines are left untouched.
+func compactToolWording(text string) string {
+	if !strings.Contains(text, "prism_") {
+		return text
+	}
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if !strings.Contains(line, "prism_") || compactSourceLine.MatchString(line) {
+			continue
+		}
+		line = compactReadOffset.ReplaceAllStringFunc(line, func(m string) string {
+			sub := compactReadOffset.FindStringSubmatch(m)
+			from, _ := strconv.Atoi(sub[1])
+			limit, _ := strconv.Atoi(sub[2])
+			return fmt.Sprintf("op=read from=%d to=%d", from, from+maxInt(limit, 1)-1)
+		})
+		lines[i] = compactLegacyTools.ReplaceAllString(line, "op=$1")
+	}
+	return strings.Join(lines, "\n")
 }
 
 var compactOperations = map[string]string{
@@ -590,6 +624,8 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			// indentation is pure token overhead.
 			encoded, _ := json.Marshal(out)
 			text = string(encoded)
+		} else if s.compact {
+			text = compactToolWording(text)
 		}
 		// Result-size accounting: this is the number that compounds via
 		// cache re-reads on every later turn (measured: median 4.4x, mean
@@ -602,6 +638,9 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		// (bounded hash comparison); prism_drift gives symbol-level detail.
 		if contextBearingTool(actualName) {
 			if warning := s.handler.StaleContextWarning(); warning != "" {
+				if s.compact {
+					warning = compactToolWording(warning)
+				}
 				content = append(content, map[string]string{"type": "text", "text": warning})
 			}
 		}

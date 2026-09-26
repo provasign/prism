@@ -347,3 +347,43 @@ func TestQueryFieldAnchorsAndExactCaseText(t *testing.T) {
 		t.Fatalf("case-insensitive errors lines flooded the text section:\n%s", out)
 	}
 }
+
+// The compact single-tool MCP printed "use the prism tool with op=lookup" for
+// the first term and "use prism_lookup ... prism_read" for the next one, and
+// query footers said prism_read(file, offset=, limit=).
+func TestCompactFootersUseOneToolWording(t *testing.T) {
+	var big strings.Builder
+	big.WriteString("package p\n\n// prism_lookup stays verbatim in source.\nfunc Alpha() {}\n")
+	for i := 0; i < 400; i++ {
+		fmt.Fprintf(&big, "var filler%d = %d\n", i, i)
+	}
+	big.WriteString("func Beta() { Alpha() }\n")
+	srv := compactFixture(t, map[string]string{"a.go": big.String(), "b.go": "package p\n\nfunc AlphaTwo() {}\nfunc BetaTwo() {}\n"})
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"Alpha", "Beta"}, "scope": "symbols", "include_bodies": false})
+	if strings.Contains(out, "use prism_lookup") || strings.Contains(out, "prism_read for a known") {
+		t.Fatalf("legacy tool wording in compact search:\n%s", out)
+	}
+	q := callCompact(t, srv, "query", map[string]any{"terms": []any{"Alpha", "Beta"}})
+	if strings.Contains(q, "prism_read(file") {
+		t.Fatalf("legacy read wording in compact query:\n%s", q)
+	}
+	if strings.Contains(q, "omitted —") && !strings.Contains(q, "op=read from=") {
+		t.Fatalf("omitted-range footer lost its read range:\n%s", q)
+	}
+	if strings.Contains(q, "// prism_lookup stays verbatim") == false && strings.Contains(q, "stays verbatim in source") {
+		t.Fatalf("source line was reworded:\n%s", q)
+	}
+}
+
+func TestCompactToolWordingLeavesSourceAlone(t *testing.T) {
+	in := "3\t// prism_lookup stays\n  12: x := prism_read()\na.go:4: prism_search\n… [lines 5–9 omitted — prism_read(file, offset=5, limit=5) if needed] …\n// locator result — use prism_lookup for known symbol bodies"
+	got := compactToolWording(in)
+	for _, keep := range []string{"3\t// prism_lookup stays", "  12: x := prism_read()", "a.go:4: prism_search"} {
+		if !strings.Contains(got, keep) {
+			t.Errorf("source line changed: %q missing in\n%s", keep, got)
+		}
+	}
+	if !strings.Contains(got, "op=read from=5 to=9 if needed") || !strings.Contains(got, "use op=lookup for known") {
+		t.Errorf("footer not rewritten:\n%s", got)
+	}
+}
