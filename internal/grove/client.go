@@ -161,6 +161,38 @@ func (c *Client) FileSymbols(ctx context.Context, relPath string) ([]SymbolRecor
 	return convertSymbols(syms), nil
 }
 
+// DiffFileContent diffs the symbols delivered earlier (before) against the
+// symbols parsed from content, the file's bytes as the caller just read them.
+// Use it when the caller already knows the file changed: the index's
+// size+mtime freshness check can miss a same-size edit inside one timestamp
+// tick (coarse-mtime filesystems, e.g. a Linux bind mount), and DiffFile would
+// then diff against the stale indexed symbols and report nothing.
+func (c *Client) DiffFileContent(before []SymbolRecord, relPath string, content []byte) (*FileGraphDiff, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	beforeEng := make([]groveeng.Symbol, 0, len(before))
+	for _, s := range before {
+		es, err := toEngineSymbol(s)
+		if err != nil {
+			return nil, fmt.Errorf("convert symbol %s: %w", s.ID, err)
+		}
+		beforeEng = append(beforeEng, es)
+	}
+	d, err := e.DiffAgainstFileContent(beforeEng, relPath, content)
+	if err != nil {
+		return nil, err
+	}
+	return &FileGraphDiff{
+		Added:    convertSymbols(d.Added),
+		Removed:  convertSymbols(d.Removed),
+		Changed:  convertChanges(d.Changed),
+		Renamed:  convertChanges(d.Renamed),
+		Breaking: convertChanges(d.BreakingChanges),
+	}, nil
+}
+
 // DiffFile diffs the symbols delivered earlier (before) against the file's
 // current indexed symbols using Grove's GraphDiff, so renames are paired and
 // breaking changes classified instead of appearing as remove+add churn.
