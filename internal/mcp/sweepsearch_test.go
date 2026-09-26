@@ -287,3 +287,33 @@ func TestSymbolSearchCapsPathOnlyMatches(t *testing.T) {
 		t.Fatalf("path cap not disclosed or name match lost:\n%s", out)
 	}
 }
+
+// gin: symbol search labelled real test functions (TestErrorSlice) and test
+// helpers "[test double]". Only mock/fake/stub code is a test double.
+func TestSearchLabelsTestFunctionsAsTestsNotDoubles(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"errors.go":      "package gin\n\nfunc ErrorSlice() []error { return nil }\n",
+		"errors_test.go": "package gin\n\nimport \"testing\"\n\nfunc TestErrorSlice(t *testing.T) { _ = ErrorSlice() }\n",
+		"mock_errors.go": "package gin\n\nfunc MockErrorSlice() []error { return nil }\n",
+	})
+	out := callCompact(t, srv, "search", map[string]any{"terms": "ErrorSlice", "scope": "symbols"})
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case strings.Contains(line, "function TestErrorSlice"):
+			if strings.Contains(line, "[test double]") || !strings.Contains(line, "[test]") {
+				t.Errorf("test function mislabelled: %q", line)
+			}
+		case strings.Contains(line, "function MockErrorSlice"):
+			if !strings.Contains(line, "[test double]") {
+				t.Errorf("mock not labelled a test double: %q", line)
+			}
+		case strings.Contains(line, "function ErrorSlice "):
+			if strings.Contains(line, "[test") {
+				t.Errorf("production symbol labelled test: %q", line)
+			}
+		}
+	}
+	if !strings.Contains(out, "function TestErrorSlice") {
+		t.Fatalf("test function missing:\n%s", out)
+	}
+}

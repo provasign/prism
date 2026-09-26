@@ -2216,8 +2216,11 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			continue
 		}
 		m["matchKind"] = item.matchKind
-		if isTestDouble(s.FilePath) {
+		switch searchTestLabel(s) {
+		case "test double":
 			m["testDouble"] = true
+		case "test":
+			m["testCode"] = true
 		}
 		annotated = append(annotated, m)
 	}
@@ -2437,6 +2440,24 @@ func isTestDouble(path string) bool {
 	return strings.HasSuffix(lp, "_test.go") ||
 		strings.Contains(lp, "mock") || strings.Contains(lp, "fake") ||
 		strings.Contains(lp, "stub") || strings.Contains(lp, "/testdata/")
+}
+
+// searchTestLabel distinguishes a test double (mock/fake/stub) from other
+// test code for search locator lines. isTestDouble also covers every
+// _test.go file, which is right for demoting candidates but labelled real
+// test functions (TestErrorSlice, TestContextGetErrorSlice) "[test double]".
+func searchTestLabel(s grove.SymbolRecord) string {
+	lp := strings.ToLower(filepath.ToSlash(s.FilePath))
+	ln := strings.ToLower(s.Name)
+	for _, marker := range []string{"mock", "fake", "stub"} {
+		if strings.Contains(lp, marker) || strings.Contains(ln, marker) {
+			return "test double"
+		}
+	}
+	if isTestDouble(s.FilePath) || isTestFilePath(s.FilePath) {
+		return "test"
+	}
+	return ""
 }
 
 // projectSymbol returns only the requested columns of a symbol. file, line and

@@ -234,7 +234,7 @@ func TestSearchSymbolsPrefersRealMatchesBeforeCap(t *testing.T) {
 	}
 	for _, s := range syms {
 		m := s.(map[string]any)
-		if m["testDouble"] == true {
+		if m["testDouble"] == true || m["testCode"] == true {
 			t.Fatalf("test double displaced a production match: %v", syms)
 		}
 	}
