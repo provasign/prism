@@ -21,6 +21,20 @@ var readGuardAssets embed.FS
 const (
 	readGuardTrackerPath = ".claude/hooks/prism_read_tracker.py"
 	readGuardGuardPath   = ".claude/hooks/prism_read_guard.py"
+
+	// readGuardInvalidateMatcher routes edits and shell commands to the
+	// tracker so it forgets ranges once their file may have changed (a stale
+	// range once denied a Read of code the agent had just edited).
+	readGuardInvalidateMatcher = "Edit|Write|MultiEdit|NotebookEdit|Bash"
+
+	// readGuardStateDir holds per-session tracker state; the tracker writes a
+	// "*" .gitignore inside it so the state never shows up in git.
+	readGuardStateDir = ".claude/prism-read-guard"
+
+	// readGuardLegacyState is where v0.84 and earlier kept the tracker
+	// state (project root, shared across sessions); install and uninstall
+	// both delete it.
+	readGuardLegacyState = ".prism-read-tracker.json"
 )
 
 func readGuardTrackerCmd() string { return "python3 " + readGuardTrackerPath }
@@ -29,7 +43,7 @@ func readGuardGuardCmd() string   { return "python3 " + readGuardGuardPath }
 // installReadGuard writes the two hook scripts into projectDir/.claude/hooks
 // and registers them in projectDir/.claude/settings.json. Denies a native
 // Read that substantially overlaps a range prism already delivered this
-// session -- measured (2026-09-22, 13-task controlled A/B, hook-on vs
+// session and whose file is unchanged on disk since -- measured (2026-09-22, 13-task controlled A/B, hook-on vs
 // hook-off on the identical task set) to cut tokens ~11% with no change in
 // resolve rate. Claude Code only: hooks are a Claude Code mechanism, no
 // other supported harness exposes an equivalent.
@@ -47,6 +61,8 @@ func installReadGuard(projectDir string) error {
 			return fmt.Errorf("read-guard: %w", err)
 		}
 	}
+	// v0.84-and-earlier state had no session scoping and no invalidation; drop it.
+	_ = os.Remove(filepath.Join(projectDir, readGuardLegacyState))
 
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.json")
 	doc, err := readJSONObject(settingsPath)
@@ -57,7 +73,10 @@ func installReadGuard(projectDir string) error {
 	if hooks == nil {
 		hooks = map[string]any{}
 	}
+	// Re-running install upgrades an older install in place: the scripts are
+	// rewritten above and addHookEntry only adds the entries that are missing.
 	changed := addHookEntry(hooks, "PostToolUse", "mcp__prism__prism", readGuardTrackerCmd())
+	changed = addHookEntry(hooks, "PostToolUse", readGuardInvalidateMatcher, readGuardTrackerCmd()) || changed
 	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed
 	doc["hooks"] = hooks
 	if changed {
@@ -84,7 +103,8 @@ func uninstallReadGuard(projectDir string) error {
 			return fmt.Errorf("read-guard: %w", err)
 		}
 	}
-	_ = os.Remove(filepath.Join(projectDir, ".prism-read-tracker.json"))
+	_ = os.Remove(filepath.Join(projectDir, readGuardLegacyState))
+	_ = os.RemoveAll(filepath.Join(projectDir, filepath.FromSlash(readGuardStateDir)))
 
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.json")
 	doc, err := readJSONObject(settingsPath)

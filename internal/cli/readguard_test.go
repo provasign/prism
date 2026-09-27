@@ -34,8 +34,8 @@ func TestReadGuard_InstallWritesHooksAndSettings(t *testing.T) {
 		t.Fatalf("no hooks key in settings.json: %s", raw)
 	}
 	post, _ := hooks["PostToolUse"].([]any)
-	if len(post) != 1 {
-		t.Fatalf("expected exactly 1 PostToolUse entry, got %d: %s", len(post), raw)
+	if len(post) != 2 {
+		t.Fatalf("expected exactly 2 PostToolUse entries, got %d: %s", len(post), raw)
 	}
 	pre, _ := hooks["PreToolUse"].([]any)
 	if len(pre) != 1 {
@@ -57,8 +57,8 @@ func TestReadGuard_InstallIsIdempotent(t *testing.T) {
 	json.Unmarshal(raw, &doc) //nolint:errcheck
 	hooks := doc["hooks"].(map[string]any)
 	post := hooks["PostToolUse"].([]any)
-	if len(post) != 1 {
-		t.Errorf("expected 1 PostToolUse entry after double install, got %d: %s", len(post), raw)
+	if len(post) != 2 {
+		t.Errorf("expected 2 PostToolUse entries after double install, got %d: %s", len(post), raw)
 	}
 }
 
