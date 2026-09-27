@@ -3165,9 +3165,29 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			isWide = count >= wideMemberAmbiguityThreshold
 		}
 		externalMissing := strings.Contains(err.Error(), "no type named") && strings.Contains(query, ".")
-		if isWide || externalMissing || stringArg(args, "signature", "") != "" {
-			if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, stringArg(args, "signature", "")); inferErr == nil {
+		signature := stringArg(args, "signature", "")
+		switch {
+		case externalMissing:
+			if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, signature); inferErr == nil {
 				r, err, inferenceNote = inferred, nil, note
+			}
+		case isWide:
+			// A bare name the project itself declares in an interface is a
+			// local contract: guessing one "external" family from every
+			// same-shaped method merges unrelated contracts (gin wide bed
+			// 2026-09-27: Binding.Name and BindingUri.Name, both local, came
+			// back as one family plus runtime.Func.Name callers). Ask for the
+			// owner instead; the external guess stays for names no local
+			// interface declares.
+			if owners := h.localContractOwners(ctx, query); len(owners) > 0 {
+				err = localContractError(query, owners, err)
+			} else if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, signature); inferErr == nil {
+				r, err, inferenceNote = inferred, nil, note
+			}
+		case signature != "" && len(wide) == 2:
+			// A few candidates: the signature may pick one of grove's own.
+			if picked, ok := h.pickAmbiguousBySignature(ctx, err, query, signature); ok {
+				r, err = h.Grove.ChangeImpactScoped(ctx, picked.QualifiedName, picked.FilePath)
 			}
 		}
 	}

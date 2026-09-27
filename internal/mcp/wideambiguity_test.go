@@ -95,3 +95,52 @@ func TestEnrichAmbiguousImpactError_MalformedMessageFallsBackToNil(t *testing.T)
 		t.Fatalf("unparseable candidate count must not synthesize a threshold decision: %v", got)
 	}
 }
+
+// gin wide bed (2026-09-27): change_impact(name="Name", file=binding.go,
+// signature="Name() string") took the external-family guess and returned
+// Binding.Name AND BindingUri.Name (two local interfaces) as one family. A
+// member the project declares in its own interfaces is a local contract.
+func ginLikeFixture() map[string]string {
+	files := map[string]string{
+		"go.mod": "module example.com/gin\n\ngo 1.26\n",
+		"binding.go": "package gin\n\ntype Binding interface {\n\tName() string\n\tBind(v any) error\n}\n\n" +
+			"type BindingUri interface {\n\tName() string\n\tBindUri(v any) error\n}\n",
+		"uri.go": "package gin\ntype uriBinding struct{}\nfunc (uriBinding) Name() string { return \"uri\" }\nfunc (uriBinding) BindUri(v any) error { return nil }\n",
+	}
+	for i := 0; i < wideMemberAmbiguityThreshold; i++ {
+		files[fmt.Sprintf("impl%02d.go", i)] = fmt.Sprintf(
+			"package gin\ntype b%02d struct{}\nfunc (b%02d) Name() string { return \"%d\" }\nfunc (b%02d) Bind(v any) error { return nil }\n", i, i, i, i)
+	}
+	return files
+}
+
+func TestChangeImpact_FileScopedSignatureDoesNotMergeLocalInterfaces(t *testing.T) {
+	h := evidenceHandler(t, ginLikeFixture())
+	_, err := h.Invoke("prism_change_impact", map[string]any{
+		"query": "Name", "file": "binding.go", "signature": "Name() string"})
+	if err == nil {
+		t.Fatal("two local interfaces declare Name() string in binding.go; the answer must ask which")
+	}
+	for _, want := range []string{"Binding.Name", "BindingUri.Name"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("ambiguity must name %s: %s", want, err)
+		}
+	}
+}
+
+func TestChangeImpact_WideBareLocalContractNamesOwners(t *testing.T) {
+	h := evidenceHandler(t, ginLikeFixture())
+	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "Name"})
+	if err == nil || !strings.Contains(err.Error(), "LOCAL CONTRACT") {
+		t.Fatalf("wide bare name declared by local interfaces must name the owners, got %v", err)
+	}
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "Binding.Name"})
+	if err != nil {
+		t.Fatalf("owner-qualified retry failed: %v", err)
+	}
+	for _, raw := range anySlice(out.(map[string]any)["family"]) {
+		if s := fmt.Sprint(raw); strings.Contains(s, "uriBinding") || strings.Contains(s, "BindingUri") {
+			t.Fatalf("Binding.Name family contains a BindingUri look-alike: %v", raw)
+		}
+	}
+}

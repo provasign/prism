@@ -3,7 +3,9 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/provasign/prism/internal/grove"
@@ -156,4 +158,103 @@ func symbolSiteKey(s grove.SymbolRecord) string {
 		return s.ID
 	}
 	return fmt.Sprintf("%s:%d:%s", s.FilePath, s.Span.Start, displayQN(s))
+}
+
+// localContractOwners lists the project's own interface declarations of a
+// bare member name (members indexed with the "declaration" annotation: Go
+// and TS interface methods, bodiless contract members). Non-empty means the
+// name is a local contract, not an external one.
+func (h *Handler) localContractOwners(ctx context.Context, query string) []grove.SymbolRecord {
+	head := query
+	if i := strings.IndexByte(head, '('); i >= 0 {
+		head = head[:i]
+	}
+	head = strings.TrimSpace(head)
+	if strings.Contains(head, ".") {
+		return nil // already owner-qualified
+	}
+	candidates, err := h.Grove.SearchSymbols(ctx, head, exhaustiveSymbolCap)
+	if err != nil {
+		return nil
+	}
+	var owners []grove.SymbolRecord
+	seen := map[string]bool{}
+	for _, c := range candidates {
+		if c.Name != head || c.ParentSymbol == "" || !hasAnnotation(c, "declaration") {
+			continue
+		}
+		if key := c.QualifiedName + "@" + c.FilePath; !seen[key] {
+			seen[key] = true
+			owners = append(owners, c)
+		}
+	}
+	sort.Slice(owners, func(i, j int) bool {
+		if owners[i].QualifiedName != owners[j].QualifiedName {
+			return owners[i].QualifiedName < owners[j].QualifiedName
+		}
+		return owners[i].FilePath < owners[j].FilePath
+	})
+	return owners
+}
+
+func hasAnnotation(s grove.SymbolRecord, want string) bool {
+	for _, a := range s.Annotations {
+		if a == want {
+			return true
+		}
+	}
+	return false
+}
+
+// localContractError keeps grove's ambiguity error and names the local
+// interfaces that declare the member, so the retry is one qualified call.
+func localContractError(query string, owners []grove.SymbolRecord, orig error) error {
+	var b strings.Builder
+	for i, o := range owners {
+		if i == 12 {
+			fmt.Fprintf(&b, "\n  … %d more", len(owners)-i)
+			break
+		}
+		fmt.Fprintf(&b, "\n  %s  (%s:%d)", o.QualifiedName, o.FilePath, o.Span.Start)
+	}
+	return fmt.Errorf("%w\n\nLOCAL CONTRACT: this project declares %s in its own interface(s):%s\n"+
+		"Re-run change_impact with the owner-qualified name (e.g. %s): its family is the "+
+		"types that implement that interface, and look-alike methods of unrelated types "+
+		"stay out. For an interface declared outside this repository, qualify with that "+
+		"interface's name instead (pkg.Interface.Method).",
+		orig, leafOf(query), b.String(), owners[0].QualifiedName)
+}
+
+// ambiguousCandidateLine is one candidate in grove's ambiguity error:
+// "  Binding.Name  (binding/binding.go:33)".
+var ambiguousCandidateLine = regexp.MustCompile(`(?m)^\s+(\S+)\s+\(([^():]+):(\d+)\)\s*$`)
+
+// pickAmbiguousBySignature narrows grove's own short candidate list by the
+// caller's signature. ok only when exactly one candidate matches.
+func (h *Handler) pickAmbiguousBySignature(ctx context.Context, err error, query, signature string) (grove.SymbolRecord, bool) {
+	leaf := query
+	if i := strings.IndexByte(leaf, '('); i >= 0 {
+		leaf = leaf[:i]
+	}
+	leaf = leafOf(strings.TrimSpace(leaf))
+	want := paramListNamed(signature, leaf)
+	var match []grove.SymbolRecord
+	for _, m := range ambiguousCandidateLine.FindAllStringSubmatch(err.Error(), -1) {
+		qn, file := m[1], m[2]
+		line, _ := strconv.Atoi(m[3])
+		syms, ferr := h.Grove.FileSymbols(ctx, file)
+		if ferr != nil {
+			continue
+		}
+		for _, s := range syms {
+			if s.QualifiedName == qn && s.Span.Start == line &&
+				paramsMatch(want, paramListNamed(s.Signature, leaf), s.Language, nil) {
+				match = append(match, s)
+			}
+		}
+	}
+	if len(match) != 1 {
+		return grove.SymbolRecord{}, false
+	}
+	return match[0], true
 }
