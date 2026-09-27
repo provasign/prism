@@ -1,0 +1,93 @@
+shale_version: "0"
+id: 4c69cd72-5bfb-48d7-8455-3d1158f12b39-c5
+created_at: 2026-09-27T11:33:14.618292Z
+finalized_at: 2026-09-27T11:37:50.239077Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/read-guard-windows-paths
+privacy: redacted
+files:
+    - path: internal/cli/assets/prism_read_guard.py
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-27T11:36:29.386248Z
+    - path: internal/cli/assets/prism_read_tracker.py
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-27T11:36:36.093834Z
+    - path: internal/cli/readguard_hooks_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-27T11:36:50.203184Z
+commands:
+    - cmd: |-
+        git log --oneline origin/main..main && git tag -a v0.84.1 -m "Release v0.84.1: read guard forgets delivered ranges once a file may have changed
+
+        The read guard's tracker kept ranges forever in one shared file, so after an
+        edit the agent could be denied a Read of code it had just changed (jackson
+        pr5959), and earlier sessions' ranges could block later Reads. Ranges are now
+        per session, dropped on edits and file-rewriting Bash commands, and checked
+        against the file's mtime and size before any Read is denied.
+
+        Gates: go test green on macOS and Linux (14 hook tests exec the installed
+        scripts); ci_invariants all held. grove unchanged (v0.60.0)." && git push origin main v0.84.1 2>&1 | tail -3
+      at: 2026-09-27T11:33:14.618292Z
+      classified: test
+    - cmd: until s=$(gh run list --limit 6 --json name,status,conclusion,headBranch --jq '.[] | select(.headBranch=="v0.84.1" or .headBranch=="main") | "\(.name) \(.headBranch) \(.status) \(.conclusion)"'); ! echo "$s" | grep -q "in_progress\|queued"; do sleep 20; done; echo "$s"; cat /Users/tapabratapal/Projects/provasign/research/harness/results/sweep-2026-09-26/headline/java_rescore.log
+      at: 2026-09-27T11:35:23.551439Z
+      classified: other
+    - cmd: id=$(gh run list --workflow CI --branch main --limit 1 --json databaseId --jq '.[0].databaseId'); gh run view $id --log-failed 2>&1 | grep -E "FAIL|---|Error|error|panic|\.go:[0-9]+" | head -30
+      at: 2026-09-27T11:35:30.182463Z
+      classified: other
+    - cmd: gh run list --workflow CI --limit 6 --json headSha,conclusion,displayTitle --jq '.[] | "\(.headSha[0:8]) \(.conclusion) \(.displayTitle[0:60])"'; id=$(gh run list --workflow CI --branch main --limit 1 --json databaseId --jq '.[0].databaseId'); gh run view $id --log-failed 2>&1 | grep -E "^Test.*(FAIL|ok )\s+github" | awk -F'\t' '{print $1, $3}' | cut -c1-160
+      at: 2026-09-27T11:35:42.635854Z
+      classified: other
+    - cmd: grep -n "path\|realpath\|abspath\|normcase\|replace(\|relpath\|os.sep\|\\\\\\\\" internal/cli/assets/prism_read_tracker.py | head -50
+      at: 2026-09-27T11:35:42.695622Z
+      classified: other
+    - cmd: id=$(gh run list --workflow CI --branch main --limit 1 --json databaseId --jq '.[0].databaseId'); gh run view $id --log-failed 2>&1 | grep -E "FAIL\s+github|goroutine 1 \[|^.*created by .*mcp|FAIL$" | cut -c1-220 | head; id2=$(gh run list --workflow CI --limit 6 --json databaseId,headSha --jq '.[] | select(.headSha|startswith("4fecf8ee")) | .databaseId'); echo "--- 4fecf8ee:"; gh run view $id2 --log-failed 2>&1 | grep -E "FAIL|fatal error" | cut -c1-200 | head -5; sed -n 100,135p internal/cli/assets/prism_read_tracker.py
+      at: 2026-09-27T11:35:51.95241Z
+      classified: other
+    - cmd: sed -n 36,75p internal/cli/assets/prism_read_tracker.py; sed -n 140,215p internal/cli/assets/prism_read_tracker.py; sed -n 1,80p internal/cli/readguard_hooks_test.go
+      at: 2026-09-27T11:36:03.737731Z
+      classified: other
+    - cmd: grep -n "def \|endswith\|rstrip\|startswith" internal/cli/assets/prism_read_guard.py | head -30
+      at: 2026-09-27T11:36:09.046543Z
+      classified: other
+    - cmd: sed -n 49,80p internal/cli/assets/prism_read_guard.py
+      at: 2026-09-27T11:36:12.254396Z
+      classified: other
+    - cmd: sed -n 1,48p internal/cli/assets/prism_read_guard.py | grep -n "import\|^def\|^[A-Z_]* =" ; grep -n "^on:\|push:\|pull_request\|branches\|workflow_dispatch" .github/workflows/ci.yml
+      at: 2026-09-27T11:36:22.161931Z
+      classified: other
+    - cmd: sed -n 80,215p internal/cli/readguard_hooks_test.go | grep -n "func Test\|h.abs\|hookRel" | head -30
+      at: 2026-09-27T11:36:36.175189Z
+      classified: other
+    - cmd: sed -n 144,165p internal/cli/readguard_hooks_test.go
+      at: 2026-09-27T11:36:42.941039Z
+      classified: other
+    - cmd: go test ./internal/cli/ -run 'ReadGuard' -count=1 2>&1 | tail -3; git stash -q && go test ./internal/cli/ -run 'ReadGuard' -count=1 2>&1 | tail -3; git stash pop -q && git status --short
+      at: 2026-09-27T11:37:00.905296Z
+      classified: test
+    - cmd: git stash push -q internal/cli/assets/ && go test ./internal/cli/ -run 'BackslashEdit' -count=1 2>&1 | tail -3; git stash pop -q && go test ./internal/cli/ -run 'BackslashEdit' -count=1 2>&1 | tail -1; git status --short
+      at: 2026-09-27T11:37:08.013647Z
+      classified: test
+    - cmd: id=$(gh run list --workflow CI --branch main --limit 1 --json databaseId --jq '.[0].databaseId'); gh run view $id --log-failed 2>&1 | grep -A3 -E "^.*=== RUN|Test[A-Z][A-Za-z_]+\(" | grep -oE "Test[A-Za-z0-9_]+" | sort | uniq -c | sort -rn | head -5; gh run view $id --log-failed 2>&1 | grep -n "fatal error" -A40 | grep -E "goroutine [0-9]+ \[|github.com/provasign|modernc|sqlite" | head -15
+      at: 2026-09-27T11:37:16.377133Z
+      classified: other
+    - cmd: 'id=$(gh run list --workflow CI --branch main --limit 1 --json databaseId --jq ''.[0].databaseId''); gh run view $id --log-failed 2>&1 | sed ''s/^.*Z //'' | grep -n "fatal error: found pointer" -B5 -A60 | grep -vE "^\s*[0-9]+-\s+[A-Za-z]:/hostedtoolcache.*\+0x|fp=0x" | cut -c1-170 | head -60'
+      at: 2026-09-27T11:37:22.641455Z
+      classified: other
+    - cmd: for id in $(gh run list --workflow CI --limit 25 --json databaseId,conclusion --jq '.[] | select(.conclusion=="failure") | .databaseId'); do n=$(gh run view $id --log-failed 2>/dev/null | grep -c "found pointer to free object\|fatal error:"); t=$(gh run view $id --json createdAt,headSha --jq '"\(.createdAt) \(.headSha[0:8])"'); echo "$id $t fatal=$n"; done
+      at: 2026-09-27T11:37:36.721958Z
+      classified: other
+notes:
+    - text: continuation of session 4c69cd72-5bfb-48d7-8455-3d1158f12b39 — events captured after its evidence was finalized
+      at: 2026-09-27T11:33:14.618292Z
+redactions: 0
