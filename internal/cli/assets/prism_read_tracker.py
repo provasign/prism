@@ -121,11 +121,18 @@ def bash_rewrites_files(cmd: str) -> bool:
     return False
 
 
+def norm_path(p: str) -> str:
+    """Compare paths with '/' separators; Windows paths are case-insensitive."""
+    p = p.replace("\\", "/")
+    return p.lower() if os.name == "nt" else p
+
+
 def same_file(path: str, tracked_file: str) -> bool:
     """path is absolute (Edit's file_path); tracked_file is what prism
     reported, usually repo-relative -- the guard's own endswith rule."""
-    a = path.rstrip("/")
-    b = tracked_file[2:] if tracked_file.startswith("./") else tracked_file
+    a = norm_path(path).rstrip("/")
+    b = norm_path(tracked_file)
+    b = b[2:] if b.startswith("./") else b
     return a == b or a.endswith("/" + b) or b.endswith("/" + a.lstrip("/"))
 
 

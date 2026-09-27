@@ -37,6 +37,12 @@ def state_file(session_id) -> Path:
     return root / STATE_DIR / f"session-{sid}.json"
 
 
+def norm_path(p: str) -> str:
+    """Compare paths with '/' separators; Windows paths are case-insensitive."""
+    p = p.replace("\\", "/")
+    return p.lower() if os.name == "nt" else p
+
+
 def overlap_fraction(req_from: int, req_to: int, cov_from: int, cov_to: int) -> float:
     lo = max(req_from, cov_from)
     hi = min(req_to, cov_to)
@@ -63,12 +69,13 @@ def main():
     except (OSError, ValueError):
         return
     now = [st.st_mtime_ns, st.st_size]
+    want = norm_path(file_path)
 
     best_cov, best_frac = None, 0.0
     for t in tracked:
-        f = t.get("file") or ""
+        f = norm_path(t.get("file") or "")
         rel = f[2:] if f.startswith("./") else f
-        if not rel or not (file_path == rel or file_path.endswith("/" + rel.lstrip("/"))):
+        if not rel or not (want == rel or want.endswith("/" + rel.lstrip("/"))):
             continue
         if t.get("stat") != now:
             continue  # changed on disk since delivery (or unverifiable): not redundant
