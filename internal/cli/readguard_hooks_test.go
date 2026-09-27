@@ -162,6 +162,20 @@ func TestReadGuardHook_EditToolsInvalidateTheirFile(t *testing.T) {
 	}
 }
 
+// Windows hosts pass backslash paths; prism reports '/' paths. Before the
+// fix no range ever matched there, so the guard never blocked anything.
+func TestReadGuardHook_BackslashEditPathInvalidates(t *testing.T) {
+	h := newHookEnv(t)
+	h.deliver(hookRel, 1406, 1480)
+	if h.readDecision(1406, 75, "") == "" {
+		t.Fatal("delivered range not enforced")
+	}
+	h.post("Edit", map[string]any{"file_path": `C:\work\repo\` + strings.ReplaceAll(hookRel, "/", `\`)})
+	if r := h.readDecision(1406, 75, ""); r != "" {
+		t.Errorf("Edit given a backslash path kept the range: %s", r)
+	}
+}
+
 func TestReadGuardHook_FileRewritingBashInvalidates(t *testing.T) {
 	for _, cmd := range []string{
 		"git stash && git stash pop", "git checkout -- .", "git -C . reset --hard",
