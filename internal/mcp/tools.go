@@ -182,7 +182,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		select {
 		case <-h.readyCh:
 		case <-ctx.Done():
-			return nil, errors.New("timed out waiting for Grove to become ready")
+			return nil, errors.New("the first index of this repository is still running (a never-built project compiles its dependencies once; this can take several minutes) — it continues in the background; retry this call shortly")
 		}
 	}
 	// Every tool — including prism_index — resolves against the root the
