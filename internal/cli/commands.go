@@ -2009,16 +2009,38 @@ func cmdIndex(args []string) int {
 	}
 	defer client.Shutdown()
 	_ = cfg
-	// Match the MCP path's 10-minute budget (a large monorepo cold index
-	// legitimately exceeds 5); PRISM_INDEX_TIMEOUT overrides for bigger repos.
-	timeout := 10 * time.Minute
+	// No default deadline: a deadline cancels the index itself, and a first
+	// index of a never-built project compiles its dependencies once (grafana:
+	// ~29 min cold Go build cache, ~60s after). Cancelling threw that work
+	// away and the next command started over. PRISM_INDEX_TIMEOUT still sets
+	// one; Ctrl+C stops the run.
+	ctx, cancel := context.WithCancel(context.Background())
 	if v := os.Getenv("PRISM_INDEX_TIMEOUT"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
-			timeout = d
+			cancel()
+			ctx, cancel = context.WithTimeout(context.Background(), d)
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	if st, err := client.Status(ctx); err == nil && st != nil && st.FilesIndexed == 0 {
+		fmt.Fprintln(os.Stderr, "prism: first index. Compiler-backed analysis compiles the project's dependencies once\n"+
+			"       (Go build cache, javac, the TypeScript checker). If the project was never built on this\n"+
+			"       machine this can take several minutes; later indexes are incremental.")
+	}
+	done := make(chan struct{})
+	defer close(done)
+	go func(start time.Time) {
+		tick := time.NewTicker(30 * time.Second)
+		defer tick.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-tick.C:
+				fmt.Fprintf(os.Stderr, "prism: still indexing (%s elapsed)\n", time.Since(start).Round(time.Second))
+			}
+		}
+	}(time.Now())
 	res, err := client.Index(ctx, mustAbs(dir))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "index:", err)
