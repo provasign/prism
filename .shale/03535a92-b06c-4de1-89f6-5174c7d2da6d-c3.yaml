@@ -1,0 +1,117 @@
+shale_version: "0"
+id: 03535a92-b06c-4de1-89f6-5174c7d2da6d-c3
+created_at: 2026-09-28T12:18:53.059391Z
+finalized_at: 2026-09-28T12:32:33.149177Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/first-index-ux
+privacy: redacted
+commands:
+    - cmd: 'gh pr merge 15 --merge 2>&1 | tail -1; gh pr view 15 --json state,mergeCommit -q ''.state+" "+.mergeCommit.oid[0:8]''; git checkout -q main && git pull -q --ff-only origin main && git tag -a v0.85.1 -m "v0.85.1: grove v0.61.1 (TS script configs + inferred projects, Python container receivers)" && git push -q origin v0.85.1 2>&1 | tail -1; until [ "$(gh run list --workflow release.yml --limit 1 --json status,headBranch -q ''.[0].headBranch+" "+.[0].status'')" = "v0.85.1 completed" ]; do sleep 20; done; gh run list --workflow release.yml --limit 1 --json conclusion -q ''.[0].conclusion''; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale >/dev/null 2>&1; sleep 15; R=$(gh run list --repo provasign/homebrew-shale --limit 1 --json databaseId -q ''.[0].databaseId''); until [ "$(gh run view $R --repo provasign/homebrew-shale --json status -q .status)" = "completed" ]; do sleep 10; done; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq ''.content'' | base64 -d | grep -m1 version; brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -1; prism version'
+      at: 2026-09-28T12:18:53.059391Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' '2a\
+        - [Releases v0.85.0/v0.85.1 2026-09-28](project_release_v085_2026_09_28.md) — grove v0.61.1+astkit v0.15.2 shipped; required-check names fixed (normal merges work); open: grafana site-name scorer, cold Go cache, Windows mcp timeout
+        ' MEMORY.md && sed -n 3p MEMORY.md
+      at: 2026-09-28T12:19:10.970177Z
+      classified: other
+    - cmd: grep -rn "10 \* time.Minute\|600 \* time.Second\|time.Minute \* 10\|Timeout:" internal/grove/client.go internal/cli/commands.go | head; sed -n '/^func cmdIndex/,/^}/p' internal/cli/commands.go | head -40
+      at: 2026-09-28T12:29:39.541601Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -n "Progress\|progress" prism/internal/grove/client.go | head -12; grep -n "func (p \*progress\|prog.phase(\"native\"\|type progress" grove/internal/index/indexer.go | head; grep -rn "func (i \*Indexer) WithProgress\|Progress func\|OnProgress" grove/internal/index/*.go grove/pkg/grove/*.go | head -5
+      at: 2026-09-28T12:29:52.308803Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "prog :=\|prog =\|func (p \*indexProgress\|type indexProgress\|func newProgress\|func (p .*) phase(" internal/index/*.go | head; grep -rn "ProgressFunc\|Progress " internal/index/indexer.go | head -5
+      at: 2026-09-28T12:30:00.583212Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 1,60p internal/index/progress.go; grep -rn "index-progress\|MetaIndexProgress" --include='*.go' internal pkg ../prism/internal | grep -v _test | head
+      at: 2026-09-28T12:30:10.331251Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && sed -n 1015,1035p grove/internal/store/store.go; grep -n "Phase\|Progress" grove/pkg/grove/*.go | head -8; sed -n 290,312p prism/internal/grove/client.go
+      at: 2026-09-28T12:30:26.092434Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/commands.go'; s=open(p).read()
+        old='''	// Match the MCP path's 10-minute budget (a large monorepo cold index
+        	// legitimately exceeds 5); PRISM_INDEX_TIMEOUT overrides for bigger repos.
+        	timeout := 10 * time.Minute
+        	if v := os.Getenv("PRISM_INDEX_TIMEOUT"); v != "" {
+        		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+        			timeout = d
+        		}
+        	}
+        	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+        	defer cancel()
+        	res, err := client.Index(ctx, mustAbs(dir))'''
+        new='''	// No default deadline: a deadline cancels the index itself, and a first
+        	// index of a never-built project compiles its dependencies once (grafana:
+        	// ~29 min cold Go build cache, ~60s after). Cancelling threw that work
+        	// away and the next command started over. PRISM_INDEX_TIMEOUT still sets
+        	// one; Ctrl+C stops the run.
+        	ctx, cancel := context.WithCancel(context.Background())
+        	if v := os.Getenv("PRISM_INDEX_TIMEOUT"); v != "" {
+        		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+        			cancel()
+        			ctx, cancel = context.WithTimeout(context.Background(), d)
+        		}
+        	}
+        	defer cancel()
+        	if st, err := client.Status(ctx); err == nil && st != nil && st.FilesIndexed == 0 {
+        		fmt.Fprintln(os.Stderr, "prism: first index. Compiler-backed analysis compiles the project's dependencies once\\n"+
+        			"       (Go build cache, javac, the TypeScript checker). If the project was never built on this\\n"+
+        			"       machine this can take several minutes; later indexes are incremental.")
+        	}
+        	done := make(chan struct{})
+        	defer close(done)
+        	go func(start time.Time) {
+        		tick := time.NewTicker(30 * time.Second)
+        		defer tick.Stop()
+        		for {
+        			select {
+        			case <-done:
+        				return
+        			case <-tick.C:
+        				fmt.Fprintf(os.Stderr, "prism: still indexing (%s elapsed)\\n", time.Since(start).Round(time.Second))
+        			}
+        		}
+        	}(time.Now())
+        	res, err := client.Index(ctx, mustAbs(dir))'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        gofmt -l internal/cli; go build ./... && go vet ./internal/cli && echo ok; grep -n "context.WithTimeout\|10 \* time.Minute" internal/mcp/*.go | grep -iv _test | head -5
+      at: 2026-09-28T12:30:48.513118Z
+      classified: lint
+    - cmd: grep -rn "indexTimeout\|IndexTimeout\|index.*time.Minute\|10\*time.Minute\|10 \* time.Minute" internal/mcp/*.go internal/grove/*.go | grep -v _test | head -8
+      at: 2026-09-28T12:30:59.266606Z
+      classified: other
+    - cmd: sed -n 160,200p internal/mcp/tools.go; sed -n 2870,2900p internal/mcp/tools.go
+      at: 2026-09-28T12:31:06.750393Z
+      classified: other
+    - cmd: grep -rn "close(h.readyCh)\|readyCh = make\|close(readyCh)" internal/ | head -3; grep -rn "func.*startBackground\|go func() {" internal/mcp/server.go | head -5
+      at: 2026-09-28T12:31:15.95679Z
+      classified: other
+    - cmd: sed -n 3085,3140p internal/cli/commands.go
+      at: 2026-09-28T12:31:23.527446Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        old='''			return nil, errors.New("timed out waiting for Grove to become ready")'''
+        new='''			return nil, errors.New("the first index of this repository is still running (a never-built project compiles its dependencies once; this can take several minutes) — it continues in the background; retry this call shortly")'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        grep -rn "timed out waiting for Grove" internal/ | head; go build ./... && go test ./internal/mcp ./internal/cli -count=1 2>&1 | tail -3
+      at: 2026-09-28T12:32:00.126476Z
+      classified: test
+    - cmd: go build -o ~/prism-ab-bins/wide-audit/prism-idx ./cmd/prism && S=~/prism-ab-bins/scoped; rm -rf "${S:?}/chi-msg"; git clone -q https://github.com/go-chi/chi.git $S/chi-msg 2>/dev/null; cd $S/chi-msg && ~/prism-ab-bins/wide-audit/prism-idx index . 2>&1 >/dev/null | head -5; echo "--- second run:"; ~/prism-ab-bins/wide-audit/prism-idx index . 2>&1 >/dev/null | head -3; echo "(end)"
+      at: 2026-09-28T12:32:14.43599Z
+      classified: build
+notes:
+    - text: continuation of session 03535a92-b06c-4de1-89f6-5174c7d2da6d — events captured after its evidence was finalized
+      at: 2026-09-28T12:18:53.059391Z
+redactions: 0
