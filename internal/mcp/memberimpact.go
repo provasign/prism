@@ -215,7 +215,7 @@ func FormatMemberImpactText(out map[string]any) (string, bool) {
 	if safe, ok := out["safeToClaimComplete"].(bool); ok {
 		fmt.Fprintf(&b, "safeToClaimComplete: %t\n", safe)
 	}
-	for _, key := range []string{"coverageNote", "scopeBoundary"} {
+	for _, key := range []string{"degradedAnalysis", "coverageNote", "scopeBoundary"} {
 		if v, _ := out[key].(string); v != "" {
 			fmt.Fprintf(&b, "// %s\n", v)
 		}

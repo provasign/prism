@@ -126,7 +126,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"completenessScope": true, "safeToClaimComplete": true,
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
 		"inheritedNote": true, "signatureNote": true, "testOnly": true,
-		"reExports": true, "related": true,
+		"reExports": true, "related": true, "degradedAnalysis": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -253,7 +253,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	if w, _ := out["warning"].(string); w != "" {
 		fmt.Fprintf(&b, "// %s\n", w)
 	}
-	for _, key := range []string{"staleWarning", "scopeNote", "ambiguityNote"} {
+	for _, key := range []string{"degradedAnalysis", "staleWarning", "scopeNote", "ambiguityNote"} {
 		if note, _ := out[key].(string); note != "" {
 			fmt.Fprintf(&b, "// %s\n", note)
 		}

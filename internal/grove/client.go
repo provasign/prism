@@ -306,6 +306,8 @@ func (c *Client) Status(ctx context.Context) (*StatusResult, error) {
 		FilesIndexed: st.FilesIndexed,
 		SymbolCount:  st.SymbolCount,
 		EdgeCount:    st.EdgeCount,
+		Native:       append([]string(nil), st.Native...),
+		Readiness:    Readiness(c.root, st.Native),
 	}, nil
 }
 
@@ -347,6 +349,8 @@ func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {
 		SymbolCount:  res.SymbolCount,
 		EdgeCount:    res.EdgeCount,
 		Errors:       append([]string(nil), res.Errors...),
+		Native:       append([]string(nil), res.Native...),
+		Readiness:    Readiness(res.Root, res.Native),
 	}, nil
 }
 

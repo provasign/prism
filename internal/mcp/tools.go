@@ -3215,7 +3215,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	h.Ledger.RecordCall("prism_change_impact")
 	if r.MemberKind != "" {
-		return memberImpactOutput(r, stringArg(args, "file", "") != ""), nil
+		mout := memberImpactOutput(r, stringArg(args, "file", "") != "")
+		h.addDegradedNote(ctx, mout, r)
+		return mout, nil
 	}
 	signatureNote := ""
 	if sig := stringArg(args, "signature", ""); sig != "" && inferenceNote == "" {
@@ -3383,7 +3385,40 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if hint := h.widerAnchorHint(ctx, r); hint != nil {
 		out["widerAnchor"] = hint
 	}
+	h.addDegradedNote(ctx, out, r)
 	return out, nil
+}
+
+// addDegradedNote warns when the compiler-backed analysis for the answer's
+// language did not run on this index: the sites above are name-based and may
+// be incomplete or over-inclusive (TypeScript field renames measured 1 of 44
+// sites confirmed name-based vs 44 of 44 with the compiler). The fix command
+// lets the agent repair it and re-index.
+func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *grove.ChangeImpactResult) {
+	lang := ""
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		if len(group) > 0 {
+			lang = group[0].Language
+			break
+		}
+	}
+	if lang == "" {
+		return
+	}
+	if lang == "tsx" || lang == "javascript" {
+		lang = "typescript"
+	}
+	st, err := h.Grove.Status(ctx)
+	if err != nil || st == nil {
+		return
+	}
+	for _, issue := range st.Readiness {
+		if issue.Language == lang {
+			out["degradedAnalysis"] = lang + " compiler-backed analysis did not run on this index (" + issue.Problem +
+				"); these sites are name-matched and may be incomplete. Fix: " + issue.Fix
+			return
+		}
+	}
 }
 
 // impactRelaySites is an answer-shaped, de-duplicated inventory for result
