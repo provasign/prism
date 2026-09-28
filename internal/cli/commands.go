@@ -43,7 +43,11 @@ Usage:
   prism install [--harness <ids>] [dir]
                                   Alias for 'prism init'
   prism cleanup-global            Remove Prism entries written by old global setup
-  prism index [dir]               Index codebase via Grove (delta-aware)
+  prism index [dir]               Index codebase via Grove (delta-aware). Exits 3
+                                  when a language's compiler-backed analysis
+                                  could not run (dependencies not installed,
+                                  toolchain missing) and prints the fix;
+                                  [--allow-heuristic] accepts name-based results
   prism watch [dir]               Keep the index warm: delta-reindex on file save
                                   (push model; [--debounce 2s], Ctrl+C to stop)
   prism status [dir]              Show graph stats from Grove
@@ -1987,6 +1991,16 @@ func containsString(list []any, s string) bool {
 }
 
 func cmdIndex(args []string) int {
+	allowHeuristic := false
+	rest := args[:0:0]
+	for _, a := range args {
+		if a == "--allow-heuristic" {
+			allowHeuristic = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	args = rest
 	dir := dirArg(args, 0, ".")
 	cfg, client, err := newClient(dir)
 	if err != nil {
@@ -2011,7 +2025,23 @@ func cmdIndex(args []string) int {
 		return 1
 	}
 	printJSON(res)
-	return 0
+	if len(res.Readiness) == 0 {
+		return 0
+	}
+	// The baseline index must come from a project that compiles: without
+	// the compiler pass, call and reference resolution for these languages
+	// is name-based. The index is written either way; say so loudly.
+	fmt.Fprintln(os.Stderr, "\nprism: compiler-backed analysis is missing for:")
+	for _, r := range res.Readiness {
+		fmt.Fprintf(os.Stderr, "  - %s: %s\n    fix: %s\n", r.Language, r.Problem, r.Fix)
+	}
+	if allowHeuristic {
+		fmt.Fprintln(os.Stderr, "prism: continuing with name-based resolution (--allow-heuristic); accuracy for these languages is lower.")
+		return 0
+	}
+	fmt.Fprintln(os.Stderr, "prism: the index was written, but results for these languages are name-based and less accurate.\n"+
+		"       Fix the above and rerun `prism index`, or pass --allow-heuristic to accept name-based results.")
+	return 3
 }
 
 func cmdStatus(args []string) int {
@@ -2067,6 +2097,10 @@ func cmdDoctor(args []string) int {
 	if graph.FilesIndexed == 0 {
 		state = "warning"
 		warnings = append(warnings, "repository is not indexed; run prism index")
+	}
+	for _, r := range graph.Readiness {
+		state = "warning"
+		warnings = append(warnings, r.Language+": compiler-backed analysis missing ("+r.Problem+"); results are name-based. Fix: "+r.Fix)
 	}
 	printJSON(map[string]any{
 		"status":   state,

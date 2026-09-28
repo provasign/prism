@@ -55,6 +55,10 @@ type StatusResult struct {
 	FilesIndexed int `json:"filesIndexed"`
 	SymbolCount  int `json:"symbolCount"`
 	EdgeCount    int `json:"edgeCount"`
+	// Native / Readiness: the last index run's compiler-backed analysis
+	// diagnostics, and the languages left name-based (see Readiness).
+	Native    []string         `json:"native,omitempty"`
+	Readiness []ReadinessIssue `json:"readiness,omitempty"`
 }
 
 // IndexResult mirrors Grove's /index response.
@@ -67,6 +71,12 @@ type IndexResult struct {
 	SymbolCount  int      `json:"symbolCount"`
 	EdgeCount    int      `json:"edgeCount"`
 	Errors       []string `json:"errors,omitempty"`
+	// Native is grove's per-analyzer diagnostics (compiler-backed passes):
+	// what ran, what was skipped, and why.
+	Native []string `json:"native,omitempty"`
+	// Readiness lists languages whose compiler-backed analysis did not run
+	// or complete, each with the command that fixes it.
+	Readiness []ReadinessIssue `json:"readiness,omitempty"`
 }
 
 // ImpactNode is one entry returned by Grove's /impact endpoint.
