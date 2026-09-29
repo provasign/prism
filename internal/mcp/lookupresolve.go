@@ -129,7 +129,10 @@ func (h *Handler) bestLookup(ctx context.Context, loc *lookupLocator, q lookupQu
 			if !fold && raw != "" && s.QualifiedName == raw {
 				sc, ok = 10000, true
 			}
-		} else if !fold && s.QualifiedName == raw {
+		} else if !fold && s.QualifiedName == raw && strings.ContainsAny(raw, ".:/\\") {
+			// Only a qualified spelling is decisive. A bare name equals the
+			// QN of every owner-less symbol, so this override made an
+			// example-file `var routes` beat node.routes (chi, 2026-09-28).
 			sc = 10000
 		}
 		if !ok {
@@ -158,6 +161,9 @@ func (h *Handler) bestLookup(ctx context.Context, loc *lookupLocator, q lookupQu
 // qualified name are overloads (Java/C#/C++/Kotlin): no name or file argument
 // can select one of them, so their bodies are delivered. Other ties are
 // genuine ambiguity the qualifier couldn't resolve — listed as candidates.
+// lookupAlsoNamedMax bounds the other same-name matches a lookup lists.
+const lookupAlsoNamedMax = 5
+
 func (h *Handler) deliverLookup(ctx context.Context, syms []grove.SymbolRecord, scores []int, bestIdx int, fields []string, fileScope string) map[string]any {
 	best := syms[bestIdx]
 	bestScore := scores[bestIdx]
@@ -187,6 +193,23 @@ func (h *Handler) deliverLookup(ctx context.Context, syms []grove.SymbolRecord, 
 		}
 	}
 	if tied <= 1 {
+		// Name the other symbols that also matched. Without this a lower-
+		// ranked right answer was invisible: chi `lookup routes` showed an
+		// example-file variable and never mentioned node.routes.
+		var also []string
+		for i := range syms {
+			if i == bestIdx || scores[i] < 0 || (syms[i].QualifiedName == best.QualifiedName && syms[i].FilePath == best.FilePath) {
+				continue
+			}
+			if len(also) == lookupAlsoNamedMax {
+				also = append(also, "…")
+				break
+			}
+			also = append(also, lookupCandidateLabel(syms[i]))
+		}
+		if len(also) > 0 {
+			out["alsoNamed"] = also
+		}
 		return out
 	}
 	cands := make([]string, 0, tied)

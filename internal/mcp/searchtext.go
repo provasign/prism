@@ -222,7 +222,11 @@ func renderContextHits(b *strings.Builder, file string, hits []any, seen map[str
 				byLine[n] = ln{strings.TrimRight(fmt.Sprint(l), "\r\n"), false}
 			}
 		}
-		byLine[line] = ln{strings.TrimRight(fmt.Sprint(hm["text"]), "\r\n"), true}
+		text := strings.TrimRight(fmt.Sprint(hm["text"]), "\r\n")
+		if in, _ := hm["in"].(string); in != "" {
+			text += "  [" + in + "]"
+		}
+		byLine[line] = ln{text, true}
 		for i, l := range after {
 			n := line + 1 + i
 			if _, taken := byLine[n]; !taken {

@@ -509,6 +509,21 @@ func (l *lookupLocator) lookupMatch(q lookupQuery, s grove.SymbolRecord, fold bo
 		if isTestDouble(s.FilePath) {
 			score -= 10
 		}
+		if m == 1 {
+			// A bare name means the code agents read and edit: a function,
+			// method or type in the library, not a same-named variable in an
+			// example program. chi `lookup routes` (2026-09-28) delivered
+			// `var routes` from _examples/rest/main.go over node.routes in
+			// tree.go, because the owner-less variable earned the full-QN
+			// bonus above and the method did not. A genuine tie (a field and
+			// a method on different owners) stays a tie and is listed.
+			if len(qs) == len(n) && !lookupCallableOrType(s.Kind) {
+				score -= 20 // no full-QN bonus for an owner-less variable or constant
+			}
+			if isExampleOrDocPath(s.FilePath) {
+				score -= 15
+			}
+		}
 		// A bare "Circle" means the class, not its constructor.
 		if s.Kind == "constructor" && !(m >= 2 && lookupEq(q.segs[m-2], name, fold)) {
 			score -= 5
@@ -593,4 +608,26 @@ func typoProbes(term string) []string {
 	}
 	add(string(r[len(r)-g:]))
 	return out
+}
+
+// lookupCallableOrType reports kinds a bare-name lookup should prefer over
+// variables, fields and constants of the same name.
+func lookupCallableOrType(kind string) bool {
+	switch kind {
+	case "function", "method", "constructor":
+		return true
+	}
+	return isTypeKind(kind)
+}
+
+// isExampleOrDocPath reports example programs, samples and docs: code that
+// shares names with the library but is rarely what a lookup means.
+func isExampleOrDocPath(path string) bool {
+	for _, seg := range strings.Split(strings.ToLower(filepath.ToSlash(path)), "/") {
+		switch seg {
+		case "example", "examples", "_examples", "sample", "samples", "_samples", "demo", "demos", "docs", "doc", "testdata":
+			return true
+		}
+	}
+	return false
 }

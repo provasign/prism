@@ -107,7 +107,27 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 		t.Errorf("per-file overflow should be counted: %v", first)
 	}
 
-	// exhaustive=true: the files past the cap are inventoried, not dropped.
+	// exhaustive=true under exhaustiveFullLineCap: every line, no sample.
+	out = h.renderTextMatches(t.Context(), hits, true)
+	if len(out) != textRenderFileCap+4 { // every file + COMPLETE note
+		t.Fatalf("small exhaustive: got %d entries, want %d", len(out), textRenderFileCap+4)
+	}
+	for _, e := range out[:len(out)-1] {
+		if n := len(anySlice(e["hits"])); n != textRenderHitsPerFile+2 {
+			t.Fatalf("small exhaustive %v: got %d lines, want every one (%d)", e["file"], n, textRenderHitsPerFile+2)
+		}
+	}
+
+	// exhaustive=true over the cap: the files past the render cap are
+	// inventoried, not dropped.
+	perFile := exhaustiveFullLineCap/(textRenderFileCap+3) + 1
+	hits = nil
+	for f := 0; f < textRenderFileCap+3; f++ {
+		name := "f" + string(rune('a'+f)) + ".txt"
+		for l := 1; l <= perFile; l++ {
+			hits = append(hits, textsearch.Hit{File: name, Line: l, Text: "x"})
+		}
+	}
 	out = h.renderTextMatches(t.Context(), hits, true)
 	if len(out) != textRenderFileCap+1 {
 		t.Fatalf("exhaustive: got %d entries, want %d", len(out), textRenderFileCap+1)
@@ -119,8 +139,8 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 	}
 	for _, entry := range inventory {
 		sites := anySlice(entry["sites"])
-		if len(sites) != textRenderHitsPerFile+2 {
-			t.Fatalf("%v: got %d exact sites, want %d", entry["file"], len(sites), textRenderHitsPerFile+2)
+		if len(sites) != perFile {
+			t.Fatalf("%v: got %d exact sites, want %d", entry["file"], len(sites), perFile)
 		}
 	}
 }
