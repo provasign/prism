@@ -17,12 +17,16 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/provasign/prism/internal/ranking"
 )
 
 // Hit is one matching line. File is root-relative with forward slashes.
@@ -30,6 +34,12 @@ type Hit struct {
 	File string `json:"file"`
 	Line int    `json:"line"`
 	Text string `json:"text"`
+	// Before/After hold up to Options.Context lines of surrounding source,
+	// oldest first. Populated by attachContext after the match search
+	// itself, regardless of which backend served it — see Context's comment
+	// for why.
+	Before []string `json:"before,omitempty"`
+	After  []string `json:"after,omitempty"`
 }
 
 // Result is the outcome of one search.
@@ -44,6 +54,29 @@ type Result struct {
 	// project's own source).
 	Truncated bool `json:"truncated,omitempty"`
 	TimedOut  bool `json:"timedOut,omitempty"`
+	// TotalHits is how many matches the backend actually emitted and
+	// FilesMatched how many files they span -- reported even when Hits is
+	// capped, so truncation always carries a denominator.
+	//
+	// LOWER BOUND, not the exact total: the backend is invoked with a
+	// per-file cap (MaxPerFile), so a file with 200 matches contributes at
+	// most that many. Callers must present it as "at least N".
+	TotalHits    int `json:"totalHits,omitempty"`
+	FilesMatched int `json:"filesMatched,omitempty"`
+	// CountComplete distinguishes an exact count from the lower bound above.
+	// ResultsComplete additionally says Hits contains that entire exact set.
+	// Both are set only by the bounded adaptive-count path.
+	CountComplete   bool `json:"countComplete,omitempty"`
+	ResultsComplete bool `json:"resultsComplete,omitempty"`
+	// FileCounts is the exact per-file match count from the adaptive count
+	// pass, set only with CountComplete. It names every matching file even
+	// when Hits is a sample, so a caller can show where the rest live.
+	FileCounts []FileCount `json:"fileCounts,omitempty"`
+	// RejectedPaths lists requested scopes that resolved outside the root
+	// and were dropped. Never silent: a search that quietly widened from
+	// one directory to the whole tree returns plausible hits from the wrong
+	// place, which is worse than an error.
+	RejectedPaths []string `json:"rejectedPaths,omitempty"`
 }
 
 // Options bound a search. Zero values get safe defaults.
@@ -55,6 +88,115 @@ type Options struct {
 	// string. A pattern that does not compile falls back to literal — a
 	// search that errors is a tool agents route around.
 	Regex bool
+	// Paths restricts the search to these repo-relative files or
+	// directories. Empty means the whole tree.
+	//
+	// This exists because agents overwhelmingly search SCOPED. 511 of 946
+	// mined real grep invocations named a path (v0.51.0 mining), and 12 of
+	// 20 in the 2026-08-15 A/B cells did. Without it prism_search cannot
+	// express `grep -n alias octodns/manager.py`, so an agent that knows
+	// which file it wants reaches for grep instead — measured as the main
+	// reason prism went unused in cells where the issue named its location.
+	//
+	// Entries that escape the root are DROPPED, and the caller is told
+	// which: silently searching the whole tree after being asked for one
+	// directory would return plausible hits from the wrong place.
+	Paths []string
+	// Glob restricts the search to files matching these shell globs
+	// (rg --glob / grep --include), e.g. "*.py".
+	Glob []string
+	// CaseSensitive matches the pattern's exact case. The default is
+	// case-insensitive (grep -i semantics). Query uses it for terms with an
+	// uppercase letter, where "Errors" must not pull in every "errors"
+	// import line.
+	CaseSensitive bool
+	// Exhaustive removes both caps: every match, from every file. The agent
+	// declares this -- prism does not guess. A "where is X" question wants a
+	// sample and a count; "rewrite every .format() call" wants all 1,024
+	// sites, and a capped answer to the second is worse than useless because
+	// it looks complete. Pair with FilesOnly or Paths unless thousands of
+	// lines are genuinely wanted.
+	Exhaustive bool
+	// FilesOnly is honoured by the CALLER, not by this package: rg
+	// --files-with-matches and grep -l emit bare paths, which breaks the
+	// path:line:text parse every backend shares. The delivery layer drops
+	// the lines instead, which is where the token saving actually lands.
+	FilesOnly bool
+	// Context requests N lines of surrounding source on each side of a
+	// match (grep -C N). Deliberately NOT implemented via each backend's
+	// own -A/-B/-C: rg's context lines use a "-" separator instead of ":"
+	// for the match line, GNU grep's differs again, and both insert "--"
+	// group-separator lines between non-contiguous context blocks -- three
+	// text formats to parse correctly, with real divergence risk between rg
+	// and the native fallback (the exact failure class this package already
+	// forbids for scoping and hidden-file handling). Instead, Search()
+	// resolves the match set as it always has, then attachContext() reads
+	// each hit's file directly and slices the window -- one code path,
+	// identical behaviour on every backend, by construction.
+	Context int
+	// Adaptive asks Search to count first and return the complete hit set when
+	// the exact total is small. Callers with a deliberately strict MaxHits cap
+	// leave this false; prism_search enables it for its default limit.
+	Adaptive bool
+}
+
+// scopeArgs resolves opts.Paths against root, dropping anything that escapes
+// it. Returns the operands to pass to the backend (always non-empty: "." when
+// nothing valid was requested) plus the rejected entries.
+//
+// Containment is checked on the SYMLINK-RESOLVED path, matching the native
+// scanner's existing check: a path argument is attacker-reachable in an
+// agent setting, and "search this directory" must not become "read /etc".
+func scopeArgs(root string, paths []string) (operands []string, rejected []string) {
+	// root arrives relative in CLI use ("."), and EvalSymlinks returns an
+	// absolute path -- comparing the two made filepath.Rel fail and rejected
+	// every legitimate scope, so a scoped search silently returned nothing.
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		absRoot = root
+	}
+	resolvedRoot := absRoot
+	if rr, err := filepath.EvalSymlinks(absRoot); err == nil {
+		resolvedRoot = rr
+	}
+	for _, p := range paths {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		abs := p
+		if !filepath.IsAbs(abs) {
+			abs = filepath.Join(absRoot, p)
+		}
+		real := abs
+		if rr, err := filepath.EvalSymlinks(abs); err == nil {
+			real = rr
+		}
+		rel, err := filepath.Rel(resolvedRoot, real)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			rejected = append(rejected, p)
+			continue
+		}
+		// ripgrep treats "./." differently from "." and can return no hits for
+		// the former. Canonicalize scopes that resolve to the search root while
+		// retaining the explicit ./ prefix for child paths.
+		if rel == "." {
+			operands = append(operands, ".")
+		} else {
+			operands = append(operands, "./"+filepath.ToSlash(rel))
+		}
+	}
+	if len(operands) == 0 && len(rejected) > 0 {
+		// Every requested scope was rejected. Do NOT fall back to the whole
+		// tree: the caller asked about one place, and hits from everywhere
+		// else read as an answer to the question they asked. Return nothing
+		// and let RejectedPaths explain why.
+		return nil, rejected
+	}
+	if len(operands) == 0 {
+		operands = []string{"."}
+	}
+	return operands, rejected
 }
 
 func (o Options) withDefaults() Options {
@@ -78,7 +220,14 @@ func (o Options) withDefaults() Options {
 // ARE searched on every backend (rg gets --hidden) — rg's default hidden-skip
 // made .github/.clinerules-style configs read as "not in the repo", which is
 // silent absence, the one divergence direction this package forbids.
-var excludeDirs = []string{".git", ".grove"}
+// Agent-state directories are not source. prism was indexing its own
+// session transcripts and returning them as the TOP hits for a symbol
+// query -- observed 2026-08-16: `prism search stringsArg --scope text`
+// returned three .shale/ log lines and no definition. HANDOFF §4 flagged
+// this as a known gap; it is a measured degradation, not a cosmetic one.
+// rg also gets these as --glob excludes (see runRg).
+var excludeDirs = []string{".git", ".grove", ".shale", ".claude", ".cursor",
+	".windsurf", ".kiro", ".devin"}
 
 // gitignoreDirs approximates rg's .gitignore handling for the grep and native
 // fallbacks, which have none. Read from the repo's own .gitignore so prism
@@ -172,23 +321,336 @@ func Backend() string {
 // erroring: a text search that sometimes fails is a tool agents route around.
 func Search(ctx context.Context, root, pattern string, opts Options) Result {
 	opts = opts.withDefaults()
+	if opts.Exhaustive {
+		// Large rather than unlimited: a runaway pattern on a monorepo must
+		// still terminate, and TotalHits reports what was actually seen.
+		opts.MaxHits, opts.MaxPerFile = 100000, 10000
+	}
 	if strings.TrimSpace(pattern) == "" {
 		return Result{Backend: Backend()}
 	}
 	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
 	defer cancel()
 
-	switch Backend() {
-	case "rg":
-		if r, ok := runRg(ctx, root, pattern, opts); ok {
-			return r
+	var counted CountResult
+	adaptive := opts.Adaptive && !opts.Exhaustive
+	if adaptive {
+		// Counting is a compact file:count pass, but it must not consume the
+		// search's whole deadline on a very large or slow tree. If this bounded
+		// probe cannot finish, the existing sampled search remains the fallback.
+		budget := opts.Timeout / 4
+		if budget > 2*time.Second {
+			budget = 2 * time.Second
 		}
-	case "grep":
-		if r, ok := runGrep(ctx, root, pattern, opts); ok {
-			return r
+		if budget > 0 {
+			countCtx, countCancel := context.WithTimeout(ctx, budget)
+			counted = Count(countCtx, root, pattern, opts)
+			countCancel()
+		}
+		if counted.Complete && counted.TotalHits == 0 {
+			return Result{
+				Backend: counted.Backend, TotalHits: 0, FilesMatched: 0,
+				CountComplete: true, ResultsComplete: len(counted.RejectedPaths) == 0,
+				RejectedPaths: counted.RejectedPaths,
+			}
 		}
 	}
-	return nativeSearch(ctx, root, pattern, opts)
+
+	// SOURCE-FIRST DELIVERY. The backend emits hits in --sort path order, so
+	// on repos with early-sorting non-source trees the whole cap is spent
+	// before any code is reached — measured 2026-09-02 (BACKLOG addendum #6,
+	// Dubbo "triple"): .licenserc/CHANGELOG/pom.xml consumed the sample on
+	// 11 consecutive searches, ~44.8kB delivered for ~1.2kB of value, and
+	// the agent re-ran every one of them as a manual grep. Over-fetch past
+	// the caller's cap, then deliver source files first (stable within each
+	// group, so the backend's deterministic order is preserved). Exhaustive
+	// searches already return everything and skip both steps.
+	fetch := opts
+	completeCandidate := adaptive && counted.Complete && counted.TotalHits <= adaptiveCandidateHitLimit
+	if completeCandidate {
+		// Fetch a bounded exact set before deciding whether to deliver it all.
+		// A per-file cap equal to the total prevents one file from hiding hits.
+		fetch.MaxHits = maxInt(counted.TotalHits, 1)
+		fetch.MaxPerFile = maxInt(counted.TotalHits, 1)
+	} else if !opts.Exhaustive && opts.MaxHits < 200 {
+		fetch.MaxHits = 200
+		if adaptive && fetch.MaxPerFile < opts.MaxHits {
+			fetch.MaxPerFile = opts.MaxHits
+		}
+	}
+
+	var res Result
+	switch Backend() {
+	case "rg":
+		if r, ok := runRg(ctx, root, pattern, fetch); ok {
+			res = r
+			break
+		}
+		res = nativeSearch(ctx, root, pattern, fetch)
+	case "grep":
+		if r, ok := runGrep(ctx, root, pattern, fetch); ok {
+			res = r
+			break
+		}
+		res = nativeSearch(ctx, root, pattern, fetch)
+	default:
+		res = nativeSearch(ctx, root, pattern, fetch)
+	}
+	if adaptive && counted.Complete {
+		res.TotalHits = counted.TotalHits
+		res.FilesMatched = counted.FilesMatched
+		res.CountComplete = true
+		res.FileCounts = counted.Files
+		// The line pass can still time out or fall back to a backend with
+		// different availability. Only claim a complete result when its size
+		// agrees with the independent exact count.
+		res.ResultsComplete = completeCandidate && !res.TimedOut &&
+			len(res.RejectedPaths) == 0 && len(res.Hits) == counted.TotalHits
+		if len(res.Hits) < counted.TotalHits {
+			res.Truncated = true
+		}
+	}
+	if !opts.Exhaustive && len(res.Hits) > 0 {
+		res.Hits = rankSourceFirst(res.Hits, pattern, opts.Regex)
+	}
+	contextAttached := false
+	if !opts.Exhaustive && len(res.Hits) > 0 {
+		// An exact set above the display cap is delivered only when its actual
+		// payload is modest. A long line or large context window can therefore
+		// keep even a low-count search sampled, without claiming completeness.
+		if res.ResultsComplete && len(res.Hits) > opts.MaxHits {
+			if !adaptiveHitsFitBudget(res.Hits) {
+				res.ResultsComplete = false
+			} else if opts.Context > 0 {
+				attachContext(root, res.Hits, opts.Context)
+				contextAttached = true
+				res.ResultsComplete = adaptiveHitsFitBudget(res.Hits)
+			}
+		}
+		if !res.ResultsComplete && len(res.Hits) > opts.MaxHits {
+			res.Hits = res.Hits[:opts.MaxHits]
+			res.Truncated = true
+		}
+	}
+	if opts.Context > 0 && len(res.Hits) > 0 && !contextAttached {
+		attachContext(root, res.Hits, opts.Context)
+	}
+	return res
+}
+
+const (
+	adaptiveDeliveryTokenLimit = 4000
+	// Each rendered hit costs at least one estimated token, so an inventory
+	// larger than the token budget cannot fit. The check below decides for all
+	// smaller candidates after neighboring context lines are deduplicated.
+	adaptiveCandidateHitLimit = adaptiveDeliveryTokenLimit
+)
+
+func adaptiveHitsFitBudget(hits []Hit) bool {
+	files := make(map[string]map[int]string)
+	withContext := make(map[string]bool)
+	for _, hit := range hits {
+		lines := files[hit.File]
+		if lines == nil {
+			lines = make(map[int]string)
+			files[hit.File] = lines
+		}
+		if len(hit.Before) > 0 || len(hit.After) > 0 {
+			withContext[hit.File] = true
+		}
+		for i, line := range hit.Before {
+			n := hit.Line - len(hit.Before) + i
+			if _, exists := lines[n]; !exists {
+				lines[n] = line
+			}
+		}
+		lines[hit.Line] = hit.Text
+		for i, line := range hit.After {
+			n := hit.Line + 1 + i
+			if _, exists := lines[n]; !exists {
+				lines[n] = line
+			}
+		}
+	}
+	// Reserve space for the result heading and completeness notes. Estimate the
+	// assembled lines, as the MCP renderer does: applying the estimator to each
+	// tiny fragment separately overcounts a short inventory by several times.
+	tokens := 128
+	for file, lines := range files {
+		var rendered strings.Builder
+		if withContext[file] {
+			rendered.WriteString(file)
+			rendered.WriteString(":\n")
+		}
+		nums := make([]int, 0, len(lines))
+		for n := range lines {
+			nums = append(nums, n)
+		}
+		sort.Ints(nums)
+		for i, n := range nums {
+			line := lines[n]
+			if withContext[file] {
+				if i > 0 && n != nums[i-1]+1 {
+					rendered.WriteString("  --\n")
+				}
+				rendered.WriteString("  ")
+			} else {
+				rendered.WriteString(file)
+				rendered.WriteByte(':')
+			}
+			rendered.WriteString(strconv.Itoa(n))
+			rendered.WriteString(": ")
+			rendered.WriteString(strings.TrimRight(line, "\r\n"))
+			rendered.WriteByte('\n')
+		}
+		tokens += ranking.EstimateTokens(rendered.String()) + 4
+		if tokens > adaptiveDeliveryTokenLimit {
+			return false
+		}
+	}
+	return true
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// sourceExts are extensions of files an agent edits as code — the files a
+// code search is almost always FOR. Everything else (manifests, changelogs,
+// license config, docs) still matches, but after source.
+var sourceExts = map[string]bool{
+	".go": true, ".java": true, ".py": true, ".ts": true, ".tsx": true,
+	".js": true, ".jsx": true, ".rb": true, ".rs": true, ".c": true,
+	".h": true, ".cc": true, ".cpp": true, ".hpp": true, ".cs": true,
+	".php": true, ".kt": true, ".kts": true, ".scala": true, ".swift": true,
+	".m": true, ".mm": true, ".sql": true, ".sh": true, ".proto": true,
+}
+
+// rankSourceFirst puts declarations before uses, source before tests, and
+// source before manifests/docs/config. Backend path/line order breaks ties.
+// Ranking runs before the sample cap, so a definition in a later file cannot
+// be hidden by early-path uses.
+func rankSourceFirst(hits []Hit, pattern string, regex bool) []Hit {
+	identifier := !regex && identifierPattern(pattern)
+	sort.SliceStable(hits, func(i, j int) bool {
+		return textHitRank(hits[i], identifier) > textHitRank(hits[j], identifier)
+	})
+	return hits
+}
+
+func textHitRank(hit Hit, identifier bool) int {
+	ext := strings.ToLower(filepath.Ext(hit.File))
+	if !sourceExts[ext] {
+		return 0
+	}
+	path := strings.ToLower(filepath.ToSlash(hit.File))
+	if strings.HasSuffix(path, "_test.go") || strings.HasPrefix(path, "test/") ||
+		strings.HasPrefix(path, "tests/") || strings.HasPrefix(path, "__tests__/") ||
+		strings.Contains(path, "/test/") || strings.Contains(path, "/tests/") ||
+		strings.Contains(path, "/__tests__/") || strings.HasPrefix(filepath.Base(path), "test_") ||
+		strings.Contains(filepath.Base(path), ".test.") || strings.Contains(filepath.Base(path), ".spec.") {
+		return 1
+	}
+	if isDeclarationLine(hit.Text) {
+		return 3
+	}
+	if identifier && isCommentLine(hit.Text, ext) {
+		return 1
+	}
+	return 2
+}
+
+func identifierPattern(pattern string) bool {
+	if pattern == "" {
+		return false
+	}
+	for i, r := range pattern {
+		if r == '_' || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+			continue
+		}
+		if i > 0 && ((r >= '0' && r <= '9') || r == '.') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isCommentLine(line, ext string) bool {
+	line = strings.TrimSpace(line)
+	if strings.HasPrefix(line, "#") {
+		return ext == ".py" || ext == ".rb" || ext == ".sh" || ext == ".php"
+	}
+	if strings.HasPrefix(line, "--") {
+		return ext == ".sql"
+	}
+	return strings.HasPrefix(line, "//") ||
+		strings.HasPrefix(line, "/*") || line == "*" ||
+		strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "*/")
+}
+
+func isDeclarationLine(line string) bool {
+	line = strings.TrimSpace(line)
+	for _, prefix := range []string{
+		"func ", "type ", "class ", "def ", "async def ",
+		"function ", "export function ", "export class ",
+		"interface ", "export interface ", "struct ", "enum ",
+		"const ", "var ", "let ", "public class ", "private class ",
+	} {
+		if strings.HasPrefix(line, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// attachContext fills each hit's Before/After with up to n lines of
+// surrounding source, read directly from disk -- one file open per unique
+// file among the hits, regardless of how many hits it contains. Best-effort:
+// a file that can no longer be read (deleted, permissions, binary) is left
+// without context rather than failing the whole search over an enrichment.
+func attachContext(root string, hits []Hit, n int) {
+	cache := map[string][]string{}
+	for i := range hits {
+		h := &hits[i]
+		lines, ok := cache[h.File]
+		if !ok {
+			data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(h.File)))
+			if err != nil || len(data) > 2<<20 {
+				cache[h.File] = nil
+				continue
+			}
+			lines = strings.Split(string(data), "\n")
+			if len(lines) > 0 && lines[len(lines)-1] == "" {
+				lines = lines[:len(lines)-1]
+			}
+			cache[h.File] = lines
+		}
+		if lines == nil {
+			continue
+		}
+		idx := h.Line - 1 // hits are 1-based
+		if idx < 0 || idx >= len(lines) {
+			continue
+		}
+		start := idx - n
+		if start < 0 {
+			start = 0
+		}
+		if start < idx {
+			h.Before = append([]string{}, lines[start:idx]...)
+		}
+		end := idx + 1 + n
+		if end > len(lines) {
+			end = len(lines)
+		}
+		if end > idx+1 {
+			h.After = append([]string{}, lines[idx+1:end]...)
+		}
+	}
 }
 
 // runRg shells out to ripgrep. ok=false means the invocation itself failed
@@ -196,7 +658,13 @@ func Search(ctx context.Context, root, pattern string, opts Options) Result {
 func runRg(ctx context.Context, root, pattern string, opts Options) (Result, bool) {
 	args := []string{
 		"--no-config", "--line-number", "--no-heading", "--color=never",
-		"--ignore-case",
+		caseFlagRg(opts),
+		// Force the filename onto every line. With a SINGLE FILE operand rg
+		// (and grep) omit it, emitting "988:text" instead of
+		// "path:988:text" -- runLineTool parses path:line:text, so a search
+		// scoped to one file silently returned zero hits. Found the moment
+		// path scoping landed; it is invisible for directory operands.
+		"--with-filename",
 		// rg honors .gitignore only INSIDE a git repository. A worktree, an
 		// unpacked tarball or a subdirectory checkout has the ignore file but
 		// no .git, and rg would then search everything the project asked it
@@ -209,6 +677,14 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		// (measured: an agent concluded six hidden configs did not exist).
 		// .gitignore still applies, so ignored venvs stay out.
 		"--hidden",
+		// Deterministic file order. rg is multi-threaded and emits files in
+		// completion order; when the hit list is capped downstream, WHICH
+		// files survive the cap varies per run — measured 2026-08-26 as
+		// prism_query returning different anchor sets on identical inputs
+		// (the text-confirmed seed promotion followed rg's race winners).
+		// --sort path forces single-threaded sorted output; on repo-scale
+		// trees the determinism is worth far more than the parallelism.
+		"--sort", "path",
 		"--max-count", strconv.Itoa(opts.MaxPerFile),
 		"--max-columns", strconv.Itoa(maxLineLen), "--max-columns-preview",
 		"--max-filesize", "2M",
@@ -217,8 +693,21 @@ func runRg(ctx context.Context, root, pattern string, opts Options) (Result, boo
 		args = append(args, "--fixed-strings")
 	}
 	// --hidden would otherwise descend into the VCS dir and prism's state.
-	args = append(args, "--glob", "!.git/", "--glob", "!.grove/", "-e", pattern, "--", ".")
-	return runLineTool(ctx, root, bin("rg"), args, nil, opts)
+	for _, d := range excludeDirs {
+		args = append(args, "--glob", "!"+d+"/")
+	}
+	for _, g := range opts.Glob {
+		args = append(args, "--glob", g)
+	}
+	operands, rejected := scopeArgs(root, opts.Paths)
+	if len(operands) == 0 {
+		return Result{Backend: "rg", RejectedPaths: rejected}, true
+	}
+	args = append(args, "-e", pattern, "--")
+	args = append(args, operands...)
+	r, ok := runLineTool(ctx, root, bin("rg"), args, nil, opts)
+	r.RejectedPaths = rejected
+	return r, ok
 }
 
 // runGrep shells out to grep, pinned to the C locale — under a UTF-8 locale
@@ -236,12 +725,53 @@ func runGrep(ctx context.Context, root, pattern string, opts Options) (Result, b
 	if regexUsable(pattern, opts) {
 		mode = "-E"
 	}
-	args := []string{"-rnI", mode, "-i", "--max-count", strconv.Itoa(opts.MaxPerFile)}
+	args := []string{"-rnHI", mode, "--max-count", strconv.Itoa(opts.MaxPerFile)}
+	if !opts.CaseSensitive {
+		args = append(args, "-i")
+	}
 	for _, d := range append(append([]string{}, excludeDirs...), gitignoreDirs(root)...) {
 		args = append(args, "--exclude-dir="+d)
 	}
-	args = append(args, "-e", pattern, "--", ".")
-	return runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)
+	// grep --include matches base names only. A path-shaped glob
+	// ("**/types.py", "tests/**") narrows by its last segment here and is
+	// applied exactly to the parsed hits below; one that has no usable last
+	// segment disables --include so nothing it selects is dropped.
+	pathGlobs := false
+	var includes []string
+	for _, g := range opts.Glob {
+		if !strings.Contains(g, "/") {
+			includes = append(includes, g)
+			continue
+		}
+		pathGlobs = true
+		last := path.Base(strings.TrimSuffix(g, "/"))
+		if last == "**" || strings.HasSuffix(g, "/") {
+			includes = nil
+			break
+		}
+		includes = append(includes, last)
+	}
+	for _, g := range includes {
+		args = append(args, "--include="+g)
+	}
+	operands, rejected := scopeArgs(root, opts.Paths)
+	if len(operands) == 0 {
+		return Result{Backend: "grep", RejectedPaths: rejected}, true
+	}
+	args = append(args, "-e", pattern, "--")
+	args = append(args, operands...)
+	r, ok := runLineTool(ctx, root, bin("grep"), args, []string{"LC_ALL=C"}, opts)
+	r.RejectedPaths = rejected
+	if ok && pathGlobs {
+		kept := r.Hits[:0]
+		for _, h := range r.Hits {
+			if MatchAnyGlob(opts.Glob, h.File) {
+				kept = append(kept, h)
+			}
+		}
+		r.Hits = kept
+	}
+	return r, ok
 }
 
 // runLineTool runs an external searcher emitting `path:line:text` lines and
@@ -258,11 +788,8 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 	res := Result{Backend: filepath.Base(bin)}
 	sc := bufio.NewScanner(strings.NewReader(string(out)))
 	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
+	files := map[string]bool{}
 	for sc.Scan() {
-		if len(res.Hits) >= opts.MaxHits {
-			res.Truncated = true
-			break
-		}
 		parts := strings.SplitN(sc.Text(), ":", 3)
 		if len(parts) != 3 {
 			continue
@@ -271,12 +798,27 @@ func runLineTool(ctx context.Context, root, bin string, args, extraEnv []string,
 		if aerr != nil || ln < 1 {
 			continue
 		}
-		res.Hits = append(res.Hits, Hit{
-			File: filepath.ToSlash(strings.TrimPrefix(parts[0], "./")),
-			Line: ln,
-			Text: truncateLine(parts[2]),
-		})
+		// Scoped operands such as './.' can produce '././file'; graph paths
+		// use the canonical repo-relative spelling, not a single-prefix trim.
+		file := filepath.ToSlash(filepath.Clean(parts[0]))
+		// Count EVERY match, then keep the first MaxHits. The loop used to
+		// break at the cap, so a truncated result reported `truncated: true`
+		// with no denominator -- an agent could not tell 22-of-25 from
+		// 22-of-990 (measured: "func " in this repo returns 22 hits and
+		// says truncated, against 990 real occurrences). A silent narrowing
+		// is the one thing this package is not allowed to do.
+		res.TotalHits++
+		files[file] = true
+		if len(res.Hits) >= opts.MaxHits {
+			res.Truncated = true
+			continue
+		}
+		res.Hits = append(res.Hits, Hit{File: file, Line: ln, Text: truncateLine(parts[2])})
 	}
+	res.FilesMatched = len(files)
+	// A searcher can emit partial output before the deadline kills it. Those
+	// hits are useful, but they must never look like a complete inventory.
+	res.TimedOut = ctx.Err() != nil
 	if err != nil && len(res.Hits) == 0 {
 		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
 			return res, true // exit 1 = no matches: a real, empty answer
@@ -304,4 +846,11 @@ func truncateLine(s string) string {
 		return s[:maxLineLen] + "…"
 	}
 	return s
+}
+
+func caseFlagRg(opts Options) string {
+	if opts.CaseSensitive {
+		return "--case-sensitive"
+	}
+	return "--ignore-case"
 }

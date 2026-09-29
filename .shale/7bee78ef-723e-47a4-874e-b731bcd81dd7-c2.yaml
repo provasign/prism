@@ -1,0 +1,228 @@
+shale_version: "0"
+id: 7bee78ef-723e-47a4-874e-b731bcd81dd7-c2
+created_at: 2026-09-22T19:30:36.682276Z
+finalized_at: 2026-09-22T23:54:16.001081Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add README.md
+        git commit -m "$(cat <<'EOF'
+        docs: list all 14 grove-supported languages, not just 9
+
+        README's language-support line predated Swift/Kotlin/Objective-C/COBOL/JCL
+        support (all shipped in grove v0.50.0+, which prism embeds) and was never
+        updated. Also corrected the doctor claim: prism doctor reports index/engine
+        status only, not per-language tiers -- that's grove doctor's job (prism
+        embeds grove but doesn't yet surface its per-language capability manifest).
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git push
+      at: 2026-09-22T19:30:36.682276Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit
+        grep -n -i "swift\|kotlin\|objective\|cobol\|jcl\|language" README.md 2>/dev/null | head -20
+      at: 2026-09-22T19:30:42.364504Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io
+        grep -n -i "language\|swift\|kotlin\|objective\|cobol" grove.md prism.md 2>/dev/null | head -20
+      at: 2026-09-22T19:30:46.009733Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io
+        grep -n -i "language\|swift\|kotlin\|cobol\|indexes" grove.md 2>/dev/null
+      at: 2026-09-22T19:30:56.64601Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io
+        git status --short
+      at: 2026-09-22T19:31:01.402581Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/provasign.github.io
+        git add prism.md
+        git commit -m "$(cat <<'EOF'
+        docs: list all 14 grove-supported languages, not just 9
+
+        Same stale claim as prism's own README -- predated Swift/Kotlin/Objective-C/
+        COBOL/JCL support (grove v0.50.0+). Matches the fix just made in
+        provasign/prism.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git push
+      at: 2026-09-22T19:31:10.329958Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/fuse
+        grep -n -i "language\|swift\|kotlin\|cobol\|supports" README.md 2>/dev/null | head -15
+      at: 2026-09-22T19:31:16.066337Z
+      classified: other
+    - cmd: grep -rn "LangSwift\|LangKotlin\|LangObjC\|LangCSharp\|LangPHP\|LangC\b\|LangCPP" /Users/tapabratapal/Projects/provasign/fuse --include="*.go" 2>/dev/null | grep -v _test | head -20
+      at: 2026-09-22T19:31:24.028029Z
+      classified: other
+    - cmd: grep -rln "LangGo\|LangPython\|symbolMerge\|SymbolStrategy\|supportedLang" /Users/tapabratapal/Projects/provasign/fuse --include="*.go" 2>/dev/null | grep -v _test
+      at: 2026-09-22T19:31:27.793302Z
+      classified: other
+    - cmd: grep -n "LangGo\|LangPython\|LangJava\|LangRust\|LangTypeScript\|LangJavaScript\|astkit.Lang" /Users/tapabratapal/Projects/provasign/fuse/internal/merge/orchestrator.go 2>/dev/null | head -20
+      at: 2026-09-22T19:31:30.285599Z
+      classified: other
+    - cmd: grep -n "^const\|Lang.*=\|LangGo\|LangPython\|LangJava\b\|LangRust\|LangTypeScript\|LangJavaScript\|LangTSX" /Users/tapabratapal/Projects/provasign/fuse/internal/core/types.go 2>/dev/null | head -20
+      at: 2026-09-22T19:31:33.716089Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research -iname "ci_invariants.py" -not -path "*archive-2026-09*"
+      at: 2026-09-22T20:46:57.325707Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep "grove" go.mod
+        echo "---"
+        cat /Users/tapabratapal/Projects/provasign/go.work 2>/dev/null
+      at: 2026-09-22T20:47:08.286413Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        GOWORK=/Users/tapabratapal/Projects/provasign/go.work GOFLAGS=-mod=readonly go build -o /tmp/prism-candidate ./cmd/prism 2>&1 | tail -30
+        /tmp/prism-candidate --version
+      at: 2026-09-22T20:47:22.650547Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 harness/scoring/ci_invariants.py --help 2>&1 | head -20
+      at: 2026-09-22T20:47:27.843985Z
+      classified: other
+    - cmd: |-
+        ls ~/.cache/prism-research/ci-corpus 2>/dev/null | head -5
+        du -sh ~/.cache/prism-research/ci-corpus 2>/dev/null
+      at: 2026-09-22T20:47:33.09612Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism /tmp/prism-candidate 2>&1 | tail -60
+      at: 2026-09-22T20:52:38.794556Z
+      classified: other
+    - cmd: "true"
+      at: 2026-09-22T20:52:41.049332Z
+      classified: other
+    - cmd: tail -40 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/7bee78ef-723e-47a4-874e-b731bcd81dd7/tasks/bucgu7bt4.output
+      at: 2026-09-22T20:52:46.088862Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove
+        sed -n '1,3p' CHANGELOG.md
+      at: 2026-09-22T20:52:48.55636Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove
+        git add CHANGELOG.md
+        git commit -m "$(cat <<'EOF'
+        Release v0.58.2: grove doctor now reports COBOL/JCL
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git tag -a v0.58.2 -m "grove doctor now reports COBOL/JCL; fixed stale README command reference"
+        git push
+        git push origin v0.58.2
+      at: 2026-09-22T20:53:04.815724Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 -c "
+        import json
+        rows = json.load(open('harness/results/guard-fix-run/results.json'))
+        print(f'{len(rows)} pairs')
+
+        # aggregate tool-call profile by arm
+        from collections import Counter
+        n_tools, p_tools = Counter(), Counter()
+        for r in rows:
+            for k, v in (r['native']['tool_trace'] or {}).items():
+                n_tools[k] += v
+            for k, v in (r['prism']['tool_trace'] or {}).items():
+                p_tools[k] += v
+        print('native tool totals:', dict(n_tools))
+        print('prism  tool totals:', dict(p_tools))
+        "
+      at: 2026-09-22T20:59:55.181975Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 -c "
+        import json
+        rows = json.load(open('harness/results/guard-fix-run/results.json'))
+
+        zero_calls = [r for r in rows if r['prism'].get('prism_calls', 0) == 0]
+        print(f'{len(zero_calls)}/50 cells had ZERO prism calls (non-adoption)')
+        for r in zero_calls:
+            print(' ', r['task'], r['lang'], 'resolved n/p:', r['native']['resolved'], r['prism']['resolved'])
+        "
+      at: 2026-09-22T21:00:02.765404Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 -c "
+        import json
+        rows = json.load(open('harness/results/guard-fix-run/results.json'))
+
+        # correlation: prism_calls count vs token ratio
+        import statistics
+        pts = []
+        for r in rows:
+            n_tok, p_tok = r['native']['tokens'], r['prism']['tokens']
+            calls = r['prism'].get('prism_calls', 0)
+            if n_tok and p_tok:
+                pts.append((calls, p_tok/n_tok))
+
+        # bucket by call count
+        from collections import defaultdict
+        buckets = defaultdict(list)
+        for calls, ratio in pts:
+            bucket = '0' if calls==0 else '1-2' if calls<=2 else '3-5' if calls<=5 else '6+'
+            buckets[bucket].append(ratio)
+        for b in ['0','1-2','3-5','6+']:
+            if b in buckets:
+                print(f'{b:5} calls: n={len(buckets[b]):3} mean_ratio={statistics.mean(buckets[b]):.2f}x median={statistics.median(buckets[b]):.2f}x')
+        "
+      at: 2026-09-22T21:00:13.239196Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        python3 -c "
+        import json
+        rows = json.load(open('harness/results/guard-fix-run/results.json'))
+        from collections import defaultdict
+        by_lang = defaultdict(lambda: {'n':0,'n_res':0,'p_res':0,'n_tok':0,'p_tok':0,'calls':[]})
+        for r in rows:
+            s = by_lang[r['lang']]
+            s['n']+=1
+            s['n_res']+=bool(r['native']['resolved'])
+            s['p_res']+=bool(r['prism']['resolved'])
+            s['n_tok']+=r['native']['tokens'] or 0
+            s['p_tok']+=r['prism']['tokens'] or 0
+            s['calls'].append(r['prism'].get('prism_calls',0))
+        for lang, s in sorted(by_lang.items()):
+            import statistics
+            print(f\"{lang:8} n={s['n']:3} native={s['n_res']}/{s['n']} prism={s['p_res']}/{s['n']} ratio={s['p_tok']/s['n_tok']:.2f}x mean_calls={statistics.mean(s['calls']):.1f}\")
+        "
+      at: 2026-09-22T21:00:33.704937Z
+      classified: other
+notes:
+    - text: continuation of session 7bee78ef-723e-47a4-874e-b731bcd81dd7 — events captured after its evidence was finalized
+      at: 2026-09-22T19:30:36.682276Z
+redactions: 0

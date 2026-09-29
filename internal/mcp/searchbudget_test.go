@@ -1,0 +1,317 @@
+package mcp
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// budgetRouterFixture reproduces the echo pr3006 shape: a config type used
+// by a little production code and many test functions.
+func budgetRouterFixture() map[string]string {
+	var tests strings.Builder
+	tests.WriteString("package r\n\nimport \"testing\"\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&tests, "\nfunc TestRouter%02d(t *testing.T) {\n\tcfg := RouterConfig{Unescape: true}\n\tr := NewRouter(cfg)\n\tif r == nil {\n\t\tt.Fatal(\"nil\")\n\t}\n}\n", i)
+	}
+	return map[string]string{
+		"router.go": "package r\n\ntype RouterConfig struct {\n\tUnescape bool\n}\n\n" +
+			"func DefaultRouterConfig() RouterConfig {\n\treturn RouterConfig{Unescape: true}\n}\n\n" +
+			"type Router struct {\n\tcfg RouterConfig\n}\n\n" +
+			"func NewRouter(cfg RouterConfig) *Router {\n\tif cfg.Unescape {\n\t\treturn &Router{cfg: cfg}\n\t}\n\treturn &Router{}\n}\n",
+		"router_test.go": tests.String(),
+	}
+}
+
+var contextLine = regexp.MustCompile(`(?m)^\s+\d+- `)
+
+// echo pr3006: a default search returned +/-2 context lines for 20 matches,
+// mostly in test files, plus full bodies of test functions (11-16k chars).
+func TestDefaultSearchBudgetBareLinesTestCountsOneBody(t *testing.T) {
+	srv := compactFixture(t, budgetRouterFixture())
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"RouterConfig"}, "scope": "text"})
+	if contextLine.MatchString(out) {
+		t.Fatalf("a term with more than %d hits kept context lines:\n%s", searchBudgetContextHits, out)
+	}
+	if strings.Contains(out, "router_test.go:") {
+		t.Fatalf("test-file hits were listed line by line:\n%s", out)
+	}
+	if !strings.Contains(out, "// test files: 12 hit(s) in 1 file(s)") || !strings.Contains(out, "router_test.go (12)") {
+		t.Fatalf("test-file hits were not collapsed to a per-file count:\n%s", out)
+	}
+	if !strings.Contains(out, "router.go:") {
+		t.Fatalf("production match lines missing:\n%s", out)
+	}
+	if n := strings.Count(out, "**`"); n > 1 {
+		t.Fatalf("default search delivered %d bodies, want at most one:\n%s", n, out)
+	}
+	if strings.Contains(out, "**`router_test.go`**") {
+		t.Fatalf("the one body was a test function:\n%s", out)
+	}
+}
+
+func TestDefaultSearchBudgetKeepsTestLinesWhenTestsTargeted(t *testing.T) {
+	srv := compactFixture(t, budgetRouterFixture())
+	for _, args := range []map[string]any{
+		{"terms": []any{"RouterConfig"}, "scope": "text", "glob": []any{"*_test.go"}},
+		{"terms": []any{"RouterConfig", "TestRouter"}, "scope": "text"},
+	} {
+		out := callCompact(t, srv, "search", args)
+		if !strings.Contains(out, "router_test.go:") {
+			t.Fatalf("%v: a test-targeted search lost its test lines:\n%s", args, out)
+		}
+	}
+}
+
+func TestExplicitContextOverridesSearchBudget(t *testing.T) {
+	srv := compactFixture(t, budgetRouterFixture())
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"RouterConfig"}, "scope": "text", "context": 1})
+	if !contextLine.MatchString(out) || !strings.Contains(out, "router_test.go:") {
+		t.Fatalf("explicit context= did not keep the grep -C shape:\n%s", out)
+	}
+}
+
+// Many matches in one term: at most searchBudgetTermLines lines and an
+// explicit count of the rest.
+func TestDefaultSearchBudgetCapsLinesPerTerm(t *testing.T) {
+	var src strings.Builder
+	src.WriteString("package p\n\nfunc Uses() {\n")
+	for i := 0; i < 60; i++ {
+		fmt.Fprintf(&src, "\tDenseCall(%d)\n", i)
+	}
+	src.WriteString("}\n\nfunc DenseCall(i int) {}\n")
+	srv := compactFixture(t, map[string]string{"p.go": src.String()})
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"DenseCall"}, "scope": "text"})
+	if got := len(regexp.MustCompile(`(?m)^p\.go:\d+: `).FindAllString(out, -1)); got > searchBudgetTermLines {
+		t.Fatalf("%d match lines, want at most %d:\n%s", got, searchBudgetTermLines, out)
+	}
+	if !regexp.MustCompile(`// \+\d+ more matching line\(s\) not shown`).MatchString(out) {
+		t.Fatalf("no count of the undisplayed lines:\n%s", out)
+	}
+	if len(out) > 6000 {
+		t.Fatalf("single-term default search is %d chars", len(out))
+	}
+}
+
+// jackson pr5959: files_only with the default scope returned 18,246 chars of
+// symbols, notes and match lines; only scope=text honored it.
+func TestFilesOnlyHonoredInEveryScope(t *testing.T) {
+	srv := compactFixture(t, budgetRouterFixture())
+	for _, scope := range []string{"both", "symbols", "text"} {
+		out := callCompact(t, srv, "search", map[string]any{"terms": []any{"RouterConfig"}, "scope": scope, "files_only": true})
+		if strings.Contains(out, "symbols (") || strings.Contains(out, "**`") || regexp.MustCompile(`\.go:\d+`).MatchString(out) {
+			t.Fatalf("scope=%s files_only returned more than paths:\n%s", scope, out)
+		}
+		if !strings.Contains(out, "router.go") {
+			t.Fatalf("scope=%s files_only lost the matching file:\n%s", scope, out)
+		}
+	}
+}
+
+// dubbo pr16395: scope=symbols returned 15.6k chars, 8.6k of it bodies.
+func TestSymbolScopeSearchDeliversAtMostOneBody(t *testing.T) {
+	files := map[string]string{}
+	for i := 0; i < 4; i++ {
+		var b strings.Builder
+		fmt.Fprintf(&b, "package r\n\ntype Router%d struct{}\n\nfunc (r *Router%d) DoRoute(in []int) []int {\n", i, i)
+		for j := 0; j < 20; j++ {
+			fmt.Fprintf(&b, "\tin = append(in, %d)\n", j)
+		}
+		b.WriteString("\treturn in\n}\n")
+		files[fmt.Sprintf("r%d.go", i)] = b.String()
+	}
+	srv := compactFixture(t, files)
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"DoRoute", "Router1"}, "scope": "symbols"})
+	if n := strings.Count(out, "**`"); n > 1 {
+		t.Fatalf("scope=symbols delivered %d bodies, want at most one:\n%s", n, out)
+	}
+	explicit := callCompact(t, srv, "search", map[string]any{"terms": []any{"DoRoute", "Router1"}, "scope": "symbols", "include_bodies": true})
+	if n := strings.Count(explicit, "**`"); n < 2 {
+		t.Fatalf("explicit include_bodies=true lost the wider body shape (%d bodies):\n%s", n, explicit)
+	}
+}
+
+// jackson pr5977: the fix file was named "(7)" in the inventory with no code.
+// A small inventory gives every file with no displayed line its best line.
+func TestInventoryFilesCarryTheirBestMatchLine(t *testing.T) {
+	h := newTestHandler(t)
+	target := writeInventoryFixture(t, h.Root)
+	_, text := sampledTextFromSearch(t, h, map[string]any{"query": "invStaticTyping", "scope": "text"})
+	if !strings.Contains(text, "  "+target+" (1)  2: protected final boolean _invStaticTyping;") {
+		t.Fatalf("inventory file without a displayed line lacks its best match line:\n%s", text)
+	}
+}
+
+func TestBestMatchLinePrefersABranchOnTheTerm(t *testing.T) {
+	hits := []map[string]any{
+		{"line": 33, "text": "    protected final boolean _staticTyping;"},
+		{"line": 71, "text": "        _staticTyping = src._staticTyping;"},
+		{"line": 169, "text": "                if (_staticTyping && !_elementType.isJavaLangObject()) {"},
+	}
+	if got := intArg(bestMatchLine(hits), "line", 0); got != 169 {
+		t.Fatalf("best line = %d, want the branch at 169", got)
+	}
+}
+
+// dubbo pr16395: `lookup AbstractStateRouter` returned the whole 7.4k class.
+// A type over typeOutlineLines lines and typeOutlineBytes chars returns its
+// header and member outline; a function of the same size keeps its full body.
+// gson TypeAdapterRuntimeTypeWrapper (82 lines, ~3.4k chars): a small type
+// just over the line limit is delivered whole.
+func TestLookupOutlinesMidSizeTypesKeepsFunctions(t *testing.T) {
+	var cls strings.Builder
+	cls.WriteString("package r;\n\npublic class Mid {\n    private int count;\n")
+	for i := 0; i < 15; i++ {
+		fmt.Fprintf(&cls, "    public int m%02d(int inputValueForTheComputation) {\n        int intermediateResultValue = inputValueForTheComputation + %d;\n"+
+			"        intermediateResultValue = intermediateResultValue * 2 + inputValueForTheComputation;\n"+
+			"        intermediateResultValue = intermediateResultValue - 1 - inputValueForTheComputation;\n"+
+			"        intermediateResultValue = intermediateResultValue + 3 + inputValueForTheComputation;\n"+
+			"        return intermediateResultValue;\n    }\n\n", i, i)
+	}
+	cls.WriteString("}\n")
+	var small strings.Builder
+	small.WriteString("package r;\n\npublic class Small {\n")
+	for i := 0; i < 21; i++ {
+		fmt.Fprintf(&small, "    int s%02d(int x) {\n        return x + %d;\n    }\n\n", i, i)
+	}
+	small.WriteString("    int last() { return 0; }\n}\n")
+	var fn strings.Builder
+	fn.WriteString("package p\n\nfunc Long() int {\n\tx := 0\n")
+	for i := 0; i < 100; i++ {
+		fmt.Fprintf(&fn, "\tx += %d\n", i)
+	}
+	fn.WriteString("\treturn x\n}\n")
+	if len(cls.String()) <= typeOutlineBytes {
+		t.Fatalf("fixture: Mid is %d chars, want > %d", len(cls.String()), typeOutlineBytes)
+	}
+	if n := strings.Count(small.String(), "\n"); n <= typeOutlineLines || len(small.String()) >= typeOutlineBytes {
+		t.Fatalf("fixture: Small is %d lines / %d chars, want > %d lines and < %d chars", n, len(small.String()), typeOutlineLines, typeOutlineBytes)
+	}
+	srv := compactFixture(t, map[string]string{"src/r/Mid.java": cls.String(), "src/r/Small.java": small.String(), "long.go": fn.String()})
+	if got := callCompact(t, srv, "lookup", map[string]any{"name": "Small"}); strings.Contains(got, "BODY CAPPED") || !strings.Contains(got, "return x + 20;") {
+		t.Fatalf("a small class just over %d lines was outlined:\n%s", typeOutlineLines, got)
+	}
+	out := callCompact(t, srv, "lookup", map[string]any{"name": "Mid"})
+	if !strings.Contains(out, "BODY CAPPED") || !strings.Contains(out, "m14(int inputValueForTheComputation)") || strings.Contains(out, "inputValueForTheComputation + 7;") {
+		t.Fatalf("a %d+ line class was not outlined:\n%s", typeOutlineLines, out)
+	}
+	if !strings.Contains(out, "op=read file=") {
+		t.Fatalf("outline note does not name the narrow read:\n%s", out)
+	}
+	long := callCompact(t, srv, "lookup", map[string]any{"name": "Long"})
+	if strings.Contains(long, "BODY CAPPED") || !strings.Contains(long, "x += 99") {
+		t.Fatalf("a 100-line function lost its full body:\n%s", long)
+	}
+}
+
+func TestNarrowReadHint(t *testing.T) {
+	for _, c := range []struct {
+		from, to, shownFrom, shownTo int
+		want                         string
+	}{
+		{10, 100, 10, 40, `rest: op=read file="a.go" from=41 to=100`},
+		{10, 100, 50, 100, `rest: op=read file="a.go" from=10 to=49`},
+		{10, 100, 40, 60, `rest: op=read ranges=[{file:"a.go",from:10,to:39},{file:"a.go",from:61,to:100}]`},
+		{1, 900, 1, 30, `rest: op=read file="a.go" from=31 to=270`},
+	} {
+		if got := narrowReadHint("a.go", c.from, c.to, c.shownFrom, c.shownTo); got != c.want {
+			t.Errorf("narrowReadHint(%d,%d,%d,%d) = %s, want %s", c.from, c.to, c.shownFrom, c.shownTo, got, c.want)
+		}
+	}
+}
+
+func TestSearchTargetsTests(t *testing.T) {
+	for _, c := range []struct {
+		sc    searchScope
+		terms []string
+		want  bool
+	}{
+		{searchScope{}, []string{"RouterConfig"}, false},
+		{searchScope{paths: []string{"src/test/java/x"}}, []string{"JsonView"}, true},
+		{searchScope{glob: []string{"tests/**"}}, []string{"zsh"}, true},
+		{searchScope{}, []string{"def test_zsh"}, true},
+		{searchScope{paths: []string{"src/main/java"}}, []string{"Serializer"}, false},
+		{searchScope{paths: []string{"lib/inspect.py"}}, []string{"getLatestVersion"}, false},
+		{searchScope{glob: []string{"**/*Test.java"}}, []string{"x"}, true},
+		{searchScope{}, []string{"TestRouter"}, true},
+		{searchScope{}, []string{"assertEquals"}, true},
+	} {
+		if got := searchTargetsTests(c.sc, c.terms); got != c.want {
+			t.Errorf("searchTargetsTests(%+v, %v) = %v, want %v", c.sc, c.terms, got, c.want)
+		}
+	}
+}
+
+// A term found only in test files keeps its lines: there is nothing else to
+// show, and the counts alone would force a second call.
+func TestDefaultSearchBudgetKeepsLinesWhenOnlyTestsMatch(t *testing.T) {
+	var extra strings.Builder
+	extra.WriteString("package r\n\nfunc onlyHelperX() int { return 1 }\n")
+	for i := 0; i < 10; i++ {
+		fmt.Fprintf(&extra, "var _ = onlyHelperX() // %d\n", i)
+	}
+	srv := compactFixture(t, map[string]string{"router.go": "package r\n", "helper_test.go": extra.String()})
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"onlyHelperX"}, "scope": "text"})
+	if !strings.Contains(out, "helper_test.go:") || strings.Contains(out, "// test files:") {
+		t.Fatalf("a term that only matches tests lost its lines:\n%s", out)
+	}
+}
+
+// h3 `push` (2026-09-28): default-scope exhaustive files_only listed the 10
+// excerpt files and dropped the 21 in the exhaustive inventory, under a
+// "COMPLETE path inventory" note. Every text-match file must be listed.
+func TestExhaustiveFilesOnlyListsFilesPastRenderCap(t *testing.T) {
+	files := map[string]string{}
+	n := textRenderFileCap + 5
+	for i := 0; i < n; i++ {
+		files[fmt.Sprintf("f%02d.go", i)] = fmt.Sprintf("package p\n\n// zzpushmarker %d\nfunc F%d() {}\n", i, i)
+	}
+	srv := compactFixture(t, files)
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"zzpushmarker"}, "exhaustive": true, "files_only": true})
+	for i := 0; i < n; i++ {
+		if name := fmt.Sprintf("f%02d.go", i); !strings.Contains(out, name) {
+			t.Fatalf("exhaustive files_only dropped %s:\n%s", name, out)
+		}
+	}
+}
+
+// click get_command (Sonnet 5.5, 2026-09-28): max_results=500 turned the
+// exact-count pass off; the answer was a 5-per-file context sample of 29
+// lines with no completeness line. A raised limit must list every line.
+func TestRaisedLimitListsEveryLineOfACompleteSet(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("package p\n\nfunc Zzlook() {}\n\nfunc use() {\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&b, "\tZzlook() // call %d\n", i)
+	}
+	b.WriteString("}\n")
+	srv := compactFixture(t, map[string]string{"go.mod": "module p\n\ngo 1.21\n", "a.go": b.String()})
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"Zzlook"}, "max_results": 500, "include_bodies": false})
+	for i := 0; i < 12; i++ {
+		if !strings.Contains(out, fmt.Sprintf("// call %d", i)) {
+			t.Fatalf("max_results=500 dropped call %d:\n%s", i, out)
+		}
+	}
+	if !strings.Contains(out, "COMPLETE") {
+		t.Fatalf("complete set not labelled COMPLETE:\n%s", out)
+	}
+}
+
+// chi `lookup routes` (Sonnet 5.5, 2026-09-28) delivered `var routes` from
+// _examples/rest/main.go instead of node.routes in tree.go, and did not
+// mention the method at all.
+func TestBareLookupPrefersLibraryMethodOverExampleVariable(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod":                 "module ex\n\ngo 1.21\n",
+		"tree.go":                "package ex\n\ntype node struct{}\n\nfunc (n *node) routes() []string {\n\treturn nil\n}\n",
+		"_examples/rest/main.go": "package main\n\nimport \"flag\"\n\nvar routes = flag.Bool(\"routes\", false, \"docs\")\n\nfunc main() {}\n",
+	})
+	out := callCompact(t, srv, "lookup", map[string]any{"name": "routes"})
+	if !strings.Contains(out, "tree.go") || !strings.Contains(out, "func (n *node) routes()") {
+		t.Fatalf("bare lookup did not deliver the library method:\n%s", out)
+	}
+	if !strings.Contains(out, "also named this") || !strings.Contains(out, "_examples/rest/main.go") {
+		t.Fatalf("the other same-name symbol is not mentioned:\n%s", out)
+	}
+}

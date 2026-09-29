@@ -1,0 +1,6 @@
+[mcp_servers.prism]
+command = "/opt/homebrew/bin/prism"
+args = ["mcp", "--compact"]
+
+[mcp_servers.prism.tools.prism]
+approval_mode = "approve"

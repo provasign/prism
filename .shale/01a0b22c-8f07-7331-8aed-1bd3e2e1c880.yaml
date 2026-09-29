@@ -1,0 +1,42 @@
+shale_version: "0"
+id: 01a0b22c-8f07-7331-8aed-1bd3e2e1c880
+created_at: 2026-09-18T01:41:06.902932Z
+finalized_at: 2026-09-18T02:45:36.085582Z
+agent:
+    tool: codex
+    model: gpt-5.6-terra
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: prism query --terms init,initialize,MCP,Codex --format text
+      at: 2026-09-18T01:41:43.721549Z
+      classified: other
+    - cmd: git branch --show-current && git status -sb && prism read internal/cli/commands.go:312:620 internal/cli/commands.go:980:1300 internal/cli/commands_test.go:1:180 internal/cli/init_scope_test.go:1:240
+      at: 2026-09-18T01:41:48.568598Z
+      classified: other
+    - cmd: pwd && prism read --help && wc -l /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md && perl -ne 'print' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-18T01:41:52.016584Z
+      classified: other
+    - cmd: perl -ne 'print' /Users/tapabratapal/.codex/skills/.system/openai-docs/references/mcp-diagnostics.md && prism read internal/cli/commands.go internal/cli/commands_test.go internal/cli/init_test.go internal/cli/init_scope_test.go internal/mcp/mcp_test.go internal/mcp/server.go
+      at: 2026-09-18T01:42:04.853686Z
+      classified: other
+    - cmd: prism search 'writePrismCodexConfig|supportedHarnesses|codex' --scope text --format text && prism lookup writePrismCodexConfig && prism lookup cmdInit && prism lookup initRegisterMCPTools && prism lookup NewCompactServer && prism lookup Server.dispatch
+      at: 2026-09-18T01:42:09.202562Z
+      classified: other
+    - cmd: prism read .codex/config.toml . && prism read internal/cli/init_test.go internal/cli && prism read internal/cli/init_scope_test.go internal/cli && prism read internal/mcp/mcp_test.go internal/mcp && prism read README.md .
+      at: 2026-09-18T01:42:13.895895Z
+      classified: other
+    - cmd: codex mcp list && codex mcp get prism && /opt/homebrew/bin/prism --version && prism --version && prism search 'parseHarnesses' --scope text --format text && prism lookup TestWritePrismCodexConfig && prism lookup TestInitRegisterMCPToolsCreatesProjectDirs && prism lookup TestServerInitializeHandshake
+      at: 2026-09-18T01:42:23.635957Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/cli ./internal/mcp -count=1
+      at: 2026-09-18T01:42:47.767766Z
+      classified: test
+    - cmd: git diff --check && git status -sb && codex mcp get prism
+      at: 2026-09-18T01:42:52.500632Z
+      classified: other
+notes: []
+redactions: 0

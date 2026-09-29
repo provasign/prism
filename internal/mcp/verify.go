@@ -19,13 +19,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/provasign/prism/internal/grove"
+	"github.com/provasign/prism/internal/textsearch"
 	"github.com/provasign/prism/internal/view"
 )
 
@@ -62,8 +65,9 @@ func gitPrefix(root string) string {
 }
 
 // gitChangedRanges parses `git diff --unified=0 <base>` into after-side
-// changed line ranges per file (work-root-relative paths). A pure deletion
-// is recorded as a one-line touch marker at its after-side position.
+// changed line ranges per file (work-root-relative paths), then adds untracked
+// non-ignored files as whole-file ranges. A pure deletion is recorded as a
+// one-line touch marker at its after-side position.
 func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 	if !validGitBase(base) {
 		return nil, fmt.Errorf("invalid git base ref")
@@ -112,6 +116,26 @@ func gitChangedRanges(root, base string) (map[string][]lineRange, error) {
 				break
 			}
 		}
+	}
+	untracked, err := exec.Command("git", "-C", root, "ls-files", "--others",
+		"--exclude-standard", "-z", "--", ".").Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files --others: %w", err)
+	}
+	for _, name := range strings.Split(string(untracked), "\x00") {
+		if name == "" {
+			continue
+		}
+		rel := strings.TrimPrefix(name, prefix)
+		if rel == ".grove" || strings.HasPrefix(rel, ".grove/") {
+			continue // verifier/index state, created by the refresh above
+		}
+		content, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if readErr != nil {
+			return nil, fmt.Errorf("read untracked file %s: %w", rel, readErr)
+		}
+		end := strings.Count(string(content), "\n") + 1
+		changed[rel] = []lineRange{{start: 1, end: end}}
 	}
 	return changed, nil
 }
@@ -183,8 +207,39 @@ type missedSite struct {
 	Detail        string `json:"detail"`
 }
 
+// missedSiteMaps is the result shape. The struct slice went straight into
+// the result until 2026-09-06, and the text renderer's anySlice does not
+// know struct slices — so the MISSED SITES section was silently dropped
+// from the text the agent reads while the verdict still said "incomplete".
+// (The JSON fallback never triggered: the key was known, its value simply
+// rendered as nothing.) Maps are what every renderer here understands.
+func missedSiteMaps(ms []missedSite) []map[string]any {
+	out := make([]map[string]any, 0, len(ms))
+	for _, m := range ms {
+		out = append(out, map[string]any{
+			"symbol": m.Symbol, "qualifiedName": m.QualifiedName,
+			"file": m.File, "line": m.Line, "kind": m.Kind,
+			"becauseOf": m.BecauseOf, "detail": m.Detail,
+		})
+	}
+	return out
+}
+
 func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, error) {
 	base := stringArg(args, "base", "HEAD")
+	strict := boolArg(args, "strict")
+
+	// FAST PATH — removed_symbols: a cheap mid-loop residual-reference
+	// check, no diff walk. Measured (BACKLOG addendum #8, 2026-09-02, two
+	// ~210-call removal-task sessions): ~45-48 Bash greps per session —
+	// ~22% of ALL tool calls — re-checked the same 8-12 removed
+	// identifiers ~15 times, hand-rolling exactly this; prism_verify ran
+	// once, at call 210 of 212, because the full gate is priced as an
+	// exit check, not a loop check. This path answers "which of these
+	// still have references?" in one call agents can afford mid-loop.
+	if syms := stringsArg(args, "removed_symbols"); len(syms) > 0 {
+		return h.verifyRemovedSymbols(ctx, syms)
+	}
 
 	// Refresh the index FIRST (delta — cheap). Verify compares each changed
 	// file's base version against the live index, so a stale index shows no
@@ -193,9 +248,11 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	// exit 0). prism_drift already refreshes for exactly this reason; verify
 	// — the CI gate — must not be the one surface that trusts stale data.
 	var staleNote string
-	if _, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
+	if indexed, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
 		staleNote = "index refresh failed (" + ierr.Error() +
 			"); results computed against a possibly stale index"
+	} else if len(indexed.Errors) > 0 {
+		staleNote = "index refresh incomplete: " + strings.Join(indexed.Errors, "; ")
 	}
 
 	changed, err := gitChangedRanges(h.Root, base)
@@ -205,7 +262,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	deletedFiles := gitDeletedFiles(h.Root, base)
 	if len(changed) == 0 && len(deletedFiles) == 0 {
 		return map[string]any{"verdict": "clean", "base": base,
-			"note": "no changes vs " + base}, nil
+			"gateFailure": false, "note": "no changes vs " + base}, nil
 	}
 	changedFiles := make([]string, 0, len(changed))
 	for f := range changed {
@@ -222,6 +279,26 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	}
 	var seeds []seed
 	var unverifiedSeeds []string
+	var contentAdvisories []string
+	// testCoverage answers a DIFFERENT question than the seeds above: not
+	// "did every caller of a changed CONTRACT get updated" but "does a
+	// verified test exercise the function/method whose BODY changed" — a
+	// pure body edit (the common shape of a bug fix) never becomes a seed
+	// at all (addSeed only fires on signature change/rename/removal/member-
+	// contract extraction), so it was previously invisible to verify.
+	// Measured (2026-09-23, 12-task hard-core-failure review): every
+	// unsolved task was a body-only change, and the agent's own test run
+	// was the thing that gave a false pass — this is informational, not
+	// gating (never affects verdict), so a coverage miss on a change this
+	// can't resolve (e.g. a new file, a symbol change_impact can't scope)
+	// degrades to a silent skip, never a wrong verdict.
+	type testCoverageEntry struct {
+		symbol, file string
+		line         int
+		coveredBy    []string
+		checked      bool
+	}
+	var testCoverage []testCoverageEntry
 	// Symbols in test files are NOT contracts: a deleted test function has no
 	// callers that must migrate, yet each one used to surface as "review its
 	// old-contract dependents manually" — measured on a real diff, 3 deleted
@@ -244,7 +321,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			// stale reference left behind verified clean, exit 0). Surface
 			// them as unverified so the verdict degrades to "review".
 			unverifiedSeeds = append(unverifiedSeeds,
-				fmt.Sprintf("%s %s (%s) — no call-shaped blast radius to verify; check its references (prism_references %s)",
+				fmt.Sprintf("%s %s (%s) — no call-shaped blast radius to verify; check references with prism_search scope=text exhaustive=true for %s",
 					sym.Kind, displayQN(sym), reason, sym.Name))
 		default:
 			// interface/struct/class/type contract changes: real blast
@@ -275,6 +352,12 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			continue
 		}
 		for _, c := range fd.Changed {
+			if goUnexportedStringConstValueOnly(c.Before, c.After) {
+				contentAdvisories = append(contentAdvisories,
+					fmt.Sprintf("%s:%d %s — string content changed; verify does not assess its behavior; run relevant tests",
+						c.After.FilePath, c.After.Span.Start, displayQN(*c.After)))
+				continue
+			}
 			if c.SignatureChanged && c.After != nil {
 				// "signature of X changed" is wrong for a const whose VALUE
 				// changed; say what actually happened per kind.
@@ -324,6 +407,47 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 							"member "+after.QualifiedName+" of declaration block changed")
 					}
 				}
+			}
+		}
+		// Test-coverage check: every changed function/method/constructor,
+		// contract-changed or not (this is the whole point — body-only
+		// changes are excluded from `seeds` above). Non-fatal by design:
+		// a lookup failure (ambiguous name, unscoped symbol) just skips
+		// that entry rather than degrading the verdict, since this signal
+		// has never been validated as gating-safe the way the seed/impact
+		// logic has.
+		for _, c := range fd.Changed {
+			if c.After == nil || isTestFilePath(c.After.FilePath) {
+				continue
+			}
+			switch c.After.Kind {
+			case "function", "method", "constructor":
+			default:
+				continue
+			}
+			// Module-level pseudo-symbols ("<top-level>", "<module>") are how
+			// some parsers attribute import/constant edits; they are not a
+			// function a test could call, and a warning on one sends the agent
+			// hunting for coverage that cannot exist (seen on the first probe).
+			if strings.HasPrefix(c.After.Name, "<") {
+				continue
+			}
+			name := c.After.QualifiedName
+			if name == "" {
+				name = c.After.Name
+			}
+			entry := testCoverageEntry{symbol: displayQN(*c.After), file: f, line: c.After.Span.Start}
+			if r, err := h.Grove.ChangeImpactScoped(ctx, name, f); err == nil {
+				entry.checked = true
+				for _, caller := range r.Callers {
+					if isVerifiedTestCaller("/" + filepath.ToSlash(caller.FilePath)) {
+						entry.coveredBy = append(entry.coveredBy,
+							fmt.Sprintf("%s:%d", caller.FilePath, caller.Span.Start))
+					}
+				}
+			}
+			if entry.checked {
+				testCoverage = append(testCoverage, entry)
 			}
 		}
 		for _, c := range fd.Renamed {
@@ -380,30 +504,100 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		unverifiedSeeds = append(unverifiedSeeds, staleNote)
 	}
 	seen := map[string]bool{}
+	staleSeen := map[string]bool{}
+	// Whole-file deletions collapse to ONE rendered line per file. The
+	// per-symbol seeds still run through impact analysis below unchanged —
+	// only the sigChanges REPORT is grouped: measured 2026-09-02 (6rqii7zt
+	// #88), a deleted 34-symbol directory produced ~30 near-identical
+	// "X removed with file Y" lines in a 13.9k-char verify response, and
+	// the agent dismissed the whole block in one sentence. A report shape
+	// the reader skips is noise even when every line is true.
+	deletedFileSyms := map[string]int{}
 	for _, sd := range seeds {
+		if strings.Contains(sd.reason, " removed with file ") {
+			deletedFileSyms[sd.sym.FilePath]++
+			continue
+		}
 		sigChanges = append(sigChanges, map[string]any{
 			"symbol": displayQN(sd.sym), "file": sd.sym.FilePath, "line": sd.sym.Span.Start,
 			"reason": sd.reason,
 		})
+	}
+	delFiles := make([]string, 0, len(deletedFileSyms))
+	for f := range deletedFileSyms {
+		delFiles = append(delFiles, f)
+	}
+	sort.Strings(delFiles)
+	for _, f := range delFiles {
+		sigChanges = append(sigChanges, map[string]any{
+			"file":   f,
+			"reason": fmt.Sprintf("file deleted — %d symbol(s) removed with it", deletedFileSyms[f]),
+		})
+	}
+	// Reconstruct the base graph once, restoring every changed/deleted file.
+	// Name/signature matches cannot establish a type family.
+	var baseImpacts []*grove.ChangeImpactResult
+	var baseFailures []string
+	if len(seeds) > 0 {
+		files := make(map[string][]byte, len(changedFiles)+len(deletedFiles))
+		for _, f := range append(append([]string{}, changedFiles...), deletedFiles...) {
+			files[f] = gitShow(h.Root, base, f)
+		}
+		queries := make([][2]string, len(seeds))
+		for i, sd := range seeds {
+			sym := sd.sym
+			if sd.before != nil {
+				sym = *sd.before
+			}
+			queries[i] = [2]string{displayQN(sym), sym.FilePath}
+		}
+		var previewErr error
+		baseImpacts, baseFailures, previewErr = h.Grove.PreviewChangeImpacts(ctx, queries, files)
+		if previewErr != nil {
+			unverifiedSeeds = append(unverifiedSeeds, "base-contract coverage unavailable: "+previewErr.Error())
+		}
+	}
+	baseSites := newBaseSiteProjector(h, changed, deletedFiles)
+	for seedIndex, sd := range seeds {
 		impact, err := h.changeImpactFor(ctx, sd.sym)
-		// BASE-CONTRACT ENUMERATION: the post-edit graph answers "who depends
-		// on the NEW signature" — but the question is who depended on the OLD
-		// one, and the edit itself severs that binding under
-		// signature-sensitive resolution (Java/TS: measured, a mutated
-		// SettableBeanProperty.set returned family=0 callers=0 while 22 real
-		// sites depended on the old contract). The old contract's family
-		// members live in UNCHANGED files and still carry the old signature
-		// in the live index, so they are recoverable: same leaf name + same
-		// base-signature parameter list, plus their (still correctly
-		// resolved) callers.
-		bc := h.baseContractImpact(ctx, sd.sym, sd.before)
-		if bc != nil && strings.HasPrefix(bc.Completeness, "base-contract-error") {
-			// Engine failure during enumeration: fail closed and SAY so.
-			unverifiedSeeds = append(unverifiedSeeds,
-				displayQN(sd.sym)+" — base-contract enumeration failed ("+
-					strings.TrimPrefix(bc.Completeness, "base-contract-error: ")+
-					"); dependents of the old signature were NOT checked")
-			bc = nil
+		var bc *grove.ChangeImpactResult
+		if seedIndex < len(baseImpacts) {
+			bc = baseImpacts[seedIndex]
+		}
+		if seedIndex < len(baseFailures) && baseFailures[seedIndex] != "" {
+			unverifiedSeeds = append(unverifiedSeeds, displayQN(sd.sym)+": base impact unresolved: "+baseFailures[seedIndex])
+		}
+		// RENAMES: the post-edit graph cannot see stale callers of a name
+		// that no longer resolves. Measured 2026-08-25 (electrum
+		// seed_type->calc_seed_type, 4 call sites reverted): verify printed
+		// "calc_seed_type renamed" and then "no missed sites". The gate was
+		// structurally blind to the shape rename_plan exists for. Stale
+		// references to the OLD name ARE recoverable from the reference
+		// layer, which is name-based rather than resolution-based.
+		if stale := h.staleOldNameRefs(ctx, sd.sym, sd.before); len(stale) > 0 {
+			for _, s := range stale {
+				// One physical line, one finding. Every member of a renamed
+				// TYPE seeds separately (networkx: __call__, _convert_and_call,
+				// …), so without this the same decorator line was reported 32
+				// times for 3 real sites — a gate that inflates its own output
+				// teaches people to ignore it.
+				key := s.file + ":" + strconv.Itoa(s.line) + ":" + s.oldName
+				if staleSeen[key] {
+					continue
+				}
+				staleSeen[key] = true
+				name := s.enclosing
+				if name == "" {
+					name = s.oldName
+				}
+				missed = append(missed, missedSite{
+					Symbol: s.oldName, QualifiedName: name,
+					File: s.file, Line: s.line, Kind: "stale-reference",
+					BecauseOf: displayQN(sd.sym),
+					Detail: "still references the old name " + s.oldName +
+						" — renamed to " + s.newName,
+				})
+			}
 		}
 		if err != nil {
 			if bc == nil {
@@ -415,7 +609,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			}
 			impact = bc
 			notes = append(notes, displayQN(sd.sym)+": required set enumerated from the BASE contract (old-signature family + callers)")
-		} else if len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes) == 0 {
+		} else if obligationSiteCount(impact) == 0 {
 			if bc == nil {
 				// FAIL CLOSED: empty blast radius, and the base contract was
 				// not recoverable either (no before-symbol, unparsable
@@ -432,17 +626,24 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		if impact.Completeness != "" && impact.Completeness != "closed" {
 			notes = append(notes, displayQN(sd.sym)+": impact completeness is "+impact.Completeness)
 		}
-		required := make([]grove.SymbolRecord, 0,
-			len(impact.Family)+len(impact.Callers)+len(impact.DeclaringTypes))
-		required = append(required, impact.Family...)
-		required = append(required, impact.Callers...)
-		required = append(required, impact.DeclaringTypes...)
+		if coverage, note := impactCoverage(impact); coverage == "partial" || impactCallerCoverage(impact) == "partial" {
+			unverifiedSeeds = append(unverifiedSeeds, displayQN(sd.sym)+": "+note)
+		}
+		if impact.HasHeuristicRefs {
+			notes = append(notes, displayQN(sd.sym)+": required set includes name-derived "+
+				"(framework template/query) references — probably right, not certain")
+		}
+		var required []grove.SymbolRecord
+		if impact != bc {
+			required = impactSites(impact, false)
+		}
 		// Augment a non-empty post-edit set with base-contract survivors the
 		// severed graph no longer links to the seed (Java overload families:
 		// measured 3/30 file catch on jackson-serialize without this).
-		if bc != nil && bc != impact {
-			required = append(required, bc.Family...)
-			required = append(required, bc.Callers...)
+		if bc != nil {
+			projected, gaps := baseSites.project(ctx, bc, sd.sym.Name)
+			required = append(required, projected...)
+			unverifiedSeeds = append(unverifiedSeeds, gaps...)
 		}
 		for _, site := range required {
 			if site.FilePath == sd.sym.FilePath && site.Span.Start == sd.sym.Span.Start {
@@ -567,112 +768,39 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	switch {
 	case len(missed) > 0 || archStatus == "fail":
 		verdict = "incomplete"
-	case len(unverifiedSeeds) > 0:
+	case len(unverifiedSeeds) > 0 || archStatus == "review":
 		verdict = "review"
 	}
 	h.Ledger.RecordCall("prism_verify")
+	testCoverageOut := make([]map[string]any, 0, len(testCoverage))
+	for _, tc := range testCoverage {
+		e := map[string]any{"symbol": tc.symbol, "file": tc.file, "line": tc.line}
+		if len(tc.coveredBy) > 0 {
+			e["coveredBy"] = tc.coveredBy
+		} else {
+			e["warning"] = "no verified test caller found in the graph for this changed function — " +
+				"confirm you ran a test that actually exercises it, not just a passing suite"
+		}
+		testCoverageOut = append(testCoverageOut, e)
+	}
 	return map[string]any{
-		"verdict":          verdict,
-		"base":             base,
-		"changedFiles":     changedFiles,
-		"signatureChanges": sigChanges,
-		"missedSites":      missed,
-		"unverifiedSeeds":  unverifiedSeeds,
-		"newDependencies":  newDeps,
-		"archStatus":       archStatus,
-		"archIntroduced":   archIntroduced,
-		"notes":            notes,
+		"verdict":           verdict,
+		"gateFailure":       verdict == "incomplete" || (strict && verdict == "review"),
+		"base":              base,
+		"changedFiles":      changedFiles,
+		"signatureChanges":  sigChanges,
+		"missedSites":       missedSiteMaps(missed),
+		"unverifiedSeeds":   unverifiedSeeds,
+		"contentAdvisories": contentAdvisories,
+		"newDependencies":   newDeps,
+		"archStatus":        archStatus,
+		"archIntroduced":    archIntroduced,
+		"notes":             notes,
+		// Informational only, never affects verdict/gateFailure — see
+		// testCoverage's declaration comment above for why body-only
+		// changes need this separately from the seed/missedSites pipeline.
+		"testCoverage": testCoverageOut,
 	}, nil
-}
-
-// baseContractImpact enumerates dependents of the OLD contract after a
-// signature change: symbols sharing the seed's leaf name whose signature
-// parameter list still matches the BASE side (the family members in
-// unchanged files kept the old signature), plus each one's callers — both
-// still correctly type-resolved in the live index because their files did
-// not change. Returns nil when the base signature is unknown/unparsable or
-// no old-signature survivor exists. Completeness "base-contract": a
-// signature-matched enumeration, not a closed type-resolved traversal.
-func (h *Handler) baseContractImpact(ctx context.Context, sym grove.SymbolRecord, before *grove.SymbolRecord) *grove.ChangeImpactResult {
-	if before == nil {
-		return nil
-	}
-	baseParams := paramListNamed(before.Signature, sym.Name)
-	if baseParams == "" || baseParams == paramListNamed(sym.Signature, sym.Name) {
-		return nil // no signature to match, or the params did not actually change
-	}
-	// Type variables of the base declaration (Java/TS generics): a base
-	// parameter that references one matches ANY concrete type at that
-	// position in an override — `serialize(T value, ...)` must match
-	// `serialize(String value, ...)` (measured: verbatim matching held
-	// jackson-serialize to a 12% catch; every override binds T).
-	typeVars := before.TypeParameters
-	if len(typeVars) == 0 {
-		typeVars = sym.TypeParameters
-	}
-	cands, err := h.Grove.SearchSymbols(ctx, sym.Name, 200)
-	if err != nil {
-		// An engine failure here must not read as "no old-signature
-		// survivors": the caller treats nil as a normal empty enumeration
-		// and the catch rate silently drops. Report it as its own failure.
-		return &grove.ChangeImpactResult{
-			Query:        displayQN(sym),
-			Completeness: "base-contract-error: " + err.Error(),
-		}
-	}
-	const maxFamilyCallers = 60
-	var family []grove.SymbolRecord
-	seenSite := map[string]bool{}
-	for _, c := range cands {
-		if c.Name != sym.Name {
-			continue
-		}
-		switch c.Kind {
-		case "function", "method", "constructor":
-		default:
-			continue
-		}
-		if c.FilePath == sym.FilePath && c.Span.Start == sym.Span.Start {
-			continue // the mutated seed itself
-		}
-		if !paramsMatch(baseParams, paramListNamed(c.Signature, sym.Name), sym.Language, typeVars) {
-			continue
-		}
-		key := c.FilePath + ":" + fmt.Sprint(c.Span.Start)
-		if seenSite[key] {
-			continue
-		}
-		seenSite[key] = true
-		family = append(family, c)
-	}
-	if len(family) == 0 {
-		return nil
-	}
-	var callers []grove.SymbolRecord
-	for i, m := range family {
-		if i >= maxFamilyCallers {
-			break
-		}
-		cs, err := h.Grove.Callers(ctx, displayQN(m))
-		if err != nil {
-			continue
-		}
-		for _, c := range cs {
-			key := c.FilePath + ":" + fmt.Sprint(c.Span.Start)
-			if seenSite[key] {
-				continue
-			}
-			seenSite[key] = true
-			callers = append(callers, c)
-		}
-	}
-	return &grove.ChangeImpactResult{
-		Query:        displayQN(sym),
-		Declarations: []grove.SymbolRecord{sym},
-		Family:       family,
-		Callers:      callers,
-		Completeness: "base-contract",
-	}
 }
 
 // paramList extracts a normalized parameter-list string from a signature:
@@ -955,7 +1083,7 @@ func (h *Handler) changeImpactFor(ctx context.Context, sym grove.SymbolRecord) (
 	candidates = append(candidates, sym.Name)
 	var lastErr error
 	for _, q := range candidates {
-		r, err := h.Grove.ChangeImpact(ctx, q)
+		r, err := h.Grove.ChangeImpactScoped(ctx, q, sym.FilePath)
 		if err == nil && len(r.Declarations) > 0 {
 			return r, nil
 		}
@@ -963,35 +1091,50 @@ func (h *Handler) changeImpactFor(ctx context.Context, sym grove.SymbolRecord) (
 			lastErr = err
 		}
 	}
-	// Bare function (change_impact wants Type.method): the required set is
-	// its resolved callers. Zero callers with a clean resolution is a
-	// trivially complete set, not a failure.
-	callers, err := h.Grove.Callers(ctx, sym.Name)
-	if err == nil {
-		return &grove.ChangeImpactResult{
-			Query:        sym.Name,
-			Declarations: []grove.SymbolRecord{sym},
-			Callers:      callers,
-			Completeness: "callers-only",
-		}, nil
-	}
+	// Never recover a failed scoped query by unioning global namesakes.
+	// The base graph can still resolve a removed or renamed declaration.
 	if lastErr == nil {
-		lastErr = err
+		lastErr = fmt.Errorf("no scoped impact declaration for %s in %s", displayQN(sym), sym.FilePath)
 	}
 	return nil, lastErr
 }
 
+var versionedTestSourceDir = regexp.MustCompile(`(?:^|/)src/test-(?:jdk|java|kotlin|scala|groovy|python|php|go|rust|js|ts)[0-9]*(?:/|$)`)
+
 // isTestFilePath matches test files across the supported languages.
 func isTestFilePath(p string) bool {
+	p = strings.ToLower(filepath.ToSlash(p))
 	base := p
 	if i := strings.LastIndexByte(p, '/'); i >= 0 {
 		base = p[i+1:]
 	}
 	return strings.HasSuffix(base, "_test.go") ||
 		strings.HasPrefix(base, "test_") ||
+		strings.Contains(base, "_test.") ||
 		strings.Contains(base, ".test.") || strings.Contains(base, ".spec.") ||
+		strings.HasSuffix(base, "test.java") || strings.HasSuffix(base, "tests.java") ||
+		strings.HasSuffix(base, "test.cs") || strings.HasSuffix(base, "tests.cs") ||
+		strings.HasSuffix(base, "test.php") || strings.HasSuffix(base, "tests.php") ||
+		strings.HasPrefix(p, "test/") || strings.HasPrefix(p, "tests/") ||
+		strings.HasPrefix(p, "__tests__/") ||
 		strings.Contains(p, "/test/") || strings.Contains(p, "/tests/") ||
-		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/")
+		strings.Contains(p, "/__tests__/") || strings.Contains(p, "src/test/") ||
+		versionedTestSourceDir.MatchString(p)
+}
+
+// isVerifiedTestCaller reports whether a caller found via InboundCallers is
+// a REAL test -- isTestFilePath alone is not enough, because that also
+// matches mocks/fakes/stubs living in a test-shaped path (e.g. a hand-
+// written _test.go helper that isn't itself a test function). A mock
+// calling the real implementation it wraps is not evidence a test covers
+// that implementation; only a genuine test file is.
+func isVerifiedTestCaller(path string) bool {
+	if !isTestFilePath(path) {
+		return false
+	}
+	lp := strings.ToLower(path)
+	return !strings.Contains(lp, "mock") && !strings.Contains(lp, "fake") &&
+		!strings.Contains(lp, "stub") && !strings.Contains(lp, "/testdata/")
 }
 
 func displayQN(s grove.SymbolRecord) string {
@@ -999,4 +1142,230 @@ func displayQN(s grove.SymbolRecord) string {
 		return s.QualifiedName
 	}
 	return s.Name
+}
+
+// staleRef is one surviving occurrence of a renamed symbol's OLD name.
+type staleRef struct {
+	file, enclosing, oldName, newName string
+	line                              int
+}
+
+// staleOldNameRefs finds references to a renamed symbol's OLD name that
+// survive in the post-edit tree. The reference layer matches by NAME, so it
+// sees exactly what resolution-based impact cannot: call sites left pointing
+// at a name that no longer exists.
+//
+// Conservative by construction — a rename is only actionable when the old
+// name is genuinely gone:
+//   - silent unless the symbol was renamed (before != nil, names differ)
+//   - silent if the old name still RESOLVES to a declaration (an overload,
+//     a same-named sibling, or a deliberately kept alias — then a surviving
+//     reference is legitimate, not stale)
+//   - comment/string occurrences are excluded by References itself
+func (h *Handler) staleOldNameRefs(ctx context.Context, sym grove.SymbolRecord, before *grove.SymbolRecord) []staleRef {
+	if h.Grove == nil || before == nil {
+		return nil
+	}
+	oldName := before.Name
+	newDisplay := sym.Name
+	if oldName == "" || oldName == sym.Name {
+		// A member of a renamed TYPE keeps its own leaf name (networkx:
+		// `_dispatchable.__call__ renamed` — leaf `__call__` unchanged,
+		// parent `_dispatch` -> `_dispatchable`). The broken references are
+		// to the old PARENT, so fall back to it.
+		oldParent, newParent := leafOf(before.ParentSymbol), leafOf(sym.ParentSymbol)
+		if oldParent == "" || oldParent == newParent {
+			return nil
+		}
+		oldName = oldParent
+		newDisplay = newParent
+		// re-anchor the callability test on the parent type
+		if p, err := h.Grove.Resolve(ctx, newParent); err == nil && len(p) > 0 {
+			sym.Kind, before.Kind = p[0].Kind, p[0].Kind
+		} else {
+			sym.Kind, before.Kind = "class", "class"
+		}
+	}
+	// If something still declares the old name, surviving references are fine.
+	if cands, err := h.Grove.Resolve(ctx, oldName); err == nil {
+		for _, c := range cands {
+			if !c.TestDouble {
+				return nil
+			}
+		}
+	}
+	// Only CALL POSITION breaks. Measured 2026-08-25 (electrum): the bare
+	// reference layer flagged 25 sites on the COMPLETE gold diff, because
+	// `seed_type` survives legitimately as a variable, a kwarg and a dict
+	// key — renaming the FUNCTION does not break any of those. A gate that
+	// fires on a correct change is worse than no gate, so the filter is
+	// mandatory, not a refinement.
+	if !isCallable(sym.Kind) && !isCallable(before.Kind) {
+		return nil
+	}
+	res, err := h.Grove.References(ctx, oldName)
+	if err != nil {
+		return nil
+	}
+	callRe := regexp.MustCompile(`\b` + regexp.QuoteMeta(oldName) + `\s*\(`)
+	out := make([]staleRef, 0, len(res.Refs))
+	for _, r := range res.Refs {
+		line := sourceLineAt(h.Root, r.File, r.Line)
+		if line == "" || !callRe.MatchString(stripCommentsAndStringsLine(line)) {
+			continue
+		}
+		out = append(out, staleRef{file: r.File, line: r.Line,
+			enclosing: r.Enclosing, oldName: oldName, newName: newDisplay})
+		if len(out) == 25 {
+			break
+		}
+	}
+	return out
+}
+
+// isCallable: kinds whose rename breaks CALL-position references. Classes
+// count — measured on networkx, whose renamed `_dispatch` class is used as
+// a decorator (`@_dispatch(...)`), so every stale use is a call the old
+// name can no longer satisfy.
+func isCallable(kind string) bool {
+	switch kind {
+	case "function", "method", "constructor", "class", "struct":
+		return true
+	}
+	return false
+}
+
+// sourceLineAt reads one 1-based line from a repo-relative file; "" on any
+// failure (a gate must degrade to silence, never to a false accusation).
+func sourceLineAt(root, rel string, line int) string {
+	b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	if err != nil || len(b) > 4<<20 {
+		return ""
+	}
+	lines := strings.Split(string(b), "\n")
+	if line < 1 || line > len(lines) {
+		return ""
+	}
+	return lines[line-1]
+}
+
+// stripCommentsAndStringsLine blanks quoted spans and trailing line comments
+// so `"seed_type("` in a docstring cannot read as a call site.
+func stripCommentsAndStringsLine(s string) string {
+	var b strings.Builder
+	var quote rune
+	for i, r := range s {
+		switch {
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			}
+			b.WriteByte(' ')
+			continue
+		case r == '\'' || r == '"' || r == '`':
+			quote = r
+			b.WriteByte(' ')
+			continue
+		case r == '#':
+			return b.String()
+		case r == '/' && i+1 < len(s) && s[i+1] == '/':
+			return b.String()
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// verifyRemovedSymbols reports exact identifier mentions in searchable files.
+// A bounded or interrupted scan must not claim that a removed name is clean.
+func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any, error) {
+	type residual struct {
+		Symbol string           `json:"symbol"`
+		Count  int              `json:"count"`
+		Sites  []map[string]any `json:"sites,omitempty"`
+	}
+	const perSymbolSiteCap = 20
+	var out []residual
+	clean := 0
+	for _, s := range syms {
+		if strings.TrimSpace(s) == "" {
+			return nil, fmt.Errorf("removed_symbols contains an empty identifier")
+		}
+		r := textsearch.Search(ctx, h.Root, s, textsearch.Options{Exhaustive: true})
+		// Exhaustive search still has a 10,000-hit per-file cap, a 100,000-hit
+		// total cap, and a deadline. A file at the per-file cap may hide an
+		// exact mention after thousands of longer-name matches.
+		if r.TimedOut || r.Truncated || len(r.RejectedPaths) > 0 || len(r.Hits) >= 10000 {
+			return nil, fmt.Errorf("removed-symbol check for %q is incomplete (timed out: %t, truncated: %t, returned hits: %d); inspect or retry", s, r.TimedOut, r.Truncated, len(r.Hits))
+		}
+		// Search is a literal substring pass: Foo also finds Foo1 and FooImpl.
+		// Keep only whole identifier mentions, including those in comments and
+		// docs, without treating a surviving longer name as a removed symbol.
+		// Search previews long lines; read the full line before applying the
+		// boundary rule so a mention past the preview is not missed.
+		identifier := regexp.MustCompile(`(^|[^\pL\pN\pM_$])` + regexp.QuoteMeta(s) + `($|[^\pL\pN\pM_$])`)
+		res := residual{Symbol: s}
+		linesByFile := map[string][]string{}
+		for _, hit := range r.Hits {
+			lines, ok := linesByFile[hit.File]
+			if !ok {
+				content, err := os.ReadFile(filepath.Join(h.Root, filepath.FromSlash(hit.File)))
+				if err != nil {
+					return nil, fmt.Errorf("removed-symbol check for %q cannot read %s: %w", s, hit.File, err)
+				}
+				lines = strings.Split(string(content), "\n")
+				linesByFile[hit.File] = lines
+			}
+			if hit.Line < 1 || hit.Line > len(lines) {
+				return nil, fmt.Errorf("removed-symbol check for %q cannot read %s:%d", s, hit.File, hit.Line)
+			}
+			line := strings.TrimRight(lines[hit.Line-1], "\r")
+			span := identifier.FindStringIndex(line)
+			if span == nil {
+				continue
+			}
+			res.Count++
+			if len(res.Sites) >= perSymbolSiteCap {
+				continue
+			}
+			// Keep the actual identifier visible even when the search backend
+			// returned only a prefix preview of a long line.
+			if len(line) > 250 {
+				start := max(0, span[0]-80)
+				end := min(len(line), span[1]+80)
+				line = line[start:end]
+				if start > 0 {
+					line = "…" + line
+				}
+				if end < len(lines[hit.Line-1]) {
+					line += "…"
+				}
+			}
+			res.Sites = append(res.Sites, map[string]any{
+				"file": hit.File, "line": hit.Line, "text": line})
+		}
+		if res.Count > perSymbolSiteCap {
+			res.Sites = append(res.Sites, map[string]any{
+				"note": fmt.Sprintf("+%d more sites", res.Count-perSymbolSiteCap)})
+		}
+		if res.Count == 0 {
+			clean++
+		}
+		out = append(out, res)
+	}
+	verdict := "exact identifier mentions remain"
+	if clean == len(syms) {
+		verdict = "clean — no exact identifier mentions remain"
+	}
+	return map[string]any{
+		"mode":        "removed_symbols",
+		"verdict":     verdict,
+		"gateFailure": clean != len(syms),
+		"clean":       clean,
+		"checked":     len(syms),
+		"residuals":   out,
+		"note": "whole-identifier text pass over searchable working-tree files, including comments and docs. " +
+			"Mentions are not proof of live code references; inspect reported sites. Full verify is optional when " +
+			"build/typecheck does not cover affected callers.",
+	}, nil
 }

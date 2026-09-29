@@ -1,0 +1,218 @@
+shale_version: "0"
+id: 01a07f26-dfae-7ec3-98bf-6508822641e9-c8
+created_at: 2026-09-08T21:13:40.026734Z
+finalized_at: 2026-09-08T21:38:35.298901Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server_installation.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:33:07.937282Z
+    - path: internal/mcp/server_installation_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:33:07.937282Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:33:07.937282Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:34:45.518096Z
+    - path: scripts/gen-homebrew-formula.sh
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:37:21.066616Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T21:37:21.066616Z
+commands:
+    - cmd: git push origin main
+      at: 2026-09-08T21:13:40.026734Z
+      classified: other
+    - cmd: git log -3 --oneline --decorate && git status --short && git diff-tree --no-commit-id --name-status -r c80122e && git ls-remote --heads origin main
+      at: 2026-09-08T21:13:47.793185Z
+      classified: other
+    - cmd: git show --stat --oneline --decorate 4fd064f && git show --name-status --format=fuller 4fd064f && git status --short --branch
+      at: 2026-09-08T21:13:55.565829Z
+      classified: other
+    - cmd: git fetch origin main && git status --short --branch && git rev-parse HEAD origin/main
+      at: 2026-09-08T21:14:10.410805Z
+      classified: other
+    - cmd: git status --short --branch && git log -3 --oneline && git diff --stat && git diff --cached --stat
+      at: 2026-09-08T21:21:04.516901Z
+      classified: other
+    - cmd: git diff -- internal/mcp/server.go internal/mcp/tools.go internal/mcp/delivery.go internal/mcp/coverage_test.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go
+      at: 2026-09-08T21:21:12.581031Z
+      classified: other
+    - cmd: mktemp -d /tmp/prism-discarded-experiments.XXXXXX
+      at: 2026-09-08T21:21:17.049812Z
+      classified: other
+    - cmd: |-
+        cp internal/mcp/coverage_test.go internal/mcp/delivery.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go /tmp/prism-discarded-experiments.DCWPHL/
+        mv internal/mcp/fulltext.go internal/mcp/fulltext_test.go internal/mcp/searchrecovery.go internal/mcp/searchrecovery_test.go /tmp/prism-discarded-experiments.DCWPHL/
+        git restore --source=HEAD --worktree -- internal/mcp/coverage_test.go internal/mcp/delivery.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go
+        git status --short --branch
+      at: 2026-09-08T21:21:27.137128Z
+      classified: other
+    - cmd: |-
+        sed -n '300,580p' internal/mcp/tools.go
+        sed -n '785,825p' internal/mcp/tools.go
+        sed -n '859,880p' internal/mcp/tools.go
+        sed -n '119,137p' internal/mcp/server.go
+        sed -n '110,145p' internal/mcp/delivery.go
+      at: 2026-09-08T21:21:42.55525Z
+      classified: other
+    - cmd: |-
+        sed -n '1,310p' internal/mcp/graphtext.go
+        sed -n '1,190p' internal/mcp/lookupbatch.go
+        sed -n '560,745p' /Users/tapabratapal/Projects/provasign/research/harness/runs/sonnet-prism-cost-isolation-2026-09-08/STUDY.md
+      at: 2026-09-08T21:21:42.5552Z
+      classified: other
+    - cmd: rg -n 'steering|prismInstructions|prismBlock|CLAUDE.md|AGENTS.md|MUST|CALL THIS|first action|first repository' internal/cli/commands.go internal/mcp/tools.go internal/mcp/server.go internal/mcp/delivery.go AGENTS.md CLAUDE.md
+      at: 2026-09-08T21:21:42.560068Z
+      classified: other
+    - cmd: |-
+        sed -n '461,540p' internal/cli/commands.go
+        sed -n '83,215p' internal/mcp/graphtext.go
+        sed -n '120,135p' internal/mcp/delivery.go
+        rg -n 'prism_references|prism_edges|prism_node|prism_index|do not|must|MUST|NO EXACT' internal/mcp/structural*.go internal/mcp/*note*.go internal/mcp/lookup*.go
+      at: 2026-09-08T21:21:50.451607Z
+      classified: other
+    - cmd: |-
+        rg -n 'func .*lookupSymbol|func .*toolLookup|rawText|callSites|type SymbolRecord|structuralNote|prism_references|compactImpactLine' internal/mcp/lookup* internal/mcp/tools.go internal/mcp/graphtext.go internal/mcp/*note* internal/grove
+        sed -n '660,720p' internal/mcp/tools.go
+        sed -n '208,266p' internal/mcp/searchtext.go
+        sed -n '218,265p' internal/mcp/graphtext.go
+        rg -n 'textBackend|symbolsTruncated|totalHits|fileCount' internal/mcp/searchtext.go
+      at: 2026-09-08T21:21:59.110567Z
+      classified: other
+    - cmd: |
+        sed -n '1,66p' internal/grove/types.go
+        sed -n '2191,2375p' internal/mcp/tools.go
+        sed -n '1794,1830p' internal/mcp/tools.go
+        rg -n 'func .*structuralNote|prism_references|func compactImpactLine' internal/mcp --glob '*.go' --glob '!*test.go'
+        git status --short
+      at: 2026-09-08T21:22:06.244247Z
+      classified: other
+    - cmd: |-
+        sed -n '175,242p' internal/mcp/tools.go
+        sed -n '1,42p' internal/mcp/impactevidence.go
+        sed -n '313,380p' internal/mcp/textmerge.go
+        sed -n '746,795p' internal/mcp/textmerge.go
+        sed -n '95,127p' internal/mcp/server.go
+        sed -n '1,100p' internal/mcp/oncenotes.go
+        rg -n 'stale|refresh|index' internal/mcp/tools.go | head -n 35
+      at: 2026-09-08T21:22:17.792028Z
+      classified: other
+    - cmd: |-
+        git status --short --branch
+        sed -n '786,815p' internal/mcp/tools.go
+        command -v prism
+        prism version
+        ps -axo pid,ppid,command | rg '[p]rism (mcp|serve)|[g]rove.*(serve|daemon)'
+      at: 2026-09-08T21:24:44.878269Z
+      classified: other
+    - cmd: |-
+        /opt/homebrew/bin/prism version
+        ls -l /Users/tapabratapal/bin/prism /opt/homebrew/bin/prism
+        lsof -a -p 41602,81924 -d cwd,txt -Fn | head -n 50
+        sed -n '1,60p' .mcp.json
+      at: 2026-09-08T21:24:55.95937Z
+      classified: other
+    - cmd: |-
+        git show v0.72.0:internal/mcp/tools.go | sed -n '203,237p'
+        git show v0.69.2:internal/mcp/tools.go | sed -n '180,220p'
+        ps -p 41539,81898 -o pid,ppid,comm
+        rg -n -A 7 '^\[mcp_servers\.prism\]' /Users/tapabratapal/.codex/config.toml
+      at: 2026-09-08T21:25:11.851934Z
+      classified: other
+    - cmd: rg -n "brew install|/opt/homebrew|/usr/local/bin|~/bin/prism|bin/prism|command.*prism|install.*prism" README.md docs install.sh install.ps1 internal/cli .github 2>/dev/null | head -n 200 && rg -n -A 5 '^\[mcp_servers\.prism\]' /Users/tapabratapal/.codex/config.toml && sed -n '1,20p' .mcp.json && command -v -a prism && ls -l /Users/tapabratapal/bin/prism /opt/homebrew/bin/prism
+      at: 2026-09-08T21:28:14.525118Z
+      classified: other
+    - cmd: sed -n '30,55p' README.md && sed -n '75,130p' install.sh && which -a prism || true && /Users/tapabratapal/bin/prism version && /opt/homebrew/bin/prism version
+      at: 2026-09-08T21:28:20.409785Z
+      classified: other
+    - cmd: |-
+        sed -n '1,180p' internal/mcp/server_stale_test.go
+        sed -n '260,292p' internal/mcp/server.go
+        sed -n '1,82p' install.sh
+        sed -n '1,130p' install.ps1
+      at: 2026-09-08T21:30:10.595489Z
+      classified: other
+    - cmd: |-
+        rg -n 'prismBin :=|Executable\(\)|initRegisterMCPTools\(' internal/cli/commands.go | head -n 80
+        rg -n 'install.sh|INSTALL_DIR|already.*prism|PATH' --glob '*test*' . | head -n 100
+      at: 2026-09-08T21:30:10.605077Z
+      classified: other
+    - cmd: sed -n '1,100p' internal/version/version.go 2>/dev/null || rg -n 'var Version|const Version' internal cmd && rg -n 'ldflags|version.Version' Makefile .goreleaser.yml scripts internal | head -n 80
+      at: 2026-09-08T21:31:16.54178Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/server_installation.go internal/mcp/server_installation_test.go && go test ./internal/mcp -run '^(TestFindPrismInstallationConflicts|TestNormalizePrismVersion|TestStaleBinaryNoteQuietWhenCurrent|TestDispatch_ToolsCall_OK)$'
+      at: 2026-09-08T21:33:20.962036Z
+      classified: test
+    - cmd: sed -n '1,55p' internal/cli/commands.go && sed -n '1,40p' internal/mcp/server.go && rg -n 'github.com/provasign/prism/internal/mcp' internal/cli
+      at: 2026-09-08T21:33:54.859597Z
+      classified: other
+    - cmd: go env GOWORK GOFLAGS && rg -n '^go |^toolchain' go.mod go.work 2>/dev/null
+      at: 2026-09-08T21:34:12.370025Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/mcp/server.go internal/mcp/server_installation.go internal/mcp/server_installation_test.go && GOFLAGS=-mod=readonly go test ./internal/mcp -run '^(TestFindPrismInstallationConflicts|TestNormalizePrismVersion|TestStaleBinaryNoteQuietWhenCurrent|TestDispatch_ToolsCall_OK)$' && GOFLAGS=-mod=readonly go test ./internal/cli -run '^(TestCmdInit|TestCmdInit_GlobalFlag|TestCmdInit_ModeFlagAcceptedAndIgnored)$'
+      at: 2026-09-08T21:34:57.581305Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/server_installation_test.go && GOFLAGS=-mod=readonly go test ./internal/mcp -run '^(TestFindPrismInstallationConflicts|TestNormalizePrismVersion|TestStaleBinaryNoteQuietWhenCurrent|TestDispatch_ToolsCall_OK)$' && GOFLAGS=-mod=readonly go test ./internal/cli -run '^(TestCmdInit|TestCmdInit_GlobalFlag|TestCmdInit_ModeFlagAcceptedAndIgnored)$'
+      at: 2026-09-08T21:35:24.949779Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-08T21:35:52.745684Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go build -ldflags '-X github.com/provasign/prism/internal/version.Version=v9.9.9' -o /tmp/prism-install-conflict-check ./cmd/prism && mktemp -d /tmp/prism-init-check.XXXXXX
+      at: 2026-09-08T21:36:05.384991Z
+      classified: build
+    - cmd: GOFLAGS=-mod=readonly GOOS=windows GOARCH=amd64 go test -c -o /tmp/prism-mcp-windows.test.exe ./internal/mcp && GOFLAGS=-mod=readonly GOOS=windows GOARCH=amd64 go test -c -o /tmp/prism-cli-windows.test.exe ./internal/cli
+      at: 2026-09-08T21:36:09.473115Z
+      classified: test
+    - cmd: /tmp/prism-install-conflict-check init /tmp/prism-init-check.E4JF0J
+      at: 2026-09-08T21:36:17.877977Z
+      classified: other
+    - cmd: rg -n "homebrew|Formula|tap|goreleaser|release" .github scripts Makefile README.md | head -n 220 && find .. -maxdepth 2 -type d -iname '*homebrew*' -o -iname '*tap*' | head -n 40 && git status --short
+      at: 2026-09-08T21:36:45.384797Z
+      classified: other
+    - cmd: sed -n '1,110p' scripts/gen-homebrew-formula.sh && sed -n '128,150p' .github/workflows/release.yml && sed -n '40,68p' README.md && rg -n 'cmdDoctor|doctor' internal/cli/commands.go | head -n 40
+      at: 2026-09-08T21:36:52.935866Z
+      classified: other
+    - cmd: ls -1 .. | head -n 80 && sed -n '1480,1565p' internal/cli/commands.go
+      at: 2026-09-08T21:37:05.112475Z
+      classified: other
+    - cmd: bash -n scripts/gen-homebrew-formula.sh && scripts/gen-homebrew-formula.sh v0.test <(printf '%064d  prism-v0.test-darwin-amd64\n%064d  prism-v0.test-darwin-arm64\n%064d  prism-v0.test-linux-amd64\n%064d  prism-v0.test-linux-arm64\n' 1 2 3 4) | ruby -c && git diff --check && git diff --stat && git status --short --branch
+      at: 2026-09-08T21:37:44.56623Z
+      classified: other
+    - cmd: git diff -- README.md internal/cli/commands.go internal/mcp/server.go scripts/gen-homebrew-formula.sh && sed -n '1,260p' internal/mcp/server_installation.go && sed -n '1,180p' internal/mcp/server_installation_test.go
+      at: 2026-09-08T21:38:08.820824Z
+      classified: other
+    - cmd: git add README.md internal/cli/commands.go internal/mcp/server.go internal/mcp/server_installation.go internal/mcp/server_installation_test.go scripts/gen-homebrew-formula.sh && git diff --cached --check && git diff --cached --stat && git status --short --branch
+      at: 2026-09-08T21:38:20.553231Z
+      classified: other
+    - cmd: 'git commit -m "fix(install): detect conflicting Prism binaries"'
+      at: 2026-09-08T21:38:30.132529Z
+      classified: other
+notes:
+    - text: continuation of session 01a07f26-dfae-7ec3-98bf-6508822641e9 — events captured after its evidence was finalized
+      at: 2026-09-08T21:13:40.026734Z
+redactions: 0

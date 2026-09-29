@@ -76,6 +76,16 @@ class Prism < Formula
     end
   end
 
+  def caveats
+    <<~EOS
+      Prism MCP configuration is project-local. Run `prism cleanup-global`
+      once after upgrading from an older release, then run `prism init` inside
+      each project and select the harnesses to configure.
+
+      Prism reports other installed copies when their versions differ.
+    EOS
+  end
+
   test do
     assert_match "prism", shell_output("#{bin}/prism version")
   end

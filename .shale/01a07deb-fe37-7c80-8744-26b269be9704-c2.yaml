@@ -1,0 +1,270 @@
+shale_version: "0"
+id: 01a07deb-fe37-7c80-8744-26b269be9704-c2
+created_at: 2026-09-08T00:31:52.214228Z
+finalized_at: 2026-09-08T00:55:11.211404Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T00:53:36.583186Z
+    - path: internal/mcp/freshness_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T00:53:36.583186Z
+commands:
+    - cmd: git push origin main && git status --short --branch && git log --oneline --decorate -4
+      at: 2026-09-08T00:31:52.214228Z
+      classified: other
+    - cmd: gh run list --branch main --limit 10 --json databaseId,headSha,displayTitle,status,conclusion,workflowName,createdAt,url
+      at: 2026-09-08T00:34:45.869633Z
+      classified: other
+    - cmd: gh run view 34173609886 --log-failed
+      at: 2026-09-08T00:34:50.791849Z
+      classified: other
+    - cmd: git status --short --branch && git diff --name-status 9c988f9..c37a1f4 && git worktree list && for p in /private/tmp/prism-ab-parent-20260908 /private/tmp/prism-ab-change-20260908; do if [ -e "$p" ]; then echo "EXISTS $p"; else echo "AVAILABLE $p"; fi; done && go version && rg --version | sed -n '1,2p'
+      at: 2026-09-08T00:39:44.492755Z
+      classified: other
+    - cmd: git worktree add --detach /private/tmp/prism-ab-parent-20260908 9c988f9 && git worktree add --detach /private/tmp/prism-ab-change-20260908 c37a1f4
+      at: 2026-09-08T00:39:51.624083Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/textsearch -run '^TestScopedDotPathsMatchUnscopedPaths$' -count=50 && GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T00:40:16.197066Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/textsearch -run '^TestScopedDotPathsMatchUnscopedPaths$' -count=50 && GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T00:40:16.733908Z
+      classified: test
+    - cmd: mkdir -p /private/tmp/prism-ab-smoke-parent /private/tmp/prism-ab-smoke-change
+      at: 2026-09-08T00:40:33.324032Z
+      classified: other
+    - cmd: mkdir -p bin && GOFLAGS= GOWORK=off go build -o bin/prism ./cmd/prism
+      at: 2026-09-08T00:40:35.214328Z
+      classified: build
+    - cmd: mkdir -p bin && GOFLAGS= GOWORK=off go build -o bin/prism ./cmd/prism
+      at: 2026-09-08T00:40:35.214304Z
+      classified: build
+    - cmd: git init -q && git add go.mod main.go && git -c user.name='Prism A/B' -c user.email='smoke@example.invalid' commit -q -m fixture && "/private/tmp/prism-ab-parent-20260908/bin/prism" init --no-permissions . </dev/null && "/private/tmp/prism-ab-parent-20260908/bin/prism" index .
+      at: 2026-09-08T00:40:46.60279Z
+      classified: other
+    - cmd: git init -q && git add go.mod main.go && git -c user.name='Prism A/B' -c user.email='smoke@example.invalid' commit -q -m fixture && "/private/tmp/prism-ab-change-20260908/bin/prism" init --no-permissions . </dev/null && "/private/tmp/prism-ab-change-20260908/bin/prism" index .
+      at: 2026-09-08T00:40:46.952323Z
+      classified: other
+    - cmd: 'PATH="/private/tmp/prism-ab-change-20260908/bin:$PATH" codex exec --ignore-user-config --ephemeral --json -m gpt-5.5 -s read-only -C "/private/tmp/prism-ab-smoke-change" -c ''mcp_servers.prism.command="/private/tmp/prism-ab-change-20260908/bin/prism"'' -c ''mcp_servers.prism.args=["mcp","."]'' -c ''mcp_servers.prism.required=true'' ''Read-only comparison: identify every function that calls Target and answer with only their names. Follow the repository instructions. Do not edit files.'''
+      at: 2026-09-08T00:41:12.151087Z
+      classified: other
+    - cmd: 'PATH="/private/tmp/prism-ab-parent-20260908/bin:$PATH" codex exec --ignore-user-config --ephemeral --json -m gpt-5.5 -s read-only -C "/private/tmp/prism-ab-smoke-parent" -c ''mcp_servers.prism.command="/private/tmp/prism-ab-parent-20260908/bin/prism"'' -c ''mcp_servers.prism.args=["mcp","."]'' -c ''mcp_servers.prism.required=true'' ''Read-only comparison: identify every function that calls Target and answer with only their names. Follow the repository instructions. Do not edit files.'''
+      at: 2026-09-08T00:41:15.851798Z
+      classified: other
+    - cmd: gh run view 34148945630 --log-failed | rg -n 'TestScopedDotPathsMatchUnscopedPaths|non-canonical scoped path|FAIL\s+github.com/provasign/prism/internal/textsearch'
+      at: 2026-09-08T00:41:27.993094Z
+      classified: build
+    - cmd: git worktree remove /private/tmp/prism-ab-parent-20260908 && git worktree remove /private/tmp/prism-ab-change-20260908 && git status --short --branch && git worktree list
+      at: 2026-09-08T00:41:32.903623Z
+      classified: other
+    - cmd: pwd; if [ -f AGENTS.md ]; then sed -n '1,220p' AGENTS.md; fi; rg -n "change.?impact|impact" harness experiments . --glob '!harness/runs/**' --glob '!**/.git/**' --glob '*.py' --glob '*.json' --glob '*.yaml' --glob '*.yml' --glob '*.md' | sed -n '1,240p'
+      at: 2026-09-08T00:42:28.633414Z
+      classified: other
+    - cmd: sed -n '1,130p' harness/BENCH-MATRIX.md; sed -n '1,230p' harness/ab_unified.py; python3 harness/run.py --help | sed -n '1,240p'; find harness/runs -maxdepth 2 -type f \( -name 'run.json' -o -name 'summary.json' -o -name 'manifest.json' \) | tail -40
+      at: 2026-09-08T00:42:35.86391Z
+      classified: other
+    - cmd: sed -n '1,230p' harness/arms.py; sed -n '1,180p' harness/run.py; sed -n '330,430p' harness/run.py; sed -n '1,220p' harness/tasks/grafana-checkhealth-impact.json; sed -n '1,180p' harness/runs/grafana-checkhealth-impact/summary.json
+      at: 2026-09-08T00:42:43.85383Z
+      classified: other
+    - cmd: find harness/runs/four-head-impact-2026-09-07-stopped -maxdepth 2 -type f -print | sort; sed -n '1,240p' harness/runs/four-head-impact-2026-09-07-stopped/manifest.json; sed -n '1,240p' harness/runs/four-head-impact-2026-09-07-stopped/README.md 2>/dev/null || true; rg -n "four-head|normal integration|native.*prism|codex" harness --glob '*.py' --glob '*.md' | sed -n '1,240p'
+      at: 2026-09-08T00:42:52.124852Z
+      classified: other
+    - cmd: sed -n '1,220p' harness/runs/four-head-impact-2026-09-07-stopped/run_panel.py; sed -n '220,470p' harness/runs/four-head-impact-2026-09-07-stopped/run_panel.py; sed -n '470,620p' harness/runs/four-head-impact-2026-09-07-stopped/run_panel.py; sed -n '1,220p' harness/runs/four-head-impact-2026-09-07-stopped/TRIAL1_SUMMARY.md
+      at: 2026-09-08T00:42:58.459056Z
+      classified: other
+    - cmd: sed -n '1,160p' harness/tasks/jackson-jsonnode-get.json; for p in /private/tmp/change-impact-two-cell-20260908 /private/tmp/prism-impact-parent-src-20260908 /private/tmp/prism-impact-change-src-20260908; do if [ -e "$p" ]; then echo "EXISTS $p"; else echo "AVAILABLE $p"; fi; done; git -C /Users/tapabratapal/gvg-corpus/jackson-databind worktree list | sed -n '1,80p'
+      at: 2026-09-08T00:43:45.492772Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/change-impact-two-cell-20260908/parent/bin /private/tmp/change-impact-two-cell-20260908/change/bin && git worktree add --detach /private/tmp/prism-impact-parent-src-20260908 9c988f9 && git worktree add --detach /private/tmp/prism-impact-change-src-20260908 c37a1f4 && git -C /Users/tapabratapal/gvg-corpus/jackson-databind worktree prune && git -C /Users/tapabratapal/gvg-corpus/jackson-databind worktree add --detach /private/tmp/change-impact-two-cell-20260908/parent/work 0b422144d1785200e44a0b00c973f6ac95adcf5a && git -C /Users/tapabratapal/gvg-corpus/jackson-databind worktree add --detach /private/tmp/change-impact-two-cell-20260908/change/work 0b422144d1785200e44a0b00c973f6ac95adcf5a
+      at: 2026-09-08T00:43:53.23592Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o "/private/tmp/change-impact-two-cell-20260908/parent/bin/prism" ./cmd/prism && "/private/tmp/change-impact-two-cell-20260908/parent/bin/prism" init --no-permissions "/private/tmp/change-impact-two-cell-20260908/parent/work" </dev/null && "/private/tmp/change-impact-two-cell-20260908/parent/bin/prism" index "/private/tmp/change-impact-two-cell-20260908/parent/work"
+      at: 2026-09-08T00:44:12.941631Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off go build -o "/private/tmp/change-impact-two-cell-20260908/change/bin/prism" ./cmd/prism && "/private/tmp/change-impact-two-cell-20260908/change/bin/prism" init --no-permissions "/private/tmp/change-impact-two-cell-20260908/change/work" </dev/null && "/private/tmp/change-impact-two-cell-20260908/change/bin/prism" index "/private/tmp/change-impact-two-cell-20260908/change/work"
+      at: 2026-09-08T00:44:13.120664Z
+      classified: build
+    - cmd: 'PATH="/private/tmp/change-impact-two-cell-20260908/change/bin:$PATH" codex exec --ignore-user-config --ephemeral --json -m gpt-5.5 -s read-only -C "/private/tmp/change-impact-two-cell-20260908/change/work" --output-schema /Users/tapabratapal/Projects/provasign/research/harness/runs/four-head-impact-2026-09-07-stopped/answer-schema.json -o "/private/tmp/change-impact-two-cell-20260908/change/final.txt" -c ''approval_policy="never"'' -c ''model_reasoning_effort="medium"'' -c ''web_search="disabled"'' -c ''features.multi_agent=false'' -c ''features.memories=false'' -c ''features.hooks=false'' -c ''features.apps=false'' -c ''skills.max_context_tokens=1'' -c ''mcp_servers.prism.command="/private/tmp/change-impact-two-cell-20260908/change/bin/prism"'' -c ''mcp_servers.prism.args=["mcp","/private/tmp/change-impact-two-cell-20260908/change/work"]'' -c ''mcp_servers.prism.required=true'' ''Analyze only the repository in your current working directory. Follow the repository instructions. Do not edit source files. Do not use the network, other repository copies, git history, saved answers, memory, skills, or delegated agents. Determine the complete production-source impact set for this issue: The JsonNode.get(int) method signature is changing. List every site that must change as a result: the declaration, every override or implementation, and every call site. Return only one JSON object with keys sites (an array of repo-relative-path:FunctionOrMethodName strings), complete (boolean), and unresolved (array of strings).'' > "/private/tmp/change-impact-two-cell-20260908/change/stdout.jsonl" 2> "/private/tmp/change-impact-two-cell-20260908/change/stderr.txt"'
+      at: 2026-09-08T00:46:18.892599Z
+      classified: other
+    - cmd: 'PATH="/private/tmp/change-impact-two-cell-20260908/parent/bin:$PATH" codex exec --ignore-user-config --ephemeral --json -m gpt-5.5 -s read-only -C "/private/tmp/change-impact-two-cell-20260908/parent/work" --output-schema /Users/tapabratapal/Projects/provasign/research/harness/runs/four-head-impact-2026-09-07-stopped/answer-schema.json -o "/private/tmp/change-impact-two-cell-20260908/parent/final.txt" -c ''approval_policy="never"'' -c ''model_reasoning_effort="medium"'' -c ''web_search="disabled"'' -c ''features.multi_agent=false'' -c ''features.memories=false'' -c ''features.hooks=false'' -c ''features.apps=false'' -c ''skills.max_context_tokens=1'' -c ''mcp_servers.prism.command="/private/tmp/change-impact-two-cell-20260908/parent/bin/prism"'' -c ''mcp_servers.prism.args=["mcp","/private/tmp/change-impact-two-cell-20260908/parent/work"]'' -c ''mcp_servers.prism.required=true'' ''Analyze only the repository in your current working directory. Follow the repository instructions. Do not edit source files. Do not use the network, other repository copies, git history, saved answers, memory, skills, or delegated agents. Determine the complete production-source impact set for this issue: The JsonNode.get(int) method signature is changing. List every site that must change as a result: the declaration, every override or implementation, and every call site. Return only one JSON object with keys sites (an array of repo-relative-path:FunctionOrMethodName strings), complete (boolean), and unresolved (array of strings).'' > "/private/tmp/change-impact-two-cell-20260908/parent/stdout.jsonl" 2> "/private/tmp/change-impact-two-cell-20260908/parent/stderr.txt"'
+      at: 2026-09-08T00:46:32.517983Z
+      classified: other
+    - cmd: for arm in parent change; do echo "--- $arm final ---"; sed -n '1,240p' "/private/tmp/change-impact-two-cell-20260908/$arm/final.txt"; echo "--- $arm actions/usage ---"; jq -c 'select(.type=="item.completed") | .item | select(.type=="command_execution" or .type=="mcp_tool_call" or .type=="agent_message") | {type,command,server,tool,arguments,status,text}' "/private/tmp/change-impact-two-cell-20260908/$arm/stdout.jsonl"; jq -c 'select(.type=="turn.completed") | .usage' "/private/tmp/change-impact-two-cell-20260908/$arm/stdout.jsonl"; echo "--- $arm stderr ---"; sed -n '1,120p' "/private/tmp/change-impact-two-cell-20260908/$arm/stderr.txt"; done
+      at: 2026-09-08T00:46:46.637899Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, '/Users/tapabratapal/Projects/provasign/research/harness')
+        from schema import Answer, Site, Task
+        from score import score
+        from rescore_java import load_index, normalize
+        base=Path('/private/tmp/change-impact-two-cell-20260908')
+        task=Task.load(Path('/Users/tapabratapal/Projects/provasign/research/harness/tasks/jackson-jsonnode-get.json'))
+        index=load_index(Path('/Users/tapabratapal/Projects/provasign/research/harness/java-oracle/jackson-lineindex.json'))
+        for arm in ('parent','change'):
+            answer=Answer.parse((base/arm/'final.txt').read_text())
+            before=[str(s) for s in answer.sites]
+            answer.sites=[Site.parse(normalize(str(s),index)) for s in answer.sites]
+            card=score(task,answer,arm,1)
+            events=[]
+            for line in (base/arm/'stdout.jsonl').read_text().splitlines():
+                try: events.append(json.loads(line))
+                except: pass
+            usage=[e['usage'] for e in events if e.get('type')=='turn.completed'][-1]
+            actions=[]
+            prism=[]
+            for e in events:
+                item=e.get('item') or {}
+                if e.get('type')=='item.completed' and item.get('type') in ('command_execution','mcp_tool_call'):
+                    actions.append(item)
+                    if item.get('type')=='mcp_tool_call' and item.get('server')=='prism': prism.append(item)
+                    if item.get('type')=='command_execution' and 'prism ' in (item.get('command') or ''): prism.append(item)
+            print(json.dumps({
+              'arm':arm,'before':before,'normalized':[str(s) for s in answer.sites],
+              'score':card.to_dict(),'usage':usage,'actions':len(actions),
+              'prism_actions':len(prism),'prism_statuses':[p.get('status') for p in prism],
+              'complete':answer.complete,'unresolved':answer.unresolved
+            },indent=2))
+        PY
+        printf '%s\n' '--- shared Prism checkout ---'
+        git status --short --branch
+        git log --oneline --decorate -4
+      at: 2026-09-08T00:46:59.259068Z
+      classified: other
+    - cmd: git status --short --branch && git log --oneline --decorate -6 && git diff --stat && git diff --name-only
+      at: 2026-09-08T00:47:09.356691Z
+      classified: other
+    - cmd: git status --short --branch && git log --oneline --decorate -6 && git diff --stat && git diff --name-only
+      at: 2026-09-08T00:47:09.368128Z
+      classified: other
+    - cmd: git diff -- harness/mason_bench.py; git diff --check -- harness/mason_bench.py; ps -axo pid,etime,command | rg 'mason_bench|ab-gate|claude|codex' | sed -n '1,120p'
+      at: 2026-09-08T00:47:16.511691Z
+      classified: other
+    - cmd: sed -n '1,220p' harness/mason_bench.py; git log -p -3 -- harness/mason_bench.py | sed -n '1,300p'; find harness/runs/ab-gate -maxdepth 1 -type f -name '*.json' -mmin -240 -print | wc -l; find harness/runs/ab-gate -maxdepth 1 -type f -name '*.json' -mmin -240 -print | sort | tail -30
+      at: 2026-09-08T00:47:27.292504Z
+      classified: other
+    - cmd: |-
+        nl -ba harness/mason_bench.py | sed -n '20,65p'; python3 - <<'PY'
+        import json, subprocess
+        from pathlib import Path
+        h=Path('/Users/tapabratapal/Projects/provasign/research/harness')
+        seen={}
+        for p in (h/'tasks').glob('*.json'):
+            try: d=json.loads(p.read_text())
+            except Exception: continue
+            if p.name not in {'jackson-jsonnode-get.json','jackson-settable-set.json','jackson-writetypeprefix.json','jackson-serialize.json','guava-forwarding-delegate.json','grafana-checkhealth-impact.json','grafana-querydata-impact.json','typeorm-driver-escape.json','django-quotename.json'}: continue
+            repo=Path(d.get('workdir') or d['repo'])
+            if str(repo) in seen: continue
+            status=subprocess.run(['git','-C',str(repo),'status','--porcelain'],capture_output=True,text=True)
+            dry=subprocess.run(['git','-C',str(repo),'clean','-nd'],capture_output=True,text=True)
+            gitdir=subprocess.run(['git','-C',str(repo),'rev-parse','--git-dir'],capture_output=True,text=True)
+            seen[str(repo)]={'tasks':[],'dirty_lines':len(status.stdout.splitlines()),'clean_would_delete':len(dry.stdout.splitlines()),'git_dir':gitdir.stdout.strip()}
+            seen[str(repo)]['tasks'].append(p.stem)
+        print(json.dumps(seen,indent=2))
+        source=Path('harness/mason_bench.py').read_text()
+        compile(source,'harness/mason_bench.py','exec')
+        print('syntax: ok')
+        PY
+      at: 2026-09-08T00:47:51.794565Z
+      classified: other
+    - cmd: git show --stat --oneline --decorate 9c988f9 && git diff --find-renames 4892d49..9c988f9 -- internal/mcp | sed -n '1,320p'
+      at: 2026-09-08T00:48:35.16502Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism lookup 'Handler.refreshIndexBestEffort' --format text; /Users/tapabratapal/bin/prism lookup 'attachStaleWarning' --format text; /Users/tapabratapal/bin/prism lookup 'Handler.Invoke' --format text
+      at: 2026-09-08T00:48:43.168667Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism lookup 'Handler.toolNode' --format text; /Users/tapabratapal/bin/prism search 'func (h *Handler) toolNode' 'toolNode(' --scope text --exhaustive --context 3 --format text
+      at: 2026-09-08T00:48:49.7629Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism lookup 'Client.Index' --format text; /Users/tapabratapal/bin/prism search 'func (c *Client) Index' 'Index(ctx context.Context' --scope text --exhaustive --context 4 --format text
+      at: 2026-09-08T00:48:59.06834Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism search 'Index(ctx context.Context, dir string)' 'func (e *Embedded' 'SkipNoopGraph' --scope text --exhaustive --context 5 --format text
+      at: 2026-09-08T00:49:05.035647Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'Handler.freshened' --format text
+      at: 2026-09-08T00:49:26.104353Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestReadTools(SeeEditsMadeAfterIndex|DropSymbolsDeletedAfterIndex)$' -count=20
+      at: 2026-09-08T00:49:29.251224Z
+      classified: test
+    - cmd: rg -n 'Benchmark.*(Index|Fresh|Lookup|Search)|refreshIndexBestEffort|freshened\(' internal --glob '*_test.go' --glob '*.go'
+      at: 2026-09-08T00:49:34.467908Z
+      classified: other
+    - cmd: git blame -L 238,250 9c988f9 -- internal/mcp/tools.go; git blame -L 2004,2030 9c988f9 -- internal/mcp/tools.go; git show 4892d49:internal/mcp/tools.go | rg -n 'prism_node|toolNode' | sed -n '1,40p'
+      at: 2026-09-08T00:49:47.152195Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-node-stale-review-20260908 && test -x /private/tmp/prism-codex-smoke-20260907/bin/prism && /private/tmp/prism-codex-smoke-20260907/bin/prism version
+      at: 2026-09-08T00:49:57.427295Z
+      classified: other
+    - cmd: git init -q && git add go.mod main.go && git -c user.name='Prism Review' -c user.email='review@example.invalid' commit -q -m fixture && /private/tmp/prism-codex-smoke-20260907/bin/prism index .
+      at: 2026-09-08T00:50:09.687546Z
+      classified: other
+    - cmd: echo '--- node before any refreshing read ---'; /private/tmp/prism-codex-smoke-20260907/bin/prism node AddedAfterIndex --format text; echo '--- lookup (wrapped by 9c988f9) ---'; /private/tmp/prism-codex-smoke-20260907/bin/prism lookup AddedAfterIndex --format text; echo '--- node after lookup refreshed index ---'; /private/tmp/prism-codex-smoke-20260907/bin/prism node AddedAfterIndex --format text
+      at: 2026-09-08T00:50:19.446274Z
+      classified: other
+    - cmd: git status --short --branch && git log --oneline --decorate -5 && /Users/tapabratapal/bin/prism change-impact 'Handler.Invoke' --format text
+      at: 2026-09-08T00:53:17.664175Z
+      classified: other
+    - cmd: git status --short --branch && git diff --stat && git diff -- internal/mcp/tools.go internal/mcp/freshness_test.go
+      at: 2026-09-08T00:53:45.313925Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/freshness_test.go && GOFLAGS= GOWORK=off go test ./internal/mcp -run 'Test(ReadTools|NodeSees)' -count=20
+      at: 2026-09-08T00:53:48.939688Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-node-fresh-candidate-20260908 ./cmd/prism && /private/tmp/prism-node-fresh-candidate-20260908 verify --base HEAD --format text
+      at: 2026-09-08T00:54:11.374293Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T00:54:18.939899Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        import statistics, subprocess, time
+        from pathlib import Path
+        root=Path('/Users/tapabratapal/Projects/provasign/prism')
+        bins={
+         'before_c37a1f4':'/private/tmp/change-impact-two-cell-20260908/change/bin/prism',
+         'node_fresh_candidate':'/private/tmp/prism-node-fresh-candidate-20260908',
+        }
+        for b in bins.values():
+            if not Path(b).is_file(): raise SystemExit(f'missing {b}')
+        subprocess.run([bins['node_fresh_candidate'],'index','.'],cwd=root,stdout=subprocess.DEVNULL,check=True)
+        times={k:[] for k in bins}
+        for _ in range(25):
+            for name,b in bins.items():
+                start=time.perf_counter()
+                r=subprocess.run([b,'node','Handler.Invoke','--format','text'],cwd=root,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+                times[name].append((time.perf_counter()-start)*1000)
+                if r.returncode: raise SystemExit(r.stderr.decode())
+        for name,vals in times.items():
+            vals=vals[5:]
+            print(f'{name}: n={len(vals)} median_ms={statistics.median(vals):.2f} mean_ms={statistics.mean(vals):.2f} p95_ms={sorted(vals)[int(.95*len(vals))-1]:.2f}')
+        PY
+      at: 2026-09-08T00:54:45.4693Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test -race ./internal/mcp -count=1
+      at: 2026-09-08T00:54:57.628565Z
+      classified: test
+    - cmd: git diff --check && git status --short --branch && git diff --name-only && git log --oneline --decorate -3
+      at: 2026-09-08T00:55:05.83908Z
+      classified: other
+notes:
+    - text: continuation of session 01a07deb-fe37-7c80-8744-26b269be9704 — events captured after its evidence was finalized
+      at: 2026-09-08T00:31:52.214228Z
+redactions: 0

@@ -1,0 +1,253 @@
+shale_version: "0"
+id: 01a093ea-436a-7660-88f1-bbe5024c59f1-c2
+created_at: 2026-09-12T19:25:36.187807Z
+finalized_at: 2026-09-12T19:47:05.978254Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/comment_delivery_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-12T19:35:50.850373Z
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T19:37:55.742659Z
+    - path: internal/mcp/delivery.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T19:37:55.742659Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T19:37:55.742659Z
+    - path: docs/graph-correctness-audit-2026-09-10.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T19:40:37.027822Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T19:45:20.344164Z
+commands:
+    - cmd: git push origin main && git rev-parse HEAD && git rev-parse origin/main && git rev-list -n 1 v0.74.0
+      at: 2026-09-12T19:25:36.187807Z
+      classified: other
+    - cmd: git ls-remote --heads origin main && git ls-remote --tags origin 'v0.74.0*' && gh run list -R provasign/prism --workflow Release --limit 2 --json databaseId,headBranch,status,conclusion,url
+      at: 2026-09-12T19:25:41.38869Z
+      classified: other
+    - cmd: gh run watch 34714122443 -R provasign/prism --exit-status
+      at: 2026-09-12T19:26:14.245681Z
+      classified: other
+    - cmd: gh run view 34714122443 -R provasign/prism --json status,conclusion,jobs,url --jq '{status,conclusion,url,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-09-12T19:26:23.730772Z
+      classified: other
+    - cmd: gh run view 34714122443 -R provasign/prism --json status,conclusion,jobs,url --jq '{status,conclusion,url,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-09-12T19:26:51.677949Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git status -sb && git log -1 --oneline
+      at: 2026-09-12T19:27:07.962025Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git status -sb && git log -1 --oneline
+      at: 2026-09-12T19:27:07.972376Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git status -sb && git log -1 --oneline
+      at: 2026-09-12T19:27:07.97409Z
+      classified: other
+    - cmd: gh run view 34714122443 -R provasign/prism --json status,conclusion,jobs,url --jq '{status,conclusion,url,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-09-12T19:27:15.308332Z
+      classified: other
+    - cmd: gh run view 34714122443 -R provasign/prism --json status,conclusion,jobs,url --jq '{status,conclusion,url,jobs:[.jobs[]|{name,status,conclusion}]}' && gh release view v0.74.0 -R provasign/prism --json tagName,isDraft,isPrerelease,url,assets --jq '{tagName,isDraft,isPrerelease,url,assets:[.assets[].name]}'
+      at: 2026-09-12T19:27:47.031153Z
+      classified: other
+    - cmd: gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 5 --json databaseId,status,conclusion,createdAt,updatedAt,url && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.download_url'
+      at: 2026-09-12T19:28:21.286578Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 -d | rg -n 'url|version|sha256'; gh api repos/provasign/homebrew-shale/contents/Formula/grove.rb --jq '.content' | base64 -d | rg -n 'url|version|sha256'
+      at: 2026-09-12T19:28:26.655504Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula --jq '.[].name'
+      at: 2026-09-12T19:28:30.890402Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      at: 2026-09-12T19:29:25.278286Z
+      classified: other
+    - cmd: gh run view 34714316039 -R provasign/homebrew-shale --json status,conclusion,jobs,url --jq '{status,conclusion,url,jobs:[.jobs[]|{name,status,conclusion}]}'
+      at: 2026-09-12T19:29:30.912679Z
+      classified: other
+    - cmd: gh run view 34714316039 -R provasign/homebrew-shale --json status,conclusion,jobs,url --jq '{status,conclusion,url,jobs:[.jobs[]|{name,status,conclusion}]}' && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 -d | rg -n 'version|releases/download'
+      at: 2026-09-12T19:29:48.04498Z
+      classified: other
+    - cmd: sed -n '1,280p' docs/ranking-audit-2026-09-12.md
+      at: 2026-09-12T19:30:37.820952Z
+      classified: other
+    - cmd: git diff --stat v0.73.0..v0.74.0 -- internal/ranking internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/tools.go internal/textsearch/textsearch.go; rg -n 'LearnedWeights|Apply\(|ScoreCliffFactor|CategoryShares|testFilePaths|graphDist\[|hasTestEdgeID|phase\.go|DetectPhase|rankSourceFirst|defaultSearchLimit|symCap|isTestDouble|test double|Sample' internal/ranking internal/mcp/selection.go internal/mcp/tools.go internal/textsearch/textsearch.go | head -180
+      at: 2026-09-12T19:30:50.129625Z
+      classified: other
+    - cmd: sed -n '236,260p' docs/ranking-audit-2026-09-12.md; git diff v0.73.0..v0.74.0 -- internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/tools.go internal/textsearch/textsearch.go | rg -n '^diff|^@@|adaptive|sample|inline|locator|budget|symCap|sourceFirst|groupPicked|phase' | head -120; rg --files . | rg -i '(review|audit|handoff|claude)' | head -100
+      at: 2026-09-12T19:30:57.920047Z
+      classified: other
+    - cmd: sed -n '1920,2005p' internal/mcp/tools.go; sed -n '345,450p' internal/mcp/selection.go; sed -n '65,190p' internal/ranking/budget.go; rg -n 'matched line|body-only|content-only|matching line|match.*window' internal/mcp/delivery.go internal/mcp/selection.go internal/mcp/tools.go | head -90; git log -5 --oneline
+      at: 2026-09-12T19:31:19.521939Z
+      classified: other
+    - cmd: sed -n '35,145p' internal/mcp/selection.go; sed -n '225,290p' internal/mcp/selection.go; sed -n '455,515p' internal/mcp/selection.go; sed -n '445,485p' internal/mcp/delivery.go; rg -n 'contentOnly|matchedLine|contentHits|matched.*source|match.*line' internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/tools.go | head -110
+      at: 2026-09-12T19:31:27.084351Z
+      classified: other
+    - cmd: sed -n '575,625p' internal/mcp/selection.go; sed -n '100,135p' internal/mcp/delivery.go; git diff v0.73.0..v0.74.0 -- internal/mcp/selection.go internal/mcp/textmerge.go | sed -n '1,220p'; rg -n 'content.*hit|matched.*line|body.*comment|line 103|contentOnly' internal/mcp/*test.go | head -85
+      at: 2026-09-12T19:31:33.346117Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism query 'review notes and unresolved findings' --terms review,audit --format text
+      at: 2026-09-12T19:31:50.298355Z
+      classified: other
+    - cmd: rg --files -g '*[Rr][Ee][Vv][Ii][Ee][Ww]*' -g '*[Aa][Uu][Dd][Ii][Tt]*' -g '*HANDOFF*' | head -80
+      at: 2026-09-12T19:31:58.601502Z
+      classified: other
+    - cmd: rg --files -g '*[Rr][Ee][Vv][Ii][Ee][Ww]*' -g '*[Aa][Uu][Dd][Ii][Tt]*' -g '*HANDOFF*' | head -80
+      at: 2026-09-12T19:31:58.6016Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && rg -n 'func Test.*(Content|Text|Comment|Query)|newTestHandler|NewHandler|setup.*Handler|contentOnly|selectedContentHits' internal/mcp/*test.go | head -150
+      at: 2026-09-12T19:33:27.067311Z
+      classified: other
+    - cmd: sed -n '390,470p' internal/mcp/delivery_test.go; sed -n '1,115p' internal/mcp/textmerge_test.go; sed -n '160,250p' internal/mcp/textmerge.go; sed -n '1125,1190p' internal/mcp/tools.go; sed -n '135,210p' internal/mcp/delivery.go
+      at: 2026-09-12T19:33:35.543533Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-comment-probe.zjpFXq 2>/dev/null; rg --files /private/tmp/prism-comment-probe.zjpFXq 2>/dev/null | head -60
+      at: 2026-09-12T19:33:46.785969Z
+      classified: other
+    - cmd: wc -l /private/tmp/prism-comment-probe.zjpFXq/large.py; sed -n '1,20p' /private/tmp/prism-comment-probe.zjpFXq/large.py; sed -n '95,110p' /private/tmp/prism-comment-probe.zjpFXq/large.py; rg -n 'comment|unique|needle|marker' /private/tmp/prism-comment-probe.zjpFXq/large.py
+      at: 2026-09-12T19:33:53.817688Z
+      classified: other
+    - cmd: /private/tmp/prism-v0740-grove-v0492 query 'find rounding convention' --terms ORCHID_DEEP_ONLY --format text
+      at: 2026-09-12T19:34:05.851461Z
+      classified: other
+    - cmd: /private/tmp/prism-v0740-grove-v0492 query 'inspect large calculation rounding' --terms large_calculation,ORCHID_DEEP_ONLY --format text
+      at: 2026-09-12T19:34:29.81679Z
+      classified: other
+    - cmd: /private/tmp/prism-v0740-grove-v0492 query 'inspect large calculation rounding' --terms large_calculation,ORCHID_DEEP_ONLY --budget 400 --format text
+      at: 2026-09-12T19:35:14.151921Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/comment_delivery_test.go && GOWORK=off go test ./internal/mcp -run TestQueryPreservesDeepCommentOutsideNamedSeedWindow -count=1 -v
+      at: 2026-09-12T19:35:58.883434Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/mcp -run TestQueryPreservesDeepCommentOutsideNamedSeedWindow -count=1 -v
+      at: 2026-09-12T19:36:12.916331Z
+      classified: test
+    - cmd: sed -n '80,270p' internal/mcp/delivery.go | rg -n 'return|section|out :=|sourceSections|content|deliveredTokens'
+      at: 2026-09-12T19:37:21.975871Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/tools.go internal/mcp/comment_delivery_test.go && git diff --check && GOWORK=off go test ./internal/mcp -run 'TestQueryPreservesDeepCommentOutsideNamedSeedWindow|TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow|TestToolQuery_SourceDelivery_E2E' -count=1 -v
+      at: 2026-09-12T19:38:05.71175Z
+      classified: test
+    - cmd: sed -n '420,570p' internal/mcp/delivery.go; sed -n '180,245p' internal/mcp/textmerge.go; rg -n 'func \(h \*Handler\) textFileCached|renderTextMatches\(' internal/mcp -g '*.go' | head -80
+      at: 2026-09-12T19:38:28.458969Z
+      classified: other
+    - cmd: rg -n 'func \(h \*Handler\) recordDeliveredRanges|recordDeliveredRanges\(' internal/mcp; sed -n '340,375p' internal/mcp/textmerge.go; sed -n '565,620p' internal/mcp/delivery.go; rg -n 'Record\(.*full|source.*truncat|cached pointer' internal/mcp/*test.go | head -90
+      at: 2026-09-12T19:38:34.389087Z
+      classified: other
+    - cmd: sed -n '320,365p' internal/mcp/delivery.go; sed -n '1,90p' internal/mcp/delivery_test.go; sed -n '125,155p' internal/mcp/graphcache_test.go; sed -n '1,95p' internal/session/ledger.go
+      at: 2026-09-12T19:38:41.971499Z
+      classified: other
+    - cmd: rg -n 'Session\.Record\(' internal/mcp -g '*.go' | head -95; sed -n '1260,1300p' internal/mcp/tools.go; sed -n '345,385p' internal/mcp/delivery.go
+      at: 2026-09-12T19:38:58.563686Z
+      classified: other
+    - cmd: sed -n '135,205p' internal/mcp/delivery.go; sed -n '40,75p' internal/mcp/comment_delivery_test.go
+      at: 2026-09-12T19:39:25.958413Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery.go internal/mcp/comment_delivery_test.go && GOWORK=off go test ./internal/mcp -run 'TestQueryPreservesDeepCommentOutsideNamedSeedWindow|TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow|TestToolQuery_SourceDelivery_E2E' -count=1 -v
+      at: 2026-09-12T19:39:47.935456Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestQueryPreservesDeepCommentOutsideNamedSeedWindow|TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow|TestToolQuery_SourceDelivery_E2E' -count=1 -v
+      at: 2026-09-12T19:40:03.490365Z
+      classified: test
+    - cmd: sed -n '162,180p' docs/graph-correctness-audit-2026-09-10.md
+      at: 2026-09-12T19:40:29.177699Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/tools.go internal/mcp/comment_delivery_test.go && GOWORK=off go test ./... && GOWORK=off go vet ./... && git diff --check
+      at: 2026-09-12T19:41:00.171437Z
+      classified: lint
+    - cmd: git diff --stat && git diff -- internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/tools.go docs/graph-correctness-audit-2026-09-10.md && git status --short
+      at: 2026-09-12T19:41:09.562624Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/tools.go internal/mcp/comment_delivery_test.go && GOWORK=off go test ./internal/mcp -run 'TestQueryPreservesDeepCommentOutsideNamedSeedWindow|TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow|TestToolQuery_SourceDelivery_E2E|TestRenderTextMatchesUsesSessionSHA' -count=1 && GOWORK=off go test -race ./internal/mcp -run TestQueryPreservesDeepCommentOutsideNamedSeedWindow -count=1 && git diff --check
+      at: 2026-09-12T19:41:58.825128Z
+      classified: test
+    - cmd: GOWORK=off go test ./... && GOWORK=off go vet ./... && git diff --check && git status --short
+      at: 2026-09-12T19:42:19.42261Z
+      classified: lint
+    - cmd: git status --short --branch
+      at: 2026-09-12T19:45:08.54749Z
+      classified: other
+    - cmd: rg -n 'VERSION=v0.74.0|Follow-up, 2026-09-12|uncommitted|released' README.md docs/graph-correctness-audit-2026-09-10.md
+      at: 2026-09-12T19:45:14.24684Z
+      classified: other
+    - cmd: git diff -- docs/graph-correctness-audit-2026-09-10.md internal/mcp/delivery.go internal/mcp/selection.go internal/mcp/tools.go
+      at: 2026-09-12T19:45:14.24943Z
+      classified: other
+    - cmd: git ls-remote --tags origin 'v0.74.1*'
+      at: 2026-09-12T19:45:14.417788Z
+      classified: other
+    - cmd: git ls-remote --heads origin main
+      at: 2026-09-12T19:45:14.528536Z
+      classified: other
+    - cmd: sed -n '1,240p' internal/mcp/comment_delivery_test.go
+      at: 2026-09-12T19:45:24.895328Z
+      classified: other
+    - cmd: rg -n 'ci_invariants|GOWORK|release|tag' CLAUDE.md .github/workflows/release.yml .github/workflows/Release.yml 2>/dev/null
+      at: 2026-09-12T19:45:24.895335Z
+      classified: other
+    - cmd: git rev-parse HEAD && git status --short
+      at: 2026-09-12T19:45:24.916391Z
+      classified: other
+    - cmd: sed -n '1,35p' CLAUDE.md
+      at: 2026-09-12T19:45:30.073487Z
+      classified: other
+    - cmd: ls -ld /private/tmp/prism-ci-v0740.cLl1J7
+      at: 2026-09-12T19:45:30.082441Z
+      classified: other
+    - cmd: python3 harness/ci_invariants.py --help
+      at: 2026-09-12T19:45:30.161337Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T19:45:34.556775Z
+      classified: other
+    - cmd: GOWORK=off go test ./...
+      at: 2026-09-12T19:45:35.421867Z
+      classified: test
+    - cmd: GOWORK=off go build -o /private/tmp/prism-v0741-comment-fix ./cmd/prism
+      at: 2026-09-12T19:45:37.299042Z
+      classified: build
+    - cmd: python3 harness/ci_invariants.py --corpus-root /private/tmp/prism-ci-v0740.cLl1J7 --prism /private/tmp/prism-v0741-comment-fix
+      at: 2026-09-12T19:46:49.052443Z
+      classified: other
+    - cmd: git add README.md docs/graph-correctness-audit-2026-09-10.md internal/mcp/comment_delivery_test.go internal/mcp/delivery.go internal/mcp/selection.go internal/mcp/tools.go
+      at: 2026-09-12T19:46:56.709018Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-12T19:47:00.482131Z
+      classified: other
+    - cmd: git diff --cached --stat
+      at: 2026-09-12T19:47:00.482159Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-12T19:47:00.482817Z
+      classified: other
+    - cmd: 'git commit -m ''fix: preserve deep comment matches outside source windows'''
+      at: 2026-09-12T19:47:02.94986Z
+      classified: other
+notes:
+    - text: continuation of session 01a093ea-436a-7660-88f1-bbe5024c59f1 — events captured after its evidence was finalized
+      at: 2026-09-12T19:25:36.187807Z
+redactions: 0

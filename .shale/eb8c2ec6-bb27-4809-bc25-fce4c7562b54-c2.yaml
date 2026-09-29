@@ -1,0 +1,245 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c2
+created_at: 2026-09-22T23:54:19.153313Z
+finalized_at: 2026-09-23T01:29:47.799618Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/grove/capabilities.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-23T00:25:56.836944Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T00:26:07.508585Z
+    - path: internal/cli/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T00:27:18.613153Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T00:27:49.076904Z
+commands:
+    - cmd: |-
+        git push origin main && git tag -a v0.81.0 -m "$(cat <<'EOF'
+        v0.81.0
+
+        - feat(init): --read-guard / --no-read-guard installs/removes a hook that
+          denies a native Read once prism already delivered that range this
+          session. Measured (13-task controlled A/B): ~11% fewer tokens, no change
+          in resolve rate. Opt-in, Claude Code only; never touches a user's own
+          hooks on the same matcher.
+        - docs: list all 14 grove-supported languages, not just 9.
+        EOF
+        )" && git push origin v0.81.0
+      at: 2026-09-22T23:54:19.153313Z
+      classified: other
+    - cmd: sleep 5 2>/dev/null; gh run list --workflow=release.yml --limit 3 2>&1
+      at: 2026-09-22T23:54:28.160203Z
+      classified: other
+    - cmd: 'ps -p 75958 -o pid,etime,command 2>/dev/null; echo "exit: $?"'
+      at: 2026-09-22T23:57:07.56157Z
+      classified: other
+    - cmd: gh run list --limit 8 2>&1
+      at: 2026-09-22T23:57:13.410402Z
+      classified: other
+    - cmd: gh run view 35799612455 2>&1
+      at: 2026-09-22T23:57:19.016824Z
+      classified: other
+    - cmd: gh run view 35799612455 --log-failed 2>&1 | grep -A 40 "FAIL\|--- FAIL\|panic"
+      at: 2026-09-22T23:57:24.420298Z
+      classified: other
+    - cmd: git log -3 --oneline -- internal/mcp/tools.go internal/mcp/renameplan_test.go; echo ---; git diff 28f3b5b0..4c46f607 --stat -- internal/mcp/
+      at: 2026-09-22T23:57:37.043772Z
+      classified: other
+    - cmd: gh run view 35774252328 2>&1 | head -15
+      at: 2026-09-22T23:57:43.798365Z
+      classified: other
+    - cmd: for i in 1 2 3 4 5; do GOWORK=off go test ./internal/mcp/... -run TestToolRenamePlanValidation -race -count=1 2>&1 | tail -3; done
+      at: 2026-09-22T23:58:09.565417Z
+      classified: test
+    - cmd: gh run rerun 35799612455 --failed 2>&1
+      at: 2026-09-22T23:58:18.915413Z
+      classified: other
+    - cmd: gh run list --workflow=CI --limit 3 2>&1
+      at: 2026-09-23T00:03:06.206183Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale 2>&1
+      at: 2026-09-23T00:03:14.493903Z
+      classified: other
+    - cmd: sleep 5; gh run view 35800290069 -R provasign/homebrew-shale 2>&1
+      at: 2026-09-23T00:03:23.796214Z
+      classified: other
+    - cmd: gh run view 35800290069 -R provasign/homebrew-shale 2>&1
+      at: 2026-09-23T00:06:05.78922Z
+      classified: other
+    - cmd: 'gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -iE "version|url" | head -5'
+      at: 2026-09-23T00:06:09.373449Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/ 2>/dev/null
+      at: 2026-09-23T00:24:35.290738Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rln "func cmdDoctor\|\"doctor\"" --include="*.go" . 2>/dev/null | grep -v _test
+      at: 2026-09-23T00:24:37.289564Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func cmdDoctor" -A 80 internal/cli/commands.go | head -100
+      at: 2026-09-23T00:24:38.81749Z
+      classified: other
+    - cmd: grep -n "func cmdDoctor" -A 90 /Users/tapabratapal/Projects/provasign/grove/internal/cli/commands.go | head -100
+      at: 2026-09-23T00:24:41.696626Z
+      classified: other
+    - cmd: grep -n "doctor" /Users/tapabratapal/Projects/provasign/grove/internal/cli/commands.go | head -30
+      at: 2026-09-23T00:24:43.075579Z
+      classified: other
+    - cmd: grep -rn "func CurrentCapabilities" /Users/tapabratapal/Projects/provasign/grove/internal/core/*.go
+      at: 2026-09-23T00:24:47.734501Z
+      classified: other
+    - cmd: grep -n "grove" /Users/tapabratapal/Projects/provasign/prism/go.mod; echo ---; grep -rn "provasign/grove" /Users/tapabratapal/Projects/provasign/prism/internal/grove/*.go | grep import -A2; echo ---; head -30 /Users/tapabratapal/Projects/provasign/prism/internal/grove/*.go | head -60
+      at: 2026-09-23T00:24:54.235527Z
+      classified: other
+    - cmd: grep -rn "Capabilit\|core\." /Users/tapabratapal/Projects/provasign/grove/pkg/grove/*.go | grep -v _test | head -30
+      at: 2026-09-23T00:24:58.814316Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/go.work 2>/dev/null; echo ---; cd /Users/tapabratapal/Projects/provasign/grove && git tag --sort=-creatordate | head -5; cat go.mod | head -3
+      at: 2026-09-23T00:25:09.216959Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/grove/.github/workflows/ 2>/dev/null; echo ---; cd /Users/tapabratapal/Projects/provasign/grove && git status --short | head -20
+      at: 2026-09-23T00:25:24.089089Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build ./... 2>&1 | head -40
+      at: 2026-09-23T00:25:36.464113Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove; pwd; GOWORK=off go build ./... 2>&1; echo "build_rc=$?"
+      at: 2026-09-23T00:25:42.181709Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 -timeout 180s 2>&1 | tail -40
+      at: 2026-09-23T00:25:49.860079Z
+      classified: lint
+    - cmd: grep -n "textSearch\|cmdQuery(args" internal/cli/commands.go | head -5
+      at: 2026-09-23T00:26:02.775917Z
+      classified: other
+    - cmd: sed -n '1,30p' internal/cli/commands.go | grep -n "grove\|import"
+      at: 2026-09-23T00:26:09.548014Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -40
+      at: 2026-09-23T00:26:14.56287Z
+      classified: build
+    - cmd: go env GOFLAGS
+      at: 2026-09-23T00:26:18.911215Z
+      classified: other
+    - cmd: GOFLAGS="" go build ./... 2>&1 | head -60
+      at: 2026-09-23T00:26:21.950446Z
+      classified: build
+    - cmd: env | grep -i GOFLAGS; cd /Users/tapabratapal/Projects/provasign/prism && env GOFLAGS= go build ./... 2>&1 | head -60
+      at: 2026-09-23T00:26:26.052529Z
+      classified: build
+    - cmd: go env -w GOFLAGS= 2>&1; go env GOFLAGS; cd /Users/tapabratapal/Projects/provasign/prism && go build ./... 2>&1 | head -60
+      at: 2026-09-23T00:26:31.717013Z
+      classified: build
+    - cmd: go build ./... ; echo "rc=$?"
+      at: 2026-09-23T00:26:37.186281Z
+      classified: build
+    - cmd: go vet ./... && go test ./... -count=1 -timeout 120s 2>&1 | tail -30
+      at: 2026-09-23T00:26:59.407159Z
+      classified: lint
+    - cmd: |-
+        go build -o /tmp/prism-smoke2 ./cmd/prism && D=$(mktemp -d) && echo 'package main' > "$D/main.go" && /tmp/prism-smoke2 doctor "$D" 2>&1 | python3 -m json.tool | head -40
+        rm -rf "$D" /tmp/prism-smoke2
+      at: 2026-09-23T00:27:05.985529Z
+      classified: build
+    - cmd: grep -n "cmdDoctor\|TestCmdDoctor" internal/cli/*_test.go
+      at: 2026-09-23T00:27:08.327418Z
+      classified: other
+    - cmd: grep -rn "captureStdout\|os.Pipe()\|func capture" internal/cli/*_test.go | head -10
+      at: 2026-09-23T00:27:13.871077Z
+      classified: other
+    - cmd: go test ./internal/cli/... -run TestCmdIndexAndStatus_Smoke -v 2>&1 | tail -20
+      at: 2026-09-23T00:27:23.929832Z
+      classified: test
+    - cmd: go vet ./... && go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+      at: 2026-09-23T00:27:41.272611Z
+      classified: lint
+    - cmd: grep -n "prism doctor.*currently reports\|per-language" README.md
+      at: 2026-09-23T00:27:44.588755Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git status --short
+      at: 2026-09-23T01:27:12.252062Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git add pkg/grove/grove.go && git commit -m "$(cat <<'EOF'
+        feat(pkg/grove): export the capability manifest for embedders
+
+        Re-exports core.CapabilityManifest/LanguageCapability/OperationCapability
+        and CurrentCapabilities() through the public pkg/grove surface. `grove
+        doctor` already reported this; embedders like Prism (which links Grove
+        in-process, not as a subprocess) had no way to surface the same
+        per-language quality manifest without duplicating it by hand.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git log --oneline -1
+      at: 2026-09-23T01:27:19.369309Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 -timeout 180s 2>&1 | tail -20 && GOWORK=off go build ./... && echo ALL_GREEN
+      at: 2026-09-23T01:27:27.187891Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git fetch origin --quiet && git status -sb
+      at: 2026-09-23T01:27:34.343544Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git push origin main && git tag -a v0.58.3 -m "$(cat <<'EOF'
+        v0.58.3
+
+        - feat(pkg/grove): export CapabilityManifest/CurrentCapabilities() through
+          the public API so embedders (Prism) can surface Grove's per-language
+          quality manifest without duplicating it.
+        EOF
+        )" && git push origin v0.58.3
+      at: 2026-09-23T01:27:41.632739Z
+      classified: other
+    - cmd: GOWORK=off go get github.com/provasign/grove@v0.58.3 2>&1 && GOWORK=off go mod tidy 2>&1 && git diff go.mod go.sum | head -40
+      at: 2026-09-23T01:28:02.034777Z
+      classified: other
+    - cmd: GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 -timeout 120s 2>&1 | tail -20 && GOWORK=off go build ./... && echo ALL_GREEN
+      at: 2026-09-23T01:28:24.295586Z
+      classified: lint
+    - cmd: GOWORK=off go build -o /tmp/prism-candidate2 ./cmd/prism && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root /tmp/ci-corpus --prism /tmp/prism-candidate2 2>&1 | tail -30
+      at: 2026-09-23T01:29:35.293246Z
+      classified: build
+    - cmd: git status --short
+      at: 2026-09-23T01:29:37.749768Z
+      classified: other
+    - cmd: |-
+        git add README.md go.mod go.sum internal/cli/commands.go internal/cli/coverage_test.go internal/grove/capabilities.go && git commit -m "$(cat <<'EOF'
+        feat(doctor): surface Grove's per-language capability manifest
+
+        prism doctor reported index/engine status but nothing about per-language
+        support -- a user asking "does prism support X" had no answer without a
+        separate grove doctor run. Bumps the grove dependency to v0.58.3 (exports
+        CapabilityManifest/CurrentCapabilities through pkg/grove) and adds it under
+        doctor's "languages" key.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git log --oneline -1
+      at: 2026-09-23T01:29:44.573516Z
+      classified: other
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-22T23:54:19.153313Z
+redactions: 0

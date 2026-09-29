@@ -1,0 +1,493 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c2
+created_at: 2026-08-28T22:01:31.113801Z
+finalized_at: 2026-08-29T00:12:15.244098Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: 'git tag -a v0.55.12 -m "steering: batch multi-name searches into one prism_search call" && git push origin v0.55.12 2>&1 | tail -1'
+      at: 2026-08-28T22:01:31.113801Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/swebench_ab.py && git commit -m "$(cat <<'EOF'
+        swebench_ab: capture untracked new files in the model patch
+
+        git diff omits untracked files, so a fix whose gold shape is "create a
+        new module" shipped without that file — the patch then imports a module
+        that does not exist (astropy-13398: whole coordinates package failed to
+        import, 68 PASS_TO_PASS broke, scored as catastrophic). Penalizes only
+        new-file fixes, in both arms. git add -N (intent-to-add) before the
+        diff makes them render as new-file diffs; same excludes as the diff.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -2
+      at: 2026-08-28T22:01:39.567006Z
+      classified: other
+    - cmd: sleep 20; gh run list --repo provasign/prism --limit 3 2>/dev/null || gh run list --limit 3
+      at: 2026-08-28T22:02:02.954934Z
+      classified: other
+    - cmd: 'gh run watch 33215080962 --exit-status >/dev/null 2>&1; echo "release: $?"; gh run watch 33215076764 --exit-status >/dev/null 2>&1; echo "ci: $?"'
+      at: 2026-08-28T22:02:08.99446Z
+      classified: other
+    - cmd: gh release view v0.55.12 --repo provasign/prism --json tagName,assets --jq '{tag:.tagName, assets:[.assets[].name]}' 2>&1 | head -5
+      at: 2026-08-28T22:03:42.982036Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        from pathlib import Path
+        p = Path("MEMORY.md")
+        t = p.read_text()
+        line = "- [SWE-bench resolve pipeline](project_swebench_resolve_pipeline.md) — 2026-08-28: runs end-to-end on this Mac (docker-credential-desktop hangs → scratch DOCKER_CONFIG; amd64 pre-pull; SWE-bench org dataset); prism 8/10 astropy, both misses task-inherent\n"
+        t = t.replace("# Memory Index\n\n", "# Memory Index\n\n" + line, 1)
+        p.write_text(t)
+        print("indexed")
+        EOF
+      at: 2026-08-28T22:04:01.208516Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; curl -sL -o $S/prism-rel https://github.com/provasign/prism/releases/download/v0.55.12/prism-v0.55.12-darwin-arm64 && chmod +x $S/prism-rel && $S/prism-rel --version; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content 2>/dev/null | base64 -d | grep -E 'version|url' | head -3
+      at: 2026-08-28T22:06:26.227405Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/ ; ls ~/Projects/provasign/grove 2>/dev/null | head -20; cd ~/Projects/provasign/grove 2>/dev/null && git log --oneline -3 && git status --short | head -5
+      at: 2026-08-28T23:24:56.459302Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/grove/internal/ ~/Projects/provasign/astkit 2>/dev/null | head -40; head -30 ~/Projects/provasign/astkit/README.md 2>/dev/null
+      at: 2026-08-28T23:25:01.105766Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/astkit/strategies/; grep -n "type Strategy\|interface" ~/Projects/provasign/astkit/lang.go ~/Projects/provasign/astkit/engine.go ~/Projects/provasign/astkit/symbol.go 2>/dev/null | head -10
+      at: 2026-08-28T23:25:12.941459Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && go test ./... 2>&1 | tail -3; cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -cv "^ok\|no test files"; go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3
+      at: 2026-08-28T23:25:46.512121Z
+      classified: test
+    - cmd: ls ~/Projects/provasign/grove/docs/ | head
+      at: 2026-08-28T23:25:53.658318Z
+      classified: other
+    - cmd: sed -n 1,99p ~/Projects/provasign/astkit/engine.go; grep -rn "Engine.Parse\|\.Parse(\|Extract(" ~/Projects/provasign/grove/internal/parser/*.go 2>/dev/null | head -8
+      at: 2026-08-28T23:26:44.228605Z
+      classified: other
+    - cmd: 'grep -n "func (r \*Registry)" ~/Projects/provasign/astkit/strategies/registry.go ~/Projects/provasign/astkit/engine.go | head; sed -n "$(grep -n ''func (r \*Registry) Extract('' ~/Projects/provasign/astkit/engine.go | cut -d: -f1),+12p" ~/Projects/provasign/astkit/engine.go'
+      at: 2026-08-28T23:27:22.46714Z
+      classified: other
+    - cmd: grep -n -A8 "func guardDepth" ~/Projects/provasign/astkit/engine.go | head -12
+      at: 2026-08-28T23:27:26.471171Z
+      classified: other
+    - cmd: grep -n "func " ~/Projects/provasign/astkit/strategies/registry.go | head -5
+      at: 2026-08-28T23:28:03.058307Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/astkit && go test ./... 2>&1 | tail -4 && cd ~/Projects/provasign/grove && go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove suite: $?"'
+      at: 2026-08-28T23:28:26.882992Z
+      classified: test
+    - cmd: ls ~/Projects/provasign/grove/cmd/; cd ~/Projects/provasign/grove && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && go build -o $S/grove-new ./cmd/grove 2>/dev/null || ls cmd
+      at: 2026-08-28T23:28:44.635611Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && git stash -q && go build -o $S/grove-base ./cmd/grove && git stash pop -q && git status --short | head -3; cd ~/Projects/provasign/astkit && git stash list | head -2
+      at: 2026-08-28T23:28:51.97992Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; $S/grove-new --help 2>&1 | head -15
+      at: 2026-08-28T23:29:03.16899Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; for v in base new; do rm -rf $S/noop-$v && cp -R ~/.cache/prism-ci-corpus/gin $S/noop-$v && rm -rf $S/noop-$v/.grove; $S/grove-$v index $S/noop-$v >/dev/null 2>&1; $S/grove-$v status $S/noop-$v 2>/dev/null | grep -iE "symbol|edge|file" | head -4; echo "-- $v done --"; done
+      at: 2026-08-28T23:29:13.237384Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && git add engine.go textstrategy_test.go && git commit -q -m "$(cat <<'EOF'
+        TextStrategy: optional capability for grammar-less extraction
+
+        A Strategy implementing TextStrategy extracts from source text alone —
+        Extract tolerates a nil tree. Registry.TextCapable exposes the check.
+        No current language implements it (asserted by test); intended for
+        line-structured mainframe artifact types (job control, data-division
+        extracts, sort control cards). Mainframe phase 0.1: provable no-op.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git log --oneline -1; cd ~/Projects/provasign/grove && git add docs/mainframe-build-plan.md internal/parser/treesitter.go && git commit -q -m "$(cat <<'EOF'
+        parser: dispatch text-capable strategies on nil tree; mainframe build plan
+
+        extractSymbolsFromAST/extractImportsFromAST now branch on tree == nil:
+        text-capable astkit strategies (none exist yet) extract from src alone,
+        everything else returns unsupported as before. Also removes a latent
+        nil-deref (tree.Close with no nil check) that was unreachable only
+        because languageToKey never maps detection-only languages.
+
+        No-op proof: gin corpus indexed with base and patched builds —
+        identical 122 files / 1675 symbols / 12353 edges (matches the
+        ci_invariants determinism cell). docs/mainframe-build-plan.md carries
+        the phase sequence and safety contract.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-28T23:29:34.499034Z
+      classified: other
+    - cmd: sed -n 1,80p ~/Projects/provasign/astkit/symbol.go; grep -n "func DetectLanguage\|type ImportStatement" -A 12 ~/Projects/provasign/astkit/lang.go | head -40
+      at: 2026-08-28T23:49:59.130261Z
+      classified: other
+    - cmd: sed -n 80,140p ~/Projects/provasign/astkit/symbol.go; grep -n "type ImportStatement" -A 15 ~/Projects/provasign/astkit/*.go | head -20; grep -rn "DetectLanguage\|detectLanguage" ~/Projects/provasign/grove/internal --include=*.go | grep -v _test | head -6
+      at: 2026-08-28T23:50:05.10296Z
+      classified: other
+    - cmd: grep -rn "DetectLanguage\|languageForFile\|detectLang" ~/Projects/provasign/grove/internal --include='*.go' 2>/dev/null | grep -v _test | head -8; grep -rn "func.*[Ll]anguage" ~/Projects/provasign/grove/internal/index/*.go 2>/dev/null | grep -v _test | head -5
+      at: 2026-08-28T23:50:09.054495Z
+      classified: other
+    - cmd: sed -n 20,110p ~/Projects/provasign/grove/internal/parser/languages.go; sed -n 15,70p ~/Projects/provasign/grove/internal/parser/engine.go
+      at: 2026-08-28T23:50:12.478487Z
+      classified: other
+    - cmd: cat ~/Projects/provasign/go.work; sed -n 70,110p ~/Projects/provasign/grove/internal/parser/engine.go; grep -n -A10 "func projectSymbol" ~/Projects/provasign/grove/internal/parser/treesitter.go | head -14
+      at: 2026-08-28T23:51:00.254991Z
+      classified: other
+    - cmd: grep -n -B2 -A20 "func extractSymbols(" ~/Projects/provasign/grove/internal/parser/*.go | head -34; grep -n "func extractImports(" -A8 ~/Projects/provasign/grove/internal/parser/*.go | head -12
+      at: 2026-08-28T23:51:06.505088Z
+      classified: other
+    - cmd: grep -n "Lang.* LanguageKey =\|LangGo\b.*=" ~/Projects/provasign/astkit/lang.go | head -20; sed -n 30,75p ~/Projects/provasign/astkit/lang.go
+      at: 2026-08-28T23:51:45.600823Z
+      classified: other
+    - cmd: sed -n 20,42p ~/Projects/provasign/astkit/strategies/registry.go
+      at: 2026-08-28T23:53:22.292449Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && go test ./strategies/ -run 'COBOL|JCL|Mainframe' -v 2>&1 | tail -25
+      at: 2026-08-28T23:54:18.427034Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/astkit && go test ./... 2>&1 | tail -3
+      at: 2026-08-28T23:54:43.084409Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/grove && go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "grove: $?"'
+      at: 2026-08-28T23:55:15.168978Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && rm -rf $S/noop-mf && cp -R ~/.cache/prism-ci-corpus/gin $S/noop-mf && rm -rf $S/noop-mf/.grove && $S/grove-mf index $S/noop-mf >/dev/null 2>&1; $S/grove-mf status $S/noop-mf 2>/dev/null | grep -E "filesIndexed|symbolCount|edgeCount"
+      at: 2026-08-28T23:55:27.114131Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; rm -rf $E && mkdir -p $E && cd $E && git init -q
+        python3 - <<'EOF'
+        import os
+        E = os.environ.get('E') or "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/mini-estate"
+        def pad(seq, ind, code):
+            return f"{seq:>06}"[:6] + ind + code.ljust(65)[:65] + "SEQ73-80"
+        cust = [
+         pad("000100"," "," IDENTIFICATION DIVISION."),
+         pad("000200"," "," PROGRAM-ID. CUSTUPD."),
+         pad("000300"," "," ENVIRONMENT DIVISION."),
+         pad("000400"," ","     SELECT CUST-FILE ASSIGN TO CUSTIN."),
+         pad("000500"," "," DATA DIVISION."),
+         pad("000600"," "," FD  CUST-FILE."),
+         pad("000700"," "," COPY CUSTREC."),
+         pad("000800"," "," WORKING-STORAGE SECTION."),
+         pad("000900"," "," 77  WS-RPT-PGM  PIC X(8) VALUE 'CUSTRPT '."),
+         pad("001000"," "," PROCEDURE DIVISION."),
+         pad("001100"," "," MAIN-PARA."),
+         pad("001200"," ","     PERFORM VALIDATE-PARA."),
+         pad("001300"," ","     CALL 'AUDITLOG' USING CUST-REC."),
+         pad("001400"," ","     CALL WS-RPT-PGM."),
+         pad("001500"," ","     STOP RUN."),
+         pad("001600"," "," VALIDATE-PARA."),
+         pad("001700"," ","     MOVE 'Y' TO CUST-VALID."),
+        ]
+        copyb = [
+         pad("000100"," "," 01  CUST-REC."),
+         pad("000200"," ","     05  CUST-ID    PIC 9(8)."),
+         pad("000300"," ","     05  CUST-SSN   PIC 9(9)."),
+         pad("000400"," ","     05  CUST-VALID PIC X."),
+        ]
+        audit = [
+         pad("000100"," "," IDENTIFICATION DIVISION."),
+         pad("000200"," "," PROGRAM-ID. AUDITLOG."),
+         pad("000300"," "," DATA DIVISION."),
+         pad("000400"," "," COPY CUSTREC."),
+         pad("000500"," "," PROCEDURE DIVISION."),
+         pad("000600"," "," LOG-PARA."),
+         pad("000700"," ","     GOBACK."),
+        ]
+        jcl = [
+         "//NIGHTLY  JOB (ACCT),'BATCH',CLASS=A",
+         "//UPDATE   EXEC PGM=CUSTUPD",
+         "//CUSTIN   DD DSN=PROD.CUST.MASTER,DISP=SHR",
+         "//CUSTOUT  DD DSN=PROD.CUST.MASTER.NEW,",
+         "//             DISP=(NEW,CATLG,DELETE)",
+        ]
+        open(f"{E}/CUSTUPD.cbl","w").write("\n".join(cust))
+        open(f"{E}/CUSTREC.cpy","w").write("\n".join(copyb))
+        open(f"{E}/AUDITLOG.cbl","w").write("\n".join(audit))
+        open(f"{E}/NIGHTLY.jcl","w").write("\n".join(jcl))
+        print("estate written")
+        EOF
+        $S/grove-mf index $E 2>&1 | tail -2; $S/grove-mf status $E | grep -E "filesIndexed|symbolCount|edgeCount"
+      at: 2026-08-28T23:55:44.406073Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; $S/grove-mf symbols CUST $E 2>/dev/null | head -12; echo ---; $S/grove-mf deps CUSTUPD.cbl $E 2>/dev/null | head -12; echo ---; $S/grove-mf impact CUST-SSN $E 2>/dev/null | head -12
+      at: 2026-08-28T23:55:50.166861Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; python3 -c "
+        import json,subprocess
+        out=subprocess.run(['$S/grove-mf','deps','CUSTUPD.cbl','$E'],capture_output=True,text=True).stdout
+        d=json.loads(out)
+        for e in d.get('edges',[]):
+            print(e['type'], e['from'].split('@')[0], '->', e['to'].split('@')[0])"
+      at: 2026-08-28T23:55:58.484177Z
+      classified: other
+    - cmd: grep -rn '"import:' ~/Projects/provasign/grove/internal --include='*.go' | grep -v _test | head -5; grep -rln "resolveImport\|ResolveImport" ~/Projects/provasign/grove/internal --include='*.go' | head -3
+      at: 2026-08-28T23:56:09.907987Z
+      classified: other
+    - cmd: sed -n 600,700p ~/Projects/provasign/grove/internal/graph/edges.go
+      at: 2026-08-28T23:56:13.17635Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; $S/grove-mf impact AUDITLOG $E 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for n in (d.get('nodes') or [])[:12]: print(n.get('id','?').split('@')[0], '|', n.get('relation') or n.get('type',''))" ; echo ---; $S/grove-mf impact VALIDATE-PARA $E 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for n in (d.get('nodes') or [])[:12]: print(n.get('id','?').split('@')[0], '|', n.get('relation') or n.get('type',''))"
+      at: 2026-08-28T23:56:23.475692Z
+      classified: other
+    - cmd: grep -n "CallSites\|buildCalls\|EdgeCalls" ~/Projects/provasign/grove/internal/graph/edges.go | head -10; grep -n "CallSites" ~/Projects/provasign/grove/internal/core/*.go | head -5
+      at: 2026-08-28T23:56:29.683751Z
+      classified: other
+    - cmd: sed -n 952,1010p ~/Projects/provasign/grove/internal/graph/edges.go
+      at: 2026-08-28T23:56:32.638889Z
+      classified: other
+    - cmd: sed -n 1010,1100p ~/Projects/provasign/grove/internal/graph/edges.go
+      at: 2026-08-28T23:56:41.732166Z
+      classified: other
+    - cmd: grep -n "type edgeIndex" -A 12 ~/Projects/provasign/grove/internal/graph/edges.go | head -16; grep -n "Reason.*EdgeReason = \|EvidenceSource.* = " ~/Projects/provasign/grove/internal/core/*.go | head -14
+      at: 2026-08-28T23:57:06.226775Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; go build -o $S/grove-mf ./cmd/grove && E=$S/mini-estate && rm -rf $E/.grove && $S/grove-mf index $E >/dev/null 2>&1 && $S/grove-mf impact CUSTUPD $E 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for n in (d.get('nodes') or [])[:15]: print(n.get('id','?').split('@')[0], '|', n.get('relation',n.get('type','')))"
+      at: 2026-08-28T23:57:44.632518Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; for q in AUDITLOG VALIDATE-PARA; do echo "== impact $q =="; $S/grove-mf impact $q $E 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for n in (d.get('nodes') or [])[:8]: print(' ', n.get('id','?').split('@')[0])"; done
+      at: 2026-08-28T23:57:53.244338Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; python3 - <<'EOF'
+        E="/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/mini-estate"
+        def pad(seq, ind, code):
+            return f"{seq:>06}"[:6] + ind + code.ljust(65)[:65] + "SEQ73-80"
+        rpt = [
+         pad("000100"," "," IDENTIFICATION DIVISION."),
+         pad("000200"," "," PROGRAM-ID. CUSTRPT."),
+         pad("000300"," "," PROCEDURE DIVISION."),
+         pad("000400"," "," RPT-PARA."),
+         pad("000500"," ","     GOBACK."),
+        ]
+        open(f"{E}/CUSTRPT.cbl","w").write("\n".join(rpt))
+        EOF
+        rm -rf $E/.grove && $S/grove-mf index $E >/dev/null 2>&1 && $S/grove-mf impact CUSTRPT $E 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for n in (d.get('nodes') or [])[:6]: print(' ', n.get('id','?').split('@')[0])"
+      at: 2026-08-28T23:58:05.077402Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && E=$S/mini-estate && ./bin/prism-mainframe lookup CUST-SSN --format text $E 2>/dev/null | head -4; ./bin/prism-mainframe change-impact CUSTRPT --format text $E 2>/dev/null | head -10
+      at: 2026-08-28T23:58:27.763491Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && E=$S/mini-estate && ./bin/prism-mainframe change-impact CUSTRPT $E --format text 2>&1 | head -12
+      at: 2026-08-28T23:58:33.374066Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism suite: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-mainframe --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -6'
+      at: 2026-08-28T23:58:43.897547Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && git add lang.go strategies/cobol.go strategies/jcl.go strategies/registry.go strategies/mainframe_test.go && git commit -q -m "$(cat <<'EOF'
+        mainframe: COBOL and JCL text strategies
+
+        Line-structured extractors behind the TextStrategy capability — no
+        grammar. COBOL: fixed/free format detection, column normalization
+        (sequence area, indicator, identification area 73-80 excluded — the
+        measured 19x item-count failure mode), data hierarchy via level stack,
+        PIC/REDEFINES/OCCURS as modifiers, 88-levels bound to the preceding
+        item, SELECT/FD logical files, paragraphs/sections with PERFORM/CALL
+        call sites (dynamic CALLs marked), COPY as imports (Group copybook).
+        JCL: jobs/steps/procs with continuation joining, EXEC PGM=/PROC targets
+        as call sites, DD DSN= bindings as imports (Group dataset, Alias = DD
+        name). Scope is reachability, not read/write direction — that needs the
+        PROCEDURE DIVISION grammar phase.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git log --oneline -1; cd ~/Projects/provasign/grove && git add internal/parser/languages.go internal/parser/treesitter.go internal/graph/edges.go internal/graph/mainframe.go && git commit -q -m "$(cat <<'EOF'
+        graph: mainframe call resolution; cobol/jcl language wiring
+
+        resolveCallEdges dispatches cobol/jcl symbols to a dedicated resolver
+        (internal/graph/mainframe.go) — the modern machinery never sees them.
+        Semantics: PERFORM resolves to paragraphs/sections in the same unit
+        (1.0); CALL 'literal' and EXEC PGM= resolve estate-wide by declared
+        program name (0.9, flat namespace, no imports involved); a dynamic CALL
+        through a variable is constant-propagated from the variable's VALUE
+        clause (0.6, heuristic) — spec R-5.2 intra-unit propagation. ParseTree
+        guards the nil tree a grammar-less language now produces.
+
+        Gates: astkit/grove/prism suites green; ci_invariants all held; gin
+        still indexes to identical 122 files / 1675 symbols / 12353 edges.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-29T00:00:19.313751Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/grove/internal/index/*_test.go | head -3; ls ~/Projects/provasign/grove/internal/index/testdata 2>/dev/null | head -3; cd ~/Projects/provasign/astkit && git tag -l | tail -3; cd ~/Projects/provasign/grove && git tag -l | tail -3; grep -E "provasign/(grove|astkit)" ~/Projects/provasign/prism/go.mod ~/Projects/provasign/grove/go.mod
+      at: 2026-08-29T00:06:42.580313Z
+      classified: other
+    - cmd: grep -rn "func Build\|func New.*Index\|Exported" ~/Projects/provasign/grove/internal/graph/*.go | grep "^.*func " | head -8; grep -n "graph\.\|index\." ~/Projects/provasign/grove/internal/index/indexer_test.go | head -8; grep -rn "func.*Index\b\|func Run" ~/Projects/provasign/grove/internal/index/indexer.go | head -5
+      at: 2026-08-29T00:06:59.371592Z
+      classified: other
+    - cmd: |-
+        mkdir -p ~/Projects/provasign/grove/internal/graph/testdata/mainframe-estate && cd ~/Projects/provasign/grove/internal/graph/testdata/mainframe-estate && python3 - <<'EOF'
+        import os
+        D = os.path.expanduser("~/Projects/provasign/grove/internal/graph/testdata/mainframe-estate")
+        def pad(seq, ind, code):
+            return f"{seq:>06}"[:6] + ind + code.ljust(65)[:65] + "ID73-80X"
+        custupd = [
+         pad("000100"," "," IDENTIFICATION DIVISION."),
+         pad("000200"," "," PROGRAM-ID. CUSTUPD."),
+         pad("000300","*"," COMMENT WITH 05 FAKE-ITEM PIC X(10) THAT MUST NOT PARSE."),
+         pad("000400"," "," ENVIRONMENT DIVISION."),
+         pad("000500"," ","     SELECT CUST-FILE ASSIGN TO CUSTIN."),
+         pad("000600"," "," DATA DIVISION."),
+         pad("000700"," "," FD  CUST-FILE."),
+         pad("000800"," "," COPY CUSTREC."),
+         pad("000900"," "," WORKING-STORAGE SECTION."),
+         pad("001000"," "," 01  WS-FLAGS."),
+         pad("001100"," ","     05  WS-EOF      PIC X VALUE 'N'."),
+         pad("001200"," ","         88  END-OF-FILE VALUE 'Y'."),
+         pad("001300"," "," 77  WS-RPT-PGM  PIC X(8) VALUE 'CUSTRPT'."),
+         pad("001400"," "," PROCEDURE DIVISION."),
+         pad("001500"," "," MAIN-PARA."),
+         pad("001600"," ","     PERFORM INIT-PARA THRU INIT-EXIT."),
+         pad("001700"," ","     CALL 'AUDITLOG' USING CUST-REC."),
+         pad("001800"," ","     CALL WS-RPT-PGM."),
+         pad("001900"," ","     STOP RUN."),
+         pad("002000"," "," INIT-PARA."),
+         pad("002100"," ","     MOVE 'N' TO WS-EOF."),
+         pad("002200"," "," INIT-EXIT."),
+         pad("002300"," ","     EXIT."),
+        ]
+        custrec = [
+         pad("000100","*"," SHARED CUSTOMER RECORD"),
+         pad("000200"," "," 01  CUST-REC."),
+         pad("000300"," ","     05  CUST-KEY."),
+         pad("000400"," ","         10  CUST-ID    PIC 9(8)."),
+         pad("000500"," ","     05  CUST-SSN   PIC 9(9)."),
+         pad("000600"," ","     05  CUST-ALT REDEFINES CUST-SSN PIC X(9)."),
+         pad("000700"," ","     05  CUST-ORDERS OCCURS 10 PIC 9(4)."),
+        ]
+        auditlog = [
+         pad("000100"," "," IDENTIFICATION DIVISION."),
+         pad("000200"," "," PROGRAM-ID. AUDITLOG."),
+         pad("000300"," "," DATA DIVISION."),
+         pad("000400"," "," COPY CUSTREC."),
+         pad("000500"," "," PROCEDURE DIVISION."),
+         pad("000600"," "," LOG-PARA."),
+         pad("000700"," ","     GOBACK."),
+        ]
+        custrpt = [
+         pad("000100"," "," IDENTIFICATION DIVISION."),
+         pad("000200"," "," PROGRAM-ID. CUSTRPT."),
+         pad("000300"," "," PROCEDURE DIVISION."),
+         pad("000400"," "," RPT-PARA."),
+         pad("000500"," ","     GOBACK."),
+        ]
+        nightly = [
+         "//NIGHTLY  JOB (ACCT),'BATCH',CLASS=A,",
+         "//             MSGCLASS=X",
+         "//* comment line must be ignored",
+         "//UPDATE   EXEC PGM=CUSTUPD",
+         "//CUSTIN   DD DSN=PROD.CUST.MASTER,DISP=SHR",
+         "//         DD DSN=PROD.CUST.MASTER.G0001V00,DISP=SHR",
+         "//CUSTOUT  DD DSN=PROD.CUST.MASTER.NEW,",
+         "//             DISP=(NEW,CATLG,DELETE)",
+         "//REPORT   EXEC CUSTRPTP",
+         "//SYSIN    DD *",
+         "  IN-STREAM DATA MUST NOT PARSE AS JCL",
+         "/*",
+        ]
+        for name, lines in [("CUSTUPD.cbl",custupd),("CUSTREC.cpy",custrec),
+                            ("AUDITLOG.cbl",auditlog),("CUSTRPT.cbl",custrpt),
+                            ("NIGHTLY.jcl",nightly)]:
+            open(f"{D}/{name}","w").write("\n".join(lines)+"\n")
+        print("estate testdata written:", sorted(os.listdir(D)))
+        EOF
+      at: 2026-08-29T00:07:24.263628Z
+      classified: other
+    - cmd: grep -rn "import" ~/Projects/provasign/grove/internal/parser/engine.go | head -8 | grep grove; grep -n "func (e \*Engine) Walk" -A3 ~/Projects/provasign/grove/internal/parser/engine.go | head -4
+      at: 2026-08-29T00:07:27.816615Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run MainframeEstate -v 2>&1 | tail -25
+      at: 2026-08-29T00:08:01.789554Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ -run MainframeEstate 2>&1 | tail -2
+      at: 2026-08-29T00:08:16.962231Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/astkit && go test ./strategies/ -run '^$' -bench 'COBOL|JCL' -benchtime 20x 2>&1 | grep -E "Benchmark|ok "
+      at: 2026-08-29T00:08:39.435606Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/astkit && go test ./... 2>&1 | tail -3 && cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -cv "^ok\|no test files" && cd ~/Projects/provasign/prism && go test ./... 2>&1 | grep -cv "^ok\|no test files"
+      at: 2026-08-29T00:08:53.32983Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism gate exit: $?"'
+      at: 2026-08-29T00:09:02.232118Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && git add strategies/mainframe_bench_test.go && git commit -q -m "$(cat <<'EOF'
+        bench: COBOL and JCL extraction throughput
+
+        2k-line DATA-DIVISION-heavy COBOL (~4ms, 35MB/s) and 200-step JCL
+        (~0.5ms) — baseline for the estate shape where data divisions dominate.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git log --oneline -3 && git push origin main 2>&1 | tail -1 && git tag -a v0.5.0 -m "mainframe: TextStrategy capability, COBOL and JCL extractors" && git push origin v0.5.0 2>&1 | tail -1
+      at: 2026-08-29T00:09:14.095291Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.5.0 2>&1 | tail -1 && GOWORK=off go mod tidy 2>&1 | tail -1; grep astkit go.mod; GOWORK=off go build ./... && GOWORK=off go test ./internal/graph/ -run MainframeEstate 2>&1 | tail -1
+      at: 2026-08-29T00:09:33.23513Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "module-mode gate: $?"; git add go.mod go.sum internal/graph/mainframe_estate_test.go internal/graph/testdata/mainframe-estate && git commit -q -m "$(cat <<'EOF'
+        test: golden mainframe conformance estate; astkit v0.5.0
+
+        testdata/mainframe-estate exercises the full parser->graph pipeline on
+        the traps that break naive column handling (sequence areas, ident area
+        73-80, comment-line PIC clauses, COBOL/JCL continuations, concatenated
+        DDs, in-stream data). Expected symbol and edge sets are EXACT — missing
+        or extra entries fail, so extractor drift is loud. Covers PERFORM THRU
+        (1.0), estate-wide CALL (0.9), VALUE-clause dynamic propagation (0.6),
+        EXEC PGM=, COPY include edges, and DD dataset bindings.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git log --oneline -3 && git push origin main 2>&1 | tail -1 && git tag -a v0.33.0 -m "mainframe v0: COBOL/JCL extraction, dedicated call resolution, conformance estate" && git push origin v0.33.0 2>&1 | tail -1
+      at: 2026-08-29T00:09:51.287226Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.33.0 github.com/provasign/astkit@v0.5.0 2>&1 | tail -2 && GOWORK=off go mod tidy && grep -E "grove|astkit" go.mod && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism module-mode gate: $?"'
+      at: 2026-08-29T00:10:31.904264Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -4; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; rm -rf $E/.grove; ~/Projects/provasign/prism/bin/prism-rel-test index $E >/dev/null 2>&1; ~/Projects/provasign/prism/bin/prism-rel-test search CUST-SSN $E --scope both --format text 2>/dev/null | head -3
+      at: 2026-08-29T00:10:41.643092Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-28T22:01:31.113801Z
+redactions: 0

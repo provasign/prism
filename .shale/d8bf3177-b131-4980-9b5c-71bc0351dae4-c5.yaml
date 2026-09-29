@@ -1,0 +1,276 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c5
+created_at: 2026-08-16T20:57:29.582366Z
+finalized_at: 2026-08-16T22:29:12.746486Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git push origin main 2>&1 | tail -3
+        git tag -a v0.55.1 -m "v0.55.1 — fix: prism_read offset/limit were never in the advertised schema
+
+        The parameters existed in code and worked when called directly, but were
+        absent from tools/list's inputSchema — unreachable from any real MCP
+        client. Fixed, and verified live over the actual protocol. Added a test
+        that cross-checks every advertised tool's schema against the args its
+        handler actually reads, to catch this class of bug going forward."
+        git push origin v0.55.1 2>&1 | tail -2
+      at: 2026-08-16T20:57:29.582366Z
+      classified: build
+    - cmd: |-
+        RID=$(gh run list -R provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId')
+        gh run watch $RID -R provasign/prism --exit-status --interval 20 2>&1 | tail -4
+      at: 2026-08-16T20:59:03.377324Z
+      classified: other
+    - cmd: |-
+        gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+        until brew info --json=v2 provasign/shale/prism 2>/dev/null | python3 -c "import sys,json;d=json.load(sys.stdin);v=d['formulae'][0]['versions']['stable'];print(v);sys.exit(0 if v=='0.55.1' else 1)" 2>/dev/null; do brew update >/dev/null 2>&1; sleep 15; done
+        echo "tap ready"; brew upgrade provasign/shale/prism 2>&1 | tail -3; /opt/homebrew/bin/prism version
+      at: 2026-08-16T21:00:09.193614Z
+      classified: other
+    - cmd: |-
+        cp /opt/homebrew/bin/prism ~/bin/prism && ~/bin/prism version
+        cd /Users/tapabratapal/Projects/provasign/research/harness && rm -rf /tmp/swebench-wt 2>/dev/null
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-inject5.json --limit 5 \
+          --arms no-prism prism --out runs/swebench-live/rangeread5v2 --prism ~/bin/prism \
+          > runs/swebench-live/rangeread5v2.log 2>&1 &
+        echo "pid $!"; sleep 20; head -4 runs/swebench-live/rangeread5v2.log
+      at: 2026-08-16T21:00:36.959718Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING (5-task job from before)" || echo "not running"
+        tail -6 runs/swebench-live/rangeread5v2.log 2>/dev/null
+      at: 2026-08-16T21:05:16.68381Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && pkill -f swebench_ab.py 2>/dev/null; sleep 2; pgrep -f swebench_ab.py >/dev/null && echo "still running" || echo "stopped"
+        rm -rf /tmp/swebench-wt 2>/dev/null
+        ~/bin/prism version
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ~/bin/prism mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        r=[x for x in json.loads(sys.stdin.readline())['result']['tools'] if x['name']=='prism_read'][0]
+        print('prism_read schema params (confirming fix is live):', list(r['inputSchema']['properties']))"
+      at: 2026-08-16T21:05:29.030594Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-authlib1.json --limit 1 \
+          --arms no-prism prism --out runs/swebench-live/onecell-v0551 --prism ~/bin/prism \
+          > runs/swebench-live/onecell-v0551.log 2>&1 &
+        echo "pid $!"; until ! pgrep -f swebench_ab.py >/dev/null; do sleep 20; done; echo "=== DONE ==="; cat runs/swebench-live/onecell-v0551.log
+      at: 2026-08-16T21:08:35.660874Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,sys
+        sys.path.insert(0,'.')
+        from score_cell import contamination, gold_copy
+        d=json.load(open('runs/swebench-live/onecell-v0551/authlib__authlib-802.prism.json'))
+        c=[x for x in d['tool_calls'] if x['name'].startswith('mcp__prism')]
+        print(f"prism calls: {len(c)}")
+        ranged=0
+        for x in c:
+            n=x['name'].replace('mcp__prism__prism_','')
+            args=x['input']
+            if n=='read' and (args.get('offset') or args.get('limit')): ranged+=1
+            print(f"  {n:14} {json.dumps(args)[:110]}")
+        print(f"\nranged prism_read calls: {ranged}")
+        print(f"contamination check: {contamination(d) or 'clean'}")
+        PY
+      at: 2026-08-16T21:08:42.017258Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && rm -rf /tmp/swebench-wt 2>/dev/null
+        ~/bin/prism version
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-inject5.json --limit 5 \
+          --arms no-prism prism --out runs/swebench-live/smoke5-v0551 --prism ~/bin/prism \
+          > runs/swebench-live/smoke5-v0551.log 2>&1 &
+        echo "pid $!"; sleep 15; head -4 runs/swebench-live/smoke5-v0551.log
+      at: 2026-08-16T21:12:20.349099Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && until ! pgrep -f swebench_ab.py >/dev/null; do sleep 30; done; echo "=== RUN COMPLETE ==="; cat runs/swebench-live/smoke5-v0551.log
+      at: 2026-08-16T21:22:25.237252Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "FINISHED"; cat runs/swebench-live/smoke5-v0551.log
+      at: 2026-08-16T21:22:28.334295Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && until ! pgrep -f swebench_ab.py >/dev/null; do sleep 30; done; echo "=== RUN COMPLETE ==="; cat runs/swebench-live/smoke5-v0551.log
+      at: 2026-08-16T21:22:33.207536Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "FINISHED/STOPPED"; tail -8 runs/swebench-live/smoke5-v0551.log
+      at: 2026-08-16T21:44:11.614861Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/smoke5-v0551 --all 2>&1 | tail -80
+      at: 2026-08-16T21:48:37.032411Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,sys
+        sys.path.insert(0,'.')
+        from score_cell import contamination, gold_copy
+        d=json.load(open('runs/swebench-live/smoke5-v0551/astronomer__dag-factory-544.prism.json'))
+        print("CONTAMINATION EVIDENCE for astronomer__dag-factory-544 (prism arm):")
+        for c in contamination(d): print("  ", c[:180])
+        PY
+      at: 2026-08-16T21:48:44.140204Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,re
+        t='astronomer__dag-factory-544'
+        task=[x for x in json.load(open('runs/swebench-live/slice-inject5.json')) if x['instance_id']==t][0]
+        d=json.load(open(f'runs/swebench-live/smoke5-v0551/{t}.prism.json'))
+        # is the repo being installed (dag-factory) the SAME as the task's repo, pinned to a version?
+        print("task repo:", task['repo'])
+        print("gold patch touches airflow version pin?", 'airflow' in task['patch'].lower())
+        def added(p,n=25):
+            return [l[1:].strip() for l in p.split('\n') if l.startswith('+') and not l.startswith('+++') and len(l[1:].strip())>=n]
+        g=set(added(task['patch'])); a=added(d['model_patch'])
+        print(f"distinctive added lines: agent={len(a)}  overlap w/ gold={sum(1 for l in a if l in g)}")
+        PY
+      at: 2026-08-16T21:48:55.272082Z
+      classified: other
+    - cmd: grep -n 'pip\\\\s' internal/mcp/../../../research/harness/score_cell.py 2>/dev/null; cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n 'pip.*download.*install' score_cell.py
+      at: 2026-08-16T21:49:05.699436Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n 'pip download' runs/swebench-live/radius8/dynaconf__dynaconf-1225.prism.json 2>/dev/null | head -3
+        python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/radius8/dynaconf__dynaconf-1225.prism.json'))
+        for c in d['tool_calls']:
+            if c['name']=='Bash' and 'pip' in str(c['input'].get('command','')):
+                print(c['input']['command'][:100])"
+      at: 2026-08-16T21:49:15.068363Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/radius8/dynaconf__dynaconf-1225.prism.json'))
+        for c in d['tool_calls']:
+            if c['name']=='Bash':
+                s=str(c['input'].get('command',''))
+                if 'pip' in s and ('download' in s or '==' in s):
+                    print(s[:120])"
+      at: 2026-08-16T21:49:20.233837Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import sys;sys.path.insert(0,'.')
+        from score_cell import GOLD_SOURCE
+        tests=[('uv pip install \"apache-airflow==3.0.3\" pytest pyyaml packaging httpx pandas -e .', False),
+               ('pip download dynaconf==3.3.1 --no-deps -d /tmp/dyna331', True),
+               ('pip install -e .', False),
+               ('pip install pydantic_settings', False)]
+        for t,e in tests:
+            got=bool(GOLD_SOURCE.search(t))
+            print(f\"  {'ok' if got==e else 'BAD'}  {got!s:5}  {t[:60]}\")"
+        echo
+        echo "=== re-score with the corrected detector ==="
+        rm -f runs/swebench-live/smoke5-v0551/scored.json
+        python3 score_cell.py runs/swebench-live/smoke5-v0551 --all 2>&1 | tail -55
+      at: 2026-08-16T21:54:10.255268Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add -A harness/ && git commit -q -F - <<'EOF'
+        harness: fix a contamination false positive — pip install != pip download
+
+        The GOLD_SOURCE tripwire matched `pip\s+(?:download|install)\s+\S+==`,
+        which flagged the routine test-setup command
+        `uv pip install "apache-airflow==3.0.3" pytest pyyaml ... -e .` on
+        astronomer__dag-factory-544 as reaching the gold fix. It wasn't:
+        apache-airflow is an unrelated test dependency of dag-factory, not the
+        task's own repo, and the independent gold_copy() tripwire confirmed clean
+        (0 of 9 distinctive added lines matched gold).
+
+        The real contamination this pattern was written for was always
+        `pip download <task-repo>==<later-version>` (dynaconf-1225, verified
+        against the original trace): download the package, unzip, diff against
+        the fixed source. `pip install X==Y` is ordinary environment setup and
+        fires on nearly every cell that needs a pinned dependency.
+
+        Narrowed to `pip download` only. Verified against both the real
+        historical contamination string and the new false positive.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-16T21:54:21.964748Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections,statistics
+        d=json.load(open('runs/swebench-live/smoke5-v0551/scored.json'))
+        print(f"{'cell':38}{'files':>6}{'base':>10}{'prism':>10}{'Δturns':>8}{'Δcost':>8}  used  prism_read ranged")
+        for r in sorted(d,[REDACTED:env-secret] x:x['gold_files']):
+            a,b=r['arms']['no-prism'],r['arms']['prism']
+            v=lambda x:{True:'RESOLVED',False:'no',None:'err'}[x['resolved']]
+            ranged=sum(1 for n,args in b['behaviour']['prism_calls'] if n=='read' and (args.get('offset') or args.get('limit')))
+            total_reads=sum(1 for n,_ in b['behaviour']['prism_calls'] if n=='read')
+            print(f"{r['instance_id'][:38]:38}{r['gold_files']:6}{v(a):>10}{v(b):>10}{b['turns']-a['turns']:+8}{b['cost']-a['cost']:+8.2f}  {b['prism_used']}   {ranged}/{total_reads}")
+
+        rb=sum(1 for r in d if r['arms']['no-prism']['resolved']); rp=sum(1 for r in d if r['arms']['prism']['resolved'])
+        print(f"\nRESOLVE  baseline {rb}/5   prism {rp}/5")
+        print(f"ADOPTION {sum(1 for r in d if r['arms']['prism']['prism_used'])}/5")
+        eq=[r for r in d if r['arms']['no-prism']['resolved']==r['arms']['prism']['resolved']]
+        dc=[r['arms']['prism']['cost']-r['arms']['no-prism']['cost'] for r in eq]
+        dt=[r['arms']['prism']['turns']-r['arms']['no-prism']['turns'] for r in eq]
+        print(f"equal-correctness n={len(eq)}  median Δcost {statistics.median(dc):+.3f}  median Δturns {statistics.median(dt):+.1f}")
+        print(f"denials: base {sum(r['arms']['no-prism']['behaviour']['denials'] for r in d)}  prism {sum(r['arms']['prism']['behaviour']['denials'] for r in d)}")
+
+        print("\n=== every prism call, all 5 cells ===")
+        for r in d:
+            for n,args in r['arms']['prism']['behaviour']['prism_calls']:
+                print(f"  [{r['instance_id'][:26]:26}] {n:8} {json.dumps(args)[:100]}")
+        PY
+      at: 2026-08-16T21:54:33.383871Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,collections,statistics
+
+        def phases(d):
+            calls=d['tool_calls']
+            edited=set()
+            for c in calls:
+                if c['name'] in ('Edit','Write','MultiEdit'):
+                    fp=c['input'].get('file_path','')
+                    if fp: edited.add(fp.split('/')[-1])
+            if not edited: return None
+            fe=next((i for i,c in enumerate(calls) if c['name'] in ('Edit','Write','MultiEdit')), None)
+            ft=None
+            for i,c in enumerate(calls):
+                blob=json.dumps(c.get('input',{}))
+                if any(f in blob for f in edited): ft=i; break
+            if fe is None or ft is None: return None
+            return dict(locate=ft, comprehend=fe-ft, implement=len(calls)-fe, total=len(calls))
+
+        for arm in ('no-prism','prism'):
+            rows=[]
+            for f in glob.glob(f'runs/swebench-live/smoke5-v0551/*.{arm}.json'):
+                p=phases(json.load(open(f)))
+                if p: rows.append(p)
+            if not rows: continue
+            tot=sum(r['total'] for r in rows)
+            print(f"{arm} — {len(rows)} cells, {tot} actions")
+            for k in ('locate','comprehend','implement'):
+                v=sum(r[k] for r in rows)
+                print(f"  {k:12} {v:4} {v/tot:5.1%}  median {statistics.median(r[k] for r in rows):.0f}")
+            print()
+        PY
+      at: 2026-08-16T21:54:42.03546Z
+      classified: other
+    - cmd: |-
+        echo "=== prism ==="; git status --short | head -5; git log --oneline origin/main..HEAD | wc -l
+        echo "=== research ==="; cd ../research && git status --short | head -5; git log --oneline origin/main..HEAD 2>/dev/null | wc -l
+      at: 2026-08-16T22:29:05.281624Z
+      classified: other
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-16T20:57:29.582366Z
+redactions: 1

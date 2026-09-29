@@ -1,12 +1,14 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -169,7 +171,15 @@ func TestToolVerify_CompleteChangePasses(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := out.(map[string]any)
-	if m["verdict"] != "complete" {
+	want := "complete"
+	if _, _, err := h.Grove.PreviewChangeImpacts(t.Context(), nil, nil); err == grove.ErrPreviewUnavailable {
+		want = "review"
+		gaps, ok := m["unverifiedSeeds"].([]string)
+		if !ok || len(gaps) != 1 || gaps[0] != "base-contract coverage unavailable: "+err.Error() {
+			t.Fatalf("unexpected coverage gaps: %v", m["unverifiedSeeds"])
+		}
+	}
+	if m["verdict"] != want {
 		t.Fatalf("verdict = %v, want complete; missed=%v", m["verdict"], m["missedSites"])
 	}
 }
@@ -279,6 +289,14 @@ func TestToolVerify_PythonMissedCallers(t *testing.T) {
 	// is forgotten. Every file still compiles.
 	write("svc/core.py", "class Store:\n    def put(self, key, ttl):\n        return key\n")
 	write("app/writer.py", "from svc.core import Store\n\ndef save(k):\n    s = Store()\n    return s.put(k, 60)\n")
+	if python, err := exec.LookPath("python3"); err == nil {
+		cmd := exec.Command(python, "-m", "py_compile", "svc/core.py", "app/writer.py", "app/backup.py")
+		cmd.Dir = dir
+		cmd.Env = append(cmd.Environ(), "PYTHONPYCACHEPREFIX="+t.TempDir())
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("Python syntax compilation rejected the missed-caller fixture: %v\n%s", err, out)
+		}
+	}
 
 	gc := grove.NewClient("", "").WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
@@ -295,26 +313,33 @@ func TestToolVerify_PythonMissedCallers(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := out.(map[string]any)
-	if m["verdict"] == "complete" || m["verdict"] == "clean" {
-		t.Fatalf("verdict = %v — the forgotten backup.py caller must not pass", m["verdict"])
+	if m["verdict"] != "incomplete" {
+		t.Fatalf("verdict = %v — report the forgotten backup.py caller, not just a coverage caution: %v", m["verdict"], m)
 	}
-	if m["verdict"] == "incomplete" {
-		found := false
-		for _, ms := range mustJSON(t, m["missedSites"]) {
-			if ms["file"] == "app/backup.py" {
-				found = true
-			}
-			if ms["file"] == "app/writer.py" {
-				t.Errorf("updated caller writer.py falsely accused: %v", ms)
-			}
+	found := false
+	for _, ms := range mustJSON(t, m["missedSites"]) {
+		if ms["file"] == "app/backup.py" {
+			found = true
 		}
-		if !found {
-			t.Fatalf("backup.py missed site not reported: %v", m["missedSites"])
+		if ms["file"] == "app/writer.py" {
+			t.Errorf("updated caller writer.py falsely accused: %v", ms)
 		}
 	}
-	// verdict "review" (unverified seed) is acceptable fail-closed behavior;
-	// "incomplete" with the exact site is the target.
-	t.Logf("python verdict: %v missed=%v unverified=%v", m["verdict"], m["missedSites"], m["unverifiedSeeds"])
+	if !found {
+		t.Fatalf("backup.py missed site not reported: %v", m["missedSites"])
+	}
+	// A complete migration must remove the concrete accusation. Dynamic
+	// caller coverage may still require review; that is a separate limit.
+	write("app/backup.py", "from svc.core import Store\n\ndef mirror(k):\n    s = Store()\n    return s.put(k, 60)\n")
+	out, err = h.Invoke("prism_verify", map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrected := out.(map[string]any)
+	if got := mustJSON(t, corrected["missedSites"]); len(got) != 0 {
+		t.Fatalf("fully updated Python callers falsely accused: %v", got)
+	}
+	t.Logf("python incomplete=%v corrected=%v", m["verdict"], corrected["verdict"])
 }
 
 // A bare function (not a method) must be verified through the callers
@@ -399,5 +424,276 @@ func TestValidGitBase_BlocksOptionInjection(t *testing.T) {
 		if validGitBase(bad) {
 			t.Errorf("validGitBase(%q) = true, want false (injection payload accepted)", bad)
 		}
+	}
+}
+
+// TestToolVerify_DeletedFileCollapsesToOneLine: measured 2026-09-02
+// (6rqii7zt #88) — a deleted 34-symbol directory produced ~30 near-identical
+// "X removed with file Y" signatureChanges lines in a 13.9k-char verify
+// response, and the agent dismissed the whole block in one sentence. The
+// per-symbol seeds still run impact analysis; only the REPORT collapses to
+// one "file deleted — N symbol(s)" line per file.
+func TestToolVerify_DeletedFileCollapsesToOneLine(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/d\n\ngo 1.26\n")
+	// A file with several symbols that will be deleted wholesale.
+	write("gone/gone.go", `package gone
+
+func A() {}
+
+func B() {}
+
+func C() {}
+
+func D() {}
+`)
+	write("keep/keep.go", "package keep\n\nfunc Keep() {}\n")
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir,
+			"-c", "user.email=t@t", "-c", "user.name=t"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q")
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	if err := os.RemoveAll(filepath.Join(dir, "gone")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("re-index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_verify", map[string]any{})
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	m := out.(map[string]any)
+	perSymbol, collapsed := 0, 0
+	for _, sc := range mustJSON(t, m["signatureChanges"]) {
+		reason, _ := sc["reason"].(string)
+		if strings.Contains(reason, "removed with file") {
+			perSymbol++
+		}
+		if strings.Contains(reason, "file deleted —") {
+			collapsed++
+			if !strings.Contains(reason, "4 symbol(s)") {
+				t.Errorf("collapsed line should carry the symbol count, got %q", reason)
+			}
+		}
+	}
+	if perSymbol > 0 {
+		t.Errorf("deleted file still reported per-symbol (%d lines) — must collapse to one", perSymbol)
+	}
+	if collapsed != 1 {
+		t.Errorf("want exactly 1 collapsed deleted-file line, got %d", collapsed)
+	}
+}
+
+// TestToolVerify_RemovedSymbolsFastPath: BACKLOG addendum #8 — two ~210-call
+// removal-task sessions each spent ~45-48 Bash greps (~22% of ALL calls)
+// re-checking the same removed identifiers ~15 times, hand-rolling residual-
+// reference verification because the full verify gate is priced as an exit
+// check. removed_symbols=[...] answers "which still have references?" in one
+// mid-loop-affordable call.
+func TestToolVerify_RemovedSymbolsFastPath(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, rel), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("a.go", "package p\n\nfunc keep() { stillHere() }\n\nfunc stillHere() {}\n")
+	write("b.go", "package p\n\n// mentions stillHere in a comment too\n")
+	write("variants.go", "package p\n\nfunc Foo1() {}\nfunc Foo2() {}\nfunc FooImpl() {}\n")
+	write("README.md", "Foo1 and Foo2 remain supported.\n")
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+
+	out, err := h.Invoke("prism_verify", map[string]any{
+		"removed_symbols": []any{"stillHere", "trulyGone", "Foo"}})
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	m := out.(map[string]any)
+	if m["mode"] != "removed_symbols" {
+		t.Fatalf("want fast-path mode, got %v", m["mode"])
+	}
+	if m["clean"] != 2 || m["checked"] != 3 {
+		t.Errorf("clean/checked = %v/%v, want 2/3", m["clean"], m["checked"])
+	}
+	res := mustJSON(t, m["residuals"])
+	byName := map[string]map[string]any{}
+	for _, r := range res {
+		byName[fmt.Sprint(r["symbol"])] = r
+	}
+	if c, _ := byName["stillHere"]["count"].(float64); int(c) != 3 {
+		t.Errorf("stillHere count = %v, want 3 (two code refs + one comment — comments count, "+
+			"a doc naming a removed symbol needs updating too)", byName["stillHere"]["count"])
+	}
+	if c, _ := byName["trulyGone"]["count"].(float64); int(c) != 0 {
+		t.Errorf("trulyGone count = %v, want 0", byName["trulyGone"]["count"])
+	}
+	if c, _ := byName["Foo"]["count"].(float64); int(c) != 0 {
+		t.Errorf("Foo count = %v, want 0: longer identifiers are not references", byName["Foo"]["count"])
+	}
+	write("call.go", "package p\n\nfunc useFoo() { Foo() }\n")
+	out, err = h.Invoke("prism_verify", map[string]any{"removed_symbols": []any{"Foo"}})
+	if err != nil {
+		t.Fatalf("verify exact caller: %v", err)
+	}
+	res = mustJSON(t, out.(map[string]any)["residuals"])
+	if c, _ := res[0]["count"].(float64); int(c) != 1 {
+		t.Errorf("Foo count = %v, want the exact call only", res[0]["count"])
+	}
+	write("long.go", "package p\n// "+strings.Repeat("x", 300)+" Foo\n")
+	out, err = h.Invoke("prism_verify", map[string]any{"removed_symbols": []any{"Foo"}})
+	if err != nil {
+		t.Fatalf("verify long line: %v", err)
+	}
+	res = mustJSON(t, out.(map[string]any)["residuals"])
+	if c, _ := res[0]["count"].(float64); int(c) != 2 {
+		t.Errorf("Foo count = %v, want the call and mention past a truncated preview", res[0]["count"])
+	}
+	if sites := mustJSON(t, res[0]["sites"]); len(sites) < 2 || !strings.Contains(fmt.Sprint(sites[1]["text"]), "Foo") {
+		t.Errorf("long-line evidence must show the matched identifier: %v", sites)
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := h.verifyRemovedSymbols(cancelled, []string{"Foo"}); err == nil {
+		t.Error("canceled scan must not return a clean or complete result")
+	}
+	if _, err := h.verifyRemovedSymbols(context.Background(), []string{" "}); err == nil {
+		t.Error("empty identifier must not return a clean result")
+	}
+	write("cap.go", "package p\n// "+strings.Repeat("Foo1\n// ", 10000)+"Foo()\n")
+	if _, err := h.verifyRemovedSymbols(context.Background(), []string{"Foo"}); err == nil {
+		t.Error("per-file search cap must not hide a later exact mention behind prefix matches")
+	}
+}
+
+// TestToolVerify_TestCoverageForBodyOnlyChange: a pure body edit (no
+// signature change) never becomes a `seed` (addSeed only fires on
+// signature/rename/removal), so it was invisible to verify before this --
+// verdict stays "complete" with zero missed sites regardless. testCoverage
+// is the separate, non-gating signal: does a verified test call the
+// function whose body changed. One function has a real test caller, one
+// doesn't -- the second must carry a warning, not silently pass as if it
+// were covered.
+func TestToolVerify_TestCoverageForBodyOnlyChange(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/cov\n\ngo 1.26\n")
+	write("core.go", "package cov\n\n"+
+		"func Add(a, b int) int {\n\treturn a + b\n}\n\n"+
+		"func Sub(a, b int) int {\n\treturn a - b\n}\n")
+	write("core_test.go", "package cov\n\nimport \"testing\"\n\n"+
+		"func TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fail()\n\t}\n}\n")
+
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir,
+			"-c", "user.email=t@t", "-c", "user.name=t"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git("init", "-q")
+	git("add", "-A")
+	git("commit", "-q", "-m", "base")
+
+	// Body-only changes to BOTH functions -- neither is a signature change,
+	// so neither should ever become a seed or a missed site.
+	write("core.go", "package cov\n\n"+
+		"func Add(a, b int) int {\n\treturn a + b + 0\n}\n\n"+
+		"func Sub(a, b int) int {\n\treturn a - b - 0\n}\n")
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	out, err := h.Invoke("prism_verify", map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := out.(map[string]any)
+	if m["verdict"] != "complete" {
+		t.Fatalf("verdict = %v, want complete (body-only changes are never seeds): missed=%v",
+			m["verdict"], m["missedSites"])
+	}
+	tc, _ := m["testCoverage"].([]map[string]any)
+	if len(tc) != 2 {
+		t.Fatalf("testCoverage = %v, want 2 entries (Add, Sub)", m["testCoverage"])
+	}
+	byName := map[string]map[string]any{}
+	for _, e := range tc {
+		byName[fmt.Sprint(e["symbol"])] = e
+	}
+	add, ok := byName["Add"]
+	if !ok {
+		t.Fatalf("no testCoverage entry for Add: %v", tc)
+	}
+	covered, _ := add["coveredBy"].([]string)
+	if len(covered) == 0 || !strings.Contains(covered[0], "core_test.go") {
+		t.Errorf("Add coveredBy = %v, want core_test.go:<line>", add["coveredBy"])
+	}
+	if add["warning"] != nil {
+		t.Errorf("Add has a real test caller, must not carry a warning: %v", add["warning"])
+	}
+	sub, ok := byName["Sub"]
+	if !ok {
+		t.Fatalf("no testCoverage entry for Sub: %v", tc)
+	}
+	if sub["coveredBy"] != nil {
+		t.Errorf("Sub has no test caller, coveredBy must be absent: %v", sub["coveredBy"])
+	}
+	if sub["warning"] == nil {
+		t.Error("Sub has no verified test caller, must carry a warning")
+	}
+	text, ok := renderVerifyAsText(m)
+	if !ok {
+		t.Fatal("renderVerifyAsText rejected a valid testCoverage payload")
+	}
+	if !strings.Contains(text, "Add") || !strings.Contains(text, "Sub") || !strings.Contains(text, "no verified test caller") {
+		t.Errorf("text rendering missing test-coverage section: %s", text)
 	}
 }

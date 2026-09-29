@@ -1,0 +1,1357 @@
+shale_version: "0"
+id: 4c69cd72-5bfb-48d7-8455-3d1158f12b39-c4
+created_at: 2026-09-26T23:45:35.487174Z
+finalized_at: 2026-09-27T11:33:13.139544Z
+agent:
+    tool: claude-code
+    model: claude-opus-5-5[1m]
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/prism-ab-bins/prism-v084-published 2>&1 | grep -E "FAIL|All invariants"; cd ../prism && git add go.mod go.sum && git commit -q -m "Release v0.84.0: smaller search output, change_impact related sites and test-only APIs, drift fix (grove v0.60.0)
+
+        From a review of 29 failed and 17 token-heavy benchmark sessions:
+        - search:
+          - a default response budget (median 11.5k -> 4.3k chars on replayed real
+            calls, gold sites kept);
+          - files_only in every scope;
+          - one best line per file in sampled inventories;
+          - class/struct outlines above 80 lines;
+          - narrow op=read hints for trimmed parts.
+        - change_impact:
+          - a bounded \"related\" group (other callers of the same callees; siblings
+            missing a call their peers share);
+          - TEST-ONLY API flag with production call sites;
+          - signature selects one overload;
+          - a not-yet-overridden method resolves to its inherited declaration;
+          - TS re-exports and value+type anchors.
+        - drift diffs against the file's current bytes, not the index (a same-size
+          edit inside one mtime tick was missed on Linux).
+        Gates: go test green on macOS and Linux; ci_invariants all held; grove
+        v0.60.0 Edge accuracy green in CI.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01X4iDGjueYh9MhLP57FiMzU" && git checkout -q main && git pull -q --ff-only origin main 2>/dev/null; git merge -q --ff-only release/v0.84 2>&1 | tail -1 || git merge -q --no-edit release/v0.84; git log --oneline -2 && git tag -a v0.84.0 -m "v0.84.0: smaller search output, change_impact related sites/test-only APIs, drift fix (grove v0.60.0)" && git push -q origin main 2>&1 | grep -v '^remote:\|^shale'; git push -q origin v0.84.0 2>&1 | grep -v '^shale'; git ls-remote --tags origin v0.84.0
+      at: 2026-09-26T23:45:35.487174Z
+      classified: test
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/reval && pgrep -f reval.py; for i in pr6044 pr6052 pr6076; do mv FasterXML__jackson-databind__$i.json FasterXML__jackson-databind__$i.firstpass.json; done; python3 reval.py FasterXML__jackson-databind__pr6044 FasterXML__jackson-databind__pr6052 FasterXML__jackson-databind__pr6076 2>&1 | tail -4
+      at: 2026-09-26T23:46:06.380029Z
+      classified: other
+    - cmd: pkill -f "while pgrep" ; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/reval && wc -l < reval.log; mkdir -p firstpass && mv *.firstpass.json firstpass/; python3 apply.py | grep -v "^same" ; python3 apply.py | grep -c "^same"
+      at: 2026-09-26T23:46:11.652259Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/reval && python3 -c "
+        import json,glob
+        same=diff=0;bad=[]
+        for f in glob.glob('*__pr*.json'):
+            r=json.load(open(f))
+            if 'oldparser_same_blobs_f2p' not in r: continue
+            if sorted(r['old_f2p'])==r['oldparser_same_blobs_f2p']: same+=1
+            else: diff+=1; bad.append(r['iid'])
+        print('old parser on new blobs reproduces stored f2p:',same,'differs:',diff,bad)
+        "; python3 apply.py --write >/dev/null; cd /Users/tapabratapal/Projects/provasign/research && git status --short harness/tasks | wc -l
+      at: 2026-09-26T23:46:21.27844Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/scoring/java_eval.py harness/tasks/e2e && git commit -q -m "java tasks: re-validate fail_to_pass/pass_to_pass with the fixed surefire parser
+
+        All 60 Java tasks in v0831-lang + guard-fix-run re-validated (base+test_patch
+        vs +gold, maven docker). 46 changed, 14 unchanged, 0 invalid. The old parser
+        run over the same new surefire output reproduces every stored list (60/60),
+        so each change is the parser alone. Most old fail_to_pass entries were
+        tests that PASS at base (a self-closing pass read as FAILED); the real
+        failing tests were missing. jackson-databind 2.x runs its PrimarySuite, so
+        pr5994/pr6105 now carry ~3850 pass_to_pass.
+
+        Scorer: _pin_snapshot_parent keeps a SNAPSHOT parent that has no release yet
+        (jackson-base 3.3.0: pr6044/6052/6076 were unbuildable when pinned), pinning
+        now happens before patches apply, and mvn runs with -nsu so a cached
+        snapshot never silently moves.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01X4iDGjueYh9MhLP57FiMzU" && git log --oneline -1
+      at: 2026-09-26T23:46:31.708979Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 build/warm_agent_m2.py results/v0831-lang-manifest.json --ids FasterXML__jackson-databind__pr5943 --out /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2probe.jsonl 2>&1 | tail -3; python3 -c "
+        import json;r=[json.loads(l) for l in open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2probe.jsonl')][-1];print(json.dumps(r,indent=1)[:3000])"; du -sh ~/.m2-agent-seed
+      at: 2026-09-26T23:47:15.588897Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 build/warm_agent_m2.py results/v0831-lang-manifest.json results/guard-fix-run-manifest.json --out /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.jsonl > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log 2>&1 &
+        echo started
+      at: 2026-09-26T23:47:23.816931Z
+      classified: other
+    - cmd: which -a prism; for p in $(which -a prism); do $p --version; done
+      at: 2026-09-26T23:47:31.814602Z
+      classified: other
+    - cmd: until grep -q "build offline; failing" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log || ! pgrep -f "warm_agent_m2.py results" >/dev/null; do sleep 15; done; tail -64 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log
+      at: 2026-09-26T23:47:41.592091Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log
+      at: 2026-09-26T23:47:48.98976Z
+      classified: other
+    - cmd: for i in $(seq 1 40); do s=$(gh run list -R provasign/prism --limit 4 --json name,status,conclusion,headBranch --jq '[.[] | select(.headBranch=="v0.84.0" or .headBranch=="main")] | map(.name+":"+.headBranch+":"+.status+":"+.conclusion) | join(" ")'); case "$s" in *in_progress*|*queued*) sleep 20;; *) break;; esac; done; echo "$s"; gh workflow run "Refresh formulae" -R provasign/homebrew-shale >/dev/null 2>&1; sleep 45; brew update -q >/dev/null 2>&1; brew info provasign/shale/prism 2>/dev/null | head -1; cd ~/prism-ab-bins && gh release download v0.84.0 -R provasign/prism -p 'prism-v0.84.0-darwin-arm64' -p checksums.txt -O - >/dev/null 2>&1; gh release download v0.84.0 -R provasign/prism -p 'prism-v0.84.0-darwin-arm64' --clobber && gh release download v0.84.0 -R provasign/prism -p checksums.txt -O checksums-v0.84.0.txt --clobber && grep darwin-arm64 checksums-v0.84.0.txt | shasum -a 256 -c - && chmod +x prism-v0.84.0-darwin-arm64 && ./prism-v0.84.0-darwin-arm64 --version
+      at: 2026-09-26T23:48:59.669129Z
+      classified: other
+    - cmd: gh run list -R provasign/prism --workflow ci.yml --limit 2 --json conclusion,status,displayTitle,headSha --jq '.[] | .status+" "+.conclusion+" "+.headSha[0:8]+" "+.displayTitle[0:60]'; brew upgrade -q provasign/shale/prism 2>&1 | tail -2; /opt/homebrew/bin/prism --version; cd /tmp && mkdir -p warncheck && cd warncheck && git init -q 2>/dev/null; ~/prism-ab-bins/prism-v0.84.0-darwin-arm64 init --harness claude --yes . 2>&1 | grep -ci "multiple Prism installations" ; rm -rf /private/tmp/warncheck
+      at: 2026-09-26T23:49:12.232662Z
+      classified: other
+    - cmd: until [ $(grep -c "^OK\|^FAIL" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log) -ge 3 ]; do sleep 5; done; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log
+      at: 2026-09-26T23:49:15.131606Z
+      classified: other
+    - cmd: until grep -q "build offline; failing" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log; do sleep 10; done; grep -v "^OK" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log
+      at: 2026-09-26T23:59:20.24281Z
+      classified: other
+    - cmd: 'for i in $(seq 1 30); do s=$(gh run list -R provasign/prism --workflow ci.yml --commit a47db0d5ab $(true) --limit 1 --json status,conclusion --jq ''.[0] | .status+" "+.conclusion'' 2>/dev/null); [ -z "$s" ] && s=$(gh run list -R provasign/prism --workflow ci.yml --limit 6 --json status,conclusion,headSha --jq ''[.[] | select(.headSha|startswith("a47db0d5"))][0] | .status+" "+.conclusion''); case "$s" in completed*) break;; esac; sleep 20; done; echo "CI on a47db0d5: $s"; gh run list -R provasign/prism --workflow ci.yml --limit 4 --json status,conclusion,headSha --jq ''.[] | .headSha[0:8]+" "+.status+" "+.conclusion'''
+      at: 2026-09-26T23:59:20.242811Z
+      classified: other
+    - cmd: gh run list -R provasign/prism --workflow ci.yml --limit 6 --json status,conclusion,headSha,displayTitle --jq '.[] | .headSha[0:8]+" "+.status+" "+.conclusion+" "+.displayTitle[0:50]'
+      at: 2026-09-26T23:59:23.963252Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        for l in open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.jsonl'):
+            r=json.loads(l)
+            if not r['ok']: print(r['task'], r['test'].get('rc'), r['test'].get('resolution_error'), r['test'].get('tail','')[-300:].replace(chr(10),' | '));print()
+        " | head -30
+      at: 2026-09-26T23:59:29.119486Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        for l in open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.jsonl'):
+            r=json.loads(l)
+            if r['task']=='apache__dubbo__pr16325': print(r['compile'].get('tail','')[-2500:])
+        "
+      at: 2026-09-26T23:59:35.479665Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_release_v083_2026_09_26.md <<'EOF'
+
+        **v0.84.0 + grove v0.60.0 (2026-09-26 night):** from transcript reviews of 29
+        failed and 17 token-heavy sessions.
+        - search budget: median 11.5k → 4.3k chars on replayed real calls, gold sites kept.
+        - files_only works in every scope; type outlines above 80 lines; narrow read hints;
+          one best line per file in the sampled-search inventory.
+        - change_impact: a "related" group (co-callers, peer-lacks siblings), a TEST-ONLY API
+          flag, signature selects an overload, inherited resolution for a not-yet-override,
+          TS re-exports and value+type anchors.
+        - drift diffs against current bytes; this also fixed a "flaky" Linux test.
+        Grove's Edge accuracy passed in CI BEFORE the prism tag this time. Homebrew prism
+        was upgraded to 0.84.0, which removed the version-mismatch warning from agent
+        sessions.
+        EOF
+        sed -i '' 's#^- \[Releases v0.83.1-v0.83.3 2026-09-26\]#- [Releases v0.83.1-v0.84.0 2026-09-26]#' MEMORY.md
+      at: 2026-09-26T23:59:36.189966Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p=Path("build/warm_agent_m2.py"); s=p.read_text()
+        old='''        rec["pinned"] = run_e2e._pin_java_worktree(wt, task)'''
+        new='''        rec["pinned"] = run_e2e._pin_java_worktree(wt, task)
+                # the F2P class usually arrives with test_patch; apply it so the test
+                # step runs it (it should fail -- no fix applied)
+                subprocess.run(["git", "-C", str(wt), "apply", "--whitespace=nowarn"],
+                               input=task["test_patch"], text=True, check=True, capture_output=True)'''
+        assert old in s; s=s.replace(old,new)
+        old='''            subprocess.run(["git", "-C", str(wt), "clean", "-qfdx", "-e", "node_modules"], check=False)'''
+        new='''            subprocess.run(["git", "-C", str(wt), "clean", "-qfdX"], check=False)  # build output only'''
+        assert old in s; s=s.replace(old,new)
+        old='''        rec["ok"] = (not rec["compile"]["resolution_error"] and rec["compile"]["rc"] == 0
+                             and not rec["test"]["resolution_error"] and bool(m))'''
+        new='''        # compile may fail for reasons of the repo's own (dubbo: `compile` alone
+                # never builds the in-reactor dubbo-maven-plugin's descriptor); what
+                # must hold is: nothing fails to resolve, and the F2P class runs
+                rec["ok"] = (not rec["compile"]["resolution_error"]
+                             and not rec["test"]["resolution_error"] and bool(m))'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('''A task passes when neither offline step fails on resolution (a test may fail;
+        the F2P test is expected to, its test_patch is not applied).''','''test_patch is applied first so the F2P class exists. A task passes when
+        neither offline step fails on resolution and the F2P class runs (its tests
+        are expected to fail: no fix is applied).''')
+        p.write_text(s)
+        EOF
+        grep -n "clean" build/warm_agent_m2.py
+      at: 2026-09-26T23:59:50.516795Z
+      classified: other
+    - cmd: until grep -q "build offline; failing" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log; do sleep 10; done; tail -1 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log; du -sh ~/.m2-agent-seed
+      at: 2026-09-27T00:09:55.960126Z
+      classified: other
+    - cmd: until grep -q "build offline; failing" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log; do sleep 10; done; tail -1 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2all.log; du -sh ~/.m2-agent-seed
+      at: 2026-09-27T00:17:45.49559Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; python3 -c "
+        import json
+        rs=[json.loads(l) for l in open('$S/m2all.jsonl')]
+        print('resolution errors:',[r['task'] for r in rs if r.get('compile',{}).get('resolution_error') or r.get('test',{}).get('resolution_error')], 'errors:',[r['task'] for r in rs if 'error' in r], 'warm rc!=0:',[(r['task'],r['warm']) for r in rs if r.get('warm',{}).get('rc') or r.get('warm',{}).get('wrapper_rc')])"; cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 build/warm_agent_m2.py results/v0831-lang-manifest.json results/guard-fix-run-manifest.json --verify-only --out $S/m2verify.jsonl > $S/m2verify.log 2>&1 & echo started
+      at: 2026-09-27T00:17:52.746361Z
+      classified: other
+    - cmd: until grep -q "build offline; failing" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2verify.log; do sleep 10; done; grep -v "^OK" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2verify.log
+      at: 2026-09-27T00:27:58.456675Z
+      classified: other
+    - cmd: until grep -q "build offline; failing" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/m2verify.log; do sleep 10; done; echo ok
+      at: 2026-09-27T00:32:10.908172Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; grep -v "^OK" $S/m2verify.log; python3 -c "
+        import json
+        rs=[json.loads(l) for l in open('$S/m2verify.jsonl')]
+        print(len(rs),'ok',sum(r['ok'] for r in rs))
+        print('compile rc!=0:',[r['task'] for r in rs if r['compile']['rc']])
+        print('tests run with failures (expected F2P):',sum(1 for r in rs if r['test'].get('tests_run') and (int(r['test']['tests_run'][1])+int(r['test']['tests_run'][2]))>0))
+        print('no failures:',[ (r['task'],r['test']['tests_run']) for r in rs if r['test'].get('tests_run') and (int(r['test']['tests_run'][1])+int(r['test']['tests_run'][2]))==0])
+        "
+      at: 2026-09-27T00:32:17.26601Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; python3 -c "
+        import json
+        for l in open('$S/m2verify.jsonl'):
+            r=json.loads(l)
+            if not r['ok']: print(r['test'].get('tail'))"
+      at: 2026-09-27T00:32:21.711747Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        from pathlib import Path
+        p=Path("build/warm_agent_m2.py"); s=p.read_text()
+        old='''        rec["test"] = {"rc": rc, "s": s, "resolution_error": bool(RESOLUTION_ERR.search(out)),'''
+        new='''        # once surefire reports a run, resolution succeeded; the pattern can
+                # otherwise match a test's own exception text (xml pr829)
+                rec["test"] = {"rc": rc, "s": s, "resolution_error": bool(RESOLUTION_ERR.search(out)) and not m,'''
+        assert old in s; s=s.replace(old,new); p.write_text(s)
+        EOF
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad; python3 build/warm_agent_m2.py results/v0831-lang-manifest.json --verify-only --ids FasterXML__jackson-dataformat-xml__pr829 --out $S/m2verify829.jsonl 2>&1 | tail -2
+      at: 2026-09-27T00:32:39.756852Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m unittest discover -s tests 2>&1 | grep -E "^(Ran|OK|FAILED)"; cd .. && git status --short | grep -v "results/" '
+      at: 2026-09-27T00:32:47.46801Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add harness/hooks/pinned-bin/bun harness/hooks/pinned-bin/pnpm harness/runners/run_e2e.py harness/build/warm_agent_m2.py harness/tests/test_run_e2e_build_env.py && git commit -q -m "run_e2e: agent builds resolve offline, identically for every arm
+
+        Build/env churn was 36% of the prism arm's extra tokens in heavy cells and
+        landed on either arm at random (2026-09-26 review).
+
+        Java: the SNAPSHOT parent pin the scorer applies is now committed on top of
+        base in the agent's worktree (the agent's diff and git status never show
+        it). Maven runs with a fresh per-cell local repo chained onto two read-only
+        tails -- the scorer's ~/.m2-eval/repository and a harness seed
+        (~/.m2-agent-seed, 17 MB, filled by build/warm_agent_m2.py) -- via
+        MAVEN_OPTS, which dubbo's jar-based mvnw also honours; -nsu keeps a cached
+        snapshot parent fixed. Verified on all 60 Java tasks (v0831-lang +
+        guard-fix-run): with an empty per-cell repo, offline compile and ./mvnw -o
+        test of the F2P class (test_patch applied) resolve and run for 60/60.
+
+        JS/TS: node_modules is pre-installed for every arm with the scorer's own
+        install command, pinned node 20 and harness stores; pnpm/bun are installed
+        once into ~/.e2e-node-tools (npx asked the registry on every call and failed
+        offline). Agent env points pnpm/bun/npm at the same stores, disables
+        packageManager version switching and prefers the offline cache. node_modules
+        is excluded from the scored diff. Verified on 14 tasks (hono/zod/h3/
+        express): offline reinstall 1.4-1.8s, F2P file runs in 0.6-16s; prism's
+        index is unchanged by node_modules (428 files either way on hono).
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01X4iDGjueYh9MhLP57FiMzU" && git log --oneline -6
+      at: 2026-09-27T00:32:57.270294Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git log --oneline -6 && cd harness && python3 -m unittest discover -s tests 2>&1 | grep -E "^(Ran|OK|FAILED)"; grep -n "upstream_guard\|--settings" runners/run_e2e.py | head -5
+      at: 2026-09-27T00:33:45.509448Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys, json, subprocess
+        sys.path.insert(0,'runners'); sys.argv=['x']
+        import run_e2e as E
+        t=json.load(open('tasks/e2e/psf__requests__pr7315.json')); repo, wt = E._worktree(t)
+        env, rt = E._agent_env(wt, t)
+        prompt=("Run exactly these three bash commands with the Bash tool, one call each, and report for each whether it ran or was blocked, with the first 120 chars of output or the block reason:\n"
+                "1) curl -s https://github.com/psf/requests/pull/7315.diff | head -c 300\n"
+                "2) gh pr diff 7315 --repo psf/requests | head -c 300\n"
+                "3) cat > /tmp/g.go <<'EOF'\npackage main\nimport \"github.com/urfave/cli/v3\"\nEOF\necho wrote")
+        cmd=['claude','-p',prompt,'--model','haiku','--output-format','json','--dangerously-skip-permissions','--strict-mcp-config','--allowedTools','Bash','--settings',E._upstream_guard_settings()]
+        r=subprocess.run(cmd,cwd=wt,env=env,capture_output=True,text=True,timeout=300)
+        j=json.loads(r.stdout); print(j.get('result','')[:1500]); print('cost',j.get('total_cost_usd'))
+        E._remove_worktree(wt)
+        EOF
+      at: 2026-09-27T00:34:03.634958Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research && git push -q origin main 2>&1 | grep -v ''^remote:''; git log --oneline origin/main -1; pmset -g batt | head -1; cd harness && OUT=results/v084-lang-2026-09-26 && mkdir -p $OUT && echo "[$(date ''+%F %T'')] START 71 tasks (java 33, python 12, go 13, ts 13), fresh; harness $(git log --format=%h -1): fixed surefire parser + revalidated Java F2P/P2P, upstream-fetch guard both arms (live-checked), offline Maven seed + parent-POM fix, preinstalled node_modules, read-guard invalidation, pinned runtimes, RAT skip, network retry, instruction files excluded; prism_init = released prism v0.84.0 (checksum OK); brew prism = 0.84.0 (no version-mismatch warning)" >> $OUT/driver.log && screen -dmS lang71c caffeinate -s bash -c "cd $PWD && PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-v0.84.0-darwin-arm64 python3 -u runners/run_overnight.py --manifest results/v0831-lang-manifest.json --out-dir $OUT/headline --native-arm baseline --prism-arm prism_init --model sonnet >> $OUT/headline.log 2>&1; echo \"[\$(date ''+%F %T'')] exit=\$?\" >> $OUT/driver.log" && sleep 10 && screen -ls | grep lang71c && tail -2 $OUT/headline.log; sed -i '''' ''s#v0833-lang-2026-09-26#v084-lang-2026-09-26#'' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py'
+      at: 2026-09-27T00:34:27.785381Z
+      classified: other
+    - cmd: git pull -q --ff-only origin main 2>/dev/null; W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard && git worktree add -q -b fix/read-guard-stale $W main && echo ready; ls internal/cli/assets/ | head
+      at: 2026-09-27T00:34:37.702437Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && git status --short && git log --oneline -1 && ls internal/cli/assets && grep -rn "read_guard\|read-guard\|readGuard\|read_tracker" --include=*.go . | grep -v _test | head -50
+      at: 2026-09-27T00:34:59.384875Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/research show db03d05e
+      at: 2026-09-27T00:34:59.474784Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_gap_sweep_2026_09_26.md <<'EOF'
+
+        **Java parser verdict (2026-09-26 night):** with the fixed surefire parser (research
+        ddd95185/a6a65cb4), 46 of 60 Java tasks' F2P/P2P lists changed. The old F2P lists
+        were mostly tests that already passed at base. EVERY Java verdict before this is
+        invalid, including sweep50's 27 Java tasks and the v0831/v0833 partial runs. The v084
+        71-task run (results/v084-lang-2026-09-26, screen lang71c) is the first with correct
+        Java scoring, plus the upstream-fetch guard (live-checked), offline Maven seed,
+        preinstalled node_modules and the read-guard fix. Still to do: rescore sweep50 Java
+        cells from their committed diffs with the fixed parser, and release the prism
+        product read-guard fix (branch fix/read-guard-stale) AFTER the run (a brew upgrade
+        mid-run would bring back the version-mismatch warning).
+        EOF
+      at: 2026-09-27T00:35:01.042225Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && grep -rn "read_guard\|read-guard\|ReadGuard\|read_tracker\|prism-read-tracker" . --include='*.go' --include='*.py' --include='*.md' | grep -v '^./internal/cli/assets/prism_read' | head -60; cat internal/cli/assets/*.py
+      at: 2026-09-27T00:35:02.810863Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && cat internal/cli/readguard.go internal/cli/readguard_test.go; sed -n 110,150p README.md; grep -rn "gitignore\|\.git/info/exclude" internal/cli/*.go | grep -v _test | head -20
+      at: 2026-09-27T00:35:06.266708Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && grep -rln "gitignore\|info/exclude" --include='*.go' . | head; grep -rn "func.*[Ii]gnore" internal/cli/*.go | head
+      at: 2026-09-27T00:35:09.894835Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && grep -rn '"\.gitignore"\|\.gitignore' --include='*.go' internal cmd 2>/dev/null | grep -v _test | head; grep -rn "gitignore" $(go env GOMODCACHE 2>/dev/null)/github.com/provasign/grove*/store/*.go 2>/dev/null | head -5; cat .gitignore
+      at: 2026-09-27T00:35:14.232767Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && find . -name '*.py' -not -path './.git/*' | head; grep -rn 'exec.LookPath("python' --include='*_test.go' . | head -3; grep -n "read-guard\|readGuard\|ReadGuard" internal/cli/init.go | head
+      at: 2026-09-27T00:35:37.734583Z
+      classified: other
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && python3 - <<'EOF'
+        p='internal/cli/readguard.go'
+        s=open(p).read()
+        s=s.replace('''const (
+        	readGuardTrackerPath = ".claude/hooks/prism_read_tracker.py"
+        	readGuardGuardPath   = ".claude/hooks/prism_read_guard.py"
+        )''','''const (
+        	readGuardTrackerPath = ".claude/hooks/prism_read_tracker.py"
+        	readGuardGuardPath   = ".claude/hooks/prism_read_guard.py"
+
+        	// readGuardInvalidateMatcher routes edits and shell commands to the
+        	// tracker so it forgets ranges once their file may have changed (a stale
+        	// range once denied a Read of code the agent had just edited).
+        	readGuardInvalidateMatcher = "Edit|Write|MultiEdit|NotebookEdit|Bash"
+
+        	// readGuardStateDir holds per-session tracker state; the tracker writes a
+        	// "*" .gitignore inside it so the state never shows up in git.
+        	readGuardStateDir = ".claude/prism-read-guard"
+
+        	// readGuardLegacyState is where releases before v0.85 kept the tracker
+        	// state (project root, shared across sessions); install and uninstall
+        	// both delete it.
+        	readGuardLegacyState = ".prism-read-tracker.json"
+        )''')
+        s=s.replace('''	changed := addHookEntry(hooks, "PostToolUse", "mcp__prism__prism", readGuardTrackerCmd())
+        	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed''','''	// Re-running install upgrades an older install in place: the scripts are
+        	// rewritten above and addHookEntry only adds the entries that are missing.
+        	changed := addHookEntry(hooks, "PostToolUse", "mcp__prism__prism", readGuardTrackerCmd())
+        	changed = addHookEntry(hooks, "PostToolUse", readGuardInvalidateMatcher, readGuardTrackerCmd()) || changed
+        	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed''')
+        s=s.replace('''		if err := os.WriteFile(filepath.Join(hooksDir, name), data, 0o644); err != nil {
+        			return fmt.Errorf("read-guard: %w", err)
+        		}
+        	}
+        ''','''		if err := os.WriteFile(filepath.Join(hooksDir, name), data, 0o644); err != nil {
+        			return fmt.Errorf("read-guard: %w", err)
+        		}
+        	}
+        	// Pre-v0.85 state had no session scoping and no invalidation; drop it.
+        	_ = os.Remove(filepath.Join(projectDir, readGuardLegacyState))
+        ''',1)
+        s=s.replace('''	_ = os.Remove(filepath.Join(projectDir, ".prism-read-tracker.json"))
+        ''','''	_ = os.Remove(filepath.Join(projectDir, readGuardLegacyState))
+        	_ = os.RemoveAll(filepath.Join(projectDir, filepath.FromSlash(readGuardStateDir)))
+        ''')
+        s=s.replace('''// session -- measured''','''// session and whose file is unchanged on disk since -- measured''')
+        s=s.replace('''// whose command is ours are dropped), and the tracker state file.''','''// whose command is ours are dropped), and the tracker state (the
+        // per-session directory and the legacy root-level file).''')
+        open(p,'w').write(s)
+        EOF
+        grep -n "Legacy\|Invalidate\|StateDir" internal/cli/readguard.go
+      at: 2026-09-27T00:36:40.642364Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && sed -i '' 's/releases before v0.85 kept/v0.84 and earlier kept/; s|// Pre-v0.85 state|// v0.84-and-earlier state|' internal/cli/readguard.go && sed -i '' 's/if len(post) != 1 {/if len(post) != 2 {/; s/expected exactly 1 PostToolUse entry/expected exactly 2 PostToolUse entries/; s/expected 1 PostToolUse entry after double install/expected 2 PostToolUse entries after double install/' internal/cli/readguard_test.go && grep -n "len(post)" internal/cli/readguard_test.go
+      at: 2026-09-27T00:36:46.801662Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && sed -i '' '137s/!= 2/!= 1/' internal/cli/readguard_test.go && sed -n 135,139p internal/cli/readguard_test.go
+      at: 2026-09-27T00:36:50.806864Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && GOWORK=off go build ./... && GOWORK=off go vet ./internal/cli/ && GOWORK=off go test ./internal/cli/ -run 'ReadGuard' -v 2>&1 | grep -v "^=== RUN\|^    --- PASS" | tail -30
+      at: 2026-09-27T00:37:42.155593Z
+      classified: lint
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && GOWORK=off go test ./internal/cli/ -run 'ReadGuard' 2>&1 | grep -B2 -A6 "FAIL:\|_test.go" | grep -v "installed read\|denies a\|uninstall any" | head -40
+      at: 2026-09-27T00:37:50.138051Z
+      classified: test
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && python3 - <<'EOF'
+        p='internal/cli/assets/prism_read_tracker.py'
+        s=open(p).read()
+        old='''  | """ + _B + r"""(?:sed|perl|gsed)\\s+(?:-\\w*\\s+)*-i
+        '''
+        assert old in s
+        s=s.replace(old,'''  | """ + _B + r"""(?:sed|gsed|perl)\\b[^;&|\\n]*?\\s(?:-[A-Za-z]*i|--in-place)
+        ''')
+        open(p,'w').write(s)
+        EOF
+        grep -n "in-place" internal/cli/assets/prism_read_tracker.py; GOWORK=off go test ./internal/cli/ 2>&1 | tail -3
+      at: 2026-09-27T00:38:05.3724Z
+      classified: test
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W/internal/cli/assets && python3 -c "
+        import prism_read_tracker as t
+        for c in [\"sed -n '1,20p' a.go\",\"sed -n 1p a | grep -i x\",'cat a.go','rg -n foo','python3 -m pytest -x','npm test','sed -Ei s/a/b/ f','perl -i.bak -pe s/a/b/ f','git worktree list']: print(t.bash_rewrites_files(c), c)
+        "; rm -rf __pycache__
+      at: 2026-09-27T00:38:12.10868Z
+      classified: test
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && python3 - <<'EOF'
+        p='README.md'
+        s=open(p).read()
+        old=s[s.index("Installs a hook that denies"):s.index("## Workflow for coding agents")]
+        new='''Installs a hook that denies a native `Read` once prism has already delivered
+        that exact line range earlier in the same session, pointing the agent back
+        at what it already has instead of paying for it twice. Measured (13-task
+        controlled A/B, same tasks run hook-on vs hook-off): ~11% fewer tokens with
+        no change in resolve rate. Claude Code only — hooks are a Claude Code
+        mechanism.
+
+        A delivered range stops counting as soon as its file may have changed: an
+        `Edit`/`Write`/`MultiEdit`/`NotebookEdit` of the file drops its ranges, a
+        Bash command that can rewrite files (git checkout/stash/reset/apply/...,
+        `patch`, `sed -i`, `mv`/`cp`, formatters, codegen, redirects into files)
+        drops all of them, and a file whose mtime or size differs from delivery time
+        is never blocked. Ranges are scoped to the Claude Code session that received
+        them.
+
+        `--read-guard` writes `.claude/hooks/prism_read_tracker.py` and
+        `.claude/hooks/prism_read_guard.py`, and adds two `PostToolUse` entries (on
+        `mcp__prism__prism`, and on `Edit|Write|MultiEdit|NotebookEdit|Bash`) and
+        one `PreToolUse` entry (on `Read`) to `.claude/settings.json`. Re-running it
+        upgrades an older install in place. It only ever adds entries — an existing
+        hook you already have on `Read` or elsewhere is never modified or replaced,
+        prism's just runs alongside it. Session state lives in
+        `.claude/prism-read-guard/`, which ignores itself in git. `--no-read-guard`
+        removes exactly what `--read-guard` added: the two script files, only the
+        settings.json entries whose command is prism's own (any other hook on the
+        same matcher is left in place), and the state (including the
+        `.prism-read-tracker.json` file older releases kept at the project root).
+        Both are standalone actions — running either does not require selecting
+        harnesses or otherwise running the rest of `init`.
+
+        '''
+        s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -20; echo "exit done"
+      at: 2026-09-27T00:38:39.543212Z
+      classified: test
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; ls $W | head -30; docker run --rm -v $W:/w -w /w -e GOWORK=off golang:1.26 bash -c 'which python3 || echo NO_PYTHON' 2>&1 | tail -2
+      at: 2026-09-27T00:38:43.702192Z
+      classified: other
+    - cmd: W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; docker run --rm -v $W:/w -w /w -e GOWORK=off golang:1.26 bash -c 'go test ./... 2>&1 | grep -v "no test files"; echo RC=${PIPESTATUS[0]}; go test ./internal/cli/ -run ReadGuardHook -v 2>&1 | grep -c "^--- PASS"; go test ./internal/cli/ -run ReadGuardHook -v 2>&1 | grep -i skip' 2>&1 | tail -40
+      at: 2026-09-27T00:39:06.634603Z
+      classified: test
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/wt/readguard; cd $W && git status --short && git add -A && git commit -q -F - <<'EOF'
+        read guard: forget delivered ranges once the file may have changed
+
+        The tracker only ever added ranges and kept them in one root-level file
+        shared by every session, so the guard denied Reads of lines prism had
+        delivered before an edit (jackson pr5959: the agent could not re-read code
+        it had just changed), and yesterday's ranges could block today's Reads.
+
+        - Tracker also runs PostToolUse on Edit|Write|MultiEdit|NotebookEdit|Bash:
+          an edit tool drops that file's ranges; a Bash command that can rewrite
+          files (git checkout/stash/reset/apply/restore/switch/merge/rebase/pull,
+          patch, sed/perl -i, mv/cp, formatters, codegen, file-writing scripts,
+          redirects into non-temp paths) drops all of them.
+        - Each range records the file's mtime_ns and size at delivery; the guard
+          never blocks a Read of a file that differs on disk (or can't be verified).
+        - State is per session (hook session_id) under .claude/prism-read-guard/,
+          which carries its own "*" .gitignore; day-old session files expire.
+        - A ranges-only op=read (no top-level file) is now tracked.
+        - Deny message says the lines were already delivered and unchanged, and
+          gives the exact prism op=read call to fetch them again.
+        - prism init --read-guard upgrades an existing install in place (adds the
+          new PostToolUse entry, deletes the legacy .prism-read-tracker.json);
+          --no-read-guard also removes the state dir.
+        - Go tests exec the installed scripts with sample hook JSON.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01X4iDGjueYh9MhLP57FiMzU
+        EOF
+        git log --oneline -1
+      at: 2026-09-27T00:39:17.202151Z
+      classified: test
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:39:23.140845Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:44:17.760168Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:46:16.643141Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:47:26.382454Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:48:58.624421Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:50:37.104459Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:51:21.72442Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T00:57:13.638755Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:02:59.43131Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T01:04:34.076809Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:05:39.270936Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:06:22.409735Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:12:36.562885Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:14:11.955661Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:16:15.488865Z
+      classified: other
+    - cmd: |-
+        for p in $(pgrep -f "run_overnight.py --manifest results/v0831-lang-manifest.json --out-dir results/v084"); do for c in $(pgrep -P $p); do pkill -P $c; kill $c; done; kill $p; done; sleep 2; screen -S lang71c -X quit 2>/dev/null; sleep 1; ps -Ao pid,command | grep -E "run_overnight|claude -p" | grep -v grep | cut -c1-80; cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json;r=json.load(open('headline/results.json'))
+        for x in r[-4:]: print(x['task'],'N',x['native']['resolved'],x['native']['tokens'],repr((x['native'].get('error') or '')[:150]),'| P',x['prism']['resolved'],x['prism']['tokens'],repr((x['prism'].get('error') or '')[:150]))"; tail -5 headline.log | cut -c1-200
+      at: 2026-09-27T01:18:03.726526Z
+      classified: other
+    - cmd: cd ~/.claude/projects && for f in $(find . -name '*.jsonl' -newermt '2026-09-26 21:15:30' -path '*e2e-run*'); do echo "== $f $(stat -f '%Sm' -t '%T' $f)"; grep -oE '"(text|message|error)":"[^"]{0,200}(auth|login|token|401|403|credential|OAuth|API key)[^"]{0,120}"' "$f" | head -3; done 2>/dev/null | head -20
+      at: 2026-09-27T01:18:17.619782Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects && f=./-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-e2e-run-tbey5ane/ec3f06a2-25f2-463d-8c6f-3702456c2273.jsonl; python3 -c "
+        import json
+        for l in open('$f'):
+            m=json.loads(l)
+            t=m.get('type')
+            if t in ('system',) or m.get('isApiErrorMessage') or m.get('error'):
+                print(t, json.dumps(m)[:400])
+            if t=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='text': print('TEXT:',c['text'][:300])
+        " | tail -8
+      at: 2026-09-27T01:18:23.071501Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        p='runners/run_e2e.py'; s=open(p).read()
+        def rep(a,b):
+            global s; assert s.count(a)==1,a[:60]; s=s.replace(a,b)
+        rep('''class NetworkDown(RateLimited):''','''# The CLI's OAuth session expired mid-run (2026-09-26 21:16): sessions ended
+        # "Failed to authenticate: OAuth session expired and could not be refreshed"
+        # after 0-175k tokens and were scored as losses. Wait for a re-login instead.
+        AUTH_HINTS = ("failed to authenticate", "oauth session expired", "invalid api key",
+                      "please run /login", "authentication_error", "oauth token has expired")
+
+
+        def _auth_expired(returncode: int, blob: str) -> bool:
+            """The session ended because the CLI lost its credentials."""
+            if not any(h in blob for h in AUTH_HINTS):
+                return False
+            return returncode != 0 or '"is_error":true' in blob.replace(" ", "") or "failed to authenticate" in blob
+
+
+        class AuthExpired(RateLimited):
+            """Retry the same cell after the operator re-authenticates; never score it."""
+
+
+        class NetworkDown(RateLimited):''')
+        rep('''    if _network_down(r.returncode, blob):
+                raise NetworkDown(blob[-300:])''','''    if _auth_expired(r.returncode, blob):
+                raise AuthExpired(blob[-300:])
+            if _network_down(r.returncode, blob):
+                raise NetworkDown(blob[-300:])''')
+        open(p,'w').write(s)
+        p='runners/run_overnight.py'; s=open(p).read()
+        old='''            sleep_s = 300 if isinstance(e, run_e2e.NetworkDown) else DEFAULT_RATE_LIMIT_SLEEP'''
+        new='''            sleep_s = 300 if isinstance(e, (run_e2e.NetworkDown, run_e2e.AuthExpired)) else DEFAULT_RATE_LIMIT_SLEEP
+                    if isinstance(e, run_e2e.AuthExpired):
+                        log("AUTH EXPIRED: the claude CLI lost its login -- run /login (or `claude auth login`); "
+                            "this cell retries every 5 minutes until it succeeds")'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        p='tests/test_run_e2e_network.py'; s=open(p).read()
+        s=s.replace('''    def test_network_down_is_retried_like_a_rate_limit(self):''','''    def test_expired_oauth_is_auth_expired_not_a_loss(self):
+                blob = ('{"type":"result","is_error":true,"num_turns":1,'
+                        '"result":"Failed to authenticate: OAuth session expired and could not be refreshed"}').lower()
+                self.assertTrue(run_e2e._auth_expired(0, blob))
+                self.assertTrue(issubclass(run_e2e.AuthExpired, run_e2e.RateLimited))
+                ok = '{"type":"result","is_error":false,"result":"fixed token refresh in auth.py"}'.lower()
+                self.assertFalse(run_e2e._auth_expired(0, ok))
+
+            def test_network_down_is_retried_like_a_rate_limit(self):''')
+        open(p,'w').write(s)
+        EOF
+        python3 -m py_compile runners/run_e2e.py runners/run_overnight.py && python3 -m unittest discover -s tests 2>&1 | grep -E "^(Ran|OK|FAILED)"
+      at: 2026-09-27T01:18:43.407303Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && OUT=results/v084-lang-2026-09-26 && echo "[$(date '+%F %T')] RESUME after OAuth expiry at 21:16 (pr825 + cli pr2440 dropped and rerun); auth-expired retry added ($(git log --format=%h -1)); same prism v0.84.0" >> $OUT/driver.log && screen -dmS lang71c caffeinate -s bash -c "cd $PWD && PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-v0.84.0-darwin-arm64 python3 -u runners/run_overnight.py --manifest results/v0831-lang-manifest.json --out-dir $OUT/headline --native-arm baseline --prism-arm prism_init --model sonnet >> $OUT/headline.log 2>&1; echo \"[\$(date '+%F %T')] exit=\$?\" >> $OUT/driver.log" && sleep 10 && screen -ls | grep lang71c && tail -2 $OUT/headline.log
+      at: 2026-09-27T01:19:15.404165Z
+      classified: other
+    - cmd: cd /tmp && claude -p "reply with the single word ok" --model haiku --output-format json 2>&1 | head -c 600; echo; ps -Ao etime,command | grep "claude -p" | grep -v grep | cut -c1-60 | head -3
+      at: 2026-09-27T01:19:23.301197Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:27:46.582437Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:30:04.820453Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:38:10.962085Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:41:05.184484Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/heavy084.py <<'EOF'
+        import json,glob,os,statistics as st,collections
+        R=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline/results.json'))
+        idx={os.path.basename(p)[:-6]:p for p in glob.glob(os.path.expanduser('~/.claude/projects/*/*.jsonl'))}
+        def load(sid):
+            calls={};turns=[];seen=set();res=[];tools=collections.Counter()
+            for l in open(idx[sid]):
+                m=json.loads(l)
+                if m.get('type')=='assistant':
+                    mm=m['message']
+                    for c in mm.get('content',[]):
+                        if c.get('type')=='tool_use': calls[c['id']]=(c['name'].replace('mcp__prism__',''),c['input']); tools[c['name'].replace('mcp__prism__','')]+=1
+                    if mm.get('id') not in seen:
+                        seen.add(mm.get('id')); u=mm.get('usage',{}); turns.append(u.get('input_tokens',0)+u.get('cache_read_input_tokens',0)+u.get('cache_creation_input_tokens',0))
+                if m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result' and b['tool_use_id'] in calls:
+                            c=b['content']; t=c if isinstance(c,str) else ''.join(x.get('text','') for x in c)
+                            n,i=calls[b['tool_use_id']]; res.append((n,len(t),json.dumps(i)[:110] if n!='Bash' else (i.get('command','')[:110]).replace('\n',' ')))
+            return turns,res,tools
+        print('%-38s %5s %9s %5s %5s %6s %6s %s'%('task','ratio','P/Ntok','Pturn','Nturn','ctx0Δ','prismKB','P tools'))
+        rows=[]
+        for x in R:
+            n,p=x['native'],x['prism']
+            if not n['tokens'] or not p['tokens']: continue
+            ratio=p['tokens']/n['tokens']
+            if ratio<1.3: continue
+            pt,pr,ptools=load(p['session_id']); nt,nr,ntools=load(n['session_id'])
+            pk=sum(s for nm,s,_ in pr if nm=='prism')/1000
+            print('%-38s %5.2f %4.1f/%-4.1fM %5d %5d %6d %6.1f %s'%(x['task'][:38],ratio,p['tokens']/1e6,n['tokens']/1e6,len(pt),len(nt),(pt[0]-nt[0]) if pt and nt else 0,pk,dict(ptools)))
+            rows.append((x['task'],pr,ntools))
+        for t,pr,ntools in rows:
+            print('\n==',t,'| native tools',dict(ntools))
+            for nm,s,i in pr:
+                if nm in('prism','Read','Grep') or s>6000: print('   %-8s %6d  %s'%(nm,s,i))
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/heavy084.py 2>&1 | head -80
+      at: 2026-09-27T01:43:22.971852Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/sizes.py <<'EOF'
+        import json,glob,os,statistics as st
+        idx={os.path.basename(p)[:-6]:p for p in glob.glob(os.path.expanduser('~/.claude/projects/*/*.jsonl'))}
+        base='/Users/tapabratapal/Projects/provasign/research/harness/results/'
+        for name,path in [('sweep50 (~v0.83.0)','sweep-2026-09-26'),('v0.83.1 run','v0831-lang-2026-09-26'),('v0.84.0 run','v084-lang-2026-09-26')]:
+            sizes=[];ctx0=[];nctx0=[]
+            for x in json.load(open(base+path+'/headline/results.json')):
+                for arm in ('prism','native'):
+                    sid=x[arm]['session_id']
+                    if sid not in idx: continue
+                    calls={};first=None
+                    for l in open(idx[sid]):
+                        m=json.loads(l)
+                        if m.get('type')=='assistant':
+                            u=m['message'].get('usage',{})
+                            if first is None and u: first=u.get('input_tokens',0)+u.get('cache_read_input_tokens',0)+u.get('cache_creation_input_tokens',0)
+                            for c in m['message'].get('content',[]):
+                                if c.get('type')=='tool_use' and 'prism' in c['name']: calls[c['id']]=1
+                        if arm=='prism' and m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                            for b in m['message']['content']:
+                                if b.get('type')=='tool_result' and b['tool_use_id'] in calls:
+                                    c=b['content']; sizes.append(len(c if isinstance(c,str) else ''.join(y.get('text','') for y in c)))
+                    (ctx0 if arm=='prism' else nctx0).append(first or 0)
+            print(f'{name:20s} prism results n={len(sizes):3d} median={st.median(sizes):6.0f} p90={sorted(sizes)[int(.9*len(sizes))]:6d} >8k={sum(s>8000 for s in sizes):3d} | first-turn ctx prism {st.median(ctx0):.0f} vs native {st.median(nctx0):.0f} (Δ {st.median(ctx0)-st.median(nctx0):.0f})')
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/sizes.py
+      at: 2026-09-27T01:43:44.360096Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:44:15.93361Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 - <<'EOF'
+        import json,glob,os,re
+        x=[y for y in json.load(open('headline/results.json')) if y['task']=='FasterXML__jackson-dataformat-xml__pr825'][0]
+        for arm in ('prism','native'):
+            f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{x[arm]['session_id']}.jsonl"))[0]
+            calls={};order=[];res={}
+            for l in open(f):
+                m=json.loads(l)
+                if m.get('type')=='assistant':
+                    for c in m['message'].get('content',[]):
+                        if c.get('type')=='tool_use':
+                            i=c['input']; s=(i.get('command') or i.get('file_path') or i.get('pattern') or json.dumps(i.get('args',i)))
+                            s=re.sub(r'/private/var/folders/\S*/e2e-run-[a-z0-9_]+/?','',s).replace('\n',' ')
+                            calls[c['id']]=(c['name'].replace('mcp__prism__',''),s[:140]); order.append(c['id'])
+                if m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result':
+                            c=b['content']; t=c if isinstance(c,str) else ''.join(y.get('text','') for y in c)
+                            res[b['tool_use_id']]=(len(t), t[:90].replace('\n',' | '))
+            print(f'===== {arm} ({len(order)} calls, resolved={x[arm]["resolved"]})')
+            for k,cid in enumerate(order,1):
+                n,s=calls[cid]; ln,head=res.get(cid,(0,''))
+                print(f'{k:2d} {n:6s} {ln:6d}  {s[:120]}')
+        EOF
+      at: 2026-09-27T01:46:33.973019Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:47:05.810029Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T01:49:21.733766Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:49:41.982586Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py
+      at: 2026-09-27T01:53:23.410237Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/FasterXML__jackson-dataformat-xml__pr825.json'))
+        ps=t['problem_statement'];print('ISSUE:',ps[:1500]);print('--- mentions ACCEPT_EMPTY:', 'ACCEPT_EMPTY' in ps, '| Coercion:', 'oercion' in ps, '| EMPTY_ELEMENT_AS_NULL:', 'EMPTY_ELEMENT_AS_NULL' in ps)
+        print('--- GOLD:'); print(t['patch'][:1500])"
+      at: 2026-09-27T01:57:22.003728Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 - <<'EOF'
+        import json,glob,os,re
+        x=[y for y in json.load(open('headline/results.json')) if y['task']=='FasterXML__jackson-dataformat-xml__pr825'][0]
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{x['native']['session_id']}.jsonl"))[0]
+        calls={}
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use' and c['name']=='Grep': calls[c['id']]=c['input']
+                    if c.get('type')=='text' and ('Coercion' in c['text'] or 'ACCEPT_EMPTY' in c['text']): print('NATIVE THINKS:', c['text'][:300].replace('\n',' '))
+            if m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_result' and b['tool_use_id'] in calls:
+                        i=calls[b['tool_use_id']]
+                        if any(k in i.get('pattern','') for k in ('ACCEPT_EMPTY','Coercion')):
+                            t=b['content'] if isinstance(b['content'],str) else ''.join(y.get('text','') for y in b['content'])
+                            print('GREP', json.dumps(i)[:120]); print('  ->', re.sub(r'/private/var/folders/\S*/e2e-run-[a-z0-9_]+/?','',t)[:300].replace('\n',' | '))
+        EOF
+      at: 2026-09-27T01:57:38.315982Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && grep -B3 "22:08:32\|native resolved=True tokens=623438" headline.log | tail -5; python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -8
+      at: 2026-09-27T02:08:37.694343Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:14:21.551326Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T02:19:30.395633Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:24:01.780864Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 headline.log; python3 -c "
+        import json
+        for x in json.load(open('headline/results.json')):
+          if x['task'].startswith('h3js'):
+            for a in ('native','prism'):
+              r=x[a]; print(x['task'],a,r.get('resolved'),{k:str(r.get(k))[:200] for k in ('eval','f2p','fail_to_pass_results','error','diff_lines') if k in r})
+        "
+      at: 2026-09-27T02:25:36.357288Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        x=[x for x in json.load(open('headline/results.json')) if x['task']=='h3js__h3__pr1314'][0]
+        for a in ('native','prism'):
+          r=x[a]; print(a, {k:(v if len(str(v))<400 else str(v)[:400]) for k,v in r.items() if k not in ('diff',)})
+        "
+      at: 2026-09-27T02:25:40.393991Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && grep -n "h3\|pr1314" driver.log | tail -15; ls
+      at: 2026-09-27T02:25:44.144238Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        m=json.load(open('results/v0831-lang-manifest.json'))
+        print(type(m), list(m)[:5] if isinstance(m,dict) else m[:3])
+        "; grep -rln "h3js__h3__pr1314" --include=*.json . 2>/dev/null | grep -v results/ | head
+      at: 2026-09-27T02:25:51.302746Z
+      classified: other
+    - cmd: grep -n "h3" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/tasks/a77e43b5691329cc7.output | tail -20
+      at: 2026-09-27T02:25:56.436617Z
+      classified: other
+    - cmd: grep -o "h3js__h3__pr1314[^\\\\]*\|h3js__h3__pr1273[^\\\\]*" /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/tool-results/b1jgfso56.txt | sort -u | head
+      at: 2026-09-27T02:25:59.870224Z
+      classified: other
+    - cmd: 'grep -o "h3js__h3__pr1314 *lang=ts gold=[^\\\\]*\|h3js__h3__pr1314: valid=[^\\\\]*" /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/tool-results/b1jgfso56.txt | sort -u'
+      at: 2026-09-27T02:26:04.185393Z
+      classified: other
+    - cmd: |-
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        x=[x for x in json.load(open('headline/results.json')) if x['task'].endswith('pr827')][0]
+        for a in ('native','prism'):
+          r=x[a]; print(a, r['turns'], r['tool_trace'], r.get('error'), [k for k in r])
+        "
+      at: 2026-09-27T02:36:17.22115Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:42:28.130028Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:45:01.315127Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:48:03.475377Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T02:49:31.819219Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:50:31.609451Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:53:23.484591Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:55:39.663485Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T02:59:43.994154Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T03:16:38.400229Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T03:19:36.652289Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T03:21:21.344674Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T03:23:47.525886Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && f=$(find . -name 'google__gson__pr3112.json' -not -path './results/*' | head -3); echo "$f"; for x in $f; do python3 -c "
+        import json,sys; d=json.load(open('$x')); print({k:(str(v)[:200]) for k,v in d.items() if k not in ('patch','test_patch','problem_statement')})"; done
+      at: 2026-09-27T03:23:52.775789Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git log --oneline -3 -- harness/tasks/e2e/google__gson__pr3112.json harness/tasks/e2e/google__gson__pr3116.json; git show --stat ddd95185 a6a65cb4 | grep -i "gson\|^commit\|revalid" | head
+      at: 2026-09-27T03:23:57.159686Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T03:34:11.021703Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T03:49:41.51911Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T03:52:34.669498Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T03:54:11.606123Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T04:02:42.014592Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T04:11:11.147537Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T04:12:40.933844Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T04:19:46.130595Z
+      classified: other
+    - cmd: |-
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        x=[x for x in json.load(open('headline/results.json')) if x['task'].endswith('pr5976')][0]
+        for a in ('native','prism'):
+          r=x[a]; print(a, r['turns'], round(r['wall_s']), r['tool_trace'])
+        "
+      at: 2026-09-27T04:43:27.18444Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T04:49:50.87578Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T05:00:55.536391Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T05:03:39.008063Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T05:18:27.085176Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T05:19:55.44197Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T05:23:05.438557Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T05:31:56.147706Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T05:38:40.076875Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T05:47:21.536226Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T05:50:00.11738Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26; date; tail -3 headline.log; tail -5 driver.log; screen -ls | grep lang71; ps aux | grep -c "[c]laude -p"; pmset -g batt | head -2
+      at: 2026-09-27T06:20:05.1458Z
+      classified: other
+    - cmd: ps -o pid,etime,command -ax | grep "[c]laude -p" | cut -c1-200; ls -t ~/.claude/projects/ | head -2
+      at: 2026-09-27T06:20:08.95745Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        x=[x for x in json.load(open('headline/results.json')) if x['task']=='pallets__werkzeug__pr3081'][0]
+        for a in ('native','prism'):
+          r=x[a]; print(a, {k:str(v)[:600] for k,v in r.items() if k!='diff'})
+        "; tail -3 headline.log
+      at: 2026-09-27T06:41:51.830527Z
+      classified: other
+    - cmd: cd ~/.claude/projects && grep -l "64kb chunk" $(ls -td ./-private-var-folders*e2e-run*/ | head -6 | sed 's|$|*.jsonl|') 2>/dev/null | while read f; do echo "$f $(wc -l <"$f") $(stat -f %Sm "$f")"; done
+      at: 2026-09-27T06:42:01.573798Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects && ls -td -- *e2e-run* | head -5; f=$(ls -t -- */*.jsonl 2>/dev/null | head -0); python3 - <<'EOF'
+        import os,glob
+        fs=sorted(glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl')),[REDACTED:env-secret]
+        for f in fs:
+            t=open(f).read()
+            print(f[-60:], os.path.getsize(f), 'werkzeug' if '64kb chunk' in t else '', 'prism' if 'mcp__prism' in t else '')
+        EOF
+      at: 2026-09-27T06:42:05.839558Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os
+        f=glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run-u-4ws37s/00e579b7*.jsonl'))[0]
+        calls=[]
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use':
+                        calls.append((m.get('timestamp','')[11:19], c['name'], json.dumps(c['input'])[:140]))
+        print(len(calls))
+        for c in calls[-15:]: print(*c)
+        EOF
+      at: 2026-09-27T06:42:08.910043Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects && grep -o '/tmp/wzenv[^" ]*\|/tmp/uploadtest' */214b47d7*.jsonl | sort | uniq -c | head; grep -o "77bde333[^\"]\{0,80\}" *e2e-run-u-4ws37s/00e579b7*.jsonl | head -3; python3 - <<'EOF'
+        import json,glob,os
+        f=glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run-u-4ws37s/00e579b7*.jsonl'))[0]
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use' and ('wzenv' in json.dumps(c['input']) and ('venv' in json.dumps(c['input']) or 'pip' in json.dumps(c['input']))):
+                        print(m['timestamp'][11:19], json.dumps(c['input'])[:200]); break
+        EOF
+      at: 2026-09-27T06:42:16.456578Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects && python3 - <<'EOF'
+        import glob,os,re
+        f=glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run-yupqglgu/214b47d7*.jsonl'))[0]
+        t=open(f).read()
+        print('native /tmp paths:', sorted(set(re.findall(r'/tmp/[A-Za-z0-9_.-]+', t)))[:15])
+        print('native pip download:', bool(re.search(r'pip (download|install)[^"]*werkzeug==', t)))
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;d=json.load(open('tasks/e2e/pallets__werkzeug__pr3081.json'));print(d.get('base_commit'),d.get('merge_commit'),d.get('created_at'))"
+      at: 2026-09-27T06:42:24.783936Z
+      classified: other
+    - cmd: d=$(find ~/.cache/prism-research -maxdepth 3 -type d -name "*werkzeug*" 2>/dev/null | head -3); echo "$d"; for r in $d; do git -C "$r" rev-parse --git-dir >/dev/null 2>&1 && { git -C "$r" tag --contains 0f76c353b10afc2f8129aa3684ccc3262516a0c0 2>&1 | head -3; git -C "$r" log -1 --format=%ci 0f76c353b10afc2f8129aa3684ccc3262516a0c0; git -C "$r" log -1 --format=%ci 3.1.3 2>&1; }; done
+      at: 2026-09-27T06:42:29.623807Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T06:42:34.953929Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T06:44:53.242754Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T06:50:17.916308Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T06:57:15.016661Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T07:08:45.987997Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T07:20:23.623369Z
+      classified: other
+    - cmd: |-
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        x=[x for x in json.load(open('headline/results.json')) if x['task'].endswith('pr5947')][0]
+        for a in ('native','prism'):
+          r=x[a]; print(a, r['turns'], r['tool_trace'], r.get('error'))
+        "
+      at: 2026-09-27T07:21:26.859234Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T07:26:22.653515Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T07:35:15.890933Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T07:40:54.397085Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T07:42:39.930444Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        from collections import defaultdict
+        L=defaultdict(lambda:[0,0,0])
+        for x in json.load(open('headline/results.json')):
+          l=x.get('lang') or '?'; L[l][0]+=1; L[l][1]+=bool(x['native']['resolved']); L[l][2]+=bool(x['prism']['resolved'])
+          if l=='python' or l=='?': print(x['task'], x['native']['resolved'], x['prism']['resolved'])
+        print(dict(L))
+        "
+      at: 2026-09-27T07:42:45.804512Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && for d in v0831-lang-2026-09-26 v0833-lang-2026-09-26; do echo "== $d"; python3 -c "
+        import json,glob
+        for f in glob.glob('$d/*/results.json'):
+          for x in json.load(open(f)):
+            if x.get('lang')=='python': print(x['task'], x['native'].get('resolved'), x['prism'].get('resolved'))
+        "; done
+      at: 2026-09-27T07:42:50.03889Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "docker_eval\|def _score\|def score_\|lang == \"python\"\|lang==\"python\"" runners/run_e2e.py | head -20; grep -n "^def " scoring/docker_eval.py | head -30
+      at: 2026-09-27T07:42:54.113444Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 83,100p runners/run_e2e.py; sed -n 212,262p scoring/docker_eval.py
+      at: 2026-09-27T07:42:56.84685Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 -c "
+        import json;d=json.load(open('tasks/e2e/pallets__click__pr3228.json'));open('$S/gold3228.diff','w').write(d['patch']);print(len(d['patch']), d.get('fail_to_pass'))" && cd runners && timeout 900 python3 -c "
+        import sys,json; sys.path.insert(0,'../scoring'); sys.path.insert(0,'.')
+        import run_e2e
+        t=json.load(open('../tasks/e2e/pallets__click__pr3228.json'))
+        print(run_e2e._score(t, open('$S/gold3228.diff').read()))
+        print('empty:', run_e2e._score(t, 'diff --git a/x b/x\n'))
+        " 2>&1 | tail -5
+      at: 2026-09-27T07:43:03.891422Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runners && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 -c "
+        import sys,json; sys.path.insert(0,'../scoring'); sys.path.insert(0,'.')
+        import run_e2e
+        t=json.load(open('../tasks/e2e/pallets__click__pr3228.json'))
+        print(run_e2e._score(t, open('$S/gold3228.diff').read()))
+        " 2>&1 | tail -5
+      at: 2026-09-27T07:43:19.987768Z
+      classified: other
+    - cmd: tail -3 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T07:50:28.917266Z
+      classified: other
+    - cmd: |-
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        x=[x for x in json.load(open('headline/results.json')) if x['task'].endswith('pr3244')][0]
+        for a in ('native','prism'):
+          r=x[a]; print(a, r['turns'], r['tool_trace'], r.get('error'))
+        "
+      at: 2026-09-27T08:02:24.298052Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T08:04:55.816455Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T08:20:34.38354Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T08:30:38.036435Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T08:50:39.668259Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T09:06:46.310243Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T09:14:23.685635Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T09:20:44.869396Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T09:31:00.843763Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T09:37:26.966744Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T09:50:50.726552Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T09:51:02.976196Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T10:07:13.513974Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/tally.py 2>&1 | tail -1; tail -1 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log
+      at: 2026-09-27T10:10:07.80171Z
+      classified: other
+    - cmd: tail -2 /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26/headline.log; date
+      at: 2026-09-27T10:20:56.001706Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "diff" runners/run_overnight.py | grep -i "write\|save\|path\|dir" | head; ls results/v084-lang-2026-09-26/headline/
+      at: 2026-09-27T10:21:01.875302Z
+      classified: other
+    - cmd: |-
+        mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/loss.py <<'EOF'
+        import json,glob,os,sys,re
+        R='/Users/tapabratapal/Projects/provasign/research/harness'
+        task=sys.argv[1]
+        t=json.load(open(f'{R}/tasks/e2e/{task}.json'))
+        x=[x for x in json.load(open(f'{R}/results/v084-lang-2026-09-26/headline/results.json')) if x['task']==task][0]
+        print('=== ISSUE (first 1200)\n', (t.get('problem_statement') or '')[:1200])
+        print('=== GOLD\n', t['patch'][:3500])
+        print('=== F2P', t.get('fail_to_pass'))
+        for a in ('native','prism'):
+            sid=x[a].get('session_id')
+            fs=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))
+            print(f'\n=== {a} resolved={x[a]["resolved"]} turns={x[a]["turns"]}')
+            if not fs: print('no transcript'); continue
+            last=''
+            for l in open(fs[0]):
+                m=json.loads(l)
+                if m.get('type')!='assistant': continue
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use' and c['name'] in ('Edit','Write','MultiEdit'):
+                        i=c['input']; fp=re.sub(r'.*e2e-run-[^/]+/','',i.get('file_path',''))
+                        if '/test' in fp and a=='native' and False: pass
+                        print(f"-- {c['name']} {fp}")
+                        if c['name']=='Edit': print('  OLD:',i['old_string'][:300].replace('\n','\n       ')); print('  NEW:',i['new_string'][:600].replace('\n','\n       '))
+                        else: print('  ',i.get('content','')[:300].replace('\n','\n   '))
+                    if c.get('type')=='text': last=c['text']
+            print('-- FINAL:', last[:800])
+        EOF
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 loss.py FasterXML__jackson-dataformat-xml__pr827
+      at: 2026-09-27T10:21:14.899595Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 loss.py FasterXML__jackson-databind__pr5947 2>&1 | cut -c1-400
+      at: 2026-09-27T10:21:20.94854Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 loss.py pallets__click__pr3244 2>&1 | cut -c1-300 | head -150
+      at: 2026-09-27T10:21:27.460131Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 loss.py pallets__click__pr3244 2>&1 | sed -n '/=== F2P/,$p' | cut -c1-260 | head -90; python3 - <<'EOF'
+        import json,glob,os
+        R='/Users/tapabratapal/Projects/provasign/research/harness'
+        x=[x for x in json.load(open(f'{R}/results/v084-lang-2026-09-26/headline/results.json')) if x['task']=='pallets__click__pr3244'][0]
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{x['prism']['session_id']}.jsonl"))[0]
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use' and c['name']=='ScheduleWakeup': print('WAKEUP', m['timestamp'], json.dumps(c['input'])[:200])
+        EOF
+      at: 2026-09-27T10:21:36.711101Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 loss.py pallets__click__pr3244 2>&1 | sed -n '/=== prism/,$p' | cut -c1-240 | grep -v "^\s*$" | head -70
+      at: 2026-09-27T10:21:43.438471Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad && python3 loss.py FasterXML__jackson-databind__pr5983 2>&1 | cut -c1-260 | grep -v "^\s*$" | head -120
+      at: 2026-09-27T10:21:51.112788Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/v084-lang-2026-09-26 && python3 -c "
+        import json
+        from collections import defaultdict
+        R=json.load(open('headline/results.json'))
+        L=defaultdict(lambda:[0,0,0,0,0])
+        for x in R:
+          l=x.get('lang'); n,p=x['native'],x['prism']
+          L[l][0]+=1; L[l][1]+=bool(n['resolved']); L[l][2]+=bool(p['resolved'])
+          if n.get('tokens') and p.get('tokens'): L[l][3]+=n['tokens']; L[l][4]+=p['tokens']
+        for l,v in sorted(L.items()): print(l, v[:3], round(v[4]/v[3],2))
+        t=[sum(v[i] for v in L.values()) for i in range(5)]; print('all', t[:3], round(t[4]/t[3],2))
+        print('prism-only:', [x['task'] for x in R if x['prism']['resolved'] and not x['native']['resolved']])
+        print('native-only:', [x['task'] for x in R if x['native']['resolved'] and not x['prism']['resolved']])
+        "
+      at: 2026-09-27T10:21:59.097994Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md'; s=open(p).read()
+        line='- [v0.84 lang71 result 2026-09-27](project_v084_lang71_result.md) — native 43/71 vs prism 41/71 at 1.04x tokens; 3 prism losses = model design choices (gold-checked), 1 win; diffs not saved in results.json\n'
+        s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1); open(p,'w').write(s)
+        EOF
+        head -4 MEMORY.md
+      at: 2026-09-27T10:22:13.614013Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/sweep-2026-09-26 && ls; ls */ | head; python3 -c "
+        import json,glob
+        for f in glob.glob('*/results.json'):
+          R=json.load(open(f)); print(f,len(R)); x=R[0]; print(list(x), list(x['native']))
+        "
+      at: 2026-09-27T11:29:19.514949Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json; s=json.load(open('results/sweep-2026-09-26/headline/state.json')); print(type(s), list(s)[:5] if isinstance(s,dict) else '')
+        k=list(s)[0] if isinstance(s,dict) else None; print(str(s[k])[:500] if k else '')"; grep -n "diff" runners/run_e2e.py | grep -n "save\|write\|out\|return" | head
+      at: 2026-09-27T11:29:24.757173Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 705,720p runners/run_e2e.py; grep -n "^OUT\|OUT =" runners/run_e2e.py; grep -n "_save_diff" runners/*.py
+      at: 2026-09-27T11:29:28.691858Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c \"\nimport json\nR=json.load(open('results/sweep-2026-09-26/headline/results.json'))\nJ=[x['task'] for x in R if x['lang']=='java']; print(len(J)); print(J)\nL=set(json.load(open('results/v0831-lang-manifest.json'))); print('overlap with lang71:', len(set(J)&L))\n\"; ls results/e2e/ | grep -c diff; ls -la results/e2e/ | grep \"FasterXML__jackson-databind__pr5947\" "
+      at: 2026-09-27T11:29:34.900129Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "sonnet\|--model\|\"model\"" runners/run_overnight.py runners/run_e2e.py | head; python3 - <<'EOF'
+        import json,glob,os
+        R=json.load(open('results/v084-lang-2026-09-26/headline/results.json'))
+        sid=R[-1]['prism']['session_id']
+        f=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))[0]
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant': print(m['message'].get('model')); break
+        EOF
+      at: 2026-09-27T11:29:40.957395Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json,os,time
+        R=json.load(open('results/sweep-2026-09-26/headline/results.json'))
+        miss=[];ts=[]
+        for x in R:
+          if x['lang']!='java': continue
+          for arm in ('baseline','prism_init'):
+            p=f'results/e2e/{x[\"task\"]}.sonnet.{arm}.diff'
+            if not os.path.exists(p): miss.append(p)
+            else: ts.append(os.path.getmtime(p))
+        print('missing',miss); print(time.ctime(min(ts)), time.ctime(max(ts)))
+        "; head -3 results/sweep-2026-09-26/headline.log; tail -2 results/sweep-2026-09-26/headline.log
+      at: 2026-09-27T11:29:49.257575Z
+      classified: other
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/runners/rescore_java.py <<'EOF'
+        """Rescore a finished run's Java cells from the saved agent diffs, with the
+        current java_eval (fixed surefire parser) and current task F2P/P2P lists.
+        Writes <results_dir>/java_rescore.json; resumable."""
+        import json, sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).parent))
+        sys.path.insert(0, str(Path(__file__).parent.parent / "scoring"))
+        import run_e2e  # noqa: E402
+
+        HARNESS = Path(__file__).resolve().parent.parent
+        ARMS = {"native": "baseline", "prism": "prism_init"}
+
+
+        def main(results_dir: str, model: str = "sonnet"):
+            rd = Path(results_dir)
+            rows = json.loads((rd / "results.json").read_text())
+            out_p = rd / "java_rescore.json"
+            out = json.loads(out_p.read_text()) if out_p.exists() else {}
+            for x in rows:
+                if x["lang"] != "java":
+                    continue
+                task = json.loads((HARNESS / "tasks/e2e" / f"{x['task']}.json").read_text())
+                for arm, file_arm in ARMS.items():
+                    key = f"{x['task']}|{arm}"
+                    if key in out:
+                        continue
+                    diff = (HARNESS / "results/e2e" / f"{x['task']}.{model}.{file_arm}.diff").read_text()
+                    try:
+                        res = run_e2e._score(task, diff)
+                    except Exception as e:  # keep going; record the failure
+                        res = {"resolved": None, "error": f"{type(e).__name__}: {e}"[:300]}
+                    out[key] = {"old": x[arm]["resolved"], "new": res.get("resolved"), "detail": res}
+                    out_p.write_text(json.dumps(out, indent=1))
+                    print(f"{key} old={x[arm]['resolved']} new={res.get('resolved')}", flush=True)
+            print("RESCORE DONE", flush=True)
+
+
+        if __name__ == "__main__":
+            main(*sys.argv[1:])
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/research/harness && screen -dmS rescore bash -c 'cd /Users/tapabratapal/Projects/provasign/research/harness && python3 runners/rescore_java.py results/sweep-2026-09-26/headline > results/sweep-2026-09-26/headline/java_rescore.log 2>&1'; sleep 5; screen -ls | grep rescore; cat results/sweep-2026-09-26/headline/java_rescore.log
+      at: 2026-09-27T11:30:05.848841Z
+      classified: other
+    - cmd: git fetch -q origin 2>&1 | tail -1; git log --oneline main..fix/read-guard-stale; git log --oneline fix/read-guard-stale..main | head; git diff --stat main...fix/read-guard-stale; cat /Users/tapabratapal/Projects/provasign/research/harness/results/sweep-2026-09-26/headline/java_rescore.log
+      at: 2026-09-27T11:30:11.347406Z
+      classified: other
+    - cmd: git merge --ff-only fix/read-guard-stale 2>&1 | tail -2 && go build ./... && go vet ./internal/cli/ && go test ./... 2>&1 | tail -25
+      at: 2026-09-27T11:30:42.967494Z
+      classified: lint
+    - cmd: DOCKER_CONFIG=$(mktemp -d) docker run --rm -v "$PWD":/src -w /src -e GOWORK=off -e GOFLAGS=-buildvcs=false golang:1.26 bash -c 'apt-get -qq update >/dev/null && apt-get -qq install -y python3 >/dev/null; go test ./... 2>&1 | tail -16' 2>&1 | tail -18
+      at: 2026-09-27T11:31:10.201228Z
+      classified: test
+    - cmd: go test ./internal/cli/ -run 'ReadGuard|Hook' -v 2>&1 | grep -E "^(--- |ok|FAIL)" | awk '{print $1,$2}' | sort | uniq -c | head; go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/prism-cand ./cmd/prism && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39/scratchpad/prism-cand 2>&1 | tail -6
+      at: 2026-09-27T11:32:54.625313Z
+      classified: test
+    - cmd: git show --stat a47db0d5 | head -20; git tag --sort=-creatordate | head -3; git status --short | head
+      at: 2026-09-27T11:33:02.632953Z
+      classified: other
+    - cmd: git show --stat a47db0d5 | sed -n 20,40p; git show cb450160 --stat --format=%B | head -30
+      at: 2026-09-27T11:33:06.289484Z
+      classified: other
+notes:
+    - text: continuation of session 4c69cd72-5bfb-48d7-8455-3d1158f12b39 — events captured after its evidence was finalized
+      at: 2026-09-26T23:45:35.487174Z
+redactions: 1

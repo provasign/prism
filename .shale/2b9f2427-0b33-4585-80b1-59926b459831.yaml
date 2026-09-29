@@ -1,0 +1,23 @@
+shale_version: "0"
+id: 2b9f2427-0b33-4585-80b1-59926b459831
+created_at: 2026-09-17T21:27:39.018397Z
+finalized_at: 2026-09-18T00:22:40.867826Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: (cat docs/PRISM-2.0.md | head -200; echo ======; git diff --stat; git log --oneline -8; echo ======; sed -n 1,80p /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_engine_ceiling_arc.md | tail -50) 2>&1 | head -320
+      at: 2026-09-17T21:28:02.326029Z
+      classified: other
+    - cmd: git diff --stat && git log --oneline -8 && git status --short | head && git log -1 --format=%cd
+      at: 2026-09-17T21:28:08.128632Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && for f in project_graph_vs_grep_paper.md project_mainframe_arc.md project_agents_minimize_blast_radius.md project_engine_ceiling_arc.md project_engagement_arc_v066.md; do echo "=== $f"; sed -n '/^---$/,$p' $f | tail -n +2 | grep -v '^metadata\|^  \|^name:\|^description:' | head -60; done
+      at: 2026-09-17T21:30:43.134279Z
+      classified: other
+notes: []
+redactions: 0

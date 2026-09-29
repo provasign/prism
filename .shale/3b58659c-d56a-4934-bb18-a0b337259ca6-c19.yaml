@@ -1,0 +1,225 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c19
+created_at: 2026-08-31T03:38:26.611311Z
+finalized_at: 2026-08-31T04:14:18.192128Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-31T03:57:27.934632Z
+commands:
+    - cmd: |-
+        while gh run list -R provasign/prism --limit 2 --json status,workflowName -q '.[] | select(.workflowName=="Release") | .status' | grep -q "in_progress\|queued"; do sleep 20; done
+        gh run list -R provasign/prism --limit 2 --json workflowName,conclusion -q '.[] | .workflowName+" "+.conclusion'
+        gh workflow run 330199422 -R provasign/homebrew-shale
+        sleep 90
+        gh run list -R provasign/homebrew-shale --limit 1 --json status,conclusion -q '.[0] | .status+" "+.conclusion'
+        sleep 30 && curl -s https://raw.githubusercontent.com/provasign/homebrew-shale/main/Formula/prism.rb | grep -m1 version
+        brew upgrade provasign/shale/prism 2>&1 | tail -2 && /opt/homebrew/bin/prism --version
+      at: 2026-08-31T03:40:06.211609Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/e_v62_subset.py 2>&1
+      at: 2026-08-31T03:45:04.499562Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bv8svkbxi.output
+        ps -o pid,etime,stat -p $(pgrep -f "claude -p" | head -1) 2>/dev/null
+      at: 2026-08-31T03:47:25.355856Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/-private-var-folders-*e2e-run-*"))
+                if time.time() - os.path.getmtime(d) < 10*60]
+        for d in dirs:
+            for f in glob.glob(d+"/*.jsonl"):
+                for line in open(f, errors="ignore"):
+                    try: j=json.loads(line)
+                    except: continue
+                    if j.get("type")=="assistant":
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c,dict) and c.get("type")=="tool_use" and c["name"].endswith("prism_search"):
+                                print(f, c.get("input"))
+        EOF
+      at: 2026-08-31T03:47:32.605197Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/-private-var-folders-*e2e-run-*"))
+                if time.time() - os.path.getmtime(d) < 20*60]
+        for d in dirs:
+            for f in glob.glob(d+"/*.jsonl"):
+                calls = []
+                for line in open(f, errors="ignore"):
+                    try: j=json.loads(line)
+                    except: continue
+                    if j.get("type")=="assistant":
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c,dict) and c.get("type")=="tool_use" and c["name"].startswith("mcp__prism"):
+                                calls.append((c["name"], c.get("input")))
+                if calls:
+                    print(os.path.basename(f)[:8], calls)
+        EOF
+      at: 2026-08-31T03:47:37.643561Z
+      classified: other
+    - cmd: ps -o pid,etime,stat -p $(pgrep -f "claude -p" | head -1) 2>/dev/null
+      at: 2026-08-31T03:51:08.586159Z
+      classified: other
+    - cmd: |-
+        until ! pgrep -f e_v62_subset.py > /dev/null; do sleep 5; done
+        afplay /System/Library/Sounds/Glass.aiff
+        echo "DONE - sound played"
+      at: 2026-08-31T03:51:48.903816Z
+      classified: other
+    - cmd: afplay /System/Library/Sounds/Glass.aiff
+      at: 2026-08-31T03:53:09.336821Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/-private-var-folders-*e2e-run-*"))
+                if time.time() - os.path.getmtime(d) < 15*60]
+        for d in dirs:
+            for f in glob.glob(d+"/*.jsonl"):
+                calls = []
+                for line in open(f, errors="ignore"):
+                    try: j=json.loads(line)
+                    except: continue
+                    if j.get("type")=="assistant":
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c,dict) and c.get("type")=="tool_use" and c["name"].startswith("mcp__prism"):
+                                calls.append((c["name"].split("__")[-1], c.get("input")))
+                if calls:
+                    print(os.path.basename(f)[:8], calls)
+        EOF
+      at: 2026-08-31T03:53:33.532874Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, time
+        dirs = [d for d in glob.glob(os.path.expanduser("~/.claude/projects/-private-var-folders-*e2e-run-*"))
+                if time.time() - os.path.getmtime(d) < 24*3600]
+        requests = []  # (context_value, is_single_function_lookup)
+        for d in dirs:
+            for f in glob.glob(d + "/*.jsonl"):
+                for line in open(f, errors="ignore"):
+                    try: j = json.loads(line)
+                    except: continue
+                    if j.get("type") == "assistant":
+                        for c in ((j.get("message") or {}).get("content") or []):
+                            if isinstance(c, dict) and c.get("type") == "tool_use" and c["name"].endswith("prism_search"):
+                                inp = c.get("input") or {}
+                                ctx = inp.get("context")
+                                if not ctx: continue
+                                q = inp.get("query")
+                                qs = q if isinstance(q, list) else [q]
+                                # heuristic: single non-list query naming a def/class/function -> lookup-style
+                                single_fn_lookup = len(qs) == 1 and any(
+                                    kw in str(qs[0]) for kw in ("def ", "class ", "func "))
+                                requests.append((ctx, single_fn_lookup))
+        requests.sort()
+        print(f"total real context= requests logged: {len(requests)}")
+        print(requests)
+        import pickle
+        pickle.dump(requests, open("/tmp/ctx_requests.pkl", "wb"))
+        EOF
+      at: 2026-08-31T03:56:34.314313Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import pickle
+        requests = pickle.load(open("/tmp/ctx_requests.pkl", "rb"))
+        values = [v for v, _ in requests]
+        n = len(values)
+
+        def eval_cap(cap):
+            clamped = [v for v in values if v > cap]
+            lines_saved = sum(v - cap for v in clamped)
+            lines_saved_vs_30 = sum(max(v,30) - min(v,30) for v in [])  # unused
+            pct_clamped = len(clamped) / n * 100
+            return len(clamped), pct_clamped, lines_saved
+
+        print(f"n={n} real context= requests, current shipped cap=30\n")
+        print(f"{'cap':>5} {'#clamped':>9} {'%clamped':>9} {'lines cut vs uncapped':>22}")
+        for cap in [5, 50, 10, 45, 20, 30, 15, 25, 8, 12, 18]:
+            c, pct, saved = eval_cap(cap)
+            print(f"{cap:>5} {c:>9} {pct:>8.1f}% {saved:>22}")
+        EOF
+      at: 2026-08-31T03:56:42.280661Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import pickle
+        requests = pickle.load(open("/tmp/ctx_requests.pkl", "rb"))
+        tail = [(v, f) for v, f in requests if v > 15]
+        print(f"calls clamped at cap=15: {len(tail)}/{len(requests)} ({len(tail)/len(requests)*100:.1f}%)")
+        print(tail)
+        EOF
+      at: 2026-08-31T03:57:05.89448Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "searchContextCap = 30" internal/mcp/tools.go
+      at: 2026-08-31T03:57:17.741875Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rn "Clamped to 30\|searchContextCap\|context.*30\b" internal/mcp/*.go internal/cli/*.go | grep -v "_test.go"
+      at: 2026-08-31T03:57:32.904091Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "searchContextCap\|context.*30\|context.*15" internal/mcp/searchmulti_test.go internal/cli/*_test.go
+      at: 2026-08-31T03:57:38.952094Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go build ./... 2>&1 | head -10 && go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "suite done"
+      at: 2026-08-31T03:57:54.371667Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/prism && go build -o $S/prism-cand5 ./cmd/prism
+        /opt/homebrew/bin/prism --version
+        cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism $S/prism-cand5 --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -18
+      at: 2026-08-31T03:58:01.131432Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/research/harness && python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate $S/prism-cand5 2>&1 | tail -15
+      at: 2026-08-31T03:59:32.710265Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add internal/mcp/tools.go && git commit -q -m "$(cat <<'EOF'
+        mcp: tighten prism_search context= cap 30 -> 15
+
+        Binary search over 75 real context= requests mined from today's e2e
+        sessions, per the user's explicit search sequence (5, 50, 10, 45, ...
+        narrowing): 15 and 19 are behaviorally identical (no request logged in
+        16-19 all day), so 15 sits exactly at the edge of real usage -- 86% of
+        all requests already fall at or under it.
+
+        The 10 requests (of 75) this newly clamps are 20,20,22,25,30x4,40x2 --
+        every one of them is the same misuse pattern already diagnosed and
+        fixed today: guessing a large context= to capture one named
+        function/class, instead of prism_lookup(name). No legitimate wide-
+        context need observed in the clamped tail. 30 was already generous;
+        15 costs nothing on real usage.
+
+        ci_invariants all held. ab_gate PASS, recall +0.004 (no hard-fail this
+        run), token swing isolated to two change_impact tasks this diff never
+        touches (same grafana cells with the ~25% single-trial noise floor
+        documented in the v0.62.0 commit).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.62.1 -m "context= cap tightened 30 -> 15" && git push origin v0.62.1 2>&1 | tail -1
+        sleep 90 && gh run list -R provasign/prism --limit 2
+      at: 2026-08-31T04:14:17.625854Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-31T03:38:26.611311Z
+redactions: 0

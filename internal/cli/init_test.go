@@ -13,7 +13,7 @@ func TestCmdInit(t *testing.T) {
 	wd, _ := os.Getwd()
 	defer os.Chdir(wd)
 	_ = os.Chdir(dir)
-	if rc := cmdInit([]string{dir}); rc != 0 {
+	if rc := cmdInit([]string{"--harness", "claude", dir}); rc != 0 {
 		t.Errorf("rc %d", rc)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "prism.yaml")); err != nil {
@@ -25,8 +25,11 @@ func TestCmdInit_GlobalFlag(t *testing.T) {
 	dir := t.TempDir()
 	home := t.TempDir()
 	setHome(t, home)
-	if rc := cmdInit([]string{dir, "--global"}); rc != 0 {
-		t.Errorf("rc %d", rc)
+	if rc := cmdInit([]string{dir, "--global"}); rc != 2 {
+		t.Errorf("removed --global should return usage error 2, got %d", rc)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "prism.yaml")); err == nil {
+		t.Error("rejected --global still wrote project files")
 	}
 }
 
@@ -40,21 +43,25 @@ func TestCmdInit_BadDir(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(ro, 0o755) })
 	target := filepath.Join(ro, "child")
 	_ = os.MkdirAll(target, 0o755)
-	if rc := cmdInit([]string{filepath.Join(ro, "nosuch")}); rc != 1 {
+	if rc := cmdInit([]string{"--harness", "claude", filepath.Join(ro, "nosuch")}); rc != 1 {
 		// May or may not fail depending on platform; accept either
 		t.Logf("rc %d", rc)
 	}
 }
 
 func TestDetectSelfPath(t *testing.T) {
-	if detectSelfPath() == "" {
+	p := detectSelfPath()
+	if p == "" {
 		t.Error("empty")
+	}
+	if p != filepath.Clean(p) {
+		t.Errorf("path is not clean: %q", p)
 	}
 }
 
 func TestWriteSteeringInstructions(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, supportedHarnesses, false)
 	// Should have written at least one instruction file
 	entries, _ := os.ReadDir(dir)
 	if len(entries) == 0 {
@@ -62,26 +69,37 @@ func TestWriteSteeringInstructions(t *testing.T) {
 	}
 }
 
-func TestBuildZedConfig(t *testing.T) {
-	cfg := buildZedConfig("/x/prism")
-	s := string(cfg)
-	if len(cfg) == 0 {
-		t.Fatal("empty")
+func TestWriteSteeringInstructions_RefreshSkipsUnconfigured(t *testing.T) {
+	dir := t.TempDir()
+	writeSteeringInstructions(dir, supportedHarnesses, true)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
 	}
-	// User-global entry: no pinned project dir (prism mcp serves launch cwd).
-	for _, want := range []string{`"context_servers"`, `"prism"`, `"/x/prism"`, `"mcp"`} {
-		if !contains(s, want) {
-			t.Errorf("expected %q in %s", want, s)
-		}
+	if len(entries) != 0 {
+		t.Errorf("refresh created %d new steering entries", len(entries))
 	}
-	if contains(s, "/y/root") {
-		t.Errorf("zed config must not pin a project dir: %s", s)
+}
+
+func TestWriteSteeringInstructionsRefreshMigratesLegacyCursorFile(t *testing.T) {
+	dir := t.TempDir()
+	legacy := filepath.Join(dir, ".cursorrules")
+	if err := os.WriteFile(legacy, []byte("## Prism — the task workflow (ALWAYS)\nold\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeSteeringInstructions(dir, []string{"cursor"}, true)
+	if !fileExists(filepath.Join(dir, "AGENTS.md")) {
+		t.Fatal("refresh did not migrate legacy Cursor steering to AGENTS.md")
+	}
+	raw, _ := os.ReadFile(legacy)
+	if strings.Contains(string(raw), "Prism") {
+		t.Fatalf("legacy Cursor Prism section survived: %s", raw)
 	}
 }
 
 // TestInitProjectLevelSkipsGlobalConfigs guards the multi-project footgun:
-// a project-level init must not touch user-global configs (Zed, Codex) —
-// doing so re-points every other project's editor at this one.
+// a project-level init must write Codex's project config without touching the
+// user-global Codex or Zed configs.
 func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
@@ -95,7 +113,7 @@ func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	os.WriteFile(zedPath, []byte(zedBefore), 0o644)
 
 	dir := t.TempDir()
-	initRegisterMCPTools(dir, "/x/prism", false, true, false, false)
+	initRegisterMCPTools(dir, "/x/prism", supportedHarnesses, true, false, false)
 
 	if got, _ := os.ReadFile(codexPath); string(got) != codexBefore {
 		t.Errorf("project-level init modified global Codex config:\n%s", got)
@@ -106,23 +124,19 @@ func TestInitProjectLevelSkipsGlobalConfigs(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".mcp.json")); err != nil {
 		t.Errorf("project-level init should still write .mcp.json: %v", err)
 	}
+	projectCodex, err := os.ReadFile(filepath.Join(dir, ".codex", "config.toml"))
+	if err != nil {
+		t.Fatalf("project-level init did not write Codex project config: %v", err)
+	}
+	for _, want := range []string{"[mcp_servers.prism]", `command = "/x/prism"`, `args = ["mcp", "--compact"]`} {
+		if !strings.Contains(string(projectCodex), want) {
+			t.Errorf("project Codex config missing %q:\n%s", want, projectCodex)
+		}
+	}
+	if strings.Contains(string(projectCodex), dir) {
+		t.Errorf("project Codex entry must use Codex's project cwd, not pin the project path:\n%s", projectCodex)
+	}
 
-	// --global registers both, without a pinned project dir.
-	initRegisterMCPTools(dir, "/x/prism", true, true, false, false)
-	codexAfter, _ := os.ReadFile(codexPath)
-	if !strings.Contains(string(codexAfter), "[mcp_servers.prism]") {
-		t.Errorf("--global init did not register Codex:\n%s", codexAfter)
-	}
-	if strings.Contains(string(codexAfter), dir) {
-		t.Errorf("--global Codex entry must not pin a project dir:\n%s", codexAfter)
-	}
-	zedAfter, _ := os.ReadFile(zedPath)
-	if !strings.Contains(string(zedAfter), `"prism"`) {
-		t.Errorf("--global init did not register Zed:\n%s", zedAfter)
-	}
-	if strings.Contains(string(zedAfter), dir) {
-		t.Errorf("--global Zed entry must not pin a project dir:\n%s", zedAfter)
-	}
 }
 
 func TestBuildVSCodeConfig(t *testing.T) {
@@ -140,17 +154,12 @@ func TestBuildVSCodeConfig(t *testing.T) {
 
 func TestWriteSteeringInstructions_AllTargets(t *testing.T) {
 	dir := t.TempDir()
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, supportedHarnesses, false)
 	for _, want := range []string{
 		"CLAUDE.md",
 		"AGENTS.md",
 		"GEMINI.md",
-		".cursorrules",
-		".windsurfrules",
-		".clinerules",
 		".github/copilot-instructions.md",
-		".devin/instructions.md",
-		".kiro/steering/prism.md",
 	} {
 		if _, err := os.Stat(filepath.Join(dir, want)); err != nil {
 			t.Errorf("missing %s: %v", want, err)
@@ -166,7 +175,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 	if err := os.WriteFile(path, []byte(stale), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	writeSteeringInstructions(dir)
+	writeSteeringInstructions(dir, []string{"claude"}, false)
 	raw, _ := os.ReadFile(path)
 	s := string(raw)
 	// Old guidance must be gone.
@@ -174,7 +183,7 @@ func TestWriteSteeringInstructions_UpgradesStaleSection(t *testing.T) {
 		t.Error("stale instructions not replaced")
 	}
 	// New guidance must be present.
-	if !strings.Contains(s, "line-numbered source windows") {
+	if !strings.Contains(s, "Relay its sites as-is") {
 		t.Error("new instructions not written")
 	}
 	// Content before the Prism section must be preserved.
@@ -205,6 +214,12 @@ func TestInjectPrismSection(t *testing.T) {
 			existing: "# Header\n",
 			wantPre:  "# Header",
 		},
+		{
+			name: "replaces legacy v0.50 denial section",
+			existing: "# Header\n\n## Prism — code intelligence (ALWAYS use these tools)\n\n" +
+				"grep, rg, and the built-in Grep tool are BLOCKED in this project — old\n\n## Deploy\nkeep me\n",
+			wantPre: "# Header",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -222,6 +237,37 @@ func TestInjectPrismSection(t *testing.T) {
 	}
 }
 
+func TestInjectPrismSectionRemovesHistoricalDuplicates(t *testing.T) {
+	block := "\n## Prism — context delivery\ncurrent\n\n<!-- prism:end -->\n"
+	existing := `# Keep
+
+## Prism — the task workflow (ALWAYS)
+old task guidance
+
+## Prism — advanced tools
+old advanced guidance
+
+## User section
+keep this
+
+## Prism — code intelligence (ALWAYS use these tools)
+old bounded guidance
+<!-- prism:end -->
+
+## End
+also keep
+`
+	got := injectPrismSection(existing, block)
+	if strings.Count(got, "## Prism —") != 1 || strings.Count(got, "current") != 1 {
+		t.Fatalf("historical Prism sections were not consolidated:\n%s", got)
+	}
+	for _, want := range []string{"# Keep", "## User section", "keep this", "## End", "also keep"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("user content %q was lost:\n%s", want, got)
+		}
+	}
+}
+
 func TestWritePrismCodexConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
@@ -232,10 +278,13 @@ func TestWritePrismCodexConfig(t *testing.T) {
 	}
 	raw, _ := os.ReadFile(path)
 	s := string(raw)
-	for _, want := range []string{`[mcp_servers.prism]`, `type = "stdio"`, `command = "/usr/local/bin/prism"`, `args = ["mcp", "/my/project"]`} {
+	for _, want := range []string{`[mcp_servers.prism]`, `command = "/usr/local/bin/prism"`, `args = ["mcp", "/my/project"]`} {
 		if !contains(s, want) {
 			t.Errorf("missing %q in:\n%s", want, s)
 		}
+	}
+	if strings.Contains(s, `type = "stdio"`) {
+		t.Errorf("Codex rejects type in an stdio MCP table as an invalid transport:\n%s", s)
 	}
 
 	// Idempotent second write must not duplicate the block.
@@ -257,7 +306,7 @@ func TestWritePrismCodexConfig(t *testing.T) {
 func TestInitRegisterMCPTools_WritesVSCode(t *testing.T) {
 	setHome(t, t.TempDir())
 	dir := t.TempDir()
-	written := initRegisterMCPTools(dir, "/x/prism", false, true, false, false)
+	written := initRegisterMCPTools(dir, "/x/prism", supportedHarnesses, true, false, false)
 	var sawVSCode bool
 	for _, p := range written {
 		if filepath.Base(filepath.Dir(p)) == ".vscode" && filepath.Base(p) == "mcp.json" {
@@ -273,7 +322,7 @@ func TestCmdInit_InstallAlias(t *testing.T) {
 	setHome(t, t.TempDir())
 	// `prism install` must behave identically to `prism init`.
 	dir := t.TempDir()
-	rc := Run([]string{"install", dir})
+	rc := Run([]string{"install", "--harness", "claude", dir})
 	if rc != 0 {
 		t.Fatalf("rc %d", rc)
 	}
@@ -329,9 +378,54 @@ func TestSteeringBlock_CoversBothSurfaces(t *testing.T) {
 	// block must still carry BOTH surfaces — MCP tool names for the primary
 	// path and CLI invocations for Bash-only subagents.
 	got := steeringBlock()
-	for _, want := range []string{"prism_query", "prism query", "prism_change_impact", "change-impact"} {
+	for _, want := range []string{"mcp__prism__prism", "prism query", "change_impact", "change-impact"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("steering block missing %q — it must cover MCP and CLI together", want)
+		}
+	}
+}
+
+func TestSteeringBlock_PrismAccessFallbacks(t *testing.T) {
+	// Hosts expose Prism differently. Deferred-schema experiments in August
+	// showed that ToolSearch must be named explicitly. The 2026-09-07 coding
+	// pilot then found the opposite failure mode: Codex CLI 0.153 exposed no
+	// ToolSearch loader, while Claude exposed Prism tools directly. Both hosts
+	// abandoned Prism under the old unconditional ToolSearch instruction.
+	// Preserve an ordered direct -> ToolSearch -> CLI fallback instead.
+	got := steeringBlock()
+	if !strings.Contains(got, "ToolSearch(") {
+		t.Error("steering block missing the ToolSearch deferred-tools bootstrap line")
+	}
+	// The select: form matches EXACT deferred names, which carry the MCP
+	// prefix. A probe following the bare-name form got "No matching
+	// deferred tools found" and gave up (2026-09-01); the two sessions
+	// that succeeded typed the full mcp__prism__ names themselves.
+	if !strings.Contains(got, `ToolSearch("select:mcp__prism__prism")`) {
+		t.Error("ToolSearch line must select only the compact gateway's full MCP name")
+	}
+	if !strings.Contains(got, "Stop at the first that works") {
+		t.Error("steering block must select the first supported Prism access route")
+	}
+	if !strings.Contains(got, "The `prism` MCP tool") {
+		t.Error("steering block must prefer already-visible Prism tools")
+	}
+	if !strings.Contains(got, "The `prism` CLI") {
+		t.Error("steering block must fall back to the CLI when no loader exists")
+	}
+	if !strings.Contains(got, "Prism not being listed does not mean it is absent") {
+		t.Error("steering block must forbid silent abandonment when ToolSearch is unavailable")
+	}
+}
+
+func TestSteeringBlock_PreservesTermBoundaries(t *testing.T) {
+	got := strings.Join(strings.Fields(steeringBlock()), " ")
+	for _, want := range []string{
+		`terms:["alpha","beta"]`,
+		"never combine distinct terms in one space-delimited string",
+		"For CLI search, use positional terms: prism search alpha beta",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("steering block missing term-boundary guidance %q", want)
 		}
 	}
 }
@@ -343,7 +437,7 @@ func TestCmdInit_ModeFlagAcceptedAndIgnored(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			setHome(t, t.TempDir())
 			dir := t.TempDir()
-			if rc := cmdInit([]string{dir, "--mode", mode}); rc != 0 {
+			if rc := cmdInit([]string{"--harness", "claude", dir, "--mode", mode}); rc != 0 {
 				t.Fatalf("rc %d", rc)
 			}
 			raw, _ := os.ReadFile(filepath.Join(dir, "prism.yaml"))
@@ -351,7 +445,7 @@ func TestCmdInit_ModeFlagAcceptedAndIgnored(t *testing.T) {
 				t.Errorf("prism.yaml still carries agent_mode: %s", raw)
 			}
 			claudeMD, _ := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
-			for _, want := range []string{"prism_query", "prism query"} {
+			for _, want := range []string{"mcp__prism__prism", "prism query"} {
 				if !strings.Contains(string(claudeMD), want) {
 					t.Errorf("CLAUDE.md missing %q regardless of --mode %q", want, mode)
 				}
@@ -456,10 +550,13 @@ func TestPrintAgentConfig_WritesNothing(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 	dir := t.TempDir()
-	for _, id := range []string{"claude", "cursor", "windsurf", "vscode", "zed", "codex", "opencode", "hermes"} {
-		if rc := printAgentConfig(id, dir, "/x/prism", false); rc != 0 {
+	for _, id := range []string{"claude", "codex", "cursor", "vscode", "gemini", "opencode"} {
+		if rc := printAgentConfig(id, dir, "/x/prism"); rc != 0 {
 			t.Errorf("%s: rc %d", id, rc)
 		}
+	}
+	if rc := printAgentConfig("windsurf", dir, "/x/prism"); rc != 0 {
+		t.Errorf("windsurf steering-only explanation returned rc %d", rc)
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -471,8 +568,24 @@ func TestPrintAgentConfig_WritesNothing(t *testing.T) {
 	if entries, _ := os.ReadDir(home); len(entries) != 0 {
 		t.Errorf("--print-config wrote %d entries into HOME", len(entries))
 	}
-	if rc := printAgentConfig("bogus", dir, "/x/prism", false); rc != 2 {
+	if rc := printAgentConfig("bogus", dir, "/x/prism"); rc != 2 {
 		t.Errorf("unknown agent should exit 2, got %d", rc)
+	}
+}
+
+func TestPrintAgentConfig_CodexIsProjectScoped(t *testing.T) {
+	project := t.TempDir()
+
+	projectOutput := captureStdout(func() {
+		if rc := printAgentConfig("codex", project, "/x/prism"); rc != 0 {
+			t.Fatalf("project codex config: rc %d", rc)
+		}
+	})
+	if !strings.Contains(projectOutput, filepath.Join(project, ".codex", "config.toml")) {
+		t.Errorf("project Codex snippet named the wrong path: %s", projectOutput)
+	}
+	if !strings.Contains(projectOutput, "[mcp_servers.prism.tools.prism]\n"+`approval_mode = "approve"`) {
+		t.Errorf("project Codex snippet does not approve the compact read-only tool: %s", projectOutput)
 	}
 }
 
@@ -480,12 +593,15 @@ func TestPrintAgentConfig_WritesNothing(t *testing.T) {
 func TestInitRegisterMCPTools_RefreshSkipsUnconfigured(t *testing.T) {
 	setHome(t, t.TempDir())
 	dir := t.TempDir()
-	written := initRegisterMCPTools(dir, "/x/prism", false, true, true, false)
+	written := initRegisterMCPTools(dir, "/x/prism", supportedHarnesses, true, true, false)
 	if len(written) != 0 {
 		t.Errorf("--refresh added configs to a fresh project: %v", written)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".mcp.json")); err == nil {
 		t.Error("--refresh created .mcp.json")
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".codex", "config.toml")); err == nil {
+		t.Error("--refresh created .codex/config.toml")
 	}
 }
 
@@ -493,8 +609,8 @@ func TestInitRegisterMCPTools_RefreshSkipsUnconfigured(t *testing.T) {
 func TestInitRegisterMCPTools_RefreshRewritesConfigured(t *testing.T) {
 	setHome(t, t.TempDir())
 	dir := t.TempDir()
-	initRegisterMCPTools(dir, "/old/prism", false, true, false, false) // first install
-	written := initRegisterMCPTools(dir, "/new/prism", false, true, true, false)
+	initRegisterMCPTools(dir, "/old/prism", supportedHarnesses, true, false, false) // first install
+	written := initRegisterMCPTools(dir, "/new/prism", supportedHarnesses, true, true, false)
 	if len(written) == 0 {
 		t.Fatal("--refresh rewrote nothing on a configured project")
 	}
@@ -504,6 +620,13 @@ func TestInitRegisterMCPTools_RefreshRewritesConfigured(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "/new/prism") {
 		t.Errorf("--refresh did not update the binary path: %s", raw)
+	}
+	codexRaw, err := os.ReadFile(filepath.Join(dir, ".codex", "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(codexRaw), "/new/prism") {
+		t.Errorf("--refresh did not update the Codex binary path: %s", codexRaw)
 	}
 }
 
@@ -557,4 +680,41 @@ func TestInjectPrismSection_PreservesTrailingUserContent(t *testing.T) {
 			t.Errorf("append failed:\n%s", got)
 		}
 	})
+}
+
+// TestWriteSteeringInstructions_SymlinkedClaudeMD: `CLAUDE.md -> AGENTS.md` is
+// a common convention (zod). Handled name by name, the CLAUDE.md pass wrote
+// the Prism section and the AGENTS.md pass (its harness unselected) stripped
+// it, so Claude Code got no steering at all (2026-09-26 benchmark: zod prism
+// cells made zero Prism calls).
+func TestWriteSteeringInstructions_SymlinkedClaudeMD(t *testing.T) {
+	dir := t.TempDir()
+	user := "# AGENTS.md\n\nUse Nub for everything.\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(user), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("AGENTS.md", filepath.Join(dir, "CLAUDE.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeSteeringInstructions(dir, []string{"claude"}, false)
+
+	got, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(got), "<!-- prism:end -->"); n != 1 {
+		t.Fatalf("want exactly one Prism section in the shared file, got %d:\n%s", n, got)
+	}
+	if !strings.Contains(string(got), "Use Nub for everything.") {
+		t.Fatalf("user content lost:\n%s", got)
+	}
+	if fi, err := os.Lstat(filepath.Join(dir, "CLAUDE.md")); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("CLAUDE.md is no longer a symlink (err=%v)", err)
+	}
+	// Idempotent: a second run leaves the file byte-identical.
+	writeSteeringInstructions(dir, []string{"claude"}, false)
+	again, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if string(again) != string(got) {
+		t.Fatalf("second init changed the file:\n%s", again)
+	}
 }

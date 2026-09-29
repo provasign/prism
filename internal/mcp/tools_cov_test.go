@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/provasign/prism/internal/config"
@@ -171,8 +172,13 @@ func TestCategorize(t *testing.T) {
 		{"typescript test", grove.SymbolRecord{FilePath: "x.test.ts"}, ranking.CategoryTest},
 		{"typescript spec", grove.SymbolRecord{FilePath: "x.spec.ts"}, ranking.CategoryTest},
 		{"javascript tests dir", grove.SymbolRecord{FilePath: "/__tests__/x.js"}, ranking.CategoryTest},
+		{"root tests dir", grove.SymbolRecord{FilePath: "tests/require.rs"}, ranking.CategoryTest},
+		{"root test dir", grove.SymbolRecord{FilePath: "test/require.rb"}, ranking.CategoryTest},
+		{"root javascript tests dir", grove.SymbolRecord{FilePath: "__tests__/render.js"}, ranking.CategoryTest},
 		{"python test", grove.SymbolRecord{FilePath: "x_test.py"}, ranking.CategoryTest},
 		{"java test", grove.SymbolRecord{FilePath: "src/UserServiceTest.java"}, ranking.CategoryTest},
+		{"java versioned test tree", grove.SymbolRecord{FilePath: "src/test-jdk17/java/p/RecordTest.java"}, ranking.CategoryTest},
+		{"production test utilities", grove.SymbolRecord{FilePath: "src/test-utils/Loader.java", Kind: "class"}, ranking.CategoryDependency},
 		{"rust test", grove.SymbolRecord{FilePath: "src/service_test.rs"}, ranking.CategoryTest},
 		{"c test", grove.SymbolRecord{FilePath: "tests/service_test.c"}, ranking.CategoryTest},
 		{"cpp test", grove.SymbolRecord{FilePath: "tests/service_test.cpp"}, ranking.CategoryTest},
@@ -243,8 +249,30 @@ func TestToolQuery_OK(t *testing.T) {
 	})
 	defer srv.Close()
 	h := newHWithGrove(t, srv)
-	if _, err := h.Invoke("prism_query", map[string]any{"task": "find Foo", "limit": 10}); err != nil {
+	if _, err := h.Invoke("prism_query", map[string]any{"terms": []string{"Foo"}, "limit": 10}); err != nil {
 		t.Logf("query err (ok if grove paths missing): %v", err)
+	}
+}
+
+func TestToolQueryWithoutTermsRoutesUnknownLocationToSearch(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	_, err := h.Invoke("prism_query", map[string]any{})
+	if err == nil {
+		t.Fatal("expected missing terms error")
+	}
+	got := err.Error()
+	if !strings.Contains(got, "prism_search") || strings.Contains(strings.ToLower(got), "guess") || strings.Contains(got, "grep") {
+		t.Fatalf("missing terms must route to advertised locator without guessing: %q", got)
+	}
+}
+
+func TestToolQueryRejectsRemovedTaskArguments(t *testing.T) {
+	h := newHWithGrove(t, nil)
+	for _, field := range []string{"task", "intent"} {
+		_, err := h.Invoke("prism_query", map[string]any{field: "find Foo", "terms": []string{"Foo"}})
+		if err == nil || !strings.Contains(err.Error(), "unknown parameter(s) "+field) {
+			t.Errorf("%s should be rejected by prism_query, got %v", field, err)
+		}
 	}
 }
 
@@ -261,7 +289,6 @@ func TestToolQuery_TermsSeeding(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	// terms param should not error even when grove returns no matches
 	_, err := h.Invoke("prism_query", map[string]any{
-		"task":  "find AccessCount",
 		"terms": []any{"AccessCount", "sha-pointer"},
 	})
 	if err != nil {
@@ -272,7 +299,6 @@ func TestToolQuery_TermsSeeding(t *testing.T) {
 func TestToolQuery_IncludeGraphOnly(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":    "compression",
 		"terms":   []any{"compress"},
 		"include": []any{"graph"},
 	})
@@ -293,7 +319,6 @@ func TestToolQuery_IncludeGraphOnly(t *testing.T) {
 func TestToolQuery_IncludeDocsOnly(t *testing.T) {
 	h := newHWithGrove(t, nil)
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":    "architecture",
 		"terms":   []any{"arch"},
 		"include": []any{"docs"},
 	})
@@ -308,28 +333,35 @@ func TestToolQuery_IncludeDocsOnly(t *testing.T) {
 	}
 }
 
-func TestToolQuery_GraphDepthClamped(t *testing.T) {
+func TestToolQuery_UnknownParamRejected(t *testing.T) {
+	// graph_depth was advertised for months while no code path read it
+	// (see toolQuery's own comment); this test used to assert it was
+	// silently ACCEPTED at any value — the exact failure mode the
+	// unknown-arg validator exists to kill (b8mjxuh6 #26: prism_verify
+	// with a query= param it doesn't have, whole-repo answer read as
+	// scoped). It now asserts rejection, with the valid names in-band.
 	h := newHWithGrove(t, nil)
-	// depth=0 should be clamped to 1, depth=99 to 5 — neither should error
-	for _, depth := range []int{0, 1, 5, 99} {
-		_, err := h.Invoke("prism_query", map[string]any{
-			"task":        "find symbols",
-			"terms":       []any{"Symbol"},
-			"graph_depth": depth,
-		})
-		if err != nil {
-			t.Errorf("depth=%d: unexpected error: %v", depth, err)
+	_, err := h.Invoke("prism_query", map[string]any{
+		"terms":       []any{"Symbol"},
+		"graph_depth": 2,
+	})
+	if err == nil {
+		t.Fatal("unknown parameter graph_depth must be rejected, not silently ignored")
+	}
+	for _, want := range []string{"graph_depth", "terms", "NOT run"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("rejection should name the bad param and the valid ones, missing %q in: %v", want, err)
 		}
 	}
 }
 
 func TestToolQuery_TermsAndIncludeCombined(t *testing.T) {
 	h := newHWithGrove(t, nil)
+	// graph_depth used to be passed here — a parameter no code path ever
+	// read; the unknown-arg validator now correctly rejects it.
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":        "repeat read handling",
-		"terms":       []any{"AccessCount"},
-		"include":     []any{"graph", "tests"},
-		"graph_depth": 2,
+		"terms":   []any{"AccessCount"},
+		"include": []any{"graph", "tests"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -364,16 +396,13 @@ func TestMinFloat(t *testing.T) {
 	}
 }
 
-func TestToolQuery_TestWritingTask(t *testing.T) {
+func TestToolQuery_ExplicitTerms(t *testing.T) {
 	h := newHWithGrove(t, nil)
-	// A test-writing task should trigger the TestRelevance boost and budget expansion
-	// without error.
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":  "write tests for toolQuery",
 		"terms": []any{"toolQuery"},
 	})
 	if err != nil {
-		t.Fatalf("unexpected error for test-writing task: %v", err)
+		t.Fatalf("unexpected error for explicit terms: %v", err)
 	}
 	if out == nil {
 		t.Error("expected non-nil output")
@@ -400,7 +429,7 @@ func TestInvoke_WithReadyCh(t *testing.T) {
 	close(readyCh) // already ready
 	h := NewHandlerWithReady(&config.Config{MaxCacheFiles: 100}, t.TempDir(), gc, readyCh)
 	// Any call should succeed: readyCh is already closed so select fires immediately.
-	_, err := h.Invoke("prism_query", map[string]any{"task": "find symbols"})
+	_, err := h.Invoke("prism_query", map[string]any{"terms": []string{"symbols"}})
 	if err != nil {
 		t.Logf("prism_query with readyCh: %v (ok if grove paths unavailable)", err)
 	}

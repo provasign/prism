@@ -1,0 +1,757 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c15
+created_at: 2026-08-30T12:10:22.055575Z
+finalized_at: 2026-08-30T14:20:17.815341Z
+agent:
+    tool: claude-code
+    model: claude-fable-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: tail -6 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bvorqg7ar.output
+      at: 2026-08-30T12:13:01.713653Z
+      classified: other
+    - cmd: |-
+        ls ~/Projects/provasign/research/harness/runs/e2e/FasterXML__jackson-databind__pr6039.opus.*.rerun-v059.json 2>/dev/null
+        ps aux | grep "[r]esume_remaining4_v2" | head -2
+      at: 2026-08-30T12:17:44.468473Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && for tid in FasterXML__jackson-databind__pr6039 FasterXML__jackson-databind__pr6042 FasterXML__jackson-databind__pr6018 FasterXML__jackson-databind__pr6035; do
+          for arm in prism_source baseline; do
+            f="runs/e2e/${tid}.opus.${arm}.rerun-v059.json"
+            if [ -f "$f" ]; then python3 -c "
+        import json
+        d=json.load(open('$f'))
+        print('$tid', '$arm', 'resolved=', d.get('resolved'), 'turns=', d.get('turns'))"
+            else
+              echo "$tid $arm: not yet done"
+            fi
+          done
+        done
+        echo "---process check---"
+        ps aux | grep "[r]esume_remaining4_v2" | wc -l
+      at: 2026-08-30T12:41:48.108459Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        TASKS = ["apache__commons-collections__pr704","apache__commons-collections__pr714",
+            "apache__commons-collections__pr715","apache__commons-collections__pr716",
+            "apache__commons-collections__pr717","apache__commons-collections__pr718",
+            "apache__commons-collections__pr700","apache__commons-collections__pr713",
+            "apache__commons-collections__pr705","apache__commons-collections__pr710",
+            "apache__commons-collections__pr719","apache__commons-collections__pr712",
+            "FasterXML__jackson-databind__pr6012","FasterXML__jackson-databind__pr6008",
+            "FasterXML__jackson-databind__pr6113","FasterXML__jackson-databind__pr6030",
+            "FasterXML__jackson-databind__pr6019","FasterXML__jackson-databind__pr6044",
+            "FasterXML__jackson-databind__pr6039","FasterXML__jackson-databind__pr6042",
+            "FasterXML__jackson-databind__pr6018","FasterXML__jackson-databind__pr6035"]
+
+        def orig_any(tid, arm):
+            files = [f for f in glob.glob(f"runs/e2e/{tid}.opus.{arm}*.json") if "rerun" not in f]
+            if not files: return None
+            return any(json.load(open(f)).get("resolved") for f in files)
+
+        def new_result(tid, arm):
+            # confirm retry for pr6030/pr6044 supersedes the single rerun-v059 trial
+            f = f"runs/e2e/{tid}.opus.{arm}.rerun-v059-confirm.json"
+            if not __import__("os").path.exists(f):
+                f = f"runs/e2e/{tid}.opus.{arm}.rerun-v059.json"
+            if not __import__("os").path.exists(f): return None
+            return json.load(open(f)).get("resolved")
+
+        orig_p = orig_b = new_p = new_b = 0
+        n = 0
+        for tid in TASKS:
+            ob, op = orig_any(tid,"baseline"), orig_any(tid,"prism_source")
+            nb, npv = new_result(tid,"baseline"), new_result(tid,"prism_source")
+            if op is None or npv is None: continue
+            n += 1
+            orig_p += bool(op); new_p += bool(npv)
+            orig_b += bool(ob) if ob is not None else 0; new_b += bool(nb) if nb is not None else 0
+            flag = ""
+            if op and not npv: flag = "  <-- prism regressed"
+            if not op and npv: flag = "  <-- prism improved"
+            print(f"{tid:42} orig(b={str(ob):5} p={str(op):5}) new(b={str(nb):5} p={str(npv):5}){flag}")
+
+        print(f"\nn={n} | orig baseline {orig_b}/{n} ({orig_b/n:.0%}) prism {orig_p}/{n} ({orig_p/n:.0%})")
+        print(f"       new  baseline {new_b}/{n} ({new_b/n:.0%}) prism {new_p}/{n} ({new_p/n:.0%})")
+        EOF
+      at: 2026-08-30T13:07:18.847775Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, os
+
+        TASKS = ["apache__commons-collections__pr704","apache__commons-collections__pr714",
+            "apache__commons-collections__pr715","apache__commons-collections__pr716",
+            "apache__commons-collections__pr717","apache__commons-collections__pr718",
+            "apache__commons-collections__pr700","apache__commons-collections__pr713",
+            "apache__commons-collections__pr705","apache__commons-collections__pr710",
+            "apache__commons-collections__pr719","apache__commons-collections__pr712",
+            "FasterXML__jackson-databind__pr6012","FasterXML__jackson-databind__pr6008",
+            "FasterXML__jackson-databind__pr6113","FasterXML__jackson-databind__pr6030",
+            "FasterXML__jackson-databind__pr6019","FasterXML__jackson-databind__pr6044",
+            "FasterXML__jackson-databind__pr6039","FasterXML__jackson-databind__pr6042",
+            "FasterXML__jackson-databind__pr6018","FasterXML__jackson-databind__pr6035"]
+
+        def orig_any(tid):
+            files = [f for f in glob.glob(f"runs/e2e/{tid}.opus.baseline*.json") if "rerun" not in f and "variance" not in f]
+            if not files: return None, 0
+            res = [json.load(open(f)).get("resolved") for f in files]
+            return any(res), len(res)
+
+        def new_result(tid):
+            f = f"runs/e2e/{tid}.opus.baseline.rerun-v059.json"
+            if not os.path.exists(f): return None
+            return json.load(open(f)).get("resolved")
+
+        ob_tot = nb_tot = n = 0
+        diffs = []
+        for tid in TASKS:
+            ob, ntrials = orig_any(tid)
+            nb = new_result(tid)
+            if ob is None or nb is None: continue
+            n += 1
+            ob_tot += bool(ob); nb_tot += bool(nb)
+            flag = "  <-- DIFFERS" if bool(ob) != bool(nb) else ""
+            print(f"{tid:42} orig_baseline({ntrials}trials)={str(ob):5} new_baseline(1trial)={str(nb):5}{flag}")
+            if bool(ob) != bool(nb): diffs.append(tid)
+
+        print(f"\nn={n} | orig baseline resolved {ob_tot}/{n} ({ob_tot/n:.0%}) | new baseline resolved {nb_tot}/{n} ({nb_tot/n:.0%})")
+        print(f"differing tasks: {diffs}")
+        EOF
+      at: 2026-08-30T13:23:50.680202Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('runs/e2e/apache__commons-collections__pr700.opus.prism_source.json'))
+        print(list(d.keys()))
+        print(d)"
+      at: 2026-08-30T13:32:00.889613Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, os
+
+        TASKS = ["apache__commons-collections__pr704","apache__commons-collections__pr714",
+            "apache__commons-collections__pr715","apache__commons-collections__pr716",
+            "apache__commons-collections__pr717","apache__commons-collections__pr718",
+            "apache__commons-collections__pr700","apache__commons-collections__pr713",
+            "apache__commons-collections__pr705","apache__commons-collections__pr710",
+            "apache__commons-collections__pr719","apache__commons-collections__pr712",
+            "FasterXML__jackson-databind__pr6012","FasterXML__jackson-databind__pr6008",
+            "FasterXML__jackson-databind__pr6113","FasterXML__jackson-databind__pr6030",
+            "FasterXML__jackson-databind__pr6019","FasterXML__jackson-databind__pr6044",
+            "FasterXML__jackson-databind__pr6039","FasterXML__jackson-databind__pr6042",
+            "FasterXML__jackson-databind__pr6018","FasterXML__jackson-databind__pr6035"]
+
+        def mean_cost(tid, arm, tagfilter):
+            files = [f for f in glob.glob(f"runs/e2e/{tid}.opus.{arm}*.json")
+                     if tagfilter(f)]
+            costs = [json.load(open(f)).get("cost_usd") for f in files]
+            costs = [c for c in costs if c is not None]
+            return costs
+
+        no_prism_all, old_prism_all, new_prism_all = [], [], []
+        print(f"{'task':42} {'no-prism':>10} {'old-prism':>10} {'new-prism':>10}")
+        for tid in TASKS:
+            b = mean_cost(tid, "baseline", lambda f: "rerun" not in f and "variance" not in f)
+            op = mean_cost(tid, "prism_source", lambda f: "rerun" not in f)
+            npv = mean_cost(tid, "prism_source", lambda f: "rerun-v059" in f and "confirm" not in f)
+            if not npv:  # pr6030/pr6044 use the confirm-trial as their "new" data point
+                npv = mean_cost(tid, "prism_source", lambda f: "confirm" in f)
+            bm = sum(b)/len(b) if b else None
+            om = sum(op)/len(op) if op else None
+            nm = sum(npv)/len(npv) if npv else None
+            no_prism_all += b; old_prism_all += op; new_prism_all += npv
+            print(f"{tid:42} {('$%.2f'%bm if bm else '-'):>10} {('$%.2f'%om if om else '-'):>10} {('$%.2f'%nm if nm else '-'):>10}")
+
+        def s(xs): return sum(xs)/len(xs) if xs else 0
+        print(f"\n{'MEAN':42} {'$%.3f'%s(no_prism_all):>10} {'$%.3f'%s(old_prism_all):>10} {'$%.3f'%s(new_prism_all):>10}")
+        print(f"n = {len(no_prism_all)} / {len(old_prism_all)} / {len(new_prism_all)} cells")
+        print(f"\nold-prism vs no-prism: {(s(old_prism_all)/s(no_prism_all)-1)*100:+.1f}%")
+        print(f"new-prism vs no-prism: {(s(new_prism_all)/s(no_prism_all)-1)*100:+.1f}%")
+        print(f"new-prism vs old-prism: {(s(new_prism_all)/s(old_prism_all)-1)*100:+.1f}%")
+        EOF
+      at: 2026-08-30T13:32:19.401654Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'; cd ~/Projects/provasign/prism && git log --oneline -1; git status --short | head -5
+      at: 2026-08-30T13:37:52.261277Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && cat > /tmp/pyfield_check.go <<'EOF'
+        package main
+
+        import (
+        	"context"
+        	"fmt"
+
+        	"github.com/provasign/astkit"
+        	"github.com/provasign/astkit/strategies"
+        )
+
+        func main() {
+        	src := []byte(`
+        import sqlalchemy.orm as so
+        import sqlalchemy as sa
+        from dataclasses import dataclass
+        from pydantic import BaseModel
+
+        class User:
+            plain_attr = 5
+            annotated_attr: int = 7
+            bare_annotation: str
+
+        class Post:
+            username: so.Mapped[str] = so.mapped_column(sa.String(64))
+            body: so.Mapped[str] = so.mapped_column(sa.String(140))
+
+        @dataclass
+        class Point:
+            x: int
+            y: float = 0.0
+
+        class Config(BaseModel):
+            name: str
+            debug: bool = False
+        `)
+        	eng := astkit.NewEngine()
+        	tree, err := eng.Parse(context.Background(), astkit.LangPython, src)
+        	if err != nil {
+        		panic(err)
+        	}
+        	defer tree.Close()
+        	syms, _ := strategies.NewPython().Extract(tree, src)
+        	for _, s := range syms {
+        		fmt.Printf("%-16s %-28s parent=%s\n", s.Kind, s.QualifiedName, s.ParentName)
+        	}
+        }
+        EOF
+        go run /tmp/pyfield_check.go
+      at: 2026-08-30T13:41:53.217782Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && sed -n 541,640p strategies/extractors.go
+      at: 2026-08-30T13:42:21.557935Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && sed -n 640,700p strategies/extractors.go
+      at: 2026-08-30T13:42:30.984286Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/extractors.go"
+        src = open(p).read()
+        old = '''	case "expression_statement":
+        		// Module-level annotated assignment ("g: _AppCtxGlobalsProxy = ...").
+        		// Only at module scope (parentClass == ""): class-body attribute
+        		// types are already recovered by grove's class-attr inference, and
+        		// function-local annotations by its body-scoped local-type pass, so
+        		// indexing those would only add noise. Module globals are otherwise
+        		// entirely invisible — no symbol carries their declared type — which
+        		// blocks resolving calls through proxy globals (Flask's `g`, etc.).
+        		if parentClass != "" {
+        			return
+        		}
+        		for j := 0; j < int(n.ChildCount()); j++ {
+        			a := n.Child(j)
+        			if a == nil || a.Type() != "assignment" {
+        				continue
+        			}
+        			left := a.ChildByFieldName("left")
+        			typeNode := a.ChildByFieldName("type")
+        			if left == nil || typeNode == nil || left.Type() != "identifier" {
+        				continue
+        			}
+        			name := left.Content(src)
+        			raw := n.Content(src)
+        			*out = append(*out, astkit.Symbol{
+        				Kind:          astkit.KindVariable,
+        				Name:          name,
+        				QualifiedName: name,
+        				Signature:     name + ": " + typeNode.Content(src),
+        				Span:          internalast.NodeSpan(n),
+        				Exported:      !strings.HasPrefix(name, "_"),
+        				Body:          raw,
+        				Modifiers:     pythonModifiers(name),
+        			})
+        		}
+        	}'''
+        new = '''	case "expression_statement":
+        		// Module scope: annotated assignment ("g: _AppCtxGlobalsProxy = ...")
+        		// becomes a KindVariable — module globals are otherwise invisible,
+        		// blocking call resolution through proxy globals (Flask's `g`).
+        		//
+        		// Class body: EVERY attribute becomes a KindField (measured
+        		// 2026-08-30: Python classes previously indexed ZERO attributes of
+        		// any shape — plain `x = 5`, annotated `x: int = 5`, bare
+        		// `x: int` dataclass/pydantic fields, SQLAlchemy
+        		// `x: Mapped[str] = mapped_column(...)` — making field-level
+        		// change-impact impossible for Python and leaving the Jinja
+        		// template-binding edges with no field targets). The earlier
+        		// rationale ("grove's class-attr inference recovers the types")
+        		// conflated type inference with symbol existence: inference feeds
+        		// call RESOLUTION, but a symbol that is never indexed cannot be
+        		// queried, searched, or bound to. Function-local annotations remain
+        		// unindexed — pythonVisit only descends class bodies, not function
+        		// bodies, so locals never reach here.
+        		for j := 0; j < int(n.ChildCount()); j++ {
+        			a := n.Child(j)
+        			if a == nil || a.Type() != "assignment" {
+        				continue
+        			}
+        			left := a.ChildByFieldName("left")
+        			typeNode := a.ChildByFieldName("type")
+        			if left == nil || left.Type() != "identifier" {
+        				continue
+        			}
+        			if parentClass == "" && typeNode == nil {
+        				// Module scope keeps its original contract: only ANNOTATED
+        				// globals are indexed (a plain `x = 5` at module scope is
+        				// config/constant noise at scale).
+        				continue
+        			}
+        			name := left.Content(src)
+        			raw := n.Content(src)
+        			sig := name
+        			if typeNode != nil {
+        				sig = name + ": " + typeNode.Content(src)
+        			} else if right := a.ChildByFieldName("right"); right != nil {
+        				sig = internalast.FirstLine(raw)
+        			}
+        			kind := astkit.KindVariable
+        			qn := name
+        			if parentClass != "" {
+        				kind = astkit.KindField
+        				qn = qualJoin(parentClass, name)
+        			}
+        			*out = append(*out, astkit.Symbol{
+        				Kind:          kind,
+        				Name:          name,
+        				QualifiedName: qn,
+        				Signature:     sig,
+        				Span:          internalast.NodeSpan(n),
+        				Exported:      !strings.HasPrefix(name, "_"),
+        				Body:          raw,
+        				ParentName:    qualLast(parentClass),
+        				Modifiers:     pythonModifiers(name),
+        			})
+        		}
+        	}'''
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("class-attribute extraction added")
+        EOF
+        go build ./strategies/ && go run /tmp/pyfield_check.go
+      at: 2026-08-30T13:42:51.923417Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && cat >> strategies/strategies_test.go <<'EOF'
+
+        func TestPython_ClassAttributesAsFields(t *testing.T) {
+        	src := []byte(`
+        import sqlalchemy.orm as so
+
+        class User:
+            plain = 5
+            annotated: int = 7
+            bare: str
+            username: so.Mapped[str] = so.mapped_column()
+            _private: int = 0
+
+        g: SomeProxy = make_proxy()
+        plain_global = 3
+        `)
+        	eng := astkit.NewEngine()
+        	tree, err := eng.Parse(context.Background(), astkit.LangPython, src)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer tree.Close()
+        	syms, err := strategies.NewPython().Extract(tree, src)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	byQN := map[string]astkit.Symbol{}
+        	for _, s := range syms {
+        		byQN[s.QualifiedName] = s
+        	}
+        	for _, want := range []string{"User.plain", "User.annotated", "User.bare", "User.username", "User._private"} {
+        		s, ok := byQN[want]
+        		if !ok {
+        			t.Errorf("missing class attribute %s (have %v)", want, keysOf(byQN))
+        			continue
+        		}
+        		if s.Kind != astkit.KindField || s.ParentName != "User" {
+        			t.Errorf("%s: kind=%s parent=%s", want, s.Kind, s.ParentName)
+        		}
+        	}
+        	if byQN["User._private"].Exported {
+        		t.Error("_private should not be exported")
+        	}
+        	// Module contract preserved: annotated global indexed, plain global not.
+        	if _, ok := byQN["g"]; !ok {
+        		t.Error("annotated module global lost")
+        	}
+        	if _, ok := byQN["plain_global"]; ok {
+        		t.Error("plain module global should stay unindexed")
+        	}
+        }
+
+        func keysOf(m map[string]astkit.Symbol) []string {
+        	out := make([]string, 0, len(m))
+        	for k := range m {
+        		out = append(out, k)
+        	}
+        	return out
+        }
+        EOF
+        go test ./... 2>&1 | tail -3
+      at: 2026-08-30T13:43:10.65846Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/prism && go build -o bin/prism ./cmd/prism && P=$PWD/bin/prism
+        echo "== gin (Go — must be byte-identical) =="
+        cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && rm -rf $S/noop14 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop14 && rm -rf $S/noop14/.grove && $S/grove-mf index $S/noop14 >/dev/null 2>&1 && $S/grove-mf status $S/noop14 | grep -E "symbolCount|edgeCount"
+        echo "== django (Python — counts WILL grow, measuring by how much) =="
+        rm -rf $S/django-check && cp -R ~/.cache/prism-ci-corpus/django $S/django-check && rm -rf $S/django-check/.grove && $S/grove-mf index $S/django-check >/dev/null 2>&1 && $S/grove-mf status $S/django-check | grep -E "symbolCount|edgeCount"
+        echo "== microblog M2: User.username with template callers =="
+        cd ~/.cache/prism-research/routing-repos/miguelgrinberg_microblog && rm -rf .grove && $P index . >/dev/null 2>&1 && $P change-impact 'User.username' . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('completeness:', d.get('completeness'), '| heuristic:', d.get('hasHeuristicRefs'))
+        callers=[x.get('filePath') for x in d.get('callers') or []]
+        tmpl=[c for c in callers if c.endswith('.html')]
+        print('callers:', len(callers), '| template callers:', len(tmpl))
+        for c in sorted(tmpl)[:8]: print('  ', c)"
+      at: 2026-08-30T13:43:26.090618Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/grove && git worktree add -q $S/wt-g400 v0.40.0 2>/dev/null; (cd $S/wt-g400 && go build -o $S/grove-old400 ./cmd/grove) && git worktree remove -f $S/wt-g400
+        rm -rf $S/django-old && cp -R ~/.cache/prism-ci-corpus/django $S/django-old && rm -rf $S/django-old/.grove && $S/grove-old400 index $S/django-old >/dev/null 2>&1 && echo "OLD (v0.40.0):" && $S/grove-old400 status $S/django-old | grep -E "symbolCount|edgeCount"
+        echo "NEW: symbolCount 49897, edgeCount 344710 (from prior run)"
+      at: 2026-08-30T13:44:21.943854Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        for d in django-old django-check; do
+          echo "== $d =="
+          sqlite3 $S/$d/.grove/*.db "SELECT edge_type, COUNT(*) FROM edges GROUP BY edge_type ORDER BY 2 DESC" 2>/dev/null || sqlite3 $S/$d/.grove/graph.db "SELECT type, COUNT(*) FROM edges GROUP BY type ORDER BY 2 DESC" 2>/dev/null || ls $S/$d/.grove/
+        done
+      at: 2026-08-30T13:45:08.806138Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT COUNT(*) FROM edges e JOIN symbols s ON e.to_id = s.id
+        WHERE e.type='calls' AND s.kind='field'" 2>/dev/null
+        echo "--- sample of calls->field edges ---"
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT sf.qualified_name, '->', s.qualified_name FROM edges e
+        JOIN symbols s ON e.to_id = s.id JOIN symbols sf ON e.from_id = sf.id
+        WHERE e.type='calls' AND s.kind='field' LIMIT 8" 2>/dev/null || sqlite3 $S/django-check/.grove/*.db ".schema edges" 2>/dev/null | head -5
+      at: 2026-08-30T13:45:33.501089Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        sqlite3 $S/django-check/.grove/*.db ".schema symbols" 2>/dev/null | head -8
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT COUNT(*) FROM edges e JOIN symbols s ON e.to_node = s.id
+        WHERE e.edge_type='calls' AND s.kind='field'"
+        echo "--- samples ---"
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT sf.qualified_name || ' -> ' || s.qualified_name FROM edges e
+        JOIN symbols s ON e.to_node = s.id JOIN symbols sf ON e.from_node = sf.id
+        WHERE e.edge_type='calls' AND s.kind='field' LIMIT 8"
+      at: 2026-08-30T13:45:43.146467Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        echo "--- uses-type delta samples (new index) ---"
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT sf.qualified_name || ' [' || sf.kind || '] -> ' || s.qualified_name || ' [' || s.kind || ']' FROM edges e
+        JOIN symbols s ON e.to_node = s.id JOIN symbols sf ON e.from_node = sf.id
+        WHERE e.edge_type='uses-type' AND (s.kind='field' OR sf.kind='field') LIMIT 10"
+        echo "--- how many uses-type touch fields ---"
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT COUNT(*) FROM edges e JOIN symbols s ON e.to_node = s.id JOIN symbols sf ON e.from_node = sf.id
+        WHERE e.edge_type='uses-type' AND (s.kind='field' OR sf.kind='field')"
+        echo "--- template-edge fan-out distribution: how many fields share a name ---"
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT cnt, COUNT(*) FROM (SELECT name, COUNT(*) cnt FROM symbols WHERE kind='field' GROUP BY name) GROUP BY cnt ORDER BY cnt LIMIT 10"
+        sqlite3 $S/django-check/.grove/*.db "
+        SELECT name, COUNT(*) cnt FROM symbols WHERE kind='field' GROUP BY name ORDER BY cnt DESC LIMIT 5"
+      at: 2026-08-30T13:46:10.903148Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/edges.go"
+        src = open(p).read()
+        old = """		if symbol.Language == "cobol" || symbol.Language == "jcl" {
+        			// Mainframe signatures are lists of field names — matching them
+        			// against in-scope names manufactured millions of vague edges
+        			// (measured on a real estate: 2.08M, 63% of the whole index).
+        			// The mainframe builder emits the precise vocabulary instead
+        			// (reads/writes/redefines/binds-dataset).
+        			continue
+        		}"""
+        new = """		if symbol.Language == "cobol" || symbol.Language == "jcl" {
+        			// Mainframe signatures are lists of field names — matching them
+        			// against in-scope names manufactured millions of vague edges
+        			// (measured on a real estate: 2.08M, 63% of the whole index).
+        			// The mainframe builder emits the precise vocabulary instead
+        			// (reads/writes/redefines/binds-dataset).
+        			continue
+        		}
+        		if symbol.Language == "python" && symbol.Kind == core.KindField {
+        			// Python class attributes (new 2026-08-30): their signatures
+        			// are attribute declarations ("name: str = ..."), and token-
+        			// matching them re-created the mainframe failure at django
+        			// scale — +23.7k uses-type edges including gems like
+        			// ListFilter.title -> CSP.NONE (the token "None" matching a
+        			// field named NONE). Scoped to python fields only so every
+        			// pre-existing language's counts stay byte-identical.
+        			continue
+        		}"""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+
+        # Also exclude python fields as TARGETS of uses-type resolution.
+        import re
+        m = re.search(r'for _, target := range idx\.byName\[strings\.ToLower\(candidateName\)\] \{\n(\t+)if _, inScope := scope\[target\.FilePath\]; !inScope \{', src)
+        assert m, "target loop not found"
+        old2 = """			for _, target := range idx.byName[strings.ToLower(candidateName)] {
+        				if _, inScope := scope[target.FilePath]; !inScope {"""
+        new2 = """			for _, target := range idx.byName[strings.ToLower(candidateName)] {
+        				if target.Language == "python" && target.Kind == core.KindField {
+        					// Same scoping as the source-side skip above: 166
+        					// django fields named "model" as uses-type TARGETS of
+        					// every class signature containing that token is
+        					// noise, not typing evidence.
+        					continue
+        				}
+        				if _, inScope := scope[target.FilePath]; !inScope {"""
+        assert src.count(old2) == 1
+        open(p, "w").write(src.replace(old2, new2))
+        print("uses-type python-field exclusion applied")
+        EOF
+        python3 - <<'EOF'
+        p = "internal/graph/spring.go"
+        src = open(p).read()
+        old = """	scanExpr := func(templateID, expr string) {
+        		for _, ident := range reELIdent.FindAllString(expr, -1) {
+        			for _, a := range accessors[strings.ToLower(ident)] {
+        				add(templateID, a.sym.ID, 0.6)
+        			}
+        		}
+        	}"""
+        new = """	// Fan-out cap for the TEMPLATE pass: a property name matched by more
+        	// than maxTemplateFanout distinct accessors cannot be disambiguated
+        	// from a type-less template expression — each edge would be 1/N likely
+        	// wrong. Measured at django scale before this cap: 596 fields named
+        	// "name" x hundreds of admin templates = 30k+ spurious template-caller
+        	// edges (SimpleAdminConfig.name acquired 100+ template "callers").
+        	// Distribution says the cap keeps the useful mass: 2,728 of ~2,900
+        	// distinct django field names have <=5 candidates. Corpora with no
+        	// templates (gin, jackson) are untouched by construction. The JPA pass
+        	// is entity-scoped and needs no cap.
+        	const maxTemplateFanout = 5
+        	scanExpr := func(templateID, expr string) {
+        		for _, ident := range reELIdent.FindAllString(expr, -1) {
+        			cands := accessors[strings.ToLower(ident)]
+        			if len(cands) > maxTemplateFanout {
+        				continue
+        			}
+        			for _, a := range cands {
+        				add(templateID, a.sym.ID, 0.6)
+        			}
+        		}
+        	}"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("template fan-out cap applied")
+        EOF
+        go build ./... && go test ./internal/graph/ 2>&1 | tail -1
+      at: 2026-08-30T13:46:52.973428Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "suite: $?"
+        go build -o $S/grove-mf ./cmd/grove
+        echo "== gin =="
+        rm -rf $S/noop15 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop15 && rm -rf $S/noop15/.grove && $S/grove-mf index $S/noop15 >/dev/null 2>&1 && $S/grove-mf status $S/noop15 | grep -E "symbolCount|edgeCount"
+        echo "== django (capped) =="
+        rm -rf $S/django-check2 && cp -R ~/.cache/prism-ci-corpus/django $S/django-check2 && rm -rf $S/django-check2/.grove && $S/grove-mf index $S/django-check2 >/dev/null 2>&1 && $S/grove-mf status $S/django-check2 | grep -E "symbolCount|edgeCount"
+        sqlite3 $S/django-check2/.grove/*.db "SELECT edge_type, COUNT(*) FROM edges GROUP BY edge_type ORDER BY 2 DESC"
+        echo "== microblog M2 still works? =="
+        cd ~/Projects/provasign/prism && go build -o bin/prism ./cmd/prism && cd ~/.cache/prism-research/routing-repos/miguelgrinberg_microblog && rm -rf .grove && ~/Projects/provasign/prism/bin/prism index . >/dev/null 2>&1 && ~/Projects/provasign/prism/bin/prism change-impact 'User.username' . 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        tmpl=[x.get('filePath') for x in d.get('callers') or [] if x.get('filePath','').endswith('.html')]
+        print('template callers:', len(tmpl))"
+      at: 2026-08-30T13:47:05.633384Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && git add strategies/extractors.go strategies/strategies_test.go && git commit -q -m "$(cat <<'EOF'
+        python: class attributes indexed as fields
+
+        Measured 2026-08-30: Python classes indexed ZERO attributes of any
+        shape — plain `x = 5`, annotated `x: int = 5`, bare `x: int`
+        (dataclass/pydantic), SQLAlchemy `x: Mapped[str] = mapped_column()` —
+        making field-level change-impact impossible for Python and leaving
+        Jinja template-binding edges with no field targets (the microblog
+        User.username dead-end). The earlier skip rationale conflated grove's
+        class-attr TYPE inference (feeds call resolution) with symbol
+        existence. Module-scope contract unchanged: only annotated globals.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.8.0 -m "python class attributes as fields" && git push origin v0.8.0 2>&1 | tail -1
+        cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.8.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove module gate: $?"
+      at: 2026-08-30T13:48:02.671975Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/grove && git add internal/graph/edges.go internal/graph/spring.go go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        graph: python fields join the graph without drowning it
+
+        astkit v0.8.0 makes Python class attributes real symbols (fields).
+        Unfiltered, django gained +30,185 template calls edges (596 fields
+        named "name"; SimpleAdminConfig.name drew 100+ template callers) and
+        +23,734 garbage uses-type edges (ListFilter.title -> CSP.NONE). Two
+        scoped guards keep the coverage and kill the noise:
+
+        - buildUsesType skips python fields as source and target — attribute
+          annotations are type hints, not structural uses; measured back to
+          the exact pre-v0.8.0 count (11,091 on django).
+        - template-binding edges cap candidate fan-out at 5 — 2,728 of ~2,900
+          distinct django field names fall at or under it, and ambiguous names
+          above it produce only noise. django keeps +36 legitimate bindings;
+          microblog User.username keeps all 7 template callers.
+
+        Both guards are python-/template-scoped: gin and jackson index
+        byte-identical.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+        cd ~/Projects/provasign/prism && go build -o $S/prism-cand ./cmd/prism && $S/prism-cand --version
+        cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism $S/prism-cand 2>&1 | tail -15
+      at: 2026-08-30T13:50:17.069849Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research && grep -o '\-\-[a-z-]*' harness/ci_invariants.py | sort -u | head
+      at: 2026-08-30T13:50:44.189348Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism $S/prism-cand --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -15
+      at: 2026-08-30T13:50:48.82955Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/research && python3 harness/ab_gate.py --candidate $S/prism-cand 2>&1 | tail -20; echo "ab_gate exit: $?"
+      at: 2026-08-30T13:52:18.855073Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        which prism; prism --version 2>/dev/null
+        cd ~/Projects/provasign/research && python3 harness/ab_gate.py --baseline $(which prism) --candidate $S/prism-cand 2>&1 | tail -20; echo "ab_gate exit: ${PIPESTATUS[0]}"
+      at: 2026-08-30T13:52:29.21956Z
+      classified: other
+    - cmd: ls /opt/homebrew/bin/prism && /opt/homebrew/bin/prism --version
+      at: 2026-08-30T13:52:41.132917Z
+      classified: other
+    - cmd: brew upgrade provasign/shale/prism 2>&1 | tail -2; /opt/homebrew/bin/prism --version
+      at: 2026-08-30T13:52:53.925875Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/research/harness && python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate $S/prism-cand 2>&1 | tail -20; echo "ab_gate exit: ${PIPESTATUS[0]}"
+      at: 2026-08-30T13:52:59.01521Z
+      classified: other
+    - cmd: tail -25 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/b4cvmuhnh.output
+      at: 2026-08-30T14:12:01.1076Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && ls -t runs/gate/ 2>/dev/null | head -5; find runs -name "*checkhealth*" -newer /opt/homebrew/bin/prism 2>/dev/null | head -5
+      at: 2026-08-30T14:16:25.394534Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && for f in runs/ab-gate/grafana-checkhealth-impact.haiku.857fc269.json runs/ab-gate/grafana-checkhealth-impact.haiku.49f55711.json; do python3 -c "
+        import json
+        d=json.load(open('$f'))
+        print('$f'.split('.')[-2], {k:d.get(k) for k in ('recall','turns','cost_usd','total_tokens','error')})"; done
+        shasum -a 256 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/prism-cand /opt/homebrew/bin/prism | awk '{print substr($1,1,8), $2}'
+      at: 2026-08-30T14:16:31.676219Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "sha\|cache" ab_gate.py | head -15 && ls -lt runs/ab-gate/ | head -8
+      at: 2026-08-30T14:16:38.644076Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git diff --stat && git diff internal/cli/commands.go | head -60
+      at: 2026-08-30T14:16:48.418469Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git status --short && git log --oneline -3 && cd ~/Projects/provasign/grove && git status --short && git log --oneline -2 && cd ~/Projects/provasign/astkit && git status --short && git log --oneline -2
+      at: 2026-08-30T14:16:52.916724Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        G=$(ls -d ~/.cache/prism-ci-corpus/grafana* 2>/dev/null | head -1); echo "corpus: $G"
+        Q1=$(python3 -c "import json;print(json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/tasks/grafana-checkhealth-impact.json')).get('query') or '')" 2>/dev/null); echo "q: $Q1"
+        grep -o '"[A-Za-z]*\.[A-Za-z]*"' ~/Projects/provasign/research/harness/tasks/grafana-checkhealth-impact.json | head -3
+      at: 2026-08-30T14:17:11.111105Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/tasks/grafana-checkhealth-impact.json'))
+        print(json.dumps(d, indent=1)[:800])"
+      at: 2026-08-30T14:17:15.295125Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        R=~/gvg-corpus/wt-122750
+        cp -R $R $S/gf-base && cp -R $R $S/gf-cand
+        rm -rf $S/gf-base/.grove $S/gf-cand/.grove
+        /opt/homebrew/bin/prism index $S/gf-base >/dev/null 2>&1 && /opt/homebrew/bin/prism change-impact 'Handler.CheckHealth' $S/gf-base > $S/ci-base.json 2>&1
+        $S/prism-cand index $S/gf-cand >/dev/null 2>&1 && $S/prism-cand change-impact 'Handler.CheckHealth' $S/gf-cand > $S/ci-cand.json 2>&1
+        diff <(sed "s|$S/gf-base|R|g" $S/ci-base.json) <(sed "s|$S/gf-cand|R|g" $S/ci-cand.json) >/dev/null && echo "ENGINE OUTPUT IDENTICAL" || { echo "DIFFERS:"; diff <(sed "s|$S/gf-base|R|g" $S/ci-base.json) <(sed "s|$S/gf-cand|R|g" $S/ci-cand.json) | head -20; }
+      at: 2026-08-30T14:17:23.76536Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git push origin main 2>&1 | tail -1 && git tag -a v0.41.0 -m "python fields in the graph; uses-type + template fan-out guards" && git push origin v0.41.0 2>&1 | tail -1
+        cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.41.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism module gate: $?"
+      at: 2026-08-30T14:19:16.807403Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.41.0 / astkit v0.8.0 — python class attributes
+
+        Python class attributes (plain, annotated, bare-annotation, SQLAlchemy
+        mapped) are now indexed as fields, so field-level change-impact and
+        Jinja template-binding callers work for Python (microblog User.username:
+        hard error -> 7 template callers). Two precision guards keep django's
+        index clean: python fields excluded from uses-type, template-binding
+        fan-out capped at 5 candidates. gin/jackson byte-identical; ci_invariants
+        all held; ab_gate PASS (no recall drops); grafana engine output verified
+        byte-identical against v0.60.0.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.61.0 -m "python class attributes as fields" && git push origin v0.61.0 2>&1 | tail -1
+        sleep 90 && gh run list -R provasign/prism --limit 2 && gh workflow run refresh.yml -R provasign/homebrew-shale 2>&1
+      at: 2026-08-30T14:20:17.333128Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-30T12:10:22.055575Z
+redactions: 0

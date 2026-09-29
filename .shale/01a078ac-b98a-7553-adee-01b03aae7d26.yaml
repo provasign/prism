@@ -1,0 +1,652 @@
+shale_version: "0"
+id: 01a078ac-b98a-7553-adee-01b03aae7d26
+created_at: 2026-09-06T21:43:32.864375Z
+finalized_at: 2026-09-07T01:47:48.781394Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git status --short --branch && git remote -v && git log -1 --oneline
+      at: 2026-09-06T21:43:41.26463Z
+      classified: other
+    - cmd: git status --short --branch && git remote -v && git log -1 --oneline
+      at: 2026-09-06T21:43:41.415881Z
+      classified: other
+    - cmd: git status --short --branch && git remote -v && git log -1 --oneline
+      at: 2026-09-06T21:43:41.556622Z
+      classified: other
+    - cmd: git push -u origin fix-go-interface-impact
+      at: 2026-09-06T21:43:50.118604Z
+      classified: other
+    - cmd: git push -u origin accuracy-efficiency-evidence
+      at: 2026-09-06T21:43:52.012662Z
+      classified: other
+    - cmd: git push -u origin cand-search-context-clean
+      at: 2026-09-06T21:43:55.070446Z
+      classified: other
+    - cmd: prism search 'implementorsFor' 'dispatchTargets' 'EdgeOverrides' --scope text --path internal/graph --context 3 --format text
+      at: 2026-09-06T21:43:55.243997Z
+      classified: other
+    - cmd: prism lookup externalContract --file internal/graph/changeimpact.go --format text
+      at: 2026-09-06T21:44:08.097624Z
+      classified: other
+    - cmd: prism lookup typeDeclaresMember --file internal/graph/changeimpact.go --format text
+      at: 2026-09-06T21:44:08.257737Z
+      classified: other
+    - cmd: prism search 'goEmbeddedTypes' 'external' --scope text --path internal/graph/changeimpact_boundary_test.go --context 4 --format text
+      at: 2026-09-06T21:44:08.428207Z
+      classified: other
+    - cmd: prism lookup declaredSuperNames --file internal/graph/changeimpact.go --format text
+      at: 2026-09-06T21:44:12.9075Z
+      classified: other
+    - cmd: prism search 'jdkContract' 'CloseNotifier' --scope text --path internal/graph --context 2 --format text
+      at: 2026-09-06T21:44:13.077641Z
+      classified: other
+    - cmd: prism read internal/graph/changeimpact.go --offset 109 --limit 310 --format text
+      at: 2026-09-06T21:44:13.194384Z
+      classified: other
+    - cmd: prism lookup synthesizeMemberDecl --file internal/graph/changeimpact.go --format text
+      at: 2026-09-06T21:44:30.535282Z
+      classified: other
+    - cmd: prism search 'typeDeclaresMember(' --scope text --path internal/graph --context 1 --format text
+      at: 2026-09-06T21:44:30.660422Z
+      classified: other
+    - cmd: prism read internal/graph/graph.go --offset 190 --limit 55 --format text
+      at: 2026-09-06T21:44:30.774539Z
+      classified: other
+    - cmd: prism change-impact goInterfaceDispatch --format text
+      at: 2026-09-06T21:44:45.77476Z
+      classified: other
+    - cmd: prism change-impact typeDeclaresMember --format text
+      at: 2026-09-06T21:44:45.937721Z
+      classified: other
+    - cmd: gofmt -w internal/native/go.go internal/native/go_interfaces.go internal/graph/changeimpact.go internal/graph/missingimpl.go
+      at: 2026-09-06T21:46:27.13095Z
+      classified: other
+    - cmd: prism read pkg/grove/go_interface_impact_test.go --offset 1 --limit 170 --format text
+      at: 2026-09-06T21:46:33.647761Z
+      classified: other
+    - cmd: prism read internal/native/go_interfaces_test.go --offset 1 --limit 190 --format text
+      at: 2026-09-06T21:46:33.763356Z
+      classified: other
+    - cmd: gofmt -w pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T21:47:39.805489Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./internal/native ./internal/graph ./pkg/grove -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations' -count=1 -v
+      at: 2026-09-06T21:47:39.944724Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go test ./internal/native ./internal/graph ./pkg/grove -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations' -count=1 -v
+      at: 2026-09-06T21:48:38.473096Z
+      classified: test
+    - cmd: prism change-impact newGoInterfaceDispatch --format text
+      at: 2026-09-06T21:49:09.919642Z
+      classified: other
+    - cmd: prism change-impact goSemanticPackageEdges --format text
+      at: 2026-09-06T21:49:10.089162Z
+      classified: other
+    - cmd: gofmt -w internal/native/go.go internal/native/go_interfaces.go internal/native/go_interfaces_test.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T21:49:52.053308Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./internal/native ./internal/graph ./pkg/grove -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations' -count=1 -v
+      at: 2026-09-06T21:49:55.42546Z
+      classified: test
+    - cmd: gofmt -w internal/native/go_interfaces.go
+      at: 2026-09-06T21:50:01.676933Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./internal/native ./internal/graph ./pkg/grove -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations' -count=1 -v
+      at: 2026-09-06T21:50:06.21346Z
+      classified: test
+    - cmd: gofmt -w internal/native/go.go internal/native/go_interfaces.go internal/native/go_interfaces_test.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T21:50:46.964586Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./internal/native ./internal/graph ./pkg/grove -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations' -count=1
+      at: 2026-09-06T21:50:51.593911Z
+      classified: test
+    - cmd: prism verify --base ff9adefb --format text
+      at: 2026-09-06T21:50:52.871767Z
+      classified: other
+    - cmd: prism verify --base ff9adefb --format text
+      at: 2026-09-06T21:52:05.067534Z
+      classified: other
+    - cmd: prism verify --help
+      at: 2026-09-06T21:52:12.594009Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./... -race -count=1
+      at: 2026-09-06T21:52:12.631205Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go build -modfile=/private/tmp/prism-go-interface.mod -o /private/tmp/prism-go-interface-family-candidate ./cmd/prism
+      at: 2026-09-06T21:52:28.14052Z
+      classified: build
+    - cmd: /private/tmp/prism-go-interface-family-candidate index /private/tmp/prism-go-dispatch-1we3atkj/after
+      at: 2026-09-06T21:52:36.703735Z
+      classified: other
+    - cmd: /private/tmp/prism-go-interface-family-candidate change-impact responseWriter.CloseNotify --file response_writer.go --format json
+      at: 2026-09-06T21:52:42.092094Z
+      classified: other
+    - cmd: /private/tmp/prism-go-interface-family-candidate change-impact ResponseWriter.CloseNotify --file response_writer.go --format json
+      at: 2026-09-06T21:52:42.202037Z
+      classified: other
+    - cmd: /private/tmp/prism-go-interface-family-candidate change-impact responseWriter.CloseNotify --file response_writer.go --format json
+      at: 2026-09-06T21:53:19.219155Z
+      classified: other
+    - cmd: /private/tmp/prism-go-interface-family-candidate change-impact ResponseWriter.CloseNotify --file response_writer.go --format json
+      at: 2026-09-06T21:53:19.348689Z
+      classified: other
+    - cmd: gofmt -w pkg/grove/go_interface_impact_test.go && env GOFLAGS= GOWORK=off go test ./pkg/grove -run TestGoInterfaceImpactEmbeddedExternal -count=1 -v
+      at: 2026-09-06T21:53:46.834528Z
+      classified: test
+    - cmd: sed -n '45,120p' pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T21:53:50.861286Z
+      classified: other
+    - cmd: gofmt -w pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T21:53:57.186523Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove -run TestGoInterfaceImpactEmbeddedExternal -count=1 -v
+      at: 2026-09-06T21:54:01.044508Z
+      classified: test
+    - cmd: gofmt -w pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T21:54:16.609293Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove -run TestGoInterfaceImpactEmbeddedExternal -count=1 -v
+      at: 2026-09-06T21:54:20.157261Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go test -modfile=/private/tmp/prism-go-interface.mod ./... -race -count=1
+      at: 2026-09-06T21:54:32.185328Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go build -modfile=/private/tmp/prism-go-interface.mod -o /private/tmp/prism-go-interface-family-candidate ./cmd/prism
+      at: 2026-09-06T21:54:32.316889Z
+      classified: build
+    - cmd: env GOFLAGS= GOWORK=off go build -modfile=/private/tmp/prism-go-interface.mod -o /private/tmp/prism-go-interface-family-candidate ./cmd/prism
+      at: 2026-09-06T21:55:31.986589Z
+      classified: build
+    - cmd: python3 -B harness/runs/prism-go-interface-family-2026-09-06/probe.py
+      at: 2026-09-06T21:58:18.644528Z
+      classified: other
+    - cmd: python3 -I -B harness/runs/prism-go-interface-family-2026-09-06/verify.py
+      at: 2026-09-06T21:58:29.178608Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-06T21:58:34.291321Z
+      classified: other
+    - cmd: prism verify --base ff9adefb --format text
+      at: 2026-09-06T21:58:35.054284Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./... -race -count=1
+      at: 2026-09-06T21:58:47.35662Z
+      classified: test
+    - cmd: git diff --stat ff9adefb
+      at: 2026-09-06T21:59:00.157901Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-06T21:59:00.282315Z
+      classified: other
+    - cmd: git diff ff9adefb -- internal/native/go_interfaces.go internal/native/go.go internal/graph/changeimpact.go internal/graph/missingimpl.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T21:59:02.721309Z
+      classified: other
+    - cmd: gofmt -w internal/native/go_interfaces.go internal/graph/changeimpact.go
+      at: 2026-09-06T21:59:14.671636Z
+      classified: other
+    - cmd: mv harness/runs/prism-go-interface-family-2026-09-06/results harness/runs/prism-go-interface-family-2026-09-06/pre-refactor-pass
+      at: 2026-09-06T21:59:27.370038Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go build -modfile=/private/tmp/prism-go-interface.mod -o /private/tmp/prism-go-interface-family-candidate ./cmd/prism
+      at: 2026-09-06T21:59:31.135568Z
+      classified: build
+    - cmd: python3 -B harness/runs/prism-go-interface-family-2026-09-06/probe.py
+      at: 2026-09-06T21:59:37.972657Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./... -race -count=1
+      at: 2026-09-06T21:59:38.025144Z
+      classified: test
+    - cmd: python3 -I -B harness/runs/prism-go-interface-family-2026-09-06/verify.py
+      at: 2026-09-06T21:59:51.027456Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-06T21:59:51.147921Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test -modfile=/private/tmp/prism-go-interface.mod ./... -race -count=1
+      at: 2026-09-06T22:00:16.705387Z
+      classified: test
+    - cmd: git add internal/graph/changeimpact.go internal/graph/missingimpl.go internal/native/go.go internal/native/go_interfaces.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:00:22.112799Z
+      classified: other
+    - cmd: git diff --cached --check && git diff --cached --stat
+      at: 2026-09-06T22:00:22.253517Z
+      classified: other
+    - cmd: 'git commit -m ''graph: materialize inherited Go interface contracts'''
+      at: 2026-09-06T22:00:22.385759Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-09-06T22:00:28.548549Z
+      classified: other
+    - cmd: python3 -I -B -c 'import hashlib,json,pathlib,subprocess; m=json.loads(pathlib.Path("harness/runs/prism-go-interface-family-2026-09-06/results/manifest.json").read_text()); root="/private/tmp/grove-go-interface-impact"; checks={p:hashlib.sha256(subprocess.check_output(["git","-C",root,"show","HEAD:"+p])).hexdigest()==h for p,h in m["grove_source_sha256"].items()}; print(checks); assert all(checks.values())'
+      at: 2026-09-06T22:00:28.78243Z
+      classified: other
+    - cmd: git add harness/runs/prism-go-interface-family-2026-09-06
+      at: 2026-09-06T22:00:53.248095Z
+      classified: other
+    - cmd: git diff --cached --check -- . ':(exclude)**/binary-build.txt' && git diff --cached --stat
+      at: 2026-09-06T22:00:53.398851Z
+      classified: other
+    - cmd: 'git commit -m ''research: preserve Go interface family replay'''
+      at: 2026-09-06T22:00:53.550117Z
+      classified: other
+    - cmd: git push
+      at: 2026-09-06T22:01:00.204068Z
+      classified: other
+    - cmd: git push
+      at: 2026-09-06T22:01:00.204051Z
+      classified: other
+    - cmd: prism read docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md --offset 540 --limit 100 --format text
+      at: 2026-09-06T22:01:06.728Z
+      classified: other
+    - cmd: prism read docs/accuracy-efficiency-candidate/README.md --offset 1 --limit 100 --format text
+      at: 2026-09-06T22:01:06.845988Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-06T22:01:33.849896Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-09-06T22:01:36.318636Z
+      classified: other
+    - cmd: |-
+        python3 -I -B -c 'from pathlib import Path; import re,subprocess; root=Path.cwd(); files=[root/"docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md",*sorted((root/"docs/accuracy-efficiency-candidate").rglob("*.md"))]; local=remote=0; errors=[]
+        for p in files:
+         for url in re.findall(r"\]\(([^)]+)\)",p.read_text()):
+          if url.startswith("https://github.com/provasign/research/"):
+           parts=url.split("/"); commit=parts[6]; path="/".join(parts[7:]); result=subprocess.run(["git","-C","/private/tmp/prism-research-evidence","cat-file","-e",commit+":"+path],capture_output=True); remote+=1
+           if result.returncode: errors.append((str(p),url))
+          elif not url.startswith(("https://","http://","#")):
+           local+=1
+           if not (p.parent/url.split("#")[0]).exists(): errors.append((str(p),url))
+        print({"local_links":local,"pinned_research_links":remote,"errors":errors}); assert not errors'
+      at: 2026-09-06T22:02:00.832772Z
+      classified: other
+    - cmd: git add docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md docs/accuracy-efficiency-candidate/README.md docs/accuracy-efficiency-candidate/go-interface-family-2026-09-06/REPORT.md
+      at: 2026-09-06T22:02:00.943611Z
+      classified: other
+    - cmd: git diff --cached --check && git diff --cached --stat
+      at: 2026-09-06T22:02:01.079378Z
+      classified: other
+    - cmd: 'git commit -m ''docs: record inherited Go interface family recovery'''
+      at: 2026-09-06T22:02:06.025533Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-06T22:02:06.14319Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-06T22:02:06.348872Z
+      classified: other
+    - cmd: git push
+      at: 2026-09-06T22:02:14.640128Z
+      classified: other
+    - cmd: prism change-impact goSemanticEdges --format text
+      at: 2026-09-06T22:02:42.560427Z
+      classified: other
+    - cmd: prism change-impact goSemanticPackageEdges --format text
+      at: 2026-09-06T22:02:42.730973Z
+      classified: other
+    - cmd: prism change-impact newGoInterfaceDispatch --format text
+      at: 2026-09-06T22:02:42.89857Z
+      classified: other
+    - cmd: gofmt -w pkg/grove/go_interface_impact_test.go && env GOFLAGS= GOWORK=off go test ./pkg/grove -run TestGoInterfaceImpactCrossPackageContract -count=1 -v
+      at: 2026-09-06T22:02:59.082586Z
+      classified: test
+    - cmd: gofmt -w internal/native/go.go internal/native/go_importer.go internal/native/go_interfaces.go internal/native/go_interfaces_test.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:05:01.782512Z
+      classified: other
+    - cmd: prism search 'importer.' --scope text --path internal/native/go.go --context 1 --format text
+      at: 2026-09-06T22:05:06.639503Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native -run 'TestGoInterfaceImpactCrossPackageContract|TestGoInterface' -count=1 -v
+      at: 2026-09-06T22:05:06.755088Z
+      classified: test
+    - cmd: gofmt -w internal/native/go.go
+      at: 2026-09-06T22:05:14.600821Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native -run 'TestGoInterfaceImpactCrossPackageContract|TestGoInterface' -count=1 -v
+      at: 2026-09-06T22:06:09.009956Z
+      classified: test
+    - cmd: prism change-impact goProjectImporter.load --format text
+      at: 2026-09-06T22:06:31.290704Z
+      classified: other
+    - cmd: prism change-impact goInterfaceDispatch.contractEdges --format text
+      at: 2026-09-06T22:06:31.463652Z
+      classified: other
+    - cmd: gofmt -w internal/native/go_importer.go internal/native/go_interfaces.go internal/graph/changeimpact.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:06:44.491881Z
+      classified: other
+    - cmd: gofmt -w pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:07:05.149021Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/graph -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations' -count=1 -v
+      at: 2026-09-06T22:07:05.286263Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/graph -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations' -count=1 -v
+      at: 2026-09-06T22:12:49.285811Z
+      classified: test
+    - cmd: prism search 'carry' 'Partial' 'blob-SHA' 'endpoints' --scope text --path internal --context 3 --format text
+      at: 2026-09-06T22:13:00.827604Z
+      classified: other
+    - cmd: prism lookup carriedPartialEdges --file internal/index/indexer.go --format text
+      at: 2026-09-06T22:13:05.362271Z
+      classified: other
+    - cmd: prism lookup carriedNativeEdges --file internal/index/indexer.go --format text
+      at: 2026-09-06T22:13:14.060123Z
+      classified: other
+    - cmd: prism change-impact carriedPartialEdges --format text
+      at: 2026-09-06T22:13:14.388081Z
+      classified: other
+    - cmd: prism change-impact carriedNativeEdges --format text
+      at: 2026-09-06T22:13:14.559093Z
+      classified: other
+    - cmd: prism search 'carriedPartialEdges' 'carriedNativeEdges' --scope text --path internal/index --context 3 --format text
+      at: 2026-09-06T22:13:18.743383Z
+      classified: other
+    - cmd: prism search 'SkippedLanguages' 'PartialCarry' 'carry forward' --scope text --path internal/index --context 2 --format text
+      at: 2026-09-06T22:13:23.323232Z
+      classified: other
+    - cmd: gofmt -w internal/index/indexer.go internal/index/nativecarry_test.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:14:33.263321Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/graph ./internal/index -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations|TestNativeEdgeCarry' -count=1 -v
+      at: 2026-09-06T22:14:41.769188Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/graph ./internal/index -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations|TestNativeEdgeCarry' -count=1 -v
+      at: 2026-09-06T22:16:40.800648Z
+      classified: test
+    - cmd: prism verify --base 184f8a9e --format text
+      at: 2026-09-06T22:16:49.018993Z
+      classified: other
+    - cmd: prism verify --base 184f8a9e --format text
+      at: 2026-09-06T22:16:56.962227Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./... -race -count=1
+      at: 2026-09-06T22:17:05.049004Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go test -modfile=/private/tmp/prism-go-interface.mod ./... -race -count=1
+      at: 2026-09-06T22:17:43.837744Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go build -modfile=/private/tmp/prism-go-interface.mod -o /private/tmp/prism-go-cross-package-candidate ./cmd/prism
+      at: 2026-09-06T22:18:05.069407Z
+      classified: build
+    - cmd: python3 -B /private/tmp/prism-cross-index-probe.py
+      at: 2026-09-06T22:18:09.433807Z
+      classified: other
+    - cmd: prism change-impact goProjectImporter.preloadImports --format text
+      at: 2026-09-06T22:18:23.866945Z
+      classified: other
+    - cmd: gofmt -w internal/native/go_importer.go internal/native/go.go
+      at: 2026-09-06T22:18:32.519137Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/index -run 'TestGoInterface|TestNativeEdgeCarry' -count=1
+      at: 2026-09-06T22:18:36.714231Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go build -modfile=/private/tmp/prism-go-interface.mod -o /private/tmp/prism-go-cross-package-candidate ./cmd/prism
+      at: 2026-09-06T22:18:41.365994Z
+      classified: build
+    - cmd: env GOFLAGS= GOWORK=off go build -modfile=/private/tmp/prism-go-interface.mod -o /private/tmp/prism-go-cross-package-candidate ./cmd/prism
+      at: 2026-09-06T22:19:35.044025Z
+      classified: build
+    - cmd: git status --short --branch
+      at: 2026-09-06T22:20:29.90864Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command
+      at: 2026-09-06T22:20:29.937155Z
+      classified: other
+    - cmd: git diff --stat && git diff -- internal/native/go_importer.go internal/native/go.go internal/native/go_interfaces.go internal/index/indexer.go internal/index/nativecarry_test.go pkg/grove/go_interface_impact_test.go internal/graph/changeimpact.go
+      at: 2026-09-06T22:20:29.936011Z
+      classified: other
+    - cmd: sed -n '1,260p' internal/native/go_importer.go
+      at: 2026-09-06T22:20:35.784657Z
+      classified: other
+    - cmd: sed -n '1,260p' /private/tmp/prism-cross-index-probe.py
+      at: 2026-09-06T22:20:35.79085Z
+      classified: other
+    - cmd: git diff -- internal/native/go_interfaces_test.go && sed -n '1,280p' internal/index/nativecarry_test.go
+      at: 2026-09-06T22:20:35.820079Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-cross-index-probe.py
+      at: 2026-09-06T22:20:41.81946Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/graph ./internal/index -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations|TestNativeEdgeCarry' -count=1
+      at: 2026-09-06T22:20:55.515025Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off GOCACHE=/private/tmp/grove-go-cache HOME=/private/tmp/grove-go-home go test ./pkg/grove ./internal/native ./internal/graph ./internal/index -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations|TestNativeEdgeCarry' -count=1
+      at: 2026-09-06T22:21:06.74733Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/graph ./internal/index -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations|TestNativeEdgeCarry' -count=1
+      at: 2026-09-06T22:21:58.738427Z
+      classified: test
+    - cmd: python3 -B /private/tmp/prism-cross-index-probe.py
+      at: 2026-09-06T22:22:37.215695Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./... -race -count=1
+      at: 2026-09-06T22:22:53.047181Z
+      classified: test
+    - cmd: git status --short --branch && git log -3 --oneline
+      at: 2026-09-06T22:22:57.26327Z
+      classified: other
+    - cmd: git status --short --branch && git log -3 --oneline
+      at: 2026-09-06T22:22:57.325221Z
+      classified: other
+    - cmd: find /private/tmp -maxdepth 2 -name '*.mod' -o -name 'go.*.mod'
+      at: 2026-09-06T22:22:57.337613Z
+      classified: other
+    - cmd: sed -n '1,220p' /private/tmp/prism-go-interface.mod
+      at: 2026-09-06T22:23:00.842683Z
+      classified: other
+    - cmd: env GOWORK=off GOFLAGS=-modfile=/private/tmp/prism-go-interface.mod go test ./... -race -count=1
+      at: 2026-09-06T22:24:01.291494Z
+      classified: test
+    - cmd: prism verify --base 184f8a9e --format text
+      at: 2026-09-06T22:24:04.022981Z
+      classified: other
+    - cmd: gofmt -w internal/graph/changeimpact.go internal/index/indexer.go internal/index/nativecarry_test.go internal/native/go.go internal/native/go_importer.go internal/native/go_interfaces.go internal/native/go_interfaces_test.go pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:24:08.660338Z
+      classified: other
+    - cmd: git diff -- pkg/grove/go_interface_impact_test.go internal/native/go_interfaces_test.go && sed -n '1,260p' internal/native/go_importer.go && sed -n '1,240p' internal/index/nativecarry_test.go
+      at: 2026-09-06T22:24:13.090714Z
+      classified: other
+    - cmd: git diff --check && git status --short
+      at: 2026-09-06T22:24:13.105952Z
+      classified: other
+    - cmd: git diff --numstat && git diff -- internal/native/go_importer.go internal/native/go.go internal/native/go_interfaces.go internal/graph/changeimpact.go internal/index/indexer.go
+      at: 2026-09-06T22:24:13.104277Z
+      classified: other
+    - cmd: rg -n 'type goListPackage|CgoFiles|CompiledGoFiles' internal/native
+      at: 2026-09-06T22:24:29.093058Z
+      classified: other
+    - cmd: sed -n '32,75p' internal/native/go.go && sed -n '360,490p' internal/native/go.go
+      at: 2026-09-06T22:24:32.444389Z
+      classified: other
+    - cmd: sed -n '1,240p' harness/runs/prism-go-interface-family-2026-09-06/README.md
+      at: 2026-09-06T22:24:38.975399Z
+      classified: other
+    - cmd: find harness/runs/prism-go-interface-family-2026-09-06 -maxdepth 2 -type f -print | sort
+      at: 2026-09-06T22:24:38.985983Z
+      classified: other
+    - cmd: find docs -maxdepth 2 -type f | sort | tail -40
+      at: 2026-09-06T22:24:38.992334Z
+      classified: other
+    - cmd: sed -n '1,320p' harness/runs/prism-go-interface-family-2026-09-06/probe.py && sed -n '1,260p' harness/runs/prism-go-interface-family-2026-09-06/verify.py
+      at: 2026-09-06T22:24:43.192298Z
+      classified: other
+    - cmd: gofmt -w internal/native/go_importer.go internal/native/go.go && git diff --check
+      at: 2026-09-06T22:24:57.065147Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove ./internal/native ./internal/graph ./internal/index -run 'TestGoInterface|TestChangeImpact|TestMissingImplementations|TestNativeEdgeCarry' -count=1
+      at: 2026-09-06T22:25:04.169792Z
+      classified: test
+    - cmd: prism verify --base 184f8a9e --format text
+      at: 2026-09-06T22:25:10.268207Z
+      classified: other
+    - cmd: 'git add internal/graph/changeimpact.go internal/index/indexer.go internal/index/nativecarry_test.go internal/native/go.go internal/native/go_importer.go internal/native/go_interfaces.go internal/native/go_interfaces_test.go pkg/grove/go_interface_impact_test.go && git commit -m "fix: resolve imported Go interface contracts"'
+      at: 2026-09-06T22:25:20.113657Z
+      classified: other
+    - cmd: git push
+      at: 2026-09-06T22:25:26.878517Z
+      classified: other
+    - cmd: env GOWORK=off GOFLAGS=-modfile=/private/tmp/prism-go-interface.mod go build -o /private/tmp/prism-go-cross-package-candidate ./cmd/prism
+      at: 2026-09-06T22:25:34.496603Z
+      classified: build
+    - cmd: git worktree list --porcelain
+      at: 2026-09-06T22:25:39.896721Z
+      classified: other
+    - cmd: git rev-parse HEAD && git status --short --branch
+      at: 2026-09-06T22:25:39.918329Z
+      classified: other
+    - cmd: git rev-parse HEAD && git status --short --branch
+      at: 2026-09-06T22:25:39.923458Z
+      classified: other
+    - cmd: test ! -e /private/tmp/grove-interface-before-184 && mkdir /private/tmp/grove-interface-before-184 && git archive --format=tar --output=/private/tmp/grove-interface-before-184.tar 184f8a9e && tar -xf /private/tmp/grove-interface-before-184.tar -C /private/tmp/grove-interface-before-184
+      at: 2026-09-06T22:25:47.663578Z
+      classified: other
+    - cmd: env GOWORK=off GOFLAGS=-modfile=/private/tmp/prism-go-interface-before.mod go build -o /private/tmp/prism-go-cross-before ./cmd/prism
+      at: 2026-09-06T22:26:23.71518Z
+      classified: build
+    - cmd: env GOWORK=off GOFLAGS=-modfile=/private/tmp/prism-go-interface.mod go build -o /private/tmp/prism-go-cross-after ./cmd/prism
+      at: 2026-09-06T22:26:26.072353Z
+      classified: build
+    - cmd: ls -l /private/tmp/prism-go-interface.sum /private/tmp/prism-go-interface-before.sum 2>/dev/null || true
+      at: 2026-09-06T22:26:30.490936Z
+      classified: other
+    - cmd: cp /private/tmp/prism-go-interface.sum /private/tmp/prism-go-interface-before.sum && env GOWORK=off GOFLAGS=-modfile=/private/tmp/prism-go-interface-before.mod GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build go build -o /private/tmp/prism-go-cross-before ./cmd/prism
+      at: 2026-09-06T22:26:45.057952Z
+      classified: build
+    - cmd: python3 -B harness/runs/prism-go-cross-package-2026-09-06/probe.py
+      at: 2026-09-06T22:27:55.835096Z
+      classified: other
+    - cmd: cat harness/runs/prism-go-cross-package-2026-09-06/results/before/impact.stderr.txt; cat harness/runs/prism-go-cross-package-2026-09-06/results/before/impact.payload.json; cat harness/runs/prism-go-cross-package-2026-09-06/results/results.json
+      at: 2026-09-06T22:27:59.270141Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-06T22:27:59.319762Z
+      classified: other
+    - cmd: rm -rf harness/runs/prism-go-cross-package-2026-09-06/results && python3 -B harness/runs/prism-go-cross-package-2026-09-06/probe.py
+      at: 2026-09-06T22:28:23.558694Z
+      classified: other
+    - cmd: cat harness/runs/prism-go-cross-package-2026-09-06/results/before/impact.stderr.txt; cat harness/runs/prism-go-cross-package-2026-09-06/results/before/fixture-index.stdout.txt; cat harness/runs/prism-go-cross-package-2026-09-06/results/before/fixture-index.stderr.txt
+      at: 2026-09-06T22:28:27.136686Z
+      classified: other
+    - cmd: rm -rf harness/runs/prism-go-cross-package-2026-09-06/results && python3 -B harness/runs/prism-go-cross-package-2026-09-06/probe.py
+      at: 2026-09-06T22:28:44.789602Z
+      classified: other
+    - cmd: cat harness/runs/prism-go-cross-package-2026-09-06/results/before/impact.stderr.txt; find /private/tmp/prism-go-cross-va4xn1pw -maxdepth 5 -type f | sort | head -30
+      at: 2026-09-06T22:28:47.500557Z
+      classified: other
+    - cmd: rm -rf harness/runs/prism-go-cross-package-2026-09-06/results && python3 -B harness/runs/prism-go-cross-package-2026-09-06/probe.py
+      at: 2026-09-06T22:29:28.379999Z
+      classified: other
+    - cmd: cat harness/runs/prism-go-cross-package-2026-09-06/results/after/impact.payload.json && cat harness/runs/prism-go-cross-package-2026-09-06/results/before/impact.stderr.txt
+      at: 2026-09-06T22:29:35.917118Z
+      classified: other
+    - cmd: cat harness/runs/prism-go-cross-package-2026-09-06/results/manifest.json && cat harness/runs/prism-go-cross-package-2026-09-06/results/timings.json
+      at: 2026-09-06T22:29:35.93202Z
+      classified: other
+    - cmd: git status --short && find harness/runs/prism-go-cross-package-2026-09-06 -type f | wc -l
+      at: 2026-09-06T22:29:36.002645Z
+      classified: other
+    - cmd: python3 -B harness/runs/prism-go-cross-package-2026-09-06/verify.py
+      at: 2026-09-06T22:30:37.244791Z
+      classified: other
+    - cmd: du -sh harness/runs/prism-go-cross-package-2026-09-06 && find harness/runs/prism-go-cross-package-2026-09-06 -type f | sort
+      at: 2026-09-06T22:30:49.588287Z
+      classified: other
+    - cmd: python3 -m py_compile harness/runs/prism-go-cross-package-2026-09-06/probe.py harness/runs/prism-go-cross-package-2026-09-06/verify.py
+      at: 2026-09-06T22:30:49.649035Z
+      classified: other
+    - cmd: git diff --check && git status --short && git diff --stat
+      at: 2026-09-06T22:30:49.670415Z
+      classified: other
+    - cmd: find harness/runs/prism-go-cross-package-2026-09-06 -type d -name __pycache__ -print && git status --short
+      at: 2026-09-06T22:30:54.818184Z
+      classified: other
+    - cmd: 'git add harness/runs/prism-go-cross-package-2026-09-06/PROTOCOL.md harness/runs/prism-go-cross-package-2026-09-06/README.md harness/runs/prism-go-cross-package-2026-09-06/probe.py harness/runs/prism-go-cross-package-2026-09-06/verify.py harness/runs/prism-go-cross-package-2026-09-06/results && git commit -m "research: preserve imported Go interface replay"'
+      at: 2026-09-06T22:31:03.029396Z
+      classified: other
+    - cmd: git push
+      at: 2026-09-06T22:31:08.075034Z
+      classified: other
+    - cmd: sed -n '1,280p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      at: 2026-09-06T22:31:21.189011Z
+      classified: other
+    - cmd: sed -n '1,260p' docs/accuracy-efficiency-candidate/README.md
+      at: 2026-09-06T22:31:21.191712Z
+      classified: other
+    - cmd: git show --stat --oneline 5bdc73d && git show --format=fuller --no-ext-diff 5bdc73d -- docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md docs/accuracy-efficiency-candidate/README.md
+      at: 2026-09-06T22:31:21.235011Z
+      classified: other
+    - cmd: sed -n '500,680p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md && sed -n '1,220p' docs/accuracy-efficiency-candidate/go-interface-family-2026-09-06/REPORT.md
+      at: 2026-09-06T22:31:26.113349Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-09-06T22:32:41.649809Z
+      classified: other
+    - cmd: rg -n '0059bb2|8dad4547|cross-package|Imported Go' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md docs/accuracy-efficiency-candidate
+      at: 2026-09-06T22:32:41.662885Z
+      classified: other
+    - cmd: git diff --check && git status --short && git diff --stat
+      at: 2026-09-06T22:32:41.702386Z
+      classified: other
+    - cmd: test -f docs/accuracy-efficiency-candidate/go-interface-cross-package-2026-09-06/REPORT.md && test -f docs/accuracy-efficiency-candidate/go-interface-family-2026-09-06/REPORT.md
+      at: 2026-09-06T22:32:57.749145Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-06T22:32:57.75778Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-06T22:32:58.067933Z
+      classified: other
+    - cmd: 'git add docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md docs/accuracy-efficiency-candidate/README.md docs/accuracy-efficiency-candidate/go-interface-cross-package-2026-09-06/REPORT.md && git commit -m "docs: record imported Go interface recovery"'
+      at: 2026-09-06T22:33:05.229932Z
+      classified: other
+    - cmd: git push
+      at: 2026-09-06T22:33:09.955265Z
+      classified: other
+    - cmd: prism query "locate the Go interface dispatch logic that rejects or skips generic interfaces, type parameters, and instantiated named types" --terms TypeParam --format text
+      at: 2026-09-06T22:33:17.834847Z
+      classified: other
+    - cmd: rg -n -C 6 'goDispatchTypeValid|TypeParam|TypeArgs|TypeParams' internal/native pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:33:26.010269Z
+      classified: other
+    - cmd: sed -n '1,285p' internal/native/go_interfaces.go
+      at: 2026-09-06T22:33:30.861158Z
+      classified: other
+    - cmd: sed -n '474,620p' internal/native/go.go && rg -n 'contractEdges|interfaceAnchor|targets\(' internal/native/go.go
+      at: 2026-09-06T22:33:47.348384Z
+      classified: other
+    - cmd: sed -n '1,180p' pkg/grove/go_interface_impact_test.go
+      at: 2026-09-06T22:34:14.607306Z
+      classified: other
+    - cmd: env GOFLAGS= GOWORK=off go test ./pkg/grove -run 'TestGoInterfaceImpactEmbeddedExternal/Sink.Put' -count=1 -v
+      at: 2026-09-06T22:34:27.390713Z
+      classified: test
+    - cmd: env GOFLAGS= GOWORK=off GOCACHE=/Users/tapabratapal/Projects/provasign/prism/.cache/go-build go test ./pkg/grove -run 'TestGoInterfaceImpactEmbeddedExternal/Sink.Put' -count=1 -v
+      at: 2026-09-06T22:34:39.006639Z
+      classified: test
+    - cmd: git status --short --branch && git log -1 --oneline
+      at: 2026-09-06T22:35:10.367531Z
+      classified: other
+    - cmd: git status --short --branch && git log -1 --oneline
+      at: 2026-09-06T22:35:10.378004Z
+      classified: other
+    - cmd: git status --short --branch && git log -1 --oneline
+      at: 2026-09-06T22:35:10.405498Z
+      classified: other
+    - cmd: sed -n '1,280p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_PROPOSAL.md
+      at: 2026-09-06T22:59:57.746997Z
+      classified: other
+    - cmd: sed -n '600,650p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      at: 2026-09-06T22:59:57.747892Z
+      classified: other
+    - cmd: sed -n '250,380p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      at: 2026-09-06T22:59:57.750372Z
+      classified: other
+notes: []
+redactions: 0

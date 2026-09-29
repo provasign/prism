@@ -1,0 +1,410 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c21
+created_at: 2026-08-31T17:59:04.82547Z
+finalized_at: 2026-08-31T18:58:49.324127Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/ranking/budget.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-31T17:59:47.464045Z
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add internal/mcp/delivery.go && git commit -q -m "$(cat <<'EOF'
+        delivery: bound the whole-file escape; omission markers name their prism_read
+
+        Investigating prism_query's token footprint (76% of all prism content
+        delivered today, avg 23.5k chars/call): the coverage-triggered
+        whole-file escape had no size bound — 0.8 coverage on a 951-line file
+        delivered all 951 lines verbatim, 5 identical times (werkzeug
+        routing/map.py; also click testing.py at 619 lines, 5 times). The
+        windows the ranking had already computed held every named anchor and
+        its graph-selected neighbors; the collapse added ~700 incidental lines
+        per call.
+
+        Two changes:
+        - wholeFileMaxLines = 300 bounds the escape. Files above it always get
+          the windowed rendering. 300 is data-informed: baseline (grep+sed)
+          agents' organic reads ranged 100-300 lines; today's measured-wasteful
+          dumps were 333-951.
+        - Omission markers now name the exact recovery call:
+          "[lines X-Y omitted — prism_read(file, offset=X, limit=N) if needed]"
+          (baseline agents needed 1-5 guess-and-retry seds to land the windows
+          this ranking picks directly; reaching an omitted range is now one
+          precise call).
+
+        Gated BEFORE release, per the new discipline: unit + ci_invariants
+        held; ab_gate PASS (recall +0.111, tokens -4%); full 12-task e2e fleet
+        clean (cost -0.4%, prism usage 10/12 sessions — the highest unenforced
+        level measured, resolve 2/3 with the one miss a zero-prism-call cell's
+        known task-inherent flip, seen identically in three prior fleets).
+
+        HONEST SCOPE: this fixes the sparse-selection case (deterministic
+        worst-case replay: 49.7k -> 17.2k chars, -65%) but NOT the live
+        big-budget case — with budget=14000 the ranking selects nearly every
+        symbol in a well-matching file at full disclosure and the merged
+        windows cover ~96% anyway (measured live: 913 of 951 lines, no escape
+        involved). The remaining lever is a per-file disclosure ceiling in
+        selection, tracked as the next change.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.63.0 -m "bounded whole-file delivery; actionable omission markers" && git push origin v0.63.0 2>&1 | tail -1
+      at: 2026-08-31T17:59:04.82547Z
+      classified: other
+    - cmd: |-
+        sleep 60
+        while gh run list -R provasign/prism --limit 2 --json status,workflowName -q '.[] | select(.workflowName=="Release") | .status' | grep -q "in_progress\|queued"; do sleep 20; done
+        gh run list -R provasign/prism --limit 2 --json workflowName,conclusion -q '.[] | .workflowName+" "+.conclusion'
+        gh workflow run 330199422 -R provasign/homebrew-shale
+        sleep 90
+        curl -s https://raw.githubusercontent.com/provasign/homebrew-shale/main/Formula/prism.rb | grep -m1 version
+        brew upgrade provasign/shale/prism 2>&1 | tail -1 && /opt/homebrew/bin/prism --version
+      at: 2026-08-31T17:59:12.314691Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n '60,130p' internal/ranking/budget.go
+      at: 2026-08-31T17:59:21.045442Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n '130,200p' internal/ranking/budget.go
+      at: 2026-08-31T17:59:23.969234Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n '1,40p' internal/ranking/budget_test.go
+      at: 2026-08-31T18:00:10.103846Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "func TestSelect" internal/ranking/budget_test.go | tail -3 && grep -n "Candidate{" internal/ranking/budget_test.go | head -3 && sed -n '40,70p' internal/ranking/budget_test.go
+      at: 2026-08-31T18:00:15.751044Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && cat >> internal/ranking/budget_test.go <<'EOF'
+
+        func TestSelect_FileCapDemotesAggregateTiling(t *testing.T) {
+        	// The measured failure (2026-08-31, werkzeug routing/map.py): many
+        	// same-file candidates, each individually affordable, collectively
+        	// tiling the whole file. Once a file's spend crosses
+        	// FileBudgetFraction of the total budget, further full-disclosure
+        	// candidates from it must degrade to signature — while candidates
+        	// from OTHER files are unaffected.
+        	body := "func X() {\n"
+        	for i := 0; i < 40; i++ {
+        		body += "\tx := 1\n\t_ = x\n"
+        	}
+        	body += "}"
+        	var cands []Candidate
+        	for i := 0; i < 12; i++ {
+        		cands = append(cands, Candidate{
+        			Symbol: grove.SymbolRecord{
+        				ID: string(rune('a' + i)), Name: "M", FilePath: "big.go",
+        				Kind: "method", Signature: "func (m *M) X()", RawText: body,
+        			},
+        			Score: 0.9, Category: CategoryDependency,
+        		})
+        	}
+        	other := grove.SymbolRecord{
+        		ID: "other", Name: "O", FilePath: "other.go", Kind: "function",
+        		Signature: "func O()", RawText: body,
+        	}
+        	cands = append(cands, Candidate{Symbol: other, Score: 0.9, Category: CategoryDependency})
+
+        	out := Select(nil, cands, 2000) // fileCap = 800 tokens
+        	fullFromBig, sigFromBig, fullFromOther := 0, 0, 0
+        	for _, b := range out {
+        		switch {
+        		case b.Symbol.FilePath == "big.go" && b.Disclosure == DisclosureFull:
+        			fullFromBig++
+        		case b.Symbol.FilePath == "big.go" && b.Disclosure == DisclosureSignature:
+        			sigFromBig++
+        		case b.Symbol.FilePath == "other.go" && b.Disclosure == DisclosureFull:
+        			fullFromOther++
+        		}
+        	}
+        	if fullFromBig == 0 {
+        		t.Fatal("cap must not starve the file entirely — the first bodies should land")
+        	}
+        	if sigFromBig == 0 {
+        		t.Errorf("after the file cap, remaining big.go candidates must demote to signature (full=%d sig=%d)", fullFromBig, sigFromBig)
+        	}
+        	if fullFromOther == 0 {
+        		t.Errorf("other.go must be unaffected by big.go's cap")
+        	}
+        }
+        EOF
+        go test ./internal/ranking/ -run TestSelect -v 2>&1 | tail -15
+      at: 2026-08-31T18:00:33.589063Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && grep -n "CategoryShares" -A 10 internal/ranking/*.go | head -15
+      at: 2026-08-31T18:00:43.639082Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        p = "internal/ranking/budget_test.go"
+        s = open(p).read()
+        start = s.find("\nfunc TestSelect_FileCapDemotesAggregateTiling")
+        new_test = '''
+        func TestSelect_FileCapDemotesAggregateTiling(t *testing.T) {
+        	// The measured failure (2026-08-31, werkzeug routing/map.py): a seed
+        	// plus many same-file graph candidates, each individually affordable,
+        	// collectively tiling the whole file. Seeds are never demoted but DO
+        	// count toward the file's spend, so a seed-heavy file hits
+        	// FileBudgetFraction sooner — further full-disclosure candidates from
+        	// it must degrade to signature, while another file's candidate (own
+        	// category budget, own file) still gets its body.
+        	line := "\\tx := 1\\n\\t_ = x\\n"
+        	bigBody := "func X() {\\n"
+        	for i := 0; i < 150; i++ {
+        		bigBody += line
+        	}
+        	bigBody += "}"
+        	smallBody := "func Y() {\\n" + line + line + "}"
+
+        	seed := grove.SymbolRecord{
+        		ID: "seed", Name: "Anchor", FilePath: "big.go", Kind: "method",
+        		Signature: "func (m *M) Anchor()", RawText: bigBody,
+        	}
+        	var cands []Candidate
+        	for i := 0; i < 8; i++ {
+        		cands = append(cands, Candidate{
+        			Symbol: grove.SymbolRecord{
+        				ID: string(rune('a' + i)), Name: "M", FilePath: "big.go",
+        				Kind: "method", Signature: "func (m *M) X()", RawText: smallBody,
+        			},
+        			Score: 0.9, Category: CategoryDependency,
+        		})
+        	}
+        	other := grove.SymbolRecord{
+        		ID: "other", Name: "O", FilePath: "other.go", Kind: "function",
+        		Signature: "func O()", RawText: smallBody,
+        	}
+        	cands = append(cands, Candidate{Symbol: other, Score: 0.9, Category: CategoryTest})
+
+        	// budget sized so the SEED alone crosses fileCap: fileCap =
+        	// 0.4*budget < seed tokens, while category budgets stay roomy for
+        	// the small candidate bodies.
+        	budget := 2 * EstimateTokens(Render(seed, DisclosureFull))
+        	out := Select([]grove.SymbolRecord{seed}, cands, budget)
+
+        	fullFromBig, sigFromBig, fullFromOther := 0, 0, 0
+        	for _, b := range out {
+        		if b.Category == CategoryTarget {
+        			continue
+        		}
+        		switch {
+        		case b.Symbol.FilePath == "big.go" && b.Disclosure == DisclosureFull:
+        			fullFromBig++
+        		case b.Symbol.FilePath == "big.go" && b.Disclosure == DisclosureSignature:
+        			sigFromBig++
+        		case b.Symbol.FilePath == "other.go" && b.Disclosure == DisclosureFull:
+        			fullFromOther++
+        		}
+        	}
+        	if sigFromBig == 0 {
+        		t.Errorf("seed spent big.go past its file cap; candidates must demote to signature (full=%d sig=%d)", fullFromBig, sigFromBig)
+        	}
+        	if fullFromBig != 0 {
+        		t.Errorf("file already past cap at seed time — no candidate body from it should land (full=%d)", fullFromBig)
+        	}
+        	if fullFromOther == 0 {
+        		t.Error("other.go must be unaffected by big.go's cap")
+        	}
+        }
+        '''
+        s = s[:start] + new_test
+        open(p, "w").write(s)
+        print("rewritten")
+        EOF
+        go test ./internal/ranking/ -run TestSelect_FileCap -v 2>&1 | tail -5
+      at: 2026-08-31T18:01:11.186626Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "suite done"
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        go build -o $S/prism-cand7 ./cmd/prism
+        cd $S/wz-check && rm -rf .grove && $S/prism-cand7 index . > /dev/null 2>&1
+        $S/prism-cand7 query "add subdomain_matching param to Map" --terms bind_to_environ,host_matching,Map,subdomain --format text . > /tmp/filecap_query.txt 2>&1
+        wc -c /tmp/filecap_query.txt
+        python3 -c "
+        import re
+        s = open('/tmp/filecap_query.txt').read()
+        sections = re.split(r'\*\*\`([^\`]+)\`\*\*', s)
+        for i in range(1, len(sections), 2):
+            body = sections[i+1] if i+1 < len(sections) else ''
+            nlines = len(re.findall(r'^\d+\t', body, re.M))
+            print(f'{sections[i]:42} {nlines:5} lines  windowed={\"omitted\" in body}')"
+        grep -c "def bind_to_environ" /tmp/filecap_query.txt
+      at: 2026-08-31T18:01:37.421203Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd $S/wz-check && python3 - <<'EOF'
+        import subprocess, json, os, re
+        S = "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad"
+        for binary, label in ((f"{S}/prism-cand6", "windowfix-only (pre-cap)"), (f"{S}/prism-cand7", "with file cap")):
+            p = subprocess.Popen([binary, "mcp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                                 cwd=os.getcwd())
+            reqs = [
+                {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}},
+                {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_query","arguments":{
+                    "task":"add subdomain_matching param to Map, bind_to_environ subdomain extraction",
+                    "terms":["bind_to_environ","host_matching","Map","subdomain"],"budget":14000}}},
+            ]
+            out, _ = p.communicate("\n".join(json.dumps(r) for r in reqs) + "\n", timeout=120)
+            for line in out.splitlines():
+                try: d = json.loads(line)
+                except: continue
+                if d.get("id") == 2:
+                    text = d["result"]["content"][0]["text"]
+                    print(f"=== {label}: {len(text)} chars ===")
+                    sections = re.split(r'\*\*`([^`]+)`\*\*', text)
+                    for i in range(1, len(sections), 2):
+                        body = sections[i+1] if i+1 < len(sections) else ""
+                        nlines = len(re.findall(r'^\d+\t', body, re.M))
+                        print(f"  {sections[i]:42} {nlines:5} lines")
+                    print("  bind_to_environ body present:", "def bind_to_environ" in text)
+        EOF
+      at: 2026-08-31T18:01:53.65734Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files"; echo "suite done"
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        go build -o $S/prism-cand7 ./cmd/prism
+        cd $S/wz-check && rm -rf .grove && $S/prism-cand7 index . > /dev/null 2>&1
+        python3 - <<'EOF'
+        import subprocess, json, os, re
+        S = "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad"
+        p = subprocess.Popen([f"{S}/prism-cand7", "mcp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, cwd=os.getcwd())
+        reqs = [
+            {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}},
+            {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_query","arguments":{
+                "task":"add subdomain_matching param to Map, bind_to_environ subdomain extraction",
+                "terms":["bind_to_environ","host_matching","Map","subdomain"],"budget":14000}}},
+        ]
+        out, _ = p.communicate("\n".join(json.dumps(r) for r in reqs) + "\n", timeout=120)
+        for line in out.splitlines():
+            try: d = json.loads(line)
+            except: continue
+            if d.get("id") == 2:
+                text = d["result"]["content"][0]["text"]
+                print(f"with aggregate seed cap: {len(text)} chars (was 48425)")
+                sections = re.split(r'\*\*`([^`]+)`\*\*', text)
+                for i in range(1, len(sections), 2):
+                    body = sections[i+1] if i+1 < len(sections) else ""
+                    nlines = len(re.findall(r'^\d+\t', body, re.M))
+                    print(f"  {sections[i]:42} {nlines:5} lines")
+                print("  bind_to_environ body present:", "def bind_to_environ" in text)
+        EOF
+      at: 2026-08-31T18:02:52.857158Z
+      classified: test
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/buuxlux9e.output
+      at: 2026-08-31T18:03:00.310356Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism $S/prism-cand7 --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -6
+        echo "=== invariants done; ab_gate starting (baseline v0.63.0) ==="
+        /opt/homebrew/bin/prism --version
+        cd ~/Projects/provasign/research/harness && python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate $S/prism-cand7 2>&1 | tail -13
+      at: 2026-08-31T18:03:08.667969Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        sed -e 's|PRISM = ".*prism-cand6"|PRISM = "'$S'/prism-cand7"|' \
+            -e 's/TAG = "e-windowfix"/TAG = "e-filecap"/' \
+            $S/e_windowfix_fleet.py > $S/e_filecap_fleet.py
+        cd ~/Projects/provasign/research/harness
+        python3 $S/e_filecap_fleet.py probe 2>&1
+        rc=$?
+        if [ $rc -eq 0 ]; then
+          echo "=== probe ok; fleet starting ==="
+          python3 $S/e_filecap_fleet.py fleet 2>&1
+        else
+          echo "=== PROBE FAILED rc=$rc ==="
+        fi
+      at: 2026-08-31T18:22:57.035592Z
+      classified: other
+    - cmd: |-
+        tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bj8fh8zgn.output
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        TASKS = [
+            "pallets__click__pr3228", "pallets__werkzeug__pr3038",
+            "pydantic__pydantic__pr13516", "pallets__click__pr3473",
+            "pallets__click__pr3244", "pallets__werkzeug__pr3006",
+            "Textualize__rich__pr3938", "urllib3__urllib3__pr5093",
+            "urllib3__urllib3__pr5020", "pallets__werkzeug__pr3081",
+            "pallets__click__pr3533", "urllib3__urllib3__pr3786",
+        ]
+        def load(tid, tag):
+            d = json.load(open(f"runs/e2e/{tid}.opus.prism_native.{tag}.json"))
+            tt = d.get("tool_trace") or {}
+            return d.get("resolved"), d.get("turns") or 0, d.get("cost_usd") or 0, \
+                sum(v for k,v in tt.items() if k.startswith("mcp__prism"))
+        rc=fc=rt=ft=0; r_used=f_used=0; held=tot=0
+        for tid in TASKS:
+            r = load(tid, "rerun-v061"); f = load(tid, "e-filecap")
+            rc+=r[2]; fc+=f[2]; rt+=r[1]; ft+=f[1]
+            if r[3]: r_used+=1
+            if f[3]: f_used+=1
+            if r[0]: tot+=1
+            if r[0] and f[0]: held+=1
+        print(f"cost: ${rc:.2f} -> ${fc:.2f} ({(fc/rc-1)*100:+.1f}%)  turns: {rt} -> {ft} ({(ft/rt-1)*100:+.1f}%)")
+        print(f"prism sessions: {r_used}/12 -> {f_used}/12   resolved held: {held}/{tot}")
+        EOF
+      at: 2026-08-31T18:58:21.249789Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add internal/ranking/budget.go internal/ranking/budget_test.go && git commit -q -m "$(cat <<'EOF'
+        ranking: per-file budget cap — seeds count, type seeds check aggregate
+
+        The remaining layer of prism_query's token footprint (v0.63.0 fixed
+        the whole-file escape; this fixes the selection that made the escape
+        irrelevant at big budgets): nothing bounded one FILE's total spend.
+
+        Two mechanisms, one constant (FileBudgetFraction = 0.4, same rationale
+        and value as the existing type-seed rule it generalizes):
+        - The type-seed 40% check is now AGGREGATE per file, not per symbol.
+          A broad term resolving two large classes in one file ("Map" -> Map +
+          MapAdapter, werkzeug routing/map.py, budget=14000) passed the old
+          per-symbol check twice and tiled 913 of 951 lines from seeds alone.
+          Method seeds stay unconditionally full — small, named targets.
+        - Candidates from a file past its cap demote to signature disclosure —
+          contract stays discoverable, body is one prism_read away via the
+          omission marker's pointer (v0.63.0).
+
+        Measured on the live worst case (same MCP call, budget=14000):
+        48,425 -> 25,527 chars (-47%), map.py 913 -> 377 lines,
+        bind_to_environ's full body retained.
+
+        Gated BEFORE release: unit suite green (new
+        TestSelect_FileCapDemotesAggregateTiling captures the measured shape);
+        ci_invariants ALL HELD (ground-truth recall/precision unmoved by the
+        selection change); ab_gate PASS (recall +0.004, tokens -16%); full
+        12-task e2e fleet clean (cost +4.3% within the bed's noise band, turns
+        -0.8%, prism engagement 11/12 sessions — tied highest unenforced,
+        resolve 2/3 with the one miss a zero-prism-call cell that has now
+        flipped identically in four consecutive fleets regardless of binary).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.64.0 -m "per-file budget cap in selection" && git push origin v0.64.0 2>&1 | tail -1
+        sleep 60
+        while gh run list -R provasign/prism --limit 2 --json status,workflowName -q '.[] | select(.workflowName=="Release") | .status' | grep -q "in_progress\|queued"; do sleep 20; done
+        gh run list -R provasign/prism --limit 1 --json workflowName,conclusion -q '.[] | .workflowName+" "+.conclusion'
+        gh workflow run 330199422 -R provasign/homebrew-shale
+        sleep 90
+        curl -s https://raw.githubusercontent.com/provasign/homebrew-shale/main/Formula/prism.rb | grep -m1 version
+        brew upgrade provasign/shale/prism 2>&1 | tail -1 && /opt/homebrew/bin/prism --version
+      at: 2026-08-31T18:58:48.72048Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-31T17:59:04.82547Z
+redactions: 0

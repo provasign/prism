@@ -1,0 +1,312 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c11
+created_at: 2026-08-29T15:51:24.803775Z
+finalized_at: 2026-08-29T16:37:16.595216Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: 'cd ~/Projects/provasign/research/harness && python3 -u ab_deferral.py --prism ~/Projects/provasign/prism/bin/prism --limit 1 2>&1; echo "exit: $?"'
+      at: 2026-08-29T16:12:23.39539Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p = "harness/ab_deferral.py"
+        src = open(p).read()
+        old = """import ab_agentic_mcp as bed  # noqa: E402
+        import ab_gate  # noqa: E402
+        from schema import Task  # noqa: E402"""
+        new = """import ab_agentic_mcp as bed  # noqa: E402
+        import ab_gate  # noqa: E402
+        from schema import Task  # noqa: E402
+
+        import hashlib
+        import os
+
+
+        def ledger_path(root: Path) -> Path:
+            # Mirrors prism's ledgerPathForRoot: sha1 of the absolute root under the
+            # user cache dir. v0.56.8+ MCP sessions persist per-tool ResultCalls
+            # there — our own instrumentation is the ground truth for "did the agent
+            # actually call prism", which the claude CLI's summary JSON cannot say.
+            key = hashlib.sha1(str(root.resolve()).encode()).hexdigest()
+            cache = Path.home() / "Library/Caches"
+            if not cache.exists():
+                cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+            return cache / "prism" / "ledger" / f"{key}.json"
+
+
+        def tool_calls(root: Path) -> dict:
+            try:
+                d = json.loads(ledger_path(root).read_text())
+            except Exception:
+                return {}
+            return {t: s.get("resultCalls", 0) for t, s in (d.get("byTool") or {}).items()}
+
+
+        def run_cell_measured(arm, task, corpus, model, out, prism, sha):
+            f = out / f"{task.id}.{model}.{sha}.json"
+            if f.exists():
+                return json.loads(f.read_text())
+            before = tool_calls(corpus)
+            rec = ab_gate.run_cell(arm, task, corpus, model, out, prism, sha)
+            after = tool_calls(corpus)
+            calls = {t: after.get(t, 0) - before.get(t, 0)
+                     for t in after if after.get(t, 0) > before.get(t, 0)}
+            rec["prism_calls"] = calls
+            rec["prism_used"] = sum(calls.values()) > 0
+            f.write_text(json.dumps(rec, indent=2))
+            return rec"""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        src = src.replace("a = ab_gate.run_cell(a_arm", "a = run_cell_measured(a_arm")
+        src = src.replace("d = ab_gate.run_cell(d_arm", "d = run_cell_measured(d_arm")
+        old2 = """                (out / f"{task.id}.{args.model}.df-{sha}.json").unlink(missing_ok=True)
+                        d = ab_gate.run_cell(d_arm, task, corpus, args.model, out, args.prism, f"df-{sha}")"""
+        new2 = """                (out / f"{task.id}.{args.model}.df-{sha}.json").unlink(missing_ok=True)
+                        d = run_cell_measured(d_arm, task, corpus, args.model, out, args.prism, f"df-{sha}")"""
+        assert src.count(old2) == 1
+        src = src.replace(old2, new2)
+        old3 = """        print(f"{task.id:30} always: used={au} recall={ar} | "
+                      f"deferred: used={du} recall={dr} tok={d.get('tokens_in',0)//1000}k")"""
+        new3 = """        print(f"{task.id:30} always: used={au} calls={sum((a.get('prism_calls') or {}).values())} recall={ar} | "
+                      f"deferred: used={du} calls={sum((d.get('prism_calls') or {}).values())} recall={dr}")"""
+        assert src.count(old3) == 1
+        src = src.replace(old3, new3)
+        open(p, "w").write(src)
+        print("ledger-based usage measurement wired")
+        EOF
+        rm -f harness/runs/ab-deferral/*.json && cd harness && python3 -u ab_deferral.py --prism ~/Projects/provasign/prism/bin/prism --limit 1 2>&1; echo "exit: $?"
+      at: 2026-08-29T16:13:44.297705Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p = "harness/ab_deferral.py"
+        src = open(p).read()
+        assert "run_cell_measured" not in src, "already patched?"
+        old = """import ab_agentic_mcp as bed  # noqa: E402
+        import ab_gate  # noqa: E402
+        from schema import Task  # noqa: E402"""
+        new = old + '''
+
+        import hashlib
+        import os
+
+
+        def ledger_path(root: Path) -> Path:
+            # Mirrors prism's ledgerPathForRoot: sha1 of the absolute root under the
+            # user cache dir. v0.56.8+ MCP sessions persist per-tool ResultCalls
+            # there — our own instrumentation is the ground truth for "did the agent
+            # actually call prism", which the claude CLI's summary JSON cannot say.
+            key = hashlib.sha1(str(root.resolve()).encode()).hexdigest()
+            cache = Path.home() / "Library/Caches"
+            if not cache.exists():
+                cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
+            return cache / "prism" / "ledger" / f"{key}.json"
+
+
+        def tool_calls(root: Path) -> dict:
+            try:
+                d = json.loads(ledger_path(root).read_text())
+            except Exception:
+                return {}
+            return {t: s.get("resultCalls", 0) for t, s in (d.get("byTool") or {}).items()}
+
+
+        def run_cell_measured(arm, task, corpus, model, out, prism, sha):
+            f = out / f"{task.id}.{model}.{sha}.json"
+            if f.exists():
+                return json.loads(f.read_text())
+            before = tool_calls(corpus)
+            rec = ab_gate.run_cell(arm, task, corpus, model, out, prism, sha)
+            after = tool_calls(corpus)
+            calls = {t: after.get(t, 0) - before.get(t, 0)
+                     for t in after if after.get(t, 0) > before.get(t, 0)}
+            rec["prism_calls"] = calls
+            rec["prism_used"] = sum(calls.values()) > 0
+            f.write_text(json.dumps(rec, indent=2))
+            return rec'''
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        src = src.replace("a = ab_gate.run_cell(a_arm", "a = run_cell_measured(a_arm")
+        src = src.replace("d = ab_gate.run_cell(d_arm", "d = run_cell_measured(d_arm")
+        assert src.count("run_cell_measured(") >= 4  # def + 3 call sites (incl retry)
+        old3 = '''        print(f"{task.id:30} always: used={au} recall={ar} | "
+                      f"deferred: used={du} recall={dr} tok={d.get('tokens_in',0)//1000}k")'''
+        new3 = '''        print(f"{task.id:30} always: used={au} calls={sum((a.get('prism_calls') or {}).values())} recall={ar} | "
+                      f"deferred: used={du} calls={sum((d.get('prism_calls') or {}).values())} recall={dr}")'''
+        assert src.count(old3) == 1
+        open(p, "w").write(src.replace(old3, new3))
+        print("patched cleanly")
+        EOF
+        grep -c "run_cell_measured" harness/ab_deferral.py && rm -f harness/runs/ab-deferral/*.json && cd harness && python3 -u ab_deferral.py --prism ~/Projects/provasign/prism/bin/prism --limit 1 2>&1; echo "exit: $?"
+      at: 2026-08-29T16:15:10.193661Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && python3 -u ab_deferral.py --prism ~/Projects/provasign/prism/bin/prism 2>&1; echo "exit: $?"'
+      at: 2026-08-29T16:16:12.784371Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rn "alwaysLoad" internal/cli/*.go internal/mcp/*.go 2>/dev/null | grep -v _test | head -5
+      at: 2026-08-29T16:33:37.075117Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && sed -n 612,640p internal/cli/commands.go && sed -n 310,325p internal/mcp/tools.go && grep -n "AlwaysLoad: true\|AlwaysLoad:  *true" internal/cli/commands.go | head -4'
+      at: 2026-08-29T16:33:42.191085Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 880,900p internal/cli/commands.go
+      at: 2026-08-29T16:33:55.09151Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p = "internal/cli/commands.go"
+        src = open(p).read()
+        n = src.count("AlwaysLoad: true}")
+        src = src.replace(', AlwaysLoad: true}', '}')
+        assert src.count("AlwaysLoad: true") == 0, "leftover"
+        old = """// mcpEntry is the JSON structure every MCP-compatible tool expects.
+        // AlwaysLoad exempts the server's tool schemas from client-side deferral —
+        // the server-level belt to the per-tool anthropic/alwaysLoad _meta that
+        // ToolSchemas emits. Clients that do not know the key ignore it."""
+        new = """// mcpEntry is the JSON structure every MCP-compatible tool expects.
+        // AlwaysLoad is no longer written: the 2026-08-29 deferral A/B (9 paired
+        // bed tasks, haiku) measured ZERO routing losses and recall delta +0.004
+        // with schemas deferred behind the client's ToolSearch hop — steering that
+        // names the tools is sufficient on current models, and deferral drops ~2k
+        // tokens of always-resident schema from every session. The field stays in
+        // the struct so --refresh recognizes (and rewrites) old entries that
+        // carry it."""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print(f"dropped AlwaysLoad from {n} init sites")
+
+        p2 = "internal/mcp/tools.go"
+        src2 = open(p2).read()
+        old2 = """			// Residency is cheap in practice: measured +92 fresh tokens on a
+        			// cell where prism was never called.
+        			"_meta": map[string]any{"anthropic/alwaysLoad": true},
+        		})"""
+        new2 = """			// Residency was justified by a v0.55.0 measurement that cheap
+        			// tiers stop reaching for deferred tools. Re-measured
+        			// 2026-08-29 (ab_deferral.py, 9 paired bed tasks, haiku):
+        			// zero routing losses, recall delta +0.004 — steering that
+        			// names the tools routes fine through the ToolSearch hop on
+        			// current models, so the schemas defer and every session
+        			// saves their residency.
+        		})"""
+        assert src2.count(old2) == 1
+        open(p2, "w").write(src2.replace(old2, new2))
+        print("per-tool alwaysLoad meta dropped")
+        EOF
+        go build ./... && go test ./internal/cli/ ./internal/mcp/ 2>&1 | tail -2
+      at: 2026-08-29T16:34:23.888099Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && go test ./internal/mcp/ 2>&1 | grep -B2 -A8 "FAIL\|--- FAIL" | head -25
+      at: 2026-08-29T16:34:35.625561Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && sed -n "$(grep -n ''func TestToolSchemas_AllAlwaysLoad'' internal/mcp/searchmulti_test.go | cut -d: -f1),+20p" internal/mcp/searchmulti_test.go'
+      at: 2026-08-29T16:34:43.470855Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p = "internal/mcp/searchmulti_test.go"
+        src = open(p).read()
+        old = """func TestToolSchemas_AllAlwaysLoad(t *testing.T) {
+        	for _, tool := range ToolSchemas() {
+        		meta, ok := tool["_meta"].(map[string]any)
+        		if !ok {
+        			t.Errorf("%v has no _meta — client will defer its schema", tool["name"])
+        			continue
+        		}
+        		if meta["anthropic/alwaysLoad"] != true {
+        			t.Errorf("%v: anthropic/alwaysLoad = %v, want true", tool["name"], meta["anthropic/alwaysLoad"])
+        		}
+        	}
+        }"""
+        new = """// Deferral is the deliberate state since 2026-08-29: the ab_deferral A/B
+        // (9 paired bed tasks, haiku) measured zero routing losses and recall delta
+        // +0.004 with schemas deferred — steering that names the tools routes fine
+        // through the ToolSearch hop, and every session saves ~2k tokens of
+        // always-resident schema. This guard keeps alwaysLoad from silently
+        // returning; if it must return, bring a fresh A/B.
+        func TestToolSchemas_NoneAlwaysLoad(t *testing.T) {
+        	for _, tool := range ToolSchemas() {
+        		if meta, ok := tool["_meta"].(map[string]any); ok {
+        			if meta["anthropic/alwaysLoad"] == true {
+        				t.Errorf("%v carries anthropic/alwaysLoad — deferral policy reversed without an A/B?", tool["name"])
+        			}
+        		}
+        	}
+        }"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("guard inverted")
+        EOF
+        go test ./... 2>&1 | grep -cv "^ok\|no test files"; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; R=$S/init-check; rm -rf $R && mkdir -p $R && cd $R && git init -q && echo 'package main' > main.go && printf 'n\n' | ~/Projects/provasign/prism/bin/prism init . >/dev/null 2>&1; go build -C ~/Projects/provasign/prism -o $S/prism-defer ./cmd/prism && cd $R && rm -f .mcp.json && printf 'n\n' | $S/prism-defer init . >/dev/null 2>&1; grep -c alwaysLoad .mcp.json 2>/dev/null; cat .mcp.json | head -8
+      at: 2026-08-29T16:35:08.089194Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research && python3 - <<'EOF'
+        p = "harness/ab_agentic_mcp.py"
+        src = open(p).read()
+        old = """# alwaysLoad mirrors what `prism init` actually writes (v0.55.0). Without it
+        # this arm tests a config no user runs: Claude Code defers the tool schemas
+        # behind a ToolSearch hop, which measurably changes whether cheap tiers reach
+        # for prism at all.
+        (CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {
+            "prism": {"type": "stdio", "command": str(HOME/"bin/prism"), "args": ["mcp"],
+                      "alwaysLoad": True}}}))"""
+        new = """# Mirrors what `prism init` writes. v0.55.0 added alwaysLoad because cheap
+        # tiers stopped reaching for deferred tools; the 2026-08-29 ab_deferral A/B
+        # (9 pairs, haiku) reversed that finding — zero routing losses, recall delta
+        # +0.004 deferred — so init dropped it and this arm follows. Cells cached
+        # before this date ran with alwaysLoad; the measured delta between the two
+        # configs is ~0, but note it when comparing across that boundary.
+        (CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {
+            "prism": {"type": "stdio", "command": str(HOME/"bin/prism"), "args": ["mcp"]}}}))"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("harness mirror updated")
+        EOF
+        git add harness/ab_deferral.py harness/ab_agentic_mcp.py && git commit -q -m "$(cat <<'EOF'
+        ab_deferral: schema-deferral A/B; harness arm follows init
+
+        New A/B answers whether alwaysLoad is still needed: 9 paired bed tasks
+        on haiku, prism usage measured from prism's own v0.56.8 ledger (per-
+        tool resultCalls diffed around each cell — the claude CLI summary
+        cannot say whether a tool was called). Result: ZERO routing losses,
+        recall delta +0.004, the deferred arm even took more graph calls on
+        the grafana tasks. The v0.55.0 finding is dead on current models;
+        prism init drops alwaysLoad and the bed arm follows.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1; cd ~/Projects/provasign/prism && git add internal/cli/commands.go internal/mcp/tools.go internal/mcp/searchmulti_test.go && git commit -q -m "$(cat <<'EOF'
+        init: drop alwaysLoad — deferral is safe on current models
+
+        v0.55.0 made schemas always-resident because cheap tiers measurably
+        stopped reaching for deferred tools. Re-measured 2026-08-29
+        (ab_deferral.py: 9 paired bed tasks, haiku, usage read from prism's
+        own ledger): zero routing losses, recall delta +0.004 — steering that
+        names the tools routes fine through the ToolSearch hop. Every session
+        saves ~2k tokens of always-resident schema; sessions that never call
+        prism save it outright (the v0.51 cost-coin-flip finding was partly
+        this overhead). --refresh rewrites old entries that still carry the
+        key; the schema guard test now enforces deferral and demands a fresh
+        A/B to reverse it.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3; cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test
+      at: 2026-08-29T16:35:35.113701Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && git push origin main 2>&1 | tail -1 && git tag -a v0.57.0 -m "deferral: drop alwaysLoad — schemas defer, ~2k tokens/session saved" && git push origin v0.57.0 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq ''.[0].databaseId'') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 ''version "'''
+      at: 2026-08-29T16:37:16.073556Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T15:51:24.803775Z
+redactions: 0

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 // initRegisterMCPTools must create project-local config dirs when they are
@@ -16,13 +15,14 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 	projectDir := t.TempDir()
 	prismBin := "/fake/prism"
 
-	written := initRegisterMCPTools(projectDir, prismBin, false, true, false, false)
+	written := initRegisterMCPTools(projectDir, prismBin, supportedHarnesses, true, false, false)
 
-	// All three project-local configs must be written.
+	// Every supported project-local config is written. Windsurf is excluded:
+	// its documented MCP config is user-global, which init must not touch.
 	wantPaths := []string{
 		filepath.Join(projectDir, ".mcp.json"),
 		filepath.Join(projectDir, ".cursor", "mcp.json"),
-		filepath.Join(projectDir, ".windsurf", "mcp.json"),
+		filepath.Join(projectDir, ".codex", "config.toml"),
 	}
 	writtenSet := make(map[string]bool, len(written))
 	for _, p := range written {
@@ -39,14 +39,14 @@ func TestInitRegisterMCPToolsCreatesProjectDirs(t *testing.T) {
 }
 
 // The written .mcp.json must contain a valid mcpServers entry pointing to the
-// given prism binary with cwd-rooted args (["mcp"], no pinned project path) —
+// given prism binary with cwd-rooted compact args (no pinned project path) —
 // Claude Code launches project-scope servers with cwd at the project root.
 func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	setHome(t, t.TempDir())
 	projectDir := t.TempDir()
 	prismBin := "/usr/local/bin/prism"
 
-	initRegisterMCPTools(projectDir, prismBin, false, true, false, false)
+	initRegisterMCPTools(projectDir, prismBin, supportedHarnesses, true, false, false)
 
 	cfgPath := filepath.Join(projectDir, ".mcp.json")
 	raw, err := os.ReadFile(cfgPath)
@@ -69,8 +69,8 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	if entry.Command != prismBin {
 		t.Errorf("command: got %q want %q", entry.Command, prismBin)
 	}
-	if len(entry.Args) != 1 || entry.Args[0] != "mcp" {
-		t.Errorf("args: got %v, want [\"mcp\"] (cwd-rooted, no pinned path)", entry.Args)
+	if len(entry.Args) != 2 || entry.Args[0] != "mcp" || entry.Args[1] != "--compact" {
+		t.Errorf("args: got %v, want [\"mcp\", \"--compact\"] (cwd-rooted, no pinned path)", entry.Args)
 	}
 
 	// IDE configs keep the explicit project dir: their launch cwd is not guaranteed.
@@ -86,8 +86,8 @@ func TestInitRegisterMCPToolsConfigContent(t *testing.T) {
 	if err := json.Unmarshal(cursorRaw, &cursorCfg); err != nil {
 		t.Fatalf("unmarshal cursor config: %v", err)
 	}
-	if got := cursorCfg.MCPServers["prism"].Args; len(got) != 2 || got[1] != projectDir {
-		t.Errorf("cursor args: got %v, want [\"mcp\", %q]", got, projectDir)
+	if got := cursorCfg.MCPServers["prism"].Args; len(got) != 3 || got[1] != "--compact" || got[2] != projectDir {
+		t.Errorf("cursor args: got %v, want [\"mcp\", \"--compact\", %q]", got, projectDir)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	initRegisterMCPTools(projectDir, "/bin/prism", false, true, false, false)
+	initRegisterMCPTools(projectDir, "/bin/prism", supportedHarnesses, true, false, false)
 
 	raw, _ := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))
 	var cfg struct {
@@ -118,12 +118,37 @@ func TestInitRegisterMCPToolsMergesExistingConfig(t *testing.T) {
 	}
 }
 
+func TestInitRegisterMCPToolsUpgradesLegacyProjectEntry(t *testing.T) {
+	setHome(t, t.TempDir())
+	projectDir := t.TempDir()
+	existing := `{"mcpServers":{"prism":{"command":"/old/prism","args":["mcp"],"alwaysLoad":true},"other":{"command":"keep"}}}`
+	path := filepath.Join(projectDir, ".mcp.json")
+	if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	initRegisterMCPTools(projectDir, "/new/prism", []string{"claude"}, false, false, false)
+	var doc struct {
+		MCPServers map[string]mcpEntry `json:"mcpServers"`
+	}
+	raw, _ := os.ReadFile(path)
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	got := doc.MCPServers["prism"]
+	if got.Command != "/new/prism" || len(got.Args) != 2 || got.Args[1] != "--compact" || got.AlwaysLoad {
+		t.Fatalf("legacy entry was not upgraded: %#v", got)
+	}
+	if _, ok := doc.MCPServers["other"]; !ok {
+		t.Fatal("unrelated server was removed during upgrade")
+	}
+}
+
 // Global user-level config dirs that don't exist on this machine must be
 // skipped; only project-local dirs should be created.
 func TestInitRegisterMCPToolsSkipsAbsentGlobalDirs(t *testing.T) {
 	setHome(t, t.TempDir())
 	projectDir := t.TempDir()
-	written := initRegisterMCPTools(projectDir, "/bin/prism", false, true, false, false)
+	written := initRegisterMCPTools(projectDir, "/bin/prism", supportedHarnesses, true, false, false)
 
 	home, _ := os.UserHomeDir()
 	for _, p := range written {
@@ -136,38 +161,6 @@ func TestInitRegisterMCPToolsSkipsAbsentGlobalDirs(t *testing.T) {
 				t.Errorf("wrote %s whose parent %s doesn't exist", p, dir)
 			}
 			_ = rel
-		}
-	}
-}
-
-// pruneOldLedgers must remove files older than maxAge and leave recent ones.
-func TestPruneOldLedgers(t *testing.T) {
-	dir := t.TempDir()
-	now := time.Now()
-
-	write := func(name string, modtime time.Time) {
-		p := filepath.Join(dir, name)
-		if err := os.WriteFile(p, []byte("{}"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chtimes(p, modtime, modtime); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	write("old.json", now.Add(-40*24*time.Hour))      // 40 days ago — should be pruned
-	write("recent.json", now.Add(-5*24*time.Hour))    // 5 days ago  — must survive
-	write("fresh.json", now.Add(-1*time.Hour))        // 1 hour ago  — must survive
-	write("unrelated.txt", now.Add(-50*24*time.Hour)) // wrong ext — must survive
-
-	pruneOldLedgers(dir, 30*24*time.Hour)
-
-	if _, err := os.Stat(filepath.Join(dir, "old.json")); !os.IsNotExist(err) {
-		t.Error("old.json should have been pruned")
-	}
-	for _, keep := range []string{"recent.json", "fresh.json", "unrelated.txt"} {
-		if _, err := os.Stat(filepath.Join(dir, keep)); err != nil {
-			t.Errorf("%s should survive pruning: %v", keep, err)
 		}
 	}
 }

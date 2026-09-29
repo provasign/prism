@@ -1,0 +1,1381 @@
+shale_version: "0"
+id: 01a0b444-1f1e-7f80-9cc4-aed205ea69c4-c2
+created_at: 2026-09-18T19:32:45.127046Z
+finalized_at: 2026-09-19T04:49:49.106617Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:45:38.649292Z
+    - path: internal/mcp/delivery.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:45:38.649292Z
+    - path: internal/mcp/delivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:46:03.517785Z
+    - path: internal/mcp/searchlimits.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:47:53.992581Z
+    - path: internal/mcp/searchaccuracy_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:47:53.992581Z
+    - path: internal/mcp/verify.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:49:53.364928Z
+    - path: internal/mcp/tools_cov_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:49:53.364928Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:51:35.821924Z
+    - path: internal/grove/client.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T21:55:29.623633Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-19T03:49:56.635503Z
+    - path: AGENTS.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-19T03:49:56.635503Z
+    - path: CLAUDE.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-19T03:49:56.635503Z
+    - path: internal/cli/steeringdelivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-19T03:50:15.083364Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-19T03:58:52.637837Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-19T03:58:52.637837Z
+commands:
+    - cmd: git tag -a v0.78.0 -m "Prism v0.78.0" && git push origin v0.78.0
+      at: 2026-09-18T19:32:45.127046Z
+      classified: other
+    - cmd: gh run list -R provasign/prism --commit 00b2f809fd6eb8aa2e18266b6e3c6f452fb69867 --limit 10 --json databaseId,name,event,status,conclusion,headBranch,headSha,url,createdAt
+      at: 2026-09-18T19:32:52.327793Z
+      classified: other
+    - cmd: gh run watch 35386533426 -R provasign/prism --exit-status --interval 10
+      at: 2026-09-18T19:35:23.177231Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale && sleep 3 && gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 5 --json databaseId,status,conclusion,event,headSha,url,createdAt
+      at: 2026-09-18T19:35:35.932518Z
+      classified: other
+    - cmd: gh run watch 35386796522 -R provasign/homebrew-shale --exit-status --interval 10
+      at: 2026-09-18T19:35:51.580055Z
+      classified: other
+    - cmd: gh api 'repos/provasign/homebrew-shale/git/trees/main?recursive=1' --jq '.tree[] | select(.path|test("prism.*\\.rb$")) | [.path,.sha] | @tsv'
+      at: 2026-09-18T19:35:58.294358Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 --decode | sed -n '1,120p'; gh api repos/provasign/homebrew-shale/commits/main --jq '{sha:.sha,message:.commit.message,url:.html_url}'
+      at: 2026-09-18T19:36:03.057895Z
+      classified: other
+    - cmd: brew list --versions prism 2>/dev/null || true; command -v prism; prism version
+      at: 2026-09-18T19:36:10.496821Z
+      classified: other
+    - cmd: brew update && brew upgrade prism && prism version && brew test prism
+      at: 2026-09-18T19:36:18.450163Z
+      classified: other
+    - cmd: brew upgrade --formula provasign/shale/prism && /opt/homebrew/bin/prism version && brew test provasign/shale/prism
+      at: 2026-09-18T19:36:30.69291Z
+      classified: other
+    - cmd: printf 'PRISM\n'; git status --short; git rev-list --left-right --count '@{u}...HEAD'; git rev-parse --short HEAD; git rev-list -n 1 v0.78.0 | cut -c1-8; gh release view v0.78.0 -R provasign/prism --json tagName,isDraft,isPrerelease,url,publishedAt,assets --jq '{tagName,isDraft,isPrerelease,url,publishedAt,assets:[.assets[].name]}' ; printf 'GROVE\n'; git -C /Users/tapabratapal/Projects/provasign/grove status --short; git -C /Users/tapabratapal/Projects/provasign/grove rev-list --left-right --count '@{u}...HEAD'; git -C /Users/tapabratapal/Projects/provasign/grove rev-parse --short HEAD; git -C /Users/tapabratapal/Projects/provasign/grove rev-list -n 1 v0.49.5 | cut -c1-8; printf 'ASTKIT\n'; git -C /Users/tapabratapal/Projects/provasign/astkit diff --name-only; git -C /Users/tapabratapal/Projects/provasign/astkit status --short
+      at: 2026-09-18T19:36:44.597153Z
+      classified: other
+    - cmd: prism query --terms query,change_impact,testCallers,relatedTests,selectContext,compactSearchBodiesEnclosingExcept,EnsureRunning,cancellation
+      at: 2026-09-18T21:39:24.814269Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-18T21:40:14.772524Z
+      classified: other
+    - cmd: nl -ba internal/mcp/selection.go | sed -n '330,410p'; nl -ba internal/mcp/tools.go | sed -n '1050,1235p'; nl -ba internal/mcp/delivery.go | sed -n '1,270p'; rg -n "testCallers|Tests|related test|tested by" internal/mcp -g '*.go'
+      at: 2026-09-18T21:40:26.148462Z
+      classified: other
+    - cmd: nl -ba internal/mcp/selection.go | sed -n '1,230p'; nl -ba internal/mcp/delivery.go | sed -n '350,455p'; nl -ba internal/mcp/delivery_test.go | sed -n '360,445p'
+      at: 2026-09-18T21:40:41.562343Z
+      classified: other
+    - cmd: PRISM_TIMING=1 prism change-impact missing_required_error --format json
+      at: 2026-09-18T21:41:08.334391Z
+      classified: other
+    - cmd: PRISM_TIMING=1 prism query --terms missing_required_error,validate_required,get_required_usage_from
+      at: 2026-09-18T21:41:13.634955Z
+      classified: other
+    - cmd: rg -n "fallback.*term|split.*term|tokenize|camel|snake|shorter|fallbackTerms|searchFallback" internal/mcp internal/textsearch -g '*.go'
+      at: 2026-09-18T21:41:19.170264Z
+      classified: other
+    - cmd: nl -ba internal/mcp/searchfallback.go | sed -n '1,130p'; nl -ba internal/mcp/textmerge.go | sed -n '1,260p' 2>/dev/null || true; rg -n "func .*text.*merge|textMerge" internal/mcp -g '*.go'
+      at: 2026-09-18T21:41:24.257291Z
+      classified: other
+    - cmd: nl -ba internal/textsearch/textsearch.go | sed -n '1,260p'; rg -n "type Options|func Search|Glob" internal/textsearch -g '*.go'
+      at: 2026-09-18T21:41:35.629332Z
+      classified: other
+    - cmd: PRISM_TIMING=1 timeout 20 prism search 'clap-rs__clap__pr4006' --scope text --format text
+      at: 2026-09-18T21:42:06.956766Z
+      classified: other
+    - cmd: PRISM_TIMING=1 prism search 'clap-rs__clap__pr4006' --scope text --format text
+      at: 2026-09-18T21:42:17.351689Z
+      classified: other
+    - cmd: command -v rg; command -v grep; printf '%s\n' "$PATH"; prism doctor .
+      at: 2026-09-18T21:42:21.392999Z
+      classified: other
+    - cmd: rg -n "AutoIndexIfEmpty|context.Background\(\)|invokeTool\(|cmdQuery|cmdSearch" internal/cli/commands.go internal/mcp/server.go -g '*.go'; nl -ba internal/cli/commands.go | sed -n '3020,3095p'; nl -ba internal/cli/commands.go | sed -n '2180,2360p'
+      at: 2026-09-18T21:42:33.075414Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && rg -n "func newDeliveryFixture|TestToolQuery_TestedByPointer|type selection struct|return selection\{|func \(.*AutoIndexIfEmpty|func invokeTool|textSearchTimeout" internal -g '*.go'
+      at: 2026-09-18T21:43:23.989281Z
+      classified: other
+    - cmd: sed -n '1,230p' internal/mcp/selection.go; sed -n '230,580p' internal/mcp/selection.go; sed -n '210,470p' internal/mcp/delivery_test.go; sed -n '360,455p' internal/mcp/delivery.go; sed -n '1,145p' internal/grove/client.go; sed -n '2990,3065p' internal/cli/commands.go
+      at: 2026-09-18T21:43:28.311863Z
+      classified: other
+    - cmd: sed -n '320,560p' internal/mcp/selection.go; sed -n '70,180p' internal/mcp/delivery.go; sed -n '430,490p' internal/mcp/delivery_test.go; rg -n "invokeTool\(|AutoIndexIfEmpty\(|context\.WithTimeout|DeadlineExceeded|timed out|timeout" internal/cli -g '*_test.go' -g '*.go'
+      at: 2026-09-18T21:43:33.81847Z
+      classified: other
+    - cmd: rg -n "func scopedSymbolSearch|symbolFetchHardMax|exhaustiveSymbolCap|SearchSymbols" internal/mcp -g '*.go'; sed -n '1,220p' internal/mcp/scopedsearch.go 2>/dev/null || true; sed -n '2180,2370p' internal/cli/commands.go; sed -n '1,125p' internal/mcp/textmerge.go; rg -n "func \(h \*Handler\) Invoke|InvokeContext|context\.Background" internal/mcp -g '*.go'
+      at: 2026-09-18T21:43:42.330058Z
+      classified: other
+    - cmd: sed -n '135,205p' internal/mcp/tools.go; sed -n '1,170p' internal/mcp/searchlimits.go; sed -n '130,215p' internal/mcp/searchaccuracy_test.go; sed -n '1540,1650p' internal/mcp/tools.go; sed -n '2100,2180p' internal/mcp/tools.go
+      at: 2026-09-18T21:43:47.107466Z
+      classified: other
+    - cmd: rg -n "split.*identifier|identifier.*parts|camel|snake|tokenize|word.*parts|meaningful" internal/mcp internal -g '*.go' | head -100; rg -n "func isTestFilePath|func isVerifiedTestCaller|normalizePath" internal/mcp -g '*.go' | head -80; rg -n "func \(c \*Client\) SearchSymbols" internal/grove -g '*.go'; sed -n '140,230p' internal/grove/client.go
+      at: 2026-09-18T21:43:56.802468Z
+      classified: other
+    - cmd: sed -n '310,345p' internal/grove/client.go; sed -n '1000,1070p' internal/mcp/verify.go; rg -n "func filterSymbolsByScope|type searchScope" internal/mcp -g '*.go'; sed -n '3660,3725p' internal/mcp/tools.go
+      at: 2026-09-18T21:44:01.837249Z
+      classified: other
+    - cmd: sed -n '1960,2010p' internal/mcp/tools.go; sed -n '3720,3775p' internal/mcp/tools.go; rg -n "func renderQuerySourceAsText|Related|tested by" internal/mcp -g '*.go'
+      at: 2026-09-18T21:44:05.965813Z
+      classified: other
+    - cmd: sed -n '1,115p' internal/mcp/searchevidence.go; sed -n '470,535p' internal/mcp/graphtext.go; sed -n '840,900p' internal/mcp/tools.go
+      at: 2026-09-18T21:44:09.077445Z
+      classified: other
+    - cmd: sed -n '115,245p' internal/mcp/textmerge.go; sed -n '245,390p' internal/mcp/textmerge.go
+      at: 2026-09-18T21:44:14.468178Z
+      classified: other
+    - cmd: sed -n '1,220p' internal/textsearch/textsearch.go; sed -n '220,480p' internal/textsearch/textsearch.go
+      at: 2026-09-18T21:44:21.408204Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/selection.go internal/mcp/delivery.go && git diff --check && git diff --stat && rg -n "relatedTest" internal/mcp/selection.go internal/mcp/delivery.go
+      at: 2026-09-18T21:45:42.69098Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/delivery_test.go && go test ./internal/mcp -run 'TestToolQuery_(TestedByPointer|IndirectRelatedTestFileIsPointerOnly)|TestRelatedTestProbes' -count=1
+      at: 2026-09-18T21:46:07.859987Z
+      classified: test
+    - cmd: go env GOFLAGS GOWORK; env | rg '^GO(FLAGS|WORK)=' || true; rg -n "GOFLAGS|GOWORK" Makefile .github scripts -g '*' 2>/dev/null | head -80
+      at: 2026-09-18T21:46:13.425529Z
+      classified: other
+    - cmd: GOFLAGS=-mod=readonly go test ./internal/mcp -run 'TestToolQuery_(TestedByPointer|IndirectRelatedTestFileIsPointerOnly)|TestRelatedTestProbes' -count=1
+      at: 2026-09-18T21:46:18.860222Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/delivery_test.go && GOFLAGS=-mod=readonly go test ./internal/mcp -run 'TestToolQuery_(TestedByPointer|IndirectRelatedTestFileIsPointerOnly)|TestRelatedTestProbes' -count=1
+      at: 2026-09-18T21:46:32.168311Z
+      classified: test
+    - cmd: sed -n '1635,1745p' internal/mcp/tools.go
+      at: 2026-09-18T21:47:27.621377Z
+      classified: other
+    - cmd: sed -n '1,25p' internal/mcp/searchaccuracy_test.go; gofmt -w internal/mcp/searchlimits.go internal/mcp/selection.go internal/mcp/searchaccuracy_test.go; GOFLAGS=-mod=readonly go test ./internal/mcp -run 'TestScopedSymbolScan|TestToolQuery_(TestedByPointer|IndirectRelatedTestFileIsPointerOnly)|TestRelatedTestProbes' -count=1
+      at: 2026-09-18T21:48:00.648673Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/searchaccuracy_test.go && GOFLAGS=-mod=readonly go test ./internal/mcp -run 'TestScopedSymbolScan|TestToolQuery_(TestedByPointer|IndirectRelatedTestFileIsPointerOnly)|TestRelatedTestProbes' -count=1
+      at: 2026-09-18T21:48:12.470194Z
+      classified: test
+    - cmd: git worktree list --porcelain; git diff --check; git status --short; git diff -- internal/mcp/searchlimits.go internal/mcp/selection.go internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/searchaccuracy_test.go
+      at: 2026-09-18T21:48:19.784312Z
+      classified: other
+    - cmd: ls -la /Users/tapabratapal/.cache/prism-research | head -80; find /Users/tapabratapal/.cache/prism-research -maxdepth 3 -type d -iname '*clap*' -print 2>/dev/null | head -40; rg -l "missing_required_error" /Users/tapabratapal/.cache/prism-research --glob '!*.jsonl' --glob '!*.log' 2>/dev/null | head -40
+      at: 2026-09-18T21:48:36.314944Z
+      classified: other
+    - cmd: ls -1 /Users/tapabratapal/.cache/prism-research/swebench-repos | head -100; ls -1 /Users/tapabratapal/.cache/prism-research/wt-clean | head -80; rg -l --hidden --no-ignore "missing_required_error" /Users/tapabratapal/.cache/prism-research/swebench-repos /Users/tapabratapal/.cache/prism-research/wt-clean 2>/dev/null | head -40
+      at: 2026-09-18T21:48:43.21788Z
+      classified: other
+    - cmd: find /private/tmp /tmp -maxdepth 5 -type d \( -iname '*clap*' -o -iname '*pr4006*' \) -print 2>/dev/null | head -80; find /Users/tapabratapal -maxdepth 5 -type d -name 'clap' -print 2>/dev/null | head -40
+      at: 2026-09-18T21:49:00.457027Z
+      classified: other
+    - cmd: GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-opportunities ./cmd/prism && /private/tmp/prism-next-opportunities query --terms missing_required_error,validate_required,get_required_usage_from --dir /private/tmp/prism-v0773-polyglot-full3-20260918/work/clap-rs__clap__pr4006.r1.sonnet_prism --format text
+      at: 2026-09-18T21:49:10.337893Z
+      classified: build
+    - cmd: sed -n '2020,2140p' internal/cli/commands.go
+      at: 2026-09-18T21:49:13.268446Z
+      classified: other
+    - cmd: /private/tmp/prism-next-opportunities query --terms missing_required_error,validate_required,get_required_usage_from /private/tmp/prism-v0773-polyglot-full3-20260918/work/clap-rs__clap__pr4006.r1.sonnet_prism --format text
+      at: 2026-09-18T21:49:22.737785Z
+      classified: other
+    - cmd: /private/tmp/prism-next-opportunities search missing_required --scope symbols --limit 100 /private/tmp/prism-v0773-polyglot-full3-20260918/work/clap-rs__clap__pr4006.r1.sonnet_prism --format text | head -160; /private/tmp/prism-next-opportunities search required_usage --scope symbols --limit 100 /private/tmp/prism-v0773-polyglot-full3-20260918/work/clap-rs__clap__pr4006.r1.sonnet_prism --format text | head -120
+      at: 2026-09-18T21:49:29.421099Z
+      classified: other
+    - cmd: rg -n "isTestFilePath\(" internal/mcp/*_test.go | head -80; rg -n "src/test-utils|versionedTestSourceDir|test file path" internal/mcp/*_test.go
+      at: 2026-09-18T21:49:38.814534Z
+      classified: other
+    - cmd: sed -n '135,200p' internal/mcp/tools_cov_test.go; rg -n "production test utilities|src/test-utils" -C 4 internal/mcp -g '*_test.go'
+      at: 2026-09-18T21:49:43.219527Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/verify.go internal/mcp/tools_cov_test.go && GOFLAGS=-mod=readonly go test ./internal/mcp -run 'TestCategorize|TestScopedSymbolScan|TestToolQuery_(TestedByPointer|IndirectRelatedTestFileIsPointerOnly)|TestRelatedTestProbes' -count=1 && GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-opportunities ./cmd/prism && /private/tmp/prism-next-opportunities query --terms missing_required_error,validate_required,get_required_usage_from /private/tmp/prism-v0773-polyglot-full3-20260918/work/clap-rs__clap__pr4006.r1.sonnet_prism --format text | sed -n '1,32p'
+      at: 2026-09-18T21:50:06.718383Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/selection.go && GOFLAGS=-mod=readonly go test ./internal/mcp -run 'TestCategorize|TestScopedSymbolScan|TestToolQuery_(TestedByPointer|IndirectRelatedTestFileIsPointerOnly)|TestRelatedTestProbes' -count=1 && GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-opportunities ./cmd/prism && /private/tmp/prism-next-opportunities query --terms missing_required_error,validate_required,get_required_usage_from /private/tmp/prism-v0773-polyglot-full3-20260918/work/clap-rs__clap__pr4006.r1.sonnet_prism --format text | sed -n '1,22p'
+      at: 2026-09-18T21:50:53.166891Z
+      classified: test
+    - cmd: ls -ld /Users/tapabratapal/Projects/provasign/research /Users/tapabratapal/Projects/provasign/research-harness 2>/dev/null; find /Users/tapabratapal/Projects/provasign -maxdepth 2 -type d -name '.grove' -print
+      at: 2026-09-18T21:50:59.124697Z
+      classified: other
+    - cmd: /usr/bin/time -p /private/tmp/prism-next-opportunities search test --scope symbols --path definitely-no-such-scope --limit 25 --dir /Users/tapabratapal/Projects/provasign/research --format text
+      at: 2026-09-18T21:51:26.002551Z
+      classified: other
+    - cmd: rg -n "symbolFetchHardMax|262,144|1 << 18|262144" . --glob '!docs/PRISM-2.0.md'; gofmt -w internal/mcp/tools.go && GOFLAGS=-mod=readonly go test ./internal/mcp -run 'TestScopedSymbolScan|TestSearchSymbols_Scoped|TestSearchLargeLimit|TestToolQuery_Indirect' -count=1 && GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-opportunities ./cmd/prism && /usr/bin/time -p /private/tmp/prism-next-opportunities search test --scope symbols --path definitely-no-such-scope --limit 25 --dir /Users/tapabratapal/Projects/provasign/research --format text
+      at: 2026-09-18T21:52:19.928917Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go && GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-opportunities ./cmd/prism && PRISM_TIMING=1 /usr/bin/time -p /private/tmp/prism-next-opportunities search test --scope symbols --path definitely-no-such-scope --limit 25 --dir /Users/tapabratapal/Projects/provasign/research --format text
+      at: 2026-09-18T21:53:11.476428Z
+      classified: build
+    - cmd: rg -n "func \(.*\) Symbols|type .*Symbol.*Query|SearchSymbols|FileSymbols" /Users/tapabratapal/Projects/provasign/grove/pkg /Users/tapabratapal/Projects/provasign/grove/internal -g '*.go' | head -120; rg -n "func \(.*\) Symbols" $(go env GOPATH 2>/dev/null)/pkg/mod/github.com/provasign/grove* -g '*.go' 2>/dev/null | head -40
+      at: 2026-09-18T21:53:16.518262Z
+      classified: other
+    - cmd: sed -n '270,330p' /Users/tapabratapal/Projects/provasign/grove/pkg/grove/grove.go; rg -n "func \(.*\) Search|Search.*Symbol|Symbols\(" /Users/tapabratapal/Projects/provasign/grove/internal -g '*.go' | head -120; rg -n "Symbols\(" /Users/tapabratapal/Projects/provasign/grove/pkg/grove -g '*.go' | head -80
+      at: 2026-09-18T21:53:23.230807Z
+      classified: other
+    - cmd: sed -n '345,430p' /Users/tapabratapal/Projects/provasign/grove/internal/graph/graph.go; sed -n '430,510p' /Users/tapabratapal/Projects/provasign/grove/internal/graph/graph.go; rg -n "type CodeGraph" /Users/tapabratapal/Projects/provasign/grove/internal/graph/graph.go | head
+      at: 2026-09-18T21:53:45.69447Z
+      classified: other
+    - cmd: if [ -f /Users/tapabratapal/Projects/provasign/grove/AGENTS.md ]; then cat /Users/tapabratapal/Projects/provasign/grove/AGENTS.md; fi; git -C /Users/tapabratapal/Projects/provasign/grove branch --show-current; git -C /Users/tapabratapal/Projects/provasign/grove status --short; grep -n "github.com/provasign/grove" go.mod /Users/tapabratapal/Projects/provasign/go.work
+      at: 2026-09-18T21:53:54.317148Z
+      classified: other
+    - cmd: prism query --terms Search,Symbols,SearchScoped,searchRank --format text && prism change-impact Engine.Symbols --format text
+      at: 2026-09-18T21:54:02.887861Z
+      classified: other
+    - cmd: sed -n '1,35p' internal/graph/graph.go; sed -n '1,28p' pkg/grove/grove.go; sed -n '1,120p' internal/graph/graph_test.go 2>/dev/null || true; ls internal/graph/*search*test.go 2>/dev/null
+      at: 2026-09-18T21:54:13.323711Z
+      classified: other
+    - cmd: gofmt -w internal/graph/graph.go pkg/grove/grove.go internal/graph/graph_test.go && go test ./internal/graph ./pkg/grove
+      at: 2026-09-18T21:54:53.76698Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./internal/graph ./pkg/grove
+      at: 2026-09-18T21:55:01.002444Z
+      classified: test
+    - cmd: gofmt -w internal/graph/graph_test.go && GOFLAGS=-mod=readonly go test ./internal/graph ./pkg/grove
+      at: 2026-09-18T21:55:09.942696Z
+      classified: test
+    - cmd: gofmt -w internal/grove/client.go internal/mcp/selection.go internal/mcp/tools.go && GOFLAGS=-mod=readonly go test ./internal/grove ./internal/mcp -run 'TestScopedSymbolScan|TestSearchSymbols_Scoped|TestSearchLargeLimit|TestToolQuery_Indirect|TestCategorize' -count=1 && GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-opportunities ./cmd/prism && PRISM_TIMING=1 /usr/bin/time -p /private/tmp/prism-next-opportunities search test --scope symbols --path definitely-no-such-scope --limit 25 --dir /Users/tapabratapal/Projects/provasign/research --format text
+      at: 2026-09-18T21:56:12.872494Z
+      classified: test
+    - cmd: rg -n "func \(h \*Handler\) attachEmptySearchGuidance|attachEmptySearchGuidance|searchFallback" internal/mcp -g '*.go'; sed -n '1810,1970p' internal/mcp/tools.go; sed -n '1,220p' internal/mcp/searchfallback.go
+      at: 2026-09-18T21:56:17.821551Z
+      classified: other
+    - cmd: sed -n '1740,1805p' internal/mcp/tools.go; sed -n '2010,2145p' internal/mcp/tools.go
+      at: 2026-09-18T21:56:22.045381Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/go.work; GOFLAGS=-mod=readonly go list -m -f '{{.Path}} {{.Dir}} {{.Version}}' github.com/provasign/grove
+      at: 2026-09-18T21:56:27.320498Z
+      classified: other
+    - cmd: sed -n '600,675p' internal/store/store.go; rg -n "CREATE TABLE.*symbols|symbols \(" internal/store -g '*.go'; rg -n "SELECT .*symbols|FROM symbols" internal/store/store.go | head -60; sed -n '50,150p' internal/store/store.go
+      at: 2026-09-18T21:56:39.459418Z
+      classified: other
+    - cmd: sed -n '1070,1145p' internal/store/store.go; sed -n '1,70p' internal/store/store.go; sed -n '1,120p' internal/store/store_test.go
+      at: 2026-09-18T21:56:52.206395Z
+      classified: other
+    - cmd: gofmt -w pkg/grove/grove.go && GOFLAGS=-mod=readonly go test ./internal/graph ./pkg/grove
+      at: 2026-09-18T21:57:30.442528Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-opportunities ./cmd/prism && PRISM_TIMING=1 /usr/bin/time -p /private/tmp/prism-next-opportunities search test --scope symbols --path definitely-no-such-scope --limit 25 --dir /Users/tapabratapal/Projects/provasign/research --format text
+      at: 2026-09-18T21:57:44.770553Z
+      classified: build
+    - cmd: sed -n '1,70p' pkg/grove/grove_test.go; sed -n '100,205p' pkg/grove/grove_test.go
+      at: 2026-09-18T21:57:51.511139Z
+      classified: other
+    - cmd: gofmt -w pkg/grove/grove_test.go && GOFLAGS=-mod=readonly go test ./internal/graph ./pkg/grove
+      at: 2026-09-18T21:58:12.474534Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-18T21:58:23.398685Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-18T21:58:36.782877Z
+      classified: test
+    - cmd: python3 scripts/ci_invariants.py
+      at: 2026-09-18T21:58:45.859031Z
+      classified: other
+    - cmd: GOFLAGS=-mod=readonly go test -race ./...
+      at: 2026-09-18T21:58:55.416841Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test -race ./...
+      at: 2026-09-18T21:59:27.015436Z
+      classified: test
+    - cmd: rg --files | rg 'ci_invariants\.py$|invariants|benchmark' | head -100; rg -n "ci_invariants" .github Makefile scripts docs -g '*' 2>/dev/null | head -80
+      at: 2026-09-18T21:59:31.755727Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign -name ci_invariants.py -print 2>/dev/null | head -20; rg -n "jackson-serializewithtype|0\.995" /Users/tapabratapal/Projects/provasign/research -g '*.py' -g '*.sh' 2>/dev/null | head -40
+      at: 2026-09-18T21:59:42.863691Z
+      classified: other
+    - cmd: sed -n '1,80p' /Users/tapabratapal/Projects/provasign/research/harness/scoring/ci_invariants.py; tail -80 /Users/tapabratapal/Projects/provasign/research/harness/scoring/ci_invariants.py
+      at: 2026-09-18T21:59:47.470197Z
+      classified: other
+    - cmd: python3 /Users/tapabratapal/Projects/provasign/research/harness/scoring/ci_invariants.py --corpus-root /Users/tapabratapal/.cache/prism-research/ci-corpus --prism /private/tmp/prism-next-opportunities
+      at: 2026-09-18T22:04:41.06027Z
+      classified: other
+    - cmd: GOFLAGS=-mod=readonly go test ./... && git diff --check && git status --short
+      at: 2026-09-18T22:04:57.673726Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./... && git diff --check && git status --short
+      at: 2026-09-18T22:04:57.903921Z
+      classified: test
+    - cmd: rg -n "query.oracle|oracle.*query|query.*recall|PRISM_NO_FAMILY|oracle bed" harness -g '*.py' -g '*.sh' | head -120; find harness -maxdepth 3 -type f \( -iname '*query*' -o -iname '*oracle*' \) -print | head -100
+      at: 2026-09-18T22:05:20.634151Z
+      classified: other
+    - cmd: sed -n '1,110p' harness/scoring/engine_ci_regression.py; sed -n '220,285p' harness/scoring/query_oracle.py
+      at: 2026-09-18T22:05:25.140643Z
+      classified: other
+    - cmd: python3 harness/scoring/query_oracle.py --prism /private/tmp/prism-next-opportunities --slice harness/results/swebench-live/slice-java12.json --out /private/tmp/prism-next-query-oracle.json
+      at: 2026-09-18T22:10:15.508623Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for p in ['harness/results/prism-rerun-query-2026-09-18.json','/private/tmp/prism-next-query-oracle.json']:
+         d=json.load(open(p))
+         print(p, d.get('aggregate') or d.get('agg') or (d[-1] if isinstance(d,list) and d and isinstance(d[-1],dict) and 'aggregate' in d[-1] else 'no aggregate'))
+        PY
+        head -5 harness/results/prism-rerun-query-2026-09-18.json; tail -20 harness/results/prism-rerun-query-2026-09-18.json
+      at: 2026-09-18T22:10:20.985854Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        b=json.load(open('harness/results/prism-rerun-query-2026-09-18.json'))['results']
+        n=json.load(open('/private/tmp/prism-next-query-oracle.json'))['results']
+        for x,y in zip(b,n):
+         for mode in ('realistic','oracle'):
+          a=x.get(mode); c=y.get(mode)
+          if isinstance(a,dict) and isinstance(c,dict) and (a.get('recall'),a.get('oversupply')) != (c.get('recall'),c.get('oversupply')):
+           print(x['instance_id'],mode,(a.get('recall'),a.get('oversupply'),a.get('delivered')),'->',(c.get('recall'),c.get('oversupply'),c.get('delivered')))
+        PY
+      at: 2026-09-18T22:10:27.868836Z
+      classified: other
+    - cmd: git diff --stat; git diff --check; git branch --show-current; nl -ba internal/mcp/selection.go | sed -n '35,75p;570,735p'; nl -ba internal/mcp/delivery.go | sed -n '90,115p;370,405p'; nl -ba internal/mcp/searchlimits.go | sed -n '1,70p'; nl -ba internal/mcp/verify.go | sed -n '1025,1055p'; nl -ba internal/grove/client.go | sed -n '315,355p'
+      at: 2026-09-18T22:10:40.771609Z
+      classified: other
+    - cmd: git diff --stat; git diff --check; git branch --show-current; nl -ba internal/graph/graph.go | sed -n '350,470p'; nl -ba pkg/grove/grove.go | sed -n '150,215p;290,335p'; git status --short
+      at: 2026-09-18T22:10:48.092301Z
+      classified: other
+    - cmd: ls -la /private/tmp/prism-v0773-polyglot-full3-20260918 | head -80; find /private/tmp/prism-v0773-polyglot-full3-20260918 -maxdepth 2 -type f -print | head -100; rg -n "polyglot-full3|clap-rs__clap__pr4006|sonnet_prism" harness -g '*.sh' -g '*.py' -g '*.json' | head -160
+      at: 2026-09-19T02:07:36.752557Z
+      classified: other
+    - cmd: python3 harness/bench.py --help
+      at: 2026-09-19T02:07:39.978039Z
+      classified: other
+    - cmd: sed -n '1,260p' harness/docs/BENCH.md; python3 harness/bench.py run --help; python3 harness/bench.py list-suites
+      at: 2026-09-19T02:07:44.778865Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-v0773-polyglot-full3-20260918/summary.json'
+        d=json.load(open(p))
+        print(type(d), d.keys() if isinstance(d,dict) else len(d))
+        cs=d.get('cells') or d.get('results') or []
+        for c in cs:
+         print(c.get('cell_id'), 'resolved=',c.get('resolved'),'valid=',c.get('valid'),'turns=',c.get('turns'),'cost=',c.get('cost_usd'))
+        PY
+        python3 harness/bench.py list-tasks --suite polyglot
+      at: 2026-09-19T02:07:53.031189Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for root in ['/private/tmp/prism-v0773-polyglot-full3-20260918','/private/tmp/prism-v0773-polyglot-full2-20260918','/private/tmp/prism-v0773-polyglot-full-20260918']:
+         try:d=json.load(open(root+'/summary.json'))
+         except Exception as e: print(root,e);continue
+         print('\n',root, 'resolved',d.get('resolved'),'valid',d.get('valid'))
+         for c in d.get('rows',[]):
+          print(c.get('cell_id'), 'resolved=',c.get('resolved'),'valid=',c.get('valid'),'turns=',c.get('turns'),'cost=',c.get('cost_usd'),'reason=',c.get('reason') or c.get('error'))
+        PY
+      at: 2026-09-19T02:07:59.447538Z
+      classified: other
+    - cmd: find /private/tmp /Users/tapabratapal/Projects/provasign/research/harness/results -maxdepth 3 -name summary.json -path '*2026-09-18*' -print 2>/dev/null | rg 'clap|polyglot|v077' | head -80; find /Users/tapabratapal/Projects/provasign/research/harness/results -maxdepth 2 -type d -iname '*polyglot*' -o -iname '*clap*' | head -80
+      at: 2026-09-19T02:08:05.607311Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,glob
+        for p in glob.glob('/Users/tapabratapal/Projects/provasign/research/harness/results/*polyglot*2026-09-18/summary.json'):
+         d=json.load(open(p)); print('\n',p, 'resolved',d.get('resolved'),'valid',d.get('valid'))
+         for c in d.get('rows',[]):
+          print(c.get('cell_id'),c.get('resolved'),'turns',c.get('turns'),'cost',c.get('cost_usd'),'valid',c.get('valid'))
+        PY
+      at: 2026-09-19T02:08:11.449354Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for p in ['harness/results/prism-improve-polyglot-targeted-2026-09-18/manifest.json','harness/results/prism-rerun-polyglot-2026-09-18/manifest.json','/private/tmp/prism-v0773-polyglot-full3-20260918/manifest.json']:
+         d=json.load(open(p)); print('\n',p)
+         for k in ['suite','agents','models','arms','trials','timeout_s','max_budget_usd','prism_binary','tasks']:
+          v=d.get(k); print(k, (v[:5] if isinstance(v,list) else v))
+        PY
+      at: 2026-09-19T02:08:22.380781Z
+      classified: other
+    - cmd: GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-resolved-bin ./cmd/prism && /private/tmp/prism-next-resolved-bin version
+      at: 2026-09-19T02:08:37.503261Z
+      classified: build
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks clap-rs__clap__pr4006 --agents codex --tools prism --trials 3 --concurrency 3 --timeout-s 300 --prism-binary /private/tmp/prism-next-resolved-bin --out /private/tmp/prism-next-clap4006-r3-20260918
+      at: 2026-09-19T02:11:20.707996Z
+      classified: other
+    - cmd: |-
+        find /private/tmp/prism-next-clap4006-r3-20260918 -maxdepth 3 -type f -print | sort | head -120; ls -la /private/tmp/prism-next-clap4006-r3-20260918; python3 - <<'PY'
+        import json,os
+        root='/private/tmp/prism-next-clap4006-r3-20260918'
+        for f in ['manifest.json','summary.json']:
+         p=os.path.join(root,f)
+         if os.path.exists(p):
+          d=json.load(open(p)); print('\n',f); print(json.dumps(d,indent=2)[:12000])
+        PY
+        rg -n "gold-side collection error|n_after|collect.*gold|validation failed" harness -g '*.py'
+      at: 2026-09-19T02:11:32.266658Z
+      classified: other
+    - cmd: sed -n '410,500p' harness/bench.py; sed -n '150,225p' harness/scoring/docker_eval.py; rg -n "def prepare|validate_task|gold" harness/lib harness/bench.py -g '*.py' | head -120
+      at: 2026-09-19T02:11:38.043419Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='harness/tasks/polyglot/clap-rs__clap__pr4006.json'
+        d=json.load(open(p))
+        for k in ['instance_id','repo','base_commit','language','test_cmd']:
+         print(k, d.get(k))
+        print('patch bytes',len(d.get('patch','')),'test_patch bytes',len(d.get('test_patch','')))
+        PY
+        sed -n '1,180p' harness/scoring/docker_eval.py
+      at: 2026-09-19T02:11:46.322723Z
+      classified: other
+    - cmd: rg -n "def .*rust|RUNNERS|rust" harness/scoring/docker_eval_lang.py | head -80; sed -n '1,180p' harness/scoring/docker_eval_lang.py
+      at: 2026-09-19T02:11:49.869571Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json, subprocess, sys
+        from pathlib import Path
+        sys.path.insert(0, 'harness/scoring')
+        import docker_eval
+        p=Path('harness/tasks/polyglot/clap-rs__clap__pr4006.json')
+        t=json.loads(p.read_text())
+        repo,wt=docker_eval._worktree(t,[t['test_patch'],t['patch']])
+        try:
+         locked='--locked ' if (wt/'Cargo.lock').exists() else ''
+         cmd=f'cd /w && cargo test {locked}--no-fail-fast -- --test-threads=1 2>&1'
+         r=subprocess.run(['docker','run','--rm','-v',f'{wt}:/w','-w','/w','rust:1.81','bash','-c',cmd],capture_output=True,text=True,timeout=1800)
+         print('returncode',r.returncode,'worktree',wt)
+         print('\n'.join(r.stdout.splitlines()[-120:]))
+         print('\nSTDERR\n'+'\n'.join(r.stderr.splitlines()[-40:]))
+        finally:
+         docker_eval._cleanup(repo,wt)
+        PY
+      at: 2026-09-19T02:14:00.17437Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        import sys
+        sys.path.insert(0, '.')
+        from harness.tasks import load_tasks
+        from harness.scoring.docker_eval import DockerEvaluator
+
+        wanted = 'clap-rs__clap__pr4006'
+        tasks = load_tasks('harness/tasks')
+        task = next(t for t in tasks if t.id == wanted)
+        ev = DockerEvaluator()
+        print(ev.validate(task))
+        PY
+      at: 2026-09-19T02:14:51.169214Z
+      classified: other
+    - cmd: rg -n "def (load|validate)|class DockerEvaluator|load_tasks" harness/bench.py harness/scoring harness/tasks.py harness 2>/dev/null | head -80
+      at: 2026-09-19T02:14:55.333004Z
+      classified: other
+    - cmd: sed -n '1,240p' harness/scoring/docker_eval.py; sed -n '1,180p' harness/lib/tasks.py 2>/dev/null; sed -n '1,140p' harness/schema.py
+      at: 2026-09-19T02:14:58.964836Z
+      classified: other
+    - cmd: rg -n "Task|json.loads|glob\(" harness/bench.py | head -100; ls harness/tasks/polyglot | head
+      at: 2026-09-19T02:15:02.115112Z
+      classified: other
+    - cmd: sed -n '430,500p' harness/bench.py; sed -n '1,80p' harness/tasks/polyglot/clap-rs__clap__pr4006.json
+      at: 2026-09-19T02:15:06.20857Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path('harness/scoring').resolve()))
+        import docker_eval
+        p = Path('harness/tasks/polyglot/clap-rs__clap__pr4006.json')
+        task = json.loads(p.read_text())
+        print(json.dumps(docker_eval.validate(task), indent=2))
+        PY
+      at: 2026-09-19T02:19:08.088699Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks clap-rs__clap__pr4006 --agents codex --tools prism --trials 3 --concurrency 3 --timeout-s 300 --prism-binary /private/tmp/prism-next-resolved-bin --out /private/tmp/prism-next-clap4006-r3b-20260918
+      at: 2026-09-19T02:28:27.413179Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        root=Path('/private/tmp/prism-next-clap4006-r3b-20260918')
+        for name in ('summary.json','manifest.json'):
+         p=root/name
+         print(name)
+         data=json.loads(p.read_text())
+         if name=='summary.json':
+          print(json.dumps(data, indent=2))
+         else:
+          print(json.dumps({k:data.get(k) for k in ('versions','hashes','tasks','cells')}, indent=2)[:5000])
+        PY
+      at: 2026-09-19T02:28:32.241763Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-clap4006-r3b-20260918/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','completed','valid','timeouts','agent_errors','harness_errors','resolved')})
+        for r in d['rows']:
+         print(r['cell_id'], 'resolved=',r['resolved'], 'score=',r['score'], 'changed=',r['changed_files'], 'prism_actions=',r['prism_actions'], 'wall_s=',r['wall_s'])
+        PY
+      at: 2026-09-19T02:28:37.081408Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks clap-rs__clap__pr5080,BurntSushi__ripgrep__pr2209,darkreader__darkreader__pr7241 --agents codex --tools prism --trials 1 --concurrency 3 --timeout-s 300 --prism-binary /private/tmp/prism-next-resolved-bin --out /private/tmp/prism-next-controls-20260918
+      at: 2026-09-19T02:33:47.853329Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-controls-20260918/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','completed','valid','timeouts','agent_errors','harness_errors','resolved')})
+        for r in d['rows']:
+         print(r['cell_id'], 'resolved=',r['resolved'], 'score=',r['score'], 'changed=',r['changed_files'], 'prism_actions=',r['prism_actions'], 'wall_s=',r['wall_s'])
+        PY
+      at: 2026-09-19T02:33:53.175961Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        runs = [
+        ('/private/tmp/prism-next-controls-20260918/summary.json','current'),
+        ('/private/tmp/prism-v0773-polyglot-full3-20260918/summary.json','previous'),
+        ]
+        for path,label in runs:
+         d=json.loads(Path(path).read_text())
+         print('\n###',label)
+         for r in d['rows']:
+          if r['task']=='clap-rs__clap__pr5080':
+           print('cell',r['cell_id'],'resolved',r['resolved'],'score',r.get('score'))
+           print('prism commands',r.get('own_tool_cli_commands') or r.get('prism_cli_commands'))
+           print('changed',r.get('changed_files'))
+           for c in r.get('calls',[]):
+            cmd=c.get('command','')
+            if 'git diff' in cmd or 'cargo test' in cmd:
+             out=c.get('aggregated_output','')
+             print('\nCMD',cmd,'\n',out[-5000:])
+        PY
+      at: 2026-09-19T02:34:05.323138Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        paths=[
+        '/Users/tapabratapal/Projects/provasign/research/harness/results/prism-improve-polyglot-targeted-2026-09-18/summary.json',
+        '/Users/tapabratapal/Projects/provasign/research/harness/results/prism-rerun-polyglot-2026-09-18/summary.json',
+        '/private/tmp/prism-v0773-polyglot-full3-20260918/summary.json']
+        for p in paths:
+         d=json.loads(Path(p).read_text()); print('\n',p)
+         for r in d['rows']:
+          if r['task'] in {'clap-rs__clap__pr4006','clap-rs__clap__pr5080','BurntSushi__ripgrep__pr2209','darkreader__darkreader__pr7241'}:
+           print(r['cell_id'],r.get('resolved'),r.get('score'))
+        PY
+      at: 2026-09-19T02:34:17.785514Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks clap-rs__clap__pr4006,clap-rs__clap__pr5080 --agents claude --tools prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-next-resolved-bin --out /private/tmp/prism-next-clap-sonnet-controls-20260918
+      at: 2026-09-19T02:47:27.613604Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-clap-sonnet-controls-20260918/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','completed','valid','timeouts','measurement_incomplete','agent_errors','protocol_violations','harness_errors','resolved')})
+        for r in d['rows']:
+         print(r['cell_id'], 'valid=',r.get('audited_valid'), 'measurement=',r.get('measurement_complete'), 'timeout=',r['timed_out'], 'agent_error=',r['agent_error'], 'resolved=',r.get('resolved'), 'score=',r.get('score'), 'changed=',r.get('changed_files'), 'prism_actions=',r.get('prism_actions'), 'wall_s=',r.get('wall_s'))
+        PY
+      at: 2026-09-19T02:47:38.30908Z
+      classified: other
+    - cmd: git branch --show-current; git status --short
+      at: 2026-09-19T02:48:15.480951Z
+      classified: other
+    - cmd: git branch --show-current; git status --short; shasum -a 256 /private/tmp/prism-next-resolved-bin
+      at: 2026-09-19T02:48:15.556473Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        roots=[Path('harness/results')]
+        files=list(Path('harness/results').rglob('summary.json'))
+        files += [
+         Path('/private/tmp/prism-v0773-polyglot-full3-20260918/summary.json'),
+         Path('/private/tmp/prism-next-clap4006-r3b-20260918/summary.json'),
+         Path('/private/tmp/prism-next-controls-20260918/summary.json'),
+         Path('/private/tmp/prism-next-clap-sonnet-controls-20260918/summary.json'),
+        ]
+        seen=set()
+        for p in files:
+         if not p.exists() or str(p) in seen: continue
+         seen.add(str(p))
+         try:d=json.loads(p.read_text())
+         except:continue
+         for x in d.get('rows',[]):
+          if x.get('task') in {'clap-rs__clap__pr4006','clap-rs__clap__pr5080','BurntSushi__ripgrep__pr2209','darkreader__darkreader__pr7241'}:
+           print(json.dumps({
+            'run':str(p.parent),'cell':x.get('cell_id'),'task':x.get('task'),'arm':x.get('arm'),
+            'trial':x.get('trial'),'resolved':x.get('resolved'),'valid':x.get('audited_valid'),
+            'complete':x.get('measurement_complete'),'timeout':x.get('timed_out'),'turns':x.get('turns'),
+            'input':x.get('input_tokens'),'cache':x.get('cache_read_tokens'),'output':x.get('output_tokens'),
+            'total':x.get('total_tokens'),'cost':x.get('cost_usd'),'wall':x.get('wall_s'),
+            'prism_actions':x.get('prism_actions')
+           }))
+        PY
+      at: 2026-09-19T02:50:07.659801Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        files=list(Path('harness/results').rglob('summary.json')) + [
+         Path('/private/tmp/prism-v0773-polyglot-full3-20260918/summary.json'),
+         Path('/private/tmp/prism-next-clap4006-r3b-20260918/summary.json'),
+         Path('/private/tmp/prism-next-controls-20260918/summary.json'),
+         Path('/private/tmp/prism-next-clap-sonnet-controls-20260918/summary.json')]
+        seen=set()
+        for p in files:
+         if not p.exists() or str(p) in seen: continue
+         seen.add(str(p))
+         try:d=json.loads(p.read_text())
+         except:continue
+         if not isinstance(d,dict): continue
+         rows=d.get('rows',[])
+         if not isinstance(rows,list): continue
+         for x in rows:
+          if not isinstance(x,dict) or x.get('task') not in {'clap-rs__clap__pr4006','clap-rs__clap__pr5080','BurntSushi__ripgrep__pr2209','darkreader__darkreader__pr7241'}: continue
+          print(json.dumps({
+           'run':str(p.parent),'cell':x.get('cell_id'),'task':x.get('task'),'arm':x.get('arm'),
+           'trial':x.get('trial'),'resolved':x.get('resolved'),'valid':x.get('audited_valid'),
+           'complete':x.get('measurement_complete'),'timeout':x.get('timed_out'),'turns':x.get('turns'),
+           'input':x.get('input_tokens'),'cache':x.get('cache_read_tokens'),'output':x.get('output_tokens'),
+           'total':x.get('total_tokens'),'cost':x.get('cost_usd'),'wall':x.get('wall_s'),
+           'prism_actions':x.get('prism_actions')
+          }))
+        PY
+      at: 2026-09-19T02:50:22.77413Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for p in [
+         Path('/private/tmp/prism-next-clap4006-r3b-20260918/summary.json'),
+         Path('/private/tmp/prism-next-controls-20260918/summary.json'),
+         Path('/private/tmp/prism-next-clap-sonnet-controls-20260918/summary.json'),
+         Path('harness/results/prism-improve-polyglot-targeted-2026-09-18/summary.json'),
+         Path('harness/results/prism-rerun-polyglot-2026-09-18/summary.json'),
+         Path('/private/tmp/prism-v0773-polyglot-full3-20260918/summary.json')]:
+         d=json.loads(p.read_text())
+         print('\n'+str(p.parent))
+         for x in d['rows']:
+          if x.get('task') in {'clap-rs__clap__pr4006','clap-rs__clap__pr5080','BurntSushi__ripgrep__pr2209','darkreader__darkreader__pr7241'}:
+           print(x['cell_id'], 'solved',x.get('resolved'),'valid',x.get('audited_valid'),'turns',x.get('turns'),'tool_calls',x.get('tool_calls'),'input',x.get('input_tokens'),'cache',x.get('cache_read_tokens'),'out',x.get('output_tokens'),'wall',x.get('wall_s'))
+        PY
+      at: 2026-09-19T02:51:16.384146Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks clap-rs__clap__pr4006 --agents claude --tools native,prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-next-resolved-bin --out /private/tmp/prism-next-clap4006-sonnet-paired-r1-20260918
+      at: 2026-09-19T03:02:01.564396Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-clap4006-sonnet-paired-r1-20260918/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','completed','valid','timeouts','agent_errors','harness_errors','resolved')})
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print(json.dumps({
+          'arm':x['arm'],'resolved':x['resolved'],'score':x['score'],'valid':x['audited_valid'],
+          'turns':x['turns'],'tool_calls':x['tool_calls'],'input_tokens':x['input_tokens'],
+          'output_tokens':x['output_tokens'],'total_tokens':x['total_tokens'],'cost_usd':x['cost_usd'],
+          'wall_s':x['wall_s'],'prism_actions':x['prism_actions'],'changed_files':x['changed_files']
+         },indent=2))
+        PY
+      at: 2026-09-19T03:02:09.572733Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-clap4006-sonnet-paired-r1-20260918/summary.json'
+        d=json.load(open(p))
+        for x in d['rows']:
+         if x['arm']!='sonnet_native': continue
+         print('FINAL SCORE',x['score'])
+         for c in x.get('calls',[]):
+          cmd=c.get('command','')
+          out=c.get('aggregated_output','')
+          if any(k in cmd for k in ('cargo test','git diff')):
+           print('\nCMD:',cmd,'\nEXIT:',c.get('exit_code'),'\n',out[-8000:])
+        PY
+      at: 2026-09-19T03:02:20.51497Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-clap4006-sonnet-paired-r1-20260918/summary.json'
+        d=json.load(open(p))
+        for x in d['rows']:
+         if x['arm']=='sonnet_native':
+          print('native_commands:')
+          print('\n'.join(x.get('native_commands',[])))
+          print('calls first:')
+          for c in x.get('calls',[])[:8]: print(c)
+          print('patch?')
+          for k in x:
+           if 'patch' in k or 'diff' in k: print(k,type(x[k]),str(x[k])[:4000])
+        PY
+      at: 2026-09-19T03:02:26.314098Z
+      classified: other
+    - cmd: git diff -- src/output/usage.rs; cargo check -q
+      at: 2026-09-19T03:02:36.703206Z
+      classified: other
+    - cmd: rg --files /private/tmp/prism-next-clap4006-sonnet-paired-r1-20260918 | head -80
+      at: 2026-09-19T03:02:44.534425Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json, sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path('harness/scoring').resolve()))
+        import docker_eval
+        root=Path('/private/tmp/prism-next-clap4006-sonnet-paired-r1-20260918')
+        task=json.loads((root/'tasks/clap-rs__clap__pr4006.json').read_text())
+        patch=(root/'evidence/clap-rs__clap__pr4006.r1.sonnet_native/agent.diff').read_text()
+        print(json.dumps(docker_eval.score(task, patch), indent=2))
+        PY
+      at: 2026-09-19T03:04:50.934889Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        rows=[]
+        for p in Path('harness/results').rglob('summary.json'):
+         try:d=json.loads(p.read_text())
+         except:continue
+         if not isinstance(d,dict):continue
+         for x in d.get('rows',[]):
+          if not isinstance(x,dict):continue
+          arm=str(x.get('arm',''))
+          if 'sonnet' in arm and x.get('resolved') is True and x.get('turns') == 1 and x.get('audited_valid',True):
+           rows.append((x.get('task'),arm,x.get('total_tokens'),x.get('tool_calls'),x.get('wall_s'),str(p.parent)))
+        for row in rows:
+         print('\t'.join(map(str,row)))
+        print('COUNT',len(rows))
+        PY
+        python3 harness/bench.py run --help | sed -n '1,220p'
+      at: 2026-09-19T03:10:06.470346Z
+      classified: other
+    - cmd: rg -n "max.turn|max_turn|turns|claude" harness/lib harness/runners harness/bench.py --glob '*.py' | head -240; claude --help | rg -n "turn|budget|print|permission"
+      at: 2026-09-19T03:10:13.590502Z
+      classified: other
+    - cmd: rg -n -i "one[- ]turn|single[- ]turn|one[- ]shot|single[- ]shot|context injection|pre.?inject|preloaded context" harness --glob '*.py' --glob '*.md' --glob '!results/**' | head -240
+      at: 2026-09-19T03:10:38.788909Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks darkreader__darkreader__pr7241 --agents claude --tools native,prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-next-resolved-bin --out /private/tmp/prism-next-darkreader7241-sonnet-paired-r1-20260918
+      at: 2026-09-19T03:13:35.709099Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-darkreader7241-sonnet-paired-r1-20260918/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','completed','valid','timeouts','agent_errors','harness_errors','resolved')})
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print(json.dumps({
+          'arm':x['arm'],'resolved':x['resolved'],'score':x['score'],'valid':x['audited_valid'],
+          'turns':x['turns'],'tool_calls':x['tool_calls'],'input_tokens':x['input_tokens'],
+          'output_tokens':x['output_tokens'],'total_tokens':x['total_tokens'],'cost_usd':x['cost_usd'],
+          'wall_s':x['wall_s'],'prism_actions':x['prism_actions'],'changed_files':x['changed_files']
+         },indent=2))
+        PY
+      at: 2026-09-19T03:13:42.537419Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-darkreader7241-sonnet-paired-r1-20260918/summary.json'
+        d=json.load(open(p))
+        for x in sorted(d['rows'], [REDACTED:env-secret] r:r['arm']):
+         print('\n###',x['arm'])
+         print('turns',x['turns'],'calls',x['tool_calls'],'prism_actions',x['prism_actions'],'prism_bytes',x.get('prism_result_bytes'))
+         print('native_commands:')
+         for c in x.get('native_commands',[]): print(' ',c)
+         print('prism_cli_commands:')
+         for c in x.get('prism_cli_commands',[]): print(' ',c)
+         print('calls:')
+         for c in x.get('calls',[]):
+          if c.get('type')=='tool_use':
+           inp=c.get('input',{})
+           detail=inp.get('command') or inp.get('pattern') or inp.get('file_path') or inp.get('query') or ''
+           print(' ',c.get('name'),str(detail)[:240])
+          else:
+           print(' ',c.get('type'),c.get('command','')[:240])
+        PY
+      at: 2026-09-19T03:13:58.706644Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-next-darkreader7241-sonnet-paired-r1-20260918/summary.json'
+        d=json.load(open(p))
+        for x in d['rows']:
+         if x['arm']!='sonnet_prism':continue
+         for i,c in enumerate(x.get('calls',[]),1):
+          if c.get('name')=='mcp__prism__prism':
+           print('CALL',i,json.dumps(c,indent=2)[:12000])
+        PY
+      at: 2026-09-19T03:14:08.089163Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/private/tmp/prism-next-darkreader7241-sonnet-paired-r1-20260918/evidence/darkreader__darkreader__pr7241.r1.sonnet_native/stdout.jsonl')
+        for line in p.read_text().splitlines():
+         try:o=json.loads(line)
+         except:continue
+         s=json.dumps(o)
+         if any(k in s for k in ['delimiterRegex','parseSitesFixesConfig','indexSitesFixesConfig','parse.tests','jest.config']):
+          print(json.dumps(o,indent=2)[:12000])
+          print('---')
+        PY
+      at: 2026-09-19T03:16:28.766893Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/private/tmp/prism-next-darkreader7241-sonnet-paired-r1-20260918/evidence/darkreader__darkreader__pr7241.r1.sonnet_prism/stdout.jsonl')
+        for line in p.read_text().splitlines():
+         try:o=json.loads(line)
+         except:continue
+         msg=o.get('message',{})
+         content=msg.get('content',[]) if isinstance(msg,dict) else []
+         for b in content if isinstance(content,list) else []:
+          if not isinstance(b,dict): continue
+          if b.get('type')=='thinking':
+           t=b.get('thinking','').strip()
+           if t: print('THINK:',t[:1200].replace('\n',' '))
+          elif b.get('type')=='tool_use':
+           inp=b.get('input',{})
+           [REDACTED:env-secret]'command') or inp.get('pattern') or inp.get('path') or json.dumps(inp)
+           print('TOOL:',b.get('name'),str(key)[:1200].replace('\n',' '))
+        PY
+      at: 2026-09-19T03:16:37.857409Z
+      classified: other
+    - cmd: /private/tmp/prism-next-resolved-bin search "callers/tests/related" --scope text --format text
+      at: 2026-09-19T03:19:55.773313Z
+      classified: other
+    - cmd: printf '%s\n' '--- prompt ---'; sed -n '1,240p' evidence/darkreader__darkreader__pr7241.r1.sonnet_prism/prompt.txt; printf '%s\n' '--- generated steering files ---'; rg --files work/darkreader__darkreader__pr7241.r1.sonnet_prism -g 'CLAUDE.md' -g 'AGENTS.md' -g 'prism.yaml' -g '.mcp.json'; printf '%s\n' '--- CLAUDE ---'; sed -n '1,180p' work/darkreader__darkreader__pr7241.r1.sonnet_prism/CLAUDE.md; printf '%s\n' '--- AGENTS ---'; sed -n '1,180p' work/darkreader__darkreader__pr7241.r1.sonnet_prism/AGENTS.md
+      at: 2026-09-19T03:20:07.027282Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('/private/tmp/prism-next-darkreader7241-sonnet-paired-r1-20260918/evidence/darkreader__darkreader__pr7241.r1.sonnet_prism/stdout.jsonl')
+        ids={'toolu_01TvXbJyCYQAspKQBVQS3oys','toolu_01Ap1123T57uNPtmvNkQyA1Y'}
+        for line in p.read_text().splitlines():
+         try:o=json.loads(line)
+         except:continue
+         m=o.get('message',{})
+         for b in (m.get('content',[]) if isinstance(m,dict) else []):
+          if isinstance(b,dict) and b.get('type')=='tool_result' and b.get('tool_use_id') in ids:
+           print('RESULT',b['tool_use_id'])
+           content=b.get('content')
+           if isinstance(content,list):
+            for c in content:
+             if isinstance(c,dict) and c.get('type')=='text': print(c.get('text','')[:12000])
+             else: print(str(c)[:12000])
+           else: print(str(content)[:12000])
+           print('---')
+        PY
+      at: 2026-09-19T03:20:20.432348Z
+      classified: other
+    - cmd: /private/tmp/prism-next-resolved-bin search --help; /private/tmp/prism-next-resolved-bin query --help
+      at: 2026-09-19T03:20:38.578407Z
+      classified: other
+    - cmd: rg -n 'type .*Search|"path"|Paths|SearchInput|searchArgs' internal/mcp internal/cli | head -160
+      at: 2026-09-19T03:20:43.124345Z
+      classified: other
+    - cmd: sed -n '350,430p' internal/mcp/tools.go; sed -n '540,610p' internal/mcp/tools.go; sed -n '260,320p' internal/mcp/server.go; sed -n '1,55p' internal/mcp/compactargs.go
+      at: 2026-09-19T03:20:48.098555Z
+      classified: other
+    - cmd: /private/tmp/prism-next-resolved-bin search "lexical candidate" "verified caller" "related test" --scope text --format text
+      at: 2026-09-19T03:47:41.177395Z
+      classified: other
+    - cmd: /private/tmp/prism-next-resolved-bin query --terms indexSitesFixesConfig,parseSitesFixesConfig --format text
+      at: 2026-09-19T03:47:52.407162Z
+      classified: other
+    - cmd: /private/tmp/prism-next-resolved-bin search indexSitesFixesConfig parseSitesFixesConfig --scope text --path tests --files-only --format text
+      at: 2026-09-19T03:48:06.09867Z
+      classified: other
+    - cmd: /private/tmp/prism-next-resolved-bin change-impact steeringInstructions
+      at: 2026-09-19T03:49:25.902719Z
+      classified: other
+    - cmd: /private/tmp/prism-next-resolved-bin search "Pick the op:" "callers/tests/related" "steeringInstructions" --scope text --format text
+      at: 2026-09-19T03:49:31.282734Z
+      classified: other
+    - cmd: git branch --show-current; git status --short; rg -n "callers/tests/related|Pick the op:|context delivery" internal/cli --glob '*_test.go'
+      at: 2026-09-19T03:49:35.947864Z
+      classified: other
+    - cmd: rg -n "steeringBlock\(|steeringInstructions|Pick the op|known symbol|change_impact" internal/cli/*_test.go
+      at: 2026-09-19T03:50:00.752072Z
+      classified: other
+    - cmd: sed -n '1,110p' internal/cli/steeringdelivery_test.go; sed -n '360,440p' internal/cli/init_test.go
+      at: 2026-09-19T03:50:04.49844Z
+      classified: other
+    - cmd: gofmt -w internal/cli/steeringdelivery_test.go && GOFLAGS=-mod=readonly go test ./internal/cli -run 'TestSteeringRoutesDiscoveryAndBatchesKnownInputs|TestSteeringBlock_' -count=1
+      at: 2026-09-19T03:50:22.825774Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T03:50:44.097295Z
+      classified: test
+    - cmd: git diff --check; git status --short; git diff -- internal/cli/commands.go internal/cli/steeringdelivery_test.go AGENTS.md CLAUDE.md
+      at: 2026-09-19T03:50:48.645703Z
+      classified: other
+    - cmd: GOFLAGS=-mod=readonly go test ./internal/cli -run TestSteeringRoutesDiscoveryAndBatchesKnownInputs -count=1 -v
+      at: 2026-09-19T03:50:54.228111Z
+      classified: test
+    - cmd: /private/tmp/prism-next-resolved-bin search "tests naming known symbols" "indirect tests" --scope text --format text
+      at: 2026-09-19T03:51:48.542287Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for p in sorted(Path('harness/tasks/polyglot').glob('*.json')):
+         d=json.loads(p.read_text())
+         print(f"{p.stem}\t{d.get('language')}\t{d.get('difficulty')}\tfiles={d.get('diff_files')}\tlines={d.get('diff_lines')}\tf2p={len(d.get('fail_to_pass',[]))}\tp2p={len(d.get('pass_to_pass',[]))}")
+        PY
+      at: 2026-09-19T03:51:57.513Z
+      classified: other
+    - cmd: GOFLAGS=-mod=readonly go build -o /private/tmp/prism-next-steering-bin ./cmd/prism && /private/tmp/prism-next-steering-bin version && shasum -a 256 /private/tmp/prism-next-steering-bin
+      at: 2026-09-19T03:52:00.488844Z
+      classified: build
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks darkreader__darkreader__pr7241 --agents claude --tools native,prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-next-steering-bin --out /private/tmp/prism-steering-darkreader7241-paired-r1-20260919
+      at: 2026-09-19T03:54:05.682396Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-steering-darkreader7241-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','valid','timeouts','agent_errors','resolved')})
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print(x['arm'],json.dumps({k:x.get(k) for k in ('resolved','turns','tool_calls','input_tokens','output_tokens','total_tokens','cost_usd','wall_s','prism_actions')},sort_keys=True),'score',x['score'])
+        PY
+      at: 2026-09-19T03:54:12.206357Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-steering-darkreader7241-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print('\n###',x['arm'])
+         for c in x.get('calls',[]):
+          if c.get('type')=='tool_use':
+           inp=c.get('input',{})
+           detail=inp.get('command') or inp.get('pattern') or inp.get('file_path') or inp.get('query') or json.dumps(inp)
+           print(c.get('name'),str(detail)[:500].replace('\n',' '))
+          else:
+           print(c.get('type'),str(c.get('command',''))[:500].replace('\n',' '))
+        PY
+      at: 2026-09-19T03:54:24.977215Z
+      classified: other
+    - cmd: |-
+        rg -n "tests naming known symbols|indirect tests|callers/related" work/darkreader__darkreader__pr7241.r1.sonnet_prism/CLAUDE.md; python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-steering-darkreader7241-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        for x in d['rows']:
+         print(x['arm'], 'resolved',x['resolved'],'turns',x['turns'],'tokens',x['total_tokens'],'wall',x['wall_s'])
+        PY
+      at: 2026-09-19T03:54:33.778087Z
+      classified: other
+    - cmd: /private/tmp/prism-next-steering-bin search "Pick the op:" "Repository discovery starts with Prism" --scope text --format text
+      at: 2026-09-19T03:57:46.956047Z
+      classified: other
+    - cmd: rg -n "first repository-discovery|call the prism tool first|Repository discovery starts|Use the op map" internal --glob '*_test.go' --glob '*.go'
+      at: 2026-09-19T03:58:03.095055Z
+      classified: other
+    - cmd: sed -n '122,140p' internal/mcp/coverage_test.go; sed -n '98,122p' internal/mcp/server.go; sed -n '416,426p' internal/mcp/tools.go
+      at: 2026-09-19T03:58:34.165411Z
+      classified: other
+    - cmd: rg -n "Repository discovery starts|first repository-discovery|call the prism tool first|Pick the op:" . --glob '!docs/PRISM-2.0.md' --glob '!vendor/**'
+      at: 2026-09-19T03:58:56.87405Z
+      classified: other
+    - cmd: gofmt -w internal/cli/steeringdelivery_test.go internal/mcp/coverage_test.go internal/mcp/server.go internal/mcp/tools.go && GOFLAGS=-mod=readonly go test ./internal/cli ./internal/mcp -run 'TestSteering|TestSteeringBlock_|TestServerInitialize|TestCompact|TestTool' -count=1
+      at: 2026-09-19T03:59:12.9965Z
+      classified: test
+    - cmd: GOFLAGS=-mod=readonly go test ./... && GOFLAGS=-mod=readonly go build -o /private/tmp/prism-each-step-steering-bin ./cmd/prism && shasum -a 256 /private/tmp/prism-each-step-steering-bin
+      at: 2026-09-19T03:59:41.690627Z
+      classified: test
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks darkreader__darkreader__pr7241 --agents claude --tools native,prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-each-step-steering-bin --out /private/tmp/prism-each-step-darkreader7241-paired-r1-20260919
+      at: 2026-09-19T04:01:52.458251Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-each-step-darkreader7241-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','valid','timeouts','agent_errors','resolved')})
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print('\n',x['arm'],json.dumps({k:x.get(k) for k in ('resolved','turns','tool_calls','input_tokens','output_tokens','total_tokens','cost_usd','wall_s','prism_actions')},sort_keys=True),'score',x['score'])
+         for c in x.get('calls',[]):
+          if c.get('type')=='tool_use':
+           inp=c.get('input',{})
+           detail=inp.get('command') or inp.get('pattern') or inp.get('file_path') or json.dumps(inp)
+           print(' ',c.get('name'),str(detail)[:300].replace('\n',' '))
+        PY
+      at: 2026-09-19T04:02:01.492612Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        wanted={'cli__cli__pr2108','cli__cli__pr6578','cli__cli__pr7747','cli__cli__pr9845'}
+        for p in Path('harness/results').rglob('summary.json'):
+         try:d=json.loads(p.read_text())
+         except:continue
+         if not isinstance(d,dict):continue
+         for x in d.get('rows',[]):
+          if isinstance(x,dict) and x.get('task') in wanted and 'sonnet' in str(x.get('arm')):
+           print(p.parent.name,x['cell_id'],'resolved',x.get('resolved'),'valid',x.get('audited_valid'),'turns',x.get('turns'),'tokens',x.get('total_tokens'))
+        PY
+      at: 2026-09-19T04:02:21.128318Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks cli__cli__pr9845 --agents claude --tools native,prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-each-step-steering-bin --out /private/tmp/prism-each-step-cli9845-paired-r1-20260919
+      at: 2026-09-19T04:04:48.94851Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-each-step-cli9845-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','valid','timeouts','agent_errors','resolved')})
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print(x['arm'],json.dumps({k:x.get(k) for k in ('resolved','turns','tool_calls','input_tokens','output_tokens','total_tokens','cost_usd','wall_s','prism_actions')},sort_keys=True),'score',x['score'])
+        PY
+      at: 2026-09-19T04:04:55.69354Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks BurntSushi__ripgrep__pr2209 --agents claude --tools native,prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-each-step-steering-bin --out /private/tmp/prism-each-step-ripgrep2209-paired-r1-20260919
+      at: 2026-09-19T04:08:16.138758Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-each-step-ripgrep2209-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','valid','timeouts','agent_errors','resolved')})
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print(x['arm'],json.dumps({k:x.get(k) for k in ('resolved','turns','tool_calls','input_tokens','output_tokens','total_tokens','cost_usd','wall_s','prism_actions')},sort_keys=True),'score',x['score'])
+        PY
+      at: 2026-09-19T04:08:22.517465Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks clap-rs__clap__pr4006 --agents claude --tools native,prism --trials 1 --concurrency 2 --timeout-s 300 --prism-binary /private/tmp/prism-each-step-steering-bin --out /private/tmp/prism-each-step-clap4006-paired-r1-20260919
+      at: 2026-09-19T04:19:54.879887Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-each-step-clap4006-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        print({k:d[k] for k in ('status','valid','timeouts','agent_errors','resolved')})
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print(x['arm'],json.dumps({k:x.get(k) for k in ('resolved','turns','tool_calls','input_tokens','output_tokens','total_tokens','cost_usd','wall_s','prism_actions')},sort_keys=True),'score',x['score'])
+        PY
+      at: 2026-09-19T04:20:03.368272Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        p='/private/tmp/prism-each-step-clap4006-paired-r1-20260919/summary.json'
+        d=json.load(open(p))
+        for x in sorted(d['rows'],[REDACTED:env-secret] r:r['arm']):
+         print('\n###',x['arm'])
+         for i,c in enumerate(x.get('calls',[]),1):
+          if c.get('type')=='tool_use':
+           inp=c.get('input',{})
+           detail=inp.get('command') or inp.get('pattern') or inp.get('file_path') or json.dumps(inp)
+           print(f'{i:02d}',c.get('name'),str(detail)[:500].replace('\n',' '))
+        PY
+      at: 2026-09-19T04:20:15.145456Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite polyglot --tasks clap-rs__clap__pr4006 --agents claude --tools prism --trials 1 --concurrency 1 --timeout-s 300 --prism-binary /private/tmp/prism-each-step-steering-bin --out /private/tmp/prism-each-step-clap4006-prism-rerun-r1-20260919
+      at: 2026-09-19T04:29:49.950248Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        paths=['/private/tmp/prism-each-step-clap4006-prism-rerun-r1-20260919/summary.json','/private/tmp/prism-each-step-clap4006-paired-r1-20260919/summary.json']
+        for p in paths:
+         d=json.load(open(p)); print('\n',p)
+         for x in d['rows']:
+          if x['arm']=='sonnet_prism':
+           print(json.dumps({k:x.get(k) for k in ('resolved','audited_valid','turns','tool_calls','input_tokens','output_tokens','total_tokens','cost_usd','wall_s','prism_actions')},indent=2), 'score',x['score'])
+        PY
+      at: 2026-09-19T04:29:57.145351Z
+      classified: other
+    - cmd: prism query --terms release tag tap ci_invariants version changelog grove astkit
+      at: 2026-09-19T04:31:55.206767Z
+      classified: other
+    - cmd: prism query --help
+      at: 2026-09-19T04:32:00.914883Z
+      classified: other
+    - cmd: prism query --terms release,tag,tap,ci_invariants,version,changelog,grove,astkit --include graph,docs --max-files 10 --format text .
+      at: 2026-09-19T04:32:05.152399Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git diff --stat && git diff --submodule=short && git tag --sort=-version:refname | head -10 && git remote -v
+      at: 2026-09-19T04:32:09.853112Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-19T04:32:15.459072Z
+      classified: other
+    - cmd: prism read CLAUDE.md . --format text
+      at: 2026-09-19T04:32:18.408085Z
+      classified: other
+    - cmd: for repo in ../grove ../astkit ../research ../homebrew-shale ../../homebrew-shale; do if [ -d "$repo/.git" ]; then echo "REPO $repo"; git -C "$repo" branch --show-current; git -C "$repo" status --short; git -C "$repo" tag --sort=-version:refname | head -3; git -C "$repo" remote -v | head -2; fi; done
+      at: 2026-09-19T04:32:26.608759Z
+      classified: other
+    - cmd: prism query --terms release,tag,version,changelog,ci_invariants,tap --include graph,docs --max-files 8 --format text .
+      at: 2026-09-19T04:32:36.507538Z
+      classified: other
+    - cmd: prism query --terms release,tag,version,changelog,ci_invariants,tap --include graph,docs --max-files 8 --format text .
+      at: 2026-09-19T04:32:36.934513Z
+      classified: other
+    - cmd: prism read AGENTS.md . --format text
+      at: 2026-09-19T04:32:46.957718Z
+      classified: other
+    - cmd: prism read go.mod . --format text
+      at: 2026-09-19T04:32:46.964796Z
+      classified: other
+    - cmd: prism read CLAUDE.md . --format text
+      at: 2026-09-19T04:32:46.970036Z
+      classified: other
+    - cmd: prism read go.mod . --format text
+      at: 2026-09-19T04:32:46.975336Z
+      classified: other
+    - cmd: prism read AGENTS.md . --format text
+      at: 2026-09-19T04:32:46.98227Z
+      classified: other
+    - cmd: prism read CLAUDE.md . --format text
+      at: 2026-09-19T04:32:46.992419Z
+      classified: other
+    - cmd: prism read go.mod . --format text
+      at: 2026-09-19T04:32:47.001705Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-19T04:33:03.880595Z
+      classified: other
+    - cmd: git diff --stat && git diff --check && git diff -- .mcp.json && git status --short .codex
+      at: 2026-09-19T04:33:03.920625Z
+      classified: other
+    - cmd: git diff --stat && git diff --check && git diff -- .cursorrules .github/copilot-instructions.md .windsurfrules AGENTS.md CLAUDE.md GEMINI.md prism.yaml && git status --short thirdparty
+      at: 2026-09-19T04:33:03.923197Z
+      classified: other
+    - cmd: go env GOWORK && go test ./...
+      at: 2026-09-19T04:33:19.542569Z
+      classified: test
+    - cmd: go env GOWORK && go test ./...
+      at: 2026-09-19T04:33:19.547544Z
+      classified: test
+    - cmd: go env GOWORK && go test ./...
+      at: 2026-09-19T04:33:19.551286Z
+      classified: test
+    - cmd: env GOFLAGS= go test ./...
+      at: 2026-09-19T04:33:28.311335Z
+      classified: test
+    - cmd: env GOFLAGS= go test ./...
+      at: 2026-09-19T04:33:28.325382Z
+      classified: test
+    - cmd: env GOFLAGS= go test ./...
+      at: 2026-09-19T04:33:28.331599Z
+      classified: test
+    - cmd: env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T04:33:34.835636Z
+      classified: test
+    - cmd: env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T04:33:38.259469Z
+      classified: test
+    - cmd: env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T04:33:38.295238Z
+      classified: test
+    - cmd: prism read .github/workflows/eval.yml . --format text
+      at: 2026-09-19T04:33:41.342553Z
+      classified: other
+    - cmd: env GOWORK=off GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T04:34:10.601361Z
+      classified: test
+    - cmd: |-
+        set -e
+        eval_tmp=$(mktemp -d /private/tmp/grove-release-eval.XXXXXX)
+        git clone --quiet https://github.com/gin-gonic/gin.git "$eval_tmp/gin"
+        git -C "$eval_tmp/gin" checkout --quiet d75fcd4
+        (cd "$eval_tmp/gin" && env GOWORK=off GOFLAGS=-mod=readonly go mod download)
+        (cd eval && env GOFLAGS=-mod=readonly go build -o "$eval_tmp/grove-eval" ./cmd/grove-eval)
+        "$eval_tmp/grove-eval" truth --repo "$eval_tmp/gin" --commit d75fcd4 --out "$eval_tmp/calls-truth.jsonl"
+        "$eval_tmp/grove-eval" score --repo "$eval_tmp/gin" --truth "$eval_tmp/calls-truth.jsonl" --out-dir "$eval_tmp/out" --baseline eval/baseline.json
+        echo "EVAL_DIR=$eval_tmp"
+      at: 2026-09-19T04:34:18.289735Z
+      classified: build
+    - cmd: |-
+        set -e
+        inv_tmp=$(mktemp -d /private/tmp/prism-release-invariants.XXXXXX)
+        env GOFLAGS=-mod=readonly go build -o "$inv_tmp/prism" ../prism/cmd/prism
+        python3 harness/scoring/ci_invariants.py --corpus-root "$inv_tmp/corpus" --prism "$inv_tmp/prism"
+        echo "INVARIANTS_DIR=$inv_tmp"
+      at: 2026-09-19T04:38:23.546745Z
+      classified: build
+    - cmd: git status --short --untracked-files=all thirdparty strategies/*round2_test.go && prism search 'tags:' --path .github/workflows --scope text --format text .
+      at: 2026-09-19T04:38:35.172012Z
+      classified: other
+    - cmd: git fetch origin main --tags && git rev-list --left-right --count origin/main...main && gh release view v0.12.0 --json tagName,name,isDraft,isPrerelease,publishedAt,url
+      at: 2026-09-19T04:38:43.725992Z
+      classified: other
+    - cmd: git add astkit_test.go engine.go lang.go strategies/extractors.go strategies/metadata.go strategies/registry.go strategies/strategies_test.go strategies/kotlin_round2_test.go strategies/objc_round2_test.go strategies/swift_round2_test.go thirdparty/tsobjc && git diff --cached --check && git diff --cached --stat && git status --short
+      at: 2026-09-19T04:38:48.195409Z
+      classified: other
+    - cmd: git commit -m "Add Swift, Kotlin, and Objective-C parsing"
+      at: 2026-09-19T04:38:51.725682Z
+      classified: other
+    - cmd: git push origin main && git rev-parse HEAD
+      at: 2026-09-19T04:38:59.058956Z
+      classified: other
+    - cmd: gh run list --commit 58b104ded9944bd20e3e2a49126fe11d53bb6d0a --json databaseId,name,status,conclusion,url,workflowName --limit 10
+      at: 2026-09-19T04:39:05.803346Z
+      classified: other
+    - cmd: gh run watch 35421857554 --exit-status --interval 10
+      at: 2026-09-19T04:40:27.914143Z
+      classified: other
+    - cmd: git cat-file -t v0.12.0 && git tag -a v0.13.0 -m "Astkit v0.13.0" && git push origin v0.13.0
+      at: 2026-09-19T04:40:33.048728Z
+      classified: other
+    - cmd: git fetch origin main --tags && git rev-list --left-right --count origin/main...main && env GOWORK=off GOFLAGS=-mod=mod go get github.com/provasign/astkit@v0.13.0 && git diff -- go.mod go.sum && env GOWORK=off GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T04:40:59.784088Z
+      classified: test
+    - cmd: git status --short --untracked-files=all && git add go.mod go.sum eval internal pkg && git diff --cached --check && git diff --cached --stat && git status --short --untracked-files=all
+      at: 2026-09-19T04:41:04.933551Z
+      classified: other
+    - cmd: git commit -m "Add Swift, Kotlin, and Objective-C graph support" && git push origin main && git rev-parse HEAD
+      at: 2026-09-19T04:41:11.165198Z
+      classified: other
+    - cmd: gh run list --commit 1713a078e7b631d89596f5905de3ce8e81badae8 --json databaseId,name,status,conclusion,url,workflowName --limit 20
+      at: 2026-09-19T04:41:15.042285Z
+      classified: other
+    - cmd: gh run view 35421957969 --job 105841175625 --log-failed
+      at: 2026-09-19T04:42:04.138595Z
+      classified: other
+    - cmd: prism read eval/go.mod . --format text
+      at: 2026-09-19T04:42:08.252517Z
+      classified: other
+    - cmd: env GOWORK=off GOFLAGS=-mod=mod go mod tidy && env GOWORK=off GOFLAGS=-mod=readonly go build ./cmd/grove-eval && env GOWORK=off GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T04:42:20.996306Z
+      classified: test
+    - cmd: git diff -- eval/go.mod eval/go.sum && git diff --check && git add eval/go.mod eval/go.sum && git diff --cached --check && git diff --cached --stat && git status --short
+      at: 2026-09-19T04:42:25.492302Z
+      classified: other
+    - cmd: git commit -m "Update eval module for Astkit v0.13.0" && git push origin main && git rev-parse HEAD
+      at: 2026-09-19T04:42:29.81409Z
+      classified: other
+    - cmd: gh run list --commit fb3f21d89ef607ab3dcf0cd5655ae9da00313837 --json databaseId,name,status,conclusion,url,workflowName --limit 20
+      at: 2026-09-19T04:42:33.354701Z
+      classified: other
+    - cmd: gh run list --branch main --json databaseId,headSha,name,status,conclusion,url,workflowName,createdAt --limit 10
+      at: 2026-09-19T04:42:37.701282Z
+      classified: other
+    - cmd: gh run watch 35422020420 --exit-status --interval 15
+      at: 2026-09-19T04:44:42.491831Z
+      classified: other
+    - cmd: gh run watch 35422020513 --exit-status --interval 15
+      at: 2026-09-19T04:45:26.198145Z
+      classified: other
+    - cmd: git tag -a v0.50.0 -m "Grove v0.50.0" && git push origin v0.50.0
+      at: 2026-09-19T04:45:31.079638Z
+      classified: other
+    - cmd: gh run list --workflow Release --branch v0.50.0 --json databaseId,name,status,conclusion,url,headSha --limit 5
+      at: 2026-09-19T04:45:36.210095Z
+      classified: other
+    - cmd: gh run watch 35422153703 --exit-status --interval 15
+      at: 2026-09-19T04:47:19.669368Z
+      classified: other
+    - cmd: git fetch origin main --tags && git rev-list --left-right --count origin/main...main && env GOWORK=off GOFLAGS=-mod=mod go get github.com/provasign/grove@v0.50.0 && git diff -- go.mod go.sum && env GOWORK=off GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-19T04:48:09.535648Z
+      classified: test
+    - cmd: |-
+        set -e
+        env GOWORK=off GOFLAGS=-mod=readonly go build -o /private/tmp/prism-release-invariants.t2U46u/prism-final ./cmd/prism
+        python3 harness/scoring/ci_invariants.py --corpus-root /private/tmp/prism-release-invariants.t2U46u/corpus --prism /private/tmp/prism-release-invariants.t2U46u/prism-final
+      at: 2026-09-19T04:48:17.109622Z
+      classified: build
+    - cmd: |-
+        set -e
+        env GOWORK=off GOFLAGS=-mod=readonly go build -o /private/tmp/prism-release-invariants.t2U46u/prism-final ./cmd/prism
+        python3 ../research/harness/scoring/ci_invariants.py --corpus-root /private/tmp/prism-release-invariants.t2U46u/corpus --prism /private/tmp/prism-release-invariants.t2U46u/prism-final
+      at: 2026-09-19T04:49:37.065015Z
+      classified: build
+    - cmd: git status --short --untracked-files=all && git add AGENTS.md CLAUDE.md go.mod go.sum internal/cli/commands.go internal/cli/steeringdelivery_test.go internal/grove/client.go internal/mcp/coverage_test.go internal/mcp/delivery.go internal/mcp/delivery_test.go internal/mcp/searchaccuracy_test.go internal/mcp/searchlimits.go internal/mcp/selection.go internal/mcp/server.go internal/mcp/tools.go internal/mcp/tools_cov_test.go internal/mcp/verify.go && git diff --cached --check && git diff --cached --stat && git status --short --untracked-files=all
+      at: 2026-09-19T04:49:43.540326Z
+      classified: other
+notes:
+    - text: continuation of session 01a0b444-1f1e-7f80-9cc4-aed205ea69c4 — events captured after its evidence was finalized
+      at: 2026-09-18T19:32:45.127046Z
+redactions: 11

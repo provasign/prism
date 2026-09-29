@@ -1,0 +1,264 @@
+shale_version: "0"
+id: 01a0db77-74e9-78e0-a9f1-ac65336f0a66
+created_at: 2026-09-26T02:08:13.074329Z
+finalized_at: 2026-09-26T16:25:56.546959Z
+agent:
+    tool: codex
+    model: gpt-6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: ps -axo pid,ppid,etime,command
+      at: 2026-09-26T02:08:34.712011Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-26T02:08:34.720482Z
+      classified: other
+    - cmd: ls -lt harness/runs
+      at: 2026-09-26T02:08:34.723483Z
+      classified: other
+    - cmd: ls -lt results/rerun-2026-09-25
+      at: 2026-09-26T02:08:42.488723Z
+      classified: other
+    - cmd: ls -lt results/rerun-2026-09-25/headline
+      at: 2026-09-26T02:08:42.491303Z
+      classified: other
+    - cmd: ls -lt results
+      at: 2026-09-26T02:08:42.499464Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; print(Path("results/rerun-2026-09-25/fixes-pr1713/REPORT.md").read_text())'
+      at: 2026-09-26T02:08:50.07415Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; print(Path("results/rerun-2026-09-25/headline/REPORT.md").read_text())'
+      at: 2026-09-26T02:08:50.078542Z
+      classified: other
+    - cmd: ls -lt results/e2e
+      at: 2026-09-26T02:08:50.094904Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; d=json.loads(Path("results/rerun-2026-09-25/headline/results.json").read_text()); print(type(d).__name__); print(list(d)[:10] if isinstance(d,dict) else len(d)); print(json.dumps(d[0] if isinstance(d,list) else next(iter(d.values())),indent=2)[:5000])'
+      at: 2026-09-26T02:08:54.577452Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; roots=[Path.home()/".claude"/"projects",Path("results")]; ids=["806246d8-1aeb-41fc-818c-8de1d321b3e4","f5a"]; print("projects exists",roots[0].exists()); print("candidate",*[str(p) for p in roots[0].rglob("806246d8-1aeb-41fc-818c-8de1d321b3e4.jsonl")][:5],sep="\n")'
+      at: 2026-09-26T02:09:02.21999Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; p=Path.home()/".claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-e2e-run-qb5e3r-n/806246d8-1aeb-41fc-818c-8de1d321b3e4.jsonl"; a=[json.loads(x) for x in p.read_text().splitlines()]; print(len(a)); print([(x.get("type"),list(x.keys())) for x in a[:4]]); print(json.dumps(a[2],indent=2)[:3500])'
+      at: 2026-09-26T02:09:08.98233Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; p=Path.home()/".claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-e2e-run-qb5e3r-n/806246d8-1aeb-41fc-818c-8de1d321b3e4.jsonl"; a=[json.loads(x) for x in p.read_text().splitlines()]; print([(x.get("type"),x.get("message",{}).get("role"),x.get("message",{}).get("content",[{}])[0].get("type") if isinstance(x.get("message",{}).get("content"),list) and x.get("message",{}).get("content") else None) for x in a[:18]])'
+      at: 2026-09-26T02:09:15.717464Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; p=Path.home()/".claude/projects/-private-var-folders-pz-cmyjc37x5dz39wxf73my55k80000gn-T-e2e-run-qb5e3r-n/806246d8-1aeb-41fc-818c-8de1d321b3e4.jsonl"; a=[json.loads(x) for x in p.read_text().splitlines()]; print([(i,x.get("type"),x.get("message",{}).get("role"),str(x.get("message",{}).get("content"))[:100]) for i,x in enumerate(a) if x.get("type") in ("assistant","user")])'
+      at: 2026-09-26T02:09:22.071246Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; rows=json.loads(Path("results/rerun-2026-09-25/headline/results.json").read_text()); names={"pallets__click__pr3466","pallets__click__pr3534","pallets__click__pr3434","gin-gonic__gin__pr4702","apache__commons-lang__pr1720","apache__commons-lang__pr1713","FasterXML__jackson-databind__pr6042","psf__requests__pr7315"}; print("\n".join(f"{x[chr(116)+chr(97)+chr(115)+chr(107)]} {x[chr(110)+chr(97)+chr(116)+chr(105)+chr(118)+chr(101)][chr(115)+chr(101)+chr(115)+chr(115)+chr(105)+chr(111)+chr(110)+chr(95)+chr(105)+chr(100)]} {x[chr(112)+chr(114)+chr(105)+chr(115)+chr(109)][chr(115)+chr(101)+chr(115)+chr(115)+chr(105)+chr(111)+chr(110)+chr(95)+chr(105)+chr(100)]}" for x in rows if x["task"] in names))'
+      at: 2026-09-26T02:09:34.209284Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json
+        from pathlib import Path
+        rows=json.loads(Path("results/rerun-2026-09-25/headline/results.json").read_text())
+        names={"pallets__click__pr3466","pallets__click__pr3534","pallets__click__pr3434","gin-gonic__gin__pr4702","apache__commons-lang__pr1720","apache__commons-lang__pr1713"}
+        root=Path.home()/".claude/projects"
+        files={p.stem:p for p in root.rglob("*.jsonl")}
+        for row in rows:
+         if row["task"] not in names: continue
+         sid=row["prism"]["session_id"]
+         p=files.get(sid)
+         print("\n###",row["task"],"session",p)
+         if not p: continue
+         a=[json.loads(x) for x in p.read_text().splitlines()]
+         for i,x in enumerate(a):
+          m=x.get("message",{})
+          c=m.get("content",[])
+          if not isinstance(c,list): continue
+          for b in c:
+           if b.get("type")=="tool_use" and b.get("name")=="mcp__prism__prism":
+            print("CALL",i,json.dumps(b.get("input")))
+            tid=b.get("id")
+            for y in a[i+1:]:
+             cc=y.get("message",{}).get("content",[])
+             if isinstance(cc,list) and any(z.get("tool_use_id")==tid for z in cc if isinstance(z,dict)):
+              z=next(z for z in cc if isinstance(z,dict) and z.get("tool_use_id")==tid)
+              print("RESULT",str(z.get("content"))[:2200].replace("\\n","\n"))
+              break
+        '
+      at: 2026-09-26T02:09:45.339965Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json
+        from pathlib import Path
+        rows=json.loads(Path("results/rerun-2026-09-25/headline/results.json").read_text())
+        names={"pallets__click__pr3534","pallets__click__pr3434","gin-gonic__gin__pr4702"}
+        files={p.stem:p for p in (Path.home()/".claude/projects").rglob("*.jsonl")}
+        for row in rows:
+         if row["task"] not in names: continue
+         print("\n###",row["task"])
+         for arm in ("native","prism"):
+          p=files.get(row[arm]["session_id"])
+          print("ARM",arm,"FILE",p)
+          if not p: continue
+          a=[json.loads(x) for x in p.read_text().splitlines()]
+          for i,x in enumerate(a):
+           m=x.get("message",{}); c=m.get("content",[])
+           if isinstance(c,str) and i<10: print("PROMPT",c[:550].replace("\n"," "))
+           if not isinstance(c,list): continue
+           for b in c:
+            if b.get("type")=="tool_use": print(i,"TOOL",b.get("name"),str(b.get("input"))[:350].replace("\n"," "))
+            elif b.get("type")=="text" and m.get("role")=="assistant": print(i,"SAY",b.get("text","")[:350].replace("\n"," "))
+            elif b.get("type")=="tool_result" and "error" in str(b.get("content","")).lower(): print(i,"ERROR",str(b.get("content"))[:280].replace("\n"," "))
+        '
+      at: 2026-09-26T02:09:57.812831Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'from pathlib import Path
+        names=["pallets__click__pr3466","pallets__click__pr3534","pallets__click__pr3434","gin-gonic__gin__pr4702","apache__commons-lang__pr1720"]
+        for n in names:
+         print("\n###",n)
+         for arm in ("baseline","prism_init"):
+          p=Path("results/e2e")/(n+".sonnet."+arm+".diff")
+          print("ARM",arm,"\n",p.read_text()[:4000] if p.exists() else "missing")
+        '
+      at: 2026-09-26T02:10:06.863682Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json
+        from pathlib import Path
+        rows=json.loads(Path("results/rerun-2026-09-25/headline/results.json").read_text())
+        ids={x["task"]:x for x in rows}
+        files={p.stem:p for p in (Path.home()/".claude/projects").rglob("*.jsonl")}
+        for name in ("apache__commons-lang__pr1720","apache__commons-lang__pr1713","pallets__click__pr3466"):
+         print("\n###",name)
+         for arm in ("native","prism"):
+          p=files.get(ids[name][arm]["session_id"]); print("ARM",arm)
+          a=[json.loads(x) for x in p.read_text().splitlines()]
+          for i,x in enumerate(a):
+           m=x.get("message",{}); c=m.get("content",[])
+           if not isinstance(c,list): continue
+           for b in c:
+            if b.get("type")=="tool_use": print(i,"TOOL",b.get("name"),str(b.get("input"))[:230].replace("\n"," "))
+            elif b.get("type")=="text" and m.get("role")=="assistant": print(i,"SAY",b.get("text","")[:240].replace("\n"," "))
+        '
+      at: 2026-09-26T02:10:17.288184Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,statistics
+        from pathlib import Path
+        rows=json.loads(Path("results/rerun-2026-09-25/headline/results.json").read_text())
+        print("cells",len(rows))
+        for arm in ("native","prism"):
+         a=[x[arm] for x in rows]
+         print(arm,"resolved",sum(y["resolved"] for y in a),"tokens",sum(y["tokens"] or 0 for y in a),"cost",round(sum(y["cost_usd"] or 0 for y in a),3),"wall",round(sum(y["wall_s"] or 0 for y in a),1))
+        print("prism calls total",sum(x["prism"]["prism_calls"] for x in rows),"zero",sum(x["prism"]["prism_calls"]==0 for x in rows))
+        print("native-only",[x["task"] for x in rows if x["native"]["resolved"] and not x["prism"]["resolved"]])
+        print("prism-only",[x["task"] for x in rows if x["prism"]["resolved"] and not x["native"]["resolved"]])
+        print("ratio>1.5",[(x["task"],round(x["prism"]["tokens"]/x["native"]["tokens"],2)) for x in rows if x["prism"]["tokens"] and x["native"]["tokens"] and x["prism"]["tokens"]/x["native"]["tokens"]>1.5])
+        print("ratio<0.67",[(x["task"],round(x["prism"]["tokens"]/x["native"]["tokens"],2)) for x in rows if x["prism"]["tokens"] and x["native"]["tokens"] and x["prism"]["tokens"]/x["native"]["tokens"]<0.67])
+        '
+      at: 2026-09-26T02:10:30.53481Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json
+        from pathlib import Path
+        row=json.loads(Path("results/rerun-2026-09-25/fixes-pr1713/results.json").read_text())[0]
+        print(row)
+        p=next((Path.home()/".claude/projects").rglob(row["prism"]["session_id"]+".jsonl"))
+        a=[json.loads(x) for x in p.read_text().splitlines()]
+        for i,x in enumerate(a):
+         c=x.get("message",{}).get("content",[])
+         if not isinstance(c,list): continue
+         for b in c:
+          if b.get("type")=="tool_use": print(i,b.get("name"),str(b.get("input"))[:600])
+          if b.get("type")=="text" and x.get("message",{}).get("role")=="assistant": print(i,"SAY",b.get("text","")[:350].replace("\n"," "))
+        '
+      at: 2026-09-26T02:10:50.677096Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json
+        from pathlib import Path
+        p=next((Path.home()/".claude/projects").rglob("69bce1f5-9d94-479d-a99e-13cd04d4ce6e.jsonl"))
+        a=[json.loads(x) for x in p.read_text().splitlines()]
+        for x in a:
+         c=x.get("message",{}).get("content",[])
+         if isinstance(c,list):
+          for b in c:
+           if b.get("type")=="tool_result":
+            s=str(b.get("content")); print(s[:9000]); raise SystemExit
+        '
+      at: 2026-09-26T02:10:57.564906Z
+      classified: other
+    - cmd: python3 -B -c 'import json,time; from pathlib import Path; root=Path("results/rerun-2026-09-25"); print("NOW",time.strftime("%Y-%m-%d %H:%M:%S")); print("RECENT ARTIFACTS"); print("\n".join(str(p)+" "+time.strftime("%H:%M:%S",time.localtime(p.stat().st_mtime)) for p in root.rglob("*") if p.is_file() and time.time()-p.stat().st_mtime<900)); rows=json.loads((root/"headline/results.json").read_text()); print("ROWS",len(rows)); print(json.dumps(rows[31:],indent=2))'
+      at: 2026-09-26T02:37:41.229821Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,command | rg 'run_overnight|runners/|claude -p|prism-ab-bins'
+      at: 2026-09-26T02:37:46.790536Z
+      classified: other
+    - cmd: ls -lt results
+      at: 2026-09-26T02:37:46.798531Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; import time,json; root=Path("results/pinned-2026-09-25"); print("\n".join(str(p)+" "+time.strftime("%H:%M:%S",time.localtime(p.stat().st_mtime)) for p in root.rglob("*") if p.is_file())); print("REPORTS"); [(print(str(p)),print(p.read_text()[:22000])) for p in root.rglob("REPORT.md")]; print("RESULTS"); [(print(str(p)),print(p.read_text()[:18000])) for p in root.rglob("results.json")]'
+      at: 2026-09-26T02:37:54.197917Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,time
+        from pathlib import Path
+        rows=json.loads(Path("results/pinned-2026-09-25/headline/results.json").read_text())
+        files={p.stem:p for p in (Path.home()/".claude/projects").rglob("*.jsonl")}
+        for row in rows:
+         print("\n###",row["task"])
+         for arm in ("native","prism"):
+          p=files.get(row[arm]["session_id"]); print("ARM",arm,"FILE",p)
+          if not p: continue
+          a=[json.loads(s) for s in p.read_text().splitlines()]
+          for i,x in enumerate(a):
+           c=x.get("message",{}).get("content",[])
+           if not isinstance(c,list): continue
+           for b in c:
+            if b.get("type")=="tool_use":
+             print(i,b.get("name"),str(b.get("input"))[:450].replace("\n"," "))
+             if b.get("name")=="mcp__prism__prism":
+              for y in a[i+1:]:
+               cc=y.get("message",{}).get("content",[])
+               found=[z for z in cc if isinstance(z,dict) and z.get("tool_use_id")==b.get("id")] if isinstance(cc,list) else []
+               if found: print("RESULT",str(found[0].get("content"))[:3000]); break
+            elif b.get("type")=="text" and x.get("message",{}).get("role")=="assistant": print(i,"SAY",b.get("text","")[:350].replace("\n"," "))
+        print("RECENT SESSIONS")
+        for p in files.values():
+         if time.time()-p.stat().st_mtime<700:
+          print(p,time.strftime("%H:%M:%S",time.localtime(p.stat().st_mtime)))
+        '
+      at: 2026-09-26T02:38:12.159636Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json
+        from pathlib import Path
+        p=Path.home()/".claude/projects/-Users-tapabratapal-Projects-provasign-prism/4c69cd72-5bfb-48d7-8455-3d1158f12b39.jsonl"
+        a=[json.loads(s) for s in p.read_text().splitlines()]
+        for x in a:
+         if x.get("timestamp","")<"2026-09-26T02:25": continue
+         c=x.get("message",{}).get("content",[])
+         if isinstance(c,str): print(x.get("timestamp"),x.get("type"),c[:2000]); continue
+         if not isinstance(c,list): continue
+         for b in c:
+          if b.get("type")=="text": print(x.get("timestamp"),x.get("type"),b.get("text","")[:2200])
+          elif b.get("type")=="tool_use": print(x.get("timestamp"),"TOOL",b.get("name"),str(b.get("input"))[:1400])
+        print("ACTIVE REQUESTS")
+        p=next((Path.home()/".claude/projects").rglob("c91c028f-4339-4704-a7ed-35e893fdb315.jsonl"))
+        a=[json.loads(s) for s in p.read_text().splitlines()]
+        for x in a:
+         c=x.get("message",{}).get("content",[])
+         if isinstance(c,str) and "ISSUE" in c: print(c[:1000])
+         if isinstance(c,list):
+          for b in c:
+           if b.get("type")=="tool_use": print(b.get("name"),str(b.get("input"))[:350])
+           elif b.get("type")=="text": print("SAY",b.get("text","")[:400])
+        '
+      at: 2026-09-26T02:38:33.190016Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; r=json.loads(Path("results/pinned-2026-09-25/headline/results.json").read_text()); print("pairs",len(r)); print("tokens",sum(x["native"]["tokens"] or 0 for x in r),sum(x["prism"]["tokens"] or 0 for x in r)); print("cost",sum(x["native"]["cost_usd"] or 0 for x in r),sum(x["prism"]["cost_usd"] or 0 for x in r)); print("last",json.dumps(r[-1])[:2000])'
+      at: 2026-09-26T02:38:53.483069Z
+      classified: other
+notes: []
+redactions: 0

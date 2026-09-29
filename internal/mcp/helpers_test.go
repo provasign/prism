@@ -119,30 +119,3 @@ func TestCategorize_MarkdownConst(t *testing.T) {
 		t.Errorf("markdown const should be CategoryDoc, got %q", got)
 	}
 }
-
-func TestIsTestWritingTask_Positive(t *testing.T) {
-	for _, task := range []string{
-		"write tests for buildAntiContextManifest",
-		"add test coverage for toolQuery",
-		"write test for Select",
-		"tests for the ranking package",
-		"coverage for the compression module",
-		"need to test the new parameter",
-	} {
-		if !isTestWritingTask(task) {
-			t.Errorf("expected %q to be detected as test-writing task", task)
-		}
-	}
-}
-
-func TestIsTestWritingTask_Negative(t *testing.T) {
-	for _, task := range []string{
-		"implement a new parameter",
-		"fix the sha-pointer bug",
-		"refactor toolRead",
-	} {
-		if isTestWritingTask(task) {
-			t.Errorf("expected %q to NOT be a test-writing task", task)
-		}
-	}
-}

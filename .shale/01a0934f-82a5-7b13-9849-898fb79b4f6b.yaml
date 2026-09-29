@@ -1,0 +1,1399 @@
+shale_version: "0"
+id: 01a0934f-82a5-7b13-9849-898fb79b4f6b
+created_at: 2026-09-12T01:51:06.893361Z
+finalized_at: 2026-09-12T04:21:48.100547Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T01:54:58.285263Z
+    - path: internal/mcp/server_project.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-12T01:54:58.285263Z
+    - path: internal/mcp/server_project_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-12T01:54:58.285263Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T04:17:48.582309Z
+    - path: HANDOFF.md
+      ops:
+        - delete
+        - write
+      via: hook
+      first_touched: 2026-09-12T04:17:48.582309Z
+commands:
+    - cmd: prism search handoff --scope text --exhaustive --format text
+      at: 2026-09-12T01:51:12.133126Z
+      classified: other
+    - cmd: prism read HANDOFF.md --format text
+      at: 2026-09-12T01:51:14.909873Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T01:51:20.358522Z
+      classified: other
+    - cmd: prism search initialize instructions mcp_surface prism.yaml legacy --path internal --scope text --exhaustive --format text
+      at: 2026-09-12T01:52:52.209678Z
+      classified: other
+    - cmd: prism lookup Server.dispatch cmdMCP harnessProjectState steeringBlock mergePrismYAML --format text
+      at: 2026-09-12T01:52:57.013201Z
+      classified: other
+    - cmd: prism query "Implement read-only legacy-project detection during MCP initialize; inspect startup path, initialize instructions, v2 prism.yaml schema, legacy harness arguments, and stale steering" --terms Server.dispatch,cmdMCP,harnessProjectState,compactServerInstructions,mergePrismYAML --format text
+      at: 2026-09-12T01:53:02.452344Z
+      classified: other
+    - cmd: prism lookup Handler --format text
+      at: 2026-09-12T01:53:10.019583Z
+      classified: other
+    - cmd: prism lookup harnessStatuses --format text
+      at: 2026-09-12T01:53:10.086195Z
+      classified: other
+    - cmd: prism lookup NewHandlerWithReady --format text
+      at: 2026-09-12T01:53:10.129813Z
+      classified: other
+    - cmd: prism lookup steeringBlock --format text
+      at: 2026-09-12T01:53:10.197794Z
+      classified: other
+    - cmd: prism search "Release" "git tag" "gh release" "brew" "version.Version" --scope text --exhaustive --format text
+      at: 2026-09-12T01:53:13.25387Z
+      classified: other
+    - cmd: prism read GOVERNANCE.md --format text
+      at: 2026-09-12T01:53:17.836288Z
+      classified: other
+    - cmd: prism read CLAUDE.md --format text
+      at: 2026-09-12T01:53:17.9173Z
+      classified: other
+    - cmd: prism read .github/workflows/release.yml --format text
+      at: 2026-09-12T01:53:17.970323Z
+      classified: other
+    - cmd: prism read internal/config/config.go --format text
+      at: 2026-09-12T01:53:29.307926Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 545 --limit 385 --format text
+      at: 2026-09-12T01:53:29.343047Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --offset 3190 --limit 70 --format text
+      at: 2026-09-12T01:53:29.371891Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 917 --limit 100 --format text
+      at: 2026-09-12T01:53:32.290462Z
+      classified: other
+    - cmd: prism change-impact 'Server.dispatch' --format text
+      at: 2026-09-12T01:53:52.198487Z
+      classified: other
+    - cmd: prism lookup TestDispatch_Initialize --format text
+      at: 2026-09-12T01:53:58.554303Z
+      classified: other
+    - cmd: prism lookup NewHandler --format text
+      at: 2026-09-12T01:53:58.612425Z
+      classified: other
+    - cmd: prism search "## Prism" "prism_search" "mcp__prism__prism_search" --path internal/cli --scope text --exhaustive --format text
+      at: 2026-09-12T01:54:14.04041Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/server_project.go internal/mcp/server_project_test.go
+      at: 2026-09-12T01:55:02.404597Z
+      classified: other
+    - cmd: go test ./internal/mcp -run 'TestLegacyProjectWarning|TestInitializeIncludesLegacyProjectWarning|TestDispatch_Initialize|TestCompactServerAdvertisesAndDispatchesGateway' -count=1
+      at: 2026-09-12T01:55:09.991201Z
+      classified: test
+    - cmd: git diff -- internal/mcp/server.go internal/mcp/server_project.go internal/mcp/server_project_test.go
+      at: 2026-09-12T01:55:10.043242Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T01:55:10.043472Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestLegacyProjectWarning|TestInitializeIncludesLegacyProjectWarning|TestDispatch_Initialize|TestCompactServerAdvertisesAndDispatchesGateway' -count=1
+      at: 2026-09-12T01:55:16.239313Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestLegacyProjectWarning|TestInitializeIncludesLegacyProjectWarning|TestDispatch_Initialize|TestCompactServerAdvertisesAndDispatchesGateway' -count=1
+      at: 2026-09-12T01:55:28.487304Z
+      classified: test
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-12T01:57:34.125754Z
+      classified: test
+    - cmd: GOWORK=off go test ./... -race -count=1 -timeout 180s
+      at: 2026-09-12T02:00:54.438699Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-09-12T02:02:47.559393Z
+      classified: other
+    - cmd: sh -n install.sh scripts/bootstrap-prism-grove.sh uninstall.sh
+      at: 2026-09-12T02:02:47.559376Z
+      classified: other
+    - cmd: command -v pwsh
+      at: 2026-09-12T02:02:47.559506Z
+      classified: other
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-12T02:02:47.861905Z
+      classified: lint
+    - cmd: git tag --sort=-version:refname
+      at: 2026-09-12T02:03:08.188577Z
+      classified: other
+    - cmd: git remote -v
+      at: 2026-09-12T02:03:08.202102Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-12T02:03:08.215549Z
+      classified: other
+    - cmd: gh release view --json tagName,name,publishedAt,isDraft,isPrerelease,url
+      at: 2026-09-12T02:03:08.54668Z
+      classified: other
+    - cmd: prism verify --format text
+      at: 2026-09-12T02:03:19.531165Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:03:27.768071Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign
+      at: 2026-09-12T02:03:27.770768Z
+      classified: other
+    - cmd: git log --oneline --decorate -12
+      at: 2026-09-12T02:03:27.786719Z
+      classified: other
+    - cmd: git show -s --format='%h %D %s' v0.72.6
+      at: 2026-09-12T02:03:27.78771Z
+      classified: other
+    - cmd: GOWORK=off go build -ldflags='-s -w -X github.com/provasign/prism/internal/version.Version=v0.73.0' -o /private/tmp/prism-v0.73.0-rc ./cmd/prism
+      at: 2026-09-12T02:05:28.485624Z
+      classified: build
+    - cmd: python3 -B /private/tmp/prism_rc_check.py /private/tmp/prism-v0.73.0-rc
+      at: 2026-09-12T02:07:55.884113Z
+      classified: other
+    - cmd: cat AGENTS.md
+      at: 2026-09-12T02:07:58.739168Z
+      classified: other
+    - cmd: python3 harness/ci_invariants.py --prism /private/tmp/prism-v0.73.0-rc
+      at: 2026-09-12T02:08:33.407841Z
+      classified: other
+    - cmd: git log -5 --oneline --decorate
+      at: 2026-09-12T02:08:57.471771Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:08:57.572027Z
+      classified: other
+    - cmd: prism search ci_baseline ci_site_diff scorer --scope text --exhaustive --format text
+      at: 2026-09-12T02:09:02.447937Z
+      classified: other
+    - cmd: rg -n "scorer version|ci_baseline|ci_site_diff|Re-baseline|rebaseline" harness/ci_invariants.py harness/ci_site_diff.py harness/ci_baseline.json
+      at: 2026-09-12T02:09:14.447774Z
+      classified: other
+    - cmd: python3 harness/ci_invariants.py --help
+      at: 2026-09-12T02:09:14.511217Z
+      classified: other
+    - cmd: python3 harness/ci_site_diff.py --help
+      at: 2026-09-12T02:09:14.526165Z
+      classified: other
+    - cmd: prism read harness/ci_invariants.py --format text
+      at: 2026-09-12T02:09:29.31591Z
+      classified: other
+    - cmd: sed -n '1,380p' harness/ci_invariants.py
+      at: 2026-09-12T02:09:32.852265Z
+      classified: other
+    - cmd: rg -n "SCORER_VERSION|version 4|v4|weak|precision" harness/score.py
+      at: 2026-09-12T02:09:41.43813Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_ci_invariants_v4_probe.py /Users/tapabratapal/Projects/provasign/research /private/tmp/prism-v0.73.0-rc
+      at: 2026-09-12T02:13:01.830248Z
+      classified: other
+    - cmd: ls -la /tmp/ci-corpus/jackson-databind
+      at: 2026-09-12T02:13:08.998161Z
+      classified: other
+    - cmd: ls -la /tmp/ci-corpus
+      at: 2026-09-12T02:13:09.013703Z
+      classified: other
+    - cmd: rg --files /tmp/ci-corpus/jackson-databind
+      at: 2026-09-12T02:13:09.020486Z
+      classified: other
+    - cmd: find /private/tmp -maxdepth 4 -type d -name jackson-databind
+      at: 2026-09-12T02:13:19.527934Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_ci_invariants_v4_probe.py /Users/tapabratapal/Projects/provasign/research /private/tmp/prism-v0.73.0-rc
+      at: 2026-09-12T02:19:45.592693Z
+      classified: other
+    - cmd: python3 -B harness/ci_site_diff.py --prism /private/tmp/prism-v0.73.0-rc --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set jackson-deserialize jackson-serialize django-quotename
+      at: 2026-09-12T02:19:56.966947Z
+      classified: other
+    - cmd: git diff HEAD^ -- harness/score.py harness/ci_baseline.json
+      at: 2026-09-12T02:20:05.869953Z
+      classified: other
+    - cmd: git log -S'SCORER_VERSION = 4' --oneline -- harness/score.py
+      at: 2026-09-12T02:20:05.884697Z
+      classified: other
+    - cmd: git log --oneline -- harness/score.py | head -20
+      at: 2026-09-12T02:20:05.882473Z
+      classified: other
+    - cmd: git show --stat --oneline 789c6167
+      at: 2026-09-12T02:20:09.719747Z
+      classified: other
+    - cmd: git show --format=fuller --no-ext-diff 789c6167 -- harness/score.py harness/tasks/jackson-jsonnode-get.json harness/tasks/jackson-settable-set.json harness/tasks/jackson-deserialize.json harness/tasks/jackson-serialize.json docs/oracle-audit-2026-09-07.md
+      at: 2026-09-12T02:20:14.774698Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-v0726-release
+      at: 2026-09-12T02:20:25.595474Z
+      classified: other
+    - cmd: gh release download v0.72.6 --pattern prism-v0.72.6-darwin-arm64 --dir /private/tmp/prism-v0726-release
+      at: 2026-09-12T02:22:38.143431Z
+      classified: other
+    - cmd: ls -l /private/tmp/prism-v0726-release
+      at: 2026-09-12T02:22:41.408235Z
+      classified: other
+    - cmd: chmod +x /private/tmp/prism-v0726-release/prism-v0.72.6-darwin-arm64
+      at: 2026-09-12T02:22:44.753796Z
+      classified: other
+    - cmd: python3 -B harness/ci_site_diff.py --prism /private/tmp/prism-v0726-release/prism-v0.72.6-darwin-arm64 --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set jackson-deserialize jackson-serialize django-quotename
+      at: 2026-09-12T02:23:46.360551Z
+      classified: other
+    - cmd: git show v0.72.6:go.mod
+      at: 2026-09-12T02:23:55.240426Z
+      classified: other
+    - cmd: git show --stat --oneline 34a8a4a 6fc9272 ea9b43d 26bbbd5
+      at: 2026-09-12T02:23:55.299346Z
+      classified: other
+    - cmd: prism read go.mod --format text
+      at: 2026-09-12T02:23:55.424815Z
+      classified: other
+    - cmd: git show ea9b43d -- go.mod go.sum
+      at: 2026-09-12T02:24:12.064547Z
+      classified: other
+    - cmd: git show 26bbbd5 -- go.mod go.sum
+      at: 2026-09-12T02:24:12.068229Z
+      classified: other
+    - cmd: git diff v0.72.6..HEAD -- internal/grove internal/mcp/tools.go go.mod
+      at: 2026-09-12T02:24:12.077244Z
+      classified: other
+    - cmd: cp go.mod /private/tmp/prism-grove-v0441.mod
+      at: 2026-09-12T02:24:29.074833Z
+      classified: other
+    - cmd: cp go.sum /private/tmp/prism-grove-v0441.sum
+      at: 2026-09-12T02:24:29.074819Z
+      classified: other
+    - cmd: cp go.mod /private/tmp/prism-grove-v0460.mod
+      at: 2026-09-12T02:24:29.074882Z
+      classified: other
+    - cmd: cp go.sum /private/tmp/prism-grove-v0460.sum
+      at: 2026-09-12T02:24:29.079689Z
+      classified: other
+    - cmd: go mod edit -modfile=/private/tmp/prism-grove-v0441.mod -require=github.com/provasign/grove@v0.44.1
+      at: 2026-09-12T02:24:29.161672Z
+      classified: other
+    - cmd: go mod edit -modfile=/private/tmp/prism-grove-v0460.mod -require=github.com/provasign/grove@v0.46.0
+      at: 2026-09-12T02:24:29.161701Z
+      classified: other
+    - cmd: GOWORK=off go build -modfile=/private/tmp/prism-grove-v0460.mod -ldflags='-s -w -X github.com/provasign/prism/internal/version.Version=v0.73.0-grove-v0.46.0' -o /private/tmp/prism-v0.73.0-grove-v0460 ./cmd/prism
+      at: 2026-09-12T02:35:24.847524Z
+      classified: build
+    - cmd: GOWORK=off go build -modfile=/private/tmp/prism-grove-v0441.mod -ldflags='-s -w -X github.com/provasign/prism/internal/version.Version=v0.73.0-grove-v0.44.1' -o /private/tmp/prism-v0.73.0-grove-v0441 ./cmd/prism
+      at: 2026-09-12T02:35:26.027861Z
+      classified: build
+    - cmd: python3 -B harness/ci_site_diff.py --prism /private/tmp/prism-v0.73.0-grove-v0441 --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set jackson-deserialize jackson-serialize django-quotename
+      at: 2026-09-12T02:36:36.14639Z
+      classified: other
+    - cmd: cp go.mod /private/tmp/prism-grove-v0433.mod
+      at: 2026-09-12T02:36:51.691802Z
+      classified: other
+    - cmd: cp go.sum /private/tmp/prism-grove-v0433.sum
+      at: 2026-09-12T02:36:51.761779Z
+      classified: other
+    - cmd: GOWORK=off go mod edit -modfile=/private/tmp/prism-grove-v0433.mod -require=github.com/provasign/grove@v0.43.3
+      at: 2026-09-12T02:36:51.834994Z
+      classified: other
+    - cmd: GOWORK=off go build -modfile=/private/tmp/prism-grove-v0433.mod -ldflags='-s -w -X github.com/provasign/prism/internal/version.Version=v0.73.0-grove-v0.43.3' -o /private/tmp/prism-v0.73.0-grove-v0433 ./cmd/prism
+      at: 2026-09-12T02:38:25.84971Z
+      classified: build
+    - cmd: python3 -B harness/ci_site_diff.py --prism /private/tmp/prism-v0.73.0-grove-v0433 --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set jackson-deserialize jackson-serialize django-quotename
+      at: 2026-09-12T02:39:32.74718Z
+      classified: other
+    - cmd: python3 -B harness/ci_site_diff.py --prism /private/tmp/prism-v0.73.0-grove-v0460 --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set jackson-deserialize jackson-serialize django-quotename
+      at: 2026-09-12T02:41:18.888028Z
+      classified: other
+    - cmd: cat AGENTS.md
+      at: 2026-09-12T02:41:32.767725Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:41:32.780243Z
+      classified: other
+    - cmd: git tag --sort=-version:refname
+      at: 2026-09-12T02:41:32.795009Z
+      classified: other
+    - cmd: git log -8 --oneline --decorate
+      at: 2026-09-12T02:41:32.821719Z
+      classified: other
+    - cmd: cp go.mod /private/tmp/prism-grove-head.mod
+      at: 2026-09-12T02:41:42.989213Z
+      classified: other
+    - cmd: cp go.sum /private/tmp/prism-grove-head.sum
+      at: 2026-09-12T02:41:43.06014Z
+      classified: other
+    - cmd: GOWORK=off go mod edit -modfile=/private/tmp/prism-grove-head.mod -replace=github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove
+      at: 2026-09-12T02:41:43.136076Z
+      classified: other
+    - cmd: GOWORK=off go build -modfile=/private/tmp/prism-grove-head.mod -ldflags='-s -w -X github.com/provasign/prism/internal/version.Version=v0.73.0-grove-head' -o /private/tmp/prism-v0.73.0-grove-head ./cmd/prism
+      at: 2026-09-12T02:42:14.12847Z
+      classified: build
+    - cmd: python3 -B harness/ci_site_diff.py --prism /private/tmp/prism-v0.73.0-grove-head --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set jackson-deserialize jackson-serialize django-quotename
+      at: 2026-09-12T02:43:56.476296Z
+      classified: other
+    - cmd: GOWORK=off go test -modfile=/private/tmp/prism-grove-v0433.mod ./... -count=1 -timeout 180s
+      at: 2026-09-12T02:45:00.054186Z
+      classified: test
+    - cmd: prism read docs/graph-correctness-audit-2026-09-10.md --format text
+      at: 2026-09-12T02:45:05.931046Z
+      classified: other
+    - cmd: '/private/tmp/prism-v0.73.0-rc query "Diagnose change-impact caller recall regressions introduced after Grove v0.43.3: Java method calls lost in ExternalTypeHandler and JSONPObject/JSONWrappedObject; Python quote_name calls lost in db cache and PostgreSQL introspection" --terms ChangeImpact,resolveCallTargets,bindCalls,receiver,heuristic --format text'
+      at: 2026-09-12T02:45:34.386564Z
+      classified: other
+    - cmd: /private/tmp/prism-v0.73.0-rc read FINAL-REVIEW.md --format text
+      at: 2026-09-12T02:45:57.014514Z
+      classified: other
+    - cmd: /private/tmp/prism-v0.73.0-grove-head lookup ExternalTypeHandler._deserializeAndSet --format text
+      at: 2026-09-12T02:46:18.221432Z
+      classified: other
+    - cmd: /private/tmp/prism-v0.73.0-grove-head lookup DatabaseCache.get_many --format text
+      at: 2026-09-12T02:46:19.899161Z
+      classified: other
+    - cmd: /private/tmp/prism-v0.73.0-grove-head lookup DatabaseIntrospection.get_table_description --format text
+      at: 2026-09-12T02:46:20.059903Z
+      classified: other
+    - cmd: /private/tmp/prism-v0.73.0-grove-head search get_table_description _base_set _base_delete_many has_key _cull clear --path django/core/cache/backends/db.py --path django/db/backends/postgresql/introspection.py --scope text --context 3 --exhaustive --format text
+      at: 2026-09-12T02:46:31.999453Z
+      classified: other
+    - cmd: /private/tmp/prism-v0.73.0-grove-head search quote_name --path django/core/cache/backends/db.py --path django/db/backends/postgresql/introspection.py --scope text --context 2 --exhaustive --format text
+      at: 2026-09-12T02:46:39.974167Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:47:21.942218Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T02:47:21.948055Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-12T02:47:21.962144Z
+      classified: other
+    - cmd: git status --short harness/ci_baseline.json harness/score.py harness/ci_invariants.py harness/ci_site_diff.py
+      at: 2026-09-12T02:47:21.969834Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:48:34.997442Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T02:48:35.020171Z
+      classified: other
+    - cmd: git log -1 --oneline --decorate
+      at: 2026-09-12T02:48:35.02048Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-12T02:48:35.020159Z
+      classified: other
+    - cmd: ls .github/workflows
+      at: 2026-09-12T02:50:13.212186Z
+      classified: other
+    - cmd: rg -n "Before you commit|before tagging|Release|release" AGENTS.md CLAUDE.md README.md .github/workflows
+      at: 2026-09-12T02:50:13.221026Z
+      classified: other
+    - cmd: git tag --sort=-version:refname
+      at: 2026-09-12T02:50:13.233975Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-12T02:50:13.248727Z
+      classified: other
+    - cmd: cat CLAUDE.md
+      at: 2026-09-12T02:50:16.827303Z
+      classified: other
+    - cmd: cat .github/workflows/eval.yml
+      at: 2026-09-12T02:50:20.92647Z
+      classified: other
+    - cmd: prism search baseline.json "grove-eval score" --scope text --exhaustive --format text
+      at: 2026-09-12T02:50:34.430436Z
+      classified: other
+    - cmd: find /private/tmp -maxdepth 2 -type d -name 'gin' -o -name 'flask' -o -name 'socket.io' -o -name 'express' -o -name 'ripgrep' -o -name 'newtonsoft' -o -name 'php-parser' -o -name 'jansson' -o -name 'commons-lang'
+      at: 2026-09-12T02:50:43.115377Z
+      classified: other
+    - cmd: go env GOWORK
+      at: 2026-09-12T02:50:54.211953Z
+      classified: other
+    - cmd: go list -m github.com/provasign/astkit
+      at: 2026-09-12T02:50:54.221863Z
+      classified: other
+    - cmd: git diff --numstat
+      at: 2026-09-12T02:50:54.233786Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:50:54.233802Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-12T02:51:13.953453Z
+      classified: test
+    - cmd: cat eval/go.mod
+      at: 2026-09-12T02:51:24.691324Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go vet ./...
+      at: 2026-09-12T02:51:25.011127Z
+      classified: lint
+    - cmd: GOFLAGS= GOWORK=off go test ./... -race -count=1 -timeout 180s
+      at: 2026-09-12T02:51:35.676979Z
+      classified: test
+    - cmd: git -C /private/tmp/eval-corpus/gin rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.812992Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/flask rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.812849Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/socket.io rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.820488Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/express rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.827417Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/ripgrep rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.829703Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/newtonsoft rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.833272Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/jansson rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.863056Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/commons-lang rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.861727Z
+      classified: other
+    - cmd: git -C /private/tmp/eval-corpus/php-parser rev-parse --short HEAD
+      at: 2026-09-12T02:51:42.863051Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/grove-eval-v0470-rc ./cmd/grove-eval
+      at: 2026-09-12T02:51:49.765068Z
+      classified: build
+    - cmd: /private/tmp/grove-eval-v0470-rc truth --repo /private/tmp/eval-corpus/gin --commit d75fcd4 --out /private/tmp/grove-v0470-calls-truth.jsonl
+      at: 2026-09-12T02:51:59.699433Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/express --truth eval/testdata/express@dae209ae/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/express --baseline eval/baseline.json
+      at: 2026-09-12T02:52:12.12692Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/flask --truth eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/flask --baseline eval/baseline.json
+      at: 2026-09-12T02:52:12.191487Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/gin --truth /private/tmp/grove-v0470-calls-truth.jsonl --out-dir /private/tmp/grove-v0470-eval/gin --baseline eval/baseline.json
+      at: 2026-09-12T02:52:12.212917Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/socket.io --truth eval/testdata/socket.io@3ad4e1f2/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/socketio --baseline eval/baseline.json
+      at: 2026-09-12T02:52:12.233442Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/ripgrep --truth eval/testdata/ripgrep@82313cf/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/ripgrep --baseline eval/baseline.json
+      at: 2026-09-12T02:52:12.328988Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/jansson --truth eval/testdata/jansson@684e18c/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/jansson --baseline eval/baseline.json
+      at: 2026-09-12T02:52:21.288526Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/php-parser --truth eval/testdata/php-parser@8eea230/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/php-parser --baseline eval/baseline.json
+      at: 2026-09-12T02:52:21.308819Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/commons-lang --truth eval/testdata/commons-lang@44298fe/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/commons-lang --baseline eval/baseline.json
+      at: 2026-09-12T02:52:22.553147Z
+      classified: other
+    - cmd: /private/tmp/grove-eval-v0470-rc score --repo /private/tmp/eval-corpus/newtonsoft --truth eval/testdata/newtonsoft@0a2e291/calls-truth.jsonl.gz --out-dir /private/tmp/grove-v0470-eval/newtonsoft --baseline eval/baseline.json
+      at: 2026-09-12T02:52:22.704268Z
+      classified: other
+    - cmd: prism verify --format text
+      at: 2026-09-12T02:52:31.25945Z
+      classified: other
+    - cmd: prism search identTokenRe ResolverVersion ExtractorVersion --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T02:52:36.839124Z
+      classified: other
+    - cmd: git add -A
+      at: 2026-09-12T02:52:42.174446Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:52:48.246784Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-12T02:52:48.262208Z
+      classified: other
+    - cmd: git diff --cached --stat
+      at: 2026-09-12T02:52:48.261717Z
+      classified: other
+    - cmd: git diff --cached --name-status
+      at: 2026-09-12T02:52:48.26171Z
+      classified: other
+    - cmd: git diff --cached -- go.mod
+      at: 2026-09-12T02:52:54.313511Z
+      classified: other
+    - cmd: sed -n '1,80p' CHANGELOG.md
+      at: 2026-09-12T02:53:06.018573Z
+      classified: other
+    - cmd: git add CHANGELOG.md
+      at: 2026-09-12T02:53:31.400253Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-12T02:53:31.500254Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:53:31.587475Z
+      classified: other
+    - cmd: 'git commit -m "fix: complete graph correctness remediation"'
+      at: 2026-09-12T02:53:36.058962Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-09-12T02:53:42.913911Z
+      classified: other
+    - cmd: gh run list --branch main --commit 8bdad89d --limit 20 --json databaseId,name,status,conclusion,url,headSha,event,createdAt
+      at: 2026-09-12T02:53:49.651124Z
+      classified: other
+    - cmd: git rev-parse HEAD
+      at: 2026-09-12T02:53:56.126987Z
+      classified: other
+    - cmd: gh run list --commit 8bdad89dd76dc95e837b68d422653360c8dd3b75 --limit 20 --json databaseId,name,status,conclusion,url,headSha,event,createdAt
+      at: 2026-09-12T02:53:56.631422Z
+      classified: other
+    - cmd: gh run watch 34668901758 --exit-status
+      at: 2026-09-12T02:55:03.138292Z
+      classified: other
+    - cmd: gh run watch 34668901715 --exit-status
+      at: 2026-09-12T02:55:55.823416Z
+      classified: other
+    - cmd: git tag -a v0.47.0 -m "v0.47.0"
+      at: 2026-09-12T02:56:02.889392Z
+      classified: other
+    - cmd: git push origin v0.47.0
+      at: 2026-09-12T02:56:07.602651Z
+      classified: other
+    - cmd: gh run list --workflow release.yml --limit 5 --json databaseId,name,status,conclusion,url,headSha,createdAt
+      at: 2026-09-12T02:56:12.70485Z
+      classified: other
+    - cmd: gh run watch 34669007230 --exit-status
+      at: 2026-09-12T02:57:57.019417Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-12T02:58:04.671111Z
+      classified: other
+    - cmd: git show -s --format='%H%n%D%n%s' HEAD
+      at: 2026-09-12T02:58:04.68058Z
+      classified: other
+    - cmd: gh release view v0.47.0 --json tagName,name,publishedAt,isDraft,isPrerelease,url,assets
+      at: 2026-09-12T02:58:04.93498Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git status -sb && git log -5 --oneline --decorate && sed -n '1,260p' HANDOFF.md && printf '\n--- tags ---\n' && git tag --sort=-version:refname | head -10 && printf '\n--- remotes ---\n' && git remote -v
+      at: 2026-09-12T02:59:10.703568Z
+      classified: other
+    - cmd: git branch --show-current && git status -sb && git status --short && git log -5 --oneline --decorate && git tag --sort=-version:refname | head -10 && git remote -v
+      at: 2026-09-12T02:59:25.943933Z
+      classified: other
+    - cmd: pwd && printf '\n--- instructions ---\n' && sed -n '1,260p' AGENTS.md && if [ -f CLAUDE.md ]; then sed -n '1,260p' CLAUDE.md; fi && if [ -f HANDOFF.md ]; then printf '\n--- handoff ---\n'; sed -n '1,320p' HANDOFF.md; fi && printf '\n--- status ---\n' && git branch --show-current && git status -sb && printf '\n--- diff stat ---\n' && git diff --stat && printf '\n--- diff check ---\n' && git diff --check
+      at: 2026-09-12T03:00:30.265936Z
+      classified: other
+    - cmd: prism read lang.go --format text && prism read strategies/cobol.go --format text && prism read strategies/jcl.go --format text && printf '\n--- release files ---\n' && rg --files -g 'CHANGELOG*' -g '.github/workflows/*' -g 'go.mod' -g 'README*' -g 'Makefile' && printf '\n--- full diff ---\n' && git diff -- lang.go strategies/cobol.go strategies/extractors.go strategies/jcl.go strategies/mainframe_test.go strategies/metadata_test.go
+      at: 2026-09-12T03:00:39.729732Z
+      classified: other
+    - cmd: |-
+        set -o pipefail
+        GOWORK=off go test ./... -count=1 -timeout 180s
+        GOWORK=off go test ./... -race -count=1 -timeout 180s
+        GOWORK=off go vet ./...
+        prism verify --format text
+        git diff --check
+      at: 2026-09-12T03:00:53.501791Z
+      classified: lint
+    - cmd: printf '%s\n' '--- workflows ---' && for f in .github/workflows/*; do echo "### $f"; sed -n '1,260p' "$f"; done && printf '%s\n' '--- recent releases ---' && gh release list --limit 5 && printf '%s\n' '--- final staged candidates ---' && git diff --name-status && git status -sb
+      at: 2026-09-12T03:01:00.725437Z
+      classified: other
+    - cmd: 'git add lang.go strategies/cobol.go strategies/extractors.go strategies/jcl.go strategies/mainframe_test.go strategies/metadata_test.go && git diff --cached --check && git commit -m "extract: harden mainframe metadata" && git push origin main'
+      at: 2026-09-12T03:01:11.833127Z
+      classified: other
+    - cmd: gh run list --commit 8869eac --limit 10 --json databaseId,name,status,conclusion,url,headSha
+      at: 2026-09-12T03:01:19.338663Z
+      classified: other
+    - cmd: gh run list --branch main --limit 5 --json databaseId,name,status,conclusion,url,headSha,createdAt
+      at: 2026-09-12T03:01:26.520305Z
+      classified: other
+    - cmd: gh run watch 34669232632 --exit-status
+      at: 2026-09-12T03:02:06.921423Z
+      classified: other
+    - cmd: git tag -a v0.11.0 -m "astkit v0.11.0" && git push origin v0.11.0 && git status -sb && git rev-parse HEAD origin/main v0.11.0^{} && git ls-remote --tags origin refs/tags/v0.11.0 refs/tags/v0.11.0^{}
+      at: 2026-09-12T03:02:14.620486Z
+      classified: other
+    - cmd: git branch --show-current && git status -sb && git log -3 --oneline --decorate && sed -n '1,300p' AGENTS.md && if [ -f CLAUDE.md ]; then sed -n '1,300p' CLAUDE.md; fi && printf '\n--- dependency ---\n' && rg 'provasign/astkit|provasign/grove' go.mod go.sum && printf '\n--- tags ---\n' && git tag --sort=-version:refname | head -5
+      at: 2026-09-12T03:02:27.408523Z
+      classified: other
+    - cmd: sed -n '1,320p' .github/workflows/eval.yml && printf '\n--- baseline header ---\n' && sed -n '1,240p' eval/baseline.json && printf '\n--- scripts ---\n' && rg -n "grove-eval|baseline.json|threshold|corpus|repo" .github/workflows eval -g '*.yml' -g '*.yaml' -g '*.json' -g '*.sh' -g '*.go'
+      at: 2026-09-12T03:02:38.986008Z
+      classified: other
+    - cmd: rg 'provasign/astkit' -g 'go.mod' -g 'go.sum' .
+      at: 2026-09-12T03:02:47.290908Z
+      classified: other
+    - cmd: GOWORK=off go get github.com/provasign/astkit@v0.11.0 && GOWORK=off go mod tidy && cd eval && GOWORK=off go get github.com/provasign/astkit@v0.11.0 && GOWORK=off go mod tidy && cd .. && git diff -- go.mod go.sum eval/go.mod eval/go.sum && git diff --check
+      at: 2026-09-12T03:03:02.978869Z
+      classified: other
+    - cmd: |-
+        set -o pipefail
+        GOWORK=off go test ./... -count=1 -timeout 180s
+        GOWORK=off go test ./... -race -count=1 -timeout 180s
+        GOWORK=off go vet ./...
+        (cd eval && GOWORK=off go test ./... -count=1 -timeout 180s)
+        (cd eval && GOWORK=off go vet ./...)
+        prism verify --format text
+        git diff --check
+      at: 2026-09-12T03:03:26.993271Z
+      classified: lint
+    - cmd: |-
+        set -o pipefail
+        ls -d /tmp/eval-corpus/gin /tmp/eval-corpus/flask /tmp/eval-corpus/socket.io /tmp/eval-corpus/express /tmp/eval-corpus/commons-lang /tmp/eval-corpus/ripgrep /tmp/eval-corpus/newtonsoft /tmp/eval-corpus/php-parser /tmp/eval-corpus/jansson
+        (cd eval && GOWORK=off go build -o /tmp/grove-eval-v0480 ./cmd/grove-eval)
+        eval_dir=$(mktemp -d /tmp/grove-v0480-eval.XXXXXX)
+        echo "eval output: $eval_dir"
+        /tmp/grove-eval-v0480 truth --repo /tmp/eval-corpus/gin --commit d75fcd4 --out "$eval_dir/gin-truth.jsonl"
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/gin --truth "$eval_dir/gin-truth.jsonl" --out-dir "$eval_dir/gin" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/flask --truth eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir "$eval_dir/flask" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/socket.io --truth eval/testdata/socket.io@3ad4e1f2/calls-truth.jsonl.gz --out-dir "$eval_dir/socketio" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/express --truth eval/testdata/express@dae209ae/calls-truth.jsonl.gz --out-dir "$eval_dir/express" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/commons-lang --truth eval/testdata/commons-lang@44298fe/calls-truth.jsonl.gz --out-dir "$eval_dir/commons-lang" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/ripgrep --truth eval/testdata/ripgrep@82313cf/calls-truth.jsonl.gz --out-dir "$eval_dir/ripgrep" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/newtonsoft --truth eval/testdata/newtonsoft@0a2e291/calls-truth.jsonl.gz --out-dir "$eval_dir/newtonsoft" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/php-parser --truth eval/testdata/php-parser@8eea230/calls-truth.jsonl.gz --out-dir "$eval_dir/php-parser" --baseline eval/baseline.json
+        /tmp/grove-eval-v0480 score --repo /tmp/eval-corpus/jansson --truth eval/testdata/jansson@684e18c/calls-truth.jsonl.gz --out-dir "$eval_dir/jansson" --baseline eval/baseline.json
+      at: 2026-09-12T03:04:10.118536Z
+      classified: build
+    - cmd: sed -n '1,100p' CHANGELOG.md && git status -sb && git diff --stat
+      at: 2026-09-12T03:04:16.717433Z
+      classified: other
+    - cmd: 'git add CHANGELOG.md go.mod go.sum eval/go.mod eval/go.sum && git diff --cached --check && git diff --cached --stat && git commit -m "build: update astkit to v0.11.0" && git push origin main'
+      at: 2026-09-12T03:04:27.931187Z
+      classified: other
+    - cmd: gh run list --branch main --limit 8 --json databaseId,name,status,conclusion,url,headSha,createdAt
+      at: 2026-09-12T03:04:32.189448Z
+      classified: other
+    - cmd: |-
+        gh run watch 34669380486 --exit-status & ci_pid=$!
+        gh run watch 34669380519 --exit-status & eval_pid=$!
+        wait "$ci_pid"
+        wait "$eval_pid"
+      at: 2026-09-12T03:07:13.098392Z
+      classified: other
+    - cmd: git tag -a v0.48.0 -m "grove v0.48.0" && git push origin v0.48.0 && git status -sb && git rev-parse HEAD origin/main v0.48.0^{}
+      at: 2026-09-12T03:07:20.291939Z
+      classified: other
+    - cmd: gh run list --branch v0.48.0 --limit 5 --json databaseId,name,status,conclusion,url,headSha,createdAt
+      at: 2026-09-12T03:07:24.257895Z
+      classified: other
+    - cmd: gh run watch 34669511003 --exit-status
+      at: 2026-09-12T03:09:26.526243Z
+      classified: other
+    - cmd: gh release view v0.48.0 --json url,isDraft,isPrerelease,publishedAt,assets && git status -sb
+      at: 2026-09-12T03:09:29.915176Z
+      classified: other
+    - cmd: git branch --show-current && git status -sb && printf '\n--- dependency pins ---\n' && rg 'provasign/(grove|astkit)' go.mod go.sum research/go.mod research/go.sum 2>/dev/null || true && printf '\n--- release files ---\n' && rg --files -g 'CHANGELOG*' -g '.github/workflows/*' -g 'go.mod' -g 'research/go.mod' -g 'Makefile' && printf '\n--- workflows ---\n' && for f in .github/workflows/*; do echo "### $f"; sed -n '1,300p' "$f"; done && printf '\n--- recent tags/releases ---\n' && git tag --sort=-version:refname | head -8 && gh release list --limit 5
+      at: 2026-09-12T03:09:48.567637Z
+      classified: other
+    - cmd: GOWORK=off go get github.com/provasign/grove@v0.48.0 && GOWORK=off go mod tidy && rg 'provasign/(grove|astkit)' go.mod go.sum && git diff -- go.mod go.sum && git diff --check
+      at: 2026-09-12T03:10:03.16439Z
+      classified: other
+    - cmd: git diff --stat && printf '\n--- project config diff ---\n' && git diff -- .codex/config.toml .cursor/mcp.json .cursorrules .mcp.json .windsurfrules prism.yaml AGENTS.md CLAUDE.md && printf '\n--- absolute/sensitive-looking changed lines ---\n' && git diff -U0 | rg '^\+' | rg '/Users/|BEGIN .*PRIVATE|api[_-]?key|token\s*=|password\s*=' || true && printf '\n--- untracked files ---\n' && git status --short | rg '^\?\?'
+      at: 2026-09-12T03:10:15.550906Z
+      classified: other
+    - cmd: git show HEAD:HANDOFF.md | sed -n '1,260p' && printf '\n--- current tail ---\n' && sed -n '240,520p' HANDOFF.md
+      at: 2026-09-12T03:10:20.362148Z
+      classified: other
+    - cmd: |-
+        set -o pipefail
+        GOWORK=off go test ./... -count=1 -timeout 180s
+        GOWORK=off go test ./... -race -count=1 -timeout 180s
+        GOWORK=off go vet ./...
+        sh -n install.sh scripts/bootstrap-prism-grove.sh
+        git diff --check
+        GOWORK=off go build -ldflags='-X github.com/provasign/prism/internal/version.Version=v0.73.0-rc' -o /tmp/prism-v0730-rc ./cmd/prism
+        /tmp/prism-v0730-rc version
+      at: 2026-09-12T03:11:36.112341Z
+      classified: lint
+    - cmd: prism read internal/mcp/compact_test.go --format text && prism read internal/mcp/server_project_test.go --format text
+      at: 2026-09-12T03:11:41.69016Z
+      classified: other
+    - cmd: |-
+        compact_out=$(mktemp /tmp/prism-compact.XXXXXX)
+        legacy_out=$(mktemp /tmp/prism-legacy.XXXXXX)
+        printf '%s\n%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /tmp/prism-v0730-rc mcp --compact . > "$compact_out"
+        printf '%s\n%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /tmp/prism-v0730-rc mcp --legacy . > "$legacy_out"
+        echo 'compact:'
+        jq -c 'select(.id==2) | {count:(.result.tools|length),names:[.result.tools[].name],schema_bytes:(.result.tools|tojson|length)}' "$compact_out"
+        echo 'legacy:'
+        jq -c 'select(.id==2) | {count:(.result.tools|length),names:[.result.tools[].name],schema_bytes:(.result.tools|tojson|length)}' "$legacy_out"
+        echo 'initialize warning absent for current project:'
+        jq -r 'select(.id==1) | .result.instructions' "$compact_out" | rg -q 'initialized by an older Prism' && echo unexpected-warning || echo current-project-ok
+      at: 2026-09-12T03:11:51.125055Z
+      classified: other
+    - cmd: prism change-impact 'legacyProjectWarning' --format text && prism lookup 'legacyProjectWarning' --format text
+      at: 2026-09-12T03:11:58.921711Z
+      classified: other
+    - cmd: prism lookup 'legacyPrismYAML' 'legacyProjectMCP' 'legacyProjectSteering' --format text
+      at: 2026-09-12T03:12:03.454275Z
+      classified: other
+    - cmd: prism read internal/mcp/server_project.go --format text
+      at: 2026-09-12T03:12:08.856023Z
+      classified: other
+    - cmd: for f in prism.yaml .mcp.json .codex/config.toml .cursor/mcp.json .windsurf/mcp.json .vscode/mcp.json .gemini/settings.json opencode.json CLAUDE.md AGENTS.md GEMINI.md .github/copilot-instructions.md .cursorrules .windsurfrules; do if [ -f "$f" ]; then echo "### $f"; rg -n 'prism|Prism|--compact|version:|mcp_surface|prism:end' "$f" || true; fi; done
+      at: 2026-09-12T03:12:15.340516Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc init --yes
+      at: 2026-09-12T03:12:32.346635Z
+      classified: other
+    - cmd: |-
+        compact_out=$(mktemp /tmp/prism-compact.XXXXXX)
+        printf '%s\n%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /tmp/prism-v0730-rc mcp --compact . > "$compact_out"
+        jq -r 'select(.id==1) | .result.instructions' "$compact_out" | tail -3
+        if jq -r 'select(.id==1) | .result.instructions' "$compact_out" | rg -q 'initialized by an older Prism'; then echo warning-present; else echo current-project-ok; fi
+        git status -sb
+      at: 2026-09-12T03:12:39.546948Z
+      classified: other
+    - cmd: prism query "How prism init cleans legacy configuration for harnesses that are not selected" --terms legacy,cleanup,harnesses --format text
+      at: 2026-09-12T03:12:48.749542Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 313 --limit 160 --format text && prism read internal/cli/commands.go --offset 645 --limit 260 --format text
+      at: 2026-09-12T03:12:53.03689Z
+      classified: other
+    - cmd: sed -n '1,20p' prism.yaml && git diff -- .github/copilot-instructions.md GEMINI.md && for f in .windsurf/mcp.json .vscode/mcp.json; do echo "### $f"; sed -n '1,80p' "$f"; done
+      at: 2026-09-12T03:13:00.920504Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc init --harness claude,codex,cursor,windsurf,vscode --yes && /tmp/prism-v0730-rc init --harness claude,codex,cursor --yes && compact_out=$(mktemp /tmp/prism-compact.XXXXXX) && printf '%s\n%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /tmp/prism-v0730-rc mcp --compact . > "$compact_out" && if jq -r 'select(.id==1) | .result.instructions' "$compact_out" | rg -q 'initialized by an older Prism'; then echo warning-present; exit 1; else echo current-project-ok; fi && git status -sb
+      at: 2026-09-12T03:13:20.254455Z
+      classified: other
+    - cmd: sed -n '1,100p' CLAUDE.md && printf '\n--- research status/instructions ---\n' && git -C /Users/tapabratapal/Projects/provasign/research status -sb && if [ -f /Users/tapabratapal/Projects/provasign/research/AGENTS.md ]; then sed -n '1,260p' /Users/tapabratapal/Projects/provasign/research/AGENTS.md; fi
+      at: 2026-09-12T03:13:32.658647Z
+      classified: other
+    - cmd: python3 harness/ci_invariants.py --prism /tmp/prism-v0730-rc
+      at: 2026-09-12T03:13:40.607548Z
+      classified: other
+    - cmd: python3 /private/tmp/run_ci_invariants_v4_probe.py --prism /tmp/prism-v0730-rc --corpus-root /private/tmp/prism-v073-ci-corpus
+      at: 2026-09-12T03:13:57.037833Z
+      classified: other
+    - cmd: python3 /private/tmp/run_ci_invariants_v4_probe.py --prism /tmp/prism-v0730-rc --corpus-root /private/tmp/prism-v073-ci-corpus
+      at: 2026-09-12T03:14:01.091864Z
+      classified: other
+    - cmd: PYTHONPATH=. python3 /private/tmp/run_ci_invariants_v4_probe.py --prism /tmp/prism-v0730-rc --corpus-root /private/tmp/prism-v073-ci-corpus
+      at: 2026-09-12T03:14:06.024511Z
+      classified: other
+    - cmd: sed -n '1,240p' /private/tmp/run_ci_invariants_v4_probe.py
+      at: 2026-09-12T03:14:12.827472Z
+      classified: other
+    - cmd: ps -axo pid,etime,pcpu,pmem,command | rg 'run_ci_invariants_v4_probe|prism-v0730-rc|grove-daemon' | rg -v 'rg '
+      at: 2026-09-12T03:19:15.897943Z
+      classified: other
+    - cmd: ps -axo pid,etime,pcpu,pmem,command | rg 'run_ci_invariants_v4_probe|prism-v0730-rc change-impact' | rg -v 'rg '
+      at: 2026-09-12T03:21:00.644196Z
+      classified: other
+    - cmd: ps -axo pid,etime,pcpu,pmem,command | rg 'run_ci_invariants_v4_probe|prism-v0730-rc' | rg -v 'rg ' | tail -5
+      at: 2026-09-12T03:23:16.234562Z
+      classified: other
+    - cmd: ps -axo pid,etime,state,pcpu,pmem,command | rg 'run_ci_invariants_v4_probe|prism-v0730-rc change-impact|grove-daemon' | rg -v 'rg '
+      at: 2026-09-12T03:24:58.25739Z
+      classified: other
+    - cmd: python3 /private/tmp/run_ci_invariants_v4_probe.py /Users/tapabratapal/Projects/provasign/research /tmp/prism-v0730-rc
+      at: 2026-09-12T03:29:32.1725Z
+      classified: other
+    - cmd: python3 harness/ci_site_diff.py --help && sed -n '1,260p' harness/ci_site_diff.py
+      at: 2026-09-12T03:29:37.101792Z
+      classified: other
+    - cmd: python3 harness/ci_site_diff.py --prism /tmp/prism-v0730-rc --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set django-quotename
+      at: 2026-09-12T03:29:49.207889Z
+      classified: other
+    - cmd: git status -sb && prism query "Java inherited method call resolution and Python receiver method resolution changes that could exclude valid callers or include wrong same-name methods" --terms resolveJava,resolvePython,inherited,receiver --format text && printf '\n--- regression-window commits ---\n' && git log --oneline --decorate v0.43.3..v0.44.1 && printf '\n--- changed files in window ---\n' && git diff --stat v0.43.3..v0.44.1
+      at: 2026-09-12T03:30:04.906772Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc read src/main/java/com/fasterxml/jackson/databind/deser/impl/ExternalTypeHandler.java --offset 380 --limit 180 --format text && /tmp/prism-v0730-rc read django/core/cache/backends/db.py --offset 1 --limit 360 --format text && /tmp/prism-v0730-rc read django/db/backends/postgresql/introspection.py --offset 1 --limit 160 --format text
+      at: 2026-09-12T03:30:14.268249Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc read django/core/cache/backends/db.py --offset 1 --limit 360 --format text && /tmp/prism-v0730-rc read django/db/backends/postgresql/introspection.py --offset 1 --limit 180 --format text
+      at: 2026-09-12T03:30:18.169902Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc change-impact 'SettableBeanProperty.set' --format json > /tmp/settable-impact.json && /tmp/prism-v0730-rc change-impact 'BaseDatabaseOperations.quote_name' --format json > /tmp/django-impact.json && jq '.sites[] | select(.file|contains("ExternalTypeHandler"))' /tmp/settable-impact.json && jq '.sites[] | select(.file|contains("cache/backends/db.py") or contains("postgresql/introspection.py"))' /tmp/django-impact.json
+      at: 2026-09-12T03:30:25.307767Z
+      classified: other
+    - cmd: jq 'keys' /tmp/settable-impact.json && jq '.. | objects | select((.file? // "")|contains("ExternalTypeHandler"))' /tmp/settable-impact.json
+      at: 2026-09-12T03:30:28.888337Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc change-impact 'BaseDatabaseOperations.quote_name' --format json > /tmp/django-impact.json && jq '.. | objects | select((.file? // "")|contains("cache/backends/db.py") or contains("postgresql/introspection.py"))' /tmp/django-impact.json
+      at: 2026-09-12T03:30:36.855159Z
+      classified: other
+    - cmd: jq '.callers[0], .declarations[0], .supers[0]' /tmp/django-impact.json && jq '.callers[] | select((.filePath? // "")|contains("cache/backends/db.py") or contains("postgresql/introspection.py"))' /tmp/django-impact.json
+      at: 2026-09-12T03:30:43.464688Z
+      classified: other
+    - cmd: jq '.callers[] | select(((.filePath? // "")|contains("cache/backends/db.py")) or ((.filePath? // "")|contains("postgresql/introspection.py")))' /tmp/django-impact.json && printf '\n--- all quote_name callers by file ---\n' && jq -r '.callers[] | [.filePath,.name,.line] | @tsv' /tmp/django-impact.json | sort
+      at: 2026-09-12T03:30:48.611107Z
+      classified: other
+    - cmd: prism search 'connection.ops' 'quote_name' 'external receiver' --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T03:30:54.842288Z
+      classified: other
+    - cmd: prism search 'pyCall' 'python' 'languageFamily' 'scoped' --path internal/graph/edges.go --scope text --exhaustive --context 2 --format text
+      at: 2026-09-12T03:30:59.623675Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 1922 --limit 500 --format text && prism read internal/graph/pycallbinding.go --format text
+      at: 2026-09-12T03:31:03.620595Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 2399 --limit 310 --format text
+      at: 2026-09-12T03:31:06.776768Z
+      classified: other
+    - cmd: prism search 'Heuristic' 'reference' 'caller' 'languageFamily' --path internal/graph/changeimpact.go --scope text --exhaustive --context 3 --format text && prism read internal/graph/changeimpact.go --offset 1 --limit 420 --format text
+      at: 2026-09-12T03:31:13.805446Z
+      classified: other
+    - cmd: prism read internal/graph/changeimpact.go --offset 418 --limit 140 --format text
+      at: 2026-09-12T03:31:17.557255Z
+      classified: other
+    - cmd: prism search 'traceCalls' 'GROVE_TRACE' --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T03:31:21.611781Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc index --help
+      at: 2026-09-12T03:31:27.866087Z
+      classified: other
+    - cmd: |-
+        trace_root=$(mktemp -d /tmp/grove-trace.XXXXXX)
+        git clone --quiet --shared /private/tmp/prism-v073-ci-corpus/django "$trace_root/django"
+        git clone --quiet --shared /private/tmp/prism-v073-ci-corpus/jackson-databind "$trace_root/jackson"
+        GROVE_TRACE_CALLS=1 /tmp/prism-v0730-rc index "$trace_root/django" 2> "$trace_root/django.trace" >/dev/null
+        GROVE_TRACE_CALLS=1 /tmp/prism-v0730-rc index "$trace_root/jackson" 2> "$trace_root/jackson.trace" >/dev/null
+        echo "trace root: $trace_root"
+        echo '--- django target traces ---'
+        rg 'BaseDatabaseCache\.(get_many|_base_set|_base_delete_many|has_key|_cull|clear)|DatabaseIntrospection\.get_table_description' "$trace_root/django.trace" | rg 'quote_name|narrowed' || true
+        echo '--- jackson target trace ---'
+        rg 'ExternalTypeHandler\._deserializeAndSet' "$trace_root/jackson.trace" | rg 'callee=.*set|narrowed' || true
+      at: 2026-09-12T03:31:39.052998Z
+      classified: other
+    - cmd: find /private/tmp/prism-v073-ci-corpus -maxdepth 2 -type d -name .git -print | sed 's#/.git$##'
+      at: 2026-09-12T03:31:46.431567Z
+      classified: other
+    - cmd: find /private/tmp/prism-v073-ci-corpus -maxdepth 2 -type d -print | head -40
+      at: 2026-09-12T03:31:50.805877Z
+      classified: other
+    - cmd: |-
+        trace_root=$(mktemp -d /tmp/grove-trace.XXXXXX)
+        rsync -a --exclude .grove /private/tmp/prism-v073-ci-corpus/django/ "$trace_root/django/"
+        rsync -a --exclude .grove /private/tmp/prism-v073-ci-corpus/jackson-databind/ "$trace_root/jackson/"
+        GROVE_TRACE_CALLS=1 /tmp/prism-v0730-rc index "$trace_root/django" 2> "$trace_root/django.trace" >/dev/null
+        GROVE_TRACE_CALLS=1 /tmp/prism-v0730-rc index "$trace_root/jackson" 2> "$trace_root/jackson.trace" >/dev/null
+        echo "trace root: $trace_root"
+        echo '--- django target traces ---'
+        rg 'BaseDatabaseCache\.(get_many|_base_set|_base_delete_many|has_key|_cull|clear)|DatabaseIntrospection\.get_table_description' "$trace_root/django.trace" | rg 'quote_name|narrowed' || true
+        echo '--- jackson target trace ---'
+        rg 'ExternalTypeHandler\._deserializeAndSet' "$trace_root/jackson.trace" | rg 'callee=.*set|narrowed' || true
+      at: 2026-09-12T03:33:22.102019Z
+      classified: other
+    - cmd: prism lookup 'javaCallResultTypes' --format text && prism lookup 'javaMethodsOfTypes' --format text && prism lookup 'javaResolveCallReturnTypes' --format text
+      at: 2026-09-12T03:33:28.295967Z
+      classified: other
+    - cmd: prism lookup 'javaCallResultOwners' --format text && prism lookup 'tsReceiverChainAt' --format text
+      at: 2026-09-12T03:33:31.763871Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc search getProperty --scope symbols --exhaustive --format text | rg 'getProperty|Signature|signature|ExtTypedProperty' | head -120
+      at: 2026-09-12T03:33:47.448983Z
+      classified: other
+    - cmd: prism search 'javaQualifiedCallRe' 'javaLocalTypes' --path internal/graph/javalocaltypes.go --scope text --exhaustive --context 4 --format text
+      at: 2026-09-12T03:33:53.400122Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc search quote_name --scope symbols --exhaustive --format text | rg '^  method '
+      at: 2026-09-12T03:34:21.110762Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 2673 --limit 120 --format text
+      at: 2026-09-12T03:34:29.427292Z
+      classified: other
+    - cmd: prism lookup 'interfaceSatisfaction.dispatchTargets' --format text || prism search 'func (.*dispatchTargets' --path internal/graph --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T03:34:34.012614Z
+      classified: other
+    - cmd: prism search 'BuildEdges' 'pyCallCandidates' 'CallSites' --path internal/graph -g '*python*test.go' --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T03:34:40.360512Z
+      classified: other
+    - cmd: 'prism search ''pyCallCandidates'' ''CallSites:'' ''Language: "python"'' --path internal/graph --scope text --exhaustive --context 3 --format text'
+      at: 2026-09-12T03:34:44.01663Z
+      classified: other
+    - cmd: git status --short --branch && prism read internal/graph/java_callresult_test.go --format text && prism read internal/graph/pycallbinding.go --format text
+      at: 2026-09-12T03:36:09.130565Z
+      classified: other
+    - cmd: rg 'ExternalTypeHandler\.Builder\.build|JsonNodeDeserializer\.updateObject|ObjectNode\._at|UnwrappingBeanPropertyWriter\._depositSchemaProperty' /tmp/grove-trace.nB83I6/jackson/jackson.trace | rg 'get|narrowed'
+      at: 2026-09-12T03:36:12.335532Z
+      classified: build
+    - cmd: find /private/tmp /tmp -maxdepth 3 -type f -name '*.trace' -o -type d -name 'jackson-databind' 2>/dev/null | head -80
+      at: 2026-09-12T03:36:16.814434Z
+      classified: other
+    - cmd: rg 'ExternalTypeHandler\.Builder\.build|JsonNodeDeserializer\.updateObject|ObjectNode\._at|UnwrappingBeanPropertyWriter\._depositSchemaProperty' /private/tmp/grove-trace.nB83I6/jackson.trace | rg 'get|narrowed'
+      at: 2026-09-12T03:36:20.282433Z
+      classified: build
+    - cmd: rg 'JsonNodeDeserializer.*updateObject' /private/tmp/grove-trace.nB83I6/jackson.trace | head -80
+      at: 2026-09-12T03:36:23.456803Z
+      classified: other
+    - cmd: prism search 'JsonNode old|\.get\(' --path /private/tmp/prism-v073-ci-corpus/jackson-databind/src/main/java/com/fasterxml/jackson/databind/deser/std/JsonNodeDeserializer.java --scope text --format text && prism read /private/tmp/prism-v073-ci-corpus/jackson-databind/src/main/java/com/fasterxml/jackson/databind/deser/impl/ExternalTypeHandler.java:545-590 --format text && prism read /private/tmp/prism-v073-ci-corpus/jackson-databind/src/main/java/com/fasterxml/jackson/databind/node/ObjectNode.java:315-330 --format text && prism read /private/tmp/prism-v073-ci-corpus/jackson-databind/src/main/java/com/fasterxml/jackson/databind/ser/impl/UnwrappingBeanPropertyWriter.java:155-190 --format text
+      at: 2026-09-12T03:36:30.767581Z
+      classified: other
+    - cmd: rg -n -C 6 '_properties\.get|protected JsonNode _at|schemaNode\.get|updateObject' /private/tmp/prism-v073-ci-corpus/jackson-databind/src/main/java/com/fasterxml/jackson/databind/{deser/impl/ExternalTypeHandler.java,deser/std/JsonNodeDeserializer.java,node/ObjectNode.java,ser/impl/UnwrappingBeanPropertyWriter.java}
+      at: 2026-09-12T03:36:35.450706Z
+      classified: other
+    - cmd: rg -n -C 8 'jackson-jsonnode-get|JsonNode.get' ci_baseline.json benchmark*.json *.json 2>/dev/null
+      at: 2026-09-12T03:36:38.599528Z
+      classified: other
+    - cmd: rg -n -C 10 'jackson-jsonnode-get|JsonNode\.get' . --glob '*.json' --glob '*.py' --glob '*.md'
+      at: 2026-09-12T03:36:48.06893Z
+      classified: other
+    - cmd: prism query 'How Java call candidates are narrowed by overload argument types, especially get(int) versus get(String)' --terms javaCallCandidates,callArguments,Argc --format text && prism search 'javaArg|ArgTypes|call.Arg|literal' --path internal/graph --format text
+      at: 2026-09-12T03:36:54.307822Z
+      classified: other
+    - cmd: prism lookup narrowOverloadsByArgTypes javaArgTypes javaCallResultOwners --format text && prism read internal/graph/edges.go:2570-2710 --format text && prism read internal/graph/javalocaltypes.go:1-330 --format text
+      at: 2026-09-12T03:36:57.508316Z
+      classified: other
+    - cmd: prism lookup narrowOverloadsByArgTypes --format text
+      at: 2026-09-12T03:37:04.532572Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go:2570-2710 --format text
+      at: 2026-09-12T03:37:04.548765Z
+      classified: other
+    - cmd: prism lookup javaArgTypes --format text
+      at: 2026-09-12T03:37:04.598866Z
+      classified: other
+    - cmd: prism lookup javaCallResultOwners --format text
+      at: 2026-09-12T03:37:04.677242Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 2570 --limit 145 --format text
+      at: 2026-09-12T03:37:07.939485Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 2470 --limit 105 --format text
+      at: 2026-09-12T03:37:10.600412Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 2290 --limit 180 --format text
+      at: 2026-09-12T03:37:14.282148Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 2210 --limit 90 --format text
+      at: 2026-09-12T03:37:17.093301Z
+      classified: other
+    - cmd: prism query 'How change impact builds Java override/implementation declaration family and distinguishes overloaded methods by signature' --terms declarationFamily,override,javaParamTypes --format text
+      at: 2026-09-12T03:37:31.794901Z
+      classified: other
+    - cmd: prism read internal/graph/changeimpact.go --offset 121 --limit 440 --format text
+      at: 2026-09-12T03:37:34.805377Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc change-impact 'JsonNode.get(int)' --format json | jq '{declarations:[.declarations[]|{id,signature}],family:[.family[]|{id,signature}],callers:[.callers[]|{qualifiedName,filePath}]}'
+      at: 2026-09-12T03:37:42.53636Z
+      classified: other
+    - cmd: prism lookup narrowDispatch --format text && prism lookup implementorsFor --format text && prism lookup narrowByLocalType --format text
+      at: 2026-09-12T03:37:54.955348Z
+      classified: other
+    - cmd: prism search 'narrowDispatch' --path internal/graph/edges.go --scope text --context 12 --format text
+      at: 2026-09-12T03:37:57.773229Z
+      classified: other
+    - cmd: rg -n -C 3 'quote_name =|\.ops\.quote_name' /private/tmp/prism-v073-ci-corpus/django/django/core/cache/backends/db.py /private/tmp/prism-v073-ci-corpus/django/django/db/backends/postgresql/introspection.py && rg 'DatabaseCache\.(get_many|_base_set|_base_delete_many|has_key|_cull|clear)|DatabaseIntrospection\.get_table_description' /private/tmp/grove-trace.nB83I6/django.trace | rg 'quote_name|cands='
+      at: 2026-09-12T03:38:11.049907Z
+      classified: other
+    - cmd: git show --stat --oneline 3f319623 && git show 3f319623 -- internal/graph/edges.go internal/graph/pycallbinding.go internal/graph/javalocaltypes.go | head -1000
+      at: 2026-09-12T03:38:14.928495Z
+      classified: other
+    - cmd: git diff v0.43.3..HEAD -- internal/graph/edges.go internal/graph/pycallbinding.go | rg -n -C 5 'python|pyCallCandidates|sameFileWins|resolveCallees'
+      at: 2026-09-12T03:38:22.962168Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc search quote_name --format json | jq '[.matches[]? | select(.kind=="method" or .kind=="function") | {qualifiedName,filePath}]'
+      at: 2026-09-12T03:38:34.59456Z
+      classified: other
+    - cmd: /tmp/prism-v0730-rc search quote_name --format text
+      at: 2026-09-12T03:38:40.135585Z
+      classified: other
+    - cmd: prism change-impact 'resolveCallEdges' --format text
+      at: 2026-09-12T03:38:55.953775Z
+      classified: other
+    - cmd: prism change-impact 'javaCallResultOwners' --format text
+      at: 2026-09-12T03:38:56.012099Z
+      classified: other
+    - cmd: prism search 'pyCallCandidates|python.*alias|fullChain' --path internal/graph --context 3 --format text
+      at: 2026-09-12T03:39:02.448714Z
+      classified: other
+    - cmd: prism search 'javaQualifiedCallRe' --path internal/graph --scope text --context 5 --format text
+      at: 2026-09-12T03:39:02.507916Z
+      classified: other
+    - cmd: prism search 'TestPython' --path internal/graph/edges_test.go --scope text --format text
+      at: 2026-09-12T03:39:02.595965Z
+      classified: other
+    - cmd: prism read internal/graph/edges_test.go --offset 450 --limit 180 --format text && prism lookup CallSite --format text
+      at: 2026-09-12T03:39:05.891459Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --offset 2038 --limit 175 --format text
+      at: 2026-09-12T03:39:09.047288Z
+      classified: other
+    - cmd: prism lookup globalCallableCandidates --format text && prism lookup resolveCallees --format text
+      at: 2026-09-12T03:39:15.06094Z
+      classified: other
+    - cmd: prism search 'regexp.MustCompile' --path internal/graph/pylocaltypes.go --scope text --context 2 --format text | head -180
+      at: 2026-09-12T03:39:18.54178Z
+      classified: other
+    - cmd: gofmt -w internal/graph/edges.go internal/graph/javalocaltypes.go internal/graph/java_callresult_test.go internal/graph/pycallbinding.go internal/graph/pycallbinding_test.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:40:54.819867Z
+      classified: test
+    - cmd: rg 'func .*Ident|isIdentifier|validIdent' internal/graph internal/core | head -50
+      at: 2026-09-12T03:40:57.53674Z
+      classified: other
+    - cmd: gofmt -w internal/graph/pycallbinding.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:41:09.598178Z
+      classified: test
+    - cmd: GROVE_TRACE_CALLS=1 GOWORK=off go test ./internal/graph -run TestJavaCallResult_IndexedReceiverReachesReturnType -count=1 -v
+      at: 2026-09-12T03:41:13.371299Z
+      classified: test
+    - cmd: prism read internal/graph/javalocaltypes.go --offset 455 --limit 100 --format text
+      at: 2026-09-12T03:41:16.593714Z
+      classified: other
+    - cmd: gofmt -w internal/graph/java_callresult_test.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:41:28.988403Z
+      classified: test
+    - cmd: GROVE_TRACE_CALLS=1 GOWORK=off go test ./internal/graph -run TestJavaCallResult_IndexedReceiverReachesReturnType -count=1 -v
+      at: 2026-09-12T03:41:32.515475Z
+      classified: test
+    - cmd: gofmt -w internal/graph/java_callresult_test.go && GROVE_TRACE_CALLS=1 GOWORK=off go test ./internal/graph -run TestJavaCallResult_IndexedReceiverReachesReturnType -count=1 -v
+      at: 2026-09-12T03:41:47.122082Z
+      classified: test
+    - cmd: prism lookup javaLocalTypes --format text
+      at: 2026-09-12T03:41:52.559663Z
+      classified: other
+    - cmd: gofmt -w internal/graph/java_callresult_test.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:42:03.733641Z
+      classified: test
+    - cmd: go env GOWORK && git diff --check && git status --short
+      at: 2026-09-12T03:42:10.43032Z
+      classified: other
+    - cmd: go build -ldflags '-X main.version=v0.73.0-grove-fix' -o /tmp/prism-v073-grove-fix ./cmd/prism && /tmp/prism-v073-grove-fix index --force
+      at: 2026-09-12T03:42:16.633102Z
+      classified: build
+    - cmd: GOWORK=off go mod edit -replace=github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build -ldflags '-X main.version=v0.73.0-grove-fix' -o /tmp/prism-v073-grove-fix ./cmd/prism
+      at: 2026-09-12T03:42:28.949927Z
+      classified: build
+    - cmd: GOWORK=off go mod edit -dropreplace=github.com/provasign/grove && git diff -- go.mod | tail -30
+      at: 2026-09-12T03:42:31.803798Z
+      classified: other
+    - cmd: /tmp/prism-v073-grove-fix index --force && /tmp/prism-v073-grove-fix change-impact 'JsonNode.get(int)' --format json > /tmp/jackson-get-fix.json
+      at: 2026-09-12T03:42:38.699816Z
+      classified: other
+    - cmd: /tmp/prism-v073-grove-fix index --force && /tmp/prism-v073-grove-fix change-impact 'BaseDatabaseOperations.quote_name' --format json > /tmp/django-quote-fix.json
+      at: 2026-09-12T03:42:40.448587Z
+      classified: other
+    - cmd: tmp_graph_backup=$(mktemp -d /private/tmp/grove-graphs.XXXXXX) && mv /private/tmp/prism-v073-ci-corpus/jackson-databind/.grove "$tmp_graph_backup/jackson.grove" && mv /private/tmp/prism-v073-ci-corpus/django/.grove "$tmp_graph_backup/django.grove" && echo "$tmp_graph_backup"
+      at: 2026-09-12T03:42:52.309015Z
+      classified: other
+    - cmd: ps aux | rg '[p]rism-v073-grove-fix index|[p]rism-v073-grove-fix change-impact' && ls -l /tmp/jackson-get-fix.json /tmp/django-quote-fix.json
+      at: 2026-09-12T03:43:34.763321Z
+      classified: other
+    - cmd: while ps -p 52379,52381 >/dev/null 2>&1; do sleep 5; done; ls -l /tmp/jackson-get-fix.json /tmp/django-quote-fix.json
+      at: 2026-09-12T03:43:48.60783Z
+      classified: other
+    - cmd: python3 harness/ci_site_diff.py --help
+      at: 2026-09-12T03:43:52.7052Z
+      classified: other
+    - cmd: python3 harness/ci_site_diff.py --prism /tmp/prism-v073-grove-fix --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set django-quotename
+      at: 2026-09-12T03:44:00.26166Z
+      classified: other
+    - cmd: prism search 'javaTypedLocalRe|javaLocalDeclRe' --path internal/graph/javalocaltypes.go --scope text --context 3 --format text
+      at: 2026-09-12T03:44:07.599523Z
+      classified: other
+    - cmd: rg -n -C 2 'javaTypedLocalRe|javaLocalDeclRe' internal/graph/javalocaltypes.go
+      at: 2026-09-12T03:44:12.557069Z
+      classified: other
+    - cmd: /tmp/prism-v073-grove-fix lookup 'ExternalTypeHandler.Builder' --format text && /tmp/prism-v073-grove-fix lookup 'BaseNodeDeserializer.updateObject' --format text && /tmp/prism-v073-grove-fix lookup 'ObjectNode._at' --format text
+      at: 2026-09-12T03:44:26.612663Z
+      classified: other
+    - cmd: rg -n 'django-quotename' harness/tasks harness --glob '*.json' --glob '*.py' | head -50 && find harness -path '*django-quotename*' -type f | head -40
+      at: 2026-09-12T03:45:30.540039Z
+      classified: other
+    - cmd: jq '{target,ground_truth,prompt}' harness/tasks/django-quotename.json
+      at: 2026-09-12T03:45:33.791242Z
+      classified: other
+    - cmd: for f in django/db/backends/{mysql,oracle,postgresql,sqlite3}/introspection.py; do echo "$f"; rg '^from |^import ' "/private/tmp/prism-v073-ci-corpus/django/$f"; done
+      at: 2026-09-12T03:45:45.123321Z
+      classified: other
+    - cmd: prism lookup importedFiles --format text && prism lookup resolveRelativeImport --format text
+      at: 2026-09-12T03:45:57.852204Z
+      classified: other
+    - cmd: rg '^from |^import ' /private/tmp/prism-v073-ci-corpus/django/django/db/backends/postgresql/base.py | rg 'operations|postgresql'
+      at: 2026-09-12T03:46:03.052344Z
+      classified: other
+    - cmd: sed -n '1,180p' internal/graph/pycallbinding.go && sed -n '1,80p' internal/graph/pycallbinding_test.go && sed -n '2200,2235p' internal/graph/edges.go
+      at: 2026-09-12T03:46:39.757976Z
+      classified: other
+    - cmd: prism change-impact 'javaLocalTypes' --format text
+      at: 2026-09-12T03:47:11.872351Z
+      classified: other
+    - cmd: prism change-impact 'javaArgTypes' --format text
+      at: 2026-09-12T03:47:11.962882Z
+      classified: other
+    - cmd: sed -n '1,125p' internal/graph/javalocaltypes.go && sed -n '700,790p' internal/graph/javalocaltypes.go
+      at: 2026-09-12T03:47:16.393464Z
+      classified: other
+    - cmd: gofmt -w internal/graph/edges.go internal/graph/javalocaltypes.go internal/graph/java_callresult_test.go internal/graph/pycallbinding.go internal/graph/pycallbinding_test.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:48:08.413351Z
+      classified: test
+    - cmd: gofmt -w internal/graph/pycallbinding_test.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:48:24.775889Z
+      classified: test
+    - cmd: GOWORK=off go mod edit -replace=github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build -ldflags '-X main.version=v0.73.0-grove-fix2' -o /tmp/prism-v073-grove-fix2 ./cmd/prism
+      at: 2026-09-12T03:48:31.971416Z
+      classified: build
+    - cmd: GOWORK=off go mod edit -dropreplace=github.com/provasign/grove
+      at: 2026-09-12T03:48:34.5677Z
+      classified: other
+    - cmd: tmp_graph_backup2=$(mktemp -d /private/tmp/grove-graphs2.XXXXXX) && mv /private/tmp/prism-v073-ci-corpus/jackson-databind/.grove "$tmp_graph_backup2/jackson.grove" && mv /private/tmp/prism-v073-ci-corpus/django/.grove "$tmp_graph_backup2/django.grove" && echo "$tmp_graph_backup2"
+      at: 2026-09-12T03:48:38.557328Z
+      classified: other
+    - cmd: /tmp/prism-v073-grove-fix2 index
+      at: 2026-09-12T03:49:27.72054Z
+      classified: other
+    - cmd: /tmp/prism-v073-grove-fix2 index
+      at: 2026-09-12T03:49:30.448631Z
+      classified: other
+    - cmd: python3 harness/ci_site_diff.py --prism /tmp/prism-v073-grove-fix2 --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set django-quotename
+      at: 2026-09-12T03:49:37.453064Z
+      classified: other
+    - cmd: gofmt -w internal/graph/edges.go internal/graph/pycallbinding.go internal/graph/pycallbinding_test.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:50:38.861204Z
+      classified: test
+    - cmd: GROVE_TRACE_CALLS=1 GOWORK=off go test ./internal/graph -run 'TestPythonDynamicMemberChain(FallsBack|UsesOne)' -count=1 -v
+      at: 2026-09-12T03:50:43.567506Z
+      classified: test
+    - cmd: gofmt -w internal/graph/pycallbinding_test.go && GOWORK=off go test ./internal/graph -run 'TestPythonDynamicMemberChain(FallsBack|UsesOne)' -count=1 -v
+      at: 2026-09-12T03:50:56.838908Z
+      classified: test
+    - cmd: rg -n 'func baseNameNoExt' internal/graph && sed -n '3100,3130p' internal/graph/edges.go
+      at: 2026-09-12T03:51:00.201178Z
+      classified: other
+    - cmd: sed -n '1170,1190p' internal/graph/edges.go
+      at: 2026-09-12T03:51:02.988665Z
+      classified: other
+    - cmd: gofmt -w internal/graph/pycallbinding.go internal/graph/pycallbinding_test.go && GOWORK=off go test ./internal/graph -count=1 -timeout 180s
+      at: 2026-09-12T03:51:23.205317Z
+      classified: test
+    - cmd: GOWORK=off go mod edit -replace=github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build -ldflags '-X main.version=v0.73.0-grove-fix3' -o /tmp/prism-v073-grove-fix3 ./cmd/prism
+      at: 2026-09-12T03:51:30.60559Z
+      classified: build
+    - cmd: GOWORK=off go mod edit -dropreplace=github.com/provasign/grove
+      at: 2026-09-12T03:51:33.083081Z
+      classified: other
+    - cmd: tmp_django_graph=$(mktemp -d /private/tmp/grove-django3.XXXXXX) && mv /private/tmp/prism-v073-ci-corpus/django/.grove "$tmp_django_graph/django.grove" && echo "$tmp_django_graph"
+      at: 2026-09-12T03:51:36.751159Z
+      classified: other
+    - cmd: /tmp/prism-v073-grove-fix3 index
+      at: 2026-09-12T03:52:18.891085Z
+      classified: other
+    - cmd: python3 harness/ci_site_diff.py --prism /tmp/prism-v073-grove-fix3 --corpus-root /private/tmp/prism-v073-ci-corpus django-quotename
+      at: 2026-09-12T03:52:29.073694Z
+      classified: other
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-12T03:52:38.584912Z
+      classified: lint
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 180s && GOWORK=off go vet ./...
+      at: 2026-09-12T03:52:42.086083Z
+      classified: lint
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-12T03:52:42.419934Z
+      classified: test
+    - cmd: GOWORK=off go test -race ./... -count=1 -timeout 300s
+      at: 2026-09-12T03:52:50.017002Z
+      classified: test
+    - cmd: prism verify --base origin/main --format text
+      at: 2026-09-12T03:52:55.814592Z
+      classified: other
+    - cmd: git status --short && git diff --stat && git diff --check && git diff -- internal/graph/edges.go internal/graph/javalocaltypes.go internal/graph/pycallbinding.go internal/graph/java_callresult_test.go && git diff --no-index /dev/null internal/graph/pycallbinding_test.go
+      at: 2026-09-12T03:53:00.570826Z
+      classified: other
+    - cmd: ls -la | head -40 && ls .github/workflows && rg -n 'grove-eval|precision|recall' .github/workflows eval README.md | head -120
+      at: 2026-09-12T03:53:24.973436Z
+      classified: other
+    - cmd: sed -n '1,240p' AGENTS.md && sed -n '1,220p' CLAUDE.md
+      at: 2026-09-12T03:53:31.167415Z
+      classified: other
+    - cmd: sed -n '1,310p' .github/workflows/eval.yml
+      at: 2026-09-12T03:53:34.868579Z
+      classified: other
+    - cmd: for d in /tmp/gin /tmp/flask /tmp/socket.io /tmp/express /tmp/ripgrep /tmp/newtonsoft /tmp/php-parser /tmp/jansson /tmp/commons-lang /private/tmp/gin /private/tmp/flask /private/tmp/socket.io /private/tmp/express /private/tmp/ripgrep /private/tmp/newtonsoft /private/tmp/php-parser /private/tmp/jansson /private/tmp/commons-lang; do test -d "$d" && printf '%s %s\n' "$d" "$(git -C "$d" rev-parse --short HEAD 2>/dev/null)"; done
+      at: 2026-09-12T03:53:42.325687Z
+      classified: other
+    - cmd: find /Users/tapabratapal -maxdepth 5 -type d \( -name gin -o -name flask -o -name socket.io -o -name express -o -name ripgrep -o -name newtonsoft -o -name php-parser -o -name jansson -o -name commons-lang \) 2>/dev/null | head -80
+      at: 2026-09-12T03:53:54.992303Z
+      classified: other
+    - cmd: GOWORK=off go mod edit -replace=github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build -o /tmp/grove-eval-v049 ./cmd/grove-eval
+      at: 2026-09-12T03:54:02.393336Z
+      classified: build
+    - cmd: GOWORK=off go mod edit -dropreplace=github.com/provasign/grove && git diff -- go.mod
+      at: 2026-09-12T03:54:05.181606Z
+      classified: other
+    - cmd: GOWORK=off go mod edit -replace=github.com/provasign/grove=../ && git diff -- go.mod
+      at: 2026-09-12T03:54:09.869384Z
+      classified: other
+    - cmd: sed -n '34,90p' eval/score.go
+      at: 2026-09-12T03:54:14.544083Z
+      classified: other
+    - cmd: rg -n 'func loadGraph' eval -n && sed -n '210,260p' eval/score.go
+      at: 2026-09-12T03:54:18.215882Z
+      classified: other
+    - cmd: sed -n '1,45p' eval/match.go
+      at: 2026-09-12T03:54:20.987233Z
+      classified: other
+    - cmd: prism read internal/graph/resolverversion.go --format text
+      at: 2026-09-12T03:54:25.979307Z
+      classified: other
+    - cmd: prism change-impact 'ResolverVersion' --format text
+      at: 2026-09-12T03:54:30.225258Z
+      classified: other
+    - cmd: GOWORK=off go build -o /tmp/grove-eval-v049 ./cmd/grove-eval
+      at: 2026-09-12T03:54:41.080622Z
+      classified: build
+    - cmd: find eval/testdata -maxdepth 2 -name 'calls-truth*' | sort
+      at: 2026-09-12T03:54:45.074765Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/express --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/express@dae209ae/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/express --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:54:58.895256Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/flask --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/flask --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:54:59.449613Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/socket.io --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/socket.io@3ad4e1f2/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/socketio --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:54:59.469488Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 truth --repo /Users/tapabratapal/eval-corpus/gin --commit d75fcd4 --out /tmp/grove-v049-gin-truth.jsonl && /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/gin --truth /tmp/grove-v049-gin-truth.jsonl --out-dir /tmp/grove-v049-eval/gin --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:55:03.654698Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/jansson --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/jansson@684e18c/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/jansson --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:55:18.882787Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/ripgrep --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/ripgrep@82313cf/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/ripgrep --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:55:19.892193Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/php-parser --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/php-parser@8eea230/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/php-parser --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:55:21.069291Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/newtonsoft --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/newtonsoft@0a2e291/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/newtonsoft --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:55:26.914887Z
+      classified: other
+    - cmd: /tmp/grove-eval-v049 score --repo /Users/tapabratapal/eval-corpus/commons-lang --truth /Users/tapabratapal/Projects/provasign/grove/eval/testdata/commons-lang@44298fe/calls-truth.jsonl.gz --out-dir /tmp/grove-v049-eval/commons-lang --baseline /Users/tapabratapal/Projects/provasign/grove/eval/baseline.json
+      at: 2026-09-12T03:55:40.769619Z
+      classified: other
+    - cmd: GOWORK=off go mod edit -replace=github.com/provasign/grove=/Users/tapabratapal/Projects/provasign/grove && GOWORK=off go build -ldflags '-X main.version=v0.73.0-grove-fix4' -o /tmp/prism-v073-grove-fix4 ./cmd/prism
+      at: 2026-09-12T03:55:50.783263Z
+      classified: build
+    - cmd: GOWORK=off go mod edit -dropreplace=github.com/provasign/grove && test -f /private/tmp/run_ci_invariants_v4_probe.py && python3 /private/tmp/run_ci_invariants_v4_probe.py --help
+      at: 2026-09-12T03:55:53.887889Z
+      classified: other
+    - cmd: sed -n '1,220p' /private/tmp/run_ci_invariants_v4_probe.py
+      at: 2026-09-12T03:55:57.595913Z
+      classified: other
+    - cmd: ps -o pid,etime,%cpu,%mem,command -ax | rg '[r]un_ci_invariants_v4_probe|[p]rism-v073-grove-fix4' | head -20
+      at: 2026-09-12T04:02:16.063932Z
+      classified: other
+    - cmd: ps -o pid,etime,%cpu,%mem,command -ax | rg '[r]un_ci_invariants_v4_probe|[p]rism-v073-grove-fix4' | head -20
+      at: 2026-09-12T04:07:47.703484Z
+      classified: other
+    - cmd: python3 /private/tmp/run_ci_invariants_v4_probe.py /Users/tapabratapal/Projects/provasign/research /tmp/prism-v073-grove-fix4
+      at: 2026-09-12T04:12:19.294974Z
+      classified: other
+    - cmd: sed -n '1,70p' CHANGELOG.md && git status --short --branch && git tag --sort=-version:refname | head -8
+      at: 2026-09-12T04:12:23.654346Z
+      classified: other
+    - cmd: git diff --check && git status --short --branch
+      at: 2026-09-12T04:12:37.341126Z
+      classified: other
+    - cmd: prism verify --base origin/main --format text
+      at: 2026-09-12T04:12:38.940287Z
+      classified: other
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 180s && GOWORK=off go vet ./...
+      at: 2026-09-12T04:12:42.093601Z
+      classified: lint
+    - cmd: prism search ResolverVersion --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T04:12:48.167638Z
+      classified: other
+    - cmd: 'git add CHANGELOG.md internal/graph/edges.go internal/graph/java_callresult_test.go internal/graph/javalocaltypes.go internal/graph/pycallbinding.go internal/graph/pycallbinding_test.go internal/graph/resolverversion.go && git commit -m ''graph: restore dynamic impact precision'''
+      at: 2026-09-12T04:12:54.822442Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-09-12T04:12:58.895238Z
+      classified: other
+    - cmd: gh run list --branch main --commit ec8231f8 --limit 10 --json databaseId,name,status,conclusion,url,workflowName,createdAt
+      at: 2026-09-12T04:13:02.587403Z
+      classified: other
+    - cmd: sleep 5; gh run list --branch main --limit 10 --json databaseId,headSha,name,status,conclusion,url,workflowName,createdAt | jq '[.[] | select(.headSha|startswith("ec8231f8"))]'
+      at: 2026-09-12T04:13:13.392876Z
+      classified: other
+    - cmd: gh run watch 34672417489 --exit-status
+      at: 2026-09-12T04:14:40.229968Z
+      classified: other
+    - cmd: gh run watch 34672417473 --exit-status
+      at: 2026-09-12T04:14:40.517465Z
+      classified: other
+    - cmd: git status --short --branch && git rev-parse HEAD && git rev-parse origin/main && git tag -a v0.49.0 -m 'Grove v0.49.0' && git push origin v0.49.0
+      at: 2026-09-12T04:14:53.992437Z
+      classified: other
+    - cmd: sleep 5; gh run list --workflow release.yml --limit 5 --json databaseId,headSha,status,conclusion,url,displayTitle | jq '[.[] | select(.headSha|startswith("ec8231f8"))]'
+      at: 2026-09-12T04:15:03.618127Z
+      classified: other
+    - cmd: gh run watch 34672498420 --exit-status
+      at: 2026-09-12T04:16:43.563247Z
+      classified: other
+    - cmd: gh release view v0.49.0 --json url,isDraft,isPrerelease,assets,tagName --jq '{url,isDraft,isPrerelease,tagName,assets:[.assets[].name]}' && git status --short --branch
+      at: 2026-09-12T04:16:50.315357Z
+      classified: other
+    - cmd: git status --short --branch && git log --oneline --decorate origin/main..HEAD && git tag --sort=-version:refname | head -8 && GOWORK=off go get github.com/provasign/grove@v0.49.0 && GOWORK=off go mod tidy
+      at: 2026-09-12T04:17:07.916753Z
+      classified: other
+    - cmd: sed -n '1,260p' HANDOFF.md
+      at: 2026-09-12T04:17:11.10708Z
+      classified: other
+    - cmd: prism search 'v0.72' '0.72.' --scope text --exhaustive --context 2 --format text
+      at: 2026-09-12T04:17:21.720606Z
+      classified: other
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-12T04:18:17.594129Z
+      classified: lint
+    - cmd: sh -n install.sh scripts/bootstrap-prism-grove.sh && GOWORK=off go build -ldflags '-X main.version=v0.73.0' -o /tmp/prism-v073-final ./cmd/prism && /tmp/prism-v073-final version && git diff --check
+      at: 2026-09-12T04:18:22.005184Z
+      classified: build
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-12T04:18:34.830028Z
+      classified: test
+    - cmd: rg -n 'ldflags|Version=' .github Makefile cmd internal/version install.sh | head -80 && command -v pwsh || true
+      at: 2026-09-12T04:18:49.280225Z
+      classified: other
+    - cmd: GOWORK=off go test -race ./... -count=1 -timeout 300s
+      at: 2026-09-12T04:19:03.085129Z
+      classified: test
+    - cmd: GOWORK=off go build -ldflags '-s -w -X github.com/provasign/prism/internal/version.Version=v0.73.0' -o /tmp/prism-v073-final ./cmd/prism && /tmp/prism-v073-final version
+      at: 2026-09-12T04:19:08.467168Z
+      classified: build
+    - cmd: go version -m /tmp/prism-v073-final | rg 'github.com/provasign/(grove|astkit)' && python3 harness/ci_site_diff.py --prism /tmp/prism-v073-final --corpus-root /private/tmp/prism-v073-ci-corpus jackson-jsonnode-get jackson-settable-set django-quotename
+      at: 2026-09-12T04:19:22.668874Z
+      classified: other
+    - cmd: printf '%s\n%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release-check","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /tmp/prism-v073-final mcp --compact | jq -s '{instructions:.[0].result.instructions,tool_count:(.[1].result.tools|length),names:[.[1].result.tools[].name],schema_bytes:([.[1].result.tools[].inputSchema|tojson|length]|add)}'
+      at: 2026-09-12T04:19:32.944211Z
+      classified: build
+    - cmd: printf '%s\n%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release-check","version":"1"}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /tmp/prism-v073-final mcp --legacy | jq -s '{tool_count:(.[1].result.tools|length),names:[.[1].result.tools[].name],schema_bytes:([.[1].result.tools[].inputSchema|tojson|length]|add)}'
+      at: 2026-09-12T04:19:40.359654Z
+      classified: build
+    - cmd: /tmp/prism-v073-final verify --base origin/main --format text
+      at: 2026-09-12T04:19:54.396554Z
+      classified: other
+    - cmd: /tmp/prism-v073-final verify --help
+      at: 2026-09-12T04:20:00.855736Z
+      classified: other
+    - cmd: /tmp/prism-v073-final search helpText steeringInstructions startupBinaryModTime --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T04:20:09.592733Z
+      classified: other
+    - cmd: git status --short --branch && git diff --stat && git diff --name-status && git status --short --ignored | rg '^!! \.vscode|^\?\? \.vscode|^ M \.vscode' || true && git diff -- go.mod go.sum README.md HANDOFF.md | head -500
+      at: 2026-09-12T04:20:20.213373Z
+      classified: other
+    - cmd: git status --short --branch && git diff --stat && git diff --summary && git check-ignore -v .vscode/mcp.json || true && git diff -- go.mod prism.yaml .gitignore && git diff --numstat | awk '$1==0 || $2==0 {print}'
+      at: 2026-09-12T04:21:26.837647Z
+      classified: other
+    - cmd: git branch --show-current && git log --oneline --decorate -6 && rg -n 'v0\.(72|73)|grove v0\.(45|49)|astkit v0\.(9|11)' README.md HANDOFF.md install.sh install.ps1 scripts .github go.mod prism.yaml || true && sed -n '1,220p' .github/workflows/release.yml && sed -n '1,120p' .github/workflows/ci.yml
+      at: 2026-09-12T04:21:34.493895Z
+      classified: other
+    - cmd: git add -A && git status --short && git diff --cached --check && git diff --cached --stat && git diff --cached --name-status
+      at: 2026-09-12T04:21:40.207493Z
+      classified: other
+    - cmd: 'git commit -m "feat: make Prism setup project-scoped"'
+      at: 2026-09-12T04:21:43.25423Z
+      classified: other
+notes: []
+redactions: 0

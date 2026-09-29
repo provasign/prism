@@ -22,7 +22,6 @@ func New(h *mcp.Handler) *Server { return &Server{h: h} }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
-	mux.HandleFunc("GET /status", s.savings) // alias
 
 	// Routes derive from mcp.DispatchableTools — the hand-maintained list
 	// drifted until six tools 404'd. One source of truth, one test pinning it.
@@ -37,15 +36,6 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": version.Version})
-}
-
-func (s *Server) savings(w http.ResponseWriter, _ *http.Request) {
-	out, err := s.h.Invoke("prism_savings", nil)
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) callTool(w http.ResponseWriter, r *http.Request, name string) {

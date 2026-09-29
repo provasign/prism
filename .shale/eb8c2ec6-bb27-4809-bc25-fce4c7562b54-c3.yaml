@@ -1,0 +1,103 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c3
+created_at: 2026-09-23T01:29:50.640914Z
+finalized_at: 2026-09-23T01:38:45.277304Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/helpers_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T01:37:40.772604Z
+    - path: internal/cli/formattext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-23T01:37:48.637611Z
+commands:
+    - cmd: |-
+        git push origin main && git tag -a v0.81.1 -m "$(cat <<'EOF'
+        v0.81.1
+
+        - feat(doctor): prism doctor now reports Grove's per-language capability
+          manifest (indexing/resolution tier, limitations) under a new "languages"
+          key, sourced from grove v0.58.3's newly exported CurrentCapabilities().
+        EOF
+        )" && git push origin v0.81.1
+      at: 2026-09-23T01:29:50.640914Z
+      classified: other
+    - cmd: sleep 15; cd /Users/tapabratapal/Projects/provasign/prism && gh run list --limit 4 2>&1
+      at: 2026-09-23T01:30:13.772175Z
+      classified: other
+    - cmd: gh run list --limit 4 2>&1
+      at: 2026-09-23T01:34:03.982198Z
+      classified: other
+    - cmd: gh run list --workflow=CI --limit 5 2>&1
+      at: 2026-09-23T01:34:07.96274Z
+      classified: other
+    - cmd: gh run view 35806516320 2>&1
+      at: 2026-09-23T01:34:12.498002Z
+      classified: other
+    - cmd: gh run view 35806516320 2>&1
+      at: 2026-09-23T01:37:05.421443Z
+      classified: other
+    - cmd: gh run view 35806516320 --log-failed 2>&1 | grep -E "FAIL|panic|fatal error" | head -20
+      at: 2026-09-23T01:37:09.614383Z
+      classified: other
+    - cmd: 'gh run view 35806516320 --log-failed 2>&1 | grep -B5 "panic: test timed out" | head -30'
+      at: 2026-09-23T01:37:13.812491Z
+      classified: other
+    - cmd: 'gh run view 35806516320 --log-failed 2>&1 | grep -A 60 "panic: test timed out" | head -80'
+      at: 2026-09-23T01:37:17.794097Z
+      classified: other
+    - cmd: grep -n "func captureStdout" -A 25 internal/cli/helpers_test.go
+      at: 2026-09-23T01:37:26.222765Z
+      classified: other
+    - cmd: sed -n '1,30p' internal/cli/formattext_test.go
+      at: 2026-09-23T01:37:43.618629Z
+      classified: other
+    - cmd: grep -rln "os.Pipe()" internal/cli/*_test.go
+      at: 2026-09-23T01:37:51.779841Z
+      classified: other
+    - cmd: grep -n "os.Pipe()" -B3 -A20 internal/cli/coverage_test.go internal/cli/init_scope_test.go
+      at: 2026-09-23T01:37:53.709269Z
+      classified: other
+    - cmd: go vet ./... && go test ./... -count=1 -timeout 120s 2>&1 | tail -20
+      at: 2026-09-23T01:38:13.778364Z
+      classified: lint
+    - cmd: go test ./internal/cli/... -race -count=1 -timeout 120s 2>&1 | tail -10
+      at: 2026-09-23T01:38:25.045098Z
+      classified: test
+    - cmd: git status --short
+      at: 2026-09-23T01:38:28.192725Z
+      classified: other
+    - cmd: |-
+        git add internal/cli/formattext_test.go internal/cli/helpers_test.go && git commit -m "$(cat <<'EOF'
+        fix(test): drain captured stdout concurrently, not after fn() returns
+
+        captureStdout/capture wrote to an os.Pipe() and only read it back after fn()
+        returned. An anonymous pipe's OS buffer is finite and much smaller on
+        Windows than Linux/macOS, so any fn() whose stdout exceeded that size
+        blocked forever waiting for a reader that never came until fn() finished --
+        which fn() couldn't do. Hit in CI (windows-latest only) once cmdDoctor's
+        output grew past a few KB with the new per-language capability manifest
+        (v0.81.1). Test-only: cmdDoctor and the shipped binary were never affected,
+        only these two test helpers.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )"
+        git log --oneline -1
+      at: 2026-09-23T01:38:42.372309Z
+      classified: other
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-23T01:29:50.640914Z
+redactions: 0

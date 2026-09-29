@@ -132,7 +132,10 @@ func (h *Handler) fileDrift(ctx context.Context, entry session.Entry, fuseByFile
 	// symbols delivered this session — pairs renames and classifies
 	// breaking changes instead of reporting remove+add churn.
 	if base := h.driftBaseFor(entry.FilePath); len(base) > 0 {
-		if d, err := h.Grove.DiffFile(ctx, base, entry.FilePath); err == nil {
+		// Diff against the bytes just read (hash already differs), not the
+		// index: its size+mtime check can miss a same-size edit inside one
+		// timestamp tick and hand back the old symbols.
+		if d, err := h.Grove.DiffFileContent(base, entry.FilePath, content); err == nil {
 			drift.Symbols = driftSymbolsFromGraphDiff(d)
 			return drift, true
 		}

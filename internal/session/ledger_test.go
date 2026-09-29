@@ -113,3 +113,47 @@ func TestLedgerJSONKeysAreLowercase(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordResultAndDeltaMerge(t *testing.T) {
+	l := NewLedger("s1")
+	l.RecordResult("prism_search", 100)
+	l.RecordResult("prism_search", 50)
+	l.RecordResult("prism_read", 400)
+	if l.TotalResults != 550 {
+		t.Fatalf("TotalResults = %d", l.TotalResults)
+	}
+	base := l.Snapshot()
+
+	l.RecordResult("prism_read", 25)
+	l.Record("prism_read", 1000, 300)
+	d := l.DiffSince(base)
+	if d.TotalResults != 25 || d.TotalDelivered != 300 {
+		t.Fatalf("delta = %+v", d)
+	}
+	if d.ByTool["prism_read"].ResultTokens != 25 || d.ByTool["prism_read"].Calls != 1 {
+		t.Fatalf("read delta = %+v", d.ByTool["prism_read"])
+	}
+	if _, ok := d.ByTool["prism_search"]; ok {
+		t.Fatal("unchanged tool leaked into delta")
+	}
+
+	disk := NewLedger("disk")
+	disk.RecordResult("prism_read", 7)
+	disk.ApplyDelta(d)
+	if disk.TotalResults != 32 || disk.ByTool["prism_read"].ResultTokens != 32 {
+		t.Fatalf("merged = %+v", disk.Snapshot())
+	}
+
+	// Round-trips through Save/Load.
+	path := t.TempDir() + "/ledger.json"
+	if err := disk.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	back, err := LoadLedger(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.TotalResults != 32 || back.ByTool["prism_read"].ResultTokens != 32 {
+		t.Fatalf("round-trip lost result tokens: %+v", back.Snapshot())
+	}
+}

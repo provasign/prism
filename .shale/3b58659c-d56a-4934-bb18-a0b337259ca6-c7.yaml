@@ -1,0 +1,277 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c7
+created_at: 2026-08-29T01:56:05.298936Z
+finalized_at: 2026-08-29T02:38:15.297184Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; R=$S/case-repro; rm -rf $R && mkdir -p $R/cobol/copybook && cd $R && git init -q
+        python3 - <<'EOF'
+        import os
+        R = "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/case-repro"
+        def pad(code):
+            return "000100 " + code.ljust(65)[:65] + "SEQ73-80"
+        prog = [
+         pad(" IDENTIFICATION DIVISION."),
+         pad(" PROGRAM-ID. TESTPGM."),
+         pad(" DATA DIVISION."),
+         pad(" WORKING-STORAGE SECTION."),
+         pad(" COPY AUCCS020."),
+         pad(" COPY LSCDT990 REPLACING =='LS&&####'== BY =='LSSDSIC'==."),
+         pad(" PROCEDURE DIVISION."),
+         pad(" MAIN-PARA."),
+         pad("     GOBACK."),
+        ]
+        cpy = [
+         pad(" 01  AU-REC."),
+         pad("     05  AU-ID  PIC 9(8)."),
+        ]
+        cpy2 = [
+         pad(" 01  LS-REC."),
+         pad("     05  LS-ID  PIC 9(8)."),
+        ]
+        open(f"{R}/cobol/TESTPGM.cbl","w").write("\n".join(prog))
+        open(f"{R}/cobol/copybook/auccs020.cpy","w").write("\n".join(cpy))
+        open(f"{R}/cobol/copybook/lscdt990.cpy","w").write("\n".join(cpy2))
+        print("repro written")
+        EOF
+        $S/grove-mf index $R >/dev/null 2>&1 && $S/grove-mf deps cobol/TESTPGM.cbl $R 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        for e in d.get('edges',[]):
+            print(e['type'], e['from'], '->', e['to'].split('@')[0])"
+      at: 2026-08-29T02:33:35.058885Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; R=$S/case-repro; python3 -c "
+        open('$R/cobol/copybook/AUCCS301.CPY','w').write(open('$R/cobol/copybook/auccs020.cpy').read().replace('AU-','A3-'))
+        import pathlib; p=pathlib.Path('$R/cobol/TESTPGM.cbl'); s=p.read_text()
+        p.write_text(s.replace(' COPY AUCCS020.', ' COPY AUCCS020.\n000100  COPY AUCCS301.'.replace('\n000100  COPY AUCCS301.', '\n' + '000100 ' + ' COPY AUCCS301.'.ljust(65)[:65] + 'SEQ73-80')))
+        "; rm -rf $R/.grove && $S/grove-mf index $R >/dev/null 2>&1 && $S/grove-mf deps cobol/TESTPGM.cbl $R 2>/dev/null | grep -o '"to": "[^"]*"' | grep -i auccs301; echo "---detect check---"; grep -n 'ext := filepath.Ext(path)' ~/Projects/provasign/grove/internal/parser/languages.go
+      at: 2026-08-29T02:34:16.5011Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/parser/languages.go"
+        src = open(p).read()
+        old = """	default:
+        		return ""
+        	}
+        }"""
+        new = """	default:
+        		// Mainframe exports conventionally carry UPPERCASE extensions
+        		// (AUCCS020.CPY, TESTPGM.CBL) — invisible to the case-sensitive
+        		// switch above, which silently un-indexes the copybooks and reads
+        		// from outside as a case-sensitive member lookup (measured: 32%
+        		// include resolution that is 99% with this fallback). Restricted
+        		// to the mainframe set on purpose: lowercasing everything would
+        		// change modern semantics (.C conventionally means C++).
+        		switch strings.ToLower(ext) {
+        		case ".cbl", ".cob", ".cobol", ".cpy", ".ccp", ".cpb":
+        			return "cobol"
+        		case ".jcl", ".prc":
+        			return "jcl"
+        		}
+        		return ""
+        	}
+        }"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("fallback added")
+        EOF
+        go build ./internal/parser/ && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && go build -o $S/grove-mf ./cmd/grove && rm -rf $S/case-repro/.grove && $S/grove-mf index $S/case-repro >/dev/null 2>&1 && $S/grove-mf deps cobol/TESTPGM.cbl $S/case-repro 2>/dev/null | grep -o '"to": "[^"]*"' | grep -i auccs301
+      at: 2026-08-29T02:34:54.407862Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/cobol.go"
+        src = open(p).read()
+        old = '''func (c *cobolStrategy) ExtractImports(tree *sitter.Tree, src []byte) ([]astkit.ImportStatement, error) {
+        	_ = tree
+        	var imports []astkit.ImportStatement
+        	for _, ln := range normalizeCOBOL(src) {
+        		for _, m := range reCopy.FindAllStringSubmatch(ln.text, -1) {
+        			if reReserved.MatchString(m[1]) {
+        				continue
+        			}
+        			imports = append(imports, astkit.ImportStatement{
+        				Raw:   strings.TrimSpace(ln.text),
+        				Path:  strings.ToUpper(m[1]),
+        				Group: "copybook",
+        				Line:  ln.orig,
+        			})
+        		}
+        	}
+        	return imports, nil
+        }'''
+        new = '''var (
+        	// Pseudo-text (==...==) and quoted literals must be erased before member
+        	// extraction: REPLACING arguments legally contain '&', '#' and even the
+        	// word COPY, and a member name harvested from them is confidently wrong
+        	// (observed on a real estate: 54 members extracted from REPLACING args).
+        	rePseudoText = regexp.MustCompile(`==[^=]*(?:=[^=]+)*==`)
+        	reQuotedLit  = regexp.MustCompile(` + "`" + `'[^']*'|"[^"]*"` + "`" + `)
+        	reCopyTail   = regexp.MustCompile(` + "`" + `(?i)\\bCOPY\\s*$` + "`" + `)
+        	reMemberHead = regexp.MustCompile(` + "`" + `^\\s*([A-Za-z0-9][A-Za-z0-9-]*)` + "`" + `)
+        )
+
+        func (c *cobolStrategy) ExtractImports(tree *sitter.Tree, src []byte) ([]astkit.ImportStatement, error) {
+        	_ = tree
+        	var imports []astkit.ImportStatement
+        	emit := func(member, raw string, line int) {
+        		if member == "" || reReserved.MatchString(member) {
+        			return
+        		}
+        		imports = append(imports, astkit.ImportStatement{
+        			Raw:   strings.TrimSpace(raw),
+        			Path:  strings.ToUpper(member),
+        			Group: "copybook",
+        			Line:  line,
+        		})
+        	}
+        	pendingCopy := false // previous line ended at COPY; member starts this line
+        	for _, ln := range normalizeCOBOL(src) {
+        		clean := rePseudoText.ReplaceAllString(ln.text, " ")
+        		clean = reQuotedLit.ReplaceAllString(clean, " ")
+        		if pendingCopy {
+        			if m := reMemberHead.FindStringSubmatch(clean); m != nil {
+        				emit(m[1], ln.text, ln.orig)
+        			}
+        			pendingCopy = false
+        		}
+        		for _, m := range reCopy.FindAllStringSubmatch(clean, -1) {
+        			emit(m[1], ln.text, ln.orig)
+        		}
+        		if reCopyTail.MatchString(clean) {
+        			pendingCopy = true
+        		}
+        	}
+        	return imports, nil
+        }'''
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("hardened")
+        EOF
+        go build ./strategies/ 2>&1 | head -3
+      at: 2026-08-29T02:35:12.041948Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && go build ./strategies/ && cat >> strategies/mainframe_test.go <<'EOF'
+
+        // Field-reported classes: REPLACING pseudo-text must never yield a member,
+        // and a statement wrapping between COPY and its member still resolves.
+        func TestCOBOL_CopyReplacingAndWrap(t *testing.T) {
+        	src := strings.Join([]string{
+        		pad("000100", " ", " DATA DIVISION."),
+        		pad("000200", " ", " COPY LSCDT990 REPLACING =='LS&&####'== BY =='LSSDSIC'==."),
+        		pad("000300", " ", " COPY"),
+        		pad("000400", " ", "     AUCCS020."),
+        		pad("000500", " ", " COPY CUSTREC REPLACING ==COPY FAKEMEM== BY ==X==."),
+        	}, "\n")
+        	imports, err := NewCOBOL().ExtractImports(nil, []byte(src))
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	var paths []string
+        	for _, im := range imports {
+        		paths = append(paths, im.Path)
+        	}
+        	want := []string{"LSCDT990", "AUCCS020", "CUSTREC"}
+        	if len(paths) != 3 {
+        		t.Fatalf("want %v, got %v", want, paths)
+        	}
+        	for i, w := range want {
+        		if paths[i] != w {
+        			t.Errorf("import %d = %q, want %q", i, paths[i], w)
+        		}
+        	}
+        	for _, p := range paths {
+        		if strings.Contains(p, "#") || strings.Contains(p, "&") || p == "FAKEMEM" {
+        			t.Errorf("pseudo-text leaked into member name: %q", p)
+        		}
+        	}
+        }
+        EOF
+        go test ./... 2>&1 | tail -3
+      at: 2026-08-29T02:35:37.614492Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/parser/sniff_test.go <<'EOF'
+
+        // Field-reported: mainframe exports carry uppercase extensions; the language
+        // switch is case-sensitive by design for modern code (.C means C++), so the
+        // mainframe set gets a lowercase fallback. 32% -> 99% include resolution.
+        func TestDetectLanguage_UppercaseMainframeExtensions(t *testing.T) {
+        	for path, want := range map[string]string{
+        		"cobol/copybook/AUCCS020.CPY": "cobol",
+        		"cobol/TESTPGM.CBL":           "cobol",
+        		"jcl/NIGHTLY.JCL":             "jcl",
+        		"legacy/Batch.Cbl":            "cobol",
+        		"src/foo.C":                   "", // modern semantics preserved
+        		"src/FOO.GO":                  "",
+        	} {
+        		if got := DetectLanguage(path); got != want {
+        			t.Errorf("%s: got %q want %q", path, got, want)
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/parser/ 2>&1 | tail -1 && go test ./... 2>&1 | grep -cv "^ok\|no test files"; cd ~/Projects/provasign/astkit && git add strategies/cobol.go strategies/mainframe_test.go && git commit -q -m "$(cat <<'EOF'
+        cobol: pseudo-text-safe COPY extraction; member-on-next-line
+
+        Field-reported on a real estate: 54 members were harvested from
+        REPLACING arguments. Pseudo-text (==...==) and quoted literals are now
+        erased before member matching, so nothing inside them can become a
+        member name; and a statement wrapping between COPY and its member
+        (legal in fixed format, no continuation indicator required) resolves
+        via a pending-COPY carry to the next line.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.6.1 -m "copy extraction hardening" && git push origin v0.6.1 2>&1 | tail -1
+      at: 2026-08-29T02:36:00.158854Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.6.1 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "gate: $?"; git add go.mod go.sum internal/parser/languages.go internal/parser/sniff_test.go && git commit -q -m "$(cat <<'EOF'
+        detect: uppercase mainframe extensions (32% -> 99% include resolution)
+
+        Field-reported: mainframe exports conventionally carry UPPERCASE
+        extensions (AUCCS020.CPY), invisible to the case-sensitive language
+        switch — the copybooks were never indexed, which reads from outside as
+        a case-sensitive member lookup. The fallback lowercases into the
+        MAINFRAME set only; modern semantics (.C = C++, unmatched) preserved
+        and asserted. astkit v0.6.1 brings pseudo-text-safe COPY extraction.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.36.2 -m "uppercase extensions + COPY hardening" && git push origin v0.36.2 2>&1 | tail -1 && cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.36.2 github.com/provasign/astkit@v0.6.1 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3; cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test
+      at: 2026-08-29T02:36:12.743181Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.36.2, astkit v0.6.1 — include resolution 32% -> 99%
+
+        Uppercase mainframe extensions (.CPY/.CBL) are now detected — the
+        copybooks were silently unindexed, reading as a case-sensitive member
+        lookup — and COPY REPLACING pseudo-text can no longer pollute member
+        names. Include graph gets ~3x denser on real estates; re-index needed.
+        Gates green, invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.5 -m "mainframe: uppercase extensions, COPY hardening" && git push origin v0.56.5 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T02:38:14.805873Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T01:56:05.298936Z
+redactions: 0

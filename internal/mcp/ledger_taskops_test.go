@@ -60,9 +60,23 @@ func TestRun(t interface{}) {
 		{"prism_rename_plan", map[string]any{"query": "Doer.Do", "newName": "Execute"}},
 		{"prism_dead_code", map[string]any{}},
 	}
+	outputs := map[string]map[string]any{}
 	for _, c := range calls {
-		if _, err := h.Invoke(c.tool, c.args); err != nil {
+		out, err := h.Invoke(c.tool, c.args)
+		if err != nil {
 			t.Fatalf("%s: %v", c.tool, err)
+		}
+		if m, ok := out.(map[string]any); ok {
+			outputs[c.tool] = m
+		}
+	}
+	for _, tool := range []string{"prism_change_impact", "prism_missing_implementations", "prism_rename_plan"} {
+		out := outputs[tool]
+		if out["completenessScope"] != "indexed-project-only" || out["safeToClaimComplete"] != false {
+			t.Errorf("%s lost indexed-scope safety framing: %v", tool, out)
+		}
+		if out["scopeBoundary"] == "" {
+			t.Errorf("%s missing scope boundary", tool)
 		}
 	}
 
