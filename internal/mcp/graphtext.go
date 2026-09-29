@@ -299,7 +299,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		"file": true, "line": true, "signature": true, "sig": true,
 		"doc": true, "docstring": true, "body": true, "source": true,
 		"kind": true, "parent": true, "modifiers": true,
-		"testOnly": true,
+		"testOnly": true, "alsoNamed": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -341,6 +341,13 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		// inherited / case-insensitive resolutions say so up front.
 		fmt.Fprintf(&b, "// %s\n", note)
 		noteShown = true
+	}
+	if also := anySlice(out["alsoNamed"]); len(also) > 0 {
+		parts := make([]string, 0, len(also))
+		for _, a := range also {
+			parts = append(parts, fmt.Sprint(a))
+		}
+		fmt.Fprintf(&b, "// also named this (not shown): %s\n", strings.Join(parts, "; "))
 	}
 	if lines := anySlice(out["testOnly"]); len(lines) > 0 {
 		b.WriteString("// TEST-ONLY API (callers are all tests):\n")

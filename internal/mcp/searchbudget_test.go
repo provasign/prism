@@ -155,24 +155,45 @@ func TestBestMatchLinePrefersABranchOnTheTerm(t *testing.T) {
 }
 
 // dubbo pr16395: `lookup AbstractStateRouter` returned the whole 7.4k class.
-// A type over typeOutlineLines lines returns its header and member outline;
-// a function of the same size keeps its full body.
+// A type over typeOutlineLines lines and typeOutlineBytes chars returns its
+// header and member outline; a function of the same size keeps its full body.
+// gson TypeAdapterRuntimeTypeWrapper (82 lines, ~3.4k chars): a small type
+// just over the line limit is delivered whole.
 func TestLookupOutlinesMidSizeTypesKeepsFunctions(t *testing.T) {
 	var cls strings.Builder
 	cls.WriteString("package r;\n\npublic class Mid {\n    private int count;\n")
-	for i := 0; i < 12; i++ {
-		fmt.Fprintf(&cls, "    public int m%02d(int x) {\n        int y = x + %d;\n        y = y * 2;\n        y = y - 1;\n        y = y + 3;\n        return y;\n    }\n\n", i, i)
+	for i := 0; i < 15; i++ {
+		fmt.Fprintf(&cls, "    public int m%02d(int inputValueForTheComputation) {\n        int intermediateResultValue = inputValueForTheComputation + %d;\n"+
+			"        intermediateResultValue = intermediateResultValue * 2 + inputValueForTheComputation;\n"+
+			"        intermediateResultValue = intermediateResultValue - 1 - inputValueForTheComputation;\n"+
+			"        intermediateResultValue = intermediateResultValue + 3 + inputValueForTheComputation;\n"+
+			"        return intermediateResultValue;\n    }\n\n", i, i)
 	}
 	cls.WriteString("}\n")
+	var small strings.Builder
+	small.WriteString("package r;\n\npublic class Small {\n")
+	for i := 0; i < 21; i++ {
+		fmt.Fprintf(&small, "    int s%02d(int x) {\n        return x + %d;\n    }\n\n", i, i)
+	}
+	small.WriteString("    int last() { return 0; }\n}\n")
 	var fn strings.Builder
 	fn.WriteString("package p\n\nfunc Long() int {\n\tx := 0\n")
 	for i := 0; i < 100; i++ {
 		fmt.Fprintf(&fn, "\tx += %d\n", i)
 	}
 	fn.WriteString("\treturn x\n}\n")
-	srv := compactFixture(t, map[string]string{"src/r/Mid.java": cls.String(), "long.go": fn.String()})
+	if len(cls.String()) <= typeOutlineBytes {
+		t.Fatalf("fixture: Mid is %d chars, want > %d", len(cls.String()), typeOutlineBytes)
+	}
+	if n := strings.Count(small.String(), "\n"); n <= typeOutlineLines || len(small.String()) >= typeOutlineBytes {
+		t.Fatalf("fixture: Small is %d lines / %d chars, want > %d lines and < %d chars", n, len(small.String()), typeOutlineLines, typeOutlineBytes)
+	}
+	srv := compactFixture(t, map[string]string{"src/r/Mid.java": cls.String(), "src/r/Small.java": small.String(), "long.go": fn.String()})
+	if got := callCompact(t, srv, "lookup", map[string]any{"name": "Small"}); strings.Contains(got, "BODY CAPPED") || !strings.Contains(got, "return x + 20;") {
+		t.Fatalf("a small class just over %d lines was outlined:\n%s", typeOutlineLines, got)
+	}
 	out := callCompact(t, srv, "lookup", map[string]any{"name": "Mid"})
-	if !strings.Contains(out, "BODY CAPPED") || !strings.Contains(out, "m11(int x)") || strings.Contains(out, "int y = x + 7;") {
+	if !strings.Contains(out, "BODY CAPPED") || !strings.Contains(out, "m14(int inputValueForTheComputation)") || strings.Contains(out, "inputValueForTheComputation + 7;") {
 		t.Fatalf("a %d+ line class was not outlined:\n%s", typeOutlineLines, out)
 	}
 	if !strings.Contains(out, "op=read file=") {
@@ -274,5 +295,23 @@ func TestRaisedLimitListsEveryLineOfACompleteSet(t *testing.T) {
 	}
 	if !strings.Contains(out, "COMPLETE") {
 		t.Fatalf("complete set not labelled COMPLETE:\n%s", out)
+	}
+}
+
+// chi `lookup routes` (Sonnet 5.5, 2026-09-28) delivered `var routes` from
+// _examples/rest/main.go instead of node.routes in tree.go, and did not
+// mention the method at all.
+func TestBareLookupPrefersLibraryMethodOverExampleVariable(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"go.mod":                 "module ex\n\ngo 1.21\n",
+		"tree.go":                "package ex\n\ntype node struct{}\n\nfunc (n *node) routes() []string {\n\treturn nil\n}\n",
+		"_examples/rest/main.go": "package main\n\nimport \"flag\"\n\nvar routes = flag.Bool(\"routes\", false, \"docs\")\n\nfunc main() {}\n",
+	})
+	out := callCompact(t, srv, "lookup", map[string]any{"name": "routes"})
+	if !strings.Contains(out, "tree.go") || !strings.Contains(out, "func (n *node) routes()") {
+		t.Fatalf("bare lookup did not deliver the library method:\n%s", out)
+	}
+	if !strings.Contains(out, "also named this") || !strings.Contains(out, "_examples/rest/main.go") {
+		t.Fatalf("the other same-name symbol is not mentioned:\n%s", out)
 	}
 }

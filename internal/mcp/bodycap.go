@@ -37,6 +37,11 @@ const (
 	// under 240 lines; the agent needed one method. Functions keep full
 	// bodies up to the general cap: they are what agents edit.
 	typeOutlineLines = 80
+	// typeOutlineBytes: ...and over this many chars. Lines alone outlined an
+	// 82-line, ~3.4k-char gson class (TypeAdapterRuntimeTypeWrapper,
+	// 2026-09-28) and cost the agent a second call to read it; the dubbo
+	// class that motivated the outline was 7.4k chars.
+	typeOutlineBytes = 6000
 )
 
 // containerKinds are the symbol kinds whose body is a list of members.
@@ -66,7 +71,7 @@ func bodyOverCap(body string) bool {
 func capBody(body, file, kind string, start, end int, members []grove.SymbolRecord) (head, note string, ok bool) {
 	over := bodyOverCap(body)
 	container := containerKinds[strings.ToLower(kind)]
-	if !over && !(container && bodyLineCount(body) > typeOutlineLines) {
+	if !over && !(container && bodyLineCount(body) > typeOutlineLines && len(body) > typeOutlineBytes) {
 		return body, "", false
 	}
 	lines := strings.SplitAfter(body, "\n")
