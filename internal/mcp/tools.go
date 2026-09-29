@@ -1666,7 +1666,12 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		exhaustive: boolArg(args, "exhaustive"),
 		context:    reqContext,
 		rollupOnly: boolArg(args, "rollup_only"),
-		adaptive:   limit == defaultSearchLimit,
+		// A raised limit keeps the exact-count pass. It used to switch it
+		// off: click get_command with max_results=500 (Sonnet 5.5,
+		// 2026-09-28) got a 5-per-file context sample of 29 lines with no
+		// completeness line, and the agent grepped for the full list.
+		adaptive:     limit >= defaultSearchLimit,
+		contextAsked: intArg(args, "context", -1) >= 0,
 	}
 	budget := searchBudgetFor(args, sc, queries, regex)
 	sc.budget = budget.on
@@ -2041,6 +2046,8 @@ type searchScope struct {
 	context    int
 	rollupOnly bool
 	adaptive   bool
+	// contextAsked: the caller passed context= itself; keep that shape.
+	contextAsked bool
 	// budget: the default response budget applies (searchbudget.go); the
 	// sampling warnings use their short form.
 	budget bool
@@ -2078,7 +2085,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 		}
 		r := textsearch.Search(ctx, h.Root, q, opts)
 		out := map[string]any{
-			"textHits":    h.renderedTextSearchHits(ctx, r, sc.exhaustive),
+			"textHits":    h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked),
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
 		}
@@ -2307,7 +2314,7 @@ func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, reg
 			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
 		}
 		r := textsearch.Search(ctx, h.Root, q, opts)
-		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive)
+		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked)
 		out["textBackend"] = r.Backend
 		attachTextSearchCompleteness(out, r)
 		if r.Truncated {
@@ -2382,6 +2389,17 @@ func filesOnlySearchResult(out map[string]any, exhaustive bool) map[string]any {
 		if g, ok := raw.(map[string]any); ok {
 			file, _ := g["file"].(string)
 			add(file)
+			// exhaustive renders excerpts for the first textRenderFileCap
+			// files only; every other file is in the trailing inventory.
+			// Reading excerpt groups alone listed 10 of 31 files on h3
+			// `push` (2026-09-28) under a "COMPLETE" note, and the agent
+			// re-grepped for the test files it had been denied.
+			for _, inv := range anySlice(g["inventory"]) {
+				if e, ok := inv.(map[string]any); ok {
+					file, _ := e["file"].(string)
+					add(file)
+				}
+			}
 		}
 	}
 	res := map[string]any{"files": files, "fileCount": len(files)}

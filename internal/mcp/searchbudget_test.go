@@ -236,3 +236,43 @@ func TestDefaultSearchBudgetKeepsLinesWhenOnlyTestsMatch(t *testing.T) {
 		t.Fatalf("a term that only matches tests lost its lines:\n%s", out)
 	}
 }
+
+// h3 `push` (2026-09-28): default-scope exhaustive files_only listed the 10
+// excerpt files and dropped the 21 in the exhaustive inventory, under a
+// "COMPLETE path inventory" note. Every text-match file must be listed.
+func TestExhaustiveFilesOnlyListsFilesPastRenderCap(t *testing.T) {
+	files := map[string]string{}
+	n := textRenderFileCap + 5
+	for i := 0; i < n; i++ {
+		files[fmt.Sprintf("f%02d.go", i)] = fmt.Sprintf("package p\n\n// zzpushmarker %d\nfunc F%d() {}\n", i, i)
+	}
+	srv := compactFixture(t, files)
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"zzpushmarker"}, "exhaustive": true, "files_only": true})
+	for i := 0; i < n; i++ {
+		if name := fmt.Sprintf("f%02d.go", i); !strings.Contains(out, name) {
+			t.Fatalf("exhaustive files_only dropped %s:\n%s", name, out)
+		}
+	}
+}
+
+// click get_command (Sonnet 5.5, 2026-09-28): max_results=500 turned the
+// exact-count pass off; the answer was a 5-per-file context sample of 29
+// lines with no completeness line. A raised limit must list every line.
+func TestRaisedLimitListsEveryLineOfACompleteSet(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("package p\n\nfunc Zzlook() {}\n\nfunc use() {\n")
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&b, "\tZzlook() // call %d\n", i)
+	}
+	b.WriteString("}\n")
+	srv := compactFixture(t, map[string]string{"go.mod": "module p\n\ngo 1.21\n", "a.go": b.String()})
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"Zzlook"}, "max_results": 500, "include_bodies": false})
+	for i := 0; i < 12; i++ {
+		if !strings.Contains(out, fmt.Sprintf("// call %d", i)) {
+			t.Fatalf("max_results=500 dropped call %d:\n%s", i, out)
+		}
+	}
+	if !strings.Contains(out, "COMPLETE") {
+		t.Fatalf("complete set not labelled COMPLETE:\n%s", out)
+	}
+}

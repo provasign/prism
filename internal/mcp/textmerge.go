@@ -50,6 +50,12 @@ const (
 	// textMatches section so it cannot crowd out the source windows.
 	textRenderFileCap     = 10
 	textRenderHitsPerFile = 5
+	// exhaustiveFullLineCap: an exhaustive result this small is delivered
+	// as every match line, grep-shaped, instead of a 5-per-file sample plus
+	// a line-number inventory. Sonnet 5.5 (werkzeug get_headers, 16 hits,
+	// 2026-09-28) got "+5 more matches" and numbers without text.
+	exhaustiveFullLineCap = 150
+	exhaustiveLineTextMax = 240
 )
 
 // textMergeResult is what mergeTextSearch feeds back into selection.
@@ -183,6 +189,9 @@ func (h *Handler) mergeTextSearchScoped(ctx context.Context, terms []string, see
 func (h *Handler) renderTextMatches(ctx context.Context, rawHits []textsearch.Hit, exhaustive bool) []map[string]any {
 	if len(rawHits) == 0 {
 		return nil
+	}
+	if exhaustive && len(rawHits) <= exhaustiveFullLineCap {
+		return h.renderExhaustiveLines(ctx, rawHits)
 	}
 	var order []string
 	byFile := map[string]*textMatchGroup{}
@@ -895,4 +904,46 @@ func (h *Handler) resolvedRefNote(ctx context.Context, query string, hits []text
 			"name without referring to it (other types, comments, strings). Inspect receiver/type "+
 			"evidence before treating the remaining text hits as uses.",
 		len(hits), n, qn)
+}
+
+// renderExhaustiveLines delivers every match line, no context, in the
+// backend's file order, each tagged with its indexed enclosing symbol (the
+// receiver evidence the capped inventory carried). Only called under
+// exhaustiveFullLineCap.
+func (h *Handler) renderExhaustiveLines(ctx context.Context, rawHits []textsearch.Hit) []map[string]any {
+	var order []string
+	byFile := map[string][]map[string]any{}
+	syms := map[string][]grove.SymbolRecord{}
+	for _, hit := range rawHits {
+		if _, ok := byFile[hit.File]; !ok {
+			order = append(order, hit.File)
+			if h.Grove != nil {
+				syms[hit.File], _ = h.Grove.FileSymbols(ctx, hit.File)
+			}
+		}
+		text := hit.Text
+		if len(text) > exhaustiveLineTextMax {
+			text = text[:exhaustiveLineTextMax] + "…"
+		}
+		entry := map[string]any{"line": hit.Line, "text": text}
+		if enc := tightestEnclosingSymbol(syms[hit.File], hit.Line); enc != nil {
+			name := enc.QualifiedName
+			if name == "" {
+				name = enc.Name
+			}
+			// Markdown/config files index as one symbol named for the file.
+			if name != hit.File && name != filepath.Base(hit.File) {
+				entry["in"] = name
+			}
+		}
+		byFile[hit.File] = append(byFile[hit.File], entry)
+	}
+	out := make([]map[string]any, 0, len(order)+1)
+	for _, file := range order {
+		out = append(out, map[string]any{"file": file, "hits": byFile[file]})
+	}
+	out = append(out, map[string]any{
+		"note": fmt.Sprintf("COMPLETE — every match line is shown above with its enclosing symbol (%d lines in %d files)", len(rawHits), len(order)),
+	})
+	return out
 }

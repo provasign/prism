@@ -7,8 +7,17 @@ import (
 	"github.com/provasign/prism/internal/textsearch"
 )
 
-func (h *Handler) renderedTextSearchHits(ctx context.Context, r textsearch.Result, exhaustive bool) []map[string]any {
+// completeContextHitMax: complete result sets up to this many lines keep
+// their context windows (a bug-fix locate, where context saves a Read).
+const completeContextHitMax = 10
+
+func (h *Handler) renderedTextSearchHits(ctx context.Context, r textsearch.Result, exhaustive, contextAsked bool) []map[string]any {
 	if r.ResultsComplete && !exhaustive {
+		// A complete set past a handful of lines is a site list (a rename,
+		// a sweep): every line, grep-shaped, beats context around some.
+		if len(r.Hits) > completeContextHitMax && !contextAsked {
+			return h.renderExhaustiveLines(ctx, r.Hits)
+		}
 		return h.renderCompleteTextMatches(r.Hits)
 	}
 	return h.renderTextMatches(ctx, r.Hits, exhaustive)
