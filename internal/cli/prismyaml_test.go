@@ -20,7 +20,7 @@ agent_mode: "mcp"
 arch_deny: internal/grove -> internal/*    # engine wrapper is a leaf
 arch_deny: internal/* -> internal/cli      # nothing imports the CLI
 `
-	got := mergePrismYAML(existing, "default")
+	got := mergePrismYAML(existing, "default", []string{"codex"})
 
 	for _, want := range []string{
 		"arch_deny: internal/grove -> internal/*    # engine wrapper is a leaf",
@@ -32,13 +32,11 @@ arch_deny: internal/* -> internal/cli      # nothing imports the CLI
 			t.Errorf("lost user content %q:\n%s", want, got)
 		}
 	}
-	// agent_mode stopped being a managed key in v0.38.0. An existing one is
-	// now USER content: preserved untouched, never rewritten, never added.
-	if !strings.Contains(got, `agent_mode: "mcp"`) {
-		t.Errorf("user's agent_mode line was clobbered:\n%s", got)
+	if strings.Contains(got, "agent_mode") {
+		t.Errorf("retired agent_mode was not removed:\n%s", got)
 	}
 	// Exactly one of each managed key — no duplicates appended.
-	for _, k := range []string{"version:", "profile:"} {
+	for _, k := range []string{"version:", "profile:", "harnesses:", "mcp_surface:"} {
 		if n := strings.Count(got, "\n"+k) + boolToInt(strings.HasPrefix(got, k)); n != 1 {
 			t.Errorf("%s appears %d times, want 1:\n%s", k, n, got)
 		}
@@ -54,8 +52,8 @@ func boolToInt(b bool) int {
 
 // A file missing a managed key gets it appended, without disturbing the rest.
 func TestMergePrismYAMLAppendsMissingKeys(t *testing.T) {
-	got := mergePrismYAML("arch_deny: a -> b\n", "fast")
-	for _, want := range []string{"version: 1", `profile: "fast"`, "arch_deny: a -> b"} {
+	got := mergePrismYAML("arch_deny: a -> b\n", "fast", []string{"claude", "codex"})
+	for _, want := range []string{"version: 2", `profile: "fast"`, `harnesses: "claude,codex"`, `mcp_surface: "compact"`, "arch_deny: a -> b"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
 		}
@@ -69,8 +67,8 @@ func TestMergePrismYAMLAppendsMissingKeys(t *testing.T) {
 // Idempotence: merging its own output must not drift.
 func TestMergePrismYAMLIsIdempotent(t *testing.T) {
 	in := "version: 1\nprofile: \"default\"\nagent_mode: \"both\"\narch_deny: a -> b\n"
-	once := mergePrismYAML(in, "default")
-	twice := mergePrismYAML(once, "default")
+	once := mergePrismYAML(in, "default", []string{"codex"})
+	twice := mergePrismYAML(once, "default", []string{"codex"})
 	if once != twice {
 		t.Errorf("not idempotent:\nfirst:\n%s\nsecond:\n%s", once, twice)
 	}
@@ -80,7 +78,7 @@ func TestMergePrismYAMLIsIdempotent(t *testing.T) {
 // rewritten as a top-level setting.
 func TestMergePrismYAMLIgnoresNestedKeys(t *testing.T) {
 	in := "version: 1\nsomething:\n  profile: \"nested\"\n"
-	got := mergePrismYAML(in, "default")
+	got := mergePrismYAML(in, "default", []string{"codex"})
 	if !strings.Contains(got, `  profile: "nested"`) {
 		t.Errorf("nested key was rewritten:\n%s", got)
 	}

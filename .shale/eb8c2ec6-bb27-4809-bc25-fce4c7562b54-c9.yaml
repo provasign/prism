@@ -1,0 +1,101 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c9
+created_at: 2026-09-24T11:15:14.4334Z
+finalized_at: 2026-09-26T16:25:56.546959Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        git tag -a v0.82.2 -m "$(cat <<'EOF'
+        v0.82.2
+
+        - fix(release): Linux binaries are now statically linked (-tags netgo,
+          -extldflags "-static"). The v0.82.1 released binary dynamically required
+          GLIBC_2.34 purely from being built on a newer-glibc host -- it would not
+          even start on Ubuntu 20.04, Debian 11, Amazon Linux 2, or RHEL 8. No
+          functional change; cgo tree-sitter parsers remain statically linked in.
+        EOF
+        )" && git push origin v0.82.2 2>&1 | grep -v "^shale:" | tail -2
+      at: 2026-09-24T11:15:14.4334Z
+      classified: other
+    - cmd: |-
+        until gh run list -R provasign/prism --limit 1 --json status,workflowName -q '.[] | select(.workflowName=="Release") | .status' 2>/dev/null | grep -q completed; do sleep 10; done
+        gh run list -R provasign/prism --limit 1 2>&1
+      at: 2026-09-24T11:17:22.698776Z
+      classified: other
+    - cmd: gh run list -R provasign/prism --limit 2 2>&1
+      at: 2026-09-24T11:17:42.384954Z
+      classified: other
+    - cmd: |-
+        cd /tmp && curl -sL -o prism-v0822-amd64 "https://github.com/provasign/prism/releases/download/v0.82.2/prism-v0.82.2-linux-amd64" && \
+        curl -sL -o prism-v0822-arm64 "https://github.com/provasign/prism/releases/download/v0.82.2/prism-v0.82.2-linux-arm64" && \
+        chmod +x prism-v0822-amd64 prism-v0822-arm64 && \
+        file prism-v0822-amd64 prism-v0822-arm64
+        echo "--- glibc symbols (amd64) ---"; strings prism-v0822-amd64 | grep -oE "GLIBC_[0-9]+\.[0-9]+" | sort -V -u
+        echo "--- glibc symbols (arm64) ---"; strings prism-v0822-arm64 | grep -oE "GLIBC_[0-9]+\.[0-9]+" | sort -V -u
+      at: 2026-09-24T11:19:06.772177Z
+      classified: other
+    - cmd: |-
+        D=$(mktemp -d); mkdir -p "$D/pkg"
+        cat > "$D/go.mod" <<'EOF'
+        module example.com/x
+        go 1.26
+        EOF
+        cat > "$D/pkg/main.go" <<'EOF'
+        package pkg
+        func Add(a, b int) int { return a + b }
+        func main() { Add(1,2) }
+        EOF
+        echo "=== released amd64 on ubuntu:20.04 (QEMU) ==="
+        docker run --rm --platform linux/amd64 -v /tmp/prism-v0822-amd64:/prism:ro ubuntu:20.04 /prism version 2>&1
+        docker run --rm --platform linux/amd64 -v /tmp/prism-v0822-amd64:/prism:ro -v "$D":/repo ubuntu:20.04 /prism index /repo 2>&1
+        docker run --rm --platform linux/amd64 -v /tmp/prism-v0822-amd64:/prism:ro -v "$D":/repo ubuntu:20.04 /prism lookup Add /repo 2>&1
+        echo "=== released arm64 on ubuntu:20.04 (native) ==="
+        docker run --rm -v /tmp/prism-v0822-arm64:/prism:ro ubuntu:20.04 /prism version 2>&1
+        docker run --rm -v /tmp/prism-v0822-arm64:/prism:ro -v "$D":/repo ubuntu:20.04 /prism index /repo 2>&1
+        docker run --rm -v /tmp/prism-v0822-arm64:/prism:ro -v "$D":/repo ubuntu:20.04 /prism lookup Add /repo 2>&1
+        rm -rf "$D" /tmp/prism-v0822-amd64 /tmp/prism-v0822-arm64 /tmp/prism-linux-amd64 /tmp/prism-linux-arm64
+      at: 2026-09-24T11:19:19.992139Z
+      classified: other
+    - cmd: |-
+        gh workflow run refresh-formulae.yml -R provasign/homebrew-shale 2>&1
+        until gh run list -R provasign/homebrew-shale --limit 1 --json status -q '.[0].status' 2>/dev/null | grep -q completed; do sleep 5; done
+        gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -m1 'version "'
+      at: 2026-09-24T11:19:49.775282Z
+      classified: other
+    - cmd: grep -n "^- \*\*" /Users/tapabratapal/Projects/provasign/research/docs/HANDOFF.md | head -15
+      at: 2026-09-24T11:20:10.728831Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md && git commit -q -m "$(cat <<'EOF'
+        docs: v0.82.2 glibc portability fix — released Linux binaries wouldn't start on Ubuntu 20.04/Debian 11/Amazon Linux 2/RHEL 8
+
+        Found via an external session's own Prism benchmark hitting this on Google Auto's
+        Ubuntu 20.04 image. Root cause: CGO_ENABLED=1 build inherited the build host's
+        glibc as a runtime floor (glibc 2.34 merged libpthread into libc). Fixed by
+        statically linking (release.yml, prism commit 6fdcc561, tag v0.82.2). Validated
+        against both the pre-tag local build and the real released binaries.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git push -q origin main 2>&1 | grep -v "^shale:" | tail -1
+        git log --oneline -1
+      at: 2026-09-24T11:20:35.4168Z
+      classified: other
+    - cmd: |-
+        gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -m1 'version "'
+        grep -c "v0.82.2" /Users/tapabratapal/Projects/provasign/research/docs/HANDOFF.md
+        grep -c "v0.82.2" /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md
+        cd /Users/tapabratapal/Projects/provasign/research && git log --oneline -1 -- docs/HANDOFF.md
+      at: 2026-09-24T11:42:27.444113Z
+      classified: other
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-24T11:15:14.4334Z
+redactions: 0

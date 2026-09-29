@@ -24,7 +24,9 @@ go vet ./...
 
 Changes to public operations must document completeness semantics and add tests
 for success, degraded, and error paths. Changes to existing symbols should use
-`prism change-impact` before editing and `prism verify` after editing.
+`prism change-impact` before editing. `prism verify` is optional for unchecked
+callers, especially in Python, JavaScript without typechecking, and PHP. Skip
+the routine call after a complete build/typecheck of affected targets.
 
 ## Pull requests
 

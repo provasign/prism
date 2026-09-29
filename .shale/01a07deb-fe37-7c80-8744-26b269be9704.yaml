@@ -1,0 +1,840 @@
+shale_version: "0"
+id: 01a07deb-fe37-7c80-8744-26b269be9704
+created_at: 2026-09-07T22:11:22.393341Z
+finalized_at: 2026-09-08T00:31:44.559363Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T00:26:02.69831Z
+    - path: internal/cli/init_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T00:26:02.69831Z
+    - path: .cursor/mcp.json
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T00:30:01.764801Z
+    - path: .mcp.json
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T00:30:01.764801Z
+    - path: .windsurf/mcp.json
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T00:30:01.764801Z
+commands:
+    - cmd: git branch --show-current && git status --short && git log -5 --oneline --decorate
+      at: 2026-09-07T22:11:34.538338Z
+      classified: other
+    - cmd: git show --stat --oneline --decorate HEAD && git show --stat --oneline a5323bd && git show --name-only --format=fuller a5323bd
+      at: 2026-09-07T22:11:39.839822Z
+      classified: other
+    - cmd: pwd && git rev-parse --show-toplevel && git ls-tree --name-only HEAD | head -40 && git show HEAD~1:HANDOFF.md
+      at: 2026-09-07T22:12:26.733Z
+      classified: other
+    - cmd: git show --name-status --format=fuller HEAD && git show --format= --no-ext-diff HEAD
+      at: 2026-09-07T22:12:32.397101Z
+      classified: other
+    - cmd: git log -12 --oneline --decorate && git show --format= --no-ext-diff f0cf95b | head -160 && git show --format= --no-ext-diff ccfb1a1 | head -160
+      at: 2026-09-07T22:12:37.712795Z
+      classified: other
+    - cmd: git show --format= --no-ext-diff f0cf95b | tail -100
+      at: 2026-09-07T22:12:42.665248Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism version && /Users/tapabratapal/bin/prism doctor .
+      at: 2026-09-07T22:12:50.01911Z
+      classified: other
+    - cmd: gh run list -R provasign/homebrew-shale --limit 5 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 -d | rg 'version|url|sha256'
+      at: 2026-09-07T22:12:50.057448Z
+      classified: other
+    - cmd: brew info provasign/shale/prism --json=v2
+      at: 2026-09-07T22:12:50.618856Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git log -5 --oneline --decorate && if [ -f AGENTS.md ]; then sed -n '1,240p' AGENTS.md; fi && rg -n "Werkzeug|coding-focused|correct fixes|forced-use|everyday|coding task|patches present at timeout" . --glob '!harness/runs/**' --glob '!vendor/**'
+      at: 2026-09-07T22:13:12.198182Z
+      classified: other
+    - cmd: |-
+        if [ -f AGENTS.md ]; then sed -n '1,240p' AGENTS.md; else echo NO_AGENTS; fi
+        find harness -maxdepth 3 -type f | rg -i 'coding|werkzeug|everyday|forced|task' | head -200
+        git diff -- harness/mason_bench.py
+      at: 2026-09-07T22:13:17.17726Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism search 'correct fixes' 'forced-use' 'Werkzeug' 'coding-focused' 'average coding' --scope text --exhaustive --path harness --format text
+      at: 2026-09-07T22:13:25.356311Z
+      classified: other
+    - cmd: |-
+        /Users/tapabratapal/bin/prism read harness/runs/daytoday-four-head-2026-09-07/README.md --format text
+        /Users/tapabratapal/bin/prism read harness/runs/daytoday-four-head-2026-09-07/aggregate.json --format text
+        /Users/tapabratapal/bin/prism read harness/runs/daytoday-four-head-2026-09-07/run_code.py --format text
+      at: 2026-09-07T22:13:30.351499Z
+      classified: other
+    - cmd: |-
+        find harness/runs -maxdepth 1 -type d -print | sort | tail -40
+        git log -12 --oneline --decorate
+        /Users/tapabratapal/bin/prism read harness/tasks-e2e-meaningful/pallets__click__pr3244.json --format text
+        /Users/tapabratapal/bin/prism read harness/tasks-e2e-meaningful/pallets__werkzeug__pr3081.json --format text
+      at: 2026-09-07T22:13:34.704265Z
+      classified: other
+    - cmd: |-
+        find harness/runs/daytoday-prism-isolation-2026-09-07 -maxdepth 2 -type f -print | sort
+        sed -n '1,260p' harness/runs/daytoday-prism-isolation-2026-09-07/README.md
+        sed -n '1,260p' harness/runs/daytoday-prism-isolation-2026-09-07/aggregate.json
+      at: 2026-09-07T22:13:39.402599Z
+      classified: other
+    - cmd: |-
+        jq '{instance_id,repo,base_commit,problem_statement,test_modules,fail_to_pass,pass_to_pass,patch,test_patch}' harness/tasks-e2e-meaningful/pallets__click__pr3244.json
+        jq '{instance_id,repo,base_commit,problem_statement,test_modules,fail_to_pass,pass_to_pass,patch,test_patch}' harness/tasks-e2e-meaningful/pallets__werkzeug__pr3081.json
+      at: 2026-09-07T22:13:45.27376Z
+      classified: other
+    - cmd: |-
+        git -C /Users/tapabratapal/gvg-corpus/e2e-2026/pallets__werkzeug show --stat --oneline b48878cf16dfca3c89ac58aca47ab1ecfcb71354
+        git -C /Users/tapabratapal/gvg-corpus/e2e-2026/pallets__werkzeug show b48878cf16dfca3c89ac58aca47ab1ecfcb71354:src/werkzeug/sansio/multipart.py | sed -n '235,300p'
+        find harness/runs -path '*pallets__werkzeug__pr3081*' -type f | rg 'report.json|status.json|measurement.json|post_patch_log' | head -80
+      at: 2026-09-07T22:13:50.263684Z
+      classified: other
+    - cmd: |-
+        jq -r '.[]' harness/manifest-meaningful.json
+        for f in harness/tasks-e2e-meaningful/*.json; do jq -r '[.instance_id,.repo,((.patch|scan("^diff --git";"m"))|length),(.fail_to_pass|length),(.problem_statement|split("\n")[0])]|@tsv' "$f"; done | sort
+      at: 2026-09-07T22:13:55.572055Z
+      classified: other
+    - cmd: for f in harness/tasks-e2e-meaningful/*.json; do printf '%s\t' "$(basename "$f" .json)"; jq -r '.patch' "$f" | rg '^diff --git' | sed -E 's#diff --git a/([^ ]+) b/.*#\1#' | paste -sd, -; done
+      at: 2026-09-07T22:14:00.870896Z
+      classified: other
+    - cmd: python3 -B harness/docker_eval.py --help
+      at: 2026-09-07T22:14:08.367011Z
+      classified: other
+    - cmd: python3 -B harness/docker_eval.py harness/tasks-e2e-meaningful/pallets__click__pr3244.json
+      at: 2026-09-07T22:14:12.234723Z
+      classified: other
+    - cmd: python3 -B harness/docker_eval.py harness/tasks-e2e-meaningful/pallets__click__pr3244.json
+      at: 2026-09-07T22:14:42.341847Z
+      classified: other
+    - cmd: |-
+        /Users/tapabratapal/bin/prism lookup validate --format text
+        /Users/tapabratapal/bin/prism lookup _pytest_in_docker --format text
+        /Users/tapabratapal/bin/prism lookup _worktree --format text
+      at: 2026-09-07T22:14:47.851269Z
+      classified: test
+    - cmd: test ! -e /private/tmp/coding-suite-audit-click && mkdir -p /private/tmp/coding-suite-audit-click && git -C /Users/tapabratapal/gvg-corpus/e2e-2026/pallets__click archive 32010b9e9a33fa4981de7052c1ae1a71770613ef | tar -x -C /private/tmp/coding-suite-audit-click && jq -r '.test_patch' harness/tasks-e2e-meaningful/pallets__click__pr3244.json > /private/tmp/coding-suite-audit-click-test.patch && git -C /private/tmp/coding-suite-audit-click apply --check /private/tmp/coding-suite-audit-click-test.patch && git -C /private/tmp/coding-suite-audit-click apply /private/tmp/coding-suite-audit-click-test.patch && test -f /private/tmp/coding-suite-audit-click/tests/test_testing.py && rg -n 'test_faulthandler_enable' /private/tmp/coding-suite-audit-click/tests/test_testing.py
+      at: 2026-09-07T22:14:57.33984Z
+      classified: other
+    - cmd: docker run --rm -v /private/tmp/coding-suite-audit-click:/w -w /w python:3.12 bash -lc "export SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0; pip install -e '.[dev]'; pip install pytest pytest-timeout; python -m pytest tests/test_testing.py::test_faulthandler_enable -v --tb=short -p no:cacheprovider -o addopts='' --timeout=90"
+      at: 2026-09-07T22:15:03.26711Z
+      classified: test
+    - cmd: open -a Docker
+      at: 2026-09-07T22:15:30.689181Z
+      classified: other
+    - cmd: docker info --format '{{.ServerVersion}}'
+      at: 2026-09-07T22:15:33.488603Z
+      classified: other
+    - cmd: docker info --format '{{.ServerVersion}}'
+      at: 2026-09-07T22:15:43.143464Z
+      classified: other
+    - cmd: python3 -B harness/docker_eval.py harness/tasks-e2e-meaningful/pallets__click__pr3244.json
+      at: 2026-09-07T22:16:19.070485Z
+      classified: other
+    - cmd: python3 -B harness/docker_eval.py harness/tasks-e2e-meaningful/pallets__werkzeug__pr3081.json
+      at: 2026-09-07T22:16:56.778557Z
+      classified: other
+    - cmd: gh pr view 3081 -R pallets/werkzeug --json title,body,url,baseRefOid,headRefOid,commits,closingIssuesReferences
+      at: 2026-09-07T22:58:57.76528Z
+      classified: other
+    - cmd: for f in harness/tasks-e2e/*.json; do jq -r '[.instance_id,.repo,.base_commit,(.problem_statement|split("\n")[0]),(.fail_to_pass|length)]|@tsv' "$f"; done | sort
+      at: 2026-09-07T22:59:19.18584Z
+      classified: other
+    - cmd: 'for id in Textualize__rich__pr3882 urllib3__urllib3__pr3786 urllib3__urllib3__pr5093 pallets__click__pr3228 pallets__werkzeug__pr3006 pallets__click__pr3695 pallets__werkzeug__pr3169; do f=harness/tasks-e2e/$id.json; jq -r ''"=== " + .instance_id + " ===\nPROMPT: " + (.problem_statement|split("\n")[0]) + "\nTESTS: " + (.test_modules|join(",")) + "\nF2P=" + ((.fail_to_pass|length)|tostring) + " P2P=" + ((.pass_to_pass|length)|tostring)'' "$f"; printf ''GOLD: ''; jq -r ''.patch'' "$f" | rg ''^diff --git'' | sed -E ''s#diff --git a/([^ ]+) b/.*#\1#'' | paste -sd, -; printf ''TEST: ''; jq -r ''.test_patch'' "$f" | rg ''^diff --git'' | sed -E ''s#diff --git a/([^ ]+) b/.*#\1#'' | paste -sd, -; done'
+      at: 2026-09-07T22:59:31.920869Z
+      classified: other
+    - cmd: for id in pallets__click__pr3695 pallets__werkzeug__pr3169; do f=harness/tasks-e2e/$id.json; jq '{instance_id,test_patch_bytes:(.test_patch|length),patch_bytes:(.patch|length),test_modules,fail_to_pass,pass_to_pass}' "$f"; jq -r '.test_patch' "$f" | head -80; done
+      at: 2026-09-07T22:59:36.293062Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact _pytest_in_docker --format text
+      at: 2026-09-07T22:59:47.880966Z
+      classified: test
+    - cmd: |-
+        /Users/tapabratapal/bin/prism search 'docker_eval' '_pytest_in_docker' 'validate(task' --scope text --path harness/tests --context 4 --format text
+        /Users/tapabratapal/bin/prism lookup score --file harness/docker_eval.py --format text
+        /Users/tapabratapal/bin/prism lookup validate --file harness/fanout_eval.py --format text
+        /Users/tapabratapal/bin/prism lookup score --file harness/fanout_eval.py --format text
+      at: 2026-09-07T22:59:57.598069Z
+      classified: test
+    - cmd: |-
+        /Users/tapabratapal/bin/prism lookup _sh --file harness/docker_eval.py --format text
+        sed -n '1,48p' harness/docker_eval.py
+        sed -n '120,200p' harness/docker_eval.py
+      at: 2026-09-07T23:00:03.130166Z
+      classified: other
+    - cmd: python3 -B harness/docker_eval.py harness/tasks-e2e/Textualize__rich__pr3882.json
+      at: 2026-09-07T23:00:40.016359Z
+      classified: other
+    - cmd: python3 -B harness/docker_eval.py harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:02:19.113077Z
+      classified: other
+    - cmd: git status --short | head -80 && git diff --stat && git diff -- harness/tasks-e2e/urllib3__urllib3__pr3786.json | head -120
+      at: 2026-09-07T23:02:23.772955Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/urllib3__urllib3__pr5093.json /private/tmp/coding-suite-urllib3-pr5093.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-urllib3-pr5093.json
+      at: 2026-09-07T23:09:29.410488Z
+      classified: other
+    - cmd: for f in harness/tasks-e2e/*.json; do case "$f" in *manifest*) continue;; esac; id=$(jq -r .instance_id "$f"); files=$(jq -r .patch "$f" | rg '^diff --git' | sed -E 's#diff --git a/([^ ]+) b/.*#\1#' | rg -v '(^|/)(test|tests|docs|changelog|CHANGES|CHANGELOG)' | paste -sd, -); n=$(printf '%s' "$files" | awk -F, '{print NF}'); if [ "$n" -ge 2 ]; then printf '%s\t%s\n' "$id" "$files"; fi; done | sort
+      at: 2026-09-07T23:09:37.70799Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/Textualize__rich__pr3938.json /private/tmp/coding-suite-rich-pr3938.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-rich-pr3938.json
+      at: 2026-09-07T23:10:12.477577Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/pallets__click__pr3228.json /private/tmp/coding-suite-click-pr3228.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-click-pr3228.json
+      at: 2026-09-07T23:11:50.556076Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/pallets__werkzeug__pr3006.json /private/tmp/coding-suite-werkzeug-pr3006.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-werkzeug-pr3006.json
+      at: 2026-09-07T23:12:59.273754Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/pallets__click__pr3695.json /private/tmp/coding-suite-click-pr3695.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-click-pr3695.json
+      at: 2026-09-07T23:14:57.65596Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/pallets__werkzeug__pr3169.json /private/tmp/coding-suite-werkzeug-pr3169.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-werkzeug-pr3169.json
+      at: 2026-09-07T23:15:48.427243Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/pallets__werkzeug__pr3162.json /private/tmp/coding-suite-werkzeug-pr3162.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-werkzeug-pr3162.json
+      at: 2026-09-07T23:17:26.050552Z
+      classified: other
+    - cmd: for f in harness/tasks-wide/*.json; do [ -f "$f" ] || continue; jq -r '[.id // .instance_id,.repo,.pin // .base_commit,(.prompt // .problem_statement | split("\n")[0]),(.ground_truth|length // 0)]|@tsv' "$f"; done
+      at: 2026-09-07T23:17:36.491566Z
+      classified: other
+    - cmd: jq 'keys' harness/tasks-wide/*.json
+      at: 2026-09-07T23:17:40.794681Z
+      classified: other
+    - cmd: for f in harness/tasks-wide/*.json; do [ -f "$f" ] || continue; jq -r '[.instance_id,.project,.task_kind,.subject,(.gt_files|length)]|@tsv' "$f"; done
+      at: 2026-09-07T23:17:45.723305Z
+      classified: other
+    - cmd: gh pr view 3169 -R pallets/werkzeug --json title,body,url,baseRefOid,files
+      at: 2026-09-07T23:17:55.144463Z
+      classified: other
+    - cmd: git diff --check && python3 -B -m unittest harness.tests.test_docker_eval && git status --short | head -20
+      at: 2026-09-07T23:18:35.094006Z
+      classified: other
+    - cmd: git diff -R --unified=3 -- harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:18:45.905299Z
+      classified: other
+    - cmd: git diff -R --unified=3 -- harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:18:52.970056Z
+      classified: other
+    - cmd: git diff -R --unified=3 -- harness/tasks-e2e/urllib3__urllib3__pr3786.json | head -20
+      at: 2026-09-07T23:18:57.461908Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/urllib3__urllib3__pr5020.json /private/tmp/coding-suite-urllib3-pr5020.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-urllib3-pr5020.json
+      at: 2026-09-07T23:21:26.827837Z
+      classified: other
+    - cmd: |-
+        sed -n '1,125p' harness/docker_eval.py
+        sed -n '125,190p' harness/docker_eval.py
+        sed -n '50,105p' harness/fanout_eval.py
+      at: 2026-09-07T23:22:13.458091Z
+      classified: other
+    - cmd: git diff --check && python3 -B -m unittest harness.tests.test_docker_eval && python3 -B -m py_compile harness/docker_eval.py harness/fanout_eval.py
+      at: 2026-09-07T23:23:00.690678Z
+      classified: other
+    - cmd: PYTHONPYCACHEPREFIX=/private/tmp/prism-coding-suite-pycache python3 -B -m py_compile harness/docker_eval.py harness/fanout_eval.py && git diff --check
+      at: 2026-09-07T23:23:04.903335Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/pallets__click__pr3695.json /private/tmp/coding-suite-click-pr3695.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-click-pr3695.json
+      at: 2026-09-07T23:23:44.910018Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/urllib3__urllib3__pr5020.json /private/tmp/coding-suite-urllib3-pr5020.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-urllib3-pr5020.json
+      at: 2026-09-07T23:24:22.316381Z
+      classified: other
+    - cmd: jq -r '.test_patch' harness/tasks-e2e/urllib3__urllib3__pr5020.json | sed -n '1,220p'
+      at: 2026-09-07T23:24:26.067241Z
+      classified: other
+    - cmd: cp harness/tasks-e2e/pallets__click__pr3466.json /private/tmp/coding-suite-click-pr3466.json && python3 -B harness/docker_eval.py /private/tmp/coding-suite-click-pr3466.json
+      at: 2026-09-07T23:25:20.551775Z
+      classified: other
+    - cmd: |-
+        gh pr view 3466 -R pallets/click --json title,body,url,baseRefOid,files
+        jq -r '.patch' harness/tasks-e2e/pallets__click__pr3466.json | rg '^diff --git|^[+-].*line|^[+-].*newline|^[+-].*replace|^[+-].*split' | head -80
+      at: 2026-09-07T23:25:31.227926Z
+      classified: other
+    - cmd: sed -n '1,360p' harness/runs/daytoday-four-head-2026-09-07/run_code.py
+      at: 2026-09-07T23:26:07.408617Z
+      classified: other
+    - cmd: sed -n '1,360p' harness/coding_suite.py
+      at: 2026-09-07T23:26:13.935644Z
+      classified: other
+    - cmd: sed -n '1,260p' harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+      at: 2026-09-07T23:26:19.750659Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism lookup is_steering --file harness/runs/daytoday-four-head-2026-09-07/run_readonly.py --format text
+      at: 2026-09-07T23:27:12.084719Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism init --help
+      at: 2026-09-07T23:27:17.466296Z
+      classified: other
+    - cmd: git diff -R --unified=3 -- harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:28:40.139241Z
+      classified: other
+    - cmd: git diff --check && PYTHONPYCACHEPREFIX=/private/tmp/prism-coding-suite-pycache python3 -B -m py_compile harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py && python3 -B -m unittest harness.tests.test_docker_eval && git status --short | rg 'docker_eval|fanout_eval|coding_suite|CODING_SUITE|urllib3__urllib3__pr3786|mason_bench'
+      at: 2026-09-07T23:28:52.102288Z
+      classified: other
+    - cmd: git diff -- harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:28:56.2519Z
+      classified: other
+    - cmd: python3 -B -m unittest discover -s harness/tests
+      at: 2026-09-07T23:29:08.225492Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command | rg 'coding_suite|docker|pip|prism init' | head -30
+      at: 2026-09-07T23:33:21.543112Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-pilot-preflight-20260907 -maxdepth 4 -type f -print | sort | tail -40
+      at: 2026-09-07T23:33:28.436967Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-pilot-preflight-20260907/environments -maxdepth 3 -type f -name setup.json -o -name pyvenv.cfg 2>/dev/null
+      at: 2026-09-07T23:33:33.741046Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-pilot-preflight-20260907/templates -name index.json -print -exec sed -n '1,80p' {} \;
+      at: 2026-09-07T23:33:38.81539Z
+      classified: other
+    - cmd: python3 -B harness/coding_suite.py --run-dir /private/tmp/coding-suite-pilot-preflight-20260907 --phase pilot --preflight-only
+      at: 2026-09-07T23:33:44.452878Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-pilot-preflight-20260907-r2 -name index.json -o -name setup.json | sort
+      at: 2026-09-07T23:34:34.958369Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-pilot-preflight-20260907-r2/environments -maxdepth 3 -name pyvenv.cfg -o -name setup.json 2>/dev/null | sort
+      at: 2026-09-07T23:34:46.319231Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-pilot-preflight-20260907-r2 -name index.json -o -name setup.json | sort
+      at: 2026-09-07T23:35:54.832669Z
+      classified: other
+    - cmd: python3 -B harness/coding_suite.py --run-dir /private/tmp/coding-suite-pilot-preflight-20260907-r2 --phase pilot --preflight-only
+      at: 2026-09-07T23:36:07.36452Z
+      classified: other
+    - cmd: |-
+        jq '{study,phase,status,planned_cells,timeout_s,prompt_pairing,setup_timing,tasks:[.tasks[]|{task,category,validation:{valid:.validation.valid,n_before:.validation.n_before,n_after:.validation.n_after,f2p:(.validation.fail_to_pass|length),p2p:(.validation.pass_to_pass|length)}}]}' /private/tmp/coding-suite-pilot-preflight-20260907-r2/manifest.json
+        for f in /private/tmp/coding-suite-pilot-preflight-20260907-r2/templates/*/index.json; do jq -r '[input_filename,.exit_code,.wall_s]|@tsv' "$f"; done
+        for f in /private/tmp/coding-suite-pilot-preflight-20260907-r2/environments/*/setup.json; do jq -r '[input_filename,.python,.wall_s,(.freeze|length)]|@tsv' "$f"; done
+      at: 2026-09-07T23:36:13.085877Z
+      classified: other
+    - cmd: |-
+        jq '{attempts,freeze}' /private/tmp/coding-suite-pilot-preflight-20260907-r2/environments/urllib3__urllib3__pr3786/setup.json
+        jq '{attempts,freeze}' /private/tmp/coding-suite-pilot-preflight-20260907-r2/environments/pallets__click__pr3244/setup.json
+      at: 2026-09-07T23:36:19.186165Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-pilot-preflight-20260907-r3 -name index.json -o -name setup.json | sort
+      at: 2026-09-07T23:38:25.116987Z
+      classified: other
+    - cmd: python3 -B harness/coding_suite.py --run-dir /private/tmp/coding-suite-pilot-preflight-20260907-r3 --phase pilot --preflight-only
+      at: 2026-09-07T23:38:57.144221Z
+      classified: other
+    - cmd: |-
+        for f in /private/tmp/coding-suite-pilot-preflight-20260907-r3/environments/*/setup.json; do jq -r '[input_filename,.python,.wall_s,(.freeze|length),.attempts[0].target,.attempts[0].exit_code]|@tsv' "$f"; done
+        jq -r '.tasks[] | [.task,.category,.validation.valid,(.validation.fail_to_pass|length),(.validation.pass_to_pass|length)]|@tsv' /private/tmp/coding-suite-pilot-preflight-20260907-r3/manifest.json
+      at: 2026-09-07T23:39:01.681231Z
+      classified: other
+    - cmd: jq '.attempts' /private/tmp/coding-suite-pilot-preflight-20260907-r3/environments/urllib3__urllib3__pr3786/setup.json
+      at: 2026-09-07T23:39:07.315956Z
+      classified: other
+    - cmd: for repo in pallets__click Textualize__rich urllib3__urllib3 pallets__werkzeug; do echo $repo; git -C /Users/tapabratapal/gvg-corpus/e2e-2026/$repo show HEAD:pyproject.toml 2>/dev/null | rg '^\[dependency-groups\]|^[a-zA-Z0-9_-]+ = \[' | head -20; done
+      at: 2026-09-07T23:39:14.993214Z
+      classified: other
+    - cmd: python3 -B harness/coding_suite.py --run-dir /private/tmp/coding-suite-pilot-preflight-20260907-r4 --phase pilot --preflight-only
+      at: 2026-09-07T23:41:34.811756Z
+      classified: other
+    - cmd: for f in /private/tmp/coding-suite-pilot-preflight-20260907-r4/environments/*/setup.json; do jq -r '[input_filename,.python,.wall_s,(.freeze|length),.attempts[0].target,.attempts[0].exit_code]|@tsv' "$f"; done
+      at: 2026-09-07T23:41:39.527552Z
+      classified: other
+    - cmd: for id in pallets__click__pr3244 Textualize__rich__pr3882 Textualize__rich__pr3938 urllib3__urllib3__pr3786 pallets__click__pr3228 pallets__werkzeug__pr3006 pallets__click__pr3466 pallets__click__pr3695; do jq -r '[.instance_id, (.fail_to_pass|length),(.pass_to_pass|length)]|@tsv' harness/tasks-e2e/$id.json; done
+      at: 2026-09-07T23:41:46.545733Z
+      classified: other
+    - cmd: find /private/tmp/coding-suite-full-preflight-20260907 -name setup.json -o -name index.json | sort
+      at: 2026-09-07T23:43:36.74868Z
+      classified: other
+    - cmd: |-
+        find /private/tmp/coding-suite-full-preflight-20260907 -maxdepth 3 -type f | sort | tail -40
+        ps -axo pid,ppid,etime,pcpu,command | rg 'coding_suite|docker|pytest|uv sync|prism index' | tail -30
+      at: 2026-09-07T23:47:01.269113Z
+      classified: test
+    - cmd: python3 -B harness/coding_suite.py --run-dir /private/tmp/coding-suite-full-preflight-20260907 --phase full --preflight-only
+      at: 2026-09-07T23:47:19.083803Z
+      classified: other
+    - cmd: |-
+        rg -n "audit_incomplete|audited_valid|status =|timed_out|harness_error|violations" harness/coding_suite.py
+        rg -n "pallets__click__pr3695|planned_cells|f2p|p2p" /private/tmp/coding-suite-full-preflight-20260907/manifest.json | tail -30
+        git status --short
+        git branch --show-current
+      at: 2026-09-07T23:47:24.565407Z
+      classified: other
+    - cmd: |-
+        sed -n '360,415p' harness/coding_suite.py
+        sed -n '250,320p' harness/coding_suite.py
+      at: 2026-09-07T23:47:29.623469Z
+      classified: other
+    - cmd: |-
+        sed -n '315,355p' harness/coding_suite.py
+        sed -n '1,220p' harness/CODING_SUITE.md
+      at: 2026-09-07T23:47:38.772458Z
+      classified: other
+    - cmd: |-
+        git diff -- harness/tasks-e2e/urllib3__urllib3__pr3786.json
+        tail -c 1 harness/tasks-e2e/urllib3__urllib3__pr3786.json | od -An -tuC
+        jq '{status,planned_cells,tasks:[.tasks[]|{id:.task_id,category,fail_to_pass:(.validation.fail_to_pass|length),pass_to_pass:(.validation.pass_to_pass|length),setup_seconds:.environment.setup_seconds}]}' /private/tmp/coding-suite-full-preflight-20260907/manifest.json
+      at: 2026-09-07T23:47:54.379618Z
+      classified: other
+    - cmd: |-
+        truncate -s -1 harness/tasks-e2e/urllib3__urllib3__pr3786.json
+        git diff --exit-code -- harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:47:59.104941Z
+      classified: other
+    - cmd: truncate -s -1 harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:51:23.474815Z
+      classified: other
+    - cmd: |-
+        git diff --check -- harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py
+        git diff --stat -- harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py
+        git diff --exit-code -- harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-07T23:51:32.822264Z
+      classified: other
+    - cmd: PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m py_compile harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py
+      at: 2026-09-07T23:51:32.963363Z
+      classified: other
+    - cmd: PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m unittest discover -s harness/tests
+      at: 2026-09-07T23:51:34.124277Z
+      classified: other
+    - cmd: |-
+        sed -n '1,220p' harness/docker_eval.py
+        sed -n '1,180p' harness/fanout_eval.py
+        sed -n '1,220p' harness/tests/test_docker_eval.py
+        sed -n '1,220p' harness/coding_suite.py
+        sed -n '220,440p' harness/coding_suite.py
+      at: 2026-09-07T23:51:38.909132Z
+      classified: other
+    - cmd: |-
+        rg -n "def summarize_codex|cost_usd|input_tokens|output_tokens" harness/runs/daytoday-four-head-2026-09-07/run_readonly.py | head -40
+        sed -n '155,250p' harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+        rg -n "shlex" harness/coding_suite.py
+      at: 2026-09-07T23:51:49.898233Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify --base HEAD --format text
+      at: 2026-09-07T23:52:10.389231Z
+      classified: other
+    - cmd: |-
+        jq '.tasks[] | {task,category,f2p:(.validation.fail_to_pass|length),p2p:(.validation.pass_to_pass|length)}' /private/tmp/coding-suite-full-preflight-20260907/manifest.json
+        for f in /private/tmp/coding-suite-full-preflight-20260907/environments/*/setup.json; do jq -r '[input_filename, .wall_s, (.freeze|length), (.attempts[-1].target), (.attempts[-1].exit_code)] | @tsv' "$f"; done
+        python3 -B harness/coding_suite.py --help
+        git diff --check -- harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py
+        git status --short --untracked-files=no
+      at: 2026-09-07T23:52:15.32262Z
+      classified: other
+    - cmd: |-
+        rg -n "optional-dependencies|dependency-groups|tool.poetry.group|pytest|dev" /private/tmp/coding-suite-full-preflight-20260907/templates/Textualize__rich__pr3882/base/pyproject.toml /private/tmp/coding-suite-full-preflight-20260907/templates/Textualize__rich__pr3938/base/pyproject.toml | head -100
+        sed -n '1,180p' /private/tmp/coding-suite-full-preflight-20260907/templates/Textualize__rich__pr3882/base/pyproject.toml
+      at: 2026-09-07T23:52:21.53931Z
+      classified: test
+    - cmd: |-
+        for f in /private/tmp/coding-suite-full-preflight-20260907/environments/Textualize__rich__*/setup.json; do jq -r '.freeze[]' "$f"; done
+        jq -r '.tasks[] | select(.task|contains("rich")) | [.task, (.validation.fail_to_pass[])] | @tsv' /private/tmp/coding-suite-full-preflight-20260907/manifest.json
+      at: 2026-09-07T23:52:28.992687Z
+      classified: other
+    - cmd: PYTHONPATH=/private/tmp/coding-suite-full-preflight-20260907/templates/Textualize__rich__pr3882/base /private/tmp/coding-suite-full-preflight-20260907/environments/Textualize__rich__pr3882/bin/python -m pytest tests/test_prompt.py -q -o addopts=''
+      at: 2026-09-07T23:52:38.611307Z
+      classified: test
+    - cmd: PYTHONPATH=/private/tmp/coding-suite-full-preflight-20260907/templates/Textualize__rich__pr3938/base /private/tmp/coding-suite-full-preflight-20260907/environments/Textualize__rich__pr3938/bin/python -m pytest tests/test_segment.py tests/test_text.py -q -o addopts=''
+      at: 2026-09-07T23:52:38.816125Z
+      classified: test
+    - cmd: sed -n '1,240p' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-07T23:52:46.307666Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'harness/coding_suite.py:run_cell' --format text
+      at: 2026-09-07T23:53:09.06485Z
+      classified: other
+    - cmd: git diff --check -- harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py
+      at: 2026-09-07T23:53:46.436858Z
+      classified: other
+    - cmd: PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m py_compile harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py
+      at: 2026-09-07T23:53:46.642872Z
+      classified: other
+    - cmd: PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m unittest discover -s harness/tests
+      at: 2026-09-07T23:53:48.03359Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git add harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py
+        git status --short -- harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py harness/mason_bench.py harness/mason_oracle.py harness/tasks-e2e/urllib3__urllib3__pr3786.json
+        git diff --cached --stat
+        git diff --cached --check
+      at: 2026-09-07T23:54:18.827966Z
+      classified: other
+    - cmd: git add harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py
+      at: 2026-09-07T23:54:24.072987Z
+      classified: other
+    - cmd: |-
+        git status --short -- harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py harness/mason_bench.py harness/mason_oracle.py harness/tasks-e2e/urllib3__urllib3__pr3786.json
+        git diff --cached --stat
+        git diff --cached --check
+      at: 2026-09-07T23:54:30.996618Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify --base HEAD --format text
+      at: 2026-09-07T23:54:32.445735Z
+      classified: other
+    - cmd: |-
+        rg -n '/Users/|tapabratapal|private/tmp|TODO|FIXME' harness/CODING_SUITE.md harness/coding_suite.py harness/docker_eval.py harness/fanout_eval.py harness/tests/test_coding_suite.py harness/tests/test_docker_eval.py || true
+        git diff --cached --numstat
+        git diff --cached -- harness/docker_eval.py harness/fanout_eval.py
+      at: 2026-09-07T23:54:36.54312Z
+      classified: other
+    - cmd: |-
+        PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m py_compile harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py
+        git diff --cached --check
+      at: 2026-09-07T23:54:46.473653Z
+      classified: other
+    - cmd: PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m unittest discover -s harness/tests
+      at: 2026-09-07T23:54:47.383854Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git diff --cached --name-only
+        git commit -m "research: add validated coding suite"
+      at: 2026-09-07T23:55:06.068381Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-09-07T23:55:11.181293Z
+      classified: other
+    - cmd: |-
+        git rev-parse HEAD
+        git rev-parse origin/main
+        git status --short -- harness/docker_eval.py harness/fanout_eval.py harness/coding_suite.py harness/CODING_SUITE.md harness/tests/test_docker_eval.py harness/tests/test_coding_suite.py harness/tasks-e2e/urllib3__urllib3__pr3786.json harness/mason_bench.py harness/mason_oracle.py
+      at: 2026-09-07T23:55:15.073209Z
+      classified: other
+    - cmd: |-
+        docker ps --format '{{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Command}}'
+        find harness/runs/coding-suite-pilot-2026-09-07 -maxdepth 3 -type f | sort | tail -30
+      at: 2026-09-08T00:01:40.433915Z
+      classified: other
+    - cmd: |-
+        for f in harness/runs/coding-suite-pilot-2026-09-07/evidence/urllib3__*/stdout.jsonl; do wc -c "$f"; done
+        for f in harness/runs/coding-suite-pilot-2026-09-07/evidence/urllib3__*/stderr.txt; do wc -c "$f"; done
+      at: 2026-09-08T00:03:23.879123Z
+      classified: other
+    - cmd: python3 -B harness/coding_suite.py --run-dir /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07 --phase pilot
+      at: 2026-09-08T00:12:12.887674Z
+      classified: other
+    - cmd: |-
+        jq '{status,completed,valid,timeouts,measurement_incomplete,agent_errors,protocol_violations,harness_errors,resolved,rows:[.rows[]|{cell_id,arm,task,resolved,wall_s,cost_usd,total_tokens,timed_out,audited_valid,has_diff,diff_lines,changed_files,prism_calls,violations,score}]}' harness/runs/coding-suite-pilot-2026-09-07/summary.json
+        jq '{status,phase,planned_cells,versions,gpt55_pricing}' harness/runs/coding-suite-pilot-2026-09-07/manifest.json
+      at: 2026-09-08T00:12:19.842305Z
+      classified: other
+    - cmd: |-
+        for f in harness/runs/coding-suite-pilot-2026-09-07/evidence/*/measurement.json; do jq -r '[.cell_id, (.prism_calls|length), (.native_commands|length), (.changed_files|join(",")), (.tool_calls // "null"), (.turns // "null"), (.cost_usd|tostring)] | @tsv' "$f"; done | sort
+        for f in harness/runs/coding-suite-pilot-2026-09-07/evidence/*/agent.diff; do printf '%s\t' "${f%/agent.diff}"; rg '^diff --git ' "$f" | sed 's#diff --git a/[^ ]* b/##' | tr '\n' ','; printf '\n'; done
+      at: 2026-09-08T00:12:39.365135Z
+      classified: other
+    - cmd: |-
+        shasum -a 256 harness/runs/coding-suite-pilot-2026-09-07/evidence/*/prompt.txt
+        for f in harness/runs/coding-suite-pilot-2026-09-07/evidence/*/final.txt; do echo "--- $f"; sed -n '1,120p' "$f"; done
+      at: 2026-09-08T00:12:48.658563Z
+      classified: other
+    - cmd: |-
+        for f in harness/runs/coding-suite-pilot-2026-09-07/evidence/*/stdout.jsonl; do echo "--- $f"; rg -i -n 'prism|mcp.*(error|fail)|server.*(error|fail)|tool.*unavailable' "$f" | head -20; done
+        for f in harness/runs/coding-suite-pilot-2026-09-07/evidence/*/stderr.txt; do echo "--- $f"; cat "$f"; done
+      at: 2026-09-08T00:13:08.352577Z
+      classified: other
+    - cmd: |-
+        sed -n '1,16p' harness/runs/coding-suite-pilot-2026-09-07/evidence/pallets__click__pr3244.gpt55_prism/stdout.jsonl
+        sed -n '1,16p' harness/runs/coding-suite-pilot-2026-09-07/evidence/urllib3__urllib3__pr3786.gpt55_prism/stdout.jsonl
+        rg -n 'mcp__prism|prism_search|ToolSearch|tool_search|deferred' harness/runs/coding-suite-pilot-2026-09-07/evidence/*prism/stdout.jsonl | head -80
+      at: 2026-09-08T00:13:16.632134Z
+      classified: other
+    - cmd: sed -n '1,220p' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-08T00:13:29.12954Z
+      classified: other
+    - cmd: |-
+        codex --help
+        codex features list
+        codex mcp --help
+      at: 2026-09-08T00:13:52.710593Z
+      classified: other
+    - cmd: |-
+        rg -n '^PRISM_TOOLS|PRISM_TOOLS =' harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+        sed -n '28,48p' harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+        jq '.' harness/runs/coding-suite-pilot-2026-09-07/evidence/pallets__click__pr3244.gpt55_prism/command.json
+      at: 2026-09-08T00:14:00.303411Z
+      classified: other
+    - cmd: |-
+        codex mcp list --help
+        codex debug --help
+        codex exec --help | sed -n '1,220p'
+      at: 2026-09-08T00:14:05.618566Z
+      classified: other
+    - cmd: codex mcp list --json --ignore-user-config
+      at: 2026-09-08T00:14:10.33222Z
+      classified: other
+    - cmd: codex mcp list --json -c 'mcp_servers.prism.command="/Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/prism-v0.72.0"' -c 'mcp_servers.prism.args=["mcp","/Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/work/pallets__click__pr3244.gpt55_prism"]' -c 'mcp_servers.prism.required=true' -c 'mcp_servers.prism.default_tools_approval_mode="approve"'
+      at: 2026-09-08T00:14:18.841428Z
+      classified: other
+    - cmd: |-
+        du -sh harness/runs/coding-suite-pilot-2026-09-07
+        find harness/runs/coding-suite-pilot-2026-09-07 -maxdepth 2 -type d -exec du -sh {} \; | sort -h | tail -20
+        git status --short -- harness/coding_suite.py harness/CODING_SUITE.md harness/runs/coding-suite-pilot-2026-09-07 | head -100
+      at: 2026-09-08T00:14:34.017466Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'harness/coding_suite.py:run_cell' --format text
+      at: 2026-09-08T00:15:02.572243Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'coding_suite.audit' --format text
+      at: 2026-09-08T00:15:36.304766Z
+      classified: other
+    - cmd: ps -axo pid,ppid,etime,pcpu,command | rg '[p]rism (change-impact|verify|mcp|index)'
+      at: 2026-09-08T00:15:38.998312Z
+      classified: other
+    - cmd: kill 94224
+      at: 2026-09-08T00:15:43.981992Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'audit' --format text
+      at: 2026-09-08T00:15:52.498933Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'run_cell' --file harness/coding_suite.py --format text
+      at: 2026-09-08T00:15:57.33887Z
+      classified: other
+    - cmd: 'for t in Textualize__rich__pr3882 Textualize__rich__pr3938 pallets__click__pr3244 urllib3__urllib3__pr3786 pallets__click__pr3228 pallets__werkzeug__pr3006 pallets__click__pr3466 pallets__click__pr3695; do jq -r --arg t "$t" ''select(.instance_id==$t) | .patch'' "harness/tasks-e2e/$t.json" | rg ''^\+\+\+ b/'' | head -20 | sed "s#^#$t #"; done'
+      at: 2026-09-08T00:16:10.823758Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'diff_for' --format text
+      at: 2026-09-08T00:16:22.777453Z
+      classified: other
+    - cmd: codex debug prompt-input --help
+      at: 2026-09-08T00:16:28.002182Z
+      classified: other
+    - cmd: |-
+        jq -r '[.rows[] | {treatment:(if (.arm|endswith("prism")) then "prism" else "native" end), resolved, wall_s, cost_usd, regression:(.score.p2p_ok == false)}] | group_by(.treatment)[] | {treatment:.[0].treatment, attempts:length, correct:(map(select(.resolved))|length), total_wall_s:(map(.wall_s)|add), total_cost_usd:(map(.cost_usd)|add), time_per_correct_s:((map(.wall_s)|add)/(map(select(.resolved))|length)), cost_per_correct_usd:((map(.cost_usd)|add)/(map(select(.resolved))|length)), regressions:(map(select(.regression))|length)}' harness/runs/coding-suite-pilot-2026-09-07/summary.json
+        jq '[.rows[].cost_usd]|add' harness/runs/coding-suite-pilot-2026-09-07/summary.json
+      at: 2026-09-08T00:16:41.417689Z
+      classified: other
+    - cmd: |-
+        mkdir -p /private/tmp/coding-suite-pilot-2026-09-07-disposable
+        mv /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/environments /private/tmp/coding-suite-pilot-2026-09-07-disposable/environments
+        mv /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/templates /private/tmp/coding-suite-pilot-2026-09-07-disposable/templates
+        mv /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/work /private/tmp/coding-suite-pilot-2026-09-07-disposable/work
+        mv /Users/tapabratapal/Projects/provasign/research/harness/runs/coding-suite-pilot-2026-09-07/prism-v0.72.0 /private/tmp/coding-suite-pilot-2026-09-07-disposable/prism-v0.72.0
+        du -sh harness/runs/coding-suite-pilot-2026-09-07 /private/tmp/coding-suite-pilot-2026-09-07-disposable
+      at: 2026-09-08T00:17:55.8941Z
+      classified: other
+    - cmd: |-
+        mkdir -p harness/runs/coding-suite-pilot-2026-09-07/setup/pallets__click__pr3244 harness/runs/coding-suite-pilot-2026-09-07/setup/urllib3__urllib3__pr3786
+        cp /private/tmp/coding-suite-pilot-2026-09-07-disposable/environments/pallets__click__pr3244/setup.json harness/runs/coding-suite-pilot-2026-09-07/setup/pallets__click__pr3244/environment.json
+        cp /private/tmp/coding-suite-pilot-2026-09-07-disposable/templates/pallets__click__pr3244/index.json harness/runs/coding-suite-pilot-2026-09-07/setup/pallets__click__pr3244/index.json
+        cp /private/tmp/coding-suite-pilot-2026-09-07-disposable/environments/urllib3__urllib3__pr3786/setup.json harness/runs/coding-suite-pilot-2026-09-07/setup/urllib3__urllib3__pr3786/environment.json
+        cp /private/tmp/coding-suite-pilot-2026-09-07-disposable/templates/urllib3__urllib3__pr3786/index.json harness/runs/coding-suite-pilot-2026-09-07/setup/urllib3__urllib3__pr3786/index.json
+        find harness/runs/coding-suite-pilot-2026-09-07/setup -type f -maxdepth 3 -print
+      at: 2026-09-08T00:18:07.82733Z
+      classified: other
+    - cmd: |-
+        git status --short -- harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07 | head -200
+        find harness/runs/coding-suite-pilot-2026-09-07 -type f | wc -l
+        du -sh harness/runs/coding-suite-pilot-2026-09-07/evidence/* | sort -h
+      at: 2026-09-08T00:18:16.821207Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import importlib.util,json,pathlib; p=pathlib.Path("harness/runs/daytoday-four-head-2026-09-07/run_readonly.py"); s=importlib.util.spec_from_file_location("ro",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); root=pathlib.Path("harness/runs/coding-suite-pilot-2026-09-07/evidence");
+        for d in sorted(root.iterdir()):
+         e=m.read_events(d/"stdout.jsonl");
+         if ".sonnet_" in d.name: r,_,c=m.summarize_sonnet(e,d)
+         else: r,_,c=m.summarize_codex(e,d)
+         print(json.dumps({"cell":d.name,"tool_calls":len(c),"prism_calls":sum(1 for x in c if str(x.get("name",x.get("tool",""))).startswith("mcp__prism") or (x.get("type")=="mcp_tool_call" and x.get("server")=="prism"))}))'
+      at: 2026-09-08T00:18:28.047357Z
+      classified: other
+    - cmd: |-
+        for f in $(find harness/runs/coding-suite-pilot-2026-09-07 -name '*.json' -type f); do jq empty "$f" || exit 1; done
+        git diff --check -- harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07/README.md harness/runs/coding-suite-pilot-2026-09-07/treatment-audit.json
+      at: 2026-09-08T00:18:52.241285Z
+      classified: other
+    - cmd: |-
+        PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m unittest discover -s harness/tests
+        PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m py_compile harness/coding_suite.py harness/tests/test_coding_suite.py
+      at: 2026-09-08T00:18:53.539533Z
+      classified: other
+    - cmd: |-
+        rg -n '(sk-[A-Za-z0-9_-]{16,}|[REDACTED:env-secret] Bearer)' harness/runs/coding-suite-pilot-2026-09-07 || true
+        find harness/runs/coding-suite-pilot-2026-09-07 -type f -size +2M -print
+        git diff --stat
+        git status --short -- harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07 harness/mason_bench.py harness/mason_oracle.py
+      at: 2026-09-08T00:19:00.450008Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git add harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07
+        git status --short -- harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07 harness/mason_bench.py harness/mason_oracle.py
+        git diff --cached --stat
+        git diff --cached --check
+      at: 2026-09-08T00:19:07.751396Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify --base HEAD --format text
+      at: 2026-09-08T00:19:20.673701Z
+      classified: other
+    - cmd: |-
+        git add harness/coding_suite.py
+        /Users/tapabratapal/bin/prism verify --base HEAD --format text
+      at: 2026-09-08T00:19:40.468788Z
+      classified: other
+    - cmd: |-
+        git diff --cached --check -- harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07/README.md harness/runs/coding-suite-pilot-2026-09-07/treatment-audit.json
+        git status --short -- harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07 harness/mason_bench.py harness/mason_oracle.py | tail -20
+      at: 2026-09-08T00:19:46.666143Z
+      classified: other
+    - cmd: |-
+        PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m unittest discover -s harness/tests
+        PYTHONPYCACHEPREFIX=/private/tmp/coding-suite-pycache python3 -B -m py_compile harness/coding_suite.py
+      at: 2026-09-08T00:19:47.876845Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git commit -m "research: record coding pilot treatment failure"
+      at: 2026-09-08T00:19:53.082697Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-09-08T00:20:00.632677Z
+      classified: other
+    - cmd: |-
+        git rev-parse HEAD
+        git rev-parse origin/main
+        git status --short -- harness/CODING_SUITE.md harness/coding_suite.py harness/tests/test_coding_suite.py harness/runs/coding-suite-pilot-2026-09-07 harness/mason_bench.py harness/mason_oracle.py
+      at: 2026-09-08T00:20:05.63276Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        prism search ToolSearch deferred --scope text --exhaustive --format text
+      at: 2026-09-08T00:24:17.447085Z
+      classified: other
+    - cmd: |-
+        which -a prism
+        prism version
+        /Users/tapabratapal/bin/prism version
+        /opt/homebrew/bin/prism version
+        /Users/tapabratapal/bin/prism status . --format text
+      at: 2026-09-08T00:24:24.557308Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism index . --format text
+      at: 2026-09-08T00:24:31.598907Z
+      classified: other
+    - cmd: |-
+        ls -ld .grove
+        ls -lh .grove | head
+        mkdir -p /private/tmp/prism-prism-stale-index-2026-09-07
+        mv .grove /private/tmp/prism-prism-stale-index-2026-09-07/grove
+        /Users/tapabratapal/bin/prism index . --format text
+      at: 2026-09-08T00:24:37.486025Z
+      classified: other
+    - cmd: |-
+        ls -la | head -40
+        find . -maxdepth 2 -name 'prism.yaml' -o -name '.prism*' -o -name '.grove*'
+        git ls-files | head
+      at: 2026-09-08T00:24:43.418649Z
+      classified: other
+    - cmd: |-
+        git rev-parse --show-toplevel
+        pwd
+        ls -la .. | head -60
+      at: 2026-09-08T00:24:50.824279Z
+      classified: other
+    - cmd: |-
+        sed -n '1,240p' AGENTS.md
+        /Users/tapabratapal/bin/prism search ToolSearch deferred --scope text --exhaustive --format text
+      at: 2026-09-08T00:24:59.644355Z
+      classified: other
+    - cmd: |-
+        /Users/tapabratapal/bin/prism lookup steeringInstructions --format text
+        /Users/tapabratapal/bin/prism lookup TestSteeringBlock_DeferredToolsBootstrap --format text
+      at: 2026-09-08T00:25:05.901832Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism query "How prism init configures Codex MCP tools and generated project files" --terms codex,mcp,AGENTS --format text
+      at: 2026-09-08T00:25:13.762626Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism change-impact 'steeringInstructions' --format text
+      at: 2026-09-08T00:25:45.108919Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism read internal/cli/commands.go --offset 455 --limit 48 --format text
+      at: 2026-09-08T00:26:07.790993Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/cli -count=1
+      at: 2026-09-08T00:26:27.721342Z
+      classified: test
+    - cmd: git status --short --branch && git diff -- internal/cli/commands.go internal/cli/init_test.go && sed -n '470,515p' internal/cli/commands.go && sed -n '430,475p' internal/cli/init_test.go
+      at: 2026-09-08T00:27:21.051687Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/init_test.go && GOFLAGS= GOWORK=off go test ./internal/cli -count=1
+      at: 2026-09-08T00:27:39.584508Z
+      classified: test
+    - cmd: rg -n "steeringBlock|steeringInstructions|Before code discovery|Make your first|Read-only inspection|schemas describe|Never abandon" internal/cli/*_test.go
+      at: 2026-09-08T00:27:49.875733Z
+      classified: other
+    - cmd: sed -n '1,70p' internal/cli/steeringdelivery_test.go && sed -n '486,555p' internal/cli/commands.go
+      at: 2026-09-08T00:27:54.285455Z
+      classified: other
+    - cmd: sed -n '478,492p' internal/cli/commands.go
+      at: 2026-09-08T00:27:58.88307Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/init_test.go && GOFLAGS= GOWORK=off go test ./internal/cli -run 'TestSteering(Block_PrismAccessFallbacks|RoutesKnownNamesDirectly|RetainsEvidenceAndEditSafeguards)' -count=1 -v
+      at: 2026-09-08T00:28:20.791255Z
+      classified: test
+    - cmd: git log --oneline --decorate -4 && git status --short --branch && mkdir -p /private/tmp/prism-codex-smoke-20260907/bin && GOFLAGS= GOWORK=off go build -o /private/tmp/prism-codex-smoke-20260907/bin/prism ./cmd/prism && /private/tmp/prism-codex-smoke-20260907/bin/prism version
+      at: 2026-09-08T00:28:38.666983Z
+      classified: build
+    - cmd: git init -q && git add go.mod main.go && git -c user.name='Prism Smoke' -c user.email='smoke@example.invalid' commit -q -m 'smoke fixture' && PATH="/private/tmp/prism-codex-smoke-20260907/bin:$PATH" prism init --no-permissions . && PATH="/private/tmp/prism-codex-smoke-20260907/bin:$PATH" prism index . && codex --version && sed -n '1,35p' AGENTS.md
+      at: 2026-09-08T00:28:49.994735Z
+      classified: other
+    - cmd: codex exec --help | sed -n '1,180p'
+      at: 2026-09-08T00:28:54.172783Z
+      classified: other
+    - cmd: 'PATH="/private/tmp/prism-codex-smoke-20260907/bin:$PATH" codex exec --ignore-user-config --ephemeral --json -m gpt-5.5 -s read-only -C /private/tmp/prism-codex-smoke-20260907 -c ''mcp_servers.prism.command="/private/tmp/prism-codex-smoke-20260907/bin/prism"'' -c ''mcp_servers.prism.args=["mcp","."]'' -c ''mcp_servers.prism.required=true'' ''Read-only smoke check: identify every function that calls Target and answer with only their names. Follow the repository instructions. Do not edit files.'''
+      at: 2026-09-08T00:29:20.476634Z
+      classified: other
+    - cmd: rg -l 'Before your first tool call|establish Prism access|first available Prism route' --glob 'AGENTS.md' --glob 'CLAUDE.md' --glob 'GEMINI.md' --glob '.cursorrules' --glob '.windsurfrules' --glob 'copilot-instructions.md' --glob '.clinerules' --glob 'instructions.md' --glob 'prism.md' . .github .devin .kiro 2>/dev/null || true && git status --short
+      at: 2026-09-08T00:29:26.638063Z
+      classified: other
+    - cmd: rg -n 'Before your first tool call|first available Prism route' AGENTS.md CLAUDE.md GEMINI.md .cursorrules .windsurfrules .clinerules .github/copilot-instructions.md .devin/instructions.md .kiro/steering/prism.md
+      at: 2026-09-08T00:29:32.436002Z
+      classified: other
+    - cmd: git ls-files AGENTS.md CLAUDE.md GEMINI.md .cursorrules .windsurfrules .clinerules .github/copilot-instructions.md .devin/instructions.md .kiro/steering/prism.md .mcp.json .cursor/mcp.json .windsurf/mcp.json .vscode/mcp.json prism.yaml && git status --short --ignored | sed -n '1,80p'
+      at: 2026-09-08T00:29:41.564687Z
+      classified: other
+    - cmd: PATH="/private/tmp/prism-codex-smoke-20260907/bin:$PATH" prism init --refresh --no-permissions . </dev/null
+      at: 2026-09-08T00:29:50.401666Z
+      classified: other
+    - cmd: git status --short && git diff --stat && git diff -- .mcp.json .cursor/mcp.json .windsurf/mcp.json prism.yaml | sed -n '1,200p'
+      at: 2026-09-08T00:29:55.526047Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T00:30:21.59337Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-codex-smoke-20260907/bin/prism ./cmd/prism && /private/tmp/prism-codex-smoke-20260907/bin/prism verify --base HEAD --format text
+      at: 2026-09-08T00:30:30.811109Z
+      classified: build
+    - cmd: /private/tmp/prism-codex-smoke-20260907/bin/prism references steeringInstructions --format text
+      at: 2026-09-08T00:31:04.408384Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test -race ./internal/cli ./internal/mcp -count=1
+      at: 2026-09-08T00:31:06.835125Z
+      classified: test
+    - cmd: git diff --check && git status --short --branch && git diff --stat && git diff -- internal/cli/commands.go internal/cli/init_test.go AGENTS.md | sed -n '1,260p'
+      at: 2026-09-08T00:31:10.651569Z
+      classified: other
+    - cmd: git diff -- .mcp.json .cursor/mcp.json .windsurf/mcp.json
+      at: 2026-09-08T00:31:15.068546Z
+      classified: other
+    - cmd: 'git add .clinerules .cursor/mcp.json .cursorrules .devin/instructions.md .github/copilot-instructions.md .kiro/steering/prism.md .mcp.json .windsurf/mcp.json .windsurfrules AGENTS.md CLAUDE.md GEMINI.md internal/cli/commands.go internal/cli/init_test.go && git commit -m ''fix: fall back when deferred tool loading is unavailable'' && git status --short --branch'
+      at: 2026-09-08T00:31:38.930349Z
+      classified: other
+notes: []
+redactions: 1

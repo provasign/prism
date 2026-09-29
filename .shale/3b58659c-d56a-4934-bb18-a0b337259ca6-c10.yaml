@@ -1,0 +1,779 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c10
+created_at: 2026-08-29T03:09:48.590577Z
+finalized_at: 2026-08-29T15:16:38.221713Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/session/ledger.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-29T15:10:05.303253Z
+commands:
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        from collections import defaultdict
+
+        calls = defaultdict(lambda: {"n":0, "res_chars":0, "res_list":[]})
+        pending = {}  # tool_use id -> tool name
+        files = glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl"))
+        nfiles = 0
+        for f in files:
+            try:
+                with open(f) as fh:
+                    for line in fh:
+                        if "mcp__prism__" not in line and "tool_result" not in line:
+                            continue
+                        try: rec = json.loads(line)
+                        except Exception: continue
+                        msg = rec.get("message") or {}
+                        content = msg.get("content")
+                        if not isinstance(content, list): continue
+                        for c in content:
+                            if c.get("type") == "tool_use" and str(c.get("name","")).startswith("mcp__prism__"):
+                                pending[c.get("id")] = c["name"]
+                            elif c.get("type") == "tool_result" and c.get("tool_use_id") in pending:
+                                name = pending.pop(c["tool_use_id"])
+                                body = c.get("content")
+                                s = json.dumps(body) if not isinstance(body, str) else body
+                                d = calls[name]
+                                d["n"] += 1; d["res_chars"] += len(s); d["res_list"].append(len(s))
+                nfiles += 1
+            except Exception: pass
+
+        print(f"scanned {nfiles} transcript files")
+        total_chars = sum(d["res_chars"] for d in calls.values())
+        total_n = sum(d["n"] for d in calls.values())
+        print(f"{'tool':34} {'calls':>6} {'share%':>7} {'total chars':>12} {'chars%':>7} {'median':>8} {'p90':>8} {'max':>9}")
+        for name, d in sorted(calls.items(), [REDACTED:env-secret] kv:-kv[1]["res_chars"]):
+            xs = sorted(d["res_list"])
+            med = xs[len(xs)//2] if xs else 0
+            p90 = xs[int(len(xs)*0.9)] if xs else 0
+            print(f"{name:34} {d['n']:>6} {100*d['n']/max(total_n,1):>6.1f}% {d['res_chars']:>12} {100*d['res_chars']/max(total_chars,1):>6.1f}% {med:>8} {p90:>8} {max(xs) if xs else 0:>9}")
+        print(f"\nTOTAL calls={total_n}  result chars={total_chars} (~{total_chars//4} tokens raw, before cache re-reads)")
+        EOF
+      at: 2026-08-29T15:02:20.895536Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        from collections import defaultdict, Counter
+
+        files = glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl"))
+        read_stats = Counter(); search_stats = Counter(); query_stats = Counter()
+        cached_hits = 0; read_total = 0; read_full = 0; read_ranged = 0
+        repeat_key = defaultdict(int)   # (session, tool, canonical input) -> count
+        search_scope = Counter(); search_chars_by_scope = Counter()
+        pending = {}
+        per_session_repeats = 0; repeat_chars = 0
+        lookup_after_search = 0
+
+        for f in files:
+            sess = f
+            seen_inputs = {}
+            try:
+                with open(f) as fh:
+                    for line in fh:
+                        if "mcp__prism__" not in line and "tool_result" not in line: continue
+                        try: rec = json.loads(line)
+                        except Exception: continue
+                        msg = rec.get("message") or {}
+                        content = msg.get("content")
+                        if not isinstance(content, list): continue
+                        for c in content:
+                            if c.get("type") == "tool_use" and str(c.get("name","")).startswith("mcp__prism__"):
+                                name = c["name"]; inp = c.get("input") or {}
+                                pending[c["id"]] = (name, inp)
+                                key = (name, json.dumps({k:v for k,v in sorted(inp.items()) if k not in ("context_used","model","task")}, sort_keys=True))
+                                seen_inputs[key] = seen_inputs.get(key, 0) + 1
+                                if name.endswith("prism_read"):
+                                    read_total += 1
+                                    if "offset" in inp or "limit" in inp: read_ranged += 1
+                                    else: read_full += 1
+                                elif name.endswith("prism_search"):
+                                    search_scope[inp.get("scope","both(default)")] += 1
+                                    for flag in ("files_only","exhaustive","context","path","glob"):
+                                        if inp.get(flag): search_stats[flag] += 1
+                                elif name.endswith("prism_query"):
+                                    query_stats[f"budget={inp.get('budget','default8000')}"] += 1
+                                    query_stats[f"delivery={inp.get('delivery','default')}"] += 1
+                            elif c.get("type") == "tool_result" and c.get("tool_use_id") in pending:
+                                name, inp = pending.pop(c["tool_use_id"])
+                                body = c.get("content")
+                                s = json.dumps(body) if not isinstance(body, str) else body
+                                if name.endswith("prism_read") and "prism:cached" in s: cached_hits += 1
+                                if name.endswith("prism_search"):
+                                    search_chars_by_scope[inp.get("scope","both(default)")] += len(s)
+                                key = (name, json.dumps({k:v for k,v in sorted(inp.items()) if k not in ("context_used","model","task")}, sort_keys=True))
+                                if seen_inputs.get(key, 0) > 1:
+                                    per_session_repeats += 1; repeat_chars += len(s)
+                                    seen_inputs[key] = 1  # count each extra once
+            except Exception: pass
+
+        print("READ: total", read_total, "| full-file", read_full, "| ranged", read_ranged, "| cached-pointer hits", cached_hits)
+        print("\nSEARCH scope distribution (calls / chars):")
+        for k in search_scope:
+            print(f"  {k:16} {search_scope[k]:>5} calls  {search_chars_by_scope[k]:>9} chars")
+        print("SEARCH flags used:", dict(search_stats))
+        print("\nQUERY params:", dict(query_stats))
+        print("\nEXACT repeat calls in same session (identical tool+input, beyond first):", per_session_repeats, "wasting", repeat_chars, "chars")
+        EOF
+      at: 2026-08-29T15:02:49.374199Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re, json, glob, os
+        # (a) Schema overhead: extract tool descriptions + input schemas from tools.go
+        src = open(os.path.expanduser("~/Projects/provasign/prism/internal/mcp/tools.go")).read()
+        # crude but effective: measure the string literals near tool registrations
+        descs = re.findall(r'Description:\s*(`[^`]*`|"(?:[^"\\]|\\.)*")', src)
+        total = sum(len(d) for d in descs)
+        print(f"tools.go: {len(descs)} Description literals, {total} chars total (~{total//4} tokens)")
+        big = sorted(((len(d), d[:60].replace(chr(10),' ')) for d in descs), reverse=True)[:10]
+        for l, head in big: print(f"  {l:>6} chars  {head}")
+        EOF
+        grep -c . ~/Projects/provasign/prism/internal/cli/commands.go >/dev/null; python3 -c "
+        src=open('$HOME/Projects/provasign/prism/internal/cli/commands.go').read()
+        i=src.index('steeringInstructions'); j=src.index('\`',i); k=src.index('\`',j+1)
+        print('steering block:', k-j, 'chars (~', (k-j)//4, 'tokens) x 9 files but loaded once per session via CLAUDE.md')"
+      at: 2026-08-29T15:03:27.407902Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":2,"method":"tools/list"}\n' | ./bin/prism-mainframe mcp 2>/dev/null | python3 -c "
+        import sys, json
+        for line in sys.stdin:
+            try: d=json.loads(line)
+            except: continue
+            if d.get('id')==2:
+                tools=d['result']['tools']
+                tot=0
+                for t in tools:
+                    s=len(json.dumps(t)); tot+=s
+                    print(f\"  {t['name']:22} {s:>6} chars (desc {len(t.get('description','')):>5}, schema {len(json.dumps(t.get('inputSchema',{}))):>5})\")
+                print(f'TOTAL tools/list payload: {tot} chars (~{tot//4} tokens) — paid EVERY session via alwaysLoad')"; python3 -c "
+        s=open('CLAUDE.md').read()
+        i=s.find('## Prism'); print('repo CLAUDE.md prism section:', len(s)-i if i>=0 else 0, 'chars (~', (len(s)-i)//4 if i>=0 else 0, 'tokens) per session')"
+      at: 2026-08-29T15:03:44.293793Z
+      classified: build
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os
+        files = glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl"))
+        rem = []
+        for f in files:
+            try:
+                lines = open(f).read().splitlines()
+            except Exception: continue
+            # positions of assistant turns and prism results
+            a_pos = [i for i,l in enumerate(lines) if '"role":"assistant"' in l or '"role": "assistant"' in l]
+            p_pos = [i for i,l in enumerate(lines) if 'mcp__prism__' in l and 'tool_result' not in l]
+            if not p_pos or not a_pos: continue
+            import bisect
+            for p in p_pos:
+                k = len(a_pos) - bisect.bisect_right(a_pos, p)
+                rem.append(k)
+        rem.sort()
+        if rem:
+            n=len(rem)
+            print(f"prism calls measured: {n}")
+            print(f"assistant turns remaining after a prism call: median {rem[n//2]}, mean {sum(rem)/n:.0f}, p90 {rem[int(n*0.9)]}")
+            # effective cost multiplier with 0.1x cache-read pricing
+            med, mean = rem[n//2], sum(rem)/n
+            print(f"effective token multiplier (1 + 0.1*turns): median ~{1+0.1*med:.1f}x, mean ~{1+0.1*mean:.1f}x")
+        EOF
+      at: 2026-08-29T15:03:56.185682Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, re
+        files = glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl"))
+        pending = {}
+        re_files_in_result = re.compile(r'"file"\s*:\s*"([^"]+)"')
+        tot_read = redun_read = 0; redun_read_chars = 0
+        tot_query = 0; query_overlap_calls = 0
+        for f in files:
+            delivered = set()  # file paths whose content was delivered this session
+            try: fh = open(f)
+            except Exception: continue
+            for line in fh:
+                if "mcp__prism__" not in line and "tool_result" not in line: continue
+                try: rec = json.loads(line)
+                except Exception: continue
+                content = (rec.get("message") or {}).get("content")
+                if not isinstance(content, list): continue
+                for c in content:
+                    if c.get("type") == "tool_use" and str(c.get("name","")).startswith("mcp__prism__"):
+                        pending[c["id"]] = (c["name"], c.get("input") or {})
+                    elif c.get("type") == "tool_result" and c.get("tool_use_id") in pending:
+                        name, inp = pending.pop(c["tool_use_id"])
+                        body = c.get("content"); s = json.dumps(body) if not isinstance(body, str) else body
+                        if name.endswith("prism_read"):
+                            tot_read += 1
+                            fp = inp.get("file","")
+                            if fp in delivered:
+                                redun_read += 1; redun_read_chars += len(s)
+                            delivered.add(fp)
+                        elif name.endswith("prism_query"):
+                            tot_query += 1
+                            qfiles = set(re_files_in_result.findall(s))
+                            if qfiles & delivered: query_overlap_calls += 1
+                            delivered |= qfiles
+                        elif name.endswith("prism_lookup"):
+                            delivered.add(str(inp.get("file","")) or "lookup:"+str(inp.get("name")))
+        print(f"READ: {redun_read}/{tot_read} calls ({100*redun_read/max(tot_read,1):.0f}%) re-deliver a file already delivered this session — {redun_read_chars} chars ({redun_read_chars//4} tok raw)")
+        print(f"QUERY: {query_overlap_calls}/{tot_query} calls ({100*query_overlap_calls/max(tot_query,1):.0f}%) include at least one already-delivered file")
+        EOF
+      at: 2026-08-29T15:04:59.872021Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json, glob, os, re
+        # Parse query results' markdown for file windows: lines like "### path (lines A-B)",
+        # "// path — ..." , backticked paths with :line, and windows headers.
+        re_paths = re.compile(r'(?m)(?:^|[`(\s])((?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+\.[A-Za-z0-9]{1,8})(?::(\d+))?')
+        files = glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl"))
+        pending = {}
+        tot_q = 0; q_overlap = 0; q_chars = 0; q_overlap_est_chars = 0
+        for f in files:
+            delivered = set()
+            try: fh = open(f)
+            except Exception: continue
+            for line in fh:
+                if "mcp__prism__" not in line and "tool_result" not in line: continue
+                try: rec = json.loads(line)
+                except Exception: continue
+                content = (rec.get("message") or {}).get("content")
+                if not isinstance(content, list): continue
+                for c in content:
+                    if c.get("type") == "tool_use" and str(c.get("name","")).startswith("mcp__prism__"):
+                        pending[c["id"]] = (c["name"], c.get("input") or {})
+                    elif c.get("type") == "tool_result" and c.get("tool_use_id") in pending:
+                        name, inp = pending.pop(c["tool_use_id"])
+                        body = c.get("content"); s = json.dumps(body) if not isinstance(body, str) else body
+                        if name.endswith("prism_read"):
+                            delivered.add(inp.get("file",""))
+                        elif name.endswith("prism_query"):
+                            tot_q += 1; q_chars += len(s)
+                            qfiles = {m.group(1) for m in re_paths.finditer(s)}
+                            ov = qfiles & delivered
+                            if ov:
+                                q_overlap += 1
+                                # estimate overlapped share: proportion of matched paths already delivered
+                                q_overlap_est_chars += int(len(s) * len(ov) / max(len(qfiles),1))
+                            delivered |= qfiles
+                        elif name.endswith("prism_lookup"):
+                            if inp.get("file"): delivered.add(inp["file"])
+        print(f"QUERY calls: {tot_q}, total {q_chars} chars")
+        print(f"calls touching >=1 already-delivered file: {q_overlap} ({100*q_overlap/max(tot_q,1):.0f}%)")
+        print(f"estimated overlapped content: ~{q_overlap_est_chars} chars (~{q_overlap_est_chars//4} tok, {100*q_overlap_est_chars/max(q_chars,1):.0f}% of query bytes)")
+        EOF
+      at: 2026-08-29T15:08:13.553669Z
+      classified: other
+    - cmd: ls ~/Projects/provasign/prism/internal/session/ && grep -n "func " ~/Projects/provasign/prism/internal/session/*.go | grep -v _test | head -15 && grep -rn "session\.\|Tracker" ~/Projects/provasign/prism/internal/mcp/server.go | head -8
+      at: 2026-08-29T15:08:23.234462Z
+      classified: other
+    - cmd: grep -rn "Ledger\|ledger" ~/Projects/provasign/prism/internal/mcp/*.go ~/Projects/provasign/prism/internal/cli/commands.go 2>/dev/null | grep -v _test | head -12; grep -n '"stats"\|case "stats"' ~/Projects/provasign/prism/internal/cli/commands.go | head -3; sed -n 29,120p ~/Projects/provasign/prism/internal/session/ledger.go
+      at: 2026-08-29T15:08:31.296657Z
+      classified: other
+    - cmd: grep -rn "\.Save(\|LoadLedger" ~/Projects/provasign/prism/internal --include='*.go' | grep -iv test | head -5; grep -n "case \"prism_\|func (h \*Handler) Call\|CallTool\|dispatch" ~/Projects/provasign/prism/internal/mcp/server.go | head -12
+      at: 2026-08-29T15:08:46.371323Z
+      classified: other
+    - cmd: sed -n 160,240p ~/Projects/provasign/prism/internal/mcp/server.go; sed -n 2460,2495p ~/Projects/provasign/prism/internal/cli/commands.go
+      at: 2026-08-29T15:08:50.836579Z
+      classified: other
+    - cmd: grep -n -A8 "func ledgerPathForRoot" ~/Projects/provasign/prism/internal/cli/commands.go; grep -rn "prism_savings\|\"savings\"" ~/Projects/provasign/prism/internal/mcp/*.go ~/Projects/provasign/prism/internal/cli/commands.go | grep -v _test | head -6
+      at: 2026-08-29T15:09:05.932179Z
+      classified: other
+    - cmd: sed -n 2240,2270p ~/Projects/provasign/prism/internal/cli/commands.go; grep -n "Save\|ledger" ~/Projects/provasign/prism/internal/mcp/server.go | head -8; sed -n 690,720p ~/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-08-29T15:09:17.697642Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p = "internal/session/ledger.go"
+        src = open(p).read()
+
+        # 1. ToolStats gains ResultTokens; find the struct.
+        import re
+        m = re.search(r'type ToolStats struct \{[^}]*\}', src)
+        assert m, "ToolStats not found"
+        old_ts = m.group(0)
+        assert "ResultTokens" not in old_ts
+        new_ts = old_ts.rstrip("}") + "\t// ResultTokens is the size of every rendered result this tool returned,\n\t// as delivered to the agent (final text, post-compression). Independent\n\t// of Original/Delivered, which track the compression baseline only.\n\tResultTokens int64 `json:\"resultTokens,omitempty\"`\n}"
+        src = src.replace(old_ts, new_ts)
+
+        old = """// TotalDeliveredTokens returns running total of delivered tokens."""
+        new = """// RecordResult adds the rendered size of one tool result — the bytes that
+        // actually land in the agent's context window. This is the number token-cost
+        // analysis needs (result size compounds via cache re-reads on every later
+        // turn); Record's Original/Delivered pair measures compression savings and
+        // says nothing about absolute cost.
+        func (l *Ledger) RecordResult(tool string, tokens int) {
+        	l.mu.Lock()
+        	defer l.mu.Unlock()
+        	stats, ok := l.ByTool[tool]
+        	if !ok {
+        		stats = &ToolStats{}
+        		l.ByTool[tool] = stats
+        	}
+        	stats.ResultTokens += int64(tokens)
+        	l.TotalResults += int64(tokens)
+        }
+
+        // DiffSince returns per-tool deltas accumulated since prev (a snapshot of
+        // this ledger taken earlier). Used by the long-running MCP server to merge
+        // its in-memory counts into the shared on-disk ledger without clobbering
+        // other sessions' contributions.
+        func (l *Ledger) DiffSince(prev Summary) Summary {
+        	cur := l.Snapshot()
+        	d := Summary{SessionID: cur.SessionID, ByTool: map[string]ToolStats{}}
+        	d.TotalOriginal = cur.TotalOriginal - prev.TotalOriginal
+        	d.TotalDelivered = cur.TotalDelivered - prev.TotalDelivered
+        	d.TotalResults = cur.TotalResults - prev.TotalResults
+        	for tool, s := range cur.ByTool {
+        		p := prev.ByTool[tool]
+        		delta := ToolStats{
+        			Calls:        s.Calls - p.Calls,
+        			Original:     s.Original - p.Original,
+        			Delivered:    s.Delivered - p.Delivered,
+        			ResultTokens: s.ResultTokens - p.ResultTokens,
+        		}
+        		if delta != (ToolStats{}) {
+        			d.ByTool[tool] = delta
+        		}
+        	}
+        	return d
+        }
+
+        // ApplyDelta adds another session's per-tool deltas into this ledger.
+        func (l *Ledger) ApplyDelta(d Summary) {
+        	l.mu.Lock()
+        	defer l.mu.Unlock()
+        	l.TotalOriginal += d.TotalOriginal
+        	l.TotalDelivered += d.TotalDelivered
+        	l.TotalResults += d.TotalResults
+        	for tool, ds := range d.ByTool {
+        		stats, ok := l.ByTool[tool]
+        		if !ok {
+        			stats = &ToolStats{}
+        			l.ByTool[tool] = stats
+        		}
+        		stats.Calls += ds.Calls
+        		stats.Original += ds.Original
+        		stats.Delivered += ds.Delivered
+        		stats.ResultTokens += ds.ResultTokens
+        	}
+        }
+
+        // TotalDeliveredTokens returns running total of delivered tokens."""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+
+        # 2. Ledger + Summary gain TotalResults.
+        m2 = re.search(r'type Ledger struct \{[^}]*\}', src)
+        assert m2 and "TotalResults" not in m2.group(0)
+        src = src.replace(m2.group(0), m2.group(0).rstrip("}") + "\tTotalResults   int64\n}")
+        old3 = '	TotalDelivered int64                `json:"totalDeliveredTokens"`'
+        new3 = '''	TotalDelivered int64                `json:"totalDeliveredTokens"`
+        	TotalResults   int64                `json:"totalResultTokens,omitempty"`'''
+        assert src.count(old3) == 1
+        src = src.replace(old3, new3)
+        old4 = """		TotalOriginal:  l.TotalOriginal,
+        		TotalDelivered: l.TotalDelivered,"""
+        new4 = """		TotalOriginal:  l.TotalOriginal,
+        		TotalDelivered: l.TotalDelivered,
+        		TotalResults:   l.TotalResults,"""
+        assert src.count(old4) == 1
+        src = src.replace(old4, new4)
+        open(p, "w").write(src)
+        print("ledger extended")
+        EOF
+        go build ./internal/session/ 2>&1 | head -5
+      at: 2026-08-29T15:09:51.358101Z
+      classified: build
+    - cmd: 'sed -n "$(grep -n ''func LoadLedger'' ~/Projects/provasign/prism/internal/session/ledger.go | cut -d: -f1),+30p" ~/Projects/provasign/prism/internal/session/ledger.go'
+      at: 2026-08-29T15:09:59.354538Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "type Server struct" -A8 internal/mcp/server.go | head -10; grep -n "import (" -A12 internal/mcp/server.go | head -14
+      at: 2026-08-29T15:10:10.53831Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p = "internal/mcp/server.go"
+        src = open(p).read()
+        src = src.replace('''import (
+        	"os"
+        	"bufio"
+        	"encoding/json"
+        	"fmt"
+        	"io"
+        	"strconv"
+        	"strings"
+
+        	"github.com/provasign/prism/internal/version"
+        )''', '''import (
+        	"os"
+        	"bufio"
+        	"encoding/json"
+        	"fmt"
+        	"io"
+        	"strconv"
+        	"strings"
+        	"sync"
+        	"time"
+
+        	"github.com/provasign/prism/internal/ranking"
+        	"github.com/provasign/prism/internal/session"
+        	"github.com/provasign/prism/internal/version"
+        )''', 1)
+
+        src = src.replace('''type Server struct {
+        	handler *Handler
+        }''', '''type Server struct {
+        	handler *Handler
+
+        	// Ledger persistence for the long-running server: CLI invocations save
+        	// per call, but an MCP session historically recorded nothing durable —
+        	// which is why token-cost analysis had to be done by mining agent
+        	// transcripts. The server now merges its in-memory deltas into the
+        	// shared per-root ledger file after each tool call, under the same file
+        	// lock CLI processes use, so concurrent sessions add rather than
+        	// clobber.
+        	ledgerPath string
+        	ledgerMu   sync.Mutex
+        	lastSaved  session.Summary
+        }''', 1)
+
+        src = src.replace('''// NewServer wires a Handler into a stdio JSON-RPC server.
+        func NewServer(h *Handler) *Server { return &Server{handler: h} }''', '''// NewServer wires a Handler into a stdio JSON-RPC server.
+        func NewServer(h *Handler) *Server { return &Server{handler: h} }
+
+        // WithLedgerPersistence enables per-call delta merging into the shared
+        // ledger file at path (see Server.ledgerPath).
+        func (s *Server) WithLedgerPersistence(path string) *Server {
+        	s.ledgerPath = path
+        	s.lastSaved = s.handler.Ledger.Snapshot()
+        	return s
+        }
+
+        // persistLedgerDelta merges counts accumulated since the last save into the
+        // on-disk ledger. Best-effort: a lock timeout or IO error drops one delta,
+        // never blocks a tool response.
+        func (s *Server) persistLedgerDelta() {
+        	if s.ledgerPath == "" {
+        		return
+        	}
+        	s.ledgerMu.Lock()
+        	defer s.ledgerMu.Unlock()
+        	delta := s.handler.Ledger.DiffSince(s.lastSaved)
+        	_ = session.WithFileLock(s.ledgerPath+".lock", 2*time.Second, func() error {
+        		disk, err := session.LoadLedger(s.ledgerPath)
+        		if err != nil {
+        			disk = session.NewLedger(time.Now().Format("20060102-150405"))
+        		}
+        		disk.ApplyDelta(delta)
+        		return disk.Save(s.ledgerPath)
+        	})
+        	s.lastSaved = s.handler.Ledger.Snapshot()
+        }''', 1)
+
+        old = '''		content := []map[string]string{{"type": "text", "text": text}}'''
+        new = '''		// Result-size accounting: this is the number that compounds via
+        		// cache re-reads on every later turn (measured: median 4.4x, mean
+        		// 11x effective multiplier across real sessions).
+        		s.handler.Ledger.RecordResult(call.Name, ranking.EstimateTokens(text))
+        		s.persistLedgerDelta()
+        		content := []map[string]string{{"type": "text", "text": text}}'''
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        open(p, "w").write(src)
+        print("server wired")
+        EOF
+        go build ./... 2>&1 | head -5
+      at: 2026-08-29T15:10:29.737628Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign/prism && grep -n "NewServer(" internal/cli/commands.go | head -3 && sed -n "$(grep -n ''NewServer('' internal/cli/commands.go | head -1 | cut -d: -f1),+6p" internal/cli/commands.go'
+      at: 2026-08-29T15:10:38.256459Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p = "internal/cli/commands.go"
+        src = open(p).read()
+        old = """	srv := mcp.NewServer(h)
+        	serveErr := srv.Serve(os.Stdin, os.Stdout)"""
+        new = """	srv := mcp.NewServer(h).WithLedgerPersistence(ledgerPathForRoot(root))
+        	serveErr := srv.Serve(os.Stdin, os.Stdout)"""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+
+        # prism stats command: human table over the shared ledger.
+        old2 = """func cmdSavings(args []string) int {"""
+        new2 = '''// cmdStats prints the per-root token-cost dashboard as a human table:
+        // per tool, calls / result tokens / avg per call, plus compression savings.
+        // Same data source as `prism savings` (the shared per-root ledger), different
+        // audience: savings is the agent-facing JSON, stats is for the human deciding
+        // where token budget goes.
+        func cmdStats(args []string) int {
+        	dir := dirArg(args, 0, ".")
+        	root, err := filepath.Abs(dir)
+        	if err != nil {
+        		fmt.Fprintln(os.Stderr, "stats:", err)
+        		return 1
+        	}
+        	ledger, err := session.LoadLedger(ledgerPathForRoot(root))
+        	if err != nil {
+        		fmt.Println("no ledger yet for this root — run some prism tools first")
+        		return 0
+        	}
+        	s := ledger.Snapshot()
+        	type row struct {
+        		tool string
+        		st   session.ToolStats
+        	}
+        	rows := make([]row, 0, len(s.ByTool))
+        	for tool, st := range s.ByTool {
+        		rows = append(rows, row{tool, st})
+        	}
+        	sort.Slice(rows, func(i, j int) bool { return rows[i].st.ResultTokens > rows[j].st.ResultTokens })
+        	fmt.Printf("%-28s %8s %14s %10s %12s\\n", "tool", "calls", "result tokens", "avg/call", "compressed")
+        	for _, r := range rows {
+        		avg := int64(0)
+        		if r.st.Calls > 0 {
+        			avg = r.st.ResultTokens / r.st.Calls
+        		}
+        		comp := ""
+        		if r.st.Original > 0 {
+        			comp = fmt.Sprintf("%.0f%%", (1-float64(r.st.Delivered)/float64(r.st.Original))*100)
+        		}
+        		fmt.Printf("%-28s %8d %14d %10d %12s\\n", r.tool, r.st.Calls, r.st.ResultTokens, avg, comp)
+        	}
+        	fmt.Printf("\\nTOTAL result tokens delivered: %d", s.TotalResults)
+        	if s.TotalOriginal > 0 {
+        		fmt.Printf("   (compression saved %.0f%% on the compressible paths)", s.SavingsPercent)
+        	}
+        	fmt.Println()
+        	fmt.Println("result tokens compound: each result is re-read from cache on every later turn.")
+        	return 0
+        }
+
+        func cmdSavings(args []string) int {'''
+        assert src.count(old2) == 1
+        src = src.replace(old2, new2)
+
+        # register command
+        old3 = '''	case "savings":'''
+        new3 = '''	case "stats":
+        		return cmdStats(rest)
+        	case "savings":'''
+        assert src.count(old3) == 1
+        src = src.replace(old3, new3)
+        open(p, "w").write(src)
+        print("stats command added")
+        EOF
+        go build ./... 2>&1 | head -5
+      at: 2026-08-29T15:10:53.815965Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 -c "
+        p='internal/cli/commands.go'; s=open(p).read()
+        s=s.replace('avg = r.st.ResultTokens / r.st.Calls','avg = r.st.ResultTokens / int64(r.st.Calls)')
+        open(p,'w').write(s)" && go build ./... && cat >> internal/session/ledger_test.go <<'EOF'
+
+        func TestRecordResultAndDeltaMerge(t *testing.T) {
+        	l := NewLedger("s1")
+        	l.RecordResult("prism_search", 100)
+        	l.RecordResult("prism_search", 50)
+        	l.RecordResult("prism_read", 400)
+        	if l.TotalResults != 550 {
+        		t.Fatalf("TotalResults = %d", l.TotalResults)
+        	}
+        	base := l.Snapshot()
+
+        	l.RecordResult("prism_read", 25)
+        	l.Record("prism_read", 1000, 300)
+        	d := l.DiffSince(base)
+        	if d.TotalResults != 25 || d.TotalDelivered != 300 {
+        		t.Fatalf("delta = %+v", d)
+        	}
+        	if d.ByTool["prism_read"].ResultTokens != 25 || d.ByTool["prism_read"].Calls != 1 {
+        		t.Fatalf("read delta = %+v", d.ByTool["prism_read"])
+        	}
+        	if _, ok := d.ByTool["prism_search"]; ok {
+        		t.Fatal("unchanged tool leaked into delta")
+        	}
+
+        	disk := NewLedger("disk")
+        	disk.RecordResult("prism_read", 7)
+        	disk.ApplyDelta(d)
+        	if disk.TotalResults != 32 || disk.ByTool["prism_read"].ResultTokens != 32 {
+        		t.Fatalf("merged = %+v", disk.Snapshot())
+        	}
+
+        	// Round-trips through Save/Load.
+        	path := t.TempDir() + "/ledger.json"
+        	if err := disk.Save(path); err != nil {
+        		t.Fatal(err)
+        	}
+        	back, err := LoadLedger(path)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	if back.TotalResults != 32 || back.ByTool["prism_read"].ResultTokens != 32 {
+        		t.Fatalf("round-trip lost result tokens: %+v", back.Snapshot())
+        	}
+        }
+        EOF
+        go test ./internal/session/ 2>&1 | tail -1
+      at: 2026-08-29T15:11:09.159683Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && go build -o bin/prism-stats-test ./cmd/prism && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && E=$S/lineage-estate && printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"CUST-SSN","scope":"text"}}}\n{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"CUSTREC.cpy"}}}\n' | (cd $E && ~/Projects/provasign/prism/bin/prism-stats-test mcp >/dev/null 2>&1); cd $E && ~/Projects/provasign/prism/bin/prism-stats-test stats .
+      at: 2026-08-29T15:11:23.025408Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p = "internal/session/ledger.go"
+        src = open(p).read()
+        old = """	ResultTokens int64 `json:"resultTokens,omitempty"`
+        }"""
+        new = """	ResultTokens int64 `json:"resultTokens,omitempty"`
+        	// ResultCalls counts dispatches that produced a result — one per tool
+        	// call at the server, regardless of which internal paths also Recorded.
+        	ResultCalls int64 `json:"resultCalls,omitempty"`
+        }"""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        old2 = """	stats.ResultTokens += int64(tokens)
+        	l.TotalResults += int64(tokens)
+        }"""
+        new2 = """	stats.ResultTokens += int64(tokens)
+        	stats.ResultCalls++
+        	l.TotalResults += int64(tokens)
+        }"""
+        assert src.count(old2) == 1
+        src = src.replace(old2, new2)
+        old3 = """		delta := ToolStats{
+        			Calls:        s.Calls - p.Calls,
+        			Original:     s.Original - p.Original,
+        			Delivered:    s.Delivered - p.Delivered,
+        			ResultTokens: s.ResultTokens - p.ResultTokens,
+        		}"""
+        new3 = """		delta := ToolStats{
+        			Calls:        s.Calls - p.Calls,
+        			Original:     s.Original - p.Original,
+        			Delivered:    s.Delivered - p.Delivered,
+        			ResultTokens: s.ResultTokens - p.ResultTokens,
+        			ResultCalls:  s.ResultCalls - p.ResultCalls,
+        		}"""
+        assert src.count(old3) == 1
+        src = src.replace(old3, new3)
+        old4 = """		stats.Calls += ds.Calls
+        		stats.Original += ds.Original
+        		stats.Delivered += ds.Delivered
+        		stats.ResultTokens += ds.ResultTokens
+        	}"""
+        new4 = """		stats.Calls += ds.Calls
+        		stats.Original += ds.Original
+        		stats.Delivered += ds.Delivered
+        		stats.ResultTokens += ds.ResultTokens
+        		stats.ResultCalls += ds.ResultCalls
+        	}"""
+        assert src.count(old4) == 1
+        src = src.replace(old4, new4)
+        open(p, "w").write(src)
+
+        p2 = "internal/cli/commands.go"
+        src2 = open(p2).read()
+        old5 = """		avg := int64(0)
+        		if r.st.Calls > 0 {
+        			avg = r.st.ResultTokens / int64(r.st.Calls)
+        		}"""
+        new5 = """		calls := r.st.ResultCalls
+        		if calls == 0 {
+        			calls = int64(r.st.Calls) // pre-instrumentation ledgers
+        		}
+        		avg := int64(0)
+        		if calls > 0 {
+        			avg = r.st.ResultTokens / calls
+        		}"""
+        assert src2.count(old5) == 1
+        src2 = src2.replace(old5, new5)
+        old6 = """		fmt.Printf("%-28s %8d %14d %10d %12s\\n", r.tool, r.st.Calls, r.st.ResultTokens, avg, comp)"""
+        new6 = """		fmt.Printf("%-28s %8d %14d %10d %12s\\n", r.tool, calls, r.st.ResultTokens, avg, comp)"""
+        assert src2.count(old6) == 1
+        open(p2, "w").write(src2.replace(old6, new6))
+        print("ResultCalls threaded")
+        EOF
+        go build ./... && go test ./internal/session/ ./internal/mcp/ ./internal/cli/ 2>&1 | tail -3
+      at: 2026-08-29T15:11:52.745152Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && go build -o bin/prism-stats-test ./cmd/prism && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad && E=$S/lineage-estate && printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"CUST-SSN","scope":"text"}}}\n{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"prism_lookup","arguments":{"name":"CUSTUPD"}}}\n' | (cd $E && ~/Projects/provasign/prism/bin/prism-stats-test mcp >/dev/null 2>&1); cd $E && ~/Projects/provasign/prism/bin/prism-stats-test stats . && go test -C ~/Projects/provasign/prism ./... 2>&1 | grep -cv "^ok\|no test files"
+      at: 2026-08-29T15:12:09.428355Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-stats-test && git add internal/session/ledger.go internal/session/ledger_test.go internal/mcp/server.go internal/cli/commands.go && git commit -q -m "$(cat <<'EOF'
+        stats: per-call result-size accounting, persisted from MCP sessions
+
+        Token-cost analysis previously required mining agent transcripts: the
+        long-running MCP server recorded nothing durable, and the ledger only
+        tracked the compression baseline (original vs delivered), not what a
+        result actually costs. Three additions:
+
+        - Ledger.RecordResult captures every rendered result's final size (the
+          number that compounds via cache re-reads — measured median 4.4x, mean
+          11x effective multiplier across 1,980 real sessions).
+        - The MCP server merges in-memory deltas into the shared per-root
+          ledger after each call (DiffSince/ApplyDelta under the existing file
+          lock), so concurrent sessions add rather than clobber. Best-effort:
+          a lock timeout drops one delta, never blocks a response.
+        - `prism stats [dir]`: the human dashboard — per tool: calls, result
+          tokens, avg/call, compression savings. Same ledger as `prism
+          savings` (agent-facing JSON), different audience.
+
+        Baseline from transcript mining (4,018 calls): search 54% of calls /
+        27% of bytes, read 28%/41%, query 7%/25% (20.4k chars avg). This turns
+        that one-off archaeology into a standing dashboard.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3; cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test
+      at: 2026-08-29T15:12:27.822267Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && go build -o bin/prism ./cmd/prism && cd ~/Projects/provasign/research/harness && python3 ab_gate.py --baseline ~/Projects/provasign/prism/bin/prism --candidate ~/Projects/provasign/prism/bin/prism --limit 1 2>&1; echo "exit: $?"'
+      at: 2026-08-29T15:15:23.108275Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign/research/harness && python3 -u ab_gate.py --baseline ~/Projects/provasign/prism/bin/prism --candidate ~/Projects/provasign/prism/bin/prism 2>&1; echo "exit: $?"'
+      at: 2026-08-29T15:16:10.853435Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git add harness/ab_gate.py && git commit -q -m "$(cat <<'EOF'
+        ab_gate: fail-fast A/B gate for prism behavior changes
+
+        Baseline binary vs candidate through the ab_agentic_mcp pipeline,
+        built to fail fast: cheapest tasks first, hard-fail (exit 1) the
+        moment the candidate errors where baseline succeeded or drops recall
+        >0.15 on any task; aggregate fail on mean recall drop >0.05. Cells
+        cached per (task, model, binary-sha) so repeated gates against one
+        baseline pay only candidate cells. Printed scope is honest: n=9 haiku
+        tasks catches big breaks, not ±5% shifts (~50%/cell noise; subtle
+        effects need ~48 pairs). PASS = "not broken", never "proven better".
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1
+      at: 2026-08-29T15:16:25.281635Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && git push origin main 2>&1 | tail -1 && git tag -a v0.56.8 -m "stats: result-size accounting, MCP ledger persistence, prism stats" && git push origin v0.56.8 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq ''.[0].databaseId'') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 ''version "'''
+      at: 2026-08-29T15:16:37.753609Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T03:09:48.590577Z
+redactions: 1

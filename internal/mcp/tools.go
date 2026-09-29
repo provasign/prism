@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,8 +30,6 @@ type Handler struct {
 	Grove   *grove.Client
 	Session *session.Tracker
 	Ledger  *session.Ledger
-	Signals *ranking.SignalComputer
-	Weights *ranking.LearnedWeights // A: per-repo outcome-conditioned weights
 
 	// driftBase records the symbols delivered with each full file read this
 	// session, so prism_drift can diff structurally (renames, breaking
@@ -41,9 +41,22 @@ type Handler struct {
 	// completes. Nil means no deferred init (Grove is already ready).
 	readyCh <-chan struct{}
 
+	// hypLedger accumulates per-session evidence for the scope note
+	// (hypothesisledger.go).
+	hypLedger hypothesisLedger
+
 	// Feedback store (in-memory; persisted across MCP calls in one session).
 	fbMu     sync.Mutex
 	feedback []FeedbackEntry
+
+	// once: notes already said this session (oncenotes.go).
+	once onceNotes
+
+	// deliveredRanges records source windows already placed in this session's
+	// context by prism_query/prism_read. Whole-file session caching alone cannot
+	// recognize a later ranged read of a query window.
+	rangeMu         sync.Mutex
+	deliveredRanges map[string]deliveredFileRanges
 }
 
 // NewHandler constructs a handler with sensible defaults.
@@ -73,9 +86,7 @@ func NewHandlerWithLedger(cfg *config.Config, root string, client *grove.Client,
 		Session:   tr,
 		Ledger:    ledger,
 		driftBase: map[string][]grove.SymbolRecord{},
-		Weights:   ranking.LoadLearnedWeights(root), // A: load per-repo learned weights
 	}
-	h.Signals = ranking.NewSignalComputer(root)
 	return h
 }
 
@@ -171,7 +182,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		select {
 		case <-h.readyCh:
 		case <-ctx.Done():
-			return nil, errors.New("timed out waiting for Grove to become ready")
+			return nil, errors.New("the first index of this repository is still running (a never-built project compiles its dependencies once; this can take several minutes) — it continues in the background; retry this call shortly")
 		}
 	}
 	// Every tool — including prism_index — resolves against the root the
@@ -183,15 +194,38 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	if dir := stringArg(args, "dir", ""); dir != "" && !sameRoot(dir, h.Root) {
 		return nil, fmt.Errorf("server is rooted at %s and cannot serve dir %s; restart with `prism mcp %s` or run the prism CLI from that directory", h.Root, dir, dir)
 	}
+	// Unknown-parameter rejection. Measured (2026-09-02, b8mjxuh6 #26): an
+	// agent called prism_verify with query="Type.method" — a parameter the
+	// tool does not have — got the whole-repo verdict back with no warning,
+	// and read it as if it were scoped to that symbol. Silently accepted
+	// wrong parameters produce confidently misread answers; an error that
+	// names the valid parameters produces a one-step correction instead.
+	// Validated against the tool's own published schema (the same source
+	// tools/list serves), so the check can never drift from what agents see.
+	if name != "prism_read_compact" && name != "prism_query_compact" {
+		if err := rejectUnknownArgs(name, args); err != nil {
+			return nil, err
+		}
+	}
 	switch name {
+	// The index-backed READ tools delta-reindex first, for the same reason
+	// the whole-repo tools below do: an answer computed from an index that
+	// predates the caller's own edit is a wrong answer delivered silently.
+	// prism_read is absent on purpose — it reads the file from disk.
 	case "prism_query":
-		return h.toolQuery(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolQuery(ctx, args) })
 	case "prism_read":
 		return h.toolRead(ctx, args)
+	case "prism_read_compact":
+		return h.readRanges(ctx, args)
+	case "prism_query_compact":
+		return h.freshened(ctx, func() (any, error) {
+			return h.toolQueryScoped(ctx, args, searchScope{paths: stringsArg(args, "paths"), glob: stringsArg(args, "glob")})
+		})
 	case "prism_search":
-		return h.toolSearch(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolSearch(ctx, args) })
 	case "prism_lookup":
-		return h.toolLookup(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolLookup(ctx, args) })
 	case "prism_index":
 		return h.toolIndex(ctx, args)
 	case "prism_compact":
@@ -203,11 +237,11 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 	case "prism_drift":
 		return h.toolDrift(ctx, args)
 	case "prism_references":
-		return h.toolReferences(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolReferences(ctx, args) })
 	case "prism_resolve":
-		return h.toolResolve(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolResolve(ctx, args) })
 	case "prism_edges":
-		return h.toolEdges(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolEdges(ctx, args) })
 	// The whole-repo graph tools delta-reindex FIRST, for the same reason
 	// toolVerify does: a stale index silently computes yesterday's blast
 	// radius (measured live: an added caller was invisible to change_impact
@@ -221,7 +255,7 @@ func (h *Handler) Invoke(name string, args map[string]any) (out any, err error) 
 		stale := h.refreshIndexBestEffort(ctx)
 		return h.graphDelivery(name, args, stale)(h.toolMissingImplementations(ctx, args))
 	case "prism_node":
-		return h.toolNode(ctx, args)
+		return h.freshened(ctx, func() (any, error) { return h.toolNode(ctx, args) })
 	case "prism_dead_code":
 		stale := h.refreshIndexBestEffort(ctx)
 		return h.graphDelivery(name, args, stale)(h.toolDeadCode(ctx, args))
@@ -273,29 +307,133 @@ func sameRoot(dir, root string) bool {
 
 // ToolSchemas returns the schema list for tools/list.
 func ToolSchemas() []map[string]any {
-	// The agent-facing surface, kept deliberately small: every extra tool is
-	// a routing error waiting to happen (measured: agents mis-route when the
-	// menu is long). resolve/edges/cycles/drift remain CLI commands and
-	// Invoke-able, but are not offered to agents — their jobs are covered by
-	// search (locate, with test doubles tagged), node (orient), map (cycles
-	// are a field of its result), and the gates' own delta-reindexing.
+	// The agent-facing surface, cut to six (2026-08-15). The 190-cell paired
+	// A/B in research/harness/runs/swebench-live measured which of the
+	// fourteen advertised tools agents actually reach for: search 95/190,
+	// read 53, lookup 29, query 35, change_impact 2 — and map, dead_code,
+	// rename_plan, missing_implementations, arch_check, node and index at
+	// ZERO calls across all 190 cells. Eight tools were paying ~9.4 KB of
+	// schema per session to never be called, and a long menu measurably
+	// mis-routes the ones that are.
+	//
+	// So: the four measured-routing tools, plus change_impact (rarely
+	// reached but carrying the whole concentrated win — 4.2 turns/$0.27 vs
+	// grep's 26.8/$1.66, RESULTS.md §9.1) and verify (the pre-commit
+	// completeness gate, 258 bytes).
+	//
+	// Everything dropped is still a CLI command and still Invoke-able over
+	// HTTP — this narrows the agent menu, not the product. Do not re-add a
+	// tool here without call-count evidence that agents reach for it.
 	names := []string{
 		"prism_query", "prism_read", "prism_search", "prism_lookup",
-		"prism_references", "prism_change_impact",
-		"prism_missing_implementations", "prism_dead_code",
-		"prism_rename_plan", "prism_map", "prism_node",
-		"prism_verify", "prism_arch_check",
-		"prism_index",
+		"prism_change_impact", "prism_verify",
 	}
 	out := make([]map[string]any, 0, len(names))
 	for _, n := range names {
-		out = append(out, map[string]any{
+		entry := map[string]any{
 			"name":        n,
 			"description": toolDescription(n),
 			"inputSchema": toolSchema(n),
-		})
+		}
+		// NO RESIDENCY (2026-09-01): nothing is always-loaded; all six stay
+		// deferred behind the ToolSearch hop. The 2026-08-30 hybrid (query
+		// alone resident) backfired on the wide-change bed: across every
+		// transcript with all six resident (v0.55.10 cells) sonnet's entry
+		// point was prism_search — 23 search + 5 read calls, prism_query
+		// ZERO — so residency backed the one tool agents never open with.
+		// Worse, the visible prism_query masked deferral: steering's "if
+		// you do not see prism_* they are DEFERRED" clause never fired
+		// because one prism tool WAS visible, and 8/8 wide prism cells +
+		// a post-fix probe made zero prism calls and zero ToolSearch hops.
+		// With nothing resident the deferred-tools clause is unambiguous
+		// (no prism_* visible at all -> hop), which is the one mechanism
+		// measured to gate usage (48 e2e sessions: 25/25 that hopped used
+		// prism, 23/23 that didn't used none). Do not re-add residency for
+		// any tool without call-count evidence that agents actually open
+		// with THAT tool when it is resident.
+		out = append(out, entry)
 	}
 	return out
+}
+
+const compactReadLimit = 240
+
+// CompactToolSchemas exposes the six primary operations through one MCP tool.
+// It avoids top-level composition keywords because older MCP hosts have
+// dropped tools carrying oneOf even when the JSON Schema is valid. The
+// selected legacy handler remains the operation-specific authority.
+func CompactToolSchemas() []map[string]any {
+	prop := func(ops, note string, schema map[string]any) map[string]any {
+		schema["description"] = "ops: " + ops + ". " + note
+		return schema
+	}
+	stringOrList := func() map[string]any {
+		return map[string]any{"type": []string{"string", "array"}, "minItems": 1,
+			"maxItems": 10, "items": map[string]any{"type": "string"}}
+	}
+	name := map[string]any{"oneOf": []map[string]any{
+		{"type": "string"},
+		{"type": "array", "minItems": 1, "maxItems": 10, "items": map[string]any{
+			"oneOf": []map[string]any{
+				{"type": "string"},
+				{"type": "object", "required": []string{"name", "file"}, "additionalProperties": false,
+					"properties": map[string]any{"name": map[string]any{"type": "string"},
+						"file": map[string]any{"type": "string"}}},
+			},
+		}},
+	}}
+	args := map[string]any{
+		"name":        prop("lookup,change_impact", "Symbol(s); impact takes one.", name),
+		"symbol_file": prop("lookup,change_impact", "Disambiguating file.", map[string]any{"type": "string"}),
+		"fields": prop("lookup", "Projection.", map[string]any{"type": "array",
+			"items": map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}}}),
+		"signature": prop("lookup,change_impact", "Method signature: selects one overload.", map[string]any{"type": "string"}),
+		"file":      prop("read", "Repo-relative path.", map[string]any{"type": "string"}),
+		"from":      prop("read", "Inclusive first line.", map[string]any{"type": "integer", "minimum": 1}),
+		"to":        prop("read", "Inclusive last line; clamped to 240 lines.", map[string]any{"type": "integer", "minimum": 1}),
+		"ranges": prop("read", "Up to 10 {file,from,to} windows.", map[string]any{
+			"type": "array", "minItems": 1, "maxItems": 10,
+			"items": map[string]any{"type": "object", "additionalProperties": false,
+				"required": []string{"file", "from", "to"},
+				"properties": map[string]any{
+					"file": map[string]any{"type": "string"},
+					"from": map[string]any{"type": "integer", "minimum": 1},
+					"to":   map[string]any{"type": "integer", "minimum": 1},
+				}},
+		}),
+		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10). For multiple terms, use comma-delimited JSON string values in an array, for example [\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string.", stringOrList()),
+		"scope":           prop("search", "both|text|symbols.", map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}}),
+		"paths":           prop("search,query", "Repo-relative paths.", stringOrList()),
+		"glob":            prop("search,query", "File glob(s).", stringOrList()),
+		"regex":           prop("search", "Regex text match.", map[string]any{"type": "boolean"}),
+		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
+		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
+		"include_bodies":  prop("search", "Default: one bounded body or window for the top non-test match; false returns locators only; true returns up to two per term.", map[string]any{"type": "boolean", "default": true}),
+		"context":         prop("search", "Lines around each match (grep -C N, max 15). Explicit context disables enclosing-body delivery.", map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap}),
+		"rollup_only":     prop("search", "Return the compact hit rollup without source excerpts.", map[string]any{"type": "boolean"}),
+		"removed_symbols": prop("verify", "Optional exact-identifier text check after removal; includes comments and docs.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
+		"base":            prop("verify", "Git ref for the full diff check (default HEAD).", map[string]any{"type": "string"}),
+		"strict":          prop("verify", "Treat a review verdict as a gate failure; the verdict and evidence stay unchanged.", map[string]any{"type": "boolean"}),
+		"exhaustive":      prop("search", "Request expanded inventory; check completion status.", map[string]any{"type": "boolean"}),
+	}
+	const opMap = "lookup: name[,symbol_file,fields,signature] | read: file,from,to or ranges | " +
+		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies,context,rollup_only] | " +
+		"query: terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
+		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
+	return []map[string]any{{
+		"name":        "prism",
+		"description": "Use the op map for each discovery step; do not use shell tools to find code.",
+		"inputSchema": map[string]any{
+			"type": "object", "additionalProperties": false, "required": []string{"op", "args"},
+			"properties": map[string]any{
+				"op": map[string]any{"type": "string",
+					"enum":        []string{"lookup", "read", "search", "query", "change_impact", "verify"},
+					"description": opMap},
+				"args": map[string]any{"type": "object", "additionalProperties": false,
+					"properties": args, "description": "Use only fields owned by the selected op."},
+			},
+		},
+	}}
 }
 
 // modelProp is the shared "model" property injected into prism_query and
@@ -303,7 +441,7 @@ func ToolSchemas() []map[string]any {
 // size the context budget and session confidence thresholds.
 var modelProp = map[string]any{
 	"type":        "string",
-	"description": "Your model ID (e.g. \"claude-sonnet-4-6\", \"gpt-4o\"). Sizes context budgets. Optional.",
+	"description": "Your model ID; sizes budgets. Optional.",
 }
 
 // contextUsedProp lets agents report how many tokens their context window
@@ -312,7 +450,48 @@ var modelProp = map[string]any{
 // tools (shell output, edits, other MCP servers).
 var contextUsedProp = map[string]any{
 	"type":        "integer",
-	"description": "Tokens currently in your context window. Improves re-read confidence. Optional.",
+	"description": "Tokens in your context now. Optional.",
+}
+
+// argAliases are accepted parameter names that deliberately do not appear
+// in the published schema: legacy spellings the handlers still honor, plus
+// "dir" which Invoke itself validates for every tool.
+var argAliases = map[string]map[string]bool{
+	"prism_read": {"path": true},
+}
+
+// rejectUnknownArgs errors on any argument key the tool's published schema
+// does not declare (aliases above excepted). Tools without a published
+// schema (HTTP-only surfaces) are not checked.
+func rejectUnknownArgs(name string, args map[string]any) error {
+	schema := toolSchema(name)
+	if schema == nil {
+		return nil
+	}
+	props, _ := schema["properties"].(map[string]any)
+	if props == nil {
+		return nil
+	}
+	var unknown []string
+	for k := range args {
+		if k == "dir" || props[k] != nil || argAliases[name][k] {
+			continue
+		}
+		unknown = append(unknown, k)
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	sort.Strings(unknown)
+	valid := make([]string, 0, len(props))
+	for k := range props {
+		valid = append(valid, k)
+	}
+	sort.Strings(valid)
+	return fmt.Errorf("%s: unknown parameter(s) %s — this tool accepts: %s. "+
+		"The call was NOT run; passing an unsupported parameter would have "+
+		"silently returned an unscoped/unfiltered answer that reads as if the "+
+		"parameter worked", name, strings.Join(unknown, ", "), strings.Join(valid, ", "))
 }
 
 func toolSchema(name string) map[string]any {
@@ -321,39 +500,32 @@ func toolSchema(name string) map[string]any {
 	case "prism_query":
 		return map[string]any{
 			"type":     "object",
-			"required": []string{"task", "terms"},
+			"required": []string{"terms"},
 			"properties": map[string]any{
-				"task": map[string]any{
-					"type":        "string",
-					"description": "What you are trying to do.",
-				},
 				"terms": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "REQUIRED: your grep/rg search terms (e.g. [\"AccessCount\"]) — prism searches " +
-						"these then expands via call graph. Guess ONE keyword from the task if you don't have a " +
-						"name yet (a class/function fragment, a domain term); measured, an agent's own guess beats " +
-						"a no-terms fallback in most cases, so there is no longer one — this call errors with " +
-						"guidance instead of guessing for you.",
+					"description": "REQUIRED explicit anchors, e.g. [\"AccessCount\"], expanded via text and the call graph. If no anchor is known, locate one with prism_search first.",
 				},
 				"include": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string", "enum": []string{"graph", "docs"}},
-					"description": "Categories: graph (callers/callees), docs (filenames only). Default: [\"graph\"].",
+					"description": "graph (callers/callees), docs (filenames). Default [\"graph\"].",
 				},
 				"delivery": map[string]any{
 					"type":        "string",
 					"enum":        []string{"source", "symbols"},
-					"description": "source = verbatim line-numbered windows + per-anchor callers/tests (edit-ready); symbols = compact per-symbol list. Default: phase-aware (bug-fix/implement tasks get source).",
+					"description": "source = line-numbered windows + callers; symbols = compact list. Default source.",
 				},
 				"max_files": map[string]any{
 					"type":        "integer",
-					"description": "source delivery only: max files shown as windows (rest listed by name). Default 5.",
+					"description": "source only: max files shown as windows. Default is at least 2, with room for one related file after the named-anchor files.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"profile":      map[string]any{"type": "string", "description": "Ranking profile: default|implement_feature|fix_bug|code_review"},
-				"budget":       map[string]any{"type": "integer", "description": "Token budget. Explicit values are honored exactly; default 8000."},
+				"profile":      map[string]any{"type": "string", "description": "Compatibility name: default|implement_feature|fix_bug|code_review currently share one deterministic edge/retrieval ranking rule"},
+				"budget":       map[string]any{"type": "integer", "description": "Token budget (default 8000)."},
+				"limit":        map[string]any{"type": "integer", "description": "Max candidates before ranking cutoff (default 50)."},
 			},
 		}
 	case "prism_read":
@@ -365,9 +537,17 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "File path relative to project root.",
 				},
+				"offset": map[string]any{
+					"type":        "integer",
+					"description": "First line (1-based); with limit, an exact window.",
+				},
+				"limit": map[string]any{
+					"type":        "integer",
+					"description": "Lines from offset. Omit both for the whole file.",
+				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
-				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},
+				"task":         map[string]any{"type": "string", "description": "Log label only."},
 			},
 		}
 	case "prism_search":
@@ -376,19 +556,55 @@ func toolSchema(name string) map[string]any {
 			"required": []string{"query"},
 			"properties": map[string]any{
 				"query": map[string]any{
+					"type":        []string{"string", "array"},
+					"items":       map[string]any{"type": "string"},
+					"description": "One term or an array of up to 10 (batch them). Regex when regex=true.",
+				},
+				"task": map[string]any{
 					"type":        "string",
-					"description": "Substring matched against symbol names, signatures, and docstrings — AND against raw source text (a real rg/grep pass). With regex=true, a regular expression for the text pass.",
+					"description": "Optional caller label only; does not affect retrieval or scope and is not echoed in results.",
 				},
 				"scope": map[string]any{
-					"type": "string",
-					"enum": []string{"both", "text", "symbols"},
-					"description": "What you want back. \"text\" = a PURE grep: exactly the rg hits, no symbol search, no graph, cheapest — use when you would have run grep/rg. \"symbols\" = indexed symbols only. Default \"both\" merges the two.",
+					"type":        "string",
+					"enum":        []string{"both", "text", "symbols"},
+					"description": "\"text\" = grep retrieval (cheapest; exhaustive results also label enclosing indexed symbols); \"symbols\" = index only. Default \"both\".",
 				},
 				"regex": map[string]any{
 					"type":        "boolean",
-					"description": "Treat query as a regular expression for the text pass (invalid patterns fall back to literal).",
+					"description": "Regex for the text pass (invalid → literal).",
 				},
-				"limit": map[string]any{"type": "integer", "description": "Max results (default 25). Applies to symbols in symbol mode and to text hits in text mode — same meaning everywhere."},
+				"path": map[string]any{
+					"type":        []string{"string", "array"},
+					"items":       map[string]any{"type": "string"},
+					"description": "Restrict to repo-relative files/dirs, e.g. \"src/\" or [\"src/\",\"tests/\"].",
+				},
+				"glob": map[string]any{
+					"type":        []string{"string", "array"},
+					"items":       map[string]any{"type": "string"},
+					"description": "Only files matching, e.g. \"*.py\".",
+				},
+				"exhaustive": map[string]any{
+					"type":        "boolean",
+					"description": "Raises text caps to 100000 hits / 10000 per file, symbols to 2000. Requests a compact file/line inventory while source excerpts stay sampled. Deadlines still apply; check the reported completeness.",
+				},
+				"files_only": map[string]any{
+					"type":        "boolean",
+					"description": "Paths only, no lines — cheapest \"where does this live\".",
+				},
+				"rollup_only": map[string]any{
+					"type":        "boolean",
+					"description": "On a truncated search return only hitRollup (grouped counts), no sample lines.",
+				},
+				"limit": map[string]any{"type": "integer", "description": "Max results (default 25, maximum 2000; non-positive uses default)."},
+				"context": map[string]any{
+					"type":        "integer",
+					"description": "Lines around each match (grep -C N, max 15) — instead of a follow-up read. Whole function? prism_lookup.",
+				},
+				"include_bodies": map[string]any{
+					"type":        "boolean",
+					"default":     true,
+					"description": "By default, return one bounded enclosing body or labeled window for the top non-test hit. Set true for more (one per term first, up to four); false for locators only.",
+				},
 			},
 		}
 	case "prism_lookup":
@@ -397,17 +613,33 @@ func toolSchema(name string) map[string]any {
 			"required": []string{"name"},
 			"properties": map[string]any{
 				"name": map[string]any{
-					"type":        "string",
-					"description": "Symbol name, optionally package-qualified ('internal/cli.Run' or bare 'Run').",
+					"oneOf": []map[string]any{
+						{"type": "string"},
+						{"type": "array", "minItems": 1, "maxItems": 10, "items": map[string]any{
+							"oneOf": []map[string]any{
+								{"type": "string"},
+								{"type": "object", "required": []string{"name", "file"}, "additionalProperties": false,
+									"properties": map[string]any{
+										"name": map[string]any{"type": "string", "minLength": 1},
+										"file": map[string]any{"type": "string", "minLength": 1, "description": "Exact repo-relative file scope; never widened on a miss."},
+									}},
+							},
+						}},
+					},
+					"description": "One name, or 1-10 strings/{name,file} items. Objects use exact file scope; outer file hints apply only to strings. fields applies to all; oversized results are explicitly omitted with their scopes.",
 				},
 				"fields": map[string]any{
 					"type":        "array",
 					"items":       map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}},
-					"description": "Which columns to read. Omit for the full body. e.g. [signature] for just the contract.",
+					"description": "Columns to read; omit for the full body.",
 				},
 				"file": map[string]any{
 					"type":        "string",
-					"description": "Disambiguate a name shared across packages: file path (or substring, as shown in prism_search results).",
+					"description": "Legacy soft path/substring hint for string names; ignored if no candidate matches. Use {name,file} batch items for exact scope.",
+				},
+				"signature": map[string]any{
+					"type":        "string",
+					"description": "Declaration-shaped signature selecting one of several same-named overloads, e.g. \"Parser(JsonNode n, ObjectReadContext c)\".",
 				},
 			},
 		}
@@ -470,7 +702,24 @@ func toolSchema(name string) map[string]any {
 				},
 			},
 		}
-	case "prism_change_impact", "prism_missing_implementations":
+	case "prism_missing_implementations":
+		// Same shape as change_impact MINUS file= (its handler does not read
+		// it, and the unknown-arg validator keys on this schema — sharing
+		// the case would let a silently-ignored file= through, the exact
+		// bug class rejectUnknownArgs exists to kill).
+		return map[string]any{
+			"type":     "object",
+			"required": []string{"query"},
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "Type.method or Type.method(ParamType, ...) — the interface/abstract member to check implementations of.",
+				},
+				"model":        modelProp,
+				"context_used": contextUsedProp,
+			},
+		}
+	case "prism_change_impact":
 		return map[string]any{
 			"type":     "object",
 			"required": []string{"query"},
@@ -478,6 +727,14 @@ func toolSchema(name string) map[string]any {
 				"query": map[string]any{
 					"type":        "string",
 					"description": "Type.method or Type.method(ParamType, ...) — e.g. \"JsonSerializer.serialize(T, JsonGenerator, SerializerProvider)\". A bare member name (\"serialize\") or file:line (\"src/Foo.java:120\") also works when it resolves to exactly one symbol; if several match, the error lists the candidates.",
+				},
+				"file": map[string]any{
+					"type":        "string",
+					"description": "Disambiguate same-named types in different packages: only types declared in a file whose path contains this seed the closure (change_impact only; the result says when this is needed).",
+				},
+				"signature": map[string]any{
+					"type":        "string",
+					"description": "Optional method signature. Selects one of several same-named overloads; when no local interface declaration exists, match indexed compatible local implementations and union their reported callers in one call; check coverage.",
 				},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
@@ -521,15 +778,52 @@ func toolSchema(name string) map[string]any {
 					"type":        "string",
 					"description": "Git ref to diff the working tree against (default \"HEAD\"). The change-set is computed relative to this.",
 				},
+				"removed_symbols": map[string]any{
+					"type":  "array",
+					"items": map[string]any{"type": "string"},
+					"description": "Optional mid-loop exact-identifier text check after removal. " +
+						"Reports mentions in code, comments, and docs; inspect them rather than " +
+						"assuming each is a live reference. Full verify is not a required final gate.",
+				},
+				"strict": map[string]any{
+					"type": "boolean",
+					"description": "Treat a review verdict as a gate failure without changing the verdict or evidence. " +
+						"The response's gateFailure matches the CLI exit decision. Has no effect with removed_symbols.",
+				},
 			},
 		}
 	case "prism_arch_check":
+		// Schema had drifted to just "base" while the handler read deny/
+		// strict/depth/max_sites/include_tests all along — found the moment
+		// the unknown-arg validator landed and its own tests started
+		// rejecting parameters the handler genuinely honors.
 		return map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"base": map[string]any{
 					"type":        "string",
 					"description": "Optional git ref: report only violations INTRODUCED since it, instead of every current violation.",
+				},
+				"deny": map[string]any{
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "Extra \"<from> -> <to>\" deny rules checked in addition to prism.yaml's arch_deny lines.",
+				},
+				"strict": map[string]any{
+					"type":        "boolean",
+					"description": "Escalate heuristic-evidence review items to failures.",
+				},
+				"depth": map[string]any{
+					"type":        "integer",
+					"description": "Truncate components to the first N path segments (0 = one component per directory).",
+				},
+				"max_sites": map[string]any{
+					"type":        "integer",
+					"description": "Max cited file:line sites per violation (default 5).",
+				},
+				"include_tests": map[string]any{
+					"type":        "boolean",
+					"description": "Include test files in the component view.",
 				},
 			},
 		}
@@ -569,7 +863,7 @@ func toolSchema(name string) map[string]any {
 				"context_used": contextUsedProp,
 				"from": map[string]any{
 					"type":        "string",
-					"description": "With to: expand one induced edge into its FULL constituent site list.",
+					"description": "With to: expand one induced edge into its reported indexed constituent sites.",
 				},
 				"to": map[string]any{
 					"type":        "string",
@@ -585,46 +879,36 @@ func toolSchema(name string) map[string]any {
 func toolDescription(name string) string {
 	switch name {
 	case "prism_query":
-		return "DELIVER (this tool answers \"give me what I need to do this task\" — to merely locate " +
-			"something, use prism_search): pass the task and terms=[...] with anchor names you have " +
-			"CONFIRMED (from grep/search or named in the task) — retrieval keys on the terms, so a " +
-			"confirmed anchor beats a well-phrased task, but a guessed term for a common name hurts. " +
-			"Prism finds those symbols then expands through the call graph (callers, callees), AND runs a " +
-			"real full-text search (rg/grep) for each term in the same call — matches outside any symbol " +
-			"(comments, configs, docs) arrive as textMatches, so a separate grep call is never needed. " +
-			"For bug-fix/implement tasks it delivers LINE-NUMBERED source windows plus each " +
-			"anchor's callers — edit-ready; lines under 1200 chars are byte-for-byte verbatim, " +
-			"longer ones carry an in-band truncation marker (Read the file before editing those). " +
-			"Do NOT re-read the files it shows. Unchanged files already delivered this session come back as one-line " +
-			"cached pointers. delivery=\"symbols\" forces the compact per-symbol list. " +
-			"Use include=[\"docs\"] for doc filenames only."
+		return "RELATED-CONTEXT TOOL: use when you have explicit anchors and need their related implementations, " +
+			"callers, and tests together. Batch relevant errors, classes, methods, and files into terms=[...] " +
+			"(the only retrieval key). It returns budgeted source context: " +
+			"one hop through the call graph plus a full-text pass, delivered as line-numbered " +
+			"source windows with callers and a 'tested by' file:line. Check omission markers; do not re-read unchanged source " +
+			"it shows; once the relevant implementation and test are present, make the smallest local edit. " +
+			"Size with budget= and max_files=. If no anchor is known, locate one with prism_search first."
 	case "prism_read":
-		return "Whole-file read with session compression: full content on first read; a repeat read of " +
-			"an UNCHANGED file returns a one-line `// [prism:cached] <file> @sha:… (prior delivery still " +
-			"in context)` pointer INSTEAD of the body — this is not an error or an empty file: you already " +
-			"received this file earlier in the session, so use that copy and do NOT re-fetch. " +
-			"For a single function use prism_lookup (~5× cheaper)."
+		return "KNOWN-FILE TOOL: read a file, whole or by line range " +
+			"(offset/limit), line-numbered. A repeat " +
+			"read of an unchanged file returns a `// [prism:cached]` pointer — use the copy " +
+			"you already have. For known symbol bodies use prism_lookup; for a related code neighborhood use prism_query."
 	case "prism_search":
-		return "LOCATE (this tool answers \"where is X?\"): one call searches BOTH indexed symbol " +
-			"names/signatures/docstrings AND the raw source text (a real rg/grep full-text pass, results " +
-			"in textHits) — the on-ramp when you only have a concept, an error message, or a config key " +
-			"and need to FIND an anchor. A separate grep call is never needed. YOU price the request: " +
-			"scope=\"text\" is a pure grep (exactly the rg hits, cheapest — say this whenever you would " +
-			"have run grep/rg and want nothing else; regex=true for patterns); scope=\"symbols\" for " +
-			"names only; default \"both\" merges the two. Test doubles are tagged and listed last. " +
-			"Returns locations, not context: once you have the anchor, prism_query delivers the " +
-			"edit-ready context for your task (or prism_node/prism_lookup to orient and read piecewise)."
+		return "LOCATOR TOOL: use this before Grep, Glob, find, rg, or shell search when code location " +
+			"is genuinely unknown. Locate unknown names or paths: symbol names AND raw text (real rg/grep). " +
+			"Known symbol? Use lookup for bodies or change_impact for affected sites directly. Batch up to 10 " +
+			"terms in query=[...]. scope=\"text\" uses grep retrieval, cheapest — use it wherever you " +
+			"would run grep/rg. Narrow with path=/glob=/files_only. context=N adds the lines " +
+			"around each hit (grep -C). exhaustive=true requests a compact file/line inventory " +
+			"while source excerpts stay sampled; check completion and partial-result warnings."
 	case "prism_lookup":
-		return "Read one symbol by qualified name (e.g. 'ranking.Select', " +
-			"'kvstore.SecretsKVStoreSQL.Get'). Choose which COLUMNS to read with fields=[...]: " +
-			"signature (the contract, cheap), doc, body (full source), kind, parent, modifiers — " +
-			"omit fields to get the whole body. Every result includes the exact file:line, which is " +
-			"AUTHORITATIVE: navigate straight to it, do not re-confirm with grep. ~5× cheaper than " +
-			"reading the whole file; fields=[signature] is cheaper still."
+		return "KNOWN-SYMBOL TOOL: read known symbol bodies by qualified name, with explicit omission markers for oversized results. " +
+			"Batch related methods in name=[...] " +
+			"(up to 10); use name=[{\"name\":\"Type.method\",\"file\":\"path/to/file\"}] for exact per-item file scope. For a small local bug, " +
+			"read the relevant methods together; impact is for affected-site questions. " +
+			"fields=[...] narrows to signature/doc/body/...; omit for whole bodies."
 	case "prism_resolve":
 		return "Disambiguate a name you ALREADY HAVE into the symbol(s) it could be — each with kind and " +
-			"exact file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
-			"The file:line is AUTHORITATIVE — trust it, don't re-grep to verify. " +
+			"indexed file:line, test doubles tagged and last. Then prism_edges/prism_lookup the one you want. " +
+			"Inspect ambiguous or stale locations before editing. " +
 			"NOTE: resolve does not DISCOVER. If you don't yet know a symbol name (you only have a concept, " +
 			"like 'where a secret is read'), first FIND the anchor with grep/prism_search/prism_references, " +
 			"then resolve/traverse from it. Never guess names by trying resolve repeatedly."
@@ -634,14 +918,14 @@ func toolDescription(name string) string {
 			"implements/extends/overrides, contains, defines, imports. direction=out gives edges FROM " +
 			"the seed (its callees, the types it uses); direction=in gives edges INTO it (its " +
 			"callers). Recipes: what does X call → (out, [calls]); who calls X → (in, [calls]); " +
-			"interface dispatch resolves: (out, [calls]) returns the " +
-			"implementors actually called. Results are grouped by '<kind> <direction>' and capped with a " +
-			"true total. Each neighbor's file:line is AUTHORITATIVE — trust it, don't re-grep to verify. " +
+			"interface dispatch: (out, [calls]) reports indexed candidate implementors. " +
+			"Results are grouped by '<kind> <direction>' and capped with a reported total. " +
+			"Locations point to indexed source; inspect ambiguous or stale edges. " +
 			"This is the precise primitive — prefer it over prism_query when you know the anchor."
 	case "prism_references":
-		return "Find where a symbol (class/type/function/constant) is USED across the codebase — " +
-			"every code occurrence of the name, grouped by file, excluding comments and strings. " +
-			"Use for 'where is X used' and 'is X still used / safe to delete'. " +
+		return "Find indexed syntactic occurrences of a symbol name (class/type/function/constant), " +
+			"grouped by file, excluding comments and strings. Check result completeness. " +
+			"Use for 'where is X used' and as evidence when considering a removal. " +
 			"Reports 'ambiguous' when several definitions share the name. " +
 			"Catches syntactic uses only — reflection/dynamic usage is not seen, so an empty " +
 			"result is best-effort, not proof of dead code."
@@ -655,96 +939,86 @@ func toolDescription(name string) string {
 		return "Compress a conversation history JSON array. " +
 			"Call when the context window is near capacity to summarize older turns " +
 			"while preserving recent ones."
-	case "prism_savings":
-		return "Return this session's token-savings dashboard: total delivered, " +
-			"percentage saved, per-tool breakdown."
 	case "prism_drift":
-		return "Check whether the ground shifted under you: re-verify every file " +
-			"delivered in this session against the working tree and report, symbol " +
-			"by symbol, what changed/was removed/was added since you saw it — with " +
-			"merge provenance when a Fuse merge caused it. Call this when a stale-" +
+		return "Check whether the ground shifted under you: re-check up to 500 recent files " +
+			"delivered in this session against the working tree and report file changes, with symbol " +
+			"detail and Fuse merge provenance when available. Call this when a stale-" +
 			"context warning appears, before editing files you read a while ago, " +
 			"or after another agent's branch lands."
 	case "prism_feedback":
 		return "Record a 0–5 quality rating for the last prism_query result. " +
 			"0 = completely wrong context, 5 = perfect. Optional notes field."
 	case "prism_change_impact":
-		return "Deterministic change-set for a method signature change: pass 'Type.method' or " +
-			"'Type.method(ParamType, ...)' and get back the exact declaration(s), every " +
-			"override/implementation in the subtype closure (family), super-declarations, and " +
-			"all resolved callers — in one engine call, milliseconds, no token cost. " +
-			"Use this instead of prism_references + manual override hunting when you need to " +
-			"find every site affected by a method signature change. Result groups: declarations " +
-			"(the method itself), family (overrides + implementations), supers (same-member " +
-			"declarations on other contracts — sibling interfaces satisfied by the same " +
-			"implementations break under the change too), callers (call sites into the set), " +
-			"declaringTypes (the interface/type declaration blocks that textually change " +
-			"because their member specs are not separate symbols — Go/TS; ALWAYS include " +
-			"these as change sites). Check 'completeness': 'closed' " +
-			"means the set is authoritative; 'project-local' + 'overridesExternal' means the " +
-			"method belongs to an external (JDK/dependency) contract — its signature cannot " +
-			"safely change, and calls typed against the external supertype are not included. " +
-			"Querying an external type directly (e.g. 'Iterator.next') returns the project's " +
-			"implementation closure of that contract — use for deprecation/migration sweeps. " +
-			"RELAY the returned set as-is: do not re-verify, re-filter, or transform it " +
-			"through shell pipelines — re-processing a solved traversal measurably drops " +
-			"real sites and adds spurious ones. A repeat call whose freshly recomputed " +
-			"result is IDENTICAL to one already delivered this session returns a one-line " +
-			"[prism:cached] pointer with group counts — not an error, not empty: use the " +
-			"prior delivery."
+		// Wording restored 2026-09-05: a trimmed version ("…— one call, before
+		// editing…") coincided with haiku opening on prism_search instead of
+		// this tool on both change tasks of the A/B gate (typeorm 2->4 turns,
+		// grafana 5->18). Descriptions are steering; this one earns its bytes.
+		return "CALL THIS BEFORE editing a known symbol's signature or enumerating affected sites. " +
+			"Reports indexed potential impact sites, not a list of edits all required by the change. " +
+			"Pass 'Type.method' for declarations, the indexed override/implementation family, " +
+			"super-declarations, callers, and declaringTypes in one call. May include signatures, test labels, and bounded " +
+			"matching call expressions; large results omit some evidence and mark this in evidenceNote. Read bodies " +
+			"for behavior or evidence gaps, not routinely for site enumeration. 'partial' means coverage gaps; " +
+			"follow coverageNote. For bounded results, relaySites is the canonical answer-shaped inventory: copy it instead of manually rebuilding the groups. " +
+			"safeToClaimComplete is false because 'closed' describes indexed project scope, not proof of runtime completeness or receiver certainty. For a wide same-name " +
+			"member or an external/unresolved interface with no local anchor, Prism infers the compatible local method family " +
+			"and unions file-scoped resolved impacts in this call; signature= pins the external contract when known. Do not " +
+			"guess concrete type names or issue one call per receiver. 'project-local' " +
+			"+ overridesExternal = the method implements an external contract; a local signature edit may break it. " +
+			"Relay the sites with their coverage notes and inspect ambiguous evidence."
+	case "prism_verify":
+		return "CHANGE CHECK (optional): with removed_symbols=[...] it is a mid-loop exact-identifier " +
+			"mention check after removals; inspect code, comments, and docs. Without removed_symbols, it compares the " +
+			"working diff with Prism's impact closure and reports potentially missed sites. Consider it for Python, " +
+			"unchecked JavaScript, and PHP contract changes; for TypeScript or checked JavaScript, use it only when " +
+			"affected files lack a complete typecheck. Skip it for Go, Java, Rust, C/C++, and C# after a complete " +
+			"build/typecheck of affected targets. strict=true marks a review verdict as gateFailure without changing " +
+			"the verdict. It is not a required closing step; run relevant tests."
 	case "prism_missing_implementations":
 		return "The interface-evolution companion to prism_change_impact: pass 'Type.method' " +
-			"and get every type in the subtype closure that FAILS to implement the member — " +
-			"the types the compiler will reject once the member is required. Use when adding " +
-			"a method to an interface/base class ('which implementors are now broken?'), " +
+			"and get indexed subtype candidates that appear to lack the member. " +
+			"Some may fail a compiler or typecheck when the member becomes required. Use when adding " +
+			"a method to an interface/base class ('which implementors may need work?'), " +
 			"auditing a contract, or after change_impact to plan the implementation work. " +
 			"Result groups: missing (concrete types with no implementation, own or inherited " +
-			"— each is a compile error), abstractMissing (abstract classes, informational), " +
+			"— potential required edits), abstractMissing (abstract classes, informational), " +
 			"unverifiable (superclass chain leaves the index; an external base may provide " +
 			"it — verify before treating as broken), implementedCount (coverage evidence). " +
-			"defaultProvided=true means the contract ships a body: nothing is broken today, and " +
-			"'missing' reads as 'inherits the default — breaks if the member becomes required'. " +
-			"Same completeness reporting as change_impact. RELAY the result as-is: do not " +
-			"re-verify through grep — the closure and inheritance walk are already solved."
+			"defaultProvided=true means the indexed contract supplies a body; 'missing' may " +
+			"inherit that default until the member becomes required. safeToClaimComplete is false: check completeness and " +
+			"runtime/external behavior before treating a candidate as broken."
 	case "prism_node":
 		return "One-shot orientation on a single thing. Pass a SYMBOL name and get its source " +
 			"plus its immediate graph neighbours (callers, callees, implementors) in one call — " +
 			"the 'what is this and what touches it' view, without a lookup-then-edges round-trip. " +
 			"Pass a repo-relative FILE PATH instead and get the file's source, the symbols it " +
-			"defines, and the files that DEPEND on it. Ambiguous symbol names return the candidate " +
+			"defines, and indexed dependent files. Ambiguous symbol names return the candidate " +
 			"list unchanged rather than guessing. Use this to orient; use change_impact when you " +
-			"need the complete set of sites a signature change must touch."
+			"need indexed potential impact sites for a signature change."
 	case "prism_rename_plan":
-		return "The rename executed as a plan: pass 'Type.method' and newName, get the " +
-			"complete change-impact set converted to concrete line edits — file, line, " +
-			"before, after — for every declaration, override, and resolved call site. " +
-			"Your job becomes review-and-apply, not discover: apply 'edits' as-is, then " +
-			"check 'ambiguous' (lines in methods that ALSO call a same-named method on an " +
-			"unrelated type — verify the receiver type before editing those). Same " +
-			"completeness reporting as change_impact; if completeness is 'project-local' " +
-			"the member overrides an external contract and must NOT be renamed. RELAY and " +
-			"apply the edits as given: do not re-derive the set through grep — the " +
-			"traversal is already solved and re-processing measurably corrupts it."
+		return "Proposed rename plan: pass 'Type.method' and newName for concrete line edits " +
+			"(file, line, before, after) at indexed resolved sites. First review coverage, 'unresolved', " +
+			"and 'ambiguous' before applying edits; ambiguous lines may call a same-named method " +
+			"on an unrelated type, so check receiver types. 'project-local' may indicate an " +
+			"external contract requiring a coordinated rename. safeToClaimComplete is false. RELAY proposed sites and gaps, " +
+			"then validate the resulting code with the relevant build or tests."
 	case "prism_dead_code":
-		return "Deletion-candidate list: production functions/methods unreachable from every " +
-			"entry point (main/init, tests, exported symbols, plus optional roots=[...] for " +
-			"framework hooks registered by name). Precision-first: a symbol is 'dead' only if " +
-			"it is unreachable AND non-exported AND its name appears nowhere else in the " +
-			"codebase text — so callbacks passed as values are never flagged, and every entry " +
-			"is safe to delete without breaking compilation (transitively-dead clusters " +
-			"surface top-down across re-runs). exportedUnreferenced lists public API with " +
-			"zero in-project references — dead only if nothing external links against it; " +
-			"do not delete those without checking consumers. ALWAYS relay the caveats field: " +
-			"reflection, DI, serialization hooks, and codegen call symbols invisibly."
+		return "Static deletion candidates: production functions/methods unreachable from " +
+			"indexed roots (main/init, tests, exported symbols, plus optional roots=[...] for " +
+			"framework hooks). Non-exported candidates also have no indexed name occurrence. " +
+			"This is not proof that deletion is safe: callbacks, reflection, DI, serialization, " +
+			"and codegen can use symbols invisibly. exportedUnreferenced lists public APIs with " +
+			"no indexed project references; check external consumers. Relay the caveats and " +
+			"validate deletions with a build and relevant tests."
 	case "prism_map":
 		return "Architecture map in ONE call: the repository's components (directories) and " +
-			"every component-level dependency, aggregated from the real call/import/type edges " +
+			"reported indexed component dependencies, aggregated from call/import/type edges " +
 			"crossing between them — with weights, per-kind breakdown, dependency cycles, and " +
-			"the evidence tier of every claim. Use for: 'map/explain this repo', refactor and " +
+			"the evidence tier of each reported claim. Use for: 'map/explain this repo', refactor and " +
 			"extraction planning, layering questions, 'what depends on X'. Every edge is " +
-			"evidence-backed, not narrative: pass from+to to expand one edge into the full " +
+			"evidence-backed within the indexed graph: pass from+to to expand one edge into the " +
 			"list of concrete crossing sites (file:line). depth=1 gives the top-level view of " +
-			"a large repo. The result is complete over indexed project edges at the reported " +
+			"a large repo. The result covers indexed project edges at the reported " +
 			"tier; external dependencies are excluded — this is the project's internal shape. " +
 			"A repeat call whose recomputed result is IDENTICAL to one already delivered this " +
 			"session returns a one-line [prism:cached] pointer — use the prior delivery."
@@ -777,10 +1051,15 @@ type rankedSymbol struct {
 }
 
 func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, error) {
-	task := stringArg(args, "task", stringArg(args, "intent", ""))
-	if task == "" {
-		return nil, errors.New("task is required")
-	}
+	return h.toolQueryScoped(ctx, args, searchScope{})
+}
+
+func formatQueryTerms(terms []string) string {
+	encoded, _ := json.Marshal(terms)
+	return string(encoded)
+}
+
+func (h *Handler) toolQueryScoped(ctx context.Context, args map[string]any, scope searchScope) (any, error) {
 	timing := os.Getenv("PRISM_TIMING") != ""
 	tQuery := time.Now()
 	stamp := func(stage string) {
@@ -791,9 +1070,13 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	defer stamp("toolQuery total")
 
 	// --- Agent-directed parameters ---
+	for _, path := range scope.paths {
+		if _, _, err := safePathWithinRoot(h.Root, path); err != nil {
+			return nil, fmt.Errorf("query path %q: %w", path, err)
+		}
+	}
 
-	// terms: agent-supplied grep-style search terms used to seed retrieval
-	// instead of relying purely on TF-IDF over the task string. When provided,
+	// terms: agent-supplied grep-style search terms used to seed retrieval.
 	// Prism searches for each term as a symbol name/substring and uses the
 	// matches as seeds — same precision as the agent's own grep, plus graph expansion.
 	var terms []string
@@ -837,7 +1120,6 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	// Expansion is a fixed one-hop typed call neighborhood (selectContext).
 	stamp("pre-selectContext")
 	sel, err := h.selectContext(ctx, selectParams{
-		task:            task,
 		terms:           terms,
 		includeSet:      includeSet,
 		explicitProfile: stringArg(args, "profile", ""),
@@ -845,6 +1127,8 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 		contextUsed:     int64(intArg(args, "context_used", 0)),
 		model:           stringArg(args, "model", ""),
 		budgetArg:       intArg(args, "budget", 0),
+		paths:           scope.paths,
+		glob:            scope.glob,
 	})
 	if err != nil {
 		return nil, err
@@ -852,23 +1136,54 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	stamp("post-selectContext")
 
 	// Delivery: "source" = verbatim line-numbered windows + anchor summary
-	// (edit-ready); "symbols" = the compact per-symbol list. Explicit arg wins;
-	// otherwise phase-aware — an agent debugging or implementing is about to
-	// edit and gets source, an agent orienting or reviewing gets symbols.
+	// (edit-ready); "symbols" = the compact per-symbol list.
+	//
+	// Source is the default, unconditionally. It used to depend on
+	// task keyword inference — so "fix the timeout bug" returned editable windows
+	// and "look at the timeout handling" returned a symbol list, from the same
+	// seeds. Delivering context for an edit is what this tool is for; ask for
+	// delivery="symbols" when you want the compact list.
 	delivery := stringArg(args, "delivery", "")
 	if delivery == "" && len(sel.picked) > 0 {
-		switch ranking.DetectPhase(task) {
-		case ranking.PhaseDebug, ranking.PhaseImplement:
-			delivery = "source"
-		}
+		delivery = "source"
 	}
 	if delivery == "source" {
-		out := h.deliverSource(ctx, task, sel, intArg(args, "max_files", 0), sel.budget)
-		if tm := h.renderTextMatches(sel.textHits); tm != nil {
+		sourceBudget := sel.budget
+		if sel.budget <= 256 && len(sel.deliverableTextHits(nil)) > 0 {
+			// Tiny budgets must leave room for a matched line that the source
+			// window cannot show. Otherwise the source preamble consumes the
+			// whole allowance and the explicit text evidence disappears.
+			sourceBudget = sel.budget / 3
+		}
+		out, sourceSections := h.deliverSource(ctx, strings.Join(terms, ", "), sel, intArg(args, "max_files", 0), sourceBudget)
+		if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(sourceSections), false); tm != nil {
 			out["textMatches"] = tm
 			out["textBackend"] = sel.textBackend
 		}
-		delivered, _ := out["deliveredTokens"].(int)
+		// Text hits are appended after source delivery, so charge their rendered
+		// form as well. Remove lowest-priority hits until the actual MCP text fits.
+		var delivered int
+		for {
+			rendered, ok := renderQuerySourceAsText(out)
+			if !ok {
+				return nil, errors.New("could not render query source response")
+			}
+			delivered = ranking.EstimateTokens(rendered)
+			if delivered <= sel.budget {
+				break
+			}
+			hits := anySlice(out["textMatches"])
+			if len(hits) == 0 {
+				return nil, fmt.Errorf("query source response exceeds budget=%d", sel.budget)
+			}
+			if len(hits) == 1 {
+				delete(out, "textMatches")
+				delete(out, "textBackend")
+			} else {
+				out["textMatches"] = hits[:len(hits)-1]
+			}
+		}
+		out["deliveredTokens"] = delivered
 		h.Ledger.Record("prism_query", h.queryBaselineTokens(sel.picked, delivered), delivered)
 		return out, nil
 	}
@@ -891,18 +1206,21 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 			Span:          p.Symbol.Span,
 		})
 	}
-	out.BudgetUsed = used
-	if tm := h.renderTextMatches(sel.textHits); tm != nil {
+	if tm := h.renderTextMatches(ctx, sel.deliverableTextHits(nil), false); tm != nil {
 		out.TextMatches = tm
 		out.TextBackend = sel.textBackend
 	}
 
 	if len(out.Symbols) == 0 && len(out.TextMatches) == 0 {
+		var filterMiss scopeFilterReport
+		if len(scope.paths) > 0 || len(scope.glob) > 0 {
+			filterMiss = scopeFilterCheck(h.Root, scope.paths, scope.glob, true)
+		}
 		switch {
-		case len(sel.seeds) == 0 && len(terms) > 0:
-			out.Note = fmt.Sprintf("no symbols matched terms %v under project root %s; check term spelling and that the code lives under this root", terms, h.Root)
+		case filterMiss.noFiles:
+			out.Note = filterMiss.note
 		case len(sel.seeds) == 0:
-			out.Note = fmt.Sprintf("no symbols matched this task under project root %s", h.Root)
+			out.Note = fmt.Sprintf("no symbols matched terms %s under project root %s; check term spelling and that the code lives under this root", formatQueryTerms(terms), h.Root)
 		default:
 			out.Note = "seeds matched but nothing fit the requested include categories/budget; try include=[\"graph\"] or a larger budget"
 		}
@@ -911,6 +1229,38 @@ func (h *Handler) toolQuery(ctx context.Context, args map[string]any) (any, erro
 	// Baseline for the savings ledger: the token cost of reading each
 	// containing file once in full — what assembling the same context by
 	// file reads would have cost. Measured from on-disk sizes, never assumed.
+	for {
+		out.BudgetUsed = used
+		encoded, err := json.Marshal(out)
+		if err != nil {
+			return nil, err
+		}
+		measured := ranking.EstimateTokens(string(encoded))
+		if measured != used {
+			used = measured
+			continue
+		}
+		if used <= sel.budget {
+			break
+		}
+		if n := len(out.TextMatches); n > 0 {
+			out.TextMatches = out.TextMatches[:n-1]
+			if len(out.TextMatches) == 0 {
+				out.TextBackend = ""
+			}
+			continue
+		}
+		if n := len(out.Symbols); n > 0 {
+			ref := ranking.Render(picked[n-1].Symbol, ranking.DisclosureReference)
+			if out.Symbols[n-1].Content != ref {
+				out.Symbols[n-1].Content = ref
+			} else {
+				out.Symbols = out.Symbols[:n-1]
+			}
+			continue
+		}
+		return nil, fmt.Errorf("query symbols response cannot fit budget=%d", sel.budget)
+	}
 	h.Ledger.Record("prism_query", h.queryBaselineTokens(picked, used), used)
 	return out, nil
 }
@@ -938,7 +1288,68 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 	}
 	return total
 }
+
 // ("file.go::Name@abc123"), leaving the stable "file.go::Name" identity.
+
+// readRange delivers an explicit line window, verbatim and line-numbered —
+// the shape `sed -n A,Bp` and native Read(offset,limit) produce, which
+// agents reach for on half their reads.
+//
+// totalLines is always reported: a window without a denominator reads as the
+// whole file, which is the silent-narrowing failure this codebase keeps
+// re-learning. Out-of-range requests clamp and say so rather than erroring —
+// a tool that errors is a tool agents route around.
+func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int) (any, error) {
+	lines := strings.Split(content, "\n")
+	if n := len(lines); n > 0 && lines[n-1] == "" {
+		lines = lines[:n-1] // trailing newline is not a line
+	}
+	total := len(lines)
+	if offset < 1 {
+		offset = 1
+	}
+	if offset > total {
+		return map[string]any{
+			"file": sessionPath, "totalLines": total, "delivery": "range",
+			"warning": fmt.Sprintf("offset %d is past end of file (%d lines); nothing to show",
+				offset, total),
+		}, nil
+	}
+	end := total
+	if limit > 0 && offset-1+limit < total {
+		end = offset - 1 + limit
+	}
+	if h.deliveredRangeCovered(sessionPath, hash, offset, end) {
+		return map[string]any{
+			"file": sessionPath, "delivery": "range", "startLine": offset,
+			"endLine": end, "totalLines": total,
+			"content": fmt.Sprintf("// [prism:cached] %s lines %d-%d — use the source already in context\n",
+				sessionPath, offset, end),
+		}, nil
+	}
+	var b strings.Builder
+	width := len(strconv.Itoa(end))
+	for i := offset - 1; i < end; i++ {
+		fmt.Fprintf(&b, "%*d\t%s\n", width, i+1, lines[i])
+	}
+	out := map[string]any{
+		"file":       sessionPath,
+		"delivery":   "range",
+		"startLine":  offset,
+		"endLine":    end,
+		"totalLines": total,
+		"content":    b.String(),
+	}
+	if note := tabIndentNote(lines[offset-1 : end]); note != "" {
+		out["formatNote"] = note
+	}
+	if end < total || offset > 1 {
+		out["note"] = fmt.Sprintf("lines %d-%d of %d — this is a WINDOW, not the file",
+			offset, end, total)
+	}
+	h.recordDeliveredRanges(sessionPath, hash, []lineWindow{{start: offset, end: end}})
+	return out, nil
+}
 
 func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {
 	path := stringArg(args, "file", stringArg(args, "path", ""))
@@ -954,6 +1365,21 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
+	// Line-ranged reads. Measured over 374 real file reads by unaided and
+	// prism-armed agents: 50.6% are line-ranged (sed -n A,Bp 25.7%, native
+	// Read offset+limit 23.8%) and prism_read could express NONE of it. That
+	// gap is why 87% of the reads prism never saw were ranged, and why its
+	// session ledger fired 0 times in 45 calls -- the agent cannot route a
+	// ranged read through a whole-file tool, so the ledger never sees the
+	// repeats it exists to collapse.
+	//
+	// Whole-file reads keep the compression path unchanged; a ranged read is
+	// delivered verbatim and line-numbered, because slicing lines and THEN
+	// compressing them would be two lossy steps on the same content.
+	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
+	if offset > 0 || limit > 0 {
+		return h.readRange(sessionPath, string(data), compression.Hash(string(data)), offset, limit)
+	}
 	// The file's currently indexed symbols, by exact path (Grove v0.6.1).
 	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))
 	if err != nil {
@@ -964,6 +1390,58 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	confidence := session.Low
 	if entry, seen, _ := h.Session.Lookup(sessionPath, ""); seen {
 		confidence = h.confidenceFor(entry, contextUsed, readCfg.ContextWindow())
+	}
+	// HOST-CAP DEGRADATION (BACKLOG addendum 2 item 17). Claude Code
+	// rejects MCP results past ~25k tokens; a whole-file delivery over
+	// that bound never reaches the agent — it sees only "exceeds maximum
+	// allowed tokens" and, measured (71o4q969, 2026-09-03), never retries
+	// prism_read on ANY file again (50 native Reads followed). For files
+	// whose body CANNOT be delivered there is no policy question — the
+	// choice is an error the agent routes around forever, or a valid
+	// partial. Deliver the head window plus the file's symbol map with
+	// explicit continuation instructions. Files under the bound are
+	// untouched (this deliberately does NOT reopen the reverted
+	// outline/map delivery-shaping work, which concerned deliverable
+	// files).
+	const hostCapTokens = 20000 // safety margin under the host's ~25k
+	if ranking.EstimateTokens(string(data)) > hostCapTokens {
+		lines := strings.Split(string(data), "\n")
+		const headLines = 400
+		head := lines
+		if len(head) > headLines {
+			head = head[:headLines]
+		}
+		var b strings.Builder
+		for i, l := range head {
+			fmt.Fprintf(&b, "%d\t%s\n", i+1, l)
+		}
+		symMap := make([]map[string]any, 0, len(fileSyms))
+		for _, s := range fileSyms {
+			symMap = append(symMap, map[string]any{
+				"name": displayQN(s), "kind": s.Kind,
+				"lines": fmt.Sprintf("%d-%d", s.Span.Start, s.Span.End),
+			})
+		}
+		out := map[string]any{
+			"file":       sessionPath,
+			"strategy":   "head+map (file exceeds the deliverable result cap)",
+			"totalLines": len(lines),
+			"content":    b.String(),
+			"symbols":    symMap,
+			"note": fmt.Sprintf("this file is %d lines (~%d tokens) — larger than one tool "+
+				"result can carry. Delivered: lines 1-%d plus the complete symbol map. "+
+				"Continue with prism_read(file, offset=%d, limit=400), or fetch one body "+
+				"with prism_lookup(name) — do NOT fall back to native Read, it has the "+
+				"same size limit.",
+				len(lines), ranking.EstimateTokens(string(data)), len(head), len(head)+1),
+		}
+		if fn := tabIndentNote(head); fn != "" {
+			out["formatNote"] = fn
+		}
+		if len(fileSyms) > 0 {
+			h.setDriftBase(sessionPath, fileSyms)
+		}
+		return out, nil
 	}
 	res := compression.CompressFileRead(sessionPath, string(data), compression.Options{
 		Task:            task,
@@ -989,29 +1467,705 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	}, nil
 }
 
+const compactReadTotalLines = 600
+
+func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, error) {
+	raw := args["ranges"].([]any) // compact argument validation ran before dispatch
+	type window struct {
+		file, content, hash string
+		from, limit         int
+		warning             string
+	}
+	windows := make([]window, 0, len(raw))
+	var notes []string
+	remainingLines, remainingBytes := compactReadTotalLines, 20*1024
+	for i, entry := range raw {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		r := entry.(map[string]any)
+		path := r["file"].(string)
+		abs, sessionPath, err := safePathWithinRoot(h.Root, path)
+		if err != nil {
+			return nil, err
+		}
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", path, err)
+		}
+		content := string(data)
+		lines := strings.Split(content, "\n")
+		if len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		from, requestedTo := intArg(r, "from", 0), intArg(r, "to", 0)
+		w := window{file: sessionPath, content: content, hash: compression.Hash(content), from: from}
+		if from > len(lines) {
+			w.limit = 1 // readRange will report the past-EOF warning
+			windows = append(windows, w)
+			continue
+		}
+		requestedLines := requestedTo - from + 1
+		w.limit = minInt(requestedLines, minInt(compactReadLimit, remainingLines))
+		w.limit = minInt(w.limit, len(lines)-from+1)
+		for j := 0; j < w.limit; j++ {
+			cost := len(lines[from-1+j]) + 16
+			if cost > remainingBytes {
+				w.limit = j
+				break
+			}
+			remainingBytes -= cost
+		}
+		if w.limit == 0 {
+			w.warning = fmt.Sprintf("range %d (%s:%d-%d) omitted by the compact read budget", i+1, path, from, requestedTo)
+			notes = append(notes, w.warning)
+		} else {
+			remainingLines -= w.limit
+			if w.limit < requestedLines {
+				notes = append(notes, fmt.Sprintf("range %d (%s:%d-%d) clamped to %d-%d",
+					i+1, path, from, requestedTo, from, from+w.limit-1))
+			}
+		}
+		windows = append(windows, w)
+	}
+	results := make([]map[string]any, 0, len(windows))
+	for _, w := range windows {
+		if w.warning != "" {
+			results = append(results, map[string]any{"file": w.file, "delivery": "range", "warning": w.warning})
+			continue
+		}
+		result, err := h.readRange(w.file, w.content, w.hash, w.from, w.limit)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result.(map[string]any))
+	}
+	out := map[string]any{"delivery": "ranges", "ranges": results}
+	if len(notes) > 0 {
+		out["note"] = strings.Join(notes, "; ")
+	}
+	return out, nil
+}
+
+// searchTermCap bounds how many terms one prism_search call will run. The
+// point of batching is to collapse a run of turns, not to let one result
+// become the payload that dominates every later turn (cache reads compound:
+// a result at turn 3 of 28 is paid ~25 times). Ten covers every observed run
+// in the A/B — the longest was 10 — and anything past it is a different kind
+// of request that should be narrowed, not widened.
+const searchTermCap = 10
+
+// searchContextCap bounds context= lines per hit. Unbounded, an agent
+// pairing a large context with exhaustive=true (or a wide path/no path) can
+// turn one call into the token cost of reading whole files hit-by-hit --
+// measured 2026-08-30: a context=30 call over a whole source file inside an
+// already-expensive debugging loop, on a task where the extra payload did
+// not shorten the loop.
+//
+// Tightened 30 -> 15 the same day, by binary search over 75 real context=
+// requests mined from e2e sessions: 15-19 are behaviorally identical (no
+// request in that range all day), so 15 sits at the true edge of normal
+// usage -- 86% of all requests already fall at or under it. Every one of
+// the 10 requests this tightening newly clamps (20,20,22,25,30x4,40x2) is
+// the SAME misuse pattern: a single named function/class captured by
+// guessing a context= large enough, rather than prism_lookup(name) -- the
+// exact case prism_lookup's routing fix (same day) targets directly. Past
+// 15, the caller wants prism_lookup for one symbol or prism_read for a
+// file, not more context.
+const searchContextCap = 15
+
+// defaultSearchLimit is prism_search's default and the value a non-positive
+// limit= clamps to. exhaustiveSymbolCap bounds exhaustive=true on the
+// symbol pass: a completeness answer, but one the transport can carry — a
+// bigger set gets the cap plus a warning to narrow, never a silent cut.
+const (
+	defaultSearchLimit        = 25
+	exhaustiveSymbolCap       = 2000
+	searchSymbolPayloadBudget = 2000
+	// defaultSearchContext: lines around each text hit when the caller sets
+	// no context=. This makes the compact search result useful without a read.
+	defaultSearchContext = 2
+	// symbolFetchHardMax is a defensive backstop. Normal scoped searches are
+	// filtered inside Grove and therefore stop after the first cap+1 fetch;
+	// this bound prevents a future fallback from growing without end.
+	symbolFetchHardMax = 1 << 13
+)
+
+func appendNote(existing, add string) string {
+	if existing == "" {
+		return add
+	}
+	return existing + "; " + add
+}
+
 func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, error) {
-	q := stringArg(args, "query", "")
-	if strings.TrimSpace(q) == "" {
+	// A caller label is metadata, never a retrieval term or scope override.
+	if task, present := args["task"]; present {
+		if _, ok := task.(string); !ok {
+			return nil, errors.New("task must be a string label; query supplies the search terms")
+		}
+	}
+	includeBodies := true
+	if value, present := args["include_bodies"]; present {
+		includeBodies = value == true
+	}
+	queries := stringsArg(args, "query")
+	if len(queries) == 0 {
 		// The schema declares query required; without this an empty string
 		// returned an arbitrary slice of the index as if it were a result.
-		return nil, errors.New("query is required (a name or name fragment to search for)")
+		return nil, errors.New("query is required (a name, a name fragment, or an array of them)")
 	}
-	limit := intArg(args, "limit", 25)
+	var termNote string
+	var omittedTerms []string
+	if len(queries) > searchTermCap {
+		// Never drop silently. A filter that quietly narrows the request is
+		// the failure mode SWE-Explore measures as the expensive one: missing
+		// evidence costs far more than noise.
+		termNote = fmt.Sprintf("only the first %d of %d terms were searched; re-run with the rest",
+			searchTermCap, len(queries))
+		omittedTerms = queries[searchTermCap:]
+		queries = queries[:searchTermCap]
+	}
+	limit := intArg(args, "limit", defaultSearchLimit)
+	if limit <= 0 {
+		limit = defaultSearchLimit
+	}
+	if limit > exhaustiveSymbolCap {
+		termNote = appendNote(termNote, fmt.Sprintf("limit clamped to %d (asked for %d)", exhaustiveSymbolCap, limit))
+		limit = exhaustiveSymbolCap
+	}
 	scope := stringArg(args, "scope", "both")
+	if scope != "text" && scope != "symbols" && scope != "both" {
+		return nil, fmt.Errorf("invalid scope %q; use text, symbols, or both", scope)
+	}
 	regex := boolArg(args, "regex")
+	reqContext := intArg(args, "context", -1)
+	if reqContext < 0 {
+		// CANDIDATE (proposal §6.2, branch cand-search-context): when the
+		// agent did not choose a context, deliver a small one. Measured on
+		// 13 prism cells (read_after_locate, 2026-09-06): the host Reads
+		// that dominate cost are of files a search NAMED but never sent —
+		// 2 of 26 searches asked for context. Off for files_only /
+		// rollup_only (locations are the point) and for exhaustive (the
+		// bounded inventory already carries the shape).
+		reqContext = 0
+		if !boolArg(args, "files_only") && !boolArg(args, "rollup_only") && !boolArg(args, "exhaustive") {
+			reqContext = defaultSearchContext
+		}
+	}
+	if reqContext > searchContextCap {
+		termNote = appendNote(termNote, fmt.Sprintf(
+			"context clamped to %d (asked for %d) — for more than a function's worth, use prism_read on the file",
+			searchContextCap, reqContext))
+		reqContext = searchContextCap
+	}
+	sc := searchScope{
+		paths:      stringsArg(args, "path"),
+		glob:       stringsArg(args, "glob"),
+		filesOnly:  boolArg(args, "files_only"),
+		exhaustive: boolArg(args, "exhaustive"),
+		context:    reqContext,
+		rollupOnly: boolArg(args, "rollup_only"),
+		// A raised limit keeps the exact-count pass. It used to switch it
+		// off: click get_command with max_results=500 (Sonnet 5.5,
+		// 2026-09-28) got a 5-per-file context sample of 29 lines with no
+		// completeness line, and the agent grepped for the full list.
+		adaptive:     limit >= defaultSearchLimit,
+		contextAsked: intArg(args, "context", -1) >= 0,
+	}
+	budget := searchBudgetFor(args, sc, queries, regex)
+	sc.budget = budget.on
+	budget.sc = sc
+	if len(queries) > 1 && len(sc.paths) == 0 && len(sc.glob) == 0 {
+		filtered := queries[:0]
+		var skipped []string
+		for _, q := range queries {
+			if genericSyntaxSearch(q) {
+				skipped = append(skipped, q)
+				continue
+			}
+			filtered = append(filtered, q)
+		}
+		if len(filtered) > 0 && len(skipped) > 0 {
+			queries = filtered
+			termNote = appendNote(termNote, fmt.Sprintf(
+				"skipped repository-wide syntax term(s) %q because the specific batched term supplies the declaration/call inventory; run broad syntax searches separately with path=/glob=", skipped))
+		}
+	}
+
+	// Multi-term: run each term through the same single-term path and group
+	// the results under the term that produced them, so an agent can tell
+	// which hit answered which question. One term keeps the flat shape
+	// verbatim — every existing caller and test sees no change.
+	if len(queries) > 1 {
+		perTerm := make([]map[string]any, len(queries))
+		errs := make([]error, len(queries))
+		var wg sync.WaitGroup
+		for i, q := range queries {
+			wg.Add(1)
+			go func(i int, q string) {
+				defer wg.Done()
+				r, err := h.searchOne(ctx, q, scope, limit, regex, sc)
+				if err != nil {
+					errs[i] = err
+					return
+				}
+				r["query"] = q
+				perTerm[i] = r
+			}(i, q)
+		}
+		wg.Wait()
+		out := map[string]any{"root": h.Root}
+		if disclosure := searchScopeDisclosure(scope, sc); disclosure != "" {
+			out["scopeNote"] = disclosure
+		}
+		if len(omittedTerms) > 0 {
+			out["omittedTerms"] = omittedTerms
+		}
+		results := make([]map[string]any, 0, len(queries))
+		var failed []string
+		for i := range queries {
+			if errs[i] != nil {
+				// One bad term must not lose the other nine's results.
+				failed = append(failed, fmt.Sprintf("%s: %v", queries[i], errs[i]))
+				continue
+			}
+			results = append(results, perTerm[i])
+		}
+		out["results"] = results
+		if leads := searchLeads(results); len(leads) > 0 {
+			out["searchLeads"] = leads
+		} else if len(results) > 1 && !sc.filesOnly {
+			out["searchLeadNote"] = "No indexed-name or cross-term source anchor; the results below are independent term matches."
+		}
+		if len(failed) > 0 {
+			out["failedTerms"] = failed
+		}
+		if termNote != "" {
+			out["note"] = termNote
+		}
+		allEmpty := len(results) > 0
+		for _, r := range results {
+			if !searchResultEmpty(r) {
+				allEmpty = false
+				break
+			}
+		}
+		filterMiss := h.attachScopeFilterNote(out, sc, allEmpty)
+		if allEmpty && !searchResultPartial(out) && !filterMiss {
+			h.attachEmptySearchGuidance(ctx, out, queries, sc)
+		}
+		if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			if bodies := h.searchBodies(ctx, out, budget); bodies != "" {
+				out["inlineBodies"] = bodies
+			}
+		}
+		if budget.on {
+			h.applySearchBudget(ctx, out, queries, budget)
+		} else if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			boundSearchPresentation(out)
+			boundSymbolPresentation(out)
+		}
+		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			h.appendBatchedSearchFallback(ctx, out, results, scope, sc, limit)
+		}
+		return out, nil
+	}
+
+	out, err := h.searchOne(ctx, queries[0], scope, limit, regex, sc)
+	if err != nil {
+		return nil, err
+	}
+	out["root"] = h.Root
+	if disclosure := searchScopeDisclosure(scope, sc); disclosure != "" {
+		out["scopeNote"] = disclosure
+	}
+	if termNote != "" {
+		out["note"] = termNote
+	}
+	if h.attachScopeFilterNote(out, sc, searchResultEmpty(out)) {
+		// The filter selected no file: no term was tested, so neither the
+		// retry-the-terms guidance nor the token fallback applies.
+	} else if searchResultEmpty(out) && !searchResultPartial(out) {
+		h.attachEmptySearchGuidance(ctx, out, queries, sc)
+		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+			selected, omitted := searchFallbackTerms(queries[0])
+			if len(selected) > 0 {
+				fallbackScope := sc
+				fallbackScope.context = 0
+				fallbackScope.adaptive = false
+				fallback := make([]map[string]any, 0, len(selected))
+				for _, term := range selected {
+					r, err := h.searchOne(ctx, term, scope, minInt(limit, 2), false, fallbackScope)
+					if err != nil {
+						out["fallbackFailed"] = append(anySlice(out["fallbackFailed"]), term+": "+err.Error())
+						continue
+					}
+					r["query"] = term
+					fallback = append(fallback, r)
+				}
+				if len(fallback) > 0 {
+					out["fallbackResults"] = fallback
+				}
+				if len(omitted) > 0 {
+					out["fallbackOmitted"] = omitted
+				}
+				for len(fallback) > 0 {
+					text, ok := renderSearchAsText(out)
+					if ok && ranking.EstimateTokens(text) <= 2000 {
+						break
+					}
+					last := fallback[len(fallback)-1]
+					out["fallbackOmitted"] = append(anySlice(out["fallbackOmitted"]), last["query"])
+					fallback = fallback[:len(fallback)-1]
+					out["fallbackResults"] = fallback
+				}
+			}
+		}
+	}
+	if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+		// The flat single-term shape carries no "query"; body selection
+		// needs the term to recognise the definition of a named symbol.
+		if bodies := h.searchBodies(ctx, withSearchQuery(out, queries[0]), budget); bodies != "" {
+			out["inlineBodies"] = bodies
+		}
+	}
+	if budget.on {
+		h.applySearchBudget(ctx, out, queries, budget)
+	} else if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
+		boundSearchPresentation(out)
+		boundSymbolPresentation(out)
+	}
+	return out, nil
+}
+
+// withSearchQuery returns a shallow copy of a flat single-term search result
+// labeled with its term, leaving the delivered shape untouched.
+func withSearchQuery(out map[string]any, q string) map[string]any {
+	if _, batched := out["results"]; batched {
+		return out
+	}
+	if _, has := out["query"]; has {
+		return out
+	}
+	labeled := make(map[string]any, len(out)+1)
+	for k, v := range out {
+		labeled[k] = v
+	}
+	labeled["query"] = q
+	return labeled
+}
+
+// tokenFallbackTerms picks a few distinct code-like words from a failed
+// literal phrase. The fallback is separately labeled and never replaces the
+// original search or silently expands its path/glob filters.
+func tokenFallbackTerms(q string) (selected, omitted []string) {
+	words := strings.Fields(q)
+	if len(words) < 2 || len(q) > 160 {
+		return nil, nil
+	}
+	type candidate struct {
+		term  string
+		score int
+	}
+	var candidates []candidate
+	seen := map[string]bool{}
+	for i, word := range words {
+		term := strings.Trim(word, "`'\"()[]{}.,:;!?")
+		lower := strings.ToLower(term)
+		if seen[lower] {
+			continue
+		}
+		if len(term) < 3 || strings.ContainsAny(term, "/\\") {
+			if term != "" {
+				omitted = append(omitted, term)
+			}
+			continue
+		}
+		switch lower {
+		case "class", "def", "func", "function", "method", "interface", "struct", "with", "for", "the", "and", "from":
+			omitted = append(omitted, term)
+			continue
+		}
+		seen[lower] = true
+		score := minInt(len(term)/3, 4)
+		if term != lower || strings.ContainsAny(term, "._") {
+			score += 4
+		}
+		if i == len(words)-1 {
+			score += 3
+		}
+		candidates = append(candidates, candidate{term: term, score: score})
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return candidates[i].score > candidates[j].score
+	})
+	for i, item := range candidates {
+		if i < 3 {
+			selected = append(selected, item.term)
+		} else {
+			omitted = append(omitted, item.term)
+		}
+	}
+	return selected, omitted
+}
+
+func genericSyntaxSearch(q string) bool {
+	q = strings.Join(strings.Fields(strings.TrimSpace(q)), " ")
+	switch q {
+	case "func (", "func(", "def", "class", "function", "public", "private":
+		return true
+	}
+	return false
+}
+
+// searchResultEmpty reports whether one searchOne result carries no hits of
+// any shape (symbols, text hits, or files).
+// attachScopeFilterNote puts a path=/glob= filter miss at the top of a search
+// result and reports whether the filters selected no file at all.
+func (h *Handler) attachScopeFilterNote(out map[string]any, sc searchScope, empty bool) bool {
+	rep := scopeFilterCheck(h.Root, sc.paths, sc.glob, empty)
+	if rep.note == "" {
+		return false
+	}
+	if existing, _ := out["scopeNote"].(string); existing != "" {
+		out["scopeNote"] = rep.note + "; " + existing
+	} else {
+		out["scopeNote"] = rep.note
+	}
+	return rep.noFiles
+}
+
+func searchResultEmpty(m map[string]any) bool {
+	if m == nil {
+		return true
+	}
+	return len(anySlice(m["symbols"])) == 0 &&
+		len(anySlice(m["textHits"])) == 0 &&
+		len(anySlice(m["files"])) == 0
+}
+
+// attachEmptySearchGuidance annotates an all-empty search with what to do
+// NEXT, at the moment it matters -- the same in-band-guidance pattern as the
+// truncation warning's hitRollup pointer.
+//
+// Why: transcript analysis (2026-09-02, grove__b40b72d94e wide-bed cell)
+// found the exact moment an agent abandoned prism for the rest of a task --
+// one search where every guessed term (punctuation-laden call patterns like
+// "e.Query(") came back empty. It never called prism again; 7 more files
+// were then found by manual grep at ~2x the turns. The empty result was
+// honest but terminal: nothing in it distinguished "these exact strings
+// don't exist -- broaden and retry" from "this tool can't help here". Terms
+// that HAD matched minutes earlier were never retried.
+//
+// The annotation does two things: says explicitly that empty means the
+// TERMS missed (not that the tool is exhausted), and -- when the symbol
+// index has near-miss candidates for the identifier tokens inside the
+// failed terms -- lists them, so the retry is one obvious step instead of
+// a fresh guess.
+func (h *Handler) attachEmptySearchGuidance(ctx context.Context, out map[string]any, terms []string, sc searchScope) {
+	// One line carries the completion evidence AND the retry: the
+	// per-term "no matches — search completed" line is suppressed by the
+	// renderer when this note is present (they said the same thing twice,
+	// ~350 chars, on every empty search).
+	guidance := "no matches — search completed, not truncated, not timed out in the requested scope; " +
+		"NOT that the tool is done. Excluded files and unindexed symbols are not covered. Retry broader/shorter (drop punctuation and " +
+		"qualifiers: \"e.Query(\" -> \"Query\") or reuse a term that matched earlier."
+	// nearMissSymbols searches the whole index. On path/glob-scoped calls it
+	// could suggest a test outside the requested files as if it were in scope.
+	if len(sc.paths) == 0 && len(sc.glob) == 0 {
+		if dym := h.nearMissSymbols(ctx, terms); len(dym) > 0 {
+			out["didYouMean"] = dym
+			guidance += " Closest indexed symbols below."
+		}
+	}
+	h.hypLedger.recordEmptySearch(terms)
+	if sn := h.hypLedger.scopeNote(); sn != "" {
+		guidance += " " + sn
+	}
+	if existing, _ := out["note"].(string); existing != "" {
+		out["note"] = existing + " — " + guidance
+	} else {
+		out["note"] = guidance
+	}
+}
+
+// nearMissSymbols extracts the identifier tokens from failed search terms
+// (dropping the punctuation that most often causes a zero-hit grep pattern)
+// and asks the symbol index for their closest matches. Best-effort: no
+// Grove, no tokens, or no matches all yield nil.
+func (h *Handler) nearMissSymbols(ctx context.Context, terms []string) []string {
+	if h.Grove == nil {
+		return nil
+	}
+	ident := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{2,}`)
+	seenTok := map[string]bool{}
+	seenOut := map[string]bool{}
+	var out []string
+	for _, t := range terms {
+		var longest string
+		for _, tok := range ident.FindAllString(t, -1) {
+			if len(tok) > len(longest) {
+				longest = tok
+			}
+		}
+		lt := strings.ToLower(longest)
+		if longest == "" || seenTok[lt] {
+			continue
+		}
+		seenTok[lt] = true
+		ms, err := h.Grove.SearchSymbols(ctx, longest, 3)
+		if err != nil {
+			continue
+		}
+		for _, m := range ms {
+			q := m.QualifiedName
+			if q == "" {
+				q = m.Name
+			}
+			if q == "" || seenOut[q] {
+				continue
+			}
+			seenOut[q] = true
+			out = append(out, fmt.Sprintf("%s (%s:%d)", q, m.FilePath, m.Span.Start))
+			if len(out) >= 8 {
+				return out
+			}
+		}
+	}
+	return out
+}
+
+// searchOne is the single-term search, unchanged in behaviour and shape from
+// when prism_search took exactly one query.
+type searchScope struct {
+	paths      []string
+	glob       []string
+	filesOnly  bool
+	exhaustive bool
+	context    int
+	rollupOnly bool
+	adaptive   bool
+	// contextAsked: the caller passed context= itself; keep that shape.
+	contextAsked bool
+	// budget: the default response budget applies (searchbudget.go); the
+	// sampling warnings use their short form.
+	budget bool
+}
+
+func searchScopeDisclosure(scope string, sc searchScope) string {
+	var filters []string
+	if len(sc.paths) > 0 {
+		filters = append(filters, fmt.Sprintf("path=%q", sc.paths))
+	}
+	if len(sc.glob) > 0 {
+		filters = append(filters, fmt.Sprintf("glob=%q", sc.glob))
+	}
+	var notes []string
+	if len(filters) > 0 {
+		notes = append(notes, "match lists restricted to "+strings.Join(filters, ", ")+"; files outside these filters, including tests outside them, were not searched for matches")
+	}
+	if scope == "symbols" {
+		notes = append(notes, "indexed-symbol search only; text search was not run. Use scope=text to check references")
+	}
+	return strings.Join(notes, "; ")
+}
+
+func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
 
 	// scope="text": the agent asked for a PURE grep — exactly what rg
 	// returns, no symbol search, no graph, minimal envelope. This is the
 	// agent pricing its own request (measured: routing every locate through
 	// the enriched path cost ~1.5× on ordinary bug fixes for zero benefit).
 	if scope == "text" {
-		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+		opts := textsearch.Options{
 			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
-		})
+			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+		}
+		r := textsearch.Search(ctx, h.Root, q, opts)
 		out := map[string]any{
-			"textHits":    h.renderTextMatches(r.Hits),
+			"textHits":    h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked),
 			"textBackend": r.Backend,
 			"truncated":   r.Truncated,
+		}
+		attachTextSearchCompleteness(out, r)
+		if r.Truncated {
+			// Truncation always carries a denominator. Without one the agent
+			// cannot tell a complete answer from a 2% sample, and the failure
+			// is silent: it reads the capped list as the whole picture.
+			out["totalHits"] = r.TotalHits
+			out["filesMatched"] = r.FilesMatched
+			// Point at the grouped evidence without treating capped group names
+			// or lower-bound counts as an exhaustive inventory.
+			ru := h.hitRollup(ctx, q, sc, regex)
+			if len(ru) > 0 {
+				out["hitRollup"] = ru
+				out["warning"] = fmt.Sprintf(
+					"showing %d of %s matches across %d %s — this is a SAMPLE, not "+
+						"the full set. Check the bounded hitRollup below before re-querying; "+
+						"omitted groups and unprobed hits are noted. It is not a complete site inventory. "+
+						"Need every raw line? exhaustive=true; narrow path=/glob= for evidence gaps.",
+					len(r.Hits), textMatchCount(r, false), r.FilesMatched, textMatchFileWord(r.FilesMatched))
+				if sc.rollupOnly {
+					// The caller already knows the sample's raw lines are
+					// not what they need this call -- "how many, and where
+					// do they cluster" is fully answered by hitRollup alone
+					// (real usage, 2026-09-02: paid for the sample's tokens
+					// on repeated searches where only the rollup was ever
+					// read). Ordering the rollup earlier in the payload
+					// would not have saved anything -- deliveredTokens
+					// bills the whole response regardless of read order;
+					// not delivering the sample at all is the only real
+					// lever. Only suppressed when a rollup actually exists
+					// (nothing to answer with otherwise, and dropping
+					// information silently is worse than the tokens).
+					delete(out, "textHits")
+				}
+			} else {
+				out["warning"] = fmt.Sprintf(
+					"showing %d of %s matches across %d %s — this is a SAMPLE, not the "+
+						"full set. Raise limit=, narrow with path=/glob=, or use files_only=true to "+
+						"see the spread before drawing conclusions. Need every raw line? exhaustive=true.",
+					len(r.Hits), textMatchCount(r, false), r.FilesMatched, textMatchFileWord(r.FilesMatched))
+			}
+		}
+		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+			// The lines are a sample; the files must not be. Every matching
+			// file is named with its hit count (see searchinventory.go).
+			if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+				out["fileInventory"] = inv
+				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
+			}
+		}
+		if sc.budget && r.Truncated {
+			out["warning"] = budgetSampleWarning(r, out["fileInventory"] != nil)
+		}
+		if sc.filesOnly {
+			// Locations without lines: the cheapest answer to "where does
+			// this live". Done here rather than via rg --files-with-matches,
+			// whose bare-path output breaks the shared line parser.
+			seen := map[string]bool{}
+			var files []string
+			for _, hit := range r.Hits {
+				if !seen[hit.File] {
+					seen[hit.File] = true
+					files = append(files, hit.File)
+				}
+			}
+			delete(out, "textHits")
+			out["fileCount"] = len(files)
+			out["files"] = files
+			if sc.exhaustive || r.ResultsComplete {
+				out["note"] = strconv.Itoa(len(files)) + " files match — COMPLETE exact path inventory; no directory counts or path expansion required"
+			}
+		}
+		if len(r.RejectedPaths) > 0 {
+			// Never let a dropped scope pass as a completed search.
+			out["rejectedPaths"] = r.RejectedPaths
+			out["warning"] = fmt.Sprintf(
+				"these path= entries resolve outside the project root and were NOT searched: %v",
+				r.RejectedPaths)
 		}
 		if r.TimedOut {
 			out["timedOut"] = true
@@ -1021,26 +2175,74 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 				"ripgrep nor grep was found on this server's PATH; installing " +
 				"ripgrep fixes both the speed and this warning."
 		}
-		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
-			out["resolvedNote"] = n
+		// Structural hint first: the fan-out of the symbol this term names
+		// (implementations + callers with sites) outranks the noise-ratio
+		// note — full38 showed missed fan-out sites, not noisy greps, are
+		// where searches go wrong.
+		// Structural hints are repository-wide. A path/glob filter must not
+		// quietly add evidence from files outside the requested match scope.
+		// files_only asked for paths alone.
+		if len(sc.paths) == 0 && len(sc.glob) == 0 && !sc.filesOnly {
+			if n := h.structuralNote(ctx, q); n != "" {
+				out["resolvedNote"] = n
+			} else if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
+				out["resolvedNote"] = n
+			}
 		}
 		return out, nil
 	}
 
-	// Grove's symbol search is ranked (exact name > prefix > substring,
-	// v0.6.0) — deliver it directly, matching this tool's contract of
-	// searching symbol names rather than re-ranking semantically.
-	syms, err := h.Grove.SearchSymbols(ctx, q, limit)
+	// Grove supplies a candidate stream; Prism labels and re-tiers it before
+	// capping so a test double or signature-only match cannot displace a
+	// better name match from the delivered sample.
+	// exhaustive=true lifts the SYMBOL cap too. Until 2026-09-06 only the
+	// text pass honoured it: scope="symbols", exhaustive=true returned the
+	// default 25 with no marker at all. Measured (ab_gate, grafana
+	// CheckHealth): 25 of 53+ methods, the agent answered from the sample
+	// as if it were the set and scored 0.73 recall. A capped answer to a
+	// completeness question looks complete — so a capped symbol list now
+	// carries a warning, and an exhaustive one is not capped.
+	if limit <= 0 {
+		// limit=-1 reached the slice below as syms[:-1] (review, 2026-09-06).
+		limit = defaultSearchLimit
+	}
+	limit = minInt(limit, exhaustiveSymbolCap)
+	symCap := limit
+	if sc.exhaustive {
+		// Bounded, not unbounded: past exhaustiveSymbolCap the response
+		// would exceed what the host accepts and be cut at the transport
+		// with no marker at all — the exact failure this fixes, one layer
+		// down. The cap is stated when hit, with the narrowing to use.
+		symCap = exhaustiveSymbolCap
+	}
+	// path=/glob= are honored by the TEXT pass (textsearch.Options) but were
+	// silently dropped by the SYMBOL pass — the agent's narrowing simply did
+	// not apply to half its own result. Measured on jackson (2026-08-25): a
+	// search for "anySetter" scoped to src/main/java returned 25 symbols, 8
+	// of them from src/test/java, and the agent re-grepped to recover. A
+	// scope the tool advertises and then ignores is worse than no scope.
+	//
+	// The filters run AFTER the ranked fetch, so a fixed fetch size cannot
+	// know whether the in-scope set is complete (review, 2026-09-06: 2,001
+	// out-of-scope matches ranked first hid 3,000 in-scope ones with no
+	// marker). Fetch in growing batches until the filtered result exceeds
+	// the cap or the source itself is exhausted (it returned fewer than
+	// asked); only then is "not truncated" a fact.
+	scanCap := symCap
+	if !sc.exhaustive {
+		scanCap = minInt(exhaustiveSymbolCap, maxInt(symCap*4, 64))
+	}
+	searchScoped := func(ctx context.Context, query string, limit int) ([]grove.SymbolRecord, error) {
+		return h.Grove.SearchSymbolsScoped(ctx, query, limit, sc.paths, sc.glob)
+	}
+	syms, sourceExhausted, err := scopedSymbolSearch(ctx, searchScoped, q, sc, scanCap, symbolFetchHardMax)
 	if err != nil {
 		return nil, err
 	}
-	syms = filterGeneratedPrismContext(syms)
-	// Real implementations first, test doubles tagged and last — the
-	// disambiguation prism_resolve used to provide, folded into the one
-	// locate tool so agents never need a second call to tell them apart.
-	annotated := make([]map[string]any, 0, len(syms))
-	var doubles []map[string]any
-	for _, s := range syms {
+	ranked, condensed := condenseSearchSymbols(rankSearchSymbols(syms, q))
+	annotated := make([]map[string]any, 0, len(ranked))
+	for _, item := range ranked {
+		s := item.symbol
 		var m map[string]any
 		if b, err := json.Marshal(s); err == nil {
 			_ = json.Unmarshal(b, &m)
@@ -1048,27 +2250,172 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		if m == nil {
 			continue
 		}
-		if isTestDouble(s.FilePath) {
+		m["matchKind"] = item.matchKind
+		switch searchTestLabel(s) {
+		case "test double":
 			m["testDouble"] = true
-			doubles = append(doubles, m)
-		} else {
-			annotated = append(annotated, m)
+		case "test":
+			m["testCode"] = true
+		}
+		annotated = append(annotated, m)
+	}
+	// LOCATE returns locations, not bodies. The text renderer already drops
+	// rawText (v0.55.6), but the JSON payload still carried whole symbol
+	// bodies — measured on jackson (2026-08-25): one `search anySetter`
+	// returned 95,315 bytes of class bodies for a locate question, in a
+	// language where a class body runs hundreds of lines. Python hid this;
+	// Java made it the dominant cost. Bodies remain one prism_lookup away,
+	// and the pointer says so.
+	for _, m := range annotated {
+		delete(m, "rawText")
+		delete(m, "callSites")
+		delete(m, "blobSha")
+		delete(m, "id")
+		delete(m, "imports")
+	}
+	// A small complete result is cheaper to deliver once than to force an
+	// exhaustive follow-up solely because it crossed the default count cap.
+	if sc.adaptive && sourceExhausted && !sc.exhaustive && len(annotated) > symCap {
+		if preview, ok := renderSearchAsText(map[string]any{"symbols": annotated}); ok &&
+			ranking.EstimateTokens(preview) <= searchSymbolPayloadBudget {
+			symCap = len(annotated)
 		}
 	}
-	annotated = append(annotated, doubles...)
+	moreKnown := len(annotated) > symCap
+	symbolsTruncated := moreKnown || !sourceExhausted
+	if moreKnown {
+		annotated = annotated[:symCap]
+	}
+	// No "locations only" note here: the text renderer states it once
+	// under the symbol list (searchtext.go); carrying it in the envelope
+	// too printed two near-identical pointers on every symbol result.
 	out := map[string]any{"symbols": annotated}
+	if condensed != "" {
+		out["condensedNote"] = condensed
+	}
+	if symbolsTruncated {
+		out["symbolsTruncated"] = true
+		out["warning"] = symbolSearchWarning(len(annotated), symCap, sc.exhaustive, sourceExhausted, moreKnown)
+		if !sourceExhausted {
+			out["warning"] = appendNote(out["warning"].(string), fmt.Sprintf(
+				"match tiers were evaluated over the first %d in-scope candidates; later candidates may change the top ranks. Narrow query/path or use exhaustive=true", len(syms)))
+		}
+	}
 	// Merged full-text search: the same query as a literal, so a string
 	// that names no symbol (an error message, a config key) still lands.
 	// scope="symbols" skips it on request.
 	if scope != "symbols" {
-		if r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
-			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
-		}); len(r.Hits) > 0 {
-			out["textHits"] = h.renderTextMatches(r.Hits)
-			out["textBackend"] = r.Backend
+		// The merged pass previously ran at MaxHits 50 — double the symbol
+		// limit the caller asked for, on the default scope of the highest-
+		// call-count tool. The caller's limit bounds both passes now.
+		opts := textsearch.Options{
+			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+			Exhaustive: sc.exhaustive, Context: sc.context, Adaptive: sc.adaptive,
+		}
+		r := textsearch.Search(ctx, h.Root, q, opts)
+		out["textHits"] = h.renderedTextSearchHits(ctx, r, sc.exhaustive, sc.contextAsked)
+		out["textBackend"] = r.Backend
+		attachTextSearchCompleteness(out, r)
+		if r.Truncated {
+			out["truncated"] = true
+			out["totalHits"] = r.TotalHits
+			out["filesMatched"] = r.FilesMatched
+			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf(
+				"Text matches are a SAMPLE: showing %d of %s. Use exhaustive=true or narrow path=/glob=.",
+				len(r.Hits), textMatchCount(r, true)))
+		}
+		textWarning := stringArg(out, "warning", "")
+		if (r.Truncated || textHitsOmitFiles(out["textHits"])) && !sc.exhaustive && !sc.filesOnly {
+			if inv := h.textFileInventory(ctx, q, r, opts); inv != nil {
+				out["fileInventory"] = inv
+				out["warning"] = appendNote(stringArg(out, "warning", ""), fileInventoryWarning)
+			}
+		}
+		if sc.budget && r.Truncated {
+			// Replace the long text-sampling sentences, keep the symbol ones.
+			symWarning := textWarning
+			if i := strings.Index(textWarning, "Text matches are a SAMPLE"); i >= 0 {
+				symWarning = strings.TrimSuffix(strings.TrimSpace(textWarning[:i]), ";")
+			}
+			out["warning"] = appendNote(symWarning, budgetSampleWarning(r, out["fileInventory"] != nil))
+		}
+		if r.TimedOut {
+			out["timedOut"] = true
+			out["warning"] = appendNote(stringArg(out, "warning", ""), "INCOMPLETE text scan: deadline reached; absence is not established.")
+		}
+		if len(r.RejectedPaths) > 0 {
+			out["rejectedPaths"] = r.RejectedPaths
+			out["warning"] = appendNote(stringArg(out, "warning", ""), fmt.Sprintf("Paths outside the root were NOT searched: %v", r.RejectedPaths))
+		}
+	}
+	if sc.filesOnly {
+		// files_only means paths without lines in every scope. Until
+		// v0.83.4 only scope=text honored it: a default-scope call returned
+		// the symbol list, caller notes and match lines (3,036 vs 593 chars;
+		// jackson pr5959 asked for test file names and got 18,246 chars).
+		return filesOnlySearchResult(out, sc.exhaustive), nil
+	}
+	// Same structural hint as scope=text: the symbol list above says the
+	// name exists, but not that changing it fans out — and the fan-out is
+	// the part agents were measured never to ask for on their own.
+	if len(sc.paths) == 0 && len(sc.glob) == 0 {
+		if n := h.structuralNote(ctx, q); n != "" {
+			out["resolvedNote"] = n
 		}
 	}
 	return out, nil
+}
+
+// filesOnlySearchResult reduces a symbol/merged search result to its file
+// paths: symbol files in rank order, then text-match files. Warnings about
+// sampling and completeness are kept.
+func filesOnlySearchResult(out map[string]any, exhaustive bool) map[string]any {
+	seen := map[string]bool{}
+	var files []string
+	add := func(file string) {
+		if file != "" && !seen[file] {
+			seen[file] = true
+			files = append(files, file)
+		}
+	}
+	for _, raw := range anySlice(out["symbols"]) {
+		if sym, ok := raw.(map[string]any); ok {
+			file, _ := sym["filePath"].(string)
+			add(file)
+		}
+	}
+	for _, raw := range anySlice(out["textHits"]) {
+		if g, ok := raw.(map[string]any); ok {
+			file, _ := g["file"].(string)
+			add(file)
+			// exhaustive renders excerpts for the first textRenderFileCap
+			// files only; every other file is in the trailing inventory.
+			// Reading excerpt groups alone listed 10 of 31 files on h3
+			// `push` (2026-09-28) under a "COMPLETE" note, and the agent
+			// re-grepped for the test files it had been denied.
+			for _, inv := range anySlice(g["inventory"]) {
+				if e, ok := inv.(map[string]any); ok {
+					file, _ := e["file"].(string)
+					add(file)
+				}
+			}
+		}
+	}
+	res := map[string]any{"files": files, "fileCount": len(files)}
+	for _, key := range []string{"warning", "truncated", "totalHits", "filesMatched", "timedOut",
+		"rejectedPaths", "symbolsTruncated", "countComplete", "resultsComplete"} {
+		if v, ok := out[key]; ok {
+			res[key] = v
+		}
+	}
+	symbolsComplete := !boolArg(out, "symbolsTruncated")
+	_, hadText := out["textHits"]
+	textComplete := !hadText || boolArg(out, "resultsComplete") || (exhaustive && !boolArg(out, "truncated"))
+	if symbolsComplete && textComplete && !boolArg(out, "timedOut") {
+		res["note"] = strconv.Itoa(len(files)) + " files match — COMPLETE path inventory"
+	}
+	return res
 }
 
 func (h *Handler) toolReferences(ctx context.Context, args map[string]any) (any, error) {
@@ -1204,6 +2551,24 @@ func isTestDouble(path string) bool {
 		strings.Contains(lp, "stub") || strings.Contains(lp, "/testdata/")
 }
 
+// searchTestLabel distinguishes a test double (mock/fake/stub) from other
+// test code for search locator lines. isTestDouble also covers every
+// _test.go file, which is right for demoting candidates but labelled real
+// test functions (TestErrorSlice, TestContextGetErrorSlice) "[test double]".
+func searchTestLabel(s grove.SymbolRecord) string {
+	lp := strings.ToLower(filepath.ToSlash(s.FilePath))
+	ln := strings.ToLower(s.Name)
+	for _, marker := range []string{"mock", "fake", "stub"} {
+		if strings.Contains(lp, marker) || strings.Contains(ln, marker) {
+			return "test double"
+		}
+	}
+	if isTestDouble(s.FilePath) || isTestFilePath(s.FilePath) {
+		return "test"
+	}
+	return ""
+}
+
 // projectSymbol returns only the requested columns of a symbol. file, line and
 // name are always included as identity. Recognized fields: signature, doc, body,
 // kind, parent, modifiers. An empty list means "default" (caller adds the body).
@@ -1232,6 +2597,86 @@ func projectSymbol(s grove.SymbolRecord, fields []string) map[string]any {
 		}
 	}
 	return out
+}
+
+// lookupCandidateLabel names a tied lookup candidate with its line span, so two
+// same-named symbols in one file never render as identical lines.
+// cFamilyDefinitionBonus breaks a lookup tie between a C/C++ definition and
+// its prototypes in the definition's favor; it is smaller than every other
+// ranking signal.
+const cFamilyDefinitionBonus = 2
+
+func cFamilyDeclaration(s grove.SymbolRecord) bool {
+	return (s.Language == "c" || s.Language == "cpp") && slices.Contains(s.Annotations, "declaration")
+}
+
+// cFamilyDefinition reports a C/C++ callable with a body (not a prototype).
+func cFamilyDefinition(s grove.SymbolRecord) bool {
+	if s.Language != "c" && s.Language != "cpp" || cFamilyDeclaration(s) {
+		return false
+	}
+	switch s.Kind {
+	case "function", "method", "constructor":
+		return true
+	}
+	return false
+}
+
+func lookupCandidateLabel(s grove.SymbolRecord) string {
+	return fmt.Sprintf("%s (%s:%d-%d)", lookupSymbolName(s), s.FilePath, s.Span.Start, s.Span.End)
+}
+
+// lookupOverloads returns the other overloads of a looked-up symbol, in source
+// order. Bodies are included while the total delivered body text (the primary
+// body plus overloads) stays within searchFullBodyMaxBytes; past that, an
+// overload keeps its signature and span so the agent can read it by range.
+// fields= projections apply to each overload the same way as the primary.
+func lookupOverloads(overloads []grove.SymbolRecord, fields []string, primaryBytes int) []map[string]any {
+	sorted := append([]grove.SymbolRecord(nil), overloads...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Span.Start < sorted[j].Span.Start })
+	wantBody := len(fields) == 0
+	for _, f := range fields {
+		if lf := strings.ToLower(f); lf == "body" || lf == "source" {
+			wantBody = true
+		}
+	}
+	used := primaryBytes
+	out := make([]map[string]any, 0, len(sorted))
+	for _, s := range sorted {
+		var entry map[string]any
+		if len(fields) > 0 {
+			entry = projectSymbol(s, fields)
+			delete(entry, "body")
+		} else {
+			entry = map[string]any{"name": lookupSymbolName(s), "file": s.FilePath, "line": s.Span.Start,
+				"signature": s.Signature}
+		}
+		entry["end"] = s.Span.End
+		if wantBody {
+			if used+len(s.RawText) <= searchFullBodyMaxBytes {
+				used += len(s.RawText)
+				if len(fields) > 0 {
+					entry["body"] = s.RawText
+				} else {
+					entry["content"] = s.RawText
+				}
+			} else {
+				entry["bodyOmitted"] = true
+				if _, ok := entry["signature"]; !ok {
+					entry["signature"] = s.Signature
+				}
+			}
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+func lookupSymbolName(s grove.SymbolRecord) string {
+	if s.QualifiedName != "" {
+		return s.QualifiedName
+	}
+	return s.Name
 }
 
 // toolNode is the one-shot orientation view: everything you need about ONE
@@ -1397,9 +2842,36 @@ func (h *Handler) nodeFile(ctx context.Context, path string, syms []grove.Symbol
 }
 
 func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, error) {
+	if requests, batch, err := lookupBatchRequests(args["name"]); err != nil {
+		return nil, err
+	} else if batch {
+		return h.toolLookupBatch(ctx, args, requests)
+	}
+	out, err := h.lookupSymbol(ctx, args, "")
+	if err != nil {
+		return out, err
+	}
+	selected := false
+	if sig := stringArg(args, "signature", ""); sig != "" {
+		if m, ok := out.(map[string]any); ok {
+			selected = h.selectLookupOverload(ctx, m, sig)
+		}
+	}
+	// Delivered-body size cap (bodycap.go), kept outside lookupSymbol.
+	return h.addLookupCallerSignal(ctx, h.capLookupResult(ctx, out), selected), nil
+}
+
+func (h *Handler) lookupSymbol(ctx context.Context, args map[string]any, fileScope string) (any, error) {
 	name := stringArg(args, "name", stringArg(args, "qualifiedName", ""))
 	if name == "" {
 		return nil, errors.New("name is required")
+	}
+	if fileScope != "" {
+		var err error
+		fileScope, err = h.lookupFileScope(fileScope)
+		if err != nil {
+			return nil, err
+		}
 	}
 	// Optional column projection: return only the requested fields (signature,
 	// doc, body, kind, parent, modifiers) instead of the full source body.
@@ -1418,197 +2890,7 @@ func (h *Handler) toolLookup(ctx context.Context, args map[string]any) (any, err
 	// any substring of it, as shown in prism_search results) to pick the right one.
 	fileHint := strings.ToLower(stringArg(args, "file", ""))
 
-	// Accept "pkg/path.SymbolName" and "github.com/mod/pkg/path.SymbolName".
-	// Split on the last '.' whose right side contains no '/' (i.e. is a symbol
-	// name, not a URL segment) to get the bare search term and an optional
-	// package-path hint used to disambiguate when multiple packages export a
-	// symbol with the same name.
-	searchName := name
-	pkgHint := ""
-	if idx := strings.LastIndex(name, "."); idx > 0 {
-		right := name[idx+1:]
-		if !strings.Contains(right, "/") {
-			searchName = right
-			pkgHint = name[:idx]
-		}
-	}
-
-	// typeQualified is the last two dotted segments ("Service.DecryptedValues"),
-	// matched against Grove's Type.Method QualifiedName. This lets a caller pass
-	// a type-qualified name (pkg.Type.Method) and still hit the right method when
-	// several types in the repo declare a method of the same bare name.
-	typeQualified := ""
-	if parts := strings.Split(name, "."); len(parts) >= 2 {
-		last := parts[len(parts)-1]
-		if !strings.Contains(last, "/") {
-			typeQualified = parts[len(parts)-2] + "." + last
-		}
-	}
-
-	syms, err := h.Grove.SearchSymbols(ctx, searchName, 25)
-	if err != nil {
-		return nil, err
-	}
-	// A bare-name search ("Get") caps at 25 alphabetically-early hits, which can
-	// exclude the intended Type.Method entirely. When a Type.Method hint is
-	// present, search Grove for that qualified form too (its searchRank matches
-	// qualified_name exactly) and prepend it so the precise method is in the
-	// candidate pool before ranking.
-	if typeQualified != "" {
-		if extra, qerr := h.Grove.SearchSymbols(ctx, typeQualified, 25); qerr == nil {
-			syms = append(extra, syms...)
-		}
-	}
-	syms = dedupeSymbolsByID(filterGeneratedPrismContext(syms))
-
-	// File disambiguator: restrict to candidates whose path contains the hint, so
-	// a name shared across packages resolves to the one the agent means. Ignored
-	// if it would empty the set (a stale/typo'd hint shouldn't lose the symbol).
-	if fileHint != "" {
-		var kept []grove.SymbolRecord
-		for _, s := range syms {
-			if strings.Contains(strings.ToLower(s.FilePath), fileHint) {
-				kept = append(kept, s)
-			}
-		}
-		if len(kept) > 0 {
-			syms = kept
-		}
-	}
-
-	// pkgMatches returns true when s lives in the package identified by pkgHint.
-	// pkgHint may be a short path ("internal/cli") or a full module path
-	// ("github.com/provasign/prism/internal/cli"); both are matched against the
-	// file's directory using a suffix check with a slash guard.
-	pkgMatches := func(s grove.SymbolRecord) bool {
-		if pkgHint == "" {
-			return true
-		}
-		dir := filepath.ToSlash(filepath.Dir(s.FilePath))
-		return dir == pkgHint || strings.HasSuffix(pkgHint, "/"+dir)
-	}
-
-	// Rank the candidates. A precise Type.Method (typeQualified) match dominates a
-	// bare-name match, so "kvstore.SecretsKVStoreSQL.Get" resolves to that exact
-	// method and not one of the thousands of other Get's. Package-hint and
-	// real-vs-test-double then break ties, so a name still lands on the
-	// production symbol rather than a mock that shares it.
-	score := func(s grove.SymbolRecord) int {
-		sc := 0
-		switch {
-		case typeQualified != "" && s.QualifiedName == typeQualified:
-			sc += 1000
-		case s.QualifiedName == searchName:
-			sc += 500
-		case s.Name == searchName:
-			sc += 1
-		default:
-			return -1 // not an exact match at all
-		}
-		if pkgMatches(s) {
-			sc += 100
-		}
-		if isTestDouble(s.FilePath) {
-			sc -= 10
-		}
-		return sc
-	}
-	bestIdx, bestScore, tied := -1, 0, 0
-	for i := range syms {
-		sc := score(syms[i])
-		if sc < 0 {
-			continue
-		}
-		switch {
-		case bestIdx == -1 || sc > bestScore:
-			bestIdx, bestScore, tied = i, sc, 1
-		case sc == bestScore:
-			tied++
-		}
-	}
-	if bestIdx >= 0 {
-		var out map[string]any
-		if len(fields) > 0 {
-			// Column projection requested: return just those fields.
-			out = projectSymbol(syms[bestIdx], fields)
-		} else {
-			out = map[string]any{"symbol": syms[bestIdx], "content": syms[bestIdx].RawText}
-		}
-		// A real tie at the top (same score, different symbols sharing the name)
-		// is genuine ambiguity the qualifier couldn't resolve — surface it with
-		// candidates rather than silently picking one.
-		if tied > 1 {
-			cands := make([]string, 0, tied)
-			for i := range syms {
-				if score(syms[i]) == bestScore {
-					n := syms[i].QualifiedName
-					if n == "" {
-						n = syms[i].Name
-					}
-					cands = append(cands, n+" ("+syms[i].FilePath+")")
-				}
-			}
-			out["ambiguous"] = true
-			out["candidates"] = cands
-		}
-		return out, nil
-	}
-	if len(syms) > 0 {
-		// No exact match — returning the closest hit silently would hand the
-		// agent the wrong symbol body. Flag it and list the alternatives.
-		candidates := make([]string, 0, minInt(5, len(syms)))
-		for _, s := range syms[:minInt(5, len(syms))] {
-			n := s.QualifiedName
-			if n == "" {
-				n = s.Name
-			}
-			candidates = append(candidates, n+" ("+s.FilePath+")")
-		}
-		return map[string]any{
-			"symbol":     syms[0],
-			"content":    syms[0].RawText,
-			"matched":    false,
-			"candidates": candidates,
-		}, nil
-	}
-	// Nothing matched at all. A bare {"symbol": null} tells the caller
-	// nothing about WHY or where to go next, so offer the nearest names the
-	// search index does know — the common cause is a typo or a qualified
-	// name that does not exist in this repo.
-	out := map[string]any{
-		"symbol":  nil,
-		"name":    name,
-		"matched": false,
-		"note": fmt.Sprintf("no symbol named %q in the index — check the spelling, "+
-			"or use prism_search for a name fragment", name),
-	}
-	if near := h.nearbyNames(ctx, searchName); len(near) > 0 {
-		out["candidates"] = near
-		out["note"] = fmt.Sprintf("no symbol named %q in the index — did you mean one of the candidates?", name)
-	}
-	return out, nil
-}
-
-// nearbyNames returns up to five indexed symbols whose names look like term,
-// for the "did you mean" list on a failed lookup. Best-effort: a search error
-// just means no suggestions.
-func (h *Handler) nearbyNames(ctx context.Context, term string) []string {
-	if len(term) < 3 {
-		return nil
-	}
-	syms, err := h.Grove.SearchSymbols(ctx, term, 5)
-	if err != nil || len(syms) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(syms))
-	for _, s := range syms {
-		n := s.QualifiedName
-		if n == "" {
-			n = s.Name
-		}
-		out = append(out, fmt.Sprintf("%s (%s:%d)", n, s.FilePath, s.Span.Start))
-	}
-	return out
+	return h.resolveLookup(ctx, name, fileScope, fileHint, fields)
 }
 
 func (h *Handler) toolIndex(_ context.Context, _ map[string]any) (any, error) {
@@ -1713,17 +2995,162 @@ func (h *Handler) toolFeedback(_ context.Context, args map[string]any) (any, err
 	h.feedback = append(h.feedback, entry)
 	h.fbMu.Unlock()
 
-	// A: treat explicit low rating (0-1) as a weak negative outcome signal
-	// and high rating (4-5) as a weak positive one, applied to the default profile.
-	if tool == "prism_query" {
-		if rating <= 1 {
-			h.Weights.RecordOutcome("default", nil, nil, false)
-		} else if rating >= 4 {
-			h.Weights.RecordOutcome("default", []string{"__positive_feedback__"}, []string{"__positive_feedback__"}, false)
+	return map[string]any{"recorded": entry, "totalRatings": len(h.feedback)}, nil
+}
+
+// enrichNoMethodError turns grove's terminal "type X declares no method Y"
+// into a correctable one: the members X actually declares (from prism's own
+// index) plus the one failure mode measured to cause it in practice --
+// querying AFTER editing/deleting the member instead of before. Returns nil
+// when nothing useful can be added (unparseable query, type not found), so
+// the caller falls back to the original error unchanged.
+func (h *Handler) enrichNoMethodError(ctx context.Context, query string, orig error) error {
+	q := query
+	if i := strings.IndexByte(q, '('); i >= 0 {
+		q = q[:i]
+	}
+	dot := strings.LastIndexByte(q, '.')
+	if dot <= 0 {
+		return nil
+	}
+	typeName := strings.TrimSpace(q[:dot])
+	if typeName == "" || h.Grove == nil {
+		return nil
+	}
+	ms, err := h.Grove.SearchSymbols(ctx, typeName, 10)
+	if err != nil {
+		return nil
+	}
+	var typeFile string
+	for _, m := range ms {
+		if m.Name == typeName {
+			typeFile = m.FilePath
+			break
 		}
 	}
+	if typeFile == "" {
+		return nil
+	}
+	syms, err := h.Grove.FileSymbols(ctx, typeFile)
+	if err != nil {
+		return nil
+	}
+	prefix := typeName + "."
+	var members []string
+	for _, s := range syms {
+		if strings.HasPrefix(s.QualifiedName, prefix) {
+			members = append(members, strings.TrimPrefix(s.QualifiedName, prefix))
+			if len(members) >= 12 {
+				break
+			}
+		}
+	}
+	if len(members) == 0 {
+		return fmt.Errorf("%w — if you already edited or deleted this member, that is why: "+
+			"change-impact reads the CURRENT index, so it must run BEFORE the edit; "+
+			"query the new name, or re-run after re-indexing", orig)
+	}
+	return fmt.Errorf("%w — %s currently declares: %s. If you already edited or deleted "+
+		"the member you meant, that is why: change-impact reads the CURRENT index, so it "+
+		"must run BEFORE the edit",
+		orig, typeName, strings.Join(members, ", "))
+}
 
-	return map[string]any{"recorded": entry, "totalRatings": len(h.feedback)}, nil
+// wideMemberAmbiguityThreshold: past this many same-named candidates, the
+// right move is one exhaustive text search, not one change_impact call per
+// candidate. Measured (2026-09-06, grafana-querydata-impact transcript):
+// "QueryData" was ambiguous across 41 candidates. The agent read "re-run
+// with one of these" literally, issued 12 separate change_impact calls
+// guessing receiver names, spent ~44KB doing it, and still missed 6 of 51
+// required sites — files reachable by a plain ".QueryData(" text search
+// (pkg/expr/nodes.go, two sqleng/sql_engine.go files) that no receiver-name
+// guess would ever reach, because the interface is external (no local
+// declaration for change_impact to anchor a family query on).
+var ambiguousCandidateCount = regexp.MustCompile(`is ambiguous — (\d+) candidates`)
+
+const crossLanguageAmbiguityMarker = "ambiguous across language families"
+
+const wideMemberAmbiguityThreshold = 8
+
+func enrichAmbiguousImpactError(query string, orig error) error {
+	m := ambiguousCandidateCount.FindStringSubmatch(orig.Error())
+	if m == nil {
+		return nil
+	}
+	count, convErr := strconv.Atoi(m[1])
+	if convErr != nil || count < wideMemberAmbiguityThreshold {
+		return nil // few enough that querying each candidate individually is fine
+	}
+	head := query
+	if i := strings.IndexByte(head, '('); i >= 0 {
+		head = head[:i]
+	}
+	if dot := strings.LastIndexByte(head, '.'); dot >= 0 {
+		head = head[dot+1:]
+	}
+	return fmt.Errorf("%w\n\nWIDE MEMBER (%d candidates): do NOT issue one change_impact call per "+
+		"candidate — that misses call sites through interfaces this engine cannot anchor a family "+
+		"query on (an interface with no local declaration, e.g. an external SDK contract). Instead "+
+		"run prism_search(query=[\"%s(\", \".%s(\"], scope=\"text\", exhaustive=true) for the complete "+
+		"declaration and call-site inventory by text, THEN change_impact only the specific receivers "+
+		"that inventory names as ambiguous", orig, count, head, head)
+}
+
+// crossLanguageImpactChoice converts Grove's cross-language ambiguity into a
+// successful, actionable MCP response. Returning the raw error is a dead end
+// for agents, while merging the language families (or guessing the first one)
+// would make the change set actively unsafe. Resolve supplies structured file
+// identities without parsing Grove's human-readable candidate list.
+func (h *Handler) crossLanguageImpactChoice(ctx context.Context, query string, orig error) (map[string]any, bool) {
+	if orig == nil || !strings.Contains(orig.Error(), crossLanguageAmbiguityMarker) {
+		return nil, false
+	}
+	candidates, err := h.Grove.Resolve(ctx, query)
+	if err != nil || len(candidates) == 0 {
+		return nil, false
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].File != candidates[j].File {
+			return candidates[i].File < candidates[j].File
+		}
+		if candidates[i].Name != candidates[j].Name {
+			return candidates[i].Name < candidates[j].Name
+		}
+		return candidates[i].Line < candidates[j].Line
+	})
+	seen := map[string]bool{}
+	alternatives := make([]map[string]any, 0, len(candidates))
+	for _, candidate := range candidates {
+		key := candidate.File + "\x00" + candidate.Name + "\x00" + strconv.Itoa(candidate.Line)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		entry := map[string]any{
+			"name":     candidate.Name,
+			"kind":     candidate.Kind,
+			"language": candidate.Language,
+			"filePath": candidate.File,
+			"line":     candidate.Line,
+		}
+		if candidate.TestDouble {
+			entry["testDouble"] = true
+		}
+		alternatives = append(alternatives, entry)
+	}
+	if len(alternatives) == 0 {
+		return nil, false
+	}
+	return map[string]any{
+		"query":             query,
+		"status":            "needs_file_scope",
+		"requiresFileScope": true,
+		"candidateCount":    len(alternatives),
+		"alternatives":      alternatives,
+		"ambiguityNote": "The query matches declarations in multiple language families. " +
+			"No change sets were merged and Prism did not guess. Re-run prism_change_impact " +
+			"with file set to one alternative's filePath (or a unique path fragment).",
+	}, true
 }
 
 func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (any, error) {
@@ -1731,17 +3158,101 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if query == "" {
 		return nil, errors.New("query is required")
 	}
-	r, err := h.Grove.ChangeImpact(ctx, query)
+	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
+	inferenceNote, inheritedNote := "", ""
+	if err != nil && strings.Contains(err.Error(), "declares no method") {
+		// The override being added does not exist yet: answer with the
+		// inherited declaration's change set instead of a dead end.
+		if ir, note, ok := h.inheritedImpact(ctx, query, stringArg(args, "file", "")); ok {
+			r, err, inheritedNote = ir, nil, note
+		}
+	}
 	if err != nil {
+		if choice, ok := h.crossLanguageImpactChoice(ctx, query, err); ok {
+			h.Ledger.RecordCall("prism_change_impact")
+			return choice, nil
+		}
+		// A wide bare member or a qualified external interface has no local
+		// declaration to anchor. Infer the compatible local method family once
+		// and union file-scoped resolved impacts inside this call, instead of
+		// making the agent guess dozens of receivers across dozens of turns.
+		wide := ambiguousCandidateCount.FindStringSubmatch(err.Error())
+		isWide := false
+		if len(wide) == 2 {
+			count, _ := strconv.Atoi(wide[1])
+			isWide = count >= wideMemberAmbiguityThreshold
+		}
+		externalMissing := strings.Contains(err.Error(), "no type named") && strings.Contains(query, ".")
+		signature := stringArg(args, "signature", "")
+		switch {
+		case externalMissing:
+			if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, signature); inferErr == nil {
+				r, err, inferenceNote = inferred, nil, note
+			}
+		case isWide:
+			// A bare name the project itself declares in an interface is a
+			// local contract: guessing one "external" family from every
+			// same-shaped method merges unrelated contracts (gin wide bed
+			// 2026-09-27: Binding.Name and BindingUri.Name, both local, came
+			// back as one family plus runtime.Func.Name callers). Ask for the
+			// owner instead; the external guess stays for names no local
+			// interface declares.
+			if owners := h.localContractOwners(ctx, query); len(owners) > 0 {
+				err = localContractError(query, owners, err)
+			} else if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, signature); inferErr == nil {
+				r, err, inferenceNote = inferred, nil, note
+			}
+		case signature != "" && len(wide) == 2:
+			// A few candidates: the signature may pick one of grove's own.
+			if picked, ok := h.pickAmbiguousBySignature(ctx, err, query, signature); ok {
+				r, err = h.Grove.ChangeImpactScoped(ctx, picked.QualifiedName, picked.FilePath)
+			}
+		}
+	}
+	if err != nil {
+		// "declares no method" is the dead-end that abandons agents:
+		// transcript analysis (2026-09-02, grove wide-bed cell) caught an
+		// agent asking change_impact about a method it had ALREADY deleted
+		// two edits earlier (the steering says before-edit; it called it
+		// after), getting this error, and never touching prism again for
+		// the task's remaining 7 files. The error was honest but terminal.
+		// Make the retry obvious in-band: list what the type actually
+		// declares (from prism's own index, no grove change needed) and
+		// name the already-edited-it failure mode explicitly.
+		if strings.Contains(err.Error(), "declares no method") {
+			if enriched := h.enrichNoMethodError(ctx, query, err); enriched != nil {
+				return nil, enriched
+			}
+		}
+		if strings.Contains(err.Error(), "is ambiguous —") {
+			if enriched := enrichAmbiguousImpactError(query, err); enriched != nil {
+				return nil, enriched
+			}
+		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
 	}
 	h.Ledger.RecordCall("prism_change_impact")
+	if r.MemberKind != "" {
+		mout := memberImpactOutput(r, stringArg(args, "file", "") != "")
+		h.addDegradedNote(ctx, mout, r)
+		return mout, nil
+	}
+	signatureNote := ""
+	if sig := stringArg(args, "signature", ""); sig != "" && inferenceNote == "" {
+		var narrowed *grove.ChangeImpactResult
+		narrowed, signatureNote = h.selectOverloadBySignature(ctx, query, stringArg(args, "file", ""), sig, r)
+		if narrowed != nil {
+			r = narrowed
+		}
+	}
 	// The member being changed, used to locate its call sites inside callers.
 	targetLeaf := r.Query
 	if i := strings.IndexByte(targetLeaf, '('); i >= 0 {
 		targetLeaf = targetLeaf[:i]
 	}
 	targetLeaf = leafOf(strings.TrimSpace(targetLeaf))
+	evidenceBudget := impactEvidenceMaxBytes
+	wideImpact := obligationSiteCount(r) >= wideImpactIdentityThreshold
 
 	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
@@ -1756,15 +3267,28 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				"filePath":      s.FilePath,
 				"line":          s.Span.Start,
 				"kind":          s.Kind,
-				"signature":     s.Signature,
+			}
+			if !wideImpact {
+				entry["signature"] = s.Signature
 			}
 			// Locality hint: grove attributes a call made inside a closure to
 			// the enclosing declaration, so name the nested scope that
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
+			if annotate && !wideImpact {
+				addImpactCallEvidence(entry, s, targetLeaf, &evidenceBudget)
+			}
 			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
 					entry["via"] = via
+				}
+				// Callers already include test files (a test calling the
+				// code it exercises is an ordinary `calls` edge, never
+				// specially excluded here) -- this was silent before,
+				// leaving the agent to guess from the filename which
+				// callers are production call sites and which are tests.
+				if isVerifiedTestCaller("/" + filepath.ToSlash(s.FilePath)) {
+					entry["isTest"] = true
 				}
 			}
 			out = append(out, entry)
@@ -1775,22 +3299,93 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return compactWithScope(syms, false)
 	}
 	out := map[string]any{
-		"query":        r.Query,
-		"declarations": compact(r.Declarations),
-		"supers":       compact(r.Supers),
-		"family":       compact(r.Family),
-		"callers":      compactWithScope(r.Callers, true),
-		"totalSites":   len(r.Declarations) + len(r.Family) + len(r.Callers) + len(r.DeclaringTypes),
+		"query":              r.Query,
+		"declarations":       compact(r.Declarations),
+		"supers":             compact(r.Supers),
+		"family":             compact(r.Family),
+		"callers":            compactWithScope(r.Callers, true),
+		"totalSites":         len(impactSites(r, true)) + len(r.ReExports),
+		"familyCompleteness": r.Completeness,
+		"callerCoverage":     impactCallerCoverage(r),
+	}
+	addIndexedCompletenessSafety(out)
+	if relay := impactRelaySites(r, 40); len(relay) > 0 {
+		if rex := reExportRelayLabels(r); len(rex) > 0 && len(relay)+len(rex) <= 40 {
+			relay = append(relay, rex...)
+			sort.Strings(relay)
+		}
+		out["relaySites"] = relay
+		out["relayNote"] = "Copy relaySites when reporting the affected-site inventory; do not manually reconstruct a partial list from the grouped evidence below."
+	}
+	if rex := impactReExportOutput(r); len(rex) > 0 {
+		out["reExports"] = rex
+	}
+	if rel := impactRelatedOutput(r); len(rel) > 0 {
+		out["related"] = rel
+	}
+	if inheritedNote != "" {
+		out["inheritedNote"] = inheritedNote
+	}
+	if signatureNote != "" {
+		out["signatureNote"] = signatureNote
+	}
+	if testOnly := h.testOnlySignal(ctx, r.Declarations); len(testOnly) > 0 {
+		out["testOnly"] = testOnly
+	}
+	if inferenceNote != "" {
+		out["methodFamilyNote"] = inferenceNote
+	}
+	if wideImpact {
+		out["evidenceNote"] = "Large indexed result delivered as compact file:line identities; repeated signatures and call expressions are omitted. Every returned site is shown, but graph coverage and receiver uncertainty remain as reported."
+	} else if len(r.Callers) > 0 {
+		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
+	}
+	completeness, coverageNote := impactCoverage(r)
+	if coverageNote != "" {
+		out["coverageNote"] = coverageNote
+	}
+	h.hypLedger.recordClosedImpact(completeness,
+		len(impactSites(r, true)))
+	if sn := h.hypLedger.scopeNote(); sn != "" {
+		out["scopeNote"] = sn
+	}
+	// Same-named types in distinct files all seed one merged closure — and
+	// a merged answer whose callers belong to the OTHER type reads as
+	// authoritative nonsense (measured 2026-09-02, BACKLOG addendum #5:
+	// "Engine.Query" merged two unrelated Engines; all 13 callers belonged
+	// to the one the agent was not asking about, and it re-derived the
+	// answer manually). When declarations span multiple files and the call
+	// was not already file-scoped, say so and name the fix.
+	if stringArg(args, "file", "") == "" {
+		declFiles := map[string]bool{}
+		for _, d := range r.Declarations {
+			declFiles[d.FilePath] = true
+		}
+		if len(declFiles) > 1 {
+			files := make([]string, 0, len(declFiles))
+			for f := range declFiles {
+				files = append(files, f)
+			}
+			sort.Strings(files)
+			out["ambiguityNote"] = fmt.Sprintf(
+				"declarations span %d files (%s) — if these are DIFFERENT types sharing a name "+
+					"(not overloads of one type), this result merges their closures and the "+
+					"caller/family lists mix both. Re-run with file=\"<path fragment>\" to scope "+
+					"to the one you mean.", len(declFiles), strings.Join(files, ", "))
+		}
 	}
 	if len(r.DeclaringTypes) > 0 {
 		out["declaringTypes"] = compact(r.DeclaringTypes)
 		out["declaringTypesNote"] = "these type declaration blocks contain member " +
-			"signatures that must change (Go/TS interface members are not separate " +
-			"symbols, so the type itself is the change site) — include each as a " +
-			"site in your answer"
+			"signatures that may need coordinated edits for a contract change " +
+			"(Go/TS interface members are not separate symbols); inspect each and " +
+			"include it as a potential site in your answer"
 	}
-	if r.Completeness != "" {
-		out["completeness"] = r.Completeness
+	if completeness != "" {
+		out["completeness"] = completeness
+	}
+	if r.HasHeuristicRefs {
+		out["hasHeuristicRefs"] = true
 	}
 	if len(r.ExternalSupers) > 0 {
 		out["externalSupers"] = r.ExternalSupers
@@ -1808,7 +3403,89 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if hint := h.widerAnchorHint(ctx, r); hint != nil {
 		out["widerAnchor"] = hint
 	}
+	h.addDegradedNote(ctx, out, r)
 	return out, nil
+}
+
+// addDegradedNote warns when the compiler-backed analysis for the answer's
+// language did not run on this index: the sites above are name-based and may
+// be incomplete or over-inclusive (TypeScript field renames measured 1 of 44
+// sites confirmed name-based vs 44 of 44 with the compiler). The fix command
+// lets the agent repair it and re-index.
+func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *grove.ChangeImpactResult) {
+	lang := ""
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		if len(group) > 0 {
+			lang = group[0].Language
+			break
+		}
+	}
+	if lang == "" {
+		return
+	}
+	if lang == "tsx" || lang == "javascript" {
+		lang = "typescript"
+	}
+	st, err := h.Grove.Status(ctx)
+	if err != nil || st == nil {
+		return
+	}
+	for _, issue := range st.Readiness {
+		if issue.Language == lang {
+			out["degradedAnalysis"] = lang + " compiler-backed analysis did not run on this index (" + issue.Problem +
+				"); these sites are name-matched and may be incomplete. Fix: " + issue.Fix
+			return
+		}
+	}
+}
+
+// impactRelaySites is an answer-shaped, de-duplicated inventory for result
+// sets small enough to relay without materially duplicating a wide payload.
+// Detailed groups remain authoritative for overloads and evidence.
+func impactRelaySites(r *grove.ChangeImpactResult, limit int) []string {
+	sites := impactSites(r, true)
+	if len(sites) == 0 || len(sites) > limit {
+		return nil
+	}
+	seen := map[string]bool{}
+	out := make([]string, 0, len(sites))
+	for _, site := range sites {
+		name := site.Name
+		if name == "" {
+			name = displayQN(site)
+		}
+		path := normalizePath(site.FilePath)
+		if path == "" && name == "" {
+			continue
+		}
+		// Preserve overloads and same-named sites. impactSites intentionally
+		// distinguishes these by file+line+kind; the answer-shaped relay must
+		// retain the same identity or its advertised canonical inventory is
+		// silently incomplete.
+		identity := fmt.Sprintf("%s:%d:%s:%s", path, site.Span.Start, site.Kind, name)
+		if seen[identity] {
+			continue
+		}
+		seen[identity] = true
+		label := fmt.Sprintf("%s:%d:%s", path, site.Span.Start, name)
+		if site.Kind != "" {
+			label += " [" + site.Kind + "]"
+		}
+		out = append(out, label)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// addIndexedCompletenessSafety keeps task-shaped graph tools honest about the
+// boundary shared by change-impact, missing-implementations, and rename-plan.
+// Their engine completeness is useful inside the indexed project, but none can
+// prove the absence of runtime, generated, or external consumers.
+func addIndexedCompletenessSafety(out map[string]any) {
+	out["completenessScope"] = "indexed-project-only"
+	out["safeToClaimComplete"] = false
+	out["scopeBoundary"] = "Do not claim global completeness from this result. It closes the indexed project graph only; " +
+		"external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof."
 }
 
 func (h *Handler) toolMissingImplementations(ctx context.Context, args map[string]any) (any, error) {
@@ -1845,6 +3522,7 @@ func (h *Handler) toolMissingImplementations(ctx context.Context, args map[strin
 		"missing":          compact(r.Missing),
 		"implementedCount": r.ImplementedCount,
 	}
+	addIndexedCompletenessSafety(out)
 	if len(r.AbstractMissing) > 0 {
 		out["abstractMissing"] = compact(r.AbstractMissing)
 	}
@@ -1897,6 +3575,7 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 		"totalSites": r.SitesTotal,
 		"edits":      r.Edits,
 	}
+	addIndexedCompletenessSafety(out)
 	if len(r.Unresolved) > 0 {
 		out["unresolved"] = r.Unresolved
 		out["unresolvedNote"] = "no line edit could be derived for these " +
@@ -1908,7 +3587,18 @@ func (h *Handler) toolRenamePlan(ctx context.Context, args map[string]any) (any,
 		out["ambiguousNote"] = "these lines sit in methods that also call a same-named " +
 			"method on an unrelated type — verify the receiver resolves to the renamed " +
 			"member before applying"
+		if r.Ambiguous[0].Reason != "" {
+			// Data-member plans say per edit why it is unconfirmed; the
+			// method-plan explanation above would be false for them.
+			out["ambiguousNote"] = "these lines name the member but their receiver could not be " +
+				"typed (each edit's reason says why) — verify the receiver is the renamed " +
+				"member's owner before applying"
+		}
 	}
+	// Bucket counts: the header must agree with what the buckets hold.
+	out["editCount"] = len(r.Edits)
+	out["ambiguousCount"] = len(r.Ambiguous)
+	out["unresolvedCount"] = len(r.Unresolved)
 	if r.Completeness != "" {
 		out["completeness"] = r.Completeness
 	}
@@ -1970,11 +3660,7 @@ func (h *Handler) toolDeadCode(ctx context.Context, args map[string]any) (any, e
 func categorize(s grove.SymbolRecord) ranking.Category {
 	// Tests usually live in language-specific test file patterns.
 	p := strings.ToLower(s.FilePath)
-	if strings.Contains(p, "_test.") || strings.Contains(p, ".test.") ||
-		strings.Contains(p, ".spec.") || strings.Contains(p, "/__tests__/") ||
-		strings.HasSuffix(p, "_test.py") ||
-		strings.HasSuffix(p, "test.java") || strings.HasSuffix(p, "tests.java") ||
-		strings.Contains(p, "/tests/") || strings.Contains(p, "/test/") ||
+	if isTestFilePath(p) || strings.HasSuffix(p, "test.java") || strings.HasSuffix(p, "tests.java") ||
 		strings.HasSuffix(p, "_test.rs") || strings.HasSuffix(p, "tests.rs") ||
 		strings.HasSuffix(p, "_test.c") || strings.HasSuffix(p, "_test.h") ||
 		strings.HasSuffix(p, "_test.cc") || strings.HasSuffix(p, "_test.cpp") ||
@@ -2071,6 +3757,43 @@ func stringArg(args map[string]any, key, def string) string {
 	return def
 }
 
+// stringsArg reads a value that may be a single string OR an array of them,
+// returning the non-empty entries in order with duplicates dropped.
+//
+// This is what lets prism_search take several terms in one call. Measured on
+// the 190-cell A/B: 490 of 900 search calls (54%) sat in back-to-back runs of
+// 2-10, each a separate turn whose result is then re-read on every later turn.
+// One call with N terms is one turn and one result.
+func stringsArg(args map[string]any, key string) []string {
+	var raw []any
+	switch v := args[key].(type) {
+	case string:
+		raw = []any{v}
+	case []string:
+		for _, s := range v {
+			raw = append(raw, s)
+		}
+	case []any:
+		raw = v
+	default:
+		return nil
+	}
+	seen := make(map[string]bool, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, e := range raw {
+		s, ok := e.(string)
+		if !ok {
+			continue
+		}
+		if s = strings.TrimSpace(s); s == "" || seen[s] {
+			continue
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+	return out
+}
+
 func intArg(args map[string]any, key string, def int) int {
 	switch v := args[key].(type) {
 	case float64:
@@ -2084,18 +3807,6 @@ func intArg(args map[string]any, key string, def int) int {
 		return int(n)
 	}
 	return def
-}
-
-// isTestWritingTask reports whether the task description signals the agent
-// is about to write or add tests, so we can surface more test context.
-func isTestWritingTask(task string) bool {
-	lower := strings.ToLower(task)
-	return strings.Contains(lower, "write test") ||
-		strings.Contains(lower, "add test") ||
-		strings.Contains(lower, "test for") ||
-		strings.Contains(lower, "tests for") ||
-		strings.Contains(lower, "coverage for") ||
-		strings.Contains(lower, "need to test")
 }
 
 func minFloat(a, b float64) float64 {
@@ -2164,4 +3875,73 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// exhaustiveCapWarning is the in-band note when an exhaustive symbol search
+// exceeds exhaustiveSymbolCap: the bound is stated, and so is the way past it.
+func exhaustiveCapWarning(symCap int) string {
+	return fmt.Sprintf(
+		"exhaustive symbol search matched MORE than %d symbols — showing the first %d. "+
+			"Narrow with path=/glob= (or a longer name) and re-run exhaustive to get every one.",
+		symCap, symCap)
+}
+
+// filterSymbolsByScope applies the same path=/glob= narrowing to indexed
+// symbols that textsearch applies to raw hits. Empty scope passes through.
+func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.SymbolRecord {
+	if len(sc.paths) == 0 && len(sc.glob) == 0 {
+		return syms
+	}
+	// NOT syms[:0]: reusing the caller's backing array rewrites the very
+	// slice we are filtering (caught by TestFilterSymbolsByScope — the
+	// second call in one test saw data the first had clobbered).
+	keep := make([]grove.SymbolRecord, 0, len(syms))
+	for _, s := range syms {
+		p := filepath.ToSlash(s.FilePath)
+		ok := len(sc.paths) == 0
+		for _, want := range sc.paths {
+			w := strings.TrimSuffix(filepath.ToSlash(want), "/")
+			if p == w || strings.HasPrefix(p, w+"/") {
+				ok = true
+				break
+			}
+		}
+		if ok && len(sc.glob) > 0 {
+			ok = false
+			for _, g := range sc.glob {
+				// Same glob semantics as the text pass (rg --glob): "**"
+				// crosses directories, a slash-free glob matches the base name.
+				if textsearch.MatchGlob(g, p) {
+					ok = true
+					break
+				}
+				if m, _ := filepath.Match(g, p); m {
+					ok = true
+					break
+				}
+			}
+		}
+		if ok {
+			keep = append(keep, s)
+		}
+	}
+	return keep
+}
+
+// tabIndentNote returns the delimiter disambiguation for tab-indented
+// deliveries, or "". Measured (BACKLOG addendum 2 item 15, 2026-09-03,
+// ddtb4dv8 L153-207): the line-number format is "N<TAB>source"; on a
+// tab-indented file the delimiter tab reads as leading indentation, the
+// agent copies one extra \t into an Edit old_string, and every re-read
+// shows the same format so the illusion survived two od -c sessions —
+// ~20 turns of byte-level archaeology that one sentence prevents.
+func tabIndentNote(lines []string) string {
+	for _, l := range lines {
+		if strings.HasPrefix(l, "\t") {
+			return "tab-indented file: the FIRST tab after each line number is the " +
+				"delimiter, not part of the source — source indentation starts after it " +
+				"(a line shown as `12<TAB><TAB>x` has ONE tab of indentation)"
+		}
+	}
+	return ""
 }

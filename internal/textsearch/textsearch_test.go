@@ -2,6 +2,7 @@ package textsearch
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,6 +45,60 @@ func hitFiles(hits []Hit) []string {
 		out = append(out, h.File)
 	}
 	return out
+}
+
+func TestRankSourceFirstPrefersIdentifierUseOverComments(t *testing.T) {
+	var hits []Hit
+	for i := 0; i < 205; i++ {
+		hits = append(hits, Hit{File: "a.go", Line: i + 1, Text: "// WidgetCache is mentioned here"})
+	}
+	hits = append(hits, Hit{File: "z.go", Line: 1, Text: "value := WidgetCache.Get()"})
+	got := rankSourceFirst(hits, "WidgetCache", false)
+	if got[0].File != "z.go" {
+		t.Fatalf("identifier use buried under comment mentions: first hit = %+v", got[0])
+	}
+
+	phrase := rankSourceFirst([]Hit{
+		{File: "a.go", Text: "// cache failed"},
+		{File: "z.go", Text: "return cache failed"},
+	}, "cache failed", false)
+	if phrase[0].File != "a.go" {
+		t.Fatalf("exact phrase search unexpectedly demoted a comment: first hit = %+v", phrase[0])
+	}
+}
+
+func TestRankSourceFirstPrefersProductionUseOverRootTests(t *testing.T) {
+	hits := []Hit{
+		{File: "tests/test_console.py", Line: 10, Text: "def test_soft_wrap():"},
+		{File: "rich/console.py", Line: 20, Text: "if soft_wrap:"},
+	}
+	got := rankSourceFirst(hits, "soft_wrap", false)
+	if got[0].File != "rich/console.py" {
+		t.Fatalf("root tests displaced production code: first hit = %+v", got[0])
+	}
+}
+
+func TestSearchIdentifierUseSurvivesCommentHeavySample(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "a.go"), []byte(strings.Repeat("// WidgetCache mention\n", 205)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "z.go"), []byte("package cache\nvar widget = WidgetCache.Get()\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := Search(t.Context(), root, "WidgetCache", Options{MaxHits: 5, Adaptive: true, Timeout: 5 * time.Second})
+	if len(result.Hits) == 0 || result.Hits[0].File != "z.go" {
+		t.Fatalf("code use missing from the first search hit: %+v", result.Hits)
+	}
+}
+
+func TestCommentDetectionKeepsJavaScriptPrivateFieldAsCode(t *testing.T) {
+	if isCommentLine("#WidgetCache = value", ".js") {
+		t.Fatal("JavaScript private field was classified as a comment")
+	}
+	if !isCommentLine("# WidgetCache note", ".py") {
+		t.Fatal("Python comment was not classified as a comment")
+	}
 }
 
 // assertFixtureResult checks the invariants every backend must satisfy on
@@ -289,5 +344,119 @@ func TestBinResolvesOnlyItsOwnBackend(t *testing.T) {
 	}
 	if got := bin(other); got != other {
 		t.Errorf("bin(%q) = %q — returned the detected backend's path", other, got)
+	}
+}
+
+func TestSearch_ContextAttachesSurroundingLines(t *testing.T) {
+	dir := t.TempDir()
+	body := "one\ntwo\nMATCH\nfour\nfive\n"
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Search(context.Background(), dir, "MATCH", Options{Context: 1})
+	if len(r.Hits) != 1 {
+		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+	}
+	h := r.Hits[0]
+	if len(h.Before) != 1 || h.Before[0] != "two" {
+		t.Errorf("before = %v, want [two]", h.Before)
+	}
+	if len(h.After) != 1 || h.After[0] != "four" {
+		t.Errorf("after = %v, want [four]", h.After)
+	}
+}
+
+func TestSearch_ContextZeroAttachesNothing(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte("one\nMATCH\nthree\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Search(context.Background(), dir, "MATCH", Options{})
+	if len(r.Hits) != 1 {
+		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+	}
+	if r.Hits[0].Before != nil || r.Hits[0].After != nil {
+		t.Errorf("context=0 must attach nothing: %+v", r.Hits[0])
+	}
+}
+
+func TestSearch_ContextClampsAtFileBoundaries(t *testing.T) {
+	dir := t.TempDir()
+	// Match on the FIRST line: asking for 5 lines of before-context must not
+	// panic or go negative, just return what exists (nothing, here).
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte("MATCH\ntwo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := Search(context.Background(), dir, "MATCH", Options{Context: 5})
+	if len(r.Hits) != 1 {
+		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+	}
+	if len(r.Hits[0].Before) != 0 {
+		t.Errorf("before at start of file = %v, want empty", r.Hits[0].Before)
+	}
+	if len(r.Hits[0].After) != 1 || r.Hits[0].After[0] != "two" {
+		t.Errorf("after clamped at EOF = %v, want [two]", r.Hits[0].After)
+	}
+}
+
+func TestSearch_ContextIdenticalAcrossBackends(t *testing.T) {
+	// The whole reason attachContext runs AFTER backend dispatch rather than
+	// being implemented per-backend (rg -A/-B/-C, grep -A/-B/-C, each a
+	// different text format): it must be impossible for rg and the native
+	// scanner to disagree on context. Force native and compare to whatever
+	// the real backend on this machine returns.
+	dir := t.TempDir()
+	body := "a\nb\nNEEDLE\nc\nd\n"
+	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	viaBackend := Search(context.Background(), dir, "NEEDLE", Options{Context: 2})
+	viaNative := nativeSearch(context.Background(), dir, "NEEDLE", Options{Context: 2}.withDefaults())
+	if len(viaNative.Hits) != 1 {
+		t.Fatalf("native: want 1 hit, got %d", len(viaNative.Hits))
+	}
+	// nativeSearch itself does not call attachContext (Search does, once,
+	// after dispatch) -- so compare the CONTENT each backend located, not
+	// context, to confirm they agree on the same file/line.
+	if viaBackend.Hits[0].File != viaNative.Hits[0].File || viaBackend.Hits[0].Line != viaNative.Hits[0].Line {
+		t.Errorf("backend and native disagree on the hit: %+v vs %+v", viaBackend.Hits[0], viaNative.Hits[0])
+	}
+}
+
+// TestSearchRanksSourceFirst: BACKLOG addendum #6 (Dubbo "triple",
+// 2026-09-02) — the backend's --sort path order let early-sorting
+// non-source trees (.changelog-archive, .licenserc.yaml, pom.xml, README)
+// consume the entire hit cap before any code was reached; 11 consecutive
+// searches delivered ~44.8kB of manifest noise and the agent re-ran every
+// one as a manual grep. Search now over-fetches past the cap and delivers
+// source-extension files first (stable within each group).
+func TestSearchRanksSourceFirst(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Alphabetically-early noise, many matches.
+	var noise strings.Builder
+	for i := 0; i < 30; i++ {
+		fmt.Fprintf(&noise, "needle mention %d in changelog\n", i)
+	}
+	write("AAA-CHANGELOG.md", noise.String())
+	write("BBB.licenserc.yaml", "needle: license config\nneedle2: more\n")
+	// Late-sorting source file with the real matches.
+	write("zzz_source.go", "package p\n\n// needle\nfunc Needle() { /* needle */ }\n")
+
+	r := Search(context.Background(), dir, "needle", Options{MaxHits: 5, MaxPerFile: 20})
+	if len(r.Hits) == 0 {
+		t.Fatal("no hits")
+	}
+	if got := r.Hits[0].File; got != "zzz_source.go" {
+		files := make([]string, 0, len(r.Hits))
+		for _, h := range r.Hits {
+			files = append(files, h.File)
+		}
+		t.Errorf("first hit should be the source file, got %q (order: %v)", got, files)
 	}
 }

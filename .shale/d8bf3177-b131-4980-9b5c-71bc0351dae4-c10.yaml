@@ -1,0 +1,635 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c10
+created_at: 2026-08-18T00:09:45.57665Z
+finalized_at: 2026-08-18T00:54:23.736922Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/graphtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T00:22:30.386188Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T00:22:41.954018Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T00:23:08.863263Z
+    - path: internal/mcp/searchtext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T00:24:03.872306Z
+commands:
+    - cmd: |-
+        git log --oneline -1 && git status --short | head -3
+        git tag -a v0.55.5 -m "v0.55.5: schema+steering diet; text rendering for read and change_impact results" && git push origin main v0.55.5 2>&1 | tail -2
+      at: 2026-08-18T00:09:45.57665Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 4 2>/dev/null
+      at: 2026-08-18T00:17:01.579287Z
+      classified: other
+    - cmd: cd /tmp && gh release download v0.55.5 --repo provasign/prism -p 'prism-v0.55.5-darwin-arm64' -p checksums.txt --clobber && shasum -a 256 -c <(grep darwin-arm64 checksums.txt) && chmod +x prism-v0.55.5-darwin-arm64 && mv prism-v0.55.5-darwin-arm64 ~/bin/prism && ~/bin/prism --version
+      at: 2026-08-18T00:17:14.490778Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== toolLookup out keys ==="
+        sed -n "$(grep -n 'func (h \*Handler) toolLookup' internal/mcp/tools.go | cut -d: -f1),+50p" internal/mcp/tools.go | grep -oE '"[a-zA-Z]+"' | sort -u | tr '\n' ' '
+        echo; echo "=== toolVerify out keys ==="
+        grep -oE '"[a-zA-Z]+":' internal/mcp/verify.go | sort -u | tr '\n' ' '
+        echo; echo "=== prism_query result keys (delivery) ==="
+        grep -oE 'out\["[a-zA-Z]+"\]' internal/mcp/delivery.go internal/mcp/selection.go 2>/dev/null | sort -u | tr '\n' ' '
+        echo; grep -n "func.*deliver\|func (h \*Handler) toolQuery" internal/mcp/*.go | grep -v _test | head
+      at: 2026-08-18T00:18:48.535884Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== deliverSource result keys ==="
+        sed -n 71,200p internal/mcp/delivery.go | grep -oE '"[a-zA-Z]+":' | sort -u | tr '\n' ' '
+        echo; echo "=== toolQuery out keys ==="
+        sed -n 802,946p internal/mcp/tools.go | grep -oE 'out\["[a-zA-Z]+"\]|"[a-zA-Z]+": ' | sort -u | tr '\n' ' '
+        echo; echo "=== toolLookup full body ==="
+        sed -n "$(grep -n 'func (h \*Handler) toolLookup' internal/mcp/tools.go | cut -d: -f1),+45p" internal/mcp/tools.go
+      at: 2026-08-18T00:18:58.64361Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n "$(grep -n 'func (h \*Handler) toolLookup' internal/mcp/tools.go | cut -d: -f1),+120p" internal/mcp/tools.go | sed -n '46,120p'
+      at: 2026-08-18T00:19:07.141787Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n "$(($(grep -n 'func (h \*Handler) toolLookup' internal/mcp/tools.go | cut -d: -f1)+120)),+70p" internal/mcp/tools.go
+      at: 2026-08-18T00:19:15.932652Z
+      classified: other
+    - cmd: grep -n "type SymbolRecord struct" -A 25 internal/grove/types.go
+      at: 2026-08-18T00:19:25.868541Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "=== projectSymbol ==="
+        sed -n "$(grep -n 'func projectSymbol' internal/mcp/tools.go | cut -d: -f1),+30p" internal/mcp/tools.go | grep -oE '"[a-zA-Z]+"' | sort -u | tr '\n' ' '
+        echo; echo "=== toolQuery result assembly (tail) ==="
+        sed -n 880,946p internal/mcp/tools.go
+        echo "=== CLI verify text printer? ==="
+        grep -n "verify: \|func printVerify\|missedSites" internal/cli/commands.go | head -6
+      at: 2026-08-18T00:19:54.324703Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -rn "verify: complete\|no missed sites" internal/ --include="*.go" | grep -v _test | head -4
+        echo "=== deliverSource content example keys ==="
+        sed -n "$(grep -n 'func (h \*Handler) deliverSource' internal/mcp/delivery.go | cut -d: -f1),+40p" internal/mcp/delivery.go | tail -25
+      at: 2026-08-18T00:20:02.743859Z
+      classified: other
+    - cmd: sed -n 330,440p /Users/tapabratapal/Projects/provasign/prism/internal/cli/viewcmds.go
+      at: 2026-08-18T00:20:17.317549Z
+      classified: other
+    - cmd: sed -n 280,330p /Users/tapabratapal/Projects/provasign/prism/internal/cli/viewcmds.go
+      at: 2026-08-18T00:20:23.384523Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism && python3 -c "
+        import json, subprocess, os
+        proc = subprocess.Popen([os.path.expanduser('~/bin/prism'),'mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({'jsonrpc':'2.0','id':id,'method':method,'params':params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'t','version':'0'}})
+        proc.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized'})+'\n'); proc.stdin.flush()
+        for q in ('CacheBase','heartbeat'):
+            r = rpc(2,'tools/call',{'name':'prism_search','arguments':{'query':q}})
+            t = r['result']['content'][0]['text']
+            d = json.loads(t)
+            syms = d.get('symbols') or []
+            rt = sum(len(s.get('rawText','')) for s in syms)
+            print(f'{q}: total {len(t):,}B, {len(syms)} symbols, rawText bytes {rt:,}, keys of sym[0]: {sorted(syms[0].keys()) if syms else None}')
+        # lookup measured for comparison
+        r = rpc(4,'tools/call',{'name':'prism_lookup','arguments':{'name':'CacheBase.get'}})
+        print('lookup bytes:', len(r['result']['content'][0]['text']))
+        # verify (clean tree)
+        r = rpc(5,'tools/call',{'name':'prism_verify','arguments':{}})
+        t = r['result']['content'][0]['text']
+        print('verify bytes:', len(t), 'keys:', sorted(json.loads(t).keys()) if t.startswith('{') else 'text')
+        proc.kill()
+        "
+      at: 2026-08-18T00:20:58.377594Z
+      classified: other
+    - cmd: |-
+        grep -n 'out\["' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/verify.go | grep -oE '"[a-zA-Z]+"' | sort -u | tr '\n' ' '; echo
+        grep -n 'map\[string\]any{$\|return map\[string\]any{' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/verify.go | head -4
+      at: 2026-08-18T00:21:27.301904Z
+      classified: other
+    - cmd: sed -n 574,610p /Users/tapabratapal/Projects/provasign/prism/internal/mcp/verify.go && sed -n 205,210p /Users/tapabratapal/Projects/provasign/prism/internal/mcp/verify.go
+      at: 2026-08-18T00:21:33.740087Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/Projects/provasign/prism/internal/mcp/graphtext.go << 'EOF'
+
+        // renderLookupAsText renders a prism_lookup result. The JSON form shipped
+        // the symbol body TWICE (symbol.rawText and content, both string-escaped)
+        // plus index internals (id, blobSha, callSites) no agent uses: measured
+        // 1,072 B for 221 B of content. Text form: one header line, the body once.
+        func renderLookupAsText(out map[string]any) (string, bool) {
+        	known := map[string]bool{
+        		"symbol": true, "content": true, "ambiguous": true, "candidates": true,
+        		"matched": true, "name": true, "note": true,
+        		// projectSymbol fields= shapes
+        		"file": true, "line": true, "signature": true, "sig": true,
+        		"doc": true, "docstring": true, "body": true, "source": true,
+        		"kind": true, "parent": true, "modifiers": true,
+        	}
+        	for k := range out {
+        		if !known[k] {
+        			return "", false
+        		}
+        	}
+        	var b strings.Builder
+        	if sym, ok := out["symbol"].(map[string]any); ok {
+        		name := sym["qualifiedName"]
+        		if name == nil || name == "" {
+        			name = sym["name"]
+        		}
+        		span, _ := sym["span"].(map[string]any)
+        		fmt.Fprintf(&b, "// %v %v  %v", sym["kind"], name, sym["filePath"])
+        		if span != nil {
+        			fmt.Fprintf(&b, ":%v-%v", span["start"], span["end"])
+        		}
+        		b.WriteString("\n")
+        	} else if s, isRecord := out["symbol"].(interface{ GetID() string }); isRecord {
+        		_ = s // never happens today; guard for future concrete types
+        		return "", false
+        	} else if _, present := out["symbol"]; present && out["symbol"] != nil {
+        		// A concrete grove.SymbolRecord (not yet a map): render via its JSON
+        		// form to avoid mispresenting fields we cannot see here.
+        		m := symbolToMap(out["symbol"])
+        		if m == nil {
+        			return "", false
+        		}
+        		name := m["qualifiedName"]
+        		if name == nil || name == "" {
+        			name = m["name"]
+        		}
+        		span, _ := m["span"].(map[string]any)
+        		fmt.Fprintf(&b, "// %v %v  %v", m["kind"], name, m["filePath"])
+        		if span != nil {
+        			fmt.Fprintf(&b, ":%v-%v", span["start"], span["end"])
+        		}
+        		b.WriteString("\n")
+        	}
+        	if c, ok := out["content"].(string); ok && c != "" {
+        		b.WriteString(c)
+        		if !strings.HasSuffix(c, "\n") {
+        			b.WriteString("\n")
+        		}
+        	}
+        	// Projection shape: no symbol/content, just the requested columns.
+        	if _, hasSym := out["symbol"]; !hasSym {
+        		for _, k := range []string{"name", "kind", "file", "line", "signature", "sig",
+        			"doc", "docstring", "parent", "modifiers", "body", "source"} {
+        			if v, ok := out[k]; ok && v != nil && v != "" {
+        				fmt.Fprintf(&b, "%s: %v\n", k, v)
+        			}
+        		}
+        	}
+        	if m, ok := out["matched"].(bool); ok && !m {
+        		b.WriteString("// NO EXACT MATCH — closest shown above; candidates:\n")
+        	} else if amb, _ := out["ambiguous"].(bool); amb {
+        		b.WriteString("// AMBIGUOUS — same score for:\n")
+        	}
+        	for _, c := range anySlice(out["candidates"]) {
+        		fmt.Fprintf(&b, "//   %v\n", c)
+        	}
+        	if n, _ := out["note"].(string); n != "" {
+        		fmt.Fprintf(&b, "// %s\n", n)
+        	}
+        	return b.String(), true
+        }
+
+        // symbolToMap round-trips a concrete symbol value through its JSON encoding
+        // into a generic map, so one rendering path serves both shapes.
+        func symbolToMap(v any) map[string]any {
+        	b, err := jsonMarshal(v)
+        	if err != nil {
+        		return nil
+        	}
+        	var m map[string]any
+        	if jsonUnmarshal(b, &m) != nil {
+        		return nil
+        	}
+        	return m
+        }
+
+        // renderVerifyAsText mirrors the CLI's long-standing verify text output
+        // (internal/cli/viewcmds.go renderVerifyText) on the MCP surface.
+        func renderVerifyAsText(out map[string]any) (string, bool) {
+        	known := map[string]bool{
+        		"verdict": true, "base": true, "note": true, "changedFiles": true,
+        		"signatureChanges": true, "missedSites": true, "unverifiedSeeds": true,
+        		"newDependencies": true, "archStatus": true, "archIntroduced": true,
+        		"notes": true,
+        	}
+        	for k := range out {
+        		if !known[k] {
+        			return "", false
+        		}
+        	}
+        	verdict, _ := out["verdict"].(string)
+        	var b strings.Builder
+        	if verdict == "clean" {
+        		fmt.Fprintf(&b, "verify: clean — %v\n", out["note"])
+        		return b.String(), true
+        	}
+        	changed := anySlice(out["changedFiles"])
+        	fmt.Fprintf(&b, "verify: %s — %d changed files vs %v\n", verdict, len(changed), out["base"])
+        	if sigs := anySlice(out["signatureChanges"]); len(sigs) > 0 {
+        		b.WriteString("\ncontract changes detected:\n")
+        		for _, s := range sigs {
+        			sm, ok := s.(map[string]any)
+        			if !ok {
+        				return "", false
+        			}
+        			fmt.Fprintf(&b, "  %v:%v  %v\n", sm["file"], sm["line"], sm["reason"])
+        		}
+        	}
+        	if missed := anySlice(out["missedSites"]); len(missed) > 0 {
+        		fmt.Fprintf(&b, "\nMISSED SITES (%d) — required by the change, not touched by the diff:\n", len(missed))
+        		for _, ms := range missed {
+        			mm, ok := ms.(map[string]any)
+        			if !ok {
+        				return "", false
+        			}
+        			fmt.Fprintf(&b, "  %v:%v  %v — %v\n", mm["file"], mm["line"], mm["qualifiedName"], mm["detail"])
+        		}
+        	}
+        	if unv := anySlice(out["unverifiedSeeds"]); len(unv) > 0 {
+        		fmt.Fprintf(&b, "\nUNVERIFIED contract changes (%d) — fail-closed, review these:\n", len(unv))
+        		for _, u := range unv {
+        			fmt.Fprintf(&b, "  %v\n", u)
+        		}
+        	}
+        	if deps := anySlice(out["newDependencies"]); len(deps) > 0 {
+        		b.WriteString("\ncross-component dependency candidates:\n")
+        		for _, d := range deps {
+        			dm, ok := d.(map[string]any)
+        			if !ok {
+        				return "", false
+        			}
+        			fmt.Fprintf(&b, "  %v -> %v  %v crossing(s)  [tier: %v]\n",
+        				dm["from"], dm["to"], dm["weight"], dm["minTier"])
+        		}
+        	}
+        	if as, _ := out["archStatus"].(string); as == "fail" || as == "review" {
+        		fmt.Fprintf(&b, "\narch rules touched by this diff: %s\n", as)
+        		for _, v := range anySlice(out["archIntroduced"]) {
+        			fmt.Fprintf(&b, "  %v\n", v)
+        		}
+        	}
+        	for _, n := range anySlice(out["notes"]) {
+        		fmt.Fprintf(&b, "note: %v\n", n)
+        	}
+        	switch verdict {
+        	case "complete":
+        		b.WriteString("\nno missed sites — the diff covers its own blast radius\n")
+        	case "review":
+        		b.WriteString("\nverdict: review — some contract changes could not be verified (--strict exits 1)\n")
+        	}
+        	return b.String(), true
+        }
+
+        // renderQuerySourceAsText renders prism_query's source delivery: the content
+        // is already formatted line-numbered markdown; the JSON envelope added ~17%
+        // (1,589 B on a 9,212 B result, measured) purely in string escaping and
+        // bookkeeping fields.
+        func renderQuerySourceAsText(out map[string]any) (string, bool) {
+        	known := map[string]bool{
+        		"content": true, "deliveredTokens": true, "delivery": true,
+        		"files": true, "symbolCount": true, "textMatches": true,
+        		"textBackend": true,
+        	}
+        	for k := range out {
+        		if !known[k] {
+        			return "", false
+        		}
+        	}
+        	content, ok := out["content"].(string)
+        	if !ok {
+        		return "", false
+        	}
+        	var b strings.Builder
+        	b.WriteString(content)
+        	if !strings.HasSuffix(content, "\n") {
+        		b.WriteString("\n")
+        	}
+        	if tm := anySlice(out["textMatches"]); len(tm) > 0 {
+        		b.WriteString("\ntext matches (outside indexed symbols):\n")
+        		if !renderOneSearchText(&b, map[string]any{"textHits": out["textMatches"]}) {
+        			return "", false
+        		}
+        	}
+        	return b.String(), true
+        }
+        EOF
+        echo written
+      at: 2026-08-18T00:22:21.522684Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/mcp/ -count=1 2>&1 | tail -3
+      at: 2026-08-18T00:23:25.571334Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -count=1 2>&1 | grep -E "^--- FAIL|^\s+.*_test.go" | head -12
+      at: 2026-08-18T00:23:38.077652Z
+      classified: test
+    - cmd: grep -n "TestRenderSearchAsText_FallsBackForSymbolResults" -A 15 internal/mcp/searchtext_test.go
+      at: 2026-08-18T00:23:46.162443Z
+      classified: other
+    - cmd: |-
+        cat >> internal/mcp/graphtext_test.go << 'EOF'
+
+        func TestRenderLookupAsText_FoundSymbol(t *testing.T) {
+        	out := map[string]any{
+        		"symbol": map[string]any{"qualifiedName": "CacheBase.get", "kind": "method",
+        			"filePath": "cache/__init__.py", "span": map[string]any{"start": 58, "end": 66},
+        			"rawText": "def get(self, key): ...", "blobSha": "beef", "id": "s1"},
+        		"content": "def get(self, key): ...",
+        	}
+        	text, ok := renderLookupAsText(out)
+        	if !ok {
+        		t.Fatal("found shape must render")
+        	}
+        	if !strings.Contains(text, "CacheBase.get") || !strings.Contains(text, "cache/__init__.py:58-66") {
+        		t.Errorf("header missing: %q", text)
+        	}
+        	if strings.Count(text, "def get(self, key)") != 1 {
+        		t.Errorf("body must appear exactly once (JSON shipped it twice): %q", text)
+        	}
+        	if strings.Contains(text, "beef") {
+        		t.Error("index internals must not leak")
+        	}
+        }
+
+        func TestRenderLookupAsText_MissAndProjection(t *testing.T) {
+        	miss := map[string]any{"symbol": nil, "name": "Nope", "matched": false,
+        		"note": "no symbol named \"Nope\"", "candidates": []string{"Near (a.py)"}}
+        	text, ok := renderLookupAsText(miss)
+        	if !ok || !strings.Contains(text, "no symbol named") || !strings.Contains(text, "Near (a.py)") {
+        		t.Errorf("miss shape wrong: ok=%v %q", ok, text)
+        	}
+        	proj := map[string]any{"signature": "def f()", "kind": "function"}
+        	text, ok = renderLookupAsText(proj)
+        	if !ok || !strings.Contains(text, "signature: def f()") {
+        		t.Errorf("projection shape wrong: ok=%v %q", ok, text)
+        	}
+        	if _, ok := renderLookupAsText(map[string]any{"symbol": nil, "shiny": 1}); ok {
+        		t.Error("unknown field must force JSON fallback")
+        	}
+        }
+
+        func TestRenderVerifyAsText_CleanAndIncomplete(t *testing.T) {
+        	clean := map[string]any{"verdict": "clean", "base": "HEAD", "note": "no changes vs HEAD"}
+        	text, ok := renderVerifyAsText(clean)
+        	if !ok || !strings.Contains(text, "verify: clean") {
+        		t.Errorf("clean shape: ok=%v %q", ok, text)
+        	}
+        	inc := map[string]any{
+        		"verdict": "incomplete", "base": "HEAD",
+        		"changedFiles":     []string{"a.py", "b.py"},
+        		"signatureChanges": []map[string]any{{"file": "a.py", "line": 657, "reason": "signature of X changed"}},
+        		"missedSites": []map[string]any{{"file": "a.py", "line": 1310,
+        			"qualifiedName": "P.parse_root_type", "detail": "calls set_title at line 1310"}},
+        		"unverifiedSeeds": []string{"Y — review manually"},
+        		"newDependencies": []map[string]any{{"from": "a", "to": "b", "weight": 2, "minTier": "call"}},
+        		"archStatus":      "review", "archIntroduced": []string{"rule R broken"},
+        		"notes":           []string{"scored against HEAD"},
+        	}
+        	text, ok = renderVerifyAsText(inc)
+        	if !ok {
+        		t.Fatal("incomplete shape must render")
+        	}
+        	for _, want := range []string{"verify: incomplete — 2 changed files", "MISSED SITES (1)",
+        		"P.parse_root_type", "UNVERIFIED contract changes (1)", "a -> b  2 crossing(s)",
+        		"arch rules touched", "rule R broken", "note: scored against HEAD"} {
+        		if !strings.Contains(text, want) {
+        			t.Errorf("dropped %q from:\n%s", want, text)
+        		}
+        	}
+        	if _, ok := renderVerifyAsText(map[string]any{"verdict": "complete", "extra": 1}); ok {
+        		t.Error("unknown field must force JSON fallback")
+        	}
+        }
+
+        func TestRenderQuerySourceAsText(t *testing.T) {
+        	out := map[string]any{
+        		"content": "**Source** — ...\n### a.py\n1\tcode\n",
+        		"delivery": "source", "deliveredTokens": 100, "symbolCount": 3,
+        		"files": []string{"a.py"},
+        		"textMatches": []map[string]any{{"file": "b.cfg",
+        			"hits": []map[string]any{{"line": 4, "text": "key = 1"}}}},
+        		"textBackend": "rg",
+        	}
+        	text, ok := renderQuerySourceAsText(out)
+        	if !ok {
+        		t.Fatal("source delivery must render")
+        	}
+        	for _, want := range []string{"### a.py", "b.cfg:4: key = 1", "text matches"} {
+        		if !strings.Contains(text, want) {
+        			t.Errorf("missing %q in:\n%s", want, text)
+        		}
+        	}
+        	if strings.Contains(text, "deliveredTokens") {
+        		t.Error("bookkeeping must not render")
+        	}
+        	if _, ok := renderQuerySourceAsText(map[string]any{"content": "x", "newKey": 1}); ok {
+        		t.Error("unknown field must force JSON fallback")
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -count=1 2>&1 | tail -2
+      at: 2026-08-18T00:24:35.946492Z
+      classified: test
+    - cmd: |-
+        go build -o /tmp/prism-alltext ./cmd/prism && SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook && cd $SCRATCH/Kinto__kinto-3566__prism && python3 << 'PY'
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-alltext','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+
+        BEFORE = {
+         ('prism_search','CacheBase'): 26071, ('prism_search','heartbeat'): 27700,
+         ('prism_lookup','CacheBase.get'): 1072, ('prism_verify',''): 61,
+         ('prism_query','cache metrics'): 10801,
+        }
+        calls = [
+         ("prism_search", {"query":"CacheBase"}, 'CacheBase'),
+         ("prism_search", {"query":"heartbeat"}, 'heartbeat'),
+         ("prism_lookup", {"name":"CacheBase.get"}, 'CacheBase.get'),
+         ("prism_verify", {}, ''),
+         ("prism_query",  {"task":"cache metrics","terms":["CacheBase"]}, 'cache metrics'),
+        ]
+        i = 2
+        for name, args, key in calls:
+            r = rpc(i, 'tools/call', {"name":name,"arguments":args}); i += 1
+            t = r['result']['content'][0]['text']
+            fmt = "TEXT" if not t.lstrip().startswith('{') else "JSON!!"
+            was = BEFORE.get((name,key), 0)
+            print(f"{name:14} {key:15} {fmt:6} {len(t):7,}B  (was {was:,}B)  {len(t)/max(was,1):.2f}x")
+        # spot-check content integrity
+        r = rpc(99,'tools/call',{"name":"prism_search","arguments":{"query":"CacheBase"}})
+        print("\nsearch symbols sample:"); print(r['result']['content'][0]['text'][:400])
+        proc.kill()
+        PY
+      at: 2026-08-18T00:24:58.249308Z
+      classified: build
+    - cmd: |-
+        go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "SUITE: $?"
+        cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-alltext --corpus-root ~/.cache/prism-research/ci-corpus 2>&1 | tail -2
+      at: 2026-08-18T00:26:31.027754Z
+      classified: test
+    - cmd: |-
+        git add -A && git commit -m "$(cat <<'EOF'
+        mcp: every advertised tool result is now plain text, never JSON
+
+        Completes what v0.55.2 (search text-scope) and v0.55.5 (read, change_impact)
+        started: prism_search default scope, prism_lookup, prism_verify and
+        prism_query source delivery now render as text, so all six advertised tools
+        answer in the shape a terminal would print.
+
+        Measured over the real protocol (Kinto index):
+        - prism_search default scope: 26,071 -> 2,230 B (0.09x). The JSON form
+          shipped full SymbolRecords — rawText bodies, blobSha, ids, callSites —
+          for a tool whose contract is "locate". Text form: one location line per
+          symbol (kind, qualifiedName, file:span, signature) plus an explicit
+          in-band pointer to lookup/read for bodies. 45% of real searches in full38
+          were default scope; this was the largest remaining payload in the surface.
+        - prism_lookup: 1,072 -> 282 B (0.26x) — the body shipped TWICE
+          (symbol.rawText + content) plus index internals.
+        - prism_query source: 10,801 -> 9,620 B — envelope/escaping only.
+        - prism_verify: mirrors the CLI's long-standing text output.
+
+        Same fallback contract throughout: any unrecognized top-level field falls
+        back to compact JSON. prism_query's symbols delivery is a struct, not a
+        map, and intentionally stays JSON.
+
+        Contract change worth naming: search results no longer carry symbol BODIES.
+        That is policy, not lossiness — the drop is stated in-band, and the tool's
+        own description has always promised locations. Old test asserting
+        symbols-means-JSON-fallback replaced by one asserting locations render and
+        internals do not leak.
+
+        Gate: full unit suite green, all engine invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cp /tmp/prism-alltext ~/bin/prism-test-alltext && nohup python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-smoke5.json --limit 5 \
+          --arms baseline prism --out runs/swebench-live/alltext5 \
+          --prism ~/bin/prism-test-alltext --model opus \
+          > runs/swebench-live/alltext5.log 2>&1 &
+        echo "smoke launched"
+      at: 2026-08-18T00:26:49.188967Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/prism log --oneline -1 && pgrep -f "swebench_ab.py.*alltext5" > /dev/null && echo "smoke alive" && head -4 /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/alltext5.log 2>/dev/null
+      at: 2026-08-18T00:26:57.240379Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness/ | grep -iE "change|impact|eval" ; echo ---; head -30 harness/change_impact.py 2>/dev/null; echo ---; ls ~/Projects/provasign 2>/dev/null; ls ~/Projects | head
+      at: 2026-08-18T00:38:21.274455Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && head -40 harness/score_grove_change_impact.py && echo === && ls ~/Projects/grove-eval 2>/dev/null || ls ~/Projects/provasign/grove 2>/dev/null | head -8; grep -rn "grove-eval" /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_grove_eval_harness.md
+      at: 2026-08-18T00:38:28.101454Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_grove_eval_harness.md
+      at: 2026-08-18T00:38:40.418973Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && grep -n "change-impact\|change_impact" harness/ci_invariants.py | head -8 && grep -n "format\|json.loads" harness/ci_invariants.py | head -10
+        ls harness/tasks/*.json | head -8
+      at: 2026-08-18T00:39:00.594831Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n 100,175p harness/ci_invariants.py
+      at: 2026-08-18T00:39:07.657253Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n 175,230p harness/ci_invariants.py && sed -n 60,100p harness/ci_invariants.py
+      at: 2026-08-18T00:39:13.094454Z
+      classified: other
+    - cmd: head -40 /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py | grep -E "^import|^from|^sys.path"
+      at: 2026-08-18T00:39:32.414355Z
+      classified: other
+    - cmd: grep -n "^import\|^from\|^sys" /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py | head -14
+      at: 2026-08-18T00:39:37.351991Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/mcp_ceiling.py /tmp/prism-alltext 2>&1 | tail -20
+      at: 2026-08-18T00:40:55.098959Z
+      classified: other
+    - cmd: |-
+        cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/mcp_ceiling.py /Users/tapabratapal/Projects/provasign/research/harness/mcp_ceiling.py
+        cd /Users/tapabratapal/Projects/provasign/research && python3 - <<'PY'
+        # make the promoted copy path-portable (no hardcoded /tmp binary default)
+        import re
+        p = 'harness/mcp_ceiling.py'
+        src = open(p).read()
+        src = src.replace('HARNESS = Path("/Users/tapabratapal/Projects/provasign/research/harness")',
+                          'HARNESS = Path(__file__).resolve().parent')
+        src = src.replace('PRISM = sys.argv[1] if len(sys.argv) > 1 else "/tmp/prism-alltext"',
+                          'PRISM = sys.argv[1] if len(sys.argv) > 1 else str(Path.home() / "bin" / "prism")')
+        open(p, 'w').write(src)
+        PY
+        git -C /Users/tapabratapal/Projects/provasign/research add harness/mcp_ceiling.py && git -C /Users/tapabratapal/Projects/provasign/research commit -m "$(cat <<'EOF'
+        harness: mcp_ceiling.py — change-impact ceiling scored over the MCP text surface
+
+        ci_invariants.py scores the CLI JSON path. prism v0.55.6 renders MCP
+        tools/call results as text, a path no accuracy benchmark exercised — a
+        renderer that dropped a site would pass ci_invariants and still ship
+        incomplete blast radii to every agent. This runs the same 13 ceiling tasks
+        against the same committed ground truth and scorer, parsing sites out of
+        the delivered text. First run (prism 68a05dc): all 13 held at identical
+        recall/precision to the CLI baselines, including guava's 310-site family
+        (R 0.9968) and grafana-bigblast's 93 sites.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git -C /Users/tapabratapal/Projects/provasign/research log --oneline -1
+        echo "--- smoke status ---"
+        pgrep -f "swebench_ab.py.*alltext5" > /dev/null && echo alive; ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/alltext5/*.json 2>/dev/null | grep -v provenance | wc -l
+      at: 2026-08-18T00:41:18.578159Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "swebench_ab.py.*alltext5" > /dev/null && echo "SMOKE ALIVE" || echo "SMOKE FINISHED"
+        tail -10 runs/swebench-live/alltext5.log
+        ls runs/swebench-live/alltext5/*.json 2>/dev/null | grep -v provenance | wc -l
+      at: 2026-08-18T00:53:18.952152Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/alltext5 --all --official --slice runs/swebench-live/slice-smoke5.json > runs/swebench-live/alltext5.scored.log 2>&1; grep -E "RESOLVE RATE|VOIDED" runs/swebench-live/alltext5.scored.log; grep -A8 "BY BLAST RADIUS" runs/swebench-live/alltext5.scored.log
+      at: 2026-08-18T00:54:13.657722Z
+      classified: other
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-18T00:09:45.57665Z
+redactions: 0

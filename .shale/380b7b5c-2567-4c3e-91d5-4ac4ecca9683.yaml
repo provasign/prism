@@ -1,0 +1,13 @@
+shale_version: "0"
+id: 380b7b5c-2567-4c3e-91d5-4ac4ecca9683
+created_at: 2026-09-04T21:18:09.20731Z
+finalized_at: 2026-09-05T15:28:15.969922Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+notes: []
+redactions: 0

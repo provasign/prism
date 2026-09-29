@@ -1,0 +1,522 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c5
+created_at: 2026-08-29T01:04:02.213762Z
+finalized_at: 2026-08-29T01:42:19.706636Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/jcl.go"
+        src = open(p).read()
+        old = """// JCL symbol kinds.
+        const (
+        	kindJob     astkit.SymbolKind = "job"
+        	kindStep    astkit.SymbolKind = "step"
+        	kindJCLProc astkit.SymbolKind = "jcl-procedure"
+        )"""
+        new = """// JCL symbol kinds.
+        const (
+        	kindJob     astkit.SymbolKind = "job"
+        	kindStep    astkit.SymbolKind = "step"
+        	kindJCLProc astkit.SymbolKind = "jcl-procedure"
+        	kindDataset astkit.SymbolKind = "dataset"
+        )"""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+
+        # Emit dataset symbols per DD DSN=, carrying step context and DD name —
+        # the join key for cross-artifact dataset binding.
+        old2 = """		case "EXEC":"""
+        new2 = """		case "DD":
+        			if name != "" {
+        				lastDD = name // concatenated DDs ("//  DD") reuse the name
+        			}
+        			if dm := reDSN.FindStringSubmatch(operands); dm != nil {
+        				dsn := strings.ToUpper(dm[1])
+        				parent := lastStep
+        				syms = append(syms, astkit.Symbol{
+        					Kind: kindDataset, Name: dsn, QualifiedName: dsn,
+        					ParentName: parent,
+        					Signature:  strings.TrimSpace(ln.text),
+        					Span:       astkit.LineRange{Start: ln.orig, End: ln.orig},
+        					Modifiers:  []string{"dd:" + strings.ToUpper(lastDD)},
+        				})
+        			}
+        		case "EXEC":"""
+        assert src.count(old2) == 1
+        src = src.replace(old2, new2)
+
+        old3 = """	var jobName, procName string
+        	var stepCount int"""
+        new3 = """	var jobName, procName string
+        	var stepCount int
+        	var lastStep, lastDD string"""
+        assert src.count(old3) == 1
+        src = src.replace(old3, new3)
+
+        old4 = """			syms = append(syms, s)
+        		}
+        	}
+        	return syms, nil
+        }"""
+        new4 = """			syms = append(syms, s)
+        			lastStep = name
+        		}
+        	}
+        	return syms, nil
+        }"""
+        assert src.count(old4) == 1
+        src = src.replace(old4, new4)
+        open(p, "w").write(src)
+        print("jcl.go patched")
+        EOF
+        go build ./strategies/ && go test ./strategies/ -run JCL 2>&1 | tail -1
+      at: 2026-08-29T01:37:49.785653Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && cat >> strategies/mainframe_test.go <<'EOF'
+
+        func TestJCL_DatasetSymbols(t *testing.T) {
+        	syms, err := NewJCL().Extract(nil, []byte(jclSample))
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	ds := find(t, syms, "dataset", "PROD.CUST.MASTER")
+        	if ds.ParentName != "UPDATE" {
+        		t.Errorf("dataset parent step = %q", ds.ParentName)
+        	}
+        	if len(ds.Modifiers) != 1 || ds.Modifiers[0] != "dd:CUSTIN" {
+        		t.Errorf("dataset modifiers = %v", ds.Modifiers)
+        	}
+        	out := find(t, syms, "dataset", "PROD.CUST.MASTER.NEW")
+        	if out.Modifiers[0] != "dd:CUSTOUT" {
+        		t.Errorf("continued DD dataset modifiers = %v", out.Modifiers)
+        	}
+        }
+        EOF
+        go test ./... 2>&1 | tail -2 && git add strategies/jcl.go strategies/mainframe_test.go && git commit -q -m "$(cat <<'EOF'
+        jcl: DD statements emit dataset symbols
+
+        Kind "dataset", identity = DSN (QualifiedName), ParentName = enclosing
+        step, dd:NAME modifier — the join key for cross-artifact dataset
+        binding (spec R-5.3). DD imports are kept for text-level search.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.6.0 -m "jcl dataset symbols" && git push origin v0.6.0 2>&1 | tail -1
+      at: 2026-08-29T01:38:07.474124Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/core/types.go"
+        src = open(p).read()
+        old = """	EdgeOverrides EdgeType = "overrides\""""
+        new = """	EdgeOverrides EdgeType = "overrides"
+
+        	// Mainframe data-flow vocabulary (docs/mainframe-build-plan.md).
+        	EdgeReads     EdgeType = "reads"         // symbol reads a data item
+        	EdgeWrites    EdgeType = "writes"        // symbol writes a data item
+        	EdgeRedefines EdgeType = "redefines"     // alternate view over the same storage
+        	EdgeBinds     EdgeType = "binds-dataset" // logical file bound to a physical dataset"""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        old2 = '''	ReasonTypeRef        EdgeReason = "type-ref"        // uses-type / extends / implements by name resolution'''
+        new2 = '''	ReasonTypeRef        EdgeReason = "type-ref"        // uses-type / extends / implements by name resolution
+        	ReasonCrossArtifact  EdgeReason = "cross-artifact"  // derived by joining sites in different artifact types'''
+        assert src.count(old2) == 1
+        open(p, "w").write(src.replace(old2, new2))
+        print("vocabulary added")
+        EOF
+        go build ./internal/core/
+      at: 2026-08-29T01:38:16.213945Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'PYEOF'
+        p = "internal/graph/mainframe.go"
+        src = open(p).read()
+
+        # Replace the undirected field-reference pass with the directional one.
+        start = src.index("\t// 2. Field references from paragraph/section/program bodies.")
+        end = src.index("\treturn edges\n}", start)
+        old_block = src[start:end]
+
+        new_block = '''	// 2. Directional field references from paragraph/section bodies.
+        	//
+        	// Statement verbs classify direction: MOVE/COMPUTE/ADD/SUBTRACT/SET/
+        	// INITIALIZE/GIVING/INTO/VARYING targets are WRITES; every other
+        	// referenced field in the statement is a READ. Quoted literals are
+        	// stripped first so 'ACCT-NOT-FOUND' never matches a field.
+        	//
+        	// Volume discipline (measured on a real estate: undirected refs hit
+        	// 2.7M edges, 80x the source size): fields declared in the SAME file
+        	// (private working storage) roll up to ONE edge from the file's
+        	// program symbol per direction; paragraph-level granularity is kept
+        	// only for CROSS-FILE (copybook) fields, where lineage value lives.
+        	fieldsByFile := map[string]map[string][]*core.SymbolRecord{}
+        	fieldMap := func(file string) map[string][]*core.SymbolRecord {
+        		if m, ok := fieldsByFile[file]; ok {
+        			return m
+        		}
+        		m := map[string][]*core.SymbolRecord{}
+        		addFrom := func(f string) {
+        			for _, s := range idx.byFile[f] {
+        				if mainframeDataKind(s.Kind) {
+        					m[strings.ToUpper(s.Name)] = append(m[strings.ToUpper(s.Name)], s)
+        				}
+        			}
+        		}
+        		addFrom(file)
+        		for inc := range closure[file] {
+        			addFrom(inc)
+        		}
+        		fieldsByFile[file] = m
+        		return m
+        	}
+        	programOfFile := map[string]*core.SymbolRecord{}
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if string(s.Kind) == "program" {
+        			programOfFile[s.FilePath] = s
+        		}
+        	}
+
+        	seenRef := map[string]bool{}
+        	emitRef := func(from *core.SymbolRecord, field *core.SymbolRecord, write bool) {
+        		et := core.EdgeReads
+        		if write {
+        			et = core.EdgeWrites
+        		}
+        		// Same-file fields: attribute to the program, one edge per direction.
+        		if field.FilePath == from.FilePath {
+        			if prog := programOfFile[from.FilePath]; prog != nil {
+        				from = prog
+        			}
+        		}
+        		key := from.ID + string(et) + field.ID
+        		if seenRef[key] {
+        			return
+        		}
+        		seenRef[key] = true
+        		edges = append(edges, core.Edge{
+        			From: from.ID, To: field.ID,
+        			Type: et, Confidence: 0.7,
+        			Source: core.EvidenceSourceRegex, Reason: core.ReasonRegexFallbck,
+        		})
+        	}
+
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language != "cobol" || !mainframeCallerKind(s.Kind) || s.RawText == "" {
+        			continue
+        		}
+        		visible := fieldMap(s.FilePath)
+        		for _, stmt := range strings.Split(s.RawText, "\\n") {
+        			stmt = reQuoted.ReplaceAllString(stmt, " ")
+        			writeTargets := map[string]bool{}
+        			for _, m := range reWriteTarget.FindAllStringSubmatch(stmt, -1) {
+        				for _, tok := range reFieldToken.FindAllString(m[1], -1) {
+        					writeTargets[strings.ToUpper(tok)] = true
+        				}
+        			}
+        			for _, tok := range reFieldToken.FindAllString(stmt, -1) {
+        				u := strings.ToUpper(tok)
+        				fields := visible[u]
+        				if len(fields) == 0 {
+        					continue
+        				}
+        				for _, field := range fields {
+        					emitRef(s, field, writeTargets[u])
+        				}
+        			}
+        		}
+        	}
+
+        	// 3. REDEFINES edges: the alternate-view relation, resolved within the
+        	// declaring file (a redefinition legally targets a preceding sibling).
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language != "cobol" || !mainframeDataKind(s.Kind) {
+        			continue
+        		}
+        		for _, mod := range s.Modifiers {
+        			if !strings.HasPrefix(mod, "redefines:") {
+        				continue
+        			}
+        			target := strings.ToUpper(strings.TrimPrefix(mod, "redefines:"))
+        			for _, cand := range idx.byFile[s.FilePath] {
+        				if mainframeDataKind(cand.Kind) && strings.ToUpper(cand.Name) == target && cand.ID != s.ID {
+        					edges = append(edges, core.Edge{
+        						From: s.ID, To: cand.ID,
+        						Type: core.EdgeRedefines, Confidence: 1.0,
+        						Source: core.EvidenceSourceASTKit, Reason: core.ReasonStructural,
+        					})
+        				}
+        			}
+        		}
+        	}
+
+        	// 4. Cross-artifact dataset binding (spec R-5.3): program declares
+        	// logical file ASSIGN TO <dd>; a JCL step executes the program and its
+        	// <dd> DD names a dataset. The derived edge joins the two artifacts at
+        	// reduced confidence and cites the join in its reason.
+        	datasetsByStepDD := map[string][]*core.SymbolRecord{}
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if string(s.Kind) != "dataset" {
+        			continue
+        		}
+        		for _, mod := range s.Modifiers {
+        			if strings.HasPrefix(mod, "dd:") {
+        				key := strings.ToUpper(s.ParentSymbol) + "/" + strings.TrimPrefix(mod, "dd:")
+        				datasetsByStepDD[key] = append(datasetsByStepDD[key], s)
+        			}
+        		}
+        	}
+        	if len(datasetsByStepDD) > 0 {
+        		// Steps that execute each program, from the call edges built above
+        		// plus estate-wide name resolution (same rule as call resolution).
+        		stepsByProgram := map[string][]*core.SymbolRecord{}
+        		for i := range symbols {
+        			s := &symbols[i]
+        			if string(s.Kind) != "step" {
+        				continue
+        			}
+        			for _, cs := range s.CallSites {
+        				stepsByProgram[strings.ToUpper(cs.Callee)] = append(stepsByProgram[strings.ToUpper(cs.Callee)], s)
+        			}
+        		}
+        		seenBind := map[string]bool{}
+        		for i := range symbols {
+        			lf := &symbols[i]
+        			if string(lf.Kind) != "logical-file" {
+        				continue
+        			}
+        			dd := ""
+        			if m := reAssignTo.FindStringSubmatch(lf.Signature); m != nil {
+        				dd = strings.ToUpper(m[1])
+        			}
+        			if dd == "" {
+        				continue
+        			}
+        			prog := programOfFile[lf.FilePath]
+        			if prog == nil {
+        				continue
+        			}
+        			for _, step := range stepsByProgram[strings.ToUpper(prog.Name)] {
+        				for _, ds := range datasetsByStepDD[strings.ToUpper(step.Name)+"/"+dd] {
+        					key := lf.ID + "->" + ds.ID
+        					if seenBind[key] {
+        						continue
+        					}
+        					seenBind[key] = true
+        					edges = append(edges, core.Edge{
+        						From: lf.ID, To: ds.ID,
+        						Type: core.EdgeBinds, Confidence: 0.8,
+        						Source: core.EvidenceSourceASTKit, Reason: core.ReasonCrossArtifact,
+        					})
+        				}
+        			}
+        		}
+        	}
+
+        '''
+        src = src.replace(old_block, new_block)
+
+        # New regexes near reFieldToken.
+        old_re = 'var reFieldToken = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9-]+`)'
+        new_re = '''var (
+        	reFieldToken  = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9-]+`)
+        	reQuoted      = regexp.MustCompile(`'[^']*'|"[^"]*"`)
+        	reAssignTo    = regexp.MustCompile(`(?i)ASSIGN\\s+TO\\s+([A-Za-z0-9-]+)`)
+        	// Write-position captures: the clause after the verb up to the next
+        	// keyword/period holds the targets.
+        	reWriteTarget = regexp.MustCompile(`(?i)\\b(?:MOVE\\s+.*?\\s+TO|ADD\\s+.*?\\s+TO|SUBTRACT\\s+.*?\\s+FROM|COMPUTE|INITIALIZE|SET|STRING\\s+.*?\\s+INTO|UNSTRING\\s+.*?\\s+INTO|READ\\s+.*?\\s+INTO|GIVING|VARYING)\\s+([A-Za-z0-9-]+(?:\\s*,?\\s+[A-Za-z0-9-]+)*)`)
+        )'''
+        assert src.count(old_re) == 1
+        src = src.replace(old_re, new_re)
+        open(p, "w").write(src)
+        print("mainframe.go rewritten")
+        PYEOF
+        go build ./internal/graph/ 2>&1 | head -5
+      at: 2026-08-29T01:38:52.665251Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        for p, old, new in [
+         ("internal/graph/mainframe.go",
+          "\t\t\tok := edge.Type == core.EdgeCalls || (dataAnchor && edge.Type == core.EdgeUsesType)",
+          "\t\t\tok := edge.Type == core.EdgeCalls ||\n\t\t\t\t(dataAnchor && (edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites || edge.Type == core.EdgeRedefines))"),
+         ("internal/graph/changeimpact.go",
+          "\t\t\taccept := edge.Type == core.EdgeCalls || (dataAnchor && edge.Type == core.EdgeUsesType)",
+          "\t\t\taccept := edge.Type == core.EdgeCalls ||\n\t\t\t\t(dataAnchor && (edge.Type == core.EdgeReads || edge.Type == core.EdgeWrites || edge.Type == core.EdgeRedefines))"),
+        ]:
+            src = open(p).read()
+            assert src.count(old) == 1, p
+            open(p, "w").write(src.replace(old, new))
+        print("impact acceptance updated")
+        EOF
+        python3 - <<'EOF'
+        p = "internal/graph/mainframe_estate_test.go"
+        src = open(p).read()
+        old = src[src.index("// Field-reference (lineage) edges"):]
+        new = '''// Directional field-reference (lineage) edges: verb-classified reads and
+        // writes. Same-file fields roll up to the program symbol (volume bound);
+        // copybook fields keep paragraph granularity.
+        func TestMainframeEstate_FieldReferenceEdges(t *testing.T) {
+        	_, edges := indexEstate(t)
+        	var got []string
+        	for _, e := range edges {
+        		if e.Type != core.EdgeReads && e.Type != core.EdgeWrites {
+        			continue
+        		}
+        		got = append(got, fmt.Sprintf("%s %s %s", trimID(e.From), e.Type, trimID(e.To)))
+        	}
+        	sort.Strings(got)
+        	want := []string{
+        		// MOVE ZEROS TO CUST-SSN: copybook field, paragraph-level write.
+        		"CUSTUPD.cbl::CUSTUPD.MAIN-PARA writes CUSTREC.cpy::CUST-REC.CUST-SSN",
+        		// CALL USING CUST-REC: copybook group, read.
+        		"CUSTUPD.cbl::CUSTUPD.MAIN-PARA reads CUSTREC.cpy::CUST-REC",
+        		// MOVE 'N' TO WS-EOF: same-file target — rolled up to the program.
+        		"CUSTUPD.cbl::CUSTUPD writes CUSTUPD.cbl::WS-FLAGS.WS-EOF",
+        		// CALL WS-RPT-PGM: same-file read, rolled up to the program.
+        		"CUSTUPD.cbl::CUSTUPD reads CUSTUPD.cbl::WS-RPT-PGM",
+        	}
+        	sort.Strings(want)
+        	if diff := diffSets(want, got); diff != "" {
+        		t.Errorf("field-reference edge drift:\\n%s", diff)
+        	}
+        }
+
+        // REDEFINES is a first-class edge: CUST-ALT is an alternate view of CUST-SSN.
+        func TestMainframeEstate_RedefinesEdges(t *testing.T) {
+        	_, edges := indexEstate(t)
+        	var got []string
+        	for _, e := range edges {
+        		if e.Type == core.EdgeRedefines {
+        			got = append(got, fmt.Sprintf("%s -> %s", trimID(e.From), trimID(e.To)))
+        		}
+        	}
+        	want := []string{"CUSTREC.cpy::CUST-REC.CUST-ALT -> CUSTREC.cpy::CUST-REC.CUST-SSN"}
+        	if diff := diffSets(want, got); diff != "" {
+        		t.Errorf("redefines edge drift:\\n%s", diff)
+        	}
+        }
+
+        // Cross-artifact dataset binding (R-5.3): CUSTUPD declares CUST-FILE ASSIGN
+        // TO CUSTIN; step NIGHTLY.UPDATE executes CUSTUPD with CUSTIN DD naming two
+        // concatenated datasets. The derived edges join both artifacts.
+        func TestMainframeEstate_DatasetBinding(t *testing.T) {
+        	_, edges := indexEstate(t)
+        	var got []string
+        	for _, e := range edges {
+        		if e.Type == core.EdgeBinds {
+        			got = append(got, fmt.Sprintf("%s -> %s conf=%.1f %s", trimID(e.From), trimID(e.To), e.Confidence, e.Reason))
+        		}
+        	}
+        	sort.Strings(got)
+        	want := []string{
+        		"CUSTUPD.cbl::CUSTUPD.CUST-FILE -> NIGHTLY.jcl::PROD.CUST.MASTER conf=0.8 cross-artifact",
+        		"CUSTUPD.cbl::CUSTUPD.CUST-FILE -> NIGHTLY.jcl::PROD.CUST.MASTER.G0001V00 conf=0.8 cross-artifact",
+        	}
+        	sort.Strings(want)
+        	if diff := diffSets(want, got); diff != "" {
+        		t.Errorf("dataset binding drift:\\n%s", diff)
+        	}
+        }
+        '''
+        open(p, "w").write(src[:src.index("// Field-reference (lineage) edges")] + new)
+        print("goldens rewritten")
+        EOF
+        go test ./internal/graph/ -run MainframeEstate -v 2>&1 | grep -E "^---|missing|extra" | head -20
+      at: 2026-08-29T01:39:15.872514Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/mainframe_estate_test.go"
+        src = open(p).read()
+        old = '''		"data-item WS-RPT-PGM CUSTUPD.cbl",
+        		"job NIGHTLY NIGHTLY.jcl",'''
+        new = '''		"data-item WS-RPT-PGM CUSTUPD.cbl",
+        		// Datasets are per-occurrence symbols; Name stays the bare DSN for
+        		// estate-wide unification, QualifiedName carries the binding step.
+        		"dataset UPDATE.PROD.CUST.MASTER NIGHTLY.jcl",
+        		"dataset UPDATE.PROD.CUST.MASTER.G0001V00 NIGHTLY.jcl",
+        		"dataset UPDATE.PROD.CUST.MASTER.NEW NIGHTLY.jcl",
+        		"job NIGHTLY NIGHTLY.jcl",'''
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        src = src.replace("NIGHTLY.jcl::PROD.CUST.MASTER conf=0.8", "NIGHTLY.jcl::UPDATE.PROD.CUST.MASTER conf=0.8")
+        src = src.replace("NIGHTLY.jcl::PROD.CUST.MASTER.G0001V00 conf=0.8", "NIGHTLY.jcl::UPDATE.PROD.CUST.MASTER.G0001V00 conf=0.8")
+        open(p, "w").write(src)
+        print("goldens aligned")
+        EOF
+        go test ./internal/graph/ -run MainframeEstate 2>&1 | tail -1 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove suite: $?"
+      at: 2026-08-29T01:39:38.047135Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && rm -rf $S/lineage-estate && cp -R internal/graph/testdata/mainframe-estate $S/lineage-estate && cd $S/lineage-estate && git init -q && $S/grove-mf index . >/dev/null 2>&1 && $S/grove-mf change-impact CUST-SSN . 2>/dev/null | python3 -c "
+        import json,sys; d=json.load(sys.stdin)
+        print('decls:', [x['qualifiedName'] for x in d.get('Declarations') or []])
+        print('impact:', [x['qualifiedName'] for x in d.get('Callers') or []])"; rm -rf $S/noop5 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop5 && rm -rf $S/noop5/.grove && $S/grove-mf index $S/noop5 >/dev/null 2>&1 && $S/grove-mf status $S/noop5 | grep -E "symbolCount|edgeCount"
+      at: 2026-08-29T01:39:53.325124Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.6.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "gate: $?"; git add -A internal/graph internal/core go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        data flow: directional reads/writes, REDEFINES edges, dataset binding
+
+        Real-estate feedback (92-repo corpus, 2.7M undirected uses-type edges =
+        80x source size) drove all three changes:
+
+        - uses-type field references are replaced by verb-classified reads and
+          writes (MOVE/COMPUTE/ADD/GIVING/INTO/SET targets write; other
+          referenced fields read). Quoted literals are stripped before token
+          matching. Volume bound: same-file fields roll up to ONE edge per
+          direction from the program symbol; paragraph granularity is kept only
+          for cross-file (copybook) fields, where lineage value lives.
+        - REDEFINES is a first-class edge (structural, 1.0), so an alternate
+          view over the same storage appears in a field's impact set.
+        - Cross-artifact dataset binding (spec R-5.3): logical-file ASSIGN TO
+          <dd> joins the JCL step executing the program to that step's DD
+          dataset — derived binds-dataset edges at 0.8, reason cross-artifact.
+          Datasets are symbols (astkit v0.6.0); Name is the bare DSN for
+          estate-wide unification.
+
+        New edge vocabulary: reads, writes, redefines, binds-dataset; reason
+        cross-artifact. gin byte-identical (1675/12353).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.36.0 -m "mainframe: directional data flow, redefines, dataset binding" && git push origin v0.36.0 2>&1 | tail -1
+      at: 2026-08-29T01:40:26.062543Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.36.0 github.com/provasign/astkit@v0.6.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3; cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test'
+      at: 2026-08-29T01:40:33.176619Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.36.0, astkit v0.6.0 — directional data flow
+
+        Answers the real-estate gap list: reads/writes direction (verb
+        classification), the uses-type volume/precision problem (literal
+        stripping + same-file rollup), REDEFINES edges, and cross-artifact
+        dataset binding (R-5.3). Gates green module-mode, invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.3 -m "mainframe: directional data flow, redefines, dataset binding" && git push origin v0.56.3 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T01:42:19.208606Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T01:04:02.213762Z
+redactions: 0

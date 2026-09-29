@@ -1,0 +1,2147 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c4
+created_at: 2026-08-16T18:35:28.41175Z
+finalized_at: 2026-08-16T20:57:27.134085Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: BACKLOG.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-16T20:43:50.296166Z
+    - path: internal/mcp/schemaconformance_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-08-16T20:54:19.644092Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-16T20:55:07.258972Z
+commands:
+    - cmd: git push origin main 2>&1 | tail -3; git log --oneline origin/main..HEAD | wc -l
+      at: 2026-08-16T18:35:28.41175Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,sys,re
+        sys.path.insert(0,'.')
+        import docker_eval as de
+        sc=json.load(open('runs/swebench-live/radius-scoreable.json'))
+        allr={t['instance_id']:t for t in json.load(open('runs/swebench-live/slice-radius.json'))}
+        bad=[k for k,v in sc.items() if not v['scoreable']]
+        print(f"{len(bad)} unscoreable. Checking what the container actually reported.\n")
+        t=allr[bad[0]]
+        mods=sorted({n.split('::')[0] for n in t['FAIL_TO_PASS'] if '::' in n})
+        print("first:", t['instance_id'], "| modules:", mods)
+        print("test_cmds:", t.get('test_cmds'))
+        img=de.official_image(t['instance_id'])
+        script=(f"cd /testbed; git checkout -f -q {t['base_commit']} 2>&1|tail -2; "
+                "echo '--- apply test patch ---'; git apply --3way /tmp/test.patch 2>&1|tail -3; "
+                "echo '--- apply gold ---'; git apply --3way /tmp/gold.patch 2>&1|tail -3; "
+                "echo '--- collect ---'; python -m pytest " + " ".join(mods) + " --collect-only -q 2>&1|tail -8")
+        import tempfile,subprocess,os
+        d=tempfile.mkdtemp()
+        open(os.path.join(d,'test.patch'),'w').write(t['test_patch'])
+        open(os.path.join(d,'gold.patch'),'w').write(t['patch'])
+        r=subprocess.run(['docker','run','--rm','--platform','linux/amd64',
+          '-v',f'{d}/test.patch:/tmp/test.patch:ro','-v',f'{d}/gold.patch:/tmp/gold.patch:ro',
+          img,'bash','-lc',script],capture_output=True,text=True,timeout=1800)
+        print(r.stdout[-1400:])
+        PY
+      at: 2026-08-16T18:35:47.934789Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,sys,tempfile,subprocess,os
+        sys.path.insert(0,'.')
+        import docker_eval as de
+        t=[x for x in json.load(open('runs/swebench-live/slice-radius.json')) if x['instance_id']=='python-telegram-bot__python-telegram-bot-4617'][0]
+        print("F2P nodes:", t['FAIL_TO_PASS'])
+        nodes=' '.join(f"'{n}'" for n in t['FAIL_TO_PASS'])
+        img=de.official_image(t['instance_id'])
+        script=(f"cd /testbed; git checkout -f -q {t['base_commit']}; "
+                "git apply --3way /tmp/test.patch >/dev/null 2>&1; git apply --3way /tmp/gold.patch >/dev/null 2>&1; "
+                f"python -m pytest {nodes} -v --tb=line -p no:cacheprovider -o addopts='' 2>&1 | tail -12")
+        d=tempfile.mkdtemp()
+        open(os.path.join(d,'test.patch'),'w').write(t['test_patch']); open(os.path.join(d,'gold.patch'),'w').write(t['patch'])
+        r=subprocess.run(['docker','run','--rm','--platform','linux/amd64','-v',f'{d}/test.patch:/tmp/test.patch:ro',
+          '-v',f'{d}/gold.patch:/tmp/gold.patch:ro',img,'bash','-lc',script],capture_output=True,text=True,timeout=1800)
+        print(r.stdout[-1200:])
+        PY
+      at: 2026-08-16T18:36:11.341591Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > diagnose_unscoreable.py <<'EOF'
+        #!/usr/bin/env python3
+        """Why can't these tasks be scored? Run gold against the explicit F2P node
+        ids in the official image and classify the failure. Docker only, no API."""
+        import json,sys,tempfile,subprocess,os,re
+        sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+        import docker_eval as de
+
+        sc=json.load(open(sys.argv[1])); tasks={t['instance_id']:t for t in json.load(open(sys.argv[2]))}
+        bad=[k for k,v in sc.items() if not v['scoreable']]
+        out={}
+        for i,tid in enumerate(bad,1):
+            t=tasks[tid]; nodes=' '.join(f"'{n}'" for n in t['FAIL_TO_PASS'][:20])
+            img=de.official_image(tid)
+            script=(f"cd /testbed; git checkout -f -q {t['base_commit']} 2>&1|tail -1; "
+                    "git apply --3way /tmp/test.patch >/dev/null 2>&1; git apply --3way /tmp/gold.patch >/dev/null 2>&1; "
+                    f"python -m pytest {nodes} --tb=line -q -p no:cacheprovider -o addopts='' 2>&1 | tail -25")
+            d=tempfile.mkdtemp()
+            open(os.path.join(d,'test.patch'),'w').write(t.get('test_patch') or '')
+            open(os.path.join(d,'gold.patch'),'w').write(t['patch'])
+            try:
+                r=subprocess.run(['docker','run','--rm','--platform','linux/amd64',
+                    '-v',f'{d}/test.patch:/tmp/test.patch:ro','-v',f'{d}/gold.patch:/tmp/gold.patch:ro',
+                    img,'bash','-lc',script],capture_output=True,text=True,timeout=1500).stdout
+            except Exception as e:
+                r=f"HARNESS ERROR {e}"
+            passed = re.search(r'(\d+) passed', r)
+            if 'No module named' in r or 'ModuleNotFoundError' in r: cat='missing dependency'
+            elif re.search(r'networking\.py|ConnectionError|getaddrinfo|Temporary failure|api\.telegram|NewConnectionError|Max retries', r): cat='TEST NEEDS NETWORK'
+            elif 'no tests ran' in r or 'ERROR' in r and 'error' in r.lower() and not passed: cat='collection error'
+            elif passed and not re.search(r'\d+ failed', r): cat='PASSES (was a module-scope problem)'
+            elif re.search(r'\d+ failed', r): cat='gold genuinely fails F2P'
+            else: cat='other'
+            out[tid]=cat
+            print(f"[{i:2}/{len(bad)}] {cat:34} {tid}", flush=True)
+            json.dump(out, open(sys.argv[3],'w'), indent=1)
+        import collections
+        print("\n"+str(dict(collections.Counter(out.values()))))
+        EOF
+        nohup python3 diagnose_unscoreable.py runs/swebench-live/radius-scoreable.json runs/swebench-live/slice-radius.json runs/swebench-live/radius-diagnosis.json > runs/swebench-live/radius-diagnosis.log 2>&1 &
+        echo "pid $!"; sleep 120; cat runs/swebench-live/radius-diagnosis.log
+      at: 2026-08-16T18:38:38.480744Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        p='docker_eval.py'; s=open(p).read()
+        s=s.replace('''    img = official_image(task["instance_id"])
+            mods = sorted({n.split("::")[0] for n in task.get("FAIL_TO_PASS", []) if "::" in n})''',
+        '''    img = official_image(task["instance_id"])
+            # Run EXPLICIT NODE IDS, not whole modules. Running the module drags in
+            # every unrelated test in it -- flaky ones, ones needing live network,
+            # ones broken in the image -- and any of them failing scores the GOLD
+            # patch as not-resolved. Measured 2026-08-16: of 12 tasks that looked
+            # unscoreable, 8 pass cleanly the moment the node ids are named. That is
+            # also what SWE-bench's own harness does.
+            f2p = list(task.get("FAIL_TO_PASS", []))
+            mods = sorted({n.split("::")[0] for n in f2p if "::" in n})
+            # P2P is capped: some beds carry ~500 ids and the regression signal
+            # saturates long before that, especially under x86_64 emulation.
+            p2p_all = [n for n in task.get("PASS_TO_PASS", []) if "::" in n]
+            p2p = p2p_all[:150]
+            nodes = " ".join(f"'{n}'" for n in f2p + p2p)''')
+        s=s.replace('''        f"{runner} " + " ".join(mods) +''','''        f"{runner} " + nodes +''')
+        s=s.replace('''    f2p = task.get("FAIL_TO_PASS", [])
+            p2p = [n for n in task.get("PASS_TO_PASS", []) if n.split("::")[0] in mods]
+            f2p_ok = bool(f2p) and all(res.get(n) == "PASSED" for n in f2p)''',
+        '''    f2p_ok = bool(f2p) and all(res.get(n) == "PASSED" for n in f2p)''')
+        s=s.replace('''    return {"resolved": bool(f2p_ok and p2p_ok), "f2p_ok": f2p_ok,
+                    "p2p_ok": p2p_ok, "n_run": len(res), "image": img}''',
+        '''    return {"resolved": bool(f2p_ok and p2p_ok), "f2p_ok": f2p_ok,
+                    "p2p_ok": p2p_ok, "n_run": len(res), "image": img,
+                    "p2p_checked": len(p2p), "p2p_total": len(p2p_all)}''')
+        open(p,'w').write(s)
+        PY
+        python3 -c "import ast;ast.parse(open('docker_eval.py').read());print('OK')"
+        python3 -c "
+        import json,sys,time;sys.path.insert(0,'.')
+        import docker_eval as de
+        t=[x for x in json.load(open('runs/swebench-live/slice-radius.json')) if x['instance_id']=='pydata__xarray-9636'][0]
+        t0=time.time(); g=de.score_official(t,t['patch']); print(f'GOLD  {g[\"resolved\"]} f2p={g[\"f2p_ok\"]} p2p={g[\"p2p_ok\"]} n={g[\"n_run\"]} [{time.time()-t0:.0f}s]')
+        t0=time.time(); e=de.score_official(t,''); print(f'EMPTY {e[\"resolved\"]} f2p={e[\"f2p_ok\"]} n={e[\"n_run\"]} [{time.time()-t0:.0f}s]')"
+      at: 2026-08-16T18:39:15.230582Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '240,255p' docker_eval.py
+      at: 2026-08-16T18:39:52.154252Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        p='docker_eval.py'; s=open(p).read()
+        old = '''        f"{runner} " + nodes +
+                # No --timeout: pytest-timeout is not in these images and injecting
+                # plugins into a project's own environment is what the hand-rolled
+                # path did wrong. The docker timeout bounds the run instead.
+                " -v --tb=no -p no:cacheprovider -o addopts='' 2>&1 | tail -400")'''
+        new = '''        # Node ids go in as DATA via /tmp/nodes.json, and pytest is invoked
+                # through python -c, so nothing is shell-split. No --timeout either:
+                # pytest-timeout is absent from these images and injecting plugins
+                # into a project's own environment is what the hand-rolled path got
+                # wrong. The docker timeout bounds the run.
+                + runner.replace(" -m pytest", "")
+                + " -c \\"import json,sys,pytest; sys.exit(pytest.main("
+                  "json.load(open('/tmp/nodes.json'))"
+                  "+['-v','--tb=no','-p','no:cacheprovider','-o','addopts=']))\\""
+                  " 2>&1 | tail -400")'''
+        assert old in s
+        s=s.replace(old,new)
+        open(p,'w').write(s)
+        PY
+        python3 -c "import ast;ast.parse(open('docker_eval.py').read());print('syntax OK')"
+        python3 -c "
+        import json,sys,time;sys.path.insert(0,'.')
+        import docker_eval as de
+        for tid in ('pydata__xarray-9636','deepset-ai__haystack-8619','conan-io__conan-17514'):
+            t=[x for x in json.load(open('runs/swebench-live/slice-radius.json')) if x['instance_id']==tid][0]
+            t0=time.time(); g=de.score_official(t,t['patch']); e=de.score_official(t,'')
+            print(f'{tid[:32]:32} GOLD={str(g[\"resolved\"]):5} EMPTY={str(e[\"resolved\"]):5} n={g[\"n_run\"]:4} p2p={g.get(\"p2p_checked\")}/{g.get(\"p2p_total\")} [{time.time()-t0:.0f}s]')"
+      at: 2026-08-16T18:41:14.605935Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n 'nodes.json' docker_eval.py; echo "--- script assembly ---"; sed -n '245,268p' docker_eval.py
+      at: 2026-08-16T18:41:28.64493Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        p='docker_eval.py'; s=open(p).read()
+        s=s.replace('''    p2p_all = [n for n in task.get("PASS_TO_PASS", []) if "::" in n]
+            p2p = p2p_all[:150]''',
+        '''    # P2P ids are NOT passed to pytest. One unresolvable node id aborts the
+            # whole invocation ("ERROR: not found: ...", no tests run), and beds
+            # carry thousands of P2P ids whose parametrized names drift between
+            # versions -- measured: conan-17514 went from scoring correctly to n=0
+            # the moment 150 P2P ids were added. Regressions are instead read off
+            # whichever listed P2P ids happen to execute alongside the F2P ones.
+            p2p_all = [n for n in task.get("PASS_TO_PASS", []) if "::" in n]
+            p2p = []''')
+        s=s.replace('''    nodes = f2p + p2p''','''    nodes = f2p''')
+        s=s.replace('''    p2p_ok = all(res.get(n) == "PASSED" for n in p2p)''',
+        '''    # Only P2P ids that actually ran can regress; unexecuted ones are
+            # unknown, not failed. Stated in the result so nobody reads a thin
+            # regression check as a thorough one.
+            p2p_seen = [n for n in p2p_all if n in res]
+            p2p_ok = all(res[n] == "PASSED" for n in p2p_seen)''')
+        s=s.replace('''            "p2p_checked": len(p2p), "p2p_total": len(p2p_all)}''',
+        '''            "p2p_checked": len(p2p_seen), "p2p_total": len(p2p_all)}''')
+        open(p,'w').write(s)
+        PY
+        python3 -c "import ast;ast.parse(open('docker_eval.py').read());print('OK')"
+        python3 -c "
+        import json,sys,time;sys.path.insert(0,'.')
+        import docker_eval as de
+        for tid in ('conan-io__conan-17514','pydata__xarray-9636','deepset-ai__haystack-8619','sphinx-doc__sphinx-12975'):
+            t=[x for x in json.load(open('runs/swebench-live/slice-radius.json')) if x['instance_id']==tid][0]
+            t0=time.time(); g=de.score_official(t,t['patch']); e=de.score_official(t,'')
+            ok='OK ' if (g['resolved'] and not e['resolved']) else 'BAD'
+            print(f'{ok} {tid[:32]:32} GOLD={str(g[\"resolved\"]):5} EMPTY={str(e[\"resolved\"]):5} n={g[\"n_run\"]:3} [{time.time()-t0:.0f}s]')" 2>&1 | grep -v '^  \[official\]' | grep -vE '^\s+$|^    '
+      at: 2026-08-16T18:42:43.376515Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 validate_gold.py runs/swebench-live/slice-radius.json runs/swebench-live/radius-scoreable2.json --official > runs/swebench-live/radius-validate2.log 2>&1 &
+        echo "pid $!"; until ! pgrep -f validate_gold.py >/dev/null; do sleep 30; done; grep -E '^\[|^SCOREABLE' runs/swebench-live/radius-validate2.log
+      at: 2026-08-16T18:46:26.893172Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json,re
+        sc=json.load(open('runs/swebench-live/radius-scoreable2.json'))
+        allr=json.load(open('runs/swebench-live/slice-radius.json'))
+        ok=[t for t in allr if sc.get(t['instance_id'],{}).get('scoreable')]
+        json.dump(ok, open('runs/swebench-live/slice-radius15.json','w'))
+        fs=sorted(len(re.findall(r'^\+\+\+ b/',t['patch'],re.M)) for t in ok)
+        print(f'{len(ok)} tasks, {len({t[\"repo\"] for t in ok})} repos')
+        print(f'blast radius: min {fs[0]} median {fs[len(fs)//2]} max {fs[-1]}')
+        print('remaining 5 unscoreable: telegram(live API), cfn-lint, haystack, wemake, llama_deploy')"
+        python3 audit_bed.py runs/swebench-live/slice-radius15.json 2>&1 | tail -2
+        cd /Users/tapabratapal/Projects/provasign/research && git add -A harness/ && git commit -q -F - <<'EOF'
+        harness: run F2P node ids, not whole modules — radius bed 8 -> 15 scoreable
+
+        Running whole test MODULES was my error, and it was silently discarding
+        half the bed. A module drags in every unrelated test it contains -- flaky
+        ones, ones needing live network, ones broken in the image -- and any of
+        them failing scores the GOLD patch as not-resolved, which reads as "this
+        task is bad" rather than "the harness ran the wrong thing".
+
+        Diagnosed all 12 rejects (docker only, no API spend):
+
+            8   PASS once the F2P node ids are named   <- harness bug, mine
+            2   missing dependency in the image
+            1   collection error
+            1   the F2P test needs the LIVE Telegram API and cannot pass offline
+
+        Fixing it took two more corrections worth recording:
+
+          - Node ids are passed as DATA (/tmp/nodes.json, pytest.main from python
+            -c), never as shell words. Parametrized names contain spaces and
+            brackets -- test_mul[<Tick: 5 minutes>] -- and any quoting scheme
+            eventually meets an id that breaks it.
+          - P2P ids are NOT passed to pytest. ONE unresolvable node id aborts the
+            entire invocation with "ERROR: not found", and beds carry thousands of
+            P2P ids whose parametrized names drift between versions. Measured:
+            conan-17514 went from scoring correctly to n=0 the moment 150 P2P ids
+            were added. Regressions are now read off whichever listed P2P ids
+            happen to execute alongside the F2P ones, and the count is reported
+            (p2p_checked/p2p_total) so a thin regression check is not mistaken for
+            a thorough one. This is a real weakening of regression detection,
+            stated rather than hidden.
+
+        Revalidated all 20 two-sided: 15 scoreable, gold resolves and empty does
+        not on every one of them.
+
+        slice-radius15.json: 15 tasks, min 8 / median 11 / max 60 files. The bed
+        that can actually test the change-impact claim, ready for the moment the
+        agent runs in a network-isolated container.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-16T18:46:53.359336Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n '15,32p' RESULTS.md; echo "=== §9.1 method ==="; grep -n '9.1' -B3 -A6 RESULTS.md | head -24
+      at: 2026-08-16T18:54:59.955759Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research && grep -n ''§9\b\|^## 9\|^### 9'' RESULTS.md | head; echo "=== the 2026-08-08 re-run (§9) ==="; awk ''/^#+ *9\./{f=1} f&&NR<200{print NR": "$0}'' RESULTS.md | head -30'
+      at: 2026-08-16T18:55:11.488557Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n '416,458p' RESULTS.md; echo "=== runner + tasks ==="; ls harness/runs/ab-agentic 2>/dev/null | head -5; grep -n 'ab-agentic\|def main' harness/ab_agentic_mcp.py | head -8
+      at: 2026-08-16T18:55:20.715367Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 ab_agentic_mcp.py --help 2>&1 | head -20; echo "=== the 6 tasks ==="; ls runs/ab-agentic/*.opus.prism.json 2>/dev/null | xargs -n1 basename | sed 's/.opus.prism.json//'
+      at: 2026-08-16T18:55:30.405062Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,45p' ab_agentic_mcp.py
+      at: 2026-08-16T18:55:42.822286Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        p='ab_agentic_mcp.py'; s=open(p).read()
+        s=s.replace('''(CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {
+            "prism": {"type": "stdio", "command": str(HOME/"bin/prism"), "args": ["mcp"]}}}))''',
+        '''# alwaysLoad mirrors what `prism init` actually writes (v0.55.0). Without it
+        # this arm tests a config no user runs: Claude Code defers the tool schemas
+        # behind a ToolSearch hop, which measurably changes whether cheap tiers reach
+        # for prism at all.
+        (CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {
+            "prism": {"type": "stdio", "command": str(HOME/"bin/prism"), "args": ["mcp"],
+                      "alwaysLoad": True}}}))''')
+        open(p,'w').write(s)
+        PY
+        python3 -c "import ast;ast.parse(open('ab_agentic_mcp.py').read());print('OK')"
+        ls tasks/ | grep -E 'jackson-jsonnode-get|django-quotename|typeorm-driver-escape'
+        ~/bin/prism version
+      at: 2026-08-16T18:55:59.375559Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 ab_agentic_mcp.py --model opus --arms baseline,prism \
+          tasks/jackson-jsonnode-get.json tasks/django-quotename.json tasks/typeorm-driver-escape.json \
+          > runs/ab-agentic/v055-recheck.log 2>&1 &
+        echo "pid $! — 3 tasks x 2 arms, cross-language (Java/Python/TypeScript)"
+        sleep 90; tail -12 runs/ab-agentic/v055-recheck.log
+      at: 2026-08-16T18:57:40.915993Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n 'cached' ab_agentic_mcp.py
+      at: 2026-08-16T18:57:50.678374Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '124,134p' ab_agentic_mcp.py
+        mkdir -p runs/ab-agentic/archive-pre-v055
+        for t in jackson-jsonnode-get django-quotename typeorm-driver-escape; do
+          for a in baseline prism; do
+            f="runs/ab-agentic/$t.opus.$a.json"; [ -f "$f" ] && cp "$f" runs/ab-agentic/archive-pre-v055/ && rm "$f" && echo "archived+cleared $t.$a"
+          done
+        done
+      at: 2026-08-16T18:58:01.295424Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 ab_agentic_mcp.py --model opus --arms baseline,prism \
+          tasks/jackson-jsonnode-get.json tasks/django-quotename.json tasks/typeorm-driver-escape.json \
+          > runs/ab-agentic/v055-recheck.log 2>&1 &
+        echo "pid $!"; until ! pgrep -f ab_agentic_mcp.py >/dev/null; do sleep 30; done; echo "=== DONE ==="; cat runs/ab-agentic/v055-recheck.log | grep -vE '^\s*$'
+      at: 2026-08-16T19:06:44.42892Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+        def kind(c):
+            n=c['name']
+            if n.startswith('mcp__prism'): return 'prism.'+n.replace('mcp__prism__prism_','')
+            if n in ('Read','Edit','Write','Glob','Grep','MultiEdit'): return n
+            cmd=str(c['input'].get('command',''))
+            if re.search(r'\b(pytest|tox|unittest)\b',cmd): return 'TEST'
+            if re.search(r'(?:^|[\s;&|(])(grep|rg|ag|find)\b',cmd): return 'grep'
+            if re.search(r'(?:^|[\s;&|(])(cat|sed|head|tail|less|nl)\b',cmd): return 'read-sh'
+            if re.search(r'(?:^|[\s;&|(])git\b',cmd): return 'git'
+            if re.search(r'python3?\s+-c|<<',cmd): return 'repro'
+            if re.search(r'\b(pip|uv|venv|which|ls)\b',cmd): return 'env'
+            return 'sh'
+        seqs=[]
+        for f in glob.glob('runs/swebench-live/v055-full/*.no-prism.json'):
+            d=json.load(open(f)); seqs.append([kind(c) for c in d['tool_calls']])
+        flat=[k for s in seqs for k in s]
+        n=len(flat)
+        print(f"BASELINE arm, {len(seqs)} cells, {n} actions — what an unaided agent does\n")
+        for k,v in collections.Counter(flat).most_common():
+            print(f"  {k:10} {v:4}  {v/n:5.1%}  {'#'*int(v/n*60)}")
+        print("\nWHAT FOLLOWS A SEARCH (grep/Grep/Glob):")
+        nxt=collections.Counter()
+        for s in seqs:
+            for i,k in enumerate(s[:-1]):
+                if k in ('grep','Grep','Glob'): nxt[s[i+1]]+=1
+        t=sum(nxt.values())
+        for k,v in nxt.most_common(7): print(f"  -> {k:10} {v:3}  {v/t:5.1%}")
+        print("\nWHAT FOLLOWS A READ (Read/read-sh):")
+        nxt2=collections.Counter()
+        for s in seqs:
+            for i,k in enumerate(s[:-1]):
+                if k in ('Read','read-sh'): nxt2[s[i+1]]+=1
+        t2=sum(nxt2.values())
+        for k,v in nxt2.most_common(7): print(f"  -> {k:10} {v:3}  {v/t2:5.1%}")
+        PY
+      at: 2026-08-16T19:23:55.547863Z
+      classified: test
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'\nimport json,glob,re,collections\npats=[]\nfor run in ('v055-full','radius8'):\n    for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):\n        for c in json.load(open(f))['tool_calls']:\n            if c['name']=='Grep': \n                p=c['input'].get('pattern','')\n                if p: pats.append(p)\n            elif c['name']=='Bash':\n                cmd=str(c['input'].get('command',''))\n                for m in re.finditer(r'(?:^|[\\s;&|(])(?:grep|rg)\\s+((?:-\\S+\\s+)*)(?:\"([^\"]+)\"|\\'([^\\']+)\\'|(\\S+))', cmd):\n                    p=m.group(2) or m.group(3) or m.group(4)\n                    if p and not p.startswith('-'): pats.append(p)\nIDENT=re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')\nDEF=re.compile(r'^(def|class|func|function)\\s')\nALT=re.compile(r'\\\\\\||\\|')\ncat=collections.Counter(); ex=collections.defaultdict(list)\nfor p in pats:\n    if DEF.search(p): k='definition-of (def X / class X)'\n    elif ALT.search(p): k='alternation (several names at once)'\n    elif IDENT.match(p): k='bare identifier (symbol name)'\n    elif re.search(r'[.*+\\[\\](){}^$\\\\]', p): k='regex / pattern'\n    else: k='literal string / message'\n    cat[k]+=1\n    if len(ex[k])<3: ex[k].append(p[:60])\nprint(f\"{len(pats)} search patterns from the unaided arm\\n\")\nfor k,v in cat.most_common():\n    print(f\"  {v:4} {v/len(pats):5.1%}  {k}\")\n    for e in ex[k]: print(f\"            e.g. {e}\")\nPY"
+      at: 2026-08-16T19:24:19.514455Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+        def pats_of(f):
+            out=[]
+            for c in json.load(open(f))['tool_calls']:
+                if c['name']=='Grep' and c['input'].get('pattern'): out.append(c['input']['pattern'])
+                elif c['name']=='Bash':
+                    cmd=str(c['input'].get('command',''))
+                    for m in re.finditer(r'(?:^|[\s;&|(])(?:grep|rg)\s+((?:-\S+\s+)*)(?:"([^"]+)"|\'([^\']+)\'|(\S+))',cmd):
+                        p=m.group(2) or m.group(3) or m.group(4)
+                        if p and not p.startswith('-'): out.append(p)
+            return out
+        def toks(p): return set(re.findall(r'[A-Za-z_][A-Za-z0-9_]{2,}', p))
+        repeat=0; tot=0; cells=0
+        percell=[]
+        for run in ('v055-full','radius8'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                ps=pats_of(f)
+                if not ps: continue
+                cells+=1; percell.append(len(ps))
+                seen=collections.Counter()
+                for p in ps:
+                    for t in toks(p): seen[t]+=1
+                tot+=len(seen)
+                repeat+=sum(1 for t,n in seen.items() if n>=2)
+        print(f"cells with searches: {cells}   searches/cell median {sorted(percell)[len(percell)//2]}, max {max(percell)}")
+        print(f"distinct identifiers searched: {tot}")
+        print(f"identifiers searched 2+ TIMES in the same cell: {repeat} ({repeat/tot:.0%})")
+        print()
+        print("=== does the unaided arm ever ask a 'who calls this' question? ===")
+        CALLER=re.compile(r'\w+\(\s*$|\w+\($|\.\w+\(')
+        DEFN=re.compile(r'^\s*(def|class|func|function)\s')
+        c=collections.Counter()
+        for run in ('v055-full','radius8'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                for p in pats_of(f):
+                    if DEFN.search(p): c['go-to-DEFINITION (def/class X)']+=1
+                    elif CALLER.search(p): c['find CALL SITES (X( )']+=1
+        print(f"  of 176 searches:")
+        for k,v in c.most_common(): print(f"    {v:4} {v/176:5.1%}  {k}")
+        PY
+      at: 2026-08-16T19:25:04.871566Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        echo "=== what an agent gets today for a symbol-shaped query, scope=text (what steering pushes) ==="
+        $P search stringsArg --scope text --limit 3 --format text | head -6
+        echo
+        echo "=== same query, scope=both (the default it is steered away from) ==="
+        $P search stringsArg --scope both --limit 3 --format text 2>/dev/null | head -14
+      at: 2026-08-16T19:29:31.496137Z
+      classified: other
+    - cmd: grep -n 'func (h \*Handler) resolvedRefNote' -A 25 internal/mcp/*.go | head -35
+      at: 2026-08-16T19:36:49.237738Z
+      classified: other
+    - cmd: grep -n '^func (c \*Client)' internal/grove/*.go | sed 's/ {$//' | head -25
+      at: 2026-08-16T19:37:03.152648Z
+      classified: other
+    - cmd: sed -n '480,500p' internal/grove/client.go; grep -n 'type ResolvedSymbol' -A 10 internal/grove/*.go | head -14
+      at: 2026-08-16T19:37:13.14303Z
+      classified: other
+    - cmd: |-
+        cat >> internal/mcp/textmerge.go <<'GO'
+
+        // --- Symbol enrichment on text search -------------------------------------
+
+        // symbolShaped reports whether a search query is asking about CODE rather
+        // than text, and returns the identifier it is asking about.
+        //
+        // Measured over 176 real searches from the unaided arm of the 2026-08-16
+        // A/B: 78% are symbol-shaped -- 27% a bare identifier, 41% an alternation of
+        // identifiers, 10% `def X`/`class X`, 13% a call shape like `LogRecord(`.
+        // Only 8% are genuine text (an error message, a config key).
+        //
+        // Those searches are graph questions written in grep syntax: 10.2% are
+        // literally go-to-definition and 8.5% are find-call-sites. The agent asks
+        // them of prism_search because that is the tool it reaches for, and gets
+        // back ranked-by-nothing text hits. Answering them properly requires no new
+        // tool and no steering compliance -- just noticing what was asked.
+        func symbolShaped(q string) (string, bool) {
+        	q = strings.TrimSpace(q)
+        	if q == "" || len(q) > 120 {
+        		return "", false
+        	}
+        	// def X / class X / func X  -> go-to-definition
+        	if m := regexp.MustCompile(`^(?:def|class|func|function)\s+([A-Za-z_]\w*)`).FindStringSubmatch(q); m != nil {
+        		return m[1], true
+        	}
+        	// X(  -> find call sites / constructions
+        	if m := regexp.MustCompile(`^([A-Za-z_]\w*)\\?\($`).FindStringSubmatch(q); m != nil {
+        		return m[1], true
+        	}
+        	// a bare identifier, long enough not to be a stray word
+        	if m := regexp.MustCompile(`^([A-Za-z_]\w{2,})$`).FindStringSubmatch(q); m != nil {
+        		return m[1], true
+        	}
+        	return "", false
+        }
+
+        // symbolAnswer returns the compact graph answer for a symbol-shaped query:
+        // where it is defined, and who calls it. Empty when the name is not an
+        // indexed symbol -- an honest silence beats a speculative note.
+        //
+        // Deliberately small. Cache reads dominate a session (700k-3.2M per cell
+        // against 24-62k fresh), so anything attached to a frequently-called tool is
+        // paid on every later turn. Definition line plus a bounded caller list is
+        // the whole budget.
+        func (h *Handler) symbolAnswer(ctx context.Context, query string) map[string]any {
+        	name, ok := symbolShaped(query)
+        	if !ok || h.Grove == nil {
+        		return nil
+        	}
+        	cands, err := h.Grove.Resolve(ctx, name)
+        	if err != nil || len(cands) == 0 {
+        		return nil
+        	}
+        	real := make([]grove.ResolvedSymbol, 0, len(cands))
+        	for _, c := range cands {
+        		if !c.TestDouble {
+        			real = append(real, c)
+        		}
+        	}
+        	if len(real) == 0 {
+        		real = cands
+        	}
+        	out := map[string]any{}
+        	defs := make([]string, 0, 3)
+        	for _, c := range real {
+        		if len(defs) == 3 {
+        			break
+        		}
+        		defs = append(defs, fmt.Sprintf("%s %s — %s:%d", c.Kind, c.Name, c.File, c.Line))
+        	}
+        	out["definedAt"] = defs
+        	if len(real) > 3 {
+        		out["moreDefinitions"] = len(real) - 3
+        	}
+        	// Callers: the question grep cannot answer at all. Counted in full,
+        	// listed in part -- a count without sites is unactionable, and every
+        	// site is a payload.
+        	if callers, cerr := h.Grove.Callers(ctx, real[0].Name); cerr == nil {
+        		files := map[string]bool{}
+        		sites := make([]string, 0, 5)
+        		for _, c := range callers {
+        			files[c.FilePath] = true
+        			if len(sites) < 5 {
+        				sites = append(sites, fmt.Sprintf("%s:%d %s", c.FilePath, c.StartLine, c.Name))
+        			}
+        		}
+        		out["callerCount"] = len(callers)
+        		out["callerFiles"] = len(files)
+        		if len(sites) > 0 {
+        			out["callers"] = sites
+        		}
+        		out["note"] = fmt.Sprintf(
+        			"%q resolves to an indexed symbol; %d caller(s) across %d file(s) above are "
+        				+"graph-resolved, not text matches. For the complete change set of a signature "
+        				+"change use prism_change_impact.", name, len(callers), len(files))
+        	}
+        	return out
+        }
+        GO
+        head -20 internal/mcp/textmerge.go | grep -n 'import' -A 12
+      at: 2026-08-16T19:37:41.057996Z
+      classified: other
+    - cmd: sed -n '1,18p' internal/mcp/textmerge.go
+      at: 2026-08-16T19:37:48.916125Z
+      classified: other
+    - cmd: grep -n '^import (' -A 12 internal/mcp/textmerge.go | head -14; go build ./... 2>&1 | head -8
+      at: 2026-08-16T19:38:01.268175Z
+      classified: build
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/mcp/textmerge.go'; s=open(p).read()
+        s=s.replace('''		out["note"] = fmt.Sprintf(
+        			"%q resolves to an indexed symbol; %d caller(s) across %d file(s) above are "
+        				+"graph-resolved, not text matches. For the complete change set of a signature "
+        				+"change use prism_change_impact.", name, len(callers), len(files))''',
+        '''		out["note"] = fmt.Sprintf(
+        			"%q resolves to an indexed symbol; the %d caller(s) across %d file(s) above are "+
+        				"graph-resolved, not text matches. For the complete change set of a "+
+        				"signature change use prism_change_impact.", name, len(callers), len(files))''')
+        s=s.replace('''import (
+        	"context"
+        	"fmt"
+        	"os"''','''import (
+        	"context"
+        	"fmt"
+        	"os"
+        	"regexp"''')
+        open(p,'w').write(s)
+        PY
+        gofmt -w internal/mcp/textmerge.go && go build ./... 2>&1 | head -5 && echo BUILD-OK
+      at: 2026-08-16T19:38:14.550059Z
+      classified: build
+    - cmd: grep -n 'type SymbolRecord' -A 14 internal/grove/*.go | head -18
+      at: 2026-08-16T19:38:21.277585Z
+      classified: other
+    - cmd: |-
+        grep -n 'type SpanInfo' -A 5 internal/grove/types.go; python3 -c "
+        p='internal/mcp/textmerge.go';s=open(p).read()
+        s=s.replace('sites = append(sites, fmt.Sprintf(\"%s:%d %s\", c.FilePath, c.StartLine, c.Name))',
+                    'sites = append(sites, fmt.Sprintf(\"%s:%d %s\", c.FilePath, c.Span.StartLine, c.Name))')
+        open(p,'w').write(s)"
+        go build ./... 2>&1 | head -3 && echo BUILD-OK
+      at: 2026-08-16T19:38:39.29264Z
+      classified: build
+    - cmd: |-
+        python3 -c "
+        p='internal/mcp/textmerge.go';s=open(p).read()
+        s=s.replace('c.FilePath, c.Span.StartLine, c.Name','c.FilePath, c.Span.Start, c.Name')
+        open(p,'w').write(s)"
+        go build ./... && echo BUILD-OK && go vet ./... && go test ./internal/mcp -run 'TestToolSearch|TestStringsArg' 2>&1 | tail -3
+      at: 2026-08-16T19:38:54.294954Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        # inject into the pure-text path -- the one steering pushes agents to
+        s=s.replace('''		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
+        			out["resolvedNote"] = n
+        		}''','''		if n := h.resolvedRefNote(ctx, q, r.Hits); n != "" {
+        			out["resolvedNote"] = n
+        		}
+        		// A symbol-shaped query asked of scope="text" gets the graph answer
+        		// anyway. 78% of real searches are symbol-shaped (176 measured), and
+        		// the steering pushes scope="text" as the cheap default -- so without
+        		// this, prism answers a go-to-definition question with ranked-by-
+        		// nothing grep hits. Costs nothing when the name is not indexed.
+        		if sym := h.symbolAnswer(ctx, q); sym != nil {
+        			out["symbol"] = sym
+        		}''')
+        # and the merged path
+        s=s.replace('''	annotated = append(annotated, doubles...)
+        	out := map[string]any{"symbols": annotated}''','''	annotated = append(annotated, doubles...)
+        	out := map[string]any{"symbols": annotated}
+        	if sym := h.symbolAnswer(ctx, q); sym != nil {
+        		out["symbol"] = sym
+        	}''')
+        open(p,'w').write(s)
+
+        # excludeDirs: prism was indexing its own session transcripts and returning
+        # them as top text hits
+        import subprocess,glob
+        for f in glob.glob('internal/config/*.go'):
+            t=open(f).read()
+            if '".grove"' in t and 'excludeDirs' in t.lower() or 'ExcludeDirs' in t:
+                print("config file:", f)
+        PY
+        grep -rn '"\.git", "\.grove"\|ExcludeDirs' internal/config/*.go | head -5
+      at: 2026-08-16T19:39:08.66997Z
+      classified: other
+    - cmd: go build ./... && echo BUILD-OK; grep -rn 'excludeDirs' internal/textsearch/*.go | grep -v _test | head -4
+      at: 2026-08-16T19:39:18.198556Z
+      classified: build
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/textsearch/textsearch.go'; s=open(p).read()
+        s=s.replace('''var excludeDirs = []string{".git", ".grove"}''',
+        '''// Agent-state directories are not source. prism was indexing its own
+        // session transcripts and returning them as the TOP hits for a symbol
+        // query -- observed 2026-08-16: `prism search stringsArg --scope text`
+        // returned three .shale/ log lines and no definition. HANDOFF §4 flagged
+        // this as a known gap; it is a measured degradation, not a cosmetic one.
+        // rg also gets these as --glob excludes (see runRg).
+        var excludeDirs = []string{".git", ".grove", ".shale", ".claude", ".cursor",
+        	".windsurf", ".kiro", ".devin"}''')
+        s=s.replace('''	args = append(args, "--glob", "!.git/", "--glob", "!.grove/")''',
+        '''	for _, d := range excludeDirs {
+        		args = append(args, "--glob", "!"+d+"/")
+        	}''')
+        open(p,'w').write(s)
+        PY
+        go build ./... && go test ./internal/textsearch ./internal/mcp 2>&1 | tail -3
+        go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ./cmd/prism
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        echo "=== BEFORE-style query, scope=text, symbol-shaped ==="; $P search stringsArg --scope text --limit 3 --format text | head -12
+      at: 2026-08-16T19:39:46.244309Z
+      classified: test
+    - cmd: |-
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"stringsArg","scope":"text","limit":3}}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for line in sys.stdin:
+            d=json.loads(line)
+            if d.get('id')==1:
+                c=json.loads(d['result']['content'][0]['text'])
+                print('keys:',list(c))
+                print(json.dumps(c.get('symbol'),indent=1))
+                break"
+      at: 2026-08-16T19:40:00.551735Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/cli/commands.go'; s=open(p).read()
+        s=s.replace('''	if _, hasHits := m["textHits"]; hasHits {
+        		_, hasSyms := m["symbols"]
+        		_, hasContent := m["content"]
+        		if !hasSyms && !hasContent {
+        			printTextMatches(m)''','''	if _, hasHits := m["textHits"]; hasHits {
+        		_, hasSyms := m["symbols"]
+        		_, hasContent := m["content"]
+        		if !hasSyms && !hasContent {
+        			printTextMatches(m)
+        			printSymbolAnswer(m)''')
+        s=s.replace('''// printTextMatches renders the merged full-text section''',
+        '''// printSymbolAnswer renders the graph answer attached to a symbol-shaped
+        // search: where the name is defined and who calls it. Text search cannot
+        // produce the caller list at all, so it is labelled as graph-resolved.
+        func printSymbolAnswer(m map[string]any) {
+        	sym, ok := m["symbol"].(map[string]any)
+        	if !ok {
+        		return
+        	}
+        	for _, d := range asSliceAny(sym["definedAt"]) {
+        		fmt.Printf("// defined: %v\\n", d)
+        	}
+        	if n := jsonInt(sym["callerCount"]); n > 0 {
+        		fmt.Printf("// callers: %d across %d file(s) [graph-resolved]\\n",
+        			n, jsonInt(sym["callerFiles"]))
+        		for _, c := range asSliceAny(sym["callers"]) {
+        			fmt.Printf("//   %v\\n", c)
+        		}
+        	}
+        }
+
+        // printTextMatches renders the merged full-text section''')
+        # steering: stop pushing scope=text for code
+        s=s.replace('''| where is X? | ` + "`" + `prism_search(query="X")` + "`" + ` — ` + "`" + `scope="text"` + "`" + ` is a plain grep, the cheapest option. Several things at once: ` + "`" + `query=["X","Y","Z"]` + "`" + `. Already know where to look: ` + "`" + `path="pkg/file.go"` + "`" + `, ` + "`" + `glob="*.py"` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |''',
+        '''| where is X? / who calls X? | ` + "`" + `prism_search(query="X")` + "`" + ` — for a symbol it returns the definition site and graph-resolved callers, which grep cannot. Several at once: ` + "`" + `query=["X","Y"]` + "`" + `. Know where to look: ` + "`" + `path=` + "`" + `, ` + "`" + `glob=` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |
+        | a literal string, message or config key | ` + "`" + `prism_search(query="...", scope="text")` + "`" + ` — pure grep, cheapest. Use it for TEXT; leave the default for code |''')
+        open(p,'w').write(s)
+        PY
+        gofmt -w internal/cli/commands.go && go build ./... && go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ./cmd/prism
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        echo "=== CLI, symbol-shaped query ==="; $P search stringsArg --scope text --limit 2 --format text
+        echo; echo "=== CLI, a real text query (should NOT enrich) ==="; $P search "no such table" --scope text --limit 2 --format text
+      at: 2026-08-16T19:40:28.870137Z
+      classified: build
+    - cmd: |-
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head; echo UNIT-GREEN
+        cd ../research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism 2>&1 | tail -3
+      at: 2026-08-16T19:41:56.182954Z
+      classified: lint
+    - cmd: |-
+        cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ~/bin/prism && printf 'n\n' | ~/bin/prism init --refresh . >/dev/null 2>&1
+        git checkout -- .mcp.json .cursor/mcp.json .windsurf/mcp.json 2>/dev/null; sed -i '' 's#/Users/tapabratapal/bin/prism#/opt/homebrew/bin/prism#' .vscode/mcp.json 2>/dev/null
+        git add -A && git commit -q -F - <<'EOF'
+        feat(search): answer the graph question the agent actually asked
+
+        Measured what unaided agents do on 19 small/mid SWE-bench cells (429
+        actions, 176 searches):
+
+          Edit 23% | TEST 21% | Read 27% | search 19% | repro 4%
+          search -> Read 45%, -> search again 36%
+          Read   -> Read 45%, -> search 25%
+
+        and WHAT they search for:
+
+          41.5%  alternation of identifiers   infer_input_type|is_csv|inferred_...
+          27.3%  bare identifier              LogRecord
+          13.1%  call shape                   SSETransport(
+          10.2%  definition-of                def infer_input_type / class X
+           8.0%  literal string               "Invalid file format"
+
+        78% of searches are SYMBOL-shaped. Only 8% are genuine text. 10.2% are
+        literally go-to-definition and 8.5% are find-call-sites -- graph questions
+        written in grep syntax. 25% of identifiers get searched twice or more in
+        the same cell, so the first answer was not definitive.
+
+        prism was answering none of it. prism_change_impact wants a resolved
+        Type.method and returns a full blast radius -- a large answer to a question
+        nobody asked while still narrowing. And our own steering pushed
+        scope="text" as "the cheapest option", which turns prism_search into grep.
+        Observed directly: `prism search stringsArg --scope text` returned three
+        .shale/ session-log lines and no definition.
+
+        So: no new tool, no reliance on steering compliance. prism_search now
+        notices the query shape and, when it resolves to an indexed symbol,
+        attaches the graph answer:
+
+            defined: function stringsArg — internal/mcp/tools.go:2135
+            callers: 2 across 2 file(s) [graph-resolved]
+              internal/mcp/searchmulti_test.go:29 TestStringsArg_...
+              internal/mcp/tools.go:980 toolSearch
+
+        Callers are the part grep cannot produce at all. Silent when the name is
+        not indexed -- an honest silence beats a speculative note -- and bounded
+        (3 definitions, 5 caller sites, full counts) because anything attached to
+        a frequently-called tool is paid on every later turn.
+
+        Two bugs fixed alongside, both found by this analysis:
+
+          - excludeDirs was [".git", ".grove"], so prism indexed its OWN session
+            transcripts and returned them as top hits. Now excludes .shale,
+            .claude, .cursor, .windsurf, .kiro, .devin, on rg and the native
+            scanner both. The stringsArg query went from 25 hits (mostly logs) to 9.
+          - The steering row that pushed scope="text" for everything now splits:
+            default for code, scope="text" for strings and messages.
+
+        Gate: go vet + go test ./... green; ci_invariants.py green.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-16T19:42:24.181695Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        v=json.load(open('runs/swebench-live/slice-scoreable.json'))
+        keep=[t for t in v if t['instance_id'] in ('astronomer__dag-factory-544','koxudaxi__datamodel-code-generator-2467','a2aproject__a2a-python-302','magic-wormhole__magic-wormhole-659','PyPSA__PyPSA-1325')]
+        json.dump(keep, open('runs/swebench-live/slice-inject5.json','w')); print([t['instance_id'] for t in keep])"
+        rm -rf /tmp/swebench-wt 2>/dev/null
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-inject5.json --limit 5 \
+          --arms no-prism prism --out runs/swebench-live/inject5 --prism ~/bin/prism \
+          > runs/swebench-live/inject5.log 2>&1 &
+        echo "pid $!"; sleep 20; head -4 runs/swebench-live/inject5.log
+      at: 2026-08-16T19:43:03.281474Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "FINISHED"; tail -6 runs/swebench-live/inject5.log
+      at: 2026-08-16T19:56:32.603264Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && cat runs/swebench-live/inject5.log | grep -E '^\[|turns='
+      at: 2026-08-16T19:58:03.166304Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json
+        print(f"{'task':34}{'BEFORE injection':>26}{'AFTER injection':>26}")
+        print(f"{'':34}{'base -> prism':>26}{'base -> prism':>26}")
+        for t in ('magic-wormhole__magic-wormhole-659','PyPSA__PyPSA-1325','astronomer__dag-factory-544'):
+            row=[]
+            for run in ('v055-full','inject5'):
+                try:
+                    b=json.load(open(f'runs/swebench-live/{run}/{t}.no-prism.json'))
+                    p=json.load(open(f'runs/swebench-live/{run}/{t}.prism.json'))
+                    row.append(f"{b['turns']}/{b['cost_usd']:.2f} -> {p['turns']}/{p['cost_usd']:.2f}")
+                except FileNotFoundError: row.append('n/a')
+            print(f"{t[:34]:34}{row[0]:>26}{row[1]:>26}")
+        PY
+      at: 2026-08-16T19:58:19.066531Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "(still running)" || echo "(finished)"; python3 - <<'PY'
+        import json,glob,re
+        t='astronomer__dag-factory-544'
+        for run in ('v055-full','inject5'):
+            try: d=json.load(open(f'runs/swebench-live/{run}/{t}.prism.json'))
+            except FileNotFoundError: continue
+            calls=[c for c in d['tool_calls'] if c['name'].startswith('mcp__prism')]
+            print(f"\n=== {run}: {d['turns']} turns ${d['cost_usd']:.2f} | {len(calls)} prism calls ===")
+            for c in calls:
+                print("   ", c['name'].replace('mcp__prism__prism_',''), json.dumps(c['input'])[:120])
+        PY
+      at: 2026-08-16T20:02:21.570889Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,re
+        t='astronomer__dag-factory-544'
+        for run in ('v055-full','inject5'):
+            d=json.load(open(f'runs/swebench-live/{run}/{t}.prism.json'))
+            print(f"\n===== {run}  {d['turns']} turns  ${d['cost_usd']:.2f} =====")
+            for i,c in enumerate(d['tool_calls'],1):
+                n=c['name'].replace('mcp__prism__prism_','prism.')
+                arg=c['input'].get('command') or c['input'].get('file_path') or c['input'].get('file') or json.dumps(c['input'].get('query',''))
+                print(f"  {i:2} {n:14} {str(arg)[:88].replace(chr(10),' ')}")
+        PY
+      at: 2026-08-16T20:02:33.354302Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,statistics,collections
+        def phases(d):
+            calls=d['tool_calls']
+            edited=set()
+            for c in calls:
+                if c['name'] in ('Edit','Write','MultiEdit'):
+                    fp=c['input'].get('file_path','')
+                    if fp: edited.add(fp.split('/')[-1])
+            if not edited: return None
+            first_edit=next((i for i,c in enumerate(calls) if c['name'] in ('Edit','Write','MultiEdit')), None)
+            # first time the agent touched a file it would later edit
+            first_touch=None
+            for i,c in enumerate(calls):
+                blob=json.dumps(c.get('input',{}))
+                if any(f in blob for f in edited): first_touch=i; break
+            if first_touch is None or first_edit is None: return None
+            return dict(locate=first_touch, comprehend=first_edit-first_touch,
+                        implement=len(calls)-first_edit, total=len(calls))
+        rows=[]
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                p=phases(json.load(open(f)))
+                if p: rows.append(p)
+        print(f"BASELINE arm, {len(rows)} cells — where the actions actually go\n")
+        tot=sum(r['total'] for r in rows)
+        for k,label in (('locate','LOCATE    (start -> first touch of a file it will edit)'),
+                        ('comprehend','COMPREHEND(that -> first edit: what should I write?)'),
+                        ('implement','IMPLEMENT (first edit -> end: edit + test + iterate)')):
+            v=sum(r[k] for r in rows)
+            print(f"  {label:56} {v:5}  {v/tot:5.1%}  median {statistics.median(r[k] for r in rows):.0f}")
+        print(f"\n  total actions {tot}, median cell {statistics.median(r['total'] for r in rows):.0f} actions")
+        PY
+      at: 2026-08-16T20:03:00.314185Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && pkill -f swebench_ab.py 2>/dev/null; pkill -f score_cell.py 2>/dev/null; sleep 2
+        pgrep -f swebench_ab.py >/dev/null && echo "still running" || echo "run stopped"
+        ls runs/swebench-live/inject5/*.json 2>/dev/null | grep -v provenance | wc -l
+      at: 2026-08-16T20:05:58.920962Z
+      classified: other
+    - cmd: git revert --no-commit e8007fd 2>&1 | tail -3; git status --short | head -12
+      at: 2026-08-16T20:06:09.542758Z
+      classified: other
+    - cmd: git diff --cached --stat; echo "=== is excludeDirs being reverted? ==="; git diff --cached internal/textsearch/textsearch.go | head -5 || echo "(textsearch untouched by revert)"; grep -n 'excludeDirs = ' internal/textsearch/textsearch.go
+      at: 2026-08-16T20:06:23.469028Z
+      classified: other
+    - cmd: |-
+        git restore --staged --worktree internal/textsearch/textsearch.go && grep -n 'excludeDirs = \[' -A 2 internal/textsearch/textsearch.go
+        echo "=== restore the steering split too (independent of the injection) ==="
+        git restore --staged --worktree internal/cli/commands.go
+        python3 - <<'PY'
+        p='internal/cli/commands.go'; s=open(p).read()
+        # keep the text/code steering split; drop only the injection wording
+        s=s.replace('''| where is X? / who calls X? | ` + "`" + `prism_search(query="X")` + "`" + ` — for a symbol it returns the definition site and graph-resolved callers, which grep cannot. Several at once: ` + "`" + `query=["X","Y"]` + "`" + `. Know where to look: ` + "`" + `path=` + "`" + `, ` + "`" + `glob=` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |''',
+        '''| where is X? | ` + "`" + `prism_search(query="X")` + "`" + ` — searches symbol names AND raw text. Several at once: ` + "`" + `query=["X","Y"]` + "`" + `. Know where to look: ` + "`" + `path=` + "`" + `, ` + "`" + `glob=` + "`" + `, ` + "`" + `files_only=true` + "`" + ` |''')
+        # remove the printSymbolAnswer call + helper (injection-only)
+        s=s.replace('''			printTextMatches(m)
+        			printSymbolAnswer(m)''','''			printTextMatches(m)''')
+        i=s.index('// printSymbolAnswer renders the graph answer')
+        j=s.index('// printTextMatches renders the merged full-text section')
+        s=s[:i]+s[j:]
+        open(p,'w').write(s)
+        PY
+        gofmt -w internal/cli/commands.go && go build ./... 2>&1|head -3 && echo BUILD-OK
+      at: 2026-08-16T20:06:41.893754Z
+      classified: build
+    - cmd: |-
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)"|head; echo GREEN
+        go build -o ~/bin/prism ./cmd/prism && printf 'n\n' | ~/bin/prism init --refresh . >/dev/null 2>&1
+        git checkout -- .mcp.json .cursor/mcp.json .windsurf/mcp.json 2>/dev/null; sed -i '' 's#/Users/tapabratapal/bin/prism#/opt/homebrew/bin/prism#' .vscode/mcp.json 2>/dev/null
+        P=~/bin/prism; echo "=== injection gone, excludeDirs fix kept ==="; $P search stringsArg --scope text --limit 2 --format text | head -5
+      at: 2026-08-16T20:07:06.290017Z
+      classified: lint
+    - cmd: |-
+        git add -A && git commit -q -F - <<'EOF'
+        revert(search): drop the symbol injection; keep the two bug fixes it found
+
+        Reverts the enrichment added in e8007fd. The diagnosis behind it was
+        correct and the conclusion drawn from it was wrong.
+
+        WHAT THE DIAGNOSIS GOT RIGHT: 78% of an unaided agent's searches are
+        symbol-shaped, 10.2% are literally go-to-definition and 8.5% find-call-
+        sites, and 25% of identifiers get searched twice in a cell.
+
+        WHAT IT MISSED: how small that slice is. Decomposing 32 baseline cells,
+        859 actions, by phase:
+
+            LOCATE      find a file it will edit        66   7.7%   median  2
+            COMPREHEND  decide what to write           276  32.1%   median  8
+            IMPLEMENT   edit, test, iterate            517  60.2%   median 12
+
+        Locating code is 7.7% of the work. The issue text usually names the
+        module, so the agent is on the right file within two actions. A perfect
+        retrieval tool saturates at ~8% of actions on this task family, and the
+        injection was optimising the symbol-shaped fraction OF that 8%.
+
+        Measured on the same three tasks before and after:
+
+            magic-wormhole   22/$0.53 -> 29/$0.98   became  20/$0.67 -> 23/$1.06
+            PyPSA-1325       19/$0.60 -> 18/$0.64   became  21/$0.67 -> 29/$1.01
+            dag-factory-544  25/$1.19 -> 20/$0.84   became  27/$1.26 -> 39/$1.82
+
+        Two prism arms that were wins became losses. NOT causally established --
+        n=3 and these tasks swing hard (mypy ran 39/24/64 turns across identical
+        configs) -- but the injection put payload on the most-called tool in the
+        system, and cache reads compound: a block added at turn 3 of 30 is paid
+        ~27 times. That is HANDOFF §2's own lesson and I attached payload to the
+        hottest call anyway. An unvalidated change on a hot path goes.
+
+        The dag-factory trace shows the real shape: both arms found telemetry.py
+        within 3 turns; the 39-turn run then spent turns 10-35 on git log, git
+        show, CHANGELOG, pyproject.toml, PRIVACY_NOTICE.md and uv.lock, working
+        out WHAT the change should be. That is comprehension, not retrieval, and
+        no search tool addresses it.
+
+        KEPT, because both are independent bugs the analysis surfaced:
+
+          - excludeDirs was [".git", ".grove"], so prism indexed its own session
+            transcripts and returned them as the TOP hits for a symbol query.
+            Now excludes .shale/.claude/.cursor/.windsurf/.kiro/.devin on rg and
+            the native scanner. `search stringsArg` went from 25 hits (mostly
+            logs) to 9 real ones.
+          - The steering row that pushed scope="text" for everything now splits:
+            default for code, scope="text" for strings and messages.
+
+        Also explains the two beds cleanly. Change-impact tasks ARE the locate
+        slice -- "list every site this breaks" is 100% of that 7.7% -- which is
+        why prism wins 8x there. SWE-bench repair is 7.7% locate and 92%
+        everything else, which is why it is flat.
+
+        Gate: go vet + go test ./... green.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -2
+      at: 2026-08-16T20:07:35.388259Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections,statistics
+
+        def comprehend_window(d):
+            calls=d['tool_calls']
+            edited={c['input'].get('file_path','').split('/')[-1] for c in calls
+                    if c['name'] in ('Edit','Write','MultiEdit') and c['input'].get('file_path')}
+            if not edited: return None
+            fe=next((i for i,c in enumerate(calls) if c['name'] in ('Edit','Write','MultiEdit')),None)
+            ft=next((i for i,c in enumerate(calls) if any(f in json.dumps(c.get('input',{})) for f in edited)),None)
+            if fe is None or ft is None: return None
+            return calls[ft:fe]
+
+        def classify(c):
+            n=c['name']
+            if n in ('Read',):
+                f=c['input'].get('file_path','')
+                if re.search(r'test',f,re.I): return 'read TEST file'
+                if re.search(r'\.(md|rst|txt)$',f,re.I): return 'read DOC'
+                if re.search(r'(pyproject|setup|\.cfg|\.toml|\.lock|\.ini|\.yaml|\.yml)$',f,re.I): return 'read CONFIG'
+                return 'read source'
+            if n.startswith('mcp__prism'): return 'prism.'+n.replace('mcp__prism__prism_','')
+            if n in ('Grep','Glob'): return 'search'
+            cmd=str(c['input'].get('command',''))
+            if re.search(r'(?:^|[\s;&|(])git\s+(log|show|blame|diff)',cmd): return 'GIT HISTORY'
+            if re.search(r'\b(pytest|tox)\b',cmd): return 'run tests'
+            if re.search(r'(?:^|[\s;&|(])(grep|rg|find)\b',cmd): return 'search'
+            if re.search(r'(?:^|[\s;&|(])(cat|sed|head|tail|nl)\b',cmd):
+                if re.search(r'test',cmd,re.I): return 'read TEST file'
+                if re.search(r'\.(md|rst|toml|cfg|lock|ini|ya?ml)\b',cmd): return 'read DOC/CONFIG'
+                return 'read source'
+            if re.search(r'python3?\s+-c|<<',cmd): return 'repro script'
+            return 'other shell'
+
+        acts=[]; percell=[]
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                w=comprehend_window(json.load(open(f)))
+                if w is None: continue
+                percell.append(len(w)); acts += [(classify(c),c) for c in w]
+        n=len(acts)
+        print(f"COMPREHEND phase: {n} actions across {len(percell)} cells (median {statistics.median(percell):.0f}/cell, max {max(percell)})\n")
+        for k,v in collections.Counter(k for k,_ in acts).most_common():
+            print(f"  {v:4} {v/n:5.1%}  {k}")
+        PY
+      at: 2026-08-16T20:11:51.715684Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections,statistics,os
+        def window(d):
+            calls=d['tool_calls']
+            edited={c['input'].get('file_path','') for c in calls if c['name'] in ('Edit','Write','MultiEdit') and c['input'].get('file_path')}
+            if not edited: return None,None
+            en={e.split('/')[-1] for e in edited}
+            fe=next((i for i,c in enumerate(calls) if c['name'] in ('Edit','Write','MultiEdit')),None)
+            ft=next((i for i,c in enumerate(calls) if any(f in json.dumps(c.get('input',{})) for f in en)),None)
+            if fe is None or ft is None: return None,None
+            return calls[ft:fe], edited
+
+        samedir=diffdir=0; reread=0; readsets=[]
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                w,edited=window(json.load(open(f)))
+                if not w: continue
+                edirs={os.path.dirname(e) for e in edited}
+                reads=[]
+                for c in w:
+                    fp=c['input'].get('file_path') or ''
+                    if c['name']=='Read' and fp: reads.append(fp)
+                for r in reads:
+                    (samedir if os.path.dirname(r) in edirs else diffdir).__class__  # noop
+                samedir += sum(1 for r in reads if os.path.dirname(r) in edirs)
+                diffdir += sum(1 for r in reads if os.path.dirname(r) not in edirs)
+                reread  += len(reads)-len(set(reads))
+                readsets.append(len(set(reads)))
+        tot=samedir+diffdir
+        print(f"source/other files READ during comprehend: {tot}")
+        print(f"  same directory as an edited file : {samedir:4} ({samedir/max(tot,1):.0%})")
+        print(f"  elsewhere in the repo            : {diffdir:4} ({diffdir/max(tot,1):.0%})")
+        print(f"  re-reads of a file already read  : {reread:4}")
+        print(f"  distinct files per cell: median {statistics.median(readsets):.0f}, max {max(readsets)}")
+
+        print("\n=== what they SEARCH for during comprehend (vs during locate) ===")
+        def pats(cs):
+            out=[]
+            for c in cs:
+                if c['name']=='Grep' and c['input'].get('pattern'): out.append(c['input']['pattern'])
+                elif c['name']=='Bash':
+                    for m in re.finditer(r'(?:^|[\s;&|(])(?:grep|rg)\s+((?:-\S+\s+)*)(?:"([^"]+)"|\'([^\']+)\'|(\S+))',str(c['input'].get('command',''))):
+                        p=m.group(2) or m.group(3) or m.group(4)
+                        if p and not p.startswith('-'): out.append(p)
+            return out
+        allp=[]
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                w,_=window(json.load(open(f)))
+                if w: allp += pats(w)
+        IDENT=re.compile(r'^[A-Za-z_]\w*$'); DEF=re.compile(r'^(def|class)\s')
+        c=collections.Counter()
+        for p in allp:
+            c['definition-of' if DEF.search(p) else 'identifier' if IDENT.match(p) else
+              'alternation' if '|' in p else 'regex/other' if re.search(r'[.*+\[\]()]',p) else 'literal']+=1
+        for k,v in c.most_common(): print(f"  {v:4} {v/max(len(allp),1):5.1%}  {k}")
+        PY
+      at: 2026-08-16T20:12:25.166002Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,collections,statistics,os,re
+        def reads_of(d):
+            out=[]
+            for c in d['tool_calls']:
+                if c['name']=='Read' and c['input'].get('file_path'): out.append(('Read',c['input']['file_path']))
+                elif c['name']=='mcp__prism__prism_read' and c['input'].get('file'): out.append(('prism_read',c['input']['file']))
+                elif c['name']=='Bash':
+                    cmd=str(c['input'].get('command',''))
+                    for m in re.finditer(r'(?:^|[\s;&|(])(?:cat|sed -n [^ ]+|head[^|]*|tail[^|]*)\s+(\S+\.(?:py|go|ts|js|java|md|toml))',cmd):
+                        out.append(('shell',m.group(1)))
+            return out
+        for arm in ('no-prism','prism'):
+            tot=rer=cells=0; per=[]; big=collections.Counter()
+            for run in ('v055-full','radius8','inject5'):
+                for f in glob.glob(f'runs/swebench-live/{run}/*.{arm}.json'):
+                    r=reads_of(json.load(open(f)))
+                    if not r: continue
+                    cells+=1; tot+=len(r); per.append(len(r))
+                    seen=collections.Counter(p for _,p in r)
+                    rer+=sum(n-1 for n in seen.values() if n>1)
+                    for k,_ in r: big[k]+=1
+            print(f"{arm:9} cells={cells:3} reads={tot:4} (median {statistics.median(per):.0f}/cell)  "
+                  f"RE-READS={rer:3} ({rer/max(tot,1):.0%})  by tool {dict(big)}")
+        print()
+        print("=== does prism_read's cached pointer actually fire? ===")
+        hit=miss=0
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.prism.json'):
+                d=json.load(open(f)); seen=set()
+                for c in d['tool_calls']:
+                    if c['name']=='mcp__prism__prism_read':
+                        fp=c['input'].get('file')
+                        if fp in seen: hit+=1
+                        else: miss+=1; seen.add(fp)
+        print(f"  prism_read calls: {hit+miss}   repeat reads that WOULD hit the cache: {hit}")
+        PY
+      at: 2026-08-16T20:15:32.511543Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections,statistics,os
+        from pathlib import Path
+        CACHE=Path.home()/'.cache/prism-research/swebench-repos'
+        def reads_of(d):
+            out=[]
+            for c in d['tool_calls']:
+                if c['name']=='Read' and c['input'].get('file_path'): out.append(c['input']['file_path'])
+                elif c['name']=='mcp__prism__prism_read' and c['input'].get('file'): out.append(c['input']['file'])
+            return out
+        tot_lines=rere_lines=0; sizes=[]
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                d=json.load(open(f)); rs=reads_of(d)
+                repo=CACHE/d['instance_id'].rsplit('-',1)[0].replace('__','__')
+                seen=collections.Counter()
+                for p in rs:
+                    base=p.split('__no-prism/')[-1]
+                    # approximate size from the cached repo if we can find the file
+                    cand=list(CACHE.glob(f"*/{base}")) if '/' in base else []
+                    n=0
+                    if cand:
+                        try: n=sum(1 for _ in open(cand[0],errors='ignore'))
+                        except Exception: n=0
+                    if n: sizes.append(n)
+                    seen[p]+=1
+                    tot_lines+=n
+                    if seen[p]>1: rere_lines+=n
+        print(f"whole-file reads measured with a known size: {len(sizes)}")
+        if sizes:
+            print(f"  median file {statistics.median(sizes):.0f} lines, mean {statistics.mean(sizes):.0f}, max {max(sizes)}")
+            print(f"  approx lines delivered {tot_lines}, of which RE-delivered {rere_lines} ({rere_lines/max(tot_lines,1):.0%})")
+            print(f"  ~tokens re-delivered (12 tok/line): {rere_lines*12:,}  over 32 cells = {rere_lines*12/32:,.0f}/cell")
+        print("\nfor scale, fresh input per cell in these runs:")
+        fr=[json.load(open(f))['fresh_input_tokens'] for run in ('v055-full','radius8') for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json')]
+        print(f"  median {statistics.median(fr):,.0f} fresh tokens/cell")
+        PY
+      at: 2026-08-16T20:15:59.747896Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections,statistics
+        from pathlib import Path
+        CACHE=Path.home()/'.cache/prism-research/swebench-repos'
+
+        # For files the agent both READ WHOLE and later EDITED, how much of the file
+        # did the edit actually touch? That bounds how much of the read was needed.
+        spans=[]; wholes=[]
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                d=json.load(open(f))
+                read_whole={}   # basename -> True if read with no offset/limit
+                for c in d['tool_calls']:
+                    if c['name']=='Read' and c['input'].get('file_path'):
+                        i=c['input']
+                        read_whole[i['file_path'].split('/')[-1]] = not (i.get('offset') or i.get('limit'))
+                # size of the region actually edited, from the model_patch hunks
+                for m in re.finditer(r'^\+\+\+ b/(.+)$', d['model_patch'], re.M):
+                    fn=m.group(1).split('/')[-1]
+                    if not read_whole.get(fn): continue
+                    block=d['model_patch'].split('+++ b/'+m.group(1),1)[1].split('diff --git')[0]
+                    hunks=[int(h) for h in re.findall(r'^@@ -\d+(?:,(\d+))? ', block, re.M) if h]
+                    touched=sum(hunks) if hunks else 0
+                    cand=list(CACHE.glob(f"*/**/{fn}"))
+                    n=0
+                    for c2 in cand[:1]:
+                        try: n=sum(1 for _ in open(c2,errors='ignore'))
+                        except Exception: pass
+                    if n and touched:
+                        spans.append((touched,n)); wholes.append(n)
+        if spans:
+            r=[t/n for t,n in spans if n]
+            print(f"files read WHOLE and then edited: {len(spans)}")
+            print(f"  median file        {statistics.median(n for _,n in spans):.0f} lines")
+            print(f"  median lines edited {statistics.median(t for t,_ in spans):.0f}")
+            print(f"  median fraction of the file the edit touched: {statistics.median(r):.1%}")
+            print(f"  90th pct fraction: {sorted(r)[int(len(r)*0.9)]:.1%}")
+        print()
+        print("=== how often is Read called with an offset/limit at all? ===")
+        tot=ranged=0
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                for c in json.load(open(f)).get('tool_calls',[]):
+                    if c['name']=='Read':
+                        tot+=1
+                        if c['input'].get('offset') or c['input'].get('limit'): ranged+=1
+        print(f"  Read calls {tot}, with offset/limit {ranged} ({ranged/max(tot,1):.0%}) — the rest pull the whole file")
+        PY
+      at: 2026-08-16T20:18:25.354351Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,collections
+        pre=post=0; pre_ex=[]
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.no-prism.json'):
+                d=json.load(open(f)); seen={}; edited=set()
+                for i,c in enumerate(d['tool_calls']):
+                    n=c['name']
+                    if n in ('Edit','Write','MultiEdit'):
+                        fp=c['input'].get('file_path','');  edited.add(fp)
+                    elif n=='Read':
+                        fp=c['input'].get('file_path','')
+                        if not fp: continue
+                        if fp in seen:
+                            if fp in edited: post+=1
+                            else:
+                                pre+=1
+                                if len(pre_ex)<4: pre_ex.append((d['instance_id'][:30], fp.split('/')[-1]))
+                        seen[fp]=i
+        tot=pre+post
+        print(f"repeat Reads of the same path: {tot}")
+        print(f"  AFTER an edit to that file (file changed — legitimate): {post:3} ({post/max(tot,1):.0%})")
+        print(f"  BEFORE any edit (same bytes, genuinely redundant)     : {pre:3} ({pre/max(tot,1):.0%})")
+        print("  e.g.", pre_ex)
+        PY
+      at: 2026-08-16T20:18:50.953052Z
+      classified: other
+    - cmd: |-
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ~/bin/prism mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        t=json.loads(sys.stdin.readline())['result']['tools']
+        r=[x for x in t if x['name']=='prism_read'][0]
+        print('prism_read parameters:', list(r['inputSchema']['properties']))
+        print()
+        print('Read (native) supports: file_path, offset, limit')"
+      at: 2026-08-16T20:21:55.195412Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+        ranged=whole=0; shell_ranged=shell_whole=0
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.prism.json'):
+                for c in json.load(open(f))['tool_calls']:
+                    if c['name']=='Read':
+                        if c['input'].get('offset') or c['input'].get('limit'): ranged+=1
+                        else: whole+=1
+                    elif c['name']=='Bash':
+                        cmd=str(c['input'].get('command',''))
+                        if re.search(r'sed -n\s+[\d,]+p|head -\d+|tail -\d+', cmd): shell_ranged+=1
+                        elif re.search(r'(?:^|[\s;&|(])cat\s+\S+\.(py|go|ts|js|java)', cmd): shell_whole+=1
+        print("PRISM ARM — every read, by whether prism_read could have served it\n")
+        print(f"  native Read, RANGED (offset/limit)   {ranged:4}   prism_read CANNOT do this")
+        print(f"  shell sed -n/head/tail (ranged)      {shell_ranged:4}   prism_read CANNOT do this")
+        print(f"  native Read, whole file              {whole:4}   prism_read could serve")
+        print(f"  shell cat, whole file                {shell_whole:4}   prism_read could serve")
+        tot=ranged+shell_ranged+whole+shell_whole
+        print(f"\n  of {tot} non-prism reads, {ranged+shell_ranged} ({(ranged+shell_ranged)/max(tot,1):.0%}) are RANGED —")
+        print( "  a capability prism_read does not have at all.")
+        PY
+      at: 2026-08-16T20:22:14.369784Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+        forms=collections.Counter(); ex=collections.defaultdict(list)
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                for c in json.load(open(f)).get('tool_calls',[]):
+                    if c['name']=='Read':
+                        i=c['input']
+                        k=('Read offset+limit' if i.get('offset') and i.get('limit')
+                           else 'Read limit only' if i.get('limit')
+                           else 'Read offset only' if i.get('offset') else 'Read whole')
+                        forms[k]+=1
+                    elif c['name']=='Bash':
+                        cmd=str(c['input'].get('command',''))
+                        for pat,name in ((r"sed -n\s+'?(\d+),(\d+)p",'sed -n A,Bp (line range)'),
+                                         (r"sed -n\s+'?(\d+)p",'sed -n Np (single line)'),
+                                         (r'\bhead -n?\s*(\d+)','head -N (first N)'),
+                                         (r'\btail -n?\s*\+?(\d+)','tail -N (last N)'),
+                                         (r'\bgrep -n .*-A\s*(\d+)','grep -A/-B/-C (context around match)'),
+                                         (r'\bawk .*NR','awk NR range'),
+                                         (r'\bwc -l','wc -l (size only)')):
+                            for m in re.finditer(pat,cmd):
+                                forms[name]+=1
+                                if len(ex[name])<2: ex[name].append(cmd[:70])
+                                break
+        print("every ranged/whole read form the agents used\n")
+        for k,v in forms.most_common():
+            print(f"  {v:4}  {k}")
+            for e in ex[k][:1]: print(f"          e.g. {e}")
+        PY
+      at: 2026-08-16T20:24:47.514342Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+        SRC=r'\S+\.(?:py|go|ts|js|java|rs|rb|md|toml|cfg|ini|ya?ml|txt|json)'
+        forms=collections.Counter()
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                for c in json.load(open(f)).get('tool_calls',[]):
+                    if c['name']=='Read':
+                        i=c['input']
+                        forms['Read: offset+limit' if i.get('offset') and i.get('limit')
+                              else 'Read: limit only' if i.get('limit')
+                              else 'Read: offset only' if i.get('offset') else 'Read: whole file']+=1
+                    elif c['name']=='Bash':
+                        cmd=str(c['input'].get('command',''))
+                        for seg in re.split(r'[;&|]{1,2}', cmd):
+                            seg=seg.strip()
+                            if re.match(rf"sed -n\s+'?\d+,\d+p'?\s+{SRC}", seg): forms['sed -n A,Bp FILE']+=1
+                            elif re.match(rf"head -n?\s*\d+\s+{SRC}", seg): forms['head -N FILE']+=1
+                            elif re.match(rf"tail -n?\s*\+?\d+\s+{SRC}", seg): forms['tail -N FILE']+=1
+                            elif re.match(rf"cat\s+{SRC}", seg): forms['cat FILE (whole)']+=1
+                            elif re.search(rf"grep -n.*-[ABC]\s*\d+.*{SRC}", seg): forms['grep -A/-B/-C (match + context)']+=1
+                            elif re.match(rf"wc -l\s+{SRC}", seg): forms['wc -l (size only)']+=1
+        print("FILE reads only (pipelines excluded)\n")
+        t=sum(forms.values())
+        for k,v in forms.most_common(): print(f"  {v:4} {v/t:5.1%}  {k}")
+        print(f"\n  total {t}")
+        PY
+      at: 2026-08-16T20:25:08.65749Z
+      classified: other
+    - cmd: sed -n '/^func (h \*Handler) toolRead/,/^}/p' internal/mcp/tools.go | head -45
+      at: 2026-08-16T20:25:19.775649Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        s=s.replace('''	data, err := os.ReadFile(abs)
+        	if err != nil {
+        		return nil, fmt.Errorf("read %s: %w", path, err)
+        	}''','''	data, err := os.ReadFile(abs)
+        	if err != nil {
+        		return nil, fmt.Errorf("read %s: %w", path, err)
+        	}
+        	// Line-ranged reads. Measured over 374 real file reads by unaided and
+        	// prism-armed agents: 50.6% are line-ranged (sed -n A,Bp 25.7%, native
+        	// Read offset+limit 23.8%) and prism_read could express NONE of it. That
+        	// gap is why 87% of the reads prism never saw were ranged, and why its
+        	// session ledger fired 0 times in 45 calls -- the agent cannot route a
+        	// ranged read through a whole-file tool, so the ledger never sees the
+        	// repeats it exists to collapse.
+        	//
+        	// Whole-file reads keep the compression path unchanged; a ranged read is
+        	// delivered verbatim and line-numbered, because slicing lines and THEN
+        	// compressing them would be two lossy steps on the same content.
+        	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
+        	if offset > 0 || limit > 0 {
+        		return h.readRange(sessionPath, string(data), offset, limit)
+        	}''')
+        s=s.replace('''func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {''',
+        '''// readRange delivers an explicit line window, verbatim and line-numbered —
+        // the shape `sed -n A,Bp` and native Read(offset,limit) produce, which
+        // agents reach for on half their reads.
+        //
+        // totalLines is always reported: a window without a denominator reads as the
+        // whole file, which is the silent-narrowing failure this codebase keeps
+        // re-learning. Out-of-range requests clamp and say so rather than erroring —
+        // a tool that errors is a tool agents route around.
+        func (h *Handler) readRange(sessionPath, content string, offset, limit int) (any, error) {
+        	lines := strings.Split(content, "\\n")
+        	if n := len(lines); n > 0 && lines[n-1] == "" {
+        		lines = lines[:n-1] // trailing newline is not a line
+        	}
+        	total := len(lines)
+        	if offset < 1 {
+        		offset = 1
+        	}
+        	if offset > total {
+        		return map[string]any{
+        			"file": sessionPath, "totalLines": total, "delivery": "range",
+        			"warning": fmt.Sprintf("offset %d is past end of file (%d lines); nothing to show",
+        				offset, total),
+        		}, nil
+        	}
+        	end := total
+        	if limit > 0 && offset-1+limit < total {
+        		end = offset - 1 + limit
+        	}
+        	var b strings.Builder
+        	width := len(strconv.Itoa(end))
+        	for i := offset - 1; i < end; i++ {
+        		fmt.Fprintf(&b, "%*d\\t%s\\n", width, i+1, lines[i])
+        	}
+        	out := map[string]any{
+        		"file":       sessionPath,
+        		"delivery":   "range",
+        		"startLine":  offset,
+        		"endLine":    end,
+        		"totalLines": total,
+        		"content":    b.String(),
+        	}
+        	if end < total || offset > 1 {
+        		out["note"] = fmt.Sprintf("lines %d-%d of %d — this is a WINDOW, not the file",
+        			offset, end, total)
+        	}
+        	return out, nil
+        }
+
+        func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error) {''')
+        open(p,'w').write(s)
+        PY
+        go build ./... 2>&1 | head -3 && echo BUILD-OK
+      at: 2026-08-16T20:25:46.697624Z
+      classified: build
+    - cmd: |-
+        python3 -c "
+        p='internal/mcp/tools.go';s=open(p).read()
+        s=s.replace('\t\"sort\"\n\t\"strings\"','\t\"sort\"\n\t\"strconv\"\n\t\"strings\"')
+        open(p,'w').write(s)"
+        gofmt -w internal/mcp/tools.go && go build ./... 2>&1|head -3 && echo BUILD-OK
+        python3 - <<'PY'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        s=s.replace('''				"model":        modelProp,
+        					"context_used": contextUsedProp,
+        					"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},''',
+        '''				"offset": map[string]any{
+        						"type":        "integer",
+        						"description": "First line to return (1-based). With limit, this is the `sed -n A,Bp` / Read(offset,limit) window — use it whenever you want part of a file.",
+        					},
+        					"limit": map[string]any{
+        						"type":        "integer",
+        						"description": "How many lines to return from offset. Omit both for the whole file (compressed, with a cached pointer on repeat).",
+        					},
+        					"model":        modelProp,
+        					"context_used": contextUsedProp,
+        					"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},''')
+        s=s.replace('''		return "Whole-file read. A repeat read of an UNCHANGED file returns a one-line " +''',
+                    '''		return "Read a file, whole or by line range. offset/limit give an exact window " +
+        			"(line-numbered, with the file's total line count) — the same shape as " +
+        			"`sed -n A,Bp`. Omit both for the whole file. A repeat read of an UNCHANGED file returns a one-line " +''')
+        open(p,'w').write(s)
+        PY
+        gofmt -w internal/mcp/tools.go && go build ./... && go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ./cmd/prism && echo OK
+      at: 2026-08-16T20:26:13.646167Z
+      classified: build
+    - cmd: |-
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        call(){ printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"prism_read\",\"arguments\":$1}}" | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1:
+                c=json.loads(d['result']['content'][0]['text'])
+                print({k:v for k,v in c.items() if k!='content'})
+                if 'content' in c: print(c['content'][:220])
+                break"; }
+        echo "=== window: lines 30-34 ==="; call '{"file":"internal/textsearch/textsearch.go","offset":30,"limit":5}'
+        echo; echo "=== offset past EOF (must clamp + say so, not error) ==="; call '{"file":"internal/textsearch/textsearch.go","offset":99999,"limit":5}'
+        echo; echo "=== whole-file path unchanged ==="; call '{"file":"internal/textsearch/native.go"}' | head -2
+      at: 2026-08-16T20:26:27.455125Z
+      classified: other
+    - cmd: grep -n 'func cmdRead' -A 22 internal/cli/commands.go | head -26
+      at: 2026-08-16T20:26:34.979103Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/cli/commands.go'; s=open(p).read()
+        s=s.replace('''	file := args[0]
+        	dir := "."
+        	format := formatText
+        	for i := 1; i < len(args); i++ {
+        		a := args[i]
+        		switch a {
+        		case "--format":
+        			if i+1 < len(args) {
+        				switch outputFormat(args[i+1]) {
+        				case formatText, formatLean, formatJSON:
+        					format = outputFormat(args[i+1])
+        				}
+        				i++
+        			}''','''	file := args[0]
+        	dir := "."
+        	format := formatText
+        	offset, limit := 0, 0
+        	for i := 1; i < len(args); i++ {
+        		a := args[i]
+        		switch a {
+        		case "--offset", "--limit":
+        			// Line-window parity with `sed -n A,Bp`, which is a quarter of
+        			// every file read agents make.
+        			if i+1 < len(args) {
+        				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+        					if a == "--offset" {
+        						offset = n
+        					} else {
+        						limit = n
+        					}
+        				}
+        				i++
+        			}
+        		case "--format":
+        			if i+1 < len(args) {
+        				switch outputFormat(args[i+1]) {
+        				case formatText, formatLean, formatJSON:
+        					format = outputFormat(args[i+1])
+        				}
+        				i++
+        			}''')
+        open(p,'w').write(s)
+        PY
+        grep -n 'invokeWithPersistentLedger(dir, "prism_read"' -B 3 internal/cli/commands.go | head -8
+      at: 2026-08-16T20:26:47.226934Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/cli/commands.go'; s=open(p).read()
+        s=s.replace('''	out, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": file})''',
+        '''	readArgs := map[string]any{"file": file}
+        	if offset > 0 {
+        		readArgs["offset"] = offset
+        	}
+        	if limit > 0 {
+        		readArgs["limit"] = limit
+        	}
+        	out, err := invokeWithPersistentLedger(dir, "prism_read", readArgs)''')
+        s=s.replace('''		fmt.Fprintln(os.Stderr, "usage: prism read <file> [dir]")''',
+                    '''		fmt.Fprintln(os.Stderr, "usage: prism read <file> [--offset N] [--limit N] [dir]")''')
+        s=s.replace('''  prism read <file> [dir]         Read a file with session-aware compression''',
+                    '''  prism read <file> [dir]         Read a file with session-aware compression
+                                          [--offset N] [--limit N]  line window (like sed -n A,Bp)''')
+        open(p,'w').write(s)
+        PY
+        gofmt -w internal/cli/commands.go && go build ./... 2>&1|head -3
+        cat >> internal/mcp/searchmulti_test.go <<'EOF'
+
+        // --- ranged reads ---------------------------------------------------------
+        //
+        // prism_read was whole-file only, and 50.6% of the 374 file reads measured
+        // across real agent runs are line-ranged (sed -n A,Bp 25.7%, native
+        // Read(offset,limit) 23.8%). That gap is why 87% of the reads prism never
+        // saw were ranged, and why its session ledger fired 0 times in 45 calls.
+
+        func TestToolRead_Range(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	body := ""
+        	for i := 1; i <= 20; i++ {
+        		body += "line" + string(rune('0'+i%10)) + "\n"
+        	}
+        	if err := os.WriteFile(filepath.Join(h.Root, "r.txt"), []byte(body), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	out, err := h.Invoke("prism_read", map[string]any{"file": "r.txt", "offset": 5, "limit": 3})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	if m["startLine"] != 5 || m["endLine"] != 7 {
+        		t.Errorf("window = %v-%v, want 5-7", m["startLine"], m["endLine"])
+        	}
+        	if m["totalLines"] != 20 {
+        		t.Errorf("totalLines = %v, want 20 — a window without a denominator reads as the whole file",
+        			m["totalLines"])
+        	}
+        	c, _ := m["content"].(string)
+        	if strings.Count(c, "\n") != 3 {
+        		t.Errorf("want 3 lines, got %q", c)
+        	}
+        	if !strings.Contains(c, "5\t") {
+        		t.Errorf("lines must be numbered so the agent can cite them: %q", c)
+        	}
+        	if m["note"] == nil {
+        		t.Error("a partial read must say it is partial")
+        	}
+        }
+
+        func TestToolRead_RangePastEOFClampsNotErrors(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	if err := os.WriteFile(filepath.Join(h.Root, "s.txt"), []byte("a\nb\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	// A tool that errors is a tool agents route around; clamp and explain.
+        	out, err := h.Invoke("prism_read", map[string]any{"file": "s.txt", "offset": 999})
+        	if err != nil {
+        		t.Fatalf("out-of-range offset must not error: %v", err)
+        	}
+        	m := out.(map[string]any)
+        	if m["totalLines"] != 2 || m["warning"] == nil {
+        		t.Errorf("want totalLines and a warning, got %v", m)
+        	}
+        }
+
+        func TestToolRead_WholeFileStillCompresses(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	out, err := h.Invoke("prism_read", map[string]any{"file": "alpha.go"})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	if _, ok := m["strategy"]; !ok {
+        		t.Errorf("omitting offset/limit must keep the compression path: %v", m)
+        	}
+        }
+        EOF
+        gofmt -w internal/mcp/searchmulti_test.go && go test ./internal/mcp -run TestToolRead -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+      at: 2026-08-16T20:27:14.133249Z
+      classified: test
+    - cmd: go vet ./internal/mcp 2>&1 | head -5; go vet ./internal/cli 2>&1 | head -5
+      at: 2026-08-16T20:27:23.855394Z
+      classified: lint
+    - cmd: |-
+        python3 -c "
+        p='internal/mcp/searchmulti_test.go';s=open(p).read()
+        s=s.replace('\t\"reflect\"\n\t\"testing\"','\t\"reflect\"\n\t\"strings\"\n\t\"testing\"')
+        open(p,'w').write(s)"
+        gofmt -w internal/mcp/searchmulti_test.go && go test ./internal/mcp -run TestToolRead -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)"|head; echo SUITE-GREEN
+      at: 2026-08-16T20:27:45.791994Z
+      classified: lint
+    - cmd: go test ./internal/mcp -run TestToolRead_WholeFileStillCompresses -v 2>&1 | head -8
+      at: 2026-08-16T20:28:01.232162Z
+      classified: test
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/mcp/searchmulti_test.go'; s=open(p).read()
+        s=s.replace('''func TestToolRead_WholeFileStillCompresses(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	out, err := h.Invoke("prism_read", map[string]any{"file": "alpha.go"})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	if _, ok := m["strategy"]; !ok {
+        		t.Errorf("omitting offset/limit must keep the compression path: %v", m)
+        	}
+        }''','''func TestToolRead_RangeNeedsNoIndex(t *testing.T) {
+        	// A line window is a file operation, not a graph one. It must work before
+        	// the index is built or when the engine is unavailable -- otherwise the
+        	// agent falls back to `sed -n A,Bp` exactly when prism is least able to
+        	// see what it read. (The whole-file path DOES need Grove for symbols;
+        	// TestToolRead_OK covers that.)
+        	h := newTextSearchHandler(t) // nil Grove
+        	out, err := h.Invoke("prism_read", map[string]any{"file": "alpha.go", "offset": 1, "limit": 2})
+        	if err != nil {
+        		t.Fatalf("ranged read must not require the index: %v", err)
+        	}
+        	if out.(map[string]any)["delivery"] != "range" {
+        		t.Errorf("want a range delivery, got %v", out)
+        	}
+        }''')
+        open(p,'w').write(s)
+        PY
+        gofmt -w internal/mcp/searchmulti_test.go && go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)"|head; echo SUITE-GREEN
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        go build -o $P ./cmd/prism && echo "=== CLI parity with sed -n 30,34p ==="; $P read internal/textsearch/textsearch.go --offset 30 --limit 5 --format text
+      at: 2026-08-16T20:28:40.72226Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism 2>&1 | tail -3
+        cd ../prism && cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ~/bin/prism && printf 'n\n' | ~/bin/prism init --refresh . >/dev/null 2>&1
+        git checkout -- .mcp.json .cursor/mcp.json .windsurf/mcp.json 2>/dev/null; sed -i '' 's#/Users/tapabratapal/bin/prism#/opt/homebrew/bin/prism#' .vscode/mcp.json 2>/dev/null
+        git add -A && git commit -q -F - <<'EOF'
+        feat(read): line windows — close the capability gap that made prism_read unusable
+
+        prism_read took only `file`. It was whole-file or nothing, and that is why
+        agents route around it.
+
+        Measured over 374 real file reads across unaided and prism-armed agents:
+
+            96  25.7%  sed -n A,Bp FILE          <- prism_read could not express
+            93  24.9%  Read: whole file
+            89  23.8%  Read: offset+limit        <- prism_read could not express
+            59  15.8%  cat FILE (whole)
+            19   5.1%  grep -A/-B/-C
+             7   1.9%  head -N FILE
+             4   1.1%  wc -l
+
+        50.6% of file reads are LINE-RANGED. In the prism arm, of 352 reads that
+        did not go through prism, 307 (87%) were ranged -- a shape the tool had no
+        parameter for. That also explains a dead feature: prism_read's session
+        ledger returns a [prism:cached] pointer on a repeat read, and it fired 0
+        times in 45 calls, because the agent cannot route a ranged read through a
+        whole-file tool and the ledger never sees the repeats it exists to collapse.
+
+        offset/limit now give the same window sed and native Read give:
+
+            prism read <file> --offset 30 --limit 5
+            prism_read(file=..., offset=30, limit=5)
+
+        Delivered verbatim and line-numbered, WITH totalLines always reported -- a
+        window without a denominator reads as the whole file, which is the
+        silent-narrowing failure this codebase keeps re-learning. An out-of-range
+        offset clamps and explains rather than erroring: a tool that errors is a
+        tool agents route around, which is the whole lesson here.
+
+        Ranged reads deliberately skip the compression path (slicing lines and then
+        compressing them is two lossy steps on one piece of content) and require no
+        index, so they work before the first index or with the engine down.
+
+        Expected value, stated honestly: this does NOT come with a measured saving.
+        The dedup it unlocks is worth roughly 1k tokens/cell on the numbers I have,
+        which I judged too small to build for on its own. The case is surface
+        completeness -- prism_read should be a real substitute for the read tools
+        agents have, not a partial one -- and it removes a reason to route around
+        prism that had nothing to do with prism's value.
+
+        Gate: go vet + go test ./... green; ci_invariants.py green.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-16T20:30:22.561058Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && rm -rf /tmp/swebench-wt 2>/dev/null
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-inject5.json --limit 5 \
+          --arms no-prism prism --out runs/swebench-live/rangeread5 --prism ~/bin/prism \
+          > runs/swebench-live/rangeread5.log 2>&1 &
+        echo "pid $!"; sleep 25; head -4 runs/swebench-live/rangeread5.log
+      at: 2026-08-16T20:33:27.459994Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+        SRC=r'\S+\.(?:py|go|ts|js|java|rs|rb|md|toml|cfg|ini|ya?ml|txt|json)'
+        gap=collections.Counter(); ok=collections.Counter()
+        for run in ('v055-full','radius8','inject5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                for c in json.load(open(f)).get('tool_calls',[]):
+                    n=c['name']; i=c.get('input',{})
+                    if n=='Read':
+                        (ok if (i.get('offset') or i.get('limit')) else ok)['read: whole/window (prism_read HAS)']+=1
+                    elif n=='Glob': gap['file-name glob (Glob) — prism has glob= only inside search']+=1
+                    elif n=='Grep':
+                        if i.get('-A') or i.get('-B') or i.get('-C') or i.get('output_mode')=='content':
+                            gap['search: match + N lines of CONTEXT (grep -A/-B/-C)']+=1
+                        else: ok['search: pattern (prism_search HAS)']+=1
+                    elif n=='Bash':
+                        cmd=str(i.get('command',''))
+                        for seg in re.split(r'[;&|]{1,2}', cmd):
+                            seg=seg.strip()
+                            if re.search(rf'grep\b.*-[ABC]\s*\d+.*{SRC}', seg): gap['search: match + N lines of CONTEXT (grep -A/-B/-C)']+=1
+                            elif re.match(rf'wc -l\s+{SRC}', seg): gap['file size / line count without reading it (wc -l)']+=1
+                            elif re.match(r'ls\s', seg): gap['list a directory (ls) — no prism equivalent']+=1
+                            elif re.search(rf'grep -l\b|grep -rl\b', seg): ok['search: files-only (prism_search HAS files_only)']+=1
+                            elif re.match(rf'git (log|show|blame)\b', seg): gap['history: what changed here before (git log/show/blame)']+=1
+                            elif re.match(rf'(cat|sed|head|tail)\s+{SRC}', seg): ok['read: whole/window (prism_read HAS)']+=1
+        print("CAPABILITY PARITY — what agents used that prism CANNOT express\n")
+        t=sum(gap.values())
+        for k,v in gap.most_common(): print(f"  {v:5} {v/t:5.1%}  {k}")
+        print(f"\n  total gap actions: {t}")
+        print("\nalready covered (for scale):")
+        for k,v in ok.most_common(): print(f"  {v:5}        {k}")
+        PY
+      at: 2026-08-16T20:38:09.407568Z
+      classified: other
+    - cmd: |-
+        P=~/bin/prism
+        Q=stringsArg
+        echo "=== plain grep (what the agent would otherwise get) ==="
+        rg -n "$Q" --glob '!.git/' --glob '!.shale/' . 2>/dev/null | head -8 > /tmp/g.txt; cat /tmp/g.txt; echo "bytes: $(wc -c </tmp/g.txt)"
+        echo
+        echo "=== prism_search MCP response for the same query ==="
+        printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"prism_search\",\"arguments\":{\"query\":\"$Q\",\"scope\":\"text\",\"limit\":8}}}" | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1:
+                txt=d['result']['content'][0]['text']
+                print(txt[:600]); print('...'); print('TOTAL bytes:',len(txt))
+                break"
+      at: 2026-08-16T20:41:26.763556Z
+      classified: other
+    - cmd: |-
+        P=~/bin/prism
+        for Q in "func " "stringsArg" "Handler"; do
+          g=$(rg -n "$Q" --glob '!.git/' --glob '!.shale/' . 2>/dev/null | head -25 | wc -c)
+          j=$(printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"prism_search\",\"arguments\":{\"query\":\"$Q\",\"scope\":\"text\",\"limit\":25}}}" | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(len(d['result']['content'][0]['text'])); break")
+          python3 -c "print(f'  query {\"$Q\":12}  grep {$g:6}B   prism JSON {$j:6}B   {$j/$g:.2f}x  (+{$j-$g}B)')"
+        done
+        echo
+        echo "at ~4 chars/token, the overhead per search call in tokens:"
+        python3 -c "print('  ~', round((1024-718)/4), 'tokens for 8 hits; scale by hits and by every later turn it sits in cache')"
+      at: 2026-08-16T20:41:48.69204Z
+      classified: other
+    - cmd: |-
+        git add BACKLOG.md && git commit -q -F - <<'EOF'
+        docs: BACKLOG.md — the measured capability-parity backlog
+
+        Everything in it comes from traces of real agent runs (32 paired
+        SWE-bench-Live cells, 859 actions, 374 file reads, 176 searches), not from
+        ideas about what agents might want. Each item states what was measured, on
+        how much data, and what it is expected to buy — including where that is
+        "nothing measurable, but it removes a reason to route around prism".
+
+        Ordered by value, not by size:
+
+          1. JSON envelope on prism_search — 1.19-1.32x vs plain grep for the same
+             hits (+219 to +704 bytes/call). Highest-count tool in the system (637
+             calls / 190 cells) and every result sits in cache for the rest of the
+             run. No downside: same hits, fewer tokens.
+          2. context= on prism_search (grep -A/-B/-C) — 72 actions, one backend flag.
+          3. git history joined to symbols — 42 actions, and the ONLY gap where
+             prism could answer better rather than merely equally.
+          4. wc -l — 4 actions, mostly closed by totalLines already.
+          5. ls — 193 actions, the biggest by count, RECOMMEND SKIPPING. Prism knows
+             only the indexed tree; a prism_ls would be a strictly worse ls that can
+             nonetheless express the request. That is the reverse failure mode and
+             harder to detect than a gap, because the agent gets an answer and it is
+             wrong.
+
+        Also records what is deliberately NOT on it: three retrieval levers sized
+        and found small (injection — built, measured worse, reverted; delivery
+        granularity; re-read dedup), and cross-tool read restriction, rejected.
+
+        The organising principle, with both halves stated: a capability gap gets
+        prism routed around for reasons unrelated to its value (87% of the reads
+        that bypassed prism were line-ranged, a shape prism_read had no parameter
+        for) — but parity is table stakes, not value (prism_search has full grep
+        parity and measures flat; 8 of 14 fully-capable tools got zero calls).
+
+        And the number that bounds all of it: LOCATE is 7.7% of agent effort on
+        repair tasks, against COMPREHEND 32.1% and IMPLEMENT 60.2%.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1; cd ../research/harness && tail -3 runs/swebench-live/rangeread5.log
+      at: 2026-08-16T20:44:11.417696Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='BACKLOG.md'; s=open(p).read()
+        old_start = s.index("## 5. `ls` — directory listing — RECOMMEND SKIPPING")
+        old_end = s.index("## Not on this list, and why")
+        s = s[:old_start] + s[old_end:]
+        s = s.replace('''## Not on this list, and why''','''## Decided against
+
+        ### `ls` — directory listing. NOT BUILDING. (decided 2026-08-16)
+
+        193 actions, 62.1% of the measured capability gap — **the single biggest
+        item by count, and it is not being built.** Recorded here so it is not
+        re-proposed from the raw counts.
+
+        Most of it is orientation (`ls && ls dagfactory`) and environment poking
+        (`ls .venv/bin`, `ls /opt/homebrew/bin`), not code intelligence. Prism knows
+        only the indexed tree: no permissions, no non-indexed files, no `.venv`,
+        nothing outside the root, nothing it failed to parse.
+
+        A `prism_ls` would therefore be a strictly worse `ls` that can nonetheless
+        express the request. That is the REVERSE failure mode and it is harder to
+        detect than a gap: with a gap the agent routes around prism and we see it in
+        the traces; with a worse answer the agent gets a confident, incomplete
+        listing and proceeds on it. A missing file reads as "not in the repo".
+
+        This is the one place in the whole backlog where the shell tool is genuinely
+        the right tool, and prism should stay out of its way.
+
+        ## Not on this list, and why''')
+        open(p,'w').write(s)
+        PY
+        grep -n '^## ' BACKLOG.md
+      at: 2026-08-16T20:47:50.729936Z
+      classified: other
+    - cmd: |-
+        git add BACKLOG.md && git commit -q -F - <<'EOF'
+        docs(backlog): ls is decided against, not item 5
+
+        Moved out of the numbered to-do list into "Decided against" with the
+        reasoning, so it is not picked up later from the raw counts — it is the
+        biggest gap by volume (193 actions, 62.1%) and would look like the obvious
+        place to start.
+
+        It is not, because it is the one gap where filling it makes things worse:
+        prism knows only the indexed tree, so a prism_ls answers confidently and
+        incompletely. That is the reverse of a capability gap and harder to catch —
+        with a gap the agent routes around prism and the traces show it; with a
+        worse answer the agent proceeds on a listing where a missing file reads as
+        "not in the repo".
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        cd ../research/harness && pgrep -f swebench_ab.py >/dev/null && echo "smoke still running" || echo "smoke done"; tail -2 runs/swebench-live/rangeread5.log
+      at: 2026-08-16T20:48:06.397636Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+        print("=== DID AGENTS USE RANGED prism_read? (schema-only, no steering) ===")
+        ranged=whole=0; sed=readtool=0
+        for f in glob.glob('runs/swebench-live/rangeread5/*.prism.json'):
+            d=json.load(open(f))
+            for c in d['tool_calls']:
+                if c['name']=='mcp__prism__prism_read':
+                    if c['input'].get('offset') or c['input'].get('limit'): ranged+=1
+                    else: whole+=1
+                elif c['name']=='Read' and (c['input'].get('offset') or c['input'].get('limit')): readtool+=1
+                elif c['name']=='Bash' and re.search(r"sed -n\s+'?\d+,\d+p", str(c['input'].get('command',''))): sed+=1
+        print(f"  prism_read RANGED : {ranged}")
+        print(f"  prism_read whole  : {whole}")
+        print(f"  native Read ranged: {readtool}")
+        print(f"  shell sed -n A,Bp : {sed}")
+        print("\n=== cost/turns vs the same tasks before ===")
+        for t in ('magic-wormhole__magic-wormhole-659','PyPSA__PyPSA-1325','astronomer__dag-factory-544','a2aproject__a2a-python-302'):
+            row=[]
+            for run in ('v055-full','inject5','rangeread5'):
+                try:
+                    b=json.load(open(f'runs/swebench-live/{run}/{t}.no-prism.json')); p=json.load(open(f'runs/swebench-live/{run}/{t}.prism.json'))
+                    row.append(f"{b['turns']}/{b['cost_usd']:.2f}->{p['turns']}/{p['cost_usd']:.2f}")
+                except FileNotFoundError: row.append('—')
+            print(f"  {t[:32]:32} v055:{row[0]:>18}  inject:{row[1]:>18}  range:{row[2]:>18}")
+        PY
+      at: 2026-08-16T20:48:21.397582Z
+      classified: other
+    - cmd: "printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}' | ~/bin/prism mcp . 2>/dev/null | python3 -c \"\nimport sys,json\nt=json.loads(sys.stdin.readline())['result']['tools']\nr=[x for x in t if x['name']=='prism_read'][0]\nprint('=== DESCRIPTION ==='); print(r['description'])\nprint(); print('=== SCHEMA ==='); \nfor k,v in r['inputSchema']['properties'].items():\n    if k in ('offset','limit','file'): print(f'  {k}: {v.get(\\\"description\\\",\\\"\\\")[:120]}')\"\necho; echo \"=== STEERING: does it mention offset/limit? ===\"\nsed -n '/## Prism — context delivery/,/prism:end/p' CLAUDE.md | grep -n 'read' "
+      at: 2026-08-16T20:49:57.972703Z
+      classified: build
+    - cmd: "sed -n '/case \"prism_read\":/,/^\t\tcase \"prism_search\":/p' internal/mcp/tools.go | head -25"
+      at: 2026-08-16T20:50:19.410996Z
+      classified: other
+    - cmd: grep -n '"File path relative to project root."' -B 6 -A 8 internal/mcp/tools.go
+      at: 2026-08-16T20:50:30.390449Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        old = '''				"file": map[string]any{
+        					"type":        "string",
+        					"description": "File path relative to project root.",
+        				},
+        				"model":        modelProp,
+        				"context_used": contextUsedProp,
+        				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},'''
+        new = '''				"file": map[string]any{
+        					"type":        "string",
+        					"description": "File path relative to project root.",
+        				},
+        				"offset": map[string]any{
+        					"type":        "integer",
+        					"description": "First line to return (1-based). With limit this is an exact window — the `sed -n A,Bp` / Read(offset,limit) shape. Half of all real file reads are ranged; use this instead of pulling a whole file to see part of it.",
+        				},
+        				"limit": map[string]any{
+        					"type":        "integer",
+        					"description": "How many lines to return from offset. Omit both for the whole file (compressed, and a one-line cached pointer on repeat).",
+        				},
+        				"model":        modelProp,
+        				"context_used": contextUsedProp,
+        				"task":         map[string]any{"type": "string", "description": "Current task, used for relevance ranking."},'''
+        assert old in s, "schema block not found"
+        s=s.replace(old,new)
+        open(p,'w').write(s)
+        print("schema patched")
+        PY
+        go build -o ~/bin/prism ./cmd/prism && printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ~/bin/prism mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        r=[x for x in json.loads(sys.stdin.readline())['result']['tools'] if x['name']=='prism_read'][0]
+        print('prism_read params now:', list(r['inputSchema']['properties']))"
+      at: 2026-08-16T20:50:55.400913Z
+      classified: build
+    - cmd: go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head; echo GREEN
+      at: 2026-08-16T20:53:49.917342Z
+      classified: lint
+    - cmd: grep -n 'func (h \*Handler) toolRead' internal/mcp/tools.go | head -1
+      at: 2026-08-16T20:53:54.014039Z
+      classified: other
+    - cmd: grep -n 'func stringsArg\|func intArg\|func stringArg\|func boolArg' internal/mcp/*.go | grep -v _test
+      at: 2026-08-16T20:53:57.653655Z
+      classified: other
+    - cmd: go test ./internal/mcp -run TestSchemaAdvertisesEveryArgTheToolFuncReads -v 2>&1 | tail -30
+      at: 2026-08-16T20:54:24.325929Z
+      classified: test
+    - cmd: |-
+        grep -n '"intent"\|"limit".*intArg\|args, "limit"' internal/mcp/tools.go | grep -i query | head -5
+        grep -n 'stringArg(args, "symbol"' internal/mcp/tools.go
+        grep -n 'stringArg(args, "qualifiedName"' internal/mcp/tools.go
+        echo "--- is prism_feedback even in ToolSchemas()? ---"
+        grep -n 'prism_feedback' internal/mcp/tools.go
+      at: 2026-08-16T20:54:30.218721Z
+      classified: other
+    - cmd: |-
+        grep -n 'func ToolSchemas' -A 5 internal/mcp/tools.go | head -6
+        grep -n 'names := \[\]string{' internal/mcp/tools.go
+      at: 2026-08-16T20:54:36.13313Z
+      classified: other
+    - cmd: grep -n 'intArg(args, "limit"' internal/mcp/tools.go
+      at: 2026-08-16T20:54:55.749495Z
+      classified: other
+    - cmd: sed -n '860,875p' internal/mcp/tools.go
+      at: 2026-08-16T20:54:58.867124Z
+      classified: other
+    - cmd: 'grep -n ''"budget":.*map\[string\]any{"type": "integer"'' internal/mcp/tools.go'
+      at: 2026-08-16T20:55:02.656095Z
+      classified: other
+    - cmd: |-
+        go build ./... 2>&1 | head -5 && echo BUILD-OK
+        go test ./internal/mcp -run TestSchemaAdvertisesEveryArgTheToolFuncReads -v 2>&1 | tail -20
+      at: 2026-08-16T20:55:13.714993Z
+      classified: test
+    - cmd: |-
+        go test ./internal/mcp -run TestSchemaAdvertisesEveryArgTheToolFuncReads -v 2>&1 | tail -6
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head; echo SUITE-GREEN
+      at: 2026-08-16T20:55:31.209501Z
+      classified: lint
+    - cmd: |-
+        go build -o ~/bin/prism ./cmd/prism
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ~/bin/prism mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        t=json.loads(sys.stdin.readline())['result']['tools']
+        r=[x for x in t if x['name']=='prism_read'][0]
+        print('prism_read schema params:', list(r['inputSchema']['properties']))
+        q=[x for x in t if x['name']=='prism_query'][0]
+        print('prism_query schema params:', list(q['inputSchema']['properties']))"
+        echo
+        echo "=== now call it over the real protocol like a client would ==="
+        printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"internal/mcp/tools.go","offset":10,"limit":3}}}' | ~/bin/prism mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==2:
+                c=json.loads(d['result']['content'][0]['text'])
+                print('delivery:',c.get('delivery'),'startLine:',c.get('startLine'),'endLine:',c.get('endLine'))
+                break"
+      at: 2026-08-16T20:55:43.213251Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism ~/bin/prism 2>&1 | tail -3
+      at: 2026-08-16T20:57:02.50665Z
+      classified: other
+    - cmd: |-
+        git add -A && git commit -q -F - <<'EOF'
+        fix(mcp): prism_read's offset/limit were never in the advertised schema
+
+        The bug that made rangeread5 void. `toolRead` was patched to read
+        offset/limit via intArg, the tool DESCRIPTION was updated to promise them,
+        but the schema's `properties` map was never edited to match -- a
+        string-replace silently no-op'd against surrounding text that had already
+        drifted. go build, go vet, and every existing test passed, because Invoke
+        calls toolRead directly against a bare map[string]any: nothing type-checks
+        a key against what tools/list advertises, and every existing test called
+        Invoke the same way, bypassing the schema exactly like the bug did.
+
+        Consequence: a real MCP client only ever sends keys listed in inputSchema,
+        so the parameter existed in the binary and was UNREACHABLE from any real
+        agent. The 2026-08-16 rangeread5 smoke run "verified" ranged reads by
+        calling Invoke directly (same blind spot) and then measured live adoption
+        at 0/5 -- which was true, but not for the reason reported: the agent read
+        "offset/limit give an exact window" in the description, found no such
+        parameters in the schema, and correctly used Read/sed instead. Reported as
+        evidence about agent behavior; it was evidence about a broken schema. That
+        result is void.
+
+        Fixed prism_read's schema. Found and fixed the same class of bug on an
+        advertised tool that had NOTHING to do with today's change: prism_query's
+        toolQuery reads "limit" (line 870, capping candidate symbols before
+        ranking) and it was never in prism_query's schema either -- dead on every
+        real call since query intArg("limit", 50) was written, independent of any
+        recent edit.
+
+        ADDED: TestSchemaAdvertisesEveryArgTheToolFuncReads. Parses tools.go,
+        extracts each toolXxx func body, cross-references it against
+        dispatch (case "prism_x": return h.toolXxx) and toolSchema(x)'s declared
+        properties -- for every one of the SIX tools actually advertised via
+        ToolSchemas() (CLI-only tools fall through the additionalProperties:true
+        default and are correctly unchecked). Flags any *Arg(args, "key") read
+        whose key is not in that tool's own schema. A short, documented allowlist
+        covers genuine pre-rename fallback aliases (symbol/name, qualifiedName/name,
+        intent/task, path/file) where the PRIMARY key is declared and checked
+        normally and only the legacy alias is exempt.
+
+        Verified fixed over the REAL protocol this time, not Invoke():
+        tools/list shows offset/limit in prism_read's properties and limit in
+        prism_query's; tools/call with offset=10,limit=3 returns delivery=range,
+        startLine=10, endLine=12.
+
+        Gate: go vet + go test ./... green (new test included); ci_invariants.py
+        green.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-16T20:57:21.287077Z
+      classified: lint
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-16T18:35:28.41175Z
+redactions: 0

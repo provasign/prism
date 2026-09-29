@@ -1,0 +1,33 @@
+shale_version: "0"
+id: 01a0b235-dcfa-78a0-8397-a78f58a2c1a9
+created_at: 2026-09-18T01:51:19.741753Z
+finalized_at: 2026-09-18T02:45:36.085582Z
+agent:
+    tool: codex
+    model: gpt-5.6-terra
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: prism query --terms "prism mcp config"
+      at: 2026-09-18T01:53:13.73674Z
+      classified: other
+    - cmd: prism status . && prism doctor . && prism config
+      at: 2026-09-18T01:53:18.46459Z
+      classified: other
+    - cmd: prism init --print-config codex && command -v prism && prism version && prism read .codex/config.toml
+      at: 2026-09-18T01:53:24.170103Z
+      classified: other
+    - cmd: awk 'BEGIN {capture=0} /^\[mcp_servers\.prism\]$/ {capture=1} capture {print} capture && /^\[/ && $0 != "[mcp_servers.prism]" {exit}' /Users/tapabratapal/.codex/config.toml
+      at: 2026-09-18T01:53:47.056857Z
+      classified: other
+    - cmd: rg -n -F -e '/Users/tapabratapal/Projects/provasign/prism' -e '[mcp_servers.prism]' /Users/tapabratapal/.codex/config.toml || true
+      at: 2026-09-18T01:53:52.158352Z
+      classified: other
+    - cmd: awk 'BEGIN {capture=0} /^\[projects\."\/Users\/tapabratapal\/Projects\/provasign\/prism"\]$/ {capture=1} capture {print} capture && /^\[/ && $0 != "[projects.\"/Users/tapabratapal/Projects/provasign/prism\"]" {exit}' /Users/tapabratapal/.codex/config.toml
+      at: 2026-09-18T01:53:56.441358Z
+      classified: other
+notes: []
+redactions: 0

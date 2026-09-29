@@ -1,0 +1,102 @@
+shale_version: "0"
+id: 01a0a273-3167-7ab1-85e7-11b5b50fe1fe-c2
+created_at: 2026-09-18T00:23:13.248859Z
+finalized_at: 2026-09-18T00:29:25.771067Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/cli/searchdelivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T00:27:28.192227Z
+    - path: internal/mcp/searchevidence.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-18T00:27:28.192227Z
+commands:
+    - cmd: git rev-list -n 1 v0.77.0 && git push origin v0.77.0
+      at: 2026-09-18T00:23:13.248859Z
+      classified: other
+    - cmd: gh release create v0.77.0 --repo provasign/prism --title v0.77.0 --target main --notes "Simplifies Prism query inputs and clarifies search terms. Improves search ranking and delivers bounded, higher-signal source evidence with stronger fallback and coverage behavior."
+      at: 2026-09-18T00:23:18.192605Z
+      classified: other
+    - cmd: git ls-remote origin refs/heads/main refs/tags/v0.77.0 refs/tags/v0.77.0^{} && git status --branch --short
+      at: 2026-09-18T00:23:25.570154Z
+      classified: other
+    - cmd: gh release view v0.77.0 --repo provasign/prism --json name,tagName,targetCommitish,isDraft,isPrerelease,publishedAt,url,body
+      at: 2026-09-18T00:23:25.614333Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --branch main --limit 5 --json databaseId,name,status,conclusion,headSha,event,url,createdAt
+      at: 2026-09-18T00:23:25.926847Z
+      classified: other
+    - cmd: gh run watch 35290930624 --repo provasign/prism --exit-status
+      at: 2026-09-18T00:25:23.860156Z
+      classified: other
+    - cmd: gh run view 35290930624 --repo provasign/prism --log-failed
+      at: 2026-09-18T00:25:32.397898Z
+      classified: other
+    - cmd: 'gh run view 35290930624 --repo provasign/prism --job 105433389089 --log | rg -n -- ''--- FAIL:|panic: test timed out|FAIL\s+github.com/provasign/prism|expected|got:'''
+      at: 2026-09-18T00:25:40.140191Z
+      classified: other
+    - cmd: 'gh run view 35290930624 --repo provasign/prism --job 105433389089 --log | rg -n -A12 -B2 -- ''--- FAIL: TestSearchCLIExplicitZeroContextAndMergedDefault|--- FAIL: TestSearchEvidenceShowsLocalRelatedUseAndSkippedTest'''
+      at: 2026-09-18T00:25:45.429169Z
+      classified: other
+    - cmd: awk 'NR>=1 && NR<=100 && $0 !~ /^[[:space:]]*\/\//' internal/mcp/searchevidence_test.go
+      at: 2026-09-18T00:25:55.17727Z
+      classified: other
+    - cmd: awk 'NR>=1 && NR<=100 && $0 !~ /^[[:space:]]*\/\//' internal/cli/searchdelivery_test.go
+      at: 2026-09-18T00:25:55.177657Z
+      classified: other
+    - cmd: git status --short && git branch --show-current
+      at: 2026-09-18T00:25:55.224453Z
+      classified: other
+    - cmd: prism lookup RenderSearchText
+      at: 2026-09-18T00:26:06.681208Z
+      classified: other
+    - cmd: prism lookup renderSearchAsText
+      at: 2026-09-18T00:26:09.58857Z
+      classified: other
+    - cmd: prism lookup compactSearchBodiesEnclosing
+      at: 2026-09-18T00:26:16.606383Z
+      classified: other
+    - cmd: prism lookup compactSearchBodiesEnclosingExcept
+      at: 2026-09-18T00:26:19.596824Z
+      classified: other
+    - cmd: prism lookup renderTextHits
+      at: 2026-09-18T00:26:30.527936Z
+      classified: other
+    - cmd: prism search "textHits" --scope symbols --format text
+      at: 2026-09-18T00:26:34.829614Z
+      classified: other
+    - cmd: prism search --help
+      at: 2026-09-18T00:26:46.785866Z
+      classified: other
+    - cmd: prism search "text search hit its deadline" --scope text --format text
+      at: 2026-09-18T00:26:52.227397Z
+      classified: other
+    - cmd: rg -n 'cmdIndex\(' internal/cli --glob '*_test.go'
+      at: 2026-09-18T00:27:05.330278Z
+      classified: other
+    - cmd: gofmt -w internal/cli/searchdelivery_test.go internal/mcp/searchevidence.go && env GOFLAGS=-mod=readonly go test ./internal/cli ./internal/mcp -count=3
+      at: 2026-09-18T00:28:41.32402Z
+      classified: test
+    - cmd: git diff --check && git status --short && git diff --stat
+      at: 2026-09-18T00:28:47.13126Z
+      classified: other
+    - cmd: env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-18T00:29:12.260144Z
+      classified: test
+    - cmd: git add internal/cli/searchdelivery_test.go internal/mcp/searchevidence.go && git commit -m "Fix search evidence on Windows"
+      at: 2026-09-18T00:29:22.268095Z
+      classified: other
+notes:
+    - text: continuation of session 01a0a273-3167-7ab1-85e7-11b5b50fe1fe — events captured after its evidence was finalized
+      at: 2026-09-18T00:23:13.248859Z
+redactions: 0

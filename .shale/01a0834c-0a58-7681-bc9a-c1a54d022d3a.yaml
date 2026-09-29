@@ -1,0 +1,201 @@
+shale_version: "0"
+id: 01a0834c-0a58-7681-bc9a-c1a54d022d3a
+created_at: 2026-09-08T23:13:15.411999Z
+finalized_at: 2026-09-09T00:24:43.618278Z
+agent:
+    tool: codex
+    model: gpt-5.6-luna
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git branch --show-current && git status --short && /opt/homebrew/bin/prism version && GOFLAGS= GOWORK=off go build -o /private/tmp/prism-routing-current-mcp ./cmd/prism && /private/tmp/prism-routing-current-mcp version
+      at: 2026-09-08T23:13:35.686537Z
+      classified: build
+    - cmd: python3 -B /private/tmp/run_prism_mcp_comparison.py /private/tmp/prism-mcp-current-20260908 /private/tmp/prism-mcp-current-run-20260908
+      at: 2026-09-08T23:16:20.213935Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_prism_mcp_comparison.py /private/tmp/prism-routing-current-mcp /private/tmp/prism-mcp-current-run-20260908
+      at: 2026-09-08T23:18:15.243879Z
+      classified: other
+    - cmd: jq '.rows[] | {cell_id,resolved,audited_valid,timed_out,tool_calls,prism_calls,total_tokens,input_tokens,cache_read_tokens,output_tokens,cost_usd,wall_s,changed_files,score}' /private/tmp/prism-mcp-production-run-20260908/summary.json && echo CURRENT && jq '.rows[] | {cell_id,resolved,audited_valid,timed_out,tool_calls,prism_calls,total_tokens,input_tokens,cache_read_tokens,output_tokens,cost_usd,wall_s,changed_files,score}' /private/tmp/prism-mcp-current-run2-20260908/summary.json
+      at: 2026-09-08T23:27:31.407832Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_prism_mcp_comparison.py /private/tmp/prism-routing-current-mcp /private/tmp/prism-mcp-current-run2-20260908
+      at: 2026-09-08T23:27:33.264717Z
+      classified: other
+    - cmd: jq '.rows[] | {cell_id,resolved,tool_calls,prism_calls,total_tokens,output_tokens,cost_usd,wall_s,changed_files,score}' /private/tmp/prism-mcp-current-run2-20260908/summary.json
+      at: 2026-09-08T23:27:39.37746Z
+      classified: other
+    - cmd: rg --files /private/tmp /Users/tapabratapal/Projects/provasign/prism/harness/runs 2>/dev/null | rg 'urllib3|daytoday|routing' | head -80
+      at: 2026-09-08T23:29:26.268079Z
+      classified: other
+    - cmd: rg --files /private/tmp | rg 'coding-suite.*(summary|aggregate)|urllib3.*(json|log)' | head -100
+      at: 2026-09-08T23:29:28.753372Z
+      classified: other
+    - cmd: for d in /private/tmp/*urllib* /private/tmp/prism-*; do [ -f "$d/summary.json" ] && echo $d; done
+      at: 2026-09-08T23:29:31.640047Z
+      classified: other
+    - cmd: for f in /private/tmp/*/summary.json; do jq -r --arg f "$f" '.rows[]? | select(.cell_id|contains("urllib3")) | [$f,.cell_id,.resolved,.total_tokens,.tool_calls,.prism_calls|length] | @tsv' "$f" 2>/dev/null; done
+      at: 2026-09-08T23:29:35.003984Z
+      classified: other
+    - cmd: rg -l 'pr3786|urllib3' /private/tmp/*/summary.json | head -30
+      at: 2026-09-08T23:29:37.516473Z
+      classified: other
+    - cmd: jq '.rows[] | {cell_id,resolved,total_tokens,tool_calls,prism_calls,cost_usd,changed_files}' /private/tmp/daytoday-sonnet-prism-v0721-pilot-20260908/summary.json; jq '.rows[] | {cell_id,resolved,total_tokens,tool_calls,prism_calls,cost_usd,changed_files}' /private/tmp/prism-routing-contract-two-cell-20260908/summary.json
+      at: 2026-09-08T23:29:40.771393Z
+      classified: other
+    - cmd: rg -l 'urllib3.*resolved.*true|resolved.*true.*urllib3' /private/tmp --glob '*.json' --glob '*.jsonl' --glob '*.log' | head -30
+      at: 2026-09-08T23:29:46.972354Z
+      classified: other
+    - cmd: jq '{problem_statement,patch,tests}' /private/tmp/coding-suite-pilot-2026-09-07-disposable/templates/urllib3__urllib3__pr3786/index.json 2>/dev/null | head -80; jq '{problem_statement,patch}' /private/tmp/product-proof-coding-preflight-fixed-20260908/templates/urllib3__urllib3__pr3786/index.json 2>/dev/null | head -80
+      at: 2026-09-08T23:29:50.979032Z
+      classified: other
+    - cmd: rg -n 'no.?prism|sonnet|ARMS|PILOT_TASKS|strict-mcp' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py | head -80
+      at: 2026-09-08T23:30:41.525594Z
+      classified: other
+    - cmd: sed -n '420,470p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+      at: 2026-09-08T23:30:54.669928Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_urllib3_native.py /ignored /private/tmp/prism-mcp-native-urllib3-20260908
+      at: 2026-09-08T23:30:58.444374Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_urllib3_native.py /ignored /private/tmp/prism-mcp-native-urllib3-20260908
+      at: 2026-09-08T23:31:03.826186Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_urllib3_native.py /ignored /private/tmp/prism-mcp-native-urllib3-20260908b
+      at: 2026-09-08T23:31:06.693225Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_urllib3_native.py /ignored /private/tmp/prism-mcp-native-urllib3-20260908c
+      at: 2026-09-08T23:37:36.56606Z
+      classified: other
+    - cmd: rg --files /Users/tapabratapal/Projects/provasign/research | head -80
+      at: 2026-09-08T23:41:33.408642Z
+      classified: other
+    - cmd: rg -n -i 'change.?impact|swe.?bench|candidate|baseline|cell|selected|urllib3|click' /Users/tapabratapal/Projects/provasign/research/RESULTS.md /Users/tapabratapal/Projects/provasign/research/README.md | head -120
+      at: 2026-09-08T23:41:37.607144Z
+      classified: other
+    - cmd: sed -n '1,120p' /Users/tapabratapal/Projects/provasign/research/RESULTS.md; echo MATRIX; sed -n '1,180p' /Users/tapabratapal/Projects/provasign/research/harness/BENCH-MATRIX.md 2>/dev/null; echo SWEBENCH; sed -n '1,140p' /Users/tapabratapal/Projects/provasign/research/harness/SWEBENCH-AB-RESULTS.md 2>/dev/null
+      at: 2026-09-08T23:41:45.012176Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness | rg 'coding|impact|bench|run'; rg -n 'PRISM_SOURCE|prism.*binary|TASKS|ARMS' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py /Users/tapabratapal/Projects/provasign/research/harness/*impact* | head -100
+      at: 2026-09-08T23:41:48.931691Z
+      classified: other
+    - cmd: sed -n '1,90p' /Users/tapabratapal/Projects/provasign/research/harness/product_impact_suite.py; rg -n 'TASK_IDS|TASK_SPECS' /Users/tapabratapal/Projects/provasign/research/harness/product_impact_suite.py /Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py | head -30
+      at: 2026-09-08T23:41:55.248992Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_impact_candidate_sample.py /private/tmp/prism-impact-candidate-sample-20260908
+      at: 2026-09-08T23:51:41.143546Z
+      classified: other
+    - cmd: jq '.rows[] | {cell_id,valid,recall,precision,turns,total_tokens,cost_usd,tool_calls,prism_calls,reason}' /private/tmp/prism-impact-candidate-sample-20260908/summary.json
+      at: 2026-09-08T23:51:43.911265Z
+      classified: other
+    - cmd: rg -n -i 'day.?to.?day|coding suite|post.?cutoff|tasks-e2e|pilot' /Users/tapabratapal/Projects/provasign/research /Users/tapabratapal/Projects/provasign/prism/harness | head -120
+      at: 2026-09-08T23:54:00.54205Z
+      classified: other
+    - cmd: sed -n '1,130p' /Users/tapabratapal/Projects/provasign/research/harness/PRODUCT_PROOF_2026-09-08.md; echo E2E; sed -n '1,120p' /Users/tapabratapal/Projects/provasign/research/harness/RESULTS-E2E.md
+      at: 2026-09-08T23:54:05.163553Z
+      classified: other
+    - cmd: python3 -B /private/tmp/run_coding_candidate_sample.py /private/tmp/prism-coding-candidate-sample-20260908
+      at: 2026-09-08T23:59:02.059032Z
+      classified: other
+    - cmd: jq '.rows[] | select(.cell_id|contains("pr3466") or contains("pr3882")) | {cell_id,resolved,score,total_tokens,cost_usd}' /private/tmp/product-proof-coding-pilot-fixed-20260908/summary.json 2>/dev/null || true; jq '.rows[] | {cell_id,resolved,score,total_tokens,cost_usd}' /private/tmp/prism-coding-candidate-sample-20260908/summary.json
+      at: 2026-09-08T23:59:06.383765Z
+      classified: other
+    - cmd: ls -d /private/tmp/product-proof-coding* 2>/dev/null; rg -l 'pr3466' /private/tmp/product-proof-coding*/*/summary.json 2>/dev/null | head
+      at: 2026-09-08T23:59:09.106457Z
+      classified: other
+    - cmd: rg -l 'pallets__click__pr3466|pallets__click__pr3244' /private/tmp /Users/tapabratapal/Projects/provasign/research/harness/runs --glob 'summary.json' --glob 'manifest.json' 2>/dev/null | head -40
+      at: 2026-09-09T00:00:38.945652Z
+      classified: other
+    - cmd: for d in /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08 /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0723-click-r2-2026-09-08 /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08; do echo ==== $d; jq '{prism:.prism,arms:.arms,rows:[.rows[]|{cell_id,resolved,total_tokens,cost_usd,score}]}' $d/summary.json; done
+      at: 2026-09-09T00:00:43.482787Z
+      classified: other
+    - cmd: jq '{prism:.prism,arms:.arms,rows:[.rows[]|{cell_id,resolved,total_tokens,cost_usd,score}]}' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/summary.json; jq '{prism:.prism,arms:.arms,rows:[.rows[]|{cell_id,resolved,total_tokens,cost_usd,score}]}' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0723-click-r2-2026-09-08/summary.json; jq '{prism:.prism,arms:.arms,rows:[.rows[]|{cell_id,resolved,total_tokens,cost_usd,score}]}' /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/summary.json
+      at: 2026-09-09T00:00:50.080381Z
+      classified: other
+    - cmd: find /private/tmp/prism-coding-candidate-sample-20260908/evidence /private/tmp/prism-mcp-current-run2-20260908/evidence /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08/evidence -maxdepth 3 -type f 2>/dev/null | rg '(events|transcript|final|measurement|agent.diff)$' | head -80
+      at: 2026-09-09T00:02:33.102466Z
+      classified: other
+    - cmd: find /private/tmp/prism-coding-candidate-sample-20260908 /private/tmp/prism-mcp-current-run2-20260908 /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-r2-2026-09-08 -type f | head -100
+      at: 2026-09-09T00:02:36.593656Z
+      classified: other
+    - cmd: for f in /private/tmp/prism-coding-candidate-sample-20260908/evidence/pallets__click__pr3466.sonnet_prism/stdout.jsonl /private/tmp/prism-coding-candidate-sample-20260908/evidence/pallets__click__pr3466.sonnet_native/stdout.jsonl /private/tmp/prism-mcp-current-run2-20260908/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl /private/tmp/prism-mcp-current-run2-20260908/evidence/urllib3__urllib3__pr3786.sonnet_prism/stdout.jsonl; do echo $f; jq -r '..|objects|select(.type? == "assistant" or .type? == "tool_use" or .type? == "result")|(.message?.content? // .content? // .text? // empty)' "$f" 2>/dev/null | tail -20; done
+      at: 2026-09-09T00:02:42.326665Z
+      classified: other
+    - cmd: for d in /private/tmp/prism-coding-candidate-sample-20260908/evidence/pallets__click__pr3466.sonnet_prism /private/tmp/prism-coding-candidate-sample-20260908/evidence/pallets__click__pr3466.sonnet_native /private/tmp/prism-mcp-current-run2-20260908/evidence/pallets__click__pr3244.sonnet_prism /private/tmp/prism-mcp-current-run2-20260908/evidence/urllib3__urllib3__pr3786.sonnet_prism; do echo ===$d; cat $d/agent.diff; done
+      at: 2026-09-09T00:02:46.910096Z
+      classified: other
+    - cmd: cat /private/tmp/prism-coding-candidate-sample-20260908/evidence/pallets__click__pr3466.sonnet_prism/agent.diff; cat /private/tmp/prism-coding-candidate-sample-20260908/evidence/pallets__click__pr3466.sonnet_native/agent.diff; cat /private/tmp/prism-mcp-current-run2-20260908/evidence/pallets__click__pr3244.sonnet_prism/agent.diff; cat /private/tmp/prism-mcp-current-run2-20260908/evidence/urllib3__urllib3__pr3786.sonnet_prism/agent.diff
+      at: 2026-09-09T00:02:51.310685Z
+      classified: other
+    - cmd: git branch --show-current && git status --short
+      at: 2026-09-09T00:09:09.992772Z
+      classified: other
+    - cmd: git tag --sort=-version:refname | head -8 && git log -8 --oneline --decorate
+      at: 2026-09-09T00:09:27.067706Z
+      classified: other
+    - cmd: rg -n 'release|tag|version bump' CONTRIBUTING.md README.md Makefile Taskfile.yml scripts .github 2>/dev/null | head -100
+      at: 2026-09-09T00:09:27.176243Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-09T00:09:31.554719Z
+      classified: test
+    - cmd: jq -r '.problem_statement, .test_patch' /private/tmp/prism-coding-candidate-sample-20260908/tasks/pallets__click__pr3466.json | rg -n -C 5 'CRLF|newline|stdout|zsh|assert|forward|ssl_context|proxy' | head -160; jq -r '.problem_statement, .test_patch' /private/tmp/prism-mcp-current-run2-20260908/tasks/urllib3__urllib3__pr3786.json | rg -n -C 5 'FutureWarning|ValueError|proxy_ssl_context|ssl_context|forwarding|assert' | head -220
+      at: 2026-09-09T00:10:51.405936Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-09T00:10:55.025086Z
+      classified: test
+    - cmd: rg -n 'Content-Length|initialize|tools/call|jsonrpc' internal/mcp/*test.go | head -120
+      at: 2026-09-09T00:11:06.96861Z
+      classified: other
+    - cmd: git diff --check && git diff --stat && git status --short
+      at: 2026-09-09T00:11:07.020588Z
+      classified: other
+    - cmd: /private/tmp/prism-routing-current-mcp index /private/tmp/prism-release-freshness-20260908
+      at: 2026-09-09T00:17:21.744807Z
+      classified: other
+    - cmd: /private/tmp/prism-routing-current-mcp mcp /private/tmp/prism-release-freshness-20260908
+      at: 2026-09-09T00:17:25.949484Z
+      classified: other
+    - cmd: /private/tmp/prism-routing-current-mcp mcp /private/tmp/prism-release-freshness-20260908
+      at: 2026-09-09T00:19:39.896949Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/steeringdelivery_test.go internal/mcp/coverage_test.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go internal/mcp/selection.go internal/mcp/server.go internal/mcp/textmerge.go internal/mcp/tools.go internal/mcp/tools_cov_test.go internal/mcp/verify.go
+      at: 2026-09-09T00:19:51.182226Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-routing-release-candidate ./cmd/prism
+      at: 2026-09-09T00:20:00.782081Z
+      classified: build
+    - cmd: git diff --check && git diff --stat && git status --short
+      at: 2026-09-09T00:20:00.801905Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-routing-release-candidate ./cmd/prism
+      at: 2026-09-09T00:20:24.160911Z
+      classified: build
+    - cmd: /private/tmp/prism-routing-release-candidate verify --base HEAD --format text
+      at: 2026-09-09T00:23:40.09168Z
+      classified: other
+    - cmd: /private/tmp/prism-routing-release-candidate search helpText steeringInstructions serverInstructions --scope text --exhaustive --format text
+      at: 2026-09-09T00:23:53.406828Z
+      classified: other
+    - cmd: git diff -- internal/mcp/selection.go internal/mcp/verify.go internal/mcp/server.go internal/cli/commands.go | sed -n '1,260p'
+      at: 2026-09-09T00:24:07.663616Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-09T00:24:12.26268Z
+      classified: test
+    - cmd: git log --oneline --decorate --all --max-count=30
+      at: 2026-09-09T00:24:22.897039Z
+      classified: other
+    - cmd: git branch --show-current && git status --short
+      at: 2026-09-09T00:24:31.104614Z
+      classified: other
+    - cmd: 'git add .clinerules .cursorrules .devin/instructions.md .github/copilot-instructions.md .kiro/steering/prism.md .windsurfrules AGENTS.md CLAUDE.md GEMINI.md internal/cli/commands.go internal/cli/steeringdelivery_test.go internal/mcp/coverage_test.go internal/mcp/oncenotes.go internal/mcp/oncenotes_test.go internal/mcp/searchtext.go internal/mcp/selection.go internal/mcp/server.go internal/mcp/textmerge.go internal/mcp/tools.go internal/mcp/tools_cov_test.go internal/mcp/verify.go && git commit -m "mcp: unify tool routing contract"'
+      at: 2026-09-09T00:24:39.207862Z
+      classified: other
+notes: []
+redactions: 0

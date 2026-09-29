@@ -1,0 +1,786 @@
+shale_version: "0"
+id: 01a0790c-a7c5-7543-a18f-d1f822079fe4-c8
+created_at: 2026-09-07T15:17:14.898811Z
+finalized_at: 2026-09-07T16:56:30.729125Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: README.md
+      ops:
+        - delete
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-07T16:47:36.133888Z
+    - path: AGENT_SETUP_PROMPT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: BACKLOG.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: HANDOFF.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/AB-Test-Payflow-2026-06-12.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/ACCURACY_AND_TOKEN_EFFICIENCY_PROPOSAL.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/DESIGN_LAYERED_INTELLIGENCE.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/DESIGN_TASK_COMPILER.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/OPEN_SOURCE_FRONTIER_ASSESSMENT_2026-07-18.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/prism-review-2026-06-12.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/token-usage-2026-06.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/README.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/evidence-delivery-2026-09-06/README.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/evidence-delivery-2026-09-06/comparison/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/four-way-2026-09-06/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/go-interface-cross-package-2026-09-06/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/go-interface-dispatch-2026-09-06/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/go-interface-family-2026-09-06/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/impact-coverage-2026-09-06/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/panel-2026-09-06/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/routing-2026-09-06/README.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/routing-2026-09-06/comparison/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/scoped-lookup-2026-09-06/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: docs/accuracy-efficiency-candidate/scoped-lookup-2026-09-06/comparison/REPORT.md
+      ops:
+        - delete
+      via: hook
+      first_touched: 2026-09-07T16:48:21.488391Z
+    - path: internal/mcp/viewtools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T16:52:22.523443Z
+    - path: internal/view/view.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T16:52:22.523443Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T16:52:22.523443Z
+    - path: internal/mcp/searchtext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T16:52:22.523443Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T16:52:22.523443Z
+commands:
+    - cmd: git push origin main
+      at: 2026-09-07T15:17:14.898811Z
+      classified: other
+    - cmd: |-
+        git status --short --branch
+        git log -3 --oneline --decorate
+        git ls-remote --heads origin main
+      at: 2026-09-07T15:17:21.602563Z
+      classified: other
+    - cmd: |-
+        git status --short --branch --untracked-files=no
+        git log -2 --oneline --decorate
+      at: 2026-09-07T15:17:31.317464Z
+      classified: other
+    - cmd: |-
+        git status --short --branch --untracked-files=no
+        git log -2 --oneline --decorate
+      at: 2026-09-07T15:17:31.323213Z
+      classified: other
+    - cmd: rg -n '^## Product showcase|^## 23\.' README.md docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      at: 2026-09-07T15:17:38.928702Z
+      classified: other
+    - cmd: rg -n '^def task_anchor|^def corpus_snapshot|^def threshold_failures|^def main|^# Impact oracle|^## Deterministic gate|^## Three fresh|^## Fresh paired' harness/impact_oracle.py harness/runs/impact-oracle-reliability-2026-09-07/README.md
+      at: 2026-09-07T15:17:38.935714Z
+      classified: other
+    - cmd: |-
+        pwd
+        printf '%s\n' '--- siblings ---'
+        find .. -maxdepth 2 -name .git -type d -print | sort
+        printf '%s\n' '--- agent instructions ---'
+        find .. -maxdepth 3 -name AGENTS.md -print | sort
+        printf '%s\n' '--- prism docs ---'
+        rg --files -g '*.md' -g '*.mdx' -g 'mkdocs.yml' -g 'docusaurus.config.*' -g '.github/**' | sort
+        printf '%s\n' '--- repo metadata ---'
+        git remote -v
+        git branch --show-current
+      at: 2026-09-07T16:42:47.374924Z
+      classified: other
+    - cmd: |-
+        cat ../AGENTS.md
+        printf '%s\n' '--- grove AGENTS ---'
+        cat ../grove/AGENTS.md
+        printf '%s\n' '--- research AGENTS ---'
+        cat ../research/AGENTS.md
+        printf '%s\n' '--- branches/remotes ---'
+        for d in ../prism ../grove ../research ../provasign.github.io; do echo "$d"; git -C "$d" branch --show-current; git -C "$d" remote get-url origin 2>/dev/null; done
+      at: 2026-09-07T16:42:55.336403Z
+      classified: other
+    - cmd: printf '%s\n' 'FILES'; git ls-files '*.md' '*.mdx' '*.html' '*.css' '*.js' | sort; printf '%s\n' 'STATUS'; git status --short --branch --untracked-files=no; printf '%s\n' 'ROOT'; ls -la | sed -n '1,100p'
+      at: 2026-09-07T16:43:10.365546Z
+      classified: other
+    - cmd: printf '%s\n' 'FILES'; git ls-files '*.md' '*.mdx' | sort; printf '%s\n' 'STATUS'; git status --short --branch --untracked-files=no; printf '%s\n' 'PAGES'; git ls-files '.github/**' 'docs/**' | sort | head -120
+      at: 2026-09-07T16:43:10.378445Z
+      classified: other
+    - cmd: printf '%s\n' 'FILES'; git ls-files '*.md' '*.mdx' | sort; printf '%s\n' 'STATUS'; git status --short --branch --untracked-files=no; printf '%s\n' 'PAGES'; git ls-files '.github/**' 'docs/**' | sort | head -160
+      at: 2026-09-07T16:43:10.40541Z
+      classified: other
+    - cmd: for repo in prism grove research; do gh repo view provasign/$repo --json name,description,homepageUrl,url,defaultBranchRef,isPrivate; done
+      at: 2026-09-07T16:43:11.372985Z
+      classified: other
+    - cmd: prism search '0.69' '51-site' '4.9' 'candidate' 'TODO' 'future' --scope text --exhaustive --files-only --format text
+      at: 2026-09-07T16:43:37.023084Z
+      classified: other
+    - cmd: prism search 'Prism' 'MCP' 'planned' 'TODO' 'assessment' '2026-06' --scope text --exhaustive --files-only --format text
+      at: 2026-09-07T16:43:37.039576Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re
+        for repo in ('prism','grove','research','provasign.github.io'):
+         root=Path('..')/repo
+         files=[]
+         for p in root.rglob('*'):
+          if p.is_file() and p.suffix.lower() in {'.md','.mdx','.html'} and '.git' not in p.parts:
+           rel=p.relative_to(root); text=p.read_text(errors='replace')
+           title=''
+           for line in text.splitlines():
+            if line.startswith('#') or '<h1' in line.lower(): title=line.strip()[:100]; break
+           files.append((str(rel),len(text),title))
+         print('\n##',repo,'count',len(files),'bytes',sum(x[1] for x in files))
+         for rel,n,title in sorted(files): print(f'{n:7} {rel:90} {title}')
+        PY
+      at: 2026-09-07T16:43:39.518713Z
+      classified: other
+    - cmd: prism search '51-site' '0.69' 'BIGGER' 'draft' 'TODO' 'provisional' --scope text --exhaustive --files-only --format text
+      at: 2026-09-07T16:43:39.757923Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import subprocess,re
+        for repo in ('prism','grove','research'):
+         root=(Path('..')/repo).resolve()
+         names=subprocess.check_output(['git','-C',str(root),'ls-files','*.md','*.mdx'],text=True).splitlines()
+         texts={n:(root/n).read_text(errors='replace') for n in names}
+         print('\n##',repo)
+         for n in names:
+          text=texts[n]; title=next((x.strip() for x in text.splitlines() if x.startswith('#')), '')
+          incoming=sum(1 for m,t in texts.items() if m!=n and (n in t or Path(n).name in t))
+          date=subprocess.check_output(['git','-C',str(root),'log','-1','--format=%as','--',n],text=True).strip()
+          print(f'{len(text):6} refs={incoming:<2} changed={date:10} {n:82} {title[:70]}')
+        PY
+      at: 2026-09-07T16:43:51.347475Z
+      classified: other
+    - cmd: |-
+        git describe --tags --always --dirty
+        git tag --sort=-version:refname | head -10
+        prism search 'go install' 'v0.' 'provasign.dev' 'accuracy' 'benchmark' 'planned' --scope text --exhaustive --context 2 --format text --path README.md --path CHANGELOG.md --path docs/INCREMENTAL_INDEXING.md --path eval/README.md --path THREAT_MODEL.md
+      at: 2026-09-07T16:44:06.615138Z
+      classified: other
+    - cmd: |-
+        git describe --tags --always --dirty
+        git tag --sort=-version:refname | head -10
+        prism search 'brew install' 'go install' 'v0.' 'provasign.dev' 'accuracy' 'benchmark' --scope text --exhaustive --context 2 --format text --path README.md --path CONTRIBUTING.md --path SECURITY.md --path SUPPORT.md --path THREAT_MODEL.md --path docs/GO_KIT.md --path docs/HTTP_API.md
+      at: 2026-09-07T16:44:06.622947Z
+      classified: other
+    - cmd: |-
+        git describe --tags --always --dirty
+        git tag --sort=-version:refname | head -10
+        prism search 'headline' 'result' '0.69' '51' 'cost' 'token' 'precision' 'recall' --scope text --exhaustive --context 2 --format text --path README.md --path RESULTS.md --path RESULTS-E2E.md --path THESIS.md --path harness/README.md
+      at: 2026-09-07T16:44:06.841308Z
+      classified: other
+    - cmd: |-
+        gh release view --repo provasign/prism --json tagName,publishedAt,url,isLatest,name 2>/dev/null || true
+        gh release view --repo provasign/grove --json tagName,publishedAt,url,isLatest,name 2>/dev/null || true
+        gh api repos/provasign/prism/pages 2>/dev/null || true
+        gh api repos/provasign/grove/pages 2>/dev/null || true
+        gh api repos/provasign/research/pages 2>/dev/null || true
+      at: 2026-09-07T16:44:07.095436Z
+      classified: other
+    - cmd: for repo in prism grove research; do echo "$repo"; gh release view --repo provasign/$repo --json tagName,publishedAt,url,name 2>&1 || true; done
+      at: 2026-09-07T16:44:12.457777Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        for name in ('index.html','prism.md','grove.md','benchmarks.md','README.md','_config.yml','_includes/site-nav.html'):
+         p=Path(name); text=p.read_text(errors='replace')
+         print('\n###',name)
+         for i,line in enumerate(text.splitlines(),1):
+          if line.startswith('#') or '<h1' in line.lower() or '<h2' in line.lower() or 'v0.' in line or any(k in line.lower() for k in ('recall','precision','token','cost','install','github.com/provasign')):
+           print(f'{i}: {line[:240]}')
+        PY
+      at: 2026-09-07T16:44:18.418743Z
+      classified: other
+    - cmd: prism search '$0.77' '$0.16' '0.625' '0.591' '0.405' '0.230' --scope text --exhaustive --files-only --format text
+      at: 2026-09-07T16:44:26.516531Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import json
+        want={'jackson-jsonnode-get':(.625,.77),'jackson-settable-set':(.591,.16),'typeorm-driver-escape':(.405,.11),'django-quotename':(1.0,.44),'jackson-writetypeprefix':(.868,.12),'guava-forwarding-delegate':(.171,.51),'jackson-serialize':(.574,.64),'grafana-checkhealth-impact':(1.0,.23),'grafana-querydata-impact':(.914,.25)}
+        for p in Path('harness/runs').rglob('*.json'):
+         try:d=json.load(open(p))
+         except:continue
+         if not isinstance(d,dict):continue
+         t=d.get('task')
+         if t not in want:continue
+         r,c=want[t]
+         if d.get('recall')==r and isinstance(d.get('cost_usd'),(int,float)) and abs(d['cost_usd']-c)<.08:
+          print(t,p,d.get('arm'),d.get('recall'),d.get('precision'),d.get('cost_usd'),d.get('session_id'),d.get('invocation_id'))
+        PY
+      at: 2026-09-07T16:44:35.285726Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import subprocess,hashlib
+        for repo in ('prism','grove','research'):
+         root=(Path('..')/repo).resolve(); names=subprocess.check_output(['git','-C',str(root),'ls-files','*.md','*.mdx'],text=True).splitlines()
+         groups={}
+         for n in names:
+          h=hashlib.sha256((root/n).read_bytes()).hexdigest(); groups.setdefault(h,[]).append(n)
+         print('\n##',repo,'exact duplicate groups')
+         for ns in groups.values():
+          if len(ns)>1:
+           print('\n'.join('  '+n for n in ns))
+        PY
+      at: 2026-09-07T16:45:00.279648Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:46:22.258613Z
+      classified: other
+    - cmd: prism read README.md --format text
+      at: 2026-09-07T16:46:22.290387Z
+      classified: other
+    - cmd: prism read README.md --format text
+      at: 2026-09-07T16:46:22.300955Z
+      classified: other
+    - cmd: prism read README.md --format text
+      at: 2026-09-07T16:46:22.505996Z
+      classified: other
+    - cmd: prism --help
+      at: 2026-09-07T16:46:31.660257Z
+      classified: other
+    - cmd: git tag --sort=-v:refname
+      at: 2026-09-07T16:46:31.669519Z
+      classified: other
+    - cmd: git tag --sort=-v:refname
+      at: 2026-09-07T16:46:31.688341Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        for n in ['README.md','prism.md','grove.md','benchmarks.md','index.html','_config.yml']:
+         p=Path(n)
+         print(f'--- {n} ---')
+         print(p.read_text()[:30000])
+        PY
+      at: 2026-09-07T16:46:31.715356Z
+      classified: other
+    - cmd: grove --help
+      at: 2026-09-07T16:46:32.089759Z
+      classified: other
+    - cmd: prism read LICENSE --format text
+      at: 2026-09-07T16:46:46.017634Z
+      classified: other
+    - cmd: prism read LICENSE --format text
+      at: 2026-09-07T16:46:46.017756Z
+      classified: other
+    - cmd: prism search 'certify-diff-issues' 'grove-assessment' 'grove-astkit-language-quality' 'java-accuracy-fixes' 'mainframe-build-plan' --scope text --exhaustive --files-only --format text
+      at: 2026-09-07T16:46:46.031096Z
+      classified: other
+    - cmd: prism search 'ACCURACY_AND_TOKEN_EFFICIENCY' 'DESIGN_LAYERED_INTELLIGENCE' 'AB-Test-Payflow' 'OPEN_SOURCE_FRONTIER' 'prism-review' 'token-usage' --scope text --exhaustive --files-only --format text
+      at: 2026-09-07T16:46:46.087456Z
+      classified: other
+    - cmd: prism search 'BENCHMARK-ENDTOEND-DESIGN' 'BIGGER-STUDY-STATUS' 'GROVE-CHANGE-IMPACT' 'ROUTING-PROGRAM' 'SPRING-MEASURE' 'RESULTS-E2E' --scope text --exhaustive --files-only --format text
+      at: 2026-09-07T16:46:46.562437Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:46:57.024912Z
+      classified: other
+    - cmd: prism search 'Language support' 'Supported languages' --scope text --path README.md --context 18 --format text
+      at: 2026-09-07T16:46:57.032606Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:46:57.038002Z
+      classified: other
+    - cmd: prism search 'Language support' 'Supported Languages' --scope text --path README.md --context 18 --format text
+      at: 2026-09-07T16:46:57.05426Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:46:57.08284Z
+      classified: other
+    - cmd: git ls-files '*.md'
+      at: 2026-09-07T16:48:11.453156Z
+      classified: other
+    - cmd: git ls-files '*.md'
+      at: 2026-09-07T16:48:11.469408Z
+      classified: other
+    - cmd: git ls-files '*.md'
+      at: 2026-09-07T16:48:11.481649Z
+      classified: other
+    - cmd: prism search 'func Open' 'type Engine' --scope text --path pkg --context 5 --format text
+      at: 2026-09-07T16:49:01.409168Z
+      classified: other
+    - cmd: prism search 'ChangeImpact(' --scope text --path pkg --context 3 --format text
+      at: 2026-09-07T16:49:01.43746Z
+      classified: other
+    - cmd: prism search 'func (e *Engine) Index' 'type Config struct' --scope text --path pkg/grove/grove.go --context 10 --format text
+      at: 2026-09-07T16:49:06.088852Z
+      classified: other
+    - cmd: prism search 'Make the result explain itself' 'Local tools. Open evidence.' --scope text --path index.html --context 5 --format text
+      at: 2026-09-07T16:51:27.253722Z
+      classified: other
+    - cmd: prism search 'v0.69.1' 'v0.42.0' '28×' '19×' 'v0.37.0' 'RESULTS-E2E' --scope text --exhaustive --format text
+      at: 2026-09-07T16:51:53.570654Z
+      classified: other
+    - cmd: prism search 'v0.69.1' 'v0.42.0' 'ACCURACY_AND_TOKEN_EFFICIENCY' 'DESIGN_LAYERED_INTELLIGENCE' 'AB-Test-Payflow' 'BACKLOG.md' 'HANDOFF.md' --scope text --exhaustive --format text
+      at: 2026-09-07T16:51:53.593411Z
+      classified: other
+    - cmd: prism search 'v0.5.0' 'v0.42.0' 'certify-diff-issues' 'grove-assessment' 'java-accuracy-fixes' 'mainframe-build-plan' 'Shale (planned)' --scope text --exhaustive --format text
+      at: 2026-09-07T16:51:53.601959Z
+      classified: other
+    - cmd: prism search 'BENCHMARK-ENDTOEND-DESIGN' 'BIGGER-STUDY-STATUS' 'GROVE-CHANGE-IMPACT' 'ROUTING-PROGRAM' 'SPRING-MEASURE' 'RESULTS-E2E.md' 'source-reports' 'NEXT_TEST' --scope text --exhaustive --format text
+      at: 2026-09-07T16:51:54.615617Z
+      classified: other
+    - cmd: git restore --worktree -- harness/runs
+      at: 2026-09-07T16:52:08.431124Z
+      classified: other
+    - cmd: prism change-impact 'Server.dispatch' --format text
+      at: 2026-09-07T16:52:15.19857Z
+      classified: other
+    - cmd: prism read internal/core/types.go --format text
+      at: 2026-09-07T16:52:33.462066Z
+      classified: other
+    - cmd: prism read internal/graph/mainframe.go --format text
+      at: 2026-09-07T16:52:33.520585Z
+      classified: other
+    - cmd: prism read internal/parser/sniff.go --format text
+      at: 2026-09-07T16:52:33.548547Z
+      classified: other
+    - cmd: prism read internal/graph/edges.go --format text
+      at: 2026-09-07T16:52:33.603805Z
+      classified: other
+    - cmd: prism search 'below never sees these symbols' --scope text --path internal/graph/edges.go --context 4 --format text
+      at: 2026-09-07T16:52:38.243537Z
+      classified: other
+    - cmd: prism change-impact 'resolveCallEdges' --format text
+      at: 2026-09-07T16:52:44.122259Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re, subprocess
+        for root in [Path('.')]:
+            files=[Path(x) for x in subprocess.check_output(['git','ls-files','*.md'],text=True).splitlines()]
+            bad=[]
+            for p in files:
+                if not p.exists(): continue
+                text=p.read_text(errors='replace')
+                for m in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
+                    target=m.group(1).strip().split()[0].strip('<>')
+                    if target.startswith(('http://','https://','#','mailto:','{{')): continue
+                    target=target.split('#',1)[0]
+                    if not target: continue
+                    q=(p.parent/target).resolve()
+                    if not q.exists(): bad.append((str(p),target))
+            print('\n'.join(f'{a}: {b}' for a,b in bad))
+        PY
+      at: 2026-09-07T16:53:08.075167Z
+      classified: other
+    - cmd: prism search 'MIT' 'v0.' 'planned' 'deprecated' --scope text --path README.md --path docs --path CONTRIBUTING.md --path SUPPORT.md --path SECURITY.md --path GOVERNANCE.md --path THREAT_MODEL.md --exhaustive --format text
+      at: 2026-09-07T16:53:08.089636Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re, subprocess
+        files=[Path(x) for x in subprocess.check_output(['git','ls-files','*.md'],text=True).splitlines()]
+        bad=[]
+        for p in files:
+            if not p.exists(): continue
+            text=p.read_text(errors='replace')
+            for m in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
+                target=m.group(1).strip().split()[0].strip('<>')
+                if target.startswith(('http://','https://','#','mailto:','{{')): continue
+                target=target.split('#',1)[0]
+                if target and not (p.parent/target).resolve().exists(): bad.append((str(p),target))
+        print('\n'.join(f'{a}: {b}' for a,b in bad))
+        PY
+      at: 2026-09-07T16:53:08.091179Z
+      classified: other
+    - cmd: prism search 'MIT' 'planned' 'docs/' --scope text --path README.md --path docs --path CONTRIBUTING.md --path SUPPORT.md --path SECURITY.md --path GOVERNANCE.md --path THREAT_MODEL.md --exhaustive --format text
+      at: 2026-09-07T16:53:08.106647Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re, subprocess
+        files=[Path(x) for x in subprocess.check_output(['git','ls-files','*.md'],text=True).splitlines()]
+        bad=[]
+        for p in files:
+            if not p.exists(): continue
+            text=p.read_text(errors='replace')
+            for m in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
+                target=m.group(1).strip().split()[0].strip('<>')
+                if target.startswith(('http://','https://','#','mailto:','{{')): continue
+                target=target.split('#',1)[0]
+                if target and not (p.parent/target).resolve().exists(): bad.append((str(p),target))
+        print('\n'.join(f'{a}: {b}' for a,b in bad))
+        PY
+      at: 2026-09-07T16:53:08.111397Z
+      classified: other
+    - cmd: prism read docs/GO_KIT.md --format text
+      at: 2026-09-07T16:53:15.696614Z
+      classified: other
+    - cmd: prism read eval/README.md --format text
+      at: 2026-09-07T16:53:15.717394Z
+      classified: other
+    - cmd: prism read docs/HTTP_API.md --format text
+      at: 2026-09-07T16:53:15.766696Z
+      classified: other
+    - cmd: prism read docs/INCREMENTAL_INDEXING.md --format text
+      at: 2026-09-07T16:53:15.782959Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T16:53:27.013643Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T16:53:27.025359Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T16:53:27.02536Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T16:53:27.030834Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T16:53:27.037579Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T16:53:27.044899Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T16:53:27.044923Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-07T16:53:27.048579Z
+      classified: other
+    - cmd: go test ./...
+      at: 2026-09-07T16:53:40.940753Z
+      classified: test
+    - cmd: go test ./...
+      at: 2026-09-07T16:53:40.958438Z
+      classified: test
+    - cmd: bundle exec jekyll build
+      at: 2026-09-07T16:53:41.125064Z
+      classified: other
+    - cmd: python3 -m unittest discover -s harness/tests
+      at: 2026-09-07T16:53:41.665951Z
+      classified: other
+    - cmd: env GOFLAGS= go test ./...
+      at: 2026-09-07T16:53:48.402605Z
+      classified: test
+    - cmd: env GOFLAGS= go test ./...
+      at: 2026-09-07T16:53:48.419978Z
+      classified: test
+    - cmd: bundle install
+      at: 2026-09-07T16:53:51.68524Z
+      classified: other
+    - cmd: ruby --version
+      at: 2026-09-07T16:53:56.892525Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-07T16:53:56.903839Z
+      classified: other
+    - cmd: env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-07T16:54:03.227953Z
+      classified: test
+    - cmd: env GOFLAGS=-mod=readonly go test ./...
+      at: 2026-09-07T16:54:13.273732Z
+      classified: test
+    - cmd: prism verify . --base HEAD --format text
+      at: 2026-09-07T16:54:21.020986Z
+      classified: other
+    - cmd: prism verify . --base HEAD --format text
+      at: 2026-09-07T16:54:21.644217Z
+      classified: other
+    - cmd: prism verify . --base HEAD --format text
+      at: 2026-09-07T16:54:22.587881Z
+      classified: other
+    - cmd: prism verify . --base HEAD --format text
+      at: 2026-09-07T16:54:23.892756Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:54:35.289009Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re, subprocess
+        files=[Path(x) for x in subprocess.check_output(['git','ls-files','*.md','*.html'],text=True).splitlines()]
+        bad=[]
+        for p in files:
+            if not p.exists() or 'harness/runs/' in p.as_posix():
+                continue
+            text=p.read_text(errors='replace')
+            for m in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
+                target=m.group(1).strip().split()[0].strip('<>')
+                if target.startswith(('http://','https://','#','mailto:','{{')):
+                    continue
+                target=target.split('#',1)[0]
+                if target and not (p.parent/target).resolve().exists():
+                    bad.append((str(p),target))
+        print('\n'.join(f'{a}: {b}' for a,b in bad))
+        raise SystemExit(bool(bad))
+        PY
+      at: 2026-09-07T16:54:35.29715Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:54:35.30199Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re, subprocess
+        files=[Path(x) for x in subprocess.check_output(['git','ls-files','*.md','*.html'],text=True).splitlines()]
+        bad=[]
+        for p in files:
+            if not p.exists() or 'harness/runs/' in p.as_posix():
+                continue
+            text=p.read_text(errors='replace')
+            for m in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
+                target=m.group(1).strip().split()[0].strip('<>')
+                if target.startswith(('http://','https://','#','mailto:','{{')):
+                    continue
+                target=target.split('#',1)[0]
+                if target and not (p.parent/target).resolve().exists():
+                    bad.append((str(p),target))
+        print('\n'.join(f'{a}: {b}' for a,b in bad))
+        raise SystemExit(bool(bad))
+        PY
+      at: 2026-09-07T16:54:35.312841Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re, subprocess
+        files=[Path(x) for x in subprocess.check_output(['git','ls-files','*.md','*.html'],text=True).splitlines()]
+        bad=[]
+        for p in files:
+            if not p.exists() or 'harness/runs/' in p.as_posix():
+                continue
+            text=p.read_text(errors='replace')
+            for m in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
+                target=m.group(1).strip().split()[0].strip('<>')
+                if target.startswith(('http://','https://','#','mailto:','{{')):
+                    continue
+                target=target.split('#',1)[0]
+                if target and not (p.parent/target).resolve().exists():
+                    bad.append((str(p),target))
+        print('\n'.join(f'{a}: {b}' for a,b in bad))
+        raise SystemExit(bool(bad))
+        PY
+      at: 2026-09-07T16:54:35.323767Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:54:35.323311Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re, subprocess
+        files=[Path(x) for x in subprocess.check_output(['git','ls-files','*.md','*.html'],text=True).splitlines()]
+        bad=[]
+        for p in files:
+            if not p.exists() or 'harness/runs/' in p.as_posix():
+                continue
+            text=p.read_text(errors='replace')
+            for m in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
+                target=m.group(1).strip().split()[0].strip('<>')
+                if target.startswith(('http://','https://','#','mailto:','{{')):
+                    continue
+                target=target.split('#',1)[0]
+                if target and not (p.parent/target).resolve().exists():
+                    bad.append((str(p),target))
+        print('\n'.join(f'{a}: {b}' for a,b in bad))
+        raise SystemExit(bool(bad))
+        PY
+      at: 2026-09-07T16:54:35.337291Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-07T16:54:35.358927Z
+      classified: other
+    - cmd: git diff -- README.md internal/mcp/searchtext.go internal/mcp/searchtext_test.go internal/mcp/server.go internal/mcp/viewtools.go internal/view/view.go
+      at: 2026-09-07T16:54:45.307169Z
+      classified: other
+    - cmd: git diff -- README.md CHANGELOG.md internal/core/types.go internal/graph/edges.go internal/graph/mainframe.go internal/parser/sniff.go
+      at: 2026-09-07T16:54:45.319738Z
+      classified: other
+    - cmd: brew --prefix ruby
+      at: 2026-09-07T16:54:45.324282Z
+      classified: other
+    - cmd: git diff -- README.md RESULTS.md
+      at: 2026-09-07T16:54:45.32433Z
+      classified: other
+    - cmd: git diff -- README.md _config.yml prism.md grove.md benchmarks.md index.html
+      at: 2026-09-07T16:54:45.332138Z
+      classified: other
+    - cmd: PATH=/opt/homebrew/opt/ruby/bin:/opt/homebrew/bin:/usr/bin:/bin bundle install
+      at: 2026-09-07T16:54:58.555066Z
+      classified: other
+    - cmd: /opt/homebrew/opt/ruby/bin/ruby --version
+      at: 2026-09-07T16:55:05.703306Z
+      classified: other
+    - cmd: /opt/homebrew/opt/ruby/bin/gem env home
+      at: 2026-09-07T16:55:05.707128Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        for p in [Path('README.md'),Path('prism.md'),Path('grove.md'),Path('benchmarks.md')]:
+         s=p.read_text()
+         print(p, s.startswith('---\n'), s.count('\n---\n') >= 1)
+        PY
+      at: 2026-09-07T16:55:05.736784Z
+      classified: other
+    - cmd: git add README.md AGENT_SETUP_PROMPT.md BACKLOG.md HANDOFF.md docs internal/mcp/searchtext.go internal/mcp/searchtext_test.go internal/mcp/server.go internal/mcp/viewtools.go internal/view/view.go
+      at: 2026-09-07T16:55:29.421511Z
+      classified: other
+    - cmd: git diff --cached --name-status
+      at: 2026-09-07T16:55:34.549737Z
+      classified: other
+    - cmd: 'git commit -m "docs: consolidate public documentation"'
+      at: 2026-09-07T16:55:39.258645Z
+      classified: other
+    - cmd: git add README.md CHANGELOG.md docs internal/core/types.go internal/graph/edges.go internal/graph/mainframe.go internal/parser/sniff.go
+      at: 2026-09-07T16:55:44.055596Z
+      classified: other
+    - cmd: git diff --cached --name-status
+      at: 2026-09-07T16:55:49.0393Z
+      classified: other
+    - cmd: 'git commit -m "docs: refresh Grove documentation"'
+      at: 2026-09-07T16:55:54.430621Z
+      classified: other
+    - cmd: git add README.md RESULTS.md RESULTS-E2E.md harness/BENCHMARK-ENDTOEND-DESIGN.md harness/BIGGER-STUDY-STATUS.md harness/GROVE-CHANGE-IMPACT.md harness/ROUTING-PROGRAM.md harness/SPRING-MEASURE.md harness/java-oracle/CODEX.md
+      at: 2026-09-07T16:56:00.159978Z
+      classified: other
+    - cmd: git diff --cached --name-status
+      at: 2026-09-07T16:56:04.871884Z
+      classified: other
+    - cmd: 'git commit -m "docs: make current results canonical"'
+      at: 2026-09-07T16:56:09.243132Z
+      classified: other
+    - cmd: git add README.md _config.yml benchmarks.md grove.md index.html prism.md
+      at: 2026-09-07T16:56:13.478533Z
+      classified: other
+    - cmd: git diff --cached --name-status
+      at: 2026-09-07T16:56:18.338331Z
+      classified: other
+    - cmd: 'git commit -m "docs: refresh product and benchmark pages"'
+      at: 2026-09-07T16:56:23.928228Z
+      classified: other
+notes:
+    - text: continuation of session 01a0790c-a7c5-7543-a18f-d1f822079fe4 — events captured after its evidence was finalized
+      at: 2026-09-07T15:17:14.898811Z
+redactions: 0

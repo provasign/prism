@@ -83,26 +83,31 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	return nil
 }
 
-// AutoIndexIfEmpty builds the index once for a never-indexed repo. Without
-// it, queries against such a repo answer from an empty graph ("no type named
-// X" — indistinguishable from a typo). Query paths call this after
-// EnsureRunning; index paths skip it and index explicitly.
+// AutoIndexIfEmpty builds the index for a never-indexed repo or refreshes one
+// whose extractor/resolver version is old (or whose edge write was interrupted).
+// Query paths call this after EnsureRunning; index paths index explicitly.
 func (c *Client) AutoIndexIfEmpty(ctx context.Context) error {
 	e, err := c.requireEngine()
 	if err != nil {
 		return err
 	}
-	st, err := e.Status(ctx)
+	stale, err := e.IndexNeedsRefresh(ctx)
 	if err != nil {
-		// A store that cannot report status is broken, not empty: every
-		// downstream query would return empty-with-nil-error. Fail loudly.
-		return fmt.Errorf("grove status: %w", err)
+		return fmt.Errorf("grove index version: %w", err)
 	}
-	if st.SymbolCount == 0 {
-		fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
+	if stale {
+		st, err := e.Status(ctx)
+		if err != nil {
+			return fmt.Errorf("grove status: %w", err)
+		}
+		if st.SymbolCount == 0 {
+			fmt.Fprintln(os.Stderr, "prism: repo not indexed yet — building the index (one-time)")
+		} else {
+			fmt.Fprintln(os.Stderr, "prism: index is incomplete or from an older engine — rebuilding it (one-time)")
+		}
 		res, err := e.Index(ctx, c.root)
 		if err != nil {
-			return fmt.Errorf("initial index failed: %w", err)
+			return fmt.Errorf("index refresh failed: %w", err)
 		}
 		// An index that came back EMPTY is the real problem, and saying so
 		// here saves the caller from a downstream "no type named X in the
@@ -154,6 +159,38 @@ func (c *Client) FileSymbols(ctx context.Context, relPath string) ([]SymbolRecor
 		return nil, err
 	}
 	return convertSymbols(syms), nil
+}
+
+// DiffFileContent diffs the symbols delivered earlier (before) against the
+// symbols parsed from content, the file's bytes as the caller just read them.
+// Use it when the caller already knows the file changed: the index's
+// size+mtime freshness check can miss a same-size edit inside one timestamp
+// tick (coarse-mtime filesystems, e.g. a Linux bind mount), and DiffFile would
+// then diff against the stale indexed symbols and report nothing.
+func (c *Client) DiffFileContent(before []SymbolRecord, relPath string, content []byte) (*FileGraphDiff, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	beforeEng := make([]groveeng.Symbol, 0, len(before))
+	for _, s := range before {
+		es, err := toEngineSymbol(s)
+		if err != nil {
+			return nil, fmt.Errorf("convert symbol %s: %w", s.ID, err)
+		}
+		beforeEng = append(beforeEng, es)
+	}
+	d, err := e.DiffAgainstFileContent(beforeEng, relPath, content)
+	if err != nil {
+		return nil, err
+	}
+	return &FileGraphDiff{
+		Added:    convertSymbols(d.Added),
+		Removed:  convertSymbols(d.Removed),
+		Changed:  convertChanges(d.Changed),
+		Renamed:  convertChanges(d.Renamed),
+		Breaking: convertChanges(d.BreakingChanges),
+	}, nil
 }
 
 // DiffFile diffs the symbols delivered earlier (before) against the file's
@@ -269,6 +306,8 @@ func (c *Client) Status(ctx context.Context) (*StatusResult, error) {
 		FilesIndexed: st.FilesIndexed,
 		SymbolCount:  st.SymbolCount,
 		EdgeCount:    st.EdgeCount,
+		Native:       append([]string(nil), st.Native...),
+		Readiness:    Readiness(c.root, st.Native),
 	}, nil
 }
 
@@ -309,6 +348,9 @@ func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {
 		FilesPruned:  res.FilesPruned,
 		SymbolCount:  res.SymbolCount,
 		EdgeCount:    res.EdgeCount,
+		Errors:       append([]string(nil), res.Errors...),
+		Native:       append([]string(nil), res.Native...),
+		Readiness:    Readiness(res.Root, res.Native),
 	}, nil
 }
 
@@ -319,6 +361,21 @@ func (c *Client) SearchSymbols(ctx context.Context, query string, limit int) ([]
 		return nil, err
 	}
 	syms, err := e.Symbols(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	return convertSymbols(syms), nil
+}
+
+// SearchSymbolsScoped applies repository-relative path and glob filters inside
+// Grove before ranking and limiting. Filtering a global prefix afterward is
+// both incomplete and prohibitively slow for broad terms on large indexes.
+func (c *Client) SearchSymbolsScoped(ctx context.Context, query string, limit int, paths, globs []string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	syms, err := e.SymbolsScoped(ctx, query, limit, paths, globs)
 	if err != nil {
 		return nil, err
 	}
@@ -379,6 +436,33 @@ func (c *Client) CallNeighbors(ctx context.Context, query string) ([]SymbolRecor
 	return out, nil
 }
 
+// InboundCallers returns the direct `calls` callers of query, in BOTH
+// production and test files, unfiltered by isCallNeighborTestDouble — the
+// caller decides what to keep. CallNeighbors deliberately drops every
+// _test.go/mock/fake/stub file so the call CHAIN shows real implementations;
+// this is the opposite use case, "who tests this", which needs exactly the
+// callers CallNeighbors throws away. Nothing new is indexed for this: a
+// test calling the code it exercises is an ordinary `calls` edge already
+// captured for every symbol (confirmed live, 2026-09-02: change_impact's
+// caller list already includes test callers, unfiltered, via a different
+// path -- this method gives prism_query the same access CallNeighbors
+// structurally denies it).
+func (c *Client) InboundCallers(ctx context.Context, query string) ([]SymbolRecord, error) {
+	e, err := c.requireEngine()
+	if err != nil {
+		return nil, err
+	}
+	ns, err := e.Neighbors(ctx, query, "in", groveeng.EdgeCalls)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SymbolRecord, 0, len(ns))
+	for _, n := range ns {
+		out = append(out, convertSymbol(n.Symbol))
+	}
+	return out, nil
+}
+
 // isCallNeighborTestDouble drops mock/fake/stub/test files from call neighbors so
 // the chain shows real implementations, not test doubles that share a name.
 func isCallNeighborTestDouble(path string) bool {
@@ -404,6 +488,7 @@ type EdgeRecord struct {
 type ResolvedSymbol struct {
 	Name       string `json:"name"` // qualified name
 	Kind       string `json:"kind"`
+	Language   string `json:"language,omitempty"`
 	File       string `json:"file"`
 	Line       int    `json:"line"`
 	TestDouble bool   `json:"testDouble,omitempty"`
@@ -507,7 +592,7 @@ func (c *Client) Resolve(ctx context.Context, name string) ([]ResolvedSymbol, er
 		if !match {
 			continue
 		}
-		rs := ResolvedSymbol{Name: s.QualifiedName, Kind: string(s.Kind), File: s.FilePath, Line: s.Span.Start}
+		rs := ResolvedSymbol{Name: s.QualifiedName, Kind: string(s.Kind), Language: s.Language, File: s.FilePath, Line: s.Span.Start}
 		if rs.Name == "" {
 			rs.Name = s.Name
 		}
@@ -533,14 +618,24 @@ func (c *Client) Resolve(ctx context.Context, name string) ([]ResolvedSymbol, er
 // query to the exact change-set: declaration(s), override/implementation
 // family in the subtype closure, super-declarations, and callers.
 func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactResult, error) {
+	return c.ChangeImpactScoped(ctx, query, "")
+}
+
+// ChangeImpactScoped is ChangeImpact with an optional declaring-file filter
+// for same-named types in distinct packages.
+func (c *Client) ChangeImpactScoped(ctx context.Context, query, file string) (*ChangeImpactResult, error) {
 	e, err := c.requireEngine()
 	if err != nil {
 		return nil, err
 	}
-	r, err := e.ChangeImpact(ctx, query)
+	r, err := e.ChangeImpactScoped(ctx, query, file)
 	if err != nil {
 		return nil, err
 	}
+	return convertChangeImpact(r), nil
+}
+
+func convertChangeImpact(r groveeng.ChangeImpactResult) *ChangeImpactResult {
 	return &ChangeImpactResult{
 		Query:             r.Query,
 		Declarations:      convertSymbols(r.Declarations),
@@ -551,7 +646,45 @@ func (c *Client) ChangeImpact(ctx context.Context, query string) (*ChangeImpactR
 		ExternalSupers:    r.ExternalSupers,
 		OverridesExternal: r.OverridesExternal,
 		Completeness:      r.Completeness,
-	}, nil
+		HasHeuristicRefs:  r.HasHeuristicRefs,
+		MemberKind:        r.MemberKind,
+		Accesses:          convertMemberAccesses(r.Accesses),
+		AmbiguousAccesses: convertMemberAccesses(r.AmbiguousAccesses),
+		ExcludedAccesses:  r.ExcludedAccesses,
+		AccessCoverage:    r.AccessCoverage,
+		AccessNote:        r.AccessNote,
+		Related:           convertRelatedSites(r.Related),
+		ReExports:         convertMemberAccesses(r.ReExports),
+	}
+}
+
+func convertRelatedSites(in []groveeng.RelatedSite) []RelatedSite {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]RelatedSite, 0, len(in))
+	for _, s := range in {
+		out = append(out, RelatedSite{Symbol: convertSymbol(s.Symbol), Relation: s.Relation, Via: s.Via, Detail: s.Detail})
+	}
+	return out
+}
+
+func convertMemberAccesses(in []groveeng.MemberAccess) []MemberAccess {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]MemberAccess, 0, len(in))
+	for _, a := range in {
+		qn := a.Enclosing.QualifiedName
+		if qn == "" {
+			qn = a.Enclosing.Name
+		}
+		out = append(out, MemberAccess{
+			FilePath: a.FilePath, Line: a.Line, Enclosing: qn, EnclosingKind: string(a.Enclosing.Kind),
+			Access: a.Access, Evidence: a.Evidence, Text: a.Text,
+		})
+	}
+	return out
 }
 
 // MissingImplementations resolves a "Type.method" query to every type in the
@@ -595,7 +728,7 @@ func (c *Client) RenamePlan(ctx context.Context, query, newName string) (*Rename
 		for _, e := range in {
 			out = append(out, RenameEdit{
 				FilePath: e.FilePath, Line: e.Line,
-				Before: e.Before, After: e.After, Site: e.Site,
+				Before: e.Before, After: e.After, Site: e.Site, Reason: e.Reason,
 			})
 		}
 		return out

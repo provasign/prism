@@ -1,0 +1,13 @@
+shale_version: "0"
+id: 3b29c48d-86db-4e75-ad60-e7c5d5eb2db6
+created_at: 2026-08-17T01:51:42.672464Z
+finalized_at: 2026-08-17T21:16:16.196779Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+notes: []
+redactions: 0

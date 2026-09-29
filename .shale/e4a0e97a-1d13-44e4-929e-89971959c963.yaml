@@ -1,0 +1,657 @@
+shale_version: "0"
+id: e4a0e97a-1d13-44e4-929e-89971959c963
+created_at: 2026-09-12T04:58:35.971264Z
+finalized_at: 2026-09-12T19:25:14.416071Z
+agent:
+    tool: claude-code
+    model: claude-opus-5[1m]
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git show --stat 26bbbd5 | head -40 && echo "=== .mcp.json ===" && cat ../.mcp.json 2>/dev/null; cat .mcp.json 2>/dev/null
+      at: 2026-09-12T04:59:04.490332Z
+      classified: other
+    - cmd: grep -rn "compact" internal/mcp/tools.go | head -40 && echo "=== compact flag ===" && grep -rn "compact" internal/cli/commands.go | head -30
+      at: 2026-09-12T04:59:07.400134Z
+      classified: other
+    - cmd: sed -n 100,240p internal/mcp/tools.go
+      at: 2026-09-12T04:59:10.101517Z
+      classified: other
+    - cmd: sed -n 340,420p internal/mcp/tools.go && echo "=== compact_test ===" && sed -n 1,60p internal/mcp/compact_test.go
+      at: 2026-09-12T04:59:13.383664Z
+      classified: other
+    - cmd: |-
+        for f in .claude/settings.json .claude/settings.local.json ~/.claude/settings.json ~/.claude/settings.local.json; do echo "=== $f ==="; python3 -c "
+        import json,sys
+        try:
+            d=json.load(open('$f'.replace('~','$HOME')))
+        except Exception as e:
+            print('(none)'); sys.exit()
+        print(json.dumps(d.get('permissions',{}),indent=1)[:800])
+        " 2>/dev/null || echo "(none)"; done
+      at: 2026-09-12T05:12:08.340432Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/sz_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"encoding/json"
+        	"testing"
+        )
+
+        func TestSchemaSizes(t *testing.T) {
+        	c, _ := json.Marshal(CompactToolSchemas())
+        	l, _ := json.Marshal(ToolSchemas())
+        	t.Logf("compact bytes=%d  ~tokens=%d", len(c), len(c)/4)
+        	t.Logf("legacy  bytes=%d  ~tokens=%d", len(l), len(l)/4)
+        }
+        EOF
+        cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/sz_test.go internal/mcp/zz_sz_test.go && go test ./internal/mcp -run TestSchemaSizes -v 2>&1 | grep -E "bytes|ok|FAIL"; rm -f internal/mcp/zz_sz_test.go
+      at: 2026-09-12T05:19:21.212321Z
+      classified: test
+    - cmd: cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/sz_test.go internal/mcp/zz_sz_test.go && go test ./internal/mcp -run TestSchemaSizes -v 2>&1 | tail -20; rm -f internal/mcp/zz_sz_test.go
+      at: 2026-09-12T05:19:24.412884Z
+      classified: test
+    - cmd: cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/sz_test.go internal/mcp/zz_sz_test.go && GOWORK=off go test ./internal/mcp -run TestSchemaSizes -v 2>&1 | tail -20; rm -f internal/mcp/zz_sz_test.go
+      at: 2026-09-12T05:19:34.021936Z
+      classified: test
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/zz2_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"encoding/json"
+        	"testing"
+        )
+
+        func TestUnionCollisions(t *testing.T) {
+        	ops := map[string]string{"lookup": "prism_lookup", "read": "prism_read", "search": "prism_search",
+        		"query": "prism_query", "change_impact": "prism_change_impact", "verify": "prism_verify"}
+        	// which ops declare each property, and with what constraints
+        	owner := map[string][]string{}
+        	for op, tool := range ops {
+        		s := toolSchema(tool)
+        		props, _ := s["properties"].(map[string]any)
+        		for name, p := range props {
+        			b, _ := json.Marshal(p)
+        			owner[name] = append(owner[name], op+"="+string(b))
+        		}
+        	}
+        	for _, k := range []string{"limit", "query", "name", "file", "offset", "context", "scope"} {
+        		t.Logf("--- %s ---", k)
+        		for _, v := range owner[k] {
+        			t.Logf("    %s", v)
+        		}
+        	}
+        }
+        EOF
+        cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/zz2_test.go internal/mcp/zz2_test.go && GOWORK=off go test ./internal/mcp -run TestUnionCollisions -v 2>&1 | head -60; rm -f internal/mcp/zz2_test.go
+      at: 2026-09-12T05:46:23.202734Z
+      classified: test
+    - cmd: cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism 2>/dev/null && ls -la *.jsonl 2>/dev/null | tail -5; echo "--- ledger on disk ---"; find ~/.claude ~/Library/Application\ Support -name "*ledger*" 2>/dev/null | head; find /Users/tapabratapal/Projects/provasign/prism -name "*ledger*.json" 2>/dev/null | head
+      at: 2026-09-12T05:54:41.119467Z
+      classified: other
+    - cmd: sed -n '150,237p' internal/session/ledger.go; echo "=== where savings/ledger path ==="; grep -rn "ledger.json\|LedgerPath\|SaveLedger\|\.prism" internal/session/*.go internal/mcp/server.go 2>/dev/null | head -20
+      at: 2026-09-12T05:54:46.334285Z
+      classified: other
+    - cmd: echo "=== CLI savings command? ==="; grep -n '"savings"\|case "savings"' internal/cli/commands.go | head; echo "=== errored calls recorded? Record* before or after validation ==="; grep -n "rejectUnknownArgs\|RecordResult\|RecordCall" internal/mcp/server.go internal/mcp/tools.go | head -20
+      at: 2026-09-12T05:55:04.584668Z
+      classified: other
+    - cmd: sed -n '400,440p' internal/mcp/server.go
+      at: 2026-09-12T05:55:07.129384Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad && python3 - <<'EOF'
+        import json,collections
+        p="/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963.jsonl"
+        rows=[json.loads(l) for l in open(p) if l.strip()]
+        print("records:",len(rows))
+        print("types:",collections.Counter(r.get("type") for r in rows))
+        # assistant turns and tool_use per turn
+        turns=0; toolcalls=collections.Counter(); errs=0; par=collections.Counter()
+        for r in rows:
+            if r.get("type")!="assistant": continue
+            c=r.get("message",{}).get("content",[])
+            tus=[b for b in c if isinstance(b,dict) and b.get("type")=="tool_use"]
+            turns+=1
+            if tus: par[len(tus)]+=1
+            for b in tus: toolcalls[b["name"]]+=1
+        for r in rows:
+            if r.get("type")!="user": continue
+            c=r.get("message",{}).get("content",[])
+            if isinstance(c,list):
+                for b in c:
+                    if isinstance(b,dict) and b.get("type")=="tool_result" and b.get("is_error"): errs+=1
+        print("assistant turns:",turns)
+        print("tool_use per assistant turn (parallelism):",dict(par))
+        print("tool calls:",dict(toolcalls))
+        print("is_error tool_results:",errs)
+        # usage fields present?
+        u=[r["message"]["usage"] for r in rows if r.get("type")=="assistant" and r.get("message",{}).get("usage")]
+        print("usage keys:",sorted(u[-1].keys()) if u else None)
+        print("turns with usage:",len(u))
+        EOF
+      at: 2026-09-12T05:55:17.862523Z
+      classified: other
+    - cmd: grep -n 'case "' internal/cli/commands.go | sed -n '1,40p'
+      at: 2026-09-12T05:55:41.834272Z
+      classified: other
+    - cmd: echo "=== CLAUDE.md prism section (on disk) ==="; sed -n '/## Prism — context delivery/,/prism:end/p' CLAUDE.md | head -50; echo; echo "=== does the source const match? ==="; GOWORK=off go run ./cmd/prism 2>/dev/null >/dev/null; sed -n '560,600p' internal/cli/commands.go
+      at: 2026-09-12T06:10:59.618793Z
+      classified: other
+    - cmd: sed -n '/## Prism — context delivery/,/prism:end/p' CLAUDE.md > /tmp/x 2>/dev/null; sed -n '/## Prism — context delivery/,/prism:end/p' CLAUDE.md | wc -lw; echo "--- conditionals / escape hatches ---"; sed -n '/## Prism — context delivery/,/prism:end/p' CLAUDE.md | grep -cE "\?|Otherwise|needs no|can proceed without|not every|when |Prefer"
+      at: 2026-09-12T06:11:34.203765Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism && python3 - <<'EOF'
+        import json,glob,collections
+        calls=[]; par=collections.Counter(); turns=0
+        for p in glob.glob("*.jsonl"):
+            try: rows=[json.loads(l) for l in open(p) if l.strip()]
+            except Exception: continue
+            for r in rows:
+                if r.get("type")!="assistant": continue
+                c=r.get("message",{}).get("content",[])
+                if not isinstance(c,list): continue
+                tus=[b for b in c if isinstance(b,dict) and b.get("type")=="tool_use"]
+                if tus: par[len(tus)]+=1; turns+=1
+                for b in tus:
+                    if b.get("name","").startswith("mcp__prism"): calls.append(b.get("input",{}))
+        print("prism tool calls across all transcripts:",len(calls))
+        print("tool_use per tool-bearing turn:",dict(sorted(par.items())))
+        print("turns:",turns,"| batched turns (>1 call):",sum(v for k,v in par.items() if k>1),
+              f"= {100*sum(v for k,v in par.items() if k>1)/max(turns,1):.1f}%")
+        # knob usage: compact nests under args
+        knob=collections.Counter(); op=collections.Counter()
+        for i in calls:
+            a=i.get("args",i)
+            if "op" in i: op[i["op"]]+=1
+            for k in ("exhaustive","context","limit","budget","delivery","fields","scope","glob","path","files_only","rollup_only","context_used","max_files"):
+                if k in a: knob[k]+=1
+        print("ops:",dict(op.most_common()))
+        print("knobs set:",dict(knob.most_common()))
+        print("calls with ZERO optimization knob:",sum(1 for i in calls if not any(k in i.get("args",i) for k in ("exhaustive","context","limit","budget","delivery","fields","scope","max_files","files_only"))), "/", len(calls))
+        EOF
+      at: 2026-09-12T06:18:24.111518Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism && python3 - <<'EOF'
+        import json,glob
+        n=b=0
+        for p in glob.glob("*.jsonl"):
+            try: rows=[json.loads(l) for l in open(p) if l.strip()]
+            except Exception: continue
+            for r in rows:
+                if r.get("type")!="assistant": continue
+                for t in [x for x in r.get("message",{}).get("content",[]) if isinstance(x,dict) and x.get("type")=="tool_use"]:
+                    if not t.get("name","").startswith("mcp__prism"): continue
+                    a=t.get("input",{}).get("args",t.get("input",{}))
+                    for k in ("name","query","terms","path","glob"):
+                        if k in a:
+                            n+=1
+                            if isinstance(a[k],list) and len(a[k])>1: b+=1
+        print(f"array-capable args supplied: {n}, with >1 element: {b} = {100*b/max(n,1):.0f}%")
+        EOF
+      at: 2026-09-12T06:21:51.515607Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/codex-brief.md <<'EOF'
+        # Prism: compact MCP schema repair + steering rewrite
+
+        Repo: provasign/prism (Go). Work on a branch. Do NOT tag or release.
+        Done = `GOWORK=off go test ./...` green + report the new compact schema byte size.
+
+        ## Why (measured, not speculative)
+
+        - GPT-5.5 on v0.73.0: `change_impact(name=…, limit=…)` → retry `query=…, limit=…` → retry `query=…`.
+          3 turns for 1 result, 7 wasted calls across 3 cells. Correct on all tasks; efficiency gain erased.
+        - Root cause is mechanical. `CompactToolSchemas` (internal/mcp/tools.go ~354-420) unions every
+          op's properties, keeps the FIRST contributor of each name (ops walked lookup, read, search,
+          query, change_impact, verify), and strips every `description`. Result:
+            * `limit` = read's, with `maximum: 240` — but search allows 2000, query means "candidate cutoff".
+              Three meanings, one name, no description left to tell them apart.
+            * `name` is advertised (lookup only) so `change_impact(name=…)` is schema-valid, then rejected
+              after the fact by `validateCompactArguments`. The schema invites the call it refuses.
+            * `query` = search's string|array, so `change_impact(query=[…])` passes schema and means nothing.
+            * `file` has three meanings (read path / lookup hint / change_impact disambiguator).
+        - Transcript data (6,996 tool-bearing turns): cross-call batching 0.0% (1 turn). Within-call
+          batching (arrays in name/terms/path) 21%. Spend knobs (`exhaustive`, `budget`, `delivery`,
+          `max_files`) set in ~6% of prism calls; `context` 12%; scoping knobs (`scope`/`path`/`glob`)
+          52%/18%/6%. Conclusion: agents enrich a call they are already making; they do not add calls or
+          set cost knobs. Defaults must be right without cooperation.
+
+        ## Hard constraints
+
+        1. Top-level schema stays FLAT. No root `oneOf`/`anyOf` — older MCP hosts drop tools carrying it
+           (see comment above `CompactToolSchemas`). Discrimination is expressed by DISJOINT FIELD NAMES
+           plus an `ops:` prefix in each field description, not by composition keywords.
+        2. `compact_test.go` asserts compact JSON < half of legacy `ToolSchemas()` JSON (legacy ≈ 9,784 B,
+           so budget ≈ 4,892 B; today's compact is 4,690 B). Keep descriptions to the literal `ops:` list
+           plus at most one short clause. If the 2x gate binds after that, report it — do not delete the
+           `ops:` prefixes to fit.
+        3. `additionalProperties: false` on `args` stays. Unknown or wrong-op fields are rejected with an
+           error that lists the fields accepted BY THE SELECTED OP (extend `validateCompactArguments`).
+        4. No aliases for removed names (`limit`, `offset`, `query`, `context`, …). Listing an alias
+           re-creates the collision. Reject with "use <new name>".
+        5. Do NOT add `_meta.anthropic/alwaysLoad` (residency). Separate decision, needs its own A/B.
+        6. One `op` per call. Do NOT add an `ops[]` batch envelope — 0/6,996 turns batch across calls.
+
+        ## Schema (compact `prism` tool)
+
+        op: enum lookup | read | search | query | change_impact | verify
+            description carries the per-op field map, verbatim:
+            "lookup: name[,symbol_file,fields] | read: file,from,to or ranges | search: terms[,scope,paths,
+             glob,regex,files_only,max_results,exhaustive] | query: task,terms[,paths,glob] |
+             change_impact: name[,symbol_file,signature] | verify: removed_symbols. Known symbol → lookup;
+             search only when location is unknown."
+
+        args (every field lists its owning ops in its description; no field has two meanings):
+
+          name            ops: lookup, change_impact. Symbol(s). string | array ≤10 of string | {name,file}.
+                          change_impact accepts one symbol (string or 1-element array); error otherwise.
+                          Maps to legacy lookup.name / change_impact.query.
+          symbol_file     ops: lookup, change_impact. Disambiguating file scope. string.
+                          Maps to legacy lookup.file / change_impact.file.
+          fields          ops: lookup. Unchanged enum.
+          signature       ops: change_impact. Unchanged.
+          file            ops: read. Repo-relative path. string.
+          from, to        ops: read. Inclusive 1-based line range. Span > 240 is CLAMPED to 240 with a note
+                          (degrade, never error). Omit both = whole file subject to the same clamp.
+                          Maps to legacy read.offset/limit.
+          ranges          ops: read. array ≤10 of {file, from, to}. Multi-window read in ONE call. Same
+                          per-range clamp; total delivered lines capped at 600 (tunable const), clamped
+                          ranges listed in the result note.
+          terms           ops: search, query. string | array ≤10. Never join identifiers with spaces.
+                          Maps to legacy search.query / query.terms.
+          task            ops: query. Natural-language task. string.
+          scope           ops: search. both|text|symbols. Unchanged.
+          paths, glob     ops: search, query. Unchanged shapes.
+          regex           ops: search.
+          files_only      ops: search.
+          max_results     ops: search. integer ≤ 2000. Maps to legacy search.limit.
+          removed_symbols ops: verify. Unchanged.
+          exhaustive      ops: search. Forces completeness past the adaptive default (below).
+
+        REMOVED from the surface (become server defaults): limit, offset, query, context, budget,
+        delivery, max_files, rollup_only, include, model, profile, context_used, base.
+        For each: confirm against `toolSchema(<legacy tool>)`; if a removed field is required by a
+        legacy op with no sane default, say so in the report rather than silently keeping it.
+
+        Compact→legacy mapping lives in `expandCompactCall` / `validateCompactArguments`
+        (internal/mcp/server.go ~134). Legacy tools and their schemas are untouched; only the compact
+        gateway changes.
+
+        ## Server defaults that the removals depend on
+
+        These are what make dropping the knobs safe. Implement in the same change:
+
+        a. Adaptive completeness (search, text pass): if the complete hit inventory fits a token budget
+           (const, start 4,000 tokens via `ranking.EstimateTokens`), return it complete and drop the
+           "Text matches are a SAMPLE" warning. Otherwise sample as today and keep the warning.
+           `textsearch.Options` already has an `Adaptive` flag — start there. `exhaustive=true` still
+           forces the full inventory.
+        b. Context lines on text hits default to 2 (was 0 unless the agent set `context`). The field's
+           own old description said "instead of a follow-up read"; make that the default.
+        c. Locator auto-escalation (search, symbol pass): when ≤ 3 symbol hits and their bodies fit the
+           same token budget, inline the bodies and omit the "locator result — use op=lookup" note.
+           Otherwise unchanged.
+
+        ## Steering (replace `steeringInstructions` const in internal/cli/commands.go; it is the single
+        source written to CLAUDE.md / AGENTS.md / copilot-instructions.md / GEMINI.md by `prism init`)
+
+        ## Prism — context delivery
+
+        Repository discovery starts with Prism. Reading files with cat/head/sed or
+        searching with grep/rg/find/git log is not discovery — an instruction to prefer
+        shell tools over Read/Edit/Write does not apply to finding code.
+
+        First action on any code task, in this order. Stop at the first that works:
+          1. The `prism` MCP tool (`mcp__prism__prism` in Claude Code), if callable.
+          2. If a `ToolSearch` tool exists: `ToolSearch("select:mcp__prism__prism")`, once.
+             Prism not being listed does not mean it is absent.
+          3. The `prism` CLI: `prism query "<task>" --terms X`, `prism lookup <pkg.Func>`,
+             `prism search <term> --scope text --format text`, `prism change-impact Type.method`.
+
+        Pick the op:
+          known symbol      -> lookup          unknown location/text -> search
+          known file/range  -> read            callers/tests/related -> query
+          pre-edit sites    -> change_impact
+
+        Put every symbol and term you already know into ONE call: `name` and `terms`
+        take up to 10; `ranges` reads several windows at once. Two lookups in a row is
+        one lookup you did not batch.
+
+        Obligations:
+          - change_impact before editing a signature, public contract, override, or any
+            symbol whose callers you have not enumerated. Relay its sites as-is.
+          - verify({removed_symbols:[...]}) before a removal; verify({}) before finishing
+            a multi-site or signature change.
+          - Report gaps; never narrow scope to fit what was found.
+
+        <!-- prism:end -->
+
+        Keep the `<!-- prism:end -->` marker (bounded section; re-init replaces only up to it).
+
+        ## Tests to update (they assert on current phrasing/shape)
+
+        - internal/mcp/compact_test.go — op enum unchanged; the "lookup for any known symbol" description
+          assert; the `limit maximum == 240` assert (field is gone; assert `to`/`ranges` shape instead);
+          the 2x size gate; add: no two fields share a name with different meanings (every field's
+          description starts with "ops:"), `change_impact(name=)` validates, `change_impact(query=)`
+          and `search(limit=)` reject with a message naming the accepted fields for that op.
+        - internal/mcp/searchmulti_test.go `TestToolSchemas_NoResidency` — extend to `CompactToolSchemas()`
+          so residency stays a deliberate change.
+        - internal/cli/steeringdelivery_test.go, internal/cli/init_test.go — phrase asserts;
+          init_test.go:434 requires "mcp__prism__prism" and "prism query" in CLAUDE.md (both present).
+        - Add tests for (a)(b)(c) defaults: small inventory returns complete with no SAMPLE warning;
+          large inventory still samples; text hits carry 2 context lines by default; ≤3 symbol hits inline
+          bodies and drop the locator note.
+        - Align the MCP server `instructions` string (server-level, delivered on initialize) with the
+          steering's first paragraph; it currently says "Do not begin with native Read/Grep/search" and
+          should also name cat/head/sed/find/git log.
+
+        ## Report back
+
+        - New compact schema byte size vs legacy, and whether the 2x gate bound.
+        - Any removed field a legacy op could not default.
+        - `go test ./...` output.
+        - Do not run the A/B or ci_invariants; those are run by the owner before any tag.
+        EOF
+        wc -lw /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad/codex-brief.md
+      at: 2026-09-12T06:26:20.099995Z
+      classified: test
+    - cmd: 'ls internal/ranking/ && wc -l internal/ranking/*.go | tail -1 && echo "--- mcp ranking-related files ---" && ls internal/mcp | grep -iE "select|rank|search|query|order" '
+      at: 2026-09-12T13:00:32.706578Z
+      classified: other
+    - cmd: 'echo "=== writes to testFilePaths ==="; grep -n "testFilePaths\[" internal/mcp/selection.go; echo "=== graphDist writes ==="; grep -n "graphDist\[.*\] *=" internal/mcp/*.go; echo "=== delivery ordering ==="; grep -n "sort\.\|byFile\|Group" internal/mcp/delivery.go | head -20; echo "=== text hit ordering ==="; grep -n "func (h \*Handler) renderedTextSearchHits" -A 30 internal/mcp/searchtext.go | grep -n "sort\|order\|rank" '
+      at: 2026-09-12T13:01:41.712137Z
+      classified: other
+    - cmd: d=~/Library/Caches/prism/weights; ls -la "$d" 2>/dev/null && for f in "$d"/*.json; do echo "== $f"; cat "$f"; done; echo; echo "=== categorize callers / Summary category users ==="; cd /Users/tapabratapal/Projects/provasign/prism && grep -rn "CategorySummary\|CategoryTest\b" internal --include=*.go | grep -v _test.go | grep -v "budget.go:2[0-9]:\|budget.go:3[0-9]:"
+      at: 2026-09-12T13:02:38.616347Z
+      classified: other
+    - cmd: |-
+        d=~/Library/Caches/prism/weights
+        echo "=== weight files: $(ls $d | wc -l); distinct contents ==="; cat $d/*.json | tr -d ' \n' | sed 's/"repoKey":"[0-9a-f]*",//' | sort | uniq -c | sort -rn | head -5
+        echo "=== this repo's weights ==="; [REDACTED:env-secret] '%s' "$PWD" | shasum | cut -c1-16); cat $d/$key.json 2>/dev/null || echo "(none for $PWD)"
+        echo "=== nonzero adjustments anywhere ==="; grep -L '"GraphDistance": 0,' $d/*.json | wc -l
+        echo "=== Category usage outside tests ==="; grep -rn "CategorySummary\|CategoryTest\b\|CategoryTarget" internal --include=*.go | grep -v _test.go | grep -v "internal/ranking/budget.go"
+        echo "=== includeSet default in toolQuery ==="; grep -n "includeSet\|include\b" internal/mcp/tools.go | grep -i "query\|includeSet" | head -8
+        echo "=== prism-side sort of symbol results in searchOne ==="; sed -n '1929,1932p' internal/mcp/tools.go; awk 'NR>=1805 && NR<=1975 && /sort\./' internal/mcp/tools.go
+        echo "=== grove module ==="; grep -n "grove" go.mod; gd=$(GOWORK=off go list -m -f '{{.Dir}}' $(grep -o 'github.com/provasign/grove[^ ]*' go.mod | head -1) 2>/dev/null); echo "dir=$gd"; grep -rln "func.*SearchSymbols" $gd 2>/dev/null | head -3
+      at: 2026-09-12T13:03:20.130711Z
+      classified: other
+    - cmd: f=/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/tool-results/bw9fsdiji.txt; awk '/=== this repo/{p=1} p' "$f" | cut -c1-400 | head -60
+      at: 2026-09-12T13:03:36.371196Z
+      classified: other
+    - cmd: |-
+        echo "=== Category assignment outside budget.go (non-test) ==="; grep -rn 'CategorySummary\|CategoryTarget\|CategoryTest\b' internal --include='*.go' | grep -v '_test.go' | grep -v 'internal/ranking/budget.go'
+        echo; echo "=== symbol pass in searchOne: fetch, annotate, demote? ==="; awk '/^func \(h \*Handler\) searchOne/{f=1} f && /SearchSymbols|annotated|isTestDouble|isTestFilePath|sort\.Slice|symCap\]|syms\[:/{print NR": "$0} /^func \(h \*Handler\) toolReferences/{f=0}' internal/mcp/tools.go
+      at: 2026-09-12T13:03:52.023198Z
+      classified: other
+    - cmd: gd=/Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.0; f=$(grep -rln "func (.*) SearchSymbols(" $gd --include='*.go' | grep -v _test | head -1); echo "file=$f"; grep -n "func (.*) SearchSymbols(" "$f"; echo "--- ranking logic (score/rank/exact/prefix/ORDER BY) ---"; grep -n -i "exact\|prefix\|substring\|order by\|score\|rank\|qualified\|signature\|rawtext\|LIKE" "$f" | head -40
+      at: 2026-09-12T13:03:54.686103Z
+      classified: other
+    - cmd: gd=/Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.0; f=$(rg -l --glob '!*_test.go' 'func \(.*\) SearchSymbols\(' "$gd" | head -1); echo "file=$f"; rg -n 'func \(.*\) SearchSymbols\(' "$f"; echo "--- ranking logic ---"; rg -n -i 'exact|prefix|substring|order by|score|rank|qualifiedname|signature|rawtext|like ' "$f" | head -40
+      at: 2026-09-12T13:04:09.363537Z
+      classified: other
+    - cmd: gd=/Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.49.0; f=$(find "$gd" -name '*.go' ! -name '*_test.go' -exec command grep -l 'SearchSymbols(' {} + | head -3); echo "$f"; for x in $f; do echo "--- $x"; command grep -n -i 'func .*SearchSymbols\|exact\|prefix\|substring\|ORDER BY\|rankScore\|score' "$x" | head -25; done
+      at: 2026-09-12T13:05:01.131381Z
+      classified: other
+    - cmd: |-
+        cat > docs/ranking-audit-2026-09-12.md <<'EOF'
+        # Ranking audit — search / query / select (2026-09-12)
+
+        Scope: `internal/ranking/*`, `internal/mcp/selection.go`, the symbol pass of
+        `Handler.searchOne` (`internal/mcp/tools.go`), `groupPickedByFile`
+        (`internal/mcp/delivery.go`). Read-only review; nothing here is fixed yet.
+
+        Judged against what a ranker for a coding agent should do, not against what the
+        comments say it does. The standard used:
+
+        1. Rank by the symbol's relation to the task's anchors. File-level popularity or
+           recency may break ties; it must never outrank a graph edge or gate delivery.
+        2. Every signal that carries weight must be able to vary. A signal that is
+           always zero is a lie in the profile table.
+        3. `budget=` means the tokens the agent will receive. Not a fraction, not a
+           number that excludes the largest component.
+        4. Same index + same arguments = same result on any machine. No hidden inputs.
+        5. A sample is the top of the ranking. Post-processing that reorders must run
+           before the cap, not after.
+        6. A result says why it matched. Name, signature, package, body, and test are
+           different kinds of evidence and the agent must be able to tell them apart.
+        7. Dead code paths that shape ranking (or look like they do) are removed, not
+           retained.
+
+        Line refs are to the tree at HEAD `d416f94` plus the uncommitted working tree;
+        `tools.go` was changing during the review, so its refs may be ±70 lines.
+
+        ---
+
+        ## Bugs
+
+        ### B1. Recency / edit-frequency outrank the call graph and cut real neighbors
+
+        **Should be:** a symbol with a verified call edge to a seed always ranks above a
+        symbol with no edge. Git signals refine order within a tier.
+
+        **Is:** `Recency` and `EditFrequency` are computed per FILE
+        (`signals.go:61-63`, `gitStats(sym.FilePath)`) and carry combined weight 0.467
+        in the default profile vs 0.333 for `GraphDistance` (`profiles.go:66-69`).
+        Worked, default profile:
+
+        | candidate | graph | recency | edits | score |
+        |---|---|---|---|---|
+        | direct caller of the seed, file untouched 1y | 0.5 | 0.076 | 0 | **0.19** |
+        | leftover seed, no edge, file edited today ×20 commits | 0.25 | 1.0 | 1.0 | **0.55** |
+
+        `ScoreCliffFactor = 0.6` (`budget.go:65`) makes the cutoff 0.33. The seed's own
+        caller is dropped from the result because an unrelated symbol lives in a hot
+        file.
+
+        **Corollary — the benchmark bed cannot see this.** On a pinned corpus every file
+        is ≥365 days stale, so recency saturates at 0.076 and edits are 0 for all
+        candidates (`signals.go:99-106`). Scoring degenerates to graph-only and the
+        cliff cuts every non-neighbor. The query-oracle bed and a live repo run
+        different rankings; a PASS on one says nothing about the other.
+
+        **Fix direction:** make graph relation a tier, not a weight. Sort by
+        (has-edge, score) or clamp git signals to a small fraction of the graph signal.
+        Add an invariant test: a candidate with `graphDist==1` is never cut by the cliff
+        in favor of one with no edge. Add a live-repo oracle cell (recent commits on
+        unrelated files) so the bed exercises the hot-file regime.
+
+        ### B2. `budget=` delivers ~25% of its value
+
+        **Should be:** `budget=8000` means up to ~8,000 tokens of delivered context, and
+        the largest component (seeds) is governed by it.
+
+        **Is:** `categorize` (`tools.go:~3228`) returns only `Test`, `Doc`, `Dependency`.
+        Against `CategoryShares` (`budget.go:32-38`):
+
+        | bucket | share | reachable by a candidate |
+        |---|---|---|
+        | Target | 35% | never — skipped at `budget.go:135`; seeds are uncharged regardless |
+        | Dependency | 25% | yes |
+        | Test | 20% | never — `includeSet` defaults to `{graph}` (`tools.go:~1111`), tests filtered at `selection.go:512` |
+        | Doc | 10% | only with `include=docs` |
+        | Summary | 10% | never assigned |
+
+        Non-seed code gets 2,000 of 8,000 tokens. Seeds — up to 10, method seeds
+        unconditionally full (`budget.go:112`) — are outside the budget entirely.
+        `selection.go:559` calls the explicit budget "a contract: honor it exactly".
+
+        **Fix direction:** one pool. Charge seeds; drop the category shares (or keep
+        only a doc cap); let the cliff and per-file cap do the shaping they already do.
+        Test: `sum(TokenCost)` of the picked set ≤ budget, and ≥ 0.8×budget when enough
+        candidates exist.
+
+        ### B3. `TestRelevance` is always zero for anything scored
+
+        **Should be:** a signal with 20-28% weight varies.
+
+        **Is:** `hasTestEdgeID` is set only inside the `seedSyms` loop
+        (`selection.go:428`); seeds bypass `Compute` and get `Score: 1.0`
+        (`budget.go:123`); candidates are disjoint from seeds. `testFilePaths`
+        (`selection.go:377`) is declared and read (`:536`) and never written. So every
+        scored symbol has `TestRelevance == 0`, and `LearnedWeights` is nudging it
+        (+0.04 persisted for `fix_bug`).
+
+        **Fix direction:** either compute it for candidates (`InboundCallers` per
+        candidate is too expensive; a cheaper proxy is "shares a file with a verified
+        test caller of any seed") or delete the signal and renormalize the profiles.
+        Do not leave a weight on a constant.
+
+        ### B4. `GraphDistance` is binary, not a distance
+
+        **Should be:** what `signals.go:41` says — BFS distance from any seed, so a
+        depth-2 callee ranks below a depth-1 callee and above an unconnected symbol.
+
+        **Is:** the only write is `graphDist[nb.ID] = 1` (`selection.go:413`). Values
+        are 0.5 (neighbor) or ≈0.25 (unconnected, `3 + i/10` at `:534`). The fallback
+        ties ten candidates at a time and resolves by file path alphabetically.
+
+        **Fix direction:** either run the BFS to depth 2-3 over `CallNeighbors` with a
+        node cap, or rename the signal `HasCallEdge` and make it a tier (see B1). Half
+        measures — a comment that says BFS over a boolean — are the worst option.
+
+        ### B5. Learned weights are hidden, unversioned, machine-local ranking state
+
+        **Should be:** rule 4. If a reinforcement loop exists it has a real signal,
+        is inspectable, and is excluded from determinism claims.
+
+        **Is:** `~/Library/Caches/prism/weights/` holds 2,330 files on this machine,
+        1,932 with nonzero adjustments; every query loads and applies them
+        (`selection.go:369`, `learned_weights.go:46-83`). The only production writer is
+        `toolFeedback` (`tools.go:~2719`) with sentinel paths: each positive rating adds
+        +0.02 `GraphDistance` to profile `"default"` regardless of the profile used.
+        Files also carry adjustments from callers that no longer exist and the removed
+        `SemanticSimilarity` key. `Apply` does not renormalize, and
+        `RelevanceThreshold`/cliff are absolute, so nudges change disclosure, not just
+        order. `feedback` is not a compact op, so on the shipped surface this state is
+        read-only and permanent.
+
+        **Fix direction:** remove `LearnedWeights` and `Apply`. The measured basis for
+        it (`profiles.go:5-17`) was removed 2026-08-01; what remains has no signal.
+        If a loop is wanted later, feed it from cited-vs-delivered paths in real diffs,
+        and version the file.
+
+        ### B6. Symbol search caps before it demotes test doubles
+
+        **Should be:** rule 5. With `limit=25`, the 25 delivered are the 25 best.
+
+        **Is:** `searchOne` fetches `symCap` (`tools.go:~1945`), slices (`:~1952`),
+        then partitions doubles to the end (`:~1967-1974`). Observed: scoped search
+        `"Rank"` in `internal/ranking`, limit 25 → 12 of 25 slots were `bench_test.go`
+        doubles; `Select`, `Score`, `Render`, `Compute` — non-test, in scope — were cut.
+
+        **Fix direction:** fetch `symCap × k` (or the hard max), partition, then cap.
+        Test: for a query where non-test matches ≥ limit, the delivered sample contains
+        no test doubles.
+
+        ### B7. Symbol-search tiers are not what `tools.go:~1909` claims, and match reasons are invisible
+
+        **Should be:** rule 6, and exact > prefix > substring on the NAME before any
+        signature/package/body match.
+
+        **Is (observed, Grove v0.49.0, prism delivers its order untouched):**
+        - `"rank"`: name matches (2) > signature-text matches (`groupPickedByFile`,
+          `symbolWindows` — `ranking.BudgetedSymbol` in the parameter list) > package
+          members `ranking.*` > tests.
+        - `"Select"`: exact `Select` first; prefix `SelectProfile` at #7, below
+          substring `selection`, `selectedContentHits`.
+        - `"session"`: a README document and the `helpText` const outrank every
+          `session.*` package symbol.
+
+        The agent sees `groupPickedByFile` for `"budget"` with no indication that only a
+        parameter type matched.
+
+        **Fix direction:** prism re-tiers on delivery: `name-exact`, `name-prefix`,
+        `name-substring`, `qualified`, `signature`, `body`, `doc`, `test` — and labels
+        each row with its tier. Grove's internal order becomes the within-tier order.
+        Grove's own rule could not be inspected (module cache is client-only); confirm
+        against the Grove repo before assuming it will change upstream.
+
+        ### B8. Ranking regime differs between benchmark and live repos (restated as its own bug)
+
+        B1's corollary deserves its own line because it is a measurement bug, not a
+        ranking bug: `ci_invariants` and the query-oracle bed run in the saturated
+        regime and can pass while the live-repo regime regresses. Until B1 is fixed,
+        any ranking change should be gated on both a pinned cell and a cell with fresh
+        unrelated commits.
+
+        ---
+
+        ## Improvements (not bugs — the design is doing what it was told, and it is the wrong thing)
+
+        ### I1. Seeds are unbounded
+
+        Up to 10 seeds (`selection.go:364`), method seeds always full and uncharged
+        (`budget.go:112`). Ten 200-line methods is 8,000+ tokens before any candidate is
+        considered. Charge seeds against the pool (B2) and let the per-file cap demote
+        the tail to signature.
+
+        ### I2. Delivery groups by file and sorts by best score — the second-best file's best symbol can sit below the first file's worst
+
+        `groupPickedByFile` (`delivery.go:392-422`) sorts files by their top score, then
+        `symbolWindows` sorts within a file by line. Rank order is preserved only at
+        file granularity. Acceptable if intended; should be stated in the output
+        ("files ordered by best match; windows in file order") so the agent does not
+        read the second window as the second-best result.
+
+        ### I3. Text hits are unranked
+
+        `renderedTextSearchHits` delivers rg walk order. `rankSourceFirst`
+        (`textsearch.go:524`) exists; whether the search path applies it was not
+        verified. Even so, "source before tests" is the only tier. A definition line
+        (`func foo`, `class Foo`) should rank above a use, and a use in a caller of a
+        seed above one in an unrelated file. The graph is available; text hits ignore
+        it.
+
+        ### I4. Dead phase code
+
+        `phase.go` (`DetectPhase`, `ShapeForPhase`, keyword tables) is dead per
+        `selection.go:65-79` and still compiled, tested, and benchmarked. Remove it.
+        A reader of the package reasonably assumes the task string shapes the budget.
+
+        ### I5. Sampling is by count, not by payload
+
+        `defaultSearchLimit = 25` and "SAMPLE: showing 25 of 66". 66 hits is small.
+        Sample when the full set exceeds a token budget, not a fixed count; when it
+        fits, deliver it complete and drop the warning. (Also raised in the compact
+        schema brief; belongs here because it is a ranking-delivery decision.)
+
+        ### I6. Profile weights are unmeasured since the 2026-08-01 renormalization
+
+        `profiles.go:50-65` records the pre-removal weights and a proportional
+        renormalization. With B3 dead and B4 binary, only two signals actually vary in
+        a live repo and one in a pinned one. Re-derive the weights from the oracle bed
+        after B1-B4, or collapse to a single profile until there is evidence that
+        profiles differ in outcome.
+
+        ---
+
+        ## Order of work, if this becomes a program
+
+        1. B5 (delete learned weights) and I4 (delete phase) — pure removals, no
+           behavior to defend, and they remove hidden inputs before anything else is
+           measured.
+        2. B2 + I1 (one budget pool, seeds charged) — largest change to what agents
+           receive; gate on the oracle bed.
+        3. B1 + B4 (graph as a tier) — gate on a pinned cell AND a fresh-commit cell
+           (B8).
+        4. B6, then B7 (search sample and tiers) — independent of query; gate on the
+           search-recall cells.
+        5. B3, I6 — decide whether the test signal lives or dies, then re-derive
+           weights.
+
+        Every step: `go test ./...`, `ci_invariants`, and the A/B gate before a tag.
+        EOF
+        wc -lw docs/ranking-audit-2026-09-12.md
+      at: 2026-09-12T13:13:28.572406Z
+      classified: test
+notes: []
+redactions: 1

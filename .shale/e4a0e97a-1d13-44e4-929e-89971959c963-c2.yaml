@@ -1,0 +1,246 @@
+shale_version: "0"
+id: e4a0e97a-1d13-44e4-929e-89971959c963-c2
+created_at: 2026-09-12T19:48:31.078752Z
+finalized_at: 2026-09-12T22:40:20.896032Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: which prism python3; python3 --version
+      at: 2026-09-12T19:49:03.499845Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad
+
+        INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0.0.1"}}}'
+        INITD='{"jsonrpc":"2.0","method":"notifications/initialized"}'
+        LIST='{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+
+        echo "=== RAW prism (unmodified) ==="
+        { echo "$INIT"; sleep 0.3; echo "$INITD"; sleep 0.1; echo "$LIST"; sleep 1; } | timeout 5 /opt/homebrew/bin/prism mcp --compact 2>/dev/null \
+          | python3 -c "
+        import json,sys
+        for line in sys.stdin:
+            line=line.strip()
+            if not line: continue
+            try: m=json.loads(line)
+            except: continue
+            if isinstance(m.get('result'),dict) and 'tools' in m['result']:
+                for t in m['result']['tools']:
+                    if t.get('name')=='prism':
+                        print('name:', t['name'])
+                        print('_meta present:', '_meta' in t)
+                        print('_meta:', t.get('_meta'))
+        "
+
+        echo
+        echo "=== PROXY (should show alwaysLoad=true) ==="
+        { echo "$INIT"; sleep 0.3; echo "$INITD"; sleep 0.1; echo "$LIST"; sleep 1; } | timeout 5 python3 "$SCRATCH/prism_resident_proxy.py" 2>/dev/null \
+          | python3 -c "
+        import json,sys
+        for line in sys.stdin:
+            line=line.strip()
+            if not line: continue
+            try: m=json.loads(line)
+            except: continue
+            if isinstance(m.get('result'),dict) and 'tools' in m['result']:
+                for t in m['result']['tools']:
+                    if t.get('name')=='prism':
+                        print('name:', t['name'])
+                        print('_meta present:', '_meta' in t)
+                        print('_meta:', t.get('_meta'))
+        "
+      at: 2026-09-12T19:49:23.876327Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0.0.1"}}}'
+        INITD='{"jsonrpc":"2.0","method":"notifications/initialized"}'
+        LIST='{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+        { echo "$INIT"; sleep 0.5; echo "$INITD"; sleep 0.3; echo "$LIST"; sleep 2; } | timeout 6 /opt/homebrew/bin/prism mcp --compact > /tmp/raw_out.txt 2> /tmp/raw_err.txt
+        echo "--- stdout bytes ---"; wc -c /tmp/raw_out.txt; cat /tmp/raw_out.txt | head -c 2000
+        echo; echo "--- stderr ---"; cat /tmp/raw_err.txt | head -c 1000
+      at: 2026-09-12T19:49:30.495936Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cat > /tmp/probe.py <<'PYEOF'
+        import subprocess, json, time, sys
+
+        def run(cmd):
+            p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+            msgs = [
+                {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0.0.1"}}},
+                {"jsonrpc":"2.0","method":"notifications/initialized"},
+                {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}},
+            ]
+            for m in msgs:
+                p.stdin.write(json.dumps(m) + "\n")
+                p.stdin.flush()
+                time.sleep(0.3)
+            time.sleep(1.5)
+            p.stdin.close()
+            try:
+                out, err = p.communicate(timeout=3)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                out, err = p.communicate()
+            return out, err
+
+        if __name__ == "__main__":
+            cmd = sys.argv[1:]
+            out, err = run(cmd)
+            print("STDOUT bytes:", len(out))
+            print(out[:3000])
+            print("STDERR:", err[:1000])
+        PYEOF
+        echo "=== RAW prism ==="
+        python3 /tmp/probe.py /opt/homebrew/bin/prism mcp --compact
+      at: 2026-09-12T19:49:40.513844Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad
+        echo "=== PROXY prism ==="
+        python3 /tmp/probe.py python3 "$SCRATCH/prism_resident_proxy.py" 2>&1 | python3 -c "
+        import sys,json
+        data=sys.stdin.read()
+        lines=[l for l in data.splitlines() if l.strip().startswith('{')]
+        for l in lines:
+            try: m=json.loads(l)
+            except Exception: continue
+            r=m.get('result')
+            if isinstance(r,dict) and 'tools' in r:
+                for t in r['tools']:
+                    print('tool name:', t.get('name'))
+                    print('_meta:', t.get('_meta'))
+        "
+      at: 2026-09-12T19:49:49.804164Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad
+        python3 /tmp/probe.py python3 "$SCRATCH/prism_resident_proxy.py" > /tmp/proxy_out.txt 2> /tmp/proxy_err.txt
+        echo "--- out ---"; cat /tmp/proxy_out.txt
+        echo "--- err ---"; cat /tmp/proxy_err.txt
+      at: 2026-09-12T19:49:56.524738Z
+      classified: other
+    - cmd: |-
+        cat > /tmp/probe2.py <<'PYEOF'
+        import subprocess, json, time, sys
+
+        def run(cmd):
+            p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+            msgs = [
+                {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0.0.1"}}},
+                {"jsonrpc":"2.0","method":"notifications/initialized"},
+                {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}},
+            ]
+            for m in msgs:
+                p.stdin.write(json.dumps(m) + "\n")
+                p.stdin.flush()
+                time.sleep(0.3)
+            time.sleep(1.5)
+            p.stdin.close()
+            try:
+                out, err = p.communicate(timeout=3)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                out, err = p.communicate()
+            return out, err
+
+        if __name__ == "__main__":
+            cmd = sys.argv[1:]
+            out, err = run(cmd)
+            for line in out.splitlines():
+                line = line.strip()
+                if not line.startswith("{"):
+                    continue
+                m = json.loads(line)
+                r = m.get("result")
+                if isinstance(r, dict) and "tools" in r:
+                    for t in r["tools"]:
+                        print("tool:", t.get("name"), "| _meta:", t.get("_meta"))
+                elif isinstance(r, dict) and "serverInfo" in r:
+                    print("server:", r["serverInfo"], "| instructions len:", len(r.get("instructions","")))
+        PYEOF
+        echo "=== RAW ==="
+        python3 /tmp/probe2.py /opt/homebrew/bin/prism mcp --compact
+        echo "=== PROXY ==="
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad
+        python3 /tmp/probe2.py python3 "$SCRATCH/prism_resident_proxy.py"
+      at: 2026-09-12T19:50:20.432836Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad
+        T="$SCRATCH/residency-test"
+        rm -rf "$T"; mkdir -p "$T"
+        cd "$T" && git init -q
+
+        cat > billing.py <<'EOF'
+        def compute_total(items):
+            """Sum item prices. Known bug: drops the last item in the list."""
+            total = 0
+            for item in items[:-1]:
+                total += item["price"]
+            return total
+
+
+        def apply_discount(total, code):
+            if code == "SAVE10":
+                return total * 0.9
+            return total
+        EOF
+
+        cat > TASK.md <<'EOF'
+        There is a pricing bug somewhere in this repo: totals come out short.
+        Find the function responsible, explain the bug in one sentence, and fix it.
+        Do not mention or reference any specific tool name — just do the task.
+        EOF
+
+        # Deliberately NO CLAUDE.md prism section, NO AGENTS.md — zero steering.
+        git add -A && git commit -q -m "seed" --author "test <t@t>"
+
+        # Variant A: prism resident via proxy
+        mkdir -p "$T/variant-A-resident"
+        cp -r billing.py TASK.md .git "$T/variant-A-resident/" 2>/dev/null
+        cat > "$T/variant-A-resident/.mcp.json" <<EOF
+        {
+          "mcpServers": {
+            "prism": { "command": "python3", "args": ["$SCRATCH/prism_resident_proxy.py"] }
+          }
+        }
+        EOF
+
+        # Variant B: prism deferred, raw binary (today's real default) — same zero steering
+        mkdir -p "$T/variant-B-deferred"
+        cp billing.py TASK.md "$T/variant-B-deferred/"
+        cat > "$T/variant-B-deferred/.mcp.json" <<'EOF'
+        {
+          "mcpServers": {
+            "prism": { "command": "/opt/homebrew/bin/prism", "args": ["mcp", "--compact"] }
+          }
+        }
+        EOF
+
+        echo "=== layout ==="
+        find "$T" -maxdepth 2 -not -path '*/.git*' | sort
+      at: 2026-09-12T19:53:52.971613Z
+      classified: other
+    - cmd: 'which claude; claude --version 2>&1; claude --help 2>&1 | grep -iE "print|headless|-p\b|non-interactive" '
+      at: 2026-09-12T19:56:44.736894Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/e4a0e97a-1d13-44e4-929e-89971959c963/scratchpad
+        T="$SCRATCH/residency-test"
+        cd "$T/variant-A-resident" && pwd && ls -la
+        echo "--- mcp config ---"; cat .mcp.json
+      at: 2026-09-12T19:56:48.914934Z
+      classified: other
+notes:
+    - text: continuation of session e4a0e97a-1d13-44e4-929e-89971959c963 — events captured after its evidence was finalized
+      at: 2026-09-12T19:48:31.078752Z
+redactions: 0

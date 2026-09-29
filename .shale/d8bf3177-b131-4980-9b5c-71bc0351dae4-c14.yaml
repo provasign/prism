@@ -1,0 +1,1129 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c14
+created_at: 2026-08-27T02:35:39.242606Z
+finalized_at: 2026-08-28T22:01:25.382442Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git log --oneline v0.55.10..HEAD | head -10
+        git tag v0.55.11 -m "query determinism + gold-recall-driven delivery; verify stale-rename; CLI query renderer" && git push origin main v0.55.11 2>&1 | tail -2
+        cd ~/Projects/provasign/research && git push 2>&1 | tail -1
+      at: 2026-08-27T02:35:39.242606Z
+      classified: other
+    - cmd: sleep 90 && gh run list --repo provasign/prism --limit 2 2>/dev/null || true
+      at: 2026-08-27T02:35:43.17802Z
+      classified: other
+    - cmd: gh run list --repo provasign/prism --limit 3 2>/dev/null
+      at: 2026-08-27T02:36:57.916249Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list --repo provasign/prism --workflow Release --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 30; done
+        gh run list --repo provasign/prism --workflow Release --limit 1 --json conclusion,displayTitle -q '.[0] | .conclusion + " " + .displayTitle'
+        gh release view v0.55.11 --repo provasign/prism --json tagName,assets -q '.tagName + " assets: " + (.assets | length | tostring)' 2>/dev/null
+      at: 2026-08-27T02:37:09.129666Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/b6kf3guxy.output
+      at: 2026-08-27T02:37:44.808334Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 -c "
+        s=open('MEMORY.md').read()
+        line='- [Query oracle arc / v0.55.11](project_query_oracle_arc.md) — 2026-08-27: gold-recall oracle drove query 0.44->0.87 @2.8x; prism was nondeterministic pre-0.55.11; agent A/B noise floor 50%/cell (need ~48 pairs); directive MUST steering moves routing 100% but content must be right\n'
+        s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1)
+        open('MEMORY.md','w').write(s)
+        print('indexed')"
+      at: 2026-08-27T02:38:19.803174Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && env JAVA_HOME=$JAVA_HOME PATH="$JAVA_HOME/bin:$PATH" python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-java12.json --limit 12 --arms baseline prism \
+          --out runs/swebench-live/java12-v5511 --prism /tmp/prism-det --model sonnet \
+          > /tmp/java12_v5511.log 2>&1 &
+        sleep 8; pgrep -f "swebench_ab.py.*slice-java12" >/dev/null && echo "VERIFIED: java12 A/B running on v0.55.11" && head -2 /tmp/java12_v5511.log
+      at: 2026-08-27T02:40:37.16766Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json, glob
+        d={}
+        for f in glob.glob('runs/swebench-live/java12-v5511/*.json'):
+            if 'provenance' in f or 'predictions' in f: continue
+            r=json.load(open(f)); d.setdefault(r['instance_id'],{})[r['arm']]=r
+        ref={}
+        for f in glob.glob('runs/swebench-live/java12-fixed/*.prism.json'):
+            r=json.load(open(f)); ref[r['instance_id']]=r
+        print(f\"{'cell':30} {'arm':9} {'turns':>5} {'cost':>7} {'prism_used':>10} {'prism calls':>11}\")
+        for tid,arms in sorted(d.items()):
+            for a in ('baseline','prism'):
+                if a in arms:
+                    r=arms[a]; pc=sum(1 for c in r['tool_calls'] if c['name'].startswith('mcp__prism'))
+                    print(f'{tid[:30]:30} {a:9} {r[\"turns\"]:5} {r[\"cost_usd\"]:7.2f} {str(r.get(\"prism_used\")):>10} {pc:11}')
+            if 'prism' in arms and tid in ref:
+                print(f'{\"  (v0.55.10 prism ref)\":30} {\"\":9} {ref[tid][\"turns\"]:5} {ref[tid][\"cost_usd\"]:7.2f}')"
+      at: 2026-08-27T02:44:18.005388Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && env JAVA_HOME=$JAVA_HOME PATH="$JAVA_HOME/bin:$PATH" python3 score_java_cells.py runs/swebench-live/java12-v5511 2>&1 | tail -17
+      at: 2026-08-27T03:24:46.476735Z
+      classified: other
+    - cmd: |-
+        gh release view v0.55.11 --repo provasign/prism --json tagName -q .tagName
+        # tap state
+        gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content 2>/dev/null | base64 -d | grep -E "version|url" | head -3
+        gh run list --repo provasign/homebrew-shale --limit 2 2>/dev/null
+      at: 2026-08-27T11:26:15.80597Z
+      classified: other
+    - cmd: gh workflow run "Refresh formulae" --repo provasign/homebrew-shale 2>&1 && sleep 20 && gh run list --repo provasign/homebrew-shale --limit 1
+      at: 2026-08-27T11:26:49.966111Z
+      classified: other
+    - cmd: |-
+        gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version
+        # now mason: how does it depend on prism?
+        cd ~/Projects/provasign/mason && grep -n "prism" go.mod | head -3; grep -rn "prism" internal/agent/tools.go | head -5
+      at: 2026-08-27T11:26:55.235228Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/mason && go get github.com/provasign/prism@v0.55.11 2>&1 | tail -1 && go mod tidy && go build ./... 2>&1 | head -5 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "SUITE: $?"'
+      at: 2026-08-27T11:27:40.588522Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/mason && grep -rn "code_context\|prism_query" internal/agent/tools.go | head -4
+        # does mason pass terms to query, and would the mined-terms / interleave changes alter its contract?
+        grep -rn "terms" internal/agent/tools.go | head -6
+      at: 2026-08-27T11:27:45.675036Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && MASON_PROBE_DIR=~/Projects/provasign/prism go test ./internal/agent/ -run Probe -count=1 -v 2>&1 | tail -6
+      at: 2026-08-27T11:28:01.813083Z
+      classified: test
+    - cmd: |-
+        ls -d ~/gvg-corpus/kinto ~/.cache/prism-research/swebench-repos/*kinto* 2>/dev/null | head -2
+        cd ~/Projects/provasign/mason && MASON_PROBE_DIR=$(ls -d ~/gvg-corpus/kinto 2>/dev/null || ls -d ~/.cache/prism-research/swebench-repos/*kinto* | head -1) go test ./internal/agent/ -run Probe -count=1 -v 2>&1 | tail -4
+      at: 2026-08-27T11:28:13.645964Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/mason && git add -A && git commit -q -m "$(cat <<'EOF'
+        deps: prism v0.55.11 — deterministic selection and gold-recall-tuned delivery
+
+        Mason embeds prism's engine, so this bump is behavioral, not cosmetic.
+        What changes under mason's own tools:
+
+        - code_context (prism_query): selection is DETERMINISTIC for the first
+          time (pre-0.55.11, identical calls returned different context — rg's
+          thread-race decided which seeds got text-confirmed); every term now
+          seeds via round-robin interleave; override-family members the budget
+          race dropped are appended as compact bodies; type-kind terms no longer
+          monopolize the budget with a whole class body. Gold-region recall on
+          the jackson oracle bed: 0.44 -> 0.87 at 2.8x oversupply (was 3.9x).
+        - read_file (prism_read): the delivery ledger records only COMMITTED
+          sections, so a discarded oversize render can no longer poison the
+          session into returning cached pointers for content never delivered.
+        - search (prism_search scope=text): path=/glob= now honored by the
+          symbol pass; locate returns locations, not bodies.
+
+        Full suite green; live wire probe against the Kinto corpus passes.
+        Agent-level check (java12, 12 pairs, Sonnet): no regression — resolve
+        8/12 both arms, turns 16.0 vs 16.3, adoption 12/12 (first full-adoption
+        run; prior builds ranged 9-11/12).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1
+        git tag v0.32.1 -m "prism v0.55.11: deterministic selection, recall-tuned delivery" && git push origin main v0.32.1 2>&1 | tail -2
+      at: 2026-08-27T11:28:32.956842Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list --repo provasign/mason --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 30; done
+        gh run list --repo provasign/mason --limit 2 --json conclusion,workflowName,headBranch -q '.[] | .workflowName + " " + .headBranch + ": " + .conclusion'
+        gh release view v0.32.1 --repo provasign/mason --json assets -q '"assets: " + (.assets|length|tostring)' 2>/dev/null
+        gh workflow run "Refresh formulae" --repo provasign/homebrew-shale 2>/dev/null; sleep 25
+        gh api repos/provasign/homebrew-shale/contents/Formula/mason.rb -q .content | base64 -d | grep -m1 version
+      at: 2026-08-27T11:28:42.981766Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/b5e3svi46.output
+      at: 2026-08-27T11:33:50.421607Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/mason && ls cmd/ 2>/dev/null && grep -rn "func main\|--task\|task string" cmd/mason/*.go 2>/dev/null | head -5
+        mason --help 2>/dev/null | head -12 || ~/bin/mason --help 2>/dev/null | head -12
+      at: 2026-08-27T13:01:36.218683Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls runs/swebench-live/slice-bed36.json >/dev/null && python3 -c "
+        import json; print('bed36 tasks:', len(json.load(open('runs/swebench-live/slice-bed36.json'))))"
+        nohup true 2>/dev/null # placeholder
+        python3 swebench_ab.py --tasks runs/swebench-live/slice-bed36.json --limit 36 \
+          --arms baseline prism --out runs/swebench-live/bed36-v5511 \
+          --prism /tmp/prism-det --model sonnet > /tmp/bed36_v5511.log 2>&1 &
+        sleep 8; pgrep -f "swebench_ab.py.*bed36" >/dev/null && echo "VERIFIED: bed36 A/B running (72 cells, v0.55.11)" && head -2 /tmp/bed36_v5511.log
+      at: 2026-08-27T13:01:59.659411Z
+      classified: other
+    - cmd: ~/bin/mason --help 2>&1 | sed -n 13,40p; mason version 2>/dev/null || ~/bin/mason version
+      at: 2026-08-27T13:02:22.186674Z
+      classified: other
+    - cmd: "cd ~/Projects/provasign/mason && go build -o ~/bin/mason-0321 ./cmd/mason && ~/bin/mason-0321 version\ncd ~/Projects/provasign/research/harness && ls runs/swebench-live/ | grep -iE \"bed36\" | head -5\npython3 -c \"\nimport json,glob\n# find prior bed36 scoring to get scoreable ids\nfor cand in ('runs/swebench-live/bed36/scored.json','runs/swebench-live/bed36-sonnet/scored.json'):\n    try:\n        d=json.load(open(cand)); print(cand, len(d)); break\n    except: pass\" \ngrep -n \"def prepare_worktree\\|def sanitize\\|def make_worktree\\|def cell_worktree\" swebench_ab.py | head -4"
+      at: 2026-08-27T13:02:43.623891Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/bed36-sonnet/scored.json'))
+        sc=[r['instance_id'] for r in d if all(a.get('resolved') is not None and not a.get('voided') for a in r['arms'].values())]
+        print('scoreable pairs in prior bed36:', len(sc))
+        json.dump(sc, open('/tmp/bed36-scoreable-ids.json','w'))"
+        sed -n "$(grep -n 'def run_arm' swebench_ab.py | head -1 | cut -d: -f1),+30p" swebench_ab.py | grep -nE "worktree|clone|refs|remote" | head -6
+        grep -n "def local_isolated_clone\|def isolated\|git.*clone" swebench_ab.py | head -4
+      at: 2026-08-27T13:02:54.700413Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 510,545p swebench_ab.py
+      at: 2026-08-27T13:03:16.645566Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && cat > mason_arm.py <<'PY'
+        #!/usr/bin/env python3
+        """Mason arm for the Python bed: run `mason --json` one-shot per cell.
+
+        Reuses swebench_ab's isolation primitives (ensure_repo, sanitize_worktree,
+        sh) and mirrors its clone-strip-verify sequence exactly — gold must be
+        unreachable-by-discovery in the mason arm too. Records the same cell shape
+        (instance_id, arm="mason", turns, cost_usd, model_patch) so score_java/
+        score_cell tooling reads it unchanged.
+
+        Usage: python3 mason_arm.py --ids /tmp/bed36-scoreable-ids.json \
+                 --tasks runs/swebench-live/slice-bed36.json \
+                 --out runs/swebench-live/bed36-mason --mason ~/bin/mason-0321
+        """
+        import argparse, json, os, shutil, subprocess, sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).parent))
+        import swebench_ab as ab
+
+        def run_cell(task, mason_bin, out_dir, model):
+            tid = task["instance_id"]
+            rec_path = out_dir / f"{tid}.mason.json"
+            if rec_path.exists():
+                return "cached"
+            repo_dir = ab.ensure_repo(task["repo"])
+            wt = ab.WT_ROOT / f"{tid}.mason"
+            if wt.exists():
+                shutil.rmtree(wt)
+            wt.parent.mkdir(parents=True, exist_ok=True)
+            # — isolation, mirrored from run_arm (clone-strip-verify) —
+            ab.sh("git", "clone", "--local", "--no-checkout", "--quiet", str(repo_dir), str(wt))
+            upstream = ab.sh("git", "-C", str(repo_dir), "remote", "get-url", "origin").stdout.strip()
+            ab.sh("git", "-C", str(wt), "remote", "set-url", "origin", upstream)
+            ab.sh("git", "-C", str(wt), "config", "remote.origin.promisor", "true")
+            ab.sh("git", "-C", str(wt), "config", "remote.origin.partialclonefilter", "blob:none")
+            ab.sh("git", "-C", str(wt), "checkout", "--detach", "-f", "-q", task["base_commit"])
+            for ref in ab.sh("git", "-C", str(wt), "for-each-ref", "--format=%(refname)").stdout.split():
+                ab.sh("git", "-C", str(wt), "update-ref", "-d", ref)
+            ab.sh("git", "-C", str(wt), "remote", "remove", "origin")
+            head = ab.sh("git", "-C", str(wt), "rev-parse", "HEAD").stdout.strip()
+            if head != task["base_commit"]:
+                raise RuntimeError(f"{tid}: worktree at {head}, expected {task['base_commit']}")
+            ab.sanitize_worktree(wt, "mason")
+            prompt = ab.BASE_PROMPT.format(repo=task["repo"], problem=task["problem_statement"],
+                                           steer="\n" + ab.INVESTIGATION_GUIDANCE)
+            env = dict(os.environ)
+            env.pop("MASON_STEERING", None)
+            try:
+                r = subprocess.run([mason_bin, "--json", "--yes", "--no-tui",
+                                    "--model", model, "--dir", str(wt),
+                                    "--max-cost", "2.50", "--max-turns", "40", prompt],
+                                   capture_output=True, text=True, timeout=1800, env=env)
+                line = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else "{}"
+                meta = json.loads(line)
+            except Exception as e:
+                meta = {"error": str(e)[:200]}
+            diff = ab.sh("git", "-C", str(wt), "diff").stdout
+            rec = {"instance_id": tid, "arm": "mason", "model": model,
+                   "turns": meta.get("turns", meta.get("steps", -1)),
+                   "cost_usd": meta.get("cost_usd", meta.get("cost", 0.0)) or 0.0,
+                   "fresh_input_tokens": meta.get("input_tokens", 0),
+                   "cache_read_tokens": meta.get("cache_read_tokens", 0),
+                   "output_tokens": meta.get("output_tokens", 0),
+                   "tool_calls": [], "prism_used": True,
+                   "mason_meta": {k: v for k, v in meta.items() if k not in ("result", "text")},
+                   "model_patch": diff, "empty_patch": not diff.strip()}
+            out_dir.mkdir(parents=True, exist_ok=True)
+            json.dump(rec, open(rec_path, "w"), indent=1)
+            shutil.rmtree(wt, ignore_errors=True)
+            return f"t={rec['turns']} ${rec['cost_usd']:.2f} empty={rec['empty_patch']}"
+
+        def main():
+            p = argparse.ArgumentParser()
+            p.add_argument("--tasks", required=True)
+            p.add_argument("--ids", default=None)
+            p.add_argument("--out", required=True)
+            p.add_argument("--mason", default=os.path.expanduser("~/bin/mason-0321"))
+            p.add_argument("--model", default="sonnet")
+            p.add_argument("--limit", type=int, default=0)
+            a = p.parse_args()
+            tasks = json.load(open(a.tasks))
+            if a.ids:
+                keep = set(json.load(open(a.ids)))
+                tasks = [t for t in tasks if t["instance_id"] in keep]
+            if a.limit:
+                tasks = tasks[:a.limit]
+            out_dir = Path(a.out)
+            for i, t in enumerate(tasks):
+                print(f"[{i+1}/{len(tasks)}] {t['instance_id']} :: mason", flush=True)
+                try:
+                    print("   ", run_cell(t, a.mason, out_dir, a.model), flush=True)
+                except Exception as e:
+                    print(f"    FAILED: {e}", flush=True)
+
+        if __name__ == "__main__":
+            main()
+        PY
+        python3 -c "import ast;ast.parse(open('mason_arm.py').read());print('parses')"
+        # one-unit probe first, per the standing rule
+        python3 mason_arm.py --tasks runs/swebench-live/slice-bed36.json --ids /tmp/bed36-scoreable-ids.json --out runs/swebench-live/bed36-mason --limit 1 2>&1 | tail -3
+      at: 2026-08-27T13:03:51.145317Z
+      classified: other
+    - cmd: |-
+        rm -f ~/Projects/provasign/research/harness/runs/swebench-live/bed36-mason/*.json
+        cd /tmp && mkdir -p masonprobe && cd masonprobe && git init -q 2>/dev/null; echo "def f():\n    return 1" > x.py
+        ~/bin/mason-0321 --json --yes --no-tui --model sonnet --dir /tmp/masonprobe --max-turns 5 "add a docstring to f in x.py" 2>/tmp/mason_err.log | tail -3
+        echo "--- stderr:"; tail -5 /tmp/mason_err.log
+      at: 2026-08-27T13:04:04.045869Z
+      classified: other
+    - cmd: |-
+        [ -n "$ANTHROPIC_API_KEY" ] && echo "env key present" || echo "no env key"
+        security find-generic-password -s mason -l anthropic >/dev/null 2>&1 && echo "keychain key present" || echo "no keychain key"
+        ollama list 2>/dev/null | head -4 || echo "no ollama"
+      at: 2026-08-27T13:04:19.575992Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 mason_arm.py --tasks runs/swebench-live/slice-bed36.json --ids /tmp/bed36-scoreable-ids.json --out runs/swebench-live/bed36-mason --mason ~/bin/mason-0321 --model ollama:qwen3-coder-ctx16k --limit 1 2>&1 | tail -2
+      at: 2026-08-27T13:04:38.333618Z
+      classified: other
+    - cmd: |-
+        pgrep -f mason_arm >/dev/null && echo "probe still running" || echo "probe done"
+        tail -2 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/b25gc60l7.output 2>/dev/null
+        pgrep -f "mason-0321" >/dev/null && echo "mason process alive" ; ollama ps 2>/dev/null | head -2
+      at: 2026-08-27T13:20:37.318974Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/b25gc60l7.output
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/bed36-mason/a2aproject__a2a-python-219.mason.json'))
+        print('turns:', r['turns'], 'empty:', r['empty_patch'], 'meta keys:', list(r['mason_meta'].keys())[:8])
+        print('patch preview:', r['model_patch'][:200].replace(chr(10),' | '))" 2>/dev/null
+      at: 2026-08-27T13:34:59.397576Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/bed36-mason/a2aproject__a2a-python-219.mason.json'))
+        print(r['mason_meta'])"
+      at: 2026-08-27T13:35:07.854662Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        s=open('mason_arm.py').read()
+        s=s.replace('timeout=1800','timeout=3600')
+        s=s.replace('''        meta = {\"error\": str(e)[:200]}''','''        meta = {\"error\": type(e).__name__ + \": \" + str(e)[:150], \"timed_out\": \"Timeout\" in type(e).__name__}''')
+        open('mason_arm.py','w').write(s)
+        print('driver: 60min cap, timeout flagged')"
+        rm -f runs/swebench-live/bed36-mason/*.json
+        python3 mason_arm.py --tasks runs/swebench-live/slice-bed36.json --ids /tmp/bed36-scoreable-ids.json --out runs/swebench-live/bed36-mason --mason ~/bin/mason-0321 --model ollama:qwen3-coder-ctx16k > /tmp/mason_fleet.log 2>&1 &
+        sleep 5; pgrep -f mason_arm >/dev/null && echo "VERIFIED: mason fleet running (32 cells, local model — overnight-scale)"
+      at: 2026-08-27T13:35:29.364856Z
+      classified: other
+    - cmd: |-
+        pkill -f mason_arm; pkill -f mason-0321; sleep 1
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        s=open('mason_arm.py').read()
+        s=s.replace('\"--max-cost\", \"2.50\", \"--max-turns\", \"40\"','\"--max-cost\", \"2.50\", \"--max-turns\", \"28\"')
+        s=s.replace('timeout=3600','timeout=3900')
+        open('mason_arm.py','w').write(s)
+        print('28 turns, 65min cap — cells end by turn budget, not clock')"
+        rm -f runs/swebench-live/bed36-mason/*.json
+        python3 mason_arm.py --tasks runs/swebench-live/slice-bed36.json --ids /tmp/bed36-scoreable-ids.json --out runs/swebench-live/bed36-mason --mason ~/bin/mason-0321 --model ollama:qwen3-coder-ctx16k > /tmp/mason_fleet.log 2>&1 &
+        sleep 5; pgrep -f mason_arm >/dev/null && echo "VERIFIED: fleet relaunched"
+      at: 2026-08-27T13:56:25.704813Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/bed36-mason/a2aproject__a2a-python-219.mason.json'))
+        print(r['mason_meta'])
+        print('patch bytes:', len(r['model_patch']))"
+      at: 2026-08-27T14:14:46.395367Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        s=open('mason_arm.py').read()
+        old='''    rec = {\"instance_id\": tid, \"arm\": \"mason\", \"model\": model,
+                   \"turns\": meta.get(\"turns\", meta.get(\"steps\", -1)),
+                   \"cost_usd\": meta.get(\"cost_usd\", meta.get(\"cost\", 0.0)) or 0.0,
+                   \"fresh_input_tokens\": meta.get(\"input_tokens\", 0),
+                   \"cache_read_tokens\": meta.get(\"cache_read_tokens\", 0),
+                   \"output_tokens\": meta.get(\"output_tokens\", 0),'''
+        new='''    usage = meta.get(\"usage\") or {}
+            rec = {\"instance_id\": tid, \"arm\": \"mason\", \"model\": model,
+                   \"turns\": -1,  # mason --json does not expose a turn count
+                   \"duration_s\": round((meta.get(\"durationMs\") or 0) / 1000),
+                   \"cost_usd\": usage.get(\"costUSD\", 0.0) or 0.0,
+                   \"fresh_input_tokens\": usage.get(\"inputTokens\", 0),
+                   \"cache_read_tokens\": 0,
+                   \"output_tokens\": usage.get(\"outputTokens\", 0),'''
+        assert old in s
+        open('mason_arm.py','w').write(s.replace(old,new,1))
+        print('mapping fixed — fleet keeps running, records self-heal via mason_meta')"
+      at: 2026-08-27T14:15:09.736962Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        r=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/bed36-mason/a2aproject__a2a-python-279.mason.json'))
+        m=r['mason_meta']
+        print('ok:', m.get('ok'), '| changed:', m.get('changedFiles'), '| dur:', round((m.get('durationMs') or 0)/1000),'s')
+        print('reply tail:', (m.get('reply') or m.get('error',''))[-250:])"
+      at: 2026-08-27T14:47:03.285629Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && grep -rn "Timeout" internal/ --include="*.go" 2>/dev/null | grep -iE "client|http" | grep -v test | head -6 || grep -rn "Timeout:" internal/llm/*.go internal/*/*.go 2>/dev/null | grep -v test | head -6
+      at: 2026-08-27T14:47:19.225864Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/mason && grep -rn "http.Client{" internal/ | grep -v test | head -5 && grep -rn "MASON_.*TIMEOUT\|OLLAMA" internal/ --include=*.go | grep -v test | head -5
+      at: 2026-08-27T14:47:24.984246Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/mason && python3 -c "
+        s=open('internal/provider/provider.go').read()
+        old='var httpc = &http.Client{Timeout: 10 * time.Minute}'
+        new='''// 30 minutes, not 10: a local model'\''s prompt-prefill on a 16k-context
+        // window can exceed 10 minutes before the FIRST byte arrives (measured
+        // 2026-08-27, qwen3-coder-30b via ollama on a benchmark cell — the request
+        // died \"awaiting headers\" 32 minutes into an otherwise healthy session).
+        // Cloud providers answer in seconds either way; the ceiling only matters
+        // when the model is doing real work locally, which is exactly when killing
+        // it wastes the most.
+        var httpc = &http.Client{Timeout: 30 * time.Minute}'''
+        assert old in s
+        open('internal/provider/provider.go','w').write(s.replace(old,new,1))
+        print('timeout 30min')"
+        go build -o ~/bin/mason-0321 ./cmd/mason && go test ./internal/provider/ -count=1 2>&1 | tail -1 && echo "fleet picks this up from cell 4 on"
+      at: 2026-08-27T14:48:11.467103Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls runs/swebench-live/bed36-v5511/*.json | grep -vc "provenance\|predictions"
+        pgrep -f "swebench_ab" >/dev/null && echo "harness still alive?" || echo "harness done"
+        nohup true; python3 score_cell.py runs/swebench-live/bed36-v5511 > /tmp/bed36_score.log 2>&1 &
+        sleep 5; pgrep -f score_cell >/dev/null && echo "VERIFIED: scoring 72 cells (docker, ~30-60min)"
+      at: 2026-08-27T16:22:18.338169Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls runs/swebench-live/bed36-v5511/*.json | grep -vc "provenance\|predictions" && python3 <<'PY'
+        import json, glob, statistics
+        d={}
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.json'):
+            if 'provenance' in f or 'predictions' in f: continue
+            r=json.load(open(f)); d.setdefault(r['instance_id'],{})[r['arm']]=r
+        pairs={k:v for k,v in d.items() if len(v)==2}
+        print(f"pairs complete: {len(pairs)}")
+        cb=[v['baseline']['cost_usd'] for v in pairs.values()]; cp=[v['prism']['cost_usd'] for v in pairs.values()]
+        tb=[v['baseline']['turns'] for v in pairs.values()]; tp=[v['prism']['turns'] for v in pairs.values()]
+        ad=sum(1 for v in pairs.values() if any(c['name'].startswith('mcp__prism') for c in v['prism']['tool_calls']))
+        print(f"EFFICIENCY (pre-scoring): cost ${statistics.mean(cb):.3f} vs ${statistics.mean(cp):.3f} ({(statistics.mean(cp)-statistics.mean(cb))/statistics.mean(cb):+.0%})")
+        print(f"turns {statistics.mean(tb):.1f} vs {statistics.mean(tp):.1f} ({(statistics.mean(tp)-statistics.mean(tb))/statistics.mean(tb):+.0%})")
+        print(f"median cost {statistics.median(cb):.2f} vs {statistics.median(cp):.2f}   adoption {ad}/{len(pairs)}")
+        import math
+        diffs=[math.log(v['prism']['cost_usd'])-math.log(v['baseline']['cost_usd']) for v in pairs.values()]
+        m=statistics.mean(diffs); se=statistics.stdev(diffs)/math.sqrt(len(diffs))
+        print(f"paired log-cost: mean {m:+.3f} ± {1.96*se:.3f} (95% CI) → geometric ratio {math.exp(m):.2f}x [{math.exp(m-1.96*se):.2f}, {math.exp(m+1.96*se):.2f}]")
+        PY
+      at: 2026-08-27T16:22:36.229944Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/bhadci2gb.output | tail -4
+        tail -5 /tmp/bed36_v5511.log
+        tail -3 /tmp/bed36_score.log 2>/dev/null
+      at: 2026-08-27T16:22:49.641405Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && grep -E "^\[|skip|SKIP|no-work" /tmp/bed36_v5511.log | grep -vE "baseline|prism" | head -6
+        python3 -c "
+        import json,glob
+        have={json.load(open(f))['instance_id'] for f in glob.glob('runs/swebench-live/bed36-v5511/*.json') if 'prov' not in f and 'pred' not in f}
+        allt=[t['instance_id'] for t in json.load(open('runs/swebench-live/slice-bed36.json'))]
+        print('missing:', [t for t in allt if t not in have][:12])"
+        head -3 /tmp/bed36_score.log; grep -n "usage\|argument" /tmp/bed36_score.log | head -3
+        python3 score_cell.py --help 2>&1 | head -6
+      at: 2026-08-27T16:23:00.431298Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 score_cell.py --help 2>&1 | sed -n 7,20p
+        grep -E "^\[" /tmp/bed36_v5511.log | wc -l; grep -iE "error|fail|traceback" /tmp/bed36_v5511.log | grep -v "failure.ignore" | head -4
+      at: 2026-08-27T16:23:11.551265Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/bed36-v5511 --all > /tmp/bed36_score.log 2>&1 &
+        sleep 5; pgrep -f score_cell >/dev/null && echo "VERIFIED: scoring 27 pairs (docker)"
+      at: 2026-08-27T16:23:29.872242Z
+      classified: other
+    - cmd: tail -25 /tmp/bed36_score.log
+      at: 2026-08-27T16:23:51.573771Z
+      classified: other
+    - cmd: |-
+        wc -l /tmp/bed36_score.log; head -5 /tmp/bed36_score.log; ls ~/Projects/provasign/research/harness/runs/swebench-live/bed36-v5511/scored.json 2>/dev/null && python3 -c "
+        import json
+        d=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/bed36-v5511/scored.json'))
+        print('scored records:', len(d))" 2>/dev/null; tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/b7a6m5pa1.output
+      at: 2026-08-27T16:24:10.751843Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/bed36-v5511 --all 2>&1 | tail -40
+      at: 2026-08-27T16:24:24.065525Z
+      classified: other
+    - cmd: 'pgrep -f score_cell >/dev/null && echo "VERIFIED: scoring actually running this time" && ps -eo pid,etime,command | grep score_cell | grep -v grep | head -1'
+      at: 2026-08-27T16:24:37.175646Z
+      classified: other
+    - cmd: |-
+        pgrep -f score_cell >/dev/null && echo "scorer process still alive" || echo "scorer dead"
+        tail -5 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/bxt3oa9fc.output 2>/dev/null
+        ls ~/Projects/provasign/research/harness/runs/swebench-live/bed36-v5511/scored.json 2>/dev/null && echo "scored.json exists"
+      at: 2026-08-27T16:36:42.464623Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/bed36-v5511/scored.json'))
+        print('scored:', len(d))"
+        tail -4 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/bxt3oa9fc.output 2>/dev/null | head -4
+        pgrep -f score_cell || echo "scorer gone"
+      at: 2026-08-27T17:11:39.89227Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/bed36-v5511 --all 2>&1 | tail -35
+      at: 2026-08-27T17:11:52.373088Z
+      classified: other
+    - cmd: 'pgrep -f score_cell >/dev/null && echo "VERIFIED: scorer resumed"'
+      at: 2026-08-27T17:11:56.717263Z
+      classified: other
+    - cmd: |-
+        pgrep -f score_cell && echo "^ scorer still alive" || echo "scorer dead again"
+        python3 -c "
+        import json
+        print('scored:', len(json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/bed36-v5511/scored.json'))))"
+      at: 2026-08-27T17:14:13.658803Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && (setsid python3 score_cell.py runs/swebench-live/bed36-v5511 --all > /tmp/bed36_score2.log 2>&1 < /dev/null &) ; sleep 3; pgrep -f score_cell >/dev/null && echo "VERIFIED: detached scorer alive" || { tail -3 /tmp/bed36_score2.log; echo "still failing"; }'
+      at: 2026-08-27T18:11:46.535266Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && (nohup python3 score_cell.py runs/swebench-live/bed36-v5511 --all > /tmp/bed36_score2.log 2>&1 < /dev/null &) ; sleep 3; pgrep -f score_cell >/dev/null && echo "VERIFIED: detached scorer alive (double-fork, no controlling task)"'
+      at: 2026-08-27T18:12:01.507895Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && pgrep -f score_cell >/dev/null && echo "scorer RUNNING" || echo "scorer done"
+        python3 <<'PY'
+        import json, glob, statistics, math
+        d=json.load(open('runs/swebench-live/bed36-v5511/scored.json'))
+        print(f"scored {len(d)}/27 pairs")
+        bp=bf=bo=po=0
+        for r in d:
+            a=r['arms']; b,p=a['baseline'].get('resolved'),a['prism'].get('resolved')
+            if b and p: bp+=1
+            elif b and not p: bo+=1
+            elif p and not b: po+=1
+            else: bf+=1
+        print(f"both-pass {bp}  both-fail {bf}  baseline-only {bo}  prism-only {po}")
+        print(f"resolve: baseline {bp+bo}/{len(d)}  prism {bp+po}/{len(d)}")
+        # cost among scored pairs
+        cells={}
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.json'):
+            if 'prov' in f or 'pred' in f or 'scored' in f: continue
+            r=json.load(open(f)); cells.setdefault(r['instance_id'],{})[r['arm']]=r
+        ids=[r['instance_id'] for r in d]
+        cb=[cells[i]['baseline']['cost_usd'] for i in ids]; cp=[cells[i]['prism']['cost_usd'] for i in ids]
+        print(f"cost on scored subset: ${statistics.mean(cb):.2f} vs ${statistics.mean(cp):.2f}")
+        PY
+      at: 2026-08-27T18:15:11.400331Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, re
+        tasks={t['instance_id']:t for t in json.load(open('runs/swebench-live/slice-bed36.json'))}
+        cells={}
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.json'):
+            if 'prov' in f or 'pred' in f or 'scored' in f: continue
+            r=json.load(open(f)); cells.setdefault(r['instance_id'],{})[r['arm']]=r
+        def files(patch): return set(re.findall(r'^\+\+\+ b/(.+)$', patch, re.M))
+        for tid in [k for k in cells if 'atlassian' in k or 'opentelemetry' in k]:
+            t=tasks[tid]; pair=cells[tid]
+            print(f"\n=== {tid}")
+            print(f"  gold files: {sorted(files(t['patch']))}")
+            for arm in ('baseline','prism'):
+                r=pair[arm]
+                print(f"  {arm}: files={sorted(files(r['model_patch']))[:4]} patch_bytes={len(r['model_patch'])}")
+            # prism calls in prism arm
+            for c in pair['prism']['tool_calls']:
+                if c['name'].startswith('mcp__prism'):
+                    print(f"    prism call: {c['name'].replace('mcp__prism__','')} {json.dumps(c['input'])[:90]}")
+        PY
+      at: 2026-08-27T18:19:10.232918Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, re
+        cells={}
+        for f in glob.glob('runs/swebench-live/bed36-v5511/open-telemetry*.json'):
+            r=json.load(open(f)); cells[r['arm']]=r
+        def hunks_for(patch, path):
+            m=re.split(r'^diff --git ', patch, flags=re.M)
+            for part in m:
+                if f'b/{path}' in part.split('\n')[0]:
+                    return part[:1500]
+            return '(not touched)'
+        target='opentelemetry-sdk/src/opentelemetry/sdk/_logs/_internal/__init__.py'
+        print("GOLD touches sdk/_logs/_internal — did each arm?")
+        for arm in ('baseline','prism'):
+            print(f"\n--- {arm}:")
+            print(hunks_for(cells[arm]['model_patch'], target)[:600])
+        PY
+      at: 2026-08-27T18:19:35.355146Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, difflib
+        d=json.load(open('runs/swebench-live/bed36-v5511/scored.json'))
+        ids=[x['instance_id'] for x in d]
+        otel=[x for x in d if 'telemetry' in x['instance_id']]
+        print('otel in scored:', bool(otel))
+        if otel: print(json.dumps(otel[0]['arms']['prism'])[:400])
+        cells={}
+        for f in glob.glob('runs/swebench-live/bed36-v5511/open-telemetry*.json'):
+            x=json.load(open(f)); cells[x['arm']]=x
+        a=cells['baseline']['model_patch'].split('\n'); b=cells['prism']['model_patch'].split('\n')
+        diff=[l for l in difflib.unified_diff(a,b,lineterm='') if l.startswith(('+','-')) and not l.startswith(('+++','---'))]
+        print(f"diff-of-diffs: {len(diff)} lines; sample:")
+        for l in diff[:16]: print(' ', l[:110])
+        PY
+      at: 2026-08-27T18:20:00.465408Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob
+        cells={}
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.json'):
+            if 'prov' in f or 'pred' in f or 'scored' in f: continue
+            r=json.load(open(f)); cells.setdefault(r['instance_id'],{})[r['arm']]=r
+        # both-pass with prism slower (from monitor verdicts): pycasbin-392 (18v13), a2a-219 (10v10 but $0.38 v $0.21)
+        for tid in ('casbin__pycasbin-392','a2aproject__a2a-python-219'):
+            b,p=cells[tid]['baseline'],cells[tid]['prism']
+            print(f"\n=== {tid}: baseline t={b['turns']} ${b['cost_usd']:.2f} | prism t={p['turns']} ${p['cost_usd']:.2f}")
+            print(f"  fresh: {b['fresh_input_tokens']:,} vs {p['fresh_input_tokens']:,}   cache: {b['cache_read_tokens']:,} vs {p['cache_read_tokens']:,}")
+            seq=[]
+            for c in p['tool_calls']:
+                n=c['name'].replace('mcp__prism__','P:')
+                if n=='Bash': n='bash'
+                seq.append(n)
+            print('  prism-arm sequence:', ' '.join(seq[:24]))
+            pr=[c for c in p['tool_calls'] if c['name'].startswith('mcp__prism')]
+            for c in pr: print('   ', c['name'].replace('mcp__prism__',''), json.dumps(c['input'])[:80])
+        PY
+      at: 2026-08-27T18:20:28.695492Z
+      classified: other
+    - cmd: |-
+        pkill -f mason_arm; pkill -f mason-0321; sleep 1
+        pgrep -f "mason_arm|mason-0321" >/dev/null && echo "still alive" || echo "mason stopped"
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob
+        rows=[]
+        for f in sorted(glob.glob('runs/swebench-live/bed36-mason/*.mason.json')):
+            r=json.load(open(f)); m=r['mason_meta']
+            u=m.get('usage') or {}
+            rows.append({'id': r['instance_id'], 'ok': m.get('ok'), 'empty': r['empty_patch'],
+                         'dur_min': round((m.get('durationMs') or 0)/60000,1),
+                         'in_tok': u.get('inputTokens',0), 'out_tok': u.get('outputTokens',0),
+                         'err': (m.get('error') or m.get('reply','')[-60:] if not m.get('ok') else '')})
+        print(f"{'cell':38} {'ok':>5} {'patch':>6} {'min':>5} {'in_tok':>8}")
+        for r in rows:
+            print(f"{r['id'][:38]:38} {str(r['ok']):>5} {'YES' if not r['empty'] else '-':>6} {r['dur_min']:5} {r['in_tok']:8,}")
+            if r['err']: print(f"    err: {str(r['err'])[:100]}")
+        print(f"\n{len(rows)} cells: {sum(1 for r in rows if not r['empty'])} with patches, {sum(1 for r in rows if r['empty'])} empty")
+        PY
+      at: 2026-08-27T19:21:53.729215Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, sys
+        sys.path.insert(0,'.')
+        import score_cell as sc
+        tasks={t['instance_id']:t for t in json.load(open('runs/swebench-live/slice-bed36.json'))}
+        results={}
+        for f in sorted(glob.glob('runs/swebench-live/bed36-mason/*.mason.json')):
+            r=json.load(open(f))
+            if r['empty_patch']: continue
+            tid=r['instance_id']
+            try:
+                out=sc.score_one(tasks[tid], r['model_patch'])
+            except AttributeError:
+                import docker_eval
+                out=docker_eval.score_official(tasks[tid], r['model_patch'])
+            results[tid]=out.get('resolved')
+            print(f"{tid[:40]:40} resolved={out.get('resolved')}", flush=True)
+        print(f"\nMASON RESOLVE: {sum(1 for v in results.values() if v)}/{len(results)} of patched, /12 attempted")
+        PY
+      at: 2026-08-27T19:23:19.720027Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/bguptnitl.output
+      at: 2026-08-27T19:25:50.443226Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/bed36-v5511/scored.json'))
+        print('scored:', len(d))
+        ids={r['instance_id'] for r in d}
+        import glob
+        cells=set()
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.json'):
+            if 'prov' in f or 'pred' in f or 'scored' in f: continue
+            cells.add(json.load(open(f))['instance_id'])
+        print('missing:', sorted(cells-ids))"
+        tail -5 /tmp/bed36_score2.log
+      at: 2026-08-27T19:30:42.770119Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        old=json.load(open('runs/swebench-live/bed36-sonnet/scored.json'))
+        oldids={r['instance_id'] for r in old}
+        missing=['ag2ai__faststream-2366','celery__celery-9853','ipython__ipython-14872','hgrecco__pint-2108']
+        print('were these scored in the OLD run?', {m: (m in oldids) for m in missing})"
+        grep -n "scoreable\|SCOREABLE\|subset" score_cell.py | head -6
+      at: 2026-08-27T19:30:59.479354Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 275,300p score_cell.py
+      at: 2026-08-27T19:31:03.690388Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && (nohup python3 score_cell.py runs/swebench-live/bed36-v5511 --all --slice runs/swebench-live/slice-bed36.json > /tmp/bed36_score3.log 2>&1 < /dev/null &)
+        sleep 3; pgrep -f score_cell >/dev/null && echo "VERIFIED: scorer running against the full bed36 slice" && head -1 /tmp/bed36_score3.log
+      at: 2026-08-27T19:31:19.766855Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, statistics, math
+        d=json.load(open('runs/swebench-live/bed36-v5511/scored.json'))
+        clean=[r for r in d if all(a.get('resolved') is not None for a in r['arms'].values())]
+        b=sum(1 for r in clean if r['arms']['baseline']['resolved'])
+        p=sum(1 for r in clean if r['arms']['prism']['resolved'])
+        bo=sum(1 for r in clean if r['arms']['baseline']['resolved'] and not r['arms']['prism']['resolved'])
+        po=sum(1 for r in clean if r['arms']['prism']['resolved'] and not r['arms']['baseline']['resolved'])
+        print(f"NEW (v0.55.11): n={len(clean)}  baseline {b}/{len(clean)}  prism {p}/{len(clean)}  discordant {bo}-{po}")
+        cells={}
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.json'):
+            if 'prov' in f or 'pred' in f or 'scored' in f: continue
+            r=json.load(open(f)); cells.setdefault(r['instance_id'],{})[r['arm']]=r
+        ids=[r['instance_id'] for r in clean]
+        cb=[cells[i]['baseline']['cost_usd'] for i in ids]; cp=[cells[i]['prism']['cost_usd'] for i in ids]
+        print(f"  cost mean ${statistics.mean(cb):.3f} vs ${statistics.mean(cp):.3f}  median ${statistics.median(cb):.2f} vs ${statistics.median(cp):.2f}")
+        old=json.load(open('runs/swebench-live/bed36-sonnet/scored.json'))
+        oc=[r for r in old if r['instance_id'] in ids and all(a.get('resolved') is not None for a in r['arms'].values())]
+        ob=sum(1 for r in oc if r['arms']['baseline']['resolved']); op=sum(1 for r in oc if r['arms']['prism']['resolved'])
+        print(f"OLD (v0.55.7, same {len(oc)} tasks): baseline {ob}/{len(oc)}  prism {op}/{len(oc)}")
+        PY
+      at: 2026-08-27T20:34:59.320178Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && grep -A6 "prism_search" AGENTS.md | head -12
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob
+        # How often do prism arms issue CONSECUTIVE single-term searches (batchable)?
+        runs=0; serial_runs=0; wasted=0
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.prism.json')+glob.glob('runs/swebench-live/java12-v5511/*.prism.json'):
+            r=json.load(open(f))
+            seq=[c for c in r['tool_calls']]
+            i=0
+            while i < len(seq):
+                if seq[i]['name']=='mcp__prism__prism_search' and not isinstance(seq[i]['input'].get('query'),list):
+                    j=i
+                    while j+1<len(seq) and seq[j+1]['name']=='mcp__prism__prism_search' and not isinstance(seq[j+1]['input'].get('query'),list):
+                        j+=1
+                    if j>i:
+                        serial_runs+=1; wasted+=j-i
+                    i=j+1
+                else: i+=1
+            runs+=1
+        print(f"across {runs} prism cells: {serial_runs} serial single-term search chains, {wasted} batchable extra turns")
+        PY
+      at: 2026-08-27T21:19:49.032292Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "Several at once" internal/cli/commands.go AGENTS.md | head -3
+      at: 2026-08-27T21:20:07.522555Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rn "Several at once\|where is X" internal/cli/*.go | head -3
+      at: 2026-08-27T21:20:11.82979Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rln "prism_search" internal/cli/ | head -3 && grep -rn "steering\|writeSteering\|AGENTS" internal/cli/commands.go | head -5
+      at: 2026-08-27T21:20:16.296578Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rn "where is X" internal/ --include="*.go" 2>/dev/null | head -2 || grep -rln "where is X" internal/ | head -3
+      at: 2026-08-27T21:20:20.696796Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rln "Several at once" . --include="*.go" 2>/dev/null; grep -rn "steeringBlock\|steeringText\|const steering" internal/cli/*.go internal/init/*.go 2>/dev/null | head -4; ls internal/init 2>/dev/null; grep -rln "prism:end" internal/ | head -3
+      at: 2026-08-27T21:20:26.381409Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "prism:end" internal/cli/commands.go | head -2 && grep -n "steering" internal/cli/commands.go | grep -in "const\|var\|func" | head -5
+      at: 2026-08-27T21:20:30.766889Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 471,493p internal/cli/commands.go
+      at: 2026-08-27T21:20:36.235087Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'PY'
+        s=open('internal/cli/commands.go').read()
+        old='''- Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
+          **Relay that set as-is** — re-filtering it through grep/sed measurably
+          drops real sites.
+        - Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.'''
+        new='''- Before editing an existing symbol: ` + "`" + `prism_change_impact(query="Type.method")` + "`" + `.
+          **Relay that set as-is** — re-filtering it through grep/sed measurably
+          drops real sites.
+        - Before declaring a multi-site change done: ` + "`" + `prism_verify` + "`" + `.
+        - Several names to find? ONE call: ` + "`" + `prism_search(query=["A","B","C"])` + "`" + `.
+          Do NOT issue one search per name — each extra call costs a full turn
+          and re-reads your whole context.'''
+        assert old in s
+        open('internal/cli/commands.go','w').write(s.replace(old,new,1))
+        print("directive batching rule added to steering")
+        PY
+        # mirror in this repo's AGENTS.md table line
+        python3 - <<'PY'
+        s=open('AGENTS.md').read()
+        old='Several at once: `query=["X","Y"]`.'
+        new='Several names? You MUST batch: `query=["X","Y"]` — one search per name wastes a turn each.'
+        assert old in s
+        open('AGENTS.md','w').write(s.replace(old,new,1))
+        print("AGENTS.md updated")
+        PY
+        go build ./... && go test ./internal/cli/ -count=1 2>&1 | tail -1
+      at: 2026-08-27T21:20:50.801431Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && env JAVA_HOME=$JAVA_HOME PATH="$JAVA_HOME/bin:$PATH" python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-java12.json --limit 12 --arms prism \
+          --out runs/swebench-live/java12-batch --prism /tmp/prism-det --model sonnet 2>&1 | tail -3
+      at: 2026-08-27T21:21:09.395063Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob
+        n=serial=wasted=batched=single=0
+        for f in glob.glob('runs/swebench-live/java12-batch/*.prism.json'):
+            r=json.load(open(f)); n+=1
+            seq=r['tool_calls']; i=0
+            for c in seq:
+                if c['name']=='mcp__prism__prism_search':
+                    if isinstance(c['input'].get('query'),list): batched+=1
+                    else: single+=1
+            while i < len(seq):
+                if seq[i]['name']=='mcp__prism__prism_search' and not isinstance(seq[i]['input'].get('query'),list):
+                    j=i
+                    while j+1<len(seq) and seq[j+1]['name']=='mcp__prism__prism_search' and not isinstance(seq[j+1]['input'].get('query'),list):
+                        j+=1
+                    if j>i: serial+=1; wasted+=j-i
+                    i=j+1
+                else: i+=1
+        import statistics
+        costs=[json.load(open(f))['cost_usd'] for f in glob.glob('runs/swebench-live/java12-batch/*.prism.json')]
+        print(f"{n} cells | searches: {batched} BATCHED (array) vs {single} single-term")
+        print(f"serial single-term chains: {serial}  wasted turns: {wasted}")
+        print(f"(pre-directive across 39 cells: 9 chains, 17 wasted; array queries were rare)")
+        print(f"mean cost ${statistics.mean(costs):.2f} (v5511 prism ref $0.43)")
+        PY
+      at: 2026-08-27T21:39:39.11358Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, os, re, subprocess, collections
+        CACHE=os.path.expanduser('~/.cache/prism-research/swebench-repos')
+        tasks={t['instance_id']:t for t in json.load(open('runs/swebench-live/slice-bed36.json'))}
+        def show(repo,sha,p):
+            try: return subprocess.run(['git','-C',repo,'show',f'{sha}:{p}'],capture_output=True,text=True,timeout=30).stdout
+            except: return ''
+        # (2) CONTEXT REDELIVERY on tonight's Python prism arms: repeat reads + bytes
+        reads=rereads=0; re_bytes=first_bytes=0; per_search_follow=0; searches=0
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.prism.json'):
+            r=json.load(open(f)); t=tasks[r['instance_id']]
+            repo=os.path.join(CACHE,t['repo'].replace('/','__'))
+            seen={}
+            tc=r['tool_calls']
+            for i,c in enumerate(tc):
+                if c['name'] in ('Read','mcp__prism__prism_read'):
+                    p=re.sub(r'^/private/tmp/[^/]+/[^/]+/','',str(c['input'].get('file_path') or c['input'].get('file') or ''))
+                    b=len(show(repo,t['base_commit'],p)); reads+=1
+                    if p in seen: rereads+=1; re_bytes+=b
+                    else: seen[p]=1; first_bytes+=b
+                if c['name']=='mcp__prism__prism_search':
+                    searches+=1
+                    nxt=[x['name'] for x in tc[i+1:i+3]]
+                    if any(n in ('Read','mcp__prism__prism_read') for n in nxt): per_search_follow+=1
+        print(f"PYTHON prism arms (27 cells):")
+        print(f"  reads {reads}, REPEAT reads {rereads} ({rereads/max(reads,1):.0%}), repeat bytes {re_bytes:,} vs first {first_bytes:,}")
+        print(f"  searches {searches}, followed by a read within 2 calls: {per_search_follow} ({per_search_follow/max(searches,1):.0%})")
+        PY
+      at: 2026-08-28T02:54:02.163813Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && env JAVA_HOME=$JAVA_HOME PATH="$JAVA_HOME/bin:$PATH" python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-java12.json --limit 12 --arms prism \
+          --out runs/swebench-live/java12-routing --prism /tmp/prism-det --model sonnet \
+          --steering-variant directive 2>&1 | tail -2
+      at: 2026-08-28T02:57:53.70862Z
+      classified: other
+    - cmd: |-
+        pkill -f "swebench_ab.py.*java12" ; sleep 1
+        cd ~/Projects/provasign/research/harness && python3 - <<'PY'
+        s=open('swebench_ab.py').read()
+        import re
+        start=s.index('DIRECTIVE_PRISM_STEERING = """')
+        end=s.index('"""', start+35)+3
+        old=s[start:end]
+        new='''DIRECTIVE_PRISM_STEERING = """
+        ## Prism — code intelligence (already in your tool list)
+
+        These are REQUIREMENTS for this task, not suggestions:
+
+        - You MUST use `prism_read` to read any file. Do NOT use the `Read` tool.
+          It returns the same line-numbered source. If a repeat read of an
+          unchanged file returns a one-line `[prism:cached]` pointer, that is not
+          an error — the copy already in your context is current.
+        - You MUST use `prism_search` to locate code; `scope="text"` is a real
+          ripgrep pass. Several names? ONE call: `query=["A","B"]`.
+        - Before you edit an existing symbol, call `prism_change_impact` on it and
+          relay that set as-is.
+        """'''
+        s=s.replace(old,new,1)
+        open('swebench_ab.py','w').write(s)
+        print("directive = pure routing, no delivery advice")
+        PY
+        python3 -c "import ast;ast.parse(open('swebench_ab.py').read());print('parses')"
+        rm -rf runs/swebench-live/java12-routing
+        export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && env JAVA_HOME=$JAVA_HOME PATH="$JAVA_HOME/bin:$PATH" python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-java12.json --limit 12 --arms prism \
+          --out runs/swebench-live/java12-routing --prism /tmp/prism-det --model sonnet \
+          --steering-variant directive 2>&1 | tail -2
+      at: 2026-08-28T02:58:10.228043Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && cat > search_shape_oracle.py <<'PY'
+        #!/usr/bin/env python3
+        """Search-shape oracle: could the SEARCH payload have replaced the follow-up read?
+
+        Measured motivation (bed36-v5511 prism arms): 70% of prism_search calls are
+        followed by a read within two calls — the search->read ritual costs ~1.4
+        turns/cell, 3x the batching waste. This measures, offline and
+        deterministically, what result shape would let the agent skip that read:
+
+        For each gold-validated task (java12 bed, indexed worktrees):
+          terms = realistic (title identifiers)
+          shapes: default (locations), context=8, context=25
+          metrics per shape: payload bytes; gold-region coverage (same probe as
+          query_oracle — any stripped line within ±3 of a gold hunk anchor).
+
+        Coverage ~= "the read would have been unnecessary for the fix region".
+        """
+        import json, re, subprocess, os, sys, tempfile, shutil
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from query_oracle import gold_hunks, title_terms, show, run_capped
+
+        H = os.path.dirname(os.path.abspath(__file__))
+        CACHE = os.path.expanduser('~/.cache/prism-research/swebench-repos')
+        PRISM = sys.argv[1] if len(sys.argv) > 1 else '/tmp/prism-det'
+
+        def search(cwd, terms, ctx=None):
+            cmd = [PRISM, 'search'] + terms + ['--format', 'text']
+            if ctx: cmd += ['--context', str(ctx)]
+            rc, out, err = run_capped(cmd, cwd=cwd, timeout=120)
+            return out if rc == 0 else ''
+
+        def coverage(repo, sha, hunks, payload):
+            cov = 0
+            for f, ln in hunks:
+                body = show(repo, sha, f).split('\n')
+                probes = [l.strip() for l in body[max(0, ln-3):ln+4] if len(l.strip()) > 20]
+                if any(p in payload for p in probes): cov += 1
+            return cov / max(len(hunks), 1)
+
+        def main():
+            tasks = json.load(open(os.path.join(H, 'runs/swebench-live/slice-java12.json')))
+            agg = {s: {'cov': [], 'bytes': []} for s in ('default', 'ctx8', 'ctx25')}
+            for t in tasks:
+                hunks = gold_hunks(t)
+                if not hunks: continue
+                terms = title_terms(t)
+                if not terms: continue
+                repo = os.path.join(CACHE, t['repo'].replace('/', '__'))
+                wt = tempfile.mkdtemp(prefix='sshape-')
+                try:
+                    subprocess.run(['git','-C',repo,'worktree','add','--detach','--force',wt,t['base_commit']],
+                                   capture_output=True, check=True, timeout=120)
+                    run_capped([PRISM,'index','.'], cwd=wt, timeout=600)
+                    row = []
+                    for shape, ctx in (('default',None),('ctx8',8),('ctx25',25)):
+                        out = search(wt, terms, ctx)
+                        c = coverage(repo, t['base_commit'], hunks, out)
+                        agg[shape]['cov'].append(c); agg[shape]['bytes'].append(len(out))
+                        row.append(f"{shape}: cov={c:.2f} {len(out):,}B")
+                    print(f"{t['instance_id'][:36]:36} " + '  '.join(row), flush=True)
+                finally:
+                    subprocess.run(['git','-C',repo,'worktree','remove','--force',wt],capture_output=True,timeout=120)
+                    shutil.rmtree(wt, ignore_errors=True)
+            import statistics
+            print("\nAGGREGATE (12 tasks, realistic terms):")
+            for s in agg:
+                if agg[s]['cov']:
+                    print(f"  {s:8} mean coverage {statistics.mean(agg[s]['cov']):.2f}   mean bytes {statistics.mean(agg[s]['bytes']):,.0f}")
+
+        if __name__ == '__main__':
+            main()
+        PY
+        python3 -c "import ast;ast.parse(open('search_shape_oracle.py').read());print('parses')"
+        perl -e 'alarm 300; exec @ARGV' python3 search_shape_oracle.py /tmp/prism-det 2>&1 | head -3
+      at: 2026-08-28T02:58:55.777632Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'PY'
+        s=open('search_shape_oracle.py').read()
+        old='''            row = []
+                    for shape, ctx in (('default',None),('ctx8',8),('ctx25',25)):
+                        out = search(wt, terms, ctx)
+                        c = coverage(repo, t['base_commit'], hunks, out)
+                        agg[shape]['cov'].append(c); agg[shape]['bytes'].append(len(out))
+                        row.append(f"{shape}: cov={c:.2f} {len(out):,}B")'''
+        new='''            row = []
+                    for shape, ctx in (('default',None),('ctx8',8),('ctx25',25)):
+                        out = search(wt, terms, ctx)
+                        c = coverage(repo, t['base_commit'], hunks, out)
+                        agg[shape]['cov'].append(c); agg[shape]['bytes'].append(len(out))
+                        row.append(f"{shape}: cov={c:.2f} {len(out):,}B")
+                    # AUTO shape: default locations, plus each hit symbol's BODY —
+                    # but only when a term resolves to few hits (<=3). Simulated as
+                    # search + prism_lookup per small-hit-set symbol name.
+                    base = search(wt, terms, None)
+                    payload = base
+                    hits = re.findall(r'^// (\\S+) — (\\S+)$', base, re.M)
+                    names = []
+                    seen = set()
+                    for _f, nm in hits:
+                        if nm not in seen:
+                            seen.add(nm); names.append(nm)
+                    if len(names) <= 3:
+                        for nm in names:
+                            rc2, lout, _ = run_capped([PRISM, 'lookup', nm, '--format', 'text'], cwd=wt, timeout=120)
+                            if rc2 == 0: payload += lout
+                    c = coverage(repo, t['base_commit'], hunks, payload)
+                    agg.setdefault('auto', {'cov': [], 'bytes': []})
+                    agg['auto']['cov'].append(c); agg['auto']['bytes'].append(len(payload))
+                    row.append(f"auto: cov={c:.2f} {len(payload):,}B")'''
+        assert old in s
+        open('search_shape_oracle.py','w').write(s.replace(old,new,1))
+        print("auto shape added")
+        PY
+        (nohup python3 search_shape_oracle.py /tmp/prism-det > /tmp/sshape.log 2>&1 < /dev/null &)
+        sleep 3; pgrep -f search_shape_oracle >/dev/null && echo "VERIFIED: full sweep running (detached)"
+      at: 2026-08-28T02:59:25.6723Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, statistics, collections
+        cells=[json.load(open(f)) for f in glob.glob('runs/swebench-live/java12-routing/*.prism.json')]
+        ref={json.load(open(f))['instance_id']: json.load(open(f)) for f in glob.glob('runs/swebench-live/java12-v5511/*.prism.json')}
+        print(f"cells: {len(cells)}")
+        nat=pr=0; rereads=0; reads=0; pointers_possible=0
+        for r in cells:
+            seen=collections.Counter()
+            for c in r['tool_calls']:
+                n=c['name']
+                if n=='Read': nat+=1
+                elif n=='mcp__prism__prism_read':
+                    pr+=1
+                    [REDACTED:env-secret]'input'].get('file','')).split('/')[-1]
+                    seen[key]+=1
+                    if seen[key]>1: rereads+=1
+            reads=nat+pr
+        print(f"routing: native {nat}  prism_read {pr}  ({pr/max(nat+pr,1):.0%} prism)")
+        print(f"repeat prism_reads (pointer-eligible): {rereads}")
+        c_new=[r['cost_usd'] for r in cells]; t_new=[r['turns'] for r in cells]
+        ids=[r['instance_id'] for r in cells]
+        c_ref=[ref[i]['cost_usd'] for i in ids if i in ref]; t_ref=[ref[i]['turns'] for i in ids if i in ref]
+        ca_new=[r['cache_read_tokens'] for r in cells]; ca_ref=[ref[i]['cache_read_tokens'] for i in ids if i in ref]
+        print(f"turns {statistics.mean(t_ref):.1f} -> {statistics.mean(t_new):.1f}   cost ${statistics.mean(c_ref):.2f} -> ${statistics.mean(c_new):.2f}   cache {statistics.mean(ca_ref):,.0f} -> {statistics.mean(ca_new):,.0f}")
+        print("(ref = java12-v5511 prism arm, descriptive steering, same binary)")
+        PY
+      at: 2026-08-28T03:18:48.07241Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 <<'PY'
+        import json, glob, re
+        # What do agents actually pass as search queries, vs the names gold encloses?
+        import sys; sys.path.insert(0,'.')
+        from query_oracle import gold_hunks, show
+        import os
+        CACHE=os.path.expanduser('~/.cache/prism-research/swebench-repos')
+        tasks={t['instance_id']:t for t in json.load(open('runs/swebench-live/slice-bed36.json'))}
+        tasks.update({t['instance_id']:t for t in json.load(open('runs/swebench-live/slice-java12.json'))})
+        qual=bare=strlit=0; hits_gold=0; total_q=0
+        for f in glob.glob('runs/swebench-live/bed36-v5511/*.prism.json')+glob.glob('runs/swebench-live/java12-v5511/*.prism.json'):
+            r=json.load(open(f)); t=tasks[r['instance_id']]
+            repo=os.path.join(CACHE,t['repo'].replace('/','__'))
+            # gold enclosing names (crude): identifiers on gold hunk context lines
+            gold_names=set()
+            for gf,ln in gold_hunks(t):
+                body=show(repo,t['base_commit'],gf).split('\n')
+                for l in body[max(0,ln-25):ln+5]:
+                    m=re.match(r'\s*(?:public|protected|private|def |class |async def )',l)
+                    if m:
+                        for nm in re.findall(r'[A-Za-z_][A-Za-z0-9_]{3,}',l)[:3]: gold_names.add(nm.lower())
+            for c in r['tool_calls']:
+                if c['name']=='mcp__prism__prism_search':
+                    qs=c['input'].get('query'); qs=qs if isinstance(qs,list) else [qs]
+                    for q in qs:
+                        if not q: continue
+                        total_q+=1
+                        if '.' in str(q) and ' ' not in str(q): qual+=1
+                        elif ' ' in str(q): strlit+=1
+                        else: bare+=1
+                        toks={x.lower() for x in re.findall(r'[A-Za-z_][A-Za-z0-9_]{3,}',str(q))}
+                        if toks & gold_names: hits_gold+=1
+        print(f"agent search terms across all prism cells: {total_q}")
+        print(f"  qualified (Type.member): {qual} ({qual/total_q:.0%})")
+        print(f"  bare identifier: {bare} ({bare/total_q:.0%})")
+        print(f"  phrases/strings: {strlit} ({strlit/total_q:.0%})")
+        print(f"  queries naming a GOLD-enclosing identifier: {hits_gold}/{total_q} ({hits_gold/total_q:.0%})")
+        PY
+      at: 2026-08-28T11:01:11.093177Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'PY'
+        s=open('swebench_ab.py').read()
+        old='''- You MUST use `prism_search` to locate code; `scope="text"` is a real
+          ripgrep pass. Several names? ONE call: `query=["A","B"]`.'''
+        new='''- You MUST use `prism_search` to locate code; `scope="text"` is a real
+          ripgrep pass. Several names? ONE call: `query=["A","B"]`.
+        - Query discipline: search CODE IDENTIFIERS named in the issue, and prefer
+          the qualified form (`Type.member`) — it goes straight to the declaration.
+          Do NOT search error-message text to decide where to edit: the error shows
+          where a problem SURFACES; the fix belongs where the value is decided.
+          Walk from the identifier to its callers (`prism_change_impact`) instead.'''
+        assert old in s
+        open('swebench_ab.py','w').write(s.replace(old,new,1))
+        print("query-discipline directive added")
+        PY
+        export JAVA_HOME=/opt/homebrew/opt/openjdk@17 && env JAVA_HOME=$JAVA_HOME PATH="$JAVA_HOME/bin:$PATH" python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-java12.json --limit 12 --arms prism \
+          --out runs/swebench-live/java12-querydisc --prism /tmp/prism-det --model sonnet \
+          --steering-variant directive 2>&1 | tail -2
+      at: 2026-08-28T11:01:37.163023Z
+      classified: other
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-27T02:35:39.242606Z
+redactions: 1

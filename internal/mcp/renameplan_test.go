@@ -41,4 +41,7 @@ func TestRenamePlanSchemaAndDescription(t *testing.T) {
 			t.Errorf("description missing %q", must)
 		}
 	}
+	if strings.Contains(desc, "apply 'edits' as-is") || strings.Contains(desc, "complete change-impact set") {
+		t.Errorf("rename plan description must keep unresolved coverage visible: %q", desc)
+	}
 }

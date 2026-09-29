@@ -1,0 +1,201 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c3
+created_at: 2026-08-29T00:12:17.888825Z
+finalized_at: 2026-08-29T00:38:05.336057Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test && git add go.mod go.sum && git status --short | head -3 && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.33.0, astkit v0.5.0 — mainframe v0
+
+        Brings COBOL/JCL extraction (fixed/free format, data hierarchies, COPY
+        include edges, PERFORM/CALL resolution with VALUE-clause dynamic
+        propagation, JCL steps and dataset bindings) behind content-gated
+        text strategies. Modern-language path proven unchanged: full unit
+        suites, engine ci_invariants all held, gin index byte-identical
+        (122/1675/12353). Golden conformance estate lives in grove
+        internal/graph/testdata/mainframe-estate.
+
+        Known v0 limits: extension-based detection (.cbl/.cob/.cobol/.cpy/
+        .ccp/.cpb/.jcl/.prc); reachability not read/write direction; no COPY
+        expansion or byte layout; change_impact does not yet accept mainframe
+        symbol kinds; reindex with --force after copybook changes.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.0 -m "mainframe v0: COBOL/JCL indexing" && git push origin v0.56.0 2>&1 | tail -1
+      at: 2026-08-29T00:12:17.888825Z
+      classified: other
+    - cmd: sleep 20; gh run list --repo provasign/prism --limit 2; gh workflow list --repo provasign/homebrew-shale 2>/dev/null | head -5
+      at: 2026-08-29T00:12:44.301593Z
+      classified: other
+    - cmd: 'gh run watch 33222825679 --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale 2>&1; sleep 30; gh run list --repo provasign/homebrew-shale --limit 1'
+      at: 2026-08-29T00:12:51.777963Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T00:15:02.821234Z
+      classified: other
+    - cmd: grep -rn "no method or function named" ~/Projects/provasign/grove/internal ~/Projects/provasign/prism/internal 2>/dev/null | grep -v _test | head -3
+      at: 2026-08-29T00:33:06.365638Z
+      classified: other
+    - cmd: sed -n 760,810p ~/Projects/provasign/grove/internal/graph/changeimpact.go
+      at: 2026-08-29T00:33:09.657249Z
+      classified: other
+    - cmd: grep -n "KindMethod\|KindFunction\|KindConstructor" ~/Projects/provasign/grove/internal/graph/changeimpact.go | head -12
+      at: 2026-08-29T00:33:20.351301Z
+      classified: other
+    - cmd: sed -n 840,860p ~/Projects/provasign/grove/internal/graph/changeimpact.go; sed -n 916,930p ~/Projects/provasign/grove/internal/graph/changeimpact.go; sed -n 972,990p ~/Projects/provasign/grove/internal/graph/changeimpact.go
+      at: 2026-08-29T00:33:23.860742Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        import re
+        p = "internal/graph/changeimpact.go"
+        src = open(p).read()
+        old = """		switch s.Kind {
+        		case core.KindMethod, core.KindFunction, core.KindConstructor:
+        		default:
+        			continue
+        		}"""
+        new = """		switch s.Kind {
+        		case core.KindMethod, core.KindFunction, core.KindConstructor:
+        		default:
+        			if !mainframeCallerKind(s.Kind) {
+        				continue
+        			}
+        		}"""
+        n = src.count(old)
+        src = src.replace(old, new)
+        old2 = """		switch s.Kind {
+        		case core.KindFunction, core.KindMethod, core.KindConstructor:
+        		default:
+        			continue
+        		}"""
+        new2 = """		switch s.Kind {
+        		case core.KindFunction, core.KindMethod, core.KindConstructor:
+        		default:
+        			if !mainframeCallerKind(s.Kind) {
+        				continue
+        			}
+        		}"""
+        n2 = src.count(old2)
+        src = src.replace(old2, new2)
+        open(p, "w").write(src)
+        print(f"patched {n} + {n2} gates")
+        EOF
+        go build ./... && go test ./internal/graph/ 2>&1 | tail -1
+      at: 2026-08-29T00:33:37.900254Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && E=$S/mini-estate && rm -rf $E/.grove && $S/grove-mf index $E >/dev/null 2>&1 && $S/grove-mf change-impact CUSTRPT $E 2>&1 | head -14
+      at: 2026-08-29T00:33:46.85566Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; E=$S/mini-estate; $S/grove-mf change-impact CUSTRPT $E 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('decls:', [x['qualifiedName'] for x in d.get('Declarations') or []])
+        print('callers:', [x['qualifiedName'] for x in d.get('Callers') or []])
+        print('completeness:', d.get('Completeness'))"; $S/grove-mf change-impact CUSTUPD $E 2>/dev/null | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin)
+        print('CUSTUPD callers:', [x['qualifiedName'] for x in d.get('Callers') or []])"
+      at: 2026-08-29T00:33:54.336201Z
+      classified: other
+    - cmd: sed -n 215,235p ~/Projects/provasign/grove/internal/index/ignore.go; sed -n 360,380p ~/Projects/provasign/grove/internal/index/indexer.go
+      at: 2026-08-29T00:34:03.023118Z
+      classified: other
+    - cmd: grep -rn "Supported(\|DetectLanguage(" ~/Projects/provasign/grove/internal/index/*.go ~/Projects/provasign/grove/internal/parser/engine.go | grep -v _test | head; grep -rn "func.*shouldIgnore\|Supported" ~/Projects/provasign/grove/internal/index/ignore.go | head -4
+      at: 2026-08-29T00:34:10.803732Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 110,120p internal/parser/engine.go && sed -n 258,264p internal/index/indexer.go
+      at: 2026-08-29T00:34:54.890759Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        edits = [
+         ("internal/parser/engine.go",
+          "\t\tif !Supported(path) {\n\t\t\treturn nil\n\t\t}\n\t\textracted, err := e.ExtractFile(path, root)",
+          "\t\tif !SupportedFile(path) {\n\t\t\treturn nil\n\t\t}\n\t\textracted, err := e.ExtractFile(path, root)"),
+         ("internal/parser/engine.go",
+          "func (e *Engine) ExtractFile(path string, root string) ([]core.SymbolRecord, error) {\n\tlanguage := DetectLanguage(path)",
+          "func (e *Engine) ExtractFile(path string, root string) ([]core.SymbolRecord, error) {\n\tlanguage := DetectLanguageFile(path)"),
+         ("internal/parser/engine.go",
+          "func (e *Engine) ExtractContent(relPath string, content []byte) ([]core.SymbolRecord, error) {\n\tlanguage := DetectLanguage(relPath)",
+          "func (e *Engine) ExtractContent(relPath string, content []byte) ([]core.SymbolRecord, error) {\n\tlanguage := DetectLanguageContent(relPath, content)"),
+         ("internal/index/indexer.go",
+          "\t\tif !parser.Supported(path) {\n\t\t\treturn nil\n\t\t}",
+          "\t\tif !parser.SupportedFile(path) {\n\t\t\treturn nil\n\t\t}"),
+         ("internal/index/indexer.go",
+          "\t\tlanguage := parser.DetectLanguage(task.absPath)",
+          "\t\tlanguage := parser.DetectLanguageFile(task.absPath)"),
+        ]
+        for path, old, new in edits:
+            src = open(path).read()
+            assert src.count(old) == 1, (path, old[:60], src.count(old))
+            open(path, "w").write(src.replace(old, new))
+        print("wired", len(edits), "sites")
+        EOF
+        go build ./...
+      at: 2026-08-29T00:35:05.094519Z
+      classified: build
+    - cmd: 'cd ~/Projects/provasign/grove && go test ./internal/parser/ -run Sniff -v 2>&1 | tail -6 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "suite: $?"'
+      at: 2026-08-29T00:35:32.382026Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && E2=$S/mini-estate-bare && rm -rf $E2 && mkdir -p $E2 && cd $E2 && git init -q && for f in $S/mini-estate/*.cbl $S/mini-estate/*.cpy $S/mini-estate/*.jcl; do cp "$f" "$E2/$(basename ${f%.*})"; done && ls && $S/grove-mf index $E2 >/dev/null 2>&1 && $S/grove-mf status $E2 | grep -E "filesIndexed|symbolCount|edgeCount" && $S/grove-mf change-impact CUSTUPD $E2 2>/dev/null | python3 -c "
+        import json,sys; d=json.load(sys.stdin)
+        print('callers:', [x['qualifiedName'] for x in d.get('Callers') or []])"; rm -rf $S/noop-sniff && cp -R ~/.cache/prism-ci-corpus/gin $S/noop-sniff && rm -rf $S/noop-sniff/.grove && $S/grove-mf index $S/noop-sniff >/dev/null 2>&1 && $S/grove-mf status $S/noop-sniff | grep -E "filesIndexed|symbolCount|edgeCount"
+      at: 2026-08-29T00:35:47.627187Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && GOWORK=off go build ./... && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "module gate: $?"; git add internal/graph/changeimpact.go internal/parser/sniff.go internal/parser/sniff_test.go internal/parser/engine.go internal/index/indexer.go && git commit -q -m "$(cat <<'EOF'
+        change-impact anchors mainframe kinds; content sniff for extensionless members
+
+        change-impact's four kind gates now also accept call-shaped mainframe
+        kinds (program, paragraph, section, step, job, jcl-procedure) — CALL
+        'CUSTRPT' callers, dynamic-call propagation, and JCL steps all surface
+        through the standard query with completeness reporting.
+
+        Detection: PDS exports land as bare extensionless members, which
+        extension dispatch renders invisible. DetectLanguageFile/-Content sniff
+        the first 2KB of EXTENSIONLESS files only, for strong signatures (JCL
+        statement shape; COBOL division headers; repeated level lines + PIC).
+        Known extensions are never sniffed and unknown extensions are respected
+        — the modern path is unchanged by construction (gin byte-identical:
+        122/1675/12353).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.34.0 -m "mainframe: change-impact anchoring + extensionless member sniff" && git push origin v0.34.0 2>&1 | tail -1
+      at: 2026-08-29T00:36:15.349819Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.34.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3'
+      at: 2026-08-29T00:36:21.793048Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.34.0 — change-impact mainframe anchors, extensionless sniff
+
+        change_impact now answers for programs/paragraphs/steps (callers include
+        dynamic-call propagation and JCL steps, completeness reported), and bare
+        PDS-member files with no extension are detected by content sniff. Gates:
+        suites green module-mode, ci_invariants all held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.1 -m "mainframe: change-impact anchoring, extensionless member detection" && git push origin v0.56.1 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && echo "watching run $RUNID" && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T00:38:04.806225Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T00:12:17.888825Z
+redactions: 0

@@ -1,0 +1,352 @@
+shale_version: "0"
+id: 01a086e1-d9c4-7063-a607-c867bed4a199-c2
+created_at: 2026-09-09T17:34:59.544866Z
+finalized_at: 2026-09-09T21:48:51.94854Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/textsearch/textsearch.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T20:45:36.521511Z
+    - path: internal/textsearch/count.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-09T20:47:13.678247Z
+    - path: internal/mcp/textmerge.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T20:47:43.297045Z
+    - path: internal/mcp/searchadaptive.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-09T20:48:34.26613Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T20:49:51.42047Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-09T20:50:13.406017Z
+    - path: internal/textsearch/adaptive_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-09T20:51:10.512513Z
+    - path: internal/mcp/searchadaptive_test.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-09T20:52:00.089288Z
+    - path: docs/benchmarks/adaptive-search-phase4-2026-09-09.md
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-09T21:42:14.311744Z
+commands:
+    - cmd: git push
+      at: 2026-09-09T17:34:59.544866Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-09T17:35:13.371362Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-09T17:59:56.237605Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-09T17:59:56.254022Z
+      classified: other
+    - cmd: prism change-impact Handler.searchOne --format text
+      at: 2026-09-09T17:59:56.370833Z
+      classified: other
+    - cmd: prism change-impact textsearch.Search --format text
+      at: 2026-09-09T17:59:56.447768Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism version
+      at: 2026-09-09T18:00:23.591737Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-09-09T18:00:23.602528Z
+      classified: other
+    - cmd: git diff -- internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/searchtext_test.go internal/mcp/searchmulti_test.go internal/mcp/oncenotes.go
+      at: 2026-09-09T18:00:23.602591Z
+      classified: other
+    - cmd: prism change-impact Search --format text
+      at: 2026-09-09T18:00:23.645177Z
+      classified: other
+    - cmd: command -v prism
+      at: 2026-09-09T18:00:39.54997Z
+      classified: other
+    - cmd: prism version
+      at: 2026-09-09T18:00:39.562964Z
+      classified: other
+    - cmd: git describe --tags --always --dirty
+      at: 2026-09-09T18:00:39.638047Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-phase4-benchmark-v0725
+      at: 2026-09-09T18:01:19.329915Z
+      classified: other
+    - cmd: prism search Phase4Needle --scope text --format text /private/tmp/prism-phase4-benchmark-v0725
+      at: 2026-09-09T20:38:17.435812Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,statistics,subprocess,time; root="/private/tmp/prism-phase4-benchmark-v0725"; base=["/opt/homebrew/bin/prism","search","Phase4Needle","--scope","text","--format","text","--dir",root]; out={};
+        for name,extra in [("default",[]),("exhaustive",["--exhaustive"])]:
+         times=[]; sizes=[]; sample=""
+         for _ in range(10):
+          t=time.perf_counter(); p=subprocess.run(base+extra,capture_output=True,text=True,check=True); times.append((time.perf_counter()-t)*1000); sizes.append(len(p.stdout.encode())); sample=p.stdout
+         out[name]={"median_ms":round(statistics.median(times),3),"min_ms":round(min(times),3),"max_ms":round(max(times),3),"stdout_bytes":sizes[-1],"sample":sample}
+        print(json.dumps(out,indent=2))'
+      at: 2026-09-09T20:38:50.744723Z
+      classified: other
+    - cmd: prism change-impact nativeSearch --format text
+      at: 2026-09-09T20:40:03.451473Z
+      classified: other
+    - cmd: prism change-impact renderSearchAsText --format text
+      at: 2026-09-09T20:40:03.494792Z
+      classified: other
+    - cmd: prism change-impact runLineTool --format text
+      at: 2026-09-09T20:40:03.564224Z
+      classified: other
+    - cmd: prism change-impact Handler.renderTextMatches --format text
+      at: 2026-09-09T20:40:03.639023Z
+      classified: other
+    - cmd: prism read internal/textsearch/native.go --offset 1 --limit 240 --format text
+      at: 2026-09-09T20:40:20.784099Z
+      classified: other
+    - cmd: prism lookup Handler.renderTextMatches --format text
+      at: 2026-09-09T20:40:20.862283Z
+      classified: other
+    - cmd: prism read internal/textsearch/textsearch_test.go --offset 70 --limit 360 --format text
+      at: 2026-09-09T20:40:20.894964Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 1705 --limit 155 --format text
+      at: 2026-09-09T20:42:23.460297Z
+      classified: other
+    - cmd: prism read internal/mcp/searchmulti_test.go --offset 1 --limit 150 --format text
+      at: 2026-09-09T20:43:54.530124Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --offset 1650 --limit 245 --format text
+      at: 2026-09-09T20:47:58.486562Z
+      classified: other
+    - cmd: gofmt -w internal/textsearch/textsearch.go internal/textsearch/count.go internal/textsearch/adaptive_test.go internal/mcp/textmerge.go internal/mcp/searchadaptive.go internal/mcp/searchadaptive_test.go internal/mcp/tools.go internal/mcp/searchtext.go
+      at: 2026-09-09T20:52:16.990383Z
+      classified: other
+    - cmd: go test ./internal/textsearch ./internal/mcp -count=1
+      at: 2026-09-09T20:52:30.705633Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/textsearch ./internal/mcp -count=1
+      at: 2026-09-09T20:52:45.97272Z
+      classified: test
+    - cmd: mkdir -p /private/tmp/prism-go-cache
+      at: 2026-09-09T20:53:01.31287Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go test ./internal/textsearch ./internal/mcp -count=1
+      at: 2026-09-09T20:53:23.240387Z
+      classified: test
+    - cmd: gofmt -w internal/textsearch/count.go
+      at: 2026-09-09T20:53:53.746002Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go test ./internal/textsearch -count=1
+      at: 2026-09-09T20:54:12.779958Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go test ./internal/mcp -run 'TestToolSearch(DefaultCompletesSmallExactResult|LargeSampleReportsExactCount)$' -count=1
+      at: 2026-09-09T20:54:13.486938Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-phase4-candidate ./cmd/prism
+      at: 2026-09-09T20:54:37.780443Z
+      classified: build
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-phase4-candidate ./cmd/prism
+      at: 2026-09-09T21:09:16.954272Z
+      classified: build
+    - cmd: |-
+        python3 -B -c 'import json,statistics,subprocess,time; root="/private/tmp/prism-phase4-benchmark-v0725"; base=["/private/tmp/prism-phase4-candidate","search","Phase4Needle","--scope","text","--format","text","--dir",root]; out={};
+        for name,extra in [("default",[]),("exhaustive",["--exhaustive"])]:
+         times=[]; sizes=[]; sample=""
+         for _ in range(10):
+          t=time.perf_counter(); p=subprocess.run(base+extra,capture_output=True,text=True,check=True); times.append((time.perf_counter()-t)*1000); sizes.append(len(p.stdout.encode())); sample=p.stdout
+         out[name]={"median_ms":round(statistics.median(times),3),"min_ms":round(min(times),3),"max_ms":round(max(times),3),"stdout_bytes":sizes[-1],"sample":sample}
+        print(json.dumps(out,indent=2))'
+      at: 2026-09-09T21:09:49.378989Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,statistics,subprocess,time; root="/Users/tapabratapal/Projects/provasign/prism"; bins={"v0.72.5":"/opt/homebrew/bin/prism","candidate":"/private/tmp/prism-phase4-candidate"}; out={};
+        for name,binary in bins.items():
+         cmd=[binary,"search","func ","--scope","text","--context","0","--format","text","--dir",root]; times=[]; sizes=[]; sample=""
+         for _ in range(10):
+          t=time.perf_counter(); p=subprocess.run(cmd,capture_output=True,text=True,check=True); times.append((time.perf_counter()-t)*1000); sizes.append(len(p.stdout.encode())); sample=p.stdout
+         out[name]={"median_ms":round(statistics.median(times),3),"min_ms":round(min(times),3),"max_ms":round(max(times),3),"stdout_bytes":sizes[-1],"headline":"\\n".join(sample.splitlines()[:3])}
+        print(json.dumps(out,indent=2))'
+      at: 2026-09-09T21:10:34.407783Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go test ./... -count=1
+      at: 2026-09-09T21:12:12.258274Z
+      classified: test
+    - cmd: mkdir -p /private/tmp/prism-phase4-benchmark-large
+      at: 2026-09-09T21:12:51.793368Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,statistics,subprocess,time; root="/private/tmp/prism-phase4-benchmark-large"; bins={"v0.72.5":"/opt/homebrew/bin/prism","candidate":"/private/tmp/prism-phase4-candidate"}; out={};
+        for name,binary in bins.items():
+         cmd=[binary,"search","Phase4LargeNeedle","--scope","text","--context","0","--format","text","--dir",root]; times=[]; sizes=[]; sample=""
+         for _ in range(10):
+          t=time.perf_counter(); p=subprocess.run(cmd,capture_output=True,text=True,check=True); times.append((time.perf_counter()-t)*1000); sizes.append(len(p.stdout.encode())); sample=p.stdout
+         out[name]={"median_ms":round(statistics.median(times),3),"min_ms":round(min(times),3),"max_ms":round(max(times),3),"stdout_bytes":sizes[-1],"headline":"\\n".join(sample.splitlines()[:3]),"matching_lines_rendered":sample.count("Phase4LargeNeedle")}
+        print(json.dumps(out,indent=2))'
+      at: 2026-09-09T21:17:26.430745Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,statistics,subprocess,time; root="/private/tmp/prism-phase4-benchmark-v0725"; bins={"v0.72.5":"/opt/homebrew/bin/prism","candidate":"/private/tmp/prism-phase4-candidate"}; out={};
+        for name,binary in bins.items():
+         cmd=[binary,"search","DefinitelyAbsentPhase4Term","--scope","text","--context","0","--format","text","--dir",root]; times=[]; sizes=[]; sample=""
+         for _ in range(10):
+          t=time.perf_counter(); p=subprocess.run(cmd,capture_output=True,text=True,check=True); times.append((time.perf_counter()-t)*1000); sizes.append(len(p.stdout.encode())); sample=p.stdout
+         out[name]={"median_ms":round(statistics.median(times),3),"min_ms":round(min(times),3),"max_ms":round(max(times),3),"stdout_bytes":sizes[-1],"headline":"\\n".join(sample.splitlines()[:3])}
+        print(json.dumps(out,indent=2))'
+      at: 2026-09-09T21:17:54.12329Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go test ./internal/textsearch ./internal/mcp -race -count=1
+      at: 2026-09-09T21:22:47.35502Z
+      classified: test
+    - cmd: uname -m
+      at: 2026-09-09T21:23:06.695963Z
+      classified: other
+    - cmd: sw_vers -productVersion
+      at: 2026-09-09T21:23:06.710382Z
+      classified: other
+    - cmd: rg --version
+      at: 2026-09-09T21:23:06.710363Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-09T21:23:44.714687Z
+      classified: other
+    - cmd: git diff --numstat -- internal/textsearch internal/mcp/textmerge.go internal/mcp/searchadaptive.go internal/mcp/searchadaptive_test.go internal/mcp/tools.go internal/mcp/searchtext.go
+      at: 2026-09-09T21:23:44.721164Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-09T21:23:44.720282Z
+      classified: other
+    - cmd: git add internal/textsearch/textsearch.go internal/textsearch/count.go internal/textsearch/adaptive_test.go internal/mcp/textmerge.go internal/mcp/searchadaptive.go internal/mcp/searchadaptive_test.go
+      at: 2026-09-09T21:24:06.987199Z
+      classified: other
+    - cmd: git diff -U0 -- internal/mcp/searchtext.go internal/mcp/tools.go
+      at: 2026-09-09T21:24:19.596614Z
+      classified: other
+    - cmd: git add -p internal/mcp/searchtext.go
+      at: 2026-09-09T21:26:00.26428Z
+      classified: other
+    - cmd: git add -p internal/mcp/tools.go
+      at: 2026-09-09T21:28:34.6879Z
+      classified: other
+    - cmd: git diff -U0 -- internal/mcp/tools.go
+      at: 2026-09-09T21:28:47.340635Z
+      classified: other
+    - cmd: git add -p internal/mcp/tools.go
+      at: 2026-09-09T21:29:27.733631Z
+      classified: other
+    - cmd: git diff --cached --name-only
+      at: 2026-09-09T21:29:45.9218Z
+      classified: other
+    - cmd: git diff --cached -- internal/mcp/searchtext.go internal/mcp/tools.go
+      at: 2026-09-09T21:29:45.92481Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-09T21:29:45.932609Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-phase4-staged-20260909
+      at: 2026-09-09T21:30:10.288049Z
+      classified: other
+    - cmd: git checkout-index --all --prefix=/private/tmp/prism-phase4-staged-20260909/
+      at: 2026-09-09T21:30:23.417135Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go test ./... -count=1
+      at: 2026-09-09T21:31:01.964102Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go build -o /private/tmp/prism-phase4-staged-candidate ./cmd/prism
+      at: 2026-09-09T21:40:04.610197Z
+      classified: build
+    - cmd: |-
+        python3 -B -c 'import json,statistics,subprocess,time; small="/private/tmp/prism-phase4-benchmark-v0725"; large="/private/tmp/prism-phase4-benchmark-large"; old="/opt/homebrew/bin/prism"; new="/private/tmp/prism-phase4-staged-candidate";
+        def cmd(binary,term,root,*extra): return [binary,"search",term,"--scope","text","--format","text","--dir",root,*extra]
+        cases={
+         "v0.72.5_small_default":[cmd(old,"Phase4Needle",small)],
+         "v0.72.5_small_complete_workflow":[cmd(old,"Phase4Needle",small),cmd(old,"Phase4Needle",small,"--exhaustive")],
+         "candidate_small_default":[cmd(new,"Phase4Needle",small)],
+         "v0.72.5_large_default":[cmd(old,"Phase4LargeNeedle",large,"--context","0")],
+         "candidate_large_default":[cmd(new,"Phase4LargeNeedle",large,"--context","0")],
+         "v0.72.5_absent":[cmd(old,"DefinitelyAbsentPhase4Term",small,"--context","0")],
+         "candidate_absent":[cmd(new,"DefinitelyAbsentPhase4Term",small,"--context","0")],
+        }; out={};
+        for name,commands in cases.items():
+         for c in commands: subprocess.run(c,capture_output=True,text=True,check=True)
+         times=[]; sizes=[]; sample=""
+         for _ in range(20):
+          t=time.perf_counter(); chunks=[]
+          for c in commands:
+           p=subprocess.run(c,capture_output=True,text=True,check=True); chunks.append(p.stdout)
+          times.append((time.perf_counter()-t)*1000); sample="".join(chunks); sizes.append(len(sample.encode()))
+         out[name]={"median_ms":round(statistics.median(times),3),"p_min_ms":round(min(times),3),"p_max_ms":round(max(times),3),"stdout_bytes":sizes[-1],"headline":"\\n".join(sample.splitlines()[:3])}
+        print(json.dumps(out,indent=2))'
+      at: 2026-09-09T21:40:58.525051Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/searchadaptive.go internal/mcp/tools.go internal/mcp/searchtext.go
+      at: 2026-09-09T21:43:28.602704Z
+      classified: other
+    - cmd: git add internal/mcp/searchadaptive.go docs/benchmarks/adaptive-search-phase4-2026-09-09.md
+      at: 2026-09-09T21:43:43.181154Z
+      classified: other
+    - cmd: git diff -U0 -- internal/mcp/searchtext.go
+      at: 2026-09-09T21:43:57.308274Z
+      classified: other
+    - cmd: git add -p internal/mcp/searchtext.go
+      at: 2026-09-09T21:45:00.657337Z
+      classified: other
+    - cmd: git add -p internal/mcp/tools.go
+      at: 2026-09-09T21:45:57.057979Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-09T21:46:31.199351Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-09T21:46:31.205709Z
+      classified: other
+    - cmd: git diff --cached --stat
+      at: 2026-09-09T21:46:31.215481Z
+      classified: other
+    - cmd: git checkout-index -f --all --prefix=/private/tmp/prism-phase4-staged-20260909/
+      at: 2026-09-09T21:46:44.20623Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off GOCACHE=/private/tmp/prism-go-cache go test ./internal/textsearch ./internal/mcp -run 'Adaptive|CountBackends|ToolSearchDefaultCompletesSmallExactResult|ToolSearchLargeSampleReportsExactCount' -count=1
+      at: 2026-09-09T21:47:02.381709Z
+      classified: test
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-09T21:47:19.490453Z
+      classified: other
+    - cmd: 'git commit -m "feat: complete small text searches adaptively"'
+      at: 2026-09-09T21:48:21.933991Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-09-09T21:48:37.753679Z
+      classified: other
+    - cmd: git show --stat --oneline --summary HEAD
+      at: 2026-09-09T21:48:37.76981Z
+      classified: other
+notes:
+    - text: continuation of session 01a086e1-d9c4-7063-a607-c867bed4a199 — events captured after its evidence was finalized
+      at: 2026-09-09T17:34:59.544866Z
+redactions: 0

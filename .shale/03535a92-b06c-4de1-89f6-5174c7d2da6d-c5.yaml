@@ -1,0 +1,721 @@
+shale_version: "0"
+id: 03535a92-b06c-4de1-89f6-5174c7d2da6d-c5
+created_at: 2026-09-29T00:39:22.541207Z
+finalized_at: 2026-09-29T10:42:55.526967Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/lookup-ranking
+privacy: redacted
+commands:
+    - cmd: "git add internal/mcp/searchadaptive.go internal/mcp/searchbudget_test.go internal/mcp/searchtext.go internal/mcp/textmerge.go internal/mcp/textmerge_test.go internal/mcp/tools.go && git commit -q -F - <<'EOF'\nsearch: never claim COMPLETE on a partial file list; deliver small complete sets whole\n\nThree completeness bugs found in Sonnet 5.5 benchmark transcripts (2026-09-28):\n\n- files_only + exhaustive in the default scope read only the excerpt\n  groups (first 10 files) and dropped the files in the exhaustive\n  inventory, while printing \"N files match — COMPLETE path inventory\".\n  h3 `push`: 11 of 31 files listed, no test files.\n- A raised limit (max_results > 25) switched the exact-count pass off, so\n  asking for more results returned a 5-per-file context sample with no\n  completeness line (click get_command, 29 lines).\n- Small exhaustive results showed 5 lines per file plus bare line numbers.\n\nComplete result sets over 10 lines, and exhaustive results up to 150\nlines, now come back as every match line, grep-shaped, tagged with the\nenclosing indexed symbol. Smaller sets and explicit context= keep their\ncontext windows.\n\nOn click Group.get_command (Sonnet 5.5, 20 trials per arm) prism turns\nwent from 8.15 to 6.4 (native 6.8).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8\nEOF\ngit push -q -u origin fix/search-completeness 2>&1 | tail -2; gh pr create --title \"search: never claim COMPLETE on a partial file list; deliver small complete sets whole\" --body \"$(cat <<'EOF'\nFixes three search completeness bugs found in Sonnet 5.5 benchmark transcripts.\n\n- **files_only + exhaustive (default scope)** dropped every file past the first 10 while printing \"COMPLETE path inventory\". h3 `push`: 11 of 31 files, no test files. It now lists all 31.\n- **A raised limit** (`max_results` > 25) turned the exact-count pass off, so asking for more results returned a capped sample with no completeness line. The exact-count pass now stays on.\n- **Complete sets over 10 lines, and exhaustive sets up to 150 lines**, now come back as every match line in grep's shape, each tagged with its enclosing symbol. Smaller sets and an explicit `context=` keep their context windows.\n\nMeasured on click `Group.get_command`, Sonnet 5.5 pinned, 20 trials per arm: prism turns went from 8.15 to 6.4 (native: 6.8).\n\nTests: three regression tests; each fails on the old code. `go test ./...` passes locally.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8\nEOF\n)\" 2>&1 | tail -1"
+      at: 2026-09-29T00:39:22.541207Z
+      classified: test
+    - cmd: "git log --oneline -1 && git ls-remote --heads origin fix/search-completeness && gh pr create --head fix/search-completeness --base main --title \"search: never claim COMPLETE on a partial file list; deliver small complete sets whole\" --body \"$(cat <<'EOF'\nFixes three search completeness bugs found in Sonnet 5.5 benchmark transcripts.\n\n- **files_only + exhaustive (default scope)** dropped every file past the first 10 while printing \"COMPLETE path inventory\". h3 `push`: 11 of 31 files, no test files. It now lists all 31.\n- **A raised limit** (`max_results` > 25) turned the exact-count pass off, so asking for more results returned a capped sample with no completeness line. The exact-count pass now stays on.\n- **Complete sets over 10 lines, and exhaustive sets up to 150 lines**, now come back as every match line in grep's shape, each tagged with its enclosing symbol. Smaller sets and an explicit `context=` keep their context windows.\n\nMeasured on click `Group.get_command`, Sonnet 5.5 pinned, 20 trials per arm: prism turns went from 8.15 to 6.4 (native: 6.8).\n\nTests: three regression tests; each fails on the old code. `go test ./...` passes locally.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8\nEOF\n)\" 2>&1 | tail -1"
+      at: 2026-09-29T00:39:32.809796Z
+      classified: test
+    - cmd: git log --oneline -3 && git diff --stat main...fix/search-completeness && gh pr view 18 --json files --jq '.files[].path'
+      at: 2026-09-29T00:39:38.95758Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad && git status --short && git checkout -q main && git apply $S/wip-backup/full.patch && mv $S/impactmentions.go $S/impactmentions_test.go internal/mcp/ && go build ./... && git status --short && git branch --show-current
+      at: 2026-09-29T00:39:49.144294Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json;r=json.load(open('results/e2e/FasterXML__jackson-dataformat-xml__pr829.claude-sonnet-5-5.baseline.json'));print({k:r.get(k) for k in ('resolved','turns','diff_lines','error','models_used','cost_usd')});print(json.dumps(r.get('score'))[:600])"
+      at: 2026-09-29T00:40:34.695454Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json;r=json.load(open('results/e2e/FasterXML__jackson-dataformat-xml__pr819.claude-sonnet-5-5.baseline.json'));print({k:r.get(k) for k in ('turns','diff_lines','cost_usd')});print(json.dumps(r.get('score'))[:300])"; python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/seq.py /dev/stdin x x 2>/dev/null; python3 - <<'EOF'
+        import json,glob,os
+        r=json.load(open(os.path.expanduser('~/Projects/provasign/research/harness/results/e2e/FasterXML__jackson-dataformat-xml__pr819.claude-sonnet-5-5.baseline.json')))
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+        for l in open(f):
+            d=json.loads(l)
+            if d.get('type')!='assistant': continue
+            for p in d['message'].get('content') or []:
+                if p.get('type')=='text' and p['text'].strip(): print('  »',p['text'].strip().replace('\n',' ')[:300])
+                if p.get('type')=='tool_use': print('  ',p['name'],json.dumps(p['input'])[:160])
+        EOF
+      at: 2026-09-29T00:44:50.874993Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os
+        r=json.load(open(os.path.expanduser('~/Projects/provasign/research/harness/results/e2e/FasterXML__jackson-dataformat-xml__pr819.claude-sonnet-5-5.baseline.json')))
+        print({k:r.get(k) for k in ('turns','diff_lines','cost_usd')}, r.get('score'))
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+        for l in open(f):
+            d=json.loads(l)
+            if d.get('type')!='assistant': continue
+            for p in d['message'].get('content') or []:
+                if p.get('type')=='text' and p['text'].strip(): print('  »',p['text'].strip().replace('\n',' ')[:400])
+                if p.get('type')=='tool_use': print('  ',p['name'],json.dumps(p['input'])[:160])
+        EOF
+      at: 2026-09-29T00:44:59.655847Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json;r=json.load(open('results/e2e/pallets__werkzeug__pr3038.claude-sonnet-5-5.baseline.json'));print({k:r.get(k) for k in ('turns','diff_lines','error')});print(json.dumps(r.get('score'))[:800])"; python3 -c "
+        import json
+        for x in json.load(open('results/v084-lang-2026-09-26/headline/results.json')):
+            if x['task']=='pallets__werkzeug__pr3038': print('sonnet5 native',x['native'].get('resolved'),x['native'].get('turns'),'prism',x['prism'].get('resolved'))"; grep -n "test_routing" results/s55-bugfix30.log | head -5
+      at: 2026-09-29T00:55:16.594092Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 15,40p results/s55-bugfix30.log; cat results/e2e/pallets__werkzeug__pr3038.claude-sonnet-5-5.baseline.diff | head -60
+      at: 2026-09-29T00:55:20.697048Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && until grep -q "# done" results/s55-bugfix30.log; do sleep 10; done; grep -E "resolved=|ERROR " results/s55-bugfix30.log | tail -5
+      at: 2026-09-29T01:10:47.740563Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad; sed -i '' "s/if p.endswith('.json') and os.path.basename(p)=='results.json':/if os.path.isfile(p) and isinstance(json.load(open(p)),list):/" $S/budget.py && cd ~/Projects/provasign/research/harness/results && python3 $S/budget.py "S5.5-native-30=$S/s55bf.json:native" "S5-native-same30=$S/s5bf30.json:native" "S5-prism-same30=$S/s5bf30.json:prism"; echo; python3 $S/chains.py native $S/s55bf.json | head -8
+      at: 2026-09-29T01:11:10.294532Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad; cd ~/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,sys,statistics as st
+        S='/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad'
+        src=open(S+'/budget.py').read().split('def load')[0]; exec(src)
+        for label,path,arm in [('Sonnet 5.5 native',S+'/s55bf.json','native'),('Sonnet 5 native',S+'/s5bf30.json','native')]:
+            g={True:[],False:[]}
+            for r in json.load(open(path)):
+                c=r[arm]; cs=calls(c['session_id'])
+                if cs is None: continue
+                find=sum(1 for x in cs if cat(*x).startswith('find'))
+                test=sum(1 for x in cs if cat(*x)=='build/test')
+                g[bool(c['resolved'])].append((find,test,c['turns']))
+            for ok in (True,False):
+                v=g[ok]; print(f"{label:18} {'resolved' if ok else 'failed  '} n={len(v):2}  find calls {st.mean(x[0] for x in v):5.1f}  build/test {st.mean(x[1] for x in v):4.1f}  turns {st.mean(x[2] for x in v):5.1f}")
+        EOF
+      at: 2026-09-29T01:11:21.513235Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_delivery_gap_2026_09_28.md <<'EOF'
+        - SONNET 5.5 BUG-FIX RUN (same day; native only, pinned, results/s55-bugfix30-manifest.json = 20 heaviest + 10 random of lang71,
+          cells results/e2e/*.claude-sonnet-5-5.baseline.json, $5.10): 17/30 resolved vs Sonnet 5 native 18/30 (prism S5 17/30) on the
+          same tasks; 11.8 turns vs 35.8; 10.8 tool calls/run of which find 7.0 (3.8 grep + 3.2 read, 2.4 grep->read pairs) vs S5 23.8.
+          Failed and resolved 5.5 runs look around equally (6.9 vs 7.1 find calls) -> "stops too early" NOT supported by counts. 4 losses
+          vs S5 all jackson-dataformat-xml. Room for a navigation tool on 5.5 bug fixes ~= 2-3 turns/task at most.
+        EOF
+      at: 2026-09-29T01:11:28.992992Z
+      classified: other
+    - cmd: gh pr checks 18 2>&1 | head
+      at: 2026-09-29T01:16:43.774631Z
+      classified: other
+    - cmd: 'gh pr merge 18 --merge --delete-branch 2>&1 | tail -2; git checkout -- . && rm -f internal/mcp/impactmentions.go internal/mcp/impactmentions_test.go && git pull -q --ff-only origin main && git status --short && git log --oneline -3 && grep -c "impactTextMentions\|pickAmbiguousByFamily" internal/mcp/*.go | grep -v ":0" ; grep -n "adaptive:     limit >= defaultSearchLimit" internal/mcp/tools.go'
+      at: 2026-09-29T01:17:51.153692Z
+      classified: other
+    - cmd: |-
+        go build -o ~/prism-ab-bins/prism-main-3e878bc4 ./cmd/prism && ~/prism-ab-bins/prism-main-3e878bc4 --version && cd ~/Projects/provasign/research/harness && echo '["go-chi__chi__pr1029"]' > results/s55-bugfix30-prism-probe.json && PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-main-3e878bc4 python3 runners/run_e2e.py results/s55-bugfix30-prism-probe.json --models claude-sonnet-5-5 --arms prism_init --trials 1 2>&1 | tail -3; python3 - <<'EOF'
+        import json,glob,os
+        r=json.load(open(os.path.expanduser('~/Projects/provasign/research/harness/results/e2e/go-chi__chi__pr1029.claude-sonnet-5-5.prism_init.json')))
+        print({k:r.get(k) for k in ('resolved','turns','cost_usd','models_used','error')}, r.get('score'))
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+        n=0
+        for l in open(f):
+            d=json.loads(l)
+            for p in (d.get('message') or {}).get('content') or []:
+                if isinstance(p,dict) and p.get('type')=='tool_use' and p['name'].startswith('mcp__prism'): n+=1
+        print('prism calls',n)
+        EOF
+      at: 2026-09-29T01:18:22.755529Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research/harness && (PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-main-3e878bc4 nohup python3 runners/run_e2e.py results/s55-bugfix30-manifest.json --models claude-sonnet-5-5 --arms prism_init --trials 1 > results/s55-bugfix30-prism.log 2>&1 &); sleep 2; head -2 results/s55-bugfix30-prism.log
+      at: 2026-09-29T01:18:37.802668Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && until grep -q "# done" results/s55-bugfix30-prism.log; do sleep 5; done; cd results && python3 - <<'EOF'
+        import json,statistics as st
+        man=json.load(open('s55-bugfix30-manifest.json')); heavy=set(man[:20])
+        rows=[]
+        for t in man:
+            n=json.load(open(f'e2e/{t}.claude-sonnet-5-5.baseline.json')); p=json.load(open(f'e2e/{t}.claude-sonnet-5-5.prism_init.json'))
+            assert p.get('models_used')==['claude-sonnet-5-5'], (t,p.get('models_used'))
+            rows.append((t,t in heavy,n,p))
+        for name,sel in [('heavy 20',lambda h:h),('random 10',lambda h:not h),('all 30',lambda h:True)]:
+            g=[x for x in rows if sel(x[1])]
+            print(f"{name:10} native {sum(x[2]['resolved'] for x in g):2}/{len(g)} turns {st.mean(x[2]['turns'] for x in g):5.1f} ${sum(x[2]['cost_usd'] for x in g):.2f} | prism {sum(x[3]['resolved'] for x in g):2}/{len(g)} turns {st.mean(x[3]['turns'] for x in g):5.1f} ${sum(x[3]['cost_usd'] for x in g):.2f}")
+        d=[x[3]['turns']-x[2]['turns'] for x in rows]
+        print(f"paired turn diff prism-native: mean {st.mean(d):+.2f} sd {st.stdev(d):.2f} se {st.stdev(d)/len(d)**.5:.2f}; median {st.median(d):+.1f}")
+        both=[x for x in rows if x[2]['resolved'] and x[3]['resolved']]
+        print(f"tasks both resolved ({len(both)}): turns native {st.mean(x[2]['turns'] for x in both):.1f} prism {st.mean(x[3]['turns'] for x in both):.1f}; cost native ${sum(x[2]['cost_usd'] for x in both):.2f} prism ${sum(x[3]['cost_usd'] for x in both):.2f}")
+        print('prism wins:',[x[0] for x in rows if x[3]['resolved'] and not x[2]['resolved']])
+        print('prism losses:',[x[0] for x in rows if x[2]['resolved'] and not x[3]['resolved']])
+        EOF
+      at: 2026-09-29T02:06:13.045092Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_delivery_gap_2026_09_28.md <<'EOF'
+        - DECISIVE PRISM ARM (same day, prism main 3e878bc4 = v0.85.3 + search fixes PR#18, same 30 tasks, pinned 5.5):
+          native 17/30, 11.8 turns, $5.10 | prism 17/30, 11.3 turns, $5.86 (+15%). Paired turn diff -0.47 (se 0.90). Wins 2
+          (dataformat-xml pr819, pr817) / losses 2 (chi pr1148, gson pr3112). Pre-agreed rule (>=17/30 AND >=2 fewer turns AND cost
+          <= native) -> FAILED on turns and cost -> agreed outcome: stop the cost work; prism = optional wide-change tool or shelve (Topo's call).
+        EOF
+      at: 2026-09-29T02:06:21.882716Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,os
+        man=json.load(open('s55-bugfix30-manifest.json'))
+        def sess(sid):
+            f=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))[0]
+            ops=[];last=''
+            for l in open(f):
+                d=json.loads(l)
+                if d.get('type')!='assistant': continue
+                for p in d['message'].get('content') or []:
+                    if p.get('type')=='tool_use' and p['name'].startswith('mcp__prism'): ops.append(p['input'].get('op'))
+                    if p.get('type')=='text' and p['text'].strip(): last=p['text'].strip()
+            return ops,last
+        for t in man:
+            p=json.load(open(f'e2e/{t}.claude-sonnet-5-5.prism_init.json'))
+            if p['resolved']: continue
+            n=json.load(open(f'e2e/{t}.claude-sonnet-5-5.baseline.json'))
+            ops,last=sess(p['session_id'])
+            sc=p['score']; why='empty diff' if sc.get('empty_diff') else ('tests would not load' if sc.get('collection_failed') else ('broke existing tests' if not sc.get('p2p_ok') else 'target test still fails'))
+            print(f"{t:44} native={'PASS' if n['resolved'] else 'fail'}  prism: {why:24} diff={p.get('diff_lines')} turns={p['turns']} prism-ops={ops}")
+            print('     last words:', last.replace('\n',' ')[:260])
+        EOF
+      at: 2026-09-29T02:37:53.909046Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && for t in go-chi__chi__pr1148 google__gson__pr3112; do echo "################ $t"; python3 -c "
+        import json;t=json.load(open('tasks/e2e/$t.json'));print('ISSUE:',(t.get('problem_statement') or '')[:700].replace(chr(10),' '));print('--- GOLD PATCH'); print(t['patch'][:2500])"; echo "--- PRISM DIFF"; head -60 results/e2e/$t.claude-sonnet-5-5.prism_init.diff; echo "--- NATIVE DIFF"; head -60 results/e2e/$t.claude-sonnet-5-5.baseline.diff; python3 -c "
+        import json;print('prism score',json.load(open('results/e2e/$t.claude-sonnet-5-5.prism_init.json'))['score'])"; done
+      at: 2026-09-29T02:38:04.597654Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os,re
+        for t in ['go-chi__chi__pr1148','google__gson__pr3112','FasterXML__jackson-databind__pr5977']:
+            task=json.load(open(f'tasks/e2e/{t}.json'))
+            tp=task.get('test_patch','')
+            files=re.findall(r'^\+\+\+ b/(\S+)',tp,re.M)
+            new=re.findall(r'^--- /dev/null\n\+\+\+ b/(\S+)',tp,re.M)
+            print('==',t); print('   test_patch files:',files,' new files:',new)
+            print('   fail_to_pass:',str(task.get('fail_to_pass'))[:200]); print('   pass_to_pass count:',len(task.get('pass_to_pass') or []))
+            for arm in ('prism_init','baseline'):
+                r=json.load(open(f'results/e2e/{t}.claude-sonnet-5-5.{arm}.json'))
+                f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+                tests=[];last=''
+                for l in open(f):
+                    d=json.loads(l)
+                    if d.get('type')!='assistant': continue
+                    for p in d['message'].get('content') or []:
+                        if p.get('type')=='tool_use':
+                            c=p['input'].get('command','')
+                            if re.search(r'go test|mvn|gradle|pytest',c): tests.append(c[:110])
+                        if p.get('type')=='text' and p['text'].strip(): last=p['text'].strip()
+                print(f'   {arm}: resolved={r["resolved"]} score={r["score"]} test cmds={tests}')
+                if t.endswith('5977'): print('      last:',last[:300].replace('\n',' '))
+        s5={x['task']:x for x in json.load(open('results/v084-lang-2026-09-26/headline/results.json'))}
+        x=s5['FasterXML__jackson-databind__pr5977']; print('Sonnet5 pr5977 native',x['native']['resolved'],'prism',x['prism']['resolved'])
+        EOF
+      at: 2026-09-29T02:38:21.847424Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,subprocess,os
+        for t,wt in [('go-chi__chi__pr1148','go-chi__chi__pr1148'),('google__gson__pr3112','google__gson__pr3112')]:
+            task=json.load(open(f'tasks/e2e/{t}.json'))
+            d=os.path.expanduser(f'~/prism-ab-bins/nbreplay/wt/{wt}')
+            print('==',t)
+            for p in task.get('pass_to_pass') or []:
+                name=p.split('::')[-1]
+                r=subprocess.run(['git','-C',d,'grep','-n',name.split('/')[0]],capture_output=True,text=True)
+                print(f'   p2p {name:55} in base checkout: {"yes" if r.stdout.strip() else "NO (added by the fix PR)"}')
+        EOF
+      at: 2026-09-29T02:38:34.948189Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/side.py <<'EOF'
+        import json,glob,os,sys
+        t,arm,maxres=sys.argv[1],sys.argv[2],int(sys.argv[3])
+        r=json.load(open(os.path.expanduser(f'~/Projects/provasign/research/harness/results/e2e/{t}.claude-sonnet-5-5.{arm}.json')))
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+        uses={};out=[]
+        for l in open(f):
+            d=json.loads(l); c=(d.get('message') or {}).get('content')
+            if not isinstance(c,list): continue
+            for p in c:
+                if p.get('type')=='text' and d['type']=='assistant' and p['text'].strip(): out.append(['TEXT',p['text'].strip()[:500],''])
+                if p.get('type')=='tool_use': uses[p['id']]=len(out); out.append([p['name'],json.dumps(p['input'])[:300],''])
+                elif p.get('type')=='tool_result' and p.get('tool_use_id') in uses:
+                    cc=p.get('content'); cc=''.join(x.get('text','') for x in cc if isinstance(x,dict)) if isinstance(cc,list) else (cc or '')
+                    out[uses[p['tool_use_id']]][2]=cc
+        for n,i,res in out:
+            print('##',n,i.replace('/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/',''))
+            if res: print('   => '+res[:maxres].replace('\n','\n      '))
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/side.py go-chi__chi__pr1148 prism_init 3500
+      at: 2026-09-29T02:40:56.732481Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/side.py go-chi__chi__pr1148 baseline 700 | head -120
+      at: 2026-09-29T02:41:06.887987Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad; echo "######## PRISM"; python3 $S/side.py google__gson__pr3112 prism_init 2500 | head -110; echo; echo "######## NATIVE"; python3 $S/side.py google__gson__pr3112 baseline 600 | head -80
+      at: 2026-09-29T02:41:22.929081Z
+      classified: other
+    - cmd: prism search typeOutlineLines "BODY CAPPED" --scope text --format text 2>&1 | head -30; grep -n "func (h \*Handler) toolLookup" internal/mcp/*.go
+      at: 2026-09-29T02:43:24.961245Z
+      classified: other
+    - cmd: sed -n 20,130p internal/mcp/bodycap.go
+      at: 2026-09-29T02:43:29.462884Z
+      classified: other
+    - cmd: sed -n 2844,2960p internal/mcp/tools.go
+      at: 2026-09-29T02:43:41.204867Z
+      classified: other
+    - cmd: 'grep -n "func (h \*Handler) resolveLookup" internal/mcp/*.go && f=$(grep -ln "func (h \*Handler) resolveLookup" internal/mcp/*.go) && n=$(grep -n "func (h \*Handler) resolveLookup" $f | cut -d: -f2 | head -1); n=$(grep -n "func (h \*Handler) resolveLookup" $f | cut -d: -f1); sed -n "${n},$((n+140))p" $f'
+      at: 2026-09-29T02:43:47.037512Z
+      classified: other
+    - cmd: grep -n "func (l \*lookupLocator) lookupMatch" -A70 internal/mcp/*.go | head -100
+      at: 2026-09-29T02:43:51.966722Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/lookupname.go'; s=open(p).read()
+        old='''		if isTestDouble(s.FilePath) {
+        			score -= 10
+        		}
+        		// A bare "Circle" means the class, not its constructor.'''
+        new='''		if isTestDouble(s.FilePath) {
+        			score -= 10
+        		}
+        		if m == 1 {
+        			// A bare name means the code agents read and edit: a function,
+        			// method or type in the library, not a same-named variable in an
+        			// example program. chi `lookup routes` (2026-09-28) delivered
+        			// `var routes` from _examples/rest/main.go over node.routes in
+        			// tree.go, because the owner-less variable earned the full-QN
+        			// bonus above and the method did not.
+        			if lookupCallableOrType(s.Kind) {
+        				score += 25
+        			}
+        			if isExampleOrDocPath(s.FilePath) {
+        				score -= 15
+        			}
+        		}
+        		// A bare "Circle" means the class, not its constructor.'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        s+='''
+        // lookupCallableOrType reports kinds a bare-name lookup should prefer over
+        // variables, fields and constants of the same name.
+        func lookupCallableOrType(kind string) bool {
+        	switch kind {
+        	case "function", "method", "constructor":
+        		return true
+        	}
+        	return isTypeKind(kind)
+        }
+
+        // isExampleOrDocPath reports example programs, samples and docs: code that
+        // shares names with the library but is rarely what a lookup means.
+        func isExampleOrDocPath(path string) bool {
+        	for _, seg := range strings.Split(strings.ToLower(filepath.ToSlash(path)), "/") {
+        		switch seg {
+        		case "example", "examples", "_examples", "sample", "samples", "_samples", "demo", "demos", "docs", "doc", "testdata":
+        			return true
+        		}
+        	}
+        	return false
+        }
+        '''
+        if '"path/filepath"' not in s.split(')')[0]:
+            s=s.replace('import (\n','import (\n\t"path/filepath"\n',1)
+        open(p,'w').write(s)
+
+        p='internal/mcp/bodycap.go'; s=open(p).read()
+        old='''	typeOutlineLines = 80
+        )'''
+        new='''	typeOutlineLines = 80
+        	// typeOutlineBytes: ...and over this many chars. Lines alone outlined an
+        	// 82-line, ~3.4k-char gson class (TypeAdapterRuntimeTypeWrapper,
+        	// 2026-09-28) and cost the agent a second call to read it; the dubbo
+        	// class that motivated the outline was 7.4k chars.
+        	typeOutlineBytes = 6000
+        )'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	if !over && !(container && bodyLineCount(body) > typeOutlineLines) {'''
+        new='''	if !over && !(container && bodyLineCount(body) > typeOutlineLines && len(body) > typeOutlineBytes) {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/mcp; go build ./... && go test ./internal/mcp -count=1 2>&1 | tail -25
+      at: 2026-09-29T02:44:37.706093Z
+      classified: test
+    - cmd: go test ./internal/mcp -count=1 2>&1 | grep -E "^--- FAIL" ; sed -n 155,190p internal/mcp/searchbudget_test.go
+      at: 2026-09-29T02:45:06.764279Z
+      classified: test
+    - cmd: go test ./internal/mcp -run TestToolLookup_QualifierRejectsOtherOwner -count=1 2>&1 | head -30; grep -n "func TestToolLookup_QualifierRejectsOtherOwner" -A40 internal/mcp/*_test.go | head -50
+      at: 2026-09-29T02:45:17.014949Z
+      classified: test
+    - cmd: 'n=$(grep -n "^func (h \*Handler) deliverLookup" internal/mcp/lookupresolve.go | cut -d: -f1); sed -n "${n},$((n+90))p" internal/mcp/lookupresolve.go'
+      at: 2026-09-29T02:45:33.308439Z
+      classified: other
+    - cmd: grep -rn '"candidates"' internal/mcp/*.go internal/cli/*.go | grep -v _test | head; grep -rn "func lookupCandidateLabel" -A12 internal/mcp/*.go
+      at: 2026-09-29T02:45:41.368441Z
+      classified: other
+    - cmd: sed -n 285,345p internal/mcp/graphtext.go; sed -n 400,440p internal/mcp/graphtext.go
+      at: 2026-09-29T02:45:46.172706Z
+      classified: other
+    - cmd: grep -n "func renderLookupBatchAsText" -A40 internal/mcp/graphtext.go | head -50; grep -n "resolveLookup\|lookupSymbol(" internal/mcp/lookupbatch.go
+      at: 2026-09-29T02:45:55.963999Z
+      classified: other
+    - cmd: grep -rn "func renderLookupBatchAsText" -A45 internal/mcp/ | head -55
+      at: 2026-09-29T02:46:00.325922Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/lookupname.go'; s=open(p).read()
+        old='''			if lookupCallableOrType(s.Kind) {
+        				score += 25
+        			}
+        			if isExampleOrDocPath(s.FilePath) {'''
+        new='''			if len(qs) == len(n) && !lookupCallableOrType(s.Kind) {
+        				score -= 20 // no full-QN bonus for an owner-less variable or constant
+        			}
+        			if isExampleOrDocPath(s.FilePath) {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        s=s.replace('''			// bonus above and the method did not.''','''			// bonus above and the method did not. A genuine tie (a field and
+        			// a method on different owners) stays a tie and is listed.''')
+        open(p,'w').write(s)
+
+        p='internal/mcp/lookupresolve.go'; s=open(p).read()
+        old='''	if tied <= 1 {
+        		return out
+        	}'''
+        new='''	if tied <= 1 {
+        		// Name the other symbols that also matched. Without this a lower-
+        		// ranked right answer was invisible: chi `lookup routes` showed an
+        		// example-file variable and never mentioned node.routes.
+        		var also []string
+        		for i := range syms {
+        			if i == bestIdx || scores[i] < 0 || (syms[i].QualifiedName == best.QualifiedName && syms[i].FilePath == best.FilePath) {
+        				continue
+        			}
+        			if len(also) == lookupAlsoNamedMax {
+        				also = append(also, "…")
+        				break
+        			}
+        			also = append(also, lookupCandidateLabel(syms[i]))
+        		}
+        		if len(also) > 0 {
+        			out["alsoNamed"] = also
+        		}
+        		return out
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        s=s.replace('func (h *Handler) deliverLookup(','// lookupAlsoNamedMax bounds the other same-name matches a lookup lists.\nconst lookupAlsoNamedMax = 5\n\nfunc (h *Handler) deliverLookup(',1)
+        open(p,'w').write(s)
+
+        p='internal/mcp/graphtext.go'; s=open(p).read()
+        old='''		"testOnly": true,
+        	}
+        	for k := range out {'''
+        new='''		"testOnly": true, "alsoNamed": true,
+        	}
+        	for k := range out {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	if lines := anySlice(out["testOnly"]); len(lines) > 0 {'''
+        new='''	if also := anySlice(out["alsoNamed"]); len(also) > 0 {
+        		parts := make([]string, 0, len(also))
+        		for _, a := range also {
+        			parts = append(parts, fmt.Sprint(a))
+        		}
+        		fmt.Fprintf(&b, "// also named this (not shown): %s\\n", strings.Join(parts, "; "))
+        	}
+        	if lines := anySlice(out["testOnly"]); len(lines) > 0 {'''
+        assert s.count(old)==1; s=s.replace(old,new,1)
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/mcp/lookupname.go internal/mcp/lookupresolve.go internal/mcp/graphtext.go internal/mcp/bodycap.go; go build ./... && go test ./internal/mcp -count=1 2>&1 | grep -E "^--- FAIL|^ok|^FAIL"
+      at: 2026-09-29T02:46:38.791099Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/searchbudget_test.go'; s=open(p).read()
+        old='''// dubbo pr16395: `lookup AbstractStateRouter` returned the whole 7.4k class.
+        // A type over typeOutlineLines lines returns its header and member outline;
+        // a function of the same size keeps its full body.
+        func TestLookupOutlinesMidSizeTypesKeepsFunctions(t *testing.T) {
+        	var cls strings.Builder
+        	cls.WriteString("package r;\\n\\npublic class Mid {\\n    private int count;\\n")
+        	for i := 0; i < 12; i++ {
+        		fmt.Fprintf(&cls, "    public int m%02d(int x) {\\n        int y = x + %d;\\n        y = y * 2;\\n        y = y - 1;\\n        y = y + 3;\\n        return y;\\n    }\\n\\n", i, i)
+        	}
+        	cls.WriteString("}\\n")'''
+        new='''// dubbo pr16395: `lookup AbstractStateRouter` returned the whole 7.4k class.
+        // A type over typeOutlineLines lines and typeOutlineBytes chars returns its
+        // header and member outline; a function of the same size keeps its full body.
+        // gson TypeAdapterRuntimeTypeWrapper (82 lines, ~3.4k chars): a small type
+        // just over the line limit is delivered whole.
+        func TestLookupOutlinesMidSizeTypesKeepsFunctions(t *testing.T) {
+        	var cls strings.Builder
+        	cls.WriteString("package r;\\n\\npublic class Mid {\\n    private int count;\\n")
+        	for i := 0; i < 12; i++ {
+        		fmt.Fprintf(&cls, "    public int m%02d(int inputValueForTheComputation) {\\n        int intermediateResultValue = inputValueForTheComputation + %d;\\n"+
+        			"        intermediateResultValue = intermediateResultValue * 2 + inputValueForTheComputation;\\n"+
+        			"        intermediateResultValue = intermediateResultValue - 1 - inputValueForTheComputation;\\n"+
+        			"        intermediateResultValue = intermediateResultValue + 3 + inputValueForTheComputation;\\n"+
+        			"        return intermediateResultValue;\\n    }\\n\\n", i, i)
+        	}
+        	cls.WriteString("}\\n")
+        	var small strings.Builder
+        	small.WriteString("package r;\\n\\npublic class Small {\\n")
+        	for i := 0; i < 16; i++ {
+        		fmt.Fprintf(&small, "    int s%02d(int x) {\\n        return x + %d;\\n    }\\n\\n", i, i)
+        	}
+        	small.WriteString("    int last() { return 0; }\\n}\\n")'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	srv := compactFixture(t, map[string]string{"src/r/Mid.java": cls.String(), "long.go": fn.String()})
+        	out := callCompact(t, srv, "lookup", map[string]any{"name": "Mid"})
+        	if !strings.Contains(out, "BODY CAPPED") || !strings.Contains(out, "m11(int x)") || strings.Contains(out, "int y = x + 7;") {'''
+        new='''	if n := strings.Count(small.String(), "\\n"); n <= typeOutlineLines || len(small.String()) >= typeOutlineBytes {
+        		t.Fatalf("fixture: Small is %d lines / %d chars, want > %d lines and < %d chars", n, len(small.String()), typeOutlineLines, typeOutlineBytes)
+        	}
+        	srv := compactFixture(t, map[string]string{"src/r/Mid.java": cls.String(), "src/r/Small.java": small.String(), "long.go": fn.String()})
+        	if got := callCompact(t, srv, "lookup", map[string]any{"name": "Small"}); strings.Contains(got, "BODY CAPPED") || !strings.Contains(got, "return x + 15;") {
+        		t.Fatalf("a small class just over %d lines was outlined:\\n%s", typeOutlineLines, got)
+        	}
+        	out := callCompact(t, srv, "lookup", map[string]any{"name": "Mid"})
+        	if !strings.Contains(out, "BODY CAPPED") || !strings.Contains(out, "m11(int inputValueForTheComputation)") || strings.Contains(out, "inputValueForTheComputation + 7;") {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        go test ./internal/mcp -run TestLookupOutlinesMidSizeTypesKeepsFunctions -count=1 2>&1 | tail -8
+      at: 2026-09-29T02:46:58.20346Z
+      classified: test
+    - cmd: |-
+        sed -i '' 's/	for i := 0; i < 16; i++ {\n		fmt.Fprintf(&small/X/' internal/mcp/searchbudget_test.go && python3 - <<'EOF'
+        p='internal/mcp/searchbudget_test.go'; s=open(p).read()
+        s=s.replace('for i := 0; i < 16; i++ {\n\t\tfmt.Fprintf(&small','for i := 0; i < 21; i++ {\n\t\tfmt.Fprintf(&small',1)
+        s=s.replace('!strings.Contains(got, "return x + 15;")','!strings.Contains(got, "return x + 20;")',1)
+        open(p,'w').write(s)
+        EOF
+        go test ./internal/mcp -run TestLookupOutlinesMidSizeTypesKeepsFunctions -count=1 2>&1 | tail -4
+      at: 2026-09-29T02:47:06.491895Z
+      classified: test
+    - cmd: go test ./internal/mcp -run TestLookupOutlinesMidSizeTypesKeepsFunctions -count=1 2>&1 | grep -E "searchbudget_test.go|was outlined|not outlined|lost" | head -5
+      at: 2026-09-29T02:47:18.226505Z
+      classified: test
+    - cmd: |-
+        cat > /tmp/sz_test.go <<'EOF'
+        EOF
+        python3 - <<'EOF'
+        lines=["package r;","","public class Mid {","    private int count;"]
+        for i in range(12):
+            lines += [f"    public int m{i:02d}(int inputValueForTheComputation) {{",f"        int intermediateResultValue = inputValueForTheComputation + {i};",
+              "        intermediateResultValue = intermediateResultValue * 2 + inputValueForTheComputation;",
+              "        intermediateResultValue = intermediateResultValue - 1 - inputValueForTheComputation;",
+              "        intermediateResultValue = intermediateResultValue + 3 + inputValueForTheComputation;",
+              "        return intermediateResultValue;","    }",""]
+        s="\n".join(lines)+"}\n"; print(len(s.splitlines()), len(s))
+        EOF
+        rm -f /tmp/sz_test.go
+      at: 2026-09-29T02:47:24.701286Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/searchbudget_test.go'; s=open(p).read()
+        s=s.replace('''	for i := 0; i < 12; i++ {
+        		fmt.Fprintf(&cls, "    public int m%02d(int inputValueForTheComputation)''','''	for i := 0; i < 15; i++ {
+        		fmt.Fprintf(&cls, "    public int m%02d(int inputValueForTheComputation)''',1)
+        s=s.replace('!strings.Contains(out, "m11(int inputValueForTheComputation)")','!strings.Contains(out, "m14(int inputValueForTheComputation)")',1)
+        s=s.replace('''	if n := strings.Count(small.String(), "\\n");''','''	if len(cls.String()) <= typeOutlineBytes {
+        		t.Fatalf("fixture: Mid is %d chars, want > %d", len(cls.String()), typeOutlineBytes)
+        	}
+        	if n := strings.Count(small.String(), "\\n");''',1)
+        open(p,'w').write(s)
+        EOF
+        go test ./internal/mcp -count=1 2>&1 | grep -E "^--- FAIL|^ok|^FAIL"
+      at: 2026-09-29T02:47:54.479472Z
+      classified: test
+    - cmd: |-
+        cat >> internal/mcp/searchbudget_test.go <<'EOF'
+
+        // chi `lookup routes` (Sonnet 5.5, 2026-09-28) delivered `var routes` from
+        // _examples/rest/main.go instead of node.routes in tree.go, and did not
+        // mention the method at all.
+        func TestBareLookupPrefersLibraryMethodOverExampleVariable(t *testing.T) {
+        	srv := compactFixture(t, map[string]string{
+        		"go.mod":                "module ex\n\ngo 1.21\n",
+        		"tree.go":               "package ex\n\ntype node struct{}\n\nfunc (n *node) routes() []string {\n\treturn nil\n}\n",
+        		"_examples/rest/main.go": "package main\n\nimport \"flag\"\n\nvar routes = flag.Bool(\"routes\", false, \"docs\")\n\nfunc main() {}\n",
+        	})
+        	out := callCompact(t, srv, "lookup", map[string]any{"name": "routes"})
+        	if !strings.Contains(out, "tree.go") || !strings.Contains(out, "func (n *node) routes()") {
+        		t.Fatalf("bare lookup did not deliver the library method:\n%s", out)
+        	}
+        	if !strings.Contains(out, "also named this") || !strings.Contains(out, "_examples/rest/main.go") {
+        		t.Fatalf("the other same-name symbol is not mentioned:\n%s", out)
+        	}
+        }
+        EOF
+        gofmt -w internal/mcp/searchbudget_test.go; go test ./internal/mcp -run TestBareLookupPrefersLibraryMethodOverExampleVariable -count=1 2>&1 | tail -3; git stash push internal/mcp/lookupname.go internal/mcp/lookupresolve.go internal/mcp/graphtext.go -q && go test ./internal/mcp -run TestBareLookupPrefersLibraryMethodOverExampleVariable -count=1 2>&1 | grep -E "did not deliver|not mentioned|^ok|FAIL" | head -2; git stash pop -q && go build ./... && echo restored
+      at: 2026-09-29T02:48:10.592868Z
+      classified: test
+    - cmd: go test ./internal/mcp -run TestBareLookupPrefersLibraryMethodOverExampleVariable -count=1 -v 2>&1 | sed -n 1,30p
+      at: 2026-09-29T02:48:16.487622Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/lookupresolve.go'; s=open(p).read()
+        old='''		} else if !fold && s.QualifiedName == raw {
+        			sc = 10000
+        		}'''
+        new='''		} else if !fold && s.QualifiedName == raw && strings.ContainsAny(raw, ".:/\\\\") {
+        			// Only a qualified spelling is decisive. A bare name equals the
+        			// QN of every owner-less symbol, so this override made an
+        			// example-file `var routes` beat node.routes (chi, 2026-09-28).
+        			sc = 10000
+        		}'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        go build ./... && go test ./internal/mcp -count=1 2>&1 | grep -E "^--- FAIL|^ok|^FAIL"
+      at: 2026-09-29T02:48:52.598137Z
+      classified: test
+    - cmd: go test ./... 2>&1 | grep -v "^ok\|no test files" | head; echo TESTS-DONE; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad; go build -o $S/prism-dev ./cmd/prism && cd ~/prism-ab-bins/nbreplay/wt/go-chi__chi__pr1148 && python3 $S/mcpcall.py $S/prism-dev '{"name":["Walk","routes","walk"],"fields":["body","signature"]}' lookup | grep -E "^// lookup|^name:|^file:|also named" ; cd ~/prism-ab-bins/nbreplay/wt/google__gson__pr3112 && python3 $S/mcpcall.py $S/prism-dev '{"name":"TypeAdapterRuntimeTypeWrapper","fields":["body"]}' lookup | grep -cE "BODY CAPPED|getRuntimeTypeIfMoreSpecific\(Type type, Object value\) \{"; python3 $S/mcpcall.py $S/prism-dev '{"name":"TypeAdapterRuntimeTypeWrapper","fields":["body"]}' lookup | grep -E "BODY CAPPED|private static Type getRuntimeTypeIfMoreSpecific" | head -3
+      at: 2026-09-29T02:49:29.00307Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,os,re,sqlite3,collections
+        WT=os.path.expanduser('~/prism-ab-bins/nbreplay/wt')
+        C=collections.Counter(); Q=collections.Counter(); ex=[]
+        sets=[('v084-lang-2026-09-26/headline/results.json','prism',None)]
+        man=json.load(open('s55-bugfix30-manifest.json'))
+        rows=[(t, json.load(open(f'e2e/{t}.claude-sonnet-5-5.prism_init.json'))) for t in man]
+        def sessions():
+            for x in json.load(open('v084-lang-2026-09-26/headline/results.json')): yield x['task'], x['prism']
+            for t,r in rows: yield t,r
+        for task,r in sessions():
+            f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r.get('session_id')}.jsonl"))
+            if not f or not os.path.exists(f'{WT}/{task}/.grove/grove.db'): continue
+            db=sqlite3.connect(f'{WT}/{task}/.grove/grove.db')
+            uses={}
+            for l in open(f[0]):
+                d=json.loads(l); c=(d.get('message') or {}).get('content')
+                if not isinstance(c,list): continue
+                for p in c:
+                    if p.get('type')=='tool_use' and p['name'].startswith('mcp__prism') and p['input'].get('op')=='lookup':
+                        uses[p['id']]=p['input'].get('args') or {}
+                    if p.get('type')=='tool_result' and p.get('tool_use_id') in uses:
+                        a=uses[p['tool_use_id']]; names=a.get('name'); names=names if isinstance(names,list) else [names]
+                        for nm in names:
+                            if not isinstance(nm,str): continue
+                            Q['qualified (Type.member)' if re.search(r'[.:#]',nm) else 'bare name']+=1
+                        cc=p.get('content'); cc=''.join(y.get('text','') for y in cc if isinstance(y,dict)) if isinstance(cc,list) else (cc or '')
+                        for fpath,line in re.findall(r'^file: (\S+)\s*\nline: (\d+)',cc,re.M):
+                            k=db.execute("select kind from symbols where file_path=? and span_start=? order by (span_end-span_start) limit 1",(fpath,int(line))).fetchone()
+                            C[k[0] if k else '?']+=1
+                        if 'NO EXACT MATCH' in cc: C['(no exact match)']+=1
+        print('names requested:',dict(Q)); print('resolved kinds:',dict(C.most_common()))
+        EOF
+      at: 2026-09-29T02:49:44.147252Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/nbreplay && python3 audit_fail.py 2>&1
+      at: 2026-09-29T02:50:15.607461Z
+      classified: other
+    - cmd: "cd ~/prism-ab-bins/nbreplay && python3 - <<'EOF'\nimport json,glob,os,re\nH=os.path.expanduser('~/Projects/provasign/research/harness')\nfor t in ['FasterXML__jackson-dataformat-xml__pr827','FasterXML__jackson-databind__pr5977','pallets__werkzeug__pr3038','urllib3__urllib3__pr5020','go-chi__chi__pr1148']:\n    r=json.load(open(f'{H}/results/e2e/{t}.claude-sonnet-5-5.prism_init.json'))\n    f=glob.glob(os.path.expanduser(f\"~/.claude/projects/*/{r['session_id']}.jsonl\"))[0]\n    uses={}; print('=====',t)\n    for l in open(f):\n        d=json.loads(l); c=(d.get('message') or {}).get('content')\n        if not isinstance(c,list): continue\n        for p in c:\n            if p.get('type')=='tool_use' and p['name'].startswith('mcp__prism'): uses[p['id']]=p['input']\n            if p.get('type')=='tool_result' and p.get('tool_use_id') in uses:\n                cc=p.get('content'); cc=''.join(y.get('text','') for y in cc if isinstance(y,dict)) if isinstance(cc,list) else (cc or '')\n                i=uses[p['tool_use_id']]\n                print(' >>',i.get('op'),json.dumps(i.get('args'))[:200])\n                files=sorted(set(re.findall(r'([\\w/.-]+\\.(?:java|py|go))',cc)))[:12]\n                err=[x for x in cc.splitlines() if re.search(r'error|ERROR|NO EXACT',x)][:2]\n                print('    files in answer:',files); \n                if err: print('    flagged lines:',err)\nEOF"
+      at: 2026-09-29T02:50:33.07594Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/nbreplay && python3 - <<'EOF'
+        import json,glob,os
+        H=os.path.expanduser('~/Projects/provasign/research/harness')
+        r=json.load(open(f'{H}/results/e2e/FasterXML__jackson-databind__pr5977.claude-sonnet-5-5.prism_init.json'))
+        f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+        uses={}
+        for l in open(f):
+            d=json.loads(l); c=(d.get('message') or {}).get('content')
+            if not isinstance(c,list): continue
+            for p in c:
+                if p.get('type')=='tool_use' and p['name'].startswith('mcp__prism'): uses[p['id']]=1
+                if p.get('type')=='tool_result' and p.get('tool_use_id') in uses:
+                    cc=p.get('content'); cc=''.join(y.get('text','') for y in cc if isinstance(y,dict)) if isinstance(cc,list) else (cc or '')
+                    print(cc[:600]); raise SystemExit
+        EOF
+      at: 2026-09-29T02:50:47.046538Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_delivery_gap_2026_09_28.md <<'EOF'
+        - FAILURE AUDIT (13 prism failures, ~/prism-ab-bins/nbreplay/audit_fail.py): in 10 the agent saw the gold-fix function in full
+          and still wrote the wrong fix; in 3 (dataformat-xml pr827, databind pr5977, werkzeug pr3038) it never saw the gold code, but
+          prism answered exactly what was asked (wrong-place questions; wrong-path filter was handled well). Real prism defects found =
+          2, both in the 2 losses: bare lookup `routes` -> example-file var (exact-QN 10000 override + full-QN +20 for owner-less vars),
+          and 82-line/3.4k class outlined (80-line-only threshold). Fixed in tree (uncommitted, go test green): override needs a
+          qualified spelling, no full-QN bonus for owner-less vars, example/doc path -15, alsoNamed list, outline needs >80 lines AND
+          >6000 chars. Recorded lookups: 83/88 resolved to methods/functions/types; the 1 variable was the chi bug.
+        EOF
+      at: 2026-09-29T02:50:56.092147Z
+      classified: test
+    - cmd: grep -n 'stringArg(args, "kind"\|stringsArg(args, "kind"\|"kind":' internal/mcp/tools.go internal/mcp/compactargs.go | head; grep -n '"search":' internal/mcp/compactargs.go
+      at: 2026-09-29T02:53:42.640531Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/intent.py
+      at: 2026-09-29T02:56:06.398545Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad && python3 - <<'EOF'
+        import random
+        exec(open('intent.py').read().split("KIND_WORDS =")[0])
+        random.seed(7)
+        for label in ['Sonnet 5.5 bug fixes (30)','Sonnet 5 bug fixes (71)']:
+            ex={'several names at once (a|b|c)':[],'bare name, no kind cue':[]}
+            for sid in sessions[label]:
+                f=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))
+                if not f: continue
+                for l in open(f[0]):
+                    d=json.loads(l)
+                    if d.get('type')!='assistant': continue
+                    for p in d['message'].get('content') or []:
+                        if p.get('type')=='tool_use':
+                            for pat in patterns(p['name'],p['input']):
+                                k=cue(pat)
+                                if k in ex: ex[k].append(pat)
+            print('=====',label)
+            for k,v in ex.items():
+                print(' --',k)
+                for x in random.sample(v,min(12,len(v))): print('     ',x[:110])
+        EOF
+      at: 2026-09-29T02:56:16.921744Z
+      classified: other
+    - cmd: go build -o ~/prism-ab-bins/prism-lookupfix ./cmd/prism && cd ~/Projects/provasign/research/harness && echo '["go-chi__chi__pr1148","google__gson__pr3112"]' > results/lookupfix-manifest.json && ls results/e2e | grep -E "(chi__pr1148|gson__pr3112)\.claude-sonnet-5-5\.prism_body_exp" ; (PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-lookupfix nohup python3 runners/run_e2e.py results/lookupfix-manifest.json --models claude-sonnet-5-5 --arms baseline,prism_body_exp --trials 10 > results/lookupfix.log 2>&1 &); sleep 3; head -3 results/lookupfix.log
+      at: 2026-09-29T02:59:43.180888Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && until grep -q "# done" results/lookupfix.log; do sleep 10; done; grep -E "resolved=" results/lookupfix.log | tail -22 | head -3; cd results && python3 - <<'EOF'
+        import json,glob,statistics as st
+        for t in ['go-chi__chi__pr1148','google__gson__pr3112']:
+            for arm,label in [('baseline','native'),('prism_body_exp','prism (lookup fixes)'),('prism_init','prism (old build, 1 run)')]:
+                rs=[json.load(open(f)) for f in glob.glob(f'e2e/{t}.claude-sonnet-5-5.{arm}*.json')]
+                if not rs: continue
+                ok=[r for r in rs if r['resolved']]
+                assert all(r.get('models_used')==['claude-sonnet-5-5'] for r in rs)
+                print(f"{t:22} {label:26} {len(ok)}/{len(rs)} resolved  turns {st.mean(r['turns'] for r in rs):5.1f}  cost/run ${st.mean(r['cost_usd'] for r in rs):.3f}")
+        EOF
+      at: 2026-09-29T03:39:52.811906Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/tasks/b0ia71qm1.output
+      at: 2026-09-29T03:43:18.486276Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_delivery_gap_2026_09_28.md <<'EOF'
+        - LOSS RERUN (10x each arm, pinned 5.5, prism = lookup-fix build as prism_body_exp): chi pr1148 native 7/10 vs prism 7/10
+          (12.2 vs 14.4 turns); gson pr3112 native 1/10 vs prism 0/10. The two "prism losses" in the 30-task run were run-to-run
+          noise (native's gson pass was a 1-in-10). Lookup fixes are correct but don't change outcomes. Single-run per-task
+          win/loss attributions are unreliable at this variance.
+        EOF
+      at: 2026-09-29T03:43:25.802043Z
+      classified: other
+    - cmd: git status --short && git branch --show-current && git fetch -q && git log --oneline -1 origin/main && gh pr list --state open
+      at: 2026-09-29T10:42:34.843517Z
+      classified: other
+notes:
+    - text: continuation of session 03535a92-b06c-4de1-89f6-5174c7d2da6d — events captured after its evidence was finalized
+      at: 2026-09-29T00:39:22.541207Z
+redactions: 0

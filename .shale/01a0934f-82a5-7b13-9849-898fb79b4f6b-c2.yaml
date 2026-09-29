@@ -1,0 +1,99 @@
+shale_version: "0"
+id: 01a0934f-82a5-7b13-9849-898fb79b4f6b-c2
+created_at: 2026-09-12T04:22:03.258249Z
+finalized_at: 2026-09-12T04:27:25.958933Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T04:26:05.880895Z
+    - path: internal/mcp/server_stale_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-12T04:26:05.880895Z
+commands:
+    - cmd: git show --stat --oneline --decorate --summary HEAD && git show --name-status --format= HEAD && git ls-remote origin refs/heads/main && git push origin main && git status --short --branch && git log --oneline --decorate -3
+      at: 2026-09-12T04:22:03.258249Z
+      classified: other
+    - cmd: gh run watch 34672804445 --repo provasign/prism --exit-status
+      at: 2026-09-12T04:24:35.681715Z
+      classified: other
+    - cmd: gh run view 34672804445 --repo provasign/prism --job 103497259942 --log-failed
+      at: 2026-09-12T04:24:41.147955Z
+      classified: other
+    - cmd: /tmp/prism-v073-final read internal/mcp/server_stale_test.go --format text
+      at: 2026-09-12T04:24:48.418722Z
+      classified: other
+    - cmd: /tmp/prism-v073-final change-impact 'github.com/provasign/prism/internal/mcp.binarySnapshotChanged' --format text
+      at: 2026-09-12T04:24:51.549514Z
+      classified: other
+    - cmd: /tmp/prism-v073-final lookup binarySnapshotChanged --format text
+      at: 2026-09-12T04:24:54.433132Z
+      classified: other
+    - cmd: /tmp/prism-v073-final change-impact binarySnapshotChanged --format text
+      at: 2026-09-12T04:24:58.022503Z
+      classified: other
+    - cmd: /tmp/prism-v073-final read internal/mcp/server.go:225-305 --format text && go doc os.SameFile
+      at: 2026-09-12T04:25:06.819148Z
+      classified: other
+    - cmd: /tmp/prism-v073-final read --help
+      at: 2026-09-12T04:25:10.661539Z
+      classified: other
+    - cmd: /tmp/prism-v073-final lookup binarySnapshot captureBinarySnapshot binarySnapshotChanged staleBinaryNote --format text && go doc os.SameFile
+      at: 2026-09-12T04:25:14.560426Z
+      classified: other
+    - cmd: /tmp/prism-v073-final lookup binarySnapshot --format text
+      at: 2026-09-12T04:25:19.486659Z
+      classified: other
+    - cmd: /tmp/prism-v073-final lookup captureBinarySnapshot --format text
+      at: 2026-09-12T04:25:19.492133Z
+      classified: other
+    - cmd: /tmp/prism-v073-final lookup staleBinaryNote --format text
+      at: 2026-09-12T04:25:19.514085Z
+      classified: other
+    - cmd: /tmp/prism-v073-final search startupBinarySnapshot binarySnapshot --scope text --exhaustive --context 3 --format text
+      at: 2026-09-12T04:25:22.529277Z
+      classified: other
+    - cmd: /tmp/prism-v073-final change-impact binarySnapshot --format text && /tmp/prism-v073-final lookup snapshotLaunchBinary --format text
+      at: 2026-09-12T04:25:25.897463Z
+      classified: other
+    - cmd: go env GOROOT && rg -n 'func SameFile|sameFile' "$(go env GOROOT)/src/os" "$(go env GOROOT)/src/internal" | head -80
+      at: 2026-09-12T04:25:36.867036Z
+      classified: other
+    - cmd: sed -n '320,375p' /usr/local/go/src/os/types_windows.go && sed -n '55,82p' /usr/local/go/src/os/types.go
+      at: 2026-09-12T04:25:40.029745Z
+      classified: other
+    - cmd: /tmp/prism-v073-final change-impact snapshotLaunchBinary --format text
+      at: 2026-09-12T04:25:51.947935Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/server_stale_test.go && GOWORK=off go test ./internal/mcp -run 'Test(BinarySnapshotChangedAfterAtomicReplacement|StaleBinaryNoteFiresOnceAfterReplacement|ServerRetiresBeforeDispatchAfterBinaryReplacement)$' -count=20 && GOWORK=off GOOS=windows GOARCH=amd64 go test -c -o /tmp/prism-mcp-windows.test.exe ./internal/mcp && git diff --check && git diff --stat && git status --short --branch
+      at: 2026-09-12T04:26:20.988196Z
+      classified: test
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-12T04:26:33.660074Z
+      classified: lint
+    - cmd: /tmp/prism-v073-final verify --base HEAD --format text
+      at: 2026-09-12T04:26:34.876801Z
+      classified: other
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 180s
+      at: 2026-09-12T04:26:49.657701Z
+      classified: test
+    - cmd: GOWORK=off go test -race ./internal/mcp -count=1 -timeout 180s
+      at: 2026-09-12T04:27:16.126004Z
+      classified: test
+    - cmd: git diff --check && git diff -- internal/mcp/server.go internal/mcp/server_stale_test.go && git status --short --branch
+      at: 2026-09-12T04:27:19.733764Z
+      classified: other
+notes:
+    - text: continuation of session 01a0934f-82a5-7b13-9849-898fb79b4f6b — events captured after its evidence was finalized
+      at: 2026-09-12T04:22:03.258249Z
+redactions: 0

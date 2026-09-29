@@ -1,0 +1,576 @@
+shale_version: "0"
+id: 01a07397-5c11-73c0-8cd1-cd24c61a8ffc
+created_at: 2026-09-05T22:02:55.46695Z
+finalized_at: 2026-09-06T12:37:04.965011Z
+agent:
+    tool: codex
+    model: gpt-5.6-luna
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: pwd
+      at: 2026-09-05T22:03:07.445828Z
+      classified: other
+    - cmd: prism search token benchmark savings --scope text --files-only --format text
+      at: 2026-09-05T22:03:07.647596Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-05T22:03:13.113912Z
+      classified: other
+    - cmd: prism search 'token|benchmark|savings' --scope text --regex --exhaustive --files-only --format text
+      at: 2026-09-05T22:03:13.168899Z
+      classified: other
+    - cmd: prism read README.md --format text
+      at: 2026-09-05T22:03:13.219285Z
+      classified: other
+    - cmd: prism search 'input_tokens|cached_tokens|total_tokens|baseline|pilot' --scope text --regex --glob '*.md' --context 2 --format text
+      at: 2026-09-05T22:03:13.316708Z
+      classified: other
+    - cmd: prism read BACKLOG.md --offset 380 --limit 145 --format text
+      at: 2026-09-05T22:03:20.378809Z
+      classified: other
+    - cmd: prism read docs/token-usage-2026-06.md --format text
+      at: 2026-09-05T22:03:20.459306Z
+      classified: other
+    - cmd: prism read BACKLOG.md --offset 1 --limit 115 --format text
+      at: 2026-09-05T22:03:20.482092Z
+      classified: other
+    - cmd: prism search 'TokensSaved|tokens_saved|RecordSavings|OriginalTokens|original_tokens|8000' --scope text --regex --path internal --context 2 --format text
+      at: 2026-09-05T22:03:20.567292Z
+      classified: other
+    - cmd: prism read .mcp.json --format text
+      at: 2026-09-05T22:03:20.642085Z
+      classified: other
+    - cmd: prism read BACKLOG.md --offset 522 --limit 100 --format text
+      at: 2026-09-05T22:03:27.29662Z
+      classified: other
+    - cmd: prism search 'renderSearchAsText|renderOneSearchText|toolQuery|toolSavings' --scope symbols --format text
+      at: 2026-09-05T22:03:27.362248Z
+      classified: other
+    - cmd: prism read internal/session/ledger.go --format text
+      at: 2026-09-05T22:03:27.40855Z
+      classified: other
+    - cmd: prism read HANDOFF.md --offset 1 --limit 42 --format text
+      at: 2026-09-05T22:03:27.425242Z
+      classified: other
+    - cmd: prism search '8000|budget|EstimateTokens' --scope text --regex --path internal/mcp/selection.go --context 3 --format text
+      at: 2026-09-05T22:03:27.512804Z
+      classified: other
+    - cmd: prism read BACKLOG.md --offset 621 --limit 85 --format text
+      at: 2026-09-05T22:03:35.202317Z
+      classified: other
+    - cmd: prism lookup CompressFileRead --format text
+      at: 2026-09-05T22:03:35.285257Z
+      classified: other
+    - cmd: prism search 'SavingsPercent|RecordResult' --scope text --path internal/session/ledger.go --context 1 --format text
+      at: 2026-09-05T22:03:35.335842Z
+      classified: other
+    - cmd: prism read AGENTS.md --offset 1 --limit 100 --format text
+      at: 2026-09-05T22:03:35.364129Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign
+      at: 2026-09-05T22:09:27.946841Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-05T22:09:27.979707Z
+      classified: other
+    - cmd: prism search run_wide ab_gate tokens_in --scope text --files-only --exhaustive --format text
+      at: 2026-09-05T22:09:28.029893Z
+      classified: other
+    - cmd: prism read docs/DESIGN_TASK_COMPILER.md --format text
+      at: 2026-09-05T22:09:28.066855Z
+      classified: other
+    - cmd: prism read HANDOFF.md --offset 42 --limit 205 --format text
+      at: 2026-09-05T22:09:28.106606Z
+      classified: other
+    - cmd: prism read ../AGENTS.md --format text
+      at: 2026-09-05T22:09:35.200537Z
+      classified: other
+    - cmd: git log -6 --oneline
+      at: 2026-09-05T22:09:35.221008Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-05T22:09:35.32728Z
+      classified: other
+    - cmd: prism search run_wide ab_gate token_cost --scope text --files-only --exhaustive --format text
+      at: 2026-09-05T22:09:37.133179Z
+      classified: other
+    - cmd: prism read AGENTS.md --format text
+      at: 2026-09-05T22:09:37.250964Z
+      classified: other
+    - cmd: prism read harness/run_wide.py --offset 1 --limit 245 --format text
+      at: 2026-09-05T22:09:42.59928Z
+      classified: other
+    - cmd: ls harness
+      at: 2026-09-05T22:09:42.605873Z
+      classified: other
+    - cmd: prism read harness/ab_gate.py --offset 1 --limit 255 --format text
+      at: 2026-09-05T22:09:42.633352Z
+      classified: other
+    - cmd: prism read AGENTS.md --format text
+      at: 2026-09-05T22:09:43.422873Z
+      classified: other
+    - cmd: prism read harness/run_wide.py --offset 245 --limit 285 --format text
+      at: 2026-09-05T22:09:51.286211Z
+      classified: other
+    - cmd: prism read harness/ab_endtoend_arms.py --offset 1 --limit 300 --format text
+      at: 2026-09-05T22:09:51.313697Z
+      classified: other
+    - cmd: prism read harness/ab_agentic_mcp.py --offset 1 --limit 295 --format text
+      at: 2026-09-05T22:09:51.336435Z
+      classified: other
+    - cmd: prism read harness/score.py --offset 1 --limit 230 --format text
+      at: 2026-09-05T22:09:51.371639Z
+      classified: other
+    - cmd: prism read harness/schema.py --offset 1 --limit 250 --format text
+      at: 2026-09-05T22:10:04.497456Z
+      classified: other
+    - cmd: prism read harness/swebench_ab.py --offset 1 --limit 165 --format text
+      at: 2026-09-05T22:10:04.493501Z
+      classified: other
+    - cmd: prism read harness/runs/wide/prism__ac780d9258.sonnet.prism_plus.v070sample.json --offset 1 --limit 80 --format text
+      at: 2026-09-05T22:10:04.533406Z
+      classified: other
+    - cmd: prism read harness/tasks-wide/prism__ac780d9258.json --format text
+      at: 2026-09-05T22:10:04.654283Z
+      classified: other
+    - cmd: prism read internal/mcp/selection.go --offset 45 --limit 245 --format text
+      at: 2026-09-05T22:10:12.775568Z
+      classified: other
+    - cmd: prism search 'toolQuery|toolRead|toolLookup|toolSearch|confidenceFor|TaskBudget' --scope text --regex --path internal/mcp/tools.go --context 2 --limit 35 --format text
+      at: 2026-09-05T22:10:12.868744Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --offset 1 --limit 225 --format text
+      at: 2026-09-05T22:10:12.880134Z
+      classified: other
+    - cmd: prism read harness/query_oracle.py --offset 1 --limit 155 --format text
+      at: 2026-09-05T22:10:21.414699Z
+      classified: other
+    - cmd: prism lookup Handler.toolQuery --format text
+      at: 2026-09-05T22:10:21.428196Z
+      classified: other
+    - cmd: prism read internal/mcp/selection.go --offset 311 --limit 215 --format text
+      at: 2026-09-05T22:10:21.443316Z
+      classified: other
+    - cmd: prism read internal/mcp/delivery.go --offset 212 --limit 200 --format text
+      at: 2026-09-05T22:10:21.463808Z
+      classified: other
+    - cmd: prism read harness/mine_wide_sweeps.py --offset 1 --limit 265 --format text
+      at: 2026-09-05T22:10:30.142135Z
+      classified: other
+    - cmd: prism read harness/query_oracle.py --offset 166 --limit 170 --format text
+      at: 2026-09-05T22:10:30.172408Z
+      classified: other
+    - cmd: prism read harness/engine_ci_regression.py --offset 1 --limit 140 --format text
+      at: 2026-09-05T22:10:30.202128Z
+      classified: other
+    - cmd: python3 -c 'from pathlib import Path; import json; fs=list((Path.home()/".claude/projects").glob("*wide-*/*.jsonl")); print("benchmark_transcripts",len(fs)); f=fs[-1] if fs else None; print("example",str(f)); rows=[json.loads(s) for s in f.read_text().splitlines() if s.strip()] if f else []; print("types",sorted(set(r.get("type","") for r in rows))); a=[r for r in rows if r.get("type")=="assistant"]; print("assistant_message_count",len(a)); print("usage_samples",[(r.get("requestId"),r.get("message",{}).get("id"),r.get("message",{}).get("usage")) for r in a[-3:]])'
+      at: 2026-09-05T22:10:53.444542Z
+      classified: other
+    - cmd: prism read harness/build_wide_bases.py --offset 1 --limit 210 --format text
+      at: 2026-09-05T22:10:53.556608Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-benchmark-audit.py --research /Users/tapabratapal/Projects/provasign/research
+      at: 2026-09-05T22:12:07.877303Z
+      classified: other
+    - cmd: prism read harness/ci_invariants.py --offset 1 --limit 125 --format text
+      at: 2026-09-05T22:12:19.360106Z
+      classified: other
+    - cmd: prism search 'body.*1200|1200|gt_files|gt_symbols' --scope text --regex --path harness/validate_wide_bed.py --context 2 --format text
+      at: 2026-09-05T22:12:19.880883Z
+      classified: other
+    - cmd: python3 -B /private/tmp/prism-benchmark-audit.py --research /Users/tapabratapal/Projects/provasign/research
+      at: 2026-09-05T22:12:35.146146Z
+      classified: other
+    - cmd: prism read harness/validate_wide_bed.py --offset 1 --limit 190 --format text
+      at: 2026-09-05T22:13:02.688703Z
+      classified: other
+    - cmd: prism read harness/mason_bench.py --offset 1 --limit 130 --format text
+      at: 2026-09-05T22:13:02.722536Z
+      classified: other
+    - cmd: prism search 'touched|satisfied|complete|review|lineIn' --scope text --regex --path internal/mcp/verify.go --context 2 --limit 32 --format text
+      at: 2026-09-05T22:13:02.779931Z
+      classified: other
+    - cmd: git log -8 --oneline
+      at: 2026-09-06T03:39:34.839474Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-06T03:39:34.955541Z
+      classified: other
+    - cmd: git show --stat b00606e
+      at: 2026-09-06T03:39:39.292329Z
+      classified: other
+    - cmd: git show --stat e0ad2ff
+      at: 2026-09-06T03:39:39.304184Z
+      classified: other
+    - cmd: git diff e0ad2ff^ e0ad2ff -- internal/mcp
+      at: 2026-09-06T03:39:39.304298Z
+      classified: other
+    - cmd: git log -6 --oneline
+      at: 2026-09-06T03:39:39.327112Z
+      classified: other
+    - cmd: git show --stat b8ca9ea
+      at: 2026-09-06T03:39:44.205047Z
+      classified: other
+    - cmd: git show b8ca9ea -- harness/score.py harness/schema.py harness/usage.py
+      at: 2026-09-06T03:39:44.200381Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-06T03:39:44.279399Z
+      classified: other
+    - cmd: git show b8ca9ea -- harness/ab_gate.py harness/ab_agentic_mcp.py harness/query_oracle.py
+      at: 2026-09-06T03:39:50.512716Z
+      classified: other
+    - cmd: prism read harness/usage_account.py --format text
+      at: 2026-09-06T03:39:51.13359Z
+      classified: other
+    - cmd: prism read harness/wide_score.py --format text
+      at: 2026-09-06T03:39:51.252072Z
+      classified: other
+    - cmd: mktemp -d /private/tmp/prism-commit-review.XXXXXX
+      at: 2026-09-06T03:40:01.157522Z
+      classified: other
+    - cmd: go test ./internal/mcp ./internal/cli
+      at: 2026-09-06T03:40:01.171533Z
+      classified: test
+    - cmd: git show b8ca9ea:harness/tests/test_score.py
+      at: 2026-09-06T03:40:01.18233Z
+      classified: other
+    - cmd: git show b8ca9ea -- harness/run_wide.py harness/score_wide_pilot.py
+      at: 2026-09-06T03:40:01.186527Z
+      classified: other
+    - cmd: git archive b8ca9ea harness/score.py harness/schema.py harness/wide_score.py harness/query_oracle.py harness/ab_gate.py harness/usage_account.py harness/tests/test_score.py | tar -x -C /private/tmp/prism-commit-review.TOHY4p
+      at: 2026-09-06T03:40:09.749731Z
+      classified: other
+    - cmd: git diff e0ad2ff^ e0ad2ff -- internal/mcp/server.go
+      at: 2026-09-06T03:40:09.87438Z
+      classified: other
+    - cmd: git diff e0ad2ff^ e0ad2ff -- internal/mcp/searchtext.go
+      at: 2026-09-06T03:40:09.874231Z
+      classified: other
+    - cmd: python3 -B harness/tests/test_score.py
+      at: 2026-09-06T03:40:09.945142Z
+      classified: other
+    - cmd: python3 -B probe.py
+      at: 2026-09-06T03:40:55.72923Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli
+      at: 2026-09-06T03:40:55.76386Z
+      classified: test
+    - cmd: prism verify --base b8ca9ea^ --format text
+      at: 2026-09-06T03:41:04.061175Z
+      classified: other
+    - cmd: prism read harness/query_oracle.py --offset 178 --limit 45 --format text
+      at: 2026-09-06T03:41:20.077996Z
+      classified: other
+    - cmd: prism read harness/ab_gate.py --offset 86 --limit 18 --format text
+      at: 2026-09-06T03:41:20.078012Z
+      classified: other
+    - cmd: prism read harness/score.py --offset 26 --limit 13 --format text
+      at: 2026-09-06T03:41:20.077992Z
+      classified: other
+    - cmd: prism read harness/wide_score.py --offset 111 --limit 42 --format text
+      at: 2026-09-06T03:41:20.077992Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli
+      at: 2026-09-06T03:41:34.751959Z
+      classified: test
+    - cmd: prism verify --base b8ca9ea^ --format text
+      at: 2026-09-06T03:41:34.751942Z
+      classified: other
+    - cmd: nl -ba harness/score.py
+      at: 2026-09-06T03:41:34.822627Z
+      classified: other
+    - cmd: nl -ba harness/ab_gate.py
+      at: 2026-09-06T03:41:34.823311Z
+      classified: other
+    - cmd: nl -ba harness/wide_score.py | sed -n '108,146p'
+      at: 2026-09-06T03:41:49.851529Z
+      classified: other
+    - cmd: git log -1 --oneline
+      at: 2026-09-06T03:41:49.851493Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-06T03:41:49.868034Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; import json; files=list(Path("harness/runs/ab-gate").glob("*.haiku.*.json")); rows=[json.loads(f.read_text()) for f in files]; print({"cached_cells":len(rows),"without_weak_recall":sum("weak_recall" not in r for r in rows),"without_scorer_version":sum("scorer_version" not in r for r in rows)})'
+      at: 2026-09-06T03:41:49.92877Z
+      classified: other
+    - cmd: command -v prism && prism version
+      at: 2026-09-06T03:53:40.16016Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-06T03:53:40.176086Z
+      classified: other
+    - cmd: ps aux | rg 'claude|run_wide|ab_gate' | rg -v 'rg '
+      at: 2026-09-06T03:53:40.185698Z
+      classified: other
+    - cmd: du -sh .
+      at: 2026-09-06T03:53:40.912127Z
+      classified: other
+    - cmd: |-
+        set -e
+        TEST_ROOT=$(mktemp -d /private/tmp/prism-own-test.XXXXXX)
+        mkdir -p "$TEST_ROOT/pkg"
+        printf '%s\n' "$TEST_ROOT"
+      at: 2026-09-06T03:53:44.284771Z
+      classified: other
+    - cmd: |-
+        set -e
+        RUN_HOME=$(mktemp -d /private/tmp/prism-own-home.XXXXXX)
+        export HOME="$RUN_HOME"
+        export XDG_CACHE_HOME="$RUN_HOME/cache"
+        mkdir -p "$XDG_CACHE_HOME"
+        /usr/bin/time -p /Users/tapabratapal/bin/prism index /private/tmp/prism-own-test.rhwoAM >/tmp/prism-own-index.out 2>/tmp/prism-own-index.time
+        /usr/bin/time -p /Users/tapabratapal/bin/prism search Label /private/tmp/prism-own-test.rhwoAM --scope text --context 1 --format text >/tmp/prism-own-search.out 2>/tmp/prism-own-search.time
+        /usr/bin/time -p /Users/tapabratapal/bin/prism query 'update label callers' /private/tmp/prism-own-test.rhwoAM --terms Label --format text >/tmp/prism-own-query.out 2>/tmp/prism-own-query.time
+        /usr/bin/time -p /Users/tapabratapal/bin/prism change-impact 'User.Label' /private/tmp/prism-own-test.rhwoAM --format text >/tmp/prism-own-impact.out 2>/tmp/prism-own-impact.time
+        /usr/bin/time -p /Users/tapabratapal/bin/prism read pkg/api.go /private/tmp/prism-own-test.rhwoAM --format text >/tmp/prism-own-read1.out 2>/tmp/prism-own-read1.time
+        /usr/bin/time -p /Users/tapabratapal/bin/prism read pkg/api.go /private/tmp/prism-own-test.rhwoAM --format text >/tmp/prism-own-read2.out 2>/tmp/prism-own-read2.time
+        python3 - <<'PY'
+        from pathlib import Path
+        for n in ('index','search','query','impact','read1','read2'):
+         p=Path('/tmp/prism-own-'+n+'.out'); t=Path('/tmp/prism-own-'+n+'.time')
+         print(n, 'bytes=',len(p.read_bytes()), 'time=',t.read_text().strip().replace('\\n','; '))
+         print(p.read_text()[:700].replace('\\n',' | '))
+        PY
+      at: 2026-09-06T03:54:06.322665Z
+      classified: other
+    - cmd: |-
+        set -e
+        RUN_HOME=$(mktemp -d /private/tmp/prism-own-home2.XXXXXX); export HOME="$RUN_HOME"; export XDG_CACHE_HOME="$RUN_HOME/cache"; mkdir -p "$XDG_CACHE_HOME"
+        /Users/tapabratapal/bin/prism index /private/tmp/prism-own-test.rhwoAM >/dev/null
+        /Users/tapabratapal/bin/prism search Label --dir /private/tmp/prism-own-test.rhwoAM --scope text --context 1 --format text >/tmp/prism-own-search-correct.out
+        python3 - <<'PY'
+        from pathlib import Path
+        p=Path('/tmp/prism-own-search-correct.out'); print('bytes',len(p.read_bytes())); print(p.read_text()[:1000])
+        PY
+      at: 2026-09-06T03:54:10.648751Z
+      classified: other
+    - cmd: sed -n '1,140p' /tmp/prism-own-search-correct.out
+      at: 2026-09-06T03:56:19.025211Z
+      classified: other
+    - cmd: git log -5 --oneline
+      at: 2026-09-06T04:28:17.430535Z
+      classified: other
+    - cmd: git show --stat f948599 && git show f948599 -- harness/run_wide.py
+      at: 2026-09-06T04:28:21.40017Z
+      classified: other
+    - cmd: git show --stat 537df3b && git show 537df3b -- harness/score.py harness/wide_score.py harness/ab_gate.py harness/run_wide.py harness/query_oracle.py harness/tests/test_score.py
+      at: 2026-09-06T04:28:21.409077Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-06T04:28:21.441768Z
+      classified: other
+    - cmd: rm -rf /private/tmp/prism-latest-review && mkdir -p /private/tmp/prism-latest-review/harness && git archive 537df3b harness/score.py harness/wide_score.py harness/query_oracle.py harness/ab_gate.py harness/tests/test_score.py | tar -x -C /private/tmp/prism-latest-review && python3 -B harness/tests/test_score.py
+      at: 2026-09-06T04:29:32.997489Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import sys
+        sys.path.insert(0,'/private/tmp/prism-latest-review/harness')
+        import wide_score
+        print(wide_score.score_diff.__code__.co_varnames[:8])
+        print(wide_score.score_diff.__defaults__)
+        PY
+      at: 2026-09-06T04:29:35.98553Z
+      classified: other
+    - cmd: sed -n '1,220p' /private/tmp/prism-latest-review/harness/wide_score.py
+      at: 2026-09-06T04:29:38.136903Z
+      classified: other
+    - cmd: sed -n '220,340p' /private/tmp/prism-latest-review/harness/wide_score.py
+      at: 2026-09-06T04:29:42.170012Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import sys, json
+        sys.path.insert(0,'/private/tmp/prism-latest-review/harness')
+        from wide_score import score_diff
+
+        task={'gt_files':['a.go'],'gt_symbols':[],'repo_path':'/tmp','base_commit':'x','gold_commit':'y'}
+        gold='''diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -10 +10 @@\n-OldAPI()\n+NewAPI()\n@@ -100 +100 @@\n-OldAPI()\n+NewAPI()\n'''
+        agent='''diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -10 +10 @@\n-OldAPI()\n+DifferentAPI()\n'''
+        print(json.dumps(score_diff(task,agent,gold),indent=2))
+        agent2='''diff --git a/a.go b/a.go\n--- a/a.go\n+++ b/a.go\n@@ -10 +10 @@\n-OldAPI()\n+// TODO fix\n'''
+        print(json.dumps(score_diff(task,agent2,gold),indent=2))
+        PY
+      at: 2026-09-06T04:29:47.38135Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import sys, json
+        sys.path.insert(0,'/private/tmp/prism-latest-review/harness')
+        from score import score, Task
+
+        t=Task('x',['pkg/worker.go','cmd/worker.go'],['Run'],[])
+        for ans in [ [{'relpath':'wrong/worker.go','symbol':'Run'}], [{'relpath':'worker.go','symbol':'Run'}] ]:
+         print(score(t,ans))
+        PY
+      at: 2026-09-06T04:29:50.480866Z
+      classified: other
+    - cmd: |-
+        git archive 537df3b harness/schema.py | tar -x -C /private/tmp/prism-latest-review && python3 - <<'PY'
+        import sys
+        sys.path.insert(0,'/private/tmp/prism-latest-review/harness')
+        from score import score
+        from schema import Task
+
+        t=Task('x',['pkg/worker.go','cmd/worker.go'],['Run'],[])
+        for ans in [ [{'relpath':'wrong/worker.go','symbol':'Run'}], [{'relpath':'worker.go','symbol':'Run'}] ]:
+         print(score(t,ans))
+        PY
+      at: 2026-09-06T04:29:54.384887Z
+      classified: other
+    - cmd: sed -n '1,100p' /private/tmp/prism-latest-review/harness/schema.py && sed -n '1,180p' /private/tmp/prism-latest-review/harness/score.py
+      at: 2026-09-06T04:29:56.728479Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import sys
+        sys.path.insert(0,'/private/tmp/prism-latest-review/harness')
+        from score import score
+        from schema import Task,Answer,Site
+        T=Task('x','', '', '', '', '', '', [Site('pkg/worker.go','Run'),Site('cmd/worker.go','Run')])
+        for ans in [[Site('wrong/worker.go','Run')],[Site('worker.go','Run')]]:
+         print(score(T,Answer(ans,True), 'x',1))
+        PY
+      at: 2026-09-06T04:29:59.781581Z
+      classified: other
+    - cmd: nl -ba harness/score.py | sed -n '35,170p'; nl -ba harness/wide_score.py | sed -n '145,260p'; nl -ba harness/ab_gate.py | sed -n '1,180p'; nl -ba harness/query_oracle.py | sed -n '1,100p'
+      at: 2026-09-06T04:30:02.209628Z
+      classified: other
+    - cmd: rg -n "file_sections|HDR|FILE_HDR|mean|ratio|cost" harness/query_oracle.py harness/ab_gate.py
+      at: 2026-09-06T04:30:05.36861Z
+      classified: other
+    - cmd: nl -ba harness/query_oracle.py | sed -n '168,220p'; nl -ba harness/ab_gate.py | sed -n '168,215p'
+      at: 2026-09-06T04:30:07.593027Z
+      classified: other
+    - cmd: git log -8 --oneline --decorate && git status --short && python3 -B harness/tests/test_score.py
+      at: 2026-09-06T04:35:59.968596Z
+      classified: other
+    - cmd: git show --stat --oneline 3b3fa18 && git show --format=fuller --no-ext-diff 3b3fa18 -- harness/score.py harness/wide_score.py harness/ab_gate.py harness/tests/test_score.py
+      at: 2026-09-06T04:36:02.478644Z
+      classified: other
+    - cmd: python3 -B harness/tests/test_score.py && python3 -B harness/tests/test_wide_score.py && git show dc97fe1 --stat --oneline && git status --short | head -20
+      at: 2026-09-06T04:36:04.959163Z
+      classified: other
+    - cmd: rg -n 'scorer_version|SCORER_VERSION|require-cheaper|site_precision' harness/ci_baseline.json harness/ci_invariants.py harness/score.py harness/wide_score.py harness/ab_gate.py
+      at: 2026-09-06T04:36:09.37186Z
+      classified: other
+    - cmd: find harness/runs/ab-gate -type f -iname '*grafana-checkhealth-impact*' -maxdepth 1 -print | sort | tail -20; rg -n 'grafana-checkhealth-impact|transcript|recall|precision|sites' harness/runs/ab-gate harness/runs/mason-bench-v* 2>/dev/null | head -80
+      at: 2026-09-06T04:45:44.676919Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,glob,os
+        for f in glob.glob('harness/runs/ab-gate/grafana-checkhealth-impact*.json'):
+         try:
+          d=json.load(open(f))
+         except: continue
+         if d.get('recall') in (1.0,0.732) or d.get('precision') in (0.578,0.968):
+          print(os.path.basename(f), {k:d.get(k) for k in ['recall','precision','n_sites','turns','cost_usd','binary_sha','scorer_version','arm','model']}, d.keys())
+        PY
+      at: 2026-09-06T04:45:48.977174Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for f in ['harness/runs/ab-gate/grafana-checkhealth-impact.haiku.06b72411.s2.json','harness/runs/ab-gate/grafana-checkhealth-impact.haiku.30db37f7.s2.json']:
+         d=json.load(open(f)); print('\n',f); print('answer',d.get('answer')); print('keys',d.keys())
+        PY
+      at: 2026-09-06T04:45:52.044549Z
+      classified: other
+    - cmd: |-
+        cat harness/tasks/grafana-checkhealth-impact.json; python3 - <<'PY'
+        import json
+        for f in ['harness/runs/ab-gate/grafana-checkhealth-impact.haiku.06b72411.s2.json','harness/runs/ab-gate/grafana-checkhealth-impact.haiku.30db37f7.s2.json']:
+         d=json.load(open(f)); print('\n',f,'recall',d['recall'],'precision',d['precision'],'f1',d['f1']); print('answer len',len(d['answer']['sites']))
+        PY
+      at: 2026-09-06T04:45:56.743873Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        T=json.load(open('harness/tasks/grafana-checkhealth-impact.json')); gt=set(T['ground_truth'])
+        for f in ['harness/runs/ab-gate/grafana-checkhealth-impact.haiku.06b72411.s2.json','harness/runs/ab-gate/grafana-checkhealth-impact.haiku.30db37f7.s2.json']:
+         d=json.load(open(f)); ans=set(d['answer']['sites']); print('\n',f); print('missing',len(gt-ans)); print('\n'.join(sorted(gt-ans))); print('extras',len(ans-gt));
+        PY
+      at: 2026-09-06T04:46:00.442541Z
+      classified: other
+    - cmd: git log -5 --oneline --decorate; git show --stat --oneline HEAD~3..HEAD; git log --oneline --all --grep='dedup\|path-once\|missed' -10
+      at: 2026-09-06T04:46:04.495944Z
+      classified: other
+    - cmd: git show 32de5b5 -- internal/mcp/searchtext.go | sed -n '1,240p'; git show 56b3428 -- internal/mcp/searchtext.go | sed -n '1,180p'; git show 8a95848 -- internal/mcp/verify.go | sed -n '1,180p'
+      at: 2026-09-06T04:46:23.9524Z
+      classified: other
+    - cmd: rg -n "25|exhaustive|symbol|limit|cap" internal/mcp internal | head -160
+      at: 2026-09-06T04:47:20.077649Z
+      classified: other
+    - cmd: nl -ba internal/mcp/selection.go | sed -n '100,160p'; nl -ba internal/mcp/selection.go | sed -n '460,550p'; nl -ba internal/grove/client.go | sed -n '500,540p'
+      at: 2026-09-06T04:47:22.59807Z
+      classified: other
+    - cmd: rg -n "SearchSymbols\(|Symbols\(ctx|exhaustive|MaxResults|limit" internal/mcp internal/cli | head -200
+      at: 2026-09-06T04:47:25.242502Z
+      classified: other
+    - cmd: nl -ba internal/mcp/tools.go | sed -n '1590,1715p'; git status --short; git diff -- internal/mcp/tools.go internal/mcp/searchsymbolcap_test.go | sed -n '1,260p'
+      at: 2026-09-06T04:47:28.690889Z
+      classified: other
+    - cmd: go test ./internal/mcp
+      at: 2026-09-06T04:47:33.558365Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp
+      at: 2026-09-06T04:47:37.83031Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run TestSearchSymbol -count=1
+      at: 2026-09-06T04:47:41.651328Z
+      classified: test
+    - cmd: git status --short && git diff --stat && git diff -- internal/mcp/tools.go internal/mcp/searchsymbolcap_test.go internal/mcp/searchtext.go | sed -n '1,320p'
+      at: 2026-09-06T12:18:19.948447Z
+      classified: other
+    - cmd: git log -5 --oneline --decorate && git show --stat --oneline HEAD && git status --short | tail -20
+      at: 2026-09-06T12:18:22.693341Z
+      classified: other
+    - cmd: git show --format=fuller --no-ext-diff 183ae59 -- internal/mcp/tools.go internal/mcp/searchsymbolcap_test.go internal/mcp/searchtext.go
+      at: 2026-09-06T12:18:26.093883Z
+      classified: other
+    - cmd: rg -n "func .*Symbols|func \(.*\) Symbols|limit <=|limit >|Max.*Symbols" internal | head -100; sed -n '300,345p' internal/grove/client.go
+      at: 2026-09-06T12:18:31.386048Z
+      classified: other
+    - cmd: sed -n '1,120p' internal/mcp/searchtext.go; sed -n '1280,1395p' internal/mcp/tools.go; sed -n '2940,3005p' internal/mcp/tools.go
+      at: 2026-09-06T12:18:35.143695Z
+      classified: other
+    - cmd: rg -n "func \(.*\) Symbols|Symbols\(ctx" $(go env GOPATH 2>/dev/null)/pkg/mod/github.com/provasign 2>/dev/null | head -30; rg -n "func \(.*\) Symbols|Symbols\(" $(go env GOPATH)/pkg/mod/github.com/provasign/grove* 2>/dev/null | head -30
+      at: 2026-09-06T12:18:41.31102Z
+      classified: other
+    - cmd: sed -n '250,290p' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.1/pkg/grove/grove.go; rg -n "func \(.*\) Symbols" /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.1 -g '*.go'
+      at: 2026-09-06T12:18:46.265123Z
+      classified: other
+    - cmd: rg -n "func \(.*\) Search" /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.1 -g '*.go' | head -20; sed -n '1,100p' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.1/pkg/graph/search.go 2>/dev/null
+      at: 2026-09-06T12:18:51.353951Z
+      classified: other
+    - cmd: sed -n '350,405p' /Users/tapabratapal/go/pkg/mod/github.com/provasign/grove@v0.43.1/internal/graph/graph.go
+      at: 2026-09-06T12:18:55.417534Z
+      classified: other
+    - cmd: rg -n "warning|symbolsTruncated" internal/mcp/searchtext.go | head -30; sed -n '250,360p' internal/mcp/searchtext.go
+      at: 2026-09-06T12:19:00.846218Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSearchSymbols_(ExhaustiveLiftsTheCap|CappedResultSaysSo)' -count=1
+      at: 2026-09-06T12:19:07.285597Z
+      classified: test
+    - cmd: sed -n '480,515p' internal/mcp/tools.go; rg -n '"limit"' internal/mcp/tools.go | head -10
+      at: 2026-09-06T12:19:14.921081Z
+      classified: other
+    - cmd: git log -5 --oneline --decorate && git status --short && git show --stat --oneline HEAD && git show --format= --no-ext-diff HEAD -- internal/mcp/tools.go internal/mcp/searchsymbolcap_test.go | sed -n '1,320p'
+      at: 2026-09-06T12:22:59.969815Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -run 'TestSearchSymbols_' -count=1
+      at: 2026-09-06T12:23:08.336201Z
+      classified: test
+    - cmd: rg -n -C 2 -e 'MEAN_RECALL_DROP' -e 'require-cheaper' -e 'not-broken' /Users/tapabratapal/Projects/provasign/research/harness
+      at: 2026-09-06T12:27:45.859246Z
+      classified: other
+notes: []
+redactions: 0

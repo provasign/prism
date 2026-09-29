@@ -1,0 +1,295 @@
+shale_version: "0"
+id: 01a0c0b3-63ff-7e21-8cd2-65d9942a0d9f-c4
+created_at: 2026-09-24T01:42:17.355246Z
+finalized_at: 2026-09-24T10:43:05.934195Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: docker top fix-build-agentops__fhphg4z__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:42:17.355246Z
+      classified: other
+    - cmd: grove_quarantine=$(mktemp -d /tmp/prism-skillsbench-index.XXXXXX) && mv .grove "$grove_quarantine/" && git stash push -m 'preserve pending wiring amendment during approved smoke run' -- README.md STUDY.md study.toml && git status --short && CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s 'Claude Code-credentials' -w | jq -r '.claudeAiOauth.accessToken')" CLAUDE_FORCE_OAUTH=1 .venv/bin/python scripts/study.py run --arm native --effort low --trials 1 --phase smoke --task fix-build-agentops
+      at: 2026-09-24T01:42:33.585506Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/smoke/low/native/2026-09-23__21-32-57 --arm native --out artifacts/smoke-20260923/agentops-native.jsonl && jq '{task,valid,reward,cost_usd,new_input_tokens,agent_seconds,turns}' artifacts/smoke-20260923/agentops-native.jsonl
+      at: 2026-09-24T01:42:50.293416Z
+      classified: other
+    - cmd: docker ps --format '{{.Names}}\t{{.Status}}' && ls -td jobs/smoke/low/prism/20* | head -2
+      at: 2026-09-24T01:43:37.494708Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/wiring/low/native/2026-09-23__21-15-41 --arm native --out artifacts/wiring-debug-trl/native.jsonl && .venv/bin/python scripts/extract.py jobs/wiring/low/prism/2026-09-23__21-23-10 --arm prism --out artifacts/wiring-debug-trl/prism.jsonl && .venv/bin/python scripts/compare.py --native artifacts/wiring-debug-trl/native.jsonl --prism artifacts/wiring-debug-trl/prism.jsonl --out artifacts/wiring-debug-trl/paired-result
+      at: 2026-09-24T01:43:56.390053Z
+      classified: other
+    - cmd: docker top fix-build-agentops__zsxbnvc__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:44:36.279681Z
+      classified: other
+    - cmd: docker top fix-build-agentops__zsxbnvc__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:45:33.370243Z
+      classified: other
+    - cmd: docker top fix-build-agentops__zsxbnvc__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:46:41.928477Z
+      classified: other
+    - cmd: docker exec fix-build-agentops__zsxbnvc__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,op:.input.op} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T01:47:43.26718Z
+      classified: other
+    - cmd: docker exec fix-build-agentops__zsxbnvc__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T01:48:46.567223Z
+      classified: other
+    - cmd: docker exec fix-build-agentops__zsxbnvc__env-main-1 cat /logs/agent/claude-code.txt | jq -s '[.[] | select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name] | group_by(.) | map({tool:.[0],calls:length})'
+      at: 2026-09-24T01:48:55.215766Z
+      classified: other
+    - cmd: docker top fix-build-agentops__zsxbnvc__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:49:54.613602Z
+      classified: other
+    - cmd: docker exec fix-build-agentops__zsxbnvc__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T01:50:56.730778Z
+      classified: other
+    - cmd: docker exec fix-build-agentops__zsxbnvc__env-main-1 tail -n 6 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T01:51:59.20717Z
+      classified: other
+    - cmd: docker exec fix-build-agentops__zsxbnvc__env-main-1 tail -n 6 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T01:53:00.675214Z
+      classified: other
+    - cmd: tail -n 4 jobs/smoke/low/prism/2026-09-23__21-42-41/job.log
+      at: 2026-09-24T01:53:57.835622Z
+      classified: other
+    - cmd: CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s 'Claude Code-credentials' -w | jq -r '.claudeAiOauth.accessToken')" CLAUDE_FORCE_OAUTH=1 .venv/bin/python scripts/study.py run --arm prism --effort low --trials 1 --phase smoke --task fix-build-agentops
+      at: 2026-09-24T01:54:27.606742Z
+      classified: other
+    - cmd: docker top fix-build-agentops__zsxbnvc__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:54:27.709994Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/smoke/low/prism/2026-09-23__21-42-41 --arm prism --out artifacts/smoke-20260923/agentops-prism.jsonl && .venv/bin/python scripts/gate.py --native artifacts/smoke-20260923/agentops-native.jsonl --prism artifacts/smoke-20260923/agentops-prism.jsonl && .venv/bin/python scripts/compare.py --native artifacts/smoke-20260923/agentops-native.jsonl --prism artifacts/smoke-20260923/agentops-prism.jsonl --out artifacts/smoke-20260923/agentops-paired
+      at: 2026-09-24T01:54:36.17968Z
+      classified: other
+    - cmd: docker ps --format '{{.Names}}\t{{.Status}}' && ls -td jobs/smoke/low/native/20* | head -1
+      at: 2026-09-24T01:55:41.493865Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__bhjgpac__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:56:38.388077Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__bhjgpac__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:57:38.963473Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__bhjgpac__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:58:39.103298Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__bhjgpac__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:59:38.057176Z
+      classified: other
+    - cmd: CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s 'Claude Code-credentials' -w | jq -r '.claudeAiOauth.accessToken')" CLAUDE_FORCE_OAUTH=1 .venv/bin/python scripts/study.py run --arm native --effort low --trials 1 --phase smoke --task debug-trl-grpo
+      at: 2026-09-24T01:59:58.881089Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__bhjgpac__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T01:59:58.978143Z
+      classified: other
+    - cmd: docker ps --format '{{.Names}}\t{{.Status}}' && ls -td jobs/smoke/low/prism/20* | head -1
+      at: 2026-09-24T02:01:08.271147Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__kpoamsm__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:02:07.033869Z
+      classified: other
+    - cmd: jq '[.steps[] | .tool_calls[]? | {name:.function_name,args:.arguments}][:10]' jobs/smoke/low/prism/2026-09-23__21-42-41/fix-build-agentops__ZSxBNvc/agent/trajectory.json
+      at: 2026-09-24T02:02:18.389779Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__kpoamsm__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:03:15.99747Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__kpoamsm__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:04:14.72593Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__kpoamsm__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:05:13.866384Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__kpoamsm__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:06:10.915308Z
+      classified: other
+    - cmd: docker top debug-trl-grpo__kpoamsm__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:07:10.748869Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/smoke/low/native/2026-09-23__21-54-42 --arm native --out artifacts/smoke-20260923/trl-native.jsonl && jq '{reward,cost_usd,new_input_tokens,turns,agent_seconds}' artifacts/smoke-20260923/trl-native.jsonl && CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s 'Claude Code-credentials' -w | jq -r '.claudeAiOauth.accessToken')" CLAUDE_FORCE_OAUTH=1 .venv/bin/python scripts/study.py run --arm prism --effort low --trials 1 --phase smoke --task debug-trl-grpo
+      at: 2026-09-24T02:07:28.399479Z
+      classified: other
+    - cmd: docker exec debug-trl-grpo__kpoamsm__env-main-1 tail -n 6 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,op:.input.op} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T02:07:28.495521Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/smoke/low/prism/2026-09-23__22-00-08 --arm prism --out artifacts/smoke-20260923/trl-prism.jsonl && .venv/bin/python scripts/gate.py --native artifacts/smoke-20260923/trl-native.jsonl --prism artifacts/smoke-20260923/trl-prism.jsonl && .venv/bin/python scripts/compare.py --native artifacts/smoke-20260923/trl-native.jsonl --prism artifacts/smoke-20260923/trl-prism.jsonl --out artifacts/smoke-20260923/trl-paired
+      at: 2026-09-24T02:07:37.716676Z
+      classified: other
+    - cmd: mktemp -d /tmp/prism-skillsbench-report.XXXXXX
+      at: 2026-09-24T02:08:14.86434Z
+      classified: other
+    - cmd: .venv/bin/python /tmp/prism-skillsbench-report.ydqBfj/aggregate.py --native jobs/smoke/low/native/2026-09-23__21-32-57 --prism jobs/smoke/low/prism/2026-09-23__21-42-41 --native jobs/smoke/low/native/2026-09-23__21-54-42 --prism jobs/smoke/low/prism/2026-09-23__22-00-08 --out artifacts/smoke-20260923/cumulative
+      at: 2026-09-24T02:08:42.184209Z
+      classified: other
+    - cmd: ls -td jobs/smoke/low/native/20* | head -1 && docker ps --format '{{.Names}}\t{{.Status}}'
+      at: 2026-09-24T02:08:47.969994Z
+      classified: other
+    - cmd: tail -n 8 jobs/smoke/low/native/2026-09-23__22-07-57/job.log && docker ps --format '{{.Names}}\t{{.Status}}'
+      at: 2026-09-24T02:09:51.67622Z
+      classified: other
+    - cmd: docker logs --tail 12 confident_cannon && docker top confident_cannon -eo pid,etime,comm
+      at: 2026-09-24T02:10:03.884763Z
+      classified: other
+    - cmd: tail -n 12 jobs/smoke/low/native/2026-09-23__22-07-57/job.log && docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
+      at: 2026-09-24T02:11:04.006298Z
+      classified: other
+    - cmd: ls -R jobs/smoke/low/native/2026-09-23__22-07-57
+      at: 2026-09-24T02:11:09.221579Z
+      classified: other
+    - cmd: prism read vendor/skillsbench/tasks/fix-build-google-auto/environment/Dockerfile --format text
+      at: 2026-09-24T02:11:23.943659Z
+      classified: other
+    - cmd: tail -n 20 jobs/smoke/low/native/2026-09-23__22-07-57/fix-build-google-auto__8k3cE63/trial.log
+      at: 2026-09-24T02:11:24.019676Z
+      classified: other
+    - cmd: docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' && git status --short
+      at: 2026-09-24T02:12:30.149279Z
+      classified: other
+    - cmd: grove_quarantine=$(mktemp -d /tmp/prism-skillsbench-index.XXXXXX) && mv .grove "$grove_quarantine/" && docker manifest inspect --verbose bugswarm/cached-images:google-auto-101506036 | jq '{digest:.Descriptor.digest,platform:.Descriptor.platform,compressed_bytes:([.SchemaV2Manifest.layers[].size] | add),largest_layer_bytes:([.SchemaV2Manifest.layers[].size] | max)}'
+      at: 2026-09-24T02:12:45.007672Z
+      classified: other
+    - cmd: docker image inspect bugswarm/cached-images:google-auto-101506036 --format '{{.Id}} {{.Size}}' && docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
+      at: 2026-09-24T02:13:45.188856Z
+      classified: other
+    - cmd: docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' && tail -n 5 jobs/smoke/low/native/2026-09-23__22-07-57/job.log
+      at: 2026-09-24T02:14:43.552565Z
+      classified: other
+    - cmd: docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' && tail -n 5 jobs/smoke/low/native/2026-09-23__22-07-57/job.log
+      at: 2026-09-24T02:15:44.553379Z
+      classified: other
+    - cmd: docker buildx history ls --format json
+      at: 2026-09-24T02:15:56.077716Z
+      classified: build
+    - cmd: docker buildx history logs desktop-linux/desktop-linux/vm8rpqtoi9hij6x80omlc5kf0
+      at: 2026-09-24T02:16:00.886687Z
+      classified: build
+    - cmd: jq -s '[.[] | {task,arm,reward,cost_usd,new_input_tokens,input_tokens,output_tokens,prism_calls,prism_error_calls,agent_seconds}]' artifacts/smoke-20260923/cumulative/native.jsonl artifacts/smoke-20260923/cumulative/prism.jsonl
+      at: 2026-09-24T02:19:38.016361Z
+      classified: other
+    - cmd: git rev-parse --short HEAD && git status --short
+      at: 2026-09-24T02:30:32.302215Z
+      classified: other
+    - cmd: docker buildx history logs vm8rpqtoi9hij6x80omlc5kf0
+      at: 2026-09-24T02:38:05.455165Z
+      classified: build
+    - cmd: CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s 'Claude Code-credentials' -w | jq -r '.claudeAiOauth.accessToken')" CLAUDE_FORCE_OAUTH=1 .venv/bin/python scripts/study.py run --arm native --effort low --trials 1 --phase smoke --task fix-build-google-auto
+      at: 2026-09-24T02:38:05.455151Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/smoke/low/native/2026-09-23__22-07-57 --arm native --out artifacts/smoke-20260923/google-cold-build-failure.jsonl && jq '{valid,exception,reward,cost_usd,agent_seconds}' artifacts/smoke-20260923/google-cold-build-failure.jsonl && .venv/bin/python /tmp/prism-skillsbench-report.ydqBfj/aggregate.py --native jobs/smoke/low/native/2026-09-23__21-32-57 --prism jobs/smoke/low/prism/2026-09-23__21-42-41 --native jobs/smoke/low/native/2026-09-23__21-54-42 --prism jobs/smoke/low/prism/2026-09-23__22-00-08 --native jobs/smoke/low/native/2026-09-23__22-07-57 --out artifacts/smoke-20260923/cold-build-gate
+      at: 2026-09-24T02:39:20.122439Z
+      classified: other
+    - cmd: docker pull --platform linux/amd64 bugswarm/cached-images@sha256:61ae6d8d5c225a82ea1904e4ce8efc950dfb0df2d19ca69f399187728d568638
+      at: 2026-09-24T02:49:11.476253Z
+      classified: other
+    - cmd: docker pull --platform linux/amd64 bugswarm/cached-images@sha256:61ae6d8d5c225a82ea1904e4ce8efc950dfb0df2d19ca69f399187728d568638
+      at: 2026-09-24T02:49:11.91783Z
+      classified: other
+    - cmd: docker buildx history ls --format json | jq -c 'select(.name == "tasks/fix-build-google-auto/environment")' && ls -td jobs/smoke/low/native/20* | head -1
+      at: 2026-09-24T02:50:35.568319Z
+      classified: build
+    - cmd: docker buildx history logs u0sbe19d0rje55xirok9x653h
+      at: 2026-09-24T02:53:45.193242Z
+      classified: build
+    - cmd: docker ps --format '{{.Names}}\t{{.Status}}' && tail -n 3 jobs/smoke/low/native/2026-09-23__22-49-35/job.log
+      at: 2026-09-24T02:54:48.019465Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__ygezmrr__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:55:51.487271Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__ygezmrr__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:56:58.694843Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__ygezmrr__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:58:05.727448Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__ygezmrr__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T02:59:06.872022Z
+      classified: other
+    - cmd: docker exec fix-build-google-auto__ygezmrr__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T03:00:17.366815Z
+      classified: other
+    - cmd: docker exec fix-build-google-auto__ygezmrr__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T03:01:17.327983Z
+      classified: other
+    - cmd: docker exec fix-build-google-auto__ygezmrr__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T03:02:27.69469Z
+      classified: other
+    - cmd: docker exec fix-build-google-auto__ygezmrr__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T03:03:35.54103Z
+      classified: other
+    - cmd: docker exec fix-build-google-auto__ygezmrr__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T03:04:36.826702Z
+      classified: other
+    - cmd: docker exec fix-build-google-auto__ygezmrr__env-main-1 tail -n 8 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T03:05:39.516052Z
+      classified: other
+    - cmd: docker exec fix-build-google-auto__ygezmrr__env-main-1 tail -n 6 /logs/agent/claude-code.txt | jq -c 'select(.type == "assistant" or .type == "result") | if .type == "result" then {type,subtype,total_cost_usd,num_turns,is_error} else {type,content:[.message.content[]? | if .type == "tool_use" then {type,name,command:.input.command} elif .type == "text" then {type,text} else {type} end]} end'
+      at: 2026-09-24T03:06:41.978869Z
+      classified: other
+    - cmd: tail -n 4 jobs/smoke/low/native/2026-09-23__22-49-35/job.log && docker top fix-build-google-auto__ygezmrr__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T03:07:41.570199Z
+      classified: other
+    - cmd: docker image inspect bugswarm/cached-images@sha256:61ae6d8d5c225a82ea1904e4ce8efc950dfb0df2d19ca69f399187728d568638 --format '{{json .RepoDigests}} {{.Architecture}}' && CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s 'Claude Code-credentials' -w | jq -r '.claudeAiOauth.accessToken')" CLAUDE_FORCE_OAUTH=1 .venv/bin/python scripts/study.py run --arm native --effort low --trials 1 --phase smoke --task fix-build-google-auto
+      at: 2026-09-24T03:07:57.184719Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__ygezmrr__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T03:07:57.280782Z
+      classified: other
+    - cmd: docker ps --format '{{.Names}}\t{{.Status}}' && ls -td jobs/smoke/low/prism/20* | head -1
+      at: 2026-09-24T03:09:12.475834Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__moolceu__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T03:10:10.004473Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__moolceu__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T03:11:09.6457Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__moolceu__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T03:12:07.297473Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__moolceu__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T03:13:21.076425Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/smoke/low/native/2026-09-23__22-49-35 --arm native --out artifacts/smoke-20260923/google-native.jsonl && jq '{valid,reward,cost_usd,new_input_tokens,turns,agent_seconds}' artifacts/smoke-20260923/google-native.jsonl && CLAUDE_CODE_OAUTH_TOKEN="$(security find-generic-password -s 'Claude Code-credentials' -w | jq -r '.claudeAiOauth.accessToken')" CLAUDE_FORCE_OAUTH=1 .venv/bin/python scripts/study.py run --arm prism --effort low --trials 1 --phase smoke --task fix-build-google-auto
+      at: 2026-09-24T03:14:08.293184Z
+      classified: other
+    - cmd: docker top fix-build-google-auto__moolceu__env-main-1 -eo pid,etime,comm
+      at: 2026-09-24T03:14:08.40236Z
+      classified: other
+    - cmd: .venv/bin/python scripts/extract.py jobs/smoke/low/prism/2026-09-23__23-08-08 --arm prism --out artifacts/smoke-20260923/google-prism.jsonl && jq '{valid,exception,reward,cost_usd,agent_seconds,prism_calls,prism_error_calls,result_path}' artifacts/smoke-20260923/google-prism.jsonl && ls -R jobs/smoke/low/prism/2026-09-23__23-08-08
+      at: 2026-09-24T03:14:34.08156Z
+      classified: other
+    - cmd: .venv/bin/python /tmp/prism-skillsbench-report.ydqBfj/aggregate.py --native jobs/smoke/low/native/2026-09-23__21-32-57 --prism jobs/smoke/low/prism/2026-09-23__21-42-41 --native jobs/smoke/low/native/2026-09-23__21-54-42 --prism jobs/smoke/low/prism/2026-09-23__22-00-08 --native jobs/smoke/low/native/2026-09-23__22-49-35 --prism jobs/smoke/low/prism/2026-09-23__23-08-08 --out artifacts/smoke-20260923/cumulative
+      at: 2026-09-24T03:14:35.571529Z
+      classified: other
+    - cmd: jq '.exception_info | {exception_type,exception_message}' jobs/smoke/low/prism/2026-09-23__23-08-08/fix-build-google-auto__MooLCEU/result.json
+      at: 2026-09-24T03:14:49.910198Z
+      classified: other
+    - cmd: docker image ls --format '{{.Repository}}:{{.Tag}}\t{{.ID}}' --filter 'reference=*google*'
+      at: 2026-09-24T03:15:27.504772Z
+      classified: other
+    - cmd: git diff v0.80.2 -- .github/workflows/release.yml
+      at: 2026-09-24T03:15:50.221693Z
+      classified: other
+    - cmd: docker image ls --format '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}' --filter 'reference=hb__*'
+      at: 2026-09-24T03:15:50.326483Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git stash list --format='%H %s' && docker ps --filter name=fix-build --format '{{.Names}}\t{{.Status}}'
+      at: 2026-09-24T03:16:44.977273Z
+      classified: other
+    - cmd: docker buildx history logs u0sbe19d0rje55xirok9x653h 2>&1 | rg 'libc6|libc-bin'
+      at: 2026-09-24T03:16:45.209035Z
+      classified: build
+    - cmd: test "$(git rev-parse 'stash@{0}')" = ec10f52df881bd1a1c726a7f66f70cfc46ebdf48 && git stash pop 'stash@{0}' && git diff --check && git status --short
+      at: 2026-09-24T03:17:36.735647Z
+      classified: other
+notes:
+    - text: continuation of session 01a0c0b3-63ff-7e21-8cd2-65d9942a0d9f — events captured after its evidence was finalized
+      at: 2026-09-24T01:42:17.355246Z
+redactions: 0

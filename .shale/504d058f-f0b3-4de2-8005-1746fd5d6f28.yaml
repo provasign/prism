@@ -1,0 +1,908 @@
+shale_version: "0"
+id: 504d058f-f0b3-4de2-8005-1746fd5d6f28
+created_at: 2026-09-12T20:17:09.974221Z
+finalized_at: 2026-09-12T22:40:20.896032Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: docs/verify-findings-2026-09-12.md
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-09-12T21:32:37.416639Z
+commands:
+    - cmd: which prism; prism --version 2>&1 | head -5; echo ---; cat .mcp.json 2>&1; echo ---; git diff --stat
+      at: 2026-09-12T20:17:24.333831Z
+      classified: other
+    - cmd: git log --oneline -15 -- . | head -20; echo ---; git show --stat 1a6a2b8; echo ---; git show 1a6a2b8 | head -100
+      at: 2026-09-12T20:20:23.63768Z
+      classified: other
+    - cmd: find . -iname "ci_invariants.py" 2>/dev/null; echo "---research---"; find /Users/tapabratapal/Projects/provasign/research -iname "ci_invariants.py" 2>/dev/null
+      at: 2026-09-12T20:21:40.060552Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && grep -il "verify" *.md
+      at: 2026-09-12T20:28:42.645541Z
+      classified: other
+    - cmd: prism --help 2>&1 | head -40; echo ---; prism verify --help 2>&1 | head -40; echo ---; prism index --help 2>&1 | head -20
+      at: 2026-09-12T20:33:25.167343Z
+      classified: other
+    - cmd: |-
+        set -e
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        rm -rf "$BASE"
+        mkdir -p "$BASE/go" "$BASE/ts" "$BASE/py"
+
+        ### GO ###
+        cd "$BASE/go"
+        git init -q
+        cat > go.mod <<'EOF'
+        module verifytest
+
+        go 1.21
+        EOF
+        cat > lib.go <<'EOF'
+        package main
+
+        func ComputeTotal(a int, b int) int {
+        	return a + b
+        }
+        EOF
+        cat > main.go <<'EOF'
+        package main
+
+        import "fmt"
+
+        func main() {
+        	fmt.Println(ComputeTotal(1, 2))
+        }
+        EOF
+        git add -A && git commit -q -m init
+
+        ### TS ###
+        cd "$BASE/ts"
+        git init -q
+        cat > tsconfig.json <<'EOF'
+        { "compilerOptions": { "strict": true, "noEmit": true, "target": "ES2020", "module": "commonjs" } }
+        EOF
+        cat > lib.ts <<'EOF'
+        export interface Shipper {
+          computeTotal(a: number, b: number): number;
+        }
+
+        export class RealShipper implements Shipper {
+          computeTotal(a: number, b: number): number {
+            return a + b;
+          }
+        }
+        EOF
+        cat > main.ts <<'EOF'
+        import { RealShipper } from "./lib";
+
+        const s = new RealShipper();
+        console.log(s.computeTotal(1, 2));
+        EOF
+        git add -A && git commit -q -m init
+
+        ### PY ###
+        cd "$BASE/py"
+        git init -q
+        cat > lib.py <<'EOF'
+        def compute_total(a, b):
+            return a + b
+        EOF
+        cat > main.py <<'EOF'
+        from lib import compute_total
+
+        print(compute_total(1, 2))
+        EOF
+        git add -A && git commit -q -m init
+
+        echo "scaffolded three repos"
+        ls "$BASE"
+      at: 2026-09-12T20:33:36.459249Z
+      classified: build
+    - cmd: which go tsc npx python3 mypy 2>&1; echo ---; go version 2>&1; npx --version 2>&1; python3 --version 2>&1
+      at: 2026-09-12T20:33:42.981876Z
+      classified: build
+    - cmd: |
+        set -e
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+
+        ### GO: rename ComputeTotal -> ComputeGrandTotal, leave main.go calling old name ###
+        cd "$BASE/go"
+        sed -i '' 's/func ComputeTotal/func ComputeGrandTotal/' lib.go
+        echo "--- go diff ---"; git diff --stat
+
+        ### TS: rename interface method computeTotal -> computeGrandTotal in interface+impl, leave caller calling old name ###
+        cd "$BASE/ts"
+        sed -i '' 's/computeTotal/computeGrandTotal/' lib.ts
+        echo "--- ts diff ---"; git diff --stat
+
+        ### PY: rename compute_total -> compute_grand_total, leave main.py importing/calling old name ###
+        cd "$BASE/py"
+        sed -i '' 's/compute_total/compute_grand_total/' lib.py
+        echo "--- py diff ---"; git diff --stat
+      at: 2026-09-12T20:33:53.710698Z
+      classified: other
+    - cmd: |-
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        echo "===== GO: go build ====="
+        cd "$BASE/go" && go build ./... 2>&1; echo "exit=$?"
+        echo
+        echo "===== TS: npx tsc --noEmit (may fetch, allow time) ====="
+        cd "$BASE/ts" && timeout 90 npx --yes typescript@5 tsc --noEmit 2>&1; echo "exit=$?"
+        echo
+        echo "===== PY: python3 -c import (only catches at runtime, no static check) ====="
+        cd "$BASE/py" && python3 -m py_compile lib.py main.py 2>&1; echo "py_compile exit=$?"
+        python3 main.py 2>&1; echo "run exit=$?"
+      at: 2026-09-12T20:34:00.295441Z
+      classified: build
+    - cmd: echo $GOFLAGS; echo $GOWORK; go env GOFLAGS GOWORK
+      at: 2026-09-12T20:34:07.172677Z
+      classified: other
+    - cmd: |-
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        cd "$BASE/ts" && (npx --yes typescript@5 tsc --noEmit 2>&1 &) ; sleep 20; jobs
+      at: 2026-09-12T20:34:28.570728Z
+      classified: build
+    - cmd: |-
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        echo "===== GO: go build (GOWORK=off) ====="
+        cd "$BASE/go" && GOWORK=off go build ./... 2>&1; echo "exit=$?"
+        echo
+        echo "===== TS: retry npx with -p ====="
+        cd "$BASE/ts" && npx --yes -p typescript@5 tsc --noEmit 2>&1; echo "exit=$?"
+      at: 2026-09-12T20:34:36.861757Z
+      classified: build
+    - cmd: |-
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        for lang in go ts py; do
+          echo "===== $lang: prism index ====="
+          prism index "$BASE/$lang" 2>&1 | tail -5
+          echo "===== $lang: prism verify ====="
+          prism verify "$BASE/$lang" --format text 2>&1
+          echo "exit=$?"
+          echo
+        done
+      at: 2026-09-12T20:34:44.615984Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test/py && git status --short
+      at: 2026-09-12T20:34:51.650792Z
+      classified: other
+    - cmd: |-
+        set -e
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        mkdir -p "$BASE/go-semantic"
+        cd "$BASE/go-semantic"
+        git init -q
+        cat > go.mod <<'EOF'
+        module semantictest
+
+        go 1.21
+        EOF
+        cat > lib.go <<'EOF'
+        package main
+
+        // ComputeTotal returns the sum of a and b.
+        func ComputeTotal(a int, b int) int {
+        	return a + b
+        }
+        EOF
+        cat > main.go <<'EOF'
+        package main
+
+        import "fmt"
+
+        func main() {
+        	// Caller assumes ComputeTotal sums its inputs.
+        	fmt.Println(ComputeTotal(1, 2))
+        }
+        EOF
+        git add -A && git commit -q -m init
+        prism index "$BASE/go-semantic" >/dev/null 2>&1
+
+        # Same name, same signature, opposite behavior (sum -> difference).
+        sed -i '' 's/return a + b/return a - b/' lib.go
+        echo "--- diff ---"; git diff
+        echo "--- go build (should pass, no type change) ---"
+        GOWORK=off go build ./... 2>&1; echo "build exit=$?"
+        echo "--- prism verify ---"
+        prism verify "$BASE/go-semantic" --format text 2>&1; echo "verify exit=$?"
+      at: 2026-09-12T20:37:37.346901Z
+      classified: build
+    - cmd: |-
+        set -e
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        mkdir -p "$BASE/go-reflect"
+        cd "$BASE/go-reflect"
+        git init -q
+        cat > go.mod <<'EOF'
+        module reflecttest
+
+        go 1.21
+        EOF
+        cat > lib.go <<'EOF'
+        package main
+
+        type Invoice struct {
+        	Total int
+        }
+        EOF
+        cat > main.go <<'EOF'
+        package main
+
+        import (
+        	"fmt"
+        	"reflect"
+        )
+
+        func main() {
+        	inv := Invoice{Total: 42}
+        	v := reflect.ValueOf(inv).FieldByName("Total")
+        	fmt.Println(v)
+        }
+        EOF
+        git add -A && git commit -q -m init
+        prism index "$BASE/go-reflect" >/dev/null 2>&1
+
+        # Rename the struct field. The reflect.FieldByName("Total") string literal is
+        # now stale but is just a string to both the compiler and (likely) the AST graph.
+        sed -i '' 's/Total int/GrandTotal int/' lib.go
+        echo "--- diff ---"; git diff
+        echo "--- go build (compiler has no reason to object — string arg) ---"
+        GOWORK=off go build ./... 2>&1; echo "build exit=$?"
+        echo "--- prism verify ---"
+        prism verify "$BASE/go-reflect" --format text 2>&1; echo "verify exit=$?"
+        echo "--- plain grep for the stale string, for comparison ---"
+        grep -rn '"Total"' "$BASE/go-reflect" --include='*.go'
+      at: 2026-09-12T20:37:53.350105Z
+      classified: build
+    - cmd: |-
+        set -e
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        cd "$BASE/go-reflect"
+        git checkout -q lib.go main.go 2>/dev/null || true
+        git reset --hard -q HEAD
+        cat > main.go <<'EOF'
+        package main
+
+        import (
+        	"fmt"
+        	"reflect"
+        )
+
+        func main() {
+        	inv := Invoice{42} // unkeyed literal — field name not spelled here
+        	v := reflect.ValueOf(inv).FieldByName("Total")
+        	fmt.Println(v)
+        }
+        EOF
+        git add -A && git commit -q -m "unkeyed literal, isolate reflection path"
+        prism index "$BASE/go-reflect" >/dev/null 2>&1
+
+        sed -i '' 's/Total int/GrandTotal int/' lib.go
+        echo "--- diff ---"; git diff
+        echo "--- go build (field name never spelled outside the reflect string) ---"
+        GOWORK=off go build ./... 2>&1; echo "build exit=$?"
+        echo "--- prism verify ---"
+        prism verify "$BASE/go-reflect" --format text 2>&1; echo "verify exit=$?"
+      at: 2026-09-12T20:38:04.959808Z
+      classified: build
+    - cmd: |-
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        cd "$BASE/go-reflect" && GOWORK=off go run . 2>&1
+      at: 2026-09-12T20:38:17.079138Z
+      classified: other
+    - cmd: prism search --help 2>&1 | head -30
+      at: 2026-09-12T20:40:02.346407Z
+      classified: other
+    - cmd: |-
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-test
+        echo "===== prism search --scope text --exhaustive for the stale field name ====="
+        prism search "Total" --scope text --exhaustive --format text --dir "$BASE/go-reflect" 2>&1
+        echo
+        echo "===== for comparison: prism search --scope symbols (graph-aware) for the OLD name ====="
+        prism search "Total" --scope symbols --format text --dir "$BASE/go-reflect" 2>&1
+        echo
+        echo "===== for comparison: prism search --scope both, default ====="
+        prism search "Total" --scope both --format text --dir "$BASE/go-reflect" 2>&1
+      at: 2026-09-12T20:40:07.838725Z
+      classified: other
+    - cmd: find /Users/tapabratapal/Projects/provasign/research -maxdepth 2 -type d 2>/dev/null | head -30; echo ---; find /Users/tapabratapal/Projects/provasign -iname "*.json" -newer /Users/tapabratapal/Projects/provasign/prism/CLAUDE.md -mtime -14 2>/dev/null | grep -iE "cell|result|bench" | head -40
+      at: 2026-09-12T20:47:00.519209Z
+      classified: other
+    - cmd: |-
+        echo "=== research/runs (recent) ==="; ls -lt /Users/tapabratapal/Projects/provasign/research/runs 2>/dev/null | head -20
+        echo "=== research/harness/runs (recent) ==="; ls -lt /Users/tapabratapal/Projects/provasign/research/harness/runs 2>/dev/null | head -20
+        echo "=== research/harness/logs (recent) ==="; ls -lt /Users/tapabratapal/Projects/provasign/research/harness/logs 2>/dev/null | head -20
+      at: 2026-09-12T20:47:04.265033Z
+      classified: other
+    - cmd: |-
+        D=/Users/tapabratapal/Projects/provasign/research/harness/runs
+        echo "=== nonimpact-exp2-two ==="; find "$D/nonimpact-exp2-two-2026-09-08" -maxdepth 3 | head -40
+        echo; echo "=== sonnet-prism-cost-isolation ==="; find "$D/sonnet-prism-cost-isolation-2026-09-08" -maxdepth 3 | head -60
+      at: 2026-09-12T20:47:10.386472Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runs/ 2>&1 && ls -la | head -50
+      at: 2026-09-12T20:47:46.951003Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/
+        DIRS="nonimpact-exp2-two-2026-09-08 sonnet-prism-cost-isolation-2026-09-08 mason-bench product-proof-coding-sonnet-cost-neutral-click-r1-2026-09-08 product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08 product-proof-coding-sonnet-cost-budget-click-r1-2026-09-08 product-proof-coding-sonnet-cost-final-pair-click-2026-09-08 product-proof-coding-sonnet-cost-candidate-click-r1-2026-09-08 product-proof-coding-sonnet-cost-candidate-click-r2-2026-09-08 product-proof-coding-sonnet-cost-candidate-click-r3-2026-09-08 product-proof-coding-sonnet-cost-candidate-click-r4-2026-09-08 product-proof-coding-sonnet-v0723-click-r1-2026-09-08 product-proof-coding-sonnet-v0723-click-r2-2026-09-08 product-proof-coding-sonnet-v0722-click-2026-09-08 product-proof-coding-sonnet-v0722-click-r2-2026-09-08 product-proof-coding-sonnet-v0721-2026-09-08 product-proof-coding-remaining-2026-09-08 product-proof-impact-remaining-2026-09-08 product-proof-coding-pilot-2026-09-08"
+        for d in $DIRS; do
+          if [ -d "$d" ]; then
+            echo "EXISTS: $d"
+          else
+            echo "MISSING: $d"
+          fi
+        done
+      at: 2026-09-12T20:47:58.251721Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/
+        ls -la | grep '2026-09-08'
+        echo "---mason---"
+        ls -la | grep -i mason
+      at: 2026-09-12T20:48:03.748079Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/runs/
+        ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs
+        find "$ROOT/nonimpact-exp2-two-2026-09-08" "$ROOT/sonnet-prism-cost-isolation-2026-09-08" "$ROOT/mason-bench" \
+          "$ROOT/product-proof-coding-sonnet-cost-neutral-click-r1-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-cost-budget-click-r1-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-cost-final-pair-click-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-cost-candidate-click-r1-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-cost-candidate-click-r2-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-cost-candidate-click-r3-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-cost-candidate-click-r4-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-v0723-click-r1-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-v0723-click-r2-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-v0722-click-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-v0722-click-r2-2026-09-08" \
+          "$ROOT/product-proof-coding-sonnet-v0721-2026-09-08" \
+          "$ROOT/product-proof-coding-remaining-2026-09-08" \
+          "$ROOT/product-proof-impact-remaining-2026-09-08" \
+          "$ROOT/product-proof-coding-pilot-2026-09-08" \
+          -type f -name 'stdout.jsonl' 2>/dev/null | tee /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/stdout_files.txt | wc -l
+      at: 2026-09-12T20:48:16.761571Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        head -5 "$SP/stdout_files.txt"
+        echo "---"
+        F=$(head -1 "$SP/stdout_files.txt")
+        DIR=$(dirname "$F")
+        ls -la "$DIR"
+        echo "--- mcp.json ---"
+        find "$(dirname $(dirname $(dirname $F)))" -name 'mcp.json' | head -3
+      at: 2026-09-12T20:48:22.138829Z
+      classified: other
+    - cmd: |-
+        F=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+        grep -o '"name":"[^"]*"' "$F" | sort -u | head -30
+      at: 2026-09-12T20:48:28.730369Z
+      classified: other
+    - cmd: |-
+        F=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+        grep -o '"op":"[a-z_]*"' "$F" | sort | uniq -c
+        echo "---verify in this file---"
+        grep -c '"op":"verify"' "$F"
+      at: 2026-09-12T20:48:33.640625Z
+      classified: other
+    - cmd: |-
+        F=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+        grep -o '"op"[^,}]*' "$F" | sort | uniq -c
+        echo "---sample tool_use block---"
+        python3 -c "
+        import json
+        with open('$F') as f:
+            for line in f:
+                try:
+                    d = json.loads(line)
+                except:
+                    continue
+                # search for tool_use with name prism
+                def find_tool_use(obj):
+                    if isinstance(obj, dict):
+                        if obj.get('type') == 'tool_use' and obj.get('name') == 'prism':
+                            print(json.dumps(obj)[:500])
+                        for v in obj.values():
+                            find_tool_use(v)
+                    elif isinstance(obj, list):
+                        for v in obj:
+                            find_tool_use(v)
+                find_tool_use(d)
+        " | head -20
+      at: 2026-09-12T20:48:40.013174Z
+      classified: other
+    - cmd: |-
+        F=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+        wc -l "$F"
+        grep -n '"name":"prism"' "$F" | head -2
+      at: 2026-09-12T20:48:43.225168Z
+      classified: other
+    - cmd: |-
+        F=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+        grep -n '"name":"prism"' "$F" | head -5
+        echo "---context---"
+        grep -o '.\{80\}"name":"prism".\{80\}' "$F" | head -3
+      at: 2026-09-12T20:48:49.697151Z
+      classified: other
+    - cmd: |-
+        F=/Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-sonnet-v0722-click-2026-09-08/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl
+        grep -o 'mcp__prism__[a-z_]*' "$F" | sort | uniq -c
+      at: 2026-09-12T20:48:53.130372Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        cat > "$SP/scan_verify.py" << 'PYEOF'
+        import json, sys, os
+
+        files_list = sys.argv[1]
+        with open(files_list) as f:
+            files = [l.strip() for l in f if l.strip()]
+
+        total_cells = len(files)
+        cells_with_verify = 0
+        total_calls = 0
+        results = []
+
+        for fp in files:
+            cell = fp.split('/evidence/')[-1].rsplit('/stdout.jsonl',1)[0]
+            run = fp.split('/runs/')[-1].split('/evidence/')[0]
+            found_in_cell = False
+            # map of tool_use id -> (name, input)
+            pending = {}
+            with open(fp, 'r', errors='replace') as f:
+                lines = f.readlines()
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                except Exception:
+                    continue
+                # walk to find tool_use and tool_result blocks in message content
+                msg = d.get('message', {})
+                content = msg.get('content') if isinstance(msg, dict) else None
+                usage = msg.get('usage') if isinstance(msg, dict) else None
+                if isinstance(content, list):
+                    for block in content:
+                        if not isinstance(block, dict):
+                            continue
+                        if block.get('type') == 'tool_use':
+                            name = block.get('name','')
+                            inp = block.get('input', {})
+                            is_verify = False
+                            if name == 'mcp__prism__prism_verify':
+                                is_verify = True
+                            elif name in ('mcp__prism__prism','prism') and isinstance(inp, dict) and inp.get('op') == 'verify':
+                                is_verify = True
+                            if is_verify:
+                                pending[block.get('id')] = {
+                                    'name': name, 'input': inp, 'line_idx': i, 'usage': usage
+                                }
+                                found_in_cell = True
+                                total_calls += 1
+                        elif block.get('type') == 'tool_result':
+                            tid = block.get('tool_use_id')
+                            if tid in pending:
+                                rc = block.get('content')
+                                # content can be str or list of blocks
+                                text = ''
+                                if isinstance(rc, str):
+                                    text = rc
+                                elif isinstance(rc, list):
+                                    for b in rc:
+                                        if isinstance(b, dict) and b.get('type') == 'text':
+                                            text += b.get('text','')
+                                pending[tid]['result_text'] = text
+                                pending[tid]['result_len'] = len(text)
+                                pending[tid]['is_error'] = block.get('is_error', False)
+                                results.append({
+                                    'run': run, 'cell': cell,
+                                    'input': pending[tid]['input'],
+                                    'name': pending[tid]['name'],
+                                    'result_text': text,
+                                    'result_len': len(text),
+                                    'is_error': pending[tid].get('is_error'),
+                                    'usage': pending[tid].get('usage'),
+                                })
+            if found_in_cell:
+                cells_with_verify += 1
+
+        print(f"TOTAL_CELLS={total_cells}")
+        print(f"CELLS_WITH_VERIFY={cells_with_verify}")
+        print(f"TOTAL_VERIFY_CALLS={total_calls}")
+        print(f"RESULTS_CAPTURED={len(results)}")
+        print("=====")
+        for r in results:
+            print(json.dumps({
+                'run': r['run'], 'cell': r['cell'], 'input': r['input'],
+                'result_len': r['result_len'], 'is_error': r['is_error'],
+                'usage': r['usage'],
+                'result_preview': r['result_text'][:800]
+            }))
+        PYEOF
+        python3 "$SP/scan_verify.py" "$SP/stdout_files.txt" > "$SP/verify_scan_output.txt" 2>&1
+        head -10 "$SP/verify_scan_output.txt"
+        wc -l "$SP/verify_scan_output.txt"
+      at: 2026-09-12T20:49:08.332843Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        tail -n +7 "$SP/verify_scan_output.txt"
+      at: 2026-09-12T20:49:11.953942Z
+      classified: other
+    - cmd: |
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        # List which evidence dirs had verify calls, get full paths
+        python3 -c "
+        import json
+        with open('$SP/verify_scan_output.txt') as f:
+            lines = f.readlines()
+        for l in lines[6:]:
+            d = json.loads(l)
+            print(d['run'], '|', d['cell'])
+        "
+      at: 2026-09-12T20:49:26.020732Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        grep -c '^{' "$SP/verify_scan_output.txt"
+      at: 2026-09-12T20:49:29.380829Z
+      classified: other
+    - cmd: |-
+        ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs
+        cat "$ROOT/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t3/evidence/pallets__click__pr3244.sonnet_prism/measurement.json" | python3 -m json.tool | head -60
+      at: 2026-09-12T20:49:47.011259Z
+      classified: other
+    - cmd: |-
+        ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs
+        cat "$ROOT/sonnet-prism-cost-isolation-2026-09-08/s6-combined-t3/evidence/pallets__click__pr3244.sonnet_prism/measurement.json" | python3 -c "
+        import json,sys
+        d = json.load(sys.stdin)
+        def walk(o, path=''):
+            if isinstance(o, dict):
+                for k,v in o.items():
+                    if 'tool' in k.lower() or 'call' in k.lower():
+                        print(path+'/'+k, '=', json.dumps(v)[:200])
+                    walk(v, path+'/'+k)
+            elif isinstance(o, list):
+                pass
+        walk(d)
+        "
+      at: 2026-09-12T20:49:51.794735Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        python3 - << 'PYEOF'
+        import json
+        with open("/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/stdout_files.txt") as f:
+            files = [l.strip() for l in f if l.strip()]
+        hits = []
+        for fp in files:
+            mpath = fp.rsplit('/stdout.jsonl',1)[0] + '/measurement.json'
+            try:
+                with open(mpath) as f:
+                    d = json.load(f)
+            except Exception as e:
+                continue
+            pc = d.get('prism_calls')
+            if pc and 'mcp__prism__prism_verify' in pc:
+                cell = fp.split('/evidence/')[-1].rsplit('/stdout.jsonl',1)[0]
+                run = fp.split('/runs/')[-1].split('/evidence/')[0]
+                hits.append((run, cell))
+        print(len(hits))
+        for h in hits:
+            print(h)
+        PYEOF
+      at: 2026-09-12T20:50:00.474025Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        python3 << PYEOF
+        import json
+
+        lines = open("$SP/verify_scan_output.txt").readlines()
+        recs = [json.loads(l) for l in lines if l.startswith('{')]
+
+        total_in = total_out = total_cache_create = total_cache_read = 0
+        total_result_chars = 0
+        for r in recs:
+            u = r['usage'] or {}
+            total_in += u.get('input_tokens',0)
+            total_out += u.get('output_tokens',0)
+            total_cache_create += u.get('cache_creation_input_tokens',0)
+            total_cache_read += u.get('cache_read_input_tokens',0)
+            total_result_chars += r['result_len']
+
+        print("n calls:", len(recs))
+        print("sum input_tokens (new):", total_in)
+        print("sum output_tokens:", total_out)
+        print("sum cache_creation_input_tokens:", total_cache_create)
+        print("sum cache_read_input_tokens:", total_cache_read)
+        print("sum result char length (tool_result content):", total_result_chars)
+        print("est tokens via /4 chars:", total_result_chars/4)
+        PYEOF
+      at: 2026-09-12T20:50:11.353251Z
+      classified: other
+    - cmd: |-
+        ROOT=/Users/tapabratapal/Projects/provasign/research/harness/runs
+        for d in nonimpact-exp2-two-2026-09-08 sonnet-prism-cost-isolation-2026-09-08 mason-bench \
+          product-proof-coding-sonnet-cost-neutral-click-r1-2026-09-08 \
+          product-proof-coding-sonnet-v0724-cost-click-r1-2026-09-08 \
+          product-proof-coding-sonnet-cost-budget-click-r1-2026-09-08 \
+          product-proof-coding-sonnet-cost-final-pair-click-2026-09-08 \
+          product-proof-coding-sonnet-cost-candidate-click-r1-2026-09-08 \
+          product-proof-coding-sonnet-cost-candidate-click-r2-2026-09-08 \
+          product-proof-coding-sonnet-cost-candidate-click-r3-2026-09-08 \
+          product-proof-coding-sonnet-cost-candidate-click-r4-2026-09-08 \
+          product-proof-coding-sonnet-v0723-click-r1-2026-09-08 \
+          product-proof-coding-sonnet-v0723-click-r2-2026-09-08 \
+          product-proof-coding-sonnet-v0722-click-2026-09-08 \
+          product-proof-coding-sonnet-v0722-click-r2-2026-09-08 \
+          product-proof-coding-sonnet-v0721-2026-09-08 \
+          product-proof-coding-remaining-2026-09-08 \
+          product-proof-impact-remaining-2026-09-08 \
+          product-proof-coding-pilot-2026-09-08 ; do
+          find "$ROOT/$d" -path '*/evidence/*' -type f ! -name 'stdout.jsonl' 2>/dev/null
+        done | sed -E 's/.*evidence\/[^/]*\///' | sort | uniq -c
+      at: 2026-09-12T20:50:43.277827Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        python3 << 'PYEOF'
+        import json
+        files = [l.strip() for l in open(f"{__import__('os').path.expanduser('~')}") ] if False else None
+        with open("/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/stdout_files.txt") as f:
+            files = [l.strip() for l in f if l.strip()]
+        ok=0; missing_field=0; parse_err=0
+        for fp in files:
+            mpath = fp.rsplit('/stdout.jsonl',1)[0] + '/measurement.json'
+            try:
+                d = json.load(open(mpath))
+            except Exception as e:
+                parse_err += 1
+                continue
+            if 'prism_calls' in d:
+                ok += 1
+            else:
+                missing_field += 1
+        print("ok:", ok, "missing_field:", missing_field, "parse_err:", parse_err)
+        PYEOF
+      at: 2026-09-12T20:50:53.923368Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        python3 << 'PYEOF'
+        import json
+        with open("/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/stdout_files.txt") as f:
+            files = [l.strip() for l in f if l.strip()]
+        bad_lines_total = 0
+        files_with_bad = 0
+        for fp in files:
+            bad = 0
+            with open(fp, errors='replace') as f:
+                for line in f:
+                    line=line.strip()
+                    if not line: continue
+                    try:
+                        json.loads(line)
+                    except Exception:
+                        bad += 1
+            if bad:
+                files_with_bad += 1
+                bad_lines_total += bad
+        print("files with unparseable lines:", files_with_bad, "total bad lines:", bad_lines_total)
+        PYEOF
+      at: 2026-09-12T20:51:00.356076Z
+      classified: other
+    - cmd: |-
+        SP=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad
+        python3 << 'PYEOF'
+        import json
+        recs = [json.loads(l) for l in open(f"/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify_scan_output.txt") if l.startswith('{')]
+        for r in recs:
+            u = r['usage'] or {}
+            marginal = u.get('input_tokens',0)+u.get('output_tokens',0)+u.get('cache_creation_input_tokens',0)
+            print(f"{r['run']:55s} | err={r['is_error']!s:5s} | result_chars={r['result_len']:4d} | marginal_tok~{marginal:5d} | preview={r['result_preview'][:70]!r}")
+        PYEOF
+      at: 2026-09-12T20:51:06.286111Z
+      classified: other
+    - cmd: find . -iname "BACKLOG*" 2>/dev/null; git log --all --oneline --grep="addendum" -i | head -10; git log --all --oneline -- BACKLOG.md 2>/dev/null | head -5
+      at: 2026-09-12T21:24:33.629394Z
+      classified: other
+    - cmd: git show --stat fd3933c | head -20
+      at: 2026-09-12T21:24:37.279581Z
+      classified: other
+    - cmd: git show fd3933c -- BACKLOG.md | sed -n '1,140p'
+      at: 2026-09-12T21:24:39.715443Z
+      classified: other
+    - cmd: git log --all --oneline --grep="removed_symbols" -i | head -20; echo ---; git show db1cd08 -- BACKLOG.md 2>&1 | grep -iA10 "removed_symbols\|residual" | head -60
+      at: 2026-09-12T21:24:51.89829Z
+      classified: other
+    - cmd: git show 622cfd9 -- BACKLOG.md | head -80
+      at: 2026-09-12T21:24:55.097868Z
+      classified: other
+    - cmd: prism verify --help 2>&1 | sed -n '1,40p'
+      at: 2026-09-12T21:26:03.662024Z
+      classified: other
+    - cmd: |-
+        set -e
+        BASE=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/504d058f-f0b3-4de2-8005-1746fd5d6f28/scratchpad/verify-removed-test
+        rm -rf "$BASE"
+        mkdir -p "$BASE"
+        cd "$BASE"
+        git init -q
+        cat > go.mod <<'EOF'
+        module removedtest
+
+        go 1.21
+        EOF
+
+        # Function to be removed, called from 3 different files, plus a doc/comment
+        # mention, plus a decoy with a similar-but-different name.
+        cat > lib.go <<'EOF'
+        package main
+
+        func ComputeTotal(a, b int) int {
+        	return a + b
+        }
+
+        func ComputeTotalV2(a, b int) int {
+        	return a + b + 1
+        }
+        EOF
+        cat > caller_a.go <<'EOF'
+        package main
+
+        import "fmt"
+
+        func RunA() {
+        	fmt.Println(ComputeTotal(1, 2))
+        }
+        EOF
+        cat > caller_b.go <<'EOF'
+        package main
+
+        // RunB used to call ComputeTotal directly; see README for migration notes.
+        func RunB() int {
+        	return ComputeTotal(3, 4)
+        }
+        EOF
+        cat > README.md <<'EOF'
+        # removedtest
+
+        ComputeTotal sums two integers. See ComputeTotalV2 for the newer variant.
+        EOF
+        git add -A && git commit -q -m init
+        prism index "$BASE" >/dev/null 2>&1
+
+        # Now actually remove ComputeTotal, leaving 2 real call sites + 1 doc
+        # mention + 1 comment mention untouched, and the decoy ComputeTotalV2 intact.
+        python3 - <<'PY'
+        import re
+        p = "lib.go"
+        s = open(p).read()
+        s = s.replace("func ComputeTotal(a, b int) int {\n\treturn a + b\n}\n\n", "")
+        open(p, "w").write(s)
+        PY
+
+        echo "=== working tree after removal ==="
+        git diff --stat
+        echo
+        echo "=== prism verify --removed ComputeTotal ==="
+        prism verify "$BASE" --removed ComputeTotal --format text 2>&1
+        echo
+        echo "=== ground truth: plain grep for ComputeTotal (word-boundary, excludes V2) ==="
+        grep -rn '\bComputeTotal\b' "$BASE" --include='*.go' --include='*.md'
+      at: 2026-09-12T21:26:18.661044Z
+      classified: other
+    - cmd: git status --short | head -40; echo "---diffstat---"; git diff --stat | tail -30
+      at: 2026-09-12T21:36:15.071686Z
+      classified: other
+    - cmd: |-
+        ls -la /private/tmp/prism-ranking-oracle-seedfiles-full.json /private/tmp/prism-ranking-oracle-baseline-full.json 2>&1
+        echo "---"
+        python3 -c "
+        import json
+        for f in ['/private/tmp/prism-ranking-oracle-baseline-full.json','/private/tmp/prism-ranking-oracle-seedfiles-full.json']:
+            d=json.load(open(f))
+            print(f, type(d), len(d) if isinstance(d,(list,dict)) else '')
+        " 2>&1
+      at: 2026-09-12T21:36:18.088698Z
+      classified: other
+    - cmd: |
+        python3 -c "
+        import json
+        b=json.load(open('/private/tmp/prism-ranking-oracle-baseline-full.json'))
+        s=json.load(open('/private/tmp/prism-ranking-oracle-seedfiles-full.json'))
+        print('baseline keys:', list(b.keys()))
+        print('seedfiles keys:', list(s.keys()))
+        import pprint
+        for k,v in b.items():
+            print('---baseline', k, type(v))
+            if isinstance(v, dict):
+                print(list(v.keys())[:20])
+            elif isinstance(v, list):
+                print(len(v), v[0] if v else None)
+        "
+      at: 2026-09-12T21:36:25.457399Z
+      classified: other
+    - cmd: |
+        python3 -c "
+        import json
+        b=json.load(open('/private/tmp/prism-ranking-oracle-baseline-full.json'))
+        s=json.load(open('/private/tmp/prism-ranking-oracle-seedfiles-full.json'))
+        bmap={r['instance_id']:r for r in b['results']}
+        smap={r['instance_id']:r for r in s['results']}
+        print('all instance ids:', list(bmap.keys()))
+        print()
+        for k in bmap:
+            br=bmap[k].get('realistic'); sr=smap[k].get('realistic')
+            if br is None or sr is None:
+                print('MISSING realistic for', k, 'baseline None?', br is None, 'candidate None?', sr is None)
+                print('baseline full record:', json.dumps(bmap[k], indent=2)[:800])
+        "
+      at: 2026-09-12T21:36:42.145943Z
+      classified: other
+    - cmd: |
+        python3 -c "
+        import json
+        b=json.load(open('/private/tmp/prism-ranking-oracle-baseline-full.json'))
+        s=json.load(open('/private/tmp/prism-ranking-oracle-seedfiles-full.json'))
+        bmap={r['instance_id']:r for r in b['results']}
+        smap={r['instance_id']:r for r in s['results']}
+        regressions=[]
+        for k in bmap:
+            br=bmap[k].get('realistic'); sr=smap[k].get('realistic')
+            if br is None or sr is None:
+                print(f'{k:40s} realistic: N/A (not evaluated)')
+                continue
+            delta = sr['recall'] - br['recall']
+            if delta < -1e-9:
+                regressions.append(k)
+            print(f'{k:40s} recall {br[\"recall\"]:.3f}->{sr[\"recall\"]:.3f} (Δ{delta:+.3f})  oversupply {br[\"oversupply\"]:.2f}->{sr[\"oversupply\"]:.2f}')
+        print()
+        print('regressions:', regressions if regressions else 'none')
+        "
+      at: 2026-09-12T21:36:52.368939Z
+      classified: other
+    - cmd: |-
+        wc -l internal/ranking/ranking_audit_test.go internal/textsearch/ranking_audit_test.go internal/mcp/searchrank.go
+        echo "---func names in ranking_audit_test.go---"
+        grep -n "^func Test" internal/ranking/ranking_audit_test.go
+        echo "---func names in textsearch ranking_audit_test.go---"
+        grep -n "^func Test" internal/textsearch/ranking_audit_test.go
+      at: 2026-09-12T21:37:03.953644Z
+      classified: other
+    - cmd: go build ./... 2>&1 | tail -30 && echo "BUILD OK"
+      at: 2026-09-12T21:37:14.591043Z
+      classified: build
+    - cmd: prism verify . --format text 2>&1 | head -60
+      at: 2026-09-12T21:37:17.448645Z
+      classified: other
+    - cmd: GOWORK=off go build ./... 2>&1 | tail -40; echo "exit=${PIPESTATUS[0]}"
+      at: 2026-09-12T21:37:32.55651Z
+      classified: build
+    - cmd: |-
+        GOWORK=off go build ./... ; echo "build_exit=$?"
+        echo "---vet---"
+        GOWORK=off go vet ./... 2>&1 | tail -30; echo "vet_exit=$?"
+      at: 2026-09-12T21:37:39.265447Z
+      classified: lint
+    - cmd: GOWORK=off go test ./... 2>&1 | tail -60
+      at: 2026-09-12T21:38:01.735892Z
+      classified: test
+notes: []
+redactions: 0
