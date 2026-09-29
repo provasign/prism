@@ -55,17 +55,28 @@ type StatusResult struct {
 	FilesIndexed int `json:"filesIndexed"`
 	SymbolCount  int `json:"symbolCount"`
 	EdgeCount    int `json:"edgeCount"`
+	// Native / Readiness: the last index run's compiler-backed analysis
+	// diagnostics, and the languages left name-based (see Readiness).
+	Native    []string         `json:"native,omitempty"`
+	Readiness []ReadinessIssue `json:"readiness,omitempty"`
 }
 
 // IndexResult mirrors Grove's /index response.
 type IndexResult struct {
-	Root         string `json:"root"`
-	FilesSeen    int    `json:"filesSeen"`
-	FilesUpdated int    `json:"filesUpdated"`
-	FilesSkipped int    `json:"filesSkipped"`
-	FilesPruned  int    `json:"filesPruned"`
-	SymbolCount  int    `json:"symbolCount"`
-	EdgeCount    int    `json:"edgeCount"`
+	Root         string   `json:"root"`
+	FilesSeen    int      `json:"filesSeen"`
+	FilesUpdated int      `json:"filesUpdated"`
+	FilesSkipped int      `json:"filesSkipped"`
+	FilesPruned  int      `json:"filesPruned"`
+	SymbolCount  int      `json:"symbolCount"`
+	EdgeCount    int      `json:"edgeCount"`
+	Errors       []string `json:"errors,omitempty"`
+	// Native is grove's per-analyzer diagnostics (compiler-backed passes):
+	// what ran, what was skipped, and why.
+	Native []string `json:"native,omitempty"`
+	// Readiness lists languages whose compiler-backed analysis did not run
+	// or complete, each with the command that fixes it.
+	Readiness []ReadinessIssue `json:"readiness,omitempty"`
 }
 
 // ImpactNode is one entry returned by Grove's /impact endpoint.
@@ -116,8 +127,57 @@ type ChangeImpactResult struct {
 	// external supertype's contract — a signature change breaks a contract
 	// the project does not own; the change-set is project-local only.
 	OverridesExternal []string `json:"overridesExternal,omitempty"`
-	// Completeness: "closed" or "project-local".
+	// Completeness: "closed", "project-local", or "callers-only".
 	Completeness string `json:"completeness,omitempty"`
+	// HasHeuristicRefs is true when the caller set includes at least one
+	// name-derived edge (framework template/JPA references) rather than
+	// only AST-certain ones — the set is deliberately over-inclusive
+	// rather than silently incomplete, but is not certain in the way a
+	// bare "closed" implies.
+	HasHeuristicRefs bool `json:"hasHeuristicRefs,omitempty"`
+
+	// Data-member anchors only (fields, properties, constants, variables).
+	// MemberKind is non-empty exactly for those. Accesses are the source
+	// lines confirmed (by receiver type or declaring scope) to read, write,
+	// initialize, or declare the member; AmbiguousAccesses match the name
+	// without receiver evidence; ExcludedAccesses counts same-named
+	// occurrences evidence attributes to something else.
+	MemberKind        string         `json:"memberKind,omitempty"`
+	Accesses          []MemberAccess `json:"accesses,omitempty"`
+	AmbiguousAccesses []MemberAccess `json:"ambiguousAccesses,omitempty"`
+	ExcludedAccesses  int            `json:"excludedAccesses,omitempty"`
+	// AccessCoverage: receiver-typed | partial | name-matched | declaration-only.
+	AccessCoverage string `json:"accessCoverage,omitempty"`
+	AccessNote     string `json:"accessNote,omitempty"`
+
+	// Related is grove's bounded related-but-not-affected group: other
+	// callers of what the target calls, and same-named methods in one
+	// hierarchy that lack a helper call their peers share. Never part of
+	// the change set or relaySites.
+	Related []RelatedSite `json:"related,omitempty"`
+	// ReExports are TS/JS export-specifier lines re-exporting or aliasing
+	// the queried function; they ARE reference sites (a rename must edit
+	// them) but not symbols.
+	ReExports []MemberAccess `json:"reExports,omitempty"`
+}
+
+// RelatedSite is one related-but-not-affected pointer (see Related).
+type RelatedSite struct {
+	Symbol   SymbolRecord `json:"symbol"`
+	Relation string       `json:"relation"` // co-caller | peer-lacks | target-lacks
+	Via      string       `json:"via,omitempty"`
+	Detail   string       `json:"detail,omitempty"`
+}
+
+// MemberAccess is one source line touching a data member.
+type MemberAccess struct {
+	FilePath      string `json:"filePath"`
+	Line          int    `json:"line"`
+	Enclosing     string `json:"enclosing,omitempty"` // qualified name of the enclosing symbol
+	EnclosingKind string `json:"enclosingKind,omitempty"`
+	Access        string `json:"access"`             // decl | read | write | init | call
+	Evidence      string `json:"evidence,omitempty"` // confirming evidence, or the ambiguity reason
+	Text          string `json:"text,omitempty"`
 }
 
 // MissingImplementationsResult answers "which types claiming this contract do
@@ -154,6 +214,9 @@ type RenameEdit struct {
 	Before   string `json:"before"`
 	After    string `json:"after"`
 	Site     string `json:"site"`
+	// Reason: for data-member plans, the evidence confirming the edit or
+	// why it is ambiguous (receiver not typed).
+	Reason string `json:"reason,omitempty"`
 }
 
 // RenamePlanResult converts a change-impact set into concrete line edits.

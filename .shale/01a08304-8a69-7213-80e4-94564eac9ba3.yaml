@@ -1,0 +1,316 @@
+shale_version: "0"
+id: 01a08304-8a69-7213-80e4-94564eac9ba3
+created_at: 2026-09-08T21:57:55.381517Z
+finalized_at: 2026-09-09T00:24:43.618278Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/mcp/oncenotes.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/mcp/textmerge.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/mcp/verify.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:13:16.023067Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:10.188782Z
+    - path: internal/mcp/oncenotes_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:10.188782Z
+    - path: internal/mcp/tools_cov_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:10.188782Z
+    - path: .clinerules
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:48.089935Z
+    - path: .cursorrules
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:48.089935Z
+    - path: .github/copilot-instructions.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:48.089935Z
+    - path: .windsurfrules
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:48.089935Z
+    - path: AGENTS.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:48.089935Z
+    - path: CLAUDE.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:48.089935Z
+    - path: GEMINI.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:14:48.089935Z
+    - path: internal/cli/steeringdelivery_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:15:13.005963Z
+    - path: .devin/instructions.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:15:38.68091Z
+    - path: .kiro/steering/prism.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T22:15:38.68091Z
+commands:
+    - cmd: git branch --show-current && git status --short && prism status . && prism --version
+      at: 2026-09-08T21:58:04.259667Z
+      classified: other
+    - cmd: prism search 'never between iterations' 'Guess ONE keyword' 'only for one known body' --scope text --exhaustive --format text
+      at: 2026-09-08T21:58:18.597761Z
+      classified: other
+    - cmd: prism lookup renderOneSearchText --format text
+      at: 2026-09-08T21:58:29.539449Z
+      classified: other
+    - cmd: prism query "Audit and reconcile all agent-facing tool-routing instructions and preserve response evidence across compact and JSON formats" --terms toolSchema,onceFixed,renderOneSearchText,cmdQuery,prism_verify --format text
+      at: 2026-09-08T21:58:42.376943Z
+      classified: other
+    - cmd: prism doctor .
+      at: 2026-09-08T21:59:00.785866Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 484 --limit 95 --format text
+      at: 2026-09-08T21:59:00.812438Z
+      classified: other
+    - cmd: git log -6 --oneline --decorate && git describe --tags --always --dirty
+      at: 2026-09-08T21:59:00.823344Z
+      classified: other
+    - cmd: prism read internal/mcp/tools.go --offset 786 --limit 145 --format text
+      at: 2026-09-08T21:59:00.839301Z
+      classified: other
+    - cmd: prism search 'routing contract' 'instruction conflict' 'compact text' 'stale experimental source' --scope text --exhaustive --files-only --format text
+      at: 2026-09-08T21:59:32.193091Z
+      classified: other
+    - cmd: command -v prism && git status --porcelain=v1 && git rev-parse HEAD && git rev-parse origin/main
+      at: 2026-09-08T21:59:45.685978Z
+      classified: other
+    - cmd: prism mcp --help
+      at: 2026-09-08T22:00:07.169618Z
+      classified: other
+    - cmd: prism mcp .
+      at: 2026-09-08T22:00:12.262632Z
+      classified: other
+    - cmd: prism mcp .
+      at: 2026-09-08T22:00:46.923947Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-08T22:02:14.523511Z
+      classified: other
+    - cmd: sed -n '1,260p' /Users/tapabratapal/.codex/skills/.system/openai-docs/references/mcp-diagnostics.md
+      at: 2026-09-08T22:03:00.61145Z
+      classified: other
+    - cmd: codex mcp --help
+      at: 2026-09-08T22:03:12.941813Z
+      classified: other
+    - cmd: rg -n -C 4 '^\[mcp_servers\.|prism|enabled_tools|disabled_tools|mcp_optional_startup_grace' /Users/tapabratapal/.codex/config.toml .codex/config.toml 2>/dev/null
+      at: 2026-09-08T22:03:12.945775Z
+      classified: other
+    - cmd: codex mcp list
+      at: 2026-09-08T22:03:12.961234Z
+      classified: other
+    - cmd: codex mcp get prism
+      at: 2026-09-08T22:03:19.740198Z
+      classified: other
+    - cmd: git branch --show-current && git status --short
+      at: 2026-09-08T22:09:28.4027Z
+      classified: other
+    - cmd: rg -l '## Prism — context delivery' . --hidden -g '!/.git'
+      at: 2026-09-08T22:15:19.116399Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/tools.go internal/mcp/selection.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/textmerge.go internal/mcp/verify.go internal/mcp/coverage_test.go internal/mcp/oncenotes_test.go internal/mcp/tools_cov_test.go internal/cli/commands.go internal/cli/steeringdelivery_test.go && git diff --check && git diff --stat && git status --short
+      at: 2026-09-08T22:16:31.778897Z
+      classified: other
+    - cmd: rg --files | rg '(^|/)(harness|research|cell|eval)' | head -200
+      at: 2026-09-08T22:16:54.957622Z
+      classified: other
+    - cmd: rg --files /Users/tapabratapal/Projects/provasign/research/harness | head -200
+      at: 2026-09-08T22:17:02.296809Z
+      classified: other
+    - cmd: rg -n "coding_suite|--task|--model|--variant|single|cell|limit|manifest" /Users/tapabratapal/Projects/provasign/research/harness/README.md /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py | head -220
+      at: 2026-09-08T22:17:19.43689Z
+      classified: other
+    - cmd: sed -n '1,130p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py && sed -n '440,545p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+      at: 2026-09-08T22:17:26.29019Z
+      classified: other
+    - cmd: sed -n '430,465p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+      at: 2026-09-08T22:17:31.919806Z
+      classified: other
+    - cmd: rg -n "argparse|add_argument|def main|--task|--arm" /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py /Users/tapabratapal/Projects/provasign/research/harness/run_local_agent.py /Users/tapabratapal/Projects/provasign/research/harness/ab_local_clis.py | head -220
+      at: 2026-09-08T22:17:41.650644Z
+      classified: other
+    - cmd: jq '{instance_id,problem_statement}' /Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e/pallets__click__pr3244.json /Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-08T22:17:53.776785Z
+      classified: other
+    - cmd: go test ./internal/cli -count=1
+      at: 2026-09-08T22:18:08.960089Z
+      classified: test
+    - cmd: go test ./internal/mcp -count=1
+      at: 2026-09-08T22:18:08.961104Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1
+      at: 2026-09-08T22:18:31.979057Z
+      classified: test
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/steeringdelivery_test.go internal/mcp/coverage_test.go && git diff --check
+      at: 2026-09-08T22:20:23.980915Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp ./internal/cli -count=1
+      at: 2026-09-08T22:20:46.208205Z
+      classified: test
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-routing-contract-candidate ./cmd/prism
+      at: 2026-09-08T22:21:26.268747Z
+      classified: build
+    - cmd: test -x /private/tmp/prism-routing-contract-candidate && /private/tmp/prism-routing-contract-candidate version
+      at: 2026-09-08T22:21:31.771825Z
+      classified: other
+    - cmd: PRISM_V072_BINARY=/private/tmp/prism-routing-contract-candidate python3 -B /private/tmp/run_prism_routing_two_cells.py
+      at: 2026-09-08T22:28:00.064247Z
+      classified: other
+    - cmd: jq '.rows[] | {cell_id,resolved,audited_valid,timed_out,agent_error,violations,turn_count,tool_calls,prism_calls,total_tokens,cost_usd,changed_files,score}' /private/tmp/prism-routing-contract-two-cell-20260908/summary.json && rg --files /private/tmp/prism-routing-contract-two-cell-20260908/evidence | sort
+      at: 2026-09-08T22:28:11.02217Z
+      classified: other
+    - cmd: jq 'keys' /private/tmp/prism-routing-contract-two-cell-20260908/evidence/pallets__click__pr3244.gpt55_prism/measurement.json && jq '{cell_id,turns,tool_calls,prism_tool_calls,total_tokens,cost_usd,usage,score}' /private/tmp/prism-routing-contract-two-cell-20260908/evidence/pallets__click__pr3244.gpt55_prism/measurement.json && jq '{cell_id,turns,tool_calls,prism_tool_calls,total_tokens,cost_usd,usage,score}' /private/tmp/prism-routing-contract-two-cell-20260908/evidence/urllib3__urllib3__pr3786.gpt55_prism/measurement.json
+      at: 2026-09-08T22:28:21.587429Z
+      classified: other
+    - cmd: for f in /private/tmp/prism-routing-contract-two-cell-20260908/evidence/*/measurement.json; do jq '{cell_id,prism_calls,prism_actions,prism_cli_commands,duplicate_prism_calls,prism_result_bytes,native_commands,input_tokens,cache_read_tokens,output_tokens,total_tokens,cost_usd,wall_s,tool_errors}' "$f"; done
+      at: 2026-09-08T22:28:28.785772Z
+      classified: other
+    - cmd: for f in /private/tmp/prism-routing-contract-two-cell-20260908/evidence/*/stdout.jsonl; do echo "$f"; jq -r 'select(.type=="item.completed" or .type=="turn.completed") | [.item.type, (.item.name // ""), (.item.command // ""), (.item.text // ""), (.usage.input_tokens // ""), (.usage.cached_input_tokens // ""), (.usage.output_tokens // "")] | @tsv' "$f" | head -80; done
+      at: 2026-09-08T22:28:43.328322Z
+      classified: other
+    - cmd: git diff -- internal/mcp/server.go internal/mcp/tools.go internal/mcp/selection.go internal/mcp/searchtext.go internal/mcp/oncenotes.go internal/mcp/textmerge.go internal/mcp/verify.go internal/mcp/coverage_test.go internal/mcp/oncenotes_test.go internal/mcp/tools_cov_test.go internal/cli/commands.go internal/cli/steeringdelivery_test.go
+      at: 2026-09-08T22:30:19.023007Z
+      classified: other
+    - cmd: jq 'keys' /Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e/urllib3__urllib3__pr3786.json && git diff --check && git status --short
+      at: 2026-09-08T22:30:53.348839Z
+      classified: other
+    - cmd: jq -r '.patch' /Users/tapabratapal/Projects/provasign/research/harness/tasks-e2e/urllib3__urllib3__pr3786.json
+      at: 2026-09-08T22:31:01.915397Z
+      classified: other
+    - cmd: for f in /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-2026-09-08/summary.json /Users/tapabratapal/Projects/provasign/research/harness/runs/product-proof-coding-pilot-fixed-2026-09-08/summary.json; do if test -f "$f"; then jq --arg file "$f" '.rows[] | select(.arm=="gpt55_prism") | {run:$file,cell_id,resolved,total_tokens,input_tokens,cache_read_tokens,output_tokens,cost_usd,wall_s,tool_calls,prism_actions,prism_cli_commands}' "$f"; fi; done
+      at: 2026-09-08T22:31:22.404743Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git diff --check && git diff --stat
+      at: 2026-09-08T22:48:27.284113Z
+      classified: other
+    - cmd: jq . /private/tmp/prism-routing-contract-two-cell-20260908/evidence/pallets__click__pr3244.gpt55_prism/command.json && jq . /private/tmp/prism-routing-contract-two-cell-20260908/evidence/pallets__click__pr3244.gpt55_prism/mcp.json && rg -n -C 8 'PRISM_TOOLS|--enable|--disable|mcp|tool' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py | head -260
+      at: 2026-09-08T22:50:16.412758Z
+      classified: other
+    - cmd: for f in /private/tmp/prism-routing-contract-two-cell-20260908/evidence/*/stdout.jsonl; do jq -c 'select(.type=="error" or .item.type=="error")' "$f"; done && for f in /private/tmp/prism-routing-contract-two-cell-20260908/evidence/*/stderr.txt; do sed -n '1,120p' "$f"; done
+      at: 2026-09-08T22:50:26.218452Z
+      classified: other
+    - cmd: sed -n '1,240p' /Users/tapabratapal/.codex/skills/.system/openai-docs/SKILL.md
+      at: 2026-09-08T23:01:44.655956Z
+      classified: other
+    - cmd: codex features list
+      at: 2026-09-08T23:03:38.755055Z
+      classified: other
+    - cmd: codex exec --help
+      at: 2026-09-08T23:03:38.835058Z
+      classified: other
+    - cmd: |-
+        which -a codex
+        codex --version
+        /Users/tapabratapal/.local/bin/codex --version
+      at: 2026-09-08T23:04:03.422315Z
+      classified: other
+    - cmd: rg -n "tool_search_always|mcp_servers\.prism|No deferred Prism|PRISM_SOURCE|def run_cell|codex exec" /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py /Users/tapabratapal/Projects/provasign/research/harness -g '*.py'
+      at: 2026-09-08T23:04:08.438606Z
+      classified: other
+    - cmd: /Users/tapabratapal/.local/bin/codex exec --ignore-user-config --ephemeral --disable tool_search_always_defer_mcp_tools -m gpt-5.5 -s read-only -C /Users/tapabratapal/Projects/provasign/prism --json -c 'mcp_servers.prism.command="/opt/homebrew/bin/prism"' -c 'mcp_servers.prism.args=["mcp","/Users/tapabratapal/Projects/provasign/prism"]' -c 'mcp_servers.prism.required=true' -c 'mcp_servers.prism.enabled_tools=["prism_search"]' 'Call the Prism MCP prism_search tool once with query serverInstructions and scope symbols. Do not use shell or any CLI. Then state whether the MCP call succeeded.'
+      at: 2026-09-08T23:04:26.526028Z
+      classified: other
+    - cmd: /Users/tapabratapal/.local/bin/codex exec --ignore-user-config --ephemeral --disable tool_search_always_defer_mcp_tools -m gpt-5.5 -s read-only -C /Users/tapabratapal/Projects/provasign/prism --json -c 'mcp_servers.prism.command="/opt/homebrew/bin/prism"' -c 'mcp_servers.prism.args=["mcp","/Users/tapabratapal/Projects/provasign/prism"]' -c 'mcp_servers.prism.required=true' -c 'mcp_servers.prism.enabled_tools=["prism_search"]' 'Call the Prism MCP prism_search tool once with query serverInstructions and scope symbols. Do not use shell or any CLI. Then state whether the MCP call succeeded.'
+      at: 2026-09-08T23:06:20.185989Z
+      classified: other
+    - cmd: /Users/tapabratapal/.local/bin/codex exec --ignore-user-config --ephemeral --enable code_mode --enable code_mode_only -m gpt-5.5 -s read-only -C /Users/tapabratapal/Projects/provasign/prism --json -c 'mcp_servers.prism.command="/opt/homebrew/bin/prism"' -c 'mcp_servers.prism.args=["mcp","/Users/tapabratapal/Projects/provasign/prism"]' -c 'mcp_servers.prism.required=true' -c 'mcp_servers.prism.enabled_tools=["prism_search"]' 'Call the Prism MCP prism_search tool once with query serverInstructions and scope symbols. Do not use shell or any CLI. Then state whether the MCP call succeeded.'
+      at: 2026-09-08T23:06:53.202732Z
+      classified: other
+    - cmd: /Users/tapabratapal/.local/bin/codex exec --ignore-user-config --ephemeral --enable code_mode --enable code_mode_only -m gpt-5.5 -s read-only -C /Users/tapabratapal/Projects/provasign/prism --json -c 'mcp_servers.prism.command="/opt/homebrew/bin/prism"' -c 'mcp_servers.prism.args=["mcp","/Users/tapabratapal/Projects/provasign/prism"]' -c 'mcp_servers.prism.required=true' -c 'mcp_servers.prism.enabled_tools=["prism_search"]' -c 'mcp_servers.prism.tools.prism_search.approval_mode="approve"' 'Call the Prism MCP prism_search tool once with query serverInstructions and scope symbols. Do not use shell or any CLI. Then state whether the MCP call succeeded.'
+      at: 2026-09-08T23:07:19.220962Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        GOFLAGS= GOWORK=off go build -o /private/tmp/prism-routing-contract-candidate ./cmd/prism
+        /opt/homebrew/bin/prism version
+        /private/tmp/prism-routing-contract-candidate version
+        sed -n '1,120p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+        sed -n '200,475p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+      at: 2026-09-08T23:09:49.679959Z
+      classified: build
+    - cmd: |-
+        sed -n '475,620p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+        sed -n '120,220p' /Users/tapabratapal/Projects/provasign/research/harness/coding_suite.py
+        rg -n "PRISM_TOOLS|summarize_codex|read_events|invokes_prism" /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+      at: 2026-09-08T23:09:56.900297Z
+      classified: other
+    - cmd: |-
+        sed -n '35,105p' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+        sed -n '160,225p' /Users/tapabratapal/Projects/provasign/research/harness/runs/daytoday-four-head-2026-09-07/run_readonly.py
+      at: 2026-09-08T23:10:40.060919Z
+      classified: other
+notes: []
+redactions: 0

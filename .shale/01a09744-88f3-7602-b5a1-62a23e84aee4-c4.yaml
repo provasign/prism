@@ -1,0 +1,372 @@
+shale_version: "0"
+id: 01a09744-88f3-7602-b5a1-62a23e84aee4-c4
+created_at: 2026-09-13T03:31:07.808288Z
+finalized_at: 2026-09-13T15:01:51.744625Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-13T12:52:07.821663Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-13T12:52:07.821663Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-13T12:52:07.821663Z
+    - path: internal/mcp/compact_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-13T12:52:54.404409Z
+commands:
+    - cmd: git push origin v0.75.1
+      at: 2026-09-13T03:31:07.808288Z
+      classified: other
+    - cmd: gh run list --workflow release.yml --limit 4 --json databaseId,status,conclusion,headSha,url,createdAt,displayTitle
+      at: 2026-09-13T03:31:10.890958Z
+      classified: other
+    - cmd: rg -n . /private/tmp/prism-v0.75.1-release-notes.md
+      at: 2026-09-13T03:31:47.548664Z
+      classified: other
+    - cmd: gh run watch 34735686958 --exit-status --interval 10
+      at: 2026-09-13T03:32:54.789209Z
+      classified: other
+    - cmd: gh release view v0.75.1 --json url,isDraft,isPrerelease,tagName,targetCommitish,assets,body --jq '{url,isDraft,isPrerelease,tagName,targetCommitish,assets:[.assets[].name],body}'
+      at: 2026-09-13T03:32:59.014168Z
+      classified: other
+    - cmd: gh release edit v0.75.1 --notes-file /private/tmp/prism-v0.75.1-release-notes.md
+      at: 2026-09-13T03:33:03.524346Z
+      classified: other
+    - cmd: gh run view 34735686958 --job 103666728263 --log | rg -n 'Homebrew formula|formula|tap|prism.rb'
+      at: 2026-09-13T03:33:08.568794Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      at: 2026-09-13T03:33:12.727884Z
+      classified: other
+    - cmd: gh run watch 34735772225 -R provasign/homebrew-shale --exit-status --interval 10
+      at: 2026-09-13T03:33:28.064799Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula --jq '.[].name'
+      at: 2026-09-13T03:33:31.643809Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content | @base64d'
+      at: 2026-09-13T03:33:35.49592Z
+      classified: other
+    - cmd: git rev-list -n 1 v0.75.1
+      at: 2026-09-13T03:33:46.29834Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T03:33:46.305932Z
+      classified: other
+    - cmd: gh release view v0.75.1 --json url,body,assets --jq '{url,notesPresent:(.body|length>0),assetCount:(.assets|length)}'
+      at: 2026-09-13T03:33:46.544575Z
+      classified: other
+    - cmd: git fetch origin main
+      at: 2026-09-13T03:33:50.161528Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T03:33:53.169416Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-13T12:48:55.409845Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T12:48:55.414779Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/tools.go internal/mcp/searchtext.go
+      at: 2026-09-13T12:52:12.591532Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestCompact(SearchBodies|SymbolLocator|BatchedSearch)|TestToolSearch_EmptyResult|TestSearchRootAndBothPasses' -count=1 -timeout 120s
+      at: 2026-09-13T12:52:19.21701Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/compact_test.go
+      at: 2026-09-13T12:52:58.636409Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope' -count=1 -v -timeout 120s
+      at: 2026-09-13T12:53:04.145033Z
+      classified: test
+    - cmd: gofmt -w internal/mcp/tools.go
+      at: 2026-09-13T12:53:27.113624Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope' -count=1 -v -timeout 120s
+      at: 2026-09-13T12:53:34.004065Z
+      classified: test
+    - cmd: git diff --stat
+      at: 2026-09-13T12:54:08.565171Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go
+      at: 2026-09-13T12:54:13.70669Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-09-13T12:54:18.125918Z
+      classified: other
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-13T12:54:19.037422Z
+      classified: lint
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 120s
+      at: 2026-09-13T12:54:35.459223Z
+      classified: test
+    - cmd: ls -d ../research
+      at: 2026-09-13T12:54:47.553593Z
+      classified: other
+    - cmd: prism query 'Find the controlled comparison harness for Prism versus native tool use, including one-cell smoke run, thinking capture, run-dir inputs, and metrics for follow-up discovery reads' --terms prism-compare,thinking_chars,read_after_locate
+      at: 2026-09-13T12:54:57.634001Z
+      classified: other
+    - cmd: ls -l AGENTS.md
+      at: 2026-09-13T12:55:04.218278Z
+      classified: other
+    - cmd: prism read AGENTS.md --format text
+      at: 2026-09-13T12:55:07.493516Z
+      classified: other
+    - cmd: prism search 'preflight|one.cell|thinking_chars|--tasks|--arm' --scope text --regex --path harness/bench.py --format text
+      at: 2026-09-13T12:55:12.597519Z
+      classified: other
+    - cmd: python3 harness/bench.py list-suites
+      at: 2026-09-13T12:55:16.128848Z
+      classified: other
+    - cmd: python3 harness/bench.py list-tasks --suite e2e
+      at: 2026-09-13T12:55:18.749226Z
+      classified: other
+    - cmd: python3 harness/bench.py run --help
+      at: 2026-09-13T12:55:23.612436Z
+      classified: other
+    - cmd: prism search 'models' --scope text --path harness/results/prism-compare-2026-09-12/coding-gate/manifest.json --format text
+      at: 2026-09-13T12:55:32.85293Z
+      classified: other
+    - cmd: GOWORK=off go build -o /private/tmp/prism-search-adoption-candidate ./cmd/prism
+      at: 2026-09-13T12:55:51.02731Z
+      classified: build
+    - cmd: python3 harness/bench.py run --suite e2e --tasks pallets__click__pr3244 --agents claude --models claude=claude-sonnet-5 --tools prism --prism-binary /private/tmp/prism-search-adoption-candidate --trials 1 --concurrency 1 --out /private/tmp/prism-search-adoption-onecell-20260913 --preflight-only
+      at: 2026-09-13T12:56:31.904953Z
+      classified: other
+    - cmd: prism read harness/bench.py:245-360 --format text
+      at: 2026-09-13T12:56:36.221692Z
+      classified: other
+    - cmd: prism read --help
+      at: 2026-09-13T12:56:39.221335Z
+      classified: other
+    - cmd: prism search 'root.exists|mkdir|preflight_only|run directory|out' --scope text --regex --path harness/bench.py --format text
+      at: 2026-09-13T12:56:44.219629Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite e2e --tasks pallets__click__pr3244 --agents claude --models claude=claude-sonnet-5 --tools prism --prism-binary /private/tmp/prism-search-adoption-candidate --trials 1 --concurrency 1 --out /private/tmp/prism-search-adoption-cell-20260913
+      at: 2026-09-13T12:59:45.45427Z
+      classified: other
+    - cmd: rg --files /private/tmp/prism-search-adoption-cell-20260913 | rg 'summary.json|measurement.json|stdout.jsonl|manifest.json|agent.diff|cell|result'
+      at: 2026-09-13T12:59:50.805401Z
+      classified: other
+    - cmd: ls -d /private/tmp/prism-search-adoption-cell-20260913/evidence/*
+      at: 2026-09-13T12:59:54.954735Z
+      classified: other
+    - cmd: ls -1 /private/tmp/prism-search-adoption-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism
+      at: 2026-09-13T12:59:58.130988Z
+      classified: other
+    - cmd: jq 'keys' /private/tmp/prism-search-adoption-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/measurement.json
+      at: 2026-09-13T13:00:03.357551Z
+      classified: other
+    - cmd: jq '.' /private/tmp/prism-search-adoption-cell-20260913/summary.json
+      at: 2026-09-13T13:00:03.357556Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (.input|tostring)] | @tsv' /private/tmp/prism-search-adoption-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/stdout.jsonl
+      at: 2026-09-13T13:00:14.474555Z
+      classified: other
+    - cmd: jq '{turns,tool_calls,prism_actions,prism_result_bytes,input_tokens,output_tokens,total_tokens,thinking_chars,wall_s,network_commands,resolved,score,cost_usd,measurement_complete,agent_error}' /private/tmp/prism-search-adoption-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/measurement.json
+      at: 2026-09-13T13:00:14.474678Z
+      classified: other
+    - cmd: jq -r 'select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content | if type=="string" then . else (map(.text // "") | join("")) end' /private/tmp/prism-search-adoption-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/stdout.jsonl | rg -m 1 -n '^// root:|^// match lists|^// no'
+      at: 2026-09-13T13:00:21.271853Z
+      classified: other
+    - cmd: jq -s -r 'first(.[] | select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content | if type=="string" then . else (map(.text // "") | join("")) end)' /private/tmp/prism-search-adoption-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/stdout.jsonl
+      at: 2026-09-13T13:00:28.257674Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go internal/mcp/searchtext.go internal/mcp/compact_test.go
+      at: 2026-09-13T13:03:23.142913Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope' -count=1 -v -timeout 120s
+      at: 2026-09-13T13:03:30.026929Z
+      classified: test
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope' -count=1 -v -timeout 120s
+      at: 2026-09-13T13:03:44.392951Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-09-13T13:04:11.409652Z
+      classified: other
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-13T13:04:12.352Z
+      classified: lint
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 120s
+      at: 2026-09-13T13:04:29.591342Z
+      classified: test
+    - cmd: GOWORK=off go build -o /private/tmp/prism-search-adoption-candidate ./cmd/prism
+      at: 2026-09-13T13:04:39.932211Z
+      classified: build
+    - cmd: python3 harness/bench.py run --suite e2e --tasks pallets__click__pr3244 --agents claude --models claude=claude-sonnet-5 --tools prism --prism-binary /private/tmp/prism-search-adoption-candidate --trials 1 --concurrency 1 --out /private/tmp/prism-search-adoption-final-preflight-20260913 --preflight-only
+      at: 2026-09-13T13:05:18.041489Z
+      classified: other
+    - cmd: python3 harness/bench.py run --suite e2e --tasks pallets__click__pr3244 --agents claude --models claude=claude-sonnet-5 --tools prism --prism-binary /private/tmp/prism-search-adoption-candidate --trials 1 --concurrency 1 --out /private/tmp/prism-search-adoption-final-cell-20260913
+      at: 2026-09-13T13:11:10.338817Z
+      classified: other
+    - cmd: ls -1 /private/tmp/prism-search-adoption-final-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism
+      at: 2026-09-13T13:11:14.057893Z
+      classified: other
+    - cmd: jq '{turns,tool_calls,prism_actions,prism_result_bytes,input_tokens,output_tokens,total_tokens,thinking_chars,wall_s,network_commands,resolved,score,cost_usd,measurement_complete,agent_error,timed_out,audited_valid,violations,tool_errors}' /private/tmp/prism-search-adoption-final-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/measurement.json
+      at: 2026-09-13T13:11:20.185163Z
+      classified: other
+    - cmd: jq '{status,completed,valid,timeouts,measurement_incomplete,agent_errors,protocol_violations,harness_errors,resolved}' /private/tmp/prism-search-adoption-final-cell-20260913/summary.json
+      at: 2026-09-13T13:11:20.183982Z
+      classified: other
+    - cmd: jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | [.name, (if .name=="Edit" then "[edit]" else (.input|tostring|.[0:250]) end)] | @tsv' /private/tmp/prism-search-adoption-final-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/stdout.jsonl
+      at: 2026-09-13T13:11:34.520037Z
+      classified: other
+    - cmd: jq '{prism_calls,prism_cli_commands,prism_actions,own_tool_calls,own_tool_cli_commands}' /private/tmp/prism-search-adoption-final-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/measurement.json
+      at: 2026-09-13T13:11:40.552056Z
+      classified: other
+    - cmd: jq -s -r 'first(.[] | select(.type=="user") | .message.content[]? | select(.type=="tool_result") | .content | if type=="string" then . else (map(.text // "") | join("")) end)' /private/tmp/prism-search-adoption-final-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/stdout.jsonl
+      at: 2026-09-13T13:11:50.987891Z
+      classified: other
+    - cmd: ls -l /private/tmp/prism-release-v0751-candidate /private/tmp/prism-search-adoption-candidate
+      at: 2026-09-13T13:12:06.996573Z
+      classified: other
+    - cmd: /private/tmp/prism-release-v0751-candidate version
+      at: 2026-09-13T13:12:13.970268Z
+      classified: other
+    - cmd: /private/tmp/prism-search-adoption-candidate version
+      at: 2026-09-13T13:12:14.800781Z
+      classified: other
+    - cmd: /private/tmp/prism-release-v0751-candidate search 'class CliRunner isolation stdout stderr fileno' --scope both --path src/click/testing.py --dir /private/tmp/prism-search-adoption-final-cell-20260913/templates/pallets__click__pr3244/base --format text > /private/tmp/prism-search-adoption-baseline.txt
+      at: 2026-09-13T13:12:25.626864Z
+      classified: other
+    - cmd: /private/tmp/prism-search-adoption-candidate search 'class CliRunner isolation stdout stderr fileno' --scope both --path src/click/testing.py --dir /private/tmp/prism-search-adoption-final-cell-20260913/templates/pallets__click__pr3244/base --format text > /private/tmp/prism-search-adoption-current.txt
+      at: 2026-09-13T13:12:29.245276Z
+      classified: other
+    - cmd: wc -c /private/tmp/prism-search-adoption-baseline.txt /private/tmp/prism-search-adoption-current.txt
+      at: 2026-09-13T13:12:34.820123Z
+      classified: other
+    - cmd: rg -n 'root:|match lists|no indexed|token fallback|── token|symbols \(|fileno|CliRunner|isolation|NOT searched' /private/tmp/prism-search-adoption-baseline.txt /private/tmp/prism-search-adoption-current.txt
+      at: 2026-09-13T13:12:34.825632Z
+      classified: other
+    - cmd: python3 harness/aggregate/read_after_locate.py /private/tmp/prism-search-adoption-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/measurement.json /private/tmp/prism-search-adoption-final-cell-20260913/evidence/pallets__click__pr3244.r1.sonnet_prism/measurement.json
+      at: 2026-09-13T13:12:48.154794Z
+      classified: other
+    - cmd: git diff -- internal/mcp/compact_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go
+      at: 2026-09-13T13:13:22.155554Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/tools.go
+      at: 2026-09-13T13:13:48.881623Z
+      classified: other
+    - cmd: GOWORK=off go test ./internal/mcp -run 'TestCompactBatchedQualifiedSymbolShowsBodyAndSearchScope' -count=1 -timeout 120s
+      at: 2026-09-13T13:13:54.561704Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-09-13T13:14:06.208937Z
+      classified: other
+    - cmd: GOWORK=off go vet ./...
+      at: 2026-09-13T13:14:07.194896Z
+      classified: lint
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 120s
+      at: 2026-09-13T13:14:25.056337Z
+      classified: test
+    - cmd: git diff --binary -- internal/mcp/compact_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go > /private/tmp/prism-search-adoption-review.patch
+      at: 2026-09-13T13:14:32.272435Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T13:14:36.046432Z
+      classified: other
+    - cmd: shasum -a 256 /private/tmp/prism-search-adoption-review.patch
+      at: 2026-09-13T13:14:36.055656Z
+      classified: other
+    - cmd: GOWORK=off go build -o /private/tmp/prism-search-adoption-candidate ./cmd/prism
+      at: 2026-09-13T13:14:50.331825Z
+      classified: build
+    - cmd: /private/tmp/prism-search-adoption-candidate search 'class CliRunner isolation stdout stderr fileno' --scope both --path src/click/testing.py --dir /private/tmp/prism-search-adoption-final-cell-20260913/templates/pallets__click__pr3244/base --format text > /private/tmp/prism-search-adoption-current.txt
+      at: 2026-09-13T13:14:54.656586Z
+      classified: other
+    - cmd: wc -c /private/tmp/prism-search-adoption-baseline.txt /private/tmp/prism-search-adoption-current.txt
+      at: 2026-09-13T13:14:59.423661Z
+      classified: other
+    - cmd: git branch --show-current
+      at: 2026-09-13T14:54:06.767539Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T14:54:09.31921Z
+      classified: other
+    - cmd: git diff --binary -- internal/mcp/compact_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go | shasum -a 256
+      at: 2026-09-13T14:54:13.402118Z
+      classified: other
+    - cmd: git fetch origin main
+      at: 2026-09-13T14:54:17.643455Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T14:54:20.503594Z
+      classified: other
+    - cmd: git ls-remote --tags origin refs/tags/v0.75.2
+      at: 2026-09-13T14:54:24.94647Z
+      classified: other
+    - cmd: gh release list --limit 3
+      at: 2026-09-13T14:54:25.137692Z
+      classified: other
+    - cmd: GOWORK=off go test ./... -count=1 -timeout 120s
+      at: 2026-09-13T14:55:03.265691Z
+      classified: test
+    - cmd: GOWORK=off go build -o /private/tmp/prism-release-v0752-candidate ./cmd/prism
+      at: 2026-09-13T14:55:45.108724Z
+      classified: build
+    - cmd: git branch --show-current
+      at: 2026-09-13T14:56:22.251989Z
+      classified: other
+    - cmd: git status --short --branch
+      at: 2026-09-13T14:56:22.251975Z
+      classified: other
+    - cmd: git diff --binary -- internal/mcp/compact_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go | shasum -a 256
+      at: 2026-09-13T14:56:22.262624Z
+      classified: other
+    - cmd: git add internal/mcp/compact_test.go internal/mcp/searchtext.go internal/mcp/server.go internal/mcp/tools.go
+      at: 2026-09-13T14:56:58.947823Z
+      classified: other
+    - cmd: git diff --cached --check
+      at: 2026-09-13T14:57:03.533672Z
+      classified: other
+    - cmd: git diff --cached --binary | shasum -a 256
+      at: 2026-09-13T14:57:03.533482Z
+      classified: other
+    - cmd: git diff --cached --stat
+      at: 2026-09-13T14:57:03.534057Z
+      classified: other
+    - cmd: git status --short
+      at: 2026-09-13T14:57:03.537754Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/prism-v0.75.2-release-notes.md <<'EOF'
+        Prism v0.75.2 improves search results for follow-up navigation.
+
+        - Compact MCP search results include the body of one unique small symbol match when it fits the response budget.
+        - Scoped searches identify the paths searched and distinguish “no indexed symbol” from a completed text search. Results no longer suggest out-of-scope matches as if they were in scope.
+        - An empty multiword phrase search offers a bounded, labeled fallback for separate terms within the same scope.
+        - Added Click-like regression coverage for small bodies, scoped evidence, and fallback output size.
+
+        The search output is more informative, but a held-out agent run has not established a token or task-success gain from these changes.
+        EOF
+      at: 2026-09-13T14:57:08.381259Z
+      classified: other
+    - cmd: python3 harness/scoring/ci_invariants.py --corpus-root /private/tmp/prism-release-ci-corpus-v0752-20260913 --prism /private/tmp/prism-release-v0752-candidate
+      at: 2026-09-13T15:01:44.315062Z
+      classified: other
+    - cmd: 'git commit -m "feat(search): add scoped evidence and bounded token fallback"'
+      at: 2026-09-13T15:01:48.750541Z
+      classified: other
+notes:
+    - text: continuation of session 01a09744-88f3-7602-b5a1-62a23e84aee4 — events captured after its evidence was finalized
+      at: 2026-09-13T03:31:07.808288Z
+redactions: 0

@@ -1,0 +1,1087 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c24
+created_at: 2026-09-02T13:01:42.709009Z
+finalized_at: 2026-09-02T16:50:56.489769Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/selection.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T14:49:14.621604Z
+    - path: internal/mcp/selection_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-09-02T15:08:17.875225Z
+    - path: internal/ranking/signals.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T15:10:54.493157Z
+    - path: internal/ranking/signals_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T15:11:10.18121Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-02T15:11:40.799975Z
+commands:
+    - cmd: git push origin main && git tag v0.65.1 && git push origin v0.65.1
+      at: 2026-09-02T13:01:42.709009Z
+      classified: other
+    - cmd: sleep 10; gh run list -R provasign/prism --limit 2 2>&1
+      at: 2026-09-02T13:01:56.12453Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list -R provasign/prism --workflow Release --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ] && [ "$(gh run list -R provasign/prism --workflow CI --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 20; done
+        echo "both done"
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion -q '.[0]'
+        gh run list -R provasign/prism --workflow CI --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T13:02:01.136406Z
+      classified: other
+    - cmd: |-
+        gh run list -R provasign/prism --workflow Release --limit 1 --json status,conclusion -q '.[0]'
+        gh run list -R provasign/prism --workflow CI --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T13:03:48.770515Z
+      classified: other
+    - cmd: |-
+        gh release view v0.65.1 -R provasign/prism --json tagName,isDraft,assets -q '{tag: .tagName, draft: .isDraft, assets: [.assets[].name]}'
+        gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+      at: 2026-09-02T13:03:55.411604Z
+      classified: other
+    - cmd: |-
+        until [ "$(gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status -q '.[0].status' 2>/dev/null)" = "completed" ]; do sleep 15; done
+        gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status,conclusion -q '.[0]'
+      at: 2026-09-02T13:03:59.511441Z
+      classified: other
+    - cmd: |-
+        gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json status,conclusion -q '.[0]'
+        brew update >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -8 && /opt/homebrew/bin/prism --version
+      at: 2026-09-02T13:04:28.958141Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls *.py | head -40; echo "---tasks dirs---"; ls -d tasks* 2>/dev/null
+      at: 2026-09-02T14:37:15.129051Z
+      classified: other
+    - cmd: |-
+        ls ~/ci-corpus/ 2>/dev/null
+        sed -n '1,80p' /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py | grep -n "CORPUS\|query\|=" | head -60
+      at: 2026-09-02T14:37:25.626117Z
+      classified: other
+    - cmd: sed -n '55,120p' /Users/tapabratapal/Projects/provasign/research/harness/ci_invariants.py
+      at: 2026-09-02T14:37:27.674345Z
+      classified: other
+    - cmd: |-
+        for d in jackson-databind typeorm django gin grafana-122750; do
+          echo "$d: $(ls ~/ci-corpus/$d 2>/dev/null | head -3)"
+        done
+        ls ~/ci-corpus/jackson-databind/src/main/java/com/fasterxml/jackson/databind/ 2>/dev/null | head -5
+      at: 2026-09-02T14:37:36.117193Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        echo "=== 1. prism_search scope=text (jackson) ==="
+        cd ~/ci-corpus/jackson-databind && $P search "MismatchedInputException" --scope text --format text --limit 5 2>&1 | head -15
+        echo; echo "=== 2. prism_search symbols (typeorm) ==="
+        cd ~/ci-corpus/typeorm && $P search "escapeName" --scope symbols --format text 2>&1 | head -15
+      at: 2026-09-02T14:37:44.308405Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/typeorm && $P search "escapeName" --scope symbols --format text 2>&1 | head -20
+        echo "exit: $?"
+      at: 2026-09-02T14:37:50.936073Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism search --help 2>&1 | head -30
+      at: 2026-09-02T14:37:55.154108Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/typeorm
+        pwd
+        $P search "escapeName" --scope text --format text 2>&1 | head -10
+        echo "---symbols, verbose---"
+        $P search "escapeName" --scope symbols --format json 2>&1 | head -20
+        echo "---index status---"
+        $P search "Driver" --scope symbols --limit 3 --format text 2>&1 | head -10
+      at: 2026-09-02T14:38:02.740281Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/typeorm
+        echo "=== search symbols (correct existing name) ==="
+        $P search "escape" --scope symbols --format text 2>&1 | head -10
+        echo; echo "=== prism_lookup ==="
+        $P lookup "Driver.escape" --format text 2>&1 | head -20
+        echo; echo "=== prism_change_impact ==="
+        $P change-impact "Driver.escape" --format text 2>&1 | head -25
+      at: 2026-09-02T14:38:11.791889Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        echo "=== prism_query (django) ==="
+        cd ~/ci-corpus/django && $P query "how does BaseDatabaseOperations.quote_name work and who calls it" --terms quote_name --format text 2>&1 | head -35
+      at: 2026-09-02T14:38:20.48979Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/django
+        echo "=== does the canonical symbol exist? ==="
+        $P lookup "BaseDatabaseOperations.quote_name" --format text 2>&1 | head -10
+        echo; echo "=== change-impact on it directly ==="
+        $P change-impact "BaseDatabaseOperations.quote_name" --format text 2>&1 | head -15
+      at: 2026-09-02T14:38:29.989655Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        echo "=== prism_read (gin) ==="
+        cd ~/ci-corpus/gin && $P read "context.go" --format text 2>&1 | head -15
+        echo "... (truncated for display)"
+        echo; echo "=== prism_change_impact (gin, Go) ==="
+        $P change-impact "ResponseWriter.Status" --format text 2>&1 | head -20
+      at: 2026-09-02T14:38:39.007825Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/gin
+        git status 2>&1 | head -3
+        # Make a small realistic edit: rename a call site inconsistently, leave one caller unfixed
+        sed -i '' 's/func (w \*responseWriter) Status() int {/func (w *responseWriter) StatusCode() int {\n\/\/placeholder/' response_writer.go 2>&1
+        git diff --stat 2>&1
+        echo "=== prism_verify ==="
+        $P verify --format text 2>&1 | head -30
+      at: 2026-09-02T14:38:44.178302Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/gin
+        # revert the edit
+        sed -i '' '/^\/\/placeholder$/d; s/func (w \*responseWriter) StatusCode() int {/func (w *responseWriter) Status() int {/' response_writer.go
+        grep -n "func (w \*responseWriter) Status" response_writer.go
+
+        # Proper verify test: isolated git repo with a REAL incomplete rename
+        rm -rf /tmp/verify-smoke && mkdir /tmp/verify-smoke && cp -r ~/ci-corpus/gin/*.go /tmp/verify-smoke/ 2>/dev/null
+        cp ~/ci-corpus/gin/go.mod /tmp/verify-smoke/ 2>/dev/null
+        cd /tmp/verify-smoke && git init -q && git add -A && git commit -q -m base
+        $P index . >/dev/null 2>&1
+        # Rename Status -> StatusCode in the interface decl and ONE implementer, but miss the other caller
+        sed -i '' 's/Status() int/StatusCode() int/' response_writer.go
+        git diff --stat
+        echo "=== prism_verify ==="
+        $P verify --format text 2>&1 | head -30
+      at: 2026-09-02T14:38:53.999474Z
+      classified: other
+    - cmd: |-
+        rm -rf /tmp/verify-smoke
+        git -C ~/ci-corpus/gin diff --stat  # confirm corpus fully reverted, clean
+        git -C ~/ci-corpus/gin status 2>&1 | head -3
+      at: 2026-09-02T14:39:01.510273Z
+      classified: other
+    - cmd: |-
+        grep -n "func (w \*responseWriter) Status" ~/ci-corpus/gin/response_writer.go
+        grep -c "placeholder" ~/ci-corpus/gin/response_writer.go
+      at: 2026-09-02T14:39:04.897133Z
+      classified: other
+    - cmd: grep -rn "func.*[Qq]uery\b" internal/mcp/*.go | grep -v _test | head -20
+      at: 2026-09-02T14:43:00.435066Z
+      classified: other
+    - cmd: sed -n '803,920p' internal/mcp/tools.go
+      at: 2026-09-02T14:43:02.191135Z
+      classified: other
+    - cmd: grep -n "func mineTaskIdentifiers\|func.*selectContext\b" internal/mcp/*.go internal/ranking/*.go 2>/dev/null | grep -v _test
+      at: 2026-09-02T14:43:07.321013Z
+      classified: other
+    - cmd: sed -n '2555,2610p' internal/mcp/tools.go
+      at: 2026-09-02T14:43:09.470167Z
+      classified: other
+    - cmd: sed -n '1,60p' internal/mcp/selection.go
+      at: 2026-09-02T14:43:17.379244Z
+      classified: other
+    - cmd: sed -n '60,180p' internal/mcp/selection.go
+      at: 2026-09-02T14:43:21.064955Z
+      classified: other
+    - cmd: grep -rn "func.*SearchSymbols" internal/grove/*.go | grep -v _test
+      at: 2026-09-02T14:43:34.592997Z
+      classified: other
+    - cmd: sed -n '316,380p' internal/grove/client.go
+      at: 2026-09-02T14:43:36.390117Z
+      classified: other
+    - cmd: |-
+        grep -rn "func.*Symbols(ctx" --include="*.go" ~/go/pkg/mod/github.com/provasign/grove* 2>/dev/null | grep -v _test | head -5
+        find / -path "*/provasign/grove*" -name "*.go" 2>/dev/null | xargs grep -l "func.*Symbols(ctx" 2>/dev/null | grep -v _test | head -5
+      at: 2026-09-02T14:45:41.854119Z
+      classified: other
+    - cmd: go list -m -f '{{.Dir}}' github.com/provasign/grove 2>&1
+      at: 2026-09-02T14:45:45.895485Z
+      classified: other
+    - cmd: grep -rn "func.*Symbols(ctx" /Users/tapabratapal/Projects/provasign/grove --include="*.go" | grep -v _test | head -10
+      at: 2026-09-02T14:45:48.50049Z
+      classified: other
+    - cmd: sed -n '260,330p' /Users/tapabratapal/Projects/provasign/grove/pkg/grove/grove.go
+      at: 2026-09-02T14:45:50.335394Z
+      classified: other
+    - cmd: grep -rn "func.*Graph.*Search\b\|func.*) Search(" /Users/tapabratapal/Projects/provasign/grove --include="*.go" | grep -v _test
+      at: 2026-09-02T14:45:53.200737Z
+      classified: other
+    - cmd: sed -n '360,440p' /Users/tapabratapal/Projects/provasign/grove/internal/graph/graph.go
+      at: 2026-09-02T14:45:55.055386Z
+      classified: other
+    - cmd: grep -rn "Anchors — callers\|Anchors -- callers\|\"callers (verify" internal/mcp/*.go | grep -v _test
+      at: 2026-09-02T14:46:22.373777Z
+      classified: other
+    - cmd: sed -n '40,110p' internal/mcp/delivery.go
+      at: 2026-09-02T14:46:24.637176Z
+      classified: other
+    - cmd: grep -n "func.*renderAnchorSummary" internal/mcp/*.go
+      at: 2026-09-02T14:46:32.921776Z
+      classified: other
+    - cmd: sed -n '263,320p' internal/mcp/delivery.go
+      at: 2026-09-02T14:46:35.18664Z
+      classified: other
+    - cmd: |-
+        P=/opt/homebrew/bin/prism
+        cd ~/ci-corpus/django
+        $P search "quote_name" --scope symbols --limit 20 --format text 2>&1
+      at: 2026-09-02T14:46:46.158132Z
+      classified: other
+    - cmd: sed -n '180,260p' internal/mcp/selection.go
+      at: 2026-09-02T14:47:12.669663Z
+      classified: other
+    - cmd: grep -n "func.*mergeTextSearch\|func.*textMergeResult" internal/mcp/*.go | grep -v _test
+      at: 2026-09-02T14:47:30.00109Z
+      classified: other
+    - cmd: sed -n '63,130p' internal/mcp/textmerge.go
+      at: 2026-09-02T14:47:31.812043Z
+      classified: other
+    - cmd: grep -n "textHitsPerTerm" internal/mcp/*.go | grep -v _test
+      at: 2026-09-02T14:47:58.029132Z
+      classified: other
+    - cmd: |-
+        cd ~/ci-corpus/django && rg -n "quote_name" --include='*.py' 2>/dev/null | head -45 | cat -n | tail -20
+        echo "---first occurrence of the real target---"
+        rg -n "quote_name" --include='*.py' 2>/dev/null | grep -n "db/backends/base/operations.py" | head -3
+      at: 2026-09-02T14:48:02.567226Z
+      classified: other
+    - cmd: |-
+        cd ~/ci-corpus/django && which rg
+        rg -n "quote_name" -g '*.py' . 2>&1 | wc -l
+        rg -n "quote_name" -g '*.py' . 2>&1 | head -45
+      at: 2026-09-02T14:48:06.102646Z
+      classified: other
+    - cmd: |-
+        cd ~/ci-corpus/django
+        rg -n "quote_name" -g '*.py' . 2>&1 | head -40 > /tmp/first40.txt
+        echo "--- hits touching geo_quote_name files ---"
+        grep "contrib/gis" /tmp/first40.txt
+        echo "--- hits touching real quote_name declaration files ---"
+        grep -E "db/backends/(base|mysql|oracle|postgresql|sqlite3|dummy)/operations\.py" /tmp/first40.txt
+      at: 2026-09-02T14:48:26.569548Z
+      classified: other
+    - cmd: grep -n "seedSyms" internal/mcp/selection.go
+      at: 2026-09-02T14:48:39.456745Z
+      classified: other
+    - cmd: sed -n '260,295p' internal/mcp/selection.go
+      at: 2026-09-02T14:48:41.296418Z
+      classified: other
+    - cmd: grep -n "func filterGeneratedPrismContext" -A 25 internal/mcp/*.go | grep -v _test
+      at: 2026-09-02T14:48:50.494376Z
+      classified: other
+    - cmd: /opt/homebrew/bin/prism query --help 2>&1 | head -20
+      at: 2026-09-02T14:49:01.293192Z
+      classified: other
+    - cmd: grep -n "stamp(\"seeds\")" internal/mcp/selection.go
+      at: 2026-09-02T14:49:08.417649Z
+      classified: other
+    - cmd: go build -o /tmp/prism-debug ./cmd/prism 2>&1 | head -20
+      at: 2026-09-02T14:49:20.716467Z
+      classified: build
+    - cmd: |-
+        cd ~/ci-corpus/django
+        PRISM_DEBUG_SEEDS=1 /tmp/prism-debug query "how does BaseDatabaseOperations.quote_name work and who calls it" --terms quote_name --format text 2>&1 >/dev/null | head -20
+      at: 2026-09-02T14:49:28.247672Z
+      classified: other
+    - cmd: grep -n "if len(perTermSeeds) == 1" internal/mcp/selection.go
+      at: 2026-09-02T14:49:54.039657Z
+      classified: other
+    - cmd: |-
+        go build -o /tmp/prism-debug ./cmd/prism 2>&1 | head -20
+        cd ~/ci-corpus/django
+        PRISM_DEBUG_SEEDS=1 /tmp/prism-debug query "how does BaseDatabaseOperations.quote_name work and who calls it" --terms quote_name --format text 2>&1 >/dev/null | head -25
+      at: 2026-09-02T14:50:14.378993Z
+      classified: build
+    - cmd: |-
+        git diff --stat internal/mcp/selection.go
+        go build ./... 2>&1 | head -20
+      at: 2026-09-02T14:50:29.436214Z
+      classified: build
+    - cmd: grep -n "\btask\b" internal/mcp/tools.go internal/mcp/selection.go internal/mcp/delivery.go | grep -v "^\s*//" | grep -v "_test"
+      at: 2026-09-02T15:03:29.397863Z
+      classified: other
+    - cmd: grep -n "func.*SignalComputer.*Compute\|func NewSignalComputer" internal/ranking/*.go | grep -v _test
+      at: 2026-09-02T15:03:36.380578Z
+      classified: other
+    - cmd: sed -n '1,90p' internal/ranking/signals.go
+      at: 2026-09-02T15:03:38.211998Z
+      classified: other
+    - cmd: sed -n '209,223p' internal/mcp/selection.go | cat -A | head -20
+      at: 2026-09-02T15:06:05.547199Z
+      classified: other
+    - cmd: sed -n '209,223p' internal/mcp/selection.go | cat -e -t | head -20
+      at: 2026-09-02T15:06:07.418238Z
+      classified: other
+    - cmd: |-
+        python3 << 'EOF'
+        path = "internal/mcp/selection.go"
+        with open(path, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        old_block = lines[208:223]  # 0-indexed, lines 209-223
+        print("".join(old_block))
+        EOF
+      at: 2026-09-02T15:06:13.232907Z
+      classified: other
+    - cmd: |-
+        python3 << 'PYEOF'
+        path = "internal/mcp/selection.go"
+        with open(path, encoding="utf-8") as f:
+            lines = f.readlines()
+
+        old_block = lines[208:223]
+        new_block = '''\t\t\tif len(perTermSeeds) == 1 {
+        \t\t\t\t// One term: no interleave to protect, but the plain
+        \t\t\t\t// global promotion this used to be had its own bug --
+        \t\t\t\t// discovered 2026-09-02 (django quote_name): an EXACT
+        \t\t\t\t// name/qualified-name match (graph rank 100) got pushed
+        \t\t\t\t// behind a substring match (geo_quote_name, rank 70)
+        \t\t\t\t// because mergeTextSearch's confirmation grep is capped
+        \t\t\t\t// (40 hits) and happened to surface the substring
+        \t\t\t\t// symbol's own definition lines before the exact
+        \t\t\t\t// symbol's -- five geo_quote_name overrides got
+        \t\t\t\t// "confirmed" and the real quote_name family, seeded
+        \t\t\t\t// correctly at the front by the graph, never did.
+        \t\t\t\t// Confirmation is a real signal (two independent hits
+        \t\t\t\t// beat one) but must never outrank an exact match on
+        \t\t\t\t// the term itself -- pin exact matches first, and let
+        \t\t\t\t// confirmation reorder only the remainder.
+        \t\t\t\tterm := ""
+        \t\t\t\tif len(p.terms) == 1 {
+        \t\t\t\t\tterm = strings.ToLower(p.terms[0])
+        \t\t\t\t}
+        \t\t\t\tvar exact, rest []grove.SymbolRecord
+        \t\t\t\tfor _, sd := range seeds {
+        \t\t\t\t\tif term != "" && (strings.ToLower(sd.Name) == term || strings.ToLower(sd.QualifiedName) == term) {
+        \t\t\t\t\t\texact = append(exact, sd)
+        \t\t\t\t\t} else {
+        \t\t\t\t\t\trest = append(rest, sd)
+        \t\t\t\t\t}
+        \t\t\t\t}
+        \t\t\t\tconfirmed := make([]grove.SymbolRecord, 0, len(rest))
+        \t\t\t\tvar unconfirmed []grove.SymbolRecord
+        \t\t\t\tfor _, sd := range rest {
+        \t\t\t\t\tif textMerge.confirmed[sd.ID] {
+        \t\t\t\t\t\tconfirmed = append(confirmed, sd)
+        \t\t\t\t\t} else {
+        \t\t\t\t\t\tunconfirmed = append(unconfirmed, sd)
+        \t\t\t\t\t}
+        \t\t\t\t}
+        \t\t\t\tseeds = append(append(exact, confirmed...), unconfirmed...)
+        '''.splitlines(keepends=True)
+
+        assert lines[222].strip() == "seeds = append(confirmed, rest...)"
+        lines[208:223] = new_block
+        with open(path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+        print("done")
+        PYEOF
+      at: 2026-09-02T15:06:24.063819Z
+      classified: other
+    - cmd: sed -n '200,245p' internal/mcp/selection.go
+      at: 2026-09-02T15:06:26.120406Z
+      classified: other
+    - cmd: go build -o /tmp/prism-fix2 ./cmd/prism 2>&1 | head -30
+      at: 2026-09-02T15:06:32.055766Z
+      classified: build
+    - cmd: |-
+        cd ~/ci-corpus/django
+        /tmp/prism-fix2 query "how does BaseDatabaseOperations.quote_name work and who calls it" --terms quote_name --format text 2>&1 | head -12
+      at: 2026-09-02T15:06:39.567507Z
+      classified: other
+    - cmd: grep -rln "confirmed\|mergeTextSearch\|perTermSeeds" internal/mcp/*_test.go 2>/dev/null
+      at: 2026-09-02T15:06:42.704158Z
+      classified: other
+    - cmd: grep -n "func Test\|newTestHandler\|grove.New" internal/mcp/textmerge_test.go | head -30
+      at: 2026-09-02T15:06:44.854211Z
+      classified: other
+    - cmd: grep -n "textHitsPerTerm" internal/mcp/textmerge.go
+      at: 2026-09-02T15:07:02.877164Z
+      classified: other
+    - cmd: |-
+        tail -30 internal/mcp/searchmulti_test.go | head -5
+        grep -n "^func TestToolQuery\|toolQuery\|\"prism_query\"" internal/mcp/*_test.go | grep -v _test.go: | head -3
+        grep -rln "h.Invoke(\"prism_query\"" internal/mcp/*_test.go | head -5
+      at: 2026-09-02T15:07:06.278701Z
+      classified: other
+    - cmd: grep -n "h.Invoke(\"prism_query\"" -B3 -A8 internal/mcp/delivery_test.go | head -40
+      at: 2026-09-02T15:07:08.268364Z
+      classified: other
+    - cmd: grep -n "func newDeliveryFixture" -A 20 internal/mcp/delivery_test.go
+      at: 2026-09-02T15:07:11.46859Z
+      classified: other
+    - cmd: sed -n '96,118p' internal/mcp/delivery_test.go
+      at: 2026-09-02T15:07:13.44129Z
+      classified: other
+    - cmd: grep -n "type queryResult\|type rankedSymbol\|Symbols \[\]" internal/mcp/tools.go | head -5
+      at: 2026-09-02T15:07:49.838677Z
+      classified: other
+    - cmd: sed -n '781,803p' internal/mcp/tools.go
+      at: 2026-09-02T15:07:51.489523Z
+      classified: other
+    - cmd: sed -n '183,215p' internal/mcp/delivery_test.go
+      at: 2026-09-02T15:07:55.739875Z
+      classified: other
+    - cmd: |-
+        tail -5 internal/mcp/textmerge_test.go
+        sed -n '1,17p' internal/mcp/textmerge_test.go
+      at: 2026-09-02T15:07:58.858113Z
+      classified: other
+    - cmd: ls internal/mcp/selection_test.go 2>/dev/null && echo exists || echo "no selection_test.go"
+      at: 2026-09-02T15:08:01.341387Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run 'TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -30
+      at: 2026-09-02T15:08:20.311176Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run 'TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -30
+      at: 2026-09-02T15:08:31.944058Z
+      classified: test
+    - cmd: |-
+        git stash push -- internal/mcp/selection.go
+        go test ./internal/mcp/ -run 'TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -15
+        git stash pop
+      at: 2026-09-02T15:08:38.996759Z
+      classified: test
+    - cmd: grep -n "func Search\b" internal/textsearch/*.go | grep -v _test
+      at: 2026-09-02T15:08:51.152438Z
+      classified: other
+    - cmd: sed -n '293,360p' internal/textsearch/textsearch.go
+      at: 2026-09-02T15:08:53.041299Z
+      classified: other
+    - cmd: grep -n "func runRg" -A 30 internal/textsearch/*.go | grep -v _test | head -40
+      at: 2026-09-02T15:08:57.142998Z
+      classified: other
+    - cmd: grep -n "MaxHits\|MaxPerFile" internal/textsearch/textsearch.go | head -10
+      at: 2026-09-02T15:09:08.549761Z
+      classified: other
+    - cmd: |-
+        go vet ./internal/mcp/ 2>&1 | head -20
+        git stash push -- internal/mcp/selection.go
+        echo "=== pre-fix (should FAIL) ==="
+        go test ./internal/mcp/ -run 'TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -20
+        git stash pop
+        echo "=== post-fix (should PASS) ==="
+        go test ./internal/mcp/ -run 'TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -15
+      at: 2026-09-02T15:09:37.352664Z
+      classified: lint
+    - cmd: |-
+        go vet ./internal/mcp/ 2>&1 | head -20
+        git stash push -- internal/mcp/selection.go
+        echo "=== pre-fix (should FAIL now) ==="
+        go test ./internal/mcp/ -run 'TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -20
+        git stash pop
+        echo "=== post-fix (should PASS) ==="
+        go test ./internal/mcp/ -run 'TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -15
+      at: 2026-09-02T15:10:41.001699Z
+      classified: lint
+    - cmd: |-
+        grep -n "sv := h.Signals.Compute" internal/mcp/selection.go
+        grep -n "func.*Compute" internal/ranking/signals.go
+      at: 2026-09-02T15:10:43.648924Z
+      classified: other
+    - cmd: grep -rn "\.Compute(ctx" internal/ --include="*.go"
+      at: 2026-09-02T15:10:46.013928Z
+      classified: other
+    - cmd: grep -rn "\.Compute(" internal/ranking/*_test.go
+      at: 2026-09-02T15:10:47.882113Z
+      classified: other
+    - cmd: |-
+        grep -n "^func (c \*SignalComputer) Compute" -A 2 internal/ranking/signals.go | head -5
+        sed -n '1,20p' internal/ranking/signals.go | grep -n "\"context\""
+      at: 2026-09-02T15:10:56.889042Z
+      classified: other
+    - cmd: sed -n '1,45p' internal/ranking/signals_test.go
+      at: 2026-09-02T15:11:05.004031Z
+      classified: other
+    - cmd: sed -n '345,405p' internal/mcp/tools.go
+      at: 2026-09-02T15:11:12.664524Z
+      classified: other
+    - cmd: grep -n "func.*toolRead\b" internal/mcp/tools.go
+      at: 2026-09-02T15:11:18.044383Z
+      classified: other
+    - cmd: sed -n '1018,1095p' internal/mcp/tools.go | grep -n "task"
+      at: 2026-09-02T15:11:19.918725Z
+      classified: other
+    - cmd: sed -n '1018,1090p' internal/mcp/tools.go
+      at: 2026-09-02T15:11:21.82754Z
+      classified: other
+    - cmd: grep -n "\.Task\b" internal/compression/*.go | grep -v _test
+      at: 2026-09-02T15:11:25.45073Z
+      classified: other
+    - cmd: grep -n "Task\s*string\|Task " internal/compression/*.go | grep -v _test
+      at: 2026-09-02T15:11:28.320927Z
+      classified: other
+    - cmd: sed -n '30,50p' internal/compression/compressor.go
+      at: 2026-09-02T15:11:31.199423Z
+      classified: other
+    - cmd: 'grep -n ''"task":         map\[string\]any{"type": "string", "description": "Current task'' internal/mcp/tools.go'
+      at: 2026-09-02T15:11:36.894668Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -30
+      at: 2026-09-02T15:11:54.043401Z
+      classified: build
+    - cmd: go test ./... 2>&1 | tail -25
+      at: 2026-09-02T15:12:07.117111Z
+      classified: test
+    - cmd: |-
+        git add internal/mcp/selection.go internal/mcp/selection_test.go internal/mcp/tools.go internal/ranking/signals.go internal/ranking/signals_test.go
+        git commit -m "$(cat <<'EOF'
+        mcp: fix exact-match seed demotion; drop the dead task param from ranking
+
+        Two independent fixes surfaced investigating a real prism_query miss
+        (2026-09-02, django BaseDatabaseOperations.quote_name):
+
+        1. selection.go: the single-term "confirmed" seed promotion did a
+           GLOBAL reorder keyed only on whether mergeTextSearch's capped (40
+           hits) confirmation grep happened to touch a seed's own definition
+           line -- with no floor on the seed's original graph rank. On django,
+           geo_quote_name (an unrelated method whose name merely CONTAINS
+           "quote_name" as a substring, graph rank 70) got confirmed because
+           its files sorted before the real target's in --sort path order and
+           consumed the whole cap; the real quote_name family (exact name
+           match, rank 100) never got a chance and was demoted below it. Fix:
+           an exact name/qualified-name match on the term is pinned ahead of
+           the rest before confirmation is allowed to reorder anything --
+           confirmation still works as a tie-breaker among inexact matches, it
+           just can no longer outrank an exact one. New regression test
+           reproduces the exact cap-exhaustion mechanism (not just the
+           symptom) deterministically via file-path ordering, and is confirmed
+           to fail on the pre-fix code.
+
+        2. Investigating why the free-text task string didn't route this
+           correctly surfaced that it structurally couldn't have: task text
+           has been intentionally inert for retrieval and ranking since the
+           DetectPhase removal (selection.go's own comment says so), and the
+           query miss above happened at the term/graph-rank level regardless
+           of phrasing. But SignalComputer.Compute still accepted and silently
+           ignored a task parameter -- passed from selectContext, referenced
+           nowhere in the function body. Removed the parameter entirely rather
+           than leave debt that reads as "task text affects ranking" when it
+           provably does not. prism_read's tool-schema description for `task`
+           claimed the same thing ("used for relevance ranking") while
+           compression.Options.Task is already documented in-package as
+           deliberately unused by file-read compression -- reworded the
+           description to say what actually happens (first read is always
+           the complete file) instead of implying a ranking effect that was
+           never real for this tool either.
+
+        prism_query's own task description was already accurate ("does not
+        affect retrieval, ranking or sizing") and is unchanged. Its `terms`-
+        seeded mineTaskIdentifiers fallback (mining identifier-shaped tokens
+        out of the task string when explicit terms are weak) is the one place
+        task text still does real, deliberate work, and is untouched.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-02T15:12:24.25333Z
+      classified: other
+    - cmd: go build -o /tmp/prism-seedfix ./cmd/prism && echo built
+      at: 2026-09-02T15:12:28.847109Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/ci_invariants.py --prism /tmp/prism-seedfix --corpus-root ~/ci-corpus > /tmp/gate_ci4.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-seedfix --out /tmp/ab_gate_seedfix > /tmp/gate_ab4.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-02T15:12:34.119322Z
+      classified: other
+    - cmd: until ! ps -p 71719 >/dev/null 2>&1 && ! ps -p 71720 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-02T15:12:36.434946Z
+      classified: other
+    - cmd: echo "=== ci_invariants ==="; tail -15 /tmp/gate_ci4.log; echo; echo "=== ab_gate ==="; tail -20 /tmp/gate_ab4.log
+      at: 2026-09-02T15:36:11.877439Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rl "gold.recall\|gold_recall\|oracle.terms\|realistic.terms" *.py 2>/dev/null | head -10
+      at: 2026-09-02T16:12:09.537307Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && head -60 query_oracle.py
+      at: 2026-09-02T16:12:11.544801Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        ls runs/swebench-live/*.json 2>/dev/null | head -20
+        echo "---"
+        find . -maxdepth 2 -iname "slice*.json" 2>/dev/null
+      at: 2026-09-02T16:12:20.972238Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        for f in slice-bed37.json slice-bed38.json slice-java12.json slice-radius15.json; do
+          [ -f "runs/swebench-live/$f" ] && echo "$f: $(python3 -c "import json;print(len(json.load(open('runs/swebench-live/$f'))))" 2>/dev/null) tasks"
+        done
+        python3 query_oracle.py --help 2>&1 | tail -10
+      at: 2026-09-02T16:12:31.280866Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        sed -n '60,145p' query_oracle.py
+      at: 2026-09-02T16:12:35.112914Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        sed -n '145,230p' query_oracle.py
+      at: 2026-09-02T16:12:39.042119Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 query_oracle.py --prism /opt/homebrew/bin/prism --slice runs/swebench-live/slice-bed37.json --out /tmp/oracle_before.json > /tmp/oracle_before.log 2>&1 &
+        echo "before pid $!"
+      at: 2026-09-02T16:12:56.644255Z
+      classified: other
+    - cmd: until ! ps -p 74390 >/dev/null 2>&1; do sleep 30; done; echo before-done
+      at: 2026-09-02T16:13:00.72125Z
+      classified: other
+    - cmd: tail -50 /tmp/oracle_before.log
+      at: 2026-09-02T16:13:34.741956Z
+      classified: other
+    - cmd: |-
+        wc -l /tmp/oracle_before.log
+        grep -c "indexing" /tmp/oracle_before.log
+        grep -c "ERR:" /tmp/oracle_before.log
+        grep "ERR:" /tmp/oracle_before.log | head -10
+      at: 2026-09-02T16:13:43.835266Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 query_oracle.py --prism /tmp/prism-seedfix --slice runs/swebench-live/slice-bed37.json --out /tmp/oracle_after.json > /tmp/oracle_after.log 2>&1 &
+        echo "after pid $!"
+      at: 2026-09-02T16:13:51.428933Z
+      classified: other
+    - cmd: until ! ps -p 74951 >/dev/null 2>&1; do sleep 30; done; echo after-done
+      at: 2026-09-02T16:13:53.514738Z
+      classified: other
+    - cmd: tail -35 /tmp/oracle_after.log
+      at: 2026-09-02T16:14:27.377484Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        b = json.load(open('/tmp/oracle_before.json'))
+        a = json.load(open('/tmp/oracle_after.json'))
+        def find(d, iid):
+            return next((r for r in d['results'] if r['instance_id']==iid), None)
+        iid = 'a2aproject/a2a-python-414'
+        for r in b['results']:
+            if '414' in r['instance_id']:
+                iid = r['instance_id']
+        print('before:', find(b, iid))
+        print('after:', find(a, iid))
+        "
+      at: 2026-09-02T16:14:35.66941Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        b = json.load(open('/tmp/oracle_before.json'))
+        a = json.load(open('/tmp/oracle_after.json'))
+        bm = {r['instance_id']: r for r in b['results']}
+        am = {r['instance_id']: r for r in a['results']}
+        print(f'{\"task\":42} {\"terms\":20} {\"real_before\":12} {\"real_after\":12} {\"delta\"}')
+        for iid in bm:
+            br, ar = bm[iid].get('realistic'), am[iid].get('realistic')
+            if not br or not ar: continue
+            terms = ','.join(br['terms'])
+            d = ar['recall'] - br['recall']
+            flag = '  <-- CHANGED' if d != 0 else ''
+            print(f'{iid[:42]:42} {terms[:20]:20} {br[\"recall\"]:<12} {ar[\"recall\"]:<12} {d:+.3f}{flag}')
+        "
+      at: 2026-09-02T16:14:57.000217Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        a = json.load(open('/tmp/oracle_after.json'))
+        for r in a['results']:
+            if '414' in r['instance_id']:
+                print(json.dumps(r, indent=1))
+        "
+      at: 2026-09-02T16:15:08.981934Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        python3 -c "
+        import json
+        tasks = json.load(open('runs/swebench-live/slice-bed37.json'))
+        for t in tasks:
+            if '414' in t['instance_id']:
+                print(t['instance_id'], t['repo'], t['base_commit'])
+        "
+      at: 2026-09-02T16:16:39.628294Z
+      classified: other
+    - cmd: |-
+        CACHE=~/.cache/prism-research/swebench-repos
+        REPO="$CACHE/a2aproject__a2a-python"
+        rm -rf /tmp/wt-414 && git -C "$REPO" worktree add --detach --force /tmp/wt-414 3ffae8f8046aef20e559e19c21a5f9464a2c89ca 2>&1 | tail -5
+      at: 2026-09-02T16:16:43.852004Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-debug-post ./cmd/prism 2>&1 | head -20
+      at: 2026-09-02T16:17:01.258324Z
+      classified: build
+    - cmd: |-
+        cd /tmp/wt-414
+        /tmp/prism-debug-post index . >/dev/null 2>&1
+        echo "=== POST-FIX seeds for term JSONRPC ==="
+        PRISM_DEBUG_SEEDS=1 /tmp/prism-debug-post query "fix JSONRPC issue" --terms JSONRPC --format text 2>&1 >/dev/null | head -25
+      at: 2026-09-02T16:17:06.875557Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 << 'PYEOF'
+        path = "internal/mcp/selection.go"
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        # temporarily revert JUST the exact-pin logic, keep debug print
+        old = '''				term := ""
+        				if len(p.terms) == 1 {
+        					term = strings.ToLower(p.terms[0])
+        				}
+        				var exact, rest []grove.SymbolRecord
+        				for _, sd := range seeds {
+        					if term != "" && (strings.ToLower(sd.Name) == term || strings.ToLower(sd.QualifiedName) == term) {
+        						exact = append(exact, sd)
+        					} else {
+        						rest = append(rest, sd)
+        					}
+        				}
+        				confirmed := make([]grove.SymbolRecord, 0, len(rest))
+        				var unconfirmed []grove.SymbolRecord
+        				for _, sd := range rest {
+        					if textMerge.confirmed[sd.ID] {
+        						confirmed = append(confirmed, sd)
+        					} else {
+        						unconfirmed = append(unconfirmed, sd)
+        					}
+        				}
+        				seeds = append(append(exact, confirmed...), unconfirmed...)'''
+        new = '''				confirmed := make([]grove.SymbolRecord, 0, len(seeds))
+        				var rest []grove.SymbolRecord
+        				for _, sd := range seeds {
+        					if textMerge.confirmed[sd.ID] {
+        						confirmed = append(confirmed, sd)
+        					} else {
+        						rest = append(rest, sd)
+        					}
+        				}
+        				seeds = append(confirmed, rest...)'''
+        assert old in text, "anchor not found"
+        text2 = text.replace(old, new)
+        with open("/tmp/selection_prefix.go", "w") as f:
+            f.write(text2)
+        print("wrote /tmp/selection_prefix.go")
+        PYEOF
+      at: 2026-09-02T16:17:39.20487Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        cp internal/mcp/selection.go /tmp/selection_current_backup.go
+        cp /tmp/selection_prefix.go internal/mcp/selection.go
+        go build -o /tmp/prism-debug-pre ./cmd/prism 2>&1 | head -20
+        cp /tmp/selection_current_backup.go internal/mcp/selection.go
+        echo "restored"
+      at: 2026-09-02T16:17:45.681909Z
+      classified: build
+    - cmd: |-
+        cd /tmp/wt-414
+        /tmp/prism-debug-pre index . >/dev/null 2>&1
+        echo "=== PRE-FIX seeds for term JSONRPC ==="
+        PRISM_DEBUG_SEEDS=1 /tmp/prism-debug-pre query "fix JSONRPC issue" --terms JSONRPC --format text 2>&1 >/dev/null | head -25
+      at: 2026-09-02T16:17:50.48896Z
+      classified: other
+    - cmd: |-
+        cd /tmp/wt-414
+        PRISM_DEBUG_SEEDS=1 /tmp/prism-debug-post query "fix JSONRPC issue" --terms JSONRPC --format text 2>&1 >/dev/null | grep -c "\[seed"
+      at: 2026-09-02T16:19:30.332691Z
+      classified: other
+    - cmd: |-
+        grep -c "^\s*jsonrpc:" /tmp/wt-414/src/a2a/types.py 2>/dev/null
+        grep -c "jsonrpc:" /tmp/wt-414/src/a2a/types.py 2>/dev/null
+      at: 2026-09-02T16:19:35.299266Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        grep -n "PRISM_DEBUG_SEEDS" internal/mcp/selection.go
+      at: 2026-09-02T16:19:55.107295Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-debug-v2 ./cmd/prism 2>&1 | head -20
+      at: 2026-09-02T16:20:05.063955Z
+      classified: build
+    - cmd: |-
+        echo "=== a2a-414 (should NOW show JsonRpcTransport/A2AClientJSONRPCError at top again) ==="
+        cd /tmp/wt-414
+        /tmp/prism-debug-v2 index . >/dev/null 2>&1
+        PRISM_DEBUG_SEEDS=1 /tmp/prism-debug-v2 query "fix JSONRPC issue" --terms JSONRPC --format text 2>&1 >/dev/null | head -6
+
+        echo; echo "=== django quote_name (should STILL show real quote_name family, not geo_) ==="
+        cd ~/ci-corpus/django
+        PRISM_DEBUG_SEEDS=1 /tmp/prism-debug-v2 query "how does BaseDatabaseOperations.quote_name work and who calls it" --terms quote_name --format text 2>&1 >/dev/null | head -10
+      at: 2026-09-02T16:20:14.828598Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -i '' '/if os.Getenv("PRISM_DEBUG_SEEDS") != "" {/,/^\t\t\t}$/d' internal/mcp/selection.go
+        grep -n "PRISM_DEBUG_SEEDS" internal/mcp/selection.go
+      at: 2026-09-02T16:20:20.052761Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        sed -n '280,290p' internal/mcp/selection.go
+        go build ./... 2>&1 | head -20
+      at: 2026-09-02T16:20:23.267567Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 -c "
+        with open('internal/mcp/selection.go') as f:
+            lines = f.readlines()
+        print(repr(lines[283]))
+        print(repr(lines[284]))
+        print(repr(lines[285]))
+        "
+      at: 2026-09-02T16:20:33.29232Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 -c "
+        with open('internal/mcp/selection.go') as f:
+            lines = f.readlines()
+        del lines[284]
+        with open('internal/mcp/selection.go', 'w') as f:
+            f.writelines(lines)
+        "
+        sed -n '278,288p' internal/mcp/selection.go
+        go build ./... 2>&1 | head -20
+      at: 2026-09-02T16:20:40.338135Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... 2>&1 | tail -20
+      at: 2026-09-02T16:20:52.916904Z
+      classified: test
+    - cmd: grep -n "func TestToolQuery_ExactTermMatchOutranksConfirmedSubstring" internal/mcp/selection_test.go
+      at: 2026-09-02T16:20:56.029611Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/mcp/ -run 'TestToolQuery_ManyExactTiesFallBackToConfirmation|TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -20
+      at: 2026-09-02T16:21:31.430614Z
+      classified: test
+    - cmd: grep -n "textHitsPerTerm\|MaxPerFile" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/textmerge.go /Users/tapabratapal/Projects/provasign/prism/internal/textsearch/textsearch.go | head -5
+      at: 2026-09-02T16:22:20.217528Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/mcp/ -run 'TestToolQuery_ManyExactTiesFallBackToConfirmation' -v 2>&1 | tail -20
+      at: 2026-09-02T16:22:39.002023Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./internal/mcp/ -run 'TestToolQuery_ManyExactTiesFallBackToConfirmation' -v 2>&1 | tail -20
+      at: 2026-09-02T16:22:56.350759Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git diff internal/mcp/selection.go | grep -A3 "exactTieLimit"
+      at: 2026-09-02T16:22:59.407387Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        python3 -c "
+        with open('internal/mcp/selection.go') as f:
+            text = f.read()
+        old = '''				const exactTieLimit = 10
+        				if len(exact) > exactTieLimit {
+        					exact, rest = nil, seeds
+        				}
+        				confirmed'''
+        new = '''				confirmed'''
+        assert old in text
+        text2 = text.replace(old, new)
+        with open('/tmp/selection_no_threshold.go', 'w') as f:
+            f.write(text2)
+        "
+        cp internal/mcp/selection.go /tmp/selection_full_backup.go
+        cp /tmp/selection_no_threshold.go internal/mcp/selection.go
+        echo "=== without threshold (should FAIL both new test AND old test should still PASS) ==="
+        go test ./internal/mcp/ -run 'TestToolQuery_ManyExactTiesFallBackToConfirmation|TestToolQuery_ExactTermMatchOutranksConfirmedSubstring' -v 2>&1 | tail -20
+        cp /tmp/selection_full_backup.go internal/mcp/selection.go
+        echo "=== restored ==="
+      at: 2026-09-02T16:23:08.099435Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build ./... 2>&1 | head -20
+        go test ./... 2>&1 | tail -20
+      at: 2026-09-02T16:23:22.398883Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go build -o /tmp/prism-seedfix2 ./cmd/prism && echo built
+      at: 2026-09-02T16:23:27.603394Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        nohup python3 query_oracle.py --prism /tmp/prism-seedfix2 --slice runs/swebench-live/slice-bed37.json --out /tmp/oracle_after2.json > /tmp/oracle_after2.log 2>&1 &
+        echo "pid $!"
+      at: 2026-09-02T16:23:32.041227Z
+      classified: other
+    - cmd: until ! ps -p 78152 >/dev/null 2>&1; do sleep 30; done; echo done
+      at: 2026-09-02T16:23:34.289739Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json
+        b = json.load(open('/tmp/oracle_before.json'))
+        a1 = json.load(open('/tmp/oracle_after.json'))
+        a2 = json.load(open('/tmp/oracle_after2.json'))
+        bm = {r['instance_id']: r for r in b['results']}
+        am1 = {r['instance_id']: r for r in a1['results']}
+        am2 = {r['instance_id']: r for r in a2['results']}
+        print(f'{\"task\":42} {\"terms\":20} {\"v0.65.1\":9} {\"fix1\":9} {\"fix2(thresh)\":12}')
+        for iid in bm:
+            br, a1r, a2r = bm[iid].get('realistic'), am1[iid].get('realistic'), am2[iid].get('realistic')
+            if not br: continue
+            terms = ','.join(br['terms'])
+            print(f'{iid[:42]:42} {terms[:20]:20} {br[\"recall\"]:<9} {a1r[\"recall\"] if a1r else \"-\":<9} {a2r[\"recall\"] if a2r else \"-\":<12}')
+        print()
+        print('AGG before:', b['aggregate'])
+        print('AGG fix1:  ', a1['aggregate'])
+        print('AGG fix2:  ', a2['aggregate'])
+        "
+      at: 2026-09-02T16:24:10.994815Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git status --short
+        git log -1 --oneline
+      at: 2026-09-02T16:24:20.030506Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        git add internal/mcp/selection.go internal/mcp/selection_test.go
+        git commit --amend -m "$(cat <<'EOF'
+        mcp: fix exact-match seed demotion; drop the dead task param from ranking
+
+        Two independent fixes surfaced investigating a real prism_query miss
+        (2026-09-02, django BaseDatabaseOperations.quote_name):
+
+        1. selection.go: the single-term "confirmed" seed promotion did a
+           GLOBAL reorder keyed only on whether mergeTextSearch's capped (40
+           hits) confirmation grep happened to touch a seed's own definition
+           line -- with no floor on the seed's original graph rank. On django,
+           geo_quote_name (an unrelated method whose name merely CONTAINS
+           "quote_name" as a substring, graph rank 70) got confirmed because
+           its files sorted before the real target's in --sort path order and
+           consumed the whole cap; the real quote_name family (exact name
+           match, rank 100) never got a chance and was demoted below it.
+
+           First attempt: pin an exact name/qualified-name match ahead of
+           everything else, unconditionally. That fixed django but caused a
+           REAL regression, caught by rerunning the existing swebench
+           query_oracle bed (37-task slice, deterministic, no agent noise):
+           a2aproject/a2a-python-414, term "JSONRPC", oracle recall 0.222 ->
+           0.111. Root cause: that repo declares a boilerplate `jsonrpc` field
+           on 23 unrelated Pydantic models -- 23 "exact" ties that are not a
+           real family, just a name collision -- and the unconditional pin
+           buried two symbols confirmation had correctly promoted
+           (JsonRpcTransport, A2AClientJSONRPCError, each independently
+           referenced elsewhere) under 20+ boilerplate declarations. No fixed
+           priority order over {exact, confirmed} satisfies both cases: django
+           needs exact-but-unconfirmed to beat confirmed-inexact; a2a-414
+           needs the opposite.
+
+           Landed fix: pin exact matches ahead only when there are FEW of them
+           (<=10, a real declaration/override family, like django's 7); with
+           MANY (a2a's 23) exactness stops being a discriminating signal and
+           the pin is skipped, falling back to plain confirmation-promotion.
+           Verified this recovers a2a-414 to 0.222 (matching baseline exactly)
+           while keeping django fixed, on the full 13-task oracle bed --
+           every other task byte-identical across baseline/first-fix/final-fix.
+           Two regression tests reproduce each mechanism (not just the
+           symptom) via deterministic --sort path file-name ordering, and are
+           confirmed to fail on the wrong side of the threshold each.
+
+        2. Investigating why the free-text task string didn't route this
+           correctly surfaced that it structurally couldn't have: task text
+           has been intentionally inert for retrieval and ranking since the
+           DetectPhase removal (selection.go's own comment says so), and the
+           query miss above happened at the term/graph-rank level regardless
+           of phrasing. But SignalComputer.Compute still accepted and silently
+           ignored a task parameter -- passed from selectContext, referenced
+           nowhere in the function body. Removed the parameter entirely rather
+           than leave debt that reads as "task text affects ranking" when it
+           provably does not. prism_read's tool-schema description for `task`
+           claimed the same thing ("used for relevance ranking") while
+           compression.Options.Task is already documented in-package as
+           deliberately unused by file-read compression -- reworded the
+           description to say what actually happens (first read is always
+           the complete file) instead of implying a ranking effect that was
+           never real for this tool either.
+
+        prism_query's own task description was already accurate ("does not
+        affect retrieval, ranking or sizing") and is unchanged. Its `terms`-
+        seeded mineTaskIdentifiers fallback (mining identifier-shaped tokens
+        out of the task string when explicit terms are weak) is the one place
+        task text still does real, deliberate work, and is untouched.
+
+        Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )"
+      at: 2026-09-02T16:24:38.087274Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        go test ./... 2>&1 | tail -20
+      at: 2026-09-02T16:24:43.007336Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research
+        nohup python3 harness/ci_invariants.py --prism /tmp/prism-seedfix2 --corpus-root ~/ci-corpus > /tmp/gate_ci5.log 2>&1 &
+        CI=$!
+        cd harness && nohup python3 ab_gate.py --baseline /opt/homebrew/bin/prism --candidate /tmp/prism-seedfix2 --out /tmp/ab_gate_seedfix2 > /tmp/gate_ab5.log 2>&1 &
+        echo "ci=$CI ab=$!"
+      at: 2026-09-02T16:24:47.615168Z
+      classified: other
+    - cmd: until ! ps -p 78776 >/dev/null 2>&1 && ! ps -p 78777 >/dev/null 2>&1; do sleep 30; done; echo gates-done
+      at: 2026-09-02T16:24:50.087063Z
+      classified: other
+    - cmd: echo "=== ci_invariants ==="; tail -15 /tmp/gate_ci5.log; echo; echo "=== ab_gate ==="; tail -20 /tmp/gate_ab5.log
+      at: 2026-09-02T16:46:25.620213Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-09-02T13:01:42.709009Z
+redactions: 0

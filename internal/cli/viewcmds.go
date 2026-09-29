@@ -44,6 +44,21 @@ func cmdMap(args []string) int {
 			}
 		case "--tests":
 			callArgs["include_tests"] = true
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports remaining
+			// references to each removed identifier instead of the full gate.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -59,7 +74,7 @@ func cmdMap(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_map", callArgs)
+	out, err := invokeTool(dir, "prism_map", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "map:", err)
 		return 1
@@ -87,6 +102,21 @@ func cmdCycles(args []string) int {
 			}
 		case "--tests":
 			callArgs["include_tests"] = true
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports remaining
+			// references to each removed identifier instead of the full gate.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -102,7 +132,7 @@ func cmdCycles(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_cycles", callArgs)
+	out, err := invokeTool(dir, "prism_cycles", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cycles:", err)
 		return 1
@@ -141,6 +171,21 @@ func cmdArch(args []string) int {
 			callArgs["include_tests"] = true
 		case "--strict":
 			callArgs["strict"] = true
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports remaining
+			// references to each removed identifier instead of the full gate.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -159,7 +204,7 @@ func cmdArch(args []string) int {
 	if len(extraDeny) > 0 {
 		callArgs["deny"] = extraDeny
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_arch_check", callArgs)
+	out, err := invokeTool(dir, "prism_arch_check", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "arch:", err)
 		return 2
@@ -246,6 +291,23 @@ func cmdVerify(args []string) int {
 				callArgs["base"] = args[i+1]
 				i++
 			}
+		case "--strict":
+			callArgs["strict"] = true
+		case "--removed":
+			// Mid-loop residual check: --removed a,b,c reports exact
+			// identifier mentions instead of running the full diff check.
+			if i+1 < len(args) {
+				var syms []string
+				for _, s := range strings.Split(args[i+1], ",") {
+					if s = strings.TrimSpace(s); s != "" {
+						syms = append(syms, s)
+					}
+				}
+				if len(syms) > 0 {
+					callArgs["removed_symbols"] = syms
+				}
+				i++
+			}
 		case "--json":
 			jsonOut = true
 		case "--format":
@@ -268,35 +330,56 @@ func cmdVerify(args []string) int {
 			dir = a
 		}
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_verify", callArgs)
+	out, err := invokeTool(dir, "prism_verify", callArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "verify:", err)
 		return 2
 	}
 	m := toMap(out)
+	if mode, _ := m["mode"].(string); mode == "removed_symbols" {
+		// The fast-path result has its own compact shape; render directly.
+		if jsonOut {
+			printJSON(out)
+		} else {
+			fmt.Printf("verify --removed: %v (%v/%v clean)\n", m["verdict"], m["clean"], m["checked"])
+			for _, r := range asSliceAny(m["residuals"]) {
+				rm, _ := r.(map[string]any)
+				if rm == nil {
+					continue
+				}
+				cnt, _ := rm["count"].(float64)
+				if cnt == 0 {
+					fmt.Printf("  %v: clean\n", rm["symbol"])
+					continue
+				}
+				fmt.Printf("  %v: %v mention(s)\n", rm["symbol"], rm["count"])
+				for _, s := range asSliceAny(rm["sites"]) {
+					sm, _ := s.(map[string]any)
+					if sm == nil {
+						continue
+					}
+					if note, _ := sm["note"].(string); note != "" {
+						fmt.Printf("    %s\n", note)
+						continue
+					}
+					fmt.Printf("    %v:%v: %v\n", sm["file"], sm["line"], sm["text"])
+				}
+			}
+		}
+		if failed, _ := m["gateFailure"].(bool); failed {
+			return 1
+		}
+		return 0
+	}
 	if jsonOut {
 		printJSON(out)
 	} else {
 		renderVerifyText(m)
 	}
-	switch v, _ := m["verdict"].(string); v {
-	case "incomplete":
+	if failed, _ := m["gateFailure"].(bool); failed {
 		return 1
-	case "review":
-		if hasFlag(args, "--strict") {
-			return 1
-		}
 	}
 	return 0
-}
-
-func hasFlag(args []string, flag string) bool {
-	for _, a := range args {
-		if a == flag {
-			return true
-		}
-	}
-	return false
 }
 
 func renderVerifyText(m map[string]any) {
@@ -341,6 +424,12 @@ func renderVerifyText(m map[string]any) {
 			fmt.Printf("  %v\n", u)
 		}
 	}
+	if advisories := asSliceAny(m["contentAdvisories"]); len(advisories) > 0 {
+		fmt.Printf("\nCONTENT ADVISORIES (%d) — behavior not verified:\n", len(advisories))
+		for _, advisory := range advisories {
+			fmt.Printf("  %v\n", advisory)
+		}
+	}
 
 	if deps := asSliceAny(m["newDependencies"]); len(deps) > 0 {
 		fmt.Println("\ncross-component dependency candidates (all evidence in changed code; no base-graph comparison):")
@@ -378,9 +467,27 @@ func renderVerifyText(m map[string]any) {
 	for _, n := range asSliceAny(m["notes"]) {
 		fmt.Printf("note: %v\n", n)
 	}
+	if tc := asSliceAny(m["testCoverage"]); len(tc) > 0 {
+		fmt.Println("\ntest coverage of changed functions (informational, does not affect verdict):")
+		for _, e := range tc {
+			em, _ := e.(map[string]any)
+			if em == nil {
+				continue
+			}
+			if covered := asSliceAny(em["coveredBy"]); len(covered) > 0 {
+				fmt.Printf("  %v:%v  %v — covered by %d test(s): %v\n", em["file"], em["line"], em["symbol"], len(covered), covered)
+			} else {
+				fmt.Printf("  %v:%v  %v — %v\n", em["file"], em["line"], em["symbol"], em["warning"])
+			}
+		}
+	}
 	switch verdict {
 	case "complete":
-		fmt.Println("\nno missed sites — the diff covers its own blast radius")
+		if len(asSliceAny(m["contentAdvisories"])) > 0 {
+			fmt.Println("\nno missed contract sites identified; content behavior above was not assessed")
+		} else {
+			fmt.Println("\nno missed sites — the diff covers its own blast radius")
+		}
 	case "review":
 		fmt.Println("\nverdict: review — some contract changes could not be verified (--strict exits 1)")
 	}
@@ -525,8 +632,23 @@ func renderCyclesText(m map[string]any) {
 }
 
 func asSliceAny(v any) []any {
-	s, _ := v.([]any)
-	return s
+	switch x := v.(type) {
+	case []any:
+		return x
+	case []map[string]any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = e
+		}
+		return out
+	case []string:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = e
+		}
+		return out
+	}
+	return nil
 }
 
 // kindLine renders a {kind: count} map as "calls 80, imports 7",

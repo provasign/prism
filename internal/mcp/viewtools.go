@@ -12,7 +12,7 @@ import (
 // edges + cycles); prism_cycles is the dispatchable-only detail surface for
 // the CLI. Every induced edge is expandable (from+to params return the full
 // constituent site list) and reports the tier distribution of its
-// constituent evidence — see docs/DESIGN_LAYERED_INTELLIGENCE.md.
+// constituent evidence so every abstract edge remains auditable.
 
 // toolMap builds the component view of the whole indexed graph.
 //

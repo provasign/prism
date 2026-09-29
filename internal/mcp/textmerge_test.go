@@ -34,8 +34,13 @@ func TestMergeTextSearchNoGroveDeliversRawHits(t *testing.T) {
 }
 
 // TestRenderTextMatchesUsesSessionSHA: hits in a file already delivered this
-// session (same content hash) are rendered as line numbers only — never a
-// re-send of text the agent already has.
+// session (same content hash) keep the cached marker — but the MATCHED LINES
+// are never elided. This test used to assert lines-only elision; measured
+// 2026-09-02 (6rqii7zt #39) that shape gave the agent `grove.go: 260
+// [cached]` with no text, it could not tell what matched, and it re-derived
+// the answer with manual grep — the elision cost the call its purpose. The
+// cache saving is skipping before/after context and the file body, never the
+// one-line answers themselves.
 func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 	h := newTestHandler(t)
 	content := "alpha needle\nbeta\ngamma needle\n"
@@ -48,11 +53,11 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 	// Simulate a prior full delivery of seen.txt.
 	h.Session.Record("seen.txt", compression.Hash(content), 10, "full-fresh")
 
-	out := h.renderTextMatches([]textsearch.Hit{
+	out := h.renderTextMatches(t.Context(), []textsearch.Hit{
 		{File: "seen.txt", Line: 1, Text: "alpha needle"},
 		{File: "seen.txt", Line: 3, Text: "gamma needle"},
 		{File: "fresh.txt", Line: 1, Text: "delta needle"},
-	})
+	}, false)
 	if len(out) != 2 {
 		t.Fatalf("got %d file groups, want 2: %v", len(out), out)
 	}
@@ -60,11 +65,17 @@ func TestRenderTextMatchesUsesSessionSHA(t *testing.T) {
 	if seen["file"] != "seen.txt" || seen["cached"] != true {
 		t.Errorf("seen.txt entry should be cached: %v", seen)
 	}
-	if _, hasText := seen["hits"]; hasText {
-		t.Errorf("cached entry must not re-send text: %v", seen)
+	seenHits, ok := seen["hits"].([]map[string]any)
+	if !ok || len(seenHits) != 2 {
+		t.Fatalf("cached entry must still carry both matched lines with text: %v", seen)
 	}
-	if lines, ok := seen["lines"].([]int); !ok || len(lines) != 2 {
-		t.Errorf("cached entry should list both lines: %v", seen)
+	if seenHits[0]["text"] != "alpha needle" || seenHits[1]["text"] != "gamma needle" {
+		t.Errorf("cached entry elided the matched line text: %v", seenHits)
+	}
+	for _, hh := range seenHits {
+		if hh["before"] != nil || hh["after"] != nil {
+			t.Errorf("cached entry should omit context lines (that's the saving): %v", hh)
+		}
 	}
 	hits, ok := fresh["hits"].([]map[string]any)
 	if fresh["file"] != "fresh.txt" || !ok || len(hits) != 1 || hits[0]["text"] != "delta needle" {
@@ -83,7 +94,7 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 			hits = append(hits, textsearch.Hit{File: name, Line: l, Text: "x"})
 		}
 	}
-	out := h.renderTextMatches(hits)
+	out := h.renderTextMatches(t.Context(), hits, false)
 	if len(out) != textRenderFileCap+1 { // cap + omission note
 		t.Fatalf("got %d entries, want %d", len(out), textRenderFileCap+1)
 	}
@@ -94,6 +105,43 @@ func TestRenderTextMatchesCapsFilesAndHits(t *testing.T) {
 	first := out[0]
 	if more, ok := first["moreHits"].(int); !ok || more != 2 {
 		t.Errorf("per-file overflow should be counted: %v", first)
+	}
+
+	// exhaustive=true under exhaustiveFullLineCap: every line, no sample.
+	out = h.renderTextMatches(t.Context(), hits, true)
+	if len(out) != textRenderFileCap+4 { // every file + COMPLETE note
+		t.Fatalf("small exhaustive: got %d entries, want %d", len(out), textRenderFileCap+4)
+	}
+	for _, e := range out[:len(out)-1] {
+		if n := len(anySlice(e["hits"])); n != textRenderHitsPerFile+2 {
+			t.Fatalf("small exhaustive %v: got %d lines, want every one (%d)", e["file"], n, textRenderHitsPerFile+2)
+		}
+	}
+
+	// exhaustive=true over the cap: the files past the render cap are
+	// inventoried, not dropped.
+	perFile := exhaustiveFullLineCap/(textRenderFileCap+3) + 1
+	hits = nil
+	for f := 0; f < textRenderFileCap+3; f++ {
+		name := "f" + string(rune('a'+f)) + ".txt"
+		for l := 1; l <= perFile; l++ {
+			hits = append(hits, textsearch.Hit{File: name, Line: l, Text: "x"})
+		}
+	}
+	out = h.renderTextMatches(t.Context(), hits, true)
+	if len(out) != textRenderFileCap+1 {
+		t.Fatalf("exhaustive: got %d entries, want %d", len(out), textRenderFileCap+1)
+	}
+	last = out[len(out)-1]
+	inventory, ok := last["inventory"].([]map[string]any)
+	if !ok || len(inventory) != textRenderFileCap+3 {
+		t.Fatalf("exhaustive inventory must list all exact files: %v", last)
+	}
+	for _, entry := range inventory {
+		sites := anySlice(entry["sites"])
+		if len(sites) != perFile {
+			t.Fatalf("%v: got %d exact sites, want %d", entry["file"], len(sites), perFile)
+		}
 	}
 }
 
@@ -161,5 +209,30 @@ func TestSourceDeliveryBoundedByGiantLine(t *testing.T) {
 	}
 	if !strings.Contains(out, "dashboard.py") || !strings.Contains(out, "truncated") {
 		t.Error("truncation must name the file and say it happened")
+	}
+}
+
+// TestStructuralNoteSilentWithoutGrove: like every advisory note, it must
+// never fire or error when there is no graph behind it.
+func TestStructuralNoteSilentWithoutGrove(t *testing.T) {
+	h := newTestHandler(t)
+	if n := h.structuralNote(context.Background(), "CacheBase.get"); n != "" {
+		t.Errorf("note must be silent without a graph, got %q", n)
+	}
+}
+
+// TestStructuralNoteSilentOnNonIdentifiers: a regex or phrase is a text
+// question, not a symbol question — resolving it would be noise.
+func TestStructuralNoteSilentOnNonIdentifiers(t *testing.T) {
+	h := newTestHandler(t)
+	for _, q := range []string{
+		"cache\\.get\\(|cache\\.set\\(", // regex alternation
+		"class JSONRPCRequest",          // phrase with space
+		"url = f\"http://",              // string literal
+		"",                              // empty
+	} {
+		if n := h.structuralNote(context.Background(), q); n != "" {
+			t.Errorf("query %q must not produce a structural note, got %q", q, n)
+		}
 	}
 }

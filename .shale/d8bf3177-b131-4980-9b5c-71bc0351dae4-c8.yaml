@@ -1,0 +1,1318 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c8
+created_at: 2026-08-17T00:52:47.929912Z
+finalized_at: 2026-08-17T21:16:16.196779Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/textmerge.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T11:13:27.041707Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T11:14:01.237507Z
+commands:
+    - cmd: |-
+        git add -A && git commit -q -m "docs(steering): regenerate for v0.55.3 (context= row)
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr"
+        git push origin main 2>&1 | tail -3
+      at: 2026-08-17T00:52:47.929912Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && rm -rf /tmp/swebench-wt 2>/dev/null
+        ~/bin/prism version
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-inject5.json --limit 5 \
+          --arms no-prism prism --out runs/swebench-live/context5 --prism ~/bin/prism \
+          > runs/swebench-live/context5.log 2>&1 &
+        echo "pid $!"; sleep 15; head -4 runs/swebench-live/context5.log
+      at: 2026-08-17T00:54:26.908045Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && until ! pgrep -f swebench_ab.py >/dev/null; do sleep 30; done; echo "=== DONE ==="; cat runs/swebench-live/context5.log
+      at: 2026-08-17T01:04:32.934072Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+
+        git_cmds=[]
+        for run in ('v055-full','radius8','inject5','smoke5-v0551','jsontext5','context5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                try: d=json.load(open(f))
+                except Exception: continue
+                for c in d.get('tool_calls',[]):
+                    if c['name']!='Bash': continue
+                    cmd=str(c['input'].get('command',''))
+                    for seg in re.split(r'&&|;', cmd):
+                        seg=seg.strip()
+                        if re.match(r'git\s+(log|show|blame|diff)\b', seg):
+                            git_cmds.append((d['instance_id'],d.get('arm','?'),seg))
+
+        print(f"total git history commands: {len(git_cmds)}\n")
+        cat=collections.Counter()
+        for tid,arm,cmd in git_cmds:
+            if re.search(r'log\s+.*--all|log\s+.*--grep|log\s+--oneline\s+-i',cmd): k='search ALL history / grep commit messages'
+            elif re.search(r'show\s+[0-9a-f]{6,}',cmd) and '--stat' not in cmd and '-- ' not in cmd: k='show one commit, full diff (no path)'
+            elif re.search(r'show\s+[0-9a-f]{6,}.*--stat',cmd): k='show one commit, stat only'
+            elif re.search(r'show\s+[0-9a-f]{6,}.*-- ',cmd): k='show one commit, path-scoped diff'
+            elif re.search(r'log\s+.*--oneline.*-- \S',cmd) or re.search(r'log\s+.*-- \S.*--oneline',cmd): k='log for ONE FILE (history of this file)'
+            elif re.search(r'log\s+--oneline\s+-\d+\s*$|log\s+--oneline\s*$',cmd): k='log, no path (general orientation)'
+            elif re.search(r'blame',cmd): k='blame'
+            elif re.search(r'log\s+--all',cmd): k='log --all (broad)'
+            else: k='other/log variant'
+            cat[k]+=1
+        for k,v in cat.most_common(): print(f"  {v:3}  {k}")
+        print()
+        print("=== examples of each ===")
+        seen=set()
+        for tid,arm,cmd in git_cmds:
+            print(f"  [{tid[:22]:22}] {cmd[:100]}")
+        PY
+      at: 2026-08-17T01:07:41.349471Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re,collections
+
+        rows=[]
+        for run in ('v055-full','radius8','inject5','smoke5-v0551','jsontext5','context5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                try: d=json.load(open(f))
+                except Exception: continue
+                for c in d.get('tool_calls',[]):
+                    if c['name']!='Bash': continue
+                    cmd=str(c['input'].get('command',''))
+                    for seg in re.split(r'&&|;', cmd):
+                        seg=seg.strip()
+                        if re.match(r'git\s+diff(\s|$)', seg) and not re.search(r'\bdiff\s+[0-9a-f]{6,}', seg):
+                            continue  # self-check of the agent's own uncommitted edit, not history
+                        if re.match(r'git\s+(log|show|blame|diff-tree)\b', seg):
+                            rows.append((d['instance_id'], d.get('arm','?'), seg))
+
+        by_cell = collections.Counter(tid for tid,_,_ in rows)
+        print(f"TRUE history commands (git diff-vs-self excluded): {len(rows)}\n")
+        print("by cell:")
+        for tid,n in by_cell.most_common(10):
+            print(f"  {n:3}  {tid}")
+        outlier = 'astronomer__dag-factory-544'
+        rest = [r for r in rows if r[0] != outlier]
+        print(f"\ndag-factory-544 alone: {sum(1 for r in rows if r[0]==outlier)}")
+        print(f"everything else, {len({r[0] for r in rest})} cells: {len(rest)}")
+        PY
+      at: 2026-08-17T01:08:04.290817Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "FINISHED"; cat runs/swebench-live/context5.log
+      at: 2026-08-17T01:12:58.598088Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && until ! pgrep -f swebench_ab.py >/dev/null; do sleep 20; done; echo "=== DONE ==="; tail -4 runs/swebench-live/context5.log
+      at: 2026-08-17T01:23:05.490137Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "FINISHED"; cat runs/swebench-live/context5.log
+      at: 2026-08-17T01:34:09.107097Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/context5 --all 2>&1 | tail -100
+      at: 2026-08-17T01:38:42.711861Z
+      classified: other
+    - cmd: |-
+        grep -n '"--model"' /Users/tapabratapal/Projects/provasign/research/harness/swebench_ab.py | head -3
+        claude -p "reply with exactly: OK" --model haiku --output-format stream-json --verbose 2>&1 | grep -o '"model":"[^"]*"' | head -2
+      at: 2026-08-17T01:51:44.708349Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && rm -rf /tmp/swebench-wt 2>/dev/null
+        ~/bin/prism version
+        nohup python3 swebench_ab.py --tasks runs/swebench-live/slice-inject5.json --limit 5 \
+          --arms no-prism prism --out runs/swebench-live/haiku5 --prism ~/bin/prism --model haiku \
+          > runs/swebench-live/haiku5.log 2>&1 &
+        echo "pid $!"; sleep 20; head -6 runs/swebench-live/haiku5.log
+      at: 2026-08-17T01:52:11.746942Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -f swebench_ab.py >/dev/null && echo "RUNNING" || echo "STOPPED"; cat runs/swebench-live/haiku5.log
+      at: 2026-08-17T02:17:12.115952Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && until ! pgrep -f swebench_ab.py >/dev/null; do sleep 30; done; echo "=== DONE ==="; cat runs/swebench-live/haiku5.log
+      at: 2026-08-17T02:24:19.106093Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/haiku5 --all 2>&1 | tail -110
+      at: 2026-08-17T02:29:11.660709Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,statistics
+        d=json.load(open('runs/swebench-live/haiku5/scored.json'))
+        print(f"{'cell':38}{'files':>6}{'base':>10}{'prism':>10}{'Δturns':>8}{'Δcost':>8}  used")
+        for r in sorted(d,[REDACTED:env-secret] x:x['gold_files']):
+            a,b=r['arms']['no-prism'],r['arms']['prism']
+            v=lambda x:{True:'RESOLVED',False:'no',None:'err'}[x['resolved']]
+            print(f"{r['instance_id'][:38]:38}{r['gold_files']:6}{v(a):>10}{v(b):>10}{b['turns']-a['turns']:+8}{b['cost']-a['cost']:+8.2f}  {b['prism_used']}")
+        rb=sum(1 for r in d if r['arms']['no-prism']['resolved']); rp=sum(1 for r in d if r['arms']['prism']['resolved'])
+        print(f"\nRESOLVE  baseline {rb}/5   prism {rp}/5   ADOPTION {sum(1 for r in d if r['arms']['prism']['prism_used'])}/5")
+        eq=[r for r in d if r['arms']['no-prism']['resolved']==r['arms']['prism']['resolved']]
+        dc=[r['arms']['prism']['cost']-r['arms']['no-prism']['cost'] for r in eq]
+        dt=[r['arms']['prism']['turns']-r['arms']['no-prism']['turns'] for r in eq]
+        print(f"median Δcost {statistics.median(dc):+.3f}   median Δturns {statistics.median(dt):+.1f}")
+        print(f"mean   Δcost {statistics.mean(dc):+.3f}   mean   Δturns {statistics.mean(dt):+.1f}")
+        print(f"denials: base {sum(r['arms']['no-prism']['behaviour']['denials'] for r in d)}  prism {sum(r['arms']['prism']['behaviour']['denials'] for r in d)}")
+        # n_run anomaly check
+        for r in d:
+            p=r['arms']['prism']['score']; b=r['arms']['no-prism']['score']
+            if p.get('n_run')==0:
+                print(f"\nNOTE {r['instance_id']}: prism arm n_run=0 (collection error) vs baseline n_run={b.get('n_run')}")
+        PY
+      at: 2026-08-17T02:29:27.218222Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json
+        d=json.load(open('runs/swebench-live/haiku5/astronomer__dag-factory-544.prism.json'))
+        p=d['model_patch']
+        print("patch length:", len(p))
+        print(p[:2500])
+        PY
+      at: 2026-08-17T02:29:34.070052Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,sys,tempfile,subprocess,os
+        sys.path.insert(0,'.')
+        import docker_eval as de
+        de.CLONE_ROOT=__import__('pathlib').Path.home()/'.cache/prism-research/swebench-repos'
+        t=[x for x in json.load(open('runs/swebench-live/slice-inject5.json')) if x['instance_id']=='astronomer__dag-factory-544'][0]
+        d=json.load(open('runs/swebench-live/haiku5/astronomer__dag-factory-544.prism.json'))
+        repo=de._repo_dir(t)
+        wt=tempfile.mkdtemp()
+        subprocess.run(['git','-C',str(repo),'worktree','add','--force','--detach',str(wt),t['base_commit']],capture_output=True)
+        for p in (t['test_patch'], d['model_patch']):
+            (__import__('pathlib').Path(wt)/'.p.diff').write_text(p)
+            subprocess.run(['git','-C',wt,'apply','--3way','.p.diff'],capture_output=True,text=True)
+        r=subprocess.run(['python3','-m','pytest','tests/test_telemetry.py','--collect-only','-q'],cwd=wt,capture_output=True,text=True)
+        print(r.stdout[-1500:]); print(r.stderr[-800:])
+        PY
+      at: 2026-08-17T02:29:47.951388Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,re,collections
+
+        def kind(c):
+            n=c['name']
+            if n.startswith('mcp__prism'): return n.replace('mcp__prism__prism_','prism.')
+            if n in ('Read','Edit','Write','Glob','Grep','MultiEdit'): return n
+            cmd=str(c['input'].get('command',''))
+            if re.search(r'\b(pytest|tox|unittest)\b',cmd): return 'TEST'
+            if re.search(r'(?:^|[\s;&|(])(grep|rg|ag|find)\b',cmd): return 'grep'
+            if re.search(r'(?:^|[\s;&|(])(cat|sed|head|tail|less|nl)\b',cmd): return 'read-sh'
+            if re.search(r'(?:^|[\s;&|(])git\b',cmd): return 'git'
+            if re.search(r'python3?\s+-c|<<',cmd): return 'repro'
+            if re.search(r'\b(pip|uv|venv|which|ls)\b',cmd): return 'env'
+            return 'sh-other'
+
+        for arm in ('no-prism','prism'):
+            flat=[]
+            for f in sorted(__import__('glob').glob(f'runs/swebench-live/haiku5/*.{arm}.json')):
+                d=json.load(open(f))
+                flat += [kind(c) for c in d['tool_calls']]
+            n=len(flat)
+            print(f"\n{arm} — {n} total actions")
+            for k,v in collections.Counter(flat).most_common():
+                print(f"  {k:10} {v:4}  {v/n:5.1%}")
+        PY
+      at: 2026-08-17T03:21:45.639316Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,re,glob,collections
+        grep_cmds=[]
+        for f in glob.glob('runs/swebench-live/haiku5/*.prism.json'):
+            d=json.load(open(f))
+            for c in d['tool_calls']:
+                if c['name']=='Bash':
+                    cmd=str(c['input'].get('command',''))
+                    for seg in re.split(r'&&|;',cmd):
+                        seg=seg.strip()
+                        if re.match(r'(?:grep|rg)\b',seg):
+                            grep_cmds.append((d['instance_id'],seg))
+        print(f"{len(grep_cmds)} raw grep/rg calls in the PRISM arm\n")
+        for tid,cmd in grep_cmds[:25]:
+            print(f"  [{tid[:24]:24}] {cmd[:100]}")
+
+        # could prism_search have served each one? classify: bare identifier/pattern vs
+        # something with shell-specific power (pipes, -A/-B/-C, multiple files explicit)
+        cap=collections.Counter()
+        for tid,cmd in grep_cmds:
+            if re.search(r'-[ABC]\s*\d+',cmd): cap['uses -A/-B/-C context']+=1
+            elif '|' in cmd: cap['piped into another command']+=1
+            elif re.search(r'-l\b',cmd): cap['files-only (-l)']+=1
+            else: cap['plain pattern search — prism_search could serve']+=1
+        print()
+        for k,v in cap.most_common(): print(f"  {v:3}  {k}")
+        PY
+      at: 2026-08-17T03:21:59.938962Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,re,glob,collections
+        grep_cmds=[]
+        for f in glob.glob('runs/swebench-live/haiku5/*.prism.json'):
+            d=json.load(open(f))
+            for c in d['tool_calls']:
+                if c['name']=='Bash':
+                    cmd=str(c['input'].get('command',''))
+                    for seg in re.split(r'&&|;',cmd):
+                        seg=seg.strip()
+                        if re.match(r'(?:grep|rg)\b',seg):
+                            grep_cmds.append(seg)
+
+        cap=collections.Counter()
+        for cmd in grep_cmds:
+            if re.search(r'grep\s+-v',cmd): cap['negative filter (grep -v) — real gap, prism_search has no exclude']+=1
+            elif re.search(r'-[ABC]\s*\d+',cmd): cap['context (-A/-B/-C) — NOW covered by context= (v0.55.3)']+=1
+            else: cap['plain pattern / alternation / glob / regex — already fully covered']+=1
+        for k,v in cap.most_common(): print(f"  {v:3}  {k}")
+        print(f"\n  total: {len(grep_cmds)}")
+        PY
+      at: 2026-08-17T03:22:30.821811Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,difflib
+        for f in sorted(glob.glob('runs/swebench-live/haiku5/*.prism.json')):
+            d=json.load(open(f))
+            cmds=[str(c['input'].get('command','')) for c in d['tool_calls'] if c['name']=='Bash']
+            i=0
+            while i < len(cmds)-1:
+                j=i
+                while j+1<len(cmds) and difflib.SequenceMatcher(None,cmds[j],cmds[j+1]).ratio()>=0.8: j+=1
+                if j>i:
+                    print(f"\n[{d['instance_id'][:30]}] retry run of {j-i+1}:")
+                    for k in range(i,j+1): print(f"   {cmds[k][:100]}")
+                    i=j+1
+                else: i+=1
+        PY
+      at: 2026-08-17T03:22:40.96499Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re
+
+        def py_retries(cmds):
+            n=0
+            for i in range(len(cmds)-1):
+                a,b=cmds[i],cmds[i+1]
+                if re.match(r'^python\s',a) and re.match(r'^python3\s',b) and a[6:]==b[7:]:
+                    n+=1
+            return n
+
+        total_haiku=0; total_opus=0
+        for run in ('haiku5',):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                d=json.load(open(f))
+                cmds=[str(c['input'].get('command','')) for c in d['tool_calls'] if c['name']=='Bash']
+                n=py_retries(cmds)
+                total_haiku+=n
+                if n: print(f"  {run:10} {d['instance_id'][:32]:32} {d['arm']:9} {n} python->python3 retries")
+
+        for run in ('v055-full','radius8','inject5','smoke5-v0551','jsontext5','context5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                d=json.load(open(f))
+                cmds=[str(c['input'].get('command','')) for c in d['tool_calls'] if c['name']=='Bash']
+                total_opus+=py_retries(cmds)
+
+        print(f"\nHaiku run total: {total_haiku} wasted turns (exact command retried verbatim, python->python3)")
+        print(f"All Opus runs combined total: {total_opus} wasted turns")
+        PY
+      at: 2026-08-17T03:22:57.408569Z
+      classified: other
+    - cmd: |
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls *.py *.json 2>/dev/null | head -30 && echo "---" && python3 -c "
+        import json
+        for f in ['dataset.json','cells.json','pool.json']:
+            try:
+                d=json.load(open(f))
+                print(f, len(d))
+            except Exception as e:
+                print(f, 'no:', e)
+        "
+      at: 2026-08-17T04:00:59.995001Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls swebench_ab.py bed*.json 2>/dev/null; grep -n "def main\|argparse\|--n\|--count\|dataset\|bed_path\|BED\|pool" swebench_ab.py | head -60
+      at: 2026-08-17T04:01:02.710319Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,40p;640,760p' swebench_ab.py
+      at: 2026-08-17T04:01:04.628381Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls -la *.json | grep -iE "task|slice|bed" ; echo "---"; for f in $(ls *.json 2>/dev/null | grep -iE "task|slice|bed"); do python3 -c "
+        import json
+        try:
+            d=json.load(open('$f'))
+            print('$f', len(d) if isinstance(d,list) else 'not list')
+        except Exception as e:
+            print('$f','ERR',e)
+        "; done
+      at: 2026-08-17T04:01:10.663105Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && find . -iname "*task*.json" -o -iname "*slice*.json" 2>/dev/null | grep -v runs/ | head -30
+        echo "---history---"
+        grep -rn "swebench_ab.py" ~/.zsh_history 2>/dev/null | tail -20
+        echo "---readme---"
+        find . -iname "*.md" | xargs grep -l "swebench_live\|swebench-live" 2>/dev/null | head -5
+      at: 2026-08-17T04:01:14.68565Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls runs/swebench-live/ && echo "---slice---" && python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/slice-ab38.json'))
+        print('slice-ab38.json:', len(d), 'tasks')
+        "
+        echo "---phase1---"
+        ls runs/swebench-live/phase1/
+        python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/phase1/valid-instances.json'))
+        print('valid-instances.json:', len(d))
+        "
+      at: 2026-08-17T04:01:22.703595Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 audit_bed.py runs/swebench-live/slice-ab38.json --wt; echo "audit exit=$?"
+        echo "---"
+        python3 -m pytest test_swebench_ab.py -q 2>&1 | tail -20
+      at: 2026-08-17T04:01:28.342924Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p runs/swebench-live/full38 && nohup python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-ab38.json --limit 38 \
+          --arms baseline prism --out runs/swebench-live/full38 \
+          --prism ~/bin/prism --model opus \
+          > runs/swebench-live/full38.log 2>&1 &
+        echo "launched pid $!"
+      at: 2026-08-17T04:01:33.167973Z
+      classified: other
+    - cmd: tail -80 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/tasks/b2uh2ev5q.output
+      at: 2026-08-17T04:01:36.275673Z
+      classified: other
+    - cmd: |-
+        ps -p 42453 -o pid,etime,command 2>/dev/null || echo "not running"
+        echo "---log---"
+        tail -30 /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/full38.log
+        echo "---cells so far---"
+        ls /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/full38/*.json 2>/dev/null | wc -l
+      at: 2026-08-17T04:01:43.737532Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        ps -p 42453 -o pid,etime,command 2>/dev/null || echo "PROCESS NOT RUNNING"
+        echo "---tail of log---"
+        tail -20 runs/swebench-live/full38.log
+        echo "---cells completed---"
+        ls runs/swebench-live/full38/*.json 2>/dev/null | grep -v provenance | wc -l
+        echo "---by arm---"
+        ls runs/swebench-live/full38/*.baseline.json 2>/dev/null | wc -l
+        ls runs/swebench-live/full38/*.prism.json 2>/dev/null | wc -l
+      at: 2026-08-17T05:15:22.590339Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        ps -p 42453 -o pid,etime,command 2>/dev/null || echo "PROCESS NOT RUNNING"
+        echo "---tail of log---"
+        tail -15 runs/swebench-live/full38.log
+        echo "---cells completed---"
+        ls runs/swebench-live/full38/*.json 2>/dev/null | grep -v provenance | wc -l
+        ls runs/swebench-live/full38/*.baseline.json 2>/dev/null | wc -l
+        ls runs/swebench-live/full38/*.prism.json 2>/dev/null | wc -l
+      at: 2026-08-17T06:33:30.111797Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        ps -p 42453 -o pid,etime,command 2>/dev/null || echo "PROCESS NOT RUNNING"
+        echo "---tail of log---"
+        tail -20 runs/swebench-live/full38.log
+        echo "---cells completed---"
+        ls runs/swebench-live/full38/*.json 2>/dev/null | grep -v provenance | wc -l
+        ls runs/swebench-live/full38/*.baseline.json 2>/dev/null | wc -l
+        ls runs/swebench-live/full38/*.prism.json 2>/dev/null | wc -l
+        ls runs/swebench-live/full38/*.predictions.jsonl 2>/dev/null
+      at: 2026-08-17T10:28:29.803176Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "def main\|argparse\|def score_official\|^def \|--predictions\|--out" docker_eval.py | head -40
+      at: 2026-08-17T10:28:33.938052Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls *.py | xargs grep -l "score_official" 2>/dev/null
+        echo "---"
+        grep -n "score_official\|predictions.jsonl\|def main\|argparse" score_swebench_live.py 2>/dev/null | head -30 || ls score*.py
+      at: 2026-08-17T10:28:37.819602Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '1,80p' score_cell.py | head -80
+      at: 2026-08-17T10:28:39.80348Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/full38 --help 2>&1 | head -20
+      at: 2026-08-17T10:28:44.965482Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '280,385p' score_cell.py
+      at: 2026-08-17T10:28:47.796506Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n '150,280p' score_cell.py
+      at: 2026-08-17T10:28:52.276679Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "no-prism\|baseline" score_cell.py
+      at: 2026-08-17T10:28:58.011582Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -i '' 's/"no-prism"/"baseline"/g' score_cell.py && grep -n "no-prism\|baseline" score_cell.py
+      at: 2026-08-17T10:29:07.826327Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 score_cell.py runs/swebench-live/full38 --all --official --slice runs/swebench-live/slice-ab38.json \
+          > runs/swebench-live/full38.scored.log 2>&1 &
+        echo "launched pid $!"
+      at: 2026-08-17T10:29:19.788702Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "score_cell.py" || echo "not running"
+        tail -30 runs/swebench-live/full38.scored.log
+      at: 2026-08-17T10:29:22.245307Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "score_cell.py" || echo "not running"
+        echo "---"
+        tail -40 runs/swebench-live/full38.scored.log
+        wc -l runs/swebench-live/full38.scored.log
+      at: 2026-08-17T10:29:27.72977Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        ls -la runs/swebench-live/full38/scored.json 2>/dev/null && python3 -c "
+        import json
+        d=json.load(open('runs/swebench-live/full38/scored.json'))
+        print('cells scored so far:', len(d))
+        for r in d:
+            print(r['instance_id'], {a: r['arms'][a]['resolved'] for a in r['arms']})
+        " || echo "no scored.json yet"
+        echo "---docker ps---"
+        docker ps --format "{{.Image}} {{.Status}}" 2>/dev/null | head -5
+      at: 2026-08-17T10:29:36.286554Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && tail -60 runs/swebench-live/full38.scored.log
+      at: 2026-08-17T10:31:29.837807Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        echo "--- voided cell contamination detail ---"
+        grep -A5 "open-telemetry" runs/swebench-live/full38.scored.log | head -20
+        echo "--- denials totals across all cells ---"
+        python3 -c "
+        import json
+        d = json.load(open('runs/swebench-live/full38/scored.json'))
+        tot = {}
+        for r in d:
+            for a,x in r['arms'].items():
+                tot.setdefault(a, []).append(x['behaviour']['denials'])
+        for a,v in tot.items():
+            print(a, 'total denials', sum(v), 'cells with denials>0:', sum(1 for x in v if x>0), '/', len(v))
+        "
+        echo "--- overall resolve rate incl adoption ---"
+        python3 -c "
+        import json
+        d = json.load(open('runs/swebench-live/full38/scored.json'))
+        clean = [r for r in d if not any(x['score'].get('voided') for x in r['arms'].values())]
+        print('clean cells:', len(clean))
+        adopt = sum(1 for r in clean if r['arms']['prism']['prism_used'])
+        print('prism_used:', adopt, '/', len(clean))
+        "
+      at: 2026-08-17T10:31:38.204783Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        r = json.load(open('runs/swebench-live/full38/a2aproject__a2a-python-279.prism.json'))
+        print('fields:', sorted(r.keys()))
+        tc = r['tool_calls'][0]
+        print('tool_call fields:', sorted(tc.keys()))
+        print('n tool_calls:', len(r['tool_calls']))
+        "
+      at: 2026-08-17T10:38:35.960212Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, glob, collections
+
+        # 1) What is the graph actually being ASKED? Classify every prism call across all 38 prism cells.
+        kinds = collections.Counter()
+        text_scope = 0; sym_scope = 0
+        graph_calls = []   # change_impact / lookup / query / references / verify — graph-native
+        for f in sorted(glob.glob('runs/swebench-live/full38/*.prism.json')):
+            r = json.load(open(f))
+            for c in r['tool_calls']:
+                if not c['name'].startswith('mcp__prism'): continue
+                k = c['name'].replace('mcp__prism__prism_','')
+                kinds[k] += 1
+                if k == 'search':
+                    sc = c['input'].get('scope','')
+                    if sc == 'text': text_scope += 1
+                    else: sym_scope += 1
+                if k in ('change_impact','lookup','query','references','node','verify'):
+                    graph_calls.append((r['instance_id'], k, json.dumps(c['input'])[:90]))
+
+        total = sum(kinds.values())
+        print(f"ALL prism calls across 38 prism cells: {total}")
+        for k,v in kinds.most_common():
+            print(f"  {k:15} {v:4}  ({v/total:.0%})")
+        print(f"\nprism_search scope: text={text_scope}, default/symbols={sym_scope}")
+        print(f"\nGRAPH-native calls (the part grep cannot do): {len(graph_calls)}")
+        for ic in graph_calls: print("  ", *ic)
+        PY
+      at: 2026-08-17T10:38:47.15841Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, glob, collections, statistics
+
+        pairs = {}
+        for f in glob.glob('runs/swebench-live/full38/*.json'):
+            if 'provenance' in f or 'scored' in f or 'predictions' in f: continue
+            r = json.load(open(f))
+            pairs.setdefault(r['instance_id'], {})[r['arm']] = r
+
+        # 2) TOKEN ECONOMICS: paired deltas of fresh / cache_read / out, and dose-response vs prism call count
+        dfresh, dcache, dout, dcost, dturns = [], [], [], [], []
+        dose = []
+        for tid, p in pairs.items():
+            if 'baseline' not in p or 'prism' not in p: continue
+            b, pr = p['baseline'], p['prism']
+            dfresh.append(pr['fresh_input_tokens'] - b['fresh_input_tokens'])
+            dcache.append(pr['cache_read_tokens'] - b['cache_read_tokens'])
+            dout.append(pr['output_tokens'] - b['output_tokens'])
+            dcost.append(pr['cost_usd'] - b['cost_usd'])
+            dturns.append(pr['turns'] - b['turns'])
+            n_prism = sum(1 for c in pr['tool_calls'] if c['name'].startswith('mcp__prism'))
+            dose.append((n_prism, pr['cost_usd'] - b['cost_usd'], pr['turns'] - b['turns']))
+
+        med = statistics.median
+        print("PAIRED DELTAS (prism - baseline), n =", len(dfresh))
+        print(f"  fresh_in : median {med(dfresh):+8.0f}   mean {statistics.mean(dfresh):+8.0f}")
+        print(f"  cache_rd : median {med(dcache):+8.0f}   mean {statistics.mean(dcache):+8.0f}")
+        print(f"  out      : median {med(dout):+8.0f}   mean {statistics.mean(dout):+8.0f}")
+        print(f"  cost     : median {med(dcost):+8.3f}   mean {statistics.mean(dcost):+8.3f}")
+        print(f"  turns    : median {med(dturns):+8.1f}   mean {statistics.mean(dturns):+8.1f}")
+
+        # dose-response: does MORE prism use correlate with cheaper or costlier?
+        dose.sort()
+        lo = [d for n,d,t in dose if n <= 3]; hi = [d for n,d,t in dose if n >= 8]
+        lot = [t for n,d,t in dose if n <= 3]; hit = [t for n,d,t in dose if n >= 8]
+        print(f"\nDOSE-RESPONSE: prism calls <=3: n={len(lo)}, med dcost {med(lo):+.3f}, med dturns {med(lot):+.1f}")
+        print(f"               prism calls >=8: n={len(hi)}, med dcost {med(hi):+.3f}, med dturns {med(hit):+.1f}")
+
+        # What's the FIXED overhead? cells where prism arm made ZERO prism calls
+        zero = [(tid, p['prism']['fresh_input_tokens']-p['baseline']['fresh_input_tokens'],
+                 p['prism']['cost_usd']-p['baseline']['cost_usd'])
+                for tid,p in pairs.items()
+                if 'prism' in p and 'baseline' in p
+                and not any(c['name'].startswith('mcp__prism') for c in p['prism']['tool_calls'])]
+        print(f"\nZERO-ADOPTION cells (pure overhead measurement): n={len(zero)}")
+        for tid, df, dc in zero: print(f"  {tid[:45]:45} dfresh={df:+7} dcost={dc:+.3f}")
+        PY
+      at: 2026-08-17T10:39:14.253474Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, glob, re, collections, statistics
+
+        pairs = {}
+        for f in glob.glob('runs/swebench-live/full38/*.json'):
+            if 'provenance' in f or 'scored' in f or 'predictions' in f: continue
+            r = json.load(open(f))
+            pairs.setdefault(r['instance_id'], {})[r['arm']] = r
+
+        def read_targets(rec):
+            """Every file-read event: (kind, file). Native Read, prism_read, bash cat/sed-n/head/tail."""
+            ev = []
+            for c in rec['tool_calls']:
+                if c['name'] == 'Read':
+                    ev.append(('Read', c['input'].get('file_path','')))
+                elif c['name'] == 'mcp__prism__prism_read':
+                    ev.append(('prism_read', c['input'].get('file','')))
+                elif c['name'] == 'Bash':
+                    cmd = str(c['input'].get('command',''))
+                    m = re.findall(r'(?:cat|sed -n [^ ]+ ?p?|head [^|>]*|tail [^|>]*)\s+([\w./-]+\.\w+)', cmd)
+                    for f2 in m: ev.append(('bash', f2))
+            return ev
+
+        def norm(p): return p.split('/')[-1] if p else p  # worktree prefixes differ; match on basename+parent
+        def norm2(p):
+            parts = p.strip('/').split('/')
+            return '/'.join(parts[-2:]) if len(parts)>=2 else p
+
+        # 3) RE-READ HEADROOM in baseline: how many read events hit a file already read this cell?
+        rr_events_b, rr_events_p, dup_prism_native = [], [], []
+        for tid,p in pairs.items():
+            if 'baseline' not in p or 'prism' not in p: continue
+            for arm, sink in (('baseline', rr_events_b), ('prism', rr_events_p)):
+                seen = collections.Counter()
+                rr = 0
+                for kind, f in read_targets(p[arm]):
+                    key = norm2(f)
+                    if seen[key]: rr += 1
+                    seen[key] += 1
+                sink.append(rr)
+            # 4) duplication inside prism arm: same file via prism_read AND native path
+            pr_files = {norm2(f) for k,f in read_targets(p['prism']) if k=='prism_read'}
+            nat_files = {norm2(f) for k,f in read_targets(p['prism']) if k!='prism_read'}
+            dup_prism_native.append(len(pr_files & nat_files))
+
+        print("RE-READ EVENTS per cell (same file read again, any tool):")
+        print(f"  baseline: median {statistics.median(rr_events_b)}, mean {statistics.mean(rr_events_b):.1f}, total {sum(rr_events_b)}")
+        print(f"  prism   : median {statistics.median(rr_events_p)}, mean {statistics.mean(rr_events_p):.1f}, total {sum(rr_events_p)}")
+        print(f"\nDUPLICATION in prism arm (same file read via prism_read AND native Read/cat):")
+        print(f"  median {statistics.median(dup_prism_native)}, mean {statistics.mean(dup_prism_native):.1f}, cells with >=1: {sum(1 for x in dup_prism_native if x)}/{len(dup_prism_native)}")
+
+        # 5) LOCALIZATION vs IMPLEMENTATION on failures: did failed cells still edit the gold files?
+        slice_tasks = {t['instance_id']: t for t in json.load(open('runs/swebench-live/slice-ab38.json'))}
+        scored = {r['instance_id']: r for r in json.load(open('runs/swebench-live/full38/scored.json'))}
+        def patch_files(patch):
+            return set(re.findall(r'^\+\+\+ b/(.+)$', patch, re.M))
+        loc_ok = collections.Counter(); loc_n = collections.Counter()
+        for tid, sc in scored.items():
+            gold = patch_files(slice_tasks[tid].get('patch') or slice_tasks[tid].get('gold_patch',''))
+            gold_code = {g for g in gold if not g.startswith('test') and '/test' not in g and 'CHANGELOG' not in g}
+            if not gold_code: continue
+            for arm in ('baseline','prism'):
+                x = sc['arms'][arm]
+                if x['resolved'] is not False: continue   # only FAILED, scored cells
+                agent = patch_files(pairs[tid][arm]['model_patch'])
+                loc_n[arm] += 1
+                if gold_code & agent: loc_ok[arm] += 1
+        print(f"\nFAILED cells where the agent still edited >=1 gold code file (localization succeeded, fix wrong):")
+        for arm in ('baseline','prism'):
+            print(f"  {arm:9}: {loc_ok[arm]}/{loc_n[arm]}")
+        PY
+      at: 2026-08-17T10:40:05.995497Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        # Pick a heavy-prism-use cell to replay: list cells by prism call count with repo info
+        import json, glob
+        rows=[]
+        for f in glob.glob('runs/swebench-live/full38/*.prism.json'):
+            r=json.load(open(f))
+            n=sum(1 for c in r['tool_calls'] if c['name'].startswith('mcp__prism'))
+            rows.append((n, r['instance_id']))
+        rows.sort(reverse=True)
+        for n,t in rows[:8]: print(n,t)
+        tasks={t['instance_id']:t for t in json.load(open('runs/swebench-live/slice-ab38.json'))}
+        print()
+        for n,t in rows[:3]:
+            print(t, tasks[t]['repo'], tasks[t]['base_commit'][:10])
+        PY
+        echo "---"
+        ls ~/.cache/prism-research/swebench-repos/ | head -40
+      at: 2026-08-17T10:40:30.469896Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        mkdir -p $SCRATCH/replay
+        cd ~/.cache/prism-research/swebench-repos/IBM__mcp-context-forge
+        git worktree add --detach $SCRATCH/replay/forge 4089d82159 2>&1 | tail -1
+        cd $SCRATCH/replay/forge && ~/bin/prism index . 2>&1 | tail -2
+      at: 2026-08-17T10:40:39.52488Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, subprocess, shlex, os
+
+        WT = '/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/replay/forge'
+        PRISM = os.path.expanduser('~/bin/prism')
+        rec = json.load(open('runs/swebench-live/full38/IBM__mcp-context-forge-562.prism.json'))
+
+        def sz(cmd_list, timeout=60):
+            try:
+                r = subprocess.run(cmd_list, cwd=WT, capture_output=True, timeout=timeout)
+                return len(r.stdout)
+            except Exception as e:
+                return -1
+
+        print(f"{'call':60} {'prism_B':>8} {'native_B':>9}")
+        tot_p = tot_n = 0
+        for c in rec['tool_calls']:
+            name = c['name']
+            if not name.startswith('mcp__prism'): continue
+            i = c['input']
+            if name.endswith('prism_read'):
+                f = i['file']; off = i.get('offset'); lim = i.get('limit')
+                pc = [PRISM, 'read', f, '--format','text']
+                if off: pc += ['--offset', str(off)]
+                if lim: pc += ['--limit', str(lim)]
+                pb = sz(pc)
+                # native Read equivalent: the raw lines + "  N\t" prefix overhead (~7B/line)
+                try:
+                    lines = open(os.path.join(WT,f), errors='replace').read().splitlines()
+                    if off: chunk = lines[off-1:off-1+(lim or 2000)]
+                    else: chunk = lines[:2000]
+                    nb = sum(len(l)+8 for l in chunk)
+                except Exception: nb = -1
+                label = f"read {f.split('/')[-1]} off={off} lim={lim}"
+            elif name.endswith('prism_search'):
+                q = i['query']; qs = q if isinstance(q, list) else [q]
+                pc = [PRISM, 'search'] + qs + ['--format','text']
+                if i.get('scope'): pc += ['--scope', i['scope']]
+                if i.get('path'):
+                    p = i['path']; pc += ['--path'] + (p if isinstance(p,list) else [p])
+                if i.get('exhaustive'): pc += ['--exhaustive']
+                pb = sz(pc)
+                # native equivalent: grep -rn each term (over path if given)
+                nb = 0
+                for term in qs:
+                    gp = i.get('path'); target = (gp if isinstance(gp,str) else gp[0]) if gp else '.'
+                    r = subprocess.run(['grep','-rn','--include=*.py','-e',term,target], cwd=WT, capture_output=True, timeout=60)
+                    nb += len(r.stdout)
+                label = f"search {str(qs)[:40]} scope={i.get('scope','def')}"
+            else:
+                continue
+            tot_p += max(pb,0); tot_n += max(nb,0)
+            print(f"{label:60} {pb:8} {nb:9}")
+        print(f"\nTOTALS: prism {tot_p:,} B   native-equivalent {tot_n:,} B   ratio {tot_p/max(tot_n,1):.2f}x")
+        PY
+      at: 2026-08-17T10:40:57.645989Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, glob, re, collections
+
+        pairs = {}
+        for f in glob.glob('runs/swebench-live/full38/*.json'):
+            if 'provenance' in f or 'scored' in f or 'predictions' in f: continue
+            r = json.load(open(f))
+            pairs.setdefault(r['instance_id'], {})[r['arm']] = r
+        slice_tasks = {t['instance_id']: t for t in json.load(open('runs/swebench-live/slice-ab38.json'))}
+        scored = {r['instance_id']: r for r in json.load(open('runs/swebench-live/full38/scored.json'))}
+
+        def pfiles(patch): return set(re.findall(r'^\+\+\+ b/(.+)$', patch, re.M))
+        def code(fs): return {f for f in fs if 'test' not in f.lower() and 'CHANGELOG' not in f and not f.endswith('.md')}
+
+        print("FAILED cells on multi-file gold patches: did the agent edit ALL gold code files, or miss some?")
+        print(f"{'cell':48} {'arm':9} {'gold':>4} {'hit':>4} missed")
+        miss_count = collections.Counter(); n_multi = collections.Counter()
+        for tid, sc in scored.items():
+            gold = code(pfiles(slice_tasks[tid].get('patch') or slice_tasks[tid].get('gold_patch','')))
+            if len(gold) < 2: continue
+            for arm in ('baseline','prism'):
+                if sc['arms'][arm]['resolved'] is not False: continue
+                agent = pfiles(pairs[tid][arm]['model_patch'])
+                missed = gold - agent
+                n_multi[arm] += 1
+                if missed: miss_count[arm] += 1
+                print(f"{tid[:48]:48} {arm:9} {len(gold):4} {len(gold-missed):4} {sorted(missed)[:2] if missed else ''}")
+        print(f"\nfailed multi-file cells with >=1 missed gold file: baseline {miss_count['baseline']}/{n_multi['baseline']}, prism {miss_count['prism']}/{n_multi['prism']}")
+        PY
+      at: 2026-08-17T10:41:37.385958Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, glob, re, collections
+
+        pairs = {}
+        for f in glob.glob('runs/swebench-live/full38/*.json'):
+            if 'provenance' in f or 'scored' in f or 'predictions' in f: continue
+            r = json.load(open(f))
+            pairs.setdefault(r['instance_id'], {})[r['arm']] = r
+        slice_tasks = {t['instance_id']: t for t in json.load(open('runs/swebench-live/slice-ab38.json'))}
+        scored = {r['instance_id']: r for r in json.load(open('runs/swebench-live/full38/scored.json'))}
+
+        def pfiles(p): return set(re.findall(r'^\+\+\+ b/(.+)$', p, re.M))
+        def newfiles(p):
+            # files created by the gold patch: '--- /dev/null' followed by '+++ b/<f>'
+            return set(re.findall(r'^--- /dev/null\n\+\+\+ b/(.+)$', p, re.M))
+
+        NONCODE = re.compile(r'\.(rst|md|yml|yaml|txt|cfg|toml|ini|sh)$|CHANGELOG|CONTRIBUT|docs/|\.git-blame|mkdocs')
+
+        cat = collections.Counter()
+        detail = []
+        for tid, sc in scored.items():
+            gold_patch = slice_tasks[tid].get('patch') or slice_tasks[tid].get('gold_patch','')
+            gold = pfiles(gold_patch); new = newfiles(gold_patch)
+            for arm in ('baseline','prism'):
+                if sc['arms'][arm]['resolved'] is not False: continue
+                agent = pfiles(pairs[tid][arm]['model_patch'])
+                for m in gold - agent:
+                    if 'test' in m.lower():          c='test file'
+                    elif NONCODE.search(m):          c='docs/config/script (not graph-linked)'
+                    elif m in new:                   c='NEW file created by gold (graph cannot see it)'
+                    else:                            c='existing code file — graph-reachable miss'
+                    cat[(arm,c)] += 1
+                    if c == 'existing code file — graph-reachable miss':
+                        detail.append((tid, arm, m))
+
+        print("MISSED gold files on failed cells, categorized by whether a graph could have surfaced them:")
+        for (arm,c),n in sorted(cat.items()):
+            print(f"  {arm:9} {c:48} {n}")
+        print("\nThe graph-reachable misses (the ONLY ones change_impact could have prevented):")
+        for tid,arm,m in detail: print(f"  {tid[:44]:44} {arm:9} {m}")
+        PY
+      at: 2026-08-17T10:42:04.075063Z
+      classified: other
+    - cmd: ~/bin/prism verify --help 2>&1 | head -30
+      at: 2026-08-17T11:04:55.578559Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'\nimport json, subprocess, os, shutil, re\n\nSCRATCH = '/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook'\nos.makedirs(SCRATCH, exist_ok=True)\nPRISM = os.path.expanduser('~/bin/prism')\nCACHE = os.path.expanduser('~/.cache/prism-research/swebench-repos')\n\nCELLS = [  # (instance_id, the graph-reachable missed files we expect verify could flag)\n    ('Kinto__kinto-3566',              ['memcached.py','memory.py','cache/__init__.py','postgresql/__init__.py']),\n    ('a2aproject__a2a-python-414',     ['default_request_handler.py']),\n    ('Archmonger__django-dbbackup-604',['dbrestore.py']),\n    ('Archmonger__django-dbbackup-623',['scripts/_utils.py']),\n    ('pybamm-team__PyBaMM-5129',       ['equivalent_circuit/__init__.py']),\n    ('certbot__certbot-10374',         ['acme/src/acme/errors.py']),\n    ('koxudaxi__datamodel-code-generator-2461', ['arguments.py','jsonschema.py']),\n    ('sooperset__mcp-atlassian-581',   ['jira/config.py']),\n    ('browser-use__browser-use-2480',  ['controller/service.py']),\n]\ntasks = {t['instance_id']: t for t in json.load(open('runs/swebench-live/slice-ab38.json'))}\n\nresults = []\nfor tid, expect in CELLS:\n    task = tasks[tid]\n    repo_dir = os.path.join(CACHE, tid.rsplit('-',1)[0])\n    # repo cache dirs are named owner__repo; instance is owner__repo-NNN\n    repo_dir = os.path.join(CACHE, re.sub(r'-\\d+$','',tid))\n    if not os.path.isdir(repo_dir):\n        print(f\"{tid}: NO REPO at {repo_dir}\"); continue\n    for arm in ('prism','baseline'):\n        rec = json.load(open(f'runs/swebench-live/full38/{tid}.{arm}.json'))\n        patch = rec['model_patch']\n        if not patch.strip(): \n            results.append((tid,arm,'EMPTY PATCH',None)); continue\n        wt = os.path.join(SCRATCH, f'{tid}__{arm}')\n        shutil.rmtree(wt, ignore_errors=True)\n        r = subprocess.run(['git','worktree','add','--detach','--force',wt,task['base_commit']],\n                           cwd=repo_dir, capture_output=True, text=True)\n        if r.returncode: \n            results.append((tid,arm,'WT FAIL: '+r.stderr[:80],None)); continue\n        # index BEFORE applying the patch (the graph the agent would have had)\n        ix = subprocess.run([PRISM,'index','.'], cwd=wt, capture_output=True, text=True, timeout=900)\n        pf = os.path.join(wt,'.agent.patch'); open(pf,'w').write(patch)\n        ap = subprocess.run(['git','apply','--whitespace=nowarn','.agent.patch'], cwd=wt, capture_output=True, text=True)\n        if ap.returncode:\n            ap = subprocess.run(['git','apply','--3way','.agent.patch'], cwd=wt, capture_output=True, text=True)\n        if ap.returncode:\n            results.append((tid,arm,'PATCH FAIL: '+ap.stderr[:80],None)); continue\n        os.remove(pf)\n        v = subprocess.run([PRISM,'verify','--base','HEAD','--format','text'], cwd=wt,\n                           capture_output=True, text=True, timeout=300)\n        out = v.stdout + v.stderr\n        hit = [e for e in expect if e in out]\n        results.append((tid, arm, f'exit={v.returncode}', out[:1500]))\n        print('='*90)\n        print(f'{tid} :: {arm}   verify exit={v.returncode}   expected-miss flagged: {hit or \"NONE\"}')\n        print(out[:1200])\n\njson.dump([(a,b,c) for a,b,c,_ in results], open(os.path.join(SCRATCH,'summary.json'),'w'))\nPY"
+      at: 2026-08-17T11:05:51.697874Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, re
+        # What did the agents actually change on Kinto-3566, vs what gold changed?
+        gold = json.load(open('runs/swebench-live/slice-ab38.json'))
+        g = next(t for t in gold if t['instance_id']=='Kinto__kinto-3566')
+        gp = g.get('patch') or g.get('gold_patch','')
+        print("GOLD files:", re.findall(r'^\+\+\+ b/(.+)$', gp, re.M))
+        print("GOLD adds defs:", set(re.findall(r'^\+\s*def (\w+)', gp, re.M)))
+        for arm in ('prism','baseline'):
+            r = json.load(open(f'runs/swebench-live/full38/Kinto__kinto-3566.{arm}.json'))
+            p = r['model_patch']
+            print(f"\n{arm.upper()} files:", re.findall(r'^\+\+\+ b/(.+)$', p, re.M))
+            print(f"{arm} adds/mods defs:", set(re.findall(r'^[+-]\s*def (\w+)', p, re.M)))
+        PY
+      at: 2026-08-17T11:06:15.188089Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, re
+        CELLS = ['Kinto__kinto-3566','a2aproject__a2a-python-414','koxudaxi__datamodel-code-generator-2461','pybamm-team__PyBaMM-5129']
+        for tid in CELLS:
+            print('='*80); print(tid)
+            for arm in ('prism','baseline'):
+                r = json.load(open(f'runs/swebench-live/full38/{tid}.{arm}.json'))
+                print(f'--- {arm} searches ---')
+                for c in r['tool_calls']:
+                    if c['name'] == 'mcp__prism__prism_search':
+                        print('  prism_search:', json.dumps(c['input'])[:120])
+                    elif c['name'] == 'Grep':
+                        print('  Grep:', json.dumps(c['input'])[:120])
+                    elif c['name'] == 'Bash':
+                        cmd = str(c['input'].get('command',''))
+                        if re.search(r'(?:^|[\s;|(])(?:grep|rg)\b', cmd):
+                            print('  bash-grep:', cmd[:120])
+        PY
+      at: 2026-08-17T11:09:31.068498Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        # clean the patched worktrees back to base
+        for wt in Kinto__kinto-3566__prism koxudaxi__datamodel-code-generator-2461__prism pybamm-team__PyBaMM-5129__prism; do
+          git -C $SCRATCH/$wt reset --hard -q HEAD && git -C $SCRATCH/$wt clean -fdq
+        done
+        echo "=== Kinto: what is the cache interface and its implementations? ==="
+        grep -n "class \|def get\|def set" $SCRATCH/Kinto__kinto-3566__prism/kinto/core/cache/__init__.py | head -12
+      at: 2026-08-17T11:10:12.358855Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        echo "=== 1) Kinto: change-impact CacheBase.get (what a hint on the cache.get search could carry) ==="
+        cd $SCRATCH/Kinto__kinto-3566__prism && ~/bin/prism change-impact 'CacheBase.get' --format text 2>&1 | head -25
+        echo
+        echo "=== 2) datamodel: change-impact set_additional_properties (hint for that exact search) ==="
+        cd $SCRATCH/koxudaxi__datamodel-code-generator-2461__prism && ~/bin/prism change-impact 'JsonSchemaParser.set_additional_properties' --format text 2>&1 | head -20
+        echo
+        echo "=== 3) PyBaMM: change-impact set_initial_stoichiometries ==="
+        cd $SCRATCH/pybamm-team__PyBaMM-5129__prism && ~/bin/prism change-impact 'ParameterValues.set_initial_stoichiometries' --format text 2>&1 | head -20
+      at: 2026-08-17T11:10:26.512679Z
+      classified: other
+    - cmd: grep -rn "resolvedRefNote\|resolvedNote" internal/mcp/*.go | grep -v _test | head
+      at: 2026-08-17T11:11:04.229338Z
+      classified: other
+    - cmd: sed -n 1200,1290p internal/mcp/tools.go
+      at: 2026-08-17T11:11:09.095603Z
+      classified: other
+    - cmd: |-
+        grep -n "func (h \*Handler) toolChangeImpact\|func.*changeImpact\|Grove\.\(Impl\|Overrides\|Family\|References\|Callers\)" internal/mcp/tools.go | head
+        grep -n "Implementations\|Overrides\|family" internal/mcp/tools.go | head -20
+      at: 2026-08-17T11:11:46.928376Z
+      classified: other
+    - cmd: |-
+        sed -n 1957,2010p internal/mcp/tools.go
+        echo ---
+        grep -n "func.*ChangeImpact\|type.*Impact" internal/grove/*.go | head
+      at: 2026-08-17T11:11:52.763268Z
+      classified: other
+    - cmd: |-
+        grep -rn "resolvedNote" internal/cli/commands.go | head -3
+        grep -rn "resolvedRefNote\|TestResolvedRef" internal/mcp/*_test.go | head -5
+        grep -ln "Grove" internal/mcp/*_test.go | head -8
+      at: 2026-08-17T11:12:33.236577Z
+      classified: other
+    - cmd: |-
+        sed -n 100,160p internal/mcp/textmerge_test.go
+        echo "=== grove interface used by Handler ==="
+        grep -n "Grove \|Grove\b" internal/mcp/handler.go 2>/dev/null | head -5 || grep -rn "Grove " internal/mcp/tools.go | head -3
+        grep -n "type.*interface" internal/grove/client.go | head -3
+        grep -rn "h.Grove.Resolve\|Grove interface\|GroveAPI" internal/mcp/*.go | grep -v _test | head -5
+      at: 2026-08-17T11:12:39.640055Z
+      classified: other
+    - cmd: |-
+        grep -rn "Grove " internal/mcp/handler*.go internal/mcp/mcp.go 2>/dev/null | head -5
+        ls internal/mcp/*.go | grep -v _test
+        grep -rn "type ChangeImpactResult struct" -A 15 internal/grove/types.go
+      at: 2026-08-17T11:12:46.115556Z
+      classified: other
+    - cmd: sed -n 1290,1340p internal/mcp/tools.go
+      at: 2026-08-17T11:13:05.06541Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        head -35 internal/mcp/textmerge.go | grep -n "import\|\"" | head
+        grep -n "regexp" internal/mcp/textmerge.go | head -3
+        grep -n "type ResolveCandidate" -A 8 internal/grove/types.go
+      at: 2026-08-17T11:13:35.019386Z
+      classified: other
+    - cmd: grep -n "type ResolveCandidate" -A 10 /Users/tapabratapal/Projects/provasign/prism/internal/grove/types.go
+      at: 2026-08-17T11:13:41.690188Z
+      classified: other
+    - cmd: |-
+        grep -rn "ResolveCandidate\|func (c \*Client) Resolve" /Users/tapabratapal/Projects/provasign/prism/internal/grove/*.go | grep -v _test | head -5
+        grep -rn "c.TestDouble\|\.TestDouble" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/textmerge.go | head -3
+      at: 2026-08-17T11:13:46.921404Z
+      classified: other
+    - cmd: go build ./... && go test ./internal/mcp/ -run 'TestResolved|TestSearch|TestRenderSearch|TestToolSearch|TestSchema' -count=1 2>&1 | tail -5
+      at: 2026-08-17T11:14:14.654593Z
+      classified: test
+    - cmd: grep -n "func newTestHandler\|func newIndexedHandler\|grove.New\|BuildIndex\|Index(" internal/mcp/helpers_test.go internal/mcp/mcp_test.go 2>/dev/null | head -10
+      at: 2026-08-17T11:14:21.093086Z
+      classified: other
+    - cmd: |-
+        sed -n 1,60p internal/mcp/mcp_test.go
+        grep -rn "Grove:" internal/mcp/*_test.go | head -5
+      at: 2026-08-17T11:14:26.385709Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/Projects/provasign/prism/internal/mcp/textmerge_test.go << 'EOF'
+
+        // TestStructuralNoteSilentWithoutGrove: like every advisory note, it must
+        // never fire or error when there is no graph behind it.
+        func TestStructuralNoteSilentWithoutGrove(t *testing.T) {
+        	h := newTestHandler(t)
+        	if n := h.structuralNote(context.Background(), "CacheBase.get"); n != "" {
+        		t.Errorf("note must be silent without a graph, got %q", n)
+        	}
+        }
+
+        // TestStructuralNoteSilentOnNonIdentifiers: a regex or phrase is a text
+        // question, not a symbol question — resolving it would be noise.
+        func TestStructuralNoteSilentOnNonIdentifiers(t *testing.T) {
+        	h := newTestHandler(t)
+        	for _, q := range []string{
+        		"cache\\.get\\(|cache\\.set\\(", // regex alternation
+        		"class JSONRPCRequest",          // phrase with space
+        		"url = f\"http://",              // string literal
+        		"",                              // empty
+        	} {
+        		if n := h.structuralNote(context.Background(), q); n != "" {
+        			t.Errorf("query %q must not produce a structural note, got %q", q, n)
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run 'TestStructural' -count=1 2>&1 | tail -3
+      at: 2026-08-17T11:14:42.351964Z
+      classified: test
+    - cmd: go build -o /tmp/prism-structnote ./cmd/prism 2>/dev/null || go build -o /tmp/prism-structnote . 2>/dev/null; ls -la /tmp/prism-structnote 2>/dev/null || (grep -rn "func main" cmd/*/*.go main.go 2>/dev/null | head -3)
+      at: 2026-08-17T11:14:52.859741Z
+      classified: build
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/koxudaxi__datamodel-code-generator-2461__prism
+        python3 << 'PY'
+        import json, subprocess
+
+        proc = subprocess.Popen(['/tmp/prism-structnote','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+
+        # Recorded call from the actual full38 trace: the agent's own search
+        r = rpc(2,'tools/call',{"name":"prism_search","arguments":{"query":"set_additional_properties","scope":"text","context":10}})
+        text = r['result']['content'][0]['text']
+        print("=== scope=text, context=10 (the agent's literal recorded call) ===")
+        print(f"total bytes: {len(text)}")
+        note = [l for l in text.splitlines() if 'prism_change_impact' in l or 'caller' in l]
+        print("NOTE LINE:", note[0] if note else "!!! ABSENT !!!")
+
+        # default-scope variant
+        r = rpc(3,'tools/call',{"name":"prism_search","arguments":{"query":"set_additional_properties"}})
+        text = r['result']['content'][0]['text']
+        import re
+        m = re.search(r'"resolvedNote":\s*"([^"]+)"', text)
+        print("\n=== default scope ===")
+        print("NOTE:", (m.group(1)[:300] if m else "!!! ABSENT !!!"))
+        proc.kill()
+        PY
+      at: 2026-08-17T11:15:09.455946Z
+      classified: other
+    - cmd: |-
+        go build -o /tmp/prism-structnote . 2>/dev/null || go build -o /tmp/prism-structnote ./cmd/prism
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism
+        python3 << 'PY'
+        import json, subprocess, re
+        proc = subprocess.Popen(['/tmp/prism-structnote','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+
+        # The Kinto fan-out case: an agent searching the interface method name
+        for q in ("CacheBase.get", "heartbeat"):
+            r = rpc(2,'tools/call',{"name":"prism_search","arguments":{"query":q,"scope":"text"}})
+            text = r['result']['content'][0]['text']
+            note = [l for l in text.splitlines() if l.startswith('// ') and 'change' in l]
+            print(f"query={q!r}:")
+            print(" ", note[0][:400] if note else "(no structural note)")
+        proc.kill()
+        PY
+      at: 2026-08-17T11:15:39.146958Z
+      classified: build
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism
+        # does resolve work for these here at all?
+        /tmp/prism-structnote lookup 'CacheBase.get' --format text 2>&1 | head -5
+        echo ---
+        /tmp/prism-structnote search 'CacheBase' --format text 2>&1 | head -8
+      at: 2026-08-17T11:15:50.756718Z
+      classified: other
+    - cmd: |-
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook
+        cd $SCRATCH/Kinto__kinto-3566__prism
+        /tmp/prism-structnote resolve 'CacheBase.get' 2>&1 | head -20
+        echo "=== heartbeat ==="
+        /tmp/prism-structnote resolve 'heartbeat' 2>&1 | head -20
+      at: 2026-08-17T11:16:03.011366Z
+      classified: other
+    - cmd: grep -n "FilePath\|Name " internal/grove/types.go | grep -A2 -B2 Resolved | head; grep -n "type ResolvedSymbol" -A 10 internal/grove/types.go
+      at: 2026-08-17T11:16:19.19015Z
+      classified: other
+    - cmd: grep -rn "type ResolvedSymbol" -A 12 internal/grove/ | head -16
+      at: 2026-08-17T11:16:23.656726Z
+      classified: other
+    - cmd: ls cmd/ 2>/dev/null; grep -m1 "^module" go.mod
+      at: 2026-08-17T11:16:47.035838Z
+      classified: other
+    - cmd: |-
+        go build -o /tmp/prism-structnote ./cmd/prism && SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/verifyhook && cd $SCRATCH/Kinto__kinto-3566__prism && python3 << 'PY'
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-structnote','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+        for q in ("CacheBase.get","CacheBase.set"):
+            r = rpc(2,'tools/call',{"name":"prism_search","arguments":{"query":q,"scope":"text"}})
+            text = r['result']['content'][0]['text']
+            note = [l for l in text.splitlines() if 'implementation' in l or 'caller' in l]
+            print(f"{q}:")
+            print(" ", note[0][:420] if note else "(no note)")
+            print()
+        proc.kill()
+        PY
+      at: 2026-08-17T11:17:00.127957Z
+      classified: build
+    - cmd: |-
+        go test ./... 2>&1 | grep -v "^ok\|no test files" | head -10; echo "SUITE EXIT: $?"
+        echo "=== ci_invariants ==="
+        go build -o ~/bin/prism-test-structnote ./cmd/prism && cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism-test-structnote 2>&1 | tail -6
+      at: 2026-08-17T11:17:27.439611Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && grep -n "corpus\|CORPUS\|--root\|argparse\|add_argument" harness/ci_invariants.py | head -12
+      at: 2026-08-17T11:17:35.040689Z
+      classified: other
+    - cmd: |-
+        ls ~/.cache/prism-research/ 2>/dev/null | head; cd /Users/tapabratapal/Projects/provasign/research && nohup python3 harness/ci_invariants.py --prism ~/bin/prism-test-structnote --corpus-root ~/.cache/prism-research/ci-corpus > /tmp/ci_inv_structnote.log 2>&1 &
+        echo launched
+      at: 2026-08-17T11:17:42.295088Z
+      classified: other
+    - cmd: tail -12 /tmp/ci_inv_structnote.log; pgrep -f ci_invariants || echo "(script itself exited?)"
+      at: 2026-08-17T11:17:48.63584Z
+      classified: other
+    - cmd: until ! pgrep -qf ci_invariants.py; do sleep 5; done; tail -6 /tmp/ci_inv_structnote.log
+      at: 2026-08-17T11:18:55.810763Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json
+        want = ['Kinto__kinto-3566','koxudaxi__datamodel-code-generator-2461','a2aproject__a2a-python-414','pybamm-team__PyBaMM-5129','sooperset__mcp-atlassian-581']
+        tasks = json.load(open('runs/swebench-live/slice-ab38.json'))
+        sel = [t for t in tasks if t['instance_id'] in want]
+        assert len(sel)==5, [t['instance_id'] for t in sel]
+        json.dump(sel, open('runs/swebench-live/slice-structnote5.json','w'))
+        print('slice written:', [t['instance_id'] for t in sel])
+        "
+        python3 audit_bed.py runs/swebench-live/slice-structnote5.json --wt && echo AUDIT-OK
+      at: 2026-08-17T11:19:11.90927Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-structnote5.json --limit 5 \
+          --arms baseline prism --out runs/swebench-live/structnote5 \
+          --prism ~/bin/prism-test-structnote --model opus \
+          > runs/swebench-live/structnote5.log 2>&1 &
+        echo "launched $!"
+      at: 2026-08-17T11:19:19.066057Z
+      classified: other
+    - cmd: pgrep -f "swebench_ab.py.*structnote5" > /dev/null && echo "run alive" ; head -8 /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/structnote5.log
+      at: 2026-08-17T11:19:25.489181Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "swebench_ab.py.*structnote5" > /dev/null && echo "RUN ALIVE" || echo "RUN FINISHED"
+        tail -12 runs/swebench-live/structnote5.log
+        ls runs/swebench-live/structnote5/*.json 2>/dev/null | grep -v provenance | wc -l
+      at: 2026-08-17T16:19:04.613909Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, glob, re
+
+        GOLD_MISS = {  # the files each arm missed in full38 — did they get touched THIS time?
+         'Kinto__kinto-3566': ['kinto/core/cache/__init__.py','kinto/core/cache/memcached.py','kinto/core/cache/memory.py','kinto/core/cache/postgresql/__init__.py'],
+         'koxudaxi__datamodel-code-generator-2461': ['src/datamodel_code_generator/parser/jsonschema.py','src/datamodel_code_generator/arguments.py'],
+         'a2aproject__a2a-python-414': ['src/a2a/server/request_handlers/default_request_handler.py'],
+         'pybamm-team__PyBaMM-5129': ['src/pybamm/models/full_battery_models/equivalent_circuit/__init__.py'],
+         'sooperset__mcp-atlassian-581': ['src/mcp_atlassian/jira/config.py'],
+        }
+        def pfiles(p): return set(re.findall(r'^\+\+\+ b/(.+)$', p, re.M))
+
+        for f in sorted(glob.glob('runs/swebench-live/structnote5/*.prism.json')):
+            r = json.load(open(f)); tid = r['instance_id']
+            n_ci = sum(1 for c in r['tool_calls'] if c['name']=='mcp__prism__prism_change_impact')
+            n_srch = sum(1 for c in r['tool_calls'] if c['name']=='mcp__prism__prism_search')
+            touched = pfiles(r['model_patch'])
+            hits = [g for g in GOLD_MISS[tid] if g in touched]
+            print(f"{tid[:44]:44} search={n_srch:2} change_impact={n_ci}  prev-missed-now-touched: {len(hits)}/{len(GOLD_MISS[tid])} {hits}")
+            for c in r['tool_calls']:
+                if c['name']=='mcp__prism__prism_change_impact':
+                    print(f"    change_impact called: {json.dumps(c['input'])[:90]}")
+        print()
+        # baselines for comparison
+        for f in sorted(glob.glob('runs/swebench-live/structnote5/*.baseline.json')):
+            r = json.load(open(f)); tid = r['instance_id']
+            touched = pfiles(r['model_patch'])
+            hits = [g for g in GOLD_MISS[tid] if g in touched]
+            print(f"BASE {tid[:40]:40} prev-missed-now-touched: {len(hits)}/{len(GOLD_MISS[tid])}")
+        PY
+      at: 2026-08-17T16:19:23.144071Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'
+        import json, glob, re
+        ident = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*$')
+        for f in sorted(glob.glob('runs/swebench-live/structnote5/*.prism.json')):
+            r = json.load(open(f))
+            print(r['instance_id'])
+            for c in r['tool_calls']:
+                if c['name']=='mcp__prism__prism_search':
+                    q = c['input'].get('query')
+                    qs = q if isinstance(q,list) else [q]
+                    marks = ['IDENT' if ident.match(str(t)) else 'text ' for t in qs]
+                    print(f"   {list(zip(marks,qs))}"[:160])
+        PY
+      at: 2026-08-17T16:19:36.139747Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && nohup python3 score_cell.py runs/swebench-live/structnote5 --all --official --slice runs/swebench-live/slice-structnote5.json > runs/swebench-live/structnote5.scored.log 2>&1 &
+        echo launched
+      at: 2026-08-17T16:19:59.6016Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "score_cell.py" > /dev/null && echo "SCORING STILL RUNNING" || echo "SCORING DONE"
+        tail -25 runs/swebench-live/structnote5.scored.log
+      at: 2026-08-17T16:23:04.558164Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -B2 -A6 "CORRECTNESS" runs/swebench-live/structnote5.scored.log | grep -E "CELL|baseline |prism " | head -20
+      at: 2026-08-17T16:23:14.490164Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -E "^CELL" runs/swebench-live/structnote5.scored.log
+      at: 2026-08-17T16:23:21.21543Z
+      classified: other
+    - cmd: git status --short && git diff --stat
+      at: 2026-08-17T19:45:05.448421Z
+      classified: other
+    - cmd: |-
+        go test ./internal/mcp/ ./internal/textsearch/ -count=1 2>&1 | tail -3 && git add internal/mcp/textmerge.go internal/mcp/textmerge_test.go internal/mcp/tools.go && git commit -m "$(cat <<'EOF'
+        mcp: structural note — deliver a symbol's fan-out inside the search that names it
+
+        When a prism_search term resolves to exactly one real symbol with fan-out
+        (any override/implementation family, or 2+ callers), the result carries one
+        ~300-byte line: declaration, implementations with sites, named callers with
+        sites. Fires in both text and default scope, reuses the resolvedNote field
+        (no schema, renderer, or CLI changes), and stays silent on regexes, phrases,
+        ambiguous names, leaf helpers, and graphless handlers.
+
+        Why (full38, 2026-08-17): on failed fan-out cells the agents searched the
+        exact symbols whose siblings they went on to miss — set_additional_properties
+        (missed caller parse_root_type), the Kinto cache interface (3 sibling
+        implementations missed by both arms) — then designed the fix as if the term
+        were a lone string. change_impact was invoked once in 76 cells; the graph's
+        knowledge never reached the design decision. This rides the answer along on
+        the question the agent did ask.
+
+        Measured honestly (structnote5 smoke, 5 fan-out cells, both arms): the note
+        fires as designed over the real protocol, costs nothing (turns/cost flat),
+        and produced NO measurable edit-set or resolve-rate change at n=5 — the
+        trigger depends on the agent happening to search a symbol name, which is
+        stochastic (Kinto's agent searched concept names; the note never fired).
+        Committed as a cheap, principled channel, not as a claimed win.
+
+        Also: dedup Resolve candidates before the exactly-one gate — Resolve returns
+        the same declaration twice on some indexes (observed: Kinto CacheBase.get),
+        which read as ambiguity and silenced the note.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1
+      at: 2026-08-17T19:45:30.59171Z
+      classified: test
+    - cmd: git tag --sort=-v:refname | head -3 && git status --short && git log --oneline -2
+      at: 2026-08-17T21:16:07.212901Z
+      classified: other
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-17T00:52:47.929912Z
+redactions: 1

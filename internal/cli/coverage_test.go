@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 )
 
 func writeCLIFile(t *testing.T, root, rel, content string) string {
@@ -36,8 +35,18 @@ func TestCmdIndexAndStatus_Smoke(t *testing.T) {
 	if got := cmdStatus([]string{dir}); got != 0 {
 		t.Fatalf("cmdStatus=%d", got)
 	}
-	if got := cmdDoctor([]string{dir}); got != 0 {
-		t.Fatalf("cmdDoctor=%d", got)
+	out := captureStdout(func() {
+		if got := cmdDoctor([]string{dir}); got != 0 {
+			t.Fatalf("cmdDoctor=%d", got)
+		}
+	})
+	// `prism doctor` must surface Grove's per-language capability manifest so
+	// "does prism support X" has an answer without a separate `grove doctor`
+	// run (2026-09-22 handoff gap).
+	for _, want := range []string{`"languages"`, `"schemaVersion"`, `"resolution"`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("cmdDoctor output missing %s: %s", want, out)
+		}
 	}
 	if got := cmdMap([]string{dir}); got != 0 {
 		t.Fatalf("cmdMap=%d", got)
@@ -56,10 +65,10 @@ func TestCmdQueryAndSearchAndLookup_Smoke(t *testing.T) {
 		t.Fatalf("cmdIndex=%d", got)
 	}
 	// No terms must fail closed with guidance, not silently guess.
-	if got := cmdQuery([]string{"main entry point", "--limit", "10", "--profile", "default", dir}); got == 0 {
+	if got := cmdQuery([]string{"--limit", "10", "--profile", "default", dir}); got == 0 {
 		t.Fatal("cmdQuery with no terms should fail closed, got exit 0")
 	}
-	if got := cmdQuery([]string{"main entry point", "--terms", "Main,init", dir}); got != 0 {
+	if got := cmdQuery([]string{"--terms", "Main,init", dir}); got != 0 {
 		t.Fatalf("cmdQuery --terms=%d", got)
 	}
 	if got := cmdSearch([]string{"Main", "--limit", "5", dir}); got != 0 {
@@ -125,7 +134,7 @@ func TestCmdCompact_BadAndGoodStdin(t *testing.T) {
 	os.Stdin = old
 }
 
-func TestCmdFeedbackAndSavings_Smoke(t *testing.T) {
+func TestCmdFeedback_Smoke(t *testing.T) {
 	dir := setupCLIProject(t)
 
 	if got := cmdFeedback([]string{}); got != 2 {
@@ -137,45 +146,25 @@ func TestCmdFeedbackAndSavings_Smoke(t *testing.T) {
 	if got := cmdFeedback([]string{"--rating", "4", "--tool", "prism_query", "--notes", "ok", dir}); got != 0 {
 		t.Fatalf("cmdFeedback=%d", got)
 	}
-	if got := cmdSavings([]string{dir}); got != 0 {
-		t.Fatalf("cmdSavings=%d", got)
-	}
 }
 
-func TestPruneOldLedgers_CoverageSmoke(t *testing.T) {
-	dir := t.TempDir()
-	old := filepath.Join(dir, "old.json")
-	newf := filepath.Join(dir, "new.json")
-	_ = os.WriteFile(old, []byte("{}"), 0o644)
-	_ = os.WriteFile(newf, []byte("{}"), 0o644)
-	past := time.Now().Add(-2 * time.Hour)
-	_ = os.Chtimes(old, past, past)
-	pruneOldLedgers(dir, time.Hour)
-	if _, err := os.Stat(old); err == nil {
-		t.Fatalf("old ledger not pruned")
-	}
-	if _, err := os.Stat(newf); err != nil {
-		t.Fatalf("new ledger should remain: %v", err)
-	}
-}
-
-func TestInvokeWithPersistentLedger_Smoke(t *testing.T) {
+func TestInvokeTool_Smoke(t *testing.T) {
 	dir := setupCLIProject(t)
-	out, err := invokeWithPersistentLedger(dir, "prism_savings", nil)
+	out, err := invokeTool(dir, "prism_savings", nil)
 	if err != nil {
-		t.Fatalf("invokeWithPersistentLedger: %v", err)
+		t.Fatalf("invokeTool: %v", err)
 	}
 	if out == nil {
 		t.Fatal("expected output")
 	}
 }
 
-func TestInvokeWithPersistentLedger_DoesNotReuseConversationCache(t *testing.T) {
+func TestInvokeTool_DoesNotReuseConversationCache(t *testing.T) {
 	dir := setupCLIProject(t)
-	if _, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": "main.go"}); err != nil {
+	if _, err := invokeTool(dir, "prism_read", map[string]any{"file": "main.go"}); err != nil {
 		t.Fatalf("first prism_read: %v", err)
 	}
-	out, err := invokeWithPersistentLedger(dir, "prism_read", map[string]any{"file": "main.go"})
+	out, err := invokeTool(dir, "prism_read", map[string]any{"file": "main.go"})
 	if err != nil {
 		t.Fatalf("second prism_read: %v", err)
 	}
@@ -206,6 +195,17 @@ func TestRun_DispatchSmoke(t *testing.T) {
 	}
 }
 
+func TestRunRejectsRemovedLedgerCommands(t *testing.T) {
+	for _, command := range []string{"savings", "stats"} {
+		if got := Run([]string{command}); got != 2 {
+			t.Errorf("Run(%q)=%d, want unknown-command exit 2", command, got)
+		}
+	}
+	if strings.Contains(helpText, "prism savings") || strings.Contains(helpText, "prism stats") {
+		t.Fatal("help still advertises a removed persistent-ledger command")
+	}
+}
+
 func TestCmdMCP_ErrorPath(t *testing.T) {
 	dir := t.TempDir()
 	fileRoot := writeCLIFile(t, dir, "not-a-dir.txt", "x")
@@ -225,6 +225,26 @@ func TestCmdMCP_EOFReturnsZero(t *testing.T) {
 
 	if got := cmdMCP([]string{dir}); got != 0 {
 		t.Fatalf("cmdMCP eof=%d", got)
+	}
+}
+
+func TestCmdMCPCompact_EOFReturnsZero(t *testing.T) {
+	dir := setupCLIProject(t)
+
+	r, w, _ := os.Pipe()
+	_ = w.Close()
+	oldIn := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = oldIn }()
+
+	if got := cmdMCP([]string{"--compact", dir}); got != 0 {
+		t.Fatalf("cmdMCP --compact eof=%d", got)
+	}
+}
+
+func TestCmdMCPCompactRejectsUnknownFlag(t *testing.T) {
+	if got := cmdMCP([]string{"--compcat"}); got != 2 {
+		t.Fatalf("cmdMCP unknown flag=%d, want 2", got)
 	}
 }
 
@@ -268,7 +288,7 @@ func TestCLIHelpersAndConfigPaths(t *testing.T) {
 // TestCmdErrorPaths_FileAsDir exercises the error-return branches of several
 // cmd functions. Using a regular file as the project root causes
 // config.LoadFromDir to return ENOTDIR (not IsNotExist), which propagates as
-// a non-nil error through newClient and invokeWithPersistentLedger.
+// a non-nil error through newClient and invokeTool.
 // On Windows, ERROR_PATH_NOT_FOUND is treated as IsNotExist, so the function
 // returns success instead of an error — skip there.
 func TestCmdErrorPaths_FileAsDir(t *testing.T) {
@@ -288,9 +308,6 @@ func TestCmdErrorPaths_FileAsDir(t *testing.T) {
 	}
 	if rc := cmdStatus([]string{notADir}); rc != 1 {
 		t.Errorf("cmdStatus file-as-dir: want rc=1, got %d", rc)
-	}
-	if rc := cmdSavings([]string{notADir}); rc != 1 {
-		t.Errorf("cmdSavings file-as-dir: want rc=1, got %d", rc)
 	}
 	if rc := cmdIndex([]string{notADir}); rc != 1 {
 		t.Errorf("cmdIndex file-as-dir: want rc=1, got %d", rc)

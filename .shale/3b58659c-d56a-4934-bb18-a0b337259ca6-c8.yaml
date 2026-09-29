@@ -1,0 +1,185 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c8
+created_at: 2026-08-29T02:38:23.112124Z
+finalized_at: 2026-08-29T02:50:33.336242Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; R=$S/case-repro; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove; echo "== fresh index =="; rm -rf $R/.grove && $S/grove-mf index $R >/dev/null 2>&1 && $S/grove-mf deps cobol/TESTPGM.cbl $R 2>/dev/null | grep -c 'file:cobol/copybook'; echo "== reindex over cache (no file changes) =="; $S/grove-mf index $R >/dev/null 2>&1 && $S/grove-mf deps cobol/TESTPGM.cbl $R 2>/dev/null | grep -c 'file:cobol/copybook'; echo "== touch one file, reindex =="; touch $R/cobol/TESTPGM.cbl && printf '\n' >> $R/cobol/TESTPGM.cbl && $S/grove-mf index $R >/dev/null 2>&1 && $S/grove-mf deps cobol/TESTPGM.cbl $R 2>/dev/null | grep -c 'file:cobol/copybook'
+      at: 2026-08-29T02:45:44.96991Z
+      classified: build
+    - cmd: mv /tmp/stamp_test.go /tmp/stampcheck.go && cd ~/Projects/provasign/astkit && go run /tmp/stampcheck.go
+      at: 2026-08-29T02:46:44.936705Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/astkit && grep -n "func seqAreaOK" cobol.go strategies/cobol.go 2>/dev/null | head -1; go run /tmp/stampcheck.go && go test ./... 2>&1 | tail -3
+      at: 2026-08-29T02:47:09.463746Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/cobol.go"
+        src = open(p).read()
+        old = """func seqAreaOK(s string) bool {
+        	for _, r := range s {
+        		if r != ' ' && (r < '0' || r > '9') {
+        			return false
+        		}
+        	}
+        	return true
+        }
+
+        """
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, ""))
+        print("seqAreaOK removed")
+        EOF
+        cat >> strategies/mainframe_test.go <<'EOF'
+
+        // Field-reported: estates stamp the member name in the sequence area
+        // (cols 1-6) — legal, the compiler ignores it. The format detector must
+        // not require digits there, or such copybooks extract ZERO symbols and
+        // member resolution silently dies for most of the estate.
+        func TestCOBOL_MemberNameStampedSequenceArea(t *testing.T) {
+        	src := strings.Join([]string{
+        		"AUCCS0 01  AU-REC." + strings.Repeat(" ", 44) + "AUCCS020",
+        		"AUCCS0     05  AU-ID   PIC 9(8)." + strings.Repeat(" ", 30) + "AUCCS020",
+        		"AUCCS0     05  AU-SSN  PIC 9(9)." + strings.Repeat(" ", 30) + "AUCCS020",
+        	}, "\n")
+        	syms := extractCOBOL(t, src)
+        	if len(syms) != 3 {
+        		t.Fatalf("stamped copybook: want 3 symbols, got %v", names(syms))
+        	}
+        	ssn := find(t, syms, "data-item", "AU-SSN")
+        	if ssn.QualifiedName != "AU-REC.AU-SSN" {
+        		t.Errorf("AU-SSN qualified = %q", ssn.QualifiedName)
+        	}
+        }
+        EOF
+        go build ./strategies/ && go test ./strategies/ -run Stamped -v 2>&1 | tail -2
+      at: 2026-08-29T02:47:25.05846Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/parser/engine.go"
+        src = open(p).read()
+        old = """	imports := extractImports(language, src)
+        	symbols := extractSymbols(language, relPath, blobSHA, src, imports)
+        	ensureUniqueIDs(symbols)
+        	return symbols, nil
+        }"""
+        new = """	imports := extractImports(language, src)
+        	symbols := extractSymbols(language, relPath, blobSHA, src, imports)
+        	if language == "cobol" && len(symbols) == 0 {
+        		// A COBOL file that yields no symbols must still be resolvable as a
+        		// COPY member and distinguishable from an unindexed file (spec
+        		// R-7.3): member resolution keys on file basenames drawn from
+        		// symbols, so a parse-empty copybook otherwise silently breaks the
+        		// include graph for every unit that copies it.
+        		base := relPath
+        		if i := strings.LastIndexByte(base, '/'); i >= 0 {
+        			base = base[i+1:]
+        		}
+        		if i := strings.IndexByte(base, '.'); i >= 0 {
+        			base = base[:i]
+        		}
+        		name := strings.ToUpper(base)
+        		symbols = append(symbols, core.SymbolRecord{
+        			ID:            symID(relPath, name, blobSHA),
+        			FilePath:      relPath,
+        			BlobSHA:       blobSHA,
+        			Language:      language,
+        			Kind:          core.SymbolKind("copybook-member"),
+        			Name:          name,
+        			QualifiedName: name,
+        			Signature:     "member (no symbols extracted)",
+        			Span:          core.LineRange{Start: 1, End: 1},
+        			Imports:       append([]string(nil), imports...),
+        		})
+        	}
+        	ensureUniqueIDs(symbols)
+        	return symbols, nil
+        }"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("synthesized member added")
+        EOF
+        go build ./... && go test ./internal/parser/ ./internal/graph/ 2>&1 | tail -2
+      at: 2026-08-29T02:47:48.698202Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; R=$S/case-repro; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && python3 - <<'EOF'
+        R = "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/case-repro"
+        # Their shape: stamped copybook (member name in cols 1-6), plus a
+        # pathological one nothing can parse.
+        stamped = "\n".join([
+          "AUS130 01  A1-REC." + " "*44 + "AUS130XX",
+          "AUS130     05  A1-SSN  PIC 9(9)." + " "*30 + "AUS130XX",
+        ])
+        open(f"{R}/cobol/copybook/aus130c.cpy","w").write(stamped)
+        open(f"{R}/cobol/copybook/weird01.cpy","w").write("@@@ vendor tool header @@@\n<<binaryish>>\n")
+        import pathlib; p = pathlib.Path(f"{R}/cobol/TESTPGM.cbl"); s = p.read_text()
+        extra = "\n" + "000100 " + " COPY AUS130C.".ljust(65)[:65] + "SEQ73-80" + "\n" + "000100 " + " COPY WEIRD01.".ljust(65)[:65] + "SEQ73-80"
+        p.write_text(s.replace(" COPY AUCCS020.".ljust(65)[:65], " COPY AUCCS020.".ljust(65)[:65]) + extra)
+        print("estate extended")
+        EOF
+        rm -rf $R/.grove && $S/grove-mf index $R >/dev/null 2>&1 && $S/grove-mf deps cobol/TESTPGM.cbl $R 2>/dev/null | grep -o '"to": "file:[^"]*"' | sort
+      at: 2026-08-29T02:48:03.855257Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; rm -rf $S/noop7 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop7 && rm -rf $S/noop7/.grove && $S/grove-mf index $S/noop7 >/dev/null 2>&1 && $S/grove-mf status $S/noop7 | grep -E "symbolCount|edgeCount"; cd ~/Projects/provasign/astkit && git add strategies/cobol.go strategies/mainframe_test.go && git commit -q -m "$(cat <<'EOF'
+        cobol: sequence area content must not decide format
+
+        The compiler ignores cols 1-6 entirely, and estates stamp the member
+        name there; requiring digits misdetected such files as free format and
+        extracted ZERO symbols — silently unresolvable members for most of a
+        real estate (the reported 32% include resolution). Only the indicator
+        column votes now.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.6.2 -m "format detection: sequence-area stamps" && git push origin v0.6.2 2>&1 | tail -1 && cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.6.2 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "grove gate: $?"
+      at: 2026-08-29T02:48:37.872006Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git add go.mod go.sum internal/parser/engine.go && git commit -q -m "$(cat <<'EOF'
+        parser: parse-empty COBOL files get a synthesized member record
+
+        Member resolution keys on basenames drawn from symbols, so a copybook
+        that yields no symbols silently broke the include graph for every unit
+        copying it. A cobol file extracting nothing now carries one
+        copybook-member record ("member (no symbols extracted)") — resolvable,
+        and distinguishable from an unindexed file (spec R-7.3). astkit v0.6.2
+        fixes the underlying misdetection (sequence-area member stamps).
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.36.3 -m "stamped sequence areas + parse-empty member records" && git push origin v0.36.3 2>&1 | tail -1 && cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.36.3 github.com/provasign/astkit@v0.6.2 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "prism gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3; cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test
+      at: 2026-08-29T02:48:49.049996Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.36.3, astkit v0.6.2 — the real 32% resolution bug
+
+        Sequence-area member stamps (cols 1-6, ignored by the compiler)
+        misdetected copybooks as free format -> zero symbols -> unresolvable
+        members. Format detection now votes on the indicator column only, and
+        a parse-empty COBOL file still carries a synthesized copybook-member
+        record so resolution never depends on content parsing. Gates green,
+        invariants held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.6 -m "mainframe: sequence-area stamps, parse-empty member records" && git push origin v0.56.6 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T02:50:32.508102Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T02:38:23.112124Z
+redactions: 0

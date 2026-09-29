@@ -1,15 +1,123 @@
 package mcp
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/config"
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 )
+
+func TestSourceDeliveryCapsExpandedRelatedFile(t *testing.T) {
+	h := newTestHandler(t)
+	seedBody := "package p\nfunc Target() {}\n"
+	if err := os.WriteFile(filepath.Join(h.Root, "target.go"), []byte(seedBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var dependency strings.Builder
+	dependency.WriteString("package p\n")
+	for i := 1; i <= 100; i++ {
+		fmt.Fprintf(&dependency, "// related line %03d: %s\n", i, strings.Repeat("x", 48))
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "related.go"), []byte(dependency.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const budget = 1200
+	sel := &selection{picked: []ranking.BudgetedSymbol{
+		{Symbol: grove.SymbolRecord{ID: "target", Name: "Target", FilePath: "target.go", Span: grove.SpanInfo{Start: 2, End: 2}}, Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1},
+		{Symbol: grove.SymbolRecord{ID: "related", Name: "Related", FilePath: "related.go", Span: grove.SpanInfo{Start: 2, End: 101}}, Relation: ranking.RelationDirectCall, Disclosure: ranking.DisclosureFull, Score: 0.9},
+	}}
+	_, sections := h.deliverSource(t.Context(), "Target", sel, 5, budget)
+	if !strings.Contains(sections["target.go"], "func Target") {
+		t.Fatalf("named target missing: %q", sections["target.go"])
+	}
+	section := sections["related.go"]
+	if section == "" || strings.Contains(section, "related line 100") {
+		t.Fatalf("related file was omitted or expanded too far: %q", section)
+	}
+	cap := int(float64(budget)*ranking.FileBudgetFraction) / 2
+	if got := ranking.EstimateTokens(section); got > cap {
+		t.Fatalf("related file used %d tokens, cap=%d", got, cap)
+	}
+}
+
+func TestSourceDeliveryKeepsEveryNamedAnchorFile(t *testing.T) {
+	h := newTestHandler(t)
+	sel := &selection{}
+	for i, name := range []string{"first", "second", "third"} {
+		path := name + ".go"
+		if err := os.WriteFile(filepath.Join(h.Root, path), []byte("package p\nfunc "+name+"() {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		sel.picked = append(sel.picked, ranking.BudgetedSymbol{
+			Symbol:   grove.SymbolRecord{ID: name, Name: name, FilePath: path, Span: grove.SpanInfo{Start: 2, End: 2}},
+			Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: float64(3 - i),
+		})
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "related.go"), []byte("package p\nfunc related() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sel.picked = append(sel.picked, ranking.BudgetedSymbol{
+		Symbol:   grove.SymbolRecord{ID: "related", Name: "related", FilePath: "related.go", Span: grove.SpanInfo{Start: 2, End: 2}},
+		Relation: ranking.RelationDirectCall, Disclosure: ranking.DisclosureFull, Score: 0.1,
+	})
+	_, sections := h.deliverSource(t.Context(), "three anchors", sel, 0, 1200)
+	for _, name := range []string{"first.go", "second.go", "third.go", "related.go"} {
+		if sections[name] == "" {
+			t.Fatalf("default file limit omitted named anchor %s: %v", name, sections)
+		}
+	}
+}
+
+func TestSourceDeliveryUsesWindowsWhenWholeFileExceedsBudget(t *testing.T) {
+	h := newTestHandler(t)
+	var body strings.Builder
+	for i := 1; i <= 75; i++ {
+		fmt.Fprintf(&body, "line %03d: %s\n", i, strings.Repeat("x", 90))
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "module.py"), []byte(body.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sel := &selection{picked: []ranking.BudgetedSymbol{{
+		Symbol:   grove.SymbolRecord{ID: "target", Name: "target", FilePath: "module.py", Span: grove.SpanInfo{Start: 30, End: 55}},
+		Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1,
+	}}}
+	_, sections := h.deliverSource(t.Context(), "target", sel, 1, 1500)
+	if section := sections["module.py"]; !strings.Contains(section, "line 050:") || strings.Contains(section, "line 075:") {
+		t.Fatalf("expected the full named window without the oversized whole file: %q", section)
+	}
+}
+
+func TestSourceDeliverySingleAnchorFileCanUseSharedBudget(t *testing.T) {
+	h := newTestHandler(t)
+	var body strings.Builder
+	for i := 1; i <= 200; i++ {
+		fmt.Fprintf(&body, "anchor line %03d: %s\n", i, strings.Repeat("x", 60))
+	}
+	if err := os.WriteFile(filepath.Join(h.Root, "module.py"), []byte(body.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sel := &selection{picked: []ranking.BudgetedSymbol{
+		{Symbol: grove.SymbolRecord{ID: "first", Name: "first", FilePath: "module.py", Span: grove.SpanInfo{Start: 20, End: 50}}, Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1},
+		{Symbol: grove.SymbolRecord{ID: "second", Name: "second", FilePath: "module.py", Span: grove.SpanInfo{Start: 100, End: 130}}, Relation: ranking.RelationSeed, Disclosure: ranking.DisclosureFull, Score: 1},
+	}}
+	const budget = 1900
+	out, sections := h.deliverSource(t.Context(), "two named anchors", sel, 1, budget)
+	section := sections["module.py"]
+	if !strings.Contains(section, "anchor line 045:") || !strings.Contains(section, "anchor line 125:") {
+		t.Fatalf("expected both named windows within shared budget: %q", section)
+	}
+	if got := ranking.EstimateTokens(out["content"].(string)); got > budget {
+		t.Fatalf("source used %d tokens, budget=%d", got, budget)
+	}
+}
 
 // ─── symbolWindows (pure) ─────────────────────────────────────────────────
 
@@ -44,6 +152,32 @@ func TestSymbolWindowsKeepsDistantSpansSeparate(t *testing.T) {
 	}
 }
 
+func TestReadRangeReturnsPointerForQueryDeliveredWindow(t *testing.T) {
+	h := &Handler{}
+	content := "one\ntwo\nthree\nfour\nfive\n"
+	hash := compression.Hash(content)
+	h.recordDeliveredRanges("x.go", hash, []lineWindow{{start: 2, end: 5}})
+
+	out, err := h.readRange("x.go", content, hash, 3, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := out.(map[string]any)["content"].(string)
+	if !strings.Contains(got, "[prism:cached]") || strings.Contains(got, "three") {
+		t.Fatalf("covered range should return only a cache pointer, got %q", got)
+	}
+
+	changed := compression.Hash(content + "six\n")
+	out, err = h.readRange("x.go", content+"six\n", changed, 3, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = out.(map[string]any)["content"].(string)
+	if !strings.Contains(got, "three") || strings.Contains(got, "[prism:cached]") {
+		t.Fatalf("changed content must be delivered, got %q", got)
+	}
+}
+
 func TestSymbolWindowsClampsToFileBounds(t *testing.T) {
 	wins := symbolWindows([]ranking.BudgetedSymbol{bs(1, 30, ranking.DisclosureFull)}, 20)
 	if len(wins) != 1 || wins[0].start != 1 || wins[0].end != 20 {
@@ -64,10 +198,30 @@ func TestSymbolWindowsSignatureDisclosureCapsSpan(t *testing.T) {
 	}
 }
 
+func TestSymbolWindowsTopLevelLocatorDoesNotInlineWholeModule(t *testing.T) {
+	module := bs(1, 900, ranking.DisclosureFull)
+	module.Symbol.Name = "<top-level>"
+	wins := symbolWindows([]ranking.BudgetedSymbol{module}, 900)
+	if len(wins) != 1 || wins[0].start != 1 || wins[0].end != signatureWindowLines+windowPad {
+		t.Fatalf("module locator should disclose only its head, got %v", wins)
+	}
+}
+
 func TestSymbolWindowsSkipsInvalidSpans(t *testing.T) {
 	wins := symbolWindows([]ranking.BudgetedSymbol{bs(0, 0, ranking.DisclosureFull)}, 100)
 	if len(wins) != 0 {
 		t.Fatalf("expected no windows for zero span, got %v", wins)
+	}
+}
+
+func TestGroupPickedByFileKeepsDirectNeighborAheadOfHotFile(t *testing.T) {
+	picked := []ranking.BudgetedSymbol{
+		{Symbol: grove.SymbolRecord{FilePath: "hot.go", Span: grove.SpanInfo{Start: 1}}, Relation: ranking.RelationRetrieval, Score: 0.9},
+		{Symbol: grove.SymbolRecord{FilePath: "caller.go", Span: grove.SpanInfo{Start: 1}}, Relation: ranking.RelationDirectCall, Score: 0.2},
+	}
+	files := groupPickedByFile(picked)
+	if len(files) != 2 || files[0].path != "caller.go" {
+		t.Fatalf("source file order lost direct-call evidence: %+v", files)
 	}
 }
 
@@ -102,6 +256,28 @@ func TestFormatGreeting(t *testing.T) {
 	}
 }
 `), 0o644)
+	os.WriteFile(filepath.Join(dir, "requirements.go"), []byte(`package p
+
+func MissingRequiredError() string { return "missing required argument" }
+
+func ValidateRequired() string { return MissingRequiredError() }
+
+func GetRequiredUsageFrom() string { return "usage" }
+
+func dispatchRequired() string { return ValidateRequired() }
+
+func parseRequired() string { return dispatchRequired() }
+`), 0o644)
+	os.WriteFile(filepath.Join(dir, "require_test.go"), []byte(`package p
+
+import "testing"
+
+func TestMissingRequiredOutput(t *testing.T) {
+	if parseRequired() == "" {
+		t.Fatal("empty")
+	}
+}
+`), 0o644)
 
 	gc := grove.NewClient("", "").WithTokenFromDir(dir)
 	if err := gc.EnsureRunning(t.Context()); err != nil {
@@ -131,9 +307,8 @@ func queryContent(t *testing.T, h *Handler, args map[string]any) string {
 
 func TestToolQuery_SourceDelivery_E2E(t *testing.T) {
 	h := newDeliveryFixture(t)
-	// "wrong" + "fix" phrasing -> debug phase -> source delivery by default.
+	// Query defaults to source delivery for a matched symbol.
 	content := queryContent(t, h, map[string]any{
-		"task":  "fix the bug: greeting is wrong for empty names",
 		"terms": []string{"FormatGreeting"},
 	})
 	if content == "" {
@@ -159,10 +334,50 @@ func TestToolQuery_SourceDelivery_E2E(t *testing.T) {
 	}
 }
 
+func TestToolQueryBudgetBoundsRenderedResponse(t *testing.T) {
+	const budget = 350
+	for _, delivery := range []string{"source", "symbols"} {
+		t.Run(delivery, func(t *testing.T) {
+			h := newDeliveryFixture(t)
+			out, err := h.Invoke("prism_query", map[string]any{
+				"terms":    []string{"FormatGreeting"},
+				"delivery": delivery, "budget": budget,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var rendered string
+			var reported int
+			switch v := out.(type) {
+			case map[string]any:
+				var ok bool
+				rendered, ok = renderQuerySourceAsText(v)
+				if !ok {
+					t.Fatal("source response did not render as MCP text")
+				}
+				reported, _ = v["deliveredTokens"].(int)
+			case queryResult:
+				encoded, err := json.Marshal(v)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rendered = string(encoded)
+				reported = v.BudgetUsed
+			default:
+				t.Fatalf("unexpected response %T", out)
+			}
+			if got := ranking.EstimateTokens(rendered); got > budget {
+				t.Fatalf("%s delivered %d tokens under budget=%d: %s", delivery, got, budget, rendered)
+			} else if reported != got {
+				t.Fatalf("%s reported %d delivered tokens, rendered %d", delivery, reported, got)
+			}
+		})
+	}
+}
+
 func TestToolQuery_SourceRepeatDeliveryUsesCachedPointer(t *testing.T) {
 	h := newDeliveryFixture(t)
 	args := map[string]any{
-		"task":     "fix the bug: greeting is wrong for empty names",
 		"terms":    []string{"FormatGreeting"},
 		"delivery": "source",
 	}
@@ -184,18 +399,470 @@ func TestToolQuery_SourceRepeatDeliveryUsesCachedPointer(t *testing.T) {
 	}
 }
 
-func TestToolQuery_SymbolsDeliveryStillDefault(t *testing.T) {
-	// A review-phase task must keep the compact symbols delivery: the
-	// response carries a symbols array, not a rendered content string.
+func TestToolQuery_SymbolsDeliveryIsExplicitOnly(t *testing.T) {
+	// The compact symbols delivery must be requested explicitly.
 	h := newDeliveryFixture(t)
 	out, err := h.Invoke("prism_query", map[string]any{
-		"task":  "review the greeting code",
-		"terms": []string{"FormatGreeting"},
+		"terms":    []string{"FormatGreeting"},
+		"delivery": "symbols",
 	})
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
 	if _, isMap := out.(map[string]any); isMap {
-		t.Fatalf("review-phase query should return the symbols struct, got map: %v", out)
+		t.Fatalf("delivery=symbols should return the symbols struct, got map: %v", out)
+	}
+}
+
+func TestToolQuery_HeadingUsesTerms(t *testing.T) {
+	h := newDeliveryFixture(t)
+	content := queryContent(t, h, map[string]any{"terms": []string{"FormatGreeting", "greeting"}})
+	if !strings.Contains(content, "**Context for: FormatGreeting, greeting**") {
+		t.Fatalf("source heading must name the supplied terms:\n%s", content)
+	}
+}
+
+// TestToolQuery_TestedByPointer verifies the restored test-coverage signal
+// (2026-09-02): prism_query's own tool description promises "callers and
+// covering tests", but the delivery path unconditionally dropped every
+// CategoryTest symbol (pr3493: an unrelated, lexically-task-matched test
+// earned a whole source window), and the supporting hasTestEdgeID/
+// testFilePaths maps that should have gated a SAFE version of that were
+// declared and never populated -- so the promised behavior was silently
+// dead. Fixed as a pointer only (file:line, never a body), which cannot
+// repeat the pr3493 failure since it never enters the budget/disclosure
+// pipeline at all.
+func TestToolQuery_TestedByPointer(t *testing.T) {
+	h := newDeliveryFixture(t)
+	// newDeliveryFixture's util_test.go already has TestFormatGreeting
+	// calling FormatGreeting directly -- a real verified test caller.
+	out, err := h.Invoke("prism_query", map[string]any{
+		"terms": []string{"FormatGreeting"},
+	})
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("want map delivery, got %T", out)
+	}
+	content, _ := m["content"].(string)
+	if !strings.Contains(content, "tested by") || !strings.Contains(content, "TestFormatGreeting") {
+		t.Errorf("expected a 'tested by' pointer naming TestFormatGreeting, got:\n%s", content)
+	}
+	// Pointer only: the test's body ("if FormatGreeting(...") must not
+	// appear -- that would mean it leaked into a source window instead of
+	// staying a location-only pointer.
+	if strings.Contains(content, `if FormatGreeting("")`) {
+		t.Error("test body leaked into delivery -- this must stay pointer-only (file:line), not a source window")
+	}
+	if strings.Contains(content, "lexical candidates") {
+		t.Errorf("a verified direct test caller must not be diluted with lexical candidates:\n%s", content)
+	}
+}
+
+// The regression behind clap-rs/clap#4006: the target test reached the
+// private error formatter through parser entry points, so there was no direct
+// calls edge from the test to any supplied anchor. A narrow name-filtered test
+// passed while the containing integration-test file still had six failures.
+func TestToolQuery_IndirectRelatedTestFileIsPointerOnly(t *testing.T) {
+	h := newDeliveryFixture(t)
+	content := queryContent(t, h, map[string]any{
+		"terms": []string{"MissingRequiredError", "ValidateRequired", "GetRequiredUsageFrom"},
+	})
+	if !strings.Contains(content, "Related test files — lexical candidates, not verified callers") {
+		t.Fatalf("missing honest indirect-test label:\n%s", content)
+	}
+	if !strings.Contains(content, "require_test.go") || !strings.Contains(content, "TestMissingRequiredOutput") {
+		t.Fatalf("missing related integration-test pointer:\n%s", content)
+	}
+	if !strings.Contains(content, "containing test file/module or the affected package suite") {
+		t.Fatalf("missing broad-validation guidance:\n%s", content)
+	}
+	if strings.Contains(content, `if parseRequired() == ""`) {
+		t.Fatalf("lexical test body leaked into production context:\n%s", content)
+	}
+}
+
+func TestRelatedTestProbesRecoverCompoundWithoutGenericEdges(t *testing.T) {
+	probes := relatedTestProbes([]string{"missing_required_error", "validate_required", "get_required_usage_from"})
+	var labels []string
+	for _, probe := range probes {
+		labels = append(labels, probe.label)
+	}
+	joined := strings.Join(labels, ",")
+	if !strings.Contains(joined, "missing_required") || !strings.Contains(joined, "required_usage") {
+		t.Fatalf("compound probes did not preserve discriminating cores: %v", probes)
+	}
+	if strings.Contains(joined, "get_required_usage_from") || strings.Contains(joined, "missing_required_error") {
+		t.Fatalf("generic edge words remained in probes: %v", probes)
+	}
+}
+
+// TestToolChangeImpact_LabelsTestCallers verifies change_impact's caller
+// list marks which callers are verified tests (isTest: true) instead of
+// silently mixing them with production call sites -- the caller data was
+// always present (change_impact never filtered test files), only the
+// distinction was missing.
+func TestToolChangeImpact_LabelsTestCallers(t *testing.T) {
+	h := newDeliveryFixture(t)
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "FormatGreeting"})
+	if err != nil {
+		t.Fatalf("change_impact: %v", err)
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("want map, got %T", out)
+	}
+	callers, _ := m["callers"].([]map[string]any)
+	if len(callers) == 0 {
+		t.Fatal("expected at least one caller")
+	}
+	found := false
+	for _, c := range callers {
+		if c["name"] == "TestFormatGreeting" {
+			found = true
+			if c["isTest"] != true {
+				t.Errorf("TestFormatGreeting caller missing isTest:true, got %v", c)
+			}
+		}
+		if c["name"] == "run" && c["isTest"] == true {
+			t.Errorf("run() is production code, must not be marked isTest: %v", c)
+		}
+	}
+	if !found {
+		t.Error("TestFormatGreeting not found among callers")
+	}
+}
+
+// TestToolChangeImpact_NoMethodErrorIsCorrectable: grove's "type X declares
+// no method Y" was measured (2026-09-02 transcript analysis) as the dead end
+// that made an agent abandon prism for a whole task -- it had deleted the
+// member two edits earlier, asked change_impact about it AFTER (steering
+// says before), got the terse error, and never called prism again. The
+// enriched error names the members the type actually declares and states
+// the query-after-edit failure mode explicitly, so the retry is one obvious
+// step instead of a dead end.
+func TestToolChangeImpact_NoMethodErrorIsCorrectable(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "svc.go"), []byte(`package p
+
+type Service struct{}
+
+func (s *Service) Start() {}
+
+func (s *Service) Stop() {}
+`), 0o644)
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	_, err := h.Invoke("prism_change_impact", map[string]any{"query": "Service.Nope"})
+	if err == nil {
+		t.Fatal("Service.Nope should not resolve")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "BEFORE the edit") {
+		t.Errorf("no-method error must name the query-after-edit failure mode, got: %s", msg)
+	}
+	// The members the type ACTUALLY declares make the retry one obvious step.
+	if !strings.Contains(msg, "Start") || !strings.Contains(msg, "Stop") {
+		t.Errorf("no-method error should list the type's real members, got: %s", msg)
+	}
+}
+
+// TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow: BACKLOG addendum
+// #7 (upai2v1g #93, 2026-09-02) — a 22.5kB prism_query delivery spent most
+// of its budget dumping the full license-headed body of a file whose ONLY
+// connection to the task was a term appearing in its body text (never its
+// name); nothing it returned was used. Content-only seeds now deliver at
+// signature disclosure — the pointer stays, the body is one lookup away.
+func TestToolQuery_ContentOnlySeedGetsSignatureNotFullWindow(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, rel), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Name-matched target: small, really about frobnicate.
+	write("target.go", `package p
+
+func FrobnicateThing() string { return "x" }
+`)
+	// Content-only bystander: name has nothing to do with the term; the
+	// term appears once deep inside a LARGE body that a full
+	// window would dump wholesale.
+	var big strings.Builder
+	big.WriteString("package p\n\nfunc Unrelated() string {\n")
+	for i := 0; i < 40; i++ {
+		if i == 20 {
+			big.WriteString("\t_ = \"unique frobnicate evidence\"\n")
+			continue
+		}
+		fmt.Fprintf(&big, "\t_ = \"filler line %d ------------------------------------------------\"\n", i)
+	}
+	big.WriteString("\treturn \"y\"\n}\n")
+	write("bystander.go", big.String())
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_query", map[string]any{
+		"terms": []string{"frobnicate"},
+	})
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	m := out.(map[string]any)
+	content, _ := m["content"].(string)
+	if !strings.Contains(content, "FrobnicateThing") {
+		t.Fatalf("name-matched target missing from delivery:\n%s", content)
+	}
+	if strings.Contains(content, "filler line 10") {
+		t.Errorf("content-only bystander's full body was delivered — should be signature-level only:\n%s", content)
+	}
+	evidence := fmt.Sprint(m["textMatches"])
+	for _, want := range []string{"unique frobnicate evidence", "filler line 19", "filler line 21"} {
+		if !strings.Contains(evidence, want) {
+			t.Errorf("content-only match omitted bounded evidence %q: %s", want, evidence)
+		}
+	}
+}
+
+// TestToolChangeImpact_AmbiguityNoteOnMultiFileDeclarations: BACKLOG
+// addendum #5 — same-named types in distinct files all seed one merged
+// closure whose caller list can belong entirely to the wrong type; the
+// result must SAY when that risk exists and name the file= fix.
+func TestToolChangeImpact_AmbiguityNoteOnMultiFileDeclarations(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/a\n\ngo 1.26\n")
+	write("pkg/one/one.go", `package one
+
+type Engine struct{}
+
+func (e *Engine) Query(q string) string { return q }
+`)
+	write("pkg/two/two.go", `package two
+
+type Engine struct{}
+
+func (e *Engine) Query(v int) int { return v }
+`)
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "Engine.Query"})
+	if err != nil {
+		t.Fatalf("change_impact: %v", err)
+	}
+	m := out.(map[string]any)
+	note, _ := m["ambiguityNote"].(string)
+	if !strings.Contains(note, "file=") {
+		t.Errorf("multi-file declarations must carry the ambiguity note naming file=, got %q", note)
+	}
+
+	// Scoped call: no note, one declaration.
+	out, err = h.Invoke("prism_change_impact", map[string]any{"query": "Engine.Query", "file": "pkg/one"})
+	if err != nil {
+		t.Fatalf("scoped change_impact: %v", err)
+	}
+	m = out.(map[string]any)
+	if _, has := m["ambiguityNote"]; has {
+		t.Error("scoped call must not carry the ambiguity note")
+	}
+	decls := mustJSON(t, m["declarations"])
+	if len(decls) != 1 || decls[0]["filePath"] != "pkg/one/one.go" {
+		t.Errorf("scoped declarations = %v, want exactly pkg/one/one.go", decls)
+	}
+}
+
+func TestToolChangeImpact_CrossLanguageAmbiguityRequiresFileScope(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/polyglot\n\ngo 1.26\n")
+	write("go/user.go", `package user
+
+type User struct{}
+
+func (User) Close() {}
+`)
+	write("py/user.py", `class User:
+    def Close(self):
+        pass
+`)
+
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+
+	m, ok := h.crossLanguageImpactChoice(t.Context(), "User.Close", errors.New(
+		`change-impact: "User.Close" is ambiguous across language families; scope the query by declaring file`))
+	if !ok {
+		t.Fatal("cross-language ambiguity was not converted to an actionable response")
+	}
+	if m["status"] != "needs_file_scope" || m["requiresFileScope"] != true {
+		t.Fatalf("ambiguity status = %#v", m)
+	}
+	alternatives := mustJSON(t, m["alternatives"])
+	if len(alternatives) != 2 {
+		t.Fatalf("alternatives = %v, want the Go and Python declarations", alternatives)
+	}
+	files := map[string]bool{}
+	languages := map[string]bool{}
+	for _, alternative := range alternatives {
+		files[alternative["filePath"].(string)] = true
+		languages[alternative["language"].(string)] = true
+	}
+	if !files["go/user.go"] || !files["py/user.py"] {
+		t.Fatalf("alternative files = %v", files)
+	}
+	if !languages["go"] || !languages["python"] {
+		t.Fatalf("alternative languages = %v", languages)
+	}
+	if note, _ := m["ambiguityNote"].(string); !strings.Contains(note, "did not guess") || !strings.Contains(note, "filePath") {
+		t.Fatalf("ambiguity note is not actionable: %q", note)
+	}
+
+	out, err := h.Invoke("prism_change_impact", map[string]any{
+		"query": "User.Close",
+		"file":  "go/user.go",
+	})
+	if err != nil {
+		t.Fatalf("file-scoped retry: %v", err)
+	}
+	m = out.(map[string]any)
+	if _, needsScope := m["requiresFileScope"]; needsScope {
+		t.Fatalf("file-scoped retry remained ambiguous: %#v", m)
+	}
+	decls := mustJSON(t, m["declarations"])
+	if len(decls) != 1 || decls[0]["filePath"] != "go/user.go" {
+		t.Fatalf("scoped declarations = %v, want exactly go/user.go", decls)
+	}
+}
+
+// TestTabIndentNote: BACKLOG addendum 2 item 15 — the "N<TAB>source" line
+// format made a delimiter tab read as indentation on tab-indented files
+// (~20 turns of od -c archaeology in ddtb4dv8); the disambiguating
+// sentence must appear for tab-indented content and stay absent otherwise.
+func TestTabIndentNote(t *testing.T) {
+	if n := tabIndentNote([]string{"package p", "\tfunc x() {}"}); n == "" {
+		t.Error("tab-indented lines must carry the delimiter note")
+	}
+	if n := tabIndentNote([]string{"package p", "    spaces only"}); n != "" {
+		t.Errorf("space-indented content must not carry the note, got %q", n)
+	}
+}
+
+// TestToolRead_RangeCarriesTabNote: the range path (the shape the measured
+// failure actually used) must surface it as formatNote.
+func TestToolRead_RangeCarriesTabNote(t *testing.T) {
+	h := newTestHandler(t)
+	if err := os.WriteFile(filepath.Join(h.Root, "tabby.go"),
+		[]byte("package p\n\nfunc a() {\n\tx := 1\n\t_ = x\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := h.Invoke("prism_read", map[string]any{"file": "tabby.go", "offset": 3, "limit": 3})
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	m := out.(map[string]any)
+	if note, _ := m["formatNote"].(string); !strings.Contains(note, "delimiter") {
+		t.Errorf("tab-indented range read must carry formatNote, got %v", m["formatNote"])
+	}
+}
+
+// TestToolRead_HostCapDegradesNotErrors: BACKLOG addendum 2 item 17 — a
+// whole-file read past the host's MCP result cap used to return the full
+// body, which Claude Code rejected ("exceeds maximum allowed tokens");
+// measured (71o4q969), the agent then NEVER retried prism_read and issued
+// 50 native Reads. Files that cannot be delivered whole must degrade to a
+// valid head+symbol-map partial with continuation instructions — never a
+// payload the host bounces.
+func TestToolRead_HostCapDegradesNotErrors(t *testing.T) {
+	dir := t.TempDir()
+	var big strings.Builder
+	big.WriteString("package p\n\n")
+	for i := 0; i < 3000; i++ {
+		fmt.Fprintf(&big, "func f%d() string { return \"some reasonably long line of code %d\" }\n", i, i)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "huge.go"), []byte(big.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gc := grove.NewClient("", "").WithTokenFromDir(dir)
+	if err := gc.EnsureRunning(t.Context()); err != nil {
+		t.Fatalf("grove ensure: %v", err)
+	}
+	t.Cleanup(gc.Shutdown)
+	h := NewHandler(config.Default(), dir, gc)
+	if _, err := h.Invoke("prism_index", map[string]any{}); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+	out, err := h.Invoke("prism_read", map[string]any{"file": "huge.go"})
+	if err != nil {
+		t.Fatalf("read must not error on an oversized file: %v", err)
+	}
+	m := out.(map[string]any)
+	content, _ := m["content"].(string)
+	if got := len(content); got > 80000 {
+		t.Fatalf("degraded delivery is still oversized: %d bytes", got)
+	}
+	if !strings.Contains(content, "1\tpackage p") {
+		t.Errorf("head window missing:\n%.200s", content)
+	}
+	note, _ := m["note"].(string)
+	for _, want := range []string{"offset=401", "prism_lookup", "do NOT fall back to native Read"} {
+		if !strings.Contains(note, want) {
+			t.Errorf("continuation note missing %q: %s", want, note)
+		}
+	}
+	if m["totalLines"] == nil {
+		t.Error("degraded delivery must carry totalLines (the denominator rule)")
 	}
 }

@@ -1,0 +1,190 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c7
+created_at: 2026-09-24T01:41:43.318161Z
+finalized_at: 2026-09-24T10:43:05.934195Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git push -q origin main 2>&1 | grep -v "^shale:" | tail -1; go build -o /tmp/prism-h3-control ./cmd/prism && git checkout -q h3-verify-steering && git rebase -q main && go build -o /tmp/prism-h3-treatment ./cmd/prism && go test ./internal/cli/... -count=1 2>&1 | tail -1 && git checkout -q main && echo "control=$(/tmp/prism-h3-control version) treatment built from $(git log --oneline -1 h3-verify-steering)"
+      at: 2026-09-24T01:41:43.318161Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && export PRISM_BODY_BASELINE_BIN=/tmp/prism-h3-control PRISM_BODY_EXP_BIN=/tmp/prism-h3-treatment && nohup bash -c 'for p in 1 2 3; do python3 runners/run_overnight.py --manifest results/h3-movable-manifest.json --out-dir results/h3-ab/pass$p --native-arm prism_body_baseline --prism-arm prism_body_exp --model sonnet; done' > results/h3-ab.launch.log 2>&1 &
+        echo "PID $!"; sleep 3; head -3 results/h3-ab.launch.log
+      at: 2026-09-24T01:41:59.640843Z
+      classified: other
+    - cmd: gh workflow run refresh-formulae.yml -R provasign/homebrew-shale 2>&1 | tail -1
+      at: 2026-09-24T01:42:12.264489Z
+      classified: other
+    - cmd: 'sleep 20; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -m1 ''version "'''
+      at: 2026-09-24T01:42:41.53281Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/results/h3-movable-manifest.json && git commit -q -m "$(cat <<'EOF'
+        docs: v0.82.0 released; H3 A/B launched (19 movable tasks, 3 passes, control vs steering treatment)
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git push -q origin main 2>&1 | grep -v "^shale:" | tail -1; git log --oneline -1
+      at: 2026-09-24T01:43:14.755605Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 -o pid,etime 2>/dev/null | tail -1; for p in 1 2 3; do [ -f results/h3-ab/pass$p/state.json ] && echo "pass$p: $(python3 -c "import json;print(len(json.load(open(''results/h3-ab/pass$p/state.json''))))")/19"; done; grep -c "native resolved" results/h3-ab.launch.log; grep "native resolved" results/h3-ab.launch.log | tail -12'
+      at: 2026-09-24T02:44:12.033638Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 -o pid,etime 2>/dev/null | tail -1; for p in 1 2 3; do [ -f results/h3-ab/pass$p/state.json ] && echo "pass$p: $(python3 -c "import json;print(len(json.load(open(''results/h3-ab/pass$p/state.json''))))")/19"; done; grep "native resolved" results/h3-ab.launch.log | tail -8 | cut -c1-140'
+      at: 2026-09-24T03:45:16.459801Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 -o pid,etime 2>/dev/null | tail -1; for p in 1 2 3; do [ -f results/h3-ab/pass$p/state.json ] && echo "pass$p: $(python3 -c "import json;print(len(json.load(open('results/h3-ab/pass$p/state.json'))))")/19"; done; python3 - << 'EOF'
+        import json,glob
+        for p in (1,2,3):
+            try: d=json.load(open(f"results/h3-ab/pass{p}/results.json"))
+            except Exception: continue
+            n=sum(1 for r in d if r["native"]["resolved"]); t=sum(1 for r in d if r["prism"]["resolved"])
+            print(f"pass{p}: {len(d)} tasks  control resolved {n}  treatment resolved {t}")
+        EOF
+      at: 2026-09-24T04:46:24.254983Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 -o pid,etime 2>/dev/null | tail -1; python3 - << 'EOF'
+        import json
+        for p in (1,2,3):
+            try: d=json.load(open(f"results/h3-ab/pass{p}/results.json"))
+            except Exception: continue
+            n=sum(1 for r in d if r["native"]["resolved"]); t=sum(1 for r in d if r["prism"]["resolved"])
+            print(f"pass{p}: {len(d)}/19 tasks  control {n}  treatment {t}")
+        EOF
+      at: 2026-09-24T05:47:19.079025Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 -o pid,etime 2>/dev/null | tail -1; python3 - << 'EOF'
+        import json
+        for p in (1,2,3):
+            try: d=json.load(open(f"results/h3-ab/pass{p}/results.json"))
+            except Exception: continue
+            n=sum(1 for r in d if r["native"]["resolved"]); t=sum(1 for r in d if r["prism"]["resolved"])
+            print(f"pass{p}: {len(d)}/19 tasks  control {n}  treatment {t}")
+        EOF
+      at: 2026-09-24T06:48:23.495262Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 -o pid,etime 2>/dev/null | tail -1; python3 - << 'EOF'
+        import json
+        for p in (1,2,3):
+            try: d=json.load(open(f"results/h3-ab/pass{p}/results.json"))
+            except Exception: continue
+            n=sum(1 for r in d if r["native"]["resolved"]); t=sum(1 for r in d if r["prism"]["resolved"])
+            print(f"pass{p}: {len(d)}/19 tasks  control {n}  treatment {t}")
+        EOF
+      at: 2026-09-24T07:49:34.943892Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 -o pid,etime 2>/dev/null | tail -1; echo "ps_rc=$?"; tail -2 results/h3-ab.launch.log | cut -c1-120; python3 - << 'EOF'
+        import json
+        for p in (1,2,3):
+            try: d=json.load(open(f"results/h3-ab/pass{p}/results.json"))
+            except Exception: continue
+            n=sum(1 for r in d if r["native"]["resolved"]); t=sum(1 for r in d if r["prism"]["resolved"])
+            print(f"pass{p}: {len(d)}/19 tasks  control {n}  treatment {t}")
+        EOF
+      at: 2026-09-24T09:11:19.864305Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ps -p 78715 >/dev/null 2>&1 && echo "STILL RUNNING" || echo "done"; tail -1 results/h3-ab.launch.log | cut -c1-100
+      at: 2026-09-24T09:32:07.688931Z
+      classified: other
+    - cmd: |-
+        cat > /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/h3_ab_result.py << 'PYEOF'
+        """H3 A/B: control (main binary, verify optional) vs treatment (branch
+        h3-verify-steering: mandated verify testCoverage read before finishing),
+        19 movable tasks x 3 passes. Per-task resolves, hard-core coverage, verify
+        adoption (from transcripts), token ratio."""
+        import json
+        from pathlib import Path
+        from collections import defaultdict
+        R = Path("/Users/tapabratapal/Projects/provasign/research/harness/results/h3-ab")
+        ROOT = Path.home() / ".claude" / "projects"
+        HARD = {"FasterXML__jackson-databind__pr6018","FasterXML__jackson-databind__pr6044",
+         "FasterXML__jackson-databind__pr6052","FasterXML__jackson-databind__pr6076",
+         "akheron__jansson__pr740","apache__commons-lang__pr1655","apache__commons-lang__pr1703",
+         "gin-gonic__gin__pr4535","gin-gonic__gin__pr4805","pallets__click__pr3473",
+         "pallets__click__pr3504","pallets__click__pr3678"}
+
+        def verify_called(sid):
+            hits = list(ROOT.glob(f"*/{sid}.jsonl"))
+            if not hits: return None
+            for line in hits[0].read_text(errors="ignore").splitlines():
+                if '"op": "verify"' in line or '"op":"verify"' in line:
+                    return True
+            return False
+
+        per = defaultdict(lambda: {"c": [], "t": [], "ctok": 0, "ttok": 0, "cver": 0, "tver": 0, "cn": 0, "tn": 0})
+        for p in (1, 2, 3):
+            for r in json.load(open(R / f"pass{p}" / "results.json")):
+                e = per[r["task"]]
+                e["c"].append(bool(r["native"]["resolved"])); e["t"].append(bool(r["prism"]["resolved"]))
+                e["ctok"] += r["native"]["tokens"] or 0; e["ttok"] += r["prism"]["tokens"] or 0
+                for arm, key in (("native", "c"), ("prism", "t")):
+                    v = verify_called(r[arm].get("session_id"))
+                    if v is not None:
+                        e[key + "n"] += 1
+                        if v: e[key + "ver"] += 1
+
+        tasks = sorted(per)
+        C = sum(sum(per[t]["c"]) for t in tasks); T = sum(sum(per[t]["t"]) for t in tasks)
+        cells = sum(len(per[t]["c"]) for t in tasks)
+        print(f"cells per arm: {cells}")
+        print(f"resolved: control {C}/{cells}   treatment {T}/{cells}")
+        hc_c = sum(1 for t in tasks if t in HARD and any(per[t]["c"])); hc_t = sum(1 for t in tasks if t in HARD and any(per[t]["t"]))
+        print(f"hard-core tasks (12) resolved at least once: control {hc_c}   treatment {hc_t}")
+        fl_c = sum(1 for t in tasks if t not in HARD and any(per[t]["c"])); fl_t = sum(1 for t in tasks if t not in HARD and any(per[t]["t"]))
+        print(f"flaky tasks (7) resolved at least once: control {fl_c}   treatment {fl_t}")
+        ctok = sum(per[t]["ctok"] for t in tasks); ttok = sum(per[t]["ttok"] for t in tasks)
+        print(f"tokens: control {ctok:,}  treatment {ttok:,}  ratio {ttok/ctok:.3f}")
+        cv = sum(per[t]["cver"] for t in tasks); cn = sum(per[t]["cn"] for t in tasks)
+        tv = sum(per[t]["tver"] for t in tasks); tn = sum(per[t]["tn"] for t in tasks)
+        print(f"verify called: control {cv}/{cn} sessions   treatment {tv}/{tn} sessions")
+        print(f"\n{'task':38s} {'hard':4s} control  treatment")
+        for t in tasks:
+            e = per[t]
+            print(f"{t:38s} {'HC' if t in HARD else '  ':4s} {sum(e['c'])}/3      {sum(e['t'])}/3")
+        PYEOF
+        python3 /Users/tapabratapal/Projects/provasign/research/harness/analysis/token-survey/h3_ab_result.py
+      at: 2026-09-24T09:32:28.630281Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/HANDOFF.md harness/analysis/token-survey/h3_ab_result.py harness/results/h3-ab/ && git commit -q -m "$(cat <<'EOF'
+        docs: H3 A/B negative — mandated verify read moves adoption (0→79%), not outcomes
+
+        19 movable tasks x 3 passes: control 8/57, treatment 6/57; hard-core 0/36 in both
+        arms; tokens 1.28x. Branch h3-verify-steering stays unmerged. The 12 hard-core tasks
+        are 0 for 7 cells each across every configuration; nothing prism-shaped remains
+        untried on this bed.
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_015EeaTQYczmqXMfyKzc1mqD
+        EOF
+        )" && git push -q origin main 2>&1 | grep -v "^shale:" | tail -1; git log --oneline -1
+      at: 2026-09-24T09:34:06.906507Z
+      classified: other
+    - cmd: |-
+        echo "=== prism ==="; cd /Users/tapabratapal/Projects/provasign/prism && git status -sb | head -5; echo "--- ahead of origin? ---"; git log origin/main..HEAD --oneline; echo "--- local branches not on origin ---"; git branch -vv | grep -v "^\* main\|remotes"; echo "--- latest tag vs HEAD ---"; git describe --tags --long
+        echo; echo "=== research ==="; cd /Users/tapabratapal/Projects/provasign/research && git status -sb | head -5; echo "--- ahead of origin? ---"; git log origin/main..HEAD --oneline
+        echo; echo "=== grove ==="; cd /Users/tapabratapal/Projects/provasign/grove && git status -sb | head -5; git log origin/main..HEAD --oneline
+      at: 2026-09-24T10:42:37.846056Z
+      classified: other
+    - cmd: |-
+        git log v0.82.0..HEAD --oneline
+        echo "---diff of ahead commit---"
+        git show --stat ef8ae90e | head -20
+      at: 2026-09-24T10:42:43.175859Z
+      classified: other
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-24T01:41:43.318161Z
+redactions: 0

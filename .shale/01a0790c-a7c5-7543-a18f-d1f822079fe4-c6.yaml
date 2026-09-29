@@ -1,0 +1,184 @@
+shale_version: "0"
+id: 01a0790c-a7c5-7543-a18f-d1f822079fe4-c6
+created_at: 2026-09-07T03:58:19.104492Z
+finalized_at: 2026-09-07T14:18:00.493916Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T14:17:46.736293Z
+commands:
+    - cmd: git push origin main && git status --short --branch
+      at: 2026-09-07T03:58:19.104492Z
+      classified: other
+    - cmd: install -m 0755 /tmp/prism-final /Users/tapabratapal/bin/prism && shasum -a 256 /Users/tapabratapal/bin/prism /tmp/prism-final && /Users/tapabratapal/bin/prism version && git status --short --branch && git log -3 --oneline --decorate
+      at: 2026-09-07T03:58:25.399462Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism query "Review impact_oracle.py for correctness. Explain how it derives declarations, implementations, callers, exclusions, and confidence; identify entry points, dependencies, and tests." --terms impact_oracle,ground_truth,QueryData --format text
+      at: 2026-09-07T14:06:00.723923Z
+      classified: other
+    - cmd: sed -n '1,320p' impact_oracle.py
+      at: 2026-09-07T14:06:06.39114Z
+      classified: other
+    - cmd: find tests -maxdepth 2 -type f -iname '*impact*oracle*' -o -iname '*oracle*impact*' -print
+      at: 2026-09-07T14:06:06.401855Z
+      classified: other
+    - cmd: git status --short --branch -- harness/impact_oracle.py harness/tests && git diff -- harness/impact_oracle.py && git log --oneline --all -- harness/impact_oracle.py | head -20
+      at: 2026-09-07T14:06:06.459159Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism query "Compare query_oracle.py, engine_ceiling.py, score.py, and ab_gate.py contracts with impact_oracle.py. Show isolation, scoring, error handling, output, and exit-status patterns suitable for a deterministic gate." --terms run_capped,score,corpus_snapshot,CEILING-FAIL --format text
+      at: 2026-09-07T14:06:28.879201Z
+      classified: other
+    - cmd: python3 -m py_compile impact_oracle.py && python3 impact_oracle.py --help
+      at: 2026-09-07T14:06:37.359101Z
+      classified: other
+    - cmd: python3 /Users/tapabratapal/Projects/provasign/research/harness/impact_oracle.py --prism /Users/tapabratapal/bin/prism /Users/tapabratapal/Projects/provasign/research/harness/tasks/grafana-querydata-impact.json /Users/tapabratapal/Projects/provasign/research/harness/tasks/jackson-jsonnode-get.json; rc=$?; echo exit=$rc; cat impact-oracle.json
+      at: 2026-09-07T14:06:53.459277Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import sys
+        sys.path.insert(0,'.')
+        import impact_oracle
+        from schema import Answer, Task
+        from score import score
+        for name in ('grafana-querydata-impact','jackson-jsonnode-get'):
+         t=Task.load(f'tasks/{name}.json')
+         q=impact_oracle.oracle_anchor(t)
+         sites,note,nbytes=impact_oracle.change_impact_sites('/Users/tapabratapal/bin/prism',t.workdir or t.repo,q)
+         card=score(t,Answer(sites=sites,complete=True,unresolved=[]),'oracle',0)
+         print(name,'anchor',q,'raw sites',len(sites),'unique',len(set(sites)),'note',note,'bytes',nbytes,'official recall',card.recall,'precision',card.precision,'f1',card.f1)
+        PY
+      at: 2026-09-07T14:07:14.231394Z
+      classified: other
+    - cmd: nl -ba impact_oracle.py | sed -n '1,240p'; find tests -maxdepth 1 -type f -print | sort | sed -n '1,160p'
+      at: 2026-09-07T14:07:17.037144Z
+      classified: other
+    - cmd: nl -ba score.py | sed -n '1,240p'; nl -ba schema.py | sed -n '1,140p'; nl -ba ab_gate.py | sed -n '260,420p'
+      at: 2026-09-07T14:07:23.625121Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json,subprocess
+        from pathlib import Path
+        for f in ['tasks/grafana-querydata-impact.json','tasks/jackson-jsonnode-get.json']:
+         d=json.loads(Path(f).read_text()); wd=d.get('workdir') or d['repo']
+         head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=wd,text=True).strip()
+         dirty=subprocess.check_output(['git','status','--porcelain'],cwd=wd,text=True)
+         print(Path(f).name,'pin',d['pin'],'HEAD',head,'match',head==d['pin'],'dirty_entries',len(dirty.splitlines()))
+        PY
+      at: 2026-09-07T14:07:32.92578Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism search 'grafana-querydata-impact' 'native' 'no-prism' 'without prism' --scope text --path runs --path docs --path '*.md' --files-only --exhaustive --format text
+      at: 2026-09-07T14:13:32.875747Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import json
+        for p in [
+         Path('runs/bench-matrix/grafana-querydata-impact.sonnet.baseline.t1.json'),
+         Path('runs/bench-matrix/grafana-querydata-impact.sonnet.prism.t1.json'),
+         Path('runs/grafana-querydata-impact/sonnet/T.t1.json'),
+         Path('runs/grafana-querydata-impact/sonnet/G.t1.json'),
+         Path('runs/grafana-querydata-impact/sonnet/summary.json')]:
+         print('\n###',p)
+         d=json.loads(p.read_text())
+         print(json.dumps(d,indent=2)[:12000])
+        PY
+      at: 2026-09-07T14:13:38.734186Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import json, statistics
+        for arm in ('T','G','V'):
+         rows=[]
+         for p in sorted(Path('runs/grafana-querydata-impact/sonnet').glob(f'{arm}.t*.json')):
+          d=json.loads(p.read_text()); u=d.get('cost',{}).get('usage',{})
+          req=sum(u.get(k,0) or 0 for k in ('input_tokens','cache_creation_input_tokens','cache_read_input_tokens'))
+          rows.append((p.name,d.get('recall'),d.get('precision'),d.get('cost',{}).get('total_cost_usd'),req,d.get('cost',{}).get('num_turns')))
+         print('\nARM',arm,'n',len(rows))
+         for x in rows: print(x)
+         if rows:
+          for label,idx in [('recall',1),('precision',2),('cost',3),('request_tokens',4),('turns',5)]:
+           vals=[x[idx] for x in rows if x[idx] is not None]
+           print(label,'mean',sum(vals)/len(vals),'median',statistics.median(vals),'range',(min(vals),max(vals)))
+        PY
+      at: 2026-09-07T14:13:55.992059Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import json,statistics
+        for arm in ('baseline','prism'):
+         rows=[]
+         for p in sorted(Path('runs/bench-matrix').glob(f'grafana-querydata-impact.sonnet.{arm}.t*.json')):
+          d=json.loads(p.read_text()); rows.append((p.name,d.get('recall'),d.get('precision'),d.get('tokens_in'),d.get('cost_usd'),d.get('turns'),d.get('n_sites')))
+         print('\n',arm,len(rows))
+         for r in rows:print(r)
+         for label,i in [('recall',1),('tokens_in_legacy',3),('cost',4),('turns',5)]:
+          vals=[r[i] for r in rows if r[i] is not None]
+          print(label,'mean',sum(vals)/len(vals),'median',statistics.median(vals),'range',(min(vals),max(vals)))
+        PY
+      at: 2026-09-07T14:14:03.714185Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import re
+        ps=sorted(Path('runs/bench-matrix').glob('*.sonnet.baseline.t*.json'))
+        for p in ps: print(p.name)
+        print('count',len(ps))
+        PY
+      at: 2026-09-07T14:14:15.208538Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import json,statistics,collections
+        rows=[]
+        for p in sorted(Path('runs/bench-matrix').glob('*.sonnet.baseline.t*.json')):
+         d=json.loads(p.read_text()); rows.append(d)
+        bytrial=collections.defaultdict(list)
+        for d in rows: bytrial[d['trial']].append(d)
+        print('NO-PRISM nine-task panels')
+        for trial,ds in sorted(bytrial.items()):
+         print(trial,'tasks',len(ds),'mean_recall',round(sum(x['recall'] for x in ds)/len(ds),4),'tokens_in_legacy',sum(x['tokens_in'] for x in ds),'cost',round(sum(x['cost_usd'] for x in ds),4),'turns',sum(x['turns'] for x in ds))
+        print('averages','mean_recall',sum(x['recall'] for x in rows)/len(rows),'tokens/cell',sum(x['tokens_in'] for x in rows)/len(rows),'cost/cell',sum(x['cost_usd'] for x in rows)/len(rows),'turns/cell',sum(x['turns'] for x in rows)/len(rows))
+        print('\nPer task means')
+        bytask=collections.defaultdict(list)
+        for d in rows:bytask[d['task']].append(d)
+        for task,ds in sorted(bytask.items()):
+         print(task,round(sum(x['recall'] for x in ds)/3,3),round(sum(x['tokens_in'] for x in ds)/3),round(sum(x['cost_usd'] for x in ds)/3,3),round(sum(x['turns'] for x in ds)/3,1))
+        PY
+      at: 2026-09-07T14:14:31.507617Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism query "Find the best place in the root README for an accuracy and efficiency product showcase. Show the README structure, existing performance claims, benchmark links, and surrounding sections." --terms benchmark,performance,accuracy,efficiency --format text
+      at: 2026-09-07T14:17:06.261276Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism read README.md --format text
+      at: 2026-09-07T14:17:10.806154Z
+      classified: other
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/research ls-files harness/runs/bench-matrix/grafana-querydata-impact.sonnet.baseline.t1.json harness/runs/ab-gate/invocations/9a0b008482814c9ba071381cf9e04292.json; git status --short --branch
+      at: 2026-09-07T14:17:18.972569Z
+      classified: other
+    - cmd: git diff --check && git diff -- README.md
+      at: 2026-09-07T14:17:54.230879Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism verify --base HEAD --format text
+      at: 2026-09-07T14:17:54.586062Z
+      classified: other
+notes:
+    - text: continuation of session 01a0790c-a7c5-7543-a18f-d1f822079fe4 — events captured after its evidence was finalized
+      at: 2026-09-07T03:58:19.104492Z
+redactions: 0

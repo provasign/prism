@@ -1,0 +1,194 @@
+shale_version: "0"
+id: 01a07f26-dfae-7ec3-98bf-6508822641e9-c2
+created_at: 2026-09-08T04:12:34.101779Z
+finalized_at: 2026-09-08T04:20:15.968413Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T04:18:16.916137Z
+    - path: internal/mcp/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T04:18:16.916137Z
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-08T04:20:01.089433Z
+commands:
+    - cmd: git push origin main
+      at: 2026-09-08T04:12:34.101779Z
+      classified: other
+    - cmd: git status --short --branch && git rev-parse HEAD && git rev-parse origin/main && git ls-remote --heads origin main
+      at: 2026-09-08T04:12:52.82178Z
+      classified: other
+    - cmd: prism search sonnet day-to-day --path harness --scope text --exhaustive --format text
+      at: 2026-09-08T04:13:56.053582Z
+      classified: other
+    - cmd: prism query "Find the day-to-day coding benchmark harness, model configuration, prompts requiring Prism use, and stored transcripts for Claude Sonnet runs" --terms Claude,Sonnet,daytoday,day-to-day,prism --format text
+      at: 2026-09-08T04:14:00.663299Z
+      classified: other
+    - cmd: rg --files harness/runs docs | rg 'daytoday|day-to-day|sonnet|claude' | tail -200
+      at: 2026-09-08T04:14:05.754332Z
+      classified: other
+    - cmd: rg --files | rg 'harness|benchmark|daytoday|day-to-day' | head -300
+      at: 2026-09-08T04:14:08.94168Z
+      classified: other
+    - cmd: pwd && rg --files -g 'AGENTS.md' -g '!vendor' -g '!node_modules' | head -20 && rg --files | rg 'daytoday|day-to-day|sonnet|claude' | head -300
+      at: 2026-09-08T04:14:16.306762Z
+      classified: other
+    - cmd: sed -n '1,240p' AGENTS.md
+      at: 2026-09-08T04:14:18.480011Z
+      classified: other
+    - cmd: find harness/runs/daytoday-four-head-2026-09-07 -maxdepth 3 -type d | sort | sed -n '1,240p'
+      at: 2026-09-08T04:14:23.582546Z
+      classified: other
+    - cmd: find harness/runs/daytoday-four-head-2026-09-07 -maxdepth 3 -type f | sort
+      at: 2026-09-08T04:14:26.000236Z
+      classified: other
+    - cmd: for d in harness/runs/daytoday-four-head-2026-09-07/code/evidence/*.sonnet_prism; do echo "$d"; find "$d" -maxdepth 1 -type f -print | sort; jq '{status,tool_calls,prism_calls,prism_tool_calls,score,elapsed_seconds}' "$d/measurement.json" 2>/dev/null; done
+      at: 2026-09-08T04:14:30.951807Z
+      classified: other
+    - cmd: jq . 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__click__pr3244.sonnet_prism/command.json'; jq . 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__click__pr3244.sonnet_prism/mcp.json'; sed -n '1,220p' 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__click__pr3244.sonnet_prism/prompt.txt'; sed -n '1,260p' 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__click__pr3244.sonnet_prism/stderr.txt'; sed -n '1,60p' 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__click__pr3244.sonnet_prism/stdout.jsonl'
+      at: 2026-09-08T04:14:35.559402Z
+      classified: other
+    - cmd: jq . 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__werkzeug__pr3081.sonnet_prism/command.json'; jq . 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__werkzeug__pr3081.sonnet_prism/mcp.json'; sed -n '1,220p' 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__werkzeug__pr3081.sonnet_prism/prompt.txt'; sed -n '1,260p' 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__werkzeug__pr3081.sonnet_prism/stderr.txt'; sed -n '1,60p' 'harness/runs/daytoday-four-head-2026-09-07/code/evidence/pallets__werkzeug__pr3081.sonnet_prism/stdout.jsonl'
+      at: 2026-09-08T04:14:35.650118Z
+      classified: other
+    - cmd: prism read harness/runs/daytoday-four-head-2026-09-07/run_code.py --format text
+      at: 2026-09-08T04:14:59.353924Z
+      classified: other
+    - cmd: for f in harness/runs/daytoday-four-head-2026-09-07/code/evidence/*.sonnet_prism/stdout.jsonl; do echo "$f"; jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | .name' "$f" | sort | uniq -c; done
+      at: 2026-09-08T04:15:03.093581Z
+      classified: other
+    - cmd: find harness/runs -maxdepth 1 -type d -print | sort | tail -80
+      at: 2026-09-08T04:15:10.249647Z
+      classified: other
+    - cmd: sed -n '1,260p' harness/runs/daytoday-four-head-2026-09-07/README.md; find harness/runs/daytoday-prism-isolation-2026-09-07 -maxdepth 2 -type f -print -exec sed -n '1,200p' {} \;
+      at: 2026-09-08T04:15:15.365437Z
+      classified: other
+    - cmd: git status --short --branch && git log -5 --oneline --decorate
+      at: 2026-09-08T04:15:20.097492Z
+      classified: other
+    - cmd: rg -n "first (tool )?call|forced|must use|Prism" harness/runs/daytoday-prism-isolation-2026-09-07/run_readonly.py harness/runs/daytoday-prism-isolation-2026-09-07/run_code.py harness/runs/daytoday-prism-isolation-2026-09-07/README.md 2>/dev/null | head -160
+      at: 2026-09-08T04:15:28.772064Z
+      classified: other
+    - cmd: sed -n '1,180p' harness/runs/daytoday-prism-isolation-2026-09-07/README.md
+      at: 2026-09-08T04:15:32.584572Z
+      classified: other
+    - cmd: for d in harness/runs/product-proof-coding-*2026-09-08; do echo "=== $d ==="; jq -r '.rows[]? | select(.arm|test("sonnet.*prism")) | [.cell_id, (.prism_calls|length), .resolved, .timed_out, .audited_valid] | @tsv' "$d/summary.json" 2>/dev/null; done
+      at: 2026-09-08T04:15:39.844687Z
+      classified: other
+    - cmd: prism search denyBuiltinSearch --path internal/cli --scope text --exhaustive --context 4 --format text
+      at: 2026-09-08T04:15:45.949955Z
+      classified: other
+    - cmd: prism read internal/cli/commands.go --offset 380 --limit 45 --format text && prism read internal/cli/commands.go --offset 700 --limit 175 --format text
+      at: 2026-09-08T04:15:50.203389Z
+      classified: other
+    - cmd: for d in harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/prism harness/runs/product-proof-coding-remaining-2026-09-08/templates/pallets__click__pr3695/prism; do echo "=== $d"; ls -la "$d" | sed -n '1,40p'; done
+      at: 2026-09-08T04:15:57.293808Z
+      classified: other
+    - cmd: prism query "Show the MCP server instructions and agent-facing descriptions for prism_search, prism_query, prism_lookup, prism_read, prism_change_impact, and any alwaysLoad or routing metadata" --terms alwaysLoad,prism_search,prism_query,ToolSchemas --format text
+      at: 2026-09-08T04:16:05.202433Z
+      classified: other
+    - cmd: prism version && git log -8 --oneline --decorate
+      at: 2026-09-08T04:16:10.298493Z
+      classified: other
+    - cmd: jq '{instance_id,problem_statement}' harness/runs/product-proof-coding-pilot-fixed-2026-09-08/tasks/urllib3__urllib3__pr3786.json; jq '{cell_id,prism_calls,native_commands,resolved,wall_s,tool_calls,timed_out,agent_error}' harness/runs/product-proof-coding-pilot-fixed-2026-09-08/evidence/urllib3__urllib3__pr3786.sonnet_prism/measurement.json
+      at: 2026-09-08T04:16:21.393252Z
+      classified: other
+    - cmd: find harness/runs/product-proof-coding-pilot-fixed-2026-09-08 -maxdepth 2 -type f | sort | sed -n '1,160p'
+      at: 2026-09-08T04:16:27.394342Z
+      classified: other
+    - cmd: prism query "Find coding benchmark runner options for selecting one task, one model arm, requiring Prism as the first discovery call, and choosing output directory" --terms coding_suite,first_call,prism_required,arm --format text
+      at: 2026-09-08T04:17:02.411234Z
+      classified: other
+    - cmd: prism lookup build_command prompt_for make_templates --path harness/coding_suite.py --format text
+      at: 2026-09-08T04:17:06.981746Z
+      classified: other
+    - cmd: prism lookup --help
+      at: 2026-09-08T04:17:09.401925Z
+      classified: other
+    - cmd: prism lookup build_command . --format text
+      at: 2026-09-08T04:17:26.589772Z
+      classified: other
+    - cmd: prism search '"instructions"' initializeResult serverInfo --scope text --exhaustive --context 3 --format text
+      at: 2026-09-08T04:17:37.139335Z
+      classified: other
+    - cmd: prism change-impact 'Server.dispatch' --format text
+      at: 2026-09-08T04:17:48.910942Z
+      classified: other
+    - cmd: prism lookup TestDispatch_Initialize . --format text && prism lookup TestServerToolsList . --format text
+      at: 2026-09-08T04:17:57.029951Z
+      classified: other
+    - cmd: prism read internal/mcp/server.go --offset 1 --limit 210 --format text && prism read internal/mcp/coverage_test.go --offset 1 --limit 145 --format text
+      at: 2026-09-08T04:18:04.890688Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/server.go internal/mcp/coverage_test.go
+      at: 2026-09-08T04:18:22.034317Z
+      classified: other
+    - cmd: git diff --check && git diff -- internal/mcp/server.go internal/mcp/coverage_test.go
+      at: 2026-09-08T04:18:22.128132Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./internal/mcp -count=1
+      at: 2026-09-08T04:18:32.554494Z
+      classified: test
+    - cmd: mktemp -d /private/tmp/prism-sonnet-routing-probe.XXXXXX
+      at: 2026-09-08T04:18:52.473435Z
+      classified: other
+    - cmd: mkdir -p /private/tmp/prism-sonnet-routing-probe.AvHDYm/work && cp -R harness/runs/product-proof-coding-pilot-fixed-2026-09-08/templates/urllib3__urllib3__pr3786/base/. /private/tmp/prism-sonnet-routing-probe.AvHDYm/work/
+      at: 2026-09-08T04:18:58.849485Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go build -o /private/tmp/prism-sonnet-routing-probe.AvHDYm/prism ./cmd/prism
+      at: 2026-09-08T04:19:01.122646Z
+      classified: build
+    - cmd: /private/tmp/prism-sonnet-routing-probe.AvHDYm/prism index . --format text
+      at: 2026-09-08T04:19:05.00379Z
+      classified: other
+    - cmd: '/Users/tapabratapal/.local/bin/claude -p ''Work only in the repository in your current directory. Investigate where and how to fix this issue, but do not edit: Proxies should use proxy_ssl_context when connecting via ProxyConfig.use_forwarding_for_https = True. Report the likely affected code.'' --model claude-sonnet-5 --effort medium --output-format stream-json --verbose --max-turns 2 --max-budget-usd 0.15 --dangerously-skip-permissions --strict-mcp-config --mcp-config /private/tmp/prism-sonnet-routing-probe.AvHDYm/mcp.json --settings ''{"autoMemoryEnabled":false,"disableAllHooks":true,"enabledPlugins":{}}'' --setting-sources '''' --disable-slash-commands --no-chrome --no-session-persistence --tools Read,Grep,Glob,Bash,Edit,Write --allowedTools Read,Grep,Glob,Bash,Edit,Write,mcp__prism'
+      at: 2026-09-08T04:19:25.119779Z
+      classified: other
+    - cmd: git status --short --branch && git diff --check
+      at: 2026-09-08T04:19:33.170034Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T04:19:33.949995Z
+      classified: other
+    - cmd: prism read internal/version/version.go --format text; rg -n '^##|v0\.72' CHANGELOG.md README.md 2>/dev/null | head -80
+      at: 2026-09-08T04:19:34.035017Z
+      classified: other
+    - cmd: GOFLAGS= GOWORK=off go test ./... -count=1
+      at: 2026-09-08T04:19:44.973212Z
+      classified: test
+    - cmd: git tag --sort=-version:refname | head -10 && rg -n "release|VERSION=v0" .github README.md Makefile scripts 2>/dev/null | head -160
+      at: 2026-09-08T04:19:48.88372Z
+      classified: other
+    - cmd: sed -n '1,165p' .github/workflows/release.yml
+      at: 2026-09-08T04:19:55.820934Z
+      classified: other
+    - cmd: git diff --check && git diff --stat && git status --short --branch
+      at: 2026-09-08T04:20:06.799311Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-08T04:20:06.991457Z
+      classified: other
+    - cmd: git add README.md internal/mcp/server.go internal/mcp/coverage_test.go
+      at: 2026-09-08T04:20:11.809644Z
+      classified: other
+    - cmd: 'git commit -m "mcp: route coding discovery through Prism"'
+      at: 2026-09-08T04:20:11.897165Z
+      classified: other
+notes:
+    - text: continuation of session 01a07f26-dfae-7ec3-98bf-6508822641e9 — events captured after its evidence was finalized
+      at: 2026-09-08T04:12:34.101779Z
+redactions: 0

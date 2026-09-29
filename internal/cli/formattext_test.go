@@ -9,7 +9,10 @@ import (
 	"testing"
 )
 
-// capture runs f with stdout redirected and returns what it printed.
+// capture runs f with stdout redirected and returns what it printed. Drains
+// the pipe WHILE f runs (see captureStdout in helpers_test.go for why: a
+// synchronous read-after-write deadlocks once output exceeds the OS pipe
+// buffer, which is much smaller on Windows).
 func capture(t *testing.T, f func()) string {
 	t.Helper()
 	orig := os.Stdout
@@ -18,13 +21,18 @@ func capture(t *testing.T, f func()) string {
 		t.Fatal(err)
 	}
 	os.Stdout = w
+
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(&buf, r)
+		close(done)
+	}()
+
 	f()
 	w.Close()
 	os.Stdout = orig
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, r); err != nil {
-		t.Fatal(err)
-	}
+	<-done
 	return buf.String()
 }
 
@@ -47,17 +55,18 @@ func TestFormatTextRendersTaskShapedOps(t *testing.T) {
 			"declarations (1):", "T.m  a.go:10", "callers (1):", "C.call  b.go:20  (via inner)"},
 	}, {
 		name: "rename-plan",
-		body: `{"query":"T.m","newName":"n","totalSites":1,
-			"edits":[{"filePath":"a.go","line":10,"before":"func m()","after":"func n()"}]}`,
+		body: `{"query":"T.m","newName":"n","totalSites":1,"completenessScope":"indexed-project-only","safeToClaimComplete":false,
+				"edits":[{"filePath":"a.go","line":10,"before":"func m()","after":"func n()"}]}`,
 		want: []string{"T.m → n — rename-plan: 1 site(s)", "edits (1):", "a.go:10",
-			"- func m()", "+ func n()"},
+			"- func m()", "+ func n()", "completenessScope: indexed-project-only", "safeToClaimComplete: false"},
 	}, {
 		name: "missing-implementations",
-		body: `{"query":"I.m","implementedCount":3,
-			"contract":[{"qualifiedName":"I.m","filePath":"i.go","line":5}],
-			"missing":[{"qualifiedName":"B","filePath":"b.go","line":7}]}`,
+		body: `{"query":"I.m","implementedCount":3,"completenessScope":"indexed-project-only","safeToClaimComplete":false,
+				"contract":[{"qualifiedName":"I.m","filePath":"i.go","line":5}],
+				"missing":[{"qualifiedName":"B","filePath":"b.go","line":7}]}`,
 		want: []string{"missing-implementations (3 type(s) already implement)",
-			"contract (1):", "I.m  i.go:5", "missing (1):", "B  b.go:7"},
+			"contract (1):", "I.m  i.go:5", "missing (1):", "B  b.go:7",
+			"completenessScope: indexed-project-only", "safeToClaimComplete: false"},
 	}, {
 		name: "dead-code",
 		body: `{"considered":10,"reachableCount":8,"rootCount":2,
@@ -140,5 +149,54 @@ func TestFormatTextRendersUnmatchedLookup(t *testing.T) {
 		if !strings.Contains(out, w) {
 			t.Errorf("missing %q in:\n%s", w, out)
 		}
+	}
+}
+
+func TestFormatTextNumbersLookupBodyLines(t *testing.T) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(`{"symbol":{"name":"Thing","filePath":"a.go","span":{"start":12,"end":13}},"content":"func Thing() {\n}\n"}`), &m); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() { printOutput(m, formatText) })
+	for _, want := range []string{"12\tfunc Thing() {", "13\t}"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in lookup text:\n%s", want, out)
+		}
+	}
+}
+
+// The CLI text path ignored matched:false, so `prism lookup` — the Bash
+// fallback the steering prescribes — printed the closest body with no marker
+// at all. The flag and candidates must come BEFORE the body.
+func TestFormatTextFlagsNoExactLookupBeforeBody(t *testing.T) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(`{"symbol":{"name":"SetAccepted","filePath":"context.go","span":{"start":5,"end":5}},
+		"content":"func (c *Context) SetAccepted() {}\n","matched":false,"name":"Context.Accepted",
+		"note":"NO EXACT MATCH for \"Context.Accepted\"; the candidates are related names",
+		"candidates":["Context.SetAccepted (context.go:5)"]}`), &m); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() { printOutput(m, formatText) })
+	flag := strings.Index(out, "NO EXACT MATCH")
+	body := strings.Index(out, "func (c *Context) SetAccepted")
+	if flag < 0 || body < 0 || flag > body || !strings.Contains(out, "Context.SetAccepted (context.go:5)") {
+		t.Fatalf("flag must precede the body:\n%s", out)
+	}
+	out = capture(t, func() { printOutput(m, formatLean) })
+	if !strings.Contains(strings.ReplaceAll(out, " ", ""), `"matched":false`) || !strings.Contains(out, "NO EXACT MATCH") {
+		t.Fatalf("lean output dropped the no-exact flag:\n%s", out)
+	}
+}
+
+func TestFormatTextShowsLookupResolutionNoteFirst(t *testing.T) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(`{"symbol":{"name":"route","filePath":"scaffold.py","span":{"start":3,"end":4}},
+		"content":"def route(self):\n    pass\n","matchKind":"inherited",
+		"note":"inherited: Flask declares no route; delivered Scaffold.route from its supertype chain Flask -> App -> Scaffold"}`), &m); err != nil {
+		t.Fatal(err)
+	}
+	out := capture(t, func() { printOutput(m, formatText) })
+	if !strings.HasPrefix(out, "// inherited: Flask declares no route") || !strings.Contains(out, "3\tdef route(self):") {
+		t.Fatalf("resolution note must lead:\n%s", out)
 	}
 }

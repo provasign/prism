@@ -1,0 +1,531 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c7
+created_at: 2026-08-17T00:37:28.936851Z
+finalized_at: 2026-08-17T00:50:01.349202Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: BACKLOG.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T00:43:39.155825Z
+    - path: internal/textsearch/textsearch.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T00:44:28.523221Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T00:45:27.286769Z
+    - path: internal/mcp/textmerge.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T00:45:37.427335Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T00:45:44.181438Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-17T00:46:03.806518Z
+commands:
+    - cmd: |-
+        git push origin main 2>&1 | tail -3
+        git tag -a v0.55.2 -m "v0.55.2 — prism_search text-scope responses are plain text, not JSON
+
+        MCP content is free-form text; JSON was never required, only what this
+        server sent by default. A pure-text search result now renders as plain
+        path:line: text lines instead of a JSON-encoded map.
+
+        Measured (old vs new binary, identical corpus, real protocol call):
+          query \"func \"       -22% (586B)
+          query \"stringsArg\"  -15% (253B)
+          query \"Handler\"      -3%  (76B)
+          query \"search text\"  -45% (88B)
+        Never a regression across four real queries. prism_search is the
+        highest-call-count tool measured (637 calls / 190 cells), and every
+        result sits in the session cache for the rest of the run, so the saving
+        compounds on every later turn rather than being paid once.
+
+        Falls back to JSON for scope=symbols/both (structured data that would
+        lose information if flattened) and for any field the renderer does not
+        recognise, rather than risk silently dropping content.
+
+        Smoke-tested on 5 paired SWE-bench-Live cells: correctness unaffected
+        (3/5 both arms, no flips), zero contamination, zero denials. Cost/turns
+        stayed flat at the median, consistent with the change's own expected
+        value — it removes a fixed per-call cost, it does not change what the
+        agent does.
+
+        Gate: go vet + go test ./... green (8 new tests); ci_invariants.py green."
+        git push origin v0.55.2 2>&1 | tail -2
+      at: 2026-08-17T00:37:28.936851Z
+      classified: lint
+    - cmd: |-
+        RID=$(gh run list -R provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId')
+        gh run watch $RID -R provasign/prism --exit-status --interval 20 2>&1 | tail -4
+      at: 2026-08-17T00:39:26.391734Z
+      classified: other
+    - cmd: |-
+        gh workflow run refresh-formulae.yml -R provasign/homebrew-shale
+        until brew info --json=v2 provasign/shale/prism 2>/dev/null | python3 -c "import sys,json;d=json.load(sys.stdin);v=d['formulae'][0]['versions']['stable'];print(v);sys.exit(0 if v=='0.55.2' else 1)" 2>/dev/null; do brew update >/dev/null 2>&1; sleep 15; done
+        echo "tap ready"; brew upgrade provasign/shale/prism 2>&1 | tail -3
+        cp /opt/homebrew/bin/prism ~/bin/prism; /opt/homebrew/bin/prism version
+      at: 2026-08-17T00:40:33.580466Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'PY'
+        import json,glob,re
+        # For every grep -A/-B/-C usage, was it used INSTEAD of prism (bypass, no
+        # prism cost either way), or does the SAME cell show a prism_search
+        # immediately followed by a prism_read at a nearby offset (the two-call
+        # pattern context= would collapse into one)?
+        two_step=0; bypass_only=0
+        for run in ('v055-full','radius8','inject5','smoke5-v0551','jsontext5'):
+            for f in glob.glob(f'runs/swebench-live/{run}/*.json'):
+                if 'provenance' in f or 'scored' in f: continue
+                d=json.load(open(f))
+                calls=d.get('tool_calls',[])
+                has_grep_context=any(c['name']=='Bash' and re.search(r'grep\b.*-[ABC]\s*\d+',str(c['input'].get('command','')),) for c in calls)
+                # look for prism_search -> prism_read(offset=...) within 2 calls of each other
+                for i,c in enumerate(calls):
+                    if c['name']=='mcp__prism__prism_search':
+                        for j in range(i+1, min(i+3,len(calls))):
+                            c2=calls[j]
+                            if c2['name']=='mcp__prism__prism_read' and (c2['input'].get('offset') or c2['input'].get('limit')):
+                                two_step+=1
+                                break
+                if has_grep_context: bypass_only+=1
+        print(f"cells using grep -A/-B/-C (bypassing prism entirely): {bypass_only}")
+        print(f"prism_search -> prism_read(ranged) within 2 calls (the pattern context= would collapse): {two_step}")
+        PY
+      at: 2026-08-17T00:42:22.306479Z
+      classified: other
+    - cmd: |-
+        P=~/bin/prism
+        echo "=== current: two separate calls (search then a ranged read for context) ==="
+        s=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"stringsArg","scope":"text","limit":5}}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(len(d['result']['content'][0]['text'])); break")
+        r=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prism_read","arguments":{"file":"internal/mcp/tools.go","offset":2280,"limit":20}}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(len(d['result']['content'][0]['text'])); break")
+        python3 -c "print(f'  prism_search: {$s}B  +  prism_read(ranged): {$r}B  =  {$s+$r}B total, TWO tool-call envelopes')"
+      at: 2026-08-17T00:42:40.971012Z
+      classified: other
+    - cmd: grep -n '^## 2' -A 20 BACKLOG.md | head -22
+      at: 2026-08-17T00:43:29.049395Z
+      classified: other
+    - cmd: grep -n 'func Search\|type Options struct' internal/textsearch/textsearch.go | head -5
+      at: 2026-08-17T00:43:43.172552Z
+      classified: other
+    - cmd: "grep -n 'type Hit struct' -A 6 internal/textsearch/textsearch.go\necho \"---\"\nsed -n '1,64p' internal/textsearch/textsearch.go | grep -n 'type Result\\|RejectedPaths\\|TotalHits\\|FilesMatched' \necho \"---\"\ngrep -n 'func runRg\\|func runGrep\\|func nativeSearch\\|func runLineTool' internal/textsearch/*.go"
+      at: 2026-08-17T00:43:51.169619Z
+      classified: other
+    - cmd: sed -n '283,303p' internal/textsearch/textsearch.go
+      at: 2026-08-17T00:44:39.716571Z
+      classified: other
+    - cmd: sed -n '303,325p' internal/textsearch/textsearch.go
+      at: 2026-08-17T00:44:43.265806Z
+      classified: other
+    - cmd: |-
+        grep -n '"os"\|"path/filepath"' internal/textsearch/textsearch.go | head -3
+        go build ./... 2>&1 | head -15
+      at: 2026-08-17T00:45:00.744428Z
+      classified: build
+    - cmd: 'grep -n ''exhaustive: boolArg(args, "exhaustive")'' internal/mcp/tools.go'
+      at: 2026-08-17T00:45:04.457406Z
+      classified: other
+    - cmd: grep -n 'type searchScope struct' -A 6 internal/mcp/tools.go
+      at: 2026-08-17T00:45:07.53294Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        s=s.replace('''type searchScope struct {
+        	paths      []string
+        	glob       []string
+        	filesOnly  bool
+        	exhaustive bool
+        }''','''type searchScope struct {
+        	paths      []string
+        	glob       []string
+        	filesOnly  bool
+        	exhaustive bool
+        	context    int
+        }''')
+        s=s.replace('''	sc := searchScope{
+        		paths:      stringsArg(args, "path"),
+        		glob:       stringsArg(args, "glob"),
+        		filesOnly:  boolArg(args, "files_only"),
+        		exhaustive: boolArg(args, "exhaustive"),
+        	}''','''	sc := searchScope{
+        		paths:      stringsArg(args, "path"),
+        		glob:       stringsArg(args, "glob"),
+        		filesOnly:  boolArg(args, "files_only"),
+        		exhaustive: boolArg(args, "exhaustive"),
+        		context:    intArg(args, "context", 0),
+        	}''')
+        # thread context= into both textsearch.Search call sites in searchOne
+        s=s.replace('''		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive,
+        		})''','''		r := textsearch.Search(ctx, h.Root, q, textsearch.Options{
+        			MaxHits: limit, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive, Context: sc.context,
+        		})''')
+        s=s.replace('''			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive,
+        		}); len(r.Hits) > 0 {''','''			MaxHits: 50, Timeout: textSearchTimeout, Regex: regex,
+        			Paths: sc.paths, Glob: sc.glob, FilesOnly: sc.filesOnly,
+        			Exhaustive: sc.exhaustive, Context: sc.context,
+        		}); len(r.Hits) > 0 {''')
+        open(p,'w').write(s)
+        PY
+        go build ./... 2>&1 | head -10
+      at: 2026-08-17T00:45:18.245541Z
+      classified: build
+    - cmd: 'grep -n ''"limit": map\[string\]any{"type": "integer", "description": "Max results'' internal/mcp/tools.go'
+      at: 2026-08-17T00:45:22.10032Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -10 && echo BUILD-OK
+      at: 2026-08-17T00:45:52.683723Z
+      classified: build
+    - cmd: grep -n '"--exhaustive", "--all":' internal/cli/commands.go
+      at: 2026-08-17T00:45:56.489607Z
+      classified: other
+    - cmd: sed -n '1610,1645p' internal/cli/commands.go
+      at: 2026-08-17T00:45:59.548088Z
+      classified: other
+    - cmd: |-
+        grep -n 'exhaustive := false' internal/cli/commands.go
+        grep -n 'callArgs\["exhaustive"\] = true' internal/cli/commands.go
+      at: 2026-08-17T00:46:06.623843Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/cli/commands.go'; s=open(p).read()
+        s=s.replace('''	exhaustive := false''','''	exhaustive := false
+        	contextLines := 0''')
+        s=s.replace('''		callArgs["exhaustive"] = true
+        	}''','''		callArgs["exhaustive"] = true
+        	}
+        	if contextLines > 0 {
+        		callArgs["context"] = contextLines
+        	}''',1)
+        open(p,'w').write(s)
+        PY
+        go build ./... 2>&1 | head -10
+      at: 2026-08-17T00:46:12.620138Z
+      classified: build
+    - cmd: grep -n 'func printTextMatches' -A 40 internal/cli/commands.go | head -45
+      at: 2026-08-17T00:46:15.99478Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        s=s.replace('''			"the same narrowing you would write after a grep pattern. Returns locations, not context. " +
+        			"A pure-text result (no symbol matches) comes back as plain `path:line: text` lines, not " +
+        			"JSON — the same shape grep would print; do not try to parse it as an object."''',
+        '''			"the same narrowing you would write after a grep pattern. context=N adds N lines around " +
+        			"each match (grep -C) in the SAME call — use this instead of a follow-up prism_read for " +
+        			"the surrounding lines, one round trip instead of two. Returns locations, not context. " +
+        			"A pure-text result (no symbol matches) comes back as plain `path:line: text` lines, not " +
+        			"JSON — the same shape grep would print; do not try to parse it as an object."''')
+        open(p,'w').write(s)
+
+        p='internal/cli/commands.go'; s=open(p).read()
+        s=s.replace('''                                  [--glob '*.py'] [--files-only] [--exhaustive]''',
+                    '''                                  [--glob '*.py'] [--files-only] [--exhaustive] [--context N]''')
+        open(p,'w').write(s)
+        PY
+        gofmt -w internal/mcp/tools.go internal/cli/commands.go internal/mcp/searchtext.go internal/mcp/textmerge.go internal/textsearch/textsearch.go
+        go build ./... 2>&1 | head -15 && echo BUILD-OK
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head -20; echo SUITE-STATUS
+      at: 2026-08-17T00:46:46.702891Z
+      classified: lint
+    - cmd: |-
+        go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ./cmd/prism
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        echo "=== schema advertises context? ==="
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        r=[x for x in json.loads(sys.stdin.readline())['result']['tools'] if x['name']=='prism_search'][0]
+        print(list(r['inputSchema']['properties']))"
+        echo
+        echo "=== real call with context=3 ==="
+        printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"stringsArg","scope":"text","limit":1,"context":3}}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(d['result']['content'][0]['text']); break"
+      at: 2026-08-17T00:46:58.109017Z
+      classified: build
+    - cmd: |-
+        P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism
+        one=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"prism_search","arguments":{"query":"stringsArg","scope":"text","limit":1,"context":10}}}' | $P mcp . 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            d=json.loads(l)
+            if d.get('id')==1: print(len(d['result']['content'][0]['text'])); break")
+        python3 -c "print(f'ONE call, context=10: {$one}B')"
+        echo "(vs the earlier-measured TWO-call sequence: 1,596B)"
+      at: 2026-08-17T00:47:05.190833Z
+      classified: other
+    - cmd: |-
+        cat >> internal/mcp/searchmulti_test.go <<'EOF'
+
+        // --- context= (grep -A/-B/-C) --------------------------------------------
+        //
+        // Measured 2026-08-16: prism_search followed by a ranged prism_read (find
+        // the match, then pull the surrounding lines) occurred 13 times in real
+        // traces. context= collapses that into one call: measured 1,152B for one
+        // call at context=10 against 1,596B for the two-call sequence it replaces.
+
+        func TestToolSearch_ContextAddsSurroundingLines(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	out, err := h.Invoke("prism_search", map[string]any{
+        		"query": "Alpha", "scope": "text", "context": 1})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	groups := toSlice(m["textHits"])
+        	if len(groups) == 0 {
+        		t.Fatal("expected at least one file group")
+        	}
+        	gm := groups[0].(map[string]any)
+        	hits := toSlice(gm["hits"])
+        	if len(hits) == 0 {
+        		t.Fatal("expected at least one hit")
+        	}
+        	hm := hits[0].(map[string]any)
+        	// alpha.go is "package p\n\nfunc Alpha() {}\n" -- Alpha is on line 3,
+        	// so context=1 must include line 2 (blank) before it.
+        	if hm["before"] == nil {
+        		t.Errorf("expected before-context, got %v", hm)
+        	}
+        }
+
+        func TestToolSearch_NoContextMeansNoBeforeAfter(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	out, err := h.Invoke("prism_search", map[string]any{"query": "Alpha", "scope": "text"})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	m := out.(map[string]any)
+        	groups := toSlice(m["textHits"])
+        	gm := groups[0].(map[string]any)
+        	hm := toSlice(gm["hits"])[0].(map[string]any)
+        	if hm["before"] != nil || hm["after"] != nil {
+        		t.Errorf("context=0 (default) must not attach before/after: %v", hm)
+        	}
+        }
+
+        func TestToolSearch_ContextRenderedInPlainText(t *testing.T) {
+        	h := newTextSearchHandler(t)
+        	out, err := h.Invoke("prism_search", map[string]any{
+        		"query": "Alpha", "scope": "text", "context": 1})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	text, ok := renderSearchAsText(out.(map[string]any))
+        	if !ok {
+        		t.Fatal("expected a plain-text rendering")
+        	}
+        	if !strings.Contains(text, "alpha.go:") {
+        		t.Errorf("context lines missing from rendering: %s", text)
+        	}
+        }
+        EOF
+        gofmt -w internal/mcp/searchmulti_test.go && go test ./internal/mcp -run 'TestToolSearch_Context' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+      at: 2026-08-17T00:47:19.719457Z
+      classified: test
+    - cmd: go test ./internal/mcp -run 'TestToolSearch_' -v 2>&1 | grep -E '^--- '
+      at: 2026-08-17T00:47:26.073297Z
+      classified: test
+    - cmd: |-
+        cat >> internal/textsearch/textsearch_test.go <<'EOF'
+
+        func TestSearch_ContextAttachesSurroundingLines(t *testing.T) {
+        	dir := t.TempDir()
+        	body := "one\ntwo\nMATCH\nfour\nfive\n"
+        	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte(body), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	r := Search(context.Background(), dir, "MATCH", Options{Context: 1})
+        	if len(r.Hits) != 1 {
+        		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+        	}
+        	h := r.Hits[0]
+        	if len(h.Before) != 1 || h.Before[0] != "two" {
+        		t.Errorf("before = %v, want [two]", h.Before)
+        	}
+        	if len(h.After) != 1 || h.After[0] != "four" {
+        		t.Errorf("after = %v, want [four]", h.After)
+        	}
+        }
+
+        func TestSearch_ContextZeroAttachesNothing(t *testing.T) {
+        	dir := t.TempDir()
+        	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte("one\nMATCH\nthree\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	r := Search(context.Background(), dir, "MATCH", Options{})
+        	if len(r.Hits) != 1 {
+        		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+        	}
+        	if r.Hits[0].Before != nil || r.Hits[0].After != nil {
+        		t.Errorf("context=0 must attach nothing: %+v", r.Hits[0])
+        	}
+        }
+
+        func TestSearch_ContextClampsAtFileBoundaries(t *testing.T) {
+        	dir := t.TempDir()
+        	// Match on the FIRST line: asking for 5 lines of before-context must not
+        	// panic or go negative, just return what exists (nothing, here).
+        	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte("MATCH\ntwo\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	r := Search(context.Background(), dir, "MATCH", Options{Context: 5})
+        	if len(r.Hits) != 1 {
+        		t.Fatalf("want 1 hit, got %d", len(r.Hits))
+        	}
+        	if len(r.Hits[0].Before) != 0 {
+        		t.Errorf("before at start of file = %v, want empty", r.Hits[0].Before)
+        	}
+        	if len(r.Hits[0].After) != 1 || r.Hits[0].After[0] != "two" {
+        		t.Errorf("after clamped at EOF = %v, want [two]", r.Hits[0].After)
+        	}
+        }
+
+        func TestSearch_ContextIdenticalAcrossBackends(t *testing.T) {
+        	// The whole reason attachContext runs AFTER backend dispatch rather than
+        	// being implemented per-backend (rg -A/-B/-C, grep -A/-B/-C, each a
+        	// different text format): it must be impossible for rg and the native
+        	// scanner to disagree on context. Force native and compare to whatever
+        	// the real backend on this machine returns.
+        	dir := t.TempDir()
+        	body := "a\nb\nNEEDLE\nc\nd\n"
+        	if err := os.WriteFile(filepath.Join(dir, "f.go"), []byte(body), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	viaBackend := Search(context.Background(), dir, "NEEDLE", Options{Context: 2})
+        	viaNative := nativeSearch(context.Background(), dir, "NEEDLE", Options{Context: 2}.withDefaults())
+        	if len(viaNative.Hits) != 1 {
+        		t.Fatalf("native: want 1 hit, got %d", len(viaNative.Hits))
+        	}
+        	// nativeSearch itself does not call attachContext (Search does, once,
+        	// after dispatch) -- so compare the CONTENT each backend located, not
+        	// context, to confirm they agree on the same file/line.
+        	if viaBackend.Hits[0].File != viaNative.Hits[0].File || viaBackend.Hits[0].Line != viaNative.Hits[0].Line {
+        		t.Errorf("backend and native disagree on the hit: %+v vs %+v", viaBackend.Hits[0], viaNative.Hits[0])
+        	}
+        }
+        EOF
+        grep -n '^import\|"os"\|"path/filepath"\|"context"' internal/textsearch/textsearch_test.go | head -6
+      at: 2026-08-17T00:47:43.250297Z
+      classified: other
+    - cmd: go test ./internal/textsearch -run 'TestSearch_Context' -v 2>&1 | grep -E '^--- '
+      at: 2026-08-17T00:47:46.422425Z
+      classified: test
+    - cmd: |-
+        go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)" | head -20; echo SUITE-GREEN
+        go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism ./cmd/prism
+      at: 2026-08-17T00:47:59.116338Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad/prism 2>&1 | tail -3
+      at: 2026-08-17T00:49:13.880256Z
+      classified: other
+    - cmd: grep -n 'EVERY file of X' internal/cli/commands.go
+      at: 2026-08-17T00:49:17.477938Z
+      classified: other
+    - cmd: grep -n 'exhaustive=true' internal/cli/commands.go | head -3
+      at: 2026-08-17T00:49:20.224942Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go && go build ./... && go vet ./... && go test ./... 2>&1 | grep -E "^(FAIL|---)"; echo GREEN
+      at: 2026-08-17T00:49:34.819608Z
+      classified: lint
+    - cmd: |-
+        git add -A && git commit -q -F - <<'EOF'
+        feat(search): context= — match + surrounding lines in one call, not two
+
+        BACKLOG.md item 2, corrected sizing. Originally recorded as "closes a gap,
+        no measured cost saving" (compared only against `grep -A` bypassing prism
+        for free, which costs prism nothing either way). That undersold it — the
+        real cost is the two-call case: prism_search finds a line, then a
+        follow-up ranged prism_read pulls the surrounding lines. Measured in
+        today's traces: 13 occurrences of exactly that sequence.
+
+        Sized directly, old two-call vs new one-call, real protocol, same corpus:
+
+            prism_search:            611B
+            prism_read(ranged):      985B   -- a full second JSON envelope
+            TWO round trips                 1,596B total
+
+            prism_search(context=10) ONE call                  1,152B  (-28%)
+
+        Real, mechanism-backed saving: one fewer tool round trip, one fewer cache
+        entry paid on every later turn -- not just gap-closing.
+
+        IMPLEMENTATION NOTE, the one worth remembering: context is NOT built via
+        each backend's own -A/-B/-C. rg's context lines use a "-" separator
+        instead of ":", GNU grep's differs again, and both insert "--"
+        group-separator lines between non-contiguous context blocks -- three text
+        formats to parse correctly, with real divergence risk between rg and the
+        native fallback (the exact failure class this package already forbids for
+        scoping and hidden-file handling, per its own comments). Instead,
+        Search() resolves the match set exactly as it always has, then
+        attachContext() reads each hit's file directly and slices the window --
+        one code path, identical behaviour on every backend, by construction.
+        Verified by TestSearch_ContextIdenticalAcrossBackends.
+
+        Wired through both call sites (search + query-derived search), the MCP
+        schema, the CLI (--context N / -C), and both text renderers (the plain
+        grep-style path shipped in 889856b, and the CLI's printTextMatches used
+        by prism_query too). A cached file (already delivered whole this session)
+        skips context by design -- the agent already has the surrounding lines
+        from the earlier full read.
+
+        Verified over the REAL protocol before claiming any of this, not
+        Invoke() -- the standing rule after 106b262: tools/list shows "context"
+        in prism_search's properties; tools/call with context=3 returns correctly
+        numbered before/after lines.
+
+        Tests: 3 MCP-level (attaches lines, context=0 attaches nothing, renders
+        in plain text) + 4 engine-level (attaches, zero-attaches-nothing, clamps
+        at file boundaries without going negative, and the one that matters most
+        -- rg and the native scanner agree on the same file:line for the same
+        match, so context cannot diverge between backends).
+
+        Gate: go vet + go test ./... green (7 new tests); ci_invariants.py green.
+
+        Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        git log --oneline -1
+      at: 2026-08-17T00:49:53.338036Z
+      classified: lint
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-17T00:37:28.936851Z
+redactions: 0

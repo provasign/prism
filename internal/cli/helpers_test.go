@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // setHome points both HOME (unix) and USERPROFILE (what os.UserHomeDir reads
@@ -97,43 +96,6 @@ func TestPrintJSON(t *testing.T) {
 	}
 }
 
-func TestLedgerPathForRoot(t *testing.T) {
-	p := ledgerPathForRoot("/x/y/z")
-	if !strings.Contains(p, "prism") {
-		t.Errorf("got %s", p)
-	}
-	if !strings.HasSuffix(p, ".json") {
-		t.Errorf("got %s", p)
-	}
-}
-
-func TestPruneOldLedgers_Cov(t *testing.T) {
-	dir := t.TempDir()
-	old := filepath.Join(dir, "old.json")
-	_ = os.WriteFile(old, []byte("{}"), 0o644)
-	past := time.Now().Add(-60 * 24 * time.Hour)
-	_ = os.Chtimes(old, past, past)
-
-	fresh := filepath.Join(dir, "fresh.json")
-	_ = os.WriteFile(fresh, []byte("{}"), 0o644)
-
-	// other files ignored
-	_ = os.WriteFile(filepath.Join(dir, "x.txt"), []byte("x"), 0o644)
-	_ = os.MkdirAll(filepath.Join(dir, "subdir"), 0o755)
-
-	pruneOldLedgers(dir, 30*24*time.Hour)
-	if _, err := os.Stat(old); !os.IsNotExist(err) {
-		t.Error("old not pruned")
-	}
-	if _, err := os.Stat(fresh); err != nil {
-		t.Error("fresh pruned")
-	}
-}
-
-func TestPruneOldLedgers_BadDir_Cov(t *testing.T) {
-	pruneOldLedgers("/nonexistent/path/xxxx", time.Hour)
-}
-
 func TestCmdConfig(t *testing.T) {
 	// capture stdout
 	old := os.Stdout
@@ -152,11 +114,24 @@ func captureStdout(fn func()) string {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+
+	// Drain the pipe WHILE fn runs, not after: an anonymous pipe's OS buffer
+	// is finite (much smaller on Windows than Linux/macOS), so a write past
+	// that size blocks until something reads. Reading only after fn()
+	// returns deadlocks fn() on any output larger than that buffer -- hit in
+	// CI (windows-latest only) once cmdDoctor's output grew past a few KB
+	// (2026-09-23, prism doctor's new per-language capability manifest).
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(&buf, r)
+		close(done)
+	}()
+
 	fn()
 	_ = w.Close()
 	os.Stdout = old
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
+	<-done
 	return buf.String()
 }
 

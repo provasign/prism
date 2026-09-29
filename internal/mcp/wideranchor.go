@@ -14,7 +14,7 @@ func obligationSiteCount(r *grove.ChangeImpactResult) int {
 	if r == nil {
 		return 0
 	}
-	return len(r.Family) + len(r.Callers) + len(r.DeclaringTypes)
+	return len(impactSites(r, false))
 }
 
 // maxAnchorCandidates bounds how many same-named receiver types
@@ -60,8 +60,8 @@ func (h *Handler) widerAnchorHint(ctx context.Context, r *grove.ChangeImpactResu
 		}
 		tried[qn] = true
 		probes++
-		alt, err := h.Grove.ChangeImpact(ctx, qn)
-		if err != nil || len(alt.Declarations) == 0 || alt.Completeness != "closed" {
+		alt, err := h.Grove.ChangeImpactScoped(ctx, qn, c.File)
+		if err != nil || len(alt.Declarations) == 0 || !relatedImpactAnchors(r, alt) {
 			continue
 		}
 		if n := obligationSiteCount(alt); n > baseline && (best == nil || n > obligationSiteCount(best)) {
@@ -71,15 +71,64 @@ func (h *Handler) widerAnchorHint(ctx context.Context, r *grove.ChangeImpactResu
 	if best == nil {
 		return nil
 	}
+	completeness, coverageNote := impactCoverage(best)
+	scope := "CLOSED"
+	if completeness != "closed" {
+		scope = "indexed (partial)"
+	}
+	note := fmt.Sprintf("%s has a larger %s change set (%d sites vs %d for the queried anchor). "+
+		"If the contract being changed is the interface/base declaration rather than this one "+
+		"implementation, query %s instead to inspect its family.",
+		bestQN, scope, obligationSiteCount(best), baseline, bestQN)
+	if coverageNote != "" {
+		note += " " + coverageNote
+	}
 	return map[string]any{
 		"qualifiedName": bestQN,
-		"totalSites":    obligationSiteCount(best) + len(best.Declarations),
-		"completeness":  best.Completeness,
-		"note": fmt.Sprintf("%s has a larger CLOSED change set (%d sites vs %d for the queried anchor). "+
-			"If the contract being changed is the interface/base declaration rather than this one "+
-			"implementation, query %s instead — its family covers every implementation.",
-			bestQN, obligationSiteCount(best), baseline, bestQN),
+		"totalSites":    len(impactSites(best, true)),
+		"completeness":  completeness,
+		"note":          note,
 	}
+}
+
+// Require a shared contract identity, not merely a matching member name.
+// Callers are excluded: one caller can invoke two unrelated contracts.
+func relatedImpactAnchors(a, b *grove.ChangeImpactResult) bool {
+	for _, pair := range [][2]*grove.ChangeImpactResult{{a, b}, {b, a}} {
+		for _, d := range pair[0].Declarations {
+			for _, group := range [][]grove.SymbolRecord{pair[1].Declarations, pair[1].Supers, pair[1].Family} {
+				for _, s := range group {
+					if d.FilePath == s.FilePath && displayQN(d) == displayQN(s) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+// One inventory for counting and verification, including super contracts.
+func impactSites(r *grove.ChangeImpactResult, declarations bool) []grove.SymbolRecord {
+	if r == nil {
+		return nil
+	}
+	groups := [][]grove.SymbolRecord{r.Supers, r.Family, r.Callers, r.DeclaringTypes}
+	if declarations {
+		groups = append([][]grove.SymbolRecord{r.Declarations}, groups...)
+	}
+	seen := map[string]bool{}
+	var out []grove.SymbolRecord
+	for _, group := range groups {
+		for _, s := range group {
+			key := fmt.Sprintf("%s:%d:%s:%s", s.FilePath, s.Span.Start, s.Kind, displayQN(s))
+			if !seen[key] {
+				seen[key] = true
+				out = append(out, s)
+			}
+		}
+	}
+	return out
 }
 
 func leafName(qn string) string {

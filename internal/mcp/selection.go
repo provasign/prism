@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
@@ -16,29 +19,52 @@ import (
 // selectParams are the inputs to the shared retrieve→expand→rank→budget
 // pipeline behind prism_query and prism_explore.
 type selectParams struct {
-	task            string
 	terms           []string
 	includeSet      map[string]bool
 	explicitProfile string
 	limit           int
 	contextUsed     int64
 	model           string
-	budgetArg       int // >0 is honored exactly; 0 = task-sized default with phase shaping
+	budgetArg       int // >0 is honored exactly; 0 uses the fixed default
+	paths           []string
+	glob            []string
 }
 
 // selection is the pipeline output: the budgeted picks plus the intermediate
 // sets that response assembly needs (seeds for empty-result notes, seedSyms +
 // graphExtra for coverage gaps and blast radius).
 type selection struct {
-	picked     []ranking.BudgetedSymbol
-	seedSyms   []grove.SymbolRecord
-	graphExtra []grove.SymbolRecord
-	seeds      []grove.SymbolRecord
-	budget     int
-	// textHits are full-text matches no indexed symbol encloses (comments,
-	// configs, docs) — the grep half of the merged search; textBackend
-	// records which engine produced them (rg/grep/native).
+	picked           []ranking.BudgetedSymbol
+	seedSyms         []grove.SymbolRecord
+	anchorMatchKinds map[string]string
+	familySyms       []grove.SymbolRecord
+	graphExtra       []grove.SymbolRecord
+	seeds            []grove.SymbolRecord
+	budget           int
+	// testCallers maps a seed's symbol ID to its verified test callers
+	// (real test files, doubles excluded) -- pointer-only, see the
+	// declaration in selectContext for why this never enters the
+	// budget/disclosure pipeline.
+	testCallers map[string][]grove.SymbolRecord
+	// relatedTests are bounded lexical leads used only when the call graph
+	// finds no verified test caller. They are deliberately separate from
+	// testCallers: a similar test name is useful validation guidance, but it
+	// is not proof that the test reaches an anchor.
+	relatedTests []relatedTestHint
+	// contentOnlySeeds: seed IDs matched only by body content, never by
+	// name — delivered at signature disclosure, not full windows (see the
+	// declaration in selectContext).
+	contentOnlySeeds map[string]bool
+	// lexicalOwners are small enclosing types for field/constant anchors.
+	// They are additive source context: a feature flag or policy constant often
+	// names the concept while the required behavior lives in sibling methods.
+	lexicalOwners []grove.SymbolRecord
+	// textHits are matches no indexed symbol encloses. contentHits preserve
+	// the compact symbols-delivery behavior; symbolHits retain all matched
+	// source lines so source delivery can recover those outside final windows.
 	textHits    []textsearch.Hit
+	contentHits []textsearch.Hit
+	symbolHits  map[string][]textsearch.Hit
 	textBackend string
 }
 
@@ -46,15 +72,9 @@ type selection struct {
 // expansion, scoring, and budgeted selection. It is the single pipeline both
 // prism_query and prism_explore deliver from; only the delivery format differs.
 func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection, error) {
-	// B: phase-aware budget shaping — infer the agent work phase from the task
-	// description and auto-select a matching profile + budget multiplier.
-	// An explicit "profile" arg always wins; otherwise let phase detection decide.
-	phase := ranking.DetectPhase(p.task)
-	phaseProfileHint, phaseBudgetMult := ranking.ShapeForPhase(phase)
+	// Retrieval keys on explicit terms; sizing keys on budget; ranking uses
+	// verified call edges and stable retrieval order.
 	profileName := p.explicitProfile
-	if profileName == "" {
-		profileName = phaseProfileHint
-	}
 	if profileName == "" {
 		profileName = h.Cfg.Profile
 	}
@@ -68,12 +88,31 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 	}
 	var seeds []grove.SymbolRecord
+	scope := searchScope{paths: p.paths, glob: p.glob}
 	var textMerge textMergeResult
+	// contentOnlySeeds marks seeds whose only claim is that a term appears
+	// somewhere in their BODY (RawText), not in their name — a license
+	// header, a doc comment, an incidental mention. They stay seeds (the
+	// mention may matter) but must not earn full source windows: measured
+	// 2026-09-02 (BACKLOG addendum #7, upai2v1g #93), a 22.5kB delivery
+	// spent most of its budget dumping the full license-headed body of a
+	// file whose only connection to the task was a content match, and
+	// nothing it returned was ever used. Demoted to signature disclosure
+	// at delivery.
+	contentOnlySeeds := map[string]bool{}
 
 	if len(p.terms) > 0 {
 		// Term-seeded retrieval: search for each agent-supplied term and union
 		// the results. This gives grep-level precision as the entry point.
-		seenTermSeeds := map[string]bool{}
+		//
+		// Seeds INTERLEAVE across terms (round-robin below) instead of
+		// concatenating per term. Concatenation let one noisy term poison
+		// the whole selection: measured 2026-08-26 (jackson-core-1309),
+		// terms ["valueOf","looksLikeValidNumber"] scored gold-recall 0.0
+		// where the good term alone scored 1.0 — valueOf's fan-out filled
+		// every seed slot and the term that named the actual fix region
+		// never seeded. Each term now gets seed representation.
+		perTermSeeds := make([][]grove.SymbolRecord, 0, len(p.terms))
 		for _, term := range p.terms {
 			// Honor --limit here too. This path hardcoded 10, so
 			// `--limit 50 --terms Foo` silently capped at 10 per term — and
@@ -82,9 +121,34 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			if perTerm <= 0 {
 				perTerm = 10
 			}
-			matches, err := h.Grove.SearchSymbols(ctx, term, perTerm)
+			fetchLimit := minInt(exhaustiveSymbolCap, maxInt(minInt(perTerm, exhaustiveSymbolCap/4)*4, 64))
+			var matches []grove.SymbolRecord
+			var err error
+			if len(p.paths) > 0 || len(p.glob) > 0 {
+				var exhausted bool
+				searchScoped := func(ctx context.Context, query string, limit int) ([]grove.SymbolRecord, error) {
+					return h.Grove.SearchSymbolsScoped(ctx, query, limit, scope.paths, scope.glob)
+				}
+				matches, exhausted, err = scopedSymbolSearch(ctx, searchScoped, term, scope, fetchLimit, symbolFetchHardMax)
+				if err == nil && !exhausted && len(matches) <= fetchLimit {
+					return nil, fmt.Errorf("scoped query for %q could not complete its bounded symbol scan; narrow paths/glob or use a longer term", term)
+				}
+			} else {
+				matches, err = h.Grove.SearchSymbols(ctx, term, fetchLimit)
+			}
 			if err != nil {
 				continue
+			}
+			ranked := rankSearchSymbols(matches, term)
+			matches = matches[:0]
+			for _, item := range ranked {
+				if item.symbol.Kind == "document" && !p.includeSet["docs"] {
+					continue
+				}
+				matches = append(matches, item.symbol)
+			}
+			if len(matches) > perTerm {
+				matches = matches[:perTerm]
 			}
 			// Prioritise symbols whose Name/QualifiedName contains the term
 			// (grep-level precision). Content-only matches (term appears only
@@ -92,20 +156,67 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			termLower := strings.ToLower(term)
 			var nameHits, contentHits []grove.SymbolRecord
 			for _, m := range matches {
-				if strings.Contains(strings.ToLower(m.Name), termLower) ||
-					strings.Contains(strings.ToLower(m.QualifiedName), termLower) {
+				nameLower, qualLower := strings.ToLower(m.Name), strings.ToLower(m.QualifiedName)
+				nameContains := strings.Contains(nameLower, termLower) || strings.Contains(qualLower, termLower)
+				switch {
+				case nameContains && isTestFilePath(m.FilePath) && !explicitTestTerm(termLower):
+					// A test whose name merely CONTAINS the term as a
+					// substring -- the common case for any TestFoo-style
+					// naming convention, which trivially contains "Foo" --
+					// is not a deliberate ask. Exact common method names such as
+					// `skip` are excluded too; terms that explicitly say test/spec
+					// (for example TestFoo) still seed normally below.
+					// Seeds are force-stamped CategoryTarget in
+					// ranking.Select, bypassing the CategoryTest delivery
+					// guard entirely, so an incidental substring match
+					// here was pr3493's exact failure (an unrelated test
+					// earning a whole source window) relocated from the
+					// candidate path -- fixed in v0.25.0 -- to the seed
+					// path, which never was (caught 2026-09-02 writing a
+					// test for the "tested by" pointer feature: terms=
+					// ["FormatGreeting"] pulled in the FULL BODY of
+					// TestFormatGreeting, purely because that name
+					// contains "FormatGreeting"). EXCLUDED outright, not
+					// merely deprioritized into contentHits -- on a small
+					// candidate set a deprioritized bucket still survives
+					// the seed cut (measured: it did, on exactly this
+					// fixture). It is still discoverable, correctly, via
+					// the new InboundCallers "tested by" pointer.
+					continue
+				case nameContains:
 					nameHits = append(nameHits, m)
-				} else {
+				case isTestFilePath(m.FilePath):
+					// Content-only match landing inside a test file's
+					// body (e.g. it calls the production function under
+					// test) -- same reasoning: never seed a test this way.
+					continue
+				default:
 					contentHits = append(contentHits, m)
+					// Demotion is decided separately from bucket routing:
+					// a FILE PATH match (term "jsonrpc_app.py" naming the
+					// file) is a deliberate ask and keeps full disclosure,
+					// but must NOT join nameHits — the first attempt did
+					// that and a term like "__init__.py" flooded the seed
+					// order with every package's file, collapsing
+					// oracle-terms recall on two cells. Routing stays
+					// name/qual-only; only the disclosure decision is
+					// path-aware. (Both directions measured 2026-09-02 on
+					// the query oracle bed: demoting path matches 0.588 ->
+					// 0.335; promoting them into nameHits broke two cells
+					// the other way.)
+					if !strings.Contains(strings.ToLower(m.FilePath), termLower) {
+						contentOnlySeeds[m.ID] = true
+					}
 				}
 			}
 			if len(contentHits) > 3 {
 				contentHits = contentHits[:3]
 			}
-			// Prefer real implementations over test doubles among name hits, so a
-			// term like "DecryptedValues" seeds the graph on the real Service
-			// method (and expands its call chain) rather than on a mock that
-			// shares the name — which would leave the real chain out of reach.
+			// Prefer real implementations over test doubles (mock/fake/stub,
+			// non-test-file) among name hits, so a term like "DecryptedValues"
+			// seeds the graph on the real Service method (and expands its
+			// call chain) rather than on a mock that shares the name — which
+			// would leave the real chain out of reach.
 			var realHits, doubleHits []grove.SymbolRecord
 			for _, m := range nameHits {
 				if isTestDouble(m.FilePath) {
@@ -115,13 +226,13 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 				}
 			}
 			nameHits = append(realHits, doubleHits...)
+			var termSeeds []grove.SymbolRecord
 			for _, m := range append(nameHits, contentHits...) {
-				if !seenTermSeeds[m.ID] {
-					seenTermSeeds[m.ID] = true
-					seeds = append(seeds, m)
-				}
+				termSeeds = append(termSeeds, m)
 			}
+			perTermSeeds = append(perTermSeeds, termSeeds)
 		}
+		seeds = interleaveUniqueTermSeeds(perTermSeeds)
 		seeds = filterGeneratedPrismContext(seeds)
 
 		// Full-text merge: run the real grep (rg/grep/native) for the same
@@ -132,24 +243,76 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		for _, s := range seeds {
 			seededIDs[s.ID] = true
 		}
-		textMerge = h.mergeTextSearch(ctx, p.terms, seededIDs)
+		textMerge = h.mergeTextSearchScoped(ctx, p.terms, seededIDs, scope)
 		if len(textMerge.extraSeeds) > 0 {
-			seeds = append(seeds, filterGeneratedPrismContext(textMerge.extraSeeds)...)
+			extra := filterGeneratedPrismContext(textMerge.extraSeeds)
+			// extraSeeds are pure text hits promoted to a seed by whatever
+			// symbol encloses them -- always content-driven, never a name
+			// match, so (unlike the SearchSymbols path above) there is no
+			// "exact name" carve-out here: a test file's body mentioning a
+			// term is never a deliberate ask, only ever incidental. Same
+			// pr3493-class bug this loop's sibling exclusion fixes -- this
+			// is the second of two places a test could reach `seeds` this
+			// way (caught 2026-09-02: excluding only the SearchSymbols path
+			// was not enough, mergeTextSearch's grep pass re-added the same
+			// symbol via this list on the identical fixture).
+			kept := extra[:0]
+			for _, s := range extra {
+				if s.Kind == "document" && !p.includeSet["docs"] {
+					continue
+				}
+				if isTestFilePath(s.FilePath) {
+					continue
+				}
+				// extraSeeds are content-driven BY CONSTRUCTION (a grep hit
+				// inside the symbol's body promoted it) — unless the symbol
+				// also name-matches a term, it gets the same signature-level
+				// demotion as SearchSymbols content hits. This was the path
+				// the upai2v1g #93 license-header dump actually took.
+				if !seedNameMatchesAnyTerm(s, p.terms) {
+					contentOnlySeeds[s.ID] = true
+				}
+				kept = append(kept, s)
+			}
+			seeds = append(seeds, kept...)
 		}
 		if len(textMerge.confirmed) > 0 {
-			// Two independent signals (symbol match + text hit) beat one:
-			// stable-reorder confirmed seeds to the front so they land in
-			// the seed set that gets graph expansion.
-			confirmed := make([]grove.SymbolRecord, 0, len(seeds))
-			var rest []grove.SymbolRecord
-			for _, s := range seeds {
-				if textMerge.confirmed[s.ID] {
-					confirmed = append(confirmed, s)
-				} else {
-					rest = append(rest, s)
+			// Two independent signals (symbol match + text hit) beat one —
+			// but promote confirmed seeds within each ROUND of the term
+			// interleave, never globally. The global reorder un-did the
+			// round-robin: a broad term text-matches everywhere, so ALL its
+			// seeds were "confirmed" and promoted above the precise terms'
+			// seeds (a qualified term's literal never appears in source
+			// text), and the top-5 seed cut was single-term again —
+			// measured 2026-08-26 (jackson-core-1263): the qualified terms
+			// contributed ZERO anchors and gold recall was 0.0 while
+			// change-impact knew the whole family. Round position = which
+			// interleave pass produced the seed; promotion happens inside a
+			// round, so every term keeps its seed representation.
+			if len(perTermSeeds) == 1 {
+				term := ""
+				if len(p.terms) == 1 {
+					term = strings.ToLower(p.terms[0])
 				}
+				seeds = promoteSingleTermSeeds(seeds, textMerge.confirmed, term)
+			} else {
+				roundOf := make(map[string]int, len(seeds))
+				for i, s := range seeds {
+					roundOf[s.ID] = i // interleave emitted round-major order
+				}
+				sort.SliceStable(seeds, func(i, j int) bool {
+					ri, rj := roundOf[seeds[i].ID]/len(perTermSeeds),
+						roundOf[seeds[j].ID]/len(perTermSeeds)
+					if ri != rj {
+						return ri < rj
+					}
+					ci, cj := textMerge.confirmed[seeds[i].ID], textMerge.confirmed[seeds[j].ID]
+					if ci != cj {
+						return ci
+					}
+					return roundOf[seeds[i].ID] < roundOf[seeds[j].ID]
+				})
 			}
-			seeds = append(confirmed, rest...)
 		}
 		stamp("text-merge")
 	} else {
@@ -159,39 +322,44 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// agent guessing ONE keyword through lexical search already wins or
 		// ties that fallback in 12/15 cases, often by a wide margin — so the
 		// fallback was adding an unreliable extra hop, not covering a real
-        // gap. The actual fix for "I don't know any names yet" is doing what
-		// the agent would do anyway: grep or prism_search a guessed term,
-		// THEN call this with terms. Same discipline mason's own harness
-		// already enforces (code_context requires both task and terms).
+		// gap. The actual fix for "I don't know any names yet" is to use
+		// prism_search to locate an explicit anchor, THEN call this with terms.
 		return nil, fmt.Errorf(
-			"no terms given — guess ONE keyword from the task (a class/function name fragment, " +
-				"a domain term) and call this again with terms=[\"<guess>\"]. If you are not sure what " +
-				"to guess, use prism_search or grep first to find an anchor, then retry with terms")
+			"no terms given — prism_query expands explicit anchors; pass known class, function, file, " +
+				"or error terms. If no anchor is known, use prism_search to locate one, then retry with terms")
 	}
 	stamp("seeds")
-	// Build candidates: treat first 5 as seeds (distance 0), remainder as candidates.
-	seedCount := minInt(5, len(seeds))
+	// Build candidates: the first interleave round seeds (distance 0), the
+	// remainder are candidates. Fixed 5 breaks with more than five terms —
+	// round-robin gets cut MID-ROUND and the last terms never seed at all
+	// (measured 2026-08-26: two cells regressed the moment the oracle
+	// started passing 8 terms). Every term contributes its best match; the
+	// cap only guards against absurd term lists.
+	seedCount := minInt(maxInt(5, len(p.terms)), minInt(10, len(seeds)))
 	seedSyms := seeds[:seedCount]
 	candidateSyms := seeds[seedCount:]
+	lexicalOwners := h.lexicalOwnerContexts(ctx, seeds, seedSyms, p.terms)
 
 	profile := ranking.SelectProfile(profileName)
-	profile = h.Weights.Apply(profile)
 
-	// For test-writing tasks, boost TestRelevance so test symbols rank higher
-	// in scoring. The budget expansion happens after callerBudget is parsed.
-	if p.explicitProfile == "" && isTestWritingTask(p.task) && profile.TestRelevance < 0.45 {
-		profile.TestRelevance = minFloat(profile.TestRelevance*2.0, 0.45)
-	}
-
-	graphDist := make(map[string]int)
-	hasTestEdgeID := make(map[string]bool)
-	testFilePaths := make(map[string]bool)
+	directCallIDs := make(map[string]bool)
+	// testCallers is pointer-only (delivery.go renders locations, never
+	// bodies): a verified `calls` edge from a real test file into a seed.
+	// Deliberately outside the budget/disclosure pipeline entirely -- the
+	// prior CategoryTest delivery path was removed (pr3493) because a
+	// lexically-task-matched test with no verified relation to the anchor
+	// earned a whole source window; a capped location list cannot repeat
+	// that failure because it never competes for budget or renders a body.
+	testCallers := make(map[string][]grove.SymbolRecord)
+	const testCallersPerSeedCap = 5
 
 	seenIDs := make(map[string]bool, len(seeds))
 	for _, s := range seeds {
 		seenIDs[s.ID] = true
 	}
 	var graphExtra []grove.SymbolRecord
+	var familySyms []grove.SymbolRecord
+	famSeen := make(map[string]bool)
 
 	for _, seed := range seedSyms {
 		// Expand by qualified name when the symbol has one: bare names
@@ -209,18 +377,95 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 			// call chain; CallNeighbors returns exactly the resolved calls edges.
 			if neighbors, err := h.Grove.CallNeighbors(ctx, seedQuery); err == nil {
 				for _, nb := range neighbors {
-					if _, exists := graphDist[nb.ID]; !exists {
-						graphDist[nb.ID] = 1
-					}
+					directCallIDs[nb.ID] = true
 					if !seenIDs[nb.ID] {
 						seenIDs[nb.ID] = true
 						graphExtra = append(graphExtra, nb)
+					}
+				}
+				// Verified test callers, for the pointer line in
+				// renderAnchorSummary -- NOT added to graphExtra/candidates,
+				// see testCallers' declaration above.
+				if tc, err := h.Grove.InboundCallers(ctx, seedQuery); err == nil {
+					for _, caller := range tc {
+						if !isVerifiedTestCaller(caller.FilePath) {
+							continue
+						}
+						if len(testCallers[seed.ID]) < testCallersPerSeedCap {
+							testCallers[seed.ID] = append(testCallers[seed.ID], caller)
+						}
+					}
+				}
+			}
+			// Family expansion — into a SEPARATE set, never the candidate
+			// pool. The call neighborhood alone missed a third of gold fix
+			// regions on the jackson oracle bed (recall 0.65 with PERFECT
+			// terms, 2026-08-26): every autopsied miss was a family member —
+			// the same method in a sibling class, or an overload two methods
+			// down. But the first version dumped family into the candidates
+			// and mean recall DROPPED to 0.55: family lives in sibling
+			// FILES, so it competed for the sourceDeliveryMaxFiles slots and
+			// evicted the files that were covering gold, while itself
+			// ranking too low to be delivered. Zero-sum budgets turn naive
+			// enrichment into displacement. Family is therefore carried
+			// separately and rendered as its own appended section
+			// (delivery.go), where it can only add coverage.
+			if r, err := h.Grove.ChangeImpactScoped(ctx, seedQuery, seed.FilePath); err == nil && r != nil && os.Getenv("PRISM_NO_FAMILY") == "" {
+				for _, fs := range r.Family {
+					if len(familySyms) >= 12 {
+						break
+					}
+					// NOT seenIDs: marking family there stole symbols from
+					// graphExtra (a family member that is also a later
+					// seed's call-neighbor was silently demoted from a main
+					// window to the truncated appendix — measured as recall
+					// 0.65 -> 0.57 even in append-only form). The two sets
+					// dedupe at render time instead.
+					// famSeen only — NOT seenIDs. A same-name override IS
+					// found by term search, so every family member is
+					// already a seed candidate; excluding "known" symbols
+					// excluded the entire family (measured: appendix never
+					// fired, family-vs-none identical on all 12 oracle
+					// tasks). Known-but-unpicked is exactly what the
+					// appendix exists to rescue; true duplication is
+					// prevented at render time against the PICKED set.
+					if !famSeen[fs.ID] {
+						famSeen[fs.ID] = true
+						familySyms = append(familySyms, fs)
 					}
 				}
 			}
 		}
 	}
 
+	// Graph-derived sets arrive in adjacency-map order; sort them into a
+	// stable order at the source so no downstream tie can inherit map layout.
+	sort.SliceStable(graphExtra, func(i, j int) bool {
+		if graphExtra[i].FilePath != graphExtra[j].FilePath {
+			return graphExtra[i].FilePath < graphExtra[j].FilePath
+		}
+		if graphExtra[i].Span.Start != graphExtra[j].Span.Start {
+			return graphExtra[i].Span.Start < graphExtra[j].Span.Start
+		}
+		return graphExtra[i].ID < graphExtra[j].ID
+	})
+	sort.SliceStable(familySyms, func(i, j int) bool {
+		if familySyms[i].FilePath != familySyms[j].FilePath {
+			return familySyms[i].FilePath < familySyms[j].FilePath
+		}
+		return familySyms[i].Span.Start < familySyms[j].Span.Start
+	})
+	if len(p.paths) > 0 || len(p.glob) > 0 {
+		graphExtra = filterSymbolsByScope(graphExtra, scope)
+		familySyms = filterSymbolsByScope(familySyms, scope)
+		for seedID, callers := range testCallers {
+			testCallers[seedID] = filterSymbolsByScope(callers, scope)
+		}
+	}
+	var relatedTests []relatedTestHint
+	if p.includeSet["graph"] && !hasAnyTestCallers(testCallers) {
+		relatedTests = h.relatedTestHints(ctx, p.terms, scope)
+	}
 	stamp("graph-expand")
 	// Merge candidates and graph-enriched symbols, then filter by include set.
 	merged := make([]grove.SymbolRecord, 0, len(candidateSyms)+len(graphExtra))
@@ -250,15 +495,15 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 
 	candidates := make([]ranking.Candidate, 0, len(merged))
 	for i, sym := range merged {
-		dist, inGraph := graphDist[sym.ID]
-		if !inGraph {
-			// Not reached by BFS: fall back to retrieval position as distance
-			// proxy so semantically adjacent symbols still score above
-			// unrelated ones.
-			dist = 3 + (i / 10)
-		}
-		sv := h.Signals.Compute(ctx, p.task, sym, dist, hasTestEdgeID[sym.ID], testFilePaths[sym.FilePath])
+		inGraph := directCallIDs[sym.ID]
+		// Grove's retrieval order is the only within-tier signal. It is
+		// deterministic for a fixed index and does not read live Git history.
+		sv := ranking.SignalValues{RetrievalOrder: 1.0 / (1.0 + float64(i)/50.0)}
 		score := ranking.Score(sv, profile)
+		relation := ranking.RelationRetrieval
+		if inGraph {
+			relation = ranking.RelationDirectCall
+		}
 		cat := categorize(sym)
 		sessionPath := normalizePath(sym.FilePath)
 		entry, seen, _ := h.Session.Lookup(sessionPath, "")
@@ -268,6 +513,7 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		}
 		candidates = append(candidates, ranking.Candidate{
 			Symbol:         sym,
+			Relation:       relation,
 			Score:          score,
 			Category:       cat,
 			PreviouslySeen: seen,
@@ -284,32 +530,510 @@ func (h *Handler) selectContext(ctx context.Context, p selectParams) (*selection
 		// phase shaping. The caller knows its token constraints best.
 		budget = p.budgetArg
 	} else {
+		// One default, the same for every task. Pass budget= to change it.
 		budget = defaultTaskBudget
-		// B: apply phase-derived budget multiplier (e.g. 0.60 for code_review),
-		// floored so a shaped default never starves the response.
-		if phaseBudgetMult > 0 && phaseBudgetMult != 1.0 {
-			shaped := int(float64(budget) * phaseBudgetMult)
-			if shaped < 4000 {
-				shaped = 4000
-			}
-			budget = shaped
-		}
-		// Expand budget for test-writing tasks so the test category gets more
-		// absolute token room (20% share of a larger total = more test content).
-		if p.explicitProfile == "" && isTestWritingTask(p.task) {
-			budget = int(float64(budget) * 1.25)
-		}
 	}
 	picked := ranking.Select(seedSyms, candidates, budget)
 	stamp("rank+budget")
 
 	return &selection{
-		picked:      picked,
-		seedSyms:    seedSyms,
-		graphExtra:  graphExtra,
-		seeds:       seeds,
-		budget:      budget,
-		textHits:    textMerge.rawHits,
-		textBackend: textMerge.backend,
+		picked:           picked,
+		seedSyms:         seedSyms,
+		anchorMatchKinds: seedMatchKinds(seedSyms, p.terms),
+		familySyms:       familySyms,
+		graphExtra:       graphExtra,
+		seeds:            seeds,
+		budget:           budget,
+		textHits:         textMerge.rawHits,
+		contentHits:      selectedContentHits(picked, contentOnlySeeds, textMerge.symbolHits),
+		symbolHits:       textMerge.symbolHits,
+		textBackend:      textMerge.backend,
+		testCallers:      testCallers,
+		relatedTests:     relatedTests,
+		contentOnlySeeds: contentOnlySeeds,
+		lexicalOwners:    lexicalOwners,
 	}, nil
+}
+
+type relatedTestHint struct {
+	file     string
+	line     int
+	names    []string
+	probes   []string
+	score    int
+	firstHit int
+}
+
+func hasAnyTestCallers(callers map[string][]grove.SymbolRecord) bool {
+	for _, sites := range callers {
+		if len(sites) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// relatedTestHints recovers indirect integration-test leads without claiming
+// a graph relationship. A test named missing_required_output is often the
+// right validation target for missing_required_error even when it reaches the
+// private formatter only through Parser::try_get_matches_from. Exact compound
+// probes score strongly; otherwise a file must match two distinct identifier
+// components. The result is pointer-only and tightly capped, so lexical test
+// noise cannot displace production source.
+func (h *Handler) relatedTestHints(ctx context.Context, terms []string, scope searchScope) []relatedTestHint {
+	probes := relatedTestProbes(terms)
+	if len(probes) == 0 || h.Grove == nil {
+		return nil
+	}
+	type candidate struct {
+		relatedTestHint
+		seenNames  map[string]bool
+		seenProbes map[string]bool
+		bestWeight int
+	}
+	byFile := map[string]*candidate{}
+	order := 0
+	for _, probe := range probes {
+		if err := ctx.Err(); err != nil {
+			break
+		}
+		syms, err := h.Grove.SearchSymbols(ctx, probe.text, 64)
+		if err != nil {
+			continue
+		}
+		syms = filterSymbolsByScope(syms, scope)
+		for _, sym := range syms {
+			if !isVerifiedTestCaller(sym.FilePath) || !symbolNameContains(sym, probe.text) {
+				continue
+			}
+			file := normalizePath(sym.FilePath)
+			c := byFile[file]
+			if c == nil {
+				c = &candidate{relatedTestHint: relatedTestHint{file: file, line: sym.Span.Start, firstHit: order}, seenNames: map[string]bool{}, seenProbes: map[string]bool{}, bestWeight: probe.weight}
+				if relatedTestPathAffinity(file, terms) {
+					c.score += 2
+				}
+				byFile[file] = c
+				order++
+			}
+			if !c.seenProbes[probe.label] {
+				c.seenProbes[probe.label] = true
+				c.probes = append(c.probes, probe.label)
+				c.score += probe.weight
+			}
+			if sym.Name != "" && !c.seenNames[sym.Name] && len(c.names) < 3 {
+				c.seenNames[sym.Name] = true
+				c.names = append(c.names, sym.Name)
+			}
+			// Point at the strongest matching test symbol, not merely the
+			// earliest generic "required" helper in the same file.
+			if probe.weight > c.bestWeight && sym.Span.Start > 0 {
+				c.line = sym.Span.Start
+				c.bestWeight = probe.weight
+			}
+		}
+	}
+	var out []relatedTestHint
+	for _, c := range byFile {
+		// One compound match or two independent component matches. A lone
+		// generic word such as "required" is too weak to steer validation.
+		if c.score < 2 {
+			continue
+		}
+		out = append(out, c.relatedTestHint)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].score != out[j].score {
+			return out[i].score > out[j].score
+		}
+		if out[i].firstHit != out[j].firstHit {
+			return out[i].firstHit < out[j].firstHit
+		}
+		return out[i].file < out[j].file
+	})
+	if len(out) > 3 {
+		out = out[:3]
+	}
+	return out
+}
+
+func relatedTestPathAffinity(file string, terms []string) bool {
+	base := file
+	if slash := strings.LastIndexByte(base, '/'); slash >= 0 {
+		base = base[slash+1:]
+	}
+	if dot := strings.IndexByte(base, '.'); dot >= 0 {
+		base = base[:dot]
+	}
+	for _, pathPart := range identifierParts(base) {
+		if len(pathPart) < 5 || pathPart == "test" || pathPart == "tests" {
+			continue
+		}
+		for _, term := range terms {
+			for _, termPart := range identifierParts(term) {
+				shorter := minInt(len(pathPart), len(termPart))
+				if shorter >= 5 && (strings.HasPrefix(pathPart, termPart) || strings.HasPrefix(termPart, pathPart)) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+type relatedTestProbe struct {
+	text   string
+	label  string
+	weight int
+}
+
+func relatedTestProbes(terms []string) []relatedTestProbe {
+	edgeNoise := map[string]bool{
+		"get": true, "set": true, "from": true, "to": true, "with": true,
+		"error": true, "errors": true, "err": true, "validate": true,
+		"validation": true, "check": true, "make": true, "new": true,
+	}
+	seen := map[string]bool{}
+	var compound, component []relatedTestProbe
+	add := func(dst *[]relatedTestProbe, text, label string, weight int) {
+		key := strings.ToLower(text)
+		if len(key) < 5 || seen[key] {
+			return
+		}
+		seen[key] = true
+		*dst = append(*dst, relatedTestProbe{text: text, label: label, weight: weight})
+	}
+	for _, term := range terms {
+		parts := identifierParts(term)
+		for len(parts) > 1 && edgeNoise[parts[0]] {
+			parts = parts[1:]
+		}
+		for len(parts) > 1 && edgeNoise[parts[len(parts)-1]] {
+			parts = parts[:len(parts)-1]
+		}
+		if len(parts) > 1 {
+			label := strings.Join(parts, "_")
+			add(&compound, label, label, 2)
+			add(&compound, strings.Join(parts, ""), label, 2)
+		}
+		for _, part := range parts {
+			if len(part) >= 5 && !edgeNoise[part] {
+				add(&component, part, part, 1)
+			}
+		}
+	}
+	out := append(compound, component...)
+	if len(out) > 6 {
+		out = out[:6]
+	}
+	return out
+}
+
+func identifierParts(s string) []string {
+	runes := []rune(s)
+	var parts []string
+	start := -1
+	flush := func(end int) {
+		if start >= 0 && end > start {
+			parts = append(parts, strings.ToLower(string(runes[start:end])))
+		}
+		start = -1
+	}
+	for i, r := range runes {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			flush(i)
+			continue
+		}
+		if start < 0 {
+			start = i
+			continue
+		}
+		prev := runes[i-1]
+		nextLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+		if unicode.IsUpper(r) && (unicode.IsLower(prev) || unicode.IsDigit(prev) || (unicode.IsUpper(prev) && nextLower)) {
+			flush(i)
+			start = i
+		}
+	}
+	flush(len(runes))
+	return parts
+}
+
+func symbolNameContains(sym grove.SymbolRecord, probe string) bool {
+	probe = strings.ToLower(probe)
+	return strings.Contains(strings.ToLower(sym.Name), probe) || strings.Contains(strings.ToLower(sym.QualifiedName), probe)
+}
+
+const (
+	lexicalOwnerMax      = 2
+	lexicalOwnerMaxLines = 320
+	lexicalOwnerMaxBytes = 16000
+)
+
+// lexicalOwnerContexts recovers the behavioral neighborhood around a matched
+// field or constant without guessing beyond the indexed enclosing type. This
+// is intentionally capped and delivered only when the normal result has room,
+// so it can add recall but cannot evict named anchors.
+func (h *Handler) lexicalOwnerContexts(ctx context.Context, seeds, primary []grove.SymbolRecord, terms []string) []grove.SymbolRecord {
+	seen := map[string]bool{}
+	fileSymbols := map[string][]grove.SymbolRecord{}
+	primaryFiles := map[string]bool{}
+	for _, seed := range primary {
+		primaryFiles[normalizePath(seed.FilePath)] = true
+	}
+	var owners []grove.SymbolRecord
+	for _, seed := range seeds {
+		if len(owners) >= lexicalOwnerMax {
+			break
+		}
+		if seed.ParentSymbol == "" || isTestFilePath(seed.FilePath) || !seedNameMatchesAnyTerm(seed, terms) {
+			continue
+		}
+		switch strings.ToLower(seed.Kind) {
+		case "field", "const", "constant", "property":
+		default:
+			continue
+		}
+		fileSyms, ok := fileSymbols[seed.FilePath]
+		if !ok {
+			var err error
+			fileSyms, err = h.Grove.FileSymbols(ctx, seed.FilePath)
+			if err != nil {
+				continue
+			}
+			fileSymbols[seed.FilePath] = fileSyms
+		}
+		candidate := lexicalOwnerSymbol(seed, fileSyms)
+		if candidate == nil || primaryFiles[normalizePath(candidate.FilePath)] || seen[candidate.ID] {
+			continue
+		}
+		seen[candidate.ID] = true
+		owners = append(owners, *candidate)
+	}
+	return owners
+}
+
+func lexicalOwnerSymbol(seed grove.SymbolRecord, fileSyms []grove.SymbolRecord) *grove.SymbolRecord {
+	parentLeaf := leafOf(seed.ParentSymbol)
+	for i := range fileSyms {
+		candidate := &fileSyms[i]
+		switch strings.ToLower(candidate.Kind) {
+		case "class", "interface", "struct", "enum", "type":
+		default:
+			continue
+		}
+		if candidate.Name != parentLeaf && candidate.QualifiedName != seed.ParentSymbol {
+			continue
+		}
+		if candidate.RawText == "" || len(candidate.RawText) > lexicalOwnerMaxBytes ||
+			strings.Count(candidate.RawText, "\n")+1 > lexicalOwnerMaxLines {
+			return nil
+		}
+		return candidate
+	}
+	return nil
+}
+
+func seedMatchKinds(seeds []grove.SymbolRecord, terms []string) map[string]string {
+	kinds := make(map[string]string, len(seeds))
+	for _, seed := range seeds {
+		bestKind, bestTier := "unclassified", 0
+		for _, term := range terms {
+			kind, tier := symbolMatchTier(seed, strings.ToLower(strings.TrimSpace(term)))
+			if tier > bestTier {
+				bestKind, bestTier = kind, tier
+			}
+		}
+		kinds[seed.ID] = bestKind
+	}
+	return kinds
+}
+
+func selectedContentHits(picked []ranking.BudgetedSymbol, contentOnly map[string]bool, bySymbol map[string][]textsearch.Hit) []textsearch.Hit {
+	seen := map[string]bool{}
+	var hits []textsearch.Hit
+	for _, pick := range picked {
+		if !contentOnly[pick.Symbol.ID] {
+			continue
+		}
+		for _, hit := range bySymbol[pick.Symbol.ID] {
+			key := hit.File + ":" + strconv.Itoa(hit.Line)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			hits = append(hits, hit)
+		}
+	}
+	return hits
+}
+
+// sourceSections is nil for symbols delivery. In source delivery it holds the
+// FINAL per-file sections, after trimming, truncation, and cache-pointer
+// substitution. Only a line present in that final output counts as delivered.
+func (s *selection) deliverableTextHits(sourceSections map[string]string) []textsearch.Hit {
+	if sourceSections == nil {
+		hits := make([]textsearch.Hit, 0, len(s.textHits)+len(s.contentHits))
+		hits = append(hits, s.textHits...)
+		return append(hits, s.contentHits...)
+	}
+	seen := map[string]bool{}
+	var hits []textsearch.Hit
+	add := func(hit textsearch.Hit) {
+		if sourceSectionShowsLine(sourceSections[normalizePath(hit.File)], hit) {
+			return
+		}
+		key := hit.File + ":" + strconv.Itoa(hit.Line)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		hits = append(hits, hit)
+	}
+	for _, hit := range s.textHits {
+		add(hit)
+	}
+	for _, pick := range s.picked {
+		for _, hit := range s.symbolHits[pick.Symbol.ID] {
+			add(hit)
+		}
+	}
+	return hits
+}
+
+func sourceSectionShowsLine(section string, hit textsearch.Hit) bool {
+	// A numbered source line may itself be clamped; in that case the matched
+	// text is not actually visible and still needs its own text-hit excerpt.
+	return hit.Line > 0 && strings.Contains(section, "\n"+strconv.Itoa(hit.Line)+"\t"+hit.Text)
+}
+
+// interleaveUniqueTermSeeds gives every explicit term its best still-unseen
+// match before taking a second match from any term. Deduplication happens here,
+// after each term has ranked its own results. Deduplicating while building the
+// per-term lists lets an earlier broad qualified-name match consume a later
+// exact-name match (for example, "CliRunner" sees CliRunner.isolation before
+// the explicit term "isolation" gets its turn), demoting the named method from
+// a full seed body to a signature-only candidate.
+func interleaveUniqueTermSeeds(perTermSeeds [][]grove.SymbolRecord) []grove.SymbolRecord {
+	seen := map[string]bool{}
+	var seeds []grove.SymbolRecord
+	for i := 0; ; i++ {
+		any := false
+		for _, termSeeds := range perTermSeeds {
+			if i >= len(termSeeds) {
+				continue
+			}
+			any = true
+			seed := termSeeds[i]
+			if !seen[seed.ID] {
+				seen[seed.ID] = true
+				seeds = append(seeds, seed)
+			}
+		}
+		if !any {
+			return seeds
+		}
+	}
+}
+
+// promoteSingleTermSeeds reorders seeds for the single-term case: two
+// independent signals (symbol match + text hit) beat one, but confirmation
+// must never outrank an exact match by too wide a margin. A pure function
+// (no grep, no grove) so its exact/confirmed tier boundaries can be unit
+// tested directly instead of through real text-search timing/ordering,
+// which is NOT portable across backends -- see the git history of this
+// function's tests for a CI failure (2026-09-02) caused by exactly that:
+// a fixture tuned against rg's --sort path determinism broke under the
+// grep fallback CI runners actually use (neither GitHub-hosted ubuntu nor
+// macos images ship ripgrep).
+//
+// Two real, opposite-direction bugs shaped this function (2026-09-02):
+//
+//  1. Plain global confirmation-promotion (the original design) could push
+//     an EXACT name/qualified-name match (graph rank 100) behind a mere
+//     substring match (graph rank 70) purely because mergeTextSearch's
+//     confirmation grep is capped (40 hits) and happened to surface the
+//     substring symbol's definition lines before the exact symbol's --
+//     django BaseDatabaseOperations.quote_name: geo_quote_name (5 unrelated
+//     GIS methods, substring match) got confirmed and promoted ahead of
+//     the real quote_name family (7 ties, exact match), which never got a
+//     chance. Fix: pin exact matches ahead of confirmed-but-inexact ones.
+//
+//  2. That pin, applied unconditionally, is itself wrong when "exact" is a
+//     common field/attribute name shared by many unrelated types rather
+//     than a real declaration/override family: a2aproject/a2a-python-414,
+//     term "JSONRPC" -- 23 Pydantic models each declare a boilerplate
+//     `jsonrpc` field (23 "exact" ties, not one concept), and pinning them
+//     all ahead buried two symbols confirmation had correctly promoted
+//     (JsonRpcTransport, A2AClientJSONRPCError, each independently
+//     referenced elsewhere) under the boilerplate. Oracle recall dropped
+//     0.222 -> 0.111 on prism's swebench query_oracle bed before this was
+//     caught by rerunning that existing, deterministic (no agent noise)
+//     benchmark -- a single hand-picked repro is not enough evidence for a
+//     ranking change like this one.
+//
+// No fixed priority order over {exact, confirmed} satisfies both cases at
+// once (django needs exact-but-unconfirmed to beat confirmed-inexact;
+// a2a-414 needs the opposite) -- exactTieLimit is a tuned compromise
+// between "few ties = a real family, exactness is the strong signal" and
+// "many ties = a name collision, confirmation is the strong signal", not a
+// proof, and may need revisiting on more data.
+func promoteSingleTermSeeds(seeds []grove.SymbolRecord, confirmed map[string]bool, term string) []grove.SymbolRecord {
+	if len(confirmed) == 0 {
+		return seeds
+	}
+	var exact, rest []grove.SymbolRecord
+	for _, sd := range seeds {
+		if term != "" && (strings.ToLower(sd.Name) == term || strings.ToLower(sd.QualifiedName) == term) {
+			exact = append(exact, sd)
+		} else {
+			rest = append(rest, sd)
+		}
+	}
+	const exactTieLimit = 10
+	if len(exact) > exactTieLimit {
+		exact, rest = nil, seeds
+	}
+	confirmedSyms := make([]grove.SymbolRecord, 0, len(rest))
+	var unconfirmed []grove.SymbolRecord
+	for _, sd := range rest {
+		if confirmed[sd.ID] {
+			confirmedSyms = append(confirmedSyms, sd)
+		} else {
+			unconfirmed = append(unconfirmed, sd)
+		}
+	}
+	return append(append(exact, confirmedSyms...), unconfirmed...)
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// seedNameMatchesAnyTerm reports whether a symbol's name or qualified name
+// contains any of the caller's terms — the distinction between a seed the
+// caller effectively asked for by name and one that only content-matched.
+func seedNameMatchesAnyTerm(s grove.SymbolRecord, terms []string) bool {
+	nameLower, qualLower := strings.ToLower(s.Name), strings.ToLower(s.QualifiedName)
+	pathLower := strings.ToLower(s.FilePath)
+	for _, t := range terms {
+		tl := strings.ToLower(t)
+		if tl != "" && (strings.Contains(nameLower, tl) || strings.Contains(qualLower, tl) ||
+			strings.Contains(pathLower, tl)) {
+			return true
+		}
+	}
+	return false
+}
+
+// explicitTestTerm keeps a test symbol eligible only when the caller's term
+// itself expresses test intent. An exact common method name such as `skip`
+// inside a test is not a deliberate test request merely because it is exact;
+// explicit terms such as TestFoo, test_foo, or widget.spec remain eligible.
+func explicitTestTerm(term string) bool {
+	term = strings.ToLower(term)
+	return strings.Contains(term, "test") || strings.Contains(term, "spec")
 }

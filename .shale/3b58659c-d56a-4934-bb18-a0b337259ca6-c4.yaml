@@ -1,0 +1,506 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c4
+created_at: 2026-08-29T00:38:08.802009Z
+finalized_at: 2026-08-29T01:03:58.440962Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: grep -n "Edge.*EdgeType = " ~/Projects/provasign/grove/internal/core/types.go | head -12; sed -n 855,880p ~/Projects/provasign/grove/internal/graph/changeimpact.go
+      at: 2026-08-29T00:57:09.801818Z
+      classified: other
+    - cmd: grep -n "flushProc\|currentProc = &s\|Span.End = ln.orig" ~/Projects/provasign/astkit/strategies/cobol.go | head
+      at: 2026-08-29T00:57:35.936128Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && python3 - <<'EOF'
+        p = "strategies/cobol.go"
+        src = open(p).read()
+        # Accumulate statement text into the open paragraph/section body.
+        old = """		// span growth for the enclosing procedure
+        		if currentProc != nil && ln.orig > currentProc.Span.End {
+        			currentProc.Span.End = ln.orig
+        		}"""
+        new = """		// span growth + body accumulation for the enclosing procedure —
+        		// Body carries the normalized statement text so graph consumers can
+        		// resolve field references without re-normalizing the file.
+        		if currentProc != nil && division == "PROCEDURE" {
+        			if ln.orig > currentProc.Span.End {
+        				currentProc.Span.End = ln.orig
+        			}
+        			if !strings.HasPrefix(currentProc.Body, currentProc.Signature) || currentProc.Body != "" {
+        				currentProc.Body += "\\n"
+        			}
+        			currentProc.Body += strings.TrimSpace(ln.text)
+        		}"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("patched")
+        EOF
+        go build ./strategies/
+      at: 2026-08-29T00:57:42.857382Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && cat >> strategies/mainframe_test.go <<'EOF'
+
+        func TestCOBOL_ParagraphBody(t *testing.T) {
+        	syms := extractCOBOL(t, cobolSample)
+        	main := find(t, syms, "paragraph", "MAIN-PARA")
+        	for _, want := range []string{"PERFORM INIT-PARA", "CALL 'AUDITLOG'", "STOP RUN"} {
+        		if !strings.Contains(main.Body, want) {
+        			t.Errorf("MAIN-PARA body missing %q:\n%s", want, main.Body)
+        		}
+        	}
+        	if strings.Contains(main.Body, "MOVE 'N' TO WS-EOF") {
+        		t.Error("MAIN-PARA body contains INIT-PARA's statements")
+        	}
+        }
+        EOF
+        go test ./... 2>&1 | tail -3
+      at: 2026-08-29T00:58:01.742527Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/astkit && git add strategies/cobol.go strategies/mainframe_test.go && git commit -q -m "$(cat <<'EOF'
+        cobol: paragraphs carry their statement text as Body
+
+        Graph consumers resolve field references from paragraph bodies without
+        re-normalizing the file; each paragraph's Body holds its normalized
+        PROCEDURE DIVISION statements only.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.5.1 -m "cobol: paragraph bodies" && git push origin v0.5.1 2>&1 | tail -1
+      at: 2026-08-29T00:58:14.416864Z
+      classified: other
+    - cmd: sed -n 183,205p ~/Projects/provasign/grove/internal/parser/treesitter.go; sed -n 202,230p ~/Projects/provasign/grove/internal/graph/graph.go
+      at: 2026-08-29T00:58:19.343432Z
+      classified: other
+    - cmd: sed -n 73,130p ~/Projects/provasign/grove/internal/graph/incremental.go
+      at: 2026-08-29T00:58:24.56768Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/mainframe.go <<'EOF'
+
+        // mainframeDataKind: kinds that anchor lineage queries (declared storage).
+        func mainframeDataKind(kind core.SymbolKind) bool {
+        	switch string(kind) {
+        	case "data-item", "condition-name", "logical-file":
+        		return true
+        	}
+        	return false
+        }
+
+        // mainframeAnchorKind: every mainframe kind change-impact accepts as anchor.
+        func mainframeAnchorKind(kind core.SymbolKind) bool {
+        	return mainframeCallerKind(kind) || mainframeDataKind(kind)
+        }
+
+        // hasMainframeSymbols reports whether any symbol is cobol/jcl — used by the
+        // delta path to fall back to a full edge build until include-closure-aware
+        // invalidation (plan phase 0.4) lands. Estates are few-files corpora; a full
+        // rebuild is cheap there, and silence-losing data edges is not acceptable.
+        func hasMainframeSymbols(symbols []core.SymbolRecord) bool {
+        	for i := range symbols {
+        		if symbols[i].Language == "cobol" || symbols[i].Language == "jcl" {
+        			return true
+        		}
+        	}
+        	return false
+        }
+
+        var reFieldToken = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9-]+`)
+
+        // buildMainframeDataEdges emits the lineage layer:
+        //
+        //  1. Resolved include edges: file:A -> file:B when A's COPY member name
+        //     matches B's basename (the member/file join the bare "import:MEMBER"
+        //     record cannot make). The unresolved import edge is kept — it is the
+        //     honest record that the reference exists even when the member is absent.
+        //  2. Field-reference edges (uses-type, 0.7, regex): paragraph/section body
+        //     tokens matched against data items VISIBLE to that file — declared in
+        //     it, or in the transitive closure of its resolved copybooks. Name-level
+        //     matching, no direction claim; read/write direction needs the
+        //     PROCEDURE DIVISION grammar phase.
+        func buildMainframeDataEdges(idx *edgeIndex, symbols []core.SymbolRecord) []core.Edge {
+        	// Member name -> file path, for cobol files only.
+        	memberFile := map[string]string{}
+        	cobolFiles := map[string][]string{} // filePath -> imports
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language != "cobol" {
+        			continue
+        		}
+        		base := s.FilePath
+        		if j := strings.LastIndexByte(base, '/'); j >= 0 {
+        			base = base[j+1:]
+        		}
+        		if j := strings.IndexByte(base, '.'); j >= 0 {
+        			base = base[:j]
+        		}
+        		memberFile[strings.ToUpper(base)] = s.FilePath
+        		if _, ok := cobolFiles[s.FilePath]; !ok {
+        			cobolFiles[s.FilePath] = s.Imports
+        		}
+        	}
+        	if len(cobolFiles) == 0 {
+        		return nil
+        	}
+
+        	var edges []core.Edge
+        	// 1. Resolved include edges + per-file include closure.
+        	closure := map[string]map[string]bool{} // filePath -> reachable member files
+        	var expand func(file string, seen map[string]bool)
+        	expand = func(file string, seen map[string]bool) {
+        		for _, imp := range cobolFiles[file] {
+        			target, ok := memberFile[strings.ToUpper(imp)]
+        			if !ok || seen[target] || target == file {
+        				continue
+        			}
+        			seen[target] = true
+        			expand(target, seen)
+        		}
+        	}
+        	seenInc := map[string]bool{}
+        	for file := range cobolFiles {
+        		seen := map[string]bool{}
+        		expand(file, seen)
+        		closure[file] = seen
+        		for _, imp := range cobolFiles[file] {
+        			if target, ok := memberFile[strings.ToUpper(imp)]; ok && target != file {
+        				key := file + "->" + target
+        				if seenInc[key] {
+        					continue
+        				}
+        				seenInc[key] = true
+        				edges = append(edges, core.Edge{
+        					From: "file:" + file, To: "file:" + target,
+        					Type: core.EdgeImports, Confidence: 1.0,
+        					Source: core.EvidenceSourceASTKit, Reason: core.ReasonASTNarrowed,
+        				})
+        			}
+        		}
+        	}
+
+        	// 2. Field references from paragraph/section/program bodies.
+        	fieldsByFile := map[string]map[string][]*core.SymbolRecord{}
+        	fieldMap := func(file string) map[string][]*core.SymbolRecord {
+        		if m, ok := fieldsByFile[file]; ok {
+        			return m
+        		}
+        		m := map[string][]*core.SymbolRecord{}
+        		addFrom := func(f string) {
+        			for _, s := range idx.byFile[f] {
+        				if mainframeDataKind(s.Kind) {
+        					m[strings.ToUpper(s.Name)] = append(m[strings.ToUpper(s.Name)], s)
+        				}
+        			}
+        		}
+        		addFrom(file)
+        		for inc := range closure[file] {
+        			addFrom(inc)
+        		}
+        		fieldsByFile[file] = m
+        		return m
+        	}
+
+        	seenRef := map[string]bool{}
+        	for i := range symbols {
+        		s := &symbols[i]
+        		if s.Language != "cobol" || !mainframeCallerKind(s.Kind) || s.RawText == "" {
+        			continue
+        		}
+        		visible := fieldMap(s.FilePath)
+        		for _, tok := range reFieldToken.FindAllString(s.RawText, -1) {
+        			for _, field := range visible[strings.ToUpper(tok)] {
+        				key := s.ID + "->" + field.ID
+        				if seenRef[key] {
+        					continue
+        				}
+        				seenRef[key] = true
+        				edges = append(edges, core.Edge{
+        					From: s.ID, To: field.ID,
+        					Type: core.EdgeUsesType, Confidence: 0.7,
+        					Source: core.EvidenceSourceRegex, Reason: core.ReasonRegexFallbck,
+        				})
+        			}
+        		}
+        	}
+        	return edges
+        }
+        EOF
+        go build ./internal/graph/
+      at: 2026-08-29T00:59:03.642318Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        edits = [
+         # BuildEdges: assemble the new builder
+         ("internal/graph/graph.go",
+          "\tcallEdges := buildCalls(idx, symbols, sat)\n\tedges = append(edges, callEdges...)\n\ttick(\"calls\")",
+          "\tcallEdges := buildCalls(idx, symbols, sat)\n\tedges = append(edges, callEdges...)\n\ttick(\"calls\")\n\tedges = append(edges, buildMainframeDataEdges(idx, symbols)...)\n\ttick(\"mainframe-data\")"),
+         # Delta path: estates fall back to full build until phase 0.4
+         ("internal/graph/incremental.go",
+          "\tif len(prevEdges) == 0 || len(changedFiles) == 0 {\n\t\tdeltaStats.fallback++\n\t\treturn BuildEdges(symbols), nil\n\t}",
+          "\tif len(prevEdges) == 0 || len(changedFiles) == 0 || hasMainframeSymbols(symbols) {\n\t\t// Mainframe estates force a full rebuild: the include closure makes\n\t\t// per-file invalidation wrong until plan phase 0.4 lands, and these\n\t\t// corpora are few-files so the full build is cheap.\n\t\tdeltaStats.fallback++\n\t\treturn BuildEdges(symbols), nil\n\t}"),
+         # change-impact gates: anchor on data kinds too
+         ("internal/graph/changeimpact.go",
+          "\t\t\tif !mainframeCallerKind(s.Kind) {\n\t\t\t\tcontinue\n\t\t\t}",
+          "\t\t\tif !mainframeAnchorKind(s.Kind) {\n\t\t\t\tcontinue\n\t\t\t}"),
+         # callers loop: uses-type references count as impact sites for data anchors
+         ("internal/graph/changeimpact.go",
+          "\tseen := map[string]bool{}\n\tvar callers []core.SymbolRecord\n\tfor id := range declIDs {\n\t\tfor _, ei := range g.inbound[id] {\n\t\t\tedge := g.edges[ei]\n\t\t\tif edge.Type != core.EdgeCalls || declIDs[edge.From] || seen[edge.From] {\n\t\t\t\tcontinue\n\t\t\t}",
+          "\tdataAnchor := false\n\tfor _, d := range decls {\n\t\tif mainframeDataKind(d.Kind) {\n\t\t\tdataAnchor = true\n\t\t\tbreak\n\t\t}\n\t}\n\tseen := map[string]bool{}\n\tvar callers []core.SymbolRecord\n\tfor id := range declIDs {\n\t\tfor _, ei := range g.inbound[id] {\n\t\t\tedge := g.edges[ei]\n\t\t\taccept := edge.Type == core.EdgeCalls || (dataAnchor && edge.Type == core.EdgeUsesType)\n\t\t\tif !accept || declIDs[edge.From] || seen[edge.From] {\n\t\t\t\tcontinue\n\t\t\t}"),
+        ]
+        for path, old, new in edits:
+            src = open(path).read()
+            n = src.count(old)
+            assert n >= 1, (path, old[:60], n)
+            open(path, "w").write(src.replace(old, new))
+            print(path, "patched", n, "site(s)")
+        EOF
+        go build ./... && go test ./internal/graph/ 2>&1 | tail -1
+      at: 2026-08-29T00:59:22.114308Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && go test ./internal/graph/ 2>&1 | grep -E "FAIL|---|drift" | head; go test ./internal/graph/ -run MainframeEstate -v 2>&1 | grep -A8 "drift" | head -20
+      at: 2026-08-29T00:59:28.20003Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p = "internal/graph/testdata/mainframe-estate/CUSTUPD.cbl"
+        lines = open(p).read().split("\n")
+        def pad(seq, code):
+            return f"{seq:>06}"[:6] + " " + code.ljust(65)[:65] + "ID73-80X"
+        out = []
+        for ln in lines:
+            if "STOP RUN" in ln:
+                out.append(pad("001850", "     MOVE ZEROS TO CUST-SSN."))
+            out.append(ln)
+        open(p, "w").write("\n".join(out))
+        print("MOVE line inserted")
+        EOF
+        python3 - <<'EOF'
+        p = "internal/graph/mainframe_estate_test.go"
+        src = open(p).read()
+        old = """	want := []string{
+        		// COPY edges: the include graph.
+        		"file:AUDITLOG.cbl -> import:CUSTREC",
+        		"file:CUSTUPD.cbl -> import:CUSTREC","""
+        new = """	want := []string{
+        		// COPY edges: the textual include record plus the resolved
+        		// member-to-file join.
+        		"file:AUDITLOG.cbl -> file:CUSTREC.cpy",
+        		"file:AUDITLOG.cbl -> import:CUSTREC",
+        		"file:CUSTUPD.cbl -> file:CUSTREC.cpy",
+        		"file:CUSTUPD.cbl -> import:CUSTREC","""
+        assert src.count(old) == 1
+        src = src.replace(old, new)
+        src += '''
+        // Field-reference (lineage) edges: paragraph bodies matched against data
+        // items visible through the resolved include closure. Name-level, no
+        // direction claim (confidence 0.7, regex evidence).
+        func TestMainframeEstate_FieldReferenceEdges(t *testing.T) {
+        	_, edges := indexEstate(t)
+        	var got []string
+        	for _, e := range edges {
+        		if e.Type != core.EdgeUsesType || !strings.Contains(e.From, ".cbl::") {
+        			continue
+        		}
+        		got = append(got, fmt.Sprintf("%s -> %s conf=%.1f", trimID(e.From), trimID(e.To), e.Confidence))
+        	}
+        	sort.Strings(got)
+        	want := []string{
+        		"CUSTUPD.cbl::CUSTUPD.INIT-PARA -> CUSTUPD.cbl::WS-FLAGS.WS-EOF conf=0.7",
+        		"CUSTUPD.cbl::CUSTUPD.MAIN-PARA -> CUSTREC.cpy::CUST-REC conf=0.7",
+        		"CUSTUPD.cbl::CUSTUPD.MAIN-PARA -> CUSTREC.cpy::CUST-REC.CUST-SSN conf=0.7",
+        		"CUSTUPD.cbl::CUSTUPD.MAIN-PARA -> CUSTUPD.cbl::WS-RPT-PGM conf=0.7",
+        	}
+        	sort.Strings(want)
+        	if diff := diffSets(want, got); diff != "" {
+        		t.Errorf("field-reference edge drift:\\n%s", diff)
+        	}
+        }
+        '''
+        open(p, "w").write(src)
+        print("test updated")
+        EOF
+        go test ./internal/graph/ -run MainframeEstate -v 2>&1 | grep -E "^---|^===|drift|missing|extra" | head -14
+      at: 2026-08-29T00:59:57.345025Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "suite: $?"; go build -o $S/grove-mf ./cmd/grove && cp -R internal/graph/testdata/mainframe-estate $S/lineage-estate 2>/dev/null; rm -rf $S/lineage-estate/.grove; cd $S/lineage-estate && git init -q 2>/dev/null; $S/grove-mf index $S/lineage-estate >/dev/null 2>&1 && $S/grove-mf change-impact CUST-SSN $S/lineage-estate 2>/dev/null | python3 -c "
+        import json,sys; d=json.load(sys.stdin)
+        print('decls:', [(x['qualifiedName'], x['filePath']) for x in d.get('Declarations') or []])
+        print('refs:', [x['qualifiedName'] for x in d.get('Callers') or []])
+        print('completeness:', d.get('Completeness'))"; rm -rf $S/noop3 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop3 && rm -rf $S/noop3/.grove && $S/grove-mf index $S/noop3 >/dev/null 2>&1 && $S/grove-mf status $S/noop3 | grep -E "symbolCount|edgeCount"
+      at: 2026-08-29T01:00:16.925535Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; $S/grove-mf change-impact CUST-SSN $S/lineage-estate 2>&1 | head -5
+      at: 2026-08-29T01:00:22.077097Z
+      classified: other
+    - cmd: grep -n "no type named" ~/Projects/provasign/grove/internal/graph/changeimpact.go; grep -n "func (g \*CodeGraph) ChangeImpact\|func.*ChangeImpact" ~/Projects/provasign/grove/internal/graph/changeimpact.go | head -4
+      at: 2026-08-29T01:00:34.76549Z
+      classified: other
+    - cmd: sed -n 83,120p ~/Projects/provasign/grove/internal/graph/changeimpact.go
+      at: 2026-08-29T01:00:38.152993Z
+      classified: other
+    - cmd: sed -n 890,915p ~/Projects/provasign/grove/internal/graph/changeimpact.go; grep -n "Completeness" ~/Projects/provasign/grove/internal/graph/changeimpact.go | head -5
+      at: 2026-08-29T01:00:54.133145Z
+      classified: other
+    - cmd: grep -n -B2 -A12 "return &ChangeImpactResult{" ~/Projects/provasign/grove/internal/graph/changeimpact.go | sed -n 1,20p
+      at: 2026-08-29T01:00:57.814474Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/mainframe.go <<'EOF'
+
+        // mainframeImpactLocked answers change-impact for mainframe anchors. The
+        // modern Type.member machinery cannot represent them: a data item's dotted
+        // qualified name is a HIERARCHY path (group.field), not a type family, and
+        // COBOL names are case-insensitive. Declarations match by name or qualified
+        // name; impact sites are inbound call edges plus — for data anchors —
+        // inbound field-reference (uses-type) edges. Completeness is "callers-only":
+        // reachability, not a closed change-set.
+        func (g *CodeGraph) mainframeImpactLocked(query string) *ChangeImpactResult {
+        	q := strings.ToLower(strings.TrimSpace(query))
+        	if q == "" {
+        		return nil
+        	}
+        	var decls []core.SymbolRecord
+        	declIDs := map[string]bool{}
+        	dataAnchor := false
+        	for id := range g.symbols {
+        		s := g.symbols[id]
+        		if !mainframeAnchorKind(s.Kind) {
+        			continue
+        		}
+        		if strings.ToLower(s.QualifiedName) != q && strings.ToLower(s.Name) != q {
+        			continue
+        		}
+        		decls = append(decls, s)
+        		declIDs[s.ID] = true
+        		if mainframeDataKind(s.Kind) {
+        			dataAnchor = true
+        		}
+        	}
+        	if len(decls) == 0 {
+        		return nil
+        	}
+        	seen := map[string]bool{}
+        	var callers []core.SymbolRecord
+        	for id := range declIDs {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			ok := edge.Type == core.EdgeCalls || (dataAnchor && edge.Type == core.EdgeUsesType)
+        			if !ok || declIDs[edge.From] || seen[edge.From] {
+        				continue
+        			}
+        			seen[edge.From] = true
+        			if s, found := g.symbols[edge.From]; found {
+        				callers = append(callers, s)
+        			}
+        		}
+        	}
+        	sortSymbols(decls)
+        	sortSymbols(callers)
+        	return &ChangeImpactResult{
+        		Query:        query,
+        		Declarations: decls,
+        		Callers:      callers,
+        		Completeness: "callers-only",
+        	}
+        }
+        EOF
+        python3 - <<'EOF'
+        p = "internal/graph/changeimpact.go"
+        src = open(p).read()
+        old = """	if free := g.freeFunctionImpactLocked(query); free != nil {
+        		return free, nil
+        	}"""
+        new = """	if free := g.freeFunctionImpactLocked(query); free != nil {
+        		return free, nil
+        	}
+
+        	// Mainframe anchors (programs, paragraphs, data items…) have their own
+        	// resolution: dotted names are hierarchy paths, not type families.
+        	if mf := g.mainframeImpactLocked(query); mf != nil {
+        		return mf, nil
+        	}"""
+        assert src.count(old) == 1
+        open(p, "w").write(src.replace(old, new))
+        print("entry wired")
+        EOF
+        go build ./... && go test ./internal/graph/ 2>&1 | tail -1
+      at: 2026-08-29T01:01:15.130131Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && go build -o $S/grove-mf ./cmd/grove && rm -rf $S/lineage-estate/.grove && $S/grove-mf index $S/lineage-estate >/dev/null 2>&1 && for q in CUST-SSN CUST-REC.CUST-SSN WS-EOF; do echo "== $q =="; $S/grove-mf change-impact $q $S/lineage-estate 2>&1 | python3 -c "
+        import json,sys
+        try: d=json.load(sys.stdin)
+        except Exception as e: print(' error:', e); raise SystemExit
+        print(' decls:', [(x['qualifiedName'], x['filePath']) for x in d.get('Declarations') or []])
+        print(' refs:', [x['qualifiedName'] for x in d.get('Callers') or []])
+        print(' completeness:', d.get('Completeness'))"; done
+      at: 2026-08-29T01:01:25.900765Z
+      classified: build
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd ~/Projects/provasign/grove && GOWORK=off go get github.com/provasign/astkit@v0.5.1 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "module gate: $?"; rm -rf $S/noop4 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop4 && rm -rf $S/noop4/.grove && go build -o $S/grove-mf ./cmd/grove && $S/grove-mf index $S/noop4 >/dev/null 2>&1 && $S/grove-mf status $S/noop4 | grep -E "symbolCount|edgeCount"'
+      at: 2026-08-29T01:01:50.548711Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git add go.mod go.sum internal/graph/mainframe.go internal/graph/graph.go internal/graph/incremental.go internal/graph/changeimpact.go internal/graph/mainframe_estate_test.go internal/graph/testdata/mainframe-estate && git commit -q -m "$(cat <<'EOF'
+        lineage v0: resolved includes, field-reference edges, data-item impact
+
+        Three pieces make change-impact answer the field question (spec R-5.6):
+
+        - COPY member names resolve to their copybook FILES (file->file imports
+          edge, 1.0); the textual import:MEMBER record is kept as the honest
+          unresolved trace when the member is absent.
+        - Paragraph bodies are matched against data items VISIBLE to their file
+          (declared there or in the transitive include closure) and emit
+          uses-type edges at 0.7/regex — name-level, explicitly no read/write
+          direction claim (that needs the PROCEDURE DIVISION grammar phase).
+        - change-impact gains a mainframe path: dotted data-item names are
+          hierarchy paths, not type families, and COBOL names are
+          case-insensitive. Declarations match by name or qualified name;
+          impact sites are inbound calls plus, for data anchors, inbound
+          field references. Completeness reported as callers-only.
+
+        Delta indexing falls back to a full edge build when mainframe symbols
+        are present — per-file invalidation is wrong under the include closure
+        until plan phase 0.4; estates are few-files so the rebuild is cheap.
+
+        Modern path: gin byte-identical (1675/12353), full suite green,
+        module-mode against astkit v0.5.1.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.35.0 -m "mainframe lineage v0: field-level impact through the include graph" && git push origin v0.35.0 2>&1 | tail -1
+      at: 2026-08-29T01:02:07.325838Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.35.0 github.com/provasign/astkit@v0.5.1 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -3; echo "gate: $?"; cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -3'
+      at: 2026-08-29T01:02:13.874508Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-rel-test && git add go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.35.0, astkit v0.5.1 — field-level lineage v0
+
+        change_impact on a COBOL data item returns the declaring copybook item
+        and every referencing paragraph through the resolved include closure
+        (case-insensitive, bare or qualified names, completeness callers-only —
+        no read/write direction claim yet). Gates: suites green module-mode,
+        ci_invariants all held, gin byte-identical.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.56.2 -m "mainframe: field-level lineage v0" && git push origin v0.56.2 2>&1 | tail -1 && sleep 15 && RUNID=$(gh run list --repo provasign/prism --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $RUNID --repo provasign/prism --exit-status >/dev/null 2>&1; echo "release: $?"; gh workflow run "Refresh formulae" --repo provasign/homebrew-shale && sleep 45 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version "'
+      at: 2026-08-29T01:03:57.713319Z
+      classified: other
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T00:38:08.802009Z
+redactions: 0

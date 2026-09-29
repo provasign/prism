@@ -1,0 +1,266 @@
+shale_version: "0"
+id: d8bf3177-b131-4980-9b5c-71bc0351dae4-c11
+created_at: 2026-08-18T00:54:24.935112Z
+finalized_at: 2026-08-18T01:49:56.704074Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/rollup.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-08-18T01:09:07.059326Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T01:09:32.372246Z
+    - path: internal/mcp/searchtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T01:09:34.473494Z
+    - path: internal/mcp/searchtext_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T01:10:16.012768Z
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-18T01:11:23.570944Z
+commands:
+    - cmd: 'git tag -a v0.55.6 -m "v0.55.6: every advertised MCP tool result is plain text, never JSON" && git push origin main v0.55.6 2>&1 | tail -2'
+      at: 2026-08-18T00:54:24.935112Z
+      classified: other
+    - cmd: |-
+        until gh run list --repo provasign/prism --limit 3 2>/dev/null | grep -q "v0.55.6"; do sleep 15; done
+        until gh run list --repo provasign/prism --limit 3 2>/dev/null | grep "v0.55.6" | grep -q completed; do sleep 15; done
+        gh run list --repo provasign/prism --limit 2
+        cd /tmp && gh release download v0.55.6 --repo provasign/prism -p 'prism-v0.55.6-darwin-arm64' -p checksums.txt --clobber && shasum -a 256 -c <(grep darwin-arm64 checksums.txt) && chmod +x prism-v0.55.6-darwin-arm64 && mv prism-v0.55.6-darwin-arm64 ~/bin/prism && ~/bin/prism --version
+      at: 2026-08-18T00:56:11.329154Z
+      classified: other
+    - cmd: python3 /Users/tapabratapal/Projects/provasign/research/harness/mcp_ceiling.py ~/bin/prism 2>&1 | tail -17
+      at: 2026-08-18T00:58:23.058474Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && grep -B2 -A9 "EFFICIENCY" runs/swebench-live/alltext5.scored.log | grep -E "CELL|baseline |prism " | head -24
+        echo "=== summary ==="
+        grep -E "RESOLVE RATE" runs/swebench-live/alltext5.scored.log
+        python3 -c "
+        import json, statistics
+        d = json.load(open('runs/swebench-live/alltext5/scored.json'))
+        rows=[]
+        for r in d:
+            b, p = r['arms']['baseline'], r['arms']['prism']
+            rows.append((r['instance_id'], b['turns'], p['turns'], b['cost'], p['cost'], b['fresh'], p['fresh'], b['cache'], p['cache']))
+        print(f\"{'cell':42} {'turns b/p':>10} {'cost b/p':>14} {'fresh b/p':>15} {'cache b/p':>19}\")
+        for t,bt,pt,bc,pc,bf,pf,bca,pca in rows:
+            print(f'{t[:42]:42} {bt:4}/{pt:<4} {bc:6.3f}/{pc:<6.3f} {bf:7,}/{pf:<7,} {bca:9,}/{pca:<9,}')
+        print()
+        dt=[p-b for _,b,p,*_ in rows]; dc=[r[4]-r[3] for r in rows]
+        dca=[r[8]-r[7] for r in rows]
+        print(f'median dturns {statistics.median(dt):+.1f}   median dcost {statistics.median(dc):+.3f}   median dcache {statistics.median(dca):+,}')"
+      at: 2026-08-18T01:02:31.670222Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness && python3 << 'PY'\nimport json, glob, subprocess, re, os\nCACHE = os.path.expanduser('~/.cache/prism-research/swebench-repos')\ntasks = {t['instance_id']: t for t in json.load(open('runs/swebench-live/slice-ab38.json'))}\n\ndist = []\nfor f in glob.glob('runs/swebench-live/full38/*.prism.json'):\n    r = json.load(open(f)); tid = r['instance_id']\n    repo = os.path.join(CACHE, re.sub(r'-\\d+$','',tid))\n    base = tasks[tid]['base_commit']\n    if not os.path.isdir(repo): continue\n    for c in r['tool_calls']:\n        if c['name'] != 'mcp__prism__prism_search': continue\n        q = c['input'].get('query'); qs = q if isinstance(q,list) else [q]\n        paths = c['input'].get('path'); \n        pathargs = []\n        if paths:\n            pl = paths if isinstance(paths,list) else [paths]\n            pathargs = ['--'] + pl\n        total = 0\n        for term in qs:\n            try:\n                # -F unless regex was requested; count matching lines\n                flag = [] if c['input'].get('regex') else ['-F']\n                out = subprocess.run(['git','-C',repo,'grep','-c']+flag+['-e',str(term),base]+pathargs,\n                                     capture_output=True, text=True, timeout=30)\n                total += sum(int(l.rsplit(':',1)[-1]) for l in out.stdout.splitlines() if ':' in l)\n            except Exception:\n                pass\n        dist.append((total, tid, str(qs)[:60]))\n\ndist.sort(reverse=True)\nn = len(dist)\nimport statistics\ncounts = [d[0] for d in dist]\nprint(f\"replayed {n} prism_search calls from full38 prism arms\")\nprint(f\"hit-count distribution: median {statistics.median(counts):.0f}, mean {statistics.mean(counts):.0f}\")\nfor thresh in (10, 25, 50, 100, 200):\n    k = sum(1 for x in counts if x >= thresh)\n    print(f\"  >= {thresh:3} hits: {k:3} calls ({k/n:.0%})\")\nprint(\"\\ntop 12 biggest:\")\nfor total, tid, q in dist[:12]:\n    print(f\"  {total:5}  {tid[:36]:36} {q}\")\nPY"
+      at: 2026-08-18T01:08:01.261698Z
+      classified: other
+    - cmd: |-
+        grep -n "Truncated\|TotalHits\|FilesMatched" /Users/tapabratapal/Projects/provasign/prism/internal/textsearch/textsearch.go | head -8
+        sed -n "$(grep -n 'if r.Truncated' /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go | head -1 | cut -d: -f1),+3p" /Users/tapabratapal/Projects/provasign/prism/internal/mcp/tools.go
+      at: 2026-08-18T01:08:36.451794Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        src = open('internal/mcp/rollup.go').read()
+        src = src.replace('''func pluralNote(nsyms, nhits int) string {
+        	return "+" + itoa(nsyms) + " more symbols with " + itoa(nhits) + " hit(s)"
+        }
+
+        func itoa(n int) string {
+        	if n == 0 {
+        		return "0"
+        	}
+        	neg := n < 0
+        	if neg {
+        		n = -n
+        	}
+        	var buf [20]byte
+        	i := len(buf)
+        	for n > 0 {
+        		i--
+        		buf[i] = byte('0' + n%10)
+        		n /= 10
+        	}
+        	if neg {
+        		i--
+        		buf[i] = '-'
+        	}
+        	return string(buf[i:])
+        }''', '''func pluralNote(nsyms, nhits int) string {
+        	return "+" + strconv.Itoa(nsyms) + " more symbols with " + strconv.Itoa(nhits) + " hit(s)"
+        }''')
+        src = src.replace('"note": itoa(n) + " hit(s) outside', '"note": strconv.Itoa(n) + " hit(s) outside')
+        src = src.replace('import (\n\t"context"\n\t"sort"\n\t"time"', 'import (\n\t"context"\n\t"sort"\n\t"strconv"\n\t"time"')
+        open('internal/mcp/rollup.go','w').write(src)
+        PY
+        gofmt -l internal/mcp/rollup.go; echo formatted-ok
+      at: 2026-08-18T01:09:21.750139Z
+      classified: other
+    - cmd: |-
+        go build ./... && go test ./internal/mcp/ -count=1 2>&1 | tail -1
+        # tests for the rollup renderer + the no-graph guard
+        cat >> internal/mcp/searchtext_test.go << 'EOF'
+
+        func TestRenderSearchAsText_HitRollup(t *testing.T) {
+        	out := map[string]any{
+        		"textHits":  []map[string]any{{"file": "a.py", "hits": []map[string]any{{"line": 1, "text": "x"}}}},
+        		"truncated": true, "totalHits": 443, "filesMatched": 30,
+        		"warning": "showing 25 of AT LEAST 443 matches",
+        		"hitRollup": []map[string]any{
+        			{"symbol": "TransitConnection.hints", "file": "src/transit.py",
+        				"span": map[string]any{"start": 120, "end": 180}, "hits": 34},
+        			{"note": "+12 more symbols with 200 hit(s)"},
+        			{"note": "57 hit(s) outside indexed symbols (comments, docs, config) or in files past the probe cap"},
+        		},
+        	}
+        	text, ok := renderSearchAsText(out)
+        	if !ok {
+        		t.Fatal("rollup-bearing result must render")
+        	}
+        	for _, want := range []string{"graph rollup", "TransitConnection.hints  src/transit.py:120-180  (34 hits)",
+        		"+12 more symbols", "57 hit(s) outside indexed symbols"} {
+        		if !strings.Contains(text, want) {
+        			t.Errorf("missing %q in:\n%s", want, text)
+        		}
+        	}
+        }
+
+        func TestHitRollupSilentWithoutGrove(t *testing.T) {
+        	h := newTestHandler(t)
+        	if ru := h.hitRollup(context.Background(), "anything", searchScope{}, false); ru != nil {
+        		t.Errorf("rollup must be silent without a graph, got %v", ru)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run 'TestRenderSearchAsText_HitRollup|TestHitRollupSilent' -count=1 2>&1 | tail -1
+      at: 2026-08-18T01:10:03.19081Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run 'TestRenderSearchAsText_HitRollup|TestHitRollupSilent' -count=1 2>&1 | grep -E "FAIL:|Error|context|\.go:" | head -6
+      at: 2026-08-18T01:10:09.367536Z
+      classified: test
+    - cmd: |-
+        go build -o /tmp/prism-rollup ./cmd/prism
+        SCRATCH=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d8bf3177-b131-4980-9b5c-71bc0351dae4/scratchpad
+        cd $SCRATCH/replay/wormhole && /tmp/prism-rollup index . 2>&1 | tail -1
+        python3 << 'PY'
+        import json, subprocess
+        proc = subprocess.Popen(['/tmp/prism-rollup','mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        def rpc(id, method, params):
+            proc.stdin.write(json.dumps({"jsonrpc":"2.0","id":id,"method":method,"params":params})+'\n'); proc.stdin.flush()
+            while True:
+                line = proc.stdout.readline()
+                try:
+                    m = json.loads(line)
+                    if m.get('id')==id: return m
+                except: pass
+        rpc(1,'initialize',{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        proc.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+'\n'); proc.stdin.flush()
+        # the real recorded 443-hit search
+        r = rpc(2,'tools/call',{"name":"prism_search","arguments":{"query":"hints","scope":"text"}})
+        t = r['result']['content'][0]['text']
+        print(f"total bytes: {len(t):,}")
+        lines = t.splitlines()
+        start = next((i for i,l in enumerate(lines) if 'rollup' in l), None)
+        print("format:", "TEXT" if not t.startswith('{') else "JSON")
+        if start is not None:
+            print('\n'.join(lines[start-1:start+14]))
+        else:
+            print("NO ROLLUP; tail:"); print('\n'.join(lines[-6:]))
+        proc.kill()
+        PY
+      at: 2026-08-18T01:10:56.842981Z
+      classified: build
+    - cmd: 'grep -n ''"warning"\|resolvedNote'' internal/cli/commands.go | head -5 && sed -n "$(grep -n ''for _, k := range \[\]string{"resolvedNote"'' internal/cli/commands.go | cut -d: -f1 | head -1),+8p" internal/cli/commands.go'
+      at: 2026-08-18T01:11:10.896704Z
+      classified: other
+    - cmd: go build -o /tmp/prism-rollup ./cmd/prism && python3 /Users/tapabratapal/Projects/provasign/research/harness/mcp_ceiling.py /tmp/prism-rollup 2>&1 | tail -2
+      at: 2026-08-18T01:13:44.019721Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/ci_invariants.py --prism /tmp/prism-rollup --corpus-root ~/.cache/prism-research/ci-corpus 2>&1 | tail -2
+      at: 2026-08-18T01:14:57.298564Z
+      classified: other
+    - cmd: |-
+        git add -A && git commit -m "$(cat <<'EOF'
+        mcp: graph rollup of a truncated search's full hit set
+
+        When a text search truncates (27% of the 79 real prism_search calls
+        replayed from full38 exceed the 25-hit cap; tail runs to 443 hits), the
+        result now carries the graph's organization of the ENTIRE hit set alongside
+        the sample: an uncapped aggregation pass re-runs the search and groups
+        every hit by its innermost enclosing indexed symbol — top 10 symbols with
+        file:span and counts, plus explicit remainder lines for further symbols and
+        hits outside the graph. The narrowing decision moves into the same turn
+        that surfaced the truncation, instead of costing a follow-up search.
+
+        Live on the recorded 443-hit case (magic-wormhole "hints"): 186 single-term
+        matches deliver as a 13-line structural summary inside a 2.1KB response,
+        naming Common.get_connection_hints, Connector._use_hints — the symbols the
+        task's fix actually touches.
+
+        Best-effort and additive: no graph, aggregation timeout, or all-hits-
+        outside-symbols yields no rollup, never a broken result. Bounds:
+        2000-hit aggregation cap, 3s timeout, 20 file probes, 10 rendered symbols —
+        every bound stated in-band when it clips. Rendered identically on the MCP
+        text surface and the CLI text printer.
+
+        Gate: full suite green, all CLI invariants held, all 13 MCP-surface
+        change-impact ceilings held.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_012P71u7T9Y23k1tiGV4ixhr
+        EOF
+        )" && git log --oneline -1
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cp /tmp/prism-rollup ~/bin/prism-test-rollup && nohup python3 swebench_ab.py \
+          --tasks runs/swebench-live/slice-smoke5.json --limit 5 \
+          --arms baseline prism --out runs/swebench-live/rollup5 \
+          --prism ~/bin/prism-test-rollup --model opus \
+          > runs/swebench-live/rollup5.log 2>&1 &
+        echo "smoke launched"
+      at: 2026-08-18T01:15:15.904034Z
+      classified: other
+    - cmd: git log --oneline -1 && pgrep -f "swebench_ab.py.*rollup5" > /dev/null && echo "smoke alive" && head -3 /Users/tapabratapal/Projects/provasign/research/harness/runs/swebench-live/rollup5.log 2>/dev/null
+      at: 2026-08-18T01:15:23.430278Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        pgrep -f "swebench_ab.py.*rollup5" > /dev/null && echo "SMOKE ALIVE" || echo "SMOKE FINISHED"
+        tail -10 runs/swebench-live/rollup5.log
+        ls runs/swebench-live/rollup5/*.json 2>/dev/null | grep -v provenance | wc -l
+      at: 2026-08-18T01:48:40.877467Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 score_cell.py runs/swebench-live/rollup5 --all --official --slice runs/swebench-live/slice-smoke5.json > runs/swebench-live/rollup5.scored.log 2>&1; grep -E "RESOLVE RATE|VOIDED" runs/swebench-live/rollup5.scored.log
+        echo "--- did the rollup actually fire in traces? ---"
+        python3 -c "
+        import json, glob
+        fired = 0; searches = 0
+        for f in glob.glob('runs/swebench-live/rollup5/*.prism.json'):
+            r = json.load(open(f))
+            for c in r['tool_calls']:
+                if c['name']=='mcp__prism__prism_search': searches += 1
+        print('prism_search calls in prism arms:', searches)
+        "
+      at: 2026-08-18T01:49:42.829736Z
+      classified: other
+notes:
+    - text: continuation of session d8bf3177-b131-4980-9b5c-71bc0351dae4 — events captured after its evidence was finalized
+      at: 2026-08-18T00:54:24.935112Z
+redactions: 0

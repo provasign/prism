@@ -1,0 +1,55 @@
+shale_version: "0"
+id: 01a0790c-a7c5-7543-a18f-d1f822079fe4-c4
+created_at: 2026-09-07T02:57:18.324519Z
+finalized_at: 2026-09-07T03:03:22.782732Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/externalfamily.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T03:02:26.490809Z
+commands:
+    - cmd: git push origin main && git rev-parse --short HEAD origin/main
+      at: 2026-09-07T02:57:18.324519Z
+      classified: other
+    - cmd: git status --short --branch; git log -3 --oneline --decorate
+      at: 2026-09-07T02:57:21.678415Z
+      classified: other
+    - cmd: env GOWORK=off go build -o /tmp/prism-d12ab89 ./cmd/prism && shasum /tmp/prism-d12ab89
+      at: 2026-09-07T02:57:30.575019Z
+      classified: build
+    - cmd: sed -n '1,160p' /tmp/querydata-fix4.txt | tail -55
+      at: 2026-09-07T03:01:09.776084Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import json
+        import ab_gate
+        from schema import Task
+        binary='/tmp/prism-d12ab89'; out=Path('runs/ab-gate')
+        arm=ab_gate.arm_for(binary,'fix4'); sha=ab_gate.binary_sha(binary)
+        for name in ['grafana-querydata-impact','guava-forwarding-delegate']:
+         task=Task.load(f'tasks/{name}.json')
+         rec=ab_gate.run_cell(arm,task,Path(task.workdir or task.repo),'sonnet',out,binary,sha,fresh=True)
+         print(json.dumps({k:rec.get(k) for k in ['task','recall','precision','f1','turns','tokens_request','tokens_out','cost_usd','session_id','error','measurement_error']},sort_keys=True),flush=True)
+        PY
+      at: 2026-09-07T03:02:18.795141Z
+      classified: other
+    - cmd: gofmt -w internal/mcp/externalfamily.go && env GOWORK=off go test ./internal/mcp -run 'TestChangeImpact_(Wide|External)' -count=1 && env GOWORK=off go build -o /tmp/prism-fix5 ./cmd/prism
+      at: 2026-09-07T03:02:35.664273Z
+      classified: test
+    - cmd: /tmp/prism-fix5 change-impact QueryData --format text > /tmp/querydata-fix5.txt; wc -c -l /tmp/querydata-fix5.txt; head -4 /tmp/querydata-fix5.txt; rg -n 'QueryMetricsV2|handlePreparedQuery|executeConcurrentQueries|handleQuerySingleDatasource|client/plugin.go' /tmp/querydata-fix5.txt; tail -30 /tmp/querydata-fix5.txt
+      at: 2026-09-07T03:02:54.139691Z
+      classified: other
+notes:
+    - text: continuation of session 01a0790c-a7c5-7543-a18f-d1f822079fe4 — events captured after its evidence was finalized
+      at: 2026-09-07T02:57:18.324519Z
+redactions: 0

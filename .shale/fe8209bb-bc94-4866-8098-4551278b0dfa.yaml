@@ -1,0 +1,239 @@
+shale_version: "0"
+id: fe8209bb-bc94-4866-8098-4551278b0dfa
+created_at: 2026-09-18T17:16:50.770458Z
+finalized_at: 2026-09-18T19:29:10.294969Z
+agent:
+    tool: claude-code
+    model: claude-sonnet-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: git diff --stat
+      at: 2026-09-18T17:17:17.556188Z
+      classified: other
+    - cmd: git status && echo ---UPSTREAM--- && git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>&1 && echo ---DIFFSTAT--- && git diff HEAD --stat
+      at: 2026-09-18T17:17:18.548024Z
+      classified: other
+    - cmd: go build ./... 2>&1 | tail -50
+      at: 2026-09-18T17:17:19.937037Z
+      classified: build
+    - cmd: git diff HEAD -- internal/cli/commands.go internal/mcp/delivery.go internal/mcp/graphcache.go internal/mcp/graphtext.go internal/mcp/searchevidence.go internal/mcp/searchtext.go internal/mcp/selection.go internal/mcp/server.go internal/mcp/tools.go internal/mcp/verify.go
+      at: 2026-09-18T17:17:21.124987Z
+      classified: other
+    - cmd: git diff HEAD -- internal/mcp/changeimpact_declaringtypes_test.go internal/mcp/searchaccuracy_test.go internal/mcp/searchevidence_test.go internal/mcp/selection_test.go internal/mcp/tools_cov_test.go
+      at: 2026-09-18T17:17:23.497558Z
+      classified: other
+    - cmd: GOFLAGS="" go build ./... 2>&1 | tail -80
+      at: 2026-09-18T17:17:23.956972Z
+      classified: build
+    - cmd: go env GOFLAGS GOWORK
+      at: 2026-09-18T17:17:26.346866Z
+      classified: other
+    - cmd: GOWORK=off go build ./... 2>&1 | tail -100
+      at: 2026-09-18T17:17:30.428452Z
+      classified: build
+    - cmd: sed -n '1,60p' internal/mcp/selection.go
+      at: 2026-09-18T17:17:34.590839Z
+      classified: other
+    - cmd: sed -n '110,220p' internal/mcp/selection.go
+      at: 2026-09-18T17:17:36.420139Z
+      classified: other
+    - cmd: GOWORK=off go test ./... 2>&1 | tail -150
+      at: 2026-09-18T17:17:49.303376Z
+      classified: test
+    - cmd: grep -rn "lexicalOwners\|lexicalOwnerContexts\|ownerContext\|seedNameMatchesAnyTerm\|leafOf(" internal/mcp/*.go | grep -v _test.go
+      at: 2026-09-18T17:17:51.599101Z
+      classified: other
+    - cmd: ls /Users/tapabratapal/Projects/provasign/research/harness/scoring/ci_invariants.py 2>&1; ls /tmp/ci-corpus 2>&1 | head
+      at: 2026-09-18T17:17:52.793398Z
+      classified: other
+    - cmd: sed -n '80,230p' internal/mcp/delivery.go
+      at: 2026-09-18T17:17:54.077957Z
+      classified: other
+    - cmd: grep -n "func groupPickedByFile\|func normalizePath" internal/mcp/*.go
+      at: 2026-09-18T17:17:56.925406Z
+      classified: other
+    - cmd: GOWORK=off go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/prism-candidate ./cmd/prism && echo BUILD_OK
+      at: 2026-09-18T17:17:57.773467Z
+      classified: build
+    - cmd: sed -n '495,530p' internal/mcp/delivery.go && echo --- && sed -n '3670,3690p' internal/mcp/tools.go
+      at: 2026-09-18T17:17:59.028497Z
+      classified: other
+    - cmd: grep -n "RelationSeed\|RelationDirectCall\|type Relation" internal/ranking/*.go | grep -v _test
+      at: 2026-09-18T17:18:08.212758Z
+      classified: other
+    - cmd: sed -n '40,60p' internal/ranking/budget.go
+      at: 2026-09-18T17:18:10.901126Z
+      classified: other
+    - cmd: sed -n '1,120p' internal/mcp/searchevidence.go
+      at: 2026-09-18T17:18:22.682024Z
+      classified: other
+    - cmd: sed -n '120,470p' internal/mcp/searchevidence.go
+      at: 2026-09-18T17:18:24.627132Z
+      classified: other
+    - cmd: sed -n '130,160p' internal/mcp/nested.go
+      at: 2026-09-18T17:18:36.908291Z
+      classified: other
+    - cmd: grep -n "func displayQN\|func impactSites" internal/mcp/*.go
+      at: 2026-09-18T17:18:54.373767Z
+      classified: other
+    - cmd: sed -n '1055,1075p' internal/mcp/verify.go && echo --- && sed -n '105,135p' internal/mcp/wideranchor.go
+      at: 2026-09-18T17:18:56.516199Z
+      classified: other
+    - cmd: grep -n "func asSliceAny\|func anySlice" internal/cli/*.go internal/mcp/*.go
+      at: 2026-09-18T17:19:00.862158Z
+      classified: other
+    - cmd: sed -n '170,230p' internal/mcp/graphcache.go
+      at: 2026-09-18T17:19:03.756019Z
+      classified: other
+    - cmd: sed -n '225,270p' internal/mcp/graphcache.go
+      at: 2026-09-18T17:19:09.256327Z
+      classified: other
+    - cmd: sed -n '3150,3290p' internal/mcp/tools.go
+      at: 2026-09-18T17:19:27.940851Z
+      classified: other
+    - cmd: cat internal/mcp/changeimpact_declaringtypes_test.go
+      at: 2026-09-18T17:19:38.404624Z
+      classified: other
+    - cmd: grep -n "func printNotes\|func jsonInt\|func printSiteGroup" internal/cli/commands.go | head
+      at: 2026-09-18T17:19:51.656485Z
+      classified: other
+    - cmd: sed -n '3552,3625p' internal/cli/commands.go
+      at: 2026-09-18T17:19:53.556319Z
+      classified: other
+    - cmd: grep -rn "printChangeImpactText\|safeToClaimComplete" internal/cli/*.go
+      at: 2026-09-18T17:20:01.340948Z
+      classified: other
+    - cmd: git diff HEAD -- internal/mcp/selection.go internal/mcp/tools.go internal/mcp/verify.go internal/mcp/searchtext.go
+      at: 2026-09-18T17:20:30.346066Z
+      classified: other
+    - cmd: sed -n '95,200p' internal/mcp/selection.go
+      at: 2026-09-18T17:20:32.1701Z
+      classified: other
+    - cmd: grep -rn "isTestFilePath(" --include=*.go internal/ | grep -v _test.go
+      at: 2026-09-18T17:20:41.343529Z
+      classified: other
+    - cmd: grep -rn "isTestFilePath(" internal/ | grep -v _test.go
+      at: 2026-09-18T17:20:42.889972Z
+      classified: other
+    - cmd: sed -n '1,20p' internal/mcp/searchleads.go && echo --- && sed -n '80,100p' internal/mcp/searchleads.go
+      at: 2026-09-18T17:20:45.931803Z
+      classified: other
+    - cmd: grep -rn "renderEnclosingSearchBodies\|const budget\b\|1800\|2400" internal/mcp/*.go | grep -v _test.go
+      at: 2026-09-18T17:20:52.162544Z
+      classified: other
+    - cmd: grep -rn "locators only\|bounded source follows when available" internal/mcp/*.go internal/mcp/*_test.go
+      at: 2026-09-18T17:20:52.214721Z
+      classified: other
+    - cmd: git diff HEAD -- internal/cli/commands.go internal/mcp/delivery.go internal/mcp/graphcache.go internal/mcp/graphtext.go internal/mcp/searchevidence.go internal/mcp/searchtext.go internal/mcp/selection.go internal/mcp/server.go internal/mcp/tools.go internal/mcp/verify.go
+      at: 2026-09-18T17:20:52.685329Z
+      classified: other
+    - cmd: grep -n "fallbackResults\|fallbackFrom\|func renderSearchAsText\|searchResultEmpty" internal/mcp/searchtext.go internal/mcp/tools.go | head -40
+      at: 2026-09-18T17:20:53.650667Z
+      classified: other
+    - cmd: grep -rn "func.*FileSymbols" internal/grove/*.go | grep -v _test
+      at: 2026-09-18T17:20:54.388121Z
+      classified: other
+    - cmd: sed -n '1700,1800p' internal/mcp/tools.go
+      at: 2026-09-18T17:20:55.325893Z
+      classified: other
+    - cmd: grep -rn "func.*FileSymbols" internal/grove/*.go
+      at: 2026-09-18T17:20:55.841374Z
+      classified: other
+    - cmd: sed -n '140,175p' internal/grove/client.go
+      at: 2026-09-18T17:20:57.750582Z
+      classified: other
+    - cmd: grep -n '"completeness"\|"closed"\|impactCoverage\|func (h \*Handler) toolRename\|func (h \*Handler) toolMissingImplementations\|func (h \*Handler) toolDeadCode' internal/mcp/tools.go | head -30
+      at: 2026-09-18T17:21:01.141943Z
+      classified: other
+    - cmd: grep -rn "Family \[\]SymbolRecord\|Family:\|\.Family =" internal/grove/*.go | head -20
+      at: 2026-09-18T17:21:02.588959Z
+      classified: other
+    - cmd: grep -rn "copy this inventory" --include=*.go .
+      at: 2026-09-18T17:21:09.174243Z
+      classified: other
+    - cmd: grep -rn "copy this inventory" .
+      at: 2026-09-18T17:21:10.680111Z
+      classified: other
+    - cmd: sed -n '95,150p' internal/mcp/graphtext.go
+      at: 2026-09-18T17:21:13.059359Z
+      classified: other
+    - cmd: grep -n "func tightestEnclosingSymbol\|func.*EnclosingSymbol\|func.*ParentSymbol\|func.*OwnerSymbol\|func.*enclosingType" internal/mcp/*.go internal/grove/*.go internal/ranking/*.go | grep -v _test
+      at: 2026-09-18T17:21:13.855669Z
+      classified: other
+    - cmd: sed -n '1025,1046p' internal/mcp/verify.go
+      at: 2026-09-18T17:21:16.269497Z
+      classified: other
+    - cmd: sed -n '325,360p' internal/mcp/textmerge.go
+      at: 2026-09-18T17:21:17.269418Z
+      classified: other
+    - cmd: sed -n '300,335p' internal/mcp/selection.go
+      at: 2026-09-18T17:21:22.749389Z
+      classified: other
+    - cmd: echo waiting
+      at: 2026-09-18T17:21:24.102922Z
+      classified: other
+    - cmd: echo waiting2
+      at: 2026-09-18T17:21:25.532508Z
+      classified: other
+    - cmd: echo waiting3
+      at: 2026-09-18T17:21:26.862434Z
+      classified: other
+    - cmd: echo waiting4
+      at: 2026-09-18T17:21:41.357762Z
+      classified: other
+    - cmd: sed -n '144,175p' internal/mcp/selection.go
+      at: 2026-09-18T17:21:52.852122Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/prism-candidate 2>&1 | tail -150
+      at: 2026-09-18T17:22:05.69244Z
+      classified: other
+    - cmd: git stash && GOWORK=off go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/prism-baseline ./cmd/prism && echo BUILD_OK && git stash pop
+      at: 2026-09-18T17:22:13.40195Z
+      classified: build
+    - cmd: |-
+        grep -n "func impactRelaySites" internal/mcp/tools.go
+        grep -n "func printNotes\|func printChangeImpactText" internal/cli/commands.go
+        grep -n "func isTestFilePath" internal/mcp/verify.go
+        grep -n "case nameContains && isTestFilePath" internal/mcp/selection.go
+        grep -n "toolMissingImplementations\|toolRenamePlan" internal/mcp/tools.go | head -5
+        grep -n "relaySites (%d" internal/mcp/graphtext.go internal/cli/commands.go
+        grep -n "func (h \*Handler) lexicalOwnerContexts" internal/mcp/selection.go
+        grep -n "case \"query\", \"completeness\"" internal/mcp/graphcache.go
+      at: 2026-09-18T17:22:21.473453Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/prism-baseline 2>&1 | tail -40
+      at: 2026-09-18T17:23:14.896119Z
+      classified: other
+    - cmd: git status --short && echo --- && git diff --stat
+      at: 2026-09-18T19:15:36.88042Z
+      classified: other
+    - cmd: git diff internal/mcp/graphcache.go internal/cli/commands.go internal/mcp/verify.go internal/mcp/tools.go
+      at: 2026-09-18T19:15:39.983323Z
+      classified: other
+    - cmd: git diff internal/mcp/selection.go
+      at: 2026-09-18T19:15:44.82967Z
+      classified: other
+    - cmd: git diff internal/mcp/graphtext.go internal/mcp/delivery.go internal/mcp/searchevidence.go internal/mcp/server.go internal/mcp/searchtext.go
+      at: 2026-09-18T19:15:51.014661Z
+      classified: other
+    - cmd: GOWORK=off go build ./... 2>&1 | tail -50 && echo BUILD_OK
+      at: 2026-09-18T19:15:56.078853Z
+      classified: build
+    - cmd: GOWORK=off go test ./... 2>&1 | tail -150
+      at: 2026-09-18T19:16:14.916919Z
+      classified: test
+    - cmd: GOWORK=off go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/prism-candidate2 ./cmd/prism && echo BUILD_OK
+      at: 2026-09-18T19:16:21.438485Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/fe8209bb-bc94-4866-8098-4551278b0dfa/scratchpad/prism-candidate2 2>&1 | tail -60
+      at: 2026-09-18T19:17:30.228475Z
+      classified: other
+    - cmd: git diff internal/cli/formattext_test.go internal/cli/impacttext_test.go internal/mcp/impactcoverage_test.go internal/mcp/ledger_taskops_test.go internal/mcp/changeimpact_declaringtypes_test.go | head -250
+      at: 2026-09-18T19:17:33.07768Z
+      classified: other
+notes: []
+redactions: 0

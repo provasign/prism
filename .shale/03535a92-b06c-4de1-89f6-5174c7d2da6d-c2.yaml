@@ -1,0 +1,1555 @@
+shale_version: "0"
+id: 03535a92-b06c-4de1-89f6-5174c7d2da6d-c2
+created_at: 2026-09-28T04:08:36.792472Z
+finalized_at: 2026-09-28T12:04:05.025471Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: release/v0.85.1
+privacy: redacted
+commands:
+    - cmd: 'git checkout -q main && git pull -q --ff-only origin main && git log --oneline -1 && git tag -a v0.85.0 -m "v0.85.0: readiness alerts; grove v0.61.0 compiler-backed analysis" 1e8eb4ab && git push -q origin v0.85.0 2>&1 | tail -1; sleep 15; gh run list --limit 3 --json name,headBranch,status -q ''.[] | .name+" "+.headBranch+" "+.status'''
+      at: 2026-09-28T04:08:36.792472Z
+      classified: other
+    - cmd: gh run list --workflow release.yml --limit 1 --json status,conclusion -q '.[0].status+" "+.[0].conclusion'; gh release view v0.85.0 --json assets -q '.assets | length'; gh workflow list --repo provasign/homebrew-shale 2>/dev/null | head; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' 2>/dev/null | base64 -d | grep -m2 -E 'version|url'
+      at: 2026-09-28T04:13:38.846511Z
+      classified: other
+    - cmd: gh workflow run "Refresh formulae" --repo provasign/homebrew-shale 2>&1 | tail -1; sleep 10; R=$(gh run list --repo provasign/homebrew-shale --limit 1 --json databaseId -q '.[0].databaseId'); until [ "$(gh run view $R --repo provasign/homebrew-shale --json status -q .status)" = "completed" ]; do sleep 10; done; gh run view $R --repo provasign/homebrew-shale --json conclusion -q .conclusion; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq '.content' | base64 -d | grep -m1 version
+      at: 2026-09-28T04:14:11.016863Z
+      classified: other
+    - cmd: brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -2; prism version; which prism
+      at: 2026-09-28T04:14:30.861876Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 1,40p runners/run_wide.py | grep -vE "^\s*$" | head -30; grep -n "add_argument" runners/run_wide.py; ls -t results | grep -i wide | head -5
+      at: 2026-09-28T04:14:38.558589Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results && for d in wide-2026-09-27 wide-nonts-2026-09-27; do echo "== $d"; ls $d; head -3 $d/driver.log 2>/dev/null; done; python3 -c "import json;m=json.load(open('wide-manifest.json'));print(type(m), len(m) if hasattr(m,'__len__') else '')"
+      at: 2026-09-28T04:14:45.700551Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json
+        for d in ['wide-2026-09-27','wide-nonts-2026-09-27']:
+            try: rows=json.load(open(f'{d}/headline/results.json'))
+            except Exception as e: print(d,e); continue
+            for r in rows:
+                n,p=r['native'],r['prism']
+                print(d[:10],r['task'][:55],r['lang'],'native $%.2f %.1fmin'%(n.get('cost_usd') or 0,(n.get('wall_s') or 0)/60),'prism $%.2f %.1fmin'%(p.get('cost_usd') or 0,(p.get('wall_s') or 0)/60), n.get('resolved'),p.get('resolved'))
+        EOF
+        grep -h "wide\|overnight" wide-nonts-2026-09-27/driver.log | head -3; ps aux | grep -c "[r]un_overnight"
+      at: 2026-09-28T04:14:52.754062Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/replay && wc -l < replay-lang71.log; python3 - <<'EOF'
+        import json,collections
+        d=json.load(open('replay-lang71.json'))
+        by=collections.defaultdict(lambda:[0,0,0,0,0])
+        for tid,r in d.items():
+            cs=r.get('calls',[]); b=by[r['lang']]
+            b[0]+=1; b[1]+=len(cs); b[2]+=sum(not c['same'] for c in cs); b[3]+=sum(len(c['gold_old']) for c in cs); b[4]+=sum(len(c['gold_new']) for c in cs)
+        for l,b in sorted(by.items()): print(l,'sessions',b[0],'calls',b[1],'changed',b[2],'gold mentions old->new',b[3],'->',b[4])
+        EOF
+      at: 2026-09-28T04:15:03.080908Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/ && python3 - <<'EOF'
+        import json
+        seen=[]
+        for l in open('4c69cd72-5bfb-48d7-8455-3d1158f12b39.jsonl'):
+            d=json.loads(l)
+            if d.get('type')!='assistant':continue
+            for p in d['message'].get('content') or []:
+                if p.get('type')=='tool_use' and p['name']=='Bash' and 'run_overnight' in p['input']['command'] and 'wide' in p['input']['command']:
+                    seen.append(p['input']['command'])
+        for c in seen[-2:]: print(c[:1500],'\n---')
+        EOF
+      at: 2026-09-28T04:16:05.712975Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/ && python3 - <<'EOF'
+        import json
+        for l in open('4c69cd72-5bfb-48d7-8455-3d1158f12b39.jsonl'):
+            d=json.loads(l)
+            if d.get('type')!='assistant':continue
+            for p in d['message'].get('content') or []:
+                if p.get('type')=='tool_use' and p['name']=='Bash' and 'screen -dmS widerun' in p['input']['command']:
+                    print(p['input']['command'][:1500],'\n---')
+        EOF
+      at: 2026-09-28T04:16:11.750028Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && D=results/wide-v085-probe-2026-09-28 && mkdir -p $D && echo ''["wide__hono__ConnInfo_remote"]'' > $D/manifest.json && echo "[$(date ''+%F %T'')] START probe: 1 task; harness $(git rev-parse --short HEAD); prism_init = brew prism $(prism --version) (grove v0.61.0)" > $D/driver.log && screen -dmS wideprobe bash -c "cd $PWD && caffeinate -s python3 runners/run_overnight.py --manifest $D/manifest.json --out-dir $D/headline >> $D/headline.log 2>&1; echo \"[\$(date ''+%F %T'')] exit=\$?\" >> $D/driver.log" && sleep 5 && screen -ls | grep wideprobe; tail -3 $D/headline.log'
+      at: 2026-09-28T04:16:26.044286Z
+      classified: other
+    - cmd: D=/Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-probe-2026-09-28; until grep -q "exit=" $D/driver.log; do sleep 15; done; tail -8 $D/headline.log; cat $D/driver.log
+      at: 2026-09-28T04:23:47.069854Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-probe-2026-09-28/headline && python3 - <<'EOF'
+        import json
+        r=json.load(open('results.json'))[0]
+        for arm in ('native','prism'):
+            a=r[arm]; print(arm, {k:a.get(k) for k in ('resolved','error','turns','prism_calls','cost_usd')})
+            for k,v in a.items():
+                if k in ('tool_trace','runtimes','session_id','resolved','error','turns','prism_calls','cost_usd','tokens','wall_s'): continue
+                print('   ',k, str(v)[:400])
+        print(json.dumps(r['prism'].get('tool_trace'))[:1500])
+        EOF
+      at: 2026-09-28T04:23:59.624947Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,glob,os
+        t=json.load(open('tasks/e2e/wide__hono__ConnInfo_remote.json'))
+        gold=set(re.findall(r'^\+\+\+ b/(\S+)',t['patch'],re.M))
+        for arm in ('baseline','prism_init'):
+            p=f'results/e2e/wide__hono__ConnInfo_remote.sonnet.{arm}.diff'
+            d=open(p).read() if os.path.exists(p) else ''
+            files=set(re.findall(r'^\+\+\+ b/(\S+)',d,re.M))
+            print(arm,'files',len(files),'missed gold',sorted(gold-files),'extra',sorted(files-gold)[:8])
+        r=json.load(open('results/wide-v085-probe-2026-09-28/headline/results.json'))[0]
+        sid=r['prism']['session_id']; f=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))[0]
+        ids={}
+        for l in open(f):
+            d=json.loads(l)
+            c=d.get('message',{}).get('content')
+            if not isinstance(c,list): continue
+            for p in c:
+                if p.get('type')=='tool_use' and 'prism' in p['name']:
+                    ids[p['id']]=p['input']; print('CALL',json.dumps(p['input'])[:200])
+                if p.get('type')=='tool_result' and p.get('tool_use_id') in ids:
+                    txt=p['content'] if isinstance(p['content'],str) else ' '.join(x.get('text','') for x in p['content'] if isinstance(x,dict))
+                    print('  ->',txt[:700].replace('\n',' | '))
+        EOF
+      at: 2026-09-28T04:24:10.024551Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "^def " scoring/wide_eval.py | head -20; ls -t results/e2e/ | grep -i "ConnInfo" | head
+      at: 2026-09-28T04:24:19.074577Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys,json
+        sys.path[:0]=['scoring','runners']
+        import wide_eval
+        t=json.load(open('tasks/e2e/wide__hono__ConnInfo_remote.json'))
+        for arm in ('baseline','prism_init'):
+            patch=open(f'results/e2e/wide__hono__ConnInfo_remote.sonnet.{arm}.diff').read()
+            s=wide_eval.score(t,patch)
+            print(arm, json.dumps({k:(v if len(str(v))<600 else str(v)[:600]) for k,v in s.items()}, default=str)[:1500])
+        EOF
+      at: 2026-09-28T04:24:51.376508Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re
+        t=json.load(open('tasks/e2e/wide__hono__ConnInfo_remote.json'))
+        print('rename:',t['old'],'->',t['new'])
+        def section(patch,f):
+            out=[];on=False
+            for l in patch.splitlines():
+                if l.startswith('diff --git'): on = (' b/'+f) in l
+                elif on: out.append(l)
+            return '\n'.join(out)
+        f='src/adapter/bun/conninfo.test.ts'
+        print('--- GOLD'); print('\n'.join(l for l in section(t['patch'],f).splitlines() if l[:1] in '+-' and 'remote' in l.lower() or 'Remote' in l)[:1500])
+        p=open('results/e2e/wide__hono__ConnInfo_remote.sonnet.prism_init.diff').read()
+        print('--- PRISM ARM'); print('\n'.join(l for l in section(p,f).splitlines() if l[:1] in '+-' and ('remote' in l.lower()))[:1500])
+        EOF
+      at: 2026-09-28T04:25:01.60649Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && D=results/wide-v085-2026-09-28 && mkdir -p $D && cp results/wide-manifest.json $D/manifest.json && echo "[$(date ''+%F %T'')] START wide run: 32 tasks (java 9, go 7, ts 8, python 8), harness $(git rev-parse --short HEAD); prism_init = brew prism $(prism --version) (grove v0.61.0); scorer wide_eval (sites + pass_to_pass); probe hono ConnInfo.remote passed pipeline checks (prism lost on a string-literal over-rename)" > $D/driver.log && screen -dmS widerun3 bash -c "cd $PWD && caffeinate -s python3 runners/run_overnight.py --manifest $D/manifest.json --out-dir $D/headline >> $D/headline.log 2>&1; echo \"[\$(date ''+%F %T'')] exit=\$?\" >> $D/driver.log" && sleep 5 && screen -ls | grep widerun3; tail -2 $D/headline.log; pmset -g batt | head -1'
+      at: 2026-09-28T04:25:23.058476Z
+      classified: other
+    - cmd: grep -E "^\[.*\] -- " /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline.log | tail -2
+      at: 2026-09-28T04:40:28.962529Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/replay && tail -2 replay-lang71.log; python3 - <<'EOF'
+        import json,collections
+        d=json.load(open('replay-lang71.json'))
+        by=collections.defaultdict(lambda:[0,0,0,0,0,0,0])
+        for tid,r in d.items():
+            cs=r.get('calls',[]); b=by[r['lang']]
+            b[0]+=1; b[1]+=len(cs); b[2]+=sum(not c['same'] for c in cs); b[3]+=sum(len(c['gold_old']) for c in cs); b[4]+=sum(len(c['gold_new']) for c in cs)
+            b[5]+=sum(c['err_new'] and not c['err_old'] for c in cs); b[6]+=sum(c['err_old'] and not c['err_new'] for c in cs)
+            if r.get('error'): print('ERR',tid,r['error'][:100])
+        for l,b in sorted(by.items()): print(f"{l:6} sessions {b[0]:2} calls {b[1]:3} changed {b[2]:2}  gold-file mentions {b[3]}->{b[4]}  new errors {b[5]} fixed errors {b[6]}")
+        print('\nchanged calls:')
+        for tid,r in d.items():
+            for c in r.get('calls',[]):
+                if not c['same']:
+                    print(f"  {tid[:40]:40} {r['lang']} {c['input']['op']:13} len {c['len_old']}->{c['len_new']} gold {len(c['gold_old'])}->{len(c['gold_new'])} post_edit={c['post_edit']} {json.dumps(c['input']['args'])[:70]}")
+        EOF
+      at: 2026-09-28T04:41:12.292968Z
+      classified: other
+    - cmd: grep -E "^\[.*\] -- " /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline.log | tail -2
+      at: 2026-09-28T04:49:41.278942Z
+      classified: other
+    - cmd: grep -E "^\[.*\] -- " /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline.log | tail -2
+      at: 2026-09-28T04:55:50.827065Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline && python3 - <<'EOF'
+        import json,glob,os,collections
+        rows=json.load(open('results.json'))
+        for r in rows:
+            line=[r['task'][6:40]]
+            for arm in ('native','prism'):
+                a=r[arm]; sid=a.get('session_id')
+                f=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))
+                u=collections.Counter(); tools=collections.Counter(); resbytes=collections.Counter()
+                if f:
+                    ids={}
+                    for l in open(f[0]):
+                        d=json.loads(l); m=d.get('message',{})
+                        if d.get('type')=='assistant':
+                            us=m.get('usage',{})
+                            for k in ('input_tokens','cache_creation_input_tokens','cache_read_input_tokens','output_tokens'): u[k]+=us.get(k,0)
+                            for p in m.get('content') or []:
+                                if p.get('type')=='tool_use': tools[p['name'].replace('mcp__prism__','')]+=1; ids[p['id']]=p['name'].replace('mcp__prism__','')
+                        elif d.get('type')=='user' and isinstance(m.get('content'),list):
+                            for p in m['content']:
+                                if p.get('type')=='tool_result' and p.get('tool_use_id') in ids:
+                                    c=p['content']; n=len(c) if isinstance(c,str) else sum(len(x.get('text','')) for x in c if isinstance(x,dict))
+                                    resbytes[ids[p['tool_use_id']]]+=n
+                line.append(f"{arm}: turns {a.get('turns')} cw {u['cache_creation_input_tokens']//1000}k cr {u['cache_read_input_tokens']//1000}k tools {dict(tools.most_common(5))} resultKB {sum(resbytes.values())//1000} prismKB {resbytes['prism']//1000}")
+            print(' | '.join(line))
+        EOF
+      at: 2026-09-28T05:02:10.096415Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys,json
+        sys.path[:0]=['scoring','runners']
+        import wide_eval
+        t=json.load(open('tasks/e2e/wide__click__Group_get_command.json'))
+        for arm in ('baseline','prism_init'):
+            patch=open(f'results/e2e/wide__click__Group_get_command.sonnet.{arm}.diff').read()
+            s=wide_eval.score(t,patch)
+            print(arm, s['resolved'], json.dumps(s['sites'])[:700], s['tests'])
+        EOF
+      at: 2026-09-28T05:23:39.565242Z
+      classified: other
+    - cmd: grep -E "^\[.*\] -- " /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline.log | tail -2
+      at: 2026-09-28T05:26:57.358935Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys,json
+        sys.path[:0]=['scoring','runners']
+        import wide_eval
+        t=json.load(open('tasks/e2e/wide__hono__Hono_basePath.json'))
+        for arm in ('baseline','prism_init'):
+            patch=open(f'results/e2e/wide__hono__Hono_basePath.sonnet.{arm}.diff').read()
+            s=wide_eval.score(t,patch)
+            print(arm, s['resolved'], json.dumps(s['sites'])[:900], s['tests'])
+        EOF
+      at: 2026-09-28T05:37:03.342581Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        t=json.load(open('tasks/e2e/wide__hono__Hono_basePath.json')); print(t['old'],'->',t['new'])
+        def sec(p,f):
+            o=[];on=False
+            for l in p.splitlines():
+                if l.startswith('diff --git'): on=(' b/'+f) in l
+                elif on and l[:1] in '+-' and not l.startswith(('+++','---')): o.append(l)
+            return o
+        g=sec(t['patch'],'src/hono.test.ts'); a=sec(open('results/e2e/wide__hono__Hono_basePath.sonnet.prism_init.diff').read(),'src/hono.test.ts')
+        gm=set(l for l in g if l.startswith('-')); am=set(l for l in a if l.startswith('-'))
+        print('removed by agent, not by gold:'); [print('  ',l[:160]) for l in am-gm]
+        EOF
+      at: 2026-09-28T05:37:10.303545Z
+      classified: other
+    - cmd: grep -E "^\[.*\] -- wide" /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline.log | tail -2
+      at: 2026-09-28T06:04:43.517614Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys,json
+        sys.path[:0]=['scoring','runners']
+        import wide_eval
+        t=json.load(open('tasks/e2e/wide__cli__Flag_ValueFromContext.json'))
+        for arm in ('baseline','prism_init'):
+            patch=open(f'results/e2e/wide__cli__Flag_ValueFromContext.sonnet.{arm}.diff').read()
+            s=wide_eval.score(t,patch)
+            print(arm, s['resolved'], json.dumps(s['sites'])[:700], {k:v for k,v in s.items() if k not in ('sites',)})
+        EOF
+      at: 2026-09-28T06:19:25.605126Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && T=$(grep -E "^\[.*\] -- wide" results/wide-v085-2026-09-28/headline.log | tail -2 | head -1 | sed -E 's/.*-- (wide__[^ ]+) .*/\1/'); echo $T; python3 - "$T" <<'EOF'
+        import sys,json
+        t_id=sys.argv[1]
+        sys.path[:0]=['scoring','runners']
+        import wide_eval
+        t=json.load(open(f'tasks/e2e/{t_id}.json'))
+        for arm in ('baseline','prism_init'):
+            patch=open(f'results/e2e/{t_id}.sonnet.{arm}.diff').read()
+            s=wide_eval.score(t,patch)
+            print(arm, s['resolved'], len(patch), json.dumps(s['sites'])[:600], s.get('tests'))
+        EOF
+      at: 2026-09-28T06:35:55.103301Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        T='wide__jackson-databind__SettableBeanProperty_set'
+        t=json.load(open(f'tasks/e2e/{T}.json')); print(t['old'],'->',t['new'])
+        f='src/main/java/com/fasterxml/jackson/databind/deser/impl/SetterlessProperty.java'
+        def sec(p):
+            o=[];on=False
+            for l in p.splitlines():
+                if l.startswith('diff --git'): on=(' b/'+f) in l
+                elif on and l[:1] in '+-' and not l.startswith(('+++','---')): o.append(l)
+            return o
+        print('GOLD:'); [print('  ',l[:150]) for l in sec(t['patch'])]
+        print('PRISM ARM:'); [print('  ',l[:150]) for l in sec(open(f'results/e2e/{T}.sonnet.prism_init.diff').read())]
+        EOF
+        grep -A3 "SettableBeanProperty_set" results/wide-v085-2026-09-28/headline.log | head -5
+      at: 2026-09-28T06:36:05.56004Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && T=wide__hono__Router_match; python3 - "$T" <<'EOF'
+        import sys,json
+        t_id=sys.argv[1]
+        sys.path[:0]=['scoring','runners']
+        import wide_eval
+        t=json.load(open(f'tasks/e2e/{t_id}.json'))
+        for arm in ('baseline','prism_init'):
+            patch=open(f'results/e2e/{t_id}.sonnet.{arm}.diff').read()
+            s=wide_eval.score(t,patch)
+            print(arm, s['resolved'], json.dumps(s['sites'])[:900], s.get('tests'))
+        EOF
+      at: 2026-09-28T06:39:15.868004Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os
+        rows=json.load(open('results/wide-v085-2026-09-28/headline/results.json'))
+        r=[x for x in rows if x['task']=='wide__hono__Router_match'][0]
+        sid=r['prism']['session_id']; f=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))[0]
+        ids={}
+        for l in open(f):
+            d=json.loads(l); c=d.get('message',{}).get('content')
+            if not isinstance(c,list): continue
+            for p in c:
+                if p.get('type')=='tool_use' and 'prism' in p['name']:
+                    ids[p['id']]=p['input']; print('CALL',json.dumps(p['input'])[:160])
+                if p.get('type')=='tool_result' and p.get('tool_use_id') in ids:
+                    txt=p['content'] if isinstance(p['content'],str) else ' '.join(x.get('text','') for x in p['content'] if isinstance(x,dict))
+                    print('   mentions bench-includes-init:', 'bench-includes-init' in txt, '| benchmarks/:', 'benchmarks/' in txt, '| len', len(txt))
+        EOF
+      at: 2026-09-28T06:39:25.898155Z
+      classified: other
+    - cmd: grep -E "^\[.*\] -- wide" /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline.log | tail -2
+      at: 2026-09-28T06:58:00.011438Z
+      classified: other
+    - cmd: grep -E "^\[.*\] -- wide" /Users/tapabratapal/Projects/provasign/research/harness/results/wide-v085-2026-09-28/headline.log | tail -2
+      at: 2026-09-28T07:34:17.845804Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && tail -2 results/wide-v085-2026-09-28/headline.log; python3 - <<'EOF'
+        import sys,json,re,collections
+        sys.path[:0]=['scoring','runners']
+        import wide_eval
+        rows=json.load(open('results/wide-v085-2026-09-28/headline/results.json'))
+        orig=wide_eval._strip_comments
+        STR=re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|`(?:\\.|[^`\\])*`|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'')
+        def lenient(path,text):
+            t=orig(path,text)
+            return STR.sub(lambda m: m.group(0)[0]+' '*(len(m.group(0))-2)+m.group(0)[-1] if len(m.group(0))>=2 else m.group(0), t)
+        res=collections.defaultdict(lambda: collections.Counter())
+        tok=collections.Counter(); per=[]
+        for r in rows:
+            t=json.load(open(f"tasks/e2e/{r['task']}.json"))
+            row={'task':r['task'],'lang':r['lang']}
+            for arm,key in (('baseline','native'),('prism_init','prism')):
+                patch=open(f"results/e2e/{r['task']}.sonnet.{arm}.diff").read()
+                wide_eval._strip_comments=orig; s=wide_eval.score(t,patch)
+                wide_eval._strip_comments=lenient; l=wide_eval.score(t,patch)
+                row[key]=(s['resolved'],l['resolved'])
+                res[(key,'strict')][r['lang']]+=s['resolved']; res[(key,'lenient')][r['lang']]+=l['resolved']
+                tok[key]+=r[key].get('tokens') or 0; tok[key+'_usd']+=r[key].get('cost_usd') or 0
+                assert s['resolved']==bool(r[key]['resolved']) or True
+            per.append(row)
+        wide_eval._strip_comments=orig
+        langs=sorted({r['lang'] for r in rows}); n=collections.Counter(r['lang'] for r in rows)
+        for mode in ('strict','lenient'):
+            print(mode, 'native',sum(res[('native',mode)].values()),'prism',sum(res[('prism',mode)].values()),' by lang:',{l:(res[('native',mode)][l],res[('prism',mode)][l],n[l]) for l in langs})
+        print('tokens prism/native %.2fx'%(tok['prism']/tok['native']),' cost native $%.2f prism $%.2f'%(tok['native_usd'],tok['prism_usd']))
+        print('disagreements:')
+        for row in per:
+            if row['native']!=row['prism']: print('  ',row['task'][6:],'native(strict,len)=',row['native'],'prism=',row['prism'])
+        # check strict matches recorded
+        mism=[r['task'] for r,row in zip(rows,per) if bool(r['prism']['resolved'])!=row['prism'][0] or bool(r['native']['resolved'])!=row['native'][0]]
+        print('strict rescore mismatches vs recorded:',mism)
+        EOF
+      at: 2026-09-28T08:01:39.293922Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/tasks/bbs5z0cco.output
+      at: 2026-09-28T09:09:53.316896Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' '2a\
+        - [Wide32 v0.85 result 2026-09-28](project_wide32_v085_result.md) — native 28 vs prism 27 strict at 1.30x tokens; 2 real prism wins, 1 real miss (TS outside tsconfig), 2 string-literal scorer losses; cost = site-by-site edit turns
+        ' MEMORY.md && sed -n 3p MEMORY.md
+      at: 2026-09-28T09:10:12.934114Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -n "tsconfig\|configs\|loadedFiles\|parsed.fileNames\|inferred\|createProgram" js_ts.go | head -40
+      at: 2026-09-28T10:39:37.886573Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && sed -n 120,200p js_ts.go; sed -n 390,418p js_ts.go
+      at: 2026-09-28T10:39:41.611842Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove/internal/native && grep -n "function projectHost" -A22 js_ts.go; grep -n "const input\b\|const input =\|inputFiles =" js_ts.go
+      at: 2026-09-28T10:39:58.874256Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        old='''process.stdout.write("\\n@@GROVE_TS_PAYLOAD@@");
+        console.log(JSON.stringify({files: loadedFiles.size, configs: configs.length, solutionConfigs,
+          configErrors, edges, calls, types, members}));'''
+        new='''// Files no config includes (hono's benchmarks/*.mts outside tsconfig's
+        // include) get an inferred project, as tsserver does for an open file: the
+        // nearest config's compiler options, the uncovered files as roots. Imports
+        // into the main project still resolve, so their calls land on its
+        // declarations. Before this, such files were never visited.
+        const uncovered = [...input].filter(abs => !loadedFiles.has(abs) &&
+          /\\.[cm]?[jt]sx?$/.test(abs) && !/\\.d\\.[cm]?ts$/.test(abs) &&
+          !abs.split(path.sep).includes('node_modules'));
+        let inferredFiles = 0;
+        if (uncovered.length > 0) {
+          const groups = new Map();
+          for (const abs of uncovered) {
+            const cfg = nearestConfig(abs);
+            const key = cfg ? path.resolve(cfg) : '';
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(abs);
+          }
+          for (const [key, files] of groups) {
+            const base = key ? configByPath.get(key) : undefined;
+            const options = Object.assign({}, base ? base.parsed.options : {
+              target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
+              moduleResolution: ts.ModuleResolutionKind.Bundler || ts.ModuleResolutionKind.NodeJs,
+              esModuleInterop: true, jsx: ts.JsxEmit.Preserve,
+            }, {allowJs: true, noEmit: true, skipLibCheck: true});
+            const project = {cfg: key || path.join(rootAbs, 'tsconfig.json'),
+              parsed: {options, fileNames: files, projectReferences: base ? base.parsed.projectReferences : undefined}};
+            const host = projectHost(project);
+            const program = ts.createProgram({rootNames: files, options, projectReferences: project.parsed.projectReferences, host});
+            const checker = program.getTypeChecker();
+            const roots = new Set(files);
+            for (const sf of program.getSourceFiles()) {
+              const abs = path.resolve(sf.fileName);
+              if (sf.isDeclarationFile || !roots.has(abs) || loadedFiles.has(abs)) continue;
+              loadedFiles.add(abs);
+              inferredFiles++;
+              visit(checker, options, host, sf, sf, []);
+            }
+          }
+        }
+        process.stdout.write("\\n@@GROVE_TS_PAYLOAD@@");
+        console.log(JSON.stringify({files: loadedFiles.size, configs: configs.length, solutionConfigs, inferredFiles,
+          configErrors, edges, calls, types, members}));'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        s=s.replace('''		SolutionConfigs int      `json:"solutionConfigs"`''','''		SolutionConfigs int      `json:"solutionConfigs"`
+        		InferredFiles   int      `json:"inferredFiles"`''',1)
+        open(p,'w').write(s)
+        EOF
+        grep -n "SolutionConfigs\b\|solutionConfigs)" js_ts.go | head; grep -n "payload.SolutionConfigs" js_ts.go
+      at: 2026-09-28T10:40:16.616009Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        old='''" solution config(s), and " + itoa(payload.Files) + " indexed file(s)",'''
+        new='''" solution config(s), and " + itoa(payload.Files) + " indexed file(s)" + inferredNote(payload.InferredFiles),'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        s+='''
+        func inferredNote(n int) string {
+        	if n == 0 {
+        		return ""
+        	}
+        	return " (" + itoa(n) + " outside every config, checked in an inferred project)"
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        gofmt -l .; cd ../.. && go build ./... && go vet ./internal/native && echo ok
+      at: 2026-09-28T10:40:26.864784Z
+      classified: lint
+    - cmd: |-
+        D=~/prism-ab-bins/wide-audit; cd /Users/tapabratapal/Projects/provasign/prism && go build -o $D/prism-ts2 ./cmd/prism && cd $D && rm -f audit8-ts2.json && AUDIT_LANG=ts python3 audit_h.py $D/prism-ts2 audit8-ts2.json 2>&1 | grep -v AUDIT; python3 - <<'EOF'
+        import json
+        a=json.load(open('audit7-final4.json')); b=json.load(open('audit8-ts2.json'))
+        for k in sorted(b):
+            x,y=a.get(k,{}),b[k]
+            print(f"{k[6:40]:34} R {x.get('recall')}->{y.get('recall')}  P {x.get('precision')}->{y.get('precision')}  listed {x.get('listed')}->{y.get('listed')}")
+        print('Router.match missed now:', b['wide__hono__Router_match'].get('missed'))
+        EOF
+      at: 2026-09-28T10:42:40.988841Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys,json,os,shutil
+        sys.path[:0]=['scoring','runners']
+        import run_e2e
+        t=json.load(open('tasks/e2e/wide__hono__Router_match.json'))
+        _r,wt=run_e2e._worktree(t); run_e2e._prepare_build_env(wt,t)
+        dst=os.path.expanduser('~/prism-ab-bins/scoped/hono-rm')
+        shutil.rmtree(dst,ignore_errors=True); shutil.copytree(wt,dst,symlinks=True); shutil.rmtree(wt,ignore_errors=True); print(dst)
+        EOF
+        cd ~/prism-ab-bins/scoped/hono-rm && ls benchmarks/routers/ benchmarks/routers/src | head -20; ls benchmarks/routers/node_modules 2>/dev/null | head -3; ~/prism-ab-bins/wide-audit/prism-ts2 index . 2>/dev/null | python3 -c "import json,sys;d=json.load(sys.stdin);print([x[:220] for x in d['native'] if x.startswith('js-ts')])"; sqlite3 .grove/grove.db "select name,kind,span_start from symbols where file_path='benchmarks/routers/src/bench-includes-init.mts' limit 8"; grep -n "match" benchmarks/routers/src/bench-includes-init.mts | head
+      at: 2026-09-28T10:43:17.417209Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/scoped/hono-rm && sed -n 1,30p benchmarks/routers/src/bench-includes-init.mts; sed -n 55,70p benchmarks/routers/src/bench-includes-init.mts; cat benchmarks/routers/tsconfig.json; cat benchmarks/routers/package.json | head -30
+      at: 2026-09-28T10:43:24.268058Z
+      classified: build
+    - cmd: |-
+        cd ~/prism-ab-bins/scoped/hono-rm && ~/prism-ab-bins/wide-audit/prism-ts2 change-impact Router.match . 2>/dev/null | python3 -c "
+        import json,sys;d=json.load(sys.stdin)
+        for k in ('declarations','family','callers'):
+            v=d.get(k) or []
+            print(k,len(v)); [print('   ',s.get('filePath'),s.get('qualifiedName') or s.get('name'),s.get('kind'),s.get('reason','')) for s in v if isinstance(s,dict) and ('reg-exp' in (s.get('filePath') or '') or 'bench' in (s.get('filePath') or '') or k!='callers')]
+        print({k:(len(v) if isinstance(v,list) else v) for k,v in d.items() if k not in('declarations','family','callers')})
+        "; sqlite3 .grove/grove.db "select e.edge_type, e.source, e.to_node from edges e where e.from_node like 'benchmarks/routers/src/bench-includes-init.mts::%' and (e.to_node like '%match%' ) limit 10"
+      at: 2026-09-28T10:43:40.053108Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/scoped/hono-rm && cat > /tmp/claude-501/tsdbg.cjs <<'EOF'
+        const ts = require(require.resolve('typescript', {paths:[process.cwd()]}));
+        const path = require('path');
+        const cfg = path.resolve('benchmarks/routers/tsconfig.json');
+        const read = ts.readConfigFile(cfg, ts.sys.readFile);
+        const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, path.dirname(cfg), undefined, cfg);
+        console.log('files in config', parsed.fileNames.length, parsed.fileNames.filter(f=>f.includes('includes-init')));
+        const program = ts.createProgram({rootNames: parsed.fileNames, options: parsed.options});
+        const checker = program.getTypeChecker();
+        const sf = program.getSourceFile(path.resolve('benchmarks/routers/src/bench-includes-init.mts'));
+        console.log('sf', !!sf);
+        const diags = ts.getPreEmitDiagnostics(program, sf).slice(0,5).map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n').slice(0,160));
+        console.log('diags', diags);
+        function walk(n){ if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text==='match'){
+          const s=checker.getSymbolAtLocation(n.expression.name); const t=checker.getTypeAtLocation(n.expression.expression);
+          const line=sf.getLineAndCharacterOfPosition(n.getStart()).line+1;
+          console.log('line',line,'recv type',checker.typeToString(t).slice(0,60),'sym',s&&s.name, s&&s.declarations&&s.declarations[0]&&path.relative(process.cwd(), s.declarations[0].getSourceFile().fileName));
+         } ts.forEachChild(n,walk);}
+        walk(sf);
+        EOF
+        node /tmp/claude-501/tsdbg.cjs 2>&1 | head -20
+      at: 2026-09-28T10:43:58.407745Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        old='''  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, path.dirname(cfg), undefined, cfg);
+          const project = {cfg, parsed};'''
+        new='''  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, path.dirname(cfg), undefined, cfg);
+          // Analysis never emits. noEmit also makes allowImportingTsExtensions legal:
+          // without it that option is rejected and every "./x.ts" import resolves to
+          // any (hono's benchmarks: router.match on an untyped receiver).
+          parsed.options.noEmit = true;
+          const project = {cfg, parsed};'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        cd ../.. && go build ./... && cd ../prism && go build -o ~/prism-ab-bins/wide-audit/prism-ts3 ./cmd/prism && cd ~/prism-ab-bins/scoped/hono-rm && rm -rf .grove && ~/prism-ab-bins/wide-audit/prism-ts3 index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select e.edge_type, e.to_node from edges e where e.source='native' and e.from_node like 'benchmarks/routers/src/bench-includes-init.mts::%' and e.to_node like '%match%'" | head
+      at: 2026-09-28T10:44:21.890325Z
+      classified: build
+    - cmd: 'cd ~/prism-ab-bins/scoped/hono-rm && sed -i '''' ''s/const program = ts.createProgram({rootNames: parsed.fileNames, options: parsed.options});/parsed.options.noEmit = true; const program = ts.createProgram({rootNames: parsed.fileNames, options: parsed.options});/'' /tmp/claude-501/tsdbg.cjs && node /tmp/claude-501/tsdbg.cjs 2>&1 | head -14'
+      at: 2026-09-28T10:44:27.235593Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/scoped/hono-rm && cat >> /tmp/claude-501/tsdbg.cjs <<'EOF'
+        const all = ts.getPreEmitDiagnostics(program, sf).map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ').slice(0,200)).filter(m=>/reg-exp|linear|trie|src\/|RegExpRouter|\.ts'/.test(m));
+        console.log('relevant diags', all.slice(0,6));
+        const r = ts.resolveModuleName('../../../src/router/reg-exp-router/index.ts', sf.fileName, parsed.options, ts.sys);
+        console.log('resolved', r.resolvedModule && r.resolvedModule.resolvedFileName, 'failed lookups', (r.failedLookupLocations||[]).length);
+        function w2(n){ if (ts.isNewExpression(n)) { const t=checker.getTypeAtLocation(n); console.log('new', n.expression.getText(), '->', checker.typeToString(t).slice(0,50)); } ts.forEachChild(n,w2);} w2(sf);
+        console.log('opts', JSON.stringify({module: parsed.options.module, moduleResolution: parsed.options.moduleResolution, noEmit: parsed.options.noEmit}));
+        EOF
+        node /tmp/claude-501/tsdbg.cjs 2>&1 | tail -12
+      at: 2026-09-28T10:44:35.627484Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/internal/native && python3 - <<'EOF'
+        p='js_ts.go'; s=open(p).read()
+        old='''  parsed.options.noEmit = true;
+          const project = {cfg, parsed};'''
+        new='''  parsed.options.noEmit = true;
+          // allowImportingTsExtensions under Node16/NodeNext marks scripts run by
+          // tsx or bun, not Node ESM output: they import project sources that use
+          // extensionless relative imports, which strict ESM resolution rejects, so
+          // every imported class typed as any. Resolve the way the runner does.
+          const nodeEsm = [ts.ModuleKind.Node16, ts.ModuleKind.NodeNext].includes(parsed.options.module);
+          if (parsed.options.allowImportingTsExtensions && nodeEsm && ts.ModuleResolutionKind.Bundler) {
+            parsed.options.module = ts.ModuleKind.ESNext;
+            parsed.options.moduleResolution = ts.ModuleResolutionKind.Bundler;
+          }
+          const project = {cfg, parsed};'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        cd ../.. && go build ./... && cd ../prism && go build -o ~/prism-ab-bins/wide-audit/prism-ts3 ./cmd/prism && cd ~/prism-ab-bins/scoped/hono-rm && rm -rf .grove && ~/prism-ab-bins/wide-audit/prism-ts3 index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select e.edge_type, substr(e.to_node,1,90) from edges e where e.source='native' and e.from_node like 'benchmarks/routers/src/bench-includes-init.mts::%' and e.to_node like '%match%'" | head
+      at: 2026-09-28T10:45:11.864836Z
+      classified: build
+    - cmd: |-
+        D=~/prism-ab-bins/wide-audit; cd $D && rm -f audit9-ts3.json && AUDIT_LANG=ts python3 audit_h.py $D/prism-ts3 audit9-ts3.json >/dev/null 2>&1; python3 - <<'EOF'
+        import json
+        a=json.load(open('audit7-final4.json')); b=json.load(open('audit9-ts3.json'))
+        for k in sorted(b):
+            x,y=a.get(k,{}),b[k]
+            print(f"{k[6:40]:34} R {x.get('recall')}->{y.get('recall')}  P {x.get('precision')}->{y.get('precision')}  deg={bool(y.get('readiness'))}")
+        EOF
+        E=~/prism-ab-bins/edgeacc; cd /Users/tapabratapal/Projects/provasign/grove && (cd eval && go build -o $E/grove-eval ./cmd/grove-eval) && for n in socket.io@3ad4e1f2 express@dae209ae p-queue@180ab9e; do r=${n%@*}; rm -rf "${E:?}/${r:?}/.grove"; $E/grove-eval score --repo $E/$r --truth eval/testdata/$n/calls-truth.jsonl.gz --out-dir $E/out-$r --baseline eval/baseline.json >/tmp/claude-501/g.txt 2>&1; echo "$r rc=$? $(grep 'score: universe' /tmp/claude-501/g.txt | sed 's/.*·//')"; done
+      at: 2026-09-28T10:47:27.898431Z
+      classified: build
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -rln "require.resolve(''typescript'')\|typescript not resolvable\|GROVE_TEST_TYPESCRIPT\|node_modules/typescript" --include=''*_test.go'' internal | head; grep -n "func Test" internal/parser/ts_test_callbacks_e2e_test.go | head -3; sed -n 1,50p internal/parser/ts_test_callbacks_e2e_test.go | grep -n "Skip\|typescript\|node_modules\|symlink" '
+      at: 2026-09-28T10:47:37.509789Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "typescript\|node_modules" internal/index/native_compiler_test.go | head -12
+      at: 2026-09-28T10:47:40.807091Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 108,160p internal/index/native_compiler_test.go
+      at: 2026-09-28T10:47:44.042315Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/index/native_compiler_test.go'; s=open(p).read()
+        anchor='''// A project package with a type error still loads for interface dispatch:'''
+        add='''// Two ways a TypeScript file used to get no compiler facts: a script config
+        // run by tsx/bun (allowImportingTsExtensions under NodeNext) whose imports
+        // of extensionless project sources resolved to any, and a file no config
+        // includes at all (now checked in an inferred project).
+        func TestTSScriptConfigsAndFilesOutsideEveryConfig(t *testing.T) {
+        	ts := os.Getenv("GROVE_TEST_TYPESCRIPT")
+        	if ts == "" {
+        		t.Skip("GROVE_TEST_TYPESCRIPT not set")
+        	}
+        	if _, err := exec.LookPath("node"); err != nil {
+        		t.Skip("node not found")
+        	}
+        	root := t.TempDir()
+        	if err := os.MkdirAll(filepath.Join(root, "node_modules"), 0o755); err != nil {
+        		t.Fatal(err)
+        	}
+        	if err := os.Symlink(ts, filepath.Join(root, "node_modules", "typescript")); err != nil {
+        		t.Fatal(err)
+        	}
+        	files := map[string]string{
+        		"package.json":  `{"name":"p","type":"module"}`,
+        		"tsconfig.json": `{"compilerOptions":{"strict":true,"target":"es2022","module":"esnext","moduleResolution":"bundler"},"include":["src"]}`,
+        		"src/router.ts": "export class Router {\\n  match(path: string): number { return path.length }\\n}\\n",
+        		"src/index.ts":  "export { Router } from './router'\\n",
+        		"bench/tsconfig.json": `{"compilerOptions":{"allowImportingTsExtensions":true,"module":"NodeNext"},"include":["./src"]}`,
+        		"bench/src/run.mts":   "import { Router } from '../../src/index.ts'\\nconst r = new Router()\\nr.match('/a')\\n",
+        		"tools/use.ts":        "import { Router } from '../src/router'\\nexport function useRouter(): number { return new Router().match('/b') }\\n",
+        	}
+        	for rel, body := range files {
+        		p := filepath.Join(root, filepath.FromSlash(rel))
+        		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+        			t.Fatal(err)
+        		}
+        		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	got, diags, _ := compilerIndex(t, root)
+        	skipUnless(t, diags, "js-ts")
+        	wantEdges(t, got, diags,
+        		"<top-level>→match calls", // bench/src/run.mts under the tsx-style config
+        		"useRouter→match calls",   // tools/use.ts, outside every config
+        	)
+        }
+
+        '''
+        assert s.count(anchor)==1; s=s.replace(anchor,add+anchor); open(p,'w').write(s)
+        EOF
+        gofmt -w internal/index/native_compiler_test.go; TSD=$(ls -d ~/prism-ab-bins/scoped/hono-rm/node_modules/typescript); echo $TSD; GROVE_TEST_TYPESCRIPT=$TSD go test ./internal/index -run 'TestTSScriptConfigsAndFilesOutsideEveryConfig|TestTSNativeMemberReferences' -count=1 -v 2>&1 | grep -E "^(---|ok|FAIL)|missing" | head
+      at: 2026-09-28T10:48:02.719257Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && cp internal/native/js_ts.go /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/js_ts.new && git show HEAD:internal/native/js_ts.go > internal/native/js_ts.go && GROVE_TEST_TYPESCRIPT=$(ls -d ~/prism-ab-bins/scoped/hono-rm/node_modules/typescript) go test ./internal/index -run TestTSScriptConfigsAndFilesOutsideEveryConfig -count=1 2>&1 | grep -E "^(--- |ok|FAIL)|missing" | head -4; cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/js_ts.new internal/native/js_ts.go && go build ./... && git diff --stat
+      at: 2026-09-28T10:48:15.557756Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && GROVE_TEST_TYPESCRIPT=$(ls -d ~/prism-ab-bins/scoped/hono-rm/node_modules/typescript) go test ./... -count=1 -timeout 900s 2>&1 | grep -v "^ok\|no test files"; echo "grove exit ${pipestatus[1]}"; cd ../research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/prism-ab-bins/wide-audit/prism-ts3 > ~/prism-ab-bins/wide-audit/ci_invariants6.log 2>&1; echo "ci_invariants exit $?"; grep -E "typeorm|REGRESSION|held|FAIL" ~/prism-ab-bins/wide-audit/ci_invariants6.log
+      at: 2026-09-28T10:49:40.121207Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q -b fix/ts-script-configs && git add internal/native/js_ts.go internal/index/native_compiler_test.go && git commit -q -F - <<'EOF'
+        TS: type script-runner configs and files outside every tsconfig
+
+        - Analysis never emits: noEmit is forced on every project, which also makes
+          allowImportingTsExtensions legal.
+        - A config with allowImportingTsExtensions under Node16/NodeNext (scripts
+          run by tsx or bun) resolves like the runner (bundler): its imports of
+          extensionless project sources used to type as any. hono benchmarks:
+          router.match on RegExpRouter/PreparedRegExpRouter/TrieRouter/LinearRouter
+          now resolves; wide-change audit Router.match recall 0.95 -> 1.0.
+        - Files no config includes get an inferred project with the nearest
+          config's options (as tsserver does), instead of no compiler pass.
+
+        TS edge-accuracy gates (socket.io, express, p-queue) unchanged.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8
+        EOF
+        git push -q -u origin fix/ts-script-configs 2>&1 | tail -1; git log --oneline -1
+      at: 2026-09-28T10:49:52.756135Z
+      classified: build
+    - cmd: |-
+        ls ~/prism-ab-bins/edgeacc/out-flask/; python3 - <<'EOF'
+        import json,os,collections
+        d=json.load(open(os.path.expanduser('~/prism-ab-bins/edgeacc/out-flask/scorecard.json')))
+        print([k for k in d.keys()][:20])
+        fn=d.get('falseNegatives') or []
+        print('FN', len(fn), 'FP', len(d.get('falsePositives') or []))
+        print(json.dumps(fn[:3],indent=1)[:1500])
+        EOF
+      at: 2026-09-28T10:50:01.45309Z
+      classified: other
+    - cmd: |-
+        E=~/prism-ab-bins/edgeacc; cd /Users/tapabratapal/Projects/provasign/grove && rm -rf "${E:?}/flask/.grove"; GROVE_EVAL_MAX_EXAMPLES=100000 $E/grove-eval score --repo $E/flask --truth eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir $E/out-flask-full --baseline eval/baseline.json 2>&1 | grep "score: universe"; python3 - <<'EOF'
+        import json,os,re,collections,sqlite3
+        E=os.path.expanduser('~/prism-ab-bins/edgeacc')
+        d=json.load(open(f'{E}/out-flask-full/scorecard.json'))
+        fn=d['falseNegatives']; print('FN',len(fn),'FP',len(d['falsePositives']))
+        def parse(s):
+            m=re.match(r'(\S+):(\d+) (.+)',s); return m.group(1),int(m.group(2)),m.group(3)
+        src={}
+        def body(f,line):
+            p=f'{E}/flask/{f}'
+            if f not in src:
+                try: src[f]=open(p).read().splitlines()
+                except: src[f]=[]
+            L=src[f]; i=line-1
+            if i>=len(L): return ''
+            ind=len(L[i])-len(L[i].lstrip()); out=[L[i]]
+            for l in L[i+1:]:
+                if l.strip() and (len(l)-len(l.lstrip()))<=ind and not l.lstrip().startswith(('@',')')): break
+                out.append(l)
+            return '\n'.join(out)
+        cls=collections.Counter(); ex=collections.defaultdict(list)
+        for e in fn:
+            cf,cl,cn=parse(e['caller']); tf,tl,tn=parse(e['callee'])
+            name=tn.split('.')[-1]; b=body(cf,cl)
+            if cf.startswith('tests/') or 'test' in cf: scope='test'
+            else: scope='src'
+            if re.search(r'\b'+re.escape(name)+r'\s*\(',b): k='name-called'
+            elif re.search(r'\b'+re.escape(name)+r'\b',b): k='name-mentioned'
+            else: k='dynamic/not-in-text'
+            cls[(scope,k)]+=1; ex[(scope,k)].append(f"{cn} -> {tn}")
+        for k,v in cls.most_common(): print(k,v, ' e.g.', ex[k][:3])
+        EOF
+      at: 2026-09-28T10:50:21.082613Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,os,re,collections
+        E=os.path.expanduser('~/prism-ab-bins/edgeacc')
+        d=json.load(open(f'{E}/out-flask-full/scorecard.json'))
+        src={}
+        def lines(f):
+            if f not in src:
+                try: src[f]=open(f'{E}/flask/{f}').read().splitlines()
+                except: src[f]=[]
+            return src[f]
+        def body(f,line):
+            L=lines(f); i=line-1
+            if i>=len(L): return ''
+            ind=len(L[i])-len(L[i].lstrip()); out=[L[i]]
+            for l in L[i+1:]:
+                if l.strip() and (len(l)-len(l.lstrip()))<=ind and not l.lstrip().startswith(('@',')')): break
+                out.append(l)
+            return '\n'.join(out)
+        def decorators(f,line):
+            L=lines(f); i=line-2; decs=[]
+            while i>=0 and L[i].strip().startswith('@'): decs.append(L[i].strip()); i-=1
+            return decs
+        cls=collections.Counter(); ex=collections.defaultdict(list)
+        for e in d['falseNegatives']:
+            cf,cl,cn=re.match(r'(\S+):(\d+) (.+)',e['caller']).groups(); tf,tl,tn=re.match(r'(\S+):(\d+) (.+)',e['callee']).groups()
+            name=tn.split('.')[-1]; b=body(cf,int(cl))
+            decs=decorators(tf,int(tl))
+            if re.search(r'\b'+re.escape(name)+r'\s*\(',b): k='name-called (static miss)'
+            elif name.startswith('__') and name.endswith('__'): k='dunder (implicit protocol call)'
+            elif any('property' in x for x in decs): k='property access' + (' (text)' if re.search(r'\.'+re.escape(name)+r'\b',b) else ' (no text)')
+            elif re.search(r'\b'+re.escape(name)+r'\b',b): k='name as value (callback/registry)'
+            else: k='indirect (callee reached via another frame)'
+            cls[k]+=1; ex[k].append(f"{cn} -> {tn}")
+        for k,v in cls.most_common(): print(f"{v:3}  {k:45} e.g. {ex[k][:2]}")
+        EOF
+      at: 2026-09-28T10:50:33.88339Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,os,re
+        E=os.path.expanduser('~/prism-ab-bins/edgeacc')
+        d=json.load(open(f'{E}/out-flask-full/scorecard.json'))
+        src={}
+        def lines(f):
+            if f not in src:
+                try: src[f]=open(f'{E}/flask/{f}').read().splitlines()
+                except: src[f]=[]
+            return src[f]
+        def body(f,line):
+            L=lines(f); i=line-1
+            ind=len(L[i])-len(L[i].lstrip()); out=[(i+1,L[i])]
+            for j,l in enumerate(L[i+1:],i+2):
+                if l.strip() and (len(l)-len(l.lstrip()))<=ind and not l.lstrip().startswith(('@',')')): break
+                out.append((j,l))
+            return out
+        def decs(f,line):
+            L=lines(f); i=line-2; r=[]
+            while i>=0 and L[i].strip().startswith('@'): r.append(L[i].strip()); i-=1
+            return r
+        for e in d['falseNegatives']:
+            cf,cl,cn=re.match(r'(\S+):(\d+) (.+)',e['caller']).groups(); tf,tl,tn=re.match(r'(\S+):(\d+) (.+)',e['callee']).groups()
+            name=tn.split('.')[-1]; b=body(cf,int(cl)); text='\n'.join(l for _,l in b)
+            called=re.search(r'\b'+re.escape(name)+r'\s*\(',text)
+            prop=any('property' in x for x in decs(tf,int(tl)))
+            mention=re.search(r'\.'+re.escape(name)+r'\b',text) if prop else (re.search(r'\b'+re.escape(name)+r'\b',text) and not called and not (name.startswith('__')))
+            if called or mention:
+                hit=[f"{n}: {l.strip()[:90]}" for n,l in b if re.search(r'\b'+re.escape(name)+r'\b',l)][:1]
+                print(f"{'CALL' if called else ('PROP' if prop else 'VAL ')} {cn[:38]:38} -> {tn[:40]:40} | {hit[0] if hit else ''}")
+        EOF
+      at: 2026-09-28T10:50:53.990889Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/wide-audit && python3 - <<'EOF'
+        import json
+        d=json.load(open('audit7-final4.json'))
+        for k,v in sorted(d.items()):
+            if v.get('lang')!='python': continue
+            print(f"{k[6:]:40} R {v['recall']} P {v['precision']} gold {v['gold']} listed {v['listed']}")
+            for m in v.get('missed') or []: print('     MISSED', m)
+            for x in (v.get('extra_sample') or [])[:4]: print('     extra ', x)
+        EOF
+      at: 2026-09-28T10:51:15.039344Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys,json,os,shutil
+        sys.path[:0]=['scoring','runners']
+        import run_e2e
+        t=json.load(open('tasks/e2e/wide__werkzeug__BaseConverter_to_url.json'))
+        _r,wt=run_e2e._worktree(t); run_e2e._prepare_build_env(wt,t)
+        dst=os.path.expanduser('~/prism-ab-bins/scoped/wz'); shutil.rmtree(dst,ignore_errors=True); shutil.copytree(wt,dst,symlinks=True); shutil.rmtree(wt,ignore_errors=True)
+        EOF
+        cd ~/prism-ab-bins/scoped/wz && grep -n "class .*Converter\|def to_url" src/werkzeug/routing/converters.py | head -30; ~/prism-ab-bins/wide-audit/prism-ts3 index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select qualified_name, kind, span_start from symbols where file_path='src/werkzeug/routing/converters.py' and name in ('to_url','UUIDConverter','BaseConverter')"; sqlite3 .grove/grove.db "select edge_type, source, substr(to_node,1,80) from edges where from_node like 'src/werkzeug/routing/converters.py::UUIDConverter@%' and edge_type in ('extends','implements')"
+      at: 2026-09-28T10:51:37.814254Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/scoped/wz && ~/prism-ab-bins/wide-audit/prism-ts3 change-impact BaseConverter.to_url . 2>/dev/null | python3 -c "
+        import json,sys;d=json.load(sys.stdin)
+        for k in ('declarations','family'):
+            for s in d.get(k) or []: print(k, s.get('qualifiedName'), s.get('reason',''), s.get('evidence','')[:80] if isinstance(s.get('evidence'),str) else '')
+        for k,v in d.items():
+            if 'UUID' in json.dumps(v): print('UUID mentioned under', k, json.dumps(v)[:400])
+        print([k for k in d.keys()])
+        "
+      at: 2026-09-28T10:51:46.645407Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/scoped/wz && for c in AnyConverter UUIDConverter; do echo "== $c"; sqlite3 .grove/grove.db "select edge_type, source, reason, substr(from_node,1,70), substr(to_node,1,70) from edges where (from_node like 'src/werkzeug/routing/converters.py::$c%' or to_node like 'src/werkzeug/routing/converters.py::$c%') and edge_type in ('extends','implements','overrides')"; done; sed -n 237,262p src/werkzeug/routing/converters.py
+      at: 2026-09-28T10:51:55.107413Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "func .*[Ff]amily\|compatibleOverride\|signatureCompatible\|paramTypes\|sameArity\|overrideCompatible" internal/graph/*.go | grep -v _test | head -20
+      at: 2026-09-28T10:52:01.433139Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 300,335p internal/graph/changeimpact.go; sed -n 1343,1370p internal/graph/changeimpact.go; sed -n 1612,1640p internal/graph/changeimpact.go
+      at: 2026-09-28T10:52:06.609148Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/changeimpact.go'; s=open(p).read()
+        old='''func paramTypesOf(s *core.SymbolRecord) []string {
+        	if s.Language == "java" {
+        		return javaParamTypes(s)
+        	}'''
+        new='''func paramTypesOf(s *core.SymbolRecord) []string {
+        	if s.Language == "java" {
+        		return javaParamTypes(s)
+        	}
+        	if s.Language == "python" {
+        		// Python has no overloading: a same-named method in a subclass
+        		// overrides whatever its annotations say, and narrowing them is
+        		// routine (werkzeug UUIDConverter.to_url(value: uuid.UUID) overrides
+        		// BaseConverter.to_url(value: t.Any) and was dropped from the family).
+        		return nil
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go build ./... && go test ./internal/graph -count=1 2>&1 | tail -3
+      at: 2026-09-28T10:52:23.71801Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rln "\.py\"" internal/graph/*_test.go | head -5; grep -rn "func Test.*Python.*Family\|func Test.*PythonOverride\|func TestChangeImpactPython" internal/graph/*_test.go | head -5
+      at: 2026-09-28T10:52:30.568735Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "ChangeImpact(" internal/graph/*_test.go | head -3; grep -rn "func parseFixture\|func buildGraph\|func indexFixture\|func graphFrom" internal/graph/*_test.go | head -5
+      at: 2026-09-28T10:52:37.631798Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 280,320p internal/graph/casescope_test.go
+      at: 2026-09-28T10:52:41.767794Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat > internal/index/python_family_test.go <<'EOF'
+        package index
+
+        import (
+        	"context"
+        	"os"
+        	"path/filepath"
+        	"testing"
+
+        	"github.com/provasign/grove/internal/parser"
+        	"github.com/provasign/grove/internal/store"
+        )
+
+        // Python has no overloading: an override whose annotations narrow the base's
+        // (value: uuid.UUID over value: t.Any) is still an override and belongs to
+        // the rename family (werkzeug UUIDConverter.to_url was dropped).
+        func TestPythonOverrideWithNarrowedAnnotationsJoinsFamily(t *testing.T) {
+        	root := t.TempDir()
+        	files := map[string]string{
+        		"pyproject.toml": "[project]\nname = \"conv\"\n",
+        		"conv.py": `import typing as t
+        import uuid
+
+
+        class BaseConverter:
+            def to_url(self, value: t.Any) -> str:
+                return str(value)
+
+
+        class AnyConverter(BaseConverter):
+            def to_url(self, value: t.Any) -> str:
+                return str(value)
+
+
+        class UUIDConverter(BaseConverter):
+            def to_url(self, value: uuid.UUID) -> str:
+                return str(value)
+        `,
+        	}
+        	for rel, body := range files {
+        		if err := os.WriteFile(filepath.Join(root, rel), []byte(body), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	st, err := store.Open(root)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer st.Close()
+        	g, _, err := New(parser.NewEngine(), st).Index(context.Background(), root)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	r, err := g.ChangeImpact("BaseConverter.to_url")
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	got := map[string]bool{}
+        	for _, s := range r.Family {
+        		got[s.QualifiedName] = true
+        	}
+        	for _, want := range []string{"AnyConverter.to_url", "UUIDConverter.to_url"} {
+        		if !got[want] {
+        			t.Errorf("family missing %s; got %v", want, got)
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/index -run TestPythonOverrideWithNarrowedAnnotationsJoinsFamily -count=1 2>&1 | tail -3; cp internal/graph/changeimpact.go /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/ci.new && git show HEAD:internal/graph/changeimpact.go > internal/graph/changeimpact.go && go test ./internal/index -run TestPythonOverrideWithNarrowedAnnotationsJoinsFamily -count=1 2>&1 | grep -E "^(--- |ok|FAIL)|missing" | head -3; cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/scratchpad/ci.new internal/graph/changeimpact.go && go build ./... && echo restored
+      at: 2026-09-28T10:53:02.514349Z
+      classified: test
+    - cmd: |-
+        D=~/prism-ab-bins/wide-audit; cd /Users/tapabratapal/Projects/provasign/prism && go build -o $D/prism-py1 ./cmd/prism && cd $D && rm -f audit10-py1.json && AUDIT_LANG=python python3 audit_h.py $D/prism-py1 audit10-py1.json >/dev/null 2>&1; python3 - <<'EOF'
+        import json
+        a=json.load(open('audit7-final4.json')); b=json.load(open('audit10-py1.json'))
+        for k in sorted(b):
+            x,y=a.get(k,{}),b[k]
+            print(f"{k[6:44]:38} R {x.get('recall')}->{y.get('recall')}  P {x.get('precision')}->{y.get('precision')}")
+            for m in y.get('missed') or []: print('      MISSED',m)
+        EOF
+      at: 2026-09-28T10:53:33.241562Z
+      classified: build
+    - cmd: cd ~/prism-ab-bins/scoped/wz && grep -n "to_url" src/werkzeug/routing/map.py src/werkzeug/routing/rules.py | head; grep -n "_converters\b\|self._converters:\|_converters =" src/werkzeug/routing/rules.py | head -5; grep -n "data = property\|def get_data" src/werkzeug/wrappers/response.py
+      at: 2026-09-28T10:53:40.616478Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && ls internal/graph/ | grep -i "py\|local"; grep -n "^func " internal/graph/pylocaltypes.go 2>/dev/null | head -40
+      at: 2026-09-28T10:53:48.58094Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 1165,1244p internal/graph/pylocaltypes.go; sed -n 48,100p internal/graph/pylocaltypes.go; sed -n 720,780p internal/graph/pylocaltypes.go
+      at: 2026-09-28T10:53:59.548573Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/scoped/wz && sqlite3 .grove/grove.db "select call_sites from symbols where qualified_name='Rule._compile_builder'" | python3 -c "
+        import json,sys; cs=json.loads(sys.stdin.read())
+        for c in cs:
+            if 'to_url' in json.dumps(c): print(c)"; cd /Users/tapabratapal/Projects/provasign/grove && grep -n "pyExprType(" internal/graph/*.go | grep -v "func pyExprType" | head
+      at: 2026-09-28T10:54:11.269582Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "^func \|Receiver\|receiver" internal/graph/pycallbinding.go | head -40
+      at: 2026-09-28T10:54:20.843053Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 1,70p internal/graph/pycallbinding.go; grep -n "pyCallCandidates(" internal/graph/*.go | grep -v "func pyCallCandidates"
+      at: 2026-09-28T10:54:31.497983Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 2530,2580p internal/graph/edges.go; grep -n "type CallSite struct" -A16 internal/core/types.go
+      at: 2026-09-28T10:54:40.235143Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && git status --short | head -3; grep -rln "CallSite\|call_sites" --include=*.go . | grep -i py | head; grep -rn "func.*python.*[Cc]all\|func pyCall\|func pythonCall" --include=*.go . | head
+      at: 2026-09-28T10:54:49.792213Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rln --include='*.go' "CallSite" . | head -20; grep -rn --include='*.go' "\"attribute\"" . | grep -i "call\|receiver" | head
+      at: 2026-09-28T10:54:55.978103Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -n "func .*[Cc]all[Ss]ite\|func receiverText\|func callReceiver\|subscript" strategies/metadata.go | head -30
+      at: 2026-09-28T10:54:59.703999Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && sed -n 460,540p strategies/metadata.go
+      at: 2026-09-28T10:55:02.95711Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && grep -rn --include='*.go' "pythonQualifierName(" . | grep -v "func pythonQualifierName"; cd ../grove && grep -rn --include='*.go' '"()"' internal/graph/*.go | grep -v _test | head -8
+      at: 2026-09-28T10:55:15.333148Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 2640,2720p internal/graph/edges.go; sed -n 2890,2925p internal/graph/edges.go
+      at: 2026-09-28T10:55:19.798429Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && python3 - <<'EOF'
+        p='strategies/metadata.go'; s=open(p).read()
+        old='''	case "call":
+        		if fn := pythonQualifierName(n.ChildByFieldName("function"), src); fn != "" {
+        			return fn + "()"
+        		}
+        	}
+        	return ""
+        }
+
+        // pythonAttrSites'''
+        new='''	case "call":
+        		if fn := pythonQualifierName(n.ChildByFieldName("function"), src); fn != "" {
+        			return fn + "()"
+        		}
+        	case "subscript":
+        		// self._converters[name].to_url(): an element of a container. Without
+        		// this the receiver vanished and the call read as a bare to_url(),
+        		// which can never bind a method. "[]" marks "element of", as "()"
+        		// marks "result of".
+        		if base := pythonQualifierName(n.ChildByFieldName("value"), src); base != "" {
+        			return base + "[]"
+        		}
+        	}
+        	return ""
+        }
+
+        // pythonAttrSites'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        gofmt -l strategies; go build ./... && go test ./strategies -count=1 2>&1 | tail -3
+      at: 2026-09-28T10:55:38.667534Z
+      classified: test
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/astkit && grep -n "func Test" strategies/python_round2_test.go | head -3; sed -n "$(grep -n ''func Test'' strategies/python_round2_test.go | head -1 | cut -d: -f1),+30p" strategies/python_round2_test.go'
+      at: 2026-09-28T10:55:44.755509Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/astkit && cat >> strategies/python_round2_test.go <<'EOF'
+
+        // A call on a container element keeps its receiver: without the "[]" marker
+        // self._converters[k].to_url() read as a bare to_url() and bound no method.
+        func TestPythonSubscriptReceiverKeepsQualifier(t *testing.T) {
+        	source := `class Rule:
+            def build(self, k, v):
+                return self._converters[k].to_url(v)
+        `
+        	syms, _ := extract(t, astkit.LangPython, source)
+        	for _, sym := range syms {
+        		if sym.Name != "build" {
+        			continue
+        		}
+        		for _, cs := range sym.CallSites {
+        			if cs.Callee == "self._converters[].to_url" {
+        				return
+        			}
+        		}
+        		t.Fatalf("call sites = %+v", sym.CallSites)
+        	}
+        	t.Fatal("build not extracted")
+        }
+        EOF
+        go test ./strategies -run 'TestPythonSubscriptReceiverKeepsQualifier' -count=1 2>&1 | tail -2
+      at: 2026-09-28T10:55:51.516657Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "ExtractorVersion\s*=" internal/parser/*.go; grep -n "provasign/astkit" go.mod ../go.work 2>/dev/null
+      at: 2026-09-28T10:55:56.707667Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git diff main -- internal/parser/languages.go | head -20; sed -n 25,34p internal/parser/languages.go; cat ../go.work
+      at: 2026-09-28T10:56:00.033362Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git diff --stat v0.60.2 v0.61.0 -- internal/parser; git diff v0.60.2 v0.61.0 -- internal/parser/languages.go | head -20
+      at: 2026-09-28T10:56:07.40694Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "^var pyClassAnnRe\|^var pySelfAnnRe\|pyClassAnnRe *=\|pySelfAnnRe *=" internal/graph/*.go; grep -n "func pyDefParams" -A3 internal/graph/pylocaltypes.go; grep -n "func splitTopLevel" internal/graph/*.go
+      at: 2026-09-28T10:56:26.40233Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat >> internal/graph/pylocaltypes.go <<'EOF'
+
+        // pyElementType returns the element class of a container annotation:
+        // dict[str, BaseConverter] / Mapping[K, V] / defaultdict[K, V] -> V,
+        // list[X] / Sequence[X] / tuple[X, ...] / Iterable[X] -> X. "" when the
+        // annotation is not a container of a class.
+        func pyElementType(ann string) string {
+        	ann = strings.TrimSpace(strings.Trim(strings.TrimSpace(ann), `"'`))
+        	for _, prefix := range []string{"Optional[", "t.Optional[", "typing.Optional["} {
+        		if strings.HasPrefix(ann, prefix) && strings.HasSuffix(ann, "]") {
+        			return pyElementType(ann[len(prefix) : len(ann)-1])
+        		}
+        	}
+        	if parts := splitTopLevel(ann, '|'); len(parts) == 2 {
+        		a, b := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+        		if a == "None" {
+        			return pyElementType(b)
+        		} else if b == "None" {
+        			return pyElementType(a)
+        		}
+        	}
+        	i := strings.IndexByte(ann, '[')
+        	if i < 0 || !strings.HasSuffix(ann, "]") {
+        		return ""
+        	}
+        	outer := strings.TrimSpace(ann[:i])
+        	leaf := outer[strings.LastIndexByte(outer, '.')+1:]
+        	args := splitTopLevel(ann[i+1:len(ann)-1], ',')
+        	var elem string
+        	switch leaf {
+        	case "dict", "Dict", "Mapping", "MutableMapping", "defaultdict", "DefaultDict", "OrderedDict", "ChainMap":
+        		if len(args) != 2 {
+        			return ""
+        		}
+        		elem = args[1]
+        	case "list", "List", "Sequence", "MutableSequence", "Iterable", "Iterator", "Collection", "deque", "Deque", "frozenset", "set", "Set", "AbstractSet":
+        		if len(args) != 1 {
+        			return ""
+        		}
+        		elem = args[0]
+        	case "tuple", "Tuple":
+        		if len(args) != 2 || strings.TrimSpace(args[1]) != "..." {
+        			return ""
+        		}
+        		elem = args[0]
+        	default:
+        		return ""
+        	}
+        	t := pyBareType(elem)
+        	if strings.HasPrefix(t, "class:") {
+        		return ""
+        	}
+        	return t
+        }
+
+        // pyAttrAnnotation returns the raw annotation of attribute attr on class
+        // className: a class-body "attr: T" or an __init__ "self.attr: T = ...".
+        func pyAttrAnnotation(idx *edgeIndex, className, attr, preferDir string) string {
+        	cls := pyResolveClass(idx, className, preferDir)
+        	if cls == nil {
+        		return ""
+        	}
+        	for _, m := range pyClassAnnRe.FindAllStringSubmatch(cls.RawText, -1) {
+        		if m[1] == attr {
+        			return m[2]
+        		}
+        	}
+        	for _, cand := range idx.byFile[cls.FilePath] {
+        		if cand.ParentSymbol != className || cand.Name != "__init__" {
+        			continue
+        		}
+        		for _, m := range pySelfAnnRe.FindAllStringSubmatch(stripCommentsAndStrings(cand.RawText), -1) {
+        			if m[1] == attr {
+        				return m[2]
+        			}
+        		}
+        	}
+        	return ""
+        }
+
+        // pyContainerElementType types the element of a subscripted receiver
+        // ("self._converters" in self._converters[name].to_url()): the container's
+        // annotation on the enclosing class, on a typed local's class, or on a
+        // parameter of the caller.
+        func pyContainerElementType(idx *edgeIndex, symbol *core.SymbolRecord, base string, localTypes map[string]string, selfVars map[string]struct{}) string {
+        	preferDir := dirOf(symbol.FilePath)
+        	if head, attr, ok := strings.Cut(base, "."); ok && !strings.Contains(attr, ".") {
+        		owner := ""
+        		if _, isSelf := selfVars[head]; isSelf {
+        			owner = symbol.ParentSymbol
+        		} else if t := localTypes[head]; t != "" && !strings.HasPrefix(t, "class:") {
+        			owner = t
+        		}
+        		if owner == "" {
+        			return ""
+        		}
+        		for _, cls := range pyMRO(idx, owner, preferDir) {
+        			if ann := pyAttrAnnotation(idx, cls, attr, preferDir); ann != "" {
+        				return pyElementType(ann)
+        			}
+        		}
+        		return ""
+        	}
+        	if !pyIdentifier(base) {
+        		return ""
+        	}
+        	for _, p := range pySplitParams(pyDefParams(symbol.RawText)) {
+        		name, ann, ok := strings.Cut(p, ":")
+        		if !ok || strings.TrimSpace(strings.TrimLeft(name, "*")) != base {
+        			continue
+        		}
+        		if eq := strings.IndexByte(ann, '='); eq >= 0 {
+        			ann = ann[:eq]
+        		}
+        		return pyElementType(ann)
+        	}
+        	return ""
+        }
+
+        // pyDispatchOwners returns the classes whose `method` a call on a value of
+        // static type className can run: className's MRO and every subclass that
+        // overrides it.
+        func pyDispatchOwners(idx *edgeIndex, className, method, preferDir string) map[string]bool {
+        	owners := map[string]bool{}
+        	for _, c := range pyMRO(idx, className, preferDir) {
+        		owners[c] = true
+        	}
+        	for _, o := range subclassOverrides(idx, "python", className, method, preferDir) {
+        		owners[o.ParentSymbol] = true
+        	}
+        	return owners
+        }
+        EOF
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/grove/internal/graph/edges.go'; s=open(p).read()
+        old='''			if symbol.Language == "python" && strings.HasSuffix(qualifier, "()") && len(cands) > 0 {'''
+        new='''			if symbol.Language == "python" && strings.HasSuffix(qualifier, "[]") && len(cands) > 0 {
+        				// Element receiver (self._converters[name].to_url()): a
+        				// container annotated dict[str, BaseConverter] dispatches to
+        				// BaseConverter's method and its overrides. Unannotated keeps
+        				// the unnarrowed member set.
+        				if elem := pyContainerElementType(idx, &symbol, strings.TrimSuffix(qualifier, "[]"), localTypes, selfVars); elem != "" {
+        					owners := pyDispatchOwners(idx, elem, calleeName, dirOf(symbol.FilePath))
+        					var byType []*core.SymbolRecord
+        					for _, c := range cands {
+        						if owners[c.ParentSymbol] {
+        							byType = append(byType, c)
+        						}
+        					}
+        					cands = byType
+        					capped = false
+        				}
+        			}
+        			if symbol.Language == "python" && strings.HasSuffix(qualifier, "()") && len(cands) > 0 {'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal/graph; go build ./... && go vet ./internal/graph && echo ok
+      at: 2026-09-28T10:56:59.745392Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && sed -i '' 's/^const ExtractorVersion = "2026-09-19.12"/const ExtractorVersion = "2026-09-28.1"/' internal/parser/languages.go && grep -n "const ExtractorVersion" internal/parser/languages.go && go build ./... && cd ../prism && go build -o ~/prism-ab-bins/wide-audit/prism-py2 ./cmd/prism && cd ~/prism-ab-bins/scoped/wz && rm -rf .grove && ~/prism-ab-bins/wide-audit/prism-py2 index . >/dev/null 2>&1; ~/prism-ab-bins/wide-audit/prism-py2 change-impact BaseConverter.to_url . 2>/dev/null | python3 -c "
+        import json,sys;d=json.load(sys.stdin)
+        print('family',len(d.get('family') or []),'callers',len(d.get('callers') or []))
+        for s in d.get('callers') or []: print('  ',s.get('filePath'),s.get('qualifiedName') or s.get('name'))"
+      at: 2026-09-28T10:57:13.403203Z
+      classified: build
+    - cmd: |-
+        E=~/prism-ab-bins/edgeacc; cd /Users/tapabratapal/Projects/provasign/grove && (cd eval && go build -o $E/grove-eval ./cmd/grove-eval) && rm -rf "${E:?}/flask/.grove" && $E/grove-eval score --repo $E/flask --truth eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir $E/out-flask --baseline eval/baseline.json 2>&1 | grep -E "score: universe|FAIL|below"; D=~/prism-ab-bins/wide-audit; cd $D && rm -f audit11-py2.json && AUDIT_LANG=python python3 audit_h.py $D/prism-py2 audit11-py2.json >/dev/null 2>&1; python3 - <<'EOF'
+        import json
+        a=json.load(open('audit7-final4.json')); b=json.load(open('audit11-py2.json'))
+        g=h=n=g0=h0=n0=0
+        for k in sorted(b):
+            x,y=a.get(k,{}),b[k]
+            g+=y['gold'];h+=y['hit'];n+=y['listed'];g0+=x['gold'];h0+=x['hit'];n0+=x['listed']
+            print(f"{k[6:44]:38} R {x.get('recall')}->{y.get('recall')}  P {x.get('precision')}->{y.get('precision')}")
+        print('python total R %.3f->%.3f  P %.3f->%.3f'%(h0/g0,h/g,h0/n0,h/n))
+        EOF
+      at: 2026-09-28T10:57:43.374989Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat >> internal/index/python_family_test.go <<'EOF'
+
+        // A call on a container element dispatches through the container's
+        // annotation: self._converters: dict[str, BaseConverter] makes
+        // self._converters[k].to_url() a caller of BaseConverter.to_url and its
+        // overrides (it used to read as a bare to_url() and bind nothing).
+        func TestPythonContainerElementReceiverBindsMethod(t *testing.T) {
+        	root := t.TempDir()
+        	files := map[string]string{
+        		"pyproject.toml": "[project]\nname = \"conv\"\n",
+        		"conv.py": `class BaseConverter:
+            def to_url(self, value) -> str:
+                return str(value)
+
+
+        class UUIDConverter(BaseConverter):
+            def to_url(self, value) -> str:
+                return str(value)
+
+
+        class Unrelated:
+            def to_url(self, value) -> str:
+                return ""
+
+
+        class Rule:
+            def __init__(self) -> None:
+                self._converters: dict[str, BaseConverter] = {}
+
+            def build(self, name, value):
+                return self._converters[name].to_url(value)
+
+
+        def handle(converters: list[BaseConverter], value):
+            return converters[0].to_url(value)
+        `,
+        	}
+        	for rel, body := range files {
+        		if err := os.WriteFile(filepath.Join(root, rel), []byte(body), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	st, err := store.Open(root)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer st.Close()
+        	g, _, err := New(parser.NewEngine(), st).Index(context.Background(), root)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	syms, edges := g.Snapshot()
+        	qn := map[string]string{}
+        	for _, s := range syms {
+        		qn[s.ID] = s.QualifiedName
+        	}
+        	calls := map[string]bool{}
+        	for _, e := range edges {
+        		if e.Type == "calls" {
+        			calls[qn[e.From]+"→"+qn[e.To]] = true
+        		}
+        	}
+        	for _, want := range []string{"Rule.build→BaseConverter.to_url", "Rule.build→UUIDConverter.to_url", "handle→BaseConverter.to_url"} {
+        		if !calls[want] {
+        			t.Errorf("missing %s", want)
+        		}
+        	}
+        	for _, bad := range []string{"Rule.build→Unrelated.to_url", "handle→Unrelated.to_url"} {
+        		if calls[bad] {
+        			t.Errorf("unexpected %s (element type is BaseConverter)", bad)
+        		}
+        	}
+        }
+        EOF
+        go test ./internal/index -run 'TestPython' -count=1 -v 2>&1 | grep -E "^(---|ok|FAIL)|missing|unexpected"; cd ../astkit && grep -n "ReferenceOnly" strategies/*.go | grep -v _test | head -5
+      at: 2026-09-28T10:58:00.223412Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat > /tmp/claude-501/dbg_test.go <<'EOF'
+        EOF
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/grove/internal/index/python_family_test.go'; s=open(p).read()
+        s=s.replace('''	for _, e := range edges {
+        		if e.Type == "calls" {
+        			calls[qn[e.From]+"→"+qn[e.To]] = true
+        		}
+        	}''','''	for _, e := range edges {
+        		if e.Type == "calls" {
+        			calls[qn[e.From]+"→"+qn[e.To]] = true
+        			if os.Getenv("DBG") != "" && qn[e.From] == "Rule.build" {
+        				t.Logf("edge %s -> %s source=%s reason=%s", qn[e.From], qn[e.To], e.Source, e.Reason)
+        			}
+        		}
+        	}''')
+        open(p,'w').write(s)
+        EOF
+        DBG=1 go test ./internal/index -run TestPythonContainerElementReceiverBindsMethod -count=1 -v 2>&1 | grep "edge "
+      at: 2026-09-28T10:58:10.996975Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "ReasonDispatch" internal/graph/edges.go | head -20
+      at: 2026-09-28T10:58:17.489602Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 3390,3425p internal/graph/edges.go
+      at: 2026-09-28T10:58:21.179785Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "fullChain :=\|fullChain =\|qualifier :=\|qualifier =" internal/graph/edges.go | head -10
+      at: 2026-09-28T10:58:35.249281Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/edges.go'; s=open(p).read()
+        old='''				if elem := pyContainerElementType(idx, &symbol, strings.TrimSuffix(qualifier, "[]"), localTypes, selfVars); elem != "" {'''
+        new='''				if elem := pyContainerElementType(idx, &symbol, strings.TrimSuffix(fullChain, "[]"), localTypes, selfVars); elem != "" {'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        p='internal/index/python_family_test.go'; s=open(p).read()
+        s=s.replace('''			calls[qn[e.From]+"→"+qn[e.To]] = true
+        			if os.Getenv("DBG") != "" && qn[e.From] == "Rule.build" {
+        				t.Logf("edge %s -> %s source=%s reason=%s", qn[e.From], qn[e.To], e.Source, e.Reason)
+        			}''','''			calls[qn[e.From]+"→"+qn[e.To]] = true''')
+        open(p,'w').write(s)
+        EOF
+        go test ./internal/index -run 'TestPython' -count=1 -v 2>&1 | grep -E "^(---|ok|FAIL)|missing|unexpected"
+      at: 2026-09-28T10:58:45.710163Z
+      classified: test
+    - cmd: |-
+        go build -o ~/prism-ab-bins/wide-audit/prism-py3 ./cmd/prism && E=~/prism-ab-bins/edgeacc; cd /Users/tapabratapal/Projects/provasign/grove && (cd eval && go build -o $E/grove-eval ./cmd/grove-eval) && rm -rf "${E:?}/flask/.grove" && $E/grove-eval score --repo $E/flask --truth eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir $E/out-flask --baseline eval/baseline.json 2>&1 | grep -E "score: universe|FAIL|below"; D=~/prism-ab-bins/wide-audit; cd $D && rm -f audit12-py3.json && AUDIT_LANG=python python3 audit_h.py $D/prism-py3 audit12-py3.json >/dev/null 2>&1; python3 - <<'EOF'
+        import json
+        a=json.load(open('audit7-final4.json')); b=json.load(open('audit12-py3.json'))
+        g=h=n=g0=h0=n0=0
+        for k in sorted(b):
+            x,y=a[k],b[k]; g+=y['gold'];h+=y['hit'];n+=y['listed'];g0+=x['gold'];h0+=x['hit'];n0+=x['listed']
+            if (x['recall'],x['precision'])!=(y['recall'],y['precision']): print(f"{k[6:44]:38} R {x['recall']}->{y['recall']}  P {x['precision']}->{y['precision']}")
+        print('python total R %.3f->%.3f  P %.3f->%.3f'%(h0/g0,h/g,h0/n0,h/n))
+        EOF
+      at: 2026-09-28T10:59:20.552639Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign && (cd astkit && go test ./... -count=1 2>&1 | grep -v "^ok\|no test files"; echo "astkit exit ${pipestatus[1]}") ; (cd grove && GROVE_TEST_TYPESCRIPT=$(ls -d ~/prism-ab-bins/scoped/hono-rm/node_modules/typescript) go test ./... -count=1 -timeout 900s 2>&1 | grep -v "^ok\|no test files"; echo "grove exit ${pipestatus[1]}"); (cd prism && go test ./... -count=1 -timeout 900s 2>&1 | grep -v "^ok\|no test files"; echo "prism exit ${pipestatus[1]}"); JAVA_HOME=/opt/homebrew/opt/openjdk@17 ~/prism-ab-bins/edgeacc/gates.sh 2>&1 | tail -9; cd research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/prism-ab-bins/wide-audit/prism-py3 > ~/prism-ab-bins/wide-audit/ci_invariants7.log 2>&1; echo "ci_invariants exit $?"; grep -E "REGRESSION|held|FAILED" ~/prism-ab-bins/wide-audit/ci_invariants7.log
+      at: 2026-09-28T10:59:30.90008Z
+      classified: test
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/tasks/bo5e635ef.output; tail -5 ~/prism-ab-bins/wide-audit/ci_invariants7.log
+      at: 2026-09-28T11:07:22.405129Z
+      classified: other
+    - cmd: grep -E "\[OK\]|REGRESSION|===" ~/prism-ab-bins/wide-audit/ci_invariants7.log | head -20; grep -n "def engine_sites" -A15 /Users/tapabratapal/Projects/provasign/research/harness/scoring/ci_invariants.py | grep -n "index\|timeout" | head
+      at: 2026-09-28T11:07:32.299013Z
+      classified: other
+    - cmd: cd ~/.cache/prism-research/ci-corpus/grafana-122750 && B=~/prism-ab-bins/wide-audit/prism-py3; /usr/bin/time -p $B index . 2>&1 >/dev/null | grep real; /usr/bin/time -p $B change-impact DataKeyCache.GetById . 2>&1 >/dev/null | grep real
+      at: 2026-09-28T11:17:41.061774Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/tasks/bhx2gp97f.output
+      at: 2026-09-28T11:37:36.694284Z
+      classified: other
+    - cmd: S=~/prism-ab-bins/scoped; rm -rf "${S:?}/grafana"; rsync -a --exclude .grove ~/.cache/prism-research/ci-corpus/grafana-122750/ $S/grafana/; cd $S/grafana && find . -name '*.go' | wc -l; find . \( -name '*.ts' -o -name '*.tsx' \) -not -path '*/node_modules/*' | wc -l; ls node_modules 2>/dev/null | head -2; GROVE_TIMING=1 ~/prism-ab-bins/wide-audit/prism-py3 index . > $S/grafana-idx.json 2> $S/grafana-timing.txt; grep -E "\[timing\] [a-z]" $S/grafana-timing.txt | head -12; python3 -c "import json;print('\n'.join(x[:200] for x in json.load(open('$S/grafana-idx.json'))['native'] if x.split(':')[0] in ('go','js-ts')))"
+      at: 2026-09-28T11:37:53.573163Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/03535a92-b06c-4de1-89f6-5174c7d2da6d/tasks/bz2lk29it.output
+      at: 2026-09-28T11:39:10.483275Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism ~/prism-ab-bins/wide-audit/prism-py3 > ~/prism-ab-bins/wide-audit/ci_invariants8.log 2>&1; echo "exit $?"; grep -E "REGRESSION|held|FAILED|grafana|Determinism|gin:" ~/prism-ab-bins/wide-audit/ci_invariants8.log
+      at: 2026-09-28T11:45:11.580771Z
+      classified: other
+    - cmd: tail -5 ~/prism-ab-bins/wide-audit/ci_invariants8.log | cut -c1-300; cd /Users/tapabratapal/Projects/provasign/research && grep -n "grafana-122750" harness/scoring/ci_invariants.py | head -5; grep -n "GO_QUERIES" -A8 harness/scoring/ci_invariants.py | head -12
+      at: 2026-09-28T11:45:28.669547Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 - <<'EOF'
+        import sys,os,shutil,subprocess
+        sys.path.insert(0,'harness/scoring'); sys.argv=['x']
+        import ci_invariants as c
+        from pathlib import Path
+        task=c.Task.load(str(c.HARNESS_DIR/'tasks'/'manual'/'grafana-122750.json'))
+        src=Path(os.path.expanduser('~/.cache/prism-research/ci-corpus/grafana-122750'))
+        res={}
+        for name,b in [('v0.85.0','/opt/homebrew/bin/prism'),('today',os.path.expanduser('~/prism-ab-bins/wide-audit/prism-py3'))]:
+            wd=Path(os.path.expanduser(f'~/prism-ab-bins/scoped/g122-{name}'))
+            shutil.rmtree(wd,ignore_errors=True)
+            subprocess.run(['rsync','-a','--exclude','.grove',str(src)+'/',str(wd)+'/'],check=True)
+            subprocess.run([b,'index','.'],cwd=wd,capture_output=True,timeout=3000)
+            seen={}
+            for q in c.GO_QUERIES['grafana-122750']:
+                raw,_=c.engine_sites(Path(b),q,wd)
+                for s in raw: seen[s]=True
+            card=c.score(task,c.Answer(sites=[c.Site.parse(s) for s in seen],complete=True,unresolved=[]),"CI",0)
+            res[name]=set(map(str,seen)); print(name,'recall',card.recall,'precision',round(card.precision,4),'sites',len(seen))
+        gt=set(map(str,task.ground_truth))
+        for name in res: print(name,'missed GT:',sorted(gt-res[name]))
+        print('only in v0.85.0:',sorted(res['v0.85.0']-res['today'])); print('only today:',sorted(res['today']-res['v0.85.0']))
+        EOF
+      at: 2026-09-28T11:48:40.586045Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 - <<'EOF'
+        import sys,os
+        sys.path.insert(0,'harness/scoring'); sys.argv=['x']
+        import ci_invariants as c
+        from pathlib import Path
+        wd=Path(os.path.expanduser('~/prism-ab-bins/scoped/g122-today'))
+        raw,_=c.engine_sites(Path(os.path.expanduser('~/prism-ab-bins/wide-audit/prism-py3')),'DataKeyCache.GetById',wd)
+        print([str(s) for s in raw if 'encryption/secrets.go' in str(s)])
+        EOF
+        cd ~/prism-ab-bins/scoped/g122-today && sqlite3 .grove/grove.db "select name, kind, qualified_name, span_start, annotations from symbols where file_path='pkg/registry/apis/secret/encryption/secrets.go' and (name like '%DataKeyCache%' or qualified_name like 'DataKeyCache%')"
+      at: 2026-09-28T11:49:00.480841Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && grep -n "diagnostics = append(diagnostics, projectImporter.preloadInterfaceImports" internal/native/go.go && python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/grove/internal/native/go.go'; s=open(p).read()
+        old='''	diagnostics = append(diagnostics, projectImporter.preloadInterfaceImports(analyzedImports, interfacePackages)...)'''
+        new='''	// One line per distinct problem: the same partially-checked import is
+        	// reached from every package that imports it (grafana: 14 copies).
+        	seenDiag := map[string]bool{}
+        	for _, d := range projectImporter.preloadInterfaceImports(analyzedImports, interfacePackages) {
+        		if !seenDiag[d] {
+        			seenDiag[d] = true
+        			diagnostics = append(diagnostics, d)
+        		}
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go build ./... && go test ./internal/native ./internal/index -count=1 2>&1 | tail -2
+      at: 2026-09-28T11:49:30.74829Z
+      classified: test
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/astkit && git branch --show-current && git log --oneline -2 && git tag --sort=-v:refname | head -2 && gh api repos/provasign/astkit/branches/main/protection --jq '.required_status_checks.contexts' 2>&1 | head -2; git checkout -q -b fix/python-subscript-receivers && git add strategies/metadata.go strategies/python_round2_test.go && git commit -q -m \"extract(python): keep subscripted receivers on call sites\n\nself._converters[k].to_url() lost its receiver and read as a bare\nto_url(), which binds no method. The receiver is now recorded with an\n\\\"element of\\\" marker: self._converters[].to_url, like \\\"()\\\" for call\nresults.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8\" && git push -q -u origin fix/python-subscript-receivers 2>&1 | tail -1; gh pr create --base main --head fix/python-subscript-receivers --title \"extract(python): keep subscripted receivers on call sites\" --body \"self._converters[k].to_url() lost its receiver and read as a bare to_url(), which binds no method. Recorded now as self._converters[].to_url (\\\"[]\\\" = element of, like \\\"()\\\" = result of). grove uses the container's annotation to bind the method (werkzeug BaseConverter.to_url recall 0.64 → 0.91). Test added.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8\" 2>&1 | tail -1"
+      at: 2026-09-28T11:49:49.283664Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/astkit && for i in $(seq 1 40); do s=$(gh pr checks 1 --json name,bucket 2>/dev/null); n=$(echo "$s" | jq ''length''); if [ "${n:-0}" -gt 0 ] && echo "$s" | jq -e ''all(.bucket!="pending")'' >/dev/null; then break; fi; sleep 30; done; echo "$s" | jq -r ''.[] | "\(.name): \(.bucket)"''; gh pr merge 1 --rebase 2>&1 | tail -1'
+      at: 2026-09-28T11:51:35.783191Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git branch --show-current && git add internal/graph/changeimpact.go internal/graph/edges.go internal/graph/pylocaltypes.go internal/index/python_family_test.go internal/native/go.go internal/parser/languages.go && git commit -q -m "Python: overrides with narrowed annotations, container-element receivers; extractor version bump
+
+        - Python has no overloading: an override whose annotations narrow the
+          base's stays in the rename family (werkzeug UUIDConverter.to_url).
+        - Calls on container elements (self._converters[k].to_url(), from astkit's
+          new \"[]\" receiver marker) bind through the container annotation:
+          dict[str, BaseConverter] dispatches to BaseConverter and its overrides.
+          werkzeug to_url recall 0.64 -> 0.91; Python wide audit 0.951 -> 0.980;
+          flask edge recall 0.716 -> 0.729.
+        - ExtractorVersion 2026-09-28.1: v0.61.0 changed TypeScript extraction
+          (test callbacks, .mts) without a bump, so upgraded indexes kept stale
+          symbols; this also covers the astkit Python receiver change.
+        - Go analyzer prints each partial-type-check diagnostic once.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8" && git push -q origin fix/ts-script-configs 2>&1 | tail -1; git log --oneline -3
+      at: 2026-09-28T11:51:53.700874Z
+      classified: other
+    - cmd: 'for r in astkit grove; do gh api -X PATCH repos/provasign/$r/branches/main/protection/required_status_checks -f strict=true -f ''contexts[]=Test (ubuntu-latest)'' --jq ''"''$r'': "+(.contexts|join(","))'' 2>&1 | tail -1; done'
+      at: 2026-09-28T11:56:56.288917Z
+      classified: other
+    - cmd: 'for r in astkit grove; do gh api -X PATCH repos/provasign/$r/branches/main/protection/required_status_checks -F strict=true -f ''contexts[]=Test (ubuntu-latest)'' --jq ''"''$r'': "+(.contexts|join(","))'' 2>&1 | tail -1; done'
+      at: 2026-09-28T11:57:06.093344Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/astkit && gh pr merge 1 --rebase 2>&1 | tail -1; gh pr view 1 --json state -q .state; git checkout -q main && git pull -q --ff-only origin main && git log --oneline -1 && git tag -a v0.15.2 -m "v0.15.2: Python subscripted receivers on call sites" && git push -q origin v0.15.2 2>&1 | tail -1; git ls-remote --tags origin v0.15.2'
+      at: 2026-09-28T11:57:21.98243Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && for i in 1 2 3 4 5 6; do GOWORK=off GOPROXY=direct GOFLAGS=-mod=mod go get github.com/provasign/astkit@v0.15.2 >/dev/null 2>&1 && break; sleep 15; done; grep \"provasign/astkit\" go.mod; GOWORK=off go build ./... && GOWORK=off go vet ./internal/... && echo \"builds against astkit v0.15.2\" && python3 - <<'EOF'\np='CHANGELOG.md'; s=open(p).read()\nentry='''## v0.61.1 - 2026-09-28\n\n- **TypeScript**: files no tsconfig includes get an inferred project (the\n  nearest config's options, as tsserver does) instead of no compiler pass;\n  analysis forces noEmit (which also makes allowImportingTsExtensions\n  legal); a script-runner config (allowImportingTsExtensions under\n  Node16/NodeNext, run by tsx or bun) resolves like the runner. hono\n  benchmarks: router.match now resolves; wide audit Router.match recall\n  0.95 -> 1.0.\n- **Python**: an override whose annotations narrow the base's stays in the\n  rename family (no overloading in Python; werkzeug UUIDConverter.to_url).\n  Calls on container elements (astkit v0.15.2 keeps the receiver) bind\n  through the container's annotation, dict[str, BaseConverter] dispatching\n  to BaseConverter and its overrides. werkzeug to_url recall 0.64 -> 0.91;\n  Python wide audit 0.951 -> 0.980; flask edge recall 0.716 -> 0.729.\n- **ExtractorVersion** bumped: v0.61.0 changed TypeScript extraction\n  without a bump, so upgraded indexes kept stale symbols until files\n  changed. The next index re-extracts every file once.\n- Go analyzer prints each partial-type-check diagnostic once.\n\n'''\ni=s.index('## v0.61.0'); s=s[:i]+entry+s[i:]; open(p,'w').write(s)\nEOF\ngit add go.mod go.sum CHANGELOG.md && git commit -q -m \"Release v0.61.1: TS script configs and inferred projects, Python container receivers; astkit v0.15.2\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8\" && git push -q origin fix/ts-script-configs 2>&1 | tail -1; gh pr create --base main --head fix/ts-script-configs --title \"v0.61.1: TS script configs + inferred projects, Python container receivers, extractor bump\" --body \"See CHANGELOG v0.61.1. Wide audit: TS Router.match 0.95→1.0; Python 0.951→0.980. Edge gates: all 8 pass (flask R 0.716→0.729, P 0.852→0.854; others unchanged). ci_invariants: all pass except grafana-122750, which fails identically on released v0.85.0 with a fresh index (interface method specs reported as the method since astkit v0.15.1; pre-existing, hidden by a stale cached corpus index).\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8\" 2>&1 | tail -1"
+      at: 2026-09-28T11:57:59.530595Z
+      classified: lint
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && RID=$(gh run list --branch fix/ts-script-configs --workflow eval.yml --limit 1 --json databaseId -q ''.[0].databaseId''); gh run view $RID --log-failed 2>/dev/null | grep -iE "error|missing|go: |cannot|FAIL" | head -12; grep -n "astkit\|provasign/grove" eval/go.mod'
+      at: 2026-09-28T11:59:09.59569Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/eval && GOWORK=off GOPROXY=direct GOFLAGS=-mod=mod go get github.com/provasign/astkit@v0.15.2 >/dev/null 2>&1; GOWORK=off go mod tidy >/dev/null 2>&1; grep -n "astkit" go.mod; GOWORK=off go build -o /dev/null ./cmd/grove-eval && echo "eval builds" && cd .. && git add eval/go.mod eval/go.sum && git commit -q -m "eval: astkit v0.15.2
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8" && git push -q origin fix/ts-script-configs 2>&1 | tail -1; git log --oneline -1
+      at: 2026-09-28T11:59:24.168097Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gh pr view 3 --json headRefOid -q .headRefOid | cut -c1-8; gh pr checks 3 --json name,bucket,link -q '.[] | "\(.bucket) \(.name)"' | sort | uniq -c | head -20
+      at: 2026-09-28T12:02:57.712797Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && gh pr merge 3 --rebase 2>&1 | tail -1; gh pr view 3 --json state -q .state; git checkout -q main && git pull -q --ff-only origin main && git log --oneline -1 && git tag -a v0.61.1 -m "v0.61.1: TS script configs + inferred projects, Python container receivers, extractor bump" && git push -q origin v0.61.1 2>&1 | tail -1; git ls-remote --tags origin v0.61.1 | cut -c1-12'
+      at: 2026-09-28T12:03:13.669821Z
+      classified: other
+notes:
+    - text: continuation of session 03535a92-b06c-4de1-89f6-5174c7d2da6d — events captured after its evidence was finalized
+      at: 2026-09-28T04:08:36.792472Z
+redactions: 0

@@ -1,0 +1,171 @@
+shale_version: "0"
+id: eb8c2ec6-bb27-4809-bc25-fce4c7562b54-c8
+created_at: 2026-09-24T10:44:44.40114Z
+finalized_at: 2026-09-24T11:12:26.558267Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: .github/workflows/release.yml
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-24T11:03:37.661242Z
+commands:
+    - cmd: |-
+        git tag -a v0.82.1 a9231954 -m "$(cat <<'EOF'
+        v0.82.1
+
+        - fix(verify): skip module-level pseudo-symbols ("<top-level>", "<module>") in
+          the testCoverage field added in v0.82.0. These are how some parsers attribute
+          import/constant edits; they are not a function a test could call, and the
+          "no verified test caller" warning on one sent an agent hunting for coverage
+          that cannot exist (found live during the H3 A/B probe, click pr3678).
+        EOF
+        )" && git push origin v0.82.1 2>&1 | grep -v "^shale:" | tail -2
+      at: 2026-09-24T10:44:44.40114Z
+      classified: other
+    - cmd: gh run list -R provasign/prism --limit 3 2>&1
+      at: 2026-09-24T10:44:52.811451Z
+      classified: other
+    - cmd: |-
+        until gh run list -R provasign/prism --limit 1 --json status,conclusion,workflowName -q '.[] | select(.workflowName=="Release")' 2>/dev/null | grep -q completed; do sleep 5; done
+        gh run list -R provasign/prism --limit 1 2>&1
+      at: 2026-09-24T10:46:37.892867Z
+      classified: other
+    - cmd: |-
+        gh workflow run refresh-formulae.yml -R provasign/homebrew-shale 2>&1
+        sleep 5
+        gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -m1 'version "'
+      at: 2026-09-24T10:46:53.035143Z
+      classified: other
+    - cmd: |-
+        until gh run list -R provasign/homebrew-shale --limit 1 --json status -q '.[0].status' 2>/dev/null | grep -q completed; do sleep 5; done
+        gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -H "Accept: application/vnd.github.raw" 2>/dev/null | grep -m1 'version "'
+      at: 2026-09-24T10:47:07.038993Z
+      classified: other
+    - cmd: |-
+        cd /tmp && curl -sL -o prism-linux-amd64 "https://github.com/provasign/prism/releases/download/v0.82.1/prism-v0.82.1-linux-amd64" && ls -la prism-linux-amd64 && file prism-linux-amd64
+        echo "--- glibc version symbols referenced ---"
+        strings prism-linux-amd64 | grep -oE "GLIBC_[0-9]+\.[0-9]+" | sort -V -u | tail -10
+      at: 2026-09-24T10:53:04.683839Z
+      classified: other
+    - cmd: which docker 2>&1; docker info >/dev/null 2>&1 && echo "docker available" || echo "docker not available/running"
+      at: 2026-09-24T10:53:37.885599Z
+      classified: other
+    - cmd: |-
+        chmod +x /tmp/prism-linux-amd64
+        docker run --rm -v /tmp/prism-linux-amd64:/prism:ro ubuntu:20.04 /prism version 2>&1
+        echo "exit=$?"
+      at: 2026-09-24T10:54:18.289797Z
+      classified: other
+    - cmd: |-
+        curl -sL -o /tmp/prism-linux-arm64 "https://github.com/provasign/prism/releases/download/v0.82.1/prism-v0.82.1-linux-arm64" && chmod +x /tmp/prism-linux-arm64
+        docker run --rm -v /tmp/prism-linux-arm64:/prism:ro ubuntu:20.04 /prism version 2>&1
+        echo "exit=$?"
+      at: 2026-09-24T10:55:04.789128Z
+      classified: other
+    - cmd: docker run --rm -v /tmp/prism-linux-arm64:/prism:ro --entrypoint sh ubuntu:22.04 -c "apt-get -qq update >/dev/null 2>&1; apt-get -qq install -y binutils >/dev/null 2>&1; objdump -T /prism | grep -E 'GLIBC_2\.(3[0-9])' | sort -k5 | head -20"
+      at: 2026-09-24T10:56:25.158352Z
+      classified: other
+    - cmd: |-
+        docker run --rm -v "$PWD":/src -w /src golang:1.26 sh -c "
+        apt-get -qq update >/dev/null 2>&1
+        apt-get -qq install -y gcc >/dev/null 2>&1
+        CGO_ENABLED=1 go build -tags netgo -ldflags='-s -w -extldflags \"-static\"' -o /tmp/prism-static ./cmd/prism
+        cp /tmp/prism-static /src/prism-static-test
+        file /src/prism-static-test 2>/dev/null || true
+        " 2>&1 | tail -30
+      at: 2026-09-24T10:58:58.7702Z
+      classified: build
+    - cmd: |-
+        until [ -f /Users/tapabratapal/Projects/provasign/prism/prism-static-test ]; do sleep 10; done
+        echo done
+      at: 2026-09-24T11:01:03.433086Z
+      classified: other
+    - cmd: |-
+        ls -la prism-static-test 2>&1
+        file prism-static-test 2>&1
+      at: 2026-09-24T11:02:54.870287Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        echo "--- version on ubuntu 20.04 ---"
+        docker run --rm -v "$PWD/prism-static-test":/prism:ro ubuntu:20.04 /prism version 2>&1
+        echo "--- indexing a real repo (exercises cgo tree-sitter parsers) ---"
+        D=$(mktemp -d)
+        mkdir -p "$D/pkg"
+        cat > "$D/go.mod" <<'EOF'
+        module example.com/x
+        go 1.26
+        EOF
+        cat > "$D/pkg/main.go" <<'EOF'
+        package pkg
+        func Add(a, b int) int { return a + b }
+        func main() { Add(1,2) }
+        EOF
+        docker run --rm -v "$PWD/prism-static-test":/prism:ro -v "$D":/repo ubuntu:20.04 /prism index /repo 2>&1
+        echo "--- lookup ---"
+        docker run --rm -v "$PWD/prism-static-test":/prism:ro -v "$D":/repo ubuntu:20.04 /prism lookup Add /repo 2>&1
+        rm -rf "$D"
+      at: 2026-09-24T11:03:04.699279Z
+      classified: other
+    - cmd: rm -f prism-static-test && grep -n "go build -ldflags" .github/workflows/release.yml
+      at: 2026-09-24T11:03:13.742576Z
+      classified: build
+    - cmd: |-
+        docker run --rm --platform linux/amd64 -v "$PWD":/src -w /src golang:1.26 bash -c "
+        set -e
+        apt-get -qq update >/dev/null 2>&1
+        apt-get -qq install -y gcc gcc-aarch64-linux-gnu libc6-dev-arm64-cross >/dev/null 2>&1
+        echo '--- amd64 build ---'
+        CGO_ENABLED=1 GOOS=linux GOARCH=amd64 CC=gcc go build -tags netgo -ldflags='-s -w -extldflags \"-static\" -X github.com/provasign/prism/internal/version.Version=v-test' -o /tmp/prism-linux-amd64-static ./cmd/prism
+        cp /tmp/prism-linux-amd64-static /src/prism-linux-amd64-static
+        echo '--- arm64 cross build ---'
+        CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc go build -tags netgo -ldflags='-s -w -extldflags \"-static\" -X github.com/provasign/prism/internal/version.Version=v-test' -o /tmp/prism-linux-arm64-static ./cmd/prism
+        cp /tmp/prism-linux-arm64-static /src/prism-linux-arm64-static
+        echo OK
+        " 2>&1 | tail -40
+      at: 2026-09-24T11:06:14.260823Z
+      classified: build
+    - cmd: |-
+        ls -la prism-linux-amd64-static prism-linux-arm64-static 2>&1
+        echo "---"; file prism-linux-amd64-static prism-linux-arm64-static
+      at: 2026-09-24T11:11:54.849595Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism
+        D=$(mktemp -d); mkdir -p "$D/pkg"
+        cat > "$D/go.mod" <<'EOF'
+        module example.com/x
+        go 1.26
+        EOF
+        cat > "$D/pkg/main.go" <<'EOF'
+        package pkg
+        func Add(a, b int) int { return a + b }
+        func main() { Add(1,2) }
+        EOF
+        echo "=== amd64 (QEMU-emulated) on ubuntu:20.04 ==="
+        docker run --rm --platform linux/amd64 -v "$PWD/prism-linux-amd64-static":/prism:ro ubuntu:20.04 /prism version 2>&1
+        docker run --rm --platform linux/amd64 -v "$PWD/prism-linux-amd64-static":/prism:ro -v "$D":/repo ubuntu:20.04 /prism index /repo 2>&1
+        docker run --rm --platform linux/amd64 -v "$PWD/prism-linux-amd64-static":/prism:ro -v "$D":/repo ubuntu:20.04 /prism lookup Add /repo 2>&1
+        echo "=== arm64 (native) on ubuntu:20.04 ==="
+        docker run --rm -v "$PWD/prism-linux-arm64-static":/prism:ro ubuntu:20.04 /prism version 2>&1
+        docker run --rm -v "$PWD/prism-linux-arm64-static":/prism:ro -v "$D":/repo ubuntu:20.04 /prism index /repo 2>&1
+        docker run --rm -v "$PWD/prism-linux-arm64-static":/prism:ro -v "$D":/repo ubuntu:20.04 /prism lookup Add /repo 2>&1
+        rm -rf "$D"
+      at: 2026-09-24T11:12:07.149756Z
+      classified: other
+    - cmd: |-
+        rm -f prism-linux-amd64-static prism-linux-arm64-static
+        git diff --stat .github/workflows/release.yml
+      at: 2026-09-24T11:12:11.552297Z
+      classified: other
+notes:
+    - text: continuation of session eb8c2ec6-bb27-4809-bc25-fce4c7562b54 — events captured after its evidence was finalized
+      at: 2026-09-24T10:44:44.40114Z
+redactions: 0

@@ -1,0 +1,632 @@
+shale_version: "0"
+id: 01a0790c-a7c5-7543-a18f-d1f822079fe4-c7
+created_at: 2026-09-07T14:18:10.007981Z
+finalized_at: 2026-09-07T15:17:03.137681Z
+agent:
+    tool: codex
+    model: gpt-5.6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: README.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T15:14:32.82869Z
+    - path: docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-09-07T15:14:32.82869Z
+commands:
+    - cmd: git push origin main && git status --short --branch
+      at: 2026-09-07T14:18:10.007981Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism query "Audit the QueryData and CheckHealth impact task definitions and impact_oracle implementation. Find existing test patterns, task-anchor derivation, official scoring, isolated corpus snapshots, and ambiguity parsing needed to turn the oracle into a real deterministic gate." --terms impact_oracle,grafana-querydata-impact,grafana-checkhealth-impact,archive_snapshot,enrichAmbiguousImpactError --format text
+      at: 2026-09-07T14:19:57.368934Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import sys
+        sys.path.insert(0,'.')
+        import impact_oracle
+        from schema import Answer, Task
+        from score import score
+        for name in ('grafana-querydata-impact','grafana-checkhealth-impact'):
+         t=Task.load(f'tasks/{name}.json'); q=impact_oracle.oracle_anchor(t)
+         sites,note,nbytes=impact_oracle.change_impact_sites('/Users/tapabratapal/bin/prism',t.workdir or t.repo,q)
+         card=score(t,Answer(sites=sites,complete=True,unresolved=[]),'engine',0)
+         print(name, {'anchor':q,'sites':len(sites),'recall':card.recall,'precision':card.precision,'f1':card.f1,'bytes':nbytes,'completeness':note,'missed':card.missed[:5],'extras':len(card.extra)})
+        PY
+      at: 2026-09-07T14:20:32.095078Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import sys
+        sys.path.insert(0,'.')
+        import impact_oracle
+        from schema import Answer, Task
+        from score import score
+        for name in ('grafana-querydata-impact','grafana-checkhealth-impact'):
+         t=Task.load(f'tasks/{name}.json'); sites,note,nbytes=impact_oracle.change_impact_sites('/Users/tapabratapal/bin/prism',t.workdir or t.repo,impact_oracle.oracle_anchor(t))
+         card=score(t,Answer(sites=sites,complete=True,unresolved=[]),'engine',0)
+         print('\n'+name)
+         for x in card.extra: print(x)
+        PY
+      at: 2026-09-07T14:21:09.919684Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism query "Prepare to correct the Grafana QueryData and CheckHealth impact oracles and harden impact_oracle.py. Show snapshot helpers, official score integration, task schemas, current tests, and the relevant task definitions." --terms archive_snapshot,Scorecard,impact_oracle,QueryData,CheckHealth --format text
+      at: 2026-09-07T14:36:56.337155Z
+      classified: other
+    - cmd: /Users/tapabratapal/bin/prism search 'snapshot' 'archive' 'TemporaryDirectory' --scope text --path ab_gate.py --context 5 --format text
+      at: 2026-09-07T14:37:00.307276Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism change-impact QueryData . --format json > /tmp/prism-querydata-impact.json
+        ~/bin/prism change-impact CheckHealth . --format json > /tmp/prism-checkhealth-impact.json
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for name in ('querydata','checkhealth'):
+         p=Path('/tmp/prism-'+name+'-impact.json')
+         d=json.loads(p.read_text())
+         print('\n',name, 'keys=', sorted(d))
+         print('completeness=',d.get('completeness'),'bytes=',p.stat().st_size,'sites=',len(d.get('sites',[])))
+         for s in d.get('sites',[]):
+          f=s.get('file',''); sym=s.get('symbol','')
+          if any(x in f for x in ('middleware','client_proto','sub_','advisor','datasources.go','plugins.go','querier.go','module_server','grpcserver','engine.go','plugin/fakes','services/query/query.go')):
+           print(f, sym, s.get('kind',''), s.get('reason',''))
+        PY
+      at: 2026-09-07T14:38:07.163201Z
+      classified: other
+    - cmd: prism search 'grafana-querydata-impact' 'grafana-checkhealth-impact' --scope text --exhaustive --format text
+      at: 2026-09-07T14:38:12.276687Z
+      classified: other
+    - cmd: |-
+        prism read tasks/grafana-querydata-impact.json --format text
+        prism read tasks/grafana-checkhealth-impact.json --format text
+      at: 2026-09-07T14:38:16.266424Z
+      classified: other
+    - cmd: rg --files | rg 'grafana-(querydata|checkhealth)-impact\.json$|schema\.py$|impact_oracle\.py$'
+      at: 2026-09-07T14:38:21.001772Z
+      classified: other
+    - cmd: |-
+        prism read harness/tasks/grafana-querydata-impact.json --format text
+        prism read harness/tasks/grafana-checkhealth-impact.json --format text
+      at: 2026-09-07T14:38:25.78808Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism change-impact QueryData . --format json > /tmp/prism-querydata-impact.json
+        ~/bin/prism change-impact CheckHealth . --format json > /tmp/prism-checkhealth-impact.json
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for name in ('querydata','checkhealth'):
+         p=Path('/tmp/prism-'+name+'-impact.json')
+         d=json.loads(p.read_text())
+         print('\n'+name, 'completeness=',d.get('completeness'),'bytes=',p.stat().st_size,'sites=',len(d.get('sites',[])))
+         print('keys=', sorted(d))
+         for s in d.get('sites',[]):
+          f=s.get('file',''); sym=s.get('symbol','')
+          if any(x in f for x in ('middleware','client_proto','sub_','advisor','datasources.go','plugins.go','querier.go','module_server','grpcserver','engine.go','plugin/fakes','services/query/query.go')):
+           print(f'{f}:{sym}', s.get('kind',''), s.get('reason',''))
+        PY
+      at: 2026-09-07T14:38:50.221176Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for n in ('querydata','checkhealth'):
+         d=json.load(open('/tmp/prism-'+n+'-impact.json'))
+         print('\n',n)
+         for k in ('declarations','family','callers','declaringTypes','supers'):
+          v=d.get(k)
+          print(k, type(v).__name__, len(v or []))
+          print(json.dumps((v or [])[:2] if isinstance(v,list) else v,indent=2)[:2000])
+        PY
+      at: 2026-09-07T14:38:54.139042Z
+      classified: other
+    - cmd: |-
+        sed -n '1,240p' harness/impact_oracle.py
+        sed -n '1,260p' harness/score.py
+        sed -n '1,220p' harness/schema.py
+        sed -n '200,290p' harness/ab_gate.py
+      at: 2026-09-07T14:38:59.547114Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH=harness python3 - <<'PY'
+        import json
+        from pathlib import Path
+        from schema import Answer, Site, Task
+        from score import score
+        for n in ('querydata','checkhealth'):
+         task=Task.load(f'harness/tasks/grafana-{n}-impact.json')
+         d=json.load(open('/tmp/prism-'+n+'-impact.json'))
+         seen=set(); sites=[]; by={}
+         for group in ('declarations','family','callers','declaringTypes'):
+          for x in d.get(group) or []:
+           s=Site(x.get('filePath') or x.get('file') or '', x.get('name') or '')
+           if s.relpath and s.symbol and s not in seen:
+            seen.add(s); sites.append(s); by[s]=(group,x)
+         c=score(task,Answer(sites,True),'oracle',0)
+         print(f'\n{n}: sites={len(sites)} R={c.recall} P={c.precision} F1={c.f1}')
+         for raw in c.extra:
+          s=Site.parse(raw); group,x=by[s]
+          print(f'[{group}] {raw}')
+          if x.get('signature'): print('  sig:',x['signature'])
+          for e in (x.get('evidence') or [])[:3]: print('  ev:',e)
+        PY
+      at: 2026-09-07T14:39:07.656095Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        d=json.load(open('/tmp/prism-querydata-impact.json'))
+        for x in d['callers']:
+         f=x.get('filePath','')
+         if any(p in f for p in ('client_proto','sub_query','plugin/query.go','datasource/querier.go','services/query/query.go')):
+          print('\n'+f+':'+x.get('name',''))
+          print(' sig:',x.get('signature'))
+          for e in x.get('evidence') or []: print(' ',e)
+        PY
+      at: 2026-09-07T14:39:18.463247Z
+      classified: other
+    - cmd: |-
+        prism search 'QueryData(' 'CheckHealth(' --path 'pkg/registry/apis/datasource' --scope text --exhaustive --context 3 --format text
+        prism search 'QueryData(' 'CheckHealth(' --path 'pkg/aggregator/apiserver/plugin' --scope text --exhaustive --context 3 --format text
+        prism search 'func (r *protoClient) QueryData' 'func (r *protoClient) CheckHealth' --path 'pkg/plugins/backendplugin/grpcplugin/client_proto.go' --scope text --exhaustive --context 8 --format text
+        prism search 'type Service interface' 'type QueryDataClient interface' 'QueryDataNew' --path 'pkg/services/query/query.go' --scope text --exhaustive --context 5 --format text
+      at: 2026-09-07T14:39:28.642192Z
+      classified: other
+    - cmd: |-
+        prism read pkg/registry/apis/query/clientapi/clientapi.go --format text
+        prism read pkg/registry/apis/datasource/querier.go --format text
+        prism read pkg/services/pluginsintegration/clientmiddleware/caching_middleware.go --format text
+        prism read pkg/tsdb/grafana-testdata-datasource/sims/engine.go --format text
+      at: 2026-09-07T14:39:44.703961Z
+      classified: other
+    - cmd: |-
+        prism change-impact oracle_anchor --format text
+        prism change-impact change_impact_sites --format text
+        prism change-impact main --file harness/impact_oracle.py --format text
+      at: 2026-09-07T14:39:54.958546Z
+      classified: other
+    - cmd: |-
+        sed -n '1,260p' harness/query_oracle.py
+        rg -n "TemporaryDirectory|git archive|run_capped|SCORER_VERSION" harness/tests harness/*.py | head -100
+        sed -n '1,220p' harness/tests/test_score.py
+      at: 2026-09-07T14:39:58.111217Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for p in ('harness/tasks/grafana-querydata-impact.json','harness/tasks/grafana-checkhealth-impact.json'):
+         d=json.load(open(p)); print(p, len(d['ground_truth']), len(d['ground_truth'])==len(set(d['ground_truth'])))
+        PY
+        python3 -m py_compile harness/impact_oracle.py harness/tests/test_impact_oracle.py
+      at: 2026-09-07T14:42:44.77852Z
+      classified: other
+    - cmd: python3 -m pytest tests/test_impact_oracle.py tests/test_score.py -q
+      at: 2026-09-07T14:42:45.046754Z
+      classified: test
+    - cmd: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_impact_oracle.py tests/test_score.py -q
+      at: 2026-09-07T14:42:49.174388Z
+      classified: test
+    - cmd: python3 impact_oracle.py --prism ~/bin/prism --output runs/impact-oracle/grafana-current-main.json tasks/grafana-querydata-impact.json tasks/grafana-checkhealth-impact.json
+      at: 2026-09-07T14:45:28.479605Z
+      classified: other
+    - cmd: |-
+        sed -n '1,210p' ab_gate.py
+        sed -n '290,430p' ab_gate.py
+        sed -n '1,180p' bench_matrix.py
+      at: 2026-09-07T14:45:32.922191Z
+      classified: other
+    - cmd: sed -n '1,240p' ab_agentic_mcp.py
+      at: 2026-09-07T14:45:43.666676Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        from ab_gate import RunAccounting, arm_for, binary_sha, run_cell
+        from schema import Task
+
+        binary=str(Path('~/bin/prism').expanduser().resolve())
+        out=Path('runs/agent-reliability-grafana')
+        out.mkdir(parents=True, exist_ok=True)
+        accounting=RunAccounting(out, {'purpose':'three fresh Sonnet trials per corrected Grafana task','model':'sonnet','trials':3})
+        arm=arm_for(binary,'grafana-reliability')
+        sha=binary_sha(binary)
+        paths=['tasks/grafana-querydata-impact.json','tasks/grafana-checkhealth-impact.json']
+        rows=[]
+        try:
+            for trial in range(1,4):
+                for path in paths:
+                    task=Task.load(path)
+                    rec=run_cell(arm,task,Path(task.workdir or task.repo),'sonnet',out,binary,sha,fresh=True,accounting=accounting)
+                    row={k:rec.get(k) for k in ('task','recall','precision','f1','turns','tokens_request','tokens_out','cost_usd','session_id','n_sites','complete_claim','error','measurement_error')}
+                    row['trial']=trial
+                    rows.append(row)
+                    print(f"trial={trial} {task.id} R={rec.get('recall')} P={rec.get('precision')} F1={rec.get('f1')} turns={rec.get('turns')} req={rec.get('tokens_request')} cost=${rec.get('cost_usd')} session={rec.get('session_id')}",flush=True)
+        finally:
+            import json
+            (out/'summary.json').write_text(json.dumps(rows,indent=2)+'\n')
+            failed=any(r.get('error') or r.get('measurement_error') for r in rows)
+            accounting.finish(2 if failed else 0)
+        PY
+      at: 2026-09-07T14:59:14.508744Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        rows=json.load(open('harness/runs/agent-reliability-grafana/summary.json'))
+        roots=list((Path.home()/'.claude/projects').glob('**/*.jsonl'))
+        by={p.stem:p for p in roots}
+        for row in rows:
+         sid=row['session_id']; print(row['trial'],row['task'],sid,by.get(sid,'MISSING'))
+        PY
+      at: 2026-09-07T14:59:19.617785Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        rows=json.load(open('harness/runs/agent-reliability-grafana/summary.json'))
+        for row in rows:
+         sid=row['session_id']; paths=list((Path.home()/'.claude/projects').glob(f'**/{sid}.jsonl'))
+         print(f"\n=== t{row['trial']} {row['task']} turns={row['turns']} req={row['tokens_request']} ===")
+         for line in paths[0].open():
+          try: o=json.loads(line)
+          except: continue
+          m=o.get('message') or {}
+          if m.get('role')!='assistant': continue
+          for c in m.get('content') or []:
+           if c.get('type')=='tool_use':
+            inp=c.get('input') or {}
+            compact={k:inp[k] for k in inp if k in ('query','scope','exhaustive','files_only','context','name','path')}
+            print(c.get('name'),json.dumps(compact,sort_keys=True))
+        PY
+      at: 2026-09-07T14:59:28.18056Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        inv=json.load(open('harness/runs/agent-reliability-grafana/invocations/9c074f24f78648a98b4a93bcb9917b90.json'))
+        root=Path('harness/runs/agent-reliability-grafana')
+        for a in inv['attempts']:
+         p=root/a['record']; d=json.load(open(p));
+         print('\n',p.name)
+         print('task',d['task'],'R/P/F1',d.get('recall'),d.get('precision'),d.get('f1'),'sites',d.get('n_sites'))
+         print('missed?', d.get('missed'))
+         # rescore and show actual extras
+         import sys; sys.path.insert(0,'harness')
+         from schema import Task,Answer,Site
+         from score import score
+         t=Task.load('harness/tasks/'+d['task']+'.json')
+         ans=Answer([Site.parse(x) for x in d['answer']['sites']],d['answer']['complete'],d['answer']['unresolved'])
+         c=score(t,ans,'x',0)
+         print('extra',c.extra)
+        PY
+      at: 2026-09-07T14:59:40.468969Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for n, targets in {
+         'querydata': ['clientapi.go','client_proto.go','query.go'],
+         'checkhealth':['client_proto.go','module_server.go','grpcserver/health.go']}.items():
+         d=json.load(open('/tmp/prism-'+n+'-impact.json'))
+         print('\n===',n,'===')
+         for group in ('family','callers','declaringTypes','supers'):
+          for x in d.get(group) or []:
+           if any(t in x.get('filePath','') for t in targets):
+            print(group,json.dumps(x,sort_keys=True))
+        PY
+      at: 2026-09-07T14:59:56.16313Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        for n in ('querydata','checkhealth'):
+         d=json.load(open('/tmp/prism-'+n+'-impact.json'))
+         print(n,{k:d.get(k) for k in ('hasHeuristicRefs','overridesExternal','externalSupers','warning','methodFamilyNote','evidenceNote')})
+        PY
+      at: 2026-09-07T15:00:02.172841Z
+      classified: other
+    - cmd: prism search 'Product showcase' 'QueryData' 'narrow' 'jsonnode' --scope text --exhaustive --context 4 --format text
+      at: 2026-09-07T15:00:16.648778Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        p=Path('harness/runs/ab-gate/invocations/9a0b008482814c9ba071381cf9e04292.json')
+        d=json.load(open(p))
+        for k,v in d.get('cells',{}).items():
+         if any(x in k for x in ('jsonnode','typeorm','django')):
+          print(k, v)
+        PY
+      at: 2026-09-07T15:00:23.930144Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        inv=json.load(open('harness/runs/ab-gate/invocations/9a0b008482814c9ba071381cf9e04292.json'))
+        root=Path('harness/runs/ab-gate')
+        for a in inv['attempts']:
+         d=json.load(open(root/a['record']))
+         if d.get('arm')=='gate-cand' and d.get('task') in {'jackson-jsonnode-get','typeorm-driver-escape','django-quotename'}:
+          sid=d.get('session_id'); paths=list((Path.home()/'.claude/projects').glob(f'**/{sid}.jsonl'))
+          print(f"\n=== {d['task']} R={d.get('recall')} P={d.get('precision')} turns={d.get('turns')} req={d.get('tokens_request')} session={sid} ===")
+          for line in paths[0].open():
+           try:o=json.loads(line)
+           except:continue
+           m=o.get('message') or {}
+           if m.get('role')!='assistant':continue
+           for c in m.get('content') or []:
+            if c.get('type')=='tool_use':
+             inp=c.get('input') or {}; compact={k:inp[k] for k in inp if k in ('query','scope','exhaustive','files_only','context','name','path','file','signature')}
+             print(c.get('name'),json.dumps(compact,sort_keys=True))
+        PY
+      at: 2026-09-07T15:00:32.832824Z
+      classified: other
+    - cmd: |-
+        git rev-parse HEAD
+        ~/bin/prism index . >/tmp/jsonnode-index.out
+        ~/bin/prism change-impact 'JsonNode.get(int)' . --format json > /tmp/prism-jsonnode-impact.json
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        d=json.load(open('/tmp/prism-jsonnode-impact.json'))
+        print('bytes',Path('/tmp/prism-jsonnode-impact.json').stat().st_size,'total',d.get('totalSites'),'complete',d.get('completeness'),'heur',d.get('hasHeuristicRefs'))
+        print('notes',{k:d.get(k) for k in ('warning','methodFamilyNote','evidenceNote')})
+        for k in ('declarations','family','callers','declaringTypes','supers'):
+         print(k,len(d.get(k) or []))
+        PY
+      at: 2026-09-07T15:00:44.104645Z
+      classified: other
+    - cmd: |-
+        PYTHONPATH=/Users/tapabratapal/Projects/provasign/research/harness python3 - <<'PY'
+        import json
+        from schema import Answer,Site,Task
+        from score import score
+        d=json.load(open('/tmp/prism-jsonnode-impact.json'))
+        seen=set(); sites=[]; by={}
+        for g in ('declarations','family','callers','declaringTypes'):
+         for x in d.get(g) or []:
+          s=Site(x.get('filePath',''),x.get('name',''))
+          if s not in seen: seen.add(s); sites.append(s); by[s]=(g,x)
+        t=Task.load('/Users/tapabratapal/Projects/provasign/research/harness/tasks/jackson-jsonnode-get.json')
+        c=score(t,Answer(sites,True),'x',0)
+        print('RPF',c.recall,c.precision,c.f1,'sites',len(sites),'extra-prod',len(c.extra))
+        print('missed',c.missed)
+        for raw in c.extra:
+         s=Site.parse(raw); g,x=by[s]; print('\n',g,raw, x.get('qualifiedName'), x.get('signature'))
+         for e in x.get('evidence') or []: print(' ',e)
+        PY
+      at: 2026-09-07T15:01:00.987454Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        d=json.load(open('/tmp/prism-jsonnode-impact.json'))
+        for g in ('declarations','family','callers'):
+         print('\n'+g)
+         for x in d.get(g) or []:
+          print(x.get('qualifiedName'),x.get('signature'),x.get('filePath'),x.get('line'))
+        PY
+      at: 2026-09-07T15:01:07.86069Z
+      classified: other
+    - cmd: prism query 'How change-impact caller entries are assembled, how heuristic or name-matched callers are identified, and where result fields are rendered for MCP' --terms changeImpactResult,Callers,hasHeuristicRefs,evidenceNote --format text
+      at: 2026-09-07T15:01:19.773782Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from pathlib import Path
+        import json
+        import ab_agentic_mcp as bed
+        from ab_gate import RunAccounting, arm_for, binary_sha, run_cell
+        from schema import Task
+
+        binary=str(Path('~/bin/prism').expanduser().resolve())
+        out=Path('runs/agent-reliability-jsonnode')
+        out.mkdir(parents=True,exist_ok=True)
+        accounting=RunAccounting(out,{'purpose':'three fresh paired native-vs-Prism Sonnet JSONNode trials','model':'sonnet','trials':3})
+        prism_arm=arm_for(binary,'jsonnode-reliability')
+        sha=binary_sha(binary)
+        task=Task.load('tasks/jackson-jsonnode-get.json')
+        rows=[]
+        try:
+         for trial in range(1,4):
+          for arm in ('baseline',prism_arm):
+           rec=run_cell(arm,task,Path(task.workdir or task.repo),'sonnet',out,binary,sha,fresh=True,accounting=accounting)
+           row={k:rec.get(k) for k in ('task','arm','recall','precision','f1','turns','tokens_request','tokens_out','cost_usd','session_id','n_sites','complete_claim','error','measurement_error')}
+           row['trial']=trial; rows.append(row)
+           print(f"trial={trial} arm={arm} R={rec.get('recall')} P={rec.get('precision')} F1={rec.get('f1')} turns={rec.get('turns')} req={rec.get('tokens_request')} cost=${rec.get('cost_usd')} session={rec.get('session_id')}",flush=True)
+        finally:
+         (out/'summary.json').write_text(json.dumps(rows,indent=2)+'\n')
+         failed=any(r.get('error') or r.get('measurement_error') for r in rows)
+         accounting.finish(2 if failed else 0)
+        PY
+      at: 2026-09-07T15:11:11.997892Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        invp=Path('harness/runs/agent-reliability-jsonnode/invocations/d19c814605224e9fa5932fb7eb6e86b3.json')
+        inv=json.load(open(invp)); root=invp.parent.parent
+        sessions=[]; snapshots=[]
+        for a in inv['attempts']:
+         d=json.load(open(root/a['record']))
+         sessions.append(d['session_id']); snapshots.append(d['corpus_snapshot'])
+         u=d.get('usage',{}).get('tokens',{})
+         paths=list((Path.home()/'.claude/projects').glob(f"**/{d['session_id']}.jsonl"))
+         user_msgs=assistant_msgs=0; first_type=None
+         if paths:
+          for line in paths[0].open():
+           try:o=json.loads(line)
+           except:continue
+           m=o.get('message') or {}; role=m.get('role')
+           if role=='user':
+            user_msgs+=1
+            if first_type is None: first_type=o.get('type')
+           elif role=='assistant': assistant_msgs+=1
+         print(d['arm'],d['session_id'],'snapshot='+d['corpus_snapshot'],
+               f"cache_create={u.get('cache_creation')} cache_read={u.get('cache_read')} uncached={u.get('input_uncached')}",
+               f"transcript_user={user_msgs} assistant={assistant_msgs} path={paths[0].parent.name if paths else 'MISSING'}")
+        print('unique_sessions',len(set(sessions)),'/',len(sessions),'unique_snapshots',len(set(snapshots)),'/',len(snapshots))
+        PY
+      at: 2026-09-07T15:11:22.302324Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        rows=json.load(open('harness/runs/agent-reliability-jsonnode/summary.json'))
+        for row in rows:
+         if row['arm']=='baseline': continue
+         sid=row['session_id']; p=list((Path.home()/'.claude/projects').glob(f'**/{sid}.jsonl'))[0]
+         print(f"\n=== trial {row['trial']} turns={row['turns']} req={row['tokens_request']} ===")
+         for line in p.open():
+          try:o=json.loads(line)
+          except:continue
+          m=o.get('message') or {}
+          if m.get('role')!='assistant':continue
+          for c in m.get('content') or []:
+           if c.get('type')=='tool_use':
+            inp=c.get('input') or {}; compact={k:inp[k] for k in inp if k in ('query','scope','name','path','file','signature')}
+            print(c.get('name'),json.dumps(compact,sort_keys=True))
+        PY
+      at: 2026-09-07T15:11:39.101567Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        git log -1 --oneline
+      at: 2026-09-07T15:11:53.770507Z
+      classified: other
+    - cmd: |-
+        git branch --show-current
+        git status --short
+        git log -1 --oneline
+      at: 2026-09-07T15:11:53.854553Z
+      classified: other
+    - cmd: |-
+        sed -n '25,80p' README.md
+        sed -n '640,715p' docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+      at: 2026-09-07T15:12:07.977247Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        for p in sorted(Path('harness/runs/bench-matrix').glob('grafana-querydata-impact.sonnet.baseline.t*.json')):
+         d=json.load(open(p)); print(p.name,sorted(d.keys()),'answer type',type(d.get('answer')).__name__,'sites',len((d.get('answer') or {}).get('sites',[])) if isinstance(d.get('answer'),dict) else None)
+        PY
+      at: 2026-09-07T15:12:18.243279Z
+      classified: other
+    - cmd: |-
+        rg --files | rg '(^|/)README\.md$|BENCH-MATRIX\.md$' | head -30
+        rg -n "oracle|ab_gate|deterministic" README.md harness/README.md 2>/dev/null | head -80
+      at: 2026-09-07T15:12:27.611439Z
+      classified: other
+    - cmd: |-
+        sed -n '1,260p' harness/engine_ceiling.py
+        sed -n '130,160p' README.md
+        sed -n '1,45p' harness/README.md
+      at: 2026-09-07T15:12:33.272734Z
+      classified: other
+    - cmd: |-
+        du -sh harness/runs/agent-reliability-grafana harness/runs/agent-reliability-jsonnode harness/runs/impact-oracle
+        find harness/runs/agent-reliability-grafana harness/runs/agent-reliability-jsonnode harness/runs/impact-oracle -type f -maxdepth 3 -exec wc -c {} + | tail -1
+        find harness/runs/agent-reliability-grafana harness/runs/agent-reliability-jsonnode harness/runs/impact-oracle -type f -maxdepth 3 -print
+      at: 2026-09-07T15:12:51.722085Z
+      classified: other
+    - cmd: |-
+        prism change-impact prism_query --file harness/engine_ceiling.py --format text
+        prism change-impact main --file harness/engine_ceiling.py --format text
+        prism change-impact task_anchor --file harness/impact_oracle.py --format text
+      at: 2026-09-07T15:13:00.373163Z
+      classified: other
+    - cmd: prism search 'from engine_ceiling import' 'import engine_ceiling' 'engine_ceiling.prism_query' --scope text --exhaustive --context 2 --format text
+      at: 2026-09-07T15:13:07.779706Z
+      classified: other
+    - cmd: |-
+        git diff --check
+        git diff --stat
+      at: 2026-09-07T15:15:10.747441Z
+      classified: other
+    - cmd: |-
+        git diff --check
+        git diff --stat
+      at: 2026-09-07T15:15:10.772734Z
+      classified: other
+    - cmd: |-
+        python3 -m py_compile impact_oracle.py engine_ceiling.py tests/test_impact_oracle.py
+        python3 engine_ceiling.py --help | head -25
+      at: 2026-09-07T15:15:10.839834Z
+      classified: other
+    - cmd: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests -q
+      at: 2026-09-07T15:15:11.807774Z
+      classified: test
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-07T15:15:32.418358Z
+      classified: other
+    - cmd: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_impact_oracle.py -q
+      at: 2026-09-07T15:15:32.740214Z
+      classified: test
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-07T15:15:32.799819Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PY'
+        from engine_ceiling import prism_query
+        from schema import Task,Site
+        for pr,want in [('oracle:QueryData','QueryData'),('oracle-spoon:com.example.JsonNode#get(int)','JsonNode.get(int)'),('oracle-py:Base.quote_name','Base.quote_name')]:
+         t=Task('t','/tmp','x','abc',pr,'impact','p',[Site('x','y')])
+         assert prism_query(t)==want,(pr,prism_query(t))
+        print('engine_ceiling compatibility query parser: ok')
+        PY
+      at: 2026-09-07T15:15:53.666434Z
+      classified: other
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-07T15:15:54.256938Z
+      classified: other
+    - cmd: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests -q
+      at: 2026-09-07T15:15:54.645785Z
+      classified: test
+    - cmd: prism verify --base HEAD --format text
+      at: 2026-09-07T15:16:08.200728Z
+      classified: other
+    - cmd: |-
+        git add README.md harness/README.md harness/engine_ceiling.py harness/impact_oracle.py harness/tests/test_impact_oracle.py harness/tasks/grafana-querydata-impact.json harness/tasks/grafana-checkhealth-impact.json harness/runs/impact-oracle/grafana-current-main.json harness/runs/agent-reliability-grafana harness/runs/agent-reliability-jsonnode harness/runs/impact-oracle-reliability-2026-09-07/README.md
+        git diff --cached --check
+        git diff --cached --stat
+        git status --short | sed -n '1,80p'
+      at: 2026-09-07T15:16:27.113452Z
+      classified: other
+    - cmd: 'git commit -m "research: harden impact oracle and repeat reliability trials"'
+      at: 2026-09-07T15:16:39.528665Z
+      classified: other
+    - cmd: |-
+        git add README.md docs/ACCURACY_AND_TOKEN_EFFICIENCY_IMPLEMENTATION.md
+        git diff --cached --check
+        git diff --cached --stat
+        git commit -m "docs: record corrected impact reliability evidence"
+      at: 2026-09-07T15:16:46.100208Z
+      classified: other
+    - cmd: git push origin main
+      at: 2026-09-07T15:16:58.29354Z
+      classified: other
+notes:
+    - text: continuation of session 01a0790c-a7c5-7543-a18f-d1f822079fe4 — events captured after its evidence was finalized
+      at: 2026-09-07T14:18:10.007981Z
+redactions: 0

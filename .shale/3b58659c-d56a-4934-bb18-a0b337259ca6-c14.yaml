@@ -1,0 +1,845 @@
+shale_version: "0"
+id: 3b58659c-d56a-4934-bb18-a0b337259ca6-c14
+created_at: 2026-08-29T22:48:45.045435Z
+finalized_at: 2026-08-30T11:59:25.47626Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+files:
+    - path: internal/mcp/graphtext.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-08-30T11:57:49.407747Z
+commands:
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism --corpus-root ~/.cache/prism-ci-corpus --verbose 2>&1 | head -40
+      at: 2026-08-29T22:58:51.604743Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && grep -n "def main\|recall\|precision\|print(" harness/ci_invariants.py | head -30
+      at: 2026-08-29T22:58:54.514294Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/bin/prism --corpus-root ~/.cache/prism-ci-corpus 2>&1
+      at: 2026-08-29T22:58:59.549326Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        LANG = {
+            "jackson-jsonnode-get": "java", "jackson-settable-set": "java",
+            "jackson-writetypeprefix": "java", "jackson-serialize": "java",
+            "guava-forwarding-delegate": "java",
+            "django-quotename": "python",
+            "typeorm-driver-escape": "typescript",
+            "grafana-checkhealth-impact": "go", "grafana-querydata-impact": "go",
+        }
+
+        byLang = defaultdict(list)
+        for f in glob.glob("runs/ab-gate/*.json"):
+            try:
+                d = json.load(open(f))
+            except Exception:
+                continue
+            task = d.get("task")
+            lang = LANG.get(task)
+            if not lang or d.get("recall") is None:
+                continue
+            byLang[lang].append(d)
+
+        for lang, cells in sorted(byLang.items()):
+            recalls = [c["recall"] for c in cells]
+            toks = [c.get("tokens_in", 0) or 0 for c in cells if c.get("tokens_in")]
+            print(f"{lang:12} n={len(cells):3}  mean_recall={sum(recalls)/len(recalls):.3f}  "
+                  f"min={min(recalls):.3f} max={max(recalls):.3f}  "
+                  f"mean_tok={sum(toks)//max(len(toks),1)//1000}k")
+        EOF
+      at: 2026-08-29T22:59:08.681135Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && grep -n "TASKS\|GT_TASKS\|task_id.*=\|jackson\|django\|guava" harness/ci_invariants.py | head -20
+      at: 2026-08-29T22:59:20.590383Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && sed -n 195,235p harness/ci_invariants.py
+      at: 2026-08-29T22:59:27.124147Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/bd6zn1ca8.output
+      at: 2026-08-29T22:59:32.225572Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && cat RESULTS-E2E.md | sed -n 1,20p; echo "..."; grep -n "pr34\|pr35\|pr36\|jackson\|guava" RESULTS-E2E.md | head -20
+      at: 2026-08-29T23:03:46.703342Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls runs/e2e/*.json 2>/dev/null | grep -i "opus.*prism\|prism.*opus" | head -10
+        echo "---"
+        ls runs/e2e/ | grep "opus" | wc -l
+        ls runs/e2e/ | grep "prism_gstar" | wc -l
+        echo "--- what tasks are pr3493 etc ---"
+        python3 -c "
+        import json
+        for f in ['tasks-e2e/pr3493.json','tasks-e2e-fanout/pr3493.json']:
+            try:
+                d=json.load(open(f)); print(f, d.get('repo'))
+            except Exception as e: print(f, 'missing')" 2>/dev/null
+        find . -name "pr3493.json" 2>/dev/null
+      at: 2026-08-29T23:03:55.254617Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && ls runs/e2e/*.json | sed -E 's#runs/e2e/([^.]+)\.([^.]+)\.([^.]+)(\.t[0-9]+)?\.json#\1 | \2 | \3#' | sort -u -t'|' -k2,3 | awk -F'|' '{print $2, $3}' | sort | uniq -c | sort -rn
+      at: 2026-08-29T23:04:01.341387Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        d = json.load(open('runs/e2e/apache__commons-collections__pr700.opus.prism_source.json'))
+        print(json.dumps(d, indent=1)[:800])"
+      at: 2026-08-29T23:04:09.375973Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, re
+        from collections import defaultdict
+
+        JAVA_REPOS = ("commons-collections", "jackson-databind", "guava", "junit4", "mockito", "gson")
+
+        rows = defaultdict(list)
+        for f in glob.glob("runs/e2e/*.json"):
+            m = re.match(r"runs/e2e/([^_]+(?:__[^_]+)*)__(.+)\.([a-z]+)\.([a-z_0-9]+?)(?:\.t(\d+))?\.json$", f)
+            if not m:
+                continue
+            try:
+                d = json.load(open(f))
+            except Exception:
+                continue
+            model, arm = d.get("model"), d.get("arm")
+            if model not in ("opus", "sonnet"):
+                continue
+            if "prism" not in (arm or "") and "baseline" not in (arm or "") and "codegraph" not in (arm or ""):
+                continue
+            task = d.get("task", "")
+            if not any(r in task for r in JAVA_REPOS):
+                continue
+            rows[(model, arm)].append(d)
+
+        print(f"{'model':8} {'arm':22} {'n':>3} {'resolved':>9} {'rate':>6} {'mean_turns':>11} {'mean_cost':>10}")
+        for (model, arm), cells in sorted(rows.items()):
+            n = len(cells)
+            resolved = sum(1 for c in cells if c.get("resolved"))
+            turns = [c.get("turns", 0) for c in cells if c.get("turns") is not None]
+            cost = [c.get("cost_usd", 0) for c in cells if c.get("cost_usd") is not None]
+            print(f"{model:8} {arm:22} {n:>3} {resolved:>9} {resolved/n:>5.0%} "
+                  f"{sum(turns)/max(len(turns),1):>11.1f} ${sum(cost)/max(len(cost),1):>9.3f}")
+            for c in cells:
+                print(f"    {c['task']:45} resolved={c.get('resolved')} turns={c.get('turns')} cost=${c.get('cost_usd')}")
+        EOF
+      at: 2026-08-29T23:04:19.007401Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, re
+        from collections import defaultdict
+
+        JAVA_REPOS = ("commons-collections", "jackson-databind", "guava", "junit4", "mockito", "gson")
+
+        rows = defaultdict(list)
+        for f in glob.glob("runs/e2e/*.json"):
+            m = re.match(r"runs/e2e/([^_]+(?:__[^_]+)*)__(.+)\.([a-z]+)\.([a-z_0-9]+?)(?:\.t(\d+))?\.json$", f)
+            if not m: continue
+            try: d = json.load(open(f))
+            except Exception: continue
+            model, arm = d.get("model"), d.get("arm")
+            if model != "opus": continue
+            if arm not in ("baseline", "prism_source"): continue
+            task = d.get("task", "")
+            if not any(r in task for r in JAVA_REPOS): continue
+            rows[(model, arm)].append(d)
+
+        # Per-task best-of-trials pairing (each task ran 2 trials per arm).
+        by_task = defaultdict(dict)
+        for (model, arm), cells in rows.items():
+            for c in cells:
+                by_task[c["task"]].setdefault(arm, []).append(c)
+
+        print(f"{'task':45} {'baseline':>10} {'prism':>10}")
+        b_resolved = p_resolved = 0
+        n = 0
+        for task, arms in sorted(by_task.items()):
+            if "baseline" not in arms or "prism_source" not in arms: continue
+            n += 1
+            b = any(c["resolved"] for c in arms["baseline"])
+            p = any(c["resolved"] for c in arms["prism_source"])
+            b_resolved += b; p_resolved += p
+            flag = "  <-- prism wins" if p and not b else ("  <-- baseline wins" if b and not p else "")
+            print(f"{task:45} {str(b):>10} {str(p):>10}{flag}")
+
+        print(f"\nn={n} tasks (any-trial-resolved) | baseline {b_resolved}/{n} ({b_resolved/n:.0%}) | prism {p_resolved}/{n} ({p_resolved/n:.0%})")
+
+        # Cell-level (both trials counted)
+        tb = sum(1 for c in rows[("opus","baseline")] if c["resolved"]); nb = len(rows[("opus","baseline")])
+        tp = sum(1 for c in rows[("opus","prism_source")] if c["resolved"]); npr = len(rows[("opus","prism_source")])
+        print(f"cell-level: baseline {tb}/{nb} ({tb/nb:.0%}) | prism {tp}/{npr} ({tp/npr:.0%})")
+        EOF
+      at: 2026-08-29T23:04:30.109807Z
+      classified: other
+    - cmd: |-
+        ~/bin/prism --version 2>&1; echo "---"; ~/Projects/provasign/prism/bin/prism --version 2>&1
+        which prism; brew list --versions provasign/shale/prism 2>&1
+      at: 2026-08-29T23:09:25.574141Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && git log --oneline -1 && git describe --tags --exact-match 2>&1
+        go build -o bin/prism-new ./cmd/prism && ./bin/prism-new --version
+      at: 2026-08-29T23:09:40.866155Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "def main\|add_argument\|PRISM_BIN\|prism.*bin\|os.environ" run_e2e.py | head -30
+      at: 2026-08-29T23:09:43.907938Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "bin/prism\|PRISM_BIN\|prism.json\|HOME / \"bin" ab_endtoend_arms.py | head -15
+      at: 2026-08-29T23:09:48.719225Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "^def \|docker_eval\|def run_cell\|def cloud_arm\|def run_one" run_e2e.py | head -20
+      at: 2026-08-29T23:10:01.006833Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 99,137p run_e2e.py
+      at: 2026-08-29T23:10:05.020633Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        mkdir -p $S/newprism-path && ln -sf ~/Projects/provasign/prism/bin/prism-new $S/newprism-path/prism
+        $S/newprism-path/prism --version
+      at: 2026-08-29T23:10:17.58861Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 -u /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/rerun_e2e_java.py 1 prism_source 2>&1
+      at: 2026-08-29T23:10:38.653497Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && cat runs/e2e/FasterXML__jackson-databind__pr6008.opus.prism_source.rerun-v059.json | python3 -m json.tool | grep -A10 "tool\|trace" | head -20
+      at: 2026-08-29T23:13:22.341528Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 -u /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/rerun_e2e_java.py 2>&1
+      at: 2026-08-29T23:13:28.129788Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && ls runs/e2e/*.rerun-v059.json 2>/dev/null | wc -l
+      at: 2026-08-29T23:14:51.023118Z
+      classified: other
+    - cmd: python3 --version
+      at: 2026-08-29T23:15:17.939491Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && python3 -u /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/rerun_e2e_java_failfast.py 2>&1
+      at: 2026-08-29T23:15:23.683106Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/be6w9e8gt.output
+      at: 2026-08-29T23:15:29.739704Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob, re
+        from collections import defaultdict
+
+        JAVA_REPOS = ("commons-collections", "jackson-databind", "guava", "junit4", "mockito", "gson")
+
+        cells = defaultdict(lambda: defaultdict(list))  # task -> arm -> [resolved,...]
+        for f in glob.glob("runs/e2e/*.json"):
+            if "rerun" in f: continue
+            try: d = json.load(open(f))
+            except Exception: continue
+            if d.get("model") != "opus": continue
+            task = d.get("task", "")
+            if not any(r in task for r in JAVA_REPOS): continue
+            arm = d.get("arm", "")
+            cells[task][arm].append(d.get("resolved"))
+
+        print("Tasks where a PRISM arm did WORSE than baseline (any-trial):\n")
+        for task, arms in sorted(cells.items()):
+            b = arms.get("baseline", [])
+            b_any = any(b) if b else None
+            for arm, res in arms.items():
+                if arm == "baseline" or "prism" not in arm: continue
+                p_any = any(res) if res else None
+                if b_any is True and p_any is False:
+                    print(f"  WORSE: {task:45} baseline={b} {arm}={res}")
+                elif b_any is not None and p_any is not None and sum(b) > sum(res) and len(b)==len(res):
+                    print(f"  (trial-count worse) {task:45} baseline={b} {arm}={res}")
+
+        print("\nAll arms present per task (for completeness):")
+        for task, arms in sorted(cells.items()):
+            print(f"  {task:45} " + " | ".join(f"{a}={r}" for a,r in arms.items()))
+        EOF
+      at: 2026-08-29T23:31:50.798829Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json, glob
+        from collections import defaultdict
+
+        JAVA_REPOS = ("commons-collections", "jackson-databind", "guava", "junit4", "mockito", "gson")
+
+        cells = defaultdict(lambda: defaultdict(list))
+        for f in glob.glob("runs/e2e/*.json"):
+            if "rerun" in f: continue
+            try: d = json.load(open(f))
+            except Exception: continue
+            task = d.get("task", "")
+            if not any(r in task for r in JAVA_REPOS): continue
+            model = d.get("model", "?")
+            arm = d.get("arm", "")
+            cells[(model, task)][arm].append(d.get("resolved"))
+
+        print("ALL models, Java tasks, prism-worse-than-baseline:\n")
+        found = False
+        for (model, task), arms in sorted(cells.items()):
+            b = arms.get("baseline", [])
+            if not b: continue
+            b_any = any(b)
+            for arm, res in arms.items():
+                if arm == "baseline" or "prism" not in arm: continue
+                p_any = any(res)
+                if b_any and not p_any:
+                    found = True
+                    print(f"  {model:8} {task:45} baseline={b} {arm}={res}  <-- PRISM WORSE")
+        if not found:
+            print("  (none found across any model)")
+
+        print("\nModels present for Java tasks:", sorted({m for m,_ in cells}))
+        EOF
+      at: 2026-08-29T23:32:06.305404Z
+      classified: other
+    - cmd: tail -15 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/tasks/be6w9e8gt.output
+      at: 2026-08-30T00:51:09.485251Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        old = json.load(open('runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_source.json'))
+        new = json.load(open('runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_source.rerun-v059.json'))
+        print('OLD tool_trace:', old.get('tool_trace'))
+        print('NEW tool_trace:', new.get('tool_trace'))
+        print()
+        print('OLD turns/diff_lines:', old.get('turns'), old.get('diff_lines'))
+        print('NEW turns/diff_lines:', new.get('turns'), new.get('diff_lines'))
+        print()
+        print('OLD score:', old.get('score'))
+        print('NEW score:', new.get('score'))
+        "
+      at: 2026-08-30T11:33:02.151689Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && find . -iname "*pr6044*" -newer runs/e2e/FasterXML__jackson-databind__pr6008.opus.prism_source.json 2>/dev/null | grep -v runs/e2e | head -10
+        find /tmp -iname "*pr6044*docker*" -o -iname "*pr6044*eval*" 2>/dev/null | head -5
+      at: 2026-08-30T11:33:11.937185Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "_save_diff\|diffs/" run_e2e.py | head -5; grep -n "def score" docker_eval.py | head -3
+      at: 2026-08-30T11:33:15.707018Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 276,296p run_e2e.py
+      at: 2026-08-30T11:33:22.958853Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && ls runs/e2e/*pr6044*.diff 2>/dev/null
+      at: 2026-08-30T11:33:27.466054Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && diff <(cat runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_source.diff) <(cat runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_sourcererun-v059.diff) | head -60
+      at: 2026-08-30T11:33:32.513349Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "_verifyNonContainerExternalProperty" runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_sourcererun-v059.diff | head -10
+      at: 2026-08-30T11:33:52.663212Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        task = json.load(open('tasks-e2e/FasterXML__jackson-databind__pr6044.json') if __import__('os').path.exists('tasks-e2e/FasterXML__jackson-databind__pr6044.json') else open([f for f in __import__('glob').glob('tasks-e2e*/FasterXML__jackson-databind__pr6044.json')][0]))
+        print(task.get('base_commit') or task.get('pin'))
+        print(task.get('repo'))
+        "
+      at: 2026-08-30T11:34:01.275742Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        R=~/.cache/prism-research/routing-repos/FasterXML_jackson-databind
+        [ -d $R/.git ] || git clone -q --filter=blob:none https://github.com/FasterXML/jackson-databind.git $R
+        cd $R && git fetch -q origin 5356c2fab639d796fed6a6e0d56f3c5338642e62 2>&1 | tail -2
+        rm -rf $S/compile-check && git worktree add -f $S/compile-check 5356c2fab639d796fed6a6e0d56f3c5338642e62 2>&1 | tail -3
+        cd $S/compile-check && git apply --check /Users/tapabratapal/Projects/provasign/research/harness/runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_sourcererun-v059.diff 2>&1
+        echo "apply-check exit: $?"
+      at: 2026-08-30T11:34:13.877684Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd $S/compile-check && git apply /Users/tapabratapal/Projects/provasign/research/harness/runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_sourcererun-v059.diff
+        mvn -q -o compile 2>&1 | tail -60 || mvn -q compile 2>&1 | tail -60
+      at: 2026-08-30T11:34:23.880264Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        cd $S/compile-check && which mvn; mvn -q compile > /tmp/mvn-out.log 2>&1; echo "compile exit: $?"; tail -80 /tmp/mvn-out.log
+      at: 2026-08-30T11:34:35.427285Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        rm -rf $S/compile-check-base && git -C ~/.cache/prism-research/routing-repos/FasterXML_jackson-databind worktree add -f $S/compile-check-base 5356c2fab639d796fed6a6e0d56f3c5338642e62 2>&1 | tail -2
+        cd $S/compile-check-base && mvn -q compile > /tmp/mvn-base.log 2>&1; echo "unpatched base compile exit: $?"; tail -5 /tmp/mvn-base.log
+      at: 2026-08-30T11:34:50.063341Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/research/harness/runs/e2e/FasterXML__jackson-databind__pr6044.opus.prism_sourcererun-v059.diff
+      at: 2026-08-30T11:34:58.258223Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import os, sys, json, glob
+        sys.path.insert(0, os.path.expanduser("~/Projects/provasign/research/harness"))
+        os.environ["PATH"] = "/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/newprism-path" + os.pathsep + os.environ["PATH"]
+        import ab_endtoend_arms as arms
+        (arms.CFG_DIR / "prism.json").write_text(json.dumps({"mcpServers": {"prism": {
+            "type": "stdio", "command": os.path.expanduser("~/Projects/provasign/prism/bin/prism-new"), "args": ["mcp"]}}}))
+        EOF
+        echo "override reconfirmed for resume"
+      at: 2026-08-30T11:46:43.549132Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && for tid in FasterXML__jackson-databind__pr6018 FasterXML__jackson-databind__pr6035 FasterXML__jackson-databind__pr6113 apache__commons-collections__pr705; do
+          tf=$(find tasks-e2e* -name "${tid}.json" 2>/dev/null | head -1)
+          echo "=== $tid ==="
+          python3 -c "
+        import json
+        t = json.load(open('$tf'))
+        print('title:', t.get('title', t.get('problem_statement','')[:200]))
+        print('kind:', t.get('kind'))
+        " 2>/dev/null
+        done
+      at: 2026-08-30T11:47:04.959096Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && for tid in FasterXML__jackson-databind__pr6018 FasterXML__jackson-databind__pr6035 FasterXML__jackson-databind__pr6113 apache__commons-collections__pr705; do
+          tf=$(find tasks-e2e* -name "${tid}.json" 2>/dev/null | head -1)
+          echo "=== $tid gold patch files ==="
+          python3 -c "
+        import json, re
+        t = json.load(open('$tf'))
+        patch = t.get('patch') or t.get('gold_patch') or ''
+        files = re.findall(r'diff --git a/(\S+)', patch)
+        print('files:', files)
+        print('patch lines:', patch.count(chr(10)))
+        "
+        done
+      at: 2026-08-30T11:47:12.393259Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && for tid in FasterXML__jackson-databind__pr6018 FasterXML__jackson-databind__pr6035 FasterXML__jackson-databind__pr6113 apache__commons-collections__pr705; do
+          echo "=== $tid: agent-touched files (both arms, trial 1) ==="
+          for f in runs/e2e/${tid}.opus.baseline.diff runs/e2e/${tid}.opus.prism_source.diff; do
+            [ -f "$f" ] && echo " $(basename $f):" && grep "^diff --git" "$f" | sed 's/diff --git a\///' | sed 's/ b\/.*//'
+          done
+        done
+      at: 2026-08-30T11:47:20.233155Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        t = json.load(open([f for f in __import__('glob').glob('tasks-e2e*/FasterXML__jackson-databind__pr6018.json')][0]))
+        print(t['patch'])
+        " | head -60
+      at: 2026-08-30T11:47:44.264644Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && for tid in FasterXML__jackson-databind__pr6018 FasterXML__jackson-databind__pr6113; do
+          tf=$(find tasks-e2e* -name "${tid}.json" | head -1)
+          python3 -c "
+        import json
+        t=json.load(open('$tf'))
+        print('$tid', t.get('base_commit'))"
+        done
+      at: 2026-08-30T11:48:21.488352Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        R=~/.cache/prism-research/routing-repos/FasterXML_jackson-databind
+        git -C $R fetch -q origin 2d0bb6a2d4a27f4ac77af15aba390fec0616a1a2 2>&1 | tail -2
+        rm -rf $S/pr6018-wt && git -C $R worktree add -f $S/pr6018-wt 2d0bb6a2d4a27f4ac77af15aba390fec0616a1a2 2>&1 | tail -2
+        cd $S/pr6018-wt && ~/Projects/provasign/prism/bin/prism-new index . 2>&1 | tail -3
+      at: 2026-08-30T11:48:36.255978Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd $S/pr6018-wt
+        P=~/Projects/provasign/prism/bin/prism-new
+        echo "== search: findUnwrappingSerializer =="
+        $P search findUnwrappingSerializer --scope text --format text . 2>&1 | head -15
+        echo
+        echo "== change_impact on StdConvertingSerializer class =="
+        $P change-impact StdConvertingSerializer . 2>&1 | head -5
+        echo
+        echo "== search: instanceof BeanSerializerBase =="
+        $P search "instanceof BeanSerializerBase" --scope text --format text . 2>&1 | head -10
+      at: 2026-08-30T11:48:45.301409Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        t = json.load(open([f for f in __import__('glob').glob('tasks-e2e*/FasterXML__jackson-databind__pr6113.json')][0]))
+        print(t['patch'])
+        "
+      at: 2026-08-30T11:49:11.615087Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        t = json.load(open([f for f in __import__('glob').glob('tasks-e2e*/FasterXML__jackson-databind__pr6113.json')][0]))
+        print('FAIL_TO_PASS:', t.get('FAIL_TO_PASS') or t.get('fail_to_pass'))
+        print('PASS_TO_PASS count:', len(t.get('PASS_TO_PASS') or t.get('pass_to_pass') or []))
+        "
+      at: 2026-08-30T11:49:39.96617Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && tf=$(find tasks-e2e* -name "FasterXML__jackson-databind__pr6035.json" | head -1)
+        python3 -c "
+        import json
+        t = json.load(open('$tf'))
+        print('base_commit:', t.get('base_commit'))
+        print()
+        print(t.get('problem_statement',''))
+        print()
+        print(t['patch'][:2500])
+        "
+      at: 2026-08-30T11:49:56.460021Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        R=~/.cache/prism-research/routing-repos/FasterXML_jackson-databind
+        git -C $R fetch -q origin 48b943413e02e285b8f5efc74244b4ecc9371637 2>&1 | tail -2
+        rm -rf $S/pr6035-wt && git -C $R worktree add -f $S/pr6035-wt 48b943413e02e285b8f5efc74244b4ecc9371637 2>&1 | tail -2
+        cd $S/pr6035-wt && ~/Projects/provasign/prism/bin/prism-new index . >/dev/null 2>&1
+        P=~/Projects/provasign/prism/bin/prism-new
+        echo "== search: JsonAlias =="
+        $P search JsonAlias --scope text --format text --dir . 2>&1 | grep -i "POJOPropertiesCollector\|creator" | head -8
+        echo
+        echo "== search symbols: JsonAlias =="
+        $P search JsonAlias --scope symbols --format text --dir . 2>&1 | head -10
+        echo
+        echo "== file count matching JsonAlias =="
+        $P search JsonAlias --scope text --format text --dir . --exhaustive 2>&1 | grep -c "^//.*:"
+      at: 2026-08-30T11:50:22.257731Z
+      classified: other
+    - cmd: "S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd $S/pr6035-wt\nP=~/Projects/provasign/prism/bin/prism-new\necho \"== search: findPropertyAliases (main src) ==\"\n$P search findPropertyAliases --scope both --format text --dir . 2>&1 | head -15\necho\necho \"== search: alias (case-insens, main src only, exhaustive count) ==\"\n$P search alias --scope text --format text --dir . --path src/main --exhaustive 2>&1 | grep -c \"^//.*:\"\necho\necho \"== which main-src files mention 'alias' ==\" \n$P search alias --scope text --format text --dir . --path src/main --files_only 2>&1 | head -15"
+      at: 2026-08-30T11:50:36.391704Z
+      classified: other
+    - cmd: ls /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/../tasks/ 2>/dev/null | grep bqsn; find ~/Projects/provasign/research/harness/runs/e2e -name "*rerun-v059*" -newer /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad/rerun_e2e_java.py 2>/dev/null | wc -l
+      at: 2026-08-30T11:51:15.889048Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "func.*Impact\b\|EdgeUsesType\|buildUsesType\|buildExtendsImplements" internal/graph/graph.go internal/graph/edges.go | grep "^internal/graph/graph.go\|func " | head -15
+      at: 2026-08-30T11:52:42.33357Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd $S/pr6018-wt
+        P=~/Projects/provasign/prism/bin/prism-new
+        $P impact StdConvertingSerializer . 2>&1 | head -20
+      at: 2026-08-30T11:52:52.112523Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rn "\.Impact(" internal/ --include='*.go' | grep -v _test | head -10
+      at: 2026-08-30T11:52:57.35764Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "func.*Impact\b" internal/grove/client.go; grep -rn "\.Impact(ctx\|c\.Impact\|Grove\.Impact" internal/mcp/ internal/cli/ --include='*.go' | grep -v _test
+      at: 2026-08-30T11:53:01.74458Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 95,125p internal/graph/changeimpact.go
+      at: 2026-08-30T11:53:39.358519Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "func New\b\|type PolicyDiagnostic\|TraversalPolicy" internal/graph/*.go | grep -v _test | head -6
+      at: 2026-08-30T11:53:46.411466Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/spring.go <<'EOF'
+
+        // typeImpactLocked answers change-impact for a BARE TYPE NAME — no method,
+        // no field, just "what depends on this class/interface" (spec: the query an
+        // agent naturally reaches for after editing a class, per the field-report
+        // that change_impact on a bare class name dead-ended with "declares no
+        // method X", 2026-08-30). Direct structural dependents only (Calls into the
+        // type's own members, UsesType references, Extends/Implements) — depth 1,
+        // matching change_impact's "direct blast radius" contract, not the
+        // transitive multi-hop walk the separate Impact() verb does.
+        //
+        // Deliberately NOT exhaustive: a class that changes BEHAVIOR (not its
+        // declared shape) can break consumers with no edge in this graph at all —
+        // duck-typed `instanceof` checks against an unrelated type are the concrete
+        // case that motivated this (StdConvertingSerializer's delegation broke a
+        // consumer's `instanceof BeanSerializerBase` check with zero hierarchy
+        // relationship between the two types). Completeness is "type-level" so the
+        // text renderer can say so explicitly rather than let an empty or partial
+        // caller list read as "nothing depends on this."
+        func (g *CodeGraph) typeImpactLocked(query string) *ChangeImpactResult {
+        	q := strings.TrimSpace(query)
+        	if q == "" || strings.ContainsRune(q, '.') || strings.ContainsRune(q, '(') {
+        		return nil // dotted/parenthesized queries are Type.method — not this path
+        	}
+        	var typeSym *core.SymbolRecord
+        	var typeID string
+        	for _, id := range g.idsNamed(q) {
+        		s := g.symbols[id]
+        		switch s.Kind {
+        		case core.KindClass, core.KindInterface, core.KindType, core.KindStruct, core.KindTrait, core.KindEnum:
+        			sc := s
+        			typeSym, typeID = &sc, id
+        		}
+        	}
+        	if typeSym == nil {
+        		return nil
+        	}
+        	// If a method/function of this exact name also exists, the ordinary
+        	// Type.method machinery already answers a DIFFERENT, valid question for
+        	// a DIFFERENT symbol — do not shadow it. containedMethods needs
+        	// typeIDs, not just this one type, but self-shadowing (a type and a
+        	// same-named top-level function) is what matters here.
+        	if len(g.idsNamed(q)) > 1 {
+        		for _, id := range g.idsNamed(q) {
+        			if s := g.symbols[id]; s.Kind == core.KindMethod || s.Kind == core.KindFunction {
+        				return nil
+        			}
+        		}
+        	}
+
+        	seen := map[string]bool{typeID: true}
+        	var callers []core.SymbolRecord
+        	heuristicCallers := false
+        	addFrom := func(id string) {
+        		for _, ei := range g.inbound[id] {
+        			edge := g.edges[ei]
+        			switch edge.Type {
+        			case core.EdgeCalls, core.EdgeUsesType, core.EdgeExtends, core.EdgeImplements:
+        			default:
+        				continue
+        			}
+        			if seen[edge.From] {
+        				continue
+        			}
+        			seen[edge.From] = true
+        			if edge.Source == core.EvidenceSourceHeuristic || edge.Source == core.EvidenceSourceRegex {
+        				heuristicCallers = true
+        			}
+        			if s, ok := g.symbols[edge.From]; ok {
+        				callers = append(callers, s)
+        			}
+        		}
+        	}
+        	addFrom(typeID)
+        	// Members (methods/fields/contains) are structurally part of the type —
+        	// a caller of ANY member is a dependent of the type, not just direct
+        	// references to the type name itself.
+        	for _, ei := range g.outbound[typeID] {
+        		if e := g.edges[ei]; e.Type == core.EdgeContains {
+        			addFrom(e.To)
+        		}
+        	}
+        	sortSymbols(callers)
+        	return &ChangeImpactResult{
+        		Query: query, Declarations: []core.SymbolRecord{*typeSym},
+        		Callers: callers, Completeness: "type-level", HasHeuristicRefs: heuristicCallers,
+        	}
+        }
+        EOF
+        go build ./... 2>&1 | head -10
+      at: 2026-08-30T11:54:07.928062Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && go build ./... 2>&1 | head -5
+        cd ~/Projects/provasign/prism && GOWORK=off go build -o bin/prism-test ./cmd/prism 2>&1 | head -5 || go build -o bin/prism-test ./cmd/prism 2>&1 | head -5
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd $S/pr6018-wt
+        rm -rf .grove && ~/Projects/provasign/prism/bin/prism-test index . >/dev/null 2>&1
+        ~/Projects/provasign/prism/bin/prism-test change-impact StdConvertingSerializer . 2>&1 | head -20
+      at: 2026-08-30T11:54:48.686791Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/grove && grep -n "declares no method" internal/graph/changeimpact.go
+      at: 2026-08-30T11:54:53.156476Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 755,835p internal/graph/changeimpact.go
+      at: 2026-08-30T11:55:01.428989Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && go build ./... 2>&1 | head -10 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -10; echo "grove suite: $?"'
+      at: 2026-08-30T11:56:11.639538Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && GOWORK=off go build -o bin/prism-test ./cmd/prism 2>&1 | tail -5 || go build -o bin/prism-test ./cmd/prism 2>&1 | tail -5
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd $S/pr6018-wt
+        rm -rf .grove && ~/Projects/provasign/prism/bin/prism-test index . >/dev/null 2>&1
+        ~/Projects/provasign/prism/bin/prism-test change-impact StdConvertingSerializer . 2>&1 | python3 -c "
+        import json,sys
+        s=sys.stdin.read()
+        try:
+          d=json.loads(s)
+          print('query:', d.get('query'), '| completeness:', d.get('completeness'), '| hasHeuristicRefs:', d.get('hasHeuristicRefs'))
+          print('declarations:', [x.get('qualifiedName') for x in d.get('declarations') or []])
+          print('callers:', [x.get('qualifiedName') for x in d.get('callers') or []][:15])
+        except Exception: print('raw:', s[:400])"
+      at: 2026-08-30T11:56:28.513573Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-test && go build -o bin/prism-test ./cmd/prism 2>&1 | tail -10
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd $S/pr6018-wt
+        rm -rf .grove && ~/Projects/provasign/prism/bin/prism-test index . >/dev/null 2>&1
+        ~/Projects/provasign/prism/bin/prism-test change-impact StdConvertingSerializer . 2>&1 | python3 -c "
+        import json,sys
+        s=sys.stdin.read()
+        try:
+          d=json.loads(s)
+          print('query:', d.get('query'), '| completeness:', d.get('completeness'), '| hasHeuristicRefs:', d.get('hasHeuristicRefs'))
+          print('declarations:', [x.get('qualifiedName') for x in d.get('declarations') or []])
+          print('callers:', [x.get('qualifiedName') for x in d.get('callers') or []][:15])
+        except Exception: print('raw:', s[:400])"
+      at: 2026-08-30T11:56:47.4762Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; grep -n "findConvertingSerializer\|_verifyNoUnwrappedPropertyConflict" $S/pr6018-wt/src/main/java/tools/jackson/databind/ser/bean/BeanSerializerBase.java
+      at: 2026-08-30T11:56:55.770046Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/spring_test.go <<'EOF'
+
+        func TestTypeImpactLocked(t *testing.T) {
+        	syms := []core.SymbolRecord{
+        		{ID: "c1", Language: "java", Kind: core.KindClass, Name: "Widget", QualifiedName: "Widget", FilePath: "Widget.java"},
+        		// A constructor named identically to the class — the exact shape
+        		// that caused resolveLooseQueryLocked to silently mis-pin a bare
+        		// class-name query to "Widget.Widget" and dead-end with "declares
+        		// no method" (field-reported 2026-08-30), since containedMethods
+        		// excludes KindConstructor from its own re-lookup.
+        		{ID: "ctor1", Language: "java", Kind: core.KindConstructor, Name: "Widget", QualifiedName: "Widget.Widget", ParentSymbol: "Widget", FilePath: "Widget.java"},
+        		{ID: "m1", Language: "java", Kind: core.KindMethod, Name: "build", QualifiedName: "Widget.build", ParentSymbol: "Widget", FilePath: "Widget.java"},
+        		// A caller of a MEMBER (not the type name itself) — must still count
+        		// as a structural dependent of the type.
+        		{ID: "caller1", Language: "java", Kind: core.KindMethod, Name: "make", QualifiedName: "Factory.make", ParentSymbol: "Factory", FilePath: "Factory.java", RawText: "Widget w = new Widget(); w.build();"},
+        	}
+        	extra := []core.Edge{
+        		{From: "c1", To: "ctor1", Type: core.EdgeContains},
+        		{From: "c1", To: "m1", Type: core.EdgeContains},
+        		{From: "caller1", To: "m1", Type: core.EdgeCalls, Source: core.EvidenceSourceASTKit},
+        		{From: "caller1", To: "c1", Type: core.EdgeUsesType, Source: core.EvidenceSourceASTKit},
+        	}
+        	g := New()
+        	g.ReplaceWithEdges(syms, extra, len(syms))
+
+        	r, err := g.ChangeImpact("Widget")
+        	if err != nil {
+        		t.Fatalf("bare class name errored: %v", err)
+        	}
+        	if r.Completeness != "type-level" {
+        		t.Errorf("completeness = %q, want type-level", r.Completeness)
+        	}
+        	if len(r.Declarations) != 1 || r.Declarations[0].ID != "c1" {
+        		t.Fatalf("declarations = %+v", r.Declarations)
+        	}
+        	found := false
+        	for _, c := range r.Callers {
+        		if c.ID == "caller1" {
+        			found = true
+        		}
+        	}
+        	if !found {
+        		t.Errorf("expected caller1 (calls a member AND uses-type the class) in callers: %+v", r.Callers)
+        	}
+
+        	// A same-named FUNCTION must still win — the type-level path never
+        	// shadows a legitimate bare-function query.
+        	syms2 := append(append([]core.SymbolRecord{}, syms...),
+        		core.SymbolRecord{ID: "f1", Language: "go", Kind: core.KindFunction, Name: "Widget", QualifiedName: "Widget", FilePath: "widget.go"})
+        	g2 := New()
+        	g2.ReplaceWithEdges(syms2, extra, len(syms2))
+        	r2 := g2.typeImpactLocked("Widget")
+        	if r2 != nil {
+        		t.Errorf("type-level path shadowed a same-named function: %+v", r2)
+        	}
+        }
+        EOF
+        go test ./internal/graph/ -run "TypeImpact|Framework|FieldImpact|SplitDerived" -v 2>&1 | tail -14
+      at: 2026-08-30T11:57:21.359398Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "grove suite: $?"
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad
+        go build -o $S/grove-mf ./cmd/grove && rm -rf $S/noop13 && cp -R ~/.cache/prism-ci-corpus/gin $S/noop13 && rm -rf $S/noop13/.grove && $S/grove-mf index $S/noop13 >/dev/null 2>&1 && $S/grove-mf status $S/noop13 | grep -E "symbolCount|edgeCount"
+      at: 2026-08-30T11:57:34.963739Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && grep -n 'if hr, _ := out\["hasHeuristicRefs"\]' internal/mcp/graphtext.go
+      at: 2026-08-30T11:57:39.800082Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 80,92p internal/mcp/graphtext.go
+      at: 2026-08-30T11:57:43.003391Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && grep -n ''"query": true, "hasHeuristicRefs"'' internal/mcp/graphtext.go'
+      at: 2026-08-30T11:57:52.889069Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && go build ./... 2>&1 | head -10 && go test ./... 2>&1 | grep -v "^ok\|no test files" | head -10; echo "prism suite: $?"'
+      at: 2026-08-30T11:58:09.74305Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && go build -o bin/prism-test ./cmd/prism
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b58659c-d56a-4934-bb18-a0b337259ca6/scratchpad; cd $S/pr6018-wt
+        printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"prism_change_impact","arguments":{"query":"StdConvertingSerializer"}}}\n' | ~/Projects/provasign/prism/bin/prism-test mcp . 2>/dev/null | python3 -c "
+        import sys, json
+        for line in sys.stdin:
+            try: d=json.loads(line)
+            except: continue
+            if d.get('id')==2: print(d['result']['content'][0]['text'][:900])"
+      at: 2026-08-30T11:58:20.861957Z
+      classified: build
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git add internal/graph/changeimpact.go internal/graph/spring.go internal/graph/spring_test.go && git commit -q -m "$(cat <<'EOF'
+        change-impact: bare TYPE-NAME queries answer instead of dead-ending
+
+        Field-reported (2026-08-30, jackson-databind pr6018 investigation): an
+        agent that correctly edited StdConvertingSerializer tried change_impact
+        on the bare class name to check "what depends on this" and hit
+        "declares no method X" — a genuine dead end for exactly the tool an
+        agent should reach for after editing a class.
+
+        Root cause was two-layered:
+        - resolveLooseQueryLocked's bare-member matcher includes KindConstructor,
+          so a class with an explicit same-named constructor silently pinned
+          "ClassName" -> "ClassName.ClassName" (the constructor) -- then
+          containedMethods, which excludes constructors from ITS OWN re-lookup,
+          couldn't find it again. The pin and the lookup disagreed.
+        - change_impact had no class-level query shape at all: Type.method and
+          (as of last night) Type.field were the only anchors. A bare class name
+          had no honest answer to fall back to.
+
+        typeImpactLocked intercepts bare type-name queries FIRST -- before the
+        constructor-pinning path ever runs -- and answers with direct structural
+        dependents (calls into the type's own members, type references,
+        extends/implements), Completeness "type-level". Verified on the real
+        case: change-impact StdConvertingSerializer now surfaces
+        BeanSerializerBase.java as a caller (a real call site, though not the
+        specific buggy method -- an agent seeing the file would very plausibly
+        open it and find the nearby instanceof check). Deliberately NOT
+        exhaustive: a class whose duck-typed instanceof relationship to an
+        unrelated type has no structural edge in this graph, and the design
+        says so rather than implying completeness it doesn't have.
+
+        A same-named function/method always wins over the type-level path --
+        never shadows a legitimate bare-name method query. gin byte-identical.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && git tag -a v0.40.0 -m "change-impact: type-level query for bare class names" && git push origin v0.40.0 2>&1 | tail -1
+      at: 2026-08-30T11:58:47.900598Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && GOWORK=off go get github.com/provasign/grove@v0.40.0 2>&1 | tail -1 && GOWORK=off go mod tidy && GOWORK=off go test ./... 2>&1 | grep -v "^ok\|no test files" | head -5; echo "module gate: $?"'
+      at: 2026-08-30T11:59:16.19666Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && rm -f bin/prism-test && git add internal/mcp/graphtext.go go.mod go.sum && git commit -q -m "$(cat <<'EOF'
+        deps: grove v0.40.0 — bare class-name change-impact queries
+
+        Text renderer gains an honest note for completeness="type-level":
+        what it does cover (structural dependents) and what it explicitly
+        does not (duck-typed instanceof relationships to unrelated types) —
+        same over-inclusive-but-honest pattern as the heuristic-refs note.
+        See grove's commit for the full account, including the constructor-
+        pinning bug this also fixed along the way.
+
+        Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01HTYLuNJPfgEAXJykbHPpHT
+        EOF
+        )" && git push origin main 2>&1 | tail -1 && GOWORK=off go build -o bin/prism-rel-test ./cmd/prism && cd ~/Projects/provasign/research && python3 harness/ci_invariants.py --prism ~/Projects/provasign/prism/bin/prism-rel-test --corpus-root ~/.cache/prism-ci-corpus 2>&1 | tail -14
+      at: 2026-08-30T11:59:24.992396Z
+      classified: build
+notes:
+    - text: continuation of session 3b58659c-d56a-4934-bb18-a0b337259ca6 — events captured after its evidence was finalized
+      at: 2026-08-29T22:48:45.045435Z
+redactions: 0

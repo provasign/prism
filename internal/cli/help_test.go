@@ -56,8 +56,8 @@ func TestRun_HelpFlagDoesNotRunTheCommand(t *testing.T) {
 // back — not the whole help text — and that aliases resolve.
 func TestCommandHelp_PerCommandBlocks(t *testing.T) {
 	for cmd, want := range map[string]string{
-		"search":        "prism search <keyword>",
-		"query":         "prism query <task>",
+		"search":        "prism search <term>...",
+		"query":         "prism query --terms",
 		"change-impact": "prism change-impact <query>",
 		"refs":          "prism references <name>",
 		"arch-check":    "prism arch [dir]",

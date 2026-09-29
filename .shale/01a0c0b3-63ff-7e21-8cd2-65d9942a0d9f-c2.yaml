@@ -1,0 +1,149 @@
+shale_version: "0"
+id: 01a0c0b3-63ff-7e21-8cd2-65d9942a0d9f-c2
+created_at: 2026-09-22T23:22:19.956502Z
+finalized_at: 2026-09-22T23:54:16.001081Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: prism query --terms version,release,mcp --path .
+      at: 2026-09-22T23:22:29.435078Z
+      classified: other
+    - cmd: prism query --help
+      at: 2026-09-22T23:22:35.971529Z
+      classified: other
+    - cmd: prism query --terms version,release,mcp --include graph,docs --max-files 8 --format text .
+      at: 2026-09-22T23:22:43.234874Z
+      classified: other
+    - cmd: gh release view --repo provasign/prism --json tagName,name,publishedAt,url,body,assets --jq '{tagName,name,publishedAt,url,body,assets:[.assets[]|{name,size,digest,url}]}'
+      at: 2026-09-22T23:23:06.240203Z
+      classified: other
+    - cmd: gh release list --repo provasign/prism --limit 10 --json tagName,name,publishedAt,isLatest,isPrerelease,isDraft --jq '.[]' && git tag --sort=-version:refname | head -n 10 && git status --short && git branch --show-current
+      at: 2026-09-22T23:23:14.142986Z
+      classified: other
+    - cmd: |-
+        prism version
+        git fetch --tags --prune origin >/dev/null 2>&1 && git rev-parse HEAD && git rev-parse origin/main && git log --oneline --decorate -8 origin/main
+      at: 2026-09-22T23:23:22.565824Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && git log -3 --oneline && find jobs/wiring/low -mindepth 2 -maxdepth 2 -type d -name '2026-*' | sort && find jobs/smoke/low/native -mindepth 1 -maxdepth 1 -type d -name '2026-*' | sort 2>/dev/null
+      at: 2026-09-22T23:24:28.249786Z
+      classified: other
+    - cmd: |-
+        .venv/bin/python - <<'PY'
+        from pathlib import Path
+        import tomllib
+        root=Path('vendor/skillsbench/tasks')
+        for d in sorted(root.iterdir()):
+            p=d/'task.toml'
+            if not p.exists(): continue
+            x=tomllib.loads(p.read_text())
+            md=x.get('metadata',{})
+            if md.get('category') in {'software-engineering','cybersecurity'}:
+                print(f"{d.name}\t{md.get('category')}\t{md.get('difficulty','')}\t{md.get('description','')}")
+        PY
+      at: 2026-09-22T23:26:05.14399Z
+      classified: other
+    - cmd: |-
+        .venv/bin/python - <<'PY'
+        from pathlib import Path
+        import tomllib
+        for name in ['debug-trl-grpo','fix-build-agentops','dialogue-parser']:
+         p=Path('vendor/skillsbench/tasks')/name/'task.toml'; x=tomllib.loads(p.read_text())
+         print('\n###',name,'keys',x.keys())
+         print(str(x.get('instruction',''))[:1200].replace('\n',' '))
+         print('files:',', '.join(str(q.relative_to(p.parent)) for q in sorted(p.parent.rglob('*')) if q.is_file())[:1500])
+        PY
+      at: 2026-09-22T23:26:15.188293Z
+      classified: other
+    - cmd: |-
+        .venv/bin/python - <<'PY'
+        from pathlib import Path
+        import tomllib,re
+        root=Path('vendor/skillsbench/tasks')
+        for d in sorted(root.iterdir()):
+         p=d/'task.toml'
+         if not p.exists(): continue
+         x=tomllib.loads(p.read_text()); cat=x.get('metadata',{}).get('category')
+         if cat not in {'software-engineering','cybersecurity'}: continue
+         ins=(d/'instruction.md').read_text(errors='replace') if (d/'instruction.md').exists() else ''
+         docker=(d/'environment'/'Dockerfile').read_text(errors='replace') if (d/'environment'/'Dockerfile').exists() else ''
+         intro=' '.join(ins.split())[:650]
+         sources=[]
+         for line in docker.splitlines():
+          if re.search(r'git clone|COPY |ADD |tar |unzip|wget|curl',line,re.I): sources.append(line.strip())
+         print(f'\n## {d.name} [{cat}]')
+         print(intro)
+         print('SETUP:', ' | '.join(sources)[:700] or '(none detected)')
+        PY
+      at: 2026-09-22T23:26:29.782784Z
+      classified: other
+    - cmd: git branch --show-current && git status --short && rg --files | sort | head -n 120 && sed -n '1,300p' scripts/compare.py && sed -n '1,240p' tests/test_compare.py && sed -n '1,240p' pyproject.toml
+      at: 2026-09-22T23:35:43.501404Z
+      classified: other
+    - cmd: sed -n '1,80p' study.toml && sed -n '70,165p' scripts/study.py
+      at: 2026-09-22T23:37:04.686403Z
+      classified: other
+    - cmd: prism search read-guard hook hooks prism_init denyBuiltinSearch --scope text --format text
+      at: 2026-09-22T23:37:25.4637Z
+      classified: other
+    - cmd: rg -n -C 8 'prism_init_no_guard|prism_init|guard|hook' /Users/tapabratapal/Projects/provasign/research/harness/runners/ab_endtoend_arms.py /Users/tapabratapal/Projects/provasign/research/harness/run_e2e.py 2>/dev/null | head -n 260
+      at: 2026-09-22T23:37:39.907965Z
+      classified: other
+    - cmd: rg -n -C 10 'prism_read_tracker|prism_read_guard|no_guard|PreToolUse|hooks' /Users/tapabratapal/Projects/provasign/research/harness/run_e2e.py /Users/tapabratapal/Projects/provasign/research/harness/hooks/prism_read_tracker.py /Users/tapabratapal/Projects/provasign/research/harness/hooks/prism_read_guard.py 2>/dev/null | head -n 360
+      at: 2026-09-22T23:37:47.545724Z
+      classified: other
+    - cmd: rg -n -C 8 'prism_read_tracker|prism_read_guard|no_guard' /Users/tapabratapal/Projects/provasign/research/harness/runners /Users/tapabratapal/Projects/provasign/research/harness/run_e2e.py 2>/dev/null | head -n 420
+      at: 2026-09-22T23:37:58.757823Z
+      classified: other
+    - cmd: |-
+        sed -n '1,320p' agents/prism_claude.py
+        sed -n '1,260p' /Users/tapabratapal/Projects/provasign/research/harness/hooks/prism_read_tracker.py
+        sed -n '1,220p' /Users/tapabratapal/Projects/provasign/research/harness/hooks/prism_read_guard.py
+      at: 2026-09-22T23:38:44.023674Z
+      classified: other
+    - cmd: |-
+        rg -n 'class BaseEnvironment|async def (upload|copy|write|exec)|def upload' .venv/lib/python3.13/site-packages/harbor/environments .venv/lib/python3.13/site-packages/harbor/agents | head -n 160
+        rg -n 'settings.json|CLAUDE_CONFIG_DIR|hooks' .venv/lib/python3.13/site-packages/harbor/agents/installed/claude_code.py | head -n 160
+      at: 2026-09-22T23:38:53.395348Z
+      classified: other
+    - cmd: |-
+        sed -n '1,260p' .venv/lib/python3.13/site-packages/harbor/environments/base.py
+        sed -n '1380,1460p' .venv/lib/python3.13/site-packages/harbor/agents/installed/claude_code.py
+      at: 2026-09-22T23:39:00.760555Z
+      classified: other
+    - cmd: |-
+        rg -n 'async def .*upload|def .*upload|async def .*copy|def .*copy' .venv/lib/python3.13/site-packages/harbor/environments/base.py | head -n 100
+        rg -n 'EnvironmentPaths' .venv/lib/python3.13/site-packages/harbor/models/trial/paths.py .venv/lib/python3.13/site-packages/harbor -g '*.py' | head -n 100
+      at: 2026-09-22T23:39:14.181058Z
+      classified: other
+    - cmd: |-
+        sed -n '1,90p' .venv/lib/python3.13/site-packages/harbor/models/trial/paths.py
+        sed -n '890,940p' .venv/lib/python3.13/site-packages/harbor/environments/base.py
+      at: 2026-09-22T23:39:19.869635Z
+      classified: other
+    - cmd: .venv/bin/pytest -q && .venv/bin/python -m compileall -q agents hooks scripts tests && git diff --check && .venv/bin/python scripts/study.py run --arm prism --effort low --trials 1 --phase wiring --task fix-build-agentops --dry-run
+      at: 2026-09-22T23:44:55.554629Z
+      classified: test
+    - cmd: .venv/bin/pytest -q && .venv/bin/python -m compileall -q agents hooks scripts tests && git diff --check && .venv/bin/python scripts/study.py run --arm prism --effort low --trials 1 --phase wiring --task fix-build-agentops --dry-run
+      at: 2026-09-22T23:45:54.423712Z
+      classified: test
+    - cmd: git status --short && git diff --stat && git diff -- study.toml scripts/study.py scripts/gate.py scripts/extract.py agents/prism_claude.py treatment/PRISM.md STUDY.md README.md tests/test_study.py tests/test_gate.py tests/test_hooks.py hooks/settings.json hooks/prism_read_tracker.py hooks/prism_read_guard.py
+      at: 2026-09-22T23:46:18.605098Z
+      classified: other
+    - cmd: .venv/bin/harbor run --path vendor/skillsbench/tasks --agent agents.prism_claude:PrismClaudeCode --model anthropic/claude-sonnet-5 --agent-kwarg version=2.1.280 --agent-kwarg reasoning_effort=low --agent-kwarg thinking_display=summarized --n-attempts 1 --n-concurrent 1 --agent-setup-timeout-multiplier 3.0 --environment-build-timeout-multiplier 3.0 --jobs-dir jobs/install-check/prism-guard --exclude-task-name bike-rebalance --yes --install-only --include-task-name dialogue-parser
+      at: 2026-09-22T23:52:18.322073Z
+      classified: other
+    - cmd: |-
+        job=jobs/install-check/prism-guard/2026-09-22__19-46-51; rg --files "$job" | sort; find "$job" -path '*/agent/hooks/*' -o -path '*/agent/sessions/settings.json' | sort; settings=$(find "$job" -path '*/agent/sessions/settings.json' -print -quit); if [ -n "$settings" ]; then jq '{hook_events:(.hooks|keys),post_matcher:.hooks.PostToolUse[0].matcher,pre_matcher:.hooks.PreToolUse[0].matcher}' "$settings"; fi
+        .venv/bin/pytest -q && .venv/bin/python -m compileall -q agents hooks scripts tests && git diff --check && git status --short
+      at: 2026-09-22T23:52:30.21289Z
+      classified: test
+notes:
+    - text: continuation of session 01a0c0b3-63ff-7e21-8cd2-65d9942a0d9f — events captured after its evidence was finalized
+      at: 2026-09-22T23:22:19.956502Z
+redactions: 0
