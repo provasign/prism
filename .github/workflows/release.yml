@@ -46,7 +46,7 @@ jobs:
         run: |
           mkdir -p dist
           go build -tags netgo -ldflags="-s -w -extldflags \"-static\" -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-linux-${{ matrix.goarch }}" ./cmd/prism
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: prism-linux-${{ matrix.goarch }}
           path: dist/
@@ -74,7 +74,7 @@ jobs:
         run: |
           mkdir -p dist
           go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-darwin-${{ matrix.goarch }}" ./cmd/prism
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: prism-darwin-${{ matrix.goarch }}
           path: dist/
@@ -99,7 +99,7 @@ jobs:
         run: |
           mkdir -p dist
           go build -ldflags="-s -w -X github.com/provasign/prism/internal/version.Version=${{ github.ref_name }}" -o "dist/prism-${{ github.ref_name }}-windows-amd64.exe" ./cmd/prism
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: prism-windows-amd64
           path: dist/
