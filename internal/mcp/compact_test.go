@@ -32,7 +32,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	}
 	opMap := properties["op"].(map[string]any)["description"].(string)
 	for _, want := range []string{"lookup: name[,symbol_file,fields,signature]", "read: file,from,to or ranges",
-		"search: terms[", "query: terms[", "change_impact: name[", "verify: base,removed_symbols,strict",
+		"search: terms[", "query: terms[", "change_impact: name[", "verify: [removed_symbols]",
 		"Known symbol → lookup; search only when location is unknown"} {
 		if !strings.Contains(opMap, want) {
 			t.Errorf("op map omits %q: %q", want, opMap)
@@ -43,24 +43,23 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 		t.Fatal("compact args must reject unknown fields")
 	}
 	argProperties := argsSchema["properties"].(map[string]any)
-	owners := map[string]string{
-		"name": "lookup,change_impact", "symbol_file": "lookup,change_impact",
-		"fields": "lookup", "signature": "lookup,change_impact",
-		"file": "read", "from": "read", "to": "read", "ranges": "read",
-		"terms": "search,query", "scope": "search",
-		"paths": "search,query", "glob": "search,query", "regex": "search",
-		"files_only": "search", "max_results": "search", "exhaustive": "search", "include_bodies": "search",
-		"context": "search", "rollup_only": "search",
-		"base": "verify", "removed_symbols": "verify", "strict": "verify",
-	}
-	if len(argProperties) != len(owners) {
-		t.Fatalf("compact fields = %d, want %d: %#v", len(argProperties), len(owners), argProperties)
-	}
-	for field, owner := range owners {
-		property := argProperties[field].(map[string]any)
-		if description := property["description"].(string); !strings.HasPrefix(description, "ops: "+owner+".") {
-			t.Errorf("%s description lacks exact ops: owner prefix: %q", field, description)
+	// The op map is the one place that says which op owns a field (the
+	// per-field "ops:" tags were dropped 2026-10-01). Every advertised field
+	// must appear under an op there, and every field the server accepts must
+	// be validated against the full schema even when not advertised.
+	hidden := map[string]bool{"rollup_only": true, "base": true, "strict": true}
+	full := compactArgSchemas()
+	for field := range full {
+		_, advertised := argProperties[field]
+		if hidden[field] == advertised {
+			t.Errorf("%s: advertised=%v, want %v", field, advertised, !hidden[field])
 		}
+		if advertised && !strings.Contains(opMap, field) {
+			t.Errorf("%s is advertised but absent from the op map", field)
+		}
+	}
+	if len(argProperties)+len(hidden) != len(full) {
+		t.Fatalf("advertised %d + hidden %d != accepted %d", len(argProperties), len(hidden), len(full))
 	}
 	for _, removed := range []string{"limit", "offset", "query", "budget", "delivery",
 		"max_files", "include", "model", "profile", "context_used"} {
@@ -98,13 +97,12 @@ func TestVerifyMCPArgumentContractsMatch(t *testing.T) {
 		t.Fatalf("compact verify accepted fields = %v, want %v", compactFields["verify"], want)
 	}
 	legacy := toolSchema("prism_verify")["properties"].(map[string]any)
-	compact := CompactToolSchemas()[0]["inputSchema"].(map[string]any)["properties"].(map[string]any)["args"].(map[string]any)["properties"].(map[string]any)
 	for _, field := range want {
 		if _, ok := legacy[field]; !ok {
 			t.Errorf("legacy MCP verify omits %s", field)
 		}
-		if _, ok := compact[field]; !ok {
-			t.Errorf("compact MCP verify omits %s", field)
+		if _, ok := compactArgSchemas()[field]; !ok {
+			t.Errorf("compact MCP verify does not accept %s", field)
 		}
 	}
 	if len(legacy) != len(want) {
