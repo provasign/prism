@@ -279,7 +279,32 @@ func validateCompactArguments(op string, args map[string]any) error {
 	return nil
 }
 
+// unwrapNestedCall accepts a whole call nested inside args:
+// {"args":{"op":"read","args":{...}}}, with or without the same op outside.
+// Measured 2026-10-01: 7 of ~92 calls on the shorter tool definition took
+// this shape (2 of 454 before) and each cost a retry turn on "op is required".
+func unwrapNestedCall(envelope map[string]any) map[string]any {
+	inner, ok := envelope["args"].(map[string]any)
+	if !ok {
+		return envelope
+	}
+	innerOp, ok := inner["op"].(string)
+	if !ok {
+		return envelope
+	}
+	if outerOp, has := envelope["op"]; has && outerOp != innerOp {
+		return envelope
+	}
+	for key := range envelope {
+		if key != "op" && key != "args" {
+			return envelope // other outer fields: not clearly one nested call
+		}
+	}
+	return inner
+}
+
 func expandCompactCall(envelope map[string]any) (string, map[string]any, error) {
+	envelope = unwrapNestedCall(envelope)
 	op, ok := envelope["op"].(string)
 	// Arguments placed beside op instead of inside args are what the agent
 	// meant: {"op":"change_impact","name":"walk"} was rejected on a first

@@ -428,3 +428,22 @@ func TestUnadvertisedCompactFieldsStillAccepted(t *testing.T) {
 		t.Fatalf("verify base/strict rejected: %v", err)
 	}
 }
+
+// A whole call nested inside args means that call (trim2 run, 2026-10-01).
+func TestCompactCallNestedInArgsIsUnwrapped(t *testing.T) {
+	for _, envelope := range []map[string]any{
+		{"args": map[string]any{"op": "read", "args": map[string]any{"file": "a.go", "from": 1, "to": 5}}},
+		{"op": "read", "args": map[string]any{"op": "read", "args": map[string]any{"file": "a.go", "from": 1, "to": 5}}},
+		{"args": map[string]any{"op": "lookup", "name": []any{"hashCode"}, "fields": []any{"body"}}},
+	} {
+		name, args, err := expandCompactCall(envelope)
+		if err != nil || (name != "prism_read" && name != "prism_lookup") || len(args) == 0 {
+			t.Fatalf("%v: got %s %v %v", envelope, name, args, err)
+		}
+	}
+	// A different op outside is a conflict, not a nesting.
+	if _, _, err := expandCompactCall(map[string]any{"op": "search",
+		"args": map[string]any{"op": "read", "args": map[string]any{"file": "a.go"}}}); err == nil {
+		t.Fatal("conflicting nested op was accepted")
+	}
+}
