@@ -33,8 +33,13 @@ func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
 	if strings.Count(got, "<!-- prism:end -->") != 1 {
 		t.Error("bounded steering marker must occur exactly once")
 	}
-	if len(got) > 3000 {
-		t.Errorf("always-loaded steering grew beyond 3000 bytes: %d", len(got))
+	// Per-language verify policy lives in the MCP instructions only; the
+	// steering copy repeated it on every request (2026-09-30 trim).
+	if strings.Contains(got, "unchecked JavaScript") {
+		t.Error("steering repeats the MCP verify policy")
+	}
+	if len(got) > 2300 {
+		t.Errorf("always-loaded steering grew beyond 2300 bytes: %d", len(got))
 	}
 	if strings.Contains(got, "callers/tests/related") {
 		t.Error("steering collapsed narrow direct-test search into broad query routing")
@@ -49,12 +54,9 @@ func TestSteeringKeepsImpactMandatoryAndVerificationOptional(t *testing.T) {
 		"symbol whose callers you have not enumerated",
 		"Relay its sites as-is",
 		"Report gaps; never narrow scope to fit what was found",
-		"Optional checks:",
-		"verify({removed_symbols:[...]}) after a removal",
-		"Consider verify({}) for Python, unchecked JavaScript, or PHP",
-		"For TypeScript or checked JavaScript",
-		"For Go, Java,",
-		"Rust, C/C++, or C#, skip it after a complete build/typecheck",
+		"verify is optional",
+		"removed_symbols after a removal",
+		"build/typecheck cannot cover the callers",
 		"It is never a required closing step",
 	} {
 		if !strings.Contains(got, want) {

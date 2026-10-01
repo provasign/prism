@@ -248,11 +248,12 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 	// exit 0). prism_drift already refreshes for exactly this reason; verify
 	// — the CI gate — must not be the one surface that trusts stale data.
 	var staleNote string
+	var refreshErrors []string
 	if indexed, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
 		staleNote = "index refresh failed (" + ierr.Error() +
 			"); results computed against a possibly stale index"
-	} else if len(indexed.Errors) > 0 {
-		staleNote = "index refresh incomplete: " + strings.Join(indexed.Errors, "; ")
+	} else {
+		refreshErrors = indexed.Errors
 	}
 
 	changed, err := gitChangedRanges(h.Root, base)
@@ -283,6 +284,12 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		changedFiles = append(changedFiles, f)
 	}
 	sort.Strings(changedFiles)
+	// Only a refresh error on a changed file can hide a contract change. A
+	// symlinked doc the indexer skipped (urfave/cli docs/CODE_OF_CONDUCT.md)
+	// turned 5 of 32 forced-run verifies into "review" on unrelated edits.
+	if errs := refreshErrorsFor(refreshErrors, changed); len(errs) > 0 {
+		staleNote = "index refresh incomplete: " + strings.Join(errs, "; ")
+	}
 
 	// 1) Which changed symbols altered their contract? Diff each changed
 	// file's base version (parsed in memory) against the current index.
@@ -1398,4 +1405,22 @@ func prismOwnedFile(path string) bool {
 		return true
 	}
 	return false
+}
+
+// refreshErrorsFor keeps index errors that name a changed file. Grove
+// reports per-file errors as "<repo-relative path>: <reason>"; an error that
+// does not start with a path is kept, since it cannot be ruled out.
+func refreshErrorsFor(errs []string, changed map[string][]lineRange) []string {
+	var keep []string
+	for _, e := range errs {
+		file, _, ok := strings.Cut(e, ": ")
+		if !ok || strings.ContainsAny(file, " \t") {
+			keep = append(keep, e)
+			continue
+		}
+		if _, hit := changed[filepath.ToSlash(file)]; hit {
+			keep = append(keep, e)
+		}
+	}
+	return keep
 }

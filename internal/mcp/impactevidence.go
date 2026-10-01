@@ -24,6 +24,8 @@ func compactImpactLine(text string) string {
 	return text
 }
 
+const callExpressionUnavailableNote = "call expression unavailable in indexed source; inspect this caller if needed"
+
 func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int) {
 	lines := strings.Split(caller.RawText, "\n")
 	matched := map[int]bool{}
@@ -58,7 +60,7 @@ func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, targ
 	}
 	var notes []string
 	if len(ordered) == 0 || unavailable > 0 {
-		notes = append(notes, "call expression unavailable in indexed source; inspect this caller if needed")
+		notes = append(notes, callExpressionUnavailableNote)
 	}
 	if omitted > 0 {
 		notes = append(notes, fmt.Sprintf("%d matching line(s) omitted by evidence limit; lookup this caller for all expressions", omitted))

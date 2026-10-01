@@ -632,27 +632,17 @@ For each discovery step, pick the Prism op:
   tests naming known symbols -> search with test path/glob, files_only
   indirect tests    -> query
 
-Put every symbol and term you already know into ONE call: ` + "`" + `name` + "`" + ` and ` + "`" + `terms` + "`" + `
-take up to 10. For MCP, pass distinct terms as comma-delimited JSON string
-values, for example terms:["alpha","beta"]; never combine distinct terms in
-one space-delimited string. For CLI search, use positional terms: prism search alpha beta.
-` + "`" + `ranges` + "`" + ` reads several
-windows at once. Two lookups in a row is one lookup you did not batch.
+Put every symbol and term you already know into ONE call (` + "`" + `name` + "`" + `/` + "`" + `terms` + "`" + ` take up
+to 10; ` + "`" + `ranges` + "`" + ` reads several windows). Two lookups in a row is one lookup you did
+not batch. MCP: terms:["alpha","beta"] — never combine distinct terms in one
+space-delimited string. CLI: positional terms: prism search alpha beta.
 
 Obligations:
   - change_impact before editing a signature, public contract, override, or any
     symbol whose callers you have not enumerated. Relay its sites as-is.
   - Report gaps; never narrow scope to fit what was found.
-
-Optional checks:
-  - verify({removed_symbols:[...]}) after a removal finds exact identifier
-    mentions in code, comments, and docs; inspect the reported sites.
-  - Consider verify({}) for Python, unchecked JavaScript, or PHP contract
-    changes: syntax checks can miss callers. For TypeScript or checked JavaScript,
-    use it only if the affected files lack a complete typecheck. For Go, Java,
-    Rust, C/C++, or C#, skip it after a complete build/typecheck of affected
-    targets. In any language, use it when that check cannot cover the callers.
-    It is never a required closing step; run relevant tests.
+  - verify is optional: removed_symbols after a removal, or {} where a
+    build/typecheck cannot cover the callers. It is never a required closing step.
 
 <!-- prism:end -->
 `

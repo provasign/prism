@@ -243,3 +243,109 @@ func sharedTrailingSegments(a, b string) int {
 	}
 	return n
 }
+
+// Missing-path substitution.
+//
+// Measured 2026-09-30 (forced30 + graph30, 60 Sonnet 5.5 bug-fix sessions):
+// 9 search/read calls named a file that does not exist — mostly the old
+// com/fasterxml package path for code that now lives under tools/jackson, or
+// a missing sub-package. The miss note already named the real file, and the
+// agent re-issued the call with it: one turn each, every time. When exactly
+// one real path is the best match, use it and say so.
+
+// uniqueClosestPath returns the single best real path for a missing one: the
+// only path sharing its base name, or the one sharing strictly more trailing
+// segments than any other.
+func uniqueClosestPath(files []string, missing string) (string, bool) {
+	want := strings.TrimSuffix(strings.TrimPrefix(filepath.ToSlash(missing), "./"), "/")
+	base := path.Base(want)
+	if base == "" || base == "." || base == "/" || !strings.Contains(base, ".") {
+		// Only file names: a bare directory name (deser, impl) is too common.
+		return "", false
+	}
+	best, bestScore, tie := "", -1, false
+	for _, f := range files {
+		if strings.HasSuffix(f, "/") || path.Base(f) != base {
+			continue
+		}
+		score := sharedTrailingSegments(f, want)
+		switch {
+		case score > bestScore:
+			best, bestScore, tie = f, score, false
+		case score == bestScore:
+			tie = true
+		}
+	}
+	if best == "" || tie {
+		return "", false
+	}
+	return best, true
+}
+
+// resolveMissingArgPaths rewrites file paths in search, query, and read
+// arguments that do not exist under root but have one unambiguous real
+// counterpart. It returns one note per substitution.
+func resolveMissingArgPaths(root, tool string, args map[string]any) []string {
+	var files []string
+	var notes []string
+	fix := func(p string) string {
+		p = strings.TrimSpace(p)
+		if p == "" || filepath.IsAbs(p) {
+			return p
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(p))); err == nil {
+			return p
+		}
+		if files == nil {
+			files = scopeWalkFiles(root)
+		}
+		real, ok := uniqueClosestPath(files, p)
+		if !ok {
+			return p
+		}
+		notes = append(notes, fmt.Sprintf("path %q does not exist; used %s", p, real))
+		return real
+	}
+	fixList := func(key string) {
+		switch v := args[key].(type) {
+		case string:
+			args[key] = fix(v)
+		case []any:
+			for i, item := range v {
+				if s, ok := item.(string); ok {
+					v[i] = fix(s)
+				}
+			}
+		case []string:
+			for i := range v {
+				v[i] = fix(v[i])
+			}
+		}
+	}
+	switch tool {
+	case "prism_search":
+		fixList("path")
+	case "prism_query", "prism_query_compact":
+		fixList("paths")
+	case "prism_read", "prism_read_compact":
+		fixList("file")
+		fixList("path")
+		switch ranges := args["ranges"].(type) {
+		case []any:
+			for _, item := range ranges {
+				if m, ok := item.(map[string]any); ok {
+					if s, ok := m["file"].(string); ok {
+						m["file"] = fix(s)
+					}
+				}
+			}
+		case []map[string]any:
+			for _, m := range ranges {
+				if s, ok := m["file"].(string); ok {
+					m["file"] = fix(s)
+				}
+			}
+		}
+	}
+	return notes
+}

@@ -30,6 +30,21 @@ var onceFixed = map[string]string{
 	"// Grouped matches by enclosing symbol (bounded graph rollup; inspect omission notes):": "// bounded rollup by enclosing symbol; inspect omissions:",
 	"// closest indexed symbols:": "// closest indexed symbols:",
 	"// no matches — search timed out before finishing; results may be incomplete": "// no matches — timed out, INCOMPLETE",
+
+	// Measured 2026-09-30 (forced30, 30 Sonnet 5.5 bug fixes): these notes
+	// were 26% of search and 29% of change_impact bytes, repeated verbatim on
+	// every call — and the evidence note once per caller inside one answer.
+	compactSearchLocatorGuidance:          "// locator result",
+	enclosingBodiesHeader:                 "// Exact source for top hits:",
+	"// " + tabIndentNoteText:             "",
+	"// " + impactRelayNote:               "",
+	"// " + indexedScopeBoundary:          "// indexed project graph only — not a global completeness proof",
+	"// " + compilerScopeBoundary:         "// complete for this repository (compiler-backed)",
+	"// " + compilerEvidenceNote:          "",
+	"// " + indexedEvidenceNote:           "// call expressions are name-matched, not receiver-resolved",
+	"// " + dynamicCallerNote:             "// dynamic-language callers are approximate; family closure does not prove caller completeness",
+	"// " + heuristicRefsNote:             "// includes name-derived references",
+	"// " + callExpressionUnavailableNote: "// no call expression shown",
 }
 
 var oncePatterns = []struct {
@@ -42,6 +57,8 @@ var oncePatterns = []struct {
 	{regexp.MustCompile(`^// showing (\d+) of AT LEAST (\d+) matches across (\d+) files — .*$`), "// showing $1 of ≥$2 matches in $3 files — a SAMPLE; narrow, or exhaustive=true"},
 	{regexp.MustCompile(`^// (\d+) files match — first .*$`), "// $1 files match — listed by path, then by directory (path=<dir> expands)"},
 	{regexp.MustCompile(`^// (\d+) more files with matches — exhaustive=true: .*$`), "// $1 more files — by path, then by directory (path=<dir> expands)"},
+	// The read header already names the window; the reminder is said once.
+	{regexp.MustCompile(`^// lines \d+-\d+ of \d+ — this is a WINDOW, not the file$`), ""},
 }
 
 // onceLongNote is the length from which a verbatim-repeated note collapses
@@ -55,7 +72,14 @@ type onceNotes struct {
 
 // apply rewrites the rendered text: first occurrence of each note in the
 // session is kept, later ones take the short form.
-func (o *onceNotes) apply(text string) string {
+func (o *onceNotes) apply(text string) string { return o.rewrite(text, true) }
+
+// applyKnown is apply for results that may carry unnumbered source (read,
+// lookup, query, change_impact, verify): only registered notes collapse; the
+// generic repeated-long-line rule, which could match a source comment, is off.
+func (o *onceNotes) applyKnown(text string) string { return o.rewrite(text, false) }
+
+func (o *onceNotes) rewrite(text string, generic bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.said == nil {
@@ -64,41 +88,44 @@ func (o *onceNotes) apply(text string) string {
 	lines := strings.Split(text, "\n")
 	out := lines[:0]
 	for _, l := range lines {
+		// Notes may be indented under the entry they annotate.
+		body := strings.TrimLeft(l, " \t")
+		indent := l[:len(l)-len(body)]
+		if !strings.HasPrefix(body, "//") {
+			out = append(out, l)
+			continue
+		}
 		// Current validity/scope facts must survive repeats and compaction.
-		lower := strings.ToLower(l)
-		if strings.HasPrefix(l, "//") && (strings.HasPrefix(l, "// root:") ||
+		lower := strings.ToLower(body)
+		if strings.HasPrefix(body, "// root:") ||
 			strings.Contains(lower, "in the requested scope") ||
 			strings.Contains(lower, "incomplete") || strings.Contains(lower, "not searched") ||
 			strings.Contains(lower, "a sample") || strings.Contains(lower, "exhaustive symbol search") ||
-			strings.Contains(lower, "rejected paths")) {
+			strings.Contains(lower, "rejected paths") {
 			out = append(out, l)
 			continue
 		}
-		if !strings.HasPrefix(l, "//") {
-			out = append(out, l)
-			continue
-		}
-		if short, ok := onceFixed[l]; ok {
-			if o.said[l] {
+		if short, ok := onceFixed[body]; ok {
+			if o.said[body] {
 				if short != "" {
-					out = append(out, short)
+					out = append(out, indent+short)
 				}
 				continue
 			}
-			o.said[l] = true
+			o.said[body] = true
 			out = append(out, l)
 			continue
 		}
 		matched := false
 		for _, p := range oncePatterns {
-			if p.re.MatchString(l) {
+			if p.re.MatchString(body) {
 				matched = true
 				key := p.re.String()
-				if o.said[key] {
-					out = append(out, p.re.ReplaceAllString(l, p.short))
-				} else {
+				if !o.said[key] {
 					o.said[key] = true
 					out = append(out, l)
+				} else if short := p.re.ReplaceAllString(body, p.short); short != "" {
+					out = append(out, indent+short)
 				}
 				break
 			}
@@ -106,7 +133,7 @@ func (o *onceNotes) apply(text string) string {
 		if matched {
 			continue
 		}
-		if len(l) >= onceLongNote {
+		if generic && indent == "" && len(l) >= onceLongNote {
 			if o.said[l] {
 				head := l
 				if len(head) > 70 {

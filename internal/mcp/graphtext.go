@@ -166,8 +166,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if hr, _ := out["hasHeuristicRefs"].(bool); hr {
-		b.WriteString("// includes name-derived references: completeness describes indexed scope, not receiver certainty. " +
-			"Verify ambiguous expressions; per-edge provenance is unavailable here.\n")
+		b.WriteString("// " + heuristicRefsNote + "\n")
 	}
 	if note, _ := out["evidenceNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
@@ -636,3 +635,6 @@ func renderQuerySourceAsText(out map[string]any) (string, bool) {
 	}
 	return b.String(), true
 }
+
+const heuristicRefsNote = "includes name-derived references: completeness describes indexed scope, not receiver certainty. " +
+	"Verify ambiguous expressions; per-edge provenance is unavailable here."
