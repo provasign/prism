@@ -1,0 +1,1383 @@
+shale_version: "0"
+id: 64098a29-aaee-4084-8e99-80e43e9aaf9d
+created_at: 2026-10-01T00:39:50.478836Z
+finalized_at: 2026-10-01T01:58:38.340503Z
+agent:
+    tool: claude-code
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: payload/trim-turns
+privacy: redacted
+commands:
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/ && cat project_graph_access_experiment_2026_09_29.md project_delivery_gap_2026_09_28.md project_s55_turns_mentions_2026_09_28.md feedback_prism_no_edits_or_commands.md
+      at: 2026-10-01T00:41:05.040391Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results && ls -lt | head -15; ls -lt e2e-forced30 | head; ls -t ~/.claude/projects | head -5
+      at: 2026-10-01T00:41:07.537595Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results && cat forced30-SUMMARY.txt; python3 -m json.tool e2e-forced30/urfave__cli__pr2309.claude-sonnet-5-5.prism_body_exp.json | head -80
+      at: 2026-10-01T00:41:11.559285Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,os
+        P=os.path.expanduser('~/.claude/projects')
+        idx={}
+        for f in glob.glob(P+'/*/*.jsonl'):
+            idx[os.path.basename(f)[:-6]]=f
+        for pat in ['e2e-forced30/*.json','e2e/*.claude-sonnet-5-5.prism_body_baseline.json','e2e/*.claude-sonnet-5-5.native.json']:
+            fs=glob.glob(pat); found=0
+            for f in fs:
+                sid=json.load(open(f))['usage'].get('session_id')
+                if sid in idx: found+=1
+            print(pat,len(fs),found)
+        EOF
+      at: 2026-10-01T00:41:17.942727Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,os
+        P=os.path.expanduser('~/.claude/projects')
+        idx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}
+        sid=json.load(open('e2e-forced30/urfave__cli__pr2309.claude-sonnet-5-5.prism_body_exp.json'))['usage']['session_id']
+        for l in open(idx[sid]):
+            e=json.loads(l)
+            m=e.get('message')
+            if not isinstance(m,dict): continue
+            c=m.get('content')
+            if isinstance(c,str): print(e['type'],'TEXT',c[:300]);continue
+            for b in c or []:
+                t=b.get('type')
+                if t=='tool_use': print('USE',json.dumps(b['input'])[:400])
+                elif t=='tool_result':
+                    r=b.get('content'); r=r if isinstance(r,str) else ''.join(x.get('text','') for x in r)
+                    print('RES',len(r),r[:1500].replace('\n','\n    '))
+                elif t=='text': print('TXT',b['text'][:300])
+        EOF
+      at: 2026-10-01T00:41:22.884296Z
+      classified: other
+    - cmd: |-
+        mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && cat > load.py <<'EOF'
+        import json,glob,os,re
+        R='/Users/tapabratapal/Projects/provasign/research/harness/results/'
+        P=os.path.expanduser('~/.claude/projects')
+        idx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}
+        ARMS={'forced':R+'e2e-forced30/*.json','prism':R+'e2e/*.claude-sonnet-5-5.prism_body_baseline.json','native':R+'e2e/*.claude-sonnet-5-5.native.json'}
+        def calls(arm):
+            out=[]
+            for f in sorted(glob.glob(ARMS[arm])):
+                rec=json.load(open(f)); sid=rec['usage']['session_id']
+                uses={}; seq=[]
+                for l in open(idx[sid]):
+                    e=json.loads(l); m=e.get('message')
+                    if not isinstance(m,dict) or isinstance(m.get('content'),str): continue
+                    for b in m.get('content') or []:
+                        if b.get('type')=='tool_use':
+                            d={'name':b['name'],'input':b['input'],'id':b['id'],'msg':m.get('id')}
+                            uses[b['id']]=d; seq.append(d)
+                        elif b.get('type')=='tool_result' and b['tool_use_id'] in uses:
+                            r=b.get('content'); r=r if isinstance(r,str) else ''.join(x.get('text','') for x in (r or []) if isinstance(x,dict))
+                            uses[b['tool_use_id']]['result']=r; uses[b['tool_use_id']]['err']=b.get('is_error',False)
+                out.append({'task':rec['task'],'resolved':rec['resolved'],'turns':rec['turns'],'cost':rec['cost_usd'],'seq':seq})
+            return out
+        EOF
+        python3 - <<'EOF'
+        from load import *
+        import collections
+        for arm in ['forced','prism']:
+            S=calls(arm); C=collections.Counter(); B=collections.Counter(); tot=0
+            for s in S:
+                for c in s['seq']:
+                    n=c['name']; op=c['input'].get('op') if 'prism' in n else n
+                    k=('prism.'+str(op)) if 'prism' in n else n
+                    C[k]+=1; B[k]+=len(c.get('result',''))
+            print(arm, 'tasks',len(S))
+            for k,v in C.most_common(): print(f'  {k:22} n={v:4} chars={B[k]:8} avg={B[k]//v:6}')
+        EOF
+      at: 2026-10-01T00:41:34.74714Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import *
+        import collections,re
+        # 1. boilerplate: lines starting with // (after strip) per op; group by normalized text
+        for arm in ['forced','prism']:
+            S=calls(arm); per=collections.Counter(); tot=collections.Counter(); lines=collections.Counter()
+            for s in S:
+                for c in s['seq']:
+                    if 'prism' not in c['name']: continue
+                    op=c['input'].get('op'); r=c.get('result','')
+                    tot[op]+=len(r)
+                    for ln in r.split('\n'):
+                        t=ln.strip()
+                        if t.startswith('//') or t.startswith('note:'):
+                            per[op]+=len(ln)+1
+                            [REDACTED:env-secret]'[0-9]+','N',t)[:110]
+                            [REDACTED:env-secret]'/private/var\S+','PATH',key)
+                            lines[key]+=len(ln)+1
+            print(arm, {k:f'{per[k]}/{tot[k]}={per[k]/max(tot[k],1):.0%}' for k in tot})
+            for k,v in lines.most_common(25): print(f'   {v:6} {k}')
+        EOF
+      at: 2026-10-01T00:41:43.7505Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && cat > cover.py <<'EOF'
+        from load import *
+        import re,os,collections
+        def norm(p,root=None):
+            p=re.sub(r'^/private/var/folders/\S+?/T/e2e-run-[a-z0-9_]+/','',p); p=re.sub(r'^/var/folders/\S+?/T/e2e-run-[a-z0-9_]+/','',p)
+            return p.lstrip('./')
+        def delivered(c):
+            """return dict file->set(lines) of source lines shown in a result"""
+            r=c.get('result',''); out=collections.defaultdict(set); cur=None
+            n=c['name']
+            if n=='Read':
+                f=norm(c['input'].get('file_path',''))
+                for ln in r.split('\n'):
+                    m=re.match(r'\s*(\d+)[\t→]',ln)
+                    if m: out[f].add(int(m.group(1)))
+                return out
+            if 'prism' not in n: return out
+            for ln in r.split('\n'):
+                m=re.match(r'//\s*(\S+\.\w+) lines (\d+)-(\d+)',ln) or re.match(r'//\s*\w+ \S+\s+(\S+\.\w+):(\d+)-(\d+)',ln)
+                if m: cur=norm(m.group(1)); continue
+                m=re.match(r'\*\*`(\S+)`\*\*',ln.strip())
+                if m: cur=norm(m.group(1)); continue
+                m=re.match(r'^\s{0,4}(\S+\.(?:go|java|py|ts|js|tsx|rs|kt|scala|rb|php|c|h|cc|cpp)):\s*$',ln)
+                if m: cur=norm(m.group(1)); continue
+                m=re.match(r'^(\S+\.(?:go|java|py|ts|js|tsx)):(\d+):',ln)
+                if m: out[norm(m.group(1))].add(int(m.group(2))); continue
+                m=re.match(r'^\s*(\d+)(?:\t|[-:] )',ln)
+                if m and cur: out[cur].add(int(m.group(1)))
+            return out
+        def requested(c):
+            n=c['name'];i=c['input']
+            if n=='Read':
+                f=norm(i.get('file_path','')); off=i.get('offset') or 1; lim=i.get('limit') or 2000
+                return f,off,off+lim-1
+            if 'prism' in n and i.get('op')=='read':
+                a=i.get('args',{}); f=a.get('file') or a.get('path')
+                if not f: return None
+                return norm(f),a.get('from',1),a.get('to',a.get('from',1)+200)
+            return None
+        EOF
+        python3 - <<'EOF'
+        from cover import *
+        for arm in ['forced','prism']:
+            S=calls(arm); stats=collections.Counter(); ex=[]
+            for s in S:
+                seen=collections.defaultdict(set); seq=s['seq']
+                for k,c in enumerate(seq):
+                    q=requested(c)
+                    if q:
+                        f,a,b=q
+                        d=delivered(c).get(f,set())  # lines actually returned
+                        got=d if d else set(range(a,b+1))
+                        prev=seen.get(f,set())
+                        ov=len(got&prev)/max(len(got),1)
+                        nxt=seq[k+1]['name'] if k+1<len(seq) else ''
+                        kind=('nativeRead' if c['name']=='Read' else 'prismRead')
+                        pre_edit = nxt=='Edit'
+                        bucket='full' if ov>=0.9 else 'partial' if ov>=0.3 else 'new'
+                        stats[(kind,bucket,'preEdit' if pre_edit else 'nav')]+=1
+                        stats[(kind,'chars',bucket)]+=len(c.get('result',''))
+                    for f,ls in delivered(c).items(): seen[f]|=ls
+            print(arm)
+            for k in sorted(stats): print('  ',k,stats[k])
+        EOF
+      at: 2026-10-01T00:42:02.852236Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && cat > classify.py <<'EOF'
+        import re
+        def cls(c):
+            n=c['name']; i=c['input']
+            if 'prism' in n: return 'prism.'+str(i.get('op'))
+            if n in('Read',): return 'Read'
+            if n in('Grep','Glob'): return 'Grep'
+            if n in('Edit','Write','MultiEdit'): return 'Edit'
+            if n.lower()=='bash':
+                cmd=i.get('command','')
+                if re.search(r'\b(mvn|gradle|go (test|build|vet)|pytest|python3? -m pytest|npm|pnpm|yarn|bun|vitest|jest|tsc|cargo|javac|python3? -c|python3? \S+\.py|node )',cmd): return 'Bash.run'
+                if re.search(r'\bsed -i|perl -pi|cat >|tee ',cmd): return 'Bash.edit'
+                if re.search(r'\b(grep|rg|find|ls|git (log|grep|show|diff))\b',cmd): return 'Bash.find'
+                if re.search(r'\b(cat|sed -n|head|tail|awk)\b',cmd): return 'Bash.read'
+                return 'Bash.other'
+            return n
+        EOF
+        python3 - <<'EOF'
+        from load import *; from classify import cls
+        import collections
+        for arm in ['native','prism','forced']:
+            S=calls(arm); C=collections.Counter(); msgs=0
+            for s in S:
+                ms=collections.OrderedDict()
+                for c in s['seq']: ms.setdefault(c['msg'],[]).append(cls(c))
+                msgs+=len(ms)
+                for m,cl in ms.items():
+                    C[cl[0] if len(set(cl))==1 else 'mixed:'+'+'.join(sorted(set(cl)))]+=1
+            n=len(S); print(f'{arm}: tool-turns/task {msgs/n:.1f}')
+            for k,v in C.most_common(14): print(f'   {v/n:5.2f} {k}')
+        EOF
+      at: 2026-10-01T00:42:13.973679Z
+      classified: test
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF' > greps.txt; wc -l greps.txt; head -150 greps.txt
+        from load import *; from classify import cls
+        import json
+        for arm in ['prism','forced']:
+            for s in calls(arm):
+                prev=None
+                for c in s['seq']:
+                    k=cls(c)
+                    if k in('Bash.find','Grep','Bash.read'):
+                        inp=c['input'].get('command') or json.dumps(c['input'])
+                        print(f"[{arm}] {s['task'][:30]:30} {k:9} {inp[:170]!r}")
+                        print(f"      <- prev {prev}")
+                    if k.startswith('prism'): prev=k+' '+json.dumps(c['input'].get('args',{}))[:150]
+                    elif k in ('Read','Edit','Bash.run'): prev=k
+        EOF
+      at: 2026-10-01T00:42:20.123853Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && grep -A1 '^\[forced\]' greps.txt | grep -v -- '^--' | cut -c1-260 | head -120
+      at: 2026-10-01T00:42:26.477014Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import *
+        import json,collections
+        pat={'filter_nofiles':'FILTER MATCHED NO FILES','filter_partly':'FILTER PARTLY INVALID','nomatch':'// no matches','nosym':'no indexed symbol matches','fallback':'Failed exact term','refresh_incomplete':'index refresh incomplete','verdict_review':'verdict: review','verdict_pass':'verdict: ','error':'error','ambig':'ambiguous'}
+        for arm in ['prism','forced']:
+            C=collections.Counter(); ex=collections.defaultdict(list)
+            for s in calls(arm):
+                for c in s['seq']:
+                    if 'prism' not in c['name']: continue
+                    r=c.get('result',''); op=c['input'].get('op')
+                    if c.get('err') or op is None: C['ERR']+=1; ex['ERR'].append((s['task'],json.dumps(c['input'])[:200],r[:300]))
+                    for k,p in pat.items():
+                        if p in r: C[(op,k)]+=1; ex[k].append((s['task'],json.dumps(c['input'].get('args'))[:160],r[:0]))
+            print(arm,dict(C))
+            for e in ex['ERR']: print('  ERR',e)
+            for e in ex['nomatch'][:12]: print('  NOMATCH',e[:2])
+            for e in ex['nosym'][:8]: print('  NOSYM',e[:2])
+        EOF
+      at: 2026-10-01T00:42:37.393503Z
+      classified: other
+    - cmd: |
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import *
+        import json
+        seen=0
+        for arm in ['prism','forced']:
+            for s in calls(arm):
+                for k,c in enumerate(s['seq']):
+                    if 'prism' not in c['name']: continue
+                    r=c.get('result','')
+                    if ('// no matches' in r or 'FILTER MATCHED' in r or 'no such file' in r or r.startswith('read ')) :
+                        nxt=[ (x['name'], json.dumps(x['input'])[:140]) for x in s['seq'][k+1:k+2]]
+                        print('=====',arm,s['task'],json.dumps(c['input'].get('args'))[:250]); print(r[:900]); print('  NEXT',nxt)
+        EOF
+      at: 2026-10-01T00:42:45.357702Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/tool-results/ && grep -c '^=====' bwq3r8b6b.txt; grep -E '^(=====|// FILTER|read |  NEXT|// no matches)' bwq3r8b6b.txt | cut -c1-330
+      at: 2026-10-01T00:42:49.909388Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import *
+        import json
+        for s in calls('forced'):
+            for k,c in enumerate(s['seq']):
+                if c['input'].get('op')!='change_impact': continue
+                r=c.get('result','')
+                if 'ambiguous' in r[:600] or c.get('err'):
+                    print('=====',s['task'],json.dumps(c['input'].get('args')), len(r)); print(r[:500])
+                    print('  NEXT',[json.dumps(x['input'])[:150] for x in s['seq'][k+1:k+2]])
+        EOF
+      at: 2026-10-01T00:43:02.138402Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import *; from classify import cls
+        import json,collections,statistics as st
+        for arm in ['native','prism','forced']:
+            first=[];res=collections.Counter();n=0;turns=[];cost=[]
+            for f in sorted(glob.glob(ARMS[arm])):
+                rec=json.load(open(f)); sid=rec['usage']['session_id']; n+=1
+                turns.append(rec['turns']); cost.append(rec['cost_usd'])
+                got=False
+                for l in open(idx[sid]):
+                    e=json.loads(l); m=e.get('message')
+                    if isinstance(m,dict) and m.get('role')=='assistant' and m.get('usage') and not got:
+                        u=m['usage']; first.append(u.get('cache_read_input_tokens',0)+u.get('cache_creation_input_tokens',0)+u.get('input_tokens',0)); got=True
+            for s in calls(arm):
+                for c in s['seq']: res[cls(c).split('.')[0] if not cls(c).startswith('prism') else cls(c)]+=len(c.get('result',''))
+            print(f"{arm}: first-request ctx {st.mean(first):.0f} tok; turns {st.mean(turns):.1f}; cost ${sum(cost):.2f}; tool-result chars/task", {k:v//n for k,v in res.most_common()}, 'total',sum(res.values())//n)
+        EOF
+      at: 2026-10-01T00:43:13.529294Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import *
+        import json
+        # find a prism-arm worktree's CLAUDE.md content from first user message? check the system/attachments in transcript
+        f=sorted(glob.glob(ARMS['forced']))[0]; sid=json.load(open(f))['usage']['session_id']
+        for l in open(idx[sid]):
+            e=json.loads(l)
+            t=e.get('type')
+            if t not in('assistant','user'): print(t, str(e)[:300])
+        EOF
+        ls /Users/tapabratapal/Projects/provasign/research/harness/*.py | head -30
+      at: 2026-10-01T00:43:23.915957Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'\nfrom load import *\nimport json\nfor arm in ['prism','native']:\n    f=sorted(glob.glob(ARMS[arm]))[3]; sid=json.load(open(f))['usage']['session_id']\n    for l in open(idx[sid]):\n        e=json.loads(l); a=e.get('attachment') or {}\n        t=a.get('type')\n        if t=='instructions':\n            for x in a['files']: print(arm,'CLAUDE.md',x['path'][-30:],len(x['content']))\n            open(f'claudemd_{arm}.txt','w').write(a['files'][0]['content'])\n        if t=='mcp_instructions_delta': print(arm,'mcp instr',len(''.join(a['addedBlocks']))); open(f'mcpinstr_{arm}.txt','w').write(''.join(a['addedBlocks']))\n        if t=='prompt_snapshot':\n            sp=a.get('systemPrompt'); print(arm,'sysprompt chars',sum(len(x) for x in sp), 'keys',list(a.keys())); \n            tools=a.get('tools'); \n            if tools: print(' tools',len(json.dumps(tools)))\n            break\nEOF\nwc -c claudemd_* mcpinstr_*"
+      at: 2026-10-01T00:43:31.736923Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import *
+        import json,collections
+        for arm in ['forced','prism']:
+            graph=0; ts=[]
+            for f in sorted(glob.glob(ARMS[arm])):
+                sid=json.load(open(f))['usage']['session_id']
+                for l in open(idx[sid]):
+                    e=json.loads(l); a=e.get('attachment') or {}
+                    if a.get('type')=='instructions' and 'grove.db' in a['files'][0]['content']: graph+=1
+                    m=e.get('message')
+                    if isinstance(m,dict) and isinstance(m.get('content'),list):
+                        for b in m['content']:
+                            if b.get('type')=='tool_result':
+                                r=b.get('content'); r=r if isinstance(r,str) else json.dumps(r)
+                                if 'mcp__prism__prism' in r and ('"parameters"' in r or 'function' in r): ts.append(len(r))
+            print(arm,'cells with graph section',graph,'toolsearch results',len(ts),ts[:3])
+        EOF
+      at: 2026-10-01T00:43:50.288199Z
+      classified: other
+    - cmd: git fetch -q && git status -sb | head -3 && git log --oneline -3 origin/main && git branch -a | head -20
+      at: 2026-10-01T01:17:22.140931Z
+      classified: other
+    - cmd: git checkout -q -b payload/trim-turns && echo ok
+      at: 2026-10-01T01:17:24.300639Z
+      classified: other
+    - cmd: sed -n 3975,3995p internal/mcp/tools.go && sed -n 3320,3330p internal/mcp/tools.go && sed -n 3528,3537p internal/mcp/tools.go && sed -n 3446,3456p internal/mcp/tools.go
+      at: 2026-10-01T01:18:37.955337Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        p='internal/mcp/tools.go'; s=open(p).read()
+        def rep(old,new):
+            global s
+            assert s.count(old)==1,(old[:60],s.count(old)); s=s.replace(old,new)
+        rep('''			return "tab-indented file: the FIRST tab after each line number is the " +
+        				"delimiter, not part of the source — source indentation starts after it " +
+        				"(a line shown as `12<TAB><TAB>x` has ONE tab of indentation)"''','''			return tabIndentNoteText''')
+        rep('''func tabIndentNote(lines []string) string {''','''const tabIndentNoteText = "tab-indented file: the FIRST tab after each line number is the " +
+        	"delimiter, not part of the source — source indentation starts after it " +
+        	"(a line shown as `12<TAB><TAB>x` has ONE tab of indentation)"
+
+        func tabIndentNote(lines []string) string {''')
+        rep('''		out["relayNote"] = "Copy relaySites when reporting the affected-site inventory; do not manually reconstruct a partial list from the grouped evidence below."''','''		out["relayNote"] = impactRelayNote''')
+        rep('''	out["scopeBoundary"] = "Do not claim global completeness from this result. It closes the indexed project graph only; " +
+        		"external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof."
+        }''','''	out["scopeBoundary"] = indexedScopeBoundary
+        }
+
+        const (
+        	impactRelayNote      = "Copy relaySites when reporting the affected-site inventory; do not manually reconstruct a partial list from the grouped evidence below."
+        	indexedScopeBoundary = "Do not claim global completeness from this result. It closes the indexed project graph only; " +
+        		"external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof."
+        	compilerScopeBoundary = "Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. " +
+        		"Not covered: reflection/runtime dispatch and consumers outside this repository."
+        	compilerEvidenceNote = "Call expressions below are shown as evidence for each caller."
+        	indexedEvidenceNote  = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
+        )''')
+        rep('''	out["scopeBoundary"] = "Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. " +
+        		"Not covered: reflection/runtime dispatch and consumers outside this repository."
+        	if _, ok := out["evidenceNote"]; ok {
+        		out["evidenceNote"] = "Call expressions below are shown as evidence for each caller."''','''	out["scopeBoundary"] = compilerScopeBoundary
+        	if _, ok := out["evidenceNote"]; ok {
+        		out["evidenceNote"] = compilerEvidenceNote''')
+        rep('''"match lists restricted to "+strings.Join(filters, ", ")+"; files outside these filters, including tests outside them, were not searched for matches"''','''"match lists restricted to "+strings.Join(filters, ", ")+"; other files were not searched"''')
+        open(p,'w').write(s)
+        EOF
+        sed -n 3349p internal/mcp/tools.go | cut -c1-400
+      at: 2026-10-01T01:18:49.166914Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        old='''		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."'''
+        assert s.count(old)==1; s=s.replace(old,'''		out["evidenceNote"] = indexedEvidenceNote'''); open(p,'w').write(s)
+        p='internal/mcp/impactevidence.go'; s=open(p).read()
+        old='"call expression unavailable in indexed source; inspect this caller if needed"'
+        assert s.count(old)==1; s=s.replace(old,'callExpressionUnavailableNote')
+        s=s.replace('\nfunc addImpactCallEvidence','\nconst callExpressionUnavailableNote = "call expression unavailable in indexed source; inspect this caller if needed"\n\nfunc addImpactCallEvidence',1)
+        open(p,'w').write(s)
+        p='internal/mcp/impactcoverage.go'; s=open(p).read()
+        old='"dynamic-language callers are an indexed approximation; runtime dispatch and imports may be unresolved. Family closure does not prove caller completeness. Use targeted exhaustive text search and tests."'
+        assert s.count(old)==1; s=s.replace(old,'dynamicCallerNote')
+        s+='\nconst dynamicCallerNote = "dynamic-language callers are an indexed approximation; runtime dispatch and imports may be unresolved. Family closure does not prove caller completeness. Use targeted exhaustive text search and tests."\n'
+        open(p,'w').write(s)
+        p='internal/mcp/graphtext.go'; s=open(p).read()
+        old='''		b.WriteString("// includes name-derived references: completeness describes indexed scope, not receiver certainty. " +
+        			"Verify ambiguous expressions; per-edge provenance is unavailable here.\\n")'''
+        assert s.count(old)==1,s.count(old); s=s.replace(old,'''		b.WriteString("// " + heuristicRefsNote + "\\n")''')
+        s+='\nconst heuristicRefsNote = "includes name-derived references: completeness describes indexed scope, not receiver certainty. " +\n\t"Verify ambiguous expressions; per-edge provenance is unavailable here."\n'
+        open(p,'w').write(s)
+        p='internal/mcp/server.go'; s=open(p).read()
+        old='''	return "\\n// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:\\n" +'''
+        assert s.count(old)==1; s=s.replace(old,'''	return "\\n" + enclosingBodiesHeader + "\\n" +''')
+        s=s.replace('const compactSearchLocatorGuidance','const enclosingBodiesHeader = "// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:"\n\nconst compactSearchLocatorGuidance',1)
+        open(p,'w').write(s)
+        EOF
+        grep -n "addImpactCallEvidence" internal/mcp/impactevidence.go | head -2; go build ./... && echo built
+      at: 2026-10-01T01:19:02.080676Z
+      classified: build
+    - cmd: sed -n 15,30p internal/mcp/impactevidence.go
+      at: 2026-10-01T01:19:05.254535Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/oncenotes.go'; s=open(p).read()
+        old_fixed_tail='''	"// no matches — search timed out before finishing; results may be incomplete": "// no matches — timed out, INCOMPLETE",
+        }'''
+        new_fixed_tail='''	"// no matches — search timed out before finishing; results may be incomplete": "// no matches — timed out, INCOMPLETE",
+
+        	// Measured 2026-09-30 (forced30, 30 Sonnet 5.5 bug fixes): these notes
+        	// were 26% of search and 29% of change_impact bytes, repeated verbatim on
+        	// every call — and the evidence note once per caller inside one answer.
+        	compactSearchLocatorGuidance: "",
+        	enclosingBodiesHeader:        "// Exact source for top hits:",
+        	"// " + tabIndentNoteText:     "",
+        	"// " + impactRelayNote:       "",
+        	"// " + indexedScopeBoundary:  "// indexed project graph only — not a global completeness proof",
+        	"// " + compilerScopeBoundary: "// complete for this repository (compiler-backed)",
+        	"// " + compilerEvidenceNote:  "",
+        	"// " + indexedEvidenceNote:   "// call expressions are name-matched, not receiver-resolved",
+        	"// " + dynamicCallerNote:     "// dynamic-language callers are approximate; family closure does not prove caller completeness",
+        	"// " + heuristicRefsNote:     "// includes name-derived references",
+        	"// " + callExpressionUnavailableNote: "// no call expression shown",
+        }'''
+        assert s.count(old_fixed_tail)==1; s=s.replace(old_fixed_tail,new_fixed_tail)
+        old_pat='''	{regexp.MustCompile(`^// (\\d+) more files with matches — exhaustive=true: .*$`), "// $1 more files — by path, then by directory (path=<dir> expands)"},
+        }'''
+        new_pat='''	{regexp.MustCompile(`^// (\\d+) more files with matches — exhaustive=true: .*$`), "// $1 more files — by path, then by directory (path=<dir> expands)"},
+        	// The read header already names the window; the reminder is said once.
+        	{regexp.MustCompile(`^// lines \\d+-\\d+ of \\d+ — this is a WINDOW, not the file$`), ""},
+        }'''
+        assert s.count(old_pat)==1; s=s.replace(old_pat,new_pat)
+        # rewrite apply
+        start=s.index('// apply rewrites the rendered text')
+        s=s[:start]+'''// apply rewrites the rendered text: first occurrence of each note in the
+        // session is kept, later ones take the short form.
+        func (o *onceNotes) apply(text string) string { return o.rewrite(text, true) }
+
+        // applyKnown is apply for results that may carry unnumbered source (read,
+        // lookup, query, change_impact, verify): only registered notes collapse; the
+        // generic repeated-long-line rule, which could match a source comment, is off.
+        func (o *onceNotes) applyKnown(text string) string { return o.rewrite(text, false) }
+
+        func (o *onceNotes) rewrite(text string, generic bool) string {
+        	o.mu.Lock()
+        	defer o.mu.Unlock()
+        	if o.said == nil {
+        		o.said = map[string]bool{}
+        	}
+        	lines := strings.Split(text, "\\n")
+        	out := lines[:0]
+        	for _, l := range lines {
+        		// Notes may be indented under the entry they annotate.
+        		body := strings.TrimLeft(l, " \\t")
+        		indent := l[:len(l)-len(body)]
+        		if !strings.HasPrefix(body, "//") {
+        			out = append(out, l)
+        			continue
+        		}
+        		// Current validity/scope facts must survive repeats and compaction.
+        		lower := strings.ToLower(body)
+        		if strings.HasPrefix(body, "// root:") ||
+        			strings.Contains(lower, "in the requested scope") ||
+        			strings.Contains(lower, "incomplete") || strings.Contains(lower, "not searched") ||
+        			strings.Contains(lower, "a sample") || strings.Contains(lower, "exhaustive symbol search") ||
+        			strings.Contains(lower, "rejected paths") {
+        			out = append(out, l)
+        			continue
+        		}
+        		if short, ok := onceFixed[body]; ok {
+        			if o.said[body] {
+        				if short != "" {
+        					out = append(out, indent+short)
+        				}
+        				continue
+        			}
+        			o.said[body] = true
+        			out = append(out, l)
+        			continue
+        		}
+        		matched := false
+        		for _, p := range oncePatterns {
+        			if p.re.MatchString(body) {
+        				matched = true
+        				key := p.re.String()
+        				if !o.said[key] {
+        					o.said[key] = true
+        					out = append(out, l)
+        				} else if short := p.re.ReplaceAllString(body, p.short); short != "" {
+        					out = append(out, indent+short)
+        				}
+        				break
+        			}
+        		}
+        		if matched {
+        			continue
+        		}
+        		if generic && indent == "" && len(l) >= onceLongNote {
+        			if o.said[l] {
+        				head := l
+        				if len(head) > 70 {
+        					head = head[:70]
+        				}
+        				out = append(out, "// (as noted earlier) "+strings.TrimPrefix(head, "// ")+"…")
+        				continue
+        			}
+        			o.said[l] = true
+        		}
+        		out = append(out, l)
+        	}
+        	return strings.Join(out, "\\n")
+        }
+        '''
+        open(p,'w').write(s)
+        p='internal/mcp/server.go'; s=open(p).read()
+        old='''		} else if s.compact {
+        			text = compactToolWording(text)
+        		}'''
+        new='''		} else if s.compact {
+        			text = compactToolWording(text)
+        			if actualName != "prism_search" {
+        				text = s.handler.once.applyKnown(text)
+        			}
+        		}'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        gofmt -l internal/ ; gofmt -w internal/mcp/oncenotes.go; go build ./... && echo built
+      at: 2026-10-01T01:19:24.969129Z
+      classified: build
+    - cmd: |-
+        cat >> internal/mcp/scopefilter.go <<'EOF'
+
+        // Missing-path substitution.
+        //
+        // Measured 2026-09-30 (forced30 + graph30, 60 Sonnet 5.5 bug-fix sessions):
+        // 9 search/read calls named a file that does not exist — mostly the old
+        // com/fasterxml package path for code that now lives under tools/jackson, or
+        // a missing sub-package. The miss note already named the real file, and the
+        // agent re-issued the call with it: one turn each, every time. When exactly
+        // one real path is the best match, use it and say so.
+
+        // uniqueClosestPath returns the single best real path for a missing one: the
+        // only path sharing its base name, or the one sharing strictly more trailing
+        // segments than any other.
+        func uniqueClosestPath(files []string, missing string) (string, bool) {
+        	want := strings.TrimSuffix(strings.TrimPrefix(filepath.ToSlash(missing), "./"), "/")
+        	base := path.Base(want)
+        	if base == "" || base == "." || base == "/" || !strings.Contains(base, ".") {
+        		// Only file names: a bare directory name (deser, impl) is too common.
+        		return "", false
+        	}
+        	best, bestScore, tie := "", -1, false
+        	for _, f := range files {
+        		if strings.HasSuffix(f, "/") || path.Base(f) != base {
+        			continue
+        		}
+        		score := sharedTrailingSegments(f, want)
+        		switch {
+        		case score > bestScore:
+        			best, bestScore, tie = f, score, false
+        		case score == bestScore:
+        			tie = true
+        		}
+        	}
+        	if best == "" || tie {
+        		return "", false
+        	}
+        	return best, true
+        }
+
+        // resolveMissingArgPaths rewrites file paths in search, query, and read
+        // arguments that do not exist under root but have one unambiguous real
+        // counterpart. It returns one note per substitution.
+        func resolveMissingArgPaths(root, tool string, args map[string]any) []string {
+        	var files []string
+        	var notes []string
+        	fix := func(p string) string {
+        		p = strings.TrimSpace(p)
+        		if p == "" || filepath.IsAbs(p) {
+        			return p
+        		}
+        		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(p))); err == nil {
+        			return p
+        		}
+        		if files == nil {
+        			files = scopeWalkFiles(root)
+        		}
+        		real, ok := uniqueClosestPath(files, p)
+        		if !ok {
+        			return p
+        		}
+        		notes = append(notes, fmt.Sprintf("path %q does not exist; used %s", p, real))
+        		return real
+        	}
+        	fixList := func(key string) {
+        		switch v := args[key].(type) {
+        		case string:
+        			args[key] = fix(v)
+        		case []any:
+        			for i, item := range v {
+        				if s, ok := item.(string); ok {
+        					v[i] = fix(s)
+        				}
+        			}
+        		case []string:
+        			for i := range v {
+        				v[i] = fix(v[i])
+        			}
+        		}
+        	}
+        	switch tool {
+        	case "prism_search":
+        		fixList("path")
+        	case "prism_query", "prism_query_compact":
+        		fixList("paths")
+        	case "prism_read":
+        		fixList("file")
+        		fixList("path")
+        		switch ranges := args["ranges"].(type) {
+        		case []any:
+        			for _, item := range ranges {
+        				if m, ok := item.(map[string]any); ok {
+        					if s, ok := m["file"].(string); ok {
+        						m["file"] = fix(s)
+        					}
+        				}
+        			}
+        		case []map[string]any:
+        			for _, m := range ranges {
+        				if s, ok := m["file"].(string); ok {
+        					m["file"] = fix(s)
+        				}
+        			}
+        		}
+        	}
+        	return notes
+        }
+        EOF
+        python3 - <<'EOF'
+        p='internal/mcp/server.go'; s=open(p).read()
+        old='''		out, err := s.handler.Invoke(invokeName, actualArgs)'''
+        new='''		pathNotes := resolveMissingArgPaths(s.handler.Root, invokeName, actualArgs)
+        		out, err := s.handler.Invoke(invokeName, actualArgs)'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''		// Result-size accounting: this is the number that compounds via'''
+        new='''		for i := len(pathNotes) - 1; i >= 0; i-- {
+        			text = "// " + pathNotes[i] + "\\n" + text
+        		}
+        		// Result-size accounting: this is the number that compounds via'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go build ./... && echo built
+      at: 2026-10-01T01:20:00.792873Z
+      classified: build
+    - cmd: |-
+        sed -i '' 's/\tcase "prism_read":\n\t\tfixList("file")/X/' internal/mcp/scopefilter.go && python3 - <<'EOF'
+        p='internal/mcp/scopefilter.go'; s=open(p).read()
+        old='''	case "prism_read":
+        		fixList("file")'''
+        assert s.count(old)==1; s=s.replace(old,'''	case "prism_read", "prism_read_compact":
+        		fixList("file")'''); open(p,'w').write(s)
+        EOF
+        go build ./... && echo ok
+      at: 2026-10-01T01:20:08.428894Z
+      classified: build
+    - cmd: grep -n "staleNote" internal/mcp/verify.go
+      at: 2026-10-01T01:20:13.302601Z
+      classified: other
+    - cmd: |-
+        sed -n 505,522p internal/mcp/verify.go && python3 - <<'EOF'
+        p='internal/mcp/verify.go'; s=open(p).read()
+        old='''	} else if len(indexed.Errors) > 0 {
+        		staleNote = "index refresh incomplete: " + strings.Join(indexed.Errors, "; ")
+        	}
+        '''
+        new='''	}
+        	var refreshErrors []string
+        	if indexed != nil {
+        		refreshErrors = indexed.Errors
+        	}
+        '''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	sort.Strings(changedFiles)
+        '''
+        new='''	sort.Strings(changedFiles)
+        	// Only a refresh error on a changed file can hide a contract change. A
+        	// symlinked doc the indexer skipped (urfave/cli docs/CODE_OF_CONDUCT.md)
+        	// turned 5 of 32 forced-run verifies into "review" on unrelated edits.
+        	if errs := refreshErrorsFor(refreshErrors, changed); len(errs) > 0 {
+        		staleNote = "index refresh incomplete: " + strings.Join(errs, "; ")
+        	}
+        '''
+        assert s.count(old)==1; s=s.replace(old,new,1)
+        s+='''
+        // refreshErrorsFor keeps index errors that name a changed file. Grove
+        // reports per-file errors as "<repo-relative path>: <reason>"; an error that
+        // does not start with a path is kept, since it cannot be ruled out.
+        func refreshErrorsFor(errs []string, changed map[string][]lineRange) []string {
+        	var keep []string
+        	for _, e := range errs {
+        		file, _, ok := strings.Cut(e, ": ")
+        		if !ok || strings.ContainsAny(file, " \\t") {
+        			keep = append(keep, e)
+        			continue
+        		}
+        		if _, hit := changed[filepath.ToSlash(file)]; hit {
+        			keep = append(keep, e)
+        		}
+        	}
+        	return keep
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        go build ./... 2>&1 | head
+      at: 2026-10-01T01:20:21.893546Z
+      classified: build
+    - cmd: sed -n 244,262p internal/mcp/verify.go; grep -n "func gitChangedRanges" -A3 internal/mcp/*.go | head -5
+      at: 2026-10-01T01:20:24.581236Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/verify.go'; s=open(p).read()
+        old='''	var staleNote string
+        	if indexed, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
+        		staleNote = "index refresh failed (" + ierr.Error() +
+        			"); results computed against a possibly stale index"
+        	}
+        	var refreshErrors []string
+        	if indexed != nil {
+        		refreshErrors = indexed.Errors
+        	}
+        '''
+        new='''	var staleNote string
+        	var refreshErrors []string
+        	if indexed, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
+        		staleNote = "index refresh failed (" + ierr.Error() +
+        			"); results computed against a possibly stale index"
+        	} else {
+        		refreshErrors = indexed.Errors
+        	}
+        '''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go build ./... && go vet ./internal/mcp/ && echo ok
+      at: 2026-10-01T01:20:31.279856Z
+      classified: lint
+    - cmd: |-
+        cat > internal/mcp/zz_size_test.go <<'EOF'
+        package mcp
+        import ("encoding/json";"fmt";"testing")
+        func TestZZSizes(t *testing.T){
+        	b,_:=json.Marshal(CompactToolSchemas())
+        	fmt.Println("schema",len(b),"instr",len(compactServerInstructions))
+        	fmt.Println(string(b))
+        }
+        EOF
+        go test ./internal/mcp/ -run TestZZSizes -count=1 | head -c 9000; rm internal/mcp/zz_size_test.go
+      at: 2026-10-01T01:20:44.333878Z
+      classified: test
+    - cmd: |-
+        cat > internal/mcp/zz_size_test.go <<'EOF'
+        package mcp
+        import ("encoding/json";"os";"testing")
+        func TestZZSizes(t *testing.T){
+        	b,_:=json.Marshal(CompactToolSchemas())
+        	os.WriteFile("/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad/schema.json",b,0644)
+        }
+        EOF
+        go test ./internal/mcp/ -run TestZZSizes -count=1 >/dev/null; rm internal/mcp/zz_size_test.go; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad; wc -c $S/schema.json; python3 -c "
+        import json;t=json.load(open('$S/schema.json'))[0]
+        print('desc',len(t['description']));print(t['description'][:1500])
+        p=t['inputSchema']['properties']
+        for k,v in p.items(): print(k,len(json.dumps(v)))
+        for k,v in p['args']['properties'].items(): print('  ',k,len(json.dumps(v)))"
+      at: 2026-10-01T01:20:51.885175Z
+      classified: test
+    - cmd: grep -rn "comma-delimited\|Optional checks\|complete build/typecheck\|unchecked JavaScript\|removed_symbols optionally\|space-delimited" --include=*.go . | grep -v "^./internal/cli/commands.go:6[0-5]" | cut -c1-200
+      at: 2026-10-01T01:20:59.726337Z
+      classified: other
+    - cmd: sed -n 1,70p internal/cli/steeringdelivery_test.go; sed -n 410,435p internal/cli/init_test.go
+      at: 2026-10-01T01:21:07.086921Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/commands.go'; s=open(p).read()
+        old=s[s.index("Put every symbol and term you already know into ONE call:"):s.index("<!-- prism:end -->")]
+        new='''Put every symbol and term you already know into ONE call (` + "`" + `name` + "`" + `/` + "`" + `terms` + "`" + ` take up
+        to 10; ` + "`" + `ranges` + "`" + ` reads several windows). Two lookups in a row is one lookup you did
+        not batch. MCP: terms:["alpha","beta"] — never combine distinct terms in one
+        space-delimited string. CLI: positional terms: prism search alpha beta.
+
+        Obligations:
+          - change_impact before editing a signature, public contract, override, or any
+            symbol whose callers you have not enumerated. Relay its sites as-is.
+          - Report gaps; never narrow scope to fit what was found.
+          - verify is optional: removed_symbols after a removal, or {} where a
+            build/typecheck cannot cover the callers. It is never a required closing step.
+
+        '''
+        s=s.replace(old,new); open(p,'w').write(s)
+        p='internal/cli/steeringdelivery_test.go'; s=open(p).read()
+        old='''		"Optional checks:",
+        		"verify({removed_symbols:[...]}) after a removal",
+        		"Consider verify({}) for Python, unchecked JavaScript, or PHP",
+        		"For TypeScript or checked JavaScript",
+        		"For Go, Java,",
+        		"Rust, C/C++, or C#, skip it after a complete build/typecheck",
+        		"It is never a required closing step",'''
+        new='''		"verify is optional",
+        		"removed_symbols after a removal",
+        		"build/typecheck cannot cover the callers",
+        		"It is never a required closing step",'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''	if len(got) > 3000 {
+        		t.Errorf("always-loaded steering grew beyond 3000 bytes: %d", len(got))'''
+        new='''	// Per-language verify policy lives in the MCP instructions only; the
+        	// steering copy repeated it on every request (2026-09-30 trim).
+        	if strings.Contains(got, "unchecked JavaScript") {
+        		t.Error("steering repeats the MCP verify policy")
+        	}
+        	if len(got) > 2300 {
+        		t.Errorf("always-loaded steering grew beyond 2300 bytes: %d", len(got))'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go test ./internal/cli/ -run 'Steering|Init' -count=1 -v 2>&1 | grep -E "^(---|ok|FAIL)|steering UTF|omits|missing" | head -30
+      at: 2026-10-01T01:21:22.026259Z
+      classified: test
+    - cmd: 'sed -i '''' ''s/"For CLI search, use positional terms: prism search alpha beta",/"CLI: positional terms: prism search alpha beta",/'' internal/cli/init_test.go && go test ./internal/cli/ -count=1 -run ''Steering'' -v 2>&1 | grep -E "FAIL|steering UTF|^ok"'
+      at: 2026-10-01T01:21:25.972055Z
+      classified: test
+    - cmd: sed -n 110,145p internal/mcp/compact_test.go; grep -n "compactServerInstructions" internal/mcp/*_test.go
+      at: 2026-10-01T01:21:33.598239Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/server.go'; s=open(p).read()
+        a=s.index('const compactServerInstructions = '); b=s.index('const enclosingBodiesHeader')
+        new='''const compactServerInstructions = "Use Prism for each repository-discovery step; cat/head/sed and grep/rg/find/git log are not discovery. " +
+        	"Put parameters in args. Known symbol: op=lookup. Known file/range: op=read. Unknown location/text: op=search. " +
+        	"Related context around explicit terms: op=query. op=change_impact when callers, contracts, or other affected sites matter " +
+        	"(optional for a local body-only edit). Optional op=verify: for Python, unchecked JavaScript, and PHP contract changes; " +
+        	"TypeScript or checked JavaScript only if affected files lack a complete typecheck; skip after a complete build/typecheck " +
+        	"in Go, Java, Rust, C/C++, or C#. Batch known identifiers or exact substrings in one search: terms:[\\"alpha\\",\\"beta\\"]; " +
+        	"never combine distinct terms in one space-delimited string. Where a native Read must precede Edit, use one tight Read " +
+        	"at the edit site. Do not re-read unchanged source a Prism result already included."
+
+        '''
+        s=s[:a]+new+s[b:]; open(p,'w').write(s)
+        p='internal/mcp/tools.go'; s=open(p).read()
+        i=s.index('"terms":           prop("search,query", "Batch identifiers'); j=s.index('\n',i)
+        print(s[i:j])
+        EOF
+      at: 2026-10-01T01:21:38.705443Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        old='"Batch identifiers or exact substrings (up to 10). For multiple terms, use comma-delimited JSON string values in an array, for example [\\"alpha\\",\\"beta\\"]; never combine distinct terms in one space-delimited string."'
+        assert s.count(old)==1
+        s=s.replace(old,'"Batch identifiers or exact substrings (up to 10), one per item: [\\"alpha\\",\\"beta\\"]; never combine distinct terms in one space-delimited string."')
+        open(p,'w').write(s)
+        EOF
+        go build ./... && go test ./internal/... -count=1 2>&1 | grep -v "^ok" | head -60
+      at: 2026-10-01T01:22:10.369223Z
+      classified: test
+    - cmd: 'sed -n 675,692p internal/mcp/compact_test.go; sed -n 55,125p internal/mcp/sweepsearch_test.go; go test ./internal/... -count=1 2>&1 | grep -E "^(--- FAIL|FAIL|ok)" '
+      at: 2026-10-01T01:22:39.704209Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/oncenotes.go'; s=open(p).read()
+        s=s.replace('	compactSearchLocatorGuidance: "",','	compactSearchLocatorGuidance: "// locator result",',1)
+        open(p,'w').write(s)
+        p='internal/mcp/sweepsearch_test.go'; s=open(p).read()
+        a=s.index('// requests pr7315 (rerun #6/#7'); b=s.index('// click pr3471 #26')
+        new='''// requests pr7315 (rerun #6/#7, pinned #100): paths=["requests/models.py"] in
+        // a src/ layout returned "no matches ... retry broader/shorter" for every
+        // term. Since 2026-09-30 a missing path with one unambiguous real
+        // counterpart is searched in its place, and the answer says so; a miss with
+        // no unique counterpart is still named as a filter miss.
+        func TestScopedSearchNamesAFilterThatMatchesNoFiles(t *testing.T) {
+        	srv := compactFixture(t, srcLayoutPython)
+        	for _, scope := range []string{"symbols", "text", "both"} {
+        		out := callCompact(t, srv, "search", map[string]any{
+        			"terms": []any{"requote_uri", "prepare_url"}, "scope": scope,
+        			"paths": []any{"requests/models.py", "requests/utils.py"},
+        		})
+        		if !strings.Contains(out, `path "requests/models.py" does not exist; used src/requests/models.py`) ||
+        			!strings.Contains(out, `path "requests/utils.py" does not exist; used src/requests/utils.py`) {
+        			t.Fatalf("scope=%s: substitution not stated:\\n%s", scope, out)
+        		}
+        		if strings.Contains(out, "FILTER") || !strings.Contains(out, "requote_uri") {
+        			t.Fatalf("scope=%s: substituted paths were not searched:\\n%s", scope, out)
+        		}
+        	}
+        	// No real file shares the name: still a filter miss, terms not blamed.
+        	out := callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "paths": "requests/nowhere.py"})
+        	if !strings.Contains(out, "FILTER MATCHED NO FILES") || strings.Contains(out, "Retry broader/shorter") {
+        		t.Fatalf("filter miss without a counterpart not named:\\n%s", out)
+        	}
+        	// A glob that selects nothing.
+        	out = callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "glob": "**/tools/jackson/core/JsonParser.java"})
+        	if !strings.Contains(out, "FILTER MATCHED NO FILES") || !strings.Contains(out, "matches no file") {
+        		t.Fatalf("empty glob not named:\\n%s", out)
+        	}
+        	// A valid filter with a missing term keeps the normal term guidance.
+        	out = callCompact(t, srv, "search", map[string]any{"terms": "no_such_name_here", "paths": "src/requests/utils.py"})
+        	if strings.Contains(out, "FILTER") || strings.Contains(out, "does not exist") {
+        		t.Fatalf("valid filter reported as a miss:\\n%s", out)
+        	}
+        	// One valid and one missing path without a counterpart: search the valid
+        	// one, flag the other.
+        	out = callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "paths": []any{"src/requests/utils.py", "requests/nowhere.py"}})
+        	if !strings.Contains(out, "FILTER PARTLY INVALID") || !strings.Contains(out, "requests/nowhere.py") {
+        		t.Fatalf("partly invalid filter not named:\\n%s", out)
+        	}
+        }
+
+        // Two real files equally close to the missing path: never guess.
+        func TestMissingPathWithTiedCounterpartsIsNotSubstituted(t *testing.T) {
+        	srv := compactFixture(t, map[string]string{
+        		"src/a/util.py": "def helper():\\n    return 1\\n",
+        		"src/b/util.py": "def helper():\\n    return 2\\n",
+        	})
+        	out := callCompact(t, srv, "search", map[string]any{"terms": "helper", "paths": "lib/util.py"})
+        	if strings.Contains(out, "does not exist; used") || !strings.Contains(out, "FILTER MATCHED NO FILES") {
+        		t.Fatalf("tied counterparts must stay a named miss:\\n%s", out)
+        	}
+        	out = callCompact(t, srv, "read", map[string]any{"file": "lib/a/util.py", "from": 1, "to": 2})
+        	if !strings.Contains(out, `path "lib/a/util.py" does not exist; used src/a/util.py`) || !strings.Contains(out, "return 1") {
+        		t.Fatalf("read did not use the one closer counterpart:\\n%s", out)
+        	}
+        }
+
+        // jackson pr6019 #85: query with a glob naming a dependency file said "no
+        // symbols matched ... check term spelling".
+        func TestScopedQueryNamesAFilterThatMatchesNoFiles(t *testing.T) {
+        	srv := compactFixture(t, srcLayoutPython)
+        	out := callCompact(t, srv, "query", map[string]any{"terms": []any{"requote_uri"}, "paths": []any{"requests/utils.py"}})
+        	if !strings.Contains(out, "used src/requests/utils.py") || strings.Contains(out, "check term spelling") {
+        		t.Fatalf("query did not search the substituted path:\\n%s", out)
+        	}
+        	out = callCompact(t, srv, "query", map[string]any{"terms": []any{"requote_uri"}, "paths": []any{"requests/nowhere.py"}})
+        	if !strings.Contains(out, "FILTER MATCHED NO FILES") || strings.Contains(out, "check term spelling") {
+        		t.Fatalf("query filter miss not named:\\n%s", out)
+        	}
+        	out = callCompact(t, srv, "query", map[string]any{"terms": []any{"assignCurrentValue"}, "glob": []any{"**/tools/jackson/core/JsonParser.java"}})
+        	if !strings.Contains(out, "FILTER MATCHED NO FILES") {
+        		t.Fatalf("query glob miss not named:\\n%s", out)
+        	}
+        }
+
+        '''
+        s=s[:a]+new+s[b:]; open(p,'w').write(s)
+        EOF
+        go test ./internal/mcp/ -count=1 2>&1 | grep -v "^ok" | head -40
+      at: 2026-10-01T01:23:25.003255Z
+      classified: test
+    - cmd: git stash -q && go test ./internal/mcp/ -run TestCompactBatchedSearchInlinesUniqueExactFirstSymbol -count=1 2>&1 | tail -3; sed -i '' 's/if strings.Count(content, "locator result") < 2 {/if strings.Count(content, "locator result") < 2 { t.Log(content);/' internal/mcp/compact_test.go; go test ./internal/mcp/ -run TestCompactBatchedSearchInlinesUniqueExactFirstSymbol -count=1 -v 2>&1 | grep -n "locator" ; git checkout internal/mcp/compact_test.go; git stash pop -q; git status --short
+      at: 2026-10-01T01:23:35.944993Z
+      classified: test
+    - cmd: "cp internal/mcp/server.go /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad/server.go.bak && sed -i '' 's|^\treturn h.once.apply(text), true$|\tprintln(\"PRE>>>\", text, \"<<<PRE\"); return h.once.apply(text), true|' internal/mcp/server.go && go test ./internal/mcp/ -run TestCompactBatchedSearchInlinesUniqueExactFirstSymbol -count=1 -v 2>&1 | sed -n '/PRE>>>/,/<<<PRE/p' | grep -n \"locator\\|──\"; cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad/server.go.bak internal/mcp/server.go"
+      at: 2026-10-01T01:23:43.857842Z
+      classified: test
+    - cmd: "grep -n \"compactSearchLocatorGuidance\" internal/mcp/oncenotes.go && sed -i '' 's|^\\(\tcompactSearchLocatorGuidance: *\\)\"\",|\\1\"// locator result\",|' internal/mcp/oncenotes.go && gofmt -w internal/mcp/oncenotes.go && grep -n \"compactSearchLocatorGuidance\" internal/mcp/oncenotes.go && go test ./internal/... -count=1 2>&1 | grep -E \"^(--- FAIL|FAIL|ok)\""
+      at: 2026-10-01T01:24:13.954472Z
+      classified: test
+    - cmd: |-
+        cat >> internal/mcp/oncenotes_test.go <<'EOF'
+
+        // Measured 2026-09-30: change_impact repeated the evidence note under every
+        // caller and its boundary note on every call; reads repeated the tab note.
+        func TestOnceNotes_KnownNotesCollapseIndentedAndAcrossOps(t *testing.T) {
+        	var o onceNotes
+        	impact := "callers (2):\n  A  a.go:1\n      // " + callExpressionUnavailableNote + "\n  B  b.go:2\n      // " +
+        		callExpressionUnavailableNote + "\n// " + indexedScopeBoundary + "\n"
+        	got := o.applyKnown(impact)
+        	if strings.Count(got, callExpressionUnavailableNote) != 1 || !strings.Contains(got, "      // no call expression shown") {
+        		t.Fatalf("indented per-caller note must be said once, then short:\n%s", got)
+        	}
+        	got = o.applyKnown(impact)
+        	if strings.Contains(got, indexedScopeBoundary) || !strings.Contains(got, "not a global completeness proof") {
+        		t.Fatalf("repeated boundary must keep its meaning in short form:\n%s", got)
+        	}
+        	read := "// a.go lines 1-2 of 9\n1\t\tx := 1\n// lines 1-2 of 9 — this is a WINDOW, not the file\n// " + tabIndentNoteText + "\n"
+        	if got := o.applyKnown(read); got != read {
+        		t.Fatalf("first read keeps its notes:\n%s", got)
+        	}
+        	got = o.applyKnown(strings.ReplaceAll(read, "1-2", "3-4"))
+        	if strings.Contains(got, "WINDOW") || strings.Contains(got, "tab-indented") || !strings.Contains(got, "1\t\tx := 1") {
+        		t.Fatalf("repeat read notes must drop, source must stay:\n%s", got)
+        	}
+        	// Unregistered long lines are never touched outside search.
+        	src := "// a long unnumbered comment line that might be source code in an outline view, repeated verbatim\n"
+        	if got := o.applyKnown(src + src); got != src+src {
+        		t.Fatalf("applyKnown collapsed an unregistered line:\n%s", got)
+        	}
+        }
+        EOF
+        cat >> internal/mcp/verify_refresh_test.go <<'EOF'
+        package mcp
+
+        import "testing"
+
+        // urfave/cli forced run: a symlinked doc the indexer skipped turned verify
+        // into "review" for an unrelated one-file edit.
+        func TestRefreshErrorsForKeepsOnlyChangedFiles(t *testing.T) {
+        	changed := map[string][]lineRange{"command_run.go": nil}
+        	errs := []string{
+        		"docs/CODE_OF_CONDUCT.md: not a regular file: /tmp/x/docs/CODE_OF_CONDUCT.md",
+        		"command_run.go: parse error",
+        		"walk aborted",
+        	}
+        	got := refreshErrorsFor(errs, changed)
+        	if len(got) != 2 || got[0] != errs[1] || got[1] != errs[2] {
+        		t.Fatalf("want the changed-file error and the pathless error, got %v", got)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run 'OnceNotes|RefreshErrorsFor|MissingPath|Scoped' -count=1 -v 2>&1 | grep -E "^(---|ok|FAIL)|_test.go"
+      at: 2026-10-01T01:24:29.714531Z
+      classified: test
+    - cmd: ls ~/prism-ab-bins/ ~/prism-ab-bins/replay 2>/dev/null | head -40; ls ~/prism-ab-bins/nbreplay 2>/dev/null | head
+      at: 2026-10-01T01:24:32.474273Z
+      classified: other
+    - cmd: sed -n 1,80p ~/prism-ab-bins/nbreplay/setup.py; ls ~/prism-ab-bins/nbreplay/wt | head; ls ~/prism-ab-bins/nbreplay/wt | wc -l
+      at: 2026-10-01T01:24:34.820678Z
+      classified: other
+    - cmd: go build -o ~/prism-ab-bins/prism-trim ./cmd/prism 2>&1 | tail -3; ls cmd 2>/dev/null; D=$(mktemp -d /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad/prevXXXX) && git worktree add -q $D d4e4cd49 && (cd $D && go build -o ~/prism-ab-bins/prism-prev-d4e4cd49 ./cmd/prism) && git worktree remove --force $D && ls -la ~/prism-ab-bins/prism-trim ~/prism-ab-bins/prism-prev-d4e4cd49
+      at: 2026-10-01T01:53:41.991573Z
+      classified: build
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 -c "
+        from load import *
+        import os
+        S=calls('forced'); miss=[s['task'] for s in S if not os.path.isdir(os.path.expanduser('~/prism-ab-bins/nbreplay/wt/'+s['task']))]
+        print(len(S),'missing',miss)
+        import json
+        print(json.dumps([c['input'] for c in S[0]['seq'] if 'prism' in c['name']][:2]))
+        "; ~/prism-ab-bins/prism-trim mcp --help 2>&1 | head -15
+      at: 2026-10-01T01:53:47.446556Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && cat > replay.py <<'EOF'
+        import json,os,sys,subprocess,threading,queue,concurrent.futures as cf
+        from load import *
+        WT=os.path.expanduser('~/prism-ab-bins/nbreplay/wt/')
+        BINS={'prev':os.path.expanduser('~/prism-ab-bins/prism-prev-d4e4cd49'),'new':os.path.expanduser('~/prism-ab-bins/prism-trim')}
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        class MCP:
+            def __init__(s,bin,root):
+                s.p=subprocess.Popen([bin,'mcp',root],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+                s.q=queue.Queue(); threading.Thread(target=s._rd,daemon=True).start(); s.id=0
+                s.call('initialize',{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"replay","version":"1"}})
+                s.p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n")
+            def _rd(s):
+                for l in s.p.stdout: s.q.put(l)
+            def call(s,m,params,timeout=600):
+                s.id+=1; s.p.stdin.write(json.dumps({"jsonrpc":"2.0","id":s.id,"method":m,"params":params})+"\n")
+                while True:
+                    d=json.loads(s.q.get(timeout=timeout))
+                    if d.get('id')==s.id: return d
+            def close(s): s.p.kill()
+        def reset(wt,base):
+            subprocess.run(['git','-C',wt,'checkout','-q','-f',base],check=True)
+            subprocess.run(['git','-C',wt,'clean','-qfd','-e','.grove'],check=True)
+        def one(s):
+            task=s['task']; wt=WT+task; t=json.load(open(H+f'tasks/e2e/{task}.json'))
+            diff=H+f'results/e2e-forced30/{task}.claude-sonnet-5-5.prism_body_exp.diff'
+            out={}
+            for arm,b in BINS.items():
+                reset(wt,t['base_commit']); m=MCP(b,wt); res=[]; applied=False
+                for c in s['seq']:
+                    if 'prism' not in c['name']: continue
+                    inp=c['input']
+                    if inp.get('op')=='verify' and not applied and os.path.getsize(diff)>0:
+                        subprocess.run(['git','-C',wt,'apply',diff],capture_output=True); applied=True
+                    if '__unparsedToolInput' in inp: res.append({'in':inp,'text':'<unparsed>','err':True}); continue
+                    try:
+                        d=m.call('tools/call',{"name":"prism","arguments":inp})
+                        if 'error' in d: res.append({'in':inp,'text':d['error']['message'],'err':True})
+                        else: res.append({'in':inp,'text':'\n'.join(x['text'] for x in d['result']['content']),'err':False})
+                    except Exception as e: res.append({'in':inp,'text':f'<replay error {e}>','err':True})
+                m.close(); out[arm]=res
+            reset(wt,t['base_commit'])
+            return task,out
+        if __name__=='__main__':
+            S=calls('forced'); R={}
+            with cf.ThreadPoolExecutor(4) as ex:
+                for task,out in ex.map(one,S):
+                    R[task]=out; print(task,{a:sum(len(r['text']) for r in v) for a,v in out.items()},flush=True)
+            json.dump(R,open('replay_forced30.json','w'))
+            print('DONE')
+        EOF
+        python3 replay.py > replay.log 2>&1 &
+        echo started
+      at: 2026-10-01T01:54:04.28537Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && sleep 1; cat replay.log; cd /Users/tapabratapal/Projects/provasign/prism && cat > internal/mcp/zz_size_test.go <<'EOF'
+        package mcp
+        import ("encoding/json";"fmt";"testing")
+        func TestZZSizes(t *testing.T){ b,_:=json.Marshal(CompactToolSchemas()); fmt.Printf("SIZES schema=%d instr=%d\n",len(b),len(compactServerInstructions)) }
+        EOF
+        cat > internal/cli/zz_size_test.go <<'EOF'
+        package cli
+        import ("fmt";"testing")
+        func TestZZSizes(t *testing.T){ fmt.Printf("SIZES steering=%d\n",len(steeringBlock())) }
+        EOF
+        echo NEW; go test ./internal/mcp/ ./internal/cli/ -run TestZZSizes -count=1 -v 2>&1 | grep SIZES
+        git stash -q; echo PREV; go test ./internal/mcp/ ./internal/cli/ -run TestZZSizes -count=1 -v 2>&1 | grep SIZES; git stash pop -q; rm internal/mcp/zz_size_test.go internal/cli/zz_size_test.go; git status --short | grep zz
+      at: 2026-10-01T01:54:15.560768Z
+      classified: test
+    - cmd: |-
+        git show d4e4cd49:internal/mcp/server.go > /tmp/x.go 2>/dev/null; python3 - <<'EOF'
+        import re,subprocess
+        old=subprocess.run(['git','show','d4e4cd49:internal/mcp/server.go'],capture_output=True,text=True).stdout
+        a=old.index('const compactServerInstructions = '); b=old.index('\n\n',a)
+        parts=re.findall(r'"((?:[^"\\]|\\.)*)"',old[a:b]); s=''.join(parts).replace('\\"','"')
+        print('prev instr',len(s.encode()))
+        ot='Batch identifiers or exact substrings (up to 10). For multiple terms, use comma-delimited JSON string values in an array, for example ["alpha","beta"]; never combine distinct terms in one space-delimited string.'
+        nt='Batch identifiers or exact substrings (up to 10), one per item: ["alpha","beta"]; never combine distinct terms in one space-delimited string.'
+        print('schema delta',len(ot)-len(nt),'prev schema',4046+len(ot)-len(nt)+4)
+        EOF
+      at: 2026-10-01T01:54:22.60885Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && cat replay.log; python3 - <<'EOF'
+        import json,glob,statistics as st
+        from load import ARMS
+        for arm in ['native','forced']:
+            r=[json.load(open(f)) for f in glob.glob(ARMS[arm])]
+            print(arm,'input tok/task',round(st.mean(x['usage']['input_total'] for x in r)),'turns',round(st.mean(x['turns'] for x in r),1),'cost/task',round(st.mean(x['cost_usd'] for x in r),4))
+        EOF
+      at: 2026-10-01T01:54:32.07822Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && until grep -q DONE replay.log || ! pgrep -f "python3 replay.py" >/dev/null; do sleep 20; done; tail -32 replay.log
+      at: 2026-10-01T01:54:41.606748Z
+      classified: other
+    - cmd: pgrep -fl "replay.py" | head; pgrep -fl "prism-(trim|prev)" | head
+      at: 2026-10-01T01:54:43.891077Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && until grep -q DONE replay.log || ! pgrep -f "replay.py" >/dev/null; do sleep 20; done; tail -32 replay.log
+      at: 2026-10-01T01:55:47.626908Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        import json,collections,re
+        from load import calls
+        R=json.load(open('replay_forced30.json'))
+        S={s['task']:s for s in calls('forced')}
+        by=collections.Counter(); n=collections.Counter(); sub=[]; ver=[]; errs=collections.Counter()
+        for task,o in R.items():
+            P,N=o['prev'],o['new']; assert len(P)==len(N)
+            seq=[c for c in S[task]['seq']]
+            pidx=[i for i,c in enumerate(seq) if 'prism' in c['name']]
+            for k,(p,q) in enumerate(zip(P,N)):
+                op=q['in'].get('op'); d=len(q['text'])-len(p['text'])
+                if p['err']: errs['prev']+=1
+                if q['err']: errs['new']+=1
+                if 'does not exist; used' in q['text']:
+                    i=pidx[k]; nxt=seq[i+1] if i+1<len(seq) else None
+                    sub.append((task,op,len(p['text']),len(q['text']),'FILTER MATCHED' in p['text'] or 'no such file' in p['text'] or p['err'],
+                                json.dumps(nxt['input'])[:110] if nxt else None))
+                    by['paths']+=d; n['paths']+=1; continue
+                if op=='verify':
+                    vp=re.search(r'verdict: (\w+)',p['text']); vq=re.search(r'verdict: (\w+)',q['text'])
+                    ver.append((task,vp and vp.group(1),vq and vq.group(1),'refresh incomplete' in p['text'],'refresh incomplete' in q['text']))
+                by[op]+=d; n[op]+=1
+                by['total_prev_'+str(op)]+=len(p['text'])
+        tp=sum(len(r['text']) for o in R.values() for r in o['prev']); tn=sum(len(r['text']) for o in R.values() for r in o['new'])
+        print('total prism result bytes prev',tp,'new',tn,'delta',tn-tp,f'{(tn-tp)/tp:.1%}')
+        print('note-collapse delta by op (calls without path substitution):')
+        for op in ['search','read','change_impact','lookup','query','verify',None]:
+            if n[op]: print(f'  {str(op):14} calls {n[op]:3}  prev {by["total_prev_"+str(op)]:7}  delta {by[op]:7}  {by[op]/max(by["total_prev_"+str(op)],1):.1%}')
+        print('errors',dict(errs))
+        print('PATH substitutions',len(sub))
+        for x in sub: print('  ',x)
+        print('VERIFY')
+        for x in ver: print('  ',x)
+        EOF
+      at: 2026-10-01T01:56:00.209715Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        import json
+        R=json.load(open('replay_forced30.json'))
+        for t in ['urfave__cli__pr2309','colinhacks__zod__pr6500','go-chi__chi__pr1029']:
+            for a in ['prev','new']:
+                v=[r for r in R[t][a] if r['in'].get('op')=='verify']
+                print('=====',t,a); print(v[0]['text'][:700])
+        EOF
+      at: 2026-10-01T01:56:10.103951Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        import json,re,collections
+        R=json.load(open('replay_forced30.json'))
+        C=collections.Counter(); flips=[]
+        for t,o in R.items():
+            for p,q in zip(o['prev'],o['new']):
+                if q['in'].get('op')!='verify': continue
+                a=re.match(r'verify: (\w+)',p['text']); b=re.match(r'verify: (\w+)',q['text'])
+                a=a.group(1) if a else 'other:'+p['text'][:40]; b=b.group(1) if b else 'other:'+q['text'][:40]
+                C[(a,b)]+=1
+                if a!=b: flips.append((t,a,b))
+        print(C); print(flips)
+        EOF
+      at: 2026-10-01T01:56:15.73562Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        from load import calls
+        import json
+        for s in calls('forced'):
+            if s['task'] not in ('colinhacks__zod__pr6144','colinhacks__zod__pr6500','pydantic__pydantic__pr13516','urfave__cli__pr2309','urfave__cli__pr2355'): continue
+            seq=s['seq']
+            for i,c in enumerate(seq):
+                if c['input'].get('op')=='verify' and 'review' in c.get('result','')[:40]:
+                    nxt=[json.dumps(x['input'])[:130] for x in seq[i+1:i+3]]
+                    print(s['task'], 'NEXT:',nxt)
+        EOF
+      at: 2026-10-01T01:56:22.937914Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/compactargs.go'; s=open(p).read()
+        old='''	for k := range compactIntFields {
+        		if v, ok := out[k].(string); ok {
+        			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+        				out[k] = n
+        			}
+        		}
+        	}
+        	return out
+        }'''
+        new='''	for k := range compactIntFields {
+        		if v, ok := out[k].(string); ok {
+        			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+        				out[k] = n
+        			}
+        		}
+        	}
+        	// A list sent as its JSON text (paths:"[\\"src/main\\"]", forced run
+        	// 2026-09-30) was searched as one literal path and matched nothing.
+        	for _, k := range []string{"terms", "paths", "glob", "removed_symbols"} {
+        		if v, ok := out[k].(string); ok {
+        			if t := strings.TrimSpace(v); strings.HasPrefix(t, "[") && strings.HasSuffix(t, "]") {
+        				var items []string
+        				if json.Unmarshal([]byte(t), &items) == nil && len(items) > 0 {
+        					list := make([]any, len(items))
+        					for i, item := range items {
+        						list[i] = item
+        					}
+        					out[k] = list
+        				}
+        			}
+        		}
+        	}
+        	return out
+        }'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        if '"encoding/json"' not in s: s=s.replace('import (','import (\n\t"encoding/json"',1)
+        open(p,'w').write(s)
+        EOF
+        gofmt -w internal/mcp/compactargs.go && cat >> internal/mcp/sweepsearch_test.go <<'EOF'
+
+        // A list sent as its JSON text is the list it spells.
+        func TestCompactListSentAsJSONText(t *testing.T) {
+        	srv := compactFixture(t, srcLayoutPython)
+        	out := callCompact(t, srv, "search", map[string]any{"terms": `["requote_uri","prepare_url"]`, "paths": `["src/requests"]`})
+        	if strings.Contains(out, "FILTER") || !strings.Contains(out, "── requote_uri ──") || !strings.Contains(out, "── prepare_url ──") {
+        		t.Fatalf("JSON-text lists were not read as lists:\n%s", out)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run 'CompactListSentAsJSONText|Scoped|MissingPath' -count=1 2>&1 | tail -5
+      at: 2026-10-01T01:56:40.477727Z
+      classified: test
+    - cmd: |-
+        go build -o ~/prism-ab-bins/prism-trim ./cmd/prism && cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'
+        import json
+        from load import calls
+        from replay import MCP,BINS,WT,reset,H
+        todo=[]
+        for arm in ['forced','prism']:
+            for s in calls(arm):
+                seq=s['seq']
+                for i,c in enumerate(seq):
+                    r=c.get('result','')
+                    if 'prism' in c['name'] and ('FILTER MATCHED NO FILES' in r or 'FILTER PARTLY' in r or 'no such file' in r):
+                        nxt=seq[i+1] if i+1<len(seq) else None
+                        todo.append((arm,s['task'],c['input'],nxt))
+        print(len(todo),'wrong-path calls')
+        for arm,task,inp,nxt in todo:
+            t=json.load(open(H+f'tasks/e2e/{task}.json')); wt=WT+task
+            print(f'===== [{arm}] {task}  {json.dumps(inp.get("args"))[:160]}')
+            for b in ['prev','new']:
+                reset(wt,t['base_commit']); m=MCP(BINS[b],wt)
+                d=m.call('tools/call',{"name":"prism","arguments":inp}); m.close()
+                txt=d['error']['message'] if 'error' in d else '\n'.join(x['text'] for x in d['result']['content'])
+                head=[l for l in txt.split('\n') if 'does not exist' in l or 'FILTER' in l or 'no such file' in l][:2]
+                print(f'  {b:4} {len(txt):6}B  ', (head[0][:150] if head else 'ok: '+txt.split(chr(10))[0][:100]))
+            print('  live next call:', nxt['name'].split('__')[-1], json.dumps(nxt['input'])[:120] if nxt else None)
+            reset(wt,t['base_commit'])
+        EOF
+      at: 2026-10-01T01:57:26.791137Z
+      classified: build
+    - cmd: go vet ./... 2>&1 | tail -3; go test ./... -count=1 2>&1 | grep -E "^(--- FAIL|FAIL|ok)" | sed 's/\t[0-9.]*s$//' | sort | uniq -c | sort -rn | head
+      at: 2026-10-01T01:58:06.956448Z
+      classified: lint
+    - cmd: |-
+        git add -A && git status --short && git commit -q -F - <<'EOF'
+        mcp: trim fixed context and repeated notes; substitute unambiguous missing paths; verify ignores unrelated refresh errors
+
+        Measured on the 2026-09-30 forced30 transcripts (30 Sonnet 5.5 bug fixes) and
+        replayed offline against d4e4cd49:
+
+        - Fixed context: steering 2317->1757 B, MCP instructions 1412->891 B, terms
+          schema text -70 B. Per-language verify policy now lives only in the MCP
+          instructions.
+        - Once-per-session notes now cover read/lookup/change_impact/verify/query
+          (registered notes only, indented notes included): scope boundary, relay
+          note, per-caller evidence note, tab-indent note, window reminder, locator
+          hint, enclosing-body header. Replay: search -2.1%, read -1.4%,
+          change_impact -5.5% bytes.
+        - A search/query/read path that does not exist but has exactly one best real
+          counterpart (same file name, strictly most shared trailing segments) is used
+          and named in the answer. Replay: 8 of 10 recorded wrong-path calls answered
+          in one call; in 7 the live agent had spent its next call on the retry.
+        - JSON-text lists (paths:"[\"src/main\"]") are read as lists.
+        - verify only degrades to review for index refresh errors on changed files
+          (or errors without a path). Replay: 5 false reviews from symlinked docs ->
+          complete; 23 complete and 4 incomplete unchanged.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014cHSYsweZDHoUvChHSBQm8
+        EOF
+        git log --oneline -1
+      at: 2026-10-01T01:58:30.076997Z
+      classified: other
+notes: []
+redactions: 2
