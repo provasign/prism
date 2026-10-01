@@ -3159,7 +3159,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		return nil, errors.New("query is required")
 	}
 	r, err := h.Grove.ChangeImpactScoped(ctx, query, stringArg(args, "file", ""))
-	inferenceNote, inheritedNote := "", ""
+	inferenceNote, inheritedNote, familyPickNote := "", "", ""
 	if err != nil && strings.Contains(err.Error(), "declares no method") {
 		// The override being added does not exist yet: answer with the
 		// inherited declaration's change set instead of a dead end.
@@ -3208,6 +3208,11 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 				r, err = h.Grove.ChangeImpactScoped(ctx, picked.QualifiedName, picked.FilePath)
 			}
 		}
+		if err != nil && len(wide) == 2 && !isWide {
+			if fr, note, ok := h.pickAmbiguousByFamily(ctx, err); ok {
+				r, err, familyPickNote = fr, nil, note
+			}
+		}
 	}
 	if err != nil {
 		// "declares no method" is the dead-end that abandons agents:
@@ -3227,6 +3232,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		if strings.Contains(err.Error(), "is ambiguous —") {
 			if enriched := enrichAmbiguousImpactError(query, err); enriched != nil {
 				return nil, enriched
+			}
+			if calls := ambiguousImpactCalls(err); calls != "" {
+				return nil, fmt.Errorf("%w\nThese are different functions; pick one and call it by its full name:\n%s", err, calls)
 			}
 		}
 		return nil, err // grove already prefixes; re-wrapping tripled the message
@@ -3404,7 +3412,47 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		out["widerAnchor"] = hint
 	}
 	h.addDegradedNote(ctx, out, r)
+	applyCompilerBackedCompleteness(out, r)
+	if familyPickNote != "" {
+		out["resolvedAmbiguity"] = familyPickNote
+	}
 	return out, nil
+}
+
+// compilerBackedImpactLangs have a type-checked native pass in grove.
+var compilerBackedImpactLangs = map[string]bool{
+	"go": true, "java": true, "typescript": true, "tsx": true, "javascript": true,
+}
+
+// applyCompilerBackedCompleteness states plainly that a closed impact result
+// is complete when the compiler-backed pass ran. The generic boundary ("Do
+// not claim global completeness…", safeToClaimComplete=false) was on every
+// answer, and agents re-checked complete answers with grep (exp branch
+// 2026-09-29: capability-first steering).
+func applyCompilerBackedCompleteness(out map[string]any, r *grove.ChangeImpactResult) {
+	if _, degraded := out["degradedAnalysis"]; degraded || r.HasHeuristicRefs {
+		return
+	}
+	if c, _ := out["completeness"].(string); c != "closed" {
+		return
+	}
+	lang := ""
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		if len(group) > 0 {
+			lang = group[0].Language
+			break
+		}
+	}
+	if !compilerBackedImpactLangs[lang] {
+		return
+	}
+	out["completenessScope"] = "repository (compiler-backed " + lang + ")"
+	out["safeToClaimComplete"] = true
+	out["scopeBoundary"] = "Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. " +
+		"Not covered: reflection/runtime dispatch and consumers outside this repository."
+	if _, ok := out["evidenceNote"]; ok {
+		out["evidenceNote"] = "Call expressions below are shown as evidence for each caller."
+	}
 }
 
 // addDegradedNote warns when the compiler-backed analysis for the answer's
@@ -3944,4 +3992,15 @@ func tabIndentNote(lines []string) string {
 		}
 	}
 	return ""
+}
+
+// ambiguousImpactCalls lists each candidate of a short ambiguity as a call the
+// agent can send back unchanged. A bare "re-run with one of these" was where
+// agents abandoned change_impact (7 of 17 ambiguous answers, Aug-Sep 2026).
+func ambiguousImpactCalls(err error) string {
+	var b strings.Builder
+	for _, m := range ambiguousCandidateLine.FindAllStringSubmatch(err.Error(), -1) {
+		fmt.Fprintf(&b, "  {\"op\":\"change_impact\",\"args\":{\"name\":%q,\"symbol_file\":%q}}\n", m[1], m[2])
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
