@@ -358,10 +358,11 @@ func ToolSchemas() []map[string]any {
 
 const compactReadLimit = 240
 
-// compactArgSchemas is the full per-field schema the server validates
-// against. The advertised tool definition (CompactToolSchemas) is a shorter
-// view of it; a field left out of the advertisement is still accepted.
-func compactArgSchemas() map[string]any {
+// CompactToolSchemas exposes the six primary operations through one MCP tool.
+// It avoids top-level composition keywords because older MCP hosts have
+// dropped tools carrying oneOf even when the JSON Schema is valid. The
+// selected legacy handler remains the operation-specific authority.
+func CompactToolSchemas() []map[string]any {
 	prop := func(ops, note string, schema map[string]any) map[string]any {
 		schema["description"] = "ops: " + ops + ". " + note
 		return schema
@@ -381,7 +382,7 @@ func compactArgSchemas() map[string]any {
 			},
 		}},
 	}}
-	return map[string]any{
+	args := map[string]any{
 		"name":        prop("lookup,change_impact", "Symbol(s); impact takes one.", name),
 		"symbol_file": prop("lookup,change_impact", "Disambiguating file.", map[string]any{"type": "string"}),
 		"fields": prop("lookup", "Projection.", map[string]any{"type": "array",
@@ -415,58 +416,10 @@ func compactArgSchemas() map[string]any {
 		"strict":          prop("verify", "Treat a review verdict as a gate failure; the verdict and evidence stay unchanged.", map[string]any{"type": "boolean"}),
 		"exhaustive":      prop("search", "Request expanded inventory; check completion status.", map[string]any{"type": "boolean"}),
 	}
-}
-
-// CompactToolSchemas exposes the six primary operations through one MCP tool.
-// It avoids top-level composition keywords because older MCP hosts have
-// dropped tools carrying oneOf even when the JSON Schema is valid. The
-// selected legacy handler remains the operation-specific authority.
-//
-// The definition rides on every request. Trimmed 2026-10-01 against 454
-// recorded calls in 127 Sonnet 5.5 sessions: the op map already says which
-// fields belong to which op, so fields carry no "ops:" tag; rollup_only,
-// strict, and base were used 0 times and are accepted but not advertised;
-// list bounds are enforced by the server and stated where they matter.
-func CompactToolSchemas() []map[string]any {
-	str := func(note string) map[string]any { return map[string]any{"type": "string", "description": note} }
-	list := func(note string) map[string]any {
-		return map[string]any{"type": []string{"string", "array"}, "items": map[string]any{"type": "string"}, "description": note}
-	}
-	args := map[string]any{
-		"name": map[string]any{"type": []string{"string", "array"},
-			"items":       map[string]any{"type": []string{"string", "object"}},
-			"description": "Symbol, or up to 10 for lookup (items may be {name,file}); change_impact takes one."},
-		"symbol_file": str("Disambiguating file."),
-		"fields": map[string]any{"type": "array", "description": "Projection.",
-			"items": map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}}},
-		"signature": str("Selects one overload."),
-		"file":      str("Repo-relative path."),
-		"from":      map[string]any{"type": "integer", "minimum": 1, "description": "First line."},
-		"to":        map[string]any{"type": "integer", "minimum": 1, "description": "Last line (inclusive; max 240 lines)."},
-		"ranges": map[string]any{"type": "array", "maxItems": 10, "description": "{file,from,to} windows.",
-			"items": map[string]any{"type": "object", "additionalProperties": false, "required": []string{"file", "from", "to"},
-				"properties": map[string]any{
-					"file": map[string]any{"type": "string"},
-					"from": map[string]any{"type": "integer"},
-					"to":   map[string]any{"type": "integer"},
-				}}},
-		"terms":          list("Batch identifiers or exact substrings (up to 10), one per item: [\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string."),
-		"scope":          map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}},
-		"paths":          list("Repo-relative paths."),
-		"glob":           list("File glob(s)."),
-		"regex":          map[string]any{"type": "boolean"},
-		"files_only":     map[string]any{"type": "boolean", "description": "Paths without lines."},
-		"max_results":    map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap, "description": "Search-only result cap."},
-		"include_bodies": map[string]any{"type": "boolean", "description": "Default: one body for the top match; false: locators only; true: up to two per term."},
-		"context":        map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap, "description": "Lines around each match; disables body delivery."},
-		"removed_symbols": map[string]any{"type": "array", "items": map[string]any{"type": "string"},
-			"description": "After a removal: exact identifier mentions, including comments and docs."},
-		"exhaustive": map[string]any{"type": "boolean", "description": "Expanded inventory; check completion status."},
-	}
 	const opMap = "lookup: name[,symbol_file,fields,signature] | read: file,from,to or ranges | " +
-		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies,context] | " +
+		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies,context,rollup_only] | " +
 		"query: terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
-		"verify: [removed_symbols]. Known symbol → lookup; search only when location is unknown."
+		"verify: base,removed_symbols,strict. Known symbol → lookup; search only when location is unknown."
 	return []map[string]any{{
 		"name":        "prism",
 		"description": "Use the op map for each discovery step; do not use shell tools to find code.",

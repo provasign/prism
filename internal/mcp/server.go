@@ -189,7 +189,7 @@ func validateCompactArguments(op string, args map[string]any) error {
 		keys = append(keys, field)
 	}
 	sort.Strings(keys)
-	properties := compactArgSchemas()
+	properties := CompactToolSchemas()[0]["inputSchema"].(map[string]any)["properties"].(map[string]any)["args"].(map[string]any)["properties"].(map[string]any)
 	for _, field := range keys {
 		value := args[field]
 		if !allowedSet[field] {

@@ -417,18 +417,6 @@ func TestCompactListSentAsJSONText(t *testing.T) {
 	}
 }
 
-// Fields dropped from the advertised definition (2026-10-01) stay accepted.
-func TestUnadvertisedCompactFieldsStillAccepted(t *testing.T) {
-	srv := compactFixture(t, srcLayoutPython)
-	out := callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "rollup_only": true})
-	if strings.Contains(out, "prism:") && strings.Contains(out, "rollup_only") {
-		t.Fatalf("rollup_only rejected:\n%s", out)
-	}
-	if err := validateCompactArguments("verify", map[string]any{"base": "HEAD", "strict": false}); err != nil {
-		t.Fatalf("verify base/strict rejected: %v", err)
-	}
-}
-
 // A whole call nested inside args means that call (trim2 run, 2026-10-01).
 func TestCompactCallNestedInArgsIsUnwrapped(t *testing.T) {
 	for _, envelope := range []map[string]any{
