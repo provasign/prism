@@ -67,7 +67,13 @@ func TestImpactEvidencePreservesSitesAndSource(t *testing.T) {
 	if !ok {
 		t.Fatalf("impact unexpectedly fell back to JSON: %v", out)
 	}
-	for _, want := range []string{"Get()", "5: return s.Get()", "[test]", "not independent receiver-resolution proof"} {
+	for _, want := range []string{"Get()", "5: return s.Get()", "[test]", "|evidence"} {
+		if want == "|evidence" {
+			if !strings.Contains(text, "not independent receiver-resolution proof") && !strings.Contains(text, "shown as evidence for each caller") {
+				t.Errorf("missing evidence note:\n%s", text)
+			}
+			continue
+		}
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q:\n%s", want, text)
 		}

@@ -260,6 +260,20 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		return nil, err
 	}
 	deletedFiles := gitDeletedFiles(h.Root, base)
+	// prism init's own files are not the agent's change (the forced probe
+	// reported "8 changed files" for a one-file edit, 2026-09-29).
+	for f := range changed {
+		if prismOwnedFile(f) {
+			delete(changed, f)
+		}
+	}
+	kept := deletedFiles[:0]
+	for _, f := range deletedFiles {
+		if !prismOwnedFile(f) {
+			kept = append(kept, f)
+		}
+	}
+	deletedFiles = kept
 	if len(changed) == 0 && len(deletedFiles) == 0 {
 		return map[string]any{"verdict": "clean", "base": base,
 			"gateFailure": false, "note": "no changes vs " + base}, nil
@@ -1368,4 +1382,20 @@ func (h *Handler) verifyRemovedSymbols(ctx context.Context, syms []string) (any,
 			"Mentions are not proof of live code references; inspect reported sites. Full verify is optional when " +
 			"build/typecheck does not cover affected callers.",
 	}, nil
+}
+
+// prismOwnedFile reports files prism init writes into a repository.
+func prismOwnedFile(path string) bool {
+	p := filepath.ToSlash(path)
+	for _, pre := range []string{".grove/", ".claude/", ".prism/", ".codex/", ".cursor/", ".windsurf/", ".gemini/"} {
+		if strings.HasPrefix(p, pre) {
+			return true
+		}
+	}
+	switch p {
+	case ".mcp.json", "prism.yaml", "CLAUDE.md", "AGENTS.md", "GEMINI.md", ".cursorrules", ".windsurfrules",
+		".github/copilot-instructions.md", "opencode.json", ".prism-read-tracker.json":
+		return true
+	}
+	return false
 }

@@ -281,12 +281,19 @@ func validateCompactArguments(op string, args map[string]any) error {
 }
 
 func expandCompactCall(envelope map[string]any) (string, map[string]any, error) {
+	op, ok := envelope["op"].(string)
+	// Arguments placed beside op instead of inside args are what the agent
+	// meant: {"op":"change_impact","name":"walk"} was rejected on a first
+	// call and cost a turn (2026-09-29 forced probe). Fold known fields of
+	// the selected op into args; anything else is still an error.
 	for key := range envelope {
-		if key != "op" && key != "args" {
+		if key == "op" || key == "args" {
+			continue
+		}
+		if !ok || !compactFieldAllowed(op, compactAlias(op, key)) {
 			return "", nil, fmt.Errorf("prism: unknown parameter %q — use op and args", key)
 		}
 	}
-	op, ok := envelope["op"].(string)
 	if !ok || op == "" {
 		return "", nil, fmt.Errorf("prism: op is required")
 	}
@@ -296,11 +303,22 @@ func expandCompactCall(envelope map[string]any) (string, map[string]any, error) 
 	}
 	args := map[string]any{}
 	if raw, present := envelope["args"]; present {
-		args, ok = raw.(map[string]any)
-		if !ok {
+		given, isMap := raw.(map[string]any)
+		if !isMap {
 			return "", nil, fmt.Errorf("prism: args must be an object")
 		}
+		for k, v := range given {
+			args[k] = v
+		}
 	}
+	for key, value := range envelope {
+		if key != "op" && key != "args" {
+			if _, set := args[key]; !set {
+				args[key] = value
+			}
+		}
+	}
+	args = normalizeCompactArgs(op, args)
 	if err := validateCompactArguments(op, args); err != nil {
 		return "", nil, err
 	}

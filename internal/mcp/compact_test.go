@@ -202,11 +202,8 @@ func TestExpandCompactCall(t *testing.T) {
 		args map[string]any
 		want string
 	}{
-		{"change_impact", map[string]any{"query": "Thing.Run"}, "use name. Accepted fields: name, symbol_file, signature"},
-		{"search", map[string]any{"terms": "Thing", "limit": 50}, "use max_results. Accepted fields: terms, scope, paths"},
 		{"query", map[string]any{"terms": "Thing", "max_results": 20}, "Accepted fields: terms, paths, glob"},
 		{"query", map[string]any{"task": "inspect", "terms": "Thing"}, "Accepted fields: terms, paths, glob"},
-		{"read", map[string]any{"file": "a.go", "offset": 1}, "use from. Accepted fields: file, from, to, ranges"},
 		{"change_impact", map[string]any{"name": []any{"A", "B"}}, "exactly one symbol"},
 		{"read", map[string]any{}, "requires args.file"},
 		{"query", map[string]any{}, "requires args.terms"},
@@ -216,8 +213,10 @@ func TestExpandCompactCall(t *testing.T) {
 			t.Errorf("%s args %#v error = %v, want %q", tc.op, tc.args, err, tc.want)
 		}
 	}
+	// Aliases (query->name, limit->max_results, offset->from) and fields
+	// beside op are accepted now: lenient_test.go covers them.
 	for _, envelope := range []map[string]any{{}, {"op": "remove"}, {"op": "read", "args": "file=a.go"},
-		{"op": "read", "file": "a.go"}} {
+		{"op": "read", "bogus": "a.go"}} {
 		if _, _, err := expandCompactCall(envelope); err == nil {
 			t.Errorf("invalid envelope accepted: %#v", envelope)
 		}

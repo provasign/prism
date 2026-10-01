@@ -127,6 +127,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
 		"inheritedNote": true, "signatureNote": true, "testOnly": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
+		"resolvedAmbiguity": true,
 	}
 	for k := range out {
 		if !known[k] {
@@ -136,6 +137,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	var b strings.Builder
 	fmt.Fprintf(&b, "// %v — change-impact: %v site(s)\n", out["query"], out["totalSites"])
 	b.WriteString(FormatImpactHeaderNotesText(out))
+	if note, _ := out["resolvedAmbiguity"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
+	}
 	if c, _ := out["completeness"].(string); c != "" {
 		fmt.Fprintf(&b, "completeness: %s\n", c)
 	}

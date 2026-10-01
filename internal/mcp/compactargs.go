@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -134,4 +135,96 @@ func compactSingleReadNote(out any, envelope map[string]any) {
 		result["note"] = appendNote(stringArg(result, "note", ""),
 			fmt.Sprintf("compact read %d-%s clamped to %d-%d (max %d lines)", from, requested, from, end, compactReadLimit))
 	}
+}
+
+// compactAliases are spellings agents use for a field that prism already
+// names in its rejection message ("use paths"); accepting them saves the
+// retry turn (search path->paths, 2026-09-24; lookup file->symbol_file).
+var compactAliases = map[string]map[string]string{
+	"lookup":        {"file": "symbol_file"},
+	"search":        {"query": "terms", "path": "paths", "limit": "max_results"},
+	"query":         {"query": "terms", "path": "paths"},
+	"change_impact": {"query": "name", "file": "symbol_file"},
+	"read":          {"path": "file", "offset": "from"},
+}
+
+func compactAlias(op, field string) string {
+	if to, ok := compactAliases[op][field]; ok {
+		return to
+	}
+	if op == "read" && field == "limit" {
+		return "to"
+	}
+	return field
+}
+
+func compactFieldAllowed(op, field string) bool {
+	for _, f := range compactFields[op] {
+		if f == field {
+			return true
+		}
+	}
+	return false
+}
+
+// compactIntFields take integers; agents sometimes send "278".
+var compactIntFields = map[string]bool{"from": true, "to": true, "max_results": true, "context": true}
+
+// normalizeCompactArgs maps aliases to canonical fields and numeric strings
+// to integers. A canonical field already present wins over its alias.
+func normalizeCompactArgs(op string, args map[string]any) map[string]any {
+	out := make(map[string]any, len(args))
+	for k, v := range args {
+		if compactFieldAllowed(op, k) {
+			out[k] = v
+		}
+	}
+	for k, v := range args {
+		if compactFieldAllowed(op, k) {
+			continue
+		}
+		to := compactAlias(op, k)
+		if to == k || !compactFieldAllowed(op, to) {
+			out[k] = v // unknown: validation reports it
+			continue
+		}
+		if _, set := out[to]; set {
+			continue
+		}
+		if op == "read" && k == "limit" {
+			// read limit is a line count; to is the last line.
+			if n, ok := compactInt(v); ok {
+				from := 1
+				if f, ok := compactInt(args["offset"]); ok {
+					from = f
+				} else if f, ok := compactInt(args["from"]); ok {
+					from = f
+				}
+				out["to"] = from + n - 1
+			}
+			continue
+		}
+		out[to] = v
+	}
+	for k := range compactIntFields {
+		if v, ok := out[k].(string); ok {
+			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+				out[k] = n
+			}
+		}
+	}
+	return out
+}
+
+func compactInt(v any) (int, bool) {
+	switch x := v.(type) {
+	case float64:
+		return int(x), true
+	case int:
+		return x, true
+	case string:
+		n, err := strconv.Atoi(strings.TrimSpace(x))
+		return n, err == nil
+	}
+	return 0, false
 }
