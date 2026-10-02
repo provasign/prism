@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -210,6 +211,22 @@ func normalizeCompactArgs(op string, args map[string]any) map[string]any {
 		if v, ok := out[k].(string); ok {
 			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
 				out[k] = n
+			}
+		}
+	}
+	// A list sent as its JSON text (paths:"[\"src/main\"]", forced run
+	// 2026-09-30) was searched as one literal path and matched nothing.
+	for _, k := range []string{"terms", "paths", "glob", "removed_symbols"} {
+		if v, ok := out[k].(string); ok {
+			if t := strings.TrimSpace(v); strings.HasPrefix(t, "[") && strings.HasSuffix(t, "]") {
+				var items []string
+				if json.Unmarshal([]byte(t), &items) == nil && len(items) > 0 {
+					list := make([]any, len(items))
+					for i, item := range items {
+						list[i] = item
+					}
+					out[k] = list
+				}
 			}
 		}
 	}

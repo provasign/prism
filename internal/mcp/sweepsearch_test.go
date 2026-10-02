@@ -62,7 +62,9 @@ var srcLayoutPython = map[string]string{
 
 // requests pr7315 (rerun #6/#7, pinned #100): paths=["requests/models.py"] in
 // a src/ layout returned "no matches ... retry broader/shorter" for every
-// term. The filter matched no file; say so and name the real path.
+// term. Since 2026-09-30 a missing path with one unambiguous real
+// counterpart is searched in its place, and the answer says so; a miss with
+// no unique counterpart is still named as a filter miss.
 func TestScopedSearchNamesAFilterThatMatchesNoFiles(t *testing.T) {
 	srv := compactFixture(t, srcLayoutPython)
 	for _, scope := range []string{"symbols", "text", "both"} {
@@ -70,18 +72,18 @@ func TestScopedSearchNamesAFilterThatMatchesNoFiles(t *testing.T) {
 			"terms": []any{"requote_uri", "prepare_url"}, "scope": scope,
 			"paths": []any{"requests/models.py", "requests/utils.py"},
 		})
-		if !strings.Contains(out, "FILTER MATCHED NO FILES") ||
-			!strings.Contains(out, "src/requests/models.py") || !strings.Contains(out, "src/requests/utils.py") {
-			t.Fatalf("scope=%s: filter miss not named with the real paths:\n%s", scope, out)
+		if !strings.Contains(out, `path "requests/models.py" does not exist; used src/requests/models.py`) ||
+			!strings.Contains(out, `path "requests/utils.py" does not exist; used src/requests/utils.py`) {
+			t.Fatalf("scope=%s: substitution not stated:\n%s", scope, out)
 		}
-		if strings.Contains(out, "Retry broader/shorter") {
-			t.Errorf("scope=%s: blamed the terms for a filter miss:\n%s", scope, out)
+		if strings.Contains(out, "FILTER") || !strings.Contains(out, "requote_uri") {
+			t.Fatalf("scope=%s: substituted paths were not searched:\n%s", scope, out)
 		}
 	}
-	// Single term takes the flat path.
-	out := callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "paths": "requests/utils.py"})
-	if !strings.Contains(out, "FILTER MATCHED NO FILES") || !strings.Contains(out, "src/requests/utils.py") {
-		t.Fatalf("single-term filter miss not named:\n%s", out)
+	// No real file shares the name: still a filter miss, terms not blamed.
+	out := callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "paths": "requests/nowhere.py"})
+	if !strings.Contains(out, "FILTER MATCHED NO FILES") || strings.Contains(out, "Retry broader/shorter") {
+		t.Fatalf("filter miss without a counterpart not named:\n%s", out)
 	}
 	// A glob that selects nothing.
 	out = callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "glob": "**/tools/jackson/core/JsonParser.java"})
@@ -90,13 +92,30 @@ func TestScopedSearchNamesAFilterThatMatchesNoFiles(t *testing.T) {
 	}
 	// A valid filter with a missing term keeps the normal term guidance.
 	out = callCompact(t, srv, "search", map[string]any{"terms": "no_such_name_here", "paths": "src/requests/utils.py"})
-	if strings.Contains(out, "FILTER") {
+	if strings.Contains(out, "FILTER") || strings.Contains(out, "does not exist") {
 		t.Fatalf("valid filter reported as a miss:\n%s", out)
 	}
-	// One valid and one missing path: search the valid one, flag the other.
-	out = callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "paths": []any{"src/requests/utils.py", "requests/models.py"}})
-	if !strings.Contains(out, "FILTER PARTLY INVALID") || !strings.Contains(out, "src/requests/models.py") {
+	// One valid and one missing path without a counterpart: search the valid
+	// one, flag the other.
+	out = callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "paths": []any{"src/requests/utils.py", "requests/nowhere.py"}})
+	if !strings.Contains(out, "FILTER PARTLY INVALID") || !strings.Contains(out, "requests/nowhere.py") {
 		t.Fatalf("partly invalid filter not named:\n%s", out)
+	}
+}
+
+// Two real files equally close to the missing path: never guess.
+func TestMissingPathWithTiedCounterpartsIsNotSubstituted(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"src/a/util.py": "def helper():\n    return 1\n",
+		"src/b/util.py": "def helper():\n    return 2\n",
+	})
+	out := callCompact(t, srv, "search", map[string]any{"terms": "helper", "paths": "lib/util.py"})
+	if strings.Contains(out, "does not exist; used") || !strings.Contains(out, "FILTER MATCHED NO FILES") {
+		t.Fatalf("tied counterparts must stay a named miss:\n%s", out)
+	}
+	out = callCompact(t, srv, "read", map[string]any{"file": "lib/a/util.py", "from": 1, "to": 2})
+	if !strings.Contains(out, `path "lib/a/util.py" does not exist; used src/a/util.py`) || !strings.Contains(out, "return 1") {
+		t.Fatalf("read did not use the one closer counterpart:\n%s", out)
 	}
 }
 
@@ -105,11 +124,12 @@ func TestScopedSearchNamesAFilterThatMatchesNoFiles(t *testing.T) {
 func TestScopedQueryNamesAFilterThatMatchesNoFiles(t *testing.T) {
 	srv := compactFixture(t, srcLayoutPython)
 	out := callCompact(t, srv, "query", map[string]any{"terms": []any{"requote_uri"}, "paths": []any{"requests/utils.py"}})
-	if !strings.Contains(out, "FILTER MATCHED NO FILES") || !strings.Contains(out, "src/requests/utils.py") {
-		t.Fatalf("query filter miss not named:\n%s", out)
+	if !strings.Contains(out, "used src/requests/utils.py") || strings.Contains(out, "check term spelling") {
+		t.Fatalf("query did not search the substituted path:\n%s", out)
 	}
-	if strings.Contains(out, "check term spelling") {
-		t.Fatalf("query blamed term spelling for a filter miss:\n%s", out)
+	out = callCompact(t, srv, "query", map[string]any{"terms": []any{"requote_uri"}, "paths": []any{"requests/nowhere.py"}})
+	if !strings.Contains(out, "FILTER MATCHED NO FILES") || strings.Contains(out, "check term spelling") {
+		t.Fatalf("query filter miss not named:\n%s", out)
 	}
 	out = callCompact(t, srv, "query", map[string]any{"terms": []any{"assignCurrentValue"}, "glob": []any{"**/tools/jackson/core/JsonParser.java"}})
 	if !strings.Contains(out, "FILTER MATCHED NO FILES") {
@@ -385,5 +405,33 @@ func TestCompactToolWordingLeavesSourceAlone(t *testing.T) {
 	}
 	if !strings.Contains(got, "op=read from=5 to=9 if needed") || !strings.Contains(got, "use op=lookup for known") {
 		t.Errorf("footer not rewritten:\n%s", got)
+	}
+}
+
+// A list sent as its JSON text is the list it spells.
+func TestCompactListSentAsJSONText(t *testing.T) {
+	srv := compactFixture(t, srcLayoutPython)
+	out := callCompact(t, srv, "search", map[string]any{"terms": `["requote_uri","prepare_url"]`, "paths": `["src/requests"]`})
+	if strings.Contains(out, "FILTER") || !strings.Contains(out, "── requote_uri ──") || !strings.Contains(out, "── prepare_url ──") {
+		t.Fatalf("JSON-text lists were not read as lists:\n%s", out)
+	}
+}
+
+// A whole call nested inside args means that call (trim2 run, 2026-10-01).
+func TestCompactCallNestedInArgsIsUnwrapped(t *testing.T) {
+	for _, envelope := range []map[string]any{
+		{"args": map[string]any{"op": "read", "args": map[string]any{"file": "a.go", "from": 1, "to": 5}}},
+		{"op": "read", "args": map[string]any{"op": "read", "args": map[string]any{"file": "a.go", "from": 1, "to": 5}}},
+		{"args": map[string]any{"op": "lookup", "name": []any{"hashCode"}, "fields": []any{"body"}}},
+	} {
+		name, args, err := expandCompactCall(envelope)
+		if err != nil || (name != "prism_read" && name != "prism_lookup") || len(args) == 0 {
+			t.Fatalf("%v: got %s %v %v", envelope, name, args, err)
+		}
+	}
+	// A different op outside is a conflict, not a nesting.
+	if _, _, err := expandCompactCall(map[string]any{"op": "search",
+		"args": map[string]any{"op": "read", "args": map[string]any{"file": "a.go"}}}); err == nil {
+		t.Fatal("conflicting nested op was accepted")
 	}
 }

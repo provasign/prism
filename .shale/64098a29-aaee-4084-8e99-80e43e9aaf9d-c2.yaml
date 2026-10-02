@@ -1,0 +1,451 @@
+shale_version: "0"
+id: 64098a29-aaee-4084-8e99-80e43e9aaf9d-c2
+created_at: 2026-10-01T02:00:46.087085Z
+finalized_at: 2026-10-01T18:52:52.154624Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: payload/trim-turns
+privacy: redacted
+commands:
+    - cmd: git status -sb | head -3; git log --oneline -3; git push -q 2>&1 | tail -2; sleep 60; gh pr checks 21 2>&1 | head -20
+      at: 2026-10-01T02:00:46.087085Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'\nimport json\nfrom load import calls\nR=json.load(open('replay_forced30.json'))\n# per-task: result bytes delivered by prism calls; estimate context-token effect: each result stays in context for remaining requests\ntot_prev=tot_new=0; ctx_prev=ctx_new=0\nfor s in calls('forced'):\n    o=R[s['task']]; seq=s['seq']; msgs=[]; \n    order=[c['msg'] for c in seq]; uniq=list(dict.fromkeys(order)); nreq=len(uniq)+1\n    k=0\n    for c in seq:\n        if 'prism' not in c['name']: continue\n        remaining=nreq-(uniq.index(c['msg'])+1)\n        p,q=len(o['prev'][k]['text']),len(o['new'][k]['text']); k+=1\n        tot_prev+=p; tot_new+=q; ctx_prev+=p*remaining; ctx_new+=q*remaining\nprint('prism result bytes/task prev',tot_prev//30,'new',tot_new//30)\nprint('result bytes carried in context (sum over later requests)/task prev',ctx_prev//30,'new',ctx_new//30,'saving tokens/task ~',(ctx_prev-ctx_new)//30//4)\nEOF"
+      at: 2026-10-01T02:00:54.855848Z
+      classified: other
+    - cmd: for i in $(seq 1 30); do s=$(gh pr checks 21 2>&1 | grep windows | awk '{print $3}'); [ "$s" != "pending" ] && break; sleep 30; done; gh pr checks 21 2>&1 | head
+      at: 2026-10-01T02:02:02.523599Z
+      classified: other
+    - cmd: mkdir -p ~/prism-ab-bins/payloadreplay && cp /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad/{load.py,classify.py,cover.py,replay.py,replay_forced30.json,replay.log} ~/prism-ab-bins/payloadreplay/ && ls ~/prism-ab-bins/payloadreplay
+      at: 2026-10-01T02:02:07.653368Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md'; s=open(p).read()
+        line='- [Payload trim 2026-09-30](project_payload_trim_2026_09_30.md) — forced30 study; PR #21 draft (startup text -15%, note dedup all ops, unique wrong-path fix, verify false reviews); replay = ~7% of the token gap vs native, rest is turns\n'
+        s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1); open(p,'w').write(s)
+        EOF
+        head -4 MEMORY.md
+      at: 2026-10-01T02:02:20.910742Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && ls runners | head -30; grep -n "E2E_OUT\|E2E_TAIL\|PRISM_BIN\|prism_body_exp\|prism_body_baseline\|def main\|argparse\|add_argument" runners/run_e2e.py | head -40
+      at: 2026-10-01T10:23:47.360106Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "PRISM_BIN_FOR_ARM" -A8 runners/ab_endtoend_arms.py | head -20; sed -n 660,690p runners/run_e2e.py; sed -n 915,960p runners/run_e2e.py; ls results/ | grep -i manifest; tail -5 results/forced30.log; git -C .. status --short | head
+      at: 2026-10-01T10:23:51.529483Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && head -5 results/forced30.log; sed -n 150,185p runners/ab_endtoend_arms.py; grep -n "PRISM_INIT_ARMS\|def _index_graph" -A6 runners/run_e2e.py | head -40; grep -n "native" runners/ab_endtoend_arms.py | head
+      at: 2026-10-01T10:23:56.5421Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && echo '["urfave__cli__pr2309"]' > results/trim-probe-manifest.json && E2E_OUT=results/e2e-trim-probe PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-trim python3 runners/run_e2e.py results/trim-probe-manifest.json --models claude-sonnet-5-5 --arms prism_body_exp 2>&1 | tail -5
+      at: 2026-10-01T10:24:37.209419Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad && python3 - <<'EOF'\nimport json,glob,os\nP=os.path.expanduser('~/.claude/projects')\nidx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}\nrec=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/results/e2e-trim-probe/urfave__cli__pr2309.claude-sonnet-5-5.prism_body_exp.json'))\nprint('model',rec['model'],'cost',rec['cost_usd'],'turns',rec['turns'])\nfor l in open(idx[rec['usage']['session_id']]):\n    e=json.loads(l); a=e.get('attachment') or {}\n    if a.get('type')=='instructions': c=a['files'][0]['content']; print('CLAUDE.md bytes',len(c.encode()),'trimmed' if 'verify is optional' in c else 'OLD')\n    if a.get('type')=='mcp_instructions_delta': print('mcp instr bytes',len(''.join(a['addedBlocks']).encode()))\n    m=e.get('message')\n    if isinstance(m,dict) and isinstance(m.get('content'),list):\n        for b in m['content']:\n            if b.get('type')=='tool_use': print('  USE',b['name'].split('__')[-1],json.dumps(b['input'])[:110])\nEOF\ncat /Users/tapabratapal/Projects/provasign/research/harness/results/e2e-trim-probe/*.json | python3 -c \"import json,sys;d=json.load(sys.stdin);print({k:d[k] for k in d if 'isol' in k or 'prism' in k.lower()})\" "
+      at: 2026-10-01T10:24:45.718687Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && E2E_OUT=results/e2e-trim27 E2E_WAIT_ON_LIMIT=1 PRISM_BODY_BASELINE_BIN=$HOME/prism-ab-bins/prism-prev-d4e4cd49 PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-trim python3 runners/run_e2e.py results/s55-bugfix30-manifest.json --models claude-sonnet-5-5 --arms prism_body_baseline,prism_body_exp > results/trim27.log 2>&1; echo exit $?
+      at: 2026-10-01T10:24:51.492245Z
+      classified: other
+    - cmd: |-
+        cat > ~/prism-ab-bins/payloadreplay/trim27_summary.py <<'EOF'
+        import json,glob,os,statistics as st,collections,math
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        tasks=[t for t in json.load(open(H+'results/s55-bugfix30-manifest.json')) if not json.load(open(H+f'tasks/e2e/{t}.json')).get('invalid_reason')]
+        P=os.path.expanduser('~/.claude/projects'); idx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}
+        src={'native':H+'results/e2e/{t}.claude-sonnet-5-5.native.json','prev':H+'results/e2e-trim27/{t}.claude-sonnet-5-5.prism_body_baseline.json','new':H+'results/e2e-trim27/{t}.claude-sonnet-5-5.prism_body_exp.json'}
+        R={a:{} for a in src}
+        for a,p in src.items():
+            for t in tasks:
+                f=p.format(t=t)
+                if os.path.exists(f): R[a][t]=json.load(open(f))
+        both=[t for t in tasks if all(t in R[a] for a in R)]
+        print(f'{len(both)} tasks with all three arms')
+        def calls(rec):
+            c=collections.Counter(); f=idx.get(rec['usage'].get('session_id'))
+            if not f: return c
+            for l in open(f):
+                m=json.loads(l).get('message')
+                if isinstance(m,dict) and isinstance(m.get('content'),list):
+                    for b in m['content']:
+                        if b.get('type')=='tool_use':
+                            c['prism.'+str(b['input'].get('op')) if 'prism' in b['name'] else b['name']]+=1
+            return c
+        for a in R:
+            rs=[R[a][t] for t in both]; cc=collections.Counter()
+            for r in rs: cc+=calls(r)
+            print(f"{a:7} resolved {sum(r['resolved'] for r in rs):2}/{len(rs)}  turns {st.mean(r['turns'] for r in rs):5.1f}  input tok/task {st.mean(r['usage']['input_total'] for r in rs)/1000:6.1f}k  cost ${sum(r['cost_usd'] for r in rs):.2f}  prism calls/task {sum(v for k,v in cc.items() if k.startswith('prism'))/len(rs):.1f}")
+        for x,y in [('new','prev'),('new','native'),('prev','native')]:
+            d=[R[x][t]['turns']-R[y][t]['turns'] for t in both]; c=[R[x][t]['cost_usd']-R[y][t]['cost_usd'] for t in both]
+            se=st.stdev(d)/math.sqrt(len(d))
+            print(f'paired {x}-{y}: turns {st.mean(d):+.2f} (se {se:.2f})  cost/task {st.mean(c):+.4f}  cost ratio {sum(R[x][t]["cost_usd"] for t in both)/sum(R[y][t]["cost_usd"] for t in both):.3f}')
+        print('per task: native | prev | new')
+        for t in both:
+            print(f'  {t[:42]:42} '+'  '.join(f"{'PASS' if R[a][t]['resolved'] else 'fail'} {R[a][t]['turns']:2}t" for a in ['native','prev','new']))
+        EOF
+        echo ok
+      at: 2026-10-01T10:25:03.291322Z
+      classified: other
+    - cmd: until grep -q "^# done\|exit" /Users/tapabratapal/Projects/provasign/research/harness/results/trim27.log 2>/dev/null || ! pgrep -f "run_e2e.py results/s55" >/dev/null; do sleep 60; done; tail -5 /Users/tapabratapal/Projects/provasign/research/harness/results/trim27.log
+      at: 2026-10-01T10:35:06.991078Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/Projects/provasign/research/harness/results/trim27.log | tail -15
+      at: 2026-10-01T10:35:10.440381Z
+      classified: other
+    - cmd: tail -4 /Users/tapabratapal/Projects/provasign/research/harness/results/trim27.log; grep -c resolved= /Users/tapabratapal/Projects/provasign/research/harness/results/trim27.log; grep -i "error\|PAUSED\|RATE" /Users/tapabratapal/Projects/provasign/research/harness/results/trim27.log | head; python3 ~/prism-ab-bins/payloadreplay/trim27_summary.py
+      at: 2026-10-01T11:52:29.079814Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/payloadreplay && python3 - <<'EOF'
+        import json,glob,os,statistics as st,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        P=os.path.expanduser('~/.claude/projects'); idx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}
+        tasks=[t for t in json.load(open(H+'results/s55-bugfix30-manifest.json')) if not json.load(open(H+f'tasks/e2e/{t}.json')).get('invalid_reason')]
+        src={'native':H+'results/e2e/{t}.claude-sonnet-5-5.native.json','prev':H+'results/e2e-trim27/{t}.claude-sonnet-5-5.prism_body_baseline.json','new':H+'results/e2e-trim27/{t}.claude-sonnet-5-5.prism_body_exp.json'}
+        for a,p in src.items():
+            first=[];res=collections.Counter();notes=collections.Counter();n=0
+            for t in tasks:
+                rec=json.load(open(p.format(t=t))); f=idx[rec['usage']['session_id']]; got=False; n+=1
+                for l in open(f):
+                    e=json.loads(l); m=e.get('message')
+                    if not isinstance(m,dict): continue
+                    if m.get('role')=='assistant' and m.get('usage') and not got:
+                        u=m['usage']; first.append(u.get('cache_read_input_tokens',0)+u.get('cache_creation_input_tokens',0)+u.get('input_tokens',0)); got=True
+                    if isinstance(m.get('content'),list):
+                        for b in m['content']:
+                            if b.get('type')=='tool_result':
+                                r=b.get('content'); r=r if isinstance(r,str) else ''.join(x.get('text','') for x in (r or []) if isinstance(x,dict))
+                                res['all']+=len(r)
+                                if 'does not exist; used' in r: notes['path_sub']+=1
+                                if 'FILTER MATCHED NO FILES' in r: notes['filter_miss']+=1
+                                if 'verify: review' in r: notes['verify_review']+=1
+                                if 'verify:' in r[:10]: notes['verify']+=1
+            print(f"{a:7} first-request ctx {st.mean(first):.0f} tok  tool-result chars/task {res['all']//n}  {dict(notes)}")
+        EOF
+      at: 2026-10-01T11:52:42.553502Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_payload_trim_2026_09_30.md <<'EOF'
+
+        PAID RUN 2026-10-01 (results/e2e-trim27 in research/harness, 27 valid s55 tasks, pinned Sonnet 5.5, prev=d4e4cd49 as
+        prism_body_baseline and new=PR #21 build as prism_body_exp interleaved per task; native = 2026-09-29 cells, not interleaved):
+        native 18/27, 11.3 turns, 287k input/task, $4.81 | prev 19/27, 12.4t, 361k, $5.53 | new 19/27, 11.5t, 358k, $5.51.
+        Paired new-prev turns -0.89 (se 0.96), cost ratio 0.996: the trims did not measurably change cost (expected ~2%, below noise).
+        new vs native: turns +0.15 (se 1.06), cost +14%. Path substitution fired 5x (prev had 5 filter misses). First-request context
+        still +2.9k tokens vs native; at ~12.5 requests that is ~36k of the ~71k input gap -> startup text is now about half the gap.
+        Spent ~$11.24 (probe $0.20 + two arms). Summary script: ~/prism-ab-bins/payloadreplay/trim27_summary.py.
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism && gh pr comment 21 --body "Paid check 2026-10-01 (27 valid s55 bug-fix tasks, pinned Sonnet 5.5, old and new builds interleaved per task; native cells from 2026-09-29):
+
+        | | resolved | turns | input tok/task | cost |
+        |---|---|---|---|---|
+        | native | 18/27 | 11.3 | 287k | \$4.81 |
+        | prism d4e4cd49 | 19/27 | 12.4 | 361k | \$5.53 |
+        | prism this PR | 19/27 | 11.5 | 358k | \$5.51 |
+
+        Paired new−prev: turns −0.89 (se 0.96), cost ratio 0.996 — no measurable cost change. Path substitution fired 5 times (prev: 5 filter misses). Startup context is still +2.9k tokens/request over native, about half of the remaining input gap." >/dev/null && echo commented
+      at: 2026-10-01T11:53:01.39432Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        import json;t=json.load(open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/64098a29-aaee-4084-8e99-80e43e9aaf9d/scratchpad/schema.json'))[0]
+        print(json.dumps(t,indent=1))"
+      at: 2026-10-01T18:49:25.427417Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/payloadreplay && python3 - <<'EOF'
+        import json,glob,os,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results/'
+        P=os.path.expanduser('~/.claude/projects'); idx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}
+        files=glob.glob(H+'e2e-forced30/*.json')+glob.glob(H+'e2e/*sonnet-5-5.prism_body_baseline.json')+glob.glob(H+'e2e-trim27/*.json')+glob.glob(H+'e2e-minimal*/*prism*.json')
+        C=collections.Counter(); ops=collections.Counter(); calls=0; sess=0; errs=collections.Counter(); outside=collections.Counter()
+        for f in files:
+            try: sid=json.load(open(f))['usage']['session_id']
+            except: continue
+            if sid not in idx: continue
+            sess+=1
+            for l in open(idx[sid]):
+                m=json.loads(l).get('message')
+                if not isinstance(m,dict) or not isinstance(m.get('content'),list): continue
+                for b in m['content']:
+                    if b.get('type')=='tool_use' and 'prism' in b['name']:
+                        calls+=1; i=b['input']; op=i.get('op'); ops[op]+=1
+                        for k in i:
+                            if k not in('op','args'): outside[k]+=1
+                        for k,v in (i.get('args') or {}).items() if isinstance(i.get('args'),dict) else []:
+                            C[(op,k)]+=1
+                            if k=='fields': C[('fields=',json.dumps(v))]+=1
+                    if b.get('type')=='tool_result' and b.get('is_error'):
+                        r=b.get('content'); r=r if isinstance(r,str) else json.dumps(r)
+                        if 'prism' in r[:200] or 'InputValidation' in r: errs[r[:120]]+=1
+        print('sessions',sess,'calls',calls,dict(ops))
+        for k,v in sorted(C.items(),[REDACTED:env-secret] x:(str(x[0][0]),-x[1])): print(f'  {str(k[0]):14} {k[1]:16} {v}')
+        print('fields outside args',dict(outside))
+        for k,v in errs.most_common(15): print('ERR',v,k)
+        EOF
+      at: 2026-10-01T18:49:37.581985Z
+      classified: other
+    - cmd: grep -n "func CompactToolSchemas" internal/mcp/*.go
+      at: 2026-10-01T18:49:48.903271Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        a=s.index('// CompactToolSchemas exposes the six primary operations through one MCP tool.')
+        b=s.index('// modelProp is the shared "model" property')
+        new='''// compactArgSchemas is the full per-field schema the server validates
+        // against. The advertised tool definition (CompactToolSchemas) is a shorter
+        // view of it; a field left out of the advertisement is still accepted.
+        func compactArgSchemas() map[string]any {
+        	prop := func(ops, note string, schema map[string]any) map[string]any {
+        		schema["description"] = "ops: " + ops + ". " + note
+        		return schema
+        	}
+        	stringOrList := func() map[string]any {
+        		return map[string]any{"type": []string{"string", "array"}, "minItems": 1,
+        			"maxItems": 10, "items": map[string]any{"type": "string"}}
+        	}
+        	name := map[string]any{"oneOf": []map[string]any{
+        		{"type": "string"},
+        		{"type": "array", "minItems": 1, "maxItems": 10, "items": map[string]any{
+        			"oneOf": []map[string]any{
+        				{"type": "string"},
+        				{"type": "object", "required": []string{"name", "file"}, "additionalProperties": false,
+        					"properties": map[string]any{"name": map[string]any{"type": "string"},
+        						"file": map[string]any{"type": "string"}}},
+        			},
+        		}},
+        	}}
+        	return map[string]any{
+        		"name":        prop("lookup,change_impact", "Symbol(s); impact takes one.", name),
+        		"symbol_file": prop("lookup,change_impact", "Disambiguating file.", map[string]any{"type": "string"}),
+        		"fields": prop("lookup", "Projection.", map[string]any{"type": "array",
+        			"items": map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}}}),
+        		"signature": prop("lookup,change_impact", "Method signature: selects one overload.", map[string]any{"type": "string"}),
+        		"file":      prop("read", "Repo-relative path.", map[string]any{"type": "string"}),
+        		"from":      prop("read", "Inclusive first line.", map[string]any{"type": "integer", "minimum": 1}),
+        		"to":        prop("read", "Inclusive last line; clamped to 240 lines.", map[string]any{"type": "integer", "minimum": 1}),
+        		"ranges": prop("read", "Up to 10 {file,from,to} windows.", map[string]any{
+        			"type": "array", "minItems": 1, "maxItems": 10,
+        			"items": map[string]any{"type": "object", "additionalProperties": false,
+        				"required": []string{"file", "from", "to"},
+        				"properties": map[string]any{
+        					"file": map[string]any{"type": "string"},
+        					"from": map[string]any{"type": "integer", "minimum": 1},
+        					"to":   map[string]any{"type": "integer", "minimum": 1},
+        				}},
+        		}),
+        		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10), one per item: [\\"alpha\\",\\"beta\\"]; never combine distinct terms in one space-delimited string.", stringOrList()),
+        		"scope":           prop("search", "both|text|symbols.", map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}}),
+        		"paths":           prop("search,query", "Repo-relative paths.", stringOrList()),
+        		"glob":            prop("search,query", "File glob(s).", stringOrList()),
+        		"regex":           prop("search", "Regex text match.", map[string]any{"type": "boolean"}),
+        		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
+        		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
+        		"include_bodies":  prop("search", "Default: one bounded body or window for the top non-test match; false returns locators only; true returns up to two per term.", map[string]any{"type": "boolean", "default": true}),
+        		"context":         prop("search", "Lines around each match (grep -C N, max 15). Explicit context disables enclosing-body delivery.", map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap}),
+        		"rollup_only":     prop("search", "Return the compact hit rollup without source excerpts.", map[string]any{"type": "boolean"}),
+        		"removed_symbols": prop("verify", "Optional exact-identifier text check after removal; includes comments and docs.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
+        		"base":            prop("verify", "Git ref for the full diff check (default HEAD).", map[string]any{"type": "string"}),
+        		"strict":          prop("verify", "Treat a review verdict as a gate failure; the verdict and evidence stay unchanged.", map[string]any{"type": "boolean"}),
+        		"exhaustive":      prop("search", "Request expanded inventory; check completion status.", map[string]any{"type": "boolean"}),
+        	}
+        }
+
+        // CompactToolSchemas exposes the six primary operations through one MCP tool.
+        // It avoids top-level composition keywords because older MCP hosts have
+        // dropped tools carrying oneOf even when the JSON Schema is valid. The
+        // selected legacy handler remains the operation-specific authority.
+        //
+        // The definition rides on every request. Trimmed 2026-10-01 against 454
+        // recorded calls in 127 Sonnet 5.5 sessions: the op map already says which
+        // fields belong to which op, so fields carry no "ops:" tag; rollup_only,
+        // strict, and base were used 0 times and are accepted but not advertised;
+        // list bounds are enforced by the server and stated where they matter.
+        func CompactToolSchemas() []map[string]any {
+        	str := func(note string) map[string]any { return map[string]any{"type": "string", "description": note} }
+        	list := func(note string) map[string]any {
+        		return map[string]any{"type": []string{"string", "array"}, "items": map[string]any{"type": "string"}, "description": note}
+        	}
+        	args := map[string]any{
+        		"name": map[string]any{"type": []string{"string", "array"},
+        			"items":       map[string]any{"type": []string{"string", "object"}},
+        			"description": "Symbol, or up to 10 for lookup (items may be {name,file}); change_impact takes one."},
+        		"symbol_file": str("Disambiguating file."),
+        		"fields": map[string]any{"type": "array", "description": "Projection.",
+        			"items": map[string]any{"type": "string", "enum": []string{"signature", "doc", "body", "kind", "parent", "modifiers"}}},
+        		"signature": str("Selects one overload."),
+        		"file":      str("Repo-relative path."),
+        		"from":      map[string]any{"type": "integer", "minimum": 1, "description": "First line."},
+        		"to":        map[string]any{"type": "integer", "minimum": 1, "description": "Last line (inclusive; max 240 lines)."},
+        		"ranges": map[string]any{"type": "array", "description": "Up to 10 windows.",
+        			"items": map[string]any{"type": "object", "required": []string{"file", "from", "to"},
+        				"properties": map[string]any{
+        					"file": map[string]any{"type": "string"},
+        					"from": map[string]any{"type": "integer"},
+        					"to":   map[string]any{"type": "integer"},
+        				}}},
+        		"terms":          list("Identifiers or exact substrings, up to 10, one per item: [\\"alpha\\",\\"beta\\"]; never combine distinct terms in one space-delimited string."),
+        		"scope":          map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}},
+        		"paths":          list("Repo-relative paths."),
+        		"glob":           list("File glob(s)."),
+        		"regex":          map[string]any{"type": "boolean"},
+        		"files_only":     map[string]any{"type": "boolean", "description": "Paths without lines."},
+        		"max_results":    map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap},
+        		"include_bodies": map[string]any{"type": "boolean", "description": "Default: one body for the top match; false: locators only; true: up to two per term."},
+        		"context":        map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap, "description": "Lines around each match; disables body delivery."},
+        		"removed_symbols": map[string]any{"type": "array", "items": map[string]any{"type": "string"},
+        			"description": "After a removal: exact identifier mentions, including comments and docs."},
+        		"exhaustive": map[string]any{"type": "boolean", "description": "Expanded inventory; check completion status."},
+        	}
+        	const opMap = "lookup: name[,symbol_file,fields,signature] | read: file,from,to or ranges | " +
+        		"search: terms[,scope,paths,glob,regex,files_only,max_results,exhaustive,include_bodies,context] | " +
+        		"query: terms[,paths,glob] | change_impact: name[,symbol_file,signature] | " +
+        		"verify: [removed_symbols]. Known symbol → lookup; search only when location is unknown."
+        	return []map[string]any{{
+        		"name":        "prism",
+        		"description": "Use the op map for each discovery step; do not use shell tools to find code.",
+        		"inputSchema": map[string]any{
+        			"type": "object", "additionalProperties": false, "required": []string{"op", "args"},
+        			"properties": map[string]any{
+        				"op": map[string]any{"type": "string",
+        					"enum":        []string{"lookup", "read", "search", "query", "change_impact", "verify"},
+        					"description": opMap},
+        				"args": map[string]any{"type": "object", "additionalProperties": false,
+        					"properties": args, "description": "Use only fields owned by the selected op."},
+        			},
+        		},
+        	}}
+        }
+
+        '''
+        s=s[:a]+new+s[b:]; open(p,'w').write(s)
+        p='internal/mcp/server.go'; s=open(p).read()
+        old='''	properties := CompactToolSchemas()[0]["inputSchema"].(map[string]any)["properties"].(map[string]any)["args"].(map[string]any)["properties"].(map[string]any)'''
+        assert s.count(old)==1; s=s.replace(old,'''	properties := compactArgSchemas()'''); open(p,'w').write(s)
+        EOF
+        gofmt -w internal/mcp/tools.go && go build ./... && grep -rn 'CompactToolSchemas()\[0\]' internal/ | grep -v _test | head
+      at: 2026-10-01T18:50:38.023773Z
+      classified: build
+    - cmd: |-
+        cat > internal/mcp/zz_size_test.go <<'EOF'
+        package mcp
+        import ("encoding/json";"fmt";"testing")
+        func TestZZSizes(t *testing.T){ b,_:=json.Marshal(CompactToolSchemas()); fmt.Printf("SIZES schema=%d\n",len(b)) }
+        EOF
+        go test ./internal/mcp/ -run TestZZSizes -count=1 -v | grep SIZES; rm internal/mcp/zz_size_test.go; go test ./internal/... -count=1 2>&1 | grep -v "^ok" | head -60
+      at: 2026-10-01T18:51:09.4369Z
+      classified: test
+    - cmd: sed -n 20,112p internal/mcp/compact_test.go
+      at: 2026-10-01T18:51:14.174883Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        for old,new in [
+         ('''		"ranges": map[string]any{"type": "array", "description": "Up to 10 windows.",
+        			"items": map[string]any{"type": "object", "required": []string{"file", "from", "to"},''',
+          '''		"ranges": map[string]any{"type": "array", "maxItems": 10, "description": "{file,from,to} windows.",
+        			"items": map[string]any{"type": "object", "additionalProperties": false, "required": []string{"file", "from", "to"},'''),
+         ('''		"max_results":    map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap},''',
+          '''		"max_results":    map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap, "description": "Search-only result cap."},'''),
+         ('''list("Identifiers or exact substrings, up to 10, one per item:''','''list("Batch identifiers or exact substrings (up to 10), one per item:'''),
+        ]:
+            assert s.count(old)==1,old[:50]; s=s.replace(old,new)
+        open(p,'w').write(s)
+        p='internal/mcp/compact_test.go'; s=open(p).read()
+        old=s[s.index('	opMap := properties["op"].(map[string]any)["description"].(string)'):s.index('	for _, removed := range []string{"limit", "offset"')]
+        new='''	opMap := properties["op"].(map[string]any)["description"].(string)
+        	for _, want := range []string{"lookup: name[,symbol_file,fields,signature]", "read: file,from,to or ranges",
+        		"search: terms[", "query: terms[", "change_impact: name[", "verify: [removed_symbols]",
+        		"Known symbol → lookup; search only when location is unknown"} {
+        		if !strings.Contains(opMap, want) {
+        			t.Errorf("op map omits %q: %q", want, opMap)
+        		}
+        	}
+        	argsSchema := properties["args"].(map[string]any)
+        	if argsSchema["additionalProperties"] != false {
+        		t.Fatal("compact args must reject unknown fields")
+        	}
+        	argProperties := argsSchema["properties"].(map[string]any)
+        	// The op map is the one place that says which op owns a field (the
+        	// per-field "ops:" tags were dropped 2026-10-01). Every advertised field
+        	// must appear under an op there, and every field the server accepts must
+        	// be validated against the full schema even when not advertised.
+        	hidden := map[string]bool{"rollup_only": true, "base": true, "strict": true}
+        	full := compactArgSchemas()
+        	for field := range full {
+        		_, advertised := argProperties[field]
+        		if hidden[field] == advertised {
+        			t.Errorf("%s: advertised=%v, want %v", field, advertised, !hidden[field])
+        		}
+        		if advertised && !strings.Contains(opMap, field) {
+        			t.Errorf("%s is advertised but absent from the op map", field)
+        		}
+        	}
+        	if len(argProperties)+len(hidden) != len(full) {
+        		t.Fatalf("advertised %d + hidden %d != accepted %d", len(argProperties), len(hidden), len(full))
+        	}
+        '''
+        s=s.replace(old,new)
+        old='''	if description := argProperties["max_results"].(map[string]any)["description"].(string); !strings.Contains(description, "Search-only") {'''
+        assert s.count(old)==1
+        old2='''		if _, ok := compact[field]; !ok {
+        			t.Errorf("compact MCP verify omits %s", field)
+        		}'''
+        new2='''		if _, ok := compactArgSchemas()[field]; !ok {
+        			t.Errorf("compact MCP verify does not accept %s", field)
+        		}'''
+        assert s.count(old2)==1; s=s.replace(old2,new2)
+        s=s.replace('''	compact := CompactToolSchemas()[0]["inputSchema"].(map[string]any)["properties"].(map[string]any)["args"].(map[string]any)["properties"].(map[string]any)
+        	for _, field := range want {''','''	for _, field := range want {''',1)
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/mcp/compact_test.go internal/mcp/tools.go; go vet ./internal/mcp/ && go test ./internal/... -count=1 2>&1 | grep -v "^ok" | head -30
+      at: 2026-10-01T18:51:55.702128Z
+      classified: lint
+    - cmd: |-
+        cat >> internal/mcp/sweepsearch_test.go <<'EOF'
+
+        // Fields dropped from the advertised definition (2026-10-01) stay accepted.
+        func TestUnadvertisedCompactFieldsStillAccepted(t *testing.T) {
+        	srv := compactFixture(t, srcLayoutPython)
+        	out := callCompact(t, srv, "search", map[string]any{"terms": "requote_uri", "rollup_only": true})
+        	if strings.Contains(out, "prism:") && strings.Contains(out, "rollup_only") {
+        		t.Fatalf("rollup_only rejected:\n%s", out)
+        	}
+        	out = callCompact(t, srv, "verify", map[string]any{"base": "HEAD", "strict": false})
+        	if strings.Contains(out, "Accepted fields") {
+        		t.Fatalf("verify base/strict rejected:\n%s", out)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run 'Unadvertised' -count=1 -v 2>&1 | grep -E "^(---|ok|FAIL)|_test"; cat > internal/mcp/zz_size_test.go <<'EOF'
+        package mcp
+        import ("encoding/json";"fmt";"testing")
+        func TestZZSizes(t *testing.T){ b,_:=json.Marshal(CompactToolSchemas()); fmt.Printf("SIZES schema=%d\n",len(b)) }
+        EOF
+        go test ./internal/mcp/ -run TestZZSizes -count=1 -v | grep SIZES; rm internal/mcp/zz_size_test.go
+      at: 2026-10-01T18:52:05.908904Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/sweepsearch_test.go'; s=open(p).read()
+        old='''	out = callCompact(t, srv, "verify", map[string]any{"base": "HEAD", "strict": false})
+        	if strings.Contains(out, "Accepted fields") {
+        		t.Fatalf("verify base/strict rejected:\\n%s", out)
+        	}'''
+        new='''	if err := validateCompactArguments("verify", map[string]any{"base": "HEAD", "strict": false}); err != nil {
+        		t.Fatalf("verify base/strict rejected: %v", err)
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go test ./internal/... -count=1 2>&1 | grep -v "^ok" | head
+      at: 2026-10-01T18:52:35.265042Z
+      classified: test
+notes:
+    - text: continuation of session 64098a29-aaee-4084-8e99-80e43e9aaf9d — events captured after its evidence was finalized
+      at: 2026-10-01T02:00:46.087085Z
+redactions: 1

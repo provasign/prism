@@ -35,3 +35,32 @@ func TestOnceNotes_FixedAndLong(t *testing.T) {
 		t.Errorf("repeated boilerplate inside one response should be short too:\n%s", got3)
 	}
 }
+
+// Measured 2026-09-30: change_impact repeated the evidence note under every
+// caller and its boundary note on every call; reads repeated the tab note.
+func TestOnceNotes_KnownNotesCollapseIndentedAndAcrossOps(t *testing.T) {
+	var o onceNotes
+	impact := "callers (2):\n  A  a.go:1\n      // " + callExpressionUnavailableNote + "\n  B  b.go:2\n      // " +
+		callExpressionUnavailableNote + "\n// " + indexedScopeBoundary + "\n"
+	got := o.applyKnown(impact)
+	if strings.Count(got, callExpressionUnavailableNote) != 1 || !strings.Contains(got, "      // no call expression shown") {
+		t.Fatalf("indented per-caller note must be said once, then short:\n%s", got)
+	}
+	got = o.applyKnown(impact)
+	if strings.Contains(got, indexedScopeBoundary) || !strings.Contains(got, "not a global completeness proof") {
+		t.Fatalf("repeated boundary must keep its meaning in short form:\n%s", got)
+	}
+	read := "// a.go lines 1-2 of 9\n1\t\tx := 1\n// lines 1-2 of 9 — this is a WINDOW, not the file\n// " + tabIndentNoteText + "\n"
+	if got := o.applyKnown(read); got != read {
+		t.Fatalf("first read keeps its notes:\n%s", got)
+	}
+	got = o.applyKnown(strings.ReplaceAll(read, "1-2", "3-4"))
+	if strings.Contains(got, "WINDOW") || strings.Contains(got, "tab-indented") || !strings.Contains(got, "1\t\tx := 1") {
+		t.Fatalf("repeat read notes must drop, source must stay:\n%s", got)
+	}
+	// Unregistered long lines are never touched outside search.
+	src := "// a long unnumbered comment line that might be source code in an outline view, repeated verbatim\n"
+	if got := o.applyKnown(src + src); got != src+src {
+		t.Fatalf("applyKnown collapsed an unregistered line:\n%s", got)
+	}
+}

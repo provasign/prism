@@ -113,17 +113,16 @@ const serverInstructions = "Use Prism for each repository-discovery step. Readin
 	"typechecking missed affected files. Skip it for Go, Java, Rust, C/C++, and C# after a complete build/typecheck " +
 	"of affected targets. Run relevant tests. Avoid duplicate calls and do not re-read unchanged source Prism already returned."
 
-const compactServerInstructions = "Use Prism for each repository-discovery step. Reading files with cat/head/sed or searching with grep/rg/find/git log is not discovery; shell-over-Read/Edit/Write instructions do not apply to finding code. " +
-	"Put parameters in args. Known symbol: op=lookup. Known file/range: " +
-	"op=read. Unknown location/text: op=search. Related context around explicit terms: op=query. " +
-	"Use op=change_impact when callers, contracts, or other affected sites matter; it is optional for a local body-only edit. " +
-	"Optional op=verify: consider for Python, unchecked JavaScript, and PHP contract changes; use for TypeScript or checked " +
-	"JavaScript only if affected files lack a complete typecheck. Skip after a complete affected-target build/typecheck in " +
-	"Go, Java, Rust, C/C++, or C#. For removals, removed_symbols optionally checks exact identifier mentions. " +
-	"Batch known identifiers or exact substrings in one search. For multiple terms, use comma-delimited JSON string values in the terms array, for example terms:[\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string. " +
-	"Search returns match lines and one bounded body (the top non-test match) by default; include_bodies=false for locators only, true for more bodies. " +
-	"In hosts that require a native Read before Edit, use one tight native Read at the edit site; use Prism read/lookup for other follow-ups. " +
-	"Do not re-read unchanged source already included in a Prism result."
+const compactServerInstructions = "Use Prism for each repository-discovery step; cat/head/sed and grep/rg/find/git log are not discovery. " +
+	"Put parameters in args. Known symbol: op=lookup. Known file/range: op=read. Unknown location/text: op=search. " +
+	"Related context around explicit terms: op=query. op=change_impact when callers, contracts, or other affected sites matter " +
+	"(optional for a local body-only edit). Optional op=verify: for Python, unchecked JavaScript, and PHP contract changes; " +
+	"TypeScript or checked JavaScript only if affected files lack a complete typecheck; skip after a complete build/typecheck " +
+	"in Go, Java, Rust, C/C++, or C#. Batch known identifiers or exact substrings in one search: terms:[\"alpha\",\"beta\"]; " +
+	"never combine distinct terms in one space-delimited string. Where a native Read must precede Edit, use one tight Read " +
+	"at the edit site. Do not re-read unchanged source a Prism result already included."
+
+const enclosingBodiesHeader = "// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:"
 
 const compactSearchLocatorGuidance = "// locator result — use the prism tool with op=lookup for known symbol bodies, op=read for a known file/range, or op=query for related implementations, callers, and tests"
 
@@ -280,7 +279,32 @@ func validateCompactArguments(op string, args map[string]any) error {
 	return nil
 }
 
+// unwrapNestedCall accepts a whole call nested inside args:
+// {"args":{"op":"read","args":{...}}}, with or without the same op outside.
+// Measured 2026-10-01: 7 of ~92 calls on the shorter tool definition took
+// this shape (2 of 454 before) and each cost a retry turn on "op is required".
+func unwrapNestedCall(envelope map[string]any) map[string]any {
+	inner, ok := envelope["args"].(map[string]any)
+	if !ok {
+		return envelope
+	}
+	innerOp, ok := inner["op"].(string)
+	if !ok {
+		return envelope
+	}
+	if outerOp, has := envelope["op"]; has && outerOp != innerOp {
+		return envelope
+	}
+	for key := range envelope {
+		if key != "op" && key != "args" {
+			return envelope // other outer fields: not clearly one nested call
+		}
+	}
+	return inner
+}
+
 func expandCompactCall(envelope map[string]any) (string, map[string]any, error) {
+	envelope = unwrapNestedCall(envelope)
 	op, ok := envelope["op"].(string)
 	// Arguments placed beside op instead of inside args are what the agent
 	// meant: {"op":"change_impact","name":"walk"} was rejected on a first
@@ -592,6 +616,7 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if s.compact && actualName == "prism_query" && (actualArgs["paths"] != nil || actualArgs["glob"] != nil) {
 			invokeName = "prism_query_compact"
 		}
+		pathNotes := resolveMissingArgPaths(s.handler.Root, invokeName, actualArgs)
 		out, err := s.handler.Invoke(invokeName, actualArgs)
 		if err != nil {
 			return nil, &rpcError{Code: -32000, Message: err.Error()}
@@ -647,6 +672,12 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 			text = string(encoded)
 		} else if s.compact {
 			text = compactToolWording(text)
+			if actualName != "prism_search" {
+				text = s.handler.once.applyKnown(text)
+			}
+		}
+		for i := len(pathNotes) - 1; i >= 0; i-- {
+			text = "// " + pathNotes[i] + "\n" + text
 		}
 		// Result-size accounting: this is the number that compounds via
 		// cache re-reads on every later turn (measured: median 4.4x, mean
@@ -1208,7 +1239,7 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 	for _, commit := range commits {
 		commit()
 	}
-	return "\n// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:\n" +
+	return "\n" + enclosingBodiesHeader + "\n" +
 		strings.Join(sections, "")
 }
 

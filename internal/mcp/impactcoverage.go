@@ -28,7 +28,7 @@ func impactCoverage(r *grove.ChangeImpactResult) (string, string) {
 		if completeness == "closed" {
 			completeness = "partial"
 		}
-		return completeness, "dynamic-language callers are an indexed approximation; runtime dispatch and imports may be unresolved. Family closure does not prove caller completeness. Use targeted exhaustive text search and tests."
+		return completeness, dynamicCallerNote
 	}
 	if r.Completeness != "closed" {
 		return r.Completeness, ""
@@ -90,3 +90,5 @@ func isGenericGoInterfaceMethod(sym grove.SymbolRecord) bool {
 func isGenericGoInterface(sym grove.SymbolRecord) bool {
 	return len(sym.TypeParameters) > 0 || goGenericDecl.MatchString(sym.Signature)
 }
+
+const dynamicCallerNote = "dynamic-language callers are an indexed approximation; runtime dispatch and imports may be unresolved. Family closure does not prove caller completeness. Use targeted exhaustive text search and tests."

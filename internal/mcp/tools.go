@@ -401,7 +401,7 @@ func CompactToolSchemas() []map[string]any {
 					"to":   map[string]any{"type": "integer", "minimum": 1},
 				}},
 		}),
-		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10). For multiple terms, use comma-delimited JSON string values in an array, for example [\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string.", stringOrList()),
+		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10), one per item: [\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string.", stringOrList()),
 		"scope":           prop("search", "both|text|symbols.", map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}}),
 		"paths":           prop("search,query", "Repo-relative paths.", stringOrList()),
 		"glob":            prop("search,query", "File glob(s).", stringOrList()),
@@ -2063,7 +2063,7 @@ func searchScopeDisclosure(scope string, sc searchScope) string {
 	}
 	var notes []string
 	if len(filters) > 0 {
-		notes = append(notes, "match lists restricted to "+strings.Join(filters, ", ")+"; files outside these filters, including tests outside them, were not searched for matches")
+		notes = append(notes, "match lists restricted to "+strings.Join(filters, ", ")+"; other files were not searched")
 	}
 	if scope == "symbols" {
 		notes = append(notes, "indexed-symbol search only; text search was not run. Use scope=text to check references")
@@ -3323,7 +3323,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			sort.Strings(relay)
 		}
 		out["relaySites"] = relay
-		out["relayNote"] = "Copy relaySites when reporting the affected-site inventory; do not manually reconstruct a partial list from the grouped evidence below."
+		out["relayNote"] = impactRelayNote
 	}
 	if rex := impactReExportOutput(r); len(rex) > 0 {
 		out["reExports"] = rex
@@ -3346,7 +3346,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if wideImpact {
 		out["evidenceNote"] = "Large indexed result delivered as compact file:line identities; repeated signatures and call expressions are omitted. Every returned site is shown, but graph coverage and receiver uncertainty remain as reported."
 	} else if len(r.Callers) > 0 {
-		out["evidenceNote"] = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
+		out["evidenceNote"] = indexedEvidenceNote
 	}
 	completeness, coverageNote := impactCoverage(r)
 	if coverageNote != "" {
@@ -3448,10 +3448,9 @@ func applyCompilerBackedCompleteness(out map[string]any, r *grove.ChangeImpactRe
 	}
 	out["completenessScope"] = "repository (compiler-backed " + lang + ")"
 	out["safeToClaimComplete"] = true
-	out["scopeBoundary"] = "Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. " +
-		"Not covered: reflection/runtime dispatch and consumers outside this repository."
+	out["scopeBoundary"] = compilerScopeBoundary
 	if _, ok := out["evidenceNote"]; ok {
-		out["evidenceNote"] = "Call expressions below are shown as evidence for each caller."
+		out["evidenceNote"] = compilerEvidenceNote
 	}
 }
 
@@ -3532,9 +3531,18 @@ func impactRelaySites(r *grove.ChangeImpactResult, limit int) []string {
 func addIndexedCompletenessSafety(out map[string]any) {
 	out["completenessScope"] = "indexed-project-only"
 	out["safeToClaimComplete"] = false
-	out["scopeBoundary"] = "Do not claim global completeness from this result. It closes the indexed project graph only; " +
-		"external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof."
+	out["scopeBoundary"] = indexedScopeBoundary
 }
+
+const (
+	impactRelayNote      = "Copy relaySites when reporting the affected-site inventory; do not manually reconstruct a partial list from the grouped evidence below."
+	indexedScopeBoundary = "Do not claim global completeness from this result. It closes the indexed project graph only; " +
+		"external consumers, generated code, reflection/runtime dispatch, and ambiguous receiver evidence remain outside proof."
+	compilerScopeBoundary = "Complete for this repository: the compiler-backed analysis ran and the family is closed; every caller is listed. " +
+		"Not covered: reflection/runtime dispatch and consumers outside this repository."
+	compilerEvidenceNote = "Call expressions below are shown as evidence for each caller."
+	indexedEvidenceNote  = "Indexed call expressions below are name-matched within reported callers, not independent receiver-resolution proof. Snippet limits never remove sites. Inspect ambiguous receivers, omitted evidence, or behavior needed by the task."
+)
 
 func (h *Handler) toolMissingImplementations(ctx context.Context, args map[string]any) (any, error) {
 	query := stringArg(args, "query", "")
@@ -3983,12 +3991,14 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 // agent copies one extra \t into an Edit old_string, and every re-read
 // shows the same format so the illusion survived two od -c sessions —
 // ~20 turns of byte-level archaeology that one sentence prevents.
+const tabIndentNoteText = "tab-indented file: the FIRST tab after each line number is the " +
+	"delimiter, not part of the source — source indentation starts after it " +
+	"(a line shown as `12<TAB><TAB>x` has ONE tab of indentation)"
+
 func tabIndentNote(lines []string) string {
 	for _, l := range lines {
 		if strings.HasPrefix(l, "\t") {
-			return "tab-indented file: the FIRST tab after each line number is the " +
-				"delimiter, not part of the source — source indentation starts after it " +
-				"(a line shown as `12<TAB><TAB>x` has ONE tab of indentation)"
+			return tabIndentNoteText
 		}
 	}
 	return ""
