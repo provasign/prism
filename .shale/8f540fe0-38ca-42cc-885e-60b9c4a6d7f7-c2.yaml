@@ -1,0 +1,425 @@
+shale_version: "0"
+id: 8f540fe0-38ca-42cc-885e-60b9c4a6d7f7-c2
+created_at: 2026-10-04T04:40:31.063085Z
+finalized_at: 2026-10-04T14:17:56.433225Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/impact-evidence-filter
+privacy: redacted
+commands:
+    - cmd: git push -q 2>&1 | tail -2; git status -sb | head -1
+      at: 2026-10-04T04:40:31.063085Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls harness | head -50; ls -t harness/results | head -15; cat /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_payload_trim_2026_09_30.md
+      at: 2026-10-04T04:42:23.282069Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && head -5 results/trim3-27.log; ls results/e2e-trim3-27 | head; ls results/e2e-trim3-27 | wc -l; cat ~/prism-ab-bins/payloadreplay/trim27_summary.py | head -40; ls ~/prism-ab-bins/ | head -40; grep -rn "trim3" ~/prism-ab-bins/*.sh 2>/dev/null | head
+      at: 2026-10-04T04:42:30.570939Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "prism_body_exp\|PRISM_BODY\|argparse\|add_argument" runners/run_e2e.py | head -40; grep -h "run_e2e" ~/.zsh_history 2>/dev/null | tail -5
+      at: 2026-10-04T04:42:34.760727Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 270,310p runners/run_e2e.py; sed -n 916,960p runners/run_e2e.py; grep -rn "PRISM_BIN_EXP\|PRISM_BIN_BASE\|prism-body-exp" runners/*.py | head
+      at: 2026-10-04T04:42:38.653571Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "def _prism_bin" -A15 runners/run_e2e.py; grep -n "^OUT\|OUT =" runners/run_e2e.py
+      at: 2026-10-04T04:42:43.043832Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "PRISM_BIN_FOR_ARM" -B2 -A8 runners/run_e2e.py | head -30; ls results/*probe*manifest* results/s55-bugfix30-manifest.json
+      at: 2026-10-04T04:42:46.535502Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "PRISM_BIN_FOR_ARM" -A8 runners/ab_endtoend_arms.py | head -15; cat results/trim-probe-manifest.json; ls -la ~/prism-ab-bins/prism-body-base ~/prism-ab-bins/prism-body-exp; which prism; prism --version
+      at: 2026-10-04T04:42:50.273306Z
+      classified: other
+    - cmd: B=~/prism-ab-bins && cp "$(readlink -f /opt/homebrew/bin/prism)" $B/prism-v0.85.6 && go build -o $B/prism-codexfix ./cmd/prism && $B/prism-v0.85.6 --version && $B/prism-codexfix --version && git rev-parse --short HEAD
+      at: 2026-10-04T12:40:23.832453Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && PRISM_BODY_BASELINE_BIN=~/prism-ab-bins/prism-v0.85.6 PRISM_BODY_EXP_BIN=~/prism-ab-bins/prism-codexfix E2E_OUT=results/e2e-codexfix-probe python3 runners/run_e2e.py results/trim-probe-manifest.json --models claude-sonnet-5-5 --arms prism_body_baseline,prism_body_exp > results/codexfix-probe.log 2>&1; tail -5 results/codexfix-probe.log
+      at: 2026-10-04T12:40:23.881456Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat results/codexfix-probe.log | tail -8; for f in results/e2e-codexfix-probe/*.json; do python3 -c "
+        import json,sys;r=json.load(open('$f'));print('$f'.split('/')[-1], 'resolved',r.get('resolved'),'turns',r.get('turns'),'cost',r.get('cost_usd'),'err',str(r.get('error'))[:200]); print('  tools', r.get('tool_counts') or r.get('tools'))"; done
+      at: 2026-10-04T12:41:18.428324Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && for a in prism_body_baseline prism_body_exp; do python3 - "$a" <<'EOF'
+        import json,sys,glob,os,collections
+        a=sys.argv[1];r=json.load(open(f'results/e2e-codexfix-probe/urfave__cli__pr2309.claude-sonnet-5-5.{a}.json'))
+        sid=r['usage'].get('session_id');fs=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))
+        c=collections.Counter();errs=0
+        for l in open(fs[0]):
+            m=json.loads(l).get('message')
+            if isinstance(m,dict) and isinstance(m.get('content'),list):
+                for b in m['content']:
+                    if b.get('type')=='tool_use': c[b['name']+(':'+str(b['input'].get('op')) if 'prism' in b['name'] else '')]+=1
+                    if b.get('type')=='tool_result' and b.get('is_error'): errs+=1
+        print(a,dict(c),'errors',errs)
+        EOF
+        done
+      at: 2026-10-04T12:41:23.851187Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && PRISM_BODY_BASELINE_BIN=~/prism-ab-bins/prism-v0.85.6 PRISM_BODY_EXP_BIN=~/prism-ab-bins/prism-codexfix E2E_OUT=results/e2e-codexfix-27 E2E_WAIT_ON_LIMIT=1 python3 runners/run_e2e.py results/s55-bugfix30-manifest.json --models claude-sonnet-5-5 --arms prism_body_baseline,prism_body_exp > results/codexfix-27.log 2>&1; tail -3 results/codexfix-27.log
+      at: 2026-10-04T12:41:28.024651Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/payloadreplay && python3 - <<'EOF'
+        s=open('trim27_summary.py').read()
+        s=s.replace("""src={'native':H+'results/e2e/{t}.claude-sonnet-5-5.native.json','prev':H+'results/e2e-trim27/{t}.claude-sonnet-5-5.prism_body_baseline.json','new':H+'results/e2e-trim27/{t}.claude-sonnet-5-5.prism_body_exp.json','schema':H+'results/e2e-trim2-27/{t}.claude-sonnet-5-5.prism_body_exp.json','fixed':H+'results/e2e-trim3-27/{t}.claude-sonnet-5-5.prism_body_exp.json'}""",
+        """src={'native':H+'results/e2e/{t}.claude-sonnet-5-5.native.json','v0856':H+'results/e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_baseline.json','codex':H+'results/e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_exp.json'}""")
+        s=s.replace("[('fixed','new'),('fixed','prev'),('fixed','native'),('new','native')]","[('codex','v0856'),('codex','native'),('v0856','native')]")
+        s=s.replace("print('per task: native | prev | new | schema | fixed')","print('per task: native | v0856 | codex')")
+        s=s.replace("for a in ['native','prev','new','schema','fixed']","for a in ['native','v0856','codex']")
+        open('codexfix27_summary.py','w').write(s)
+        EOF
+        grep -n "src=\|paired\|per task" codexfix27_summary.py | head
+      at: 2026-10-04T12:41:34.819182Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,os
+        H='results/'
+        tasks=[t for t in json.load(open(H+'s55-bugfix30-manifest.json')) if not json.load(open(f'tasks/e2e/{t}.json')).get('invalid_reason')]
+        arms={'native':'e2e/{t}.claude-sonnet-5-5.native.json','v0.85.6':'e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_baseline.json','new':'e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_exp.json'}
+        def cell(a,t):
+            f=H+arms[a].format(t=t)
+            if not os.path.exists(f): return None
+            return json.load(open(f))
+        fmt=lambda r: '      —          ' if r is None else f"{'PASS' if r['resolved'] else 'fail'} {r['turns']:3}t ${r['cost_usd']:.2f}"
+        print(f"{'task':44} {'native':17} {'v0.85.6':17} {'new':17}")
+        done=0
+        for t in tasks:
+            rs=[cell(a,t) for a in arms]
+            if rs[2]: done+=1
+            print(f"{t[:44]:44} "+' '.join(f"{fmt(r):17}" for r in rs))
+        print('new-build cells done:',done,'/',len(tasks))
+        EOF
+        tail -2 results/codexfix-27.log
+      at: 2026-10-04T13:05:49.889294Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && tail -4 results/codexfix-27.log; ls results/e2e-codexfix-27/PAUSED.json 2>/dev/null; python3 - <<'EOF'
+        import json,os
+        H='results/'
+        tasks=[t for t in json.load(open(H+'s55-bugfix30-manifest.json')) if not json.load(open(f'tasks/e2e/{t}.json')).get('invalid_reason')]
+        arms={'native':'e2e/{t}.claude-sonnet-5-5.native.json','v0.85.6':'e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_baseline.json','new':'e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_exp.json'}
+        def cell(a,t):
+            f=H+arms[a].format(t=t)
+            return json.load(open(f)) if os.path.exists(f) else None
+        both=[t for t in tasks if all(cell(a,t) for a in arms)]
+        print('tasks with all arms:',len(both))
+        for t in both:
+            rs=[cell(a,t) for a in arms]
+            print(f"{t[:44]:44} "+'  '.join(f"{'PASS' if r['resolved'] else 'fail'} {r['turns']:3}t ${r['cost_usd']:.2f}" for r in rs))
+        for a in arms:
+            rs=[cell(a,t) for t in both]
+            print(a, 'resolved',sum(r['resolved'] for r in rs),'turns',sum(r['turns'] for r in rs),f"cost ${sum(r['cost_usd'] for r in rs):.2f}", 'errors',sum(1 for r in rs if r.get('error')))
+        EOF
+      at: 2026-10-04T13:47:13.978704Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && tail -3 results/codexfix-27.log; python3 ~/prism-ab-bins/payloadreplay/codexfix27_summary.py
+      at: 2026-10-04T14:03:51.46061Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md';s=open(p).read()
+        line='- [Codex fix run 2026-10-04](project_codexfix_run_2026_10_04.md) — Codex 9d2d73fe + impact-evidence fix vs v0.85.6: 18/27 vs 17/27, cost 0.98x, tie; Go variadic verify bug still open\n'
+        s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1);open(p,'w').write(s)
+        EOF
+        head -4 MEMORY.md
+      at: 2026-10-04T14:04:04.404765Z
+      classified: other
+    - cmd: "mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/an.py <<'EOF'\nimport json,glob,os,collections,re\nH='/Users/tapabratapal/Projects/provasign/research/harness/results/'\ntasks=[t for t in json.load(open(H+'s55-bugfix30-manifest.json')) if not json.load(open(f'/Users/tapabratapal/Projects/provasign/research/harness/tasks/e2e/{t}.json')).get('invalid_reason')]\nP=os.path.expanduser('~/.claude/projects'); idx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}\narms={'v0856':'e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_baseline.json','codex':'e2e-codexfix-27/{t}.claude-sonnet-5-5.prism_body_exp.json','native':'e2e/{t}.claude-sonnet-5-5.native.json'}\nmarkers={'found:false':'file not found; check the path','continuation':'Continue with','invalidPattern':'invalid regular expression','degraded':'compiler-backed','evUnavail':'call expression unavailable','already':'already delivered','force':None}\ndef sess(rec):\n    f=idx.get(rec['usage'].get('session_id'))\n    calls=[];res={}\n    if not f: return None\n    for l in open(f):\n        m=json.loads(l).get('message')\n        if isinstance(m,dict) and isinstance(m.get('content'),list):\n            for b in m['content']:\n                if b.get('type')=='tool_use': calls.append(b)\n                if b.get('type')=='tool_result':\n                    r=b.get('content'); r=r if isinstance(r,str) else ''.join(x.get('text','') for x in (r or []) if isinstance(x,dict))\n                    res[b['tool_use_id']]=r\n    return calls,res\nimport sys\ndetail=sys.argv[1:] \nfor a,p in arms.items():\n    tot=collections.Counter(); mk=collections.Counter(); per={}\n    for t in tasks:\n        rec=json.load(open(H+p.format(t=t))); s=sess(rec)\n        if s is None: mk['NOSESSION']+=1; continue\n        calls,res=s; c=collections.Counter()\n        for b in calls:\n            k=b['name']\n            if 'prism' in k:\n                k='prism.'+str(b['input'].get('op')); \n                if (b['input'].get('args') or {}).get('force'): mk['force']+=1\n                r=res.get(b['id'],'')\n                for name,pat in markers.items():\n                    if pat and pat in r: mk[name]+=1\n            elif k=='Bash':\n                cmd=b['input'].get('command','')\n                k='Bash.grep' if re.search(r'\\b(grep|rg|find)\\b',cmd) else ('Bash.read' if re.search(r'\\b(cat|sed -n|head|tail)\\b',cmd) else 'Bash.other')\n            c[k]+=1\n        tot+=c; per[t]=c\n    n=len(tasks)\n    print(f'== {a}: '+', '.join(f'{k} {v/n:.2f}' for k,v in sorted(tot.items(),[REDACTED:env-secret] x:-x[1])))\n    print('   markers:',dict(mk))\nEOF\npython3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/an.py"
+      at: 2026-10-04T14:08:10.158127Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad && cat >> an.py <<'EOF'\n\nprint('\\nper task prism.read / native Read / prism.search  (v0856 | codex)')\nR={}\nfor a,p in list(arms.items())[:2]:\n    for t in tasks:\n        rec=json.load(open(H+p.format(t=t))); calls,res=sess(rec)\n        c=collections.Counter()\n        for b in calls:\n            k=b['name']; \n            if 'prism' in k: k='p.'+str(b['input'].get('op'))\n            c[k]+=1\n        R[a,t]=c\nfor t in tasks:\n    x,y=R['v0856',t],R['codex',t]\n    print(f\"{t[:42]:42} pread {x['p.read']:2}|{y['p.read']:2}  Read {x['Read']:2}|{y['Read']:2}  psearch {x['p.search']:2}|{y['p.search']:2}  firstTool {''}\")\nEOF\npython3 an.py | sed -n '/per task/,$p'"
+      at: 2026-10-04T14:08:20.732063Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad && python3 - <<'EOF'
+        import json,glob,os
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results/'
+        P=os.path.expanduser('~/.claude/projects'); idx={os.path.basename(f)[:-6]:f for f in glob.glob(P+'/*/*.jsonl')}
+        for arm in ['prism_body_baseline','prism_body_exp']:
+            rec=json.load(open(H+f'e2e-codexfix-27/FasterXML__jackson-dataformat-xml__pr819.claude-sonnet-5-5.{arm}.json'))
+            f=idx[rec['usage']['session_id']]
+            print('=====',arm, f)
+            res={}
+            for l in open(f):
+                m=json.loads(l).get('message')
+                if not isinstance(m,dict) or not isinstance(m.get('content'),list): continue
+                for b in m['content']:
+                    if b.get('type')=='tool_use': print('CALL',b['name'],json.dumps(b['input'])[:230])
+                    elif b.get('type')=='tool_result':
+                        r=b.get('content'); r=r if isinstance(r,str) else ''.join(x.get('text','') for x in (r or []) if isinstance(x,dict))
+                        print('   ->',('ERR ' if b.get('is_error') else '')+r[:260].replace('\n',' | '))
+                    elif b.get('type')=='text' and m.get('role')=='assistant': print('SAY',b['text'][:300].replace('\n',' '))
+        EOF
+      at: 2026-10-04T14:08:30.186545Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad; ls -a $S/init-codexfix $S/init-codexfix/.claude 2>/dev/null; cat $S/init-codexfix/.claude/settings*.json 2>/dev/null | head -30; python3 - <<'EOF'
+        # sign test on prism.read counts
+        import math
+        pairs=[(3,1),(1,2),(4,1),(2,1),(2,0),(4,0),(1,3),(0,0),(1,1),(2,0),(1,2),(4,0),(3,0),(0,0),(2,2),(1,1),(1,0),(1,0),(1,1),(0,0),(0,0),(1,0),(0,1),(0,0),(2,1),(2,0),(0,2)]
+        fewer=sum(a>b for a,b in pairs); more=sum(a<b for a,b in pairs); n=fewer+more
+        p=2*sum(math.comb(n,k) for k in range(fewer,n+1))/2**n
+        print('codex fewer prism reads in',fewer,'tasks, more in',more,'two-sided sign p=%.3f'%min(p,1))
+        EOF
+      at: 2026-10-04T14:08:51.225308Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad && cat > an2.py <<'EOF'
+        exec(open('an.py').read().split('import sys')[0])
+        import collections
+        for a,p in list(arms.items())[:2]:
+            c=collections.Counter(); after=collections.Counter(); bodyres=0
+            for t in tasks:
+                rec=json.load(open(H+p.format(t=t))); calls,res=sess(rec)
+                for i,b in enumerate(calls):
+                    if 'prism' in b['name'] and b['input'].get('op')=='search':
+                        ar=b['input'].get('args') or {}
+                        kind='files_only' if ar.get('files_only') else ('no_bodies' if ar.get('include_bodies') is False else 'default')
+                        c[kind]+=1
+                        r=res.get(b['id'],'')
+                        if 'public ' in r or 'func ' in r or 'def ' in r: bodyres+=1
+                        nxt=calls[i+1]['name'] if i+1<len(calls) else 'END'
+                        if 'prism' in nxt: nxt='prism.'+str(calls[i+1]['input'].get('op'))
+                        after[(kind,nxt)]+=1
+            print(a,dict(c),'search results containing code:',bodyres)
+            for k,v in sorted(after.items(),[REDACTED:env-secret] x:-x[1])[:8]: print('   after',k,v)
+        EOF
+        python3 an2.py
+      at: 2026-10-04T14:09:01.386468Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && for a in native prism_body_baseline prism_body_exp; do f=$( [ $a = native ] && echo e2e || echo e2e-codexfix-27 )/colinhacks__zod__pr6500.claude-sonnet-5-5.$a; echo "=== $a"; python3 -c "
+        import json;r=json.load(open('$f.json'));print({k:r.get(k) for k in ('resolved','turns','fail_to_pass','tests_failed','failed_tests')})" ; grep '^+++' $f.diff; grep -c '^[+-][^+-]' $f.diff; done; python3 -c "
+        import json;t=json.load(open('../tasks/e2e/colinhacks__zod__pr6500.json'));print(t.get('problem_statement','')[:700]);print('FTP',t.get('FAIL_TO_PASS') or t.get('fail_to_pass'))"
+      at: 2026-10-04T14:09:09.772133Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && for f in e2e/colinhacks__zod__pr6500.claude-sonnet-5-5.native e2e-codexfix-27/colinhacks__zod__pr6500.claude-sonnet-5-5.prism_body_baseline e2e-codexfix-27/colinhacks__zod__pr6500.claude-sonnet-5-5.prism_body_exp; do echo "=== $f"; grep '^[+-][^+-]' $f.diff; python3 -c "
+        import json;r=json.load(open('$f.json'));e=r.get('eval') or {};print(str(e)[:400] if e else [k for k in r])"; done
+      at: 2026-10-04T14:09:13.802055Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && for f in e2e/colinhacks__zod__pr6500.claude-sonnet-5-5.native e2e-codexfix-27/colinhacks__zod__pr6500.claude-sonnet-5-5.prism_body_exp; do python3 -c "
+        import json;r=json.load(open('$f.json'));print(json.dumps(r['score'])[:900])"; done
+      at: 2026-10-04T14:09:17.6633Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results && for f in e2e/colinhacks__zod__pr6500.claude-sonnet-5-5.*.json e2e-trim27/colinhacks__zod__pr6500*.json e2e-trim2-27/colinhacks__zod__pr6500*.json e2e-trim3-27/colinhacks__zod__pr6500*.json; do echo "$f $(python3 -c "import json;print(json.load(open('$f'))['resolved'])") $(grep -o 'getOwnPropertyDescriptor\|"defaultValue"' ${f%.json}.diff | head -1)"; done
+      at: 2026-10-04T14:09:23.237182Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/payloadreplay && ls; sed -n 1,60p replay.py; ls ~/prism-ab-bins/nbreplay/wt | head
+      at: 2026-10-04T14:12:05.221263Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/payloadreplay && sed -e "s#'prev':os.path.expanduser('~/prism-ab-bins/prism-prev-d4e4cd49'),'new':os.path.expanduser('~/prism-ab-bins/prism-trim')#'v0856':os.path.expanduser('~/prism-ab-bins/prism-v0.85.6'),'codex':os.path.expanduser('~/prism-ab-bins/prism-codexfix')#" -e "s#replay_forced30.json#replay_codexfix.json#" replay.py > replay_codexfix.py && grep -n "BINS=\|json.dump" replay_codexfix.py && python3 -c "
+        from load import *
+        S=calls('forced');import collections
+        c=collections.Counter(x['input'].get('op') for s in S for x in s['seq'] if 'prism' in x['name']);print(len(S),'tasks',dict(c))"
+      at: 2026-10-04T14:12:12.005037Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/payloadreplay && python3 replay_codexfix.py > replay_codexfix.log 2>&1; tail -3 replay_codexfix.log
+      at: 2026-10-04T14:12:15.758938Z
+      classified: other
+    - cmd: |-
+        cd ~/prism-ab-bins/payloadreplay && cat > cmp_codexfix.py <<'EOF'
+        import json,re,collections,difflib,sys
+        R=json.load(open('replay_codexfix.json'))
+        st=collections.Counter(); ex=collections.defaultdict(list)
+        def n(t): return re.sub(r'/(private/)?var/folders/\S+?/T/[^/\s"]+|nbreplay/wt/[^/\s"]+','<ROOT>',t)
+        def feat(t):
+            return {'evLines':len(re.findall(r'^\s*\d+: ',t,re.M))+t.count('"text":'),'unavail':t.count('call expression unavailable'),
+                    'degraded':t.count('compiler-backed'),'missed':len(re.findall(r'miss',t,re.I)),'continue':t.count('Continue with'),
+                    'notfound':t.count('file not found'),'err':0}
+        for task,arms in R.items():
+            a,b=arms['v0856'],arms['codex']
+            for x,y in zip(a,b):
+                op=x['in'].get('op'); st[op,'calls']+=1
+                if x['err']: st[op,'err_v0856']+=1
+                if y['err']: st[op,'err_codex']+=1
+                if n(x['text'])==n(y['text']): st[op,'same']+=1; continue
+                st[op,'diff']+=1
+                fx,fy=feat(x['text']),feat(y['text'])
+                for k in fx:
+                    if fx[k]!=fy[k]: st[op,k+('+' if fy[k]>fx[k] else '-')]+=1
+                ex[op].append((task,x,y))
+        for op in sorted({k[0] for k in st},key=str):
+            print(op,{k[1]:v for k,v in st.items() if k[0]==op})
+        if len(sys.argv)>1:
+            op=sys.argv[1]; k=int(sys.argv[2]) if len(sys.argv)>2 else 3
+            for task,x,y in ex[op][:k]:
+                print('\n#####',task,json.dumps(x['in'])[:200])
+                for l in list(difflib.unified_diff(n(x['text']).splitlines(),n(y['text']).splitlines(),'v0856','codex',lineterm='',n=1))[:40]: print(l[:220])
+        EOF
+        sleep 1; cat replay_codexfix.log
+      at: 2026-10-04T14:12:26.558147Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/payloadreplay && tail -3 replay_codexfix.log && python3 cmp_codexfix.py
+      at: 2026-10-04T14:13:58.340267Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/payloadreplay && python3 cmp_codexfix.py change_impact 10 | sed -n '/#####/,$p' | grep -v '^@@' | head -120
+      at: 2026-10-04T14:14:00.795878Z
+      classified: other
+    - cmd: |-
+        W=~/prism-ab-bins/nbreplay/wt; cd $W/FasterXML__jackson-dataformat-xml__pr825 && ~/prism-ab-bins/prism-codexfix rename-plan XmlMapper.Builder.Builder BuilderPrismEvidence 2>&1 | python3 -c "
+        import json,sys
+        d=json.load(sys.stdin);print('edits',[(e['filePath'][-40:],e['line'],e['before'].strip()[:70]) for e in d.get('edits',[])][:12]);print('ambig',len(d.get('ambiguous') or []),'unresolved',d.get('unresolved'))"; cd $W/pallets__click__pr3533 && ~/prism-ab-bins/prism-codexfix status 2>&1 | grep -iA8 'native' | head -20
+      at: 2026-10-04T14:14:11.364023Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/nbreplay/wt/pallets__click__pr3533 && ~/prism-ab-bins/prism-codexfix status 2>&1 | head -40; cd /Users/tapabratapal/Projects/provasign/prism && grep -n "func (h \*Handler) addDegradedNote" -A22 internal/mcp/tools.go | head -30
+      at: 2026-10-04T14:14:16.840855Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign && ls; grep -rhoE ''"(go|java|js-ts|python|php|rust|csharp|c|cpp|ruby|kotlin)[:a-z-]*: [a-z ]+'' grove --include=*.go 2>/dev/null | sort | uniq -c | sort -rn | head -20'
+      at: 2026-10-04T14:14:21.76825Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search "native call edge" "javac attributed" "resolved %d" "disabled by config" "Readiness" --scope text --format text 2>/dev/null | grep -v _test | head -30
+      at: 2026-10-04T14:14:29.366123Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/payloadreplay && python3 cmp_codexfix.py verify 3 | sed -n '/#####/,$p' | grep -v '^@@' | head -60; python3 cmp_codexfix.py search 1 | sed -n '/#####/,$p' | head -20
+      at: 2026-10-04T14:14:39.017151Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/e2e-forced30 && cat FasterXML__jackson-databind__pr5983.claude-sonnet-5-5.prism_body_exp.diff | head -60
+      at: 2026-10-04T14:14:43.63606Z
+      classified: other
+    - cmd: grep -n "nativePassCompleted\|not confirmed\|degradedAnalysis" internal/mcp/*_test.go | head; sed -n 3553,3570p internal/mcp/tools.go
+      at: 2026-10-04T14:14:53.786874Z
+      classified: other
+    - cmd: sed -n 55,80p internal/mcp/turn_defects_test.go; git log -1 --format=%h; git status -s
+      at: 2026-10-04T14:14:56.673348Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/tools.go'; s=open(p).read()
+        old='''	st, err := h.Grove.Status(ctx)
+        	if err != nil || st == nil {
+        		out["degradedAnalysis"] = lang + " compiler-backed analysis status is unavailable; caller coverage may be incomplete. Run prism index and check prism status"
+        		return
+        	}
+        	for _, diagnostic := range st.Native {
+        		if diagnostic == "native analyzers disabled" ||'''
+        new='''	// Only languages whose completed native pass nativePassCompleted can
+        	// recognize get the status warnings below. Python has no native pass, so
+        	// warning there flagged every Python answer as possibly incomplete.
+        	checked := nativePassChecked[lang]
+        	st, err := h.Grove.Status(ctx)
+        	if err != nil || st == nil {
+        		if checked {
+        			out["degradedAnalysis"] = lang + " compiler-backed analysis status is unavailable; caller coverage may be incomplete. Run prism index and check prism status"
+        		}
+        		return
+        	}
+        	for _, diagnostic := range st.Native {
+        		if !checked {
+        			break
+        		}
+        		if diagnostic == "native analyzers disabled" ||'''
+        assert old in s; s=s.replace(old,new)
+        old='''	if !nativePassCompleted(lang, st.Native) {'''
+        new='''	if checked && !nativePassCompleted(lang, st.Native) {'''
+        assert old in s; s=s.replace(old,new)
+        old='''func nativePassCompleted(lang string, diagnostics []string) bool {'''
+        new='''var nativePassChecked = map[string]bool{"go": true, "java": true, "typescript": true}
+
+        func nativePassCompleted(lang string, diagnostics []string) bool {'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('verifiedCallLines := map[string]map[int]bool{}','var verifiedCallLines impactPlanSites')
+        open(p,'w').write(s)
+
+        p='internal/mcp/impactevidence.go'; s=open(p).read()
+        i=s.index('// renamePlanLines indexes')
+        s=s[:i]+'''// impactPlanSites is what a rename plan says about call sites, by file.
+        type impactPlanSites struct {
+        	lines      map[string]map[int]bool
+        	unresolved map[string]bool // "file:caller" the plan could not resolve
+        }
+
+        // renamePlanLines indexes the lines a rename plan would touch, by file.
+        // Ambiguous sites count: the plan could not rule them out, so they may
+        // still be calls to the target.
+        func renamePlanLines(plan *grove.RenamePlanResult) impactPlanSites {
+        	sites := impactPlanSites{lines: map[string]map[int]bool{}, unresolved: map[string]bool{}}
+        	if plan == nil {
+        		return sites
+        	}
+        	for _, group := range [][]grove.RenameEdit{plan.Edits, plan.Ambiguous} {
+        		for _, edit := range group {
+        			file := filepath.Clean(edit.FilePath)
+        			if sites.lines[file] == nil {
+        				sites.lines[file] = map[int]bool{}
+        			}
+        			sites.lines[file][edit.Line] = true
+        		}
+        	}
+        	for _, u := range plan.Unresolved {
+        		if i := strings.LastIndexByte(u, ':'); i > 0 {
+        			sites.unresolved[filepath.Clean(u[:i])+":"+u[i+1:]] = true
+        		}
+        	}
+        	return sites
+        }
+
+        // addPlanCheckedCallEvidence filters a caller's call lines by the rename
+        // plan only when the plan covers the caller's file and resolved the caller.
+        // Otherwise (plan failed, no site in the file, or the plan listed the caller
+        // as unresolved, as with qualified `new Outer.Inner(...)` calls) the
+        // name-matched evidence is kept rather than reporting the call expression as
+        // unavailable.
+        func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, plan impactPlanSites) {
+        	file := filepath.Clean(caller.FilePath)
+        	if lines, ok := plan.lines[file]; ok && !plan.unresolved[file+":"+caller.Name] {
+        		addImpactCallEvidence(entry, caller, target, budget, lines)
+        		return
+        	}
+        	addImpactCallEvidence(entry, caller, target, budget)
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        go build ./... && go vet ./internal/mcp
+      at: 2026-10-04T14:15:15.760743Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/evidencedelivery_test.go'; s=open(p).read()
+        old='''		"ambiguous site counts":             {&grove.RenamePlanResult{Ambiguous: []grove.RenameEdit{{FilePath: "./calls.go", Line: 12}}}, []int{12}},
+        '''
+        new='''		"ambiguous site counts":             {&grove.RenamePlanResult{Ambiguous: []grove.RenameEdit{{FilePath: "./calls.go", Line: 12}}}, []int{12}},
+        		"unresolved caller keeps matches": {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "calls.go", Line: 3}},
+        			Unresolved: []string{"calls.go:work"}}, []int{11, 12}},
+        '''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('caller := grove.SymbolRecord{FilePath: "calls.go", Span: grove.SpanInfo{Start: 10},','caller := grove.SymbolRecord{Name: "work", FilePath: "calls.go", Span: grove.SpanInfo{Start: 10},')
+        open(p,'w').write(s)
+        p='internal/mcp/turn_defects_test.go'; s=open(p).read()
+        s=s.replace('''func TestCompactReadAcceptsForce(''','''func TestPythonImpactHasNoNativeWarning(t *testing.T) {
+        	h := evidenceHandler(t, map[string]string{
+        		"calls.py": "def send():\\n    pass\\n\\ndef work():\\n    send()\\n",
+        	})
+        	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "send"})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	if note := out.(map[string]any)["degradedAnalysis"]; note != nil {
+        		t.Fatalf("Python has no compiler-backed pass to confirm; got warning %q", note)
+        	}
+        }
+
+        func TestCompactReadAcceptsForce(''')
+        open(p,'w').write(s)
+        EOF
+        gofmt -w internal/mcp/evidencedelivery_test.go internal/mcp/turn_defects_test.go internal/mcp/impactevidence.go internal/mcp/tools.go && go test ./internal/mcp -run 'PythonImpact|ImpactEvidence|DisabledNative|NativePass' -v 2>&1 | grep -E '^(---|ok|FAIL|\s+\w+_test)' | head -20
+      at: 2026-10-04T14:15:27.557916Z
+      classified: test
+    - cmd: go build -o ~/prism-ab-bins/prism-codexfix2 ./cmd/prism && cd ~/prism-ab-bins/payloadreplay && sed -e "s#prism-codexfix'#prism-codexfix2'#" -e "s#replay_codexfix.json#replay_codexfix2.json#" replay_codexfix.py > replay_codexfix2.py && sed "s#replay_codexfix.json#replay_codexfix2.json#" cmp_codexfix.py > cmp_codexfix2.py && grep -c codexfix2 replay_codexfix2.py && (cd /Users/tapabratapal/Projects/provasign/prism && go test ./... 2>&1 | grep -v '^ok\|no test files'; echo tests-done) && python3 replay_codexfix2.py > replay_codexfix2.log 2>&1; tail -1 replay_codexfix2.log; python3 cmp_codexfix2.py
+      at: 2026-10-04T14:17:44.968707Z
+      classified: test
+notes:
+    - text: continuation of session 8f540fe0-38ca-42cc-885e-60b9c4a6d7f7 — events captured after its evidence was finalized
+      at: 2026-10-04T04:40:31.063085Z
+redactions: 2

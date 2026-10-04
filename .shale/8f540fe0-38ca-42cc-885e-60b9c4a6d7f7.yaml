@@ -1,0 +1,111 @@
+shale_version: "0"
+id: 8f540fe0-38ca-42cc-885e-60b9c4a6d7f7
+created_at: 2026-10-03T17:02:55.152346Z
+finalized_at: 2026-10-04T04:40:23.447468Z
+agent:
+    tool: claude-code
+    model: claude-opus-5-5[1m]
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/impact-evidence-filter
+privacy: redacted
+commands:
+    - cmd: git fetch -q --all 2>/dev/null; git log --all --format='%h %ad %an | %s' --date=format:'%m-%d %H:%M' -25; echo ---; git status -sb | head -30; echo ---; git branch -a --sort=-committerdate | head -15
+      at: 2026-10-04T02:09:18.445573Z
+      classified: other
+    - cmd: git show --stat 9d2d73fe | head -40; git show 9d2d73fe -- AGENTS.md CLAUDE.md internal/mcp/*.go ':!*_test.go' | head -900
+      at: 2026-10-04T02:09:22.11458Z
+      classified: other
+    - cmd: git status --short; git diff --stat; git show 9d2d73fe -- internal/assist/assist.go; grep -n "remainingLines" internal/mcp/tools.go; grep -n "func (.*) RenamePlan" -r internal/grove | head; go build ./... && go vet ./internal/mcp/ ./internal/assist/ && go test ./... 2>&1 | tail -25
+      at: 2026-10-04T02:09:54.96619Z
+      classified: lint
+    - cmd: ls docs/ | grep -i audit; git log --all --oneline -- docs/prism-grove-turn-reduction-audit-2026-10-03.md; sed -n 26,80p internal/mcp/impactevidence.go; grep -n "type RenamePlanResult" -A25 internal/grove/*.go | head -45; git diff 43496351 9d2d73fe -- AGENTS.md CLAUDE.md | head
+      at: 2026-10-04T02:10:01.218771Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad && go build -o $S/prism-new ./cmd/prism && git worktree add -q $S/old 43496351 2>/dev/null; (cd $S/old && go build -o $S/prism-old ./cmd/prism) && for b in old new; do echo "== $b"; $S/prism-$b change-impact searchResultPartial 2>&1 | grep -ciE 'evidence|unavailable'; $S/prism-$b change-impact searchResultPartial 2>&1 | grep -iE 'unavailable|"text"' | head -5; done
+      at: 2026-10-04T02:10:14.654463Z
+      classified: build
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad && for sym in Client.RenamePlan Handler.readRange; do for b in old new; do echo "== $sym $b: text=$($S/prism-$b change-impact $sym 2>&1 | grep -c ''"text"'') unavailable=$($S/prism-$b change-impact $sym 2>&1 | grep -c ''unavailable'')"; done; done; git worktree remove --force $S/old'
+      at: 2026-10-04T02:10:22.273883Z
+      classified: other
+    - cmd: git checkout -q -b fix/impact-evidence-filter && grep -n "type RenameEdit" -A10 internal/grove/types.go; sed -n 3320,3365p internal/mcp/tools.go; prism change-impact addImpactCallEvidence 2>&1 | grep -E '"(name|file|filePath)"' | head; grep -n "RenamePlan" internal/mcp/*_test.go | head
+      at: 2026-10-04T04:39:10.178411Z
+      classified: other
+    - cmd: git show 9d2d73fe -- internal/mcp/evidencedelivery_test.go internal/mcp/turn_defects_test.go internal/mcp/helpers_test.go | grep -n "rename\|Rename\|PrismEvidence" ; grep -n "rename-plan\|renamePlan\|RenamePlan" internal/mcp/helpers_test.go internal/mcp/*_test.go | head
+      at: 2026-10-04T04:39:16.230506Z
+      classified: other
+    - cmd: grep -n "func TestImpactEvidence" -A40 internal/mcp/evidencedelivery_test.go | head -70; grep -n "^func " internal/mcp/helpers_test.go
+      at: 2026-10-04T04:39:19.890231Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/tools.go'
+        s=open(p).read()
+        old='''		if plan, err := h.Grove.RenamePlan(ctx, r.Query, targetLeaf+"PrismEvidence"); err == nil && plan != nil {
+        			for _, edit := range plan.Edits {
+        				file := filepath.Clean(edit.FilePath)
+        				if verifiedCallLines[file] == nil {
+        					verifiedCallLines[file] = map[int]bool{}
+        				}
+        				verifiedCallLines[file][edit.Line] = true
+        			}
+        		}
+        '''
+        new='''		if plan, err := h.Grove.RenamePlan(ctx, r.Query, targetLeaf+"PrismEvidence"); err == nil {
+        			verifiedCallLines = renamePlanLines(plan)
+        		}
+        '''
+        assert old in s; s=s.replace(old,new)
+        old2='addImpactCallEvidence(entry, s, targetLeaf, &evidenceBudget, verifiedCallLines[filepath.Clean(s.FilePath)])'
+        new2='addPlanCheckedCallEvidence(entry, s, targetLeaf, &evidenceBudget, verifiedCallLines)'
+        assert old2 in s; s=s.replace(old2,new2)
+        open(p,'w').write(s)
+        EOF
+        cat >> internal/mcp/impactevidence.go <<'EOF'
+
+        // renamePlanLines indexes the lines a rename plan would touch, by file.
+        // Ambiguous sites count: the plan could not rule them out, so they may
+        // still be calls to the target.
+        func renamePlanLines(plan *grove.RenamePlanResult) map[string]map[int]bool {
+        	lines := map[string]map[int]bool{}
+        	if plan == nil {
+        		return lines
+        	}
+        	for _, group := range [][]grove.RenameEdit{plan.Edits, plan.Ambiguous} {
+        		for _, edit := range group {
+        			file := filepath.Clean(edit.FilePath)
+        			if lines[file] == nil {
+        				lines[file] = map[int]bool{}
+        			}
+        			lines[file][edit.Line] = true
+        		}
+        	}
+        	return lines
+        }
+
+        // addPlanCheckedCallEvidence filters a caller's call lines by the rename
+        // plan only when the plan covers the caller's file. A file the plan says
+        // nothing about (plan failed, or no site there) keeps name-matched evidence
+        // rather than reporting the call expression as unavailable.
+        func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, planLines map[string]map[int]bool) {
+        	if lines, ok := planLines[filepath.Clean(caller.FilePath)]; ok {
+        		addImpactCallEvidence(entry, caller, target, budget, lines)
+        		return
+        	}
+        	addImpactCallEvidence(entry, caller, target, budget)
+        }
+        EOF
+        sed -n 1,15p internal/mcp/impactevidence.go
+      at: 2026-10-04T04:39:32.772017Z
+      classified: other
+    - cmd: |-
+        python3 -c "
+        p='internal/mcp/evidencedelivery_test.go';s=open(p).read();s=s.replace('import (\n','import (\n\t\"fmt\"\n',1);open(p,'w').write(s)" && gofmt -w internal/mcp/evidencedelivery_test.go internal/mcp/impactevidence.go internal/mcp/tools.go && git diff --stat && go vet ./internal/mcp && go test ./internal/mcp -run 'ImpactEvidence|ChangeImpact' 2>&1 | tail -15
+      at: 2026-10-04T04:39:51.587748Z
+      classified: lint
+    - cmd: go test ./... 2>&1 | grep -v '^ok\|no test files' ; echo "exit-done"
+      at: 2026-10-04T04:40:16.906479Z
+      classified: test
+notes: []
+redactions: 0

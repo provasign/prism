@@ -401,6 +401,7 @@ func CompactToolSchemas() []map[string]any {
 					"to":   map[string]any{"type": "integer", "minimum": 1},
 				}},
 		}),
+		"force":           prop("read", "Return source again even if delivered earlier.", map[string]any{"type": "boolean"}),
 		"terms":           prop("search,query", "Batch identifiers or exact substrings (up to 10), one per item: [\"alpha\",\"beta\"]; never combine distinct terms in one space-delimited string.", stringOrList()),
 		"scope":           prop("search", "both|text|symbols.", map[string]any{"type": "string", "enum": []string{"both", "text", "symbols"}}),
 		"paths":           prop("search,query", "Repo-relative paths.", stringOrList()),
@@ -545,6 +546,7 @@ func toolSchema(name string) map[string]any {
 					"type":        "integer",
 					"description": "Lines from offset. Omit both for the whole file.",
 				},
+				"force":        map[string]any{"type": "boolean", "description": "Return source again even if it was delivered earlier."},
 				"model":        modelProp,
 				"context_used": contextUsedProp,
 				"task":         map[string]any{"type": "string", "description": "Log label only."},
@@ -1299,7 +1301,7 @@ func (h *Handler) queryBaselineTokens(picked []ranking.BudgetedSymbol, delivered
 // whole file, which is the silent-narrowing failure this codebase keeps
 // re-learning. Out-of-range requests clamp and say so rather than erroring —
 // a tool that errors is a tool agents route around.
-func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int) (any, error) {
+func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int, force bool) (any, error) {
 	lines := strings.Split(content, "\n")
 	if n := len(lines); n > 0 && lines[n-1] == "" {
 		lines = lines[:n-1] // trailing newline is not a line
@@ -1319,7 +1321,7 @@ func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int
 	if limit > 0 && offset-1+limit < total {
 		end = offset - 1 + limit
 	}
-	if h.deliveredRangeCovered(sessionPath, hash, offset, end) {
+	if !force && h.deliveredRangeCovered(sessionPath, hash, offset, end) {
 		return map[string]any{
 			"file": sessionPath, "delivery": "range", "startLine": offset,
 			"endLine": end, "totalLines": total,
@@ -1363,6 +1365,9 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	}
 	data, err := os.ReadFile(abs)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return missingReadResult(sessionPath), nil
+		}
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
 	// Line-ranged reads. Measured over 374 real file reads by unaided and
@@ -1378,7 +1383,7 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 	// compressing them would be two lossy steps on the same content.
 	offset, limit := intArg(args, "offset", 0), intArg(args, "limit", 0)
 	if offset > 0 || limit > 0 {
-		return h.readRange(sessionPath, string(data), compression.Hash(string(data)), offset, limit)
+		return h.readRange(sessionPath, string(data), compression.Hash(string(data)), offset, limit, boolArg(args, "force"))
 	}
 	// The file's currently indexed symbols, by exact path (Grove v0.6.1).
 	fileSyms, err := h.Grove.FileSymbols(ctx, normalizePath(sessionPath))
@@ -1443,15 +1448,23 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 		}
 		return out, nil
 	}
+	readSession := h.Session
+	if boolArg(args, "force") {
+		readSession = nil
+	}
 	res := compression.CompressFileRead(sessionPath, string(data), compression.Options{
 		Task:            task,
 		Symbols:         fileSyms,
-		Session:         h.Session,
+		Session:         readSession,
 		Ledger:          h.Ledger,
 		TokenLedgerName: "prism_read",
 		Confidence:      confidence,
 		ContextUsed:     contextUsed,
 	})
+	if boolArg(args, "force") && h.Session != nil {
+		h.Session.Record(sessionPath, compression.Hash(string(data)), int64(res.DeliveredTokens), res.Strategy)
+		h.Session.RecordContextUsed(sessionPath, contextUsed)
+	}
 	// Record the structural baseline for prism_drift: these are the symbols
 	// the agent's copy of the file reflects as of this delivery.
 	if len(fileSyms) > 0 {
@@ -1469,15 +1482,24 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 
 const compactReadTotalLines = 600
 
+func missingReadResult(path string) map[string]any {
+	return map[string]any{
+		"file": path, "found": false,
+		"warning": "file not found; check the path or search for the file before retrying",
+	}
+}
+
 func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, error) {
 	raw := args["ranges"].([]any) // compact argument validation ran before dispatch
 	type window struct {
 		file, content, hash string
 		from, limit         int
 		warning             string
+		missing             bool
 	}
 	windows := make([]window, 0, len(raw))
 	var notes []string
+	var continuations []map[string]any
 	remainingLines, remainingBytes := compactReadTotalLines, 20*1024
 	for i, entry := range raw {
 		if err := ctx.Err(); err != nil {
@@ -1491,6 +1513,10 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 		}
 		data, err := os.ReadFile(abs)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				windows = append(windows, window{file: sessionPath, missing: true})
+				continue
+			}
 			return nil, fmt.Errorf("read %s: %w", path, err)
 		}
 		content := string(data)
@@ -1506,14 +1532,31 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 			continue
 		}
 		requestedLines := requestedTo - from + 1
-		w.limit = minInt(requestedLines, minInt(compactReadLimit, remainingLines))
+		availableLines := minInt(requestedLines, len(lines)-from+1)
+		if !boolArg(args, "force") {
+			cachedLines := minInt(availableLines, compactReadLimit)
+			if cachedLines > 0 && h.deliveredRangeCovered(sessionPath, w.hash, from, from+cachedLines-1) {
+				w.limit = cachedLines
+				if cachedLines < availableLines {
+					notes = append(notes, fmt.Sprintf("range %d (%s:%d-%d) clamped to %d-%d",
+						i+1, path, from, requestedTo, from, from+cachedLines-1))
+					continuations = append(continuations, map[string]any{"file": path, "from": from + cachedLines, "to": from + availableLines - 1})
+				}
+				windows = append(windows, w)
+				continue
+			}
+		}
+		shareLines := remainingLines / (len(raw) - i)
+		shareBytes := remainingBytes / (len(raw) - i)
+		w.limit = minInt(requestedLines, minInt(compactReadLimit, shareLines))
 		w.limit = minInt(w.limit, len(lines)-from+1)
 		for j := 0; j < w.limit; j++ {
 			cost := len(lines[from-1+j]) + 16
-			if cost > remainingBytes {
+			if cost > shareBytes {
 				w.limit = j
 				break
 			}
+			shareBytes -= cost
 			remainingBytes -= cost
 		}
 		if w.limit == 0 {
@@ -1526,15 +1569,22 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 					i+1, path, from, requestedTo, from, from+w.limit-1))
 			}
 		}
+		if w.limit < availableLines {
+			continuations = append(continuations, map[string]any{"file": path, "from": from + w.limit, "to": from + availableLines - 1})
+		}
 		windows = append(windows, w)
 	}
 	results := make([]map[string]any, 0, len(windows))
 	for _, w := range windows {
+		if w.missing {
+			results = append(results, missingReadResult(w.file))
+			continue
+		}
 		if w.warning != "" {
 			results = append(results, map[string]any{"file": w.file, "delivery": "range", "warning": w.warning})
 			continue
 		}
-		result, err := h.readRange(w.file, w.content, w.hash, w.from, w.limit)
+		result, err := h.readRange(w.file, w.content, w.hash, w.from, w.limit, boolArg(args, "force"))
 		if err != nil {
 			return nil, err
 		}
@@ -1543,6 +1593,9 @@ func (h *Handler) readRanges(ctx context.Context, args map[string]any) (any, err
 	out := map[string]any{"delivery": "ranges", "ranges": results}
 	if len(notes) > 0 {
 		out["note"] = strings.Join(notes, "; ")
+	}
+	if len(continuations) > 0 {
+		out["continuation"] = map[string]any{"op": "read", "args": map[string]any{"ranges": continuations}}
 	}
 	return out, nil
 }
@@ -2072,6 +2125,15 @@ func searchScopeDisclosure(scope string, sc searchScope) string {
 }
 
 func (h *Handler) searchOne(ctx context.Context, q, scope string, limit int, regex bool, sc searchScope) (map[string]any, error) {
+	if regex && scope != "symbols" {
+		if _, err := regexp.Compile(q); err != nil {
+			return map[string]any{
+				"invalidPattern":  q,
+				"warning":         "invalid regular expression: " + err.Error() + "; fix the pattern or use regex=false for a literal search",
+				"resultsComplete": false,
+			}, nil
+		}
+	}
 
 	// scope="text": the agent asked for a PURE grep — exactly what rg
 	// returns, no symbol search, no graph, minimal envelope. This is the
@@ -3261,6 +3323,12 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	targetLeaf = leafOf(strings.TrimSpace(targetLeaf))
 	evidenceBudget := impactEvidenceMaxBytes
 	wideImpact := obligationSiteCount(r) >= wideImpactIdentityThreshold
+	var verifiedCallLines impactPlanSites
+	if !wideImpact && len(r.Callers) > 0 {
+		if plan, err := h.Grove.RenamePlan(ctx, r.Query, targetLeaf+"PrismEvidence"); err == nil {
+			verifiedCallLines = renamePlanLines(plan)
+		}
+	}
 
 	compactWithScope := func(syms []grove.SymbolRecord, annotate bool) []map[string]any {
 		out := make([]map[string]any, 0, len(syms))
@@ -3284,7 +3352,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
 			if annotate && !wideImpact {
-				addImpactCallEvidence(entry, s, targetLeaf, &evidenceBudget)
+				addPlanCheckedCallEvidence(entry, s, targetLeaf, &evidenceBudget, verifiedCallLines)
 			}
 			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
@@ -3473,9 +3541,25 @@ func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *gr
 	if lang == "tsx" || lang == "javascript" {
 		lang = "typescript"
 	}
+	// Only languages whose completed native pass nativePassCompleted can
+	// recognize get the status warnings below. Python has no native pass, so
+	// warning there flagged every Python answer as possibly incomplete.
+	checked := nativePassChecked[lang]
 	st, err := h.Grove.Status(ctx)
 	if err != nil || st == nil {
+		if checked {
+			out["degradedAnalysis"] = lang + " compiler-backed analysis status is unavailable; caller coverage may be incomplete. Run prism index and check prism status"
+		}
 		return
+	}
+	for _, diagnostic := range st.Native {
+		if !checked {
+			break
+		}
+		if diagnostic == "native analyzers disabled" || strings.HasPrefix(diagnostic, lang+": ") && strings.Contains(diagnostic, "disabled by config") {
+			out["degradedAnalysis"] = lang + " compiler-backed analysis was disabled for this index; caller coverage may be incomplete. Enable native analysis and run prism index"
+			return
+		}
 	}
 	for _, issue := range st.Readiness {
 		if issue.Language == lang {
@@ -3484,6 +3568,31 @@ func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *gr
 			return
 		}
 	}
+	if checked && !nativePassCompleted(lang, st.Native) {
+		out["degradedAnalysis"] = lang + " compiler-backed completion is not confirmed by this index; caller coverage may be incomplete. Re-index with native analysis enabled and check prism status"
+	}
+}
+
+var nativePassChecked = map[string]bool{"go": true, "java": true, "typescript": true}
+
+func nativePassCompleted(lang string, diagnostics []string) bool {
+	for _, diagnostic := range diagnostics {
+		switch lang {
+		case "go":
+			if strings.HasPrefix(diagnostic, "go: resolved ") && strings.Contains(diagnostic, "native call edge") {
+				return true
+			}
+		case "java":
+			if strings.HasPrefix(diagnostic, "java: javac attributed ") {
+				return true
+			}
+		case "typescript":
+			if strings.HasPrefix(diagnostic, "js-ts: resolved ") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // impactRelaySites is an answer-shaped, de-duplicated inventory for result

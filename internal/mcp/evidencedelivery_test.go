@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,6 +87,27 @@ func TestImpactEvidencePreservesSitesAndSource(t *testing.T) {
 	if !ok || !strings.Contains(text, "[test]") {
 		t.Fatalf("root tests/ path must be labeled, not filtered: %t %s", ok, text)
 	}
+}
+
+func TestImpactEvidenceExcludesSameNamedOtherReceiver(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"calls.go": "package p\ntype A struct{}\ntype B struct{}\nfunc (A) Send() {}\nfunc (B) Send() {}\nfunc Work(a A, b B) {\n a.Send()\n b.Send()\n a.Send()\n}\n",
+	})
+	result, err := h.Invoke("prism_change_impact", map[string]any{"query": "A.Send"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, caller := range result.(map[string]any)["callers"].([]map[string]any) {
+		if caller["name"] != "Work" {
+			continue
+		}
+		evidence, ok := caller["evidence"].([]map[string]any)
+		if !ok || len(evidence) != 2 || evidence[0]["line"] != 7 || evidence[1]["line"] != 9 {
+			t.Fatalf("expected only A.Send call lines 7 and 9: %#v", caller)
+		}
+		return
+	}
+	t.Fatal("Work caller missing")
 }
 
 func TestImpactEvidenceBoundsAndUncertainty(t *testing.T) {
@@ -216,5 +238,39 @@ func TestLookupBatchRenderingPreservesFailuresAndUnknownFields(t *testing.T) {
 	out["results"] = []map[string]any{{"name": "Get", "result": map[string]any{"newField": true}}}
 	if _, ok := renderLookupAsText(out); ok {
 		t.Fatal("unknown nested result must fall back intact")
+	}
+}
+
+func TestImpactEvidencePlanFilterOnlyWhereCovered(t *testing.T) {
+	caller := grove.SymbolRecord{Name: "work", FilePath: "calls.go", Span: grove.SpanInfo{Start: 10},
+		RawText:   "func work() {\n a.Send()\n b.Send()\n}",
+		CallSites: []grove.CallSite{{Callee: "a.Send", Line: 11}, {Callee: "b.Send", Line: 12}}}
+	lines := func(entry map[string]any) []int {
+		var got []int
+		for _, e := range anySlice(entry["evidence"]) {
+			got = append(got, e.(map[string]any)["line"].(int))
+		}
+		return got
+	}
+	for name, tc := range map[string]struct {
+		plan *grove.RenamePlanResult
+		want []int
+	}{
+		"plan failed keeps name matches":    {nil, []int{11, 12}},
+		"plan silent on file keeps matches": {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "other.go", Line: 3}}}, []int{11, 12}},
+		"confirmed edit filters":            {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "calls.go", Line: 11}}}, []int{11}},
+		"ambiguous site counts":             {&grove.RenamePlanResult{Ambiguous: []grove.RenameEdit{{FilePath: "./calls.go", Line: 12}}}, []int{12}},
+		"unresolved caller keeps matches": {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "calls.go", Line: 3}},
+			Unresolved: []string{"calls.go:work"}}, []int{11, 12}},
+	} {
+		entry := map[string]any{}
+		budget := impactEvidenceMaxBytes
+		addPlanCheckedCallEvidence(entry, caller, "Send", &budget, renamePlanLines(tc.plan))
+		if got := lines(entry); fmt.Sprint(got) != fmt.Sprint(tc.want) {
+			t.Errorf("%s: evidence lines %v, want %v (entry %v)", name, got, tc.want, entry)
+		}
+		if _, unavailable := entry["evidenceNote"]; unavailable {
+			t.Errorf("%s: unexpected note %v", name, entry["evidenceNote"])
+		}
 	}
 }

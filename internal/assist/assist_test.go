@@ -116,6 +116,34 @@ func TestApplyRenamePlan(t *testing.T) {
 	}
 }
 
+func TestApplyRenamePlanRestoresSourceIndentation(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.py")
+	if err := os.WriteFile(path, []byte("class Router:\r\n    def Route(self):\r\n        pass\r\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan := map[string]any{"edits": []any{map[string]any{
+		"filePath": "x.py", "line": float64(2),
+		"before": "def Route(self):", "after": "def RouteRequest(self):",
+	}}}
+	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer devnull.Close()
+	if err := applyRenamePlan(devnull, dir, plan, false); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "class Router:\r\n    def RouteRequest(self):\r\n        pass\r\n"
+	if string(got) != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
 // Ollama content-JSON fallback: a correct decision serialized nonstandardly
 // must be recovered, and unknown tool names must NOT be.
 func TestParseContentToolCall(t *testing.T) {

@@ -27,7 +27,7 @@ import (
 func renderReadAsText(out map[string]any) (string, bool) {
 	if out["delivery"] == "ranges" {
 		for key := range out {
-			if key != "delivery" && key != "ranges" && key != "note" {
+			if key != "delivery" && key != "ranges" && key != "note" && key != "continuation" {
 				return "", false
 			}
 		}
@@ -46,13 +46,20 @@ func renderReadAsText(out map[string]any) (string, bool) {
 		if note, ok := out["note"].(string); ok && note != "" {
 			fmt.Fprintf(&b, "// %s\n", note)
 		}
+		if continuation, ok := out["continuation"]; ok {
+			encoded, err := json.Marshal(continuation)
+			if err != nil {
+				return "", false
+			}
+			fmt.Fprintf(&b, "// Continue with %s\n", encoded)
+		}
 		return b.String(), true
 	}
 	known := map[string]bool{
 		"file": true, "strategy": true, "originalTokens": true,
 		"deliveredTokens": true, "savingsPercent": true, "content": true,
 		"delivery": true, "startLine": true, "endLine": true,
-		"totalLines": true, "warning": true, "note": true, "formatNote": true,
+		"totalLines": true, "warning": true, "note": true, "formatNote": true, "found": true,
 	}
 	for k := range out {
 		if !known[k] {

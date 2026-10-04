@@ -46,7 +46,7 @@ func TestCompactToolSchemasExposeOneSmallerGateway(t *testing.T) {
 	owners := map[string]string{
 		"name": "lookup,change_impact", "symbol_file": "lookup,change_impact",
 		"fields": "lookup", "signature": "lookup,change_impact",
-		"file": "read", "from": "read", "to": "read", "ranges": "read",
+		"file": "read", "from": "read", "to": "read", "ranges": "read", "force": "read",
 		"terms": "search,query", "scope": "search",
 		"paths": "search,query", "glob": "search,query", "regex": "search",
 		"files_only": "search", "max_results": "search", "exhaustive": "search", "include_bodies": "search",
@@ -337,7 +337,8 @@ func TestCompactReadClampsInsteadOfFailing(t *testing.T) {
 		t.Fatal(rpcErr.Message)
 	}
 	content = result.(map[string]any)["content"].([]map[string]string)[0]["text"]
-	if !strings.Contains(content, "range 1") || !strings.Contains(content, "range 4 (large.txt:1-240) clamped to 1-19") {
+	if !strings.Contains(content, "range 1") || !strings.Contains(content, "range 2") ||
+		!strings.Contains(content, "large.txt lines 700-800") || !strings.Contains(content, "Continue with") {
 		t.Fatalf("batch did not surface per-range clamp:\n%s", content)
 	}
 }
