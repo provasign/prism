@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -237,5 +238,37 @@ func TestLookupBatchRenderingPreservesFailuresAndUnknownFields(t *testing.T) {
 	out["results"] = []map[string]any{{"name": "Get", "result": map[string]any{"newField": true}}}
 	if _, ok := renderLookupAsText(out); ok {
 		t.Fatal("unknown nested result must fall back intact")
+	}
+}
+
+func TestImpactEvidencePlanFilterOnlyWhereCovered(t *testing.T) {
+	caller := grove.SymbolRecord{FilePath: "calls.go", Span: grove.SpanInfo{Start: 10},
+		RawText:   "func work() {\n a.Send()\n b.Send()\n}",
+		CallSites: []grove.CallSite{{Callee: "a.Send", Line: 11}, {Callee: "b.Send", Line: 12}}}
+	lines := func(entry map[string]any) []int {
+		var got []int
+		for _, e := range anySlice(entry["evidence"]) {
+			got = append(got, e.(map[string]any)["line"].(int))
+		}
+		return got
+	}
+	for name, tc := range map[string]struct {
+		plan *grove.RenamePlanResult
+		want []int
+	}{
+		"plan failed keeps name matches":    {nil, []int{11, 12}},
+		"plan silent on file keeps matches": {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "other.go", Line: 3}}}, []int{11, 12}},
+		"confirmed edit filters":            {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "calls.go", Line: 11}}}, []int{11}},
+		"ambiguous site counts":             {&grove.RenamePlanResult{Ambiguous: []grove.RenameEdit{{FilePath: "./calls.go", Line: 12}}}, []int{12}},
+	} {
+		entry := map[string]any{}
+		budget := impactEvidenceMaxBytes
+		addPlanCheckedCallEvidence(entry, caller, "Send", &budget, renamePlanLines(tc.plan))
+		if got := lines(entry); fmt.Sprint(got) != fmt.Sprint(tc.want) {
+			t.Errorf("%s: evidence lines %v, want %v (entry %v)", name, got, tc.want, entry)
+		}
+		if _, unavailable := entry["evidenceNote"]; unavailable {
+			t.Errorf("%s: unexpected note %v", name, entry["evidenceNote"])
+		}
 	}
 }

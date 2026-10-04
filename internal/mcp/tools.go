@@ -3325,14 +3325,8 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	wideImpact := obligationSiteCount(r) >= wideImpactIdentityThreshold
 	verifiedCallLines := map[string]map[int]bool{}
 	if !wideImpact && len(r.Callers) > 0 {
-		if plan, err := h.Grove.RenamePlan(ctx, r.Query, targetLeaf+"PrismEvidence"); err == nil && plan != nil {
-			for _, edit := range plan.Edits {
-				file := filepath.Clean(edit.FilePath)
-				if verifiedCallLines[file] == nil {
-					verifiedCallLines[file] = map[int]bool{}
-				}
-				verifiedCallLines[file][edit.Line] = true
-			}
+		if plan, err := h.Grove.RenamePlan(ctx, r.Query, targetLeaf+"PrismEvidence"); err == nil {
+			verifiedCallLines = renamePlanLines(plan)
 		}
 	}
 
@@ -3358,7 +3352,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
 			if annotate && !wideImpact {
-				addImpactCallEvidence(entry, s, targetLeaf, &evidenceBudget, verifiedCallLines[filepath.Clean(s.FilePath)])
+				addPlanCheckedCallEvidence(entry, s, targetLeaf, &evidenceBudget, verifiedCallLines)
 			}
 			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {

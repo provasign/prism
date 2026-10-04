@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -71,4 +72,36 @@ func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, targ
 	if len(notes) > 0 {
 		entry["evidenceNote"] = strings.Join(notes, "; ")
 	}
+}
+
+// renamePlanLines indexes the lines a rename plan would touch, by file.
+// Ambiguous sites count: the plan could not rule them out, so they may
+// still be calls to the target.
+func renamePlanLines(plan *grove.RenamePlanResult) map[string]map[int]bool {
+	lines := map[string]map[int]bool{}
+	if plan == nil {
+		return lines
+	}
+	for _, group := range [][]grove.RenameEdit{plan.Edits, plan.Ambiguous} {
+		for _, edit := range group {
+			file := filepath.Clean(edit.FilePath)
+			if lines[file] == nil {
+				lines[file] = map[int]bool{}
+			}
+			lines[file][edit.Line] = true
+		}
+	}
+	return lines
+}
+
+// addPlanCheckedCallEvidence filters a caller's call lines by the rename
+// plan only when the plan covers the caller's file. A file the plan says
+// nothing about (plan failed, or no site there) keeps name-matched evidence
+// rather than reporting the call expression as unavailable.
+func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, planLines map[string]map[int]bool) {
+	if lines, ok := planLines[filepath.Clean(caller.FilePath)]; ok {
+		addImpactCallEvidence(entry, caller, target, budget, lines)
+		return
+	}
+	addImpactCallEvidence(entry, caller, target, budget)
 }
