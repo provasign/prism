@@ -1,0 +1,1951 @@
+shale_version: "0"
+id: 8f540fe0-38ca-42cc-885e-60b9c4a6d7f7-c3
+created_at: 2026-10-04T17:51:25.202155Z
+finalized_at: 2026-10-04T22:53:24.354375Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: deps/grove-v0.61.3
+privacy: redacted
+commands:
+    - cmd: 'grep -c "All invariants held" ~/prism-ab-bins/ci-v0858.log; grep "^real" ~/prism-ab-bins/ci-v0858.log; cd /Users/tapabratapal/Projects/provasign/prism && git tag -a v0.85.8 -m "v0.85.8: verify keeps checking interfaces and function values after a Go trailing-variadic edit" 709df02b && git push -q origin v0.85.8 2>&1 | tail -1; sleep 15; gh run list --limit 1 --json databaseId,workflowName,headBranch -q ''.[0]|"\(.databaseId) \(.workflowName) \(.headBranch)"'''
+      at: 2026-10-04T17:51:25.202155Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/notes-v0858.md <<'EOF'
+        Fixes the known gap listed in v0.85.7. The engine is unchanged (engine invariants identical to v0.85.7).
+
+        **Fix**
+        - **verify:** when a Go function only gains a trailing variadic parameter, direct calls are still accepted, but verify again checks what does break:
+          - a method that must still match an interface;
+          - a function used as a value in a typed position (`var hook func(string) string = pkg.Do`, or passed as an argument).
+          - Untyped bindings (`f := Do`, `var x = Do`) still compile and are not flagged.
+
+        **Measured**
+        - Replay of 123 recorded Prism calls (30 tasks): every answer identical to v0.85.7, including all 32 verify calls.
+        EOF
+        gh run watch 37222079126 --exit-status >/dev/null 2>&1; echo "release exit $?"; gh release view v0.85.8 --json assets -q '.assets|length' && gh release edit v0.85.8 --title v0.85.8 --notes-file /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/notes-v0858.md >/dev/null && echo notes-set && gh workflow run "Refresh formulae" -R provasign/homebrew-shale && sleep 8 && rid=$(gh run list -R provasign/homebrew-shale --limit 1 --json databaseId -q '.[0].databaseId') && gh run watch $rid -R provasign/homebrew-shale --exit-status >/dev/null 2>&1; echo "tap exit $?"; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad && rm -rf rel && mkdir rel && cd rel && gh release download v0.85.8 -R provasign/prism -p 'prism-v0.85.8-darwin-arm64' -p 'prism-v0.85.8-linux-amd64' -p checksums.txt && shasum -a 256 -c checksums.txt --ignore-missing && chmod +x prism-v0.85.8-darwin-arm64 && ./prism-v0.85.8-darwin-arm64 --version && file prism-v0.85.8-linux-amd64 | grep -o 'statically linked'
+      at: 2026-10-04T17:53:28.672158Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_codexfix_run_2026_10_04.md <<'EOF'
+        RELEASED v0.85.8 2026-10-04: Go variadic verify gap fixed (PR #24, 709df02b): the seed is kept, only direct call lines are exempt,
+        typed function-value uses are found via the reference layer (untyped `f := Do` skipped). Gate identical to v0.85.7; replay 123/123
+        identical; tap 0.85.8. Next topic Topo set: indexing time regression since grove v0.61.0 compiler-backed analysis.
+        EOF
+        B=~/prism-ab-bins/idxbench; cat > $B/run.sh <<'EOF'
+        #!/bin/zsh
+        # usage: run.sh <label> <binary> ; cold index each repo, sequentially
+        B=~/prism-ab-bins/idxbench; label=$1; bin=$2
+        for r in gin jackson-databind typeorm django grafana-122750 guava; do
+          d=$B/repos/$r; rm -rf $d/.grove
+          s=$(python3 -c 'import time;print(time.time())')
+          GROVE_TIMING=1 $bin index $d > $B/$label.$r.log 2>&1
+          rc=$?
+          e=$(python3 -c 'import time;print(time.time())')
+          printf "%s %s rc=%s %.1fs\n" $label $r $rc $(python3 -c "print($e-$s)") | tee -a $B/summary.txt
+          pkill -f "grove.*$d" 2>/dev/null; true
+        done
+        EOF
+        chmod +x $B/run.sh; : > $B/summary.txt; echo ready
+      at: 2026-10-04T17:53:39.413212Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; d=$B/repos/gin; rm -rf $d/.grove; cd $d && time (GROVE_TIMING=1 ~/prism-ab-bins/prism-v0858-candidate index $d 2>&1 | tail -30); pgrep -fl "prism|grove" | grep -v pgrep | head
+      at: 2026-10-04T17:53:44.820648Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; $B/run.sh v0840 ~/prism-ab-bins/prism-v0.84.0-darwin-arm64; $B/run.sh v0858 ~/prism-ab-bins/prism-v0858-candidate; cat $B/summary.txt
+      at: 2026-10-04T17:53:48.552773Z
+      classified: other
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; cat $B/summary.txt; for r in jackson-databind typeorm django grafana-122750 guava; do echo "== $r"; grep -E '^\[timing\] [a-z]' $B/v0858.$r.log | sort -k3 -t' ' | awk '{print}' | sort -k3 -rn -t$'\t' | head -40 | grep -vE ' 0\.0[0-9]s$' ; python3 -c "
+        import json,re,sys
+        t=open('$B/v0858.$r.log').read(); i=t.rfind('{\n'); d=json.loads(t[i:]) if i>=0 else {}
+        print('  files',d.get('filesSeen'),'symbols',d.get('symbolCount'),'edges',d.get('edgeCount')); [print('  ',n) for n in d.get('native',[])]" 2>&1 | head -14; done
+      at: 2026-10-04T18:06:11.777119Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; for r in typeorm django grafana-122750; do echo "== $r"; grep -v '^\[timing\]' $B/v0858.$r.log | head -40; done
+      at: 2026-10-04T18:06:17.152544Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/idxbench/repos/typeorm && ls package*.json yarn.lock pnpm-lock.yaml 2>/dev/null; node --version; (npm ci --ignore-scripts --no-audit --no-fund > ../../npm-typeorm.log 2>&1; echo "npm exit $?"); ls node_modules/typescript/package.json && grep '"version"' node_modules/typescript/package.json
+      at: 2026-10-04T18:06:31.564117Z
+      classified: other
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; cat > $B/run2.sh <<'EOF'
+        #!/bin/zsh
+        # usage: run2.sh <label> <binary> <repo...> : cold, no-op re-index, one-file edit re-index
+        B=~/prism-ab-bins/idxbench; label=$1; bin=$2; shift 2
+        t() { python3 -c 'import time;print(time.time())'; }
+        for r in "$@"; do
+          d=$B/repos/$r; rm -rf $d/.grove
+          f=$(cd $d && find . -path ./node_modules -prune -o -path ./.grove -prune -o -type f \( -name '*.go' -o -name '*.java' -o -name '*.ts' -o -name '*.py' \) -print | grep -v test | sort | head -200 | tail -1)
+          for phase in cold noop edit; do
+            if [ $phase = edit ]; then cp $d/$f $d/$f.bak; printf '\n// prism bench edit\n' >> $d/$f; [[ $f == *.py ]] && { cp $d/$f.bak $d/$f; printf '\n# prism bench edit\n' >> $d/$f; }; fi
+            s=$(t); GROVE_TIMING=1 $bin index $d > $B/$label.$r.$phase.log 2>&1; rc=$?; e=$(t)
+            [ $phase = edit ] && mv $d/$f.bak $d/$f
+            printf "%s %s %s rc=%s %.1fs\n" $label $r $phase $rc $(python3 -c "print($e-$s)") | tee -a $B/summary2.txt
+          done
+        done
+        EOF
+        chmod +x $B/run2.sh; : > $B/summary2.txt; echo ok
+      at: 2026-10-04T18:06:38.138308Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; for v in "v0840 $HOME/prism-ab-bins/prism-v0.84.0-darwin-arm64" "v0858 $HOME/prism-ab-bins/prism-v0858-candidate"; do $B/run2.sh ${=v} typeorm gin jackson-databind django grafana-122750 guava; done; cat $B/summary2.txt
+      at: 2026-10-04T18:06:42.499488Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; cat $B/summary2.txt; echo; for r in typeorm grafana-122750 gin; do for p in cold noop edit; do echo "== v0858 $r $p"; grep -E ''^\[timing\] [a-z]'' $B/v0858.$r.$p.log | grep -vE '' 0\.[0-4][0-9]s$''; grep -E ''"(js-ts|go): (full|incremental|scoped|skipped)[^"]*'' -o $B/v0858.$r.$p.log | head -3; done; done'
+      at: 2026-10-04T18:29:12.970534Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; grep -E ''^\[timing\]'' $B/v0858.guava.edit.log | grep -vE '' 0\.0[0-9]s$''; grep -oE ''"(java|js-ts)[^"]*"'' $B/v0858.guava.edit.log; grep -E ''files(Seen|Updated)|edgeCount'' $B/v0858.guava.edit.log; echo; for r in jackson-databind grafana-122750 django; do echo "== $r edit"; grep -E ''^\[timing\]'' $B/v0858.$r.edit.log | grep -vE '' 0\.[0-2][0-9]s$''; grep -oE ''"(java|go|python|js-ts): [^"]*"'' $B/v0858.$r.edit.log | head -4; done'
+      at: 2026-10-04T19:10:01.632896Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism search '"edge-construction"' '"edge/calls"' 'edge/install-sort' --scope text --format text 2>/dev/null | head -40
+      at: 2026-10-04T19:10:12.725744Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 610,665p internal/index/indexer.go; git log --format='%h %ad %s' --date=short -S'GROVE_INCREMENTAL' | head; grep -rn "GROVE_INCREMENTAL" --include=*.go --include=*.md . | grep -v _test | head
+      at: 2026-10-04T19:10:19.096434Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && prism lookup incrementalEnabled 2>/dev/null | head -30; git log --format='%h %ad %s' --date=short -L '/func incrementalEnabled/,+12:internal/index/indexer.go' 2>/dev/null | grep -E '^[0-9a-f]{8} ' | head; ls docs | grep -i incremental
+      at: 2026-10-04T19:10:22.884126Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "PrevEdges\|PrevSymbols\|scope = \|scope :=\|var scope" internal/index/*.go cmd/*/*.go 2>/dev/null | grep -v _test | head -30
+      at: 2026-10-04T19:10:28.600757Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 50,70p internal/index/indexer.go; sed -n 540,560p internal/index/indexer.go; grep -rn "PrevEdges:" --include='*.go' . | grep -v _test | head; grep -rn "PrevEdges" /Users/tapabratapal/Projects/provasign/prism/internal --include='*.go' | grep -v _test | head
+      at: 2026-10-04T19:10:31.795526Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rn "PrevEdges\b" --include='*.go' grove prism | grep -v "_test.go" | grep -v "internal/index/indexer.go"; grep -n "Incremental\|incremental" grove/docs/INCREMENTAL_INDEXING.md | head -30
+      at: 2026-10-04T19:10:35.570833Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 245,300p pkg/grove/grove.go
+      at: 2026-10-04T19:10:40.272672Z
+      classified: other
+    - cmd: |-
+        cat > ~/prism-ab-bins/idxbench/mcp_edit.py <<'EOF'
+        import json,subprocess,threading,queue,time,sys,os
+        bin_,root,rel,name=sys.argv[1:5]
+        p=subprocess.Popen([bin_,'mcp','--compact',root],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+        q=queue.Queue(); threading.Thread(target=lambda:[q.put(l) for l in p.stdout],daemon=True).start(); n=[0]
+        def call(m,params):
+            n[0]+=1; p.stdin.write(json.dumps({"jsonrpc":"2.0","id":n[0],"method":m,"params":params})+"\n")
+            while True:
+                d=json.loads(q.get(timeout=900))
+                if d.get('id')==n[0]: return d
+        call('initialize',{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"b","version":"1"}})
+        p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n")
+        def look(tag):
+            t=time.time(); d=call('tools/call',{"name":"prism","arguments":{"op":"lookup","args":{"name":[name]}}}); dt=time.time()-t
+            txt=''.join(c.get('text','') for c in d.get('result',{}).get('content',[]))
+            print(f"{tag:22} {dt:6.2f}s  {len(txt)}B {'ERR '+str(d.get('error'))[:100] if 'error' in d else ''}",flush=True)
+        look('first call')
+        look('second call, no edit')
+        path=os.path.join(root,rel); orig=open(path).read()
+        for i in range(3):
+            open(path,'w').write(orig+f"\n// bench edit {i}\n"); time.sleep(0.2)
+            look(f'after edit {i+1}')
+        open(path,'w').write(orig); look('after revert')
+        p.kill()
+        EOF
+        B=~/prism-ab-bins/idxbench; f=$(cd $B/repos/guava && ls guava/src/com/google/common/base/Strings.java); echo "guava edit file: $f"; python3 $B/mcp_edit.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/guava $f Strings.repeat
+      at: 2026-10-04T19:11:21.735498Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; sed -i '''' "s#stderr=subprocess.DEVNULL#stderr=open(os.environ.get(''ERRLOG'',''/dev/null''),''w'')#" $B/mcp_edit.py && ERRLOG=$B/mcp-guava.err GROVE_TIMING=1 python3 $B/mcp_edit.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/guava guava/src/com/google/common/base/Strings.java Strings.repeat; echo; awk ''/^\[timing\] walk/{run++} {print run": "$0}'' $B/mcp-guava.err | grep -E ''^\S+ \[timing\]'' | grep -vE '' 0\.0[0-9]s$'' | head -60; grep -oE ''edge construction: incremental[^"]*|java: (incremental|scoped|javac)[^"]*'' $B/mcp-guava.err | head'
+      at: 2026-10-04T19:11:50.665076Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; ERRLOG=$B/mcp-django.err GROVE_TIMING=1 python3 $B/mcp_edit.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/django django/utils/text.py capfirst 2>&1 | sed ''s/\/\/ bench/# bench/''; awk ''/^\[timing\] walk/{run++} {print run": "$0}'' $B/mcp-django.err | grep -E ''^4: \[timing\]'' | grep -vE '' 0\.0[0-9]s$'''
+      at: 2026-10-04T19:12:52.849811Z
+      classified: other
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; python3 - <<'EOF'
+        import os
+        p=os.path.expanduser('~/prism-ab-bins/idxbench/mcp_edit.py'); s=open(p).read()
+        s=s.replace('open(path,\'w\').write(orig+f"\\n// bench edit {i}\\n")','open(path,\'w\').write(orig+("\\n# bench edit %d\\n" if path.endswith(".py") else "\\n// bench edit %d\\n")%i)')
+        open(p,'w').write(s)
+        EOF
+        grep -n "bench edit" $B/mcp_edit.py; ERRLOG=$B/mcp-django.err GROVE_TIMING=1 python3 $B/mcp_edit.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/django django/utils/text.py capfirst; awk '/^\[timing\] walk/{run++} {print run": "$0}' $B/mcp-django.err | grep -E '^4: \[timing\]' | grep -vE ' 0\.0[0-9]s$'
+      at: 2026-10-04T19:13:33.572699Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "nameDelta" --include=''*.go'' internal/graph | grep -v _test | head; '
+      at: 2026-10-04T19:13:39.695006Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 60,135p internal/graph/incremental.go; sed -n 372,420p internal/graph/incremental.go
+      at: 2026-10-04T19:13:42.335463Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && n=$(grep -n "^func identityRemap" internal/graph/incremental.go | cut -d: -f1); sed -n "$n,$((n+75))p" internal/graph/incremental.go'
+      at: 2026-10-04T19:13:47.55785Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && n=$(grep -n "^func contentIdentityKey" internal/graph/*.go | head -1); echo $n; f=${n%%:*}; l=$(echo $n | cut -d: -f2); sed -n "${l},$((l+30))p" $f'
+      at: 2026-10-04T19:13:50.762566Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/idxbench/repos/django && ls .grove; db=$(ls .grove/*.db 2>/dev/null | head -1); echo $db; sqlite3 "$db" ".tables" | head; sqlite3 "$db" "select kind,name,start_line,end_line,length(raw_text) from symbols where file_path='django/utils/text.py' order by length(raw_text) desc limit 5" 2>&1 | head
+      at: 2026-10-04T19:13:57.659347Z
+      classified: other
+    - cmd: cd ~/prism-ab-bins/idxbench/repos/django && sqlite3 .grove/grove.db "pragma table_info(symbols)" | cut -d'|' -f2 | tr '\n' ' '; echo; sqlite3 .grove/grove.db "select kind,name,parent_symbol,length(raw_text) from symbols where file_path='django/utils/text.py' order by length(raw_text) desc limit 5" 2>&1
+      at: 2026-10-04T19:14:00.915915Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git status -sb | head -5 && git log --oneline -3 && git fetch -q && git status -sb | head -1; cat docs/INCREMENTAL_INDEXING.md | head -80
+      at: 2026-10-04T20:36:31.445317Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q -b perf/edit-reindex && grep -n "RawText" internal/graph/*.go | grep -v _test.go | grep -v "^internal/graph/incremental.go:2[5-9][0-9]" '
+      at: 2026-10-04T20:36:37.915082Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && grep -rn '"<top-level>"\|<top-level>' --include='*.go' grove/internal astkit 2>/dev/null | grep -v _test.go | head -30
+      at: 2026-10-04T20:36:45.087821Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign && sed -n 300,330p grove/internal/parser/treesitter.go; sed -n 1795,1815p astkit/strategies/extractors.go; sed -n 3940,3960p astkit/strategies/extractors.go; sed -n 15,35p grove/internal/graph/pyimports.go
+      at: 2026-10-04T20:36:48.411122Z
+      classified: other
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; cat > $B/mcp_edits.py <<'EOF'
+        import json,subprocess,threading,queue,time,sys,os,re
+        bin_,root,rel,name=sys.argv[1:5]; edits=json.loads(sys.argv[5])  # list of [label, old, new]
+        p=subprocess.Popen([bin_,'mcp','--compact',root],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=open(os.environ.get('ERRLOG','/dev/null'),'w'),text=True,bufsize=1)
+        q=queue.Queue(); threading.Thread(target=lambda:[q.put(l) for l in p.stdout],daemon=True).start(); n=[0]
+        def call(m,params):
+            n[0]+=1; p.stdin.write(json.dumps({"jsonrpc":"2.0","id":n[0],"method":m,"params":params})+"\n")
+            while True:
+                d=json.loads(q.get(timeout=900))
+                if d.get('id')==n[0]: return d
+        call('initialize',{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"b","version":"1"}})
+        p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n")
+        def look(tag):
+            t=time.time(); call('tools/call',{"name":"prism","arguments":{"op":"lookup","args":{"name":[name]}}}); print(f"{tag:34} {time.time()-t:6.2f}s",flush=True)
+        look('warm-up'); look('no edit')
+        path=os.path.join(root,rel); orig=open(path).read()
+        for label,old,new in edits:
+            assert old in orig,(label,old)
+            open(path,'w').write(orig.replace(old,new,1)); time.sleep(0.2); look(label)
+            open(path,'w').write(orig); time.sleep(0.2); look('  revert')
+        p.kill()
+        EOF
+        grep -n "def capfirst" -A6 $B/repos/django/django/utils/text.py
+      at: 2026-10-04T20:37:09.441678Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; ERRLOG=$B/mcp-django2.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/django django/utils/text.py capfirst '[["body edit, same line count","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["body edit, adds a line","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"],["new call in body","        x = str(x)\n","        x = str(x).strip()\n"]]'; grep -E 'delta-(scope|fallback)' $B/mcp-django2.err
+      at: 2026-10-04T20:38:03.584538Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "fingerprint-stored\|fingerprint-memory" --include=''*.go'' . | grep -v _test; '
+      at: 2026-10-04T20:38:33.693962Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 75,165p internal/index/indexer.go; grep -n "func.*EdgeFingerprint\|func edgeFingerprint\|func.*Fingerprint" -r internal --include='*.go' | grep -v _test
+      at: 2026-10-04T20:38:37.164531Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 890,985p internal/store/store.go
+      at: 2026-10-04T20:38:40.137884Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && n=$(grep -n "func (s \*Store) SpliceEdges" internal/store/store.go | cut -d: -f1); sed -n "$n,$((n+80))p" internal/store/store.go'
+      at: 2026-10-04T20:39:15.801027Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; awk '/^\[timing\] walk/{run++} run==4 && /^\[timing\] [a-z]/{gsub("s$","",$NF); s+=$NF; print} END{print "SUM top-level phases:", s}' $B/mcp-guava.err
+      at: 2026-10-04T20:39:49.213779Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; awk '/^\[timing\] walk/{run++} run==4' $B/mcp-guava.err | sed -n '/load-all-symbols/,$p' | head -45
+      at: 2026-10-04T20:39:53.930416Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -n "spliceEdgeWrite(" internal/index/indexer.go; n=$(grep -n "spliceEdgeWrite(ctx" internal/index/indexer.go | tail -1 | cut -d: -f1); sed -n "$((n-25)),$((n+25))p" internal/index/indexer.go; grep -n "type Indexer struct" -A12 internal/index/indexer.go; sed -n 225,245p pkg/grove/grove.go; grep -n "indexMu" pkg/grove/*.go | head'
+      at: 2026-10-04T20:40:02.811113Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "edge splice" --include='*_test.go' . | head; grep -rn "spliceEdgeWrite\|SpliceEdges" --include='*_test.go' . | head
+      at: 2026-10-04T20:40:07.282245Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func (e \*Engine) Close" -A15 pkg/grove/grove.go; sed -n 100,125p pkg/grove/grove.go; grep -n "SkipNoopGraph bool" internal/index/indexer.go
+      at: 2026-10-04T20:40:17.317794Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/index/indexer.go'; s=open(p).read()
+        old='''type Indexer struct {
+        	parser       *parser.Engine
+        	store        *store.Store
+        	nativeConfig native.Config
+        }'''
+        new='''type Indexer struct {
+        	parser       *parser.Engine
+        	store        *store.Store
+        	nativeConfig native.Config
+
+        	// pendingSpliceCheck is the store fingerprint check of the last splice
+        	// write when Options.DeferSpliceCheck was set; see TakeSpliceCheck.
+        	pendingSpliceCheck SpliceCheck
+        }
+
+        // SpliceCheck verifies a splice write against the in-memory edge set and
+        // heals the store through the full diff on a mismatch. It returns a note
+        // when it healed, "" otherwise.
+        type SpliceCheck func(ctx context.Context) (string, error)
+
+        // TakeSpliceCheck returns and clears the check deferred by the last index
+        // run, or nil. The caller must run it before the next index run touches the
+        // store: it compares the store with that run's edge set.
+        func (i *Indexer) TakeSpliceCheck() SpliceCheck {
+        	c := i.pendingSpliceCheck
+        	i.pendingSpliceCheck = nil
+        	return c
+        }'''
+        assert old in s; s=s.replace(old,new)
+        old='''	SkipNoopGraph bool
+        '''
+        new='''	SkipNoopGraph bool
+
+        	// DeferSpliceCheck hands the post-splice store fingerprint check (a full
+        	// read of the edges table, ~1s on a 776k-edge index) to the caller via
+        	// TakeSpliceCheck instead of running it before Index returns. The
+        	// in-memory graph is final either way; the check only guards the store
+        	// against a write-set enumeration bug. Resident engines run it after
+        	// answering and before their next index run.
+        	DeferSpliceCheck bool
+        '''
+        assert old in s; s=s.replace(old,new,1)
+        old='''	tick := phaseTimer()
+        	if err := i.store.SpliceEdges(ctx, owners, nativeFiles, inserts); err != nil {
+        		return err
+        	}
+        	tick(fmt.Sprintf("  splice/write (%d owners, %d native files, %d inserts)", len(owners), len(nativeFiles), len(inserts)))
+        	stored, err := i.store.EdgeFingerprint(ctx)
+        	if err != nil {
+        		return err
+        	}
+        	tick("  splice/fingerprint-stored")
+        	memory := store.FingerprintEdges(edges)
+        	tick("  splice/fingerprint-memory")
+        	if stored != memory {
+        		// Write-set miss: self-heal with the full diff and record it —
+        		// a persistent mismatch is a bug in the splice enumeration.
+        		result.Native = append(result.Native,
+        			fmt.Sprintf("edge splice mismatch (stored %d/%x != memory %d/%x): healed via full diff",
+        				stored.Count, stored.Digest[:6], memory.Count, memory.Digest[:6]))
+        		return i.store.ReplaceEdges(ctx, edges)
+        	}
+        	result.Native = append(result.Native,
+        		fmt.Sprintf("edge splice: %d owners, %d native files, %d upserts", len(owners), len(nativeFiles), len(inserts)))
+        	return nil
+        }'''
+        new='''	tick := phaseTimer()
+        	if err := i.store.SpliceEdges(ctx, owners, nativeFiles, inserts); err != nil {
+        		return err
+        	}
+        	tick(fmt.Sprintf("  splice/write (%d owners, %d native files, %d inserts)", len(owners), len(nativeFiles), len(inserts)))
+        	check := func(ctx context.Context) (string, error) {
+        		tick := phaseTimer()
+        		stored, err := i.store.EdgeFingerprint(ctx)
+        		if err != nil {
+        			return "", err
+        		}
+        		tick("  splice/fingerprint-stored")
+        		memory := store.FingerprintEdges(edges)
+        		tick("  splice/fingerprint-memory")
+        		if stored != memory {
+        			// Write-set miss: self-heal with the full diff and record it —
+        			// a persistent mismatch is a bug in the splice enumeration.
+        			note := fmt.Sprintf("edge splice mismatch (stored %d/%x != memory %d/%x): healed via full diff",
+        				stored.Count, stored.Digest[:6], memory.Count, memory.Digest[:6])
+        			return note, i.store.ReplaceEdges(ctx, edges)
+        		}
+        		return "", nil
+        	}
+        	summary := fmt.Sprintf("edge splice: %d owners, %d native files, %d upserts", len(owners), len(nativeFiles), len(inserts))
+        	if deferCheck {
+        		i.pendingSpliceCheck = check
+        		result.Native = append(result.Native, summary+" (store check deferred)")
+        		return nil
+        	}
+        	note, err := check(ctx)
+        	if err != nil {
+        		return err
+        	}
+        	if note != "" {
+        		result.Native = append(result.Native, note)
+        		return nil
+        	}
+        	result.Native = append(result.Native, summary)
+        	return nil
+        }'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('func (i *Indexer) spliceEdgeWrite(ctx context.Context, symbols []core.SymbolRecord, edges []core.Edge, meta *graph.DeltaMeta, result *core.IndexResult) error {',
+         'func (i *Indexer) spliceEdgeWrite(ctx context.Context, symbols []core.SymbolRecord, edges []core.Edge, meta *graph.DeltaMeta, result *core.IndexResult, deferCheck bool) error {')
+        old='i.spliceEdgeWrite(ctx, symbols, edges, deltaMeta, &result)'
+        assert old in s; s=s.replace(old,'i.spliceEdgeWrite(ctx, symbols, edges, deltaMeta, &result, opts.DeferSpliceCheck)')
+        open(p,'w').write(s)
+
+        p='pkg/grove/grove.go'; s=open(p).read()
+        old='''	indexMu sync.Mutex
+        '''
+        new='''	indexMu sync.Mutex
+        	// pendingCheck is the deferred store check of the last splice write,
+        	// guarded by indexMu. It runs in the background after Index returns and
+        	// always before the next Index or Close touches the store.
+        	pendingCheck index.SpliceCheck
+        	// spliceNote reports a healed deferred check on the next Index result.
+        	spliceNote string
+        '''
+        assert old in s; s=s.replace(old,new,1)
+        old='''func (e *Engine) Close() error {
+        	if e.store == nil {
+        		return nil
+        	}
+        	return e.store.Close()
+        }'''
+        new='''func (e *Engine) Close() error {
+        	if e.store == nil {
+        		return nil
+        	}
+        	e.indexMu.Lock()
+        	e.runPendingCheck(context.Background())
+        	e.indexMu.Unlock()
+        	return e.store.Close()
+        }
+
+        // runPendingCheck runs the deferred splice check, if any. Callers hold
+        // indexMu. A failed check leaves the note for the next Index result; the
+        // in-memory graph is unaffected either way.
+        func (e *Engine) runPendingCheck(ctx context.Context) {
+        	check := e.pendingCheck
+        	if check == nil {
+        		return
+        	}
+        	e.pendingCheck = nil
+        	note, err := check(ctx)
+        	if err != nil {
+        		note = "deferred edge splice check failed: " + err.Error()
+        	}
+        	if note != "" {
+        		e.spliceNote = note
+        	}
+        }'''
+        assert old in s; s=s.replace(old,new)
+        old='''	e.indexMu.Lock()
+        	defer e.indexMu.Unlock()
+        	// SkipNoopGraph'''
+        new='''	e.indexMu.Lock()
+        	defer e.indexMu.Unlock()
+        	e.runPendingCheck(ctx)
+        	// SkipNoopGraph'''
+        assert old in s; s=s.replace(old,new)
+        old='''	opts := index.Options{SkipNoopGraph: true, Force: e.force, Vacuum: e.cfg.VacuumAfterIndex}'''
+        new='''	opts := index.Options{SkipNoopGraph: true, Force: e.force, Vacuum: e.cfg.VacuumAfterIndex, DeferSpliceCheck: true}'''
+        assert old in s; s=s.replace(old,new)
+        old='''	cg, result, err := e.idx.IndexWithOptions(ctx, dir, opts)
+        	if err != nil {
+        		return result, err
+        	}'''
+        new='''	cg, result, err := e.idx.IndexWithOptions(ctx, dir, opts)
+        	if e.spliceNote != "" {
+        		result.Native = append(result.Native, "previous run: "+e.spliceNote)
+        		e.spliceNote = ""
+        	}
+        	if check := e.idx.TakeSpliceCheck(); check != nil {
+        		e.pendingCheck = check
+        		go func() {
+        			e.indexMu.Lock()
+        			defer e.indexMu.Unlock()
+        			e.runPendingCheck(context.Background())
+        		}()
+        	}
+        	if err != nil {
+        		return result, err
+        	}'''
+        assert old in s; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/index pkg/grove; go build ./... && go vet ./internal/index ./pkg/grove && echo ok
+      at: 2026-10-04T20:40:44.290476Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && time go test ./... 2>&1 | grep -v '^ok\|no test files' | tail -30; echo done
+      at: 2026-10-04T20:40:55.052044Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test -count=1 ./pkg/grove/ ./internal/index/ ./internal/graph/ ./internal/store/ 2>&1 | tail -6; go test -count=1 ./pkg/grove/ -run 'Incremental' -v 2>&1 | grep -E '^(--- |ok|FAIL)' | head -20
+      at: 2026-10-04T20:41:04.766101Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func TestIncrementalIndexMatchesFullRebuild" -A45 pkg/grove/incremental_test.go | head -70
+      at: 2026-10-04T20:41:11.855925Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat > pkg/grove/splicecheck_test.go <<'EOF'
+        package grove
+
+        import (
+        	"context"
+        	"os"
+        	"path/filepath"
+        	"strings"
+        	"testing"
+        )
+
+        // The post-splice store check is deferred off Index's critical path in a
+        // resident engine. It must still run before the next Index touches the store,
+        // heal a store that diverged from the in-memory graph, and say so.
+        func TestDeferredSpliceCheckHealsBeforeNextIndex(t *testing.T) {
+        	ctx := context.Background()
+        	root := t.TempDir()
+        	writeIncrRepo(t, root)
+        	eng, err := Open(ctx, Config{RepoRoot: root})
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer eng.Close()
+        	if _, err := eng.Index(ctx, ""); err != nil {
+        		t.Fatal(err)
+        	}
+        	edit := func(body string) IndexResult {
+        		t.Helper()
+        		if err := os.WriteFile(filepath.Join(root, "app", "app.go"), []byte(body), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        		res, err := eng.Index(ctx, "")
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        		return res
+        	}
+        	res := edit("package app\n\nimport \"example.com/incr/core\"\n\nfunc Run() int { return core.Resolve() }\n\nfunc RunTwice() int { return core.Resolve() + core.Resolve() }\n")
+        	if !strings.Contains(strings.Join(res.Native, "\n"), "(store check deferred)") {
+        		t.Skipf("edit did not take the splice path: %v", res.Native)
+        	}
+
+        	// Corrupt the store the way a write-set enumeration bug would, while the
+        	// check is still pending (hold indexMu so the background run waits).
+        	eng.indexMu.Lock()
+        	if eng.pendingCheck == nil {
+        		eng.indexMu.Unlock()
+        		t.Fatal("splice check was not deferred")
+        	}
+        	if _, err := eng.store.DB().ExecContext(ctx, `DELETE FROM edges WHERE rowid IN (SELECT rowid FROM edges LIMIT 1)`); err != nil {
+        		eng.indexMu.Unlock()
+        		t.Fatal(err)
+        	}
+        	eng.indexMu.Unlock()
+
+        	res = edit("package app\n\nimport \"example.com/incr/core\"\n\nfunc Run() int { return core.Resolve() }\n\nfunc RunTwice() int { return core.Resolve() * 2 }\n")
+        	if !strings.Contains(strings.Join(res.Native, "\n"), "previous run: edge splice mismatch") {
+        		t.Fatalf("diverged store was not healed and reported before the next index: %v", res.Native)
+        	}
+        	eng.indexMu.Lock()
+        	eng.runPendingCheck(ctx)
+        	note := eng.spliceNote
+        	eng.indexMu.Unlock()
+        	if note != "" {
+        		t.Fatalf("store still diverged after heal: %s", note)
+        	}
+        }
+        EOF
+        grep -n "func (s \*Store) DB()" internal/store/*.go || echo "no DB accessor"
+      at: 2026-10-04T20:41:22.569917Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n 'sql.Open(' internal/store/store.go; grep -n '_ "' internal/store/store.go; grep -rn "grove.db" internal/store/*.go pkg/grove/grove.go | grep -v _test | head -3
+      at: 2026-10-04T20:41:27.153106Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='pkg/grove/splicecheck_test.go'; s=open(p).read()
+        s=s.replace('import (\n\t"context"\n','import (\n\t"context"\n\t"database/sql"\n',1)
+        s=s.replace('\t"testing"\n)','\t"testing"\n\n\t_ "modernc.org/sqlite"\n)',1)
+        old='''	if _, err := eng.store.DB().ExecContext(ctx, `DELETE FROM edges WHERE rowid IN (SELECT rowid FROM edges LIMIT 1)`); err != nil {
+        		eng.indexMu.Unlock()
+        		t.Fatal(err)
+        	}'''
+        new='''	db, err := sql.Open("sqlite", filepath.Join(root, ".grove", "grove.db"))
+        	if err == nil {
+        		_, err = db.ExecContext(ctx, `DELETE FROM edges WHERE rowid IN (SELECT rowid FROM edges LIMIT 1)`)
+        		db.Close()
+        	}
+        	if err != nil {
+        		eng.indexMu.Unlock()
+        		t.Fatal(err)
+        	}'''
+        assert old in s; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        go test -count=1 ./pkg/grove/ -run 'DeferredSplice' -v 2>&1 | grep -E '^(--- |ok|FAIL|\s+splice)|SKIP|diverged|deferred' | head
+      at: 2026-10-04T20:41:34.373448Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func writeIncrRepo" -A25 pkg/grove/incremental_test.go | head -30
+      at: 2026-10-04T20:41:40.046946Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='pkg/grove/splicecheck_test.go'; s=open(p).read()
+        old='''	writeIncrRepo(t, root)
+        '''
+        new='''	writeIncrRepo(t, root)
+        	// Unrelated packages keep a one-file edit under the delta path's
+        	// affected-fraction limit, so the run takes the splice write.
+        	for i := 0; i < 40; i++ {
+        		dir := filepath.Join(root, "filler", "p"+strconv.Itoa(i))
+        		if err := os.MkdirAll(dir, 0o755); err != nil {
+        			t.Fatal(err)
+        		}
+        		src := "package p" + strconv.Itoa(i) + "\\n\\nfunc A() int { return B() }\\n\\nfunc B() int { return 1 }\\n"
+        		if err := os.WriteFile(filepath.Join(dir, "p.go"), []byte(src), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        '''
+        assert old in s; s=s.replace(old,new,1)
+        s=s.replace('\t"path/filepath"\n','\t"path/filepath"\n\t"strconv"\n',1)
+        s=s.replace('t.Skipf("edit did not take the splice path: %v", res.Native)','t.Fatalf("edit did not take the splice path: %v", res.Native)')
+        open(p,'w').write(s)
+        EOF
+        go test -count=1 ./pkg/grove/ -run 'DeferredSplice' -v 2>&1 | grep -E '^(--- |ok|FAIL)|splice|diverged' | cut -c1-400 | head
+      at: 2026-10-04T20:41:48.234112Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test -race -count=1 ./pkg/grove/ 2>&1 | tail -3; cat ../go.work; cd ../prism && go env GOWORK
+      at: 2026-10-04T20:42:07.009045Z
+      classified: test
+    - cmd: go build -o ~/prism-ab-bins/prism-perf1 ./cmd/prism && B=~/prism-ab-bins/idxbench && ERRLOG=$B/p1-guava.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-perf1 $B/repos/guava guava/src/com/google/common/base/Strings.java Strings.repeat '[["body edit","return string.isEmpty()","return string == null || string.isEmpty()"]]' ; grep -n "return string.isEmpty()" $B/repos/guava/guava/src/com/google/common/base/Strings.java | head -2
+      at: 2026-10-04T20:42:20.304656Z
+      classified: build
+    - cmd: B=~/prism-ab-bins/idxbench; grep -n "public static String repeat" -A12 $B/repos/guava/guava/src/com/google/common/base/Strings.java | head -16
+      at: 2026-10-04T20:42:23.07308Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; GE=''[["guava body edit","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava adds a line","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"]]''; DE=''[["django body edit","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django adds a line","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"]]''; for b in v0858-candidate perf1; do echo "##### $b"; ERRLOG=$B/$b-guava.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-$b $B/repos/guava guava/src/com/google/common/base/Strings.java Strings.repeat "$GE"; ERRLOG=$B/$b-django.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-$b $B/repos/django django/utils/text.py capfirst "$DE"; done'
+      at: 2026-10-04T20:44:26.950577Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; sed -i '''' ''s/print(f"{tag:34} {time.time()-t:6.2f}s",flush=True)/print(f"{tag:34} {time.time()-t:6.2f}s",flush=True); time.sleep(float(os.environ.get("THINK","0")))/'' $B/mcp_edits.py; grep -c THINK $B/mcp_edits.py; GE=''[["guava body edit","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava adds a line","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"]]''; DE=''[["django body edit","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django adds a line","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"]]''; for b in v0858-candidate perf1; do echo "##### $b"; THINK=3 ERRLOG=$B/$b-guava.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-$b $B/repos/guava guava/src/com/google/common/base/Strings.java Strings.repeat "$GE"; THINK=3 ERRLOG=$B/$b-django.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-$b $B/repos/django django/utils/text.py capfirst "$DE"; done'
+      at: 2026-10-04T20:47:40.910703Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func (s \*Store) AllSymbols" -A30 internal/store/store.go | grep -n "ORDER\|SELECT" ; grep -n "tick(\"persist-changed\")\|tick(\"parse-changed\")\|tick(\"load-all-symbols\")\|replacedSymbols\|recoverMissingEdges :=\|incomingNative" internal/index/indexer.go | head -20
+      at: 2026-10-04T20:47:48.30165Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 440,600p internal/index/indexer.go
+      at: 2026-10-04T20:47:50.851456Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "^func (s \*Store) \(Symbols\|AllSymbols\|SymbolsFor\|FileMeta\|scanSymbol\)" internal/store/store.go; grep -n "fileMeta, err :=\|fileMeta :=" internal/index/indexer.go; grep -n "type FileMeta\|type fileMetaRow" -A6 internal/store/*.go | head -10; grep -n "func (s \*Store) AllSymbols" -A45 internal/store/store.go | sed -n 1,50p
+      at: 2026-10-04T20:48:04.685014Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 735,750p internal/store/store.go && sed -n 290,300p internal/index/indexer.go
+      at: 2026-10-04T20:48:10.510164Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/store/store.go'; s=open(p).read()
+        old='''	nSymbols := s.countRows(ctx, `SELECT COUNT(*) FROM symbols`)
+        	rows, err := s.db.QueryContext(ctx, `
+        		SELECT id, file_path, blob_sha, language, kind, name, qualified_name,
+        		       signature, docstring, span_start, span_end, imports, exports,
+        		       raw_text, COALESCE(parent_symbol, ''), token_estimate,
+        		       modifiers, type_parameters, annotations, call_sites,
+        		       COALESCE(attr_sites, '[]')
+        		FROM symbols
+        		ORDER BY file_path, span_start, id
+        	`)
+        	if err != nil {
+        		return nil, err
+        	}
+        	defer rows.Close()
+
+        	symbols := make([]core.SymbolRecord, 0, nSymbols)
+        '''
+        new='''	nSymbols := s.countRows(ctx, `SELECT COUNT(*) FROM symbols`)
+        	return s.querySymbols(ctx, nSymbols, `ORDER BY file_path, span_start, id`)
+        }
+
+        // SymbolCount returns COUNT(*) of the symbols table.
+        func (s *Store) SymbolCount(ctx context.Context) int {
+        	return s.countRows(ctx, `SELECT COUNT(*) FROM symbols`)
+        }
+
+        // SymbolsForFiles returns the stored symbols of the given files in
+        // AllSymbols order (file_path, span_start, id).
+        func (s *Store) SymbolsForFiles(ctx context.Context, files []string) ([]core.SymbolRecord, error) {
+        	if len(files) == 0 {
+        		return nil, nil
+        	}
+        	var out []core.SymbolRecord
+        	const chunk = 500
+        	for start := 0; start < len(files); start += chunk {
+        		end := min(start+chunk, len(files))
+        		part := files[start:end]
+        		args := make([]any, len(part))
+        		for i, f := range part {
+        			args[i] = f
+        		}
+        		ph := strings.TrimSuffix(strings.Repeat("?,", len(part)), ",")
+        		syms, err := s.querySymbols(ctx, 0, `WHERE file_path IN (`+ph+`) ORDER BY file_path, span_start, id`, args...)
+        		if err != nil {
+        			return nil, err
+        		}
+        		out = append(out, syms...)
+        	}
+        	sort.SliceStable(out, func(i, j int) bool { return symbolStoreLess(&out[i], &out[j]) })
+        	return out, nil
+        }
+
+        // symbolStoreLess is the AllSymbols ORDER BY (file_path, span_start, id).
+        func symbolStoreLess(a, b *core.SymbolRecord) bool {
+        	if a.FilePath != b.FilePath {
+        		return a.FilePath < b.FilePath
+        	}
+        	if a.Span.Start != b.Span.Start {
+        		return a.Span.Start < b.Span.Start
+        	}
+        	return a.ID < b.ID
+        }
+
+        // SymbolStoreLess exposes the stored symbol order for callers that merge
+        // symbol slices and must match AllSymbols exactly.
+        func SymbolStoreLess(a, b *core.SymbolRecord) bool { return symbolStoreLess(a, b) }
+
+        func (s *Store) querySymbols(ctx context.Context, capHint int, tail string, args ...any) ([]core.SymbolRecord, error) {
+        	rows, err := s.db.QueryContext(ctx, `
+        		SELECT id, file_path, blob_sha, language, kind, name, qualified_name,
+        		       signature, docstring, span_start, span_end, imports, exports,
+        		       raw_text, COALESCE(parent_symbol, ''), token_estimate,
+        		       modifiers, type_parameters, annotations, call_sites,
+        		       COALESCE(attr_sites, '[]')
+        		FROM symbols
+        		`+tail, args...)
+        	if err != nil {
+        		return nil, err
+        	}
+        	defer rows.Close()
+
+        	symbols := make([]core.SymbolRecord, 0, capHint)
+        '''
+        assert old in s; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n '^\s*"sort"\|^\s*"strings"' internal/store/store.go | head; go build ./internal/store && echo ok
+      at: 2026-10-04T20:48:23.555409Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "func (g \*CodeGraph) BaselineRef" -A20 internal/graph/*.go; grep -n "baseSymbols\b\|g.baseSymbols =" internal/graph/*.go | grep -v _test | head
+      at: 2026-10-04T20:48:32.338792Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "g.symbols\[.*\] = \|g.symbols = " internal/graph/*.go | grep -v _test; grep -n "func lessSymbols" -A12 internal/graph/*.go
+      at: 2026-10-04T20:48:36.734075Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 110,126p internal/graph/graph.go
+      at: 2026-10-04T20:48:49.658523Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/index/indexer.go'; s=open(p).read()
+        old='''	symbols, err := i.store.AllSymbols(ctx)
+        	if err != nil {
+        		return nil, result, err
+        	}
+        	tick("load-all-symbols")
+        '''
+        new='''	var symbols []core.SymbolRecord
+        	if !forceExtract && !recoverMissingEdges && result.FilesUpdated < result.FilesSeen {
+        		reload := make([]string, 0, len(tasks)+len(prunedFiles))
+        		for _, task := range tasks {
+        			reload = append(reload, task.relPath)
+        		}
+        		reload = append(reload, prunedFiles...)
+        		symbols, err = i.residentSymbols(ctx, opts.PrevSymbols, fileMeta, reload)
+        		if err != nil {
+        			return nil, result, err
+        		}
+        	}
+        	if symbols == nil {
+        		symbols, err = i.store.AllSymbols(ctx)
+        		if err != nil {
+        			return nil, result, err
+        		}
+        	}
+        	tick("load-all-symbols")
+        '''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('''// incrementalEnabled gates incremental''','''// residentSymbols rebuilds the post-persist symbol set from the caller's
+        // resident baseline instead of reading every row: symbols of unchanged files
+        // come from prev, those of reloaded (changed, failed or pruned) files from
+        // the store. It returns nil — the caller then loads everything — unless the
+        // baseline provably matches the store: every reused symbol's blob SHA equals
+        // its file's stored SHA, and the merged count equals the table's. The result
+        // is in AllSymbols order.
+        func (i *Indexer) residentSymbols(ctx context.Context, prev []core.SymbolRecord, fileMeta map[string]store.FileMeta, reload []string) ([]core.SymbolRecord, error) {
+        	if len(prev) == 0 || !incrementalEnabled() {
+        		return nil, nil
+        	}
+        	reloaded := make(map[string]bool, len(reload))
+        	for _, f := range reload {
+        		reloaded[f] = true
+        	}
+        	fresh, err := i.store.SymbolsForFiles(ctx, reload)
+        	if err != nil {
+        		return nil, err
+        	}
+        	symbols := make([]core.SymbolRecord, 0, len(prev)+len(fresh))
+        	for idx := range prev {
+        		s := &prev[idx]
+        		if reloaded[s.FilePath] {
+        			continue
+        		}
+        		if meta, ok := fileMeta[s.FilePath]; !ok || meta.BlobSHA != s.BlobSHA {
+        			return nil, nil // baseline is not this store's state
+        		}
+        		symbols = append(symbols, *s)
+        	}
+        	symbols = append(symbols, fresh...)
+        	if len(symbols) != i.store.SymbolCount(ctx) {
+        		return nil, nil
+        	}
+        	sort.Slice(symbols, func(a, b int) bool { return store.SymbolStoreLess(&symbols[a], &symbols[b]) })
+        	return symbols, nil
+        }
+
+        // incrementalEnabled gates incremental''')
+        open(p,'w').write(s)
+        EOF
+        go build ./... && go vet ./internal/index && echo ok
+      at: 2026-10-04T20:48:51.565915Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat > internal/index/residentsymbols_test.go <<'EOF'
+        package index
+
+        import (
+        	"context"
+        	"os"
+        	"path/filepath"
+        	"reflect"
+        	"strconv"
+        	"testing"
+
+        	"github.com/provasign/grove/internal/core"
+        	"github.com/provasign/grove/internal/parser"
+        	"github.com/provasign/grove/internal/store"
+        )
+
+        // Reusing resident symbols for unchanged files must yield exactly what a
+        // full AllSymbols load returns, across edits, additions and deletions; a
+        // baseline that does not match the store must fall back (nil).
+        func TestResidentSymbolsMatchFullLoad(t *testing.T) {
+        	ctx := context.Background()
+        	root := t.TempDir()
+        	write := func(rel, body string) {
+        		t.Helper()
+        		p := filepath.Join(root, rel)
+        		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+        			t.Fatal(err)
+        		}
+        		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	write("go.mod", "module example.com/r\n\ngo 1.22\n")
+        	for i := 0; i < 12; i++ {
+        		write("p"+strconv.Itoa(i)+"/p.go", "package p"+strconv.Itoa(i)+"\n\nfunc A() int { return B() }\n\nfunc B() int { return "+strconv.Itoa(i)+" }\n")
+        	}
+        	st, err := store.Open(root)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer st.Close()
+        	idx := New(parser.New(), st)
+        	if _, _, err := idx.IndexWithOptions(ctx, root, Options{}); err != nil {
+        		t.Fatal(err)
+        	}
+        	baseline, err := st.AllSymbols(ctx)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	steps := []func(){
+        		func() { write("p3/p.go", "package p3\n\nfunc A() int { return B() + 1 }\n\nfunc B() int { return 3 }\n\nfunc C() {}\n") },
+        		func() { write("p20/new.go", "package p20\n\nfunc N() {}\n") },
+        		func() { _ = os.RemoveAll(filepath.Join(root, "p5")) },
+        	}
+        	for n, step := range steps {
+        		step()
+        		_, res, err := idx.IndexWithOptions(ctx, root, Options{PrevSymbols: baseline, PrevEdges: []core.Edge{}})
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        		full, err := st.AllSymbols(ctx)
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        		fileMeta, err := st.AllFileMeta(ctx)
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        		var reload []string
+        		for _, f := range []string{"p3/p.go", "p20/new.go", "p5/p.go"} {
+        			reload = append(reload, f)
+        		}
+        		got, err := idx.residentSymbols(ctx, baseline, fileMeta, reload)
+        		if err != nil {
+        			t.Fatal(err)
+        		}
+        		if !reflect.DeepEqual(got, full) {
+        			t.Fatalf("step %d: resident symbols differ from a full load (%d vs %d); %v", n, len(got), len(full), res.Native)
+        		}
+        		baseline = full
+        	}
+
+        	// A stale baseline (another process re-indexed p1) must not be reused.
+        	stale := append([]core.SymbolRecord(nil), baseline...)
+        	for i := range stale {
+        		if stale[i].FilePath == "p1/p.go" {
+        			stale[i].BlobSHA = "stale"
+        		}
+        	}
+        	fileMeta, _ := st.AllFileMeta(ctx)
+        	if got, _ := idx.residentSymbols(ctx, stale, fileMeta, nil); got != nil {
+        		t.Fatal("stale baseline was reused instead of falling back to a full load")
+        	}
+        	// A baseline missing a file's symbols fails the count check.
+        	if got, _ := idx.residentSymbols(ctx, baseline[1:], fileMeta, nil); got != nil {
+        		t.Fatal("incomplete baseline was reused instead of falling back to a full load")
+        	}
+        }
+        EOF
+        grep -n "^func New(" internal/parser/*.go | head -2; go test -count=1 ./internal/index/ -run ResidentSymbols -v 2>&1 | grep -E '^(--- |ok|FAIL)|differ|reused|undefined|cannot' | head
+      at: 2026-10-04T20:49:08.937085Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "index.New(\|New(parser\.\|parser.NewEngine\|:= New(" internal/index/*_test.go | head -3
+      at: 2026-10-04T20:49:12.716054Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -i '' 's/idx := New(parser.New(), st)/idx := New(parser.NewEngine(), st)/' internal/index/residentsymbols_test.go && go test -count=1 ./internal/index/ -run ResidentSymbols -v 2>&1 | grep -E '^(--- |ok|FAIL)|differ|reused|undefined|cannot' | head
+      at: 2026-10-04T20:49:17.680913Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test -count=1 ./... 2>&1 | grep -v '^ok\|no test files' | tail -20; go test -race -count=1 ./pkg/grove/ ./internal/index/ 2>&1 | tail -2; cd ../prism && go build -o ~/prism-ab-bins/prism-perf2 ./cmd/prism && echo built
+      at: 2026-10-04T20:49:35.022302Z
+      classified: test
+    - cmd: 'B=~/prism-ab-bins/idxbench; GE=''[["guava body edit","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava adds a line","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"]]''; DE=''[["django body edit","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django adds a line","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"]]''; b=perf2; THINK=3 ERRLOG=$B/$b-guava.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-$b $B/repos/guava guava/src/com/google/common/base/Strings.java Strings.repeat "$GE"; THINK=3 ERRLOG=$B/$b-django.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-$b $B/repos/django django/utils/text.py capfirst "$DE"; grep -E ''load-all-symbols'' $B/$b-guava.err | tail -2; grep -E ''load-all-symbols'' $B/$b-django.err | tail -2'
+      at: 2026-10-04T20:51:00.961483Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; for r in guava django; do echo "== $r"; awk '/^\[timing\] walk/{run++} run==4' $B/perf2-$r.err | grep -vE ' 0\.0[0-4]s$'; done
+      at: 2026-10-04T20:51:05.845673Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -n ''tick("native-analyzers")'' internal/index/indexer.go; n=$(grep -n ''tick("native-analyzers")'' internal/index/indexer.go | cut -d: -f1); sed -n "$n,$((n+20))p" internal/index/indexer.go'
+      at: 2026-10-04T20:51:14.598535Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && n=$(grep -n "^func (s \*Store) UpsertFile" internal/store/store.go | cut -d: -f1); sed -n "$n,$((n+45))p" internal/store/store.go | grep -n -i "delete\|edges" ; grep -n "func (s \*Store) DeleteFilesNotIn" -A30 internal/store/store.go | grep -i "delete\|edges"; grep -n "sqlDeleteNativeFromFile\b\|sqlDeleteNativeFromFileID\b\|sqlDeleteEdgesForFile\|const sqlDelete" -A3 internal/store/*.go | grep -v _test | head -30'
+      at: 2026-10-04T20:51:22.98128Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "^func deleteFileEdges" -A30 internal/store/store.go
+      at: 2026-10-04T20:51:26.405302Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/index/indexer.go'; s=open(p).read()
+        old='''		stored, err := i.store.EdgesBySource(ctx, string(core.EvidenceSourceNative))
+        		if err != nil {
+        			return nil, result, err
+        		}
+        '''
+        new='''		stored := i.residentNativeEdges(ctx, opts.PrevEdges, reloadedFiles)
+        		if stored == nil {
+        			stored, err = i.store.EdgesBySource(ctx, string(core.EvidenceSourceNative))
+        			if err != nil {
+        				return nil, result, err
+        			}
+        		}
+        		tick("  carry/load-native")
+        '''
+        assert old in s; s=s.replace(old,new)
+        old='''	var symbols []core.SymbolRecord
+        	if !forceExtract && !recoverMissingEdges && result.FilesUpdated < result.FilesSeen {
+        		reload := make([]string, 0, len(tasks)+len(prunedFiles))
+        		for _, task := range tasks {
+        			reload = append(reload, task.relPath)
+        		}
+        		reload = append(reload, prunedFiles...)
+        		symbols, err = i.residentSymbols(ctx, opts.PrevSymbols, fileMeta, reload)'''
+        new='''	var symbols []core.SymbolRecord
+        	// Files whose stored symbols and edges this run replaced or removed.
+        	var reloadedFiles map[string]bool
+        	if !forceExtract && !recoverMissingEdges && result.FilesUpdated < result.FilesSeen {
+        		reload := make([]string, 0, len(tasks)+len(prunedFiles))
+        		for _, task := range tasks {
+        			reload = append(reload, task.relPath)
+        		}
+        		reload = append(reload, prunedFiles...)
+        		reloadedFiles = make(map[string]bool, len(reload))
+        		for _, f := range reload {
+        			reloadedFiles[f] = true
+        		}
+        		symbols, err = i.residentSymbols(ctx, opts.PrevSymbols, fileMeta, reload)'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('''// incrementalEnabled gates incremental''','''// residentNativeEdges returns the stored compiler (Source==native) edges as
+        // they are after this run's persist phase, derived from the caller's
+        // resident baseline instead of reading them back: the previous native edges
+        // minus the rows deleteFileEdges removed for each replaced or pruned file
+        // (from its file node, from its symbols, into its symbols). It returns nil —
+        // the caller then reads the store — when there is no baseline or the derived
+        // count differs from the stored one. The result is in EdgesBySource order.
+        func (i *Indexer) residentNativeEdges(ctx context.Context, prev []core.Edge, reloaded map[string]bool) []core.Edge {
+        	if prev == nil || reloaded == nil || !incrementalEnabled() {
+        		return nil
+        	}
+        	symbolFile := func(node string) string {
+        		if idx := strings.Index(node, "::"); idx >= 0 {
+        			return node[:idx]
+        		}
+        		return ""
+        	}
+        	out := make([]core.Edge, 0, len(prev)/4)
+        	for _, e := range prev {
+        		if e.Source != core.EvidenceSourceNative {
+        			continue
+        		}
+        		if f, ok := strings.CutPrefix(e.From, "file:"); ok && reloaded[f] {
+        			continue
+        		}
+        		if reloaded[symbolFile(e.From)] || reloaded[symbolFile(e.To)] {
+        			continue
+        		}
+        		out = append(out, e)
+        	}
+        	if len(out) != i.store.EdgeCountBySource(ctx, string(core.EvidenceSourceNative)) {
+        		return nil
+        	}
+        	sort.Slice(out, func(a, b int) bool {
+        		if out[a].From != out[b].From {
+        			return out[a].From < out[b].From
+        		}
+        		if out[a].Type != out[b].Type {
+        			return out[a].Type < out[b].Type
+        		}
+        		return out[a].To < out[b].To
+        	})
+        	return out
+        }
+
+        // incrementalEnabled gates incremental''')
+        open(p,'w').write(s)
+        p='internal/store/store.go'; s=open(p).read()
+        old='''// SymbolCount returns COUNT(*) of the symbols table.'''
+        new='''// EdgeCountBySource returns the number of stored edges with the given
+        // evidence source.
+        func (s *Store) EdgeCountBySource(ctx context.Context, source string) int {
+        	return s.countRows(ctx, `SELECT COUNT(*) FROM edges WHERE source = ?`, source)
+        }
+
+        // SymbolCount returns COUNT(*) of the symbols table.'''
+        assert old in s; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n "func (s \*Store) countRows" -A3 internal/store/store.go | head -4; go build ./... && go vet ./internal/index ./internal/store && echo ok
+      at: 2026-10-04T20:51:53.22076Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test -count=1 ./... 2>&1 | grep -v '^ok\|no test files' | tail -20; go test -race -count=1 ./pkg/grove/ ./internal/index/ 2>&1 | tail -2; cd ../prism && go build -o ~/prism-ab-bins/prism-perf3 ./cmd/prism && echo built
+      at: 2026-10-04T20:52:13.378396Z
+      classified: test
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; cat > $B/shadow.py <<'EOF'
+        # Real-corpus shadow: edits applied through a resident MCP session must leave
+        # the store byte-identical to a cold full index of the same final tree.
+        import json,subprocess,threading,queue,time,sys,os,shutil
+        bin_,src,name=sys.argv[1:4]; edits=json.loads(sys.argv[4])  # [file, old, new]
+        B=os.path.expanduser('~/prism-ab-bins/idxbench/shadow'); os.makedirs(B,exist_ok=True)
+        A=os.path.join(B,'inc'); C=os.path.join(B,'full')
+        for d in (A,C):
+            shutil.rmtree(d,ignore_errors=True)
+        subprocess.run(['cp','-cR',src,A],check=True); shutil.rmtree(os.path.join(A,'.grove'),ignore_errors=True)
+        p=subprocess.Popen([bin_,'mcp','--compact',A],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+        q=queue.Queue(); threading.Thread(target=lambda:[q.put(l) for l in p.stdout],daemon=True).start(); n=[0]
+        def call(m,params):
+            n[0]+=1; p.stdin.write(json.dumps({"jsonrpc":"2.0","id":n[0],"method":m,"params":params})+"\n")
+            while True:
+                d=json.loads(q.get(timeout=1800))
+                if d.get('id')==n[0]: return d
+        call('initialize',{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"b","version":"1"}})
+        p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n")
+        look=lambda: call('tools/call',{"name":"prism","arguments":{"op":"lookup","args":{"name":[name]}}})
+        look(); look()
+        for f,old,new in edits:
+            path=os.path.join(A,f); t=open(path).read() if os.path.exists(path) else ''
+            if old is None: open(path,'w').write(new)
+            else:
+                assert old in t,(f,old); open(path,'w').write(t.replace(old,new,1))
+            time.sleep(0.2); t0=time.time(); look(); print(f'edit {f}: {time.time()-t0:.2f}s',flush=True)
+        p.stdin.close(); p.wait(timeout=120)   # clean shutdown runs any pending splice check
+        subprocess.run(['cp','-cR',A,C],check=True); shutil.rmtree(os.path.join(C,'.grove'),ignore_errors=True)
+        subprocess.run([bin_,'index','--allow-heuristic',C],capture_output=True)
+        def dump(root,q):
+            return subprocess.run(['sqlite3',os.path.join(root,'.grove','grove.db'),q],capture_output=True,text=True).stdout
+        for label,qq in [('edges',"select from_node,edge_type,to_node,confidence,source,reason from edges order by 1,2,3"),
+                         ('symbols',"select id,file_path,kind,name,span_start,span_end,signature,call_sites,attr_sites from symbols order by 1")]:
+            a,c=dump(A,qq),dump(C,qq)
+            al,cl=a.splitlines(),c.splitlines()
+            if a==c: print(f'{label}: IDENTICAL ({len(al)} rows)')
+            else:
+                sa,sc=set(al),set(cl)
+                print(f'{label}: DIFFER inc={len(al)} full={len(cl)} only-inc={len(sa-sc)} only-full={len(sc-sa)}')
+                for x in list(sa-sc)[:4]: print('  only-inc ',x[:200])
+                for x in list(sc-sa)[:4]: print('  only-full',x[:200])
+        EOF
+        GE='[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava/src/com/google/common/base/Strings.java","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"],["guava/src/com/google/common/base/Joiner.java","public class Joiner {","public class Joiner {\n  static int benchHelper() { return Strings.repeat(\"a\", 2).length(); }\n"]]'; python3 $B/shadow.py ~/prism-ab-bins/prism-perf3 $B/repos/guava Strings.repeat "$GE"
+      at: 2026-10-04T20:54:11.843821Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; GE=''[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava/src/com/google/common/base/Strings.java","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"],["guava/src/com/google/common/base/Joiner.java","public class Joiner {","public class Joiner {\n  static int benchHelper() { return Strings.repeat(\"a\", 2).length(); }\n"]]''; python3 $B/shadow.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/guava Strings.repeat "$GE"'
+      at: 2026-10-04T20:56:02.981194Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench/shadow; for x in c1 c2; do rm -rf "${B:?}/${x:?}"; cp -cR ~/prism-ab-bins/idxbench/repos/guava "$B/$x"; rm -rf "${B:?}/${x:?}/.grove"; ~/prism-ab-bins/prism-v0858-candidate index --allow-heuristic "$B/$x" >/dev/null 2>&1; done; q="select from_node,edge_type,to_node,confidence,source,reason from edges order by 1,2,3"; echo "diff lines: $(diff <(sqlite3 $B/c1/.grove/grove.db "$q") <(sqlite3 $B/c2/.grove/grove.db "$q") | grep -c ''^[<>]'')"; diff <(sqlite3 $B/c1/.grove/grove.db "$q") <(sqlite3 $B/c2/.grove/grove.db "$q") | cut -c1-200 | head -6'
+      at: 2026-10-04T20:59:32.6442Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench/shadow; q="select from_node,edge_type,to_node,confidence,source,reason from edges order by 1,2,3"; diff <(sqlite3 $B/inc/.grove/grove.db "$q") <(sqlite3 $B/full/.grove/grove.db "$q") | sed -E 's/@[0-9a-f]{40}//g'
+      at: 2026-10-04T20:59:55.313553Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; python3 $B/shadow.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/guava Strings.repeat ''[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"]]'' 2>&1 | grep -v only-'
+      at: 2026-10-04T21:01:29.195296Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; python3 $B/shadow.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/guava Strings.repeat ''[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"]]'' 2>&1 | grep -E ''^(edit|edges|symbols)'''
+      at: 2026-10-04T21:02:59.495194Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench/shadow; q="select from_node,edge_type,to_node,confidence,source,reason from edges order by 1,2,3"; diff <(sqlite3 $B/inc/.grove/grove.db "$q") <(sqlite3 $B/full/.grove/grove.db "$q") | sed -E 's/@[0-9a-f]{40}//g'; cd /Users/tapabratapal/Projects/provasign/grove && grep -rn 'ReasonConstructor\b\|EdgeReasonConstructor\|"constructor"' internal/core/*.go internal/graph/*.go | grep -v _test | head -8
+      at: 2026-10-04T21:03:18.190544Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; python3 $B/shadow.py ~/prism-ab-bins/prism-perf3 $B/repos/guava Strings.repeat ''[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"]]'' 2>&1 | sed -E ''s/@[0-9a-f]{40}//g'' | cut -c1-260'
+      at: 2026-10-04T21:04:49.484213Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; DE='[["django/utils/text.py","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django/utils/text.py","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"],["django/utils/html.py","def escape(text):","def bench_helper(v):\n    return capfirst(v)\n\n\ndef escape(text):"]]'; grep -n "^def escape" $B/repos/django/django/utils/html.py | head -2; for b in v0858-candidate perf3; do echo "## $b"; python3 $B/shadow.py ~/prism-ab-bins/prism-$b $B/repos/django capfirst "$DE" 2>&1 | cut -c1-220; done
+      at: 2026-10-04T21:07:42.451642Z
+      classified: other
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; python3 - <<'EOF'
+        import os
+        p=os.path.expanduser('~/prism-ab-bins/idxbench/shadow.py'); s=open(p).read()
+        s=s.replace("capture_output=True,text=True).stdout","capture_output=True).stdout.decode('utf-8','replace')")
+        s=s.replace("    a,c=dump(A,qq),dump(C,qq)\n","    a,c=dump(A,qq),dump(C,qq)\n    tag=os.environ.get('TAG','run'); open(os.path.join(B,f'{tag}.{label}.inc.txt'),'w').write(a); open(os.path.join(B,f'{tag}.{label}.full.txt'),'w').write(c)\n")
+        open(p,'w').write(s)
+        EOF
+        DE='[["django/utils/text.py","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django/utils/text.py","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"],["django/utils/html.py","def escape(text):","def bench_helper(v):\n    return capfirst(v)\n\n\ndef escape(text):"]]'; for b in v0858-candidate perf3; do echo "## $b"; TAG=dj-$b python3 $B/shadow.py ~/prism-ab-bins/prism-$b $B/repos/django capfirst "$DE" 2>&1 | grep -E '^(edit|edges|symbols)'; done; S=$B/shadow; for k in edges symbols; do for side in inc full; do cmp -s $S/dj-v0858-candidate.$k.$side.txt $S/dj-perf3.$k.$side.txt && echo "$k $side: perf3 == v0.85.8" || echo "$k $side: perf3 DIFFERS from v0.85.8"; done; done
+      at: 2026-10-04T21:10:42.385796Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal pkg; git add internal/index/indexer.go internal/index/residentsymbols_test.go internal/store/store.go pkg/grove/grove.go pkg/grove/splicecheck_test.go && git commit -q -F - <<'EOF'
+        index: faster resident re-index after an edit
+
+        Three costs every in-session edit paid regardless of edit size:
+
+        - The post-splice store check re-read and sorted every stored edge
+          (1.0s on guava's 776k edges) before Index returned. Resident engines
+          now defer it: it runs in the background after Index returns and always
+          before the next Index or Close touches the store. A mismatch still
+          heals through the full diff; the next result reports it.
+        - AllSymbols reloaded every symbol (0.8-1.0s). The post-persist symbol set
+          is now the resident baseline for unchanged files plus a store read of
+          the changed and pruned files, guarded by per-file blob SHAs and the
+          table count; any mismatch falls back to the full load.
+        - The native-edge carry re-read every stored compiler edge. It is now
+          derived from the resident edges minus the rows deleteFileEdges removed,
+          guarded by the stored count.
+
+        Measured in a resident prism session with 3s between edits:
+        guava one-line edit 5.5s -> 3.3s, django 7.6s -> 5.8s. Real-corpus
+        shadows (edits through a session vs a cold index of the final tree):
+        stores byte-identical to v0.61.2's on django; same result on guava.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E
+        EOF
+        git log --oneline -2
+      at: 2026-10-04T21:10:55.498138Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -w internal/index/residentsymbols_test.go && git diff --stat && git commit -q -am "index: gofmt resident symbols test" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E" && git log --oneline -1; git status -s
+      at: 2026-10-04T21:10:59.592801Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git reset -q --soft HEAD~1 && git restore --staged .mcp.json && git commit -q -m "index: gofmt resident symbols test" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E" && git show --stat --oneline HEAD | head -4; git status -s
+      at: 2026-10-04T21:11:05.106851Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; python3 $B/shadow.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/guava Strings.repeat ''[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"]]'' 2>&1 | grep -E ''^(edges|symbols)''; S=$B/shadow; for side in inc full; do echo "== $side"; sqlite3 $S/$side/.grove/grove.db "select edge_type,to_node,confidence,source,reason from edges where from_node like ''guava-tests/test/com/google/common/collect/AbstractImmutableSetTest.java::AbstractImmutableSetTest.MutatedOnQueryList.MutatedOnQueryList@%'' order by 1,2" | sed -E ''s/@[0-9a-f]{40}//g''; done'
+      at: 2026-10-04T22:02:20.202709Z
+      classified: other
+    - cmd: S=~/prism-ab-bins/idxbench/shadow; sqlite3 $S/c1/.grove/grove.db "select edge_type,to_node,source,reason from edges where from_node like 'guava-tests/test/com/google/common/collect/AbstractImmutableSetTest.java::AbstractImmutableSetTest.MutatedOnQueryList.MutatedOnQueryList@%' order by 1,2" | sed -E 's/@[0-9a-f]{40}//g'; echo; sqlite3 $S/full/.grove/grove.db "select id, file_path from symbols where name='ForwardingList' and kind='constructor'" | sed -E 's/@[0-9a-f]{40}//g'
+      at: 2026-10-04T22:02:28.570036Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 3150,3245p internal/graph/edges.go
+      at: 2026-10-04T22:02:34.764209Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "traceCalls\s*=\|traceCalls :=" internal/graph/*.go | head -3; grep -n "func BuildEdgesDeltaMeta" internal/graph/incremental.go; sed -n 135,250p internal/graph/incremental.go
+      at: 2026-10-04T22:02:47.175947Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/incremental.go'; s=open(p).read()
+        old='''	callsNew := scopedCalls(idx, affectedSyms, sat)
+        '''
+        new='''	callsNew := scopedCalls(idx, affectedSyms, sat)
+        	if dbg := os.Getenv("GROVE_DEBUG_OWNER"); dbg != "" { // TEMP DEBUG
+        		for i := range symbols {
+        			if strings.Contains(symbols[i].ID, dbg) {
+        				id := symbols[i].ID
+        				fmt.Fprintf(os.Stderr, "DBG owner %s affected=%v\\n", id, affected[id])
+        				for _, e := range prevEdges {
+        					if e.From == id || remap[e.From] == id {
+        						fmt.Fprintf(os.Stderr, "DBG   prev %s -> %s %s %s\\n", e.Type, e.To, e.Source, e.Reason)
+        					}
+        				}
+        				for _, e := range prevCalls {
+        					if e.From == id {
+        						fmt.Fprintf(os.Stderr, "DBG   prevCall %s -> %s\\n", e.Type, e.To)
+        					}
+        				}
+        				for _, e := range callsNew {
+        					if e.From == id {
+        						fmt.Fprintf(os.Stderr, "DBG   new %s -> %s %s\\n", e.Type, e.To, e.Reason)
+        					}
+        				}
+        			}
+        		}
+        	}
+        '''
+        assert old in s; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go build ./... && cd ../prism && go build -o ~/prism-ab-bins/prism-dbg ./cmd/prism && echo built
+      at: 2026-10-04T22:03:05.473674Z
+      classified: build
+    - cmd: 'B=~/prism-ab-bins/idxbench; S=$B/shadow; rm -rf "${S:?}/dbg"; cp -cR $B/repos/guava $S/dbg; rm -rf "${S:?}/dbg/.grove"; ERRLOG=$S/dbg.err GROVE_DEBUG_OWNER=''MutatedOnQueryList.MutatedOnQueryList@'' python3 $B/mcp_edits.py ~/prism-ab-bins/prism-dbg $S/dbg guava/src/com/google/common/base/Strings.java Strings.repeat ''[["edit","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"]]''; grep DBG $S/dbg.err | sed -E ''s/@[0-9a-f]{40}//g'' | head -20'
+      at: 2026-10-04T22:03:54.713837Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && for f in constructorTargets constructorBaseClasses samePackageRoot; do n=$(grep -n "^func $f" internal/graph/*.go | head -1); echo "### $n"; file=${n%%:*}; l=$(echo $n | cut -d: -f2); sed -n "${l},$((l+40))p" $file | awk ''NR==1 || !/^func /{print} /^}/{exit}''; done'
+      at: 2026-10-04T22:04:09.828918Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && n=$(grep -n "^func (idx \*edgeIndex) importedFiles" internal/graph/*.go | head -1); file=${n%%:*}; l=$(echo $n | cut -d: -f2); sed -n "${l},$((l+60))p" $file'
+      at: 2026-10-04T22:04:15.450175Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n '"github.com/provasign/grove/internal/graph"' internal/store/*.go | head -2; grep -n "^func scopedCalls\|^func BuildEdges(\|^func buildCalls(" internal/graph/*.go
+      at: 2026-10-04T22:04:22.88622Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && sed -n 471,500p internal/graph/incremental.go; cat > internal/graph/zz_debug_owner_test.go <<'EOF'
+        package graph
+
+        import (
+        	"context"
+        	"os"
+        	"strings"
+        	"testing"
+
+        	"github.com/provasign/grove/internal/core"
+        	"github.com/provasign/grove/internal/store"
+        )
+
+        // TEMP DEBUG: resolve one owner via the full and the scoped call builders
+        // over the same real symbol set.
+        func TestZZDebugOwner(t *testing.T) {
+        	root, owner := os.Getenv("DBG_ROOT"), os.Getenv("DBG_OWNER")
+        	if root == "" {
+        		t.Skip()
+        	}
+        	st, err := store.Open(root)
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	defer st.Close()
+        	symbols, err := st.AllSymbols(context.Background())
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	show := func(label string, edges []core.Edge) {
+        		for _, e := range edges {
+        			if e.Type == core.EdgeCalls && strings.Contains(e.From, owner) {
+        				t.Logf("%s: %s -> %s %s", label, e.From[:40], e.To, e.Reason)
+        			}
+        		}
+        	}
+        	idx := newEdgeIndex(symbols)
+        	sat, _ := buildInterfaceSatisfaction(idx, symbols)
+        	full := buildCalls(idx, symbols, sat, nil)
+        	show("full", full)
+        	var subset []core.SymbolRecord
+        	for _, s := range symbols {
+        		if strings.Contains(s.ID, owner) {
+        			subset = append(subset, s)
+        		}
+        	}
+        	idx2 := newEdgeIndex(symbols)
+        	sat2, _ := buildInterfaceSatisfaction(idx2, symbols)
+        	show("scoped", scopedCalls(idx2, subset, sat2))
+        }
+        EOF
+        DBG_ROOT=$HOME/prism-ab-bins/idxbench/shadow/full DBG_OWNER='guava-tests/test/com/google/common/collect/AbstractImmutableSetTest.java::AbstractImmutableSetTest.MutatedOnQueryList.MutatedOnQueryList@' go test -count=1 ./internal/graph/ -run ZZDebugOwner -v 2>&1 | sed -E 's/@[0-9a-f]{40}//g' | grep -E 'full|scoped|ok|FAIL' | head
+      at: 2026-10-04T22:04:35.061981Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && DBG_ROOT=$HOME/prism-ab-bins/idxbench/shadow/full DBG_OWNER='guava-tests/test/com/google/common/collect/AbstractImmutableSetTest.java::AbstractImmutableSetTest.MutatedOnQueryList.MutatedOnQueryList@' go test -count=1 ./internal/graph/ -run ZZDebugOwner -v 2>&1 | grep -v '^=== ' | head -15
+      at: 2026-10-04T22:04:40.611219Z
+      classified: test
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && sed -i '' 's/\tfull := buildCalls(idx, symbols, sat, nil)/\t_, _ = idx, sat\\n\tfull := BuildEdges(symbols)/' internal/graph/zz_debug_owner_test.go && DBG_ROOT=$HOME/prism-ab-bins/idxbench/shadow/full DBG_OWNER='guava-tests/test/com/google/common/collect/AbstractImmutableSetTest.java::AbstractImmutableSetTest.MutatedOnQueryList.MutatedOnQueryList@' go test -count=1 ./internal/graph/ -run ZZDebugOwner -v 2>&1 | sed -E 's/@[0-9a-f]{40}//g' | grep -E 'full:|scoped:|^(ok|FAIL|---)' | head"
+      at: 2026-10-04T22:04:53.03053Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 2077,2150p internal/graph/edges.go
+      at: 2026-10-04T22:04:59.652644Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 346,420p internal/graph/graph.go
+      at: 2026-10-04T22:05:08.563246Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && for f in buildImplicitSuperCalls buildFrameworkEdges buildMainframeDataEdges; do n=$(grep -n "^func $f" internal/graph/*.go | head -1); echo "### $n"; done; grep -n "core.Edge{" internal/graph/implicitsuper.go internal/graph/framework*.go internal/graph/mainframe.go internal/graph/spring.go 2>/dev/null | head -20; grep -rn "Reason:\s*core.Reason\|core.Reason[A-Z][a-zA-Z]*)" internal/graph/implicitsuper.go internal/graph/framework*.go internal/graph/spring.go internal/graph/mainframe.go 2>/dev/null | grep -o "core.Reason[A-Za-z]*\|core.EdgeCalls\|core.Edge[A-Z][a-zA-Z]*" | sort | uniq -c
+      at: 2026-10-04T22:05:26.872325Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -n "core.Edge{\|Reason:\|Type: *core\.\|Source: *core\." internal/graph/spring.go internal/graph/mainframe.go | head -20; grep -rn "ReasonConstructor\|\"constructor\"" --include=''*.go'' ../prism/internal ../grove/internal/mcp ../grove/pkg 2>/dev/null | grep -v _test | grep -iv "kind\|KindConstructor" | head'
+      at: 2026-10-04T22:05:56.196078Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "ReasonCrossArtifact" --include='*.go' internal pkg | grep -v _test; echo ---; grep -rn "ReasonConstructor" --include='*.go' internal pkg | grep -v _test
+      at: 2026-10-04T22:06:02.91818Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 3455,3490p internal/graph/edges.go
+      at: 2026-10-04T22:06:09.206835Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; for r in guava django jackson-databind grafana-122750; do echo "$r: $(grep -hE ''edge/(framework|implicit-super|mainframe-data|decorators) '' $B/v0858.$r.cold.log | tr -s '' '' | tr ''\n'' '';'')"; done'
+      at: 2026-10-04T22:06:29.10462Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/incremental.go'; s=open(p).read()
+        # remove temp debug block
+        i=s.index('	if dbg := os.Getenv("GROVE_DEBUG_OWNER"); dbg != "" { // TEMP DEBUG')
+        j=s.index('\n', s.index('\n\t}\n', s.index('DBG   new'))+3)
+        s=s[:i]+s[j:]
+        assert 'TEMP DEBUG' not in s
+
+        old='''	var prevCalls []core.Edge
+        	for _, e := range prevEdges {
+        		if e.Type != core.EdgeCalls {
+        			continue
+        		}
+        		// Decorator edges are regenerated wholesale below, never carried:
+        		// they are a function of the FULL call-edge set, not of any one
+        		// owner, so carrying a subset produced a different multiset than a
+        		// full rebuild.
+        		if e.Reason == core.ReasonDecorator {
+        			continue
+        		}
+        '''
+        new='''	// Post-call builders (framework, implicit super calls) are global
+        	// functions of the symbol set, exactly like decorators: an owner's
+        	// output can change when a DIFFERENT file changes (a template's target,
+        	// a base class's constructors), so their previous edges are never
+        	// carried; they are regenerated over the full set below. Carrying them
+        	// for unaffected owners while dropping them for affected ones silently
+        	// lost edges: one body edit in guava's Strings.java dropped 2 implicit
+        	// super() edges, three django edits dropped 521 template edges.
+        	//
+        	// Framework edges are identifiable by reason. Implicit-super edges share
+        	// every field with call-pass constructor edges, so the previous set is
+        	// recomputed from the previous symbols and dropped by key.
+        	oldImplicit := previousImplicitSuperKeys(prevSymbols)
+        	postOwners := map[string]bool{}
+        	for _, e := range prevEdges {
+        		if e.Type != core.EdgeCalls || !(e.Reason == core.ReasonCrossArtifact || oldImplicit[e.From+"\\x00"+e.To]) {
+        			continue
+        		}
+        		owner, ok := normalize(e.From)
+        		if !ok {
+        			continue
+        		}
+        		postOwners[owner] = true
+        		if e.Reason == core.ReasonConstructor && !affected[owner] {
+        			// A `new Base()` in the same constructor can produce the
+        			// identical key from the call pass; dropping the key would
+        			// lose that edge, so re-resolve the owner.
+        			if s, ok := idx.byID[owner]; ok && callsClassOf(s, e.To) {
+        				affected[owner] = true
+        			}
+        		}
+        	}
+
+        	var prevCalls []core.Edge
+        	for _, e := range prevEdges {
+        		if e.Type != core.EdgeCalls {
+        			continue
+        		}
+        		// Decorator edges are regenerated wholesale below, never carried:
+        		// they are a function of the FULL call-edge set, not of any one
+        		// owner, so carrying a subset produced a different multiset than a
+        		// full rebuild.
+        		if e.Reason == core.ReasonDecorator {
+        			continue
+        		}
+        		if e.Reason == core.ReasonCrossArtifact || oldImplicit[e.From+"\\x00"+e.To] {
+        			continue // regenerated globally with the post-call builders
+        		}
+        '''
+        assert old in s; s=s.replace(old,new)
+
+        old='''	decoAll := buildDecoratorEdges(idx, symbols, allCalls)
+        	allCalls = append(allCalls, decoAll...)
+        	edges = append(edges, allCalls...)
+        	tick("delta-calls")
+        	return edges, buildDeltaMeta(symbols, affected, changedFiles, nativeAnalyzedDirs)
+        }'''
+        new='''	decoAll := buildDecoratorEdges(idx, symbols, allCalls)
+        	allCalls = append(allCalls, decoAll...)
+        	edges = append(edges, allCalls...)
+        	tick("delta-calls")
+        	post := append(buildFrameworkEdges(idx, symbols), buildImplicitSuperCalls(idx, symbols)...)
+        	edges = append(edges, post...)
+        	for _, e := range post {
+        		postOwners[e.From] = true
+        	}
+        	tick("delta-post-call")
+        	// Owners whose post-call edges were dropped or regenerated get their
+        	// stored rows rewritten from memory, like recomputed owners.
+        	metaOwners := make(map[string]bool, len(affected)+len(postOwners))
+        	for id := range affected {
+        		metaOwners[id] = true
+        	}
+        	for id := range postOwners {
+        		metaOwners[id] = true
+        	}
+        	return edges, buildDeltaMeta(symbols, metaOwners, changedFiles, nativeAnalyzedDirs)
+        }
+
+        // previousImplicitSuperKeys returns the "from\\x00to" keys the implicit super
+        // call builder produced for the previous symbol set, recomputed over an
+        // index of those symbols in store order (the order the build that produced
+        // them saw). Only Java and C# have implicit super calls.
+        func previousImplicitSuperKeys(prevSymbols []core.SymbolRecord) map[string]bool {
+        	keys := map[string]bool{}
+        	jvm := false
+        	for i := range prevSymbols {
+        		if l := prevSymbols[i].Language; l == "java" || l == "csharp" {
+        			jvm = true
+        			break
+        		}
+        	}
+        	if !jvm {
+        		return keys
+        	}
+        	ordered := append([]core.SymbolRecord(nil), prevSymbols...)
+        	sort.Slice(ordered, func(a, b int) bool {
+        		x, y := &ordered[a], &ordered[b]
+        		if x.FilePath != y.FilePath {
+        			return x.FilePath < y.FilePath
+        		}
+        		if x.Span.Start != y.Span.Start {
+        			return x.Span.Start < y.Span.Start
+        		}
+        		return x.ID < y.ID
+        	})
+        	for _, e := range buildImplicitSuperCalls(newEdgeIndex(ordered), ordered) {
+        		keys[e.From+"\\x00"+e.To] = true
+        	}
+        	return keys
+        }
+
+        // callsClassOf reports whether caller has a call site naming the class whose
+        // constructor target is (a `new Target()`), the one way the call pass can
+        // emit the same edge key as an implicit super call.
+        func callsClassOf(caller *core.SymbolRecord, target string) bool {
+        	class := target
+        	if i := strings.Index(class, "::"); i >= 0 {
+        		class = class[i+2:]
+        	}
+        	if i := strings.LastIndexByte(class, '@'); i >= 0 {
+        		class = class[:i]
+        	}
+        	if i := strings.LastIndexByte(class, '.'); i >= 0 {
+        		class = class[:i] // Outer.Base.Base -> Outer.Base
+        	}
+        	if i := strings.LastIndexByte(class, '.'); i >= 0 {
+        		class = class[i+1:]
+        	}
+        	for _, cs := range caller.CallSites {
+        		if _, n := splitCallSiteName(cs.Callee); n == class {
+        			return true
+        		}
+        	}
+        	return false
+        }'''
+        assert old in s; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n "byID" internal/graph/edgeindex*.go internal/graph/edges.go 2>/dev/null | head -3; go build ./... 2>&1 | head
+      at: 2026-10-04T22:07:18.618464Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && rm internal/graph/zz_debug_owner_test.go && grep -n "DEBUG\|DBG" internal/graph/incremental.go; go vet ./internal/graph && go test -count=1 ./internal/graph/ ./pkg/grove/ ./internal/index/ 2>&1 | tail -4 && cd ../prism && go build -o ~/prism-ab-bins/prism-fix1 ./cmd/prism && echo built
+      at: 2026-10-04T22:07:34.913999Z
+      classified: lint
+    - cmd: 'B=~/prism-ab-bins/idxbench; GE=''[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava/src/com/google/common/base/Strings.java","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"],["guava/src/com/google/common/base/Joiner.java","public class Joiner {","public class Joiner {\n  static int benchHelper() { return Strings.repeat(\"a\", 2).length(); }\n"]]''; DE=''[["django/utils/text.py","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django/utils/text.py","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"],["django/utils/html.py","def escape(text):","def bench_helper(v):\n    return capfirst(v)\n\n\ndef escape(text):"]]''; echo "## guava"; TAG=g-fix1 python3 $B/shadow.py ~/prism-ab-bins/prism-fix1 $B/repos/guava Strings.repeat "$GE" 2>&1 | sed -E ''s/@[0-9a-f]{40}//g'' | cut -c1-230; echo "## django"; TAG=dj-fix1 python3 $B/shadow.py ~/prism-ab-bins/prism-fix1 $B/repos/django capfirst "$DE" 2>&1 | sed -E ''s/@[0-9a-f]{40}//g'' | cut -c1-230'
+      at: 2026-10-04T22:10:39.787489Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='pkg/grove/grove.go'; s=open(p).read()
+        old='''	if note != "" {
+        		e.spliceNote = note
+        	}
+        }'''
+        new='''	if note != "" {
+        		e.spliceNote = note
+        		if os.Getenv("GROVE_TIMING") != "" {
+        			fmt.Fprintf(os.Stderr, "[timing] splice-check: %s\\n", note)
+        		}
+        	}
+        }'''
+        assert old in s; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go build ./... 2>&1 | head -3; grep -n '^\s*"fmt"' pkg/grove/grove.go | head -1; grep -n "^func Test" internal/graph/equivalence_test.go | head; grep -n "func.*fullOracle\|func assertDeltaMatches\|func deltaMatches\|BuildEdgesDelta(" internal/graph/equivalence_test.go | head
+      at: 2026-10-04T22:10:53.554996Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 1,60p internal/graph/equivalence_test.go; sed -n 180,300p internal/graph/equivalence_test.go
+      at: 2026-10-04T22:10:56.105635Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 40,120p internal/graph/spring.go; sed -n 180,215p internal/graph/spring.go
+      at: 2026-10-04T22:11:08.083006Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && grep -n "^func (e \*Engine) ExtractFile" internal/parser/*.go; cat > internal/graph/postcall_delta_test.go <<'EOF'
+        package graph_test
+
+        import (
+        	"os"
+        	"path/filepath"
+        	"sort"
+        	"testing"
+
+        	"github.com/provasign/grove/internal/core"
+        	"github.com/provasign/grove/internal/graph"
+        	"github.com/provasign/grove/internal/parser"
+        )
+
+        // Post-call builders (implicit super calls, framework/template edges) are
+        // global functions of the symbol set. The delta path used to carry their
+        // edges only for unaffected owners and never regenerate them, so an edit
+        // that re-resolved an owner silently dropped its implicit super() edge, and
+        // any edit dropped every template edge (templates are always re-resolved).
+        // Measured on real corpora: one guava body edit lost 2 edges, three django
+        // edits lost 521.
+        func TestDeltaKeepsPostCallBuilderEdges(t *testing.T) {
+        	root := t.TempDir()
+        	files := map[string]string{
+        		"src/base/Base.java":  "package base;\n\npublic class Base {\n  public Base() {}\n}\n",
+        		"src/util/U.java":     "package util;\n\npublic class U {\n  public static int f() { return 1; }\n}\n",
+        		"src/sub/Sub.java":    "package sub;\n\nimport base.Base;\nimport util.U;\n\npublic class Sub extends Base {\n  public Sub() {\n    U.f();\n  }\n}\n",
+        		"app/models.py":       "class Article:\n    headline = \"\"\n",
+        		"templates/page.html": "<p>{{ article.headline }}</p>\n",
+        	}
+        	write := func(rel, body string) {
+        		t.Helper()
+        		p := filepath.Join(root, rel)
+        		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+        			t.Fatal(err)
+        		}
+        		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	for rel, body := range files {
+        		write(rel, body)
+        	}
+        	eng := parser.NewEngine()
+        	extract := func() []core.SymbolRecord {
+        		t.Helper()
+        		var out []core.SymbolRecord
+        		rels := make([]string, 0, len(files))
+        		for rel := range files {
+        			rels = append(rels, rel)
+        		}
+        		sort.Strings(rels)
+        		for _, rel := range rels {
+        			syms, err := eng.ExtractFile(filepath.Join(root, rel), root)
+        			if err != nil {
+        				t.Fatal(err)
+        			}
+        			out = append(out, syms...)
+        		}
+        		return out
+        	}
+        	hasReason := func(edges []core.Edge, reason core.EdgeReason, from string) bool {
+        		for _, e := range edges {
+        			if e.Type == core.EdgeCalls && e.Reason == reason && filepath.Dir(e.From) != "" && len(e.From) >= len(from) && e.From[:len(from)] == from {
+        				return true
+        			}
+        		}
+        		return false
+        	}
+
+        	prevSymbols := extract()
+        	prevEdges := graph.BuildEdges(prevSymbols)
+        	if !hasReason(prevEdges, core.ReasonConstructor, "src/sub/Sub.java::") || !hasReason(prevEdges, core.ReasonCrossArtifact, "templates/page.html") {
+        		t.Fatalf("fixture produces no implicit-super or template edge; test would be vacuous")
+        	}
+
+        	// A body edit in U.java re-resolves Sub (it calls U.f) and, like any
+        	// edit, the template.
+        	files["src/util/U.java"] = "package util;\n\npublic class U {\n  public static int f() { return 2; }\n}\n"
+        	write("src/util/U.java", files["src/util/U.java"])
+        	symbols := extract()
+        	got, meta := graph.BuildEdgesDeltaMeta(prevEdges, prevSymbols, symbols, map[string]bool{"src/util/U.java": true}, nil)
+        	if meta == nil {
+        		t.Fatal("delta fell back to a full rebuild; test would be vacuous")
+        	}
+        	want := graph.BuildEdges(symbols)
+        	key := func(e core.Edge) string {
+        		return e.From + "|" + string(e.Type) + "|" + e.To + "|" + string(e.Source) + "|" + string(e.Reason)
+        	}
+        	have := map[string]bool{}
+        	for _, e := range got {
+        		have[key(e)] = true
+        	}
+        	for _, e := range want {
+        		if !have[key(e)] {
+        			t.Errorf("delta lost %s", key(e))
+        		}
+        	}
+        	need := map[string]bool{}
+        	for _, e := range want {
+        		need[key(e)] = true
+        	}
+        	for _, e := range got {
+        		if !need[key(e)] {
+        			t.Errorf("delta has extra %s", key(e))
+        		}
+        	}
+        }
+        EOF
+        go test -count=1 ./internal/graph/ -run DeltaKeepsPostCall -v 2>&1 | grep -E '^(--- |ok|FAIL)|lost|extra|vacuous|cycle|undefined' | head
+      at: 2026-10-04T22:11:30.148853Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/postcall_delta_test.go'; s=open(p).read()
+        old='''	write := func(rel, body string) {'''
+        new='''	// Unrelated packages keep the edit under the delta path's
+        	// affected-fraction limit.
+        	for i := 0; i < 40; i++ {
+        		pkg := "filler" + strconv.Itoa(i)
+        		files["src/"+pkg+"/F.java"] = "package " + pkg + ";\\n\\npublic class F {\\n  public int a() { return b(); }\\n  public int b() { return 1; }\\n}\\n"
+        	}
+        	write := func(rel, body string) {'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('\t"sort"\n','\t"sort"\n\t"strconv"\n',1)
+        open(p,'w').write(s)
+        EOF
+        go test -count=1 ./internal/graph/ -run DeltaKeepsPostCall -v 2>&1 | grep -E '^(--- |ok|FAIL)|lost|extra|vacuous' | head; echo "--- with the fix reverted:"; git stash push -q internal/graph/incremental.go && go test -count=1 ./internal/graph/ -run DeltaKeepsPostCall -v 2>&1 | grep -E '^(--- |ok|FAIL)|lost|extra|vacuous' | sed -E 's/@[0-9a-f]{40}//g' | head; git stash pop -q && git status -s
+      at: 2026-10-04T22:11:39.030167Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal pkg | grep -v changeimpact_signatures_test; go vet ./internal/graph ./pkg/grove && go test -count=1 ./... 2>&1 | grep -v '^ok\|no test files' | tail; go test -race -count=1 ./pkg/grove/ ./internal/index/ ./internal/graph/ 2>&1 | tail -3; cd ../prism && go build -o ~/prism-ab-bins/prism-fix2 ./cmd/prism && echo built
+      at: 2026-10-04T22:12:04.927329Z
+      classified: lint
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; python3 - <<'EOF'
+        import os
+        p=os.path.expanduser('~/prism-ab-bins/idxbench/shadow.py'); s=open(p).read()
+        s=s.replace("stderr=subprocess.DEVNULL","stderr=open(os.environ.get('ERRLOG','/dev/null'),'w')",1)
+        open(p,'w').write(s)
+        EOF
+        GE='[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava/src/com/google/common/base/Strings.java","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"],["guava/src/com/google/common/base/Joiner.java","public class Joiner {","public class Joiner {\n  static int benchHelper() { return Strings.repeat(\"a\", 2).length(); }\n"]]'; DE='[["django/utils/text.py","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django/utils/text.py","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"],["django/utils/html.py","def escape(text):","def bench_helper(v):\n    return capfirst(v)\n\n\ndef escape(text):"]]'; echo "## guava"; GROVE_TIMING=1 ERRLOG=$B/shadow/g-fix2.err TAG=g-fix2 python3 $B/shadow.py ~/prism-ab-bins/prism-fix2 $B/repos/guava Strings.repeat "$GE" 2>&1 | cut -c1-200; echo "heals: $(grep -c splice-check $B/shadow/g-fix2.err)"; echo "## django"; GROVE_TIMING=1 ERRLOG=$B/shadow/dj-fix2.err TAG=dj-fix2 python3 $B/shadow.py ~/prism-ab-bins/prism-fix2 $B/repos/django capfirst "$DE" 2>&1 | cut -c1-200; echo "heals: $(grep -c splice-check $B/shadow/dj-fix2.err)"; grep -h "delta-post-call\|delta-scope" $B/shadow/g-fix2.err $B/shadow/dj-fix2.err | head -6
+      at: 2026-10-04T22:15:14.319629Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; pick() { (cd $B/repos/$1 && grep -rl --include="$2" -m1 "return " $3 | grep -vi test | head -1); }; J=$(pick jackson-databind ''*.java'' src/main); G=$(pick gin ''*.go'' .); T=$(pick typeorm ''*.ts'' src); echo "$J | $G | $T"; for spec in "jackson-databind|$J|ObjectMapper.readValue" "gin|${G#./}|Context.JSON" "typeorm|$T|DataSource.initialize"; do IFS=''|'' read r f n <<< "$spec"; edits=$(python3 -c "import json,sys;print(json.dumps([[sys.argv[1],''return '',''return  '']]))" "$f"); echo "## $r ($f)"; GROVE_TIMING=1 ERRLOG=$B/shadow/$r.err TAG=$r python3 $B/shadow.py ~/prism-ab-bins/prism-fix2 $B/repos/$r "$n" "$edits" 2>&1 | cut -c1-200; echo "heals: $(grep -c splice-check $B/shadow/$r.err)"; done'
+      at: 2026-10-04T22:16:24.328964Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; edits=''[["src/container.ts","return ","return  "]]''; echo "## v0.85.8"; TAG=ts-v0858 python3 $B/shadow.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/typeorm DataSource.initialize "$edits" 2>&1 | grep -E ''^(edges|symbols)''; S=$B/shadow; cmp -s $S/typeorm.edges.inc.txt $S/ts-v0858.edges.inc.txt && echo "inc stores: fix2 == v0.85.8" || echo "inc stores differ between builds: $(diff $S/typeorm.edges.inc.txt $S/ts-v0858.edges.inc.txt | grep -c ''^[<>]'') lines"; echo "## cold determinism"; for x in t1 t2; do rm -rf "${S:?}/${x:?}"; cp -cR $B/repos/typeorm "$S/$x"; rm -rf "${S:?}/${x:?}/.grove"; ~/prism-ab-bins/prism-fix2 index "$S/$x" >/dev/null 2>&1; done; q="select from_node,edge_type,to_node,confidence,source,reason from edges order by 1,2,3"; echo "cold vs cold diff lines: $(diff <(sqlite3 $S/t1/.grove/grove.db "$q") <(sqlite3 $S/t2/.grove/grove.db "$q") | grep -c ''^[<>]'')"'
+      at: 2026-10-04T22:17:29.833581Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; grep -oE ''js-ts: [^"]*'' $B/shadow/typeorm.err | sort | uniq -c | head; grep -c . $B/shadow/typeorm.err; S=$B/shadow; diff $S/typeorm.edges.inc.txt $S/typeorm.edges.full.txt | sed -E ''s/@[0-9a-f]{40}//g'' | cut -c1-170'
+      at: 2026-10-04T22:17:37.820257Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && for f in carriedPartialEdges carriedNativeEdges CurrentNativeEdges; do n=$(grep -rn "^func $f" internal --include=''*.go'' | grep -v _test | head -1); echo "### $n"; file=${n%%:*}; l=$(echo $n | cut -d: -f2); sed -n "${l},$((l+45))p" $file | awk ''NR==1{print;next} /^}/{print;exit} {print}''; done'
+      at: 2026-10-04T22:17:49.980277Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 973,1010p internal/index/indexer.go
+      at: 2026-10-04T22:17:52.617853Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "carriedNativeEdges(\|carriedPartialEdges(" internal/index/*.go | grep -v "^internal/index/indexer.go:.*func "
+      at: 2026-10-04T22:18:07.931415Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && cat internal/index/nativecarry_test.go | sed -n 1,60p
+      at: 2026-10-04T22:18:10.586208Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/index/indexer.go'; s=open(p).read()
+        s=s.replace('carriedNativeEdges(stored, symbols, currentFiles, nativeResult.SkippedLanguages)','carriedNativeEdges(stored, symbols, currentFiles, fileMeta, nativeResult.SkippedLanguages)')
+        s=s.replace('carriedPartialEdges(stored, symbols, currentFiles, nativeResult.Partial)','carriedPartialEdges(stored, symbols, currentFiles, fileMeta, nativeResult.Partial)')
+        s=s.replace('func carriedNativeEdges(stored []core.Edge, symbols []core.SymbolRecord, files map[string]bool, skippedLanguages []string) []core.Edge {',
+         'func carriedNativeEdges(stored []core.Edge, symbols []core.SymbolRecord, files map[string]bool, indexedBefore map[string]store.FileMeta, skippedLanguages []string) []core.Edge {')
+        s=s.replace('func carriedPartialEdges(stored []core.Edge, symbols []core.SymbolRecord, files map[string]bool, partial map[string][]string) []core.Edge {',
+         'func carriedPartialEdges(stored []core.Edge, symbols []core.SymbolRecord, files map[string]bool, indexedBefore map[string]store.FileMeta, partial map[string][]string) []core.Edge {')
+        old='''		if _, ok := nodeLang(e.To); !ok {
+        			continue // endpoint no longer exists; drop the stale edge'''
+        new='''		if _, ok := nodeLang(e.To); !ok && !externalNode(e.To, files, indexedBefore) {
+        			continue // endpoint no longer exists; drop the stale edge'''
+        assert old in s; s=s.replace(old,new)
+        old='''		if _, _, ok := nodeInfo(e.To); !ok {
+        			continue // endpoint no longer exists; drop the stale edge'''
+        new='''		if _, _, ok := nodeInfo(e.To); !ok && !externalNode(e.To, files, indexedBefore) {
+        			continue // endpoint no longer exists; drop the stale edge'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('''// symbolRemap maps pre-edit symbol IDs''','''// externalNode reports whether a native edge endpoint lives in a file this
+        // index never contained — a dependency the compiler resolved into, such as
+        // file:node_modules/redis/dist/index.d.ts. Such endpoints are kept on carry,
+        // as a full build keeps them; only endpoints in files that were indexed and
+        // are gone now are stale. Without this every carried import into a
+        // dependency was dropped (typeorm: 17 per edit).
+        func externalNode(node string, files map[string]bool, indexedBefore map[string]store.FileMeta) bool {
+        	if indexedBefore == nil {
+        		return false
+        	}
+        	path, ok := strings.CutPrefix(node, "file:")
+        	if !ok {
+        		i := strings.Index(node, "::")
+        		if i < 0 {
+        			return false
+        		}
+        		path = node[:i]
+        	}
+        	if files[path] {
+        		return false // indexed now: existence is decided by its symbols
+        	}
+        	_, wasIndexed := indexedBefore[path]
+        	return !wasIndexed
+        }
+
+        // symbolRemap maps pre-edit symbol IDs''')
+        open(p,'w').write(s)
+
+        p='internal/index/nativecarry_test.go'; s=open(p).read()
+        s=s.replace('carriedPartialEdges(edges, []core.SymbolRecord{iface, caller}, nil, map','carriedPartialEdges(edges, []core.SymbolRecord{iface, caller}, nil, nil, map')
+        s=s.replace('carriedNativeEdges(edges, []core.SymbolRecord{iface, caller}, nil, []string','carriedNativeEdges(edges, []core.SymbolRecord{iface, caller}, nil, nil, []string')
+        s=s.replace('carriedPartialEdges(edges, changed, nil, map','carriedPartialEdges(edges, changed, nil, nil, map')
+        s=s.replace('carriedPartialEdges(edges, nil, files, map','carriedPartialEdges(edges, nil, files, indexed, map')
+        s=s.replace('carriedNativeEdges(edges, nil, files, []string','carriedNativeEdges(edges, nil, files, indexed, []string')
+        s=s.replace('''	files := map[string]bool{"examples/app/__init__.py": true, "src/pkg/__init__.py": true}
+        ''','''	files := map[string]bool{"examples/app/__init__.py": true, "src/pkg/__init__.py": true}
+        	indexed := map[string]store.FileMeta{"examples/app/__init__.py": {}, "src/pkg/__init__.py": {}}
+        ''')
+        s=s.replace('import (\n\t"testing"\n\n\t"github.com/provasign/grove/internal/core"\n)','import (\n\t"testing"\n\n\t"github.com/provasign/grove/internal/core"\n\t"github.com/provasign/grove/internal/store"\n)')
+        s+='''
+        // Compiler edges into files the index never contained (dependencies under
+        // node_modules) carry forward as a full build keeps them; they used to be
+        // dropped as "endpoint no longer exists" on every carry.
+        func TestNativeEdgeCarryKeepsExternalEndpoints(t *testing.T) {
+        	edges := []core.Edge{
+        		{From: "file:src/platform/Tools.ts", To: "file:node_modules/redis/dist/index.d.ts", Type: core.EdgeImports, Source: core.EvidenceSourceNative},
+        		{From: "file:src/platform/Tools.ts", To: "src/gone.ts::Gone@x", Type: core.EdgeImports, Source: core.EvidenceSourceNative},
+        	}
+        	files := map[string]bool{"src/platform/Tools.ts": true}
+        	indexed := map[string]store.FileMeta{"src/platform/Tools.ts": {}, "src/gone.ts": {}}
+        	for name, got := range map[string][]core.Edge{
+        		"partial": carriedPartialEdges(edges, nil, files, indexed, map[string][]string{"typescript": {"src/other"}}),
+        		"skipped": carriedNativeEdges(edges, nil, files, indexed, []string{"typescript"}),
+        	} {
+        		if len(got) != 1 || got[0].To != edges[0].To {
+        			t.Fatalf("%s carry: want only the dependency import kept, got %#v", name, got)
+        		}
+        	}
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        go vet ./internal/index && go test -count=1 ./internal/index/ -run 'NativeEdgeCarry' -v 2>&1 | grep -E '^(--- |ok|FAIL)|want'
+      at: 2026-10-04T22:18:38.746512Z
+      classified: lint
+    - cmd: 'go build -o ~/prism-ab-bins/prism-fix3 ./cmd/prism && B=~/prism-ab-bins/idxbench && GROVE_TIMING=1 ERRLOG=$B/shadow/ts-fix3.err TAG=ts-fix3 python3 $B/shadow.py ~/prism-ab-bins/prism-fix3 $B/repos/typeorm DataSource.initialize ''[["src/container.ts","return ","return  "]]'' 2>&1 | sed -E ''s/@[0-9a-f]{40}//g'' | cut -c1-200; echo "heals: $(grep -c splice-check $B/shadow/ts-fix3.err)"; grep -oE ''js-ts: (scoped|incremental)[^"]*'' $B/shadow/ts-fix3.err | head -3'
+      at: 2026-10-04T22:19:23.491694Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "declarations\[0\]\|getDeclarations\|\.declarations\b\|valueDeclaration" internal/native/js_ts.go | head -30
+      at: 2026-10-04T22:19:34.689623Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 265,285p internal/native/js_ts.go; sed -n 390,420p internal/native/js_ts.go; grep -n "reads\|'writes'\|\"reads\"" internal/native/js_ts.go | head
+      at: 2026-10-04T22:19:38.634616Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        old='''function declInfo(checker, sym) {
+          if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+          if (!sym || !sym.declarations || !sym.declarations.length) return undefined;
+        	const decl = sym.declarations.find(d => d.body) || sym.valueDeclaration || sym.declarations[0];'''
+        new='''// primaryDecl picks the declaration a reference resolves to. When the
+        // declarations span several files (a property of a union type, interfaces
+        // merged across files), TypeScript orders them -- and sets valueDeclaration
+        // -- by type creation order, which depends on which files the program
+        // checked first: a scoped incremental program and a full one picked
+        // different targets for the same read (typeorm: MysqlConnectionOptions vs
+        // MongoConnectionOptions). Order those by file and position instead.
+        function primaryDecl(sym) {
+          const decls = sym.declarations;
+          const files = new Set(decls.map(d => d.getSourceFile().fileName));
+          if (files.size <= 1) {
+            return decls.find(d => d.body) || sym.valueDeclaration || decls[0];
+          }
+          const ordered = decls.slice().sort((a, b) => {
+            const fa = a.getSourceFile().fileName, fb = b.getSourceFile().fileName;
+            return fa < fb ? -1 : fa > fb ? 1 : a.pos - b.pos;
+          });
+          return ordered.find(d => d.body) || ordered[0];
+        }
+        function declInfo(checker, sym) {
+          if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+          if (!sym || !sym.declarations || !sym.declarations.length) return undefined;
+        	const decl = primaryDecl(sym);'''
+        assert old in s; s=s.replace(old,new)
+        old='''  if (!sym || !sym.declarations || !sym.declarations.length) return undefined;
+          const d = sym.valueDeclaration || sym.declarations[0];
+          const owner = d && d.parent;'''
+        new='''  if (!sym || !sym.declarations || !sym.declarations.length) return undefined;
+          const d = primaryDecl(sym);
+          const owner = d && d.parent;'''
+        assert old in s; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        go build ./... && go test -count=1 ./internal/native/ 2>&1 | tail -3
+      at: 2026-10-04T22:20:02.147843Z
+      classified: test
+    - cmd: 'go build -o ~/prism-ab-bins/prism-fix4 ./cmd/prism && B=~/prism-ab-bins/idxbench && GROVE_TIMING=1 ERRLOG=$B/shadow/ts-fix4.err TAG=ts-fix4 python3 $B/shadow.py ~/prism-ab-bins/prism-fix4 $B/repos/typeorm DataSource.initialize ''[["src/container.ts","return ","return  "],["src/connection/ConnectionOptionsReader.ts","return ","return  "]]'' 2>&1 | sed -E ''s/@[0-9a-f]{40}//g'' | cut -c1-200; echo "heals: $(grep -c splice-check $B/shadow/ts-fix4.err)"'
+      at: 2026-10-04T22:20:45.977442Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism ~/prism-ab-bins/prism-fix4 > ~/prism-ab-bins/ci-fix4.log 2>&1; echo "exit $?"; tail -1 ~/prism-ab-bins/ci-fix4.log; diff <(grep -E '\[(OK|FAIL)' ~/prism-ab-bins/ci-v0858.log | sort -u) <(grep -E '\[(OK|FAIL)' ~/prism-ab-bins/ci-fix4.log | sort -u) && echo IDENTICAL-to-v0.85.8
+      at: 2026-10-04T22:20:59.642675Z
+      classified: other
+    - cmd: 'B=~/prism-ab-bins/idxbench; GE=''[["guava/src/com/google/common/base/Strings.java","return (count == 0) ? \"\" : string;","return count == 0 ? \"\" : string;"],["guava/src/com/google/common/base/Strings.java","    int len = string.length();\n","    int len = string.length();\n    len = Math.max(len, 0);\n"],["guava/src/com/google/common/base/Joiner.java","public class Joiner {","public class Joiner {\n  static int benchHelper() { return Strings.repeat(\"a\", 2).length(); }\n"]]''; DE=''[["django/utils/text.py","return x[0].upper() + x[1:]","return x[:1].upper() + x[1:]"],["django/utils/text.py","        x = str(x)\n","        x = str(x)\n        x = x or \"\"\n"],["django/utils/html.py","def escape(text):","def bench_helper(v):\n    return capfirst(v)\n\n\ndef escape(text):"]]''; run() { r=$1; n=$2; e=$3; echo "## $r"; GROVE_TIMING=1 ERRLOG=$B/shadow/$r-f4.err TAG=$r-f4 python3 $B/shadow.py ~/prism-ab-bins/prism-fix4 $B/repos/$r "$n" "$e" 2>&1 | grep -E ''^(edges|symbols)''; echo "heals: $(grep -c splice-check $B/shadow/$r-f4.err)"; }; run guava Strings.repeat "$GE"; run django capfirst "$DE"; run jackson-databind ObjectMapper.readValue ''[["src/main/java/com/fasterxml/jackson/databind/DeserializationConfig.java","return ","return  "]]''; run gin Context.JSON ''[["recovery.go","return ","return  "]]'''
+      at: 2026-10-04T22:24:41.044357Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/tasks/b6mdvq6w2.output; grep -c "All invariants held" ~/prism-ab-bins/ci-fix4.log
+      at: 2026-10-04T22:24:46.376902Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "scip\|typescript\|name:\|run:" .github/workflows/eval.yml | head -40
+      at: 2026-10-04T22:24:52.95036Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 94,116p .github/workflows/eval.yml
+      at: 2026-10-04T22:24:56.000562Z
+      classified: other
+    - cmd: E=~/prism-ab-bins/groveeval; mkdir -p $E; cd $E; for spec in "socket.io https://github.com/socketio/socket.io.git 3ad4e1f2" "express https://github.com/expressjs/express.git dae209ae" "p-queue https://github.com/sindresorhus/p-queue.git 180ab9e"; do set -- ${=spec}; [ -d $1 ] || git clone --quiet $2 $1; git -C $1 checkout --quiet $3; done; cd /Users/tapabratapal/Projects/provasign/grove && (cd eval 2>/dev/null && ls cmd 2>/dev/null | head -3); go build -o $E/grove-eval ./cmd/grove-eval 2>&1 | tail -3 || true; ls -la $E/grove-eval 2>&1 | tail -1
+      at: 2026-10-04T22:25:06.668433Z
+      classified: build
+    - cmd: E=~/prism-ab-bins/groveeval; cd /Users/tapabratapal/Projects/provasign/grove/eval && go build -o $E/grove-eval ./cmd/grove-eval && cd .. && for spec in "socket.io 3ad4e1f2" "express dae209ae" "p-queue 180ab9e"; do set -- ${=spec}; rm -rf "${E:?}/${1:?}/.grove"; echo "## $1"; $E/grove-eval score --repo $E/$1 --truth eval/testdata/$1@$2/calls-truth.jsonl.gz --out-dir $E/out/$1 --baseline eval/baseline.json 2>&1 | tail -6; done
+      at: 2026-10-04T22:25:15.631461Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && gofmt -l internal pkg | grep -v changeimpact_signatures_test; git add internal/graph/incremental.go internal/graph/postcall_delta_test.go internal/index/indexer.go internal/index/nativecarry_test.go internal/native/js_ts.go pkg/grove/grove.go && git commit -q -F - <<'EOF'
+        index: incremental edits stay identical to a full rebuild
+
+        Real-corpus shadows (edits through a resident session vs a cold index of
+        the final tree) showed v0.61.2's incremental path drifting from a full
+        rebuild on every edit:
+
+        - Post-call builders (framework/template edges, Java/C# implicit super
+          calls) were never re-run on a delta. Their edges survived only for
+          owners the edit did not touch, so a re-resolved owner lost its implicit
+          super() edge and every template edge was dropped (templates are always
+          re-resolved). They are now regenerated over the full symbol set, like
+          decorators; the previous implicit-super set is recomputed from the
+          previous symbols and dropped by key, and their owners' rows are
+          rewritten in the store splice. guava: 2-4 edges lost per edit; django:
+          521 lost over three edits.
+        - Native edge carry dropped any endpoint that was not an indexed file,
+          including dependencies the compiler resolved into
+          (file:node_modules/...), which a full build keeps. Only endpoints in
+          files that were indexed and are now gone are stale. typeorm: 17 import
+          edges lost per edit.
+        - The TypeScript analyzer took the first declaration of a symbol whose
+          declarations span several files (union-type properties, cross-file
+          merges). TypeScript orders those by type creation order, which depends
+          on the files the program checked first, so a scoped incremental check
+          and a full one picked different targets. They are now ordered by file
+          and position.
+
+        After the fix, guava, django, jackson-databind, gin and typeorm shadows
+        are byte-identical to a full rebuild, with no deferred splice-check heals
+        (now logged under GROVE_TIMING). Engine invariants unchanged; TS edge
+        accuracy (socket.io, express, p-queue) within baseline.
+
+        Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E
+        EOF
+        git log --oneline -4; git status -s
+      at: 2026-10-04T22:25:28.164597Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md';s=open(p).read()
+        line='- [Edit re-index arc 2026-10-04](project_edit_reindex_2026_10_04.md) — in-session edit guava 5.5->3.3s, django 7.6->5.8s; 3 incremental edge-loss bugs fixed (shadows byte-identical); grove branch perf/edit-reindex local, unpushed\n'
+        s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1);open(p,'w').write(s)
+        EOF
+        head -4 MEMORY.md | tail -2
+      at: 2026-10-04T22:25:42.597541Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git show --stat d18fb017 | head -20; head -30 CHANGELOG.md; ls .github/workflows; git tag -n1 v0.61.2
+      at: 2026-10-04T22:43:39.170724Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'\np='CHANGELOG.md'; s=open(p).read()\nentry='''## v0.61.3 - 2026-10-04\n\nIncremental re-indexing now produces exactly what a full index produces, and\nan edit in a resident session (MCP) refreshes faster. Every change was\nchecked on real repos: edits applied through a session leave the store\nbyte-identical to a cold index of the same tree (guava, django,\njackson-databind, gin, typeorm).\n\n**Fixes (results)** — all present since incremental re-indexing:\n- **Template and implicit super() edges**: the framework builder\n  (template -> model edges) and the Java/C# implicit super-constructor\n  builder never re-ran on an edit. An edit dropped the implicit super() edge\n  of every re-resolved constructor, and every template edge. They are now\n  regenerated over the whole repo on each edit (~0.01s). guava lost 2-4\n  edges per edit; django lost 521 over three edits.\n- **Dependency imports**: carrying compiler edges forward dropped any\n  endpoint that was not an indexed file, including imports the compiler\n  resolved into node_modules, which a full index keeps. typeorm lost 17\n  per edit.\n- **TypeScript**: a reference to a symbol declared in several files (a\n  property of a union type) resolved to whichever declaration the\n  compiler created first, which depends on the files it checked. A scoped\n  incremental check and a full one could pick different targets. Such\n  declarations are now chosen by file and position.\n\n**Speed** (one-line edit in a resident session, 3s between edits):\nguava 5.5s -> 3.3s, django 7.6s -> 5.8s.\n- The post-write store fingerprint check (a full read of the edges table)\n  runs in the background after the refresh returns, always before the next\n  index or close. A mismatch still heals through the full diff, is reported\n  on the next result, and is logged under GROVE_TIMING.\n- Symbols of unchanged files and stored compiler edges are taken from the\n  resident graph instead of being read back from SQLite (guarded by blob\n  SHAs and row counts; any mismatch reads the store).\n\n'''\ns=s.replace('# Changelog\\n\\n','# Changelog\\n\\n'+entry,1); open(p,'w').write(s)\nEOF\ngit add CHANGELOG.md && git commit -q -m \"CHANGELOG: v0.61.3\" -m \"Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E\" && git push -q -u origin perf/edit-reindex 2>&1 | grep -v '^remote' | tail -2; gh pr create --base main --head perf/edit-reindex --title \"Incremental re-index: identical to a full index, faster edit refresh\" --body-file - <<'EOF'\n## Summary\n**Correctness.** Real-corpus shadows showed that edits through a resident session left the store different from a cold index of the same tree, in released v0.61.2. Three bugs:\n- **Post-call builders:** framework (template) and implicit super() edges were never rebuilt on a delta. They are now regenerated over the full symbol set, like decorators.\n- **Native carry:** endpoints outside the index were dropped, such as `node_modules` imports. Only endpoints in indexed files that are now gone are stale.\n- **TS analyzer:** for multi-file declarations it picked in type-creation order, which differs between a scoped program and a full one. They are now ordered by file and position.\n\n**Speed.** One-line edit in a resident session: guava 5.5s → 3.3s, django 7.6s → 5.8s.\n- The post-splice fingerprint check is deferred off the refresh. It still runs before the next index or close, and still heals.\n- Unchanged files' symbols and the stored native edges come from the resident graph, with guards.\n\n## Evidence\n- **Shadows:** guava, django, jackson-databind, gin and typeorm are byte-identical to a full rebuild after edits, with 0 deferred-check heals. Before: guava −2 to −4 edges, django −521, typeorm −18/+1.\n- **Tests:** new regression tests for the post-call builders and native carry fail before and pass after. There are also tests for the deferred check (heal + report) and for resident symbols (matches a full load; stale or incomplete baselines fall back). `go test ./...` and `-race` pass.\n- **Engine invariants:** prism `ci_invariants` is identical to v0.85.8.\n- **Edge accuracy (TS, run locally):** socket.io, express and p-queue are within baseline.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E\nEOF"
+      at: 2026-10-04T22:44:01.970556Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sleep 20; until ! gh pr checks 5 2>/dev/null | grep -qE 'pending|queued|in_progress'; do sleep 30; done; gh pr checks 5
+      at: 2026-10-04T22:44:06.142718Z
+      classified: other
+    - cmd: |-
+        B=~/prism-ab-bins/idxbench; cat > $B/shadow_rand.py <<'EOF'
+        # Randomized real-corpus shadow: N random edits inside random functions
+        # (each inserting a call to a random existing name), applied through a
+        # resident MCP session; after the last edit the store must be byte-identical
+        # to a cold index of the same tree. Usage: shadow_rand.py BIN REPO SEED N [LANG_EXTS]
+        import json,subprocess,threading,queue,time,sys,os,shutil,random,sqlite3
+        bin_,src,seed,n=sys.argv[1],sys.argv[2],int(sys.argv[3]),int(sys.argv[4])
+        exts=tuple((sys.argv[5] if len(sys.argv)>5 else '.py,.java,.go,.ts').split(','))
+        rng=random.Random(seed)
+        W=os.path.expanduser('~/prism-ab-bins/idxbench/shadow'); os.makedirs(W,exist_ok=True)
+        tag=os.environ.get('TAG',f'rand{seed}')
+        A=os.path.join(W,tag+'-inc'); C=os.path.join(W,tag+'-full')
+        for d in (A,C): shutil.rmtree(d,ignore_errors=True)
+        subprocess.run(['cp','-cR',src,A],check=True); shutil.rmtree(os.path.join(A,'.grove'),ignore_errors=True)
+        p=subprocess.Popen([bin_,'mcp','--compact',A],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=open(os.environ.get('ERRLOG','/dev/null'),'w'),text=True,bufsize=1)
+        q=queue.Queue(); threading.Thread(target=lambda:[q.put(l) for l in p.stdout],daemon=True).start(); k=[0]
+        def call(m,params):
+            k[0]+=1; p.stdin.write(json.dumps({"jsonrpc":"2.0","id":k[0],"method":m,"params":params})+"\n")
+            while True:
+                d=json.loads(q.get(timeout=3600))
+                if d.get('id')==k[0]: return d
+        call('initialize',{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"b","version":"1"}})
+        p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n")
+        look=lambda: call('tools/call',{"name":"prism","arguments":{"op":"lookup","args":{"name":["main"]}}})
+        look()
+        db=sqlite3.connect(os.path.join(A,'.grove','grove.db'))
+        funcs=[r for r in db.execute("select file_path,name,span_start,span_end from symbols where kind in ('function','method') and span_end>span_start+1 and name not like '<%'") if r[0].endswith(exts) and '/node_modules/' not in r[0] and not r[0].startswith('node_modules/')]
+        names=[r[0] for r in db.execute("select distinct name from symbols where kind in ('function','method','class') and name not like '<%' and length(name)>3")]
+        db.close()
+        rng.shuffle(funcs)
+        for f,name,s,e in funcs[:n]:
+            path=os.path.join(A,f); lines=open(path,encoding='utf-8',errors='surrogateescape').read().split('\n')
+            if e>len(lines): continue
+            at=min(s,len(lines)-1)  # insert after the declaration's first line
+            nxt=next((l for l in lines[at:e] if l.strip()),'    ')
+            indent=nxt[:len(nxt)-len(nxt.lstrip())] or '    '
+            callee=rng.choice(names)
+            stmt={'.py':f'{callee}()', '.go':f'{callee}()'}.get(os.path.splitext(f)[1], f'{callee}();')
+            lines.insert(at, indent+stmt)
+            open(path,'w',encoding='utf-8',errors='surrogateescape').write('\n'.join(lines))
+            time.sleep(0.2); t=time.time(); look(); print(f'edit {f}:{name} +{callee}: {time.time()-t:.2f}s',flush=True)
+        p.stdin.close(); p.wait(timeout=600)
+        subprocess.run(['cp','-cR',A,C],check=True); shutil.rmtree(os.path.join(C,'.grove'),ignore_errors=True)
+        subprocess.run([bin_,'index','--allow-heuristic',C],capture_output=True)
+        def dump(root,qq): return subprocess.run(['sqlite3',os.path.join(root,'.grove','grove.db'),qq],capture_output=True).stdout.decode('utf-8','replace')
+        for label,qq in [('edges',"select from_node,edge_type,to_node,confidence,source,reason from edges order by 1,2,3"),
+                         ('symbols',"select id,file_path,kind,name,span_start,span_end,signature,call_sites,attr_sites from symbols order by 1")]:
+            a,c=dump(A,qq),dump(C,qq); sa,sc=set(a.splitlines()),set(c.splitlines())
+            print(f'{label}: '+('IDENTICAL' if a==c else f'DIFFER only-inc={len(sa-sc)} only-full={len(sc-sa)}')+f' ({len(sc)} rows)')
+            for x in list(sa-sc)[:3]: print('  only-inc ',x[:180])
+            for x in list(sc-sa)[:3]: print('  only-full',x[:180])
+        EOF
+        echo written
+      at: 2026-10-04T22:44:45.292757Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; for seed in 1 2; do echo "## gin seed $seed"; TAG=gin$seed python3 $B/shadow_rand.py ~/prism-ab-bins/prism-fix4 $B/repos/gin $seed 8 .go 2>&1 | tail -4; done
+      at: 2026-10-04T22:45:00.61279Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; for spec in "django 1 .py" "jackson-databind 1 .java" "typeorm 1 .ts"; do set -- ${=spec}; echo "## $1 seed $2"; TAG=$1-r$2 python3 $B/shadow_rand.py ~/prism-ab-bins/prism-fix4 $B/repos/$1 $2 6 $3 2>&1 | tail -9 | sed -E 's/@[0-9a-f]{40}//g' | cut -c1-200; done
+      at: 2026-10-04T22:47:59.200019Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/tasks/bmidh47hp.output
+      at: 2026-10-04T22:48:06.801676Z
+      classified: other
+    - cmd: B=~/prism-ab-bins/idxbench; TAG=jk-v0858 python3 $B/shadow_rand.py ~/prism-ab-bins/prism-v0858-candidate $B/repos/jackson-databind 1 6 .java 2>&1 | tail -6 | sed -E 's/@[0-9a-f]{40}//g' | cut -c1-200
+      at: 2026-10-04T22:48:55.442318Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && gh pr merge 5 --merge 2>&1 | tail -1; git checkout -q main && git pull -q --ff-only origin main && git log --oneline -2 && id=$(gh run list --branch main --workflow ci.yml --limit 1 --json databaseId -q ''.[0].databaseId''); gh run watch $id --exit-status >/dev/null 2>&1; echo "main CI: $(gh run view $id --json conclusion -q .conclusion)"; eid=$(gh run list --branch main --workflow eval.yml --limit 1 --json databaseId -q ''.[0].databaseId''); gh run watch $eid --exit-status >/dev/null 2>&1; echo "edge accuracy: $(gh run view $eid --json conclusion,headSha -q ''.conclusion+" "+.headSha[0:8]'')"; git rev-parse --short HEAD'
+      at: 2026-10-04T22:49:09.452879Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && git tag -a v0.61.3 -m "v0.61.3: incremental re-index identical to a full index; faster edit refresh" b3df4200 && git push -q origin v0.61.3 2>&1 | grep -v ''^remote'' | tail -1; sleep 15; rid=$(gh run list --workflow release.yml --limit 1 --json databaseId -q ''.[0].databaseId''); gh run watch $rid --exit-status >/dev/null 2>&1; echo "release: $(gh run view $rid --json conclusion,headBranch -q ''.conclusion+" "+.headBranch'')"; gh release view v0.61.3 --json assets -q ''.assets|length'' 2>&1; cd ../prism && GOFLAGS=-mod=mod GOWORK=off GOPROXY=direct go list -m github.com/provasign/grove@v0.61.3 2>&1 | tail -1'
+      at: 2026-10-04T22:51:08.18845Z
+      classified: other
+    - cmd: git show --stat 61802e49 | head -12; git checkout -q main && git pull -q --ff-only && git checkout -q -b deps/grove-v0.61.3 && GOWORK=off go get github.com/provasign/grove@v0.61.3 2>&1 | tail -2 && GOWORK=off go mod tidy && git diff --stat
+      at: 2026-10-04T22:51:16.832798Z
+      classified: other
+    - cmd: GOWORK=off go build -o ~/prism-ab-bins/prism-v0859-candidate ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v '^ok\|no test files'; echo tests-done; cd ../research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism ~/prism-ab-bins/prism-v0859-candidate > ~/prism-ab-bins/ci-v0859.log 2>&1; echo "gate exit $?"; grep -c "All invariants held" ~/prism-ab-bins/ci-v0859.log; diff <(grep -E '\[(OK|FAIL)' ~/prism-ab-bins/ci-v0858.log | sort -u) <(grep -E '\[(OK|FAIL)' ~/prism-ab-bins/ci-v0859.log | sort -u) && echo IDENTICAL-to-v0.85.8
+      at: 2026-10-04T22:53:09.748583Z
+      classified: test
+notes:
+    - text: continuation of session 8f540fe0-38ca-42cc-885e-60b9c4a6d7f7 — events captured after its evidence was finalized
+      at: 2026-10-04T17:51:25.202155Z
+redactions: 0
