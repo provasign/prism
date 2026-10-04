@@ -26,11 +26,14 @@ func compactImpactLine(text string) string {
 
 const callExpressionUnavailableNote = "call expression unavailable in indexed source; inspect this caller if needed"
 
-func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int) {
+func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, verified ...map[int]bool) {
 	lines := strings.Split(caller.RawText, "\n")
 	matched := map[int]bool{}
 	for _, call := range caller.CallSites {
 		if target != "" && leafOf(call.Callee) == target {
+			if len(verified) > 0 && !verified[0][call.Line] {
+				continue
+			}
 			matched[call.Line] = true
 		}
 	}

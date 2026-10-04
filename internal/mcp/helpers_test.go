@@ -84,8 +84,13 @@ func TestToolRead_NotFound(t *testing.T) {
 	srv := fakeGroveSrv(t, map[string]any{"symbols": []map[string]any{}})
 	defer srv.Close()
 	h := newHWithGrove(t, srv)
-	if _, err := h.Invoke("prism_read", map[string]any{"file": "nope.go"}); err == nil {
-		t.Error("expected err")
+	out, err := h.Invoke("prism_read", map[string]any{"file": "nope.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := out.(map[string]any)
+	if result["found"] != false || result["file"] != "nope.go" {
+		t.Fatalf("missing file should be a usable result: %#v", result)
 	}
 }
 

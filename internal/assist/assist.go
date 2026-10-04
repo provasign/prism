@@ -400,12 +400,17 @@ func applyRenamePlan(out *os.File, root string, plan map[string]any, includeAmbi
 			ln := int(em["line"].(float64)) - 1
 			before, _ := em["before"].(string)
 			after, _ := em["after"].(string)
-			if ln < 0 || ln >= len(lines) || strings.TrimRight(lines[ln], "\r") != before {
+			if ln < 0 || ln >= len(lines) || strings.TrimSpace(lines[ln]) != strings.TrimSpace(before) {
 				fmt.Fprintf(out, "apply: SKIP %s:%d (line changed since plan)\n", fp, ln+1)
 				skipped++
 				continue
 			}
-			lines[ln] = after
+			indent := lines[ln][:len(lines[ln])-len(strings.TrimLeft(lines[ln], " \t"))]
+			ending := ""
+			if strings.HasSuffix(lines[ln], "\r") {
+				ending = "\r"
+			}
+			lines[ln] = indent + strings.TrimSpace(after) + ending
 			applied++
 		}
 		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {

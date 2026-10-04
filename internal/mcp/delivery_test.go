@@ -158,7 +158,7 @@ func TestReadRangeReturnsPointerForQueryDeliveredWindow(t *testing.T) {
 	hash := compression.Hash(content)
 	h.recordDeliveredRanges("x.go", hash, []lineWindow{{start: 2, end: 5}})
 
-	out, err := h.readRange("x.go", content, hash, 3, 2)
+	out, err := h.readRange("x.go", content, hash, 3, 2, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,13 +168,64 @@ func TestReadRangeReturnsPointerForQueryDeliveredWindow(t *testing.T) {
 	}
 
 	changed := compression.Hash(content + "six\n")
-	out, err = h.readRange("x.go", content+"six\n", changed, 3, 2)
+	out, err = h.readRange("x.go", content+"six\n", changed, 3, 2, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	got = out.(map[string]any)["content"].(string)
 	if !strings.Contains(got, "three") || strings.Contains(got, "[prism:cached]") {
 		t.Fatalf("changed content must be delivered, got %q", got)
+	}
+}
+
+func TestReadRangeForceReturnsCachedSource(t *testing.T) {
+	h := &Handler{}
+	content := "one\ntwo\nthree\n"
+	hash := compression.Hash(content)
+	h.recordDeliveredRanges("x.go", hash, []lineWindow{{start: 1, end: 3}})
+	out, err := h.readRange("x.go", content, hash, 2, 1, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := out.(map[string]any)["content"].(string)
+	if !strings.Contains(got, "two") || strings.Contains(got, "[prism:cached]") {
+		t.Fatalf("force must return source: %q", got)
+	}
+}
+
+func TestBatchReadKeepsLaterWindowsAndMissingFile(t *testing.T) {
+	h := newTestHandler(t)
+	var body strings.Builder
+	for i := 0; i < 80; i++ {
+		fmt.Fprintf(&body, "// %03d %s\n", i, strings.Repeat("x", 100))
+	}
+	for _, name := range []string{"a.go", "b.go", "c.go"} {
+		if err := os.WriteFile(filepath.Join(h.Root, name), []byte(body.String()), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ranges := []any{}
+	for _, name := range []string{"a.go", "missing.go", "b.go", "c.go"} {
+		ranges = append(ranges, map[string]any{"file": name, "from": 1, "to": 80})
+	}
+	out, err := h.readRanges(t.Context(), map[string]any{"ranges": ranges})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := out.(map[string]any)["ranges"].([]map[string]any)
+	if len(got) != 4 || got[1]["found"] != false {
+		t.Fatalf("missing range must not abort batch: %#v", got)
+	}
+	if text, ok := renderReadAsText(out.(map[string]any)); !ok || !strings.Contains(text, "missing.go") {
+		t.Fatalf("MCP rendering lost the missing-file result: %q, %v", text, ok)
+	}
+	for _, i := range []int{0, 2, 3} {
+		if got[i]["content"] == nil || got[i]["startLine"] != 1 {
+			t.Fatalf("range %d lost its source: %#v", i, got[i])
+		}
+	}
+	if out.(map[string]any)["continuation"] == nil {
+		t.Fatal("clamped batch needs an exact continuation request")
 	}
 }
 

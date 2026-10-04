@@ -88,6 +88,27 @@ func TestImpactEvidencePreservesSitesAndSource(t *testing.T) {
 	}
 }
 
+func TestImpactEvidenceExcludesSameNamedOtherReceiver(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"calls.go": "package p\ntype A struct{}\ntype B struct{}\nfunc (A) Send() {}\nfunc (B) Send() {}\nfunc Work(a A, b B) {\n a.Send()\n b.Send()\n a.Send()\n}\n",
+	})
+	result, err := h.Invoke("prism_change_impact", map[string]any{"query": "A.Send"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, caller := range result.(map[string]any)["callers"].([]map[string]any) {
+		if caller["name"] != "Work" {
+			continue
+		}
+		evidence, ok := caller["evidence"].([]map[string]any)
+		if !ok || len(evidence) != 2 || evidence[0]["line"] != 7 || evidence[1]["line"] != 9 {
+			t.Fatalf("expected only A.Send call lines 7 and 9: %#v", caller)
+		}
+		return
+	}
+	t.Fatal("Work caller missing")
+}
+
 func TestImpactEvidenceBoundsAndUncertainty(t *testing.T) {
 	caller := grove.SymbolRecord{Span: grove.SpanInfo{Start: 10}, RawText: "def use():\n a.get()\n b.get()\n c.get()\n wrong()",
 		CallSites: []grove.CallSite{{Callee: "c.get", Line: 13}, {Callee: "a.get", Line: 11},

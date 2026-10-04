@@ -329,6 +329,14 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		if isTestFilePath(sym.FilePath) {
 			return
 		}
+		// A Java anonymous class is a local implementation, not a named
+		// contract. Its synthetic <anonymous@line:col> identity changes when
+		// code moves, which looks like a removal/rename and falsely marks
+		// unrelated interface callers as missed sites. Changes to the
+		// interface itself still seed their own impact check.
+		if isSyntheticAnonymousJavaSymbol(sym) {
+			return
+		}
 		switch sym.Kind {
 		case "function", "method", "constructor":
 			seeds = append(seeds, seed{sym, before, reason})
@@ -380,6 +388,13 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 				continue
 			}
 			if c.SignatureChanged && c.After != nil {
+				// Go callers are still valid when the only signature edit adds
+				// an optional trailing variadic parameter. Requiring every old
+				// call to change produces false missed-site findings.
+				if c.Before != nil && strings.HasSuffix(f, ".go") &&
+					goAddedTrailingVariadic(c.Before.Signature, c.After.Signature) {
+					continue
+				}
 				// "signature of X changed" is wrong for a const whose VALUE
 				// changed; say what actually happened per kind.
 				word := "signature"
