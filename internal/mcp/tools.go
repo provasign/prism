@@ -3323,7 +3323,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	targetLeaf = leafOf(strings.TrimSpace(targetLeaf))
 	evidenceBudget := impactEvidenceMaxBytes
 	wideImpact := obligationSiteCount(r) >= wideImpactIdentityThreshold
-	verifiedCallLines := map[string]map[int]bool{}
+	var verifiedCallLines impactPlanSites
 	if !wideImpact && len(r.Callers) > 0 {
 		if plan, err := h.Grove.RenamePlan(ctx, r.Query, targetLeaf+"PrismEvidence"); err == nil {
 			verifiedCallLines = renamePlanLines(plan)
@@ -3541,12 +3541,21 @@ func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *gr
 	if lang == "tsx" || lang == "javascript" {
 		lang = "typescript"
 	}
+	// Only languages whose completed native pass nativePassCompleted can
+	// recognize get the status warnings below. Python has no native pass, so
+	// warning there flagged every Python answer as possibly incomplete.
+	checked := nativePassChecked[lang]
 	st, err := h.Grove.Status(ctx)
 	if err != nil || st == nil {
-		out["degradedAnalysis"] = lang + " compiler-backed analysis status is unavailable; caller coverage may be incomplete. Run prism index and check prism status"
+		if checked {
+			out["degradedAnalysis"] = lang + " compiler-backed analysis status is unavailable; caller coverage may be incomplete. Run prism index and check prism status"
+		}
 		return
 	}
 	for _, diagnostic := range st.Native {
+		if !checked {
+			break
+		}
 		if diagnostic == "native analyzers disabled" || strings.HasPrefix(diagnostic, lang+": ") && strings.Contains(diagnostic, "disabled by config") {
 			out["degradedAnalysis"] = lang + " compiler-backed analysis was disabled for this index; caller coverage may be incomplete. Enable native analysis and run prism index"
 			return
@@ -3559,10 +3568,12 @@ func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *gr
 			return
 		}
 	}
-	if !nativePassCompleted(lang, st.Native) {
+	if checked && !nativePassCompleted(lang, st.Native) {
 		out["degradedAnalysis"] = lang + " compiler-backed completion is not confirmed by this index; caller coverage may be incomplete. Re-index with native analysis enabled and check prism status"
 	}
 }
+
+var nativePassChecked = map[string]bool{"go": true, "java": true, "typescript": true}
 
 func nativePassCompleted(lang string, diagnostics []string) bool {
 	for _, diagnostic := range diagnostics {

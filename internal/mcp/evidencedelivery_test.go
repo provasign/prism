@@ -242,7 +242,7 @@ func TestLookupBatchRenderingPreservesFailuresAndUnknownFields(t *testing.T) {
 }
 
 func TestImpactEvidencePlanFilterOnlyWhereCovered(t *testing.T) {
-	caller := grove.SymbolRecord{FilePath: "calls.go", Span: grove.SpanInfo{Start: 10},
+	caller := grove.SymbolRecord{Name: "work", FilePath: "calls.go", Span: grove.SpanInfo{Start: 10},
 		RawText:   "func work() {\n a.Send()\n b.Send()\n}",
 		CallSites: []grove.CallSite{{Callee: "a.Send", Line: 11}, {Callee: "b.Send", Line: 12}}}
 	lines := func(entry map[string]any) []int {
@@ -260,6 +260,8 @@ func TestImpactEvidencePlanFilterOnlyWhereCovered(t *testing.T) {
 		"plan silent on file keeps matches": {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "other.go", Line: 3}}}, []int{11, 12}},
 		"confirmed edit filters":            {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "calls.go", Line: 11}}}, []int{11}},
 		"ambiguous site counts":             {&grove.RenamePlanResult{Ambiguous: []grove.RenameEdit{{FilePath: "./calls.go", Line: 12}}}, []int{12}},
+		"unresolved caller keeps matches": {&grove.RenamePlanResult{Edits: []grove.RenameEdit{{FilePath: "calls.go", Line: 3}},
+			Unresolved: []string{"calls.go:work"}}, []int{11, 12}},
 	} {
 		entry := map[string]any{}
 		budget := impactEvidenceMaxBytes

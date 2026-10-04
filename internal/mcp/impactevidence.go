@@ -74,32 +74,46 @@ func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, targ
 	}
 }
 
+// impactPlanSites is what a rename plan says about call sites, by file.
+type impactPlanSites struct {
+	lines      map[string]map[int]bool
+	unresolved map[string]bool // "file:caller" the plan could not resolve
+}
+
 // renamePlanLines indexes the lines a rename plan would touch, by file.
 // Ambiguous sites count: the plan could not rule them out, so they may
 // still be calls to the target.
-func renamePlanLines(plan *grove.RenamePlanResult) map[string]map[int]bool {
-	lines := map[string]map[int]bool{}
+func renamePlanLines(plan *grove.RenamePlanResult) impactPlanSites {
+	sites := impactPlanSites{lines: map[string]map[int]bool{}, unresolved: map[string]bool{}}
 	if plan == nil {
-		return lines
+		return sites
 	}
 	for _, group := range [][]grove.RenameEdit{plan.Edits, plan.Ambiguous} {
 		for _, edit := range group {
 			file := filepath.Clean(edit.FilePath)
-			if lines[file] == nil {
-				lines[file] = map[int]bool{}
+			if sites.lines[file] == nil {
+				sites.lines[file] = map[int]bool{}
 			}
-			lines[file][edit.Line] = true
+			sites.lines[file][edit.Line] = true
 		}
 	}
-	return lines
+	for _, u := range plan.Unresolved {
+		if i := strings.LastIndexByte(u, ':'); i > 0 {
+			sites.unresolved[filepath.Clean(u[:i])+":"+u[i+1:]] = true
+		}
+	}
+	return sites
 }
 
 // addPlanCheckedCallEvidence filters a caller's call lines by the rename
-// plan only when the plan covers the caller's file. A file the plan says
-// nothing about (plan failed, or no site there) keeps name-matched evidence
-// rather than reporting the call expression as unavailable.
-func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, planLines map[string]map[int]bool) {
-	if lines, ok := planLines[filepath.Clean(caller.FilePath)]; ok {
+// plan only when the plan covers the caller's file and resolved the caller.
+// Otherwise (plan failed, no site in the file, or the plan listed the caller
+// as unresolved, as with qualified `new Outer.Inner(...)` calls) the
+// name-matched evidence is kept rather than reporting the call expression as
+// unavailable.
+func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, plan impactPlanSites) {
+	file := filepath.Clean(caller.FilePath)
+	if lines, ok := plan.lines[file]; ok && !plan.unresolved[file+":"+caller.Name] {
 		addImpactCallEvidence(entry, caller, target, budget, lines)
 		return
 	}

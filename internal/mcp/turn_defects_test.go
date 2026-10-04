@@ -73,6 +73,19 @@ func TestDisabledNativeImpactDoesNotClaimCompilerCoverage(t *testing.T) {
 	}
 }
 
+func TestPythonImpactHasNoNativeWarning(t *testing.T) {
+	h := evidenceHandler(t, map[string]string{
+		"calls.py": "def send():\n    pass\n\ndef work():\n    send()\n",
+	})
+	out, err := h.Invoke("prism_change_impact", map[string]any{"query": "send"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if note := out.(map[string]any)["degradedAnalysis"]; note != nil {
+		t.Fatalf("Python has no compiler-backed pass to confirm; got warning %q", note)
+	}
+}
+
 func TestCompactReadAcceptsForce(t *testing.T) {
 	if err := validateCompactArguments("read", map[string]any{"file": "x.go", "force": true}); err != nil {
 		t.Fatal(err)
