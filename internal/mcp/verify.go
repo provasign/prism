@@ -297,6 +297,10 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		sym    grove.SymbolRecord
 		before *grove.SymbolRecord // base-side symbol (old contract), when known
 		reason string
+		// callsStayValid: the edit only added a trailing variadic parameter
+		// to a Go function, so direct calls compile unchanged. Interface
+		// declarations, other implementations and value uses still count.
+		callsStayValid bool
 	}
 	var seeds []seed
 	var unverifiedSeeds []string
@@ -339,7 +343,7 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 		}
 		switch sym.Kind {
 		case "function", "method", "constructor":
-			seeds = append(seeds, seed{sym, before, reason})
+			seeds = append(seeds, seed{sym: sym, before: before, reason: reason})
 		case "document", "file":
 			// Not code; no contract to break.
 		case "const", "variable", "field", "decorator", "annotation":
@@ -389,10 +393,19 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			}
 			if c.SignatureChanged && c.After != nil {
 				// Go callers are still valid when the only signature edit adds
-				// an optional trailing variadic parameter. Requiring every old
-				// call to change produces false missed-site findings.
+				// an optional trailing variadic parameter, so requiring every
+				// old call to change produced false missed sites. The change is
+				// still a contract change: a method must still match its
+				// interface, and a function used as a value has a new type.
+				// Keep the seed and exempt only direct call lines.
 				if c.Before != nil && strings.HasSuffix(f, ".go") &&
 					goAddedTrailingVariadic(c.Before.Signature, c.After.Signature) {
+					n := len(seeds)
+					addSeed(*c.After, c.Before, "optional trailing variadic parameter added to "+
+						displayQN(*c.After)+"; direct calls stay valid")
+					if len(seeds) > n {
+						seeds[n].callsStayValid = true
+					}
 					continue
 				}
 				// "signature of X changed" is wrong for a const whose VALUE
@@ -669,6 +682,18 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			notes = append(notes, displayQN(sd.sym)+": required set includes name-derived "+
 				"(framework template/query) references — probably right, not certain")
 		}
+		if sd.callsStayValid {
+			for _, ref := range h.goFuncValueRefs(ctx, sd.sym) {
+				if lineTouched(changed, ref.File, ref.Line) {
+					continue
+				}
+				key := fmt.Sprintf("%s:%d:%s", ref.File, ref.Line, sd.sym.Name)
+				if !seen[key] {
+					seen[key] = true
+					missed = append(missed, ref)
+				}
+			}
+		}
 		var required []grove.SymbolRecord
 		if impact != bc {
 			required = impactSites(impact, false)
@@ -693,6 +718,9 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 				}
 			}
 			if len(callLines) > 0 {
+				if sd.callsStayValid {
+					continue
+				}
 				for _, ln := range callLines {
 					if !lineTouched(changed, site.FilePath, ln) {
 						key := fmt.Sprintf("%s:%d:%s", site.FilePath, ln, sd.sym.Name)

@@ -1,11 +1,14 @@
 package mcp
 
 import (
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"go/types"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/provasign/prism/internal/grove"
@@ -77,4 +80,61 @@ func sameGoField(a, b *ast.Field) bool {
 		}
 	}
 	return true
+}
+
+// goUntypedBinding matches the left side of `x := ` or `var x = `, where the
+// bound variable takes whatever type the right side has.
+var goUntypedBinding = regexp.MustCompile(`(^|[{;])\s*(var\s+)?\w+(\s*,\s*\w+)*\s*:?=\s*$`)
+
+// goFuncValueRefs finds references that use a Go function as a value
+// (`var hook = pkg.Do`, `register(pkg.Do)`) rather than calling it. Adding a
+// trailing variadic parameter changes the function's type, so those uses
+// stop compiling even though direct calls stay valid. The reference layer
+// is name-based, so a reference counts only as `pkg.Name` from another
+// package or a bare `Name` inside the declaring package.
+func (h *Handler) goFuncValueRefs(ctx context.Context, sym grove.SymbolRecord) []missedSite {
+	if h.Grove == nil || sym.Kind != "function" || sym.Name == "" {
+		return nil
+	}
+	res, err := h.Grove.References(ctx, sym.Name)
+	if err != nil {
+		return nil
+	}
+	pkgDir := filepath.ToSlash(filepath.Dir(sym.FilePath))
+	pkgName := path.Base(pkgDir)
+	qualified := regexp.MustCompile(`\b` + regexp.QuoteMeta(pkgName) + `\.` + regexp.QuoteMeta(sym.Name) + `\b`)
+	bare := regexp.MustCompile(`(^|[^.\w])` + regexp.QuoteMeta(sym.Name) + `\b`)
+	var out []missedSite
+	for _, r := range res.Refs {
+		if !strings.HasSuffix(r.File, ".go") {
+			continue
+		}
+		line := stripCommentsAndStringsLine(sourceLineAt(h.Root, r.File, r.Line))
+		re := qualified
+		if filepath.ToSlash(filepath.Dir(r.File)) == pkgDir {
+			re = bare
+		}
+		for _, loc := range re.FindAllStringIndex(line, -1) {
+			rest := strings.TrimLeft(line[loc[1]:], " \t")
+			if strings.HasPrefix(rest, "(") || strings.HasPrefix(rest, "[") {
+				continue // a call, or an explicit generic instantiation call
+			}
+			if strings.HasPrefix(strings.TrimSpace(line), "func ") && strings.Contains(line, "func "+sym.Name+"(") {
+				continue // the declaration itself
+			}
+			if goUntypedBinding.MatchString(line[:loc[0]]) && (rest == "" || strings.HasPrefix(rest, ";") || strings.HasPrefix(rest, "}")) {
+				continue // `x := Do` / `var x = Do` takes the new type and still compiles
+			}
+			out = append(out, missedSite{
+				Symbol: sym.Name, QualifiedName: r.Enclosing, File: r.File, Line: r.Line,
+				Kind: "value-reference", BecauseOf: displayQN(sym),
+				Detail: "uses " + sym.Name + " as a value; its type changed with the new variadic parameter",
+			})
+			break
+		}
+		if len(out) == 25 {
+			break
+		}
+	}
+	return out
 }
