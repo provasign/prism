@@ -1,0 +1,1351 @@
+shale_version: "0"
+id: d125dca7-e99f-49fb-bc56-83b796d2af46-c2
+created_at: 2026-10-05T18:34:38.737344Z
+finalized_at: 2026-10-05T20:38:48.444392Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: deps/grove-v0.62.2
+privacy: redacted
+commands:
+    - cmd: 'cd ~/Projects/provasign/prism && gh pr merge 29 --merge --delete-branch 2>&1 | tail -1; git fetch -q origin --tags && git checkout -q main && git merge -q --ff-only origin/main && git log --oneline -1 && grep -E "provasign/(grove|astkit)" go.mod && git tag -a v0.86.1 -m "v0.86.1: grove v0.62.1 — Python decorators are calls of the enclosing scope" && git push -q origin v0.86.1 2>&1 | grep -v "^remote:" | tail -1; git ls-remote --tags origin v0.86.1; sleep 15; gh run list --limit 4 2>&1 | cut -f1-5,7'
+      at: 2026-10-05T18:34:38.737344Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && gh run watch 37356954179 --interval 30 >/dev/null 2>&1; gh run view 37356954179 --json conclusion,jobs --jq ''.conclusion, (.jobs[] | "\(.name): \(.conclusion)")''; gh release view v0.86.1 --json assets --jq ''.assets[].name'' 2>&1 | head -20'
+      at: 2026-10-05T18:34:41.779303Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/beur5ffw4.output
+      at: 2026-10-05T18:38:00.347189Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && gh release edit v0.86.1 --notes "$(cat <<'EOF'
+        Grove v0.62.1: Python decorators now count as calls.
+
+        **Fix**
+        - **Decorator-driven Python APIs looked unused.** A decorator runs when its definition is evaluated, so `@click.argument("x")` is a call to `click.argument`, but Prism never recorded it. Click's `argument` showed 2 callers against 143 `@click.argument(` uses, and `version_option` showed none. Decorators are now calls made by the scope that evaluates them: the module for top-level functions, the class for methods, the enclosing function for nested ones. Classes also record the calls in their own body.
+
+        | | Before | After |
+        |---|---|---|
+        | click `argument` | 2 callers, 1 file | callers in 20 files |
+        | click `version_option` | 0 callers | 7 callers (all 3 files of a signature-change test, including `examples/repo/repo.py`) |
+        | flask edge accuracy vs runtime trace | precision 0.829, recall 0.704 | precision 0.854, recall 0.729 |
+
+        Existing indexes re-extract automatically on first use.
+
+        **Known gap:** decorators on objects stored in plain module variables, such as Flask's `@app.route` and `@bp.route`, are recorded but not yet linked to `route`, because the variable's type isn't inferred.
+        EOF
+        )" 2>&1 | tail -1; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; mkdir -p $S/rel && cd $S/rel && gh release download v0.86.1 -R provasign/prism -p prism-v0.86.1-darwin-arm64 -p checksums.txt --clobber && shasum -a 256 -c checksums.txt --ignore-missing && chmod +x prism-v0.86.1-darwin-arm64 && xattr -c prism-v0.86.1-darwin-arm64 2>/dev/null; ./prism-v0.86.1-darwin-arm64 version; cd $S/boost/p-click && rm -rf .grove && python3 $S/guard.py 2048 40 -- $S/rel/prism-v0.86.1-darwin-arm64 index . >/dev/null 2>&1; for s in argument version_option; do $S/rel/prism-v0.86.1-darwin-arm64 change-impact $s | python3 -c "import sys,json; d=json.load(sys.stdin); print('$s', len(d['callers']), 'callers in', len({c['filePath'] for c in d['callers']}), 'files')"; done; gh workflow run "Refresh formulae" -R provasign/homebrew-shale && echo "tap refresh triggered"
+      at: 2026-10-05T18:38:19.728213Z
+      classified: other
+    - cmd: gh run watch 37357453538 -R provasign/homebrew-shale --interval 15 >/dev/null 2>&1; gh run view 37357453538 -R provasign/homebrew-shale --json conclusion --jq .conclusion; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content 2>/dev/null | base64 -d | grep -E "version|url" | head -3; brew update -q >/dev/null 2>&1; brew info provasign/shale/prism 2>/dev/null | head -1
+      at: 2026-10-05T18:39:18.63006Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_boost_eval_2026_10_05.md <<'EOF'
+        SHIPPED 2026-10-05: astkit v0.15.4 (PR #3) -> grove v0.62.1 (PR #11, all CI + 8 edge-accuracy oracles green, flask
+        baseline ratcheted) -> prism v0.86.1 (PR #29 incl. shale evidence commit; 5 binaries; notes written; tap refreshed,
+        serves 0.86.1). Released darwin-arm64 smoke: click argument 93 callers / 20 files, version_option 7 / 5 files.
+        Local brew install is still 0.85.6 (not upgraded).
+        EOF
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' 's#^- \[Boost eval 2026-10-05\](project_boost_eval_2026_10_05.md) — .*#- [Boost eval + decorator release 2026-10-05](project_boost_eval_2026_10_05.md) — JFrog Boost in Docker (6 hooks, remote flags, graph weaker than prism); found prism missed Python decorator calls; SHIPPED astkit v0.15.4/grove v0.62.1/prism v0.86.1 (enclosing-scope attribution; flask P .829->.854)#' MEMORY.md && sed -n 3p MEMORY.md
+      at: 2026-10-05T18:39:26.944624Z
+      classified: other
+    - cmd: ~/prism-ab-bins/prism-v0.86.0 --help 2>&1 | grep -E "^  prism " | cut -c1-110; echo; docker exec boost-eval bash -lc 'export PATH=$HOME/.local/bin:$PATH; boost graph affected --help 2>&1 | head -12; echo ----; boost graph entrypoints --help 2>&1 | head -10; echo ----; boost graph query --help 2>&1 | head -8'
+      at: 2026-10-05T18:43:50.165964Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,collections,os,re
+        rows=[]
+        for f in glob.glob('tasks/e2e/*.json'):
+            t=json.load(open(f))
+            if not isinstance(t,dict) or t.get('invalid_reason') or t.get('kind') in ('wide','fanout','seeded_refactor'): continue
+            repo=t.get('repo','')
+            if t.get('lang') not in (None,'python') : continue
+            if not t.get('problem_statement') or not t.get('patch'): continue
+            gold=[l[6:] for l in t['patch'].splitlines() if l.startswith('+++ b/') and l.endswith('.py') and not re.search(r'(^|/)tests?/|test_',l)]
+            if not gold: continue
+            d=os.path.expanduser('~/gvg-corpus/e2e-2026/'+repo.replace('/','__'))
+            if not os.path.isdir(d): continue
+            rows.append((repo,t['instance_id'],t['base_commit'],gold,len(t['problem_statement'])))
+        print(len(rows),'python bug-fix tasks with gold src files')
+        print(collections.Counter(r[0] for r in rows))
+        json.dump(rows,open('/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/boost/loc_tasks.json','w'))
+        EOF
+      at: 2026-10-05T18:44:08.086437Z
+      classified: other
+    - cmd: ~/prism-ab-bins/prism-v0.86.0 --help 2>&1 | sed -n '/prism query/,/prism read/p' | head -12; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/boost/p-click && /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/rel/prism-v0.86.1-darwin-arm64 query "shell completion breaks for options with a custom type" 2>&1 | head -15
+      at: 2026-10-05T18:44:25.219042Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; mkdir -p $S/loc && cd $S/loc && python3 - "$S" <<'EOF'
+        import json,subprocess,os,sys
+        S=sys.argv[1]; rows=json.load(open(f'{S}/boost/loc_tasks.json'))
+        env=dict(os.environ,GIT_NO_LAZY_FETCH='1')
+        for repo,iid,base,gold,_ in rows:
+            d=f'{S}/loc/{iid}'
+            if os.path.isdir(d): continue
+            src=os.path.expanduser('~/gvg-corpus/e2e-2026/'+repo.replace('/','__'))
+            subprocess.run(['git','clone','-q','--local','--no-checkout',src,d],check=True,env=env)
+            r=subprocess.run(['git','-C',d,'checkout','-q','--detach',base],env=env,capture_output=True,text=True)
+            print(iid, 'ok' if r.returncode==0 else 'CHECKOUT FAIL '+r.stderr[:100])
+        EOF
+        du -sh $S/loc | cut -f1
+      at: 2026-10-05T18:45:36.321992Z
+      classified: other
+    - cmd: "S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cat > $S/loc/run_prism.py <<'EOF'\nimport json,subprocess,os,sys,re\nS=sys.argv[1]; B=f'{S}/rel/prism-v0.86.1-darwin-arm64'; H='/Users/tapabratapal/Projects/provasign/research/harness'\nrows=json.load(open(f'{S}/boost/loc_tasks.json')); out={}\nSTOP={'self','None','True','False','this','that','with','from','import','return','print','error','value','string','should','would','could','there','which','where','click','python','version','example','expected','actual','behavior','issue','param'}\ndef terms(ps):\n    found=[]\n    for m in re.finditer(r'`([^`\\n]{2,80})`',ps):\n        found+=re.findall(r'[A-Za-z_][A-Za-z0-9_]{3,}',m.group(1))\n    found+=re.findall(r'\\b(?:[A-Z][a-z0-9]+){2,}\\b',ps)+re.findall(r'\\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\\b',ps)\n    seen=[]; \n    for t in found:\n        if t not in seen and t not in STOP and len(t)>=4: seen.append(t)\n    return seen[:10]\nfor repo,iid,base,gold,_ in rows:\n    d=f'{S}/loc/{iid}'; ps=json.load(open(f'{H}/tasks/e2e/{iid}.json'))['problem_statement']\n    subprocess.run([B,'index','.'],cwd=d,capture_output=True,timeout=900)\n    tl=terms(ps)\n    txt=subprocess.run([B,'search',*tl,'--format','text'],cwd=d,capture_output=True,text=True,timeout=300).stdout if tl else ''\n    pos=[txt.find(g) for g in gold if g in txt]\n    out[iid]={'terms':tl,'tokens':len(txt)//4,'hit':bool(pos),'tok_before_hit':(min(pos)//4 if pos else None),'gold':gold}\n    print(f\"{iid:32} terms={len(tl):2} hit={str(bool(pos)):5} tok={len(txt)//4:6} before_hit={out[iid]['tok_before_hit']}\")\njson.dump(out,open(f'{S}/loc/prism_results.json','w'),indent=1)\nEOF\npython3 $S/guard.py 4096 30 -- python3 $S/loc/run_prism.py $S 2>&1 | tail -22"
+      at: 2026-10-05T18:46:17.751842Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; H=/Users/tapabratapal/Projects/provasign/research/harness; python3 - "$S" "$H" <<'EOF'
+        import json,sys
+        S,H=sys.argv[1],sys.argv[2]
+        rows=json.load(open(f'{S}/boost/loc_tasks.json'))
+        q={iid:json.load(open(f'{H}/tasks/e2e/{iid}.json'))['problem_statement'][:1500] for _,iid,_,_,_ in rows}
+        json.dump({'rows':rows,'q':q},open(f'{S}/loc/boost_in.json','w'))
+        EOF
+        docker exec boost-eval rm -rf /loc && docker exec boost-eval mkdir -p /loc; for d in $S/loc/*/; do n=$(basename $d); [ -d "$d/.git" ] || continue; tar -C $d --exclude=.git -cf - . | docker exec -i boost-eval sh -c "mkdir -p /loc/$n && tar -C /loc/$n -xf -"; done; docker cp $S/loc/boost_in.json boost-eval:/loc/boost_in.json >/dev/null; cat > $S/loc/run_boost.py <<'EOF'
+        import json,subprocess,os
+        D=json.load(open('/loc/boost_in.json')); out={}
+        env=dict(os.environ,PATH=os.path.expanduser('~/.local/bin')+':'+os.environ['PATH'])
+        for repo,iid,base,gold,_ in D['rows']:
+            d=f'/loc/{iid}'
+            subprocess.run(['boost','graph','init'],cwd=d,capture_output=True,env=env,timeout=600)
+            msgs=[{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}},
+                  {"jsonrpc":"2.0","method":"notifications/initialized"},
+                  {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"boostgraph_explore","arguments":{"query":D['q'][iid]}}}]
+            p=subprocess.Popen(['boost','graph','serve','--mcp'],cwd=d,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,env=env)
+            for m in msgs: p.stdin.write(json.dumps(m)+'\n'); p.stdin.flush()
+            txt=''
+            for line in p.stdout:
+                try: r=json.loads(line)
+                except Exception: continue
+                if r.get('id')==3:
+                    txt=''.join(c.get('text','') for c in (r.get('result') or {}).get('content',[])); break
+            p.kill()
+            pos=[txt.find(g) for g in gold if g in txt]
+            out[iid]={'tokens':len(txt)//4,'hit':bool(pos),'tok_before_hit':(min(pos)//4 if pos else None)}
+            print(f"{iid:32} hit={str(bool(pos)):5} tok={len(txt)//4:6} before_hit={out[iid]['tok_before_hit']}",flush=True)
+        json.dump(out,open('/loc/boost_results.json','w'),indent=1)
+        EOF
+        docker cp $S/loc/run_boost.py boost-eval:/loc/run_boost.py >/dev/null; docker exec boost-eval python3 /loc/run_boost.py 2>&1 | tail -22; docker cp boost-eval:/loc/boost_results.json $S/loc/boost_results.json >/dev/null
+      at: 2026-10-05T18:47:12.576304Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; sed -i '' "s#    pos=\[txt.find(g) for g in gold if g in txt\]#    open(f'/loc/{iid}.boost.txt','w').write(txt)\n    pos=[txt.find(g) for g in gold if g in txt]#" $S/loc/run_boost.py && docker cp $S/loc/run_boost.py boost-eval:/loc/run_boost.py >/dev/null && docker exec boost-eval python3 /loc/run_boost.py >/dev/null 2>&1; mkdir -p $S/loc/out && docker cp boost-eval:/loc/. $S/loc/out_boost >/dev/null 2>&1; ls $S/loc/out_boost/*.boost.txt | wc -l; python3 - "$S" <<'EOF'
+        import json,subprocess,sys,re,os
+        S=sys.argv[1]; B=f'{S}/rel/prism-v0.86.1-darwin-arm64'
+        P=json.load(open(f'{S}/loc/prism_results.json'))
+        for iid,r in P.items():
+            if r['terms']:
+                txt=subprocess.run([B,'search',*r['terms'],'--format','text'],cwd=f'{S}/loc/{iid}',capture_output=True,text=True,timeout=300).stdout
+                open(f'{S}/loc/out/{iid}.prism.txt','w').write(txt)
+        print('saved prism outputs')
+        EOF
+      at: 2026-10-05T18:47:54.062801Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - "$S" <<'EOF'
+        import json,sys,os,re,statistics as st
+        S=sys.argv[1]; rows=json.load(open(f'{S}/boost/loc_tasks.json'))
+        tb=[];tp=[];res=[]
+        for repo,iid,base,gold,_ in rows:
+            b=open(f'{S}/loc/out_boost/{iid}.boost.txt').read()
+            pf=f'{S}/loc/out/{iid}.prism.txt'; p=open(pf).read() if os.path.exists(pf) else ''
+            b_mention=any(g in b for g in gold); b_src=any(f'**`{g}`**' in b for g in gold)
+            p_mention=any(g in p for g in gold); p_src=any(re.search(rf'(^|\n){re.escape(g)}:\d+:',p) or f'**`{g}`**' in p for g in gold)
+            res.append((iid,b_mention,b_src,p_mention,p_src)); tb.append(len(b)//4); tp.append(len(p)//4)
+            print(f"{iid:30} boost mention={int(b_mention)} source={int(b_src)} | prism mention={int(p_mention)} code={int(p_src)}")
+        n=len(res); s=lambda i: sum(r[i] for r in res)
+        print(f"\nboost: named {s(1)}/{n}, code delivered {s(2)}/{n}, median {st.median(tb)} tokens")
+        print(f"prism: named {s(3)}/{n}, code delivered {s(4)}/{n}, median {st.median(tp)} tokens")
+        print('either delivers code:', sum(1 for r in res if r[2] or r[4]), '/', n)
+        EOF
+      at: 2026-10-05T18:48:03.033089Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; tar -C $S/geval/flask --exclude=.git --exclude=.grove -cf - . | docker exec -i boost-eval sh -c 'rm -rf /fl && mkdir -p /fl && tar -C /fl -xf -'; docker exec boost-eval bash -lc 'export PATH=$HOME/.local/bin:$PATH; cd /fl/examples/tutorial && boost graph init 2>&1 | tail -1; boost graph entrypoints 2>&1 | head -45'; echo; echo "== actual routes in flaskr:"; grep -rn "@bp.route" $S/geval/flask/examples/tutorial/flaskr/*.py | sed -E 's#.*/flaskr/##' | cut -c1-90
+      at: 2026-10-05T18:48:17.602923Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; L=$S/langs; rm -rf $L && mkdir -p $L && cd $L && git init -q . && cat > a.rb <<'EOF'
+        class Shop
+          def checkout_ruby
+            tally_ruby
+          end
+          def tally_ruby
+            1
+          end
+        end
+        EOF
+        cat > a.swift <<'EOF'
+        func checkoutSwift() -> Int { return tallySwift() }
+        func tallySwift() -> Int { return 1 }
+        EOF
+        cat > a.kt <<'EOF'
+        fun checkoutKotlin(): Int = tallyKotlin()
+        fun tallyKotlin(): Int = 1
+        EOF
+        cat > a.scala <<'EOF'
+        object Shop { def checkoutScala(): Int = tallyScala(); def tallyScala(): Int = 1 }
+        EOF
+        cat > a.lua <<'EOF'
+        function tally_lua() return 1 end
+        function checkout_lua() return tally_lua() end
+        EOF
+        cat > a.ex <<'EOF'
+        defmodule Shop do
+          def checkout_elixir, do: tally_elixir()
+          def tally_elixir, do: 1
+        end
+        EOF
+        cat > a.dart <<'EOF'
+        int tallyDart() => 1;
+        int checkoutDart() => tallyDart();
+        EOF
+        cat > a.php <<'EOF'
+        <?php
+        function tally_php() { return 1; }
+        function checkout_php() { return tally_php(); }
+        EOF
+        cat > a.cs <<'EOF'
+        class Shop { int TallyCs() => 1; int CheckoutCs() => TallyCs(); }
+        EOF
+        git add -A && git commit -qm init && python3 $S/guard.py 2048 40 -- $S/rel/prism-v0.86.1-darwin-arm64 index . >/dev/null 2>&1; echo "lang     prism(callers of tally*)"; for p in ruby:tally_ruby swift:tallySwift kotlin:tallyKotlin scala:tallyScala lua:tally_lua elixir:tally_elixir dart:tallyDart php:tally_php csharp:TallyCs; do l=${p%%:*}; s=${p##*:}; n=$($S/rel/prism-v0.86.1-darwin-arm64 change-impact $s 2>/dev/null | python3 -c "import sys,json
+        try: d=json.load(sys.stdin); print(f\"decl={len(d.get('declarations',[]))} callers={len(d.get('callers',[]))}\")
+        except Exception: print('none')"); echo "$l $n"; done; tar -C $L --exclude=.git -cf - . | docker exec -i boost-eval sh -c 'rm -rf /langs && mkdir -p /langs && tar -C /langs -xf -'; docker exec boost-eval bash -lc 'export PATH=$HOME/.local/bin:$PATH; cd /langs && git init -q . 2>/dev/null; boost graph init 2>&1 | tail -2; for s in tally_ruby tallySwift tallyKotlin tallyScala tally_lua tally_elixir tallyDart tally_php TallyCs; do printf "boost %-13s " $s; boost graph query $s 2>&1 | head -3 | tr "\n" " " | cut -c1-120; echo; done'
+      at: 2026-10-05T18:49:27.183337Z
+      classified: build
+    - cmd: |-
+        docker exec boost-eval bash -lc 'export PATH=$HOME/.local/bin:$PATH; cd /langs; for s in tally_ruby tallyScala tally_lua tallyDart; do ( printf "%s\n%s\n%s\n" "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"1\"}}}" "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}" "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"boostgraph_explore\",\"arguments\":{\"query\":\"$s\"}}}"; sleep 4 ) | timeout 20 boost graph serve --mcp 2>/dev/null | python3 -c "
+        import sys,json
+        for l in sys.stdin:
+            try: d=json.loads(l)
+            except Exception: continue
+            if d.get(\"id\")==3:
+                t=\"\".join(c.get(\"text\",\"\") for c in d[\"result\"][\"content\"])
+                line=[x for x in t.splitlines() if \"$s\" in x and (\"caller\" in x or \"calls\" in x)][:1]
+                print(\"$s:\", line or \"no caller line\")
+        "; done'
+      at: 2026-10-05T18:49:51.116769Z
+      classified: other
+    - cmd: P=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/rel/prism-v0.86.1-darwin-arm64; $P init --help 2>&1 | grep -iE "harness|claude|codex|cursor|copilot|opencode|windsurf|gemini" | head -12; echo ---; $P --help 2>&1 | grep -iE "stats|report|savings|usage|telemetry" | head; echo ---; $P verify --help 2>&1 | grep -iE "test" | head -5
+      at: 2026-10-05T18:49:59.974868Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_boost_eval_2026_10_05.md <<'EOF'
+
+        GAP ANALYSIS vs Boost (2026-10-05, scratchpad loc/ langs/):
+        - Issue->file localization, 20 python bug-fix tasks: boost explore(issue text) named gold 18/20, delivered its source 13/20,
+          ~4.4k tok; prism search(auto-extracted identifiers) named 16/20, code 15/20, ~2.8k tok; either 17/20. Prism's misses =
+          issues with 0-2 code identifiers (click 3471/3466/3228, werkzeug 3081): prism has NO natural-language entry (query needs
+          --terms). Term extraction was crude; real agents may do better.
+        - boost entrypoints resolves @bp.route (flaskr 8/8 routes) but wrong verbs (all GET), no blueprint url_prefix, SELECT
+          labeled write. Prism has no routes view and can't resolve @bp.route (module-var inference gap).
+        - Languages: boost indexed + call edges for Ruby, Scala, Lua, Dart; prism none of those (Swift/Kotlin/PHP/C# both); Elixir neither.
+        - Prism ahead: change-impact completeness (seeded 15/15 vs 6/15), smaller answers, many more ops; prism init covers 7
+          harnesses vs boost 5. Prism lacks: savings/value report, CI test-selection command (boost graph affected).
+        EOF
+        echo ok
+      at: 2026-10-05T18:50:17.240498Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git log --oneline -i -E --grep="tf-?idf|bm25|idf|natural.language|free.text|terms.*required|require.*terms|task query" | head -20; echo ---; git log --oneline -S "idf" -- '*.go' | head -10
+      at: 2026-10-05T18:52:46.965621Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && for c in a8fce2af ac780d92 fe0ad36f; do echo "################ $c"; git show -s --format='%cs %s%n%n%b' $c | head -40; git show --stat --format= $c | tail -3; done
+      at: 2026-10-05T18:52:49.736999Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && for t in pallets__click__pr3471 pallets__click__pr3466 pallets__click__pr3228 pallets__werkzeug__pr3081; do python3 -c "
+        import json; t=json.load(open('tasks/e2e/$t.json')); g=[l[6:] for l in t['patch'].splitlines() if l.startswith('+++ b/')]
+        print('#####', '$t', '| gold:', [x for x in g if 'test' not in x][:3]); print(t['problem_statement'][:700].replace(chr(10)+chr(10),chr(10)))"; done
+      at: 2026-10-05T18:53:04.978216Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; P=$S/rel/prism-v0.86.1-darwin-arm64; python3 - "$S" "$P" <<'EOF'
+        import subprocess,sys,re
+        S,P=sys.argv[1],sys.argv[2]
+        cases=[('pallets__click__pr3471',['Choice','shell_complete'],'src/click/types.py'),
+               ('pallets__click__pr3466',['zsh'],'src/click/shell_completion.py'),
+               ('pallets__click__pr3228',['No such command','Did you mean'],'src/click/core.py'),
+               ('pallets__werkzeug__pr3081',['multipart'],'src/werkzeug/sansio/multipart.py')]
+        for iid,terms,g in cases:
+            t=subprocess.run([P,'search',*terms,'--format','text'],cwd=f'{S}/loc/{iid}',capture_output=True,text=True,timeout=300).stdout
+            code=bool(re.search(rf'(^|\n){re.escape(g)}:\d+:',t)) or f'**`{g}`**' in t
+            first=t.find(g)
+            print(f"{iid:28} terms={terms} -> names gold={g in t} code={code} tokens_before={first//4 if first>=0 else None} total={len(t)//4}")
+        EOF
+      at: 2026-10-05T18:53:15.349267Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<'EOF'
+        import json,glob,os,re,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness'
+        P=os.path.expanduser('~/.claude/projects')
+        idx={os.path.basename(f)[:-6]:f for d in glob.glob(P+'/*') for f in glob.glob(d+'/*.jsonl')}
+        stats=collections.Counter(); rows=[]
+        for f in sorted(glob.glob(H+'/results/e2e-codexfix-27/*prism_body_exp.json')):
+            r=json.load(open(f)); t=json.load(open(f"{H}/tasks/e2e/{r['task']}.json"))
+            gold=[l[6:] for l in t['patch'].splitlines() if l.startswith('+++ b/') and not re.search(r'(^|/)(tests?|testing)/|_test\.|Test\.java|CHANGE|\.md$|\.rst$',l)]
+            p=idx.get(r.get('session_id'))
+            if not p or not gold: continue
+            uses={}; first=None; before_first=0; first_any_hit=None; n_prism=0; tool_i=0
+            for l in open(p):
+                m=json.loads(l).get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(b,dict): continue
+                    if b.get('type')=='tool_use':
+                        tool_i+=1
+                        if b['name'].startswith('mcp__prism'): uses[b['id']]=(tool_i,b['input'])
+                        elif first is None: before_first+=1
+                    if b.get('type')=='tool_result' and b.get('tool_use_id') in uses:
+                        c=b.get('content'); txt=c if isinstance(c,str) else ''.join(x.get('text','') for x in (c or []) if isinstance(x,dict))
+                        n_prism+=1; hit=any(g in txt for g in gold)
+                        if first is None: first=(uses[b['tool_use_id']][1],hit)
+                        if hit and first_any_hit is None: first_any_hit=n_prism
+            if first is None: stats['no prism call']+=1; continue
+            stats['first prism call hits gold' if first[1] else 'first prism call misses gold']+=1
+            stats['some prism call hits gold' if first_any_hit else 'no prism call ever hits gold']+=1
+            a=first[0].get('args',first[0]); rows.append((r['task'][:34], first[0].get('op'), json.dumps(a.get('terms') or a.get('name') or a.get('file'))[:60], first[1], first_any_hit, bool(r.get('resolved'))))
+        for row in rows: print(f"{row[0]:34} {str(row[1]):13} {row[2]:60} first_hit={int(row[3])} hit_at_call={row[4]} resolved={int(row[5])}")
+        print(dict(stats))
+        EOF
+      at: 2026-10-05T18:53:31.90207Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; mkdir -p $S/hop && python3 - "$S" <<'EOF'
+        import json,glob,os,re,sys
+        S=sys.argv[1]; H='/Users/tapabratapal/Projects/provasign/research/harness'
+        P=os.path.expanduser('~/.claude/projects')
+        idx={os.path.basename(f)[:-6]:f for d in glob.glob(P+'/*') for f in glob.glob(d+'/*.jsonl')}
+        out=[]
+        for f in sorted(glob.glob(H+'/results/e2e-codexfix-27/*prism_body_exp.json')):
+            r=json.load(open(f)); t=json.load(open(f"{H}/tasks/e2e/{r['task']}.json"))
+            gold=[l[6:] for l in t['patch'].splitlines() if l.startswith('+++ b/') and not re.search(r'(^|/)(tests?|testing)/|_test\.|Test\.java|CHANGE|\.md$|\.rst$',l)]
+            p=idx.get(r.get('session_id')); uses={}; results=[]
+            for l in open(p):
+                m=json.loads(l).get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(b,dict): continue
+                    if b.get('type')=='tool_use' and b['name'].startswith('mcp__prism'): uses[b['id']]=b['input']
+                    if b.get('type')=='tool_result' and b.get('tool_use_id') in uses:
+                        c=b.get('content'); txt=c if isinstance(c,str) else ''.join(x.get('text','') for x in (c or []) if isinstance(x,dict))
+                        results.append((uses[b['tool_use_id']],txt))
+            if not results or any(g in results[0][1] for g in gold): continue
+            later=next((i+1 for i,(_,x) in enumerate(results) if any(g in x for g in gold)),None)
+            out.append({'task':r['task'],'repo':t['repo'],'base':t['base_commit'],'lang':t.get('lang'),'gold':gold,'patch':t['patch'],
+                        'first_input':results[0][0],'first_text':results[0][1],'hit_at':later,'resolved':r.get('resolved')})
+            print(r['task'], t['repo'], t.get('lang'), 'gold', gold, 'hit_at', later)
+        json.dump(out,open(f'{S}/hop/cases.json','w'))
+        print(len(out),'cases'); print('--- sample first answer head:'); print(out[0]['first_text'][:800])
+        EOF
+      at: 2026-10-05T18:57:32.449163Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; ls $S/boost/wzp/.grove/; db=$(ls $S/boost/wzp/.grove/*.db 2>/dev/null | head -1); echo $db; sqlite3 "$db" ".tables"; sqlite3 "$db" ".schema symbols" ".schema edges" 2>&1 | head -40
+      at: 2026-10-05T18:57:38.02058Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; sqlite3 $S/boost/wzp/.grove/grove.db "select edge_type, count(*) from edges group by 1 order by 2 desc limit 12;"; python3 - "$S" <<'EOF'
+        import json,subprocess,os,sys,time
+        S=sys.argv[1]; B=f'{S}/rel/prism-v0.86.1-darwin-arm64'
+        cases=json.load(open(f'{S}/hop/cases.json')); env=dict(os.environ,GIT_NO_LAZY_FETCH='1')
+        CORP={'FasterXML/jackson-databind':'jackson-databind','FasterXML/jackson-dataformat-xml':'jackson-dataformat-xml','apache/dubbo':'dubbo','colinhacks/zod':'zod','urfave/cli':'cli'}
+        for c in cases:
+            d=f"{S}/hop/{c['task']}"
+            if not os.path.isdir(d):
+                subprocess.run(['git','clone','-q','--local','--no-checkout',os.path.expanduser('~/gvg-corpus/'+CORP[c['repo']]),d],check=True,env=env)
+                subprocess.run(['git','-C',d,'checkout','-q','--detach',c['base']],check=True,env=env)
+            t=time.time()
+            r=subprocess.run(['python3',f'{S}/guard.py','6144','30','--',B,'index','.'],cwd=d,capture_output=True,text=True,timeout=3000)
+            if r.returncode==3:
+                r=subprocess.run(['python3',f'{S}/guard.py','6144','30','--',B,'index','--allow-heuristic','.'],cwd=d,capture_output=True,text=True,timeout=3000)
+            n=subprocess.run(['sqlite3',f'{d}/.grove/grove.db','select (select count(*) from symbols)||" symbols, "||(select count(*) from edges)||" edges"'],capture_output=True,text=True).stdout.strip()
+            print(f"{c['task']:42} exit {r.returncode} {time.time()-t:5.0f}s  {n}  {r.stderr.strip().splitlines()[-1][:90] if r.stderr.strip() else ''}",flush=True)
+        EOF
+      at: 2026-10-05T18:57:49.860569Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; sqlite3 $S/boost/wzp/.grove/grove.db "select edge_type, source, count(*) from edges group by 1,2 order by 3 desc limit 15;"; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b1egzrvso.output
+      at: 2026-10-05T18:58:02.701739Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cat > $S/hop/hop.py <<'EOF'
+        """From the code a session's FIRST prism answer showed, how many call-graph hops to a symbol the gold fix changed,
+        and how big is the neighbourhood we would have to attach to get there?"""
+        import json,sqlite3,re,sys,collections
+        S=sys.argv[1]; cases=json.load(open(f'{S}/hop/cases.json'))
+        VARIANTS={'calls+overrides':('calls','overrides','implements'),'+uses-type':('calls','overrides','implements','uses-type')}
+        LOC=re.compile(r'([\w./@$-]+\.(?:java|ts|tsx|go|js|mjs|py)):(\d+)(?:-(\d+))?')
+        def innermost(db,f,line):
+            r=db.execute("select id,kind,span_start,span_end,token_estimate from symbols where file_path=? and span_start<=? and span_end>=? and kind not in ('file','module','package','import') order by (span_end-span_start) limit 1",(f,line,line)).fetchone()
+            return r
+        for c in cases:
+            db=sqlite3.connect(f"{S}/hop/{c['task']}/.grove/grove.db")
+            # seeds: every code location the first answer showed
+            seeds=set()
+            for m in LOC.finditer(c['first_text']):
+                r=innermost(db,m.group(1),int(m.group(2)))
+                if r: seeds.add(r[0])
+            # gold: innermost base symbols around each changed hunk of the gold files
+            gold=set(); cur=None
+            for l in c['patch'].splitlines():
+                if l.startswith('--- a/'): cur=l[6:] if l[6:] in c['gold'] else None
+                m=re.match(r'@@ -(\d+)(?:,(\d+))?',l)
+                if m and cur:
+                    a=int(m.group(1)); b=int(m.group(2) or 1)
+                    for ln in range(a,a+max(b,1)):
+                        r=innermost(db,cur,ln)
+                        if r: gold.add(r[0])
+            res=[]
+            for vname,types in VARIANTS.items():
+                q=f"select from_node,to_node from edges where edge_type in ({','.join('?'*len(types))})"
+                adj=collections.defaultdict(set)
+                for a,b in db.execute(q,types): adj[a].add(b); adj[b].add(a)
+                dist={s:0 for s in seeds}; frontier=set(seeds); sizes=[]
+                for h in (1,2):
+                    nxt=set()
+                    for s in frontier: nxt|={n for n in adj[s] if n not in dist}
+                    for n in nxt: dist[n]=h
+                    frontier=nxt; sizes.append(len(nxt))
+                hit=min((dist[g] for g in gold if g in dist),default=None)
+                toks=[sum((db.execute('select token_estimate from symbols where id=?',(n,)).fetchone() or [0])[0] for n in dist if dist[n]==h) for h in (1,2)]
+                res.append(f"{vname}: gold at hop {hit if hit is not None else '>2'}; new symbols hop1 {sizes[0]} (~{toks[0]//1000}k tok bodies) hop2 {sizes[1]} (~{toks[1]//1000}k)")
+            print(f"## {c['task']}  seeds={len(seeds)} gold_syms={len(gold)} later_hit_at_call={c['hit_at']} resolved={c['resolved']}")
+            for r in res: print('   ',r)
+        EOF
+        echo written; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b1egzrvso.output | tail -10
+      at: 2026-10-05T18:58:18.965484Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; tail -4 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b1egzrvso.output; python3 $S/guard.py 4096 30 -- python3 $S/hop/hop.py $S
+      at: 2026-10-05T18:59:00.063644Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - "$S" <<'EOF'
+        import json,sys
+        S=sys.argv[1]
+        for c in json.load(open(f'{S}/hop/cases.json')):
+            if c['task'] in ('FasterXML__jackson-dataformat-xml__pr822','FasterXML__jackson-dataformat-xml__pr825','apache__dubbo__pr16325','colinhacks__zod__pr6144'):
+                print('#####',c['task'],'input:',json.dumps(c['first_input'])[:200]); print(c['first_text'][:600]); print()
+        EOF
+      at: 2026-10-05T18:59:07.199425Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - "$S" <<'EOF'
+        import sys
+        p=sys.argv[1]+'/hop/hop.py'; s=open(p).read()
+        s=s.replace('''        if r: seeds.add(r[0])
+            # gold''','''        if r: seeds.add(r[0])
+            # files_only answers list bare paths: every symbol in such a file was shown by name
+            for l in c['first_text'].splitlines():
+                if re.fullmatch(r'[\\w./@$-]+\\.(?:java|ts|tsx|go|js|mjs|py)', l.strip()):
+                    seeds |= {r[0] for r in db.execute("select id from symbols where file_path=? and kind not in ('file','module','package','import')",(l.strip(),))}
+            # gold''')
+        open(p,'w').write(s)
+        EOF
+        python3 $S/guard.py 4096 30 -- python3 $S/hop/hop.py $S 2>&1 | grep -v "^guard"
+      at: 2026-10-05T18:59:17.065347Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_boost_eval_2026_10_05.md <<'EOF'
+
+        NL/TF-IDF + NEIGHBOURHOOD CHECK (2026-10-05, Topo asked): history = embeddings/TF-IDF removed 2026-08-01 (agent keyword
+        beat it 12/15), NL `prism task` removed v0.41.0 2026-08-09 (phrasing-dependent), task field neutralised 2026-08-15.
+        Today: my 4 "prism misses" vs Boost were my crude term extractor; agent-plausible keywords hit 4/4 (gold in first ~130 tok).
+        Real sessions (codexfix-27 prism arm): first prism call hits gold 18/27, any call 22/27. Neighbourhood replay on the 9
+        first-miss sessions (scratchpad hop/hop.py, grove.db edges calls/overrides/implements[/uses-type]): both unresolved
+        never-found cases (xml#827, zod#6500) have gold >2 hops away; where gold is 1-2 hops the neighbourhood is mostly
+        huge (dubbo 236 @1, databind 958 @2); only xml#822/#825 small (26-62) and those were solved anyway. Changes 0/27
+        outcomes. Verdict: do NOT build NL/TF-IDF or neighbourhood attachment. Real gaps: @app.route inference, Ruby/Scala/Lua/Dart.
+        EOF
+        echo ok
+      at: 2026-10-05T18:59:38.554409Z
+      classified: other
+    - cmd: docker rm -f boost-eval >/dev/null && echo "container removed"; docker ps -a --format '{{.Names}}' | grep -c boost-eval
+      at: 2026-10-05T19:01:44.792718Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' '2a\
+        - [Plan after Boost 2026-10-05](project_plan_after_boost_2026_10_05.md) — Topo: keep on plan: 1) grove module-var inference for @app.route/@bp.route, 2) Ruby/Scala/Lua/Dart, 3) seeded tasks to 15-20 (+TS/Go), 4) savings report/test selection; NOT NL/TF-IDF
+        ' MEMORY.md && sed -n 3p MEMORY.md
+      at: 2026-10-05T19:01:44.908135Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='project_plan_after_boost_2026_10_05.md'; s=open(p).read()
+        s=s.replace('''2. **Languages Boost has and prism lacks:** Ruby (biggest), Scala, Lua, Dart (Elixir neither).
+        3. **Seeded wide tasks**''','''2. **Seeded wide tasks**''')
+        s=s.replace('''4. Lower: savings/value report, CI test-selection command (`boost graph affected` analogue).
+        ''','''
+        DROPPED by Topo 2026-10-05 ("ignore 2 and 4"): new languages (Ruby/Scala/Lua/Dart) and the savings report /
+        test-selection command. Do not propose them again unless Topo raises them.
+        ''')
+        s=s.replace('description: Planned work Topo asked to keep on the plan after the Boost comparison (2026-10-05): Flask-style route resolution first, then languages, seeded tasks','description: Planned work Topo kept after the Boost comparison (2026-10-05): Flask-style route resolution, then seeded tasks; languages and savings report dropped')
+        open(p,'w').write(s)
+        p='MEMORY.md'; s=open(p).read()
+        s=s.replace('Topo: keep on plan: 1) grove module-var inference for @app.route/@bp.route, 2) Ruby/Scala/Lua/Dart, 3) seeded tasks to 15-20 (+TS/Go), 4) savings report/test selection; NOT NL/TF-IDF','Topo: plan = 1) grove module-var inference for @app.route/@bp.route, 2) seeded tasks to 15-20 (+TS/Go); DROPPED languages + savings report; NOT NL/TF-IDF')
+        open(p,'w').write(s)
+        EOF
+        sed -n 3p MEMORY.md; grep -n "^[0-9]\.\|DROPPED" project_plan_after_boost_2026_10_05.md
+      at: 2026-10-05T19:14:31.351696Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; P=$S/rel/prism-v0.86.1-darwin-arm64; cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $P index . >/dev/null 2>&1; $P change-impact route 2>/dev/null | python3 -c "
+        import sys,json; d=json.load(sys.stdin); print('route decl', [x['filePath']+':'+str(x['line']) for x in d['declarations']]); print('callers', len(d['callers'])); [print('  ',c['filePath'], c['name']) for c in d['callers'][:15]]"; echo; echo "text uses:"; git grep -nE "@(app|bp|blueprint|[a-z_]+)\.route\(" -- '*.py' | awk -F: '{print $1}' | sort | uniq -c | sort -rn | head -12
+      at: 2026-10-05T19:23:28.762222Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; P=$S/rel/prism-v0.86.1-darwin-arm64; cd $S/deco/fl-new && $P change-impact route 2>/dev/null > /tmp/route.json 2>/dev/null; python3 - <<'EOF'
+        import json,subprocess,re,collections
+        d=json.load(open('/tmp/route.json'))
+        res=collections.Counter(c['filePath'] for c in d['callers'])
+        out=subprocess.run(['git','grep','-nE',r'\.route\(','--','*.py'],capture_output=True,text=True).stdout
+        uses=collections.defaultdict(list)
+        for l in out.splitlines():
+            f,ln,txt=l.split(':',2)
+            if f.startswith('src/flask/'): continue
+            uses[f].append(txt.strip())
+        print(f"{'file':45} uses  resolved-callers  receivers")
+        for f,u in sorted(uses.items(), [REDACTED:env-secret] x:-len(x[1])):
+            recv=collections.Counter(re.search(r'@?([\w.]+)\.route\(',x).group(1) if re.search(r'@?([\w.]+)\.route\(',x) else '?' for x in u)
+            print(f"{f:45} {len(u):4}  {res.get(f,0):4}            {dict(recv.most_common(4))}")
+        EOF
+        rm -f /tmp/route.json
+      at: 2026-10-05T19:23:39.373996Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git checkout -q main && git pull -q --ff-only && ~/prism-ab-bins/prism-v0.86.0 search pythonLocalTypes "local type" "inferLocal" "receiverType" --scope symbols --format text 2>/dev/null | grep -E "^\s*(func|method|function)|\.go:" | head -30
+      at: 2026-10-05T19:24:51.569593Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -nE "^func " internal/graph/localtypes.go | head -40; echo; grep -rnE "func (python|py)[A-Za-z]*(Local|Assign|Type|Receiver|Global|Module)" internal/graph/*.go | grep -v _test | head -20
+      at: 2026-10-05T19:24:54.981015Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 395,420p internal/graph/pylocaltypes.go; echo .....; sed -n 554,720p internal/graph/pylocaltypes.go
+      at: 2026-10-05T19:25:00.748003Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/deco/fl-new && db=.grove/grove.db && sqlite3 $db "select id, kind, span_start, span_end, substr(call_sites,1,600) from symbols where file_path='examples/tutorial/flaskr/auth.py' and name='<top-level>';"; echo ---edges; sqlite3 $db "select e.edge_type, e.source, t.qualified_name, t.file_path from edges e join symbols s on s.id=e.from_node left join symbols t on t.id=e.to_node where s.file_path='examples/tutorial/flaskr/auth.py' and s.name='<top-level>' limit 20;"; echo ---imports; sqlite3 $db "select imports from symbols where file_path='examples/tutorial/flaskr/auth.py' and name='<top-level>';" | cut -c1-400
+      at: 2026-10-05T19:25:11.788212Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/deco/fl-new && db=.grove/grove.db && sqlite3 $db "select e.edge_type, e.source, e.reason, t.qualified_name from edges e join symbols s on s.id=e.from_node left join symbols t on t.id=e.to_node where s.file_path='examples/tutorial/flaskr/auth.py' and s.name='<top-level>';"; echo; sqlite3 $db "select qualified_name, kind, span_start, span_end, substr(annotations,1,80) from symbols where file_path='src/flask/sansio/scaffold.py' and name in ('route','setupmethod','_method_route','get');"
+      at: 2026-10-05T19:25:21.828227Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && grep -rn ''"decorator"'' internal/graph/*.go | grep -v _test | head; '
+      at: 2026-10-05T19:25:29.267558Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && ~/prism-ab-bins/prism-v0.86.0 search decorator --scope text --format text --glob 'internal/**/*.go' 2>/dev/null | grep -E "\.go:[0-9]+" | grep -iE "reason|Reason|decorator\"|wrap" | head -15; grep -rn 'Reason' internal/graph/*.go | grep -i decor | head
+      at: 2026-10-05T19:25:32.674169Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && grep -rn "buildDecoratorEdges" internal/ --include=*.go | grep -v _test; f=$(grep -rln "buildDecoratorEdges(" internal/graph/*.go | grep -v decorators.go | grep -v _test | head -1); ln=$(grep -n "buildDecoratorEdges(" $f | head -1 | cut -d: -f1); sed -n "$((ln-40)),$((ln+40))p" $f'
+      at: 2026-10-05T19:25:42.905243Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "ReasonDecorator" --include='*.go' . | grep -v _test; echo; grep -rn "func BuildEdges\b\|func BuildEdges(" internal/graph/*.go | head -3
+      at: 2026-10-05T19:25:50.120119Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/deco/fl-new && db=.grove/grove.db && sqlite3 $db "select source, reason, count(*) from edges where edge_type='calls' group by 1,2 order by 3 desc limit 12;"; echo "--- edges into Scaffold.route:"; sqlite3 $db "select s.file_path, s.name, e.source, e.reason from edges e join symbols s on s.id=e.from_node join symbols t on t.id=e.to_node where t.qualified_name='Scaffold.route' and e.edge_type='calls' limit 8;"; sqlite3 $db "select count(*) from edges e join symbols t on t.id=e.to_node where t.qualified_name='Scaffold.route' and e.edge_type='calls';"; sqlite3 $db "select key, value from meta" | head -12
+      at: 2026-10-05T19:26:00.748397Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 525,611p internal/graph/localtypes.go; grep -n "func pyBaseClasses" -A40 internal/graph/*.go | head -55
+      at: 2026-10-05T19:26:14.427851Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "func (idx \*edgeIndex) pyImportBinding" -A45 internal/graph/*.go | head -60; grep -n "func baseClassesFor" -A20 internal/graph/*.go | head -25
+      at: 2026-10-05T19:27:28.14105Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -nE "^func (\(idx \*edgeIndex\) )?py[A-Za-z]*(Module|Resolve|File)[A-Za-z]*\(" internal/graph/*.go | grep -v _test | head -15
+      at: 2026-10-05T19:27:41.582243Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rnE "func \(idx \*edgeIndex\) (resolvePython|pyFiles|pythonModule|moduleFiles|resolveImport)" internal/graph/*.go | head; grep -n "pyImportBindings\[" internal/graph/*.go | head -5; grep -rn "func (idx \*edgeIndex) importedFiles" -A30 internal/graph/*.go | grep -iE "python|py" | head
+      at: 2026-10-05T19:27:41.59313Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 295,330p internal/graph/edges.go; sed -n 537,553p internal/graph/pylocaltypes.go; grep -n "func filterByParent" -A12 internal/graph/*.go | head -15
+      at: 2026-10-05T19:27:44.230903Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 508,524p internal/graph/localtypes.go; sed -n 820,830p internal/graph/pylocaltypes.go
+      at: 2026-10-05T19:28:02.347012Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git checkout -q -b fix/py-aliased-base-walk && python3 - <<'EOF'
+        p='internal/graph/pylocaltypes.go'; s=open(p).read()
+        old_head='''func pyBaseClasses(idx *edgeIndex, className, preferDir string) []string {
+        	var chosen *core.SymbolRecord'''
+        new_head='''func pyBaseClasses(idx *edgeIndex, className, preferDir string) []string {
+        	refs := pyBaseRefs(idx, className, preferDir)
+        	if refs == nil {
+        		return nil
+        	}
+        	names := make([]string, len(refs))
+        	for i, r := range refs {
+        		names[i] = r.name
+        	}
+        	return names
+        }
+
+        // pyBaseRef is one base class of a Python class: its name and the directory
+        // of the module that defines it ("" when unknown). Two classes may share a
+        // name -- flask's public Blueprint subclasses `Blueprint as SansioBlueprint`
+        // imported from flask/sansio -- and a name-only walk re-picks the subclass
+        // for its own base and stops, never reaching Scaffold.route.
+        type pyBaseRef struct{ name, dir string }
+
+        func pyBaseRefs(idx *edgeIndex, className, preferDir string) []pyBaseRef {
+        	var chosen *core.SymbolRecord'''
+        assert old_head in s; s=s.replace(old_head,new_head)
+        old_loop='''		var bases []string
+        		for _, b := range splitTopLevel(sig[open+1:closeIdx], ',') {
+        			b = strings.TrimSpace(b)
+        			if b == "" || strings.Contains(b, "=") {
+        				continue
+        			}
+        			if i := strings.IndexByte(b, '['); i >= 0 {
+        				b = b[:i]
+        			}
+        			if i := strings.LastIndexByte(b, '.'); i >= 0 {
+        				b = b[i+1:]
+        			}
+        			if _, member, ok, _ := idx.pyImportBinding(chosen, b); ok && member != "" {
+        				b = member
+        			}
+        			if b != "" && b != "object" {
+        				bases = append(bases, b)
+        			}
+        		}
+        		return bases'''
+        new_loop='''		var bases []pyBaseRef
+        		for _, b := range splitTopLevel(sig[open+1:closeIdx], ',') {
+        			b = strings.TrimSpace(b)
+        			if b == "" || strings.Contains(b, "=") {
+        				continue
+        			}
+        			if i := strings.IndexByte(b, '['); i >= 0 {
+        				b = b[:i]
+        			}
+        			if i := strings.LastIndexByte(b, '.'); i >= 0 {
+        				b = b[i+1:]
+        			}
+        			dir := ""
+        			if module, member, ok, _ := idx.pyImportBinding(chosen, b); ok && member != "" {
+        				b = member
+        				if files := idx.pyModuleFiles(chosen.FilePath, module); len(files) > 0 {
+        					dir = dirOf(files[0])
+        				}
+        			}
+        			if b != "" && b != "object" {
+        				bases = append(bases, pyBaseRef{name: b, dir: dir})
+        			}
+        		}
+        		return bases'''
+        assert old_loop in s; s=s.replace(old_loop,new_loop)
+        open(p,'w').write(s)
+
+        p='internal/graph/localtypes.go'; s=open(p).read()
+        old='''	seen := map[string]bool{}
+        	for len(bases) > 0 {
+        		var next []string
+        		for _, base := range bases {
+        			if base == "" || seen[base] {
+        				continue
+        			}
+        			seen[base] = true
+        			baseFile := ""
+        			if tsFamilyLang(caller.Language) {'''
+        new='''	// Python bases carry the directory of the module they were imported
+        	// from, so a base sharing the subclass's name resolves to its own class
+        	// (see pyBaseRef); seen keys on name and directory for the same reason.
+        	baseDirs := map[string]string{}
+        	if caller.Language == "python" {
+        		bases = nil
+        		for _, r := range pyBaseRefs(idx, typ, dirOf(typeFile)) {
+        			bases = append(bases, r.name)
+        			baseDirs[r.name] = r.dir
+        		}
+        	}
+        	seen := map[string]bool{}
+        	for len(bases) > 0 {
+        		var next []string
+        		nextDirs := map[string]string{}
+        		for _, base := range bases {
+        			if base == "" || seen[base+"\\x00"+baseDirs[base]] {
+        				continue
+        			}
+        			seen[base+"\\x00"+baseDirs[base]] = true
+        			baseFile := ""
+        			if dir := baseDirs[base]; caller.Language == "python" && dir != "" {
+        				if c := pyResolveClass(idx, base, dir); c != nil && dirOf(c.FilePath) == dir {
+        					baseFile = c.FilePath
+        				}
+        			}
+        			if tsFamilyLang(caller.Language) {'''
+        assert old in s; s=s.replace(old,new)
+        old2='''			next = append(next, baseClassesFor(idx, caller.Language, base, dirOf(baseFile))...)
+        			if baseFile != "" {
+        				typeFile = baseFile
+        			}
+        		}
+        		bases = next
+        	}
+        	return nil
+        }'''
+        new2='''			if caller.Language == "python" {
+        				for _, r := range pyBaseRefs(idx, base, baseDirs[base]) {
+        					next = append(next, r.name)
+        					nextDirs[r.name] = r.dir
+        				}
+        				continue
+        			}
+        			next = append(next, baseClassesFor(idx, caller.Language, base, dirOf(baseFile))...)
+        			if baseFile != "" {
+        				typeFile = baseFile
+        			}
+        		}
+        		bases = next
+        		if caller.Language == "python" {
+        			baseDirs = nextDirs
+        		}
+        	}
+        	return nil
+        }'''
+        assert old2 in s; s=s.replace(old2,new2)
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/graph; go build ./... && go vet ./internal/graph/ && echo ok
+      at: 2026-10-05T19:28:23.010576Z
+      classified: lint
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/grove && git stash -q && gofmt -l internal/graph | head -2; git stash pop -q; cd ~/Projects/provasign/prism && git checkout -q main && GOWORK=$S/deco/go.work go build -o $S/deco/prism-route ./cmd/prism && cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/deco/prism-route index . >/dev/null 2>&1; sqlite3 .grove/grove.db "select t.qualified_name, e.reason from edges e join symbols s on s.id=e.from_node join symbols t on t.id=e.to_node where s.file_path='examples/tutorial/flaskr/auth.py' and s.name='<top-level>';"; $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('route callers', len(d['callers']), 'files', len({c['filePath'] for c in d['callers']}))"
+      at: 2026-10-05T19:28:55.46829Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/grove && grep -ln "python" internal/graph/*_test.go | head -8; grep -n "^func \(py\|build\|extract\)[A-Za-z]*(t \*testing.T" internal/graph/*_test.go | head -10; grep -rn "func TestBuildCalls_Py.*Inherit\|func Test.*Python.*Inherit" internal/graph/*_test.go | head -5
+      at: 2026-10-05T19:29:02.880179Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 940,1030p internal/graph/localtypes_test.go
+      at: 2026-10-05T19:29:05.010789Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 118,150p internal/graph/edges.go
+      at: 2026-10-05T19:29:11.63585Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/localtypes_test.go <<'EOF'
+
+        // flask: the public Blueprint subclasses `Blueprint as SansioBlueprint` from
+        // flask/sansio, and route() lives on Scaffold, the sansio Blueprint's base.
+        // A name-only base walk re-picked the public Blueprint for its own base and
+        // stopped, so `bp.route` on a module-level `bp = Blueprint(...)` drew no edge.
+        func TestPythonInheritedMethodThroughSameNamedAliasedBase(t *testing.T) {
+        	scaffold := core.SymbolRecord{ID: "flask/sansio/scaffold.py::Scaffold", FilePath: "flask/sansio/scaffold.py", Language: "python", Kind: core.KindClass, Name: "Scaffold", QualifiedName: "Scaffold", Signature: "class Scaffold:"}
+        	route := core.SymbolRecord{ID: "flask/sansio/scaffold.py::Scaffold.route", FilePath: "flask/sansio/scaffold.py", Language: "python", Kind: core.KindMethod, Name: "route", QualifiedName: "Scaffold.route", ParentSymbol: "Scaffold", Signature: "def route(self, rule, **options):"}
+        	sansioBP := core.SymbolRecord{ID: "flask/sansio/blueprints.py::Blueprint", FilePath: "flask/sansio/blueprints.py", Language: "python", Kind: core.KindClass, Name: "Blueprint", QualifiedName: "Blueprint", Signature: "class Blueprint(Scaffold):",
+        		Imports: []string{".scaffold", "@python-binding:1:Scaffold=.scaffold#Scaffold"}}
+        	publicBP := core.SymbolRecord{ID: "flask/blueprints.py::Blueprint", FilePath: "flask/blueprints.py", Language: "python", Kind: core.KindClass, Name: "Blueprint", QualifiedName: "Blueprint", Signature: "class Blueprint(SansioBlueprint):",
+        		Imports: []string{".sansio.blueprints", "@python-binding:1:SansioBlueprint=.sansio.blueprints#Blueprint"}}
+        	top := core.SymbolRecord{
+        		ID: "app/auth.py::<top-level>", FilePath: "app/auth.py", Language: "python", Kind: core.KindFunction,
+        		Name: "<top-level>", QualifiedName: "<top-level>", Signature: "<top-level>",
+        		RawText: "bp = Blueprint(\"auth\", __name__)\n\n\n\n", Imports: []string{"flask", "@python-binding:1:Blueprint=flask.blueprints#Blueprint"},
+        		CallSites: []core.CallSite{{Callee: "Blueprint", Line: 1, Argc: 2}, {Callee: "bp.route", Line: 3, Argc: 1}},
+        	}
+        	edges := BuildEdges([]core.SymbolRecord{scaffold, route, sansioBP, publicBP, top})
+        	if !javaHasCall(edges, top.ID, route.ID) {
+        		t.Fatalf("bp.route on a public Blueprint did not reach Scaffold.route through the aliased sansio base; edges=%+v", edges)
+        	}
+        }
+        EOF
+        go test ./internal/graph/ -run TestPythonInheritedMethodThroughSameNamedAliasedBase -count=1 2>&1 | tail -5; git stash -q; go test ./internal/graph/ -run TestPythonInheritedMethodThroughSameNamedAliasedBase -count=1 2>&1 | tail -3; git stash pop -q
+      at: 2026-10-05T19:29:25.477455Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && grep -n "pyLocalTypes(\|typeOrInheritedMethodTargets(\|narrowByLocalType(" internal/graph/*.go | grep -v _test | grep -v "^internal/graph/localtypes.go:385\|func " | head -20
+      at: 2026-10-05T19:29:30.929092Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 2990,3025p internal/graph/edges.go; echo .....; sed -n 440,497p internal/graph/localtypes.go
+      at: 2026-10-05T19:29:33.39046Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && git checkout -q internal/graph/localtypes.go && sed -n 2965,2990p internal/graph/edges.go
+      at: 2026-10-05T19:30:51.022391Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/pylocaltypes.go'; s=open(p).read()
+        old='''			dir := ""
+        			if module, member, ok, _ := idx.pyImportBinding(chosen, b); ok && member != "" {
+        				b = member
+        				if files := idx.pyModuleFiles(chosen.FilePath, module); len(files) > 0 {
+        					dir = dirOf(files[0])
+        				}
+        			}'''
+        new='''			dir := dirOf(chosen.FilePath) // unimported: declared alongside
+        			if module, member, ok, _ := idx.pyImportBinding(chosen, b); ok && member != "" {
+        				b = member
+        				dir = ""
+        				if files := idx.pyModuleFiles(chosen.FilePath, module); len(files) > 0 {
+        					dir = dirOf(files[0])
+        				}
+        			}'''
+        assert old in s; s=s.replace(old,new)
+        anchor='''// inheritedTargets resolves self.method() / self.property to members of the'''
+        helper='''// pyInheritedTargets walks a Python type's ancestors, nearest first, and
+        // returns the pool members declared by the first ancestor level that has any.
+        // Each base resolves in the module it was imported from (pyBaseRef), so a base
+        // sharing its subclass's name is the other class, not a cycle; seen keys on
+        // name and directory.
+        func pyInheritedTargets(idx *edgeIndex, typ string, pool []*core.SymbolRecord) []*core.SymbolRecord {
+        	level := pyBaseRefs(idx, typ, "")
+        	seen := map[pyBaseRef]bool{}
+        	for depth := 0; depth < 8 && len(level) > 0; depth++ {
+        		var found []*core.SymbolRecord
+        		var next []pyBaseRef
+        		for _, b := range level {
+        			if seen[b] {
+        				continue
+        			}
+        			seen[b] = true
+        			matches := filterByParent(pool, b.name)
+        			if b.dir != "" {
+        				if c := pyResolveClass(idx, b.name, b.dir); c != nil && dirOf(c.FilePath) == b.dir {
+        					matches = filterCandidatesByFile(matches, c.FilePath)
+        				}
+        			}
+        			found = append(found, matches...)
+        			next = append(next, pyBaseRefs(idx, b.name, b.dir)...)
+        		}
+        		if len(found) > 0 {
+        			return found
+        		}
+        		level = next
+        	}
+        	return nil
+        }
+
+        '''
+        assert anchor in s; s=s.replace(anchor, helper+anchor,1)
+        open(p,'w').write(s)
+
+        p='internal/graph/localtypes.go'; s=open(p).read()
+        old2='''	if len(byType) == 0 {
+        		// The method may be inherited: a receiver typed FlaskProxy (a stub
+        		// subclass of Flask) calling make_response runs Flask's. Walk the
+        		// base classes; the nearest declaring ancestor wins.'''
+        new2='''	if len(byType) == 0 && lang == "python" {
+        		// Python bases resolve through the module each was imported from:
+        		// flask's public Blueprint subclasses the sansio Blueprint under an
+        		// alias, and the name-only walk below loops on "Blueprint" and
+        		// decides bp.route (Scaffold.route) to nothing.
+        		byType = pyInheritedTargets(idx, typ, pool)
+        	}
+        	if len(byType) == 0 {
+        		// The method may be inherited: a receiver typed FlaskProxy (a stub
+        		// subclass of Flask) calling make_response runs Flask's. Walk the
+        		// base classes; the nearest declaring ancestor wins.'''
+        assert old2 in s; s=s.replace(old2,new2)
+        open(p,'w').write(s)
+        EOF
+        grep -n "lang :=\|lang =\|, lang string\|lang string" internal/graph/localtypes.go | sed -n 1,5p; gofmt -l internal/graph | grep -v changeimpact_signatures_test; go build ./... && go test ./internal/graph/ -run 'TestPythonInheritedMethodThroughSameNamedAliasedBase|TestPythonTypedReceiver' -count=1 2>&1 | tail -5
+      at: 2026-10-05T19:31:08.306021Z
+      classified: test
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -10; echo "== grove tests done"; cd ~/Projects/provasign/prism && GOWORK=$S/deco/go.work go build -o $S/deco/prism-route ./cmd/prism && cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/deco/prism-route index . >/dev/null 2>&1; $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); fs={c[''filePath''] for c in d[''callers'']}; print(''route callers'', len(d[''callers'']), ''files'', len(fs)); print(sorted(f for f in fs if ''example'' in f or ''test_apps'' in f))"; cd ~/Projects/provasign/grove/eval && GOWORK=$S/geval/go.work go build -o $S/geval/grove-eval ./cmd/grove-eval && cd $S/geval && rm -rf flask/.grove && ./grove-eval score --repo $S/geval/flask --truth ~/Projects/provasign/grove/eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir $S/geval/out3 --baseline ~/Projects/provasign/grove/eval/baseline.json 2>&1 | grep -E "score: universe|gate"'
+      at: 2026-10-05T19:31:31.404816Z
+      classified: test
+    - cmd: F=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/deco/fl-new/tests/conftest.py; grep -n "def app\b\|def app(" -B2 -A10 $F | head -24; cd ~/Projects/provasign/grove && grep -n "pyFixtureValueRe\s*=" internal/graph/*.go
+      at: 2026-10-05T19:32:43.694792Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "pyCtorAssignRe\s*=" -B3 internal/graph/*.go
+      at: 2026-10-05T19:33:05.165017Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/pylocaltypes.go'; s=open(p).read()
+        old='''	if m := pyFixtureValueRe.FindStringSubmatch(stripCommentsAndStrings(best.RawText)); m != nil && typeSymbolExists(idx, m[1]) {
+        		return m[1]
+        	}
+        	return ""
+        }'''
+        new='''	body := stripCommentsAndStrings(best.RawText)
+        	if m := pyFixtureValueRe.FindStringSubmatch(body); m != nil && typeSymbolExists(idx, m[1]) {
+        		return m[1]
+        	}
+        	// `app = Flask(...)`, configure it, `return app`: the returned local's
+        	// constructor assignment types the fixture (flask's conftest `app`, which
+        	// ~200 test-module `@app.route` uses receive).
+        	if m := pyFixtureNameRe.FindStringSubmatch(body); m != nil {
+        		for _, a := range pyCtorAssignRe.FindAllStringSubmatch(body, -1) {
+        			if a[1] == m[1] && typeSymbolExists(idx, a[2]) {
+        				return a[2]
+        			}
+        		}
+        	}
+        	return ""
+        }
+
+        // pyFixtureNameRe matches a fixture returning or yielding a bare local name.
+        var pyFixtureNameRe = regexp.MustCompile(`(?m)^\\s*(?:return|yield)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*$`)'''
+        assert old in s; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        grep -n "pyFixtureNameRe" internal/graph/pylocaltypes.go | head -3; cat >> internal/graph/localtypes_test.go <<'EOF'
+
+        // flask's conftest builds the app in a local and returns it; tests receive it
+        // as an unannotated `app` parameter and register routes with @app.route.
+        func TestPythonFixtureReturningConstructedLocalTypesTheParameter(t *testing.T) {
+        	flask := core.SymbolRecord{ID: "flask/app.py::Flask", FilePath: "flask/app.py", Language: "python", Kind: core.KindClass, Name: "Flask", QualifiedName: "Flask", Signature: "class Flask:"}
+        	route := core.SymbolRecord{ID: "flask/app.py::Flask.route", FilePath: "flask/app.py", Language: "python", Kind: core.KindMethod, Name: "route", QualifiedName: "Flask.route", ParentSymbol: "Flask", Signature: "def route(self, rule):"}
+        	fixture := core.SymbolRecord{ID: "tests/conftest.py::app", FilePath: "tests/conftest.py", Language: "python", Kind: core.KindFunction, Name: "app", QualifiedName: "app",
+        		Annotations: []string{"pytest.fixture"}, Signature: "def app():",
+        		RawText: "def app():\n    app = Flask(\"t\")\n    app.config.update(TESTING=True)\n    return app\n", Imports: []string{"flask"}}
+        	test := core.SymbolRecord{ID: "tests/test_basic.py::test_index", FilePath: "tests/test_basic.py", Language: "python", Kind: core.KindFunction, Name: "test_index", QualifiedName: "test_index",
+        		Signature: "def test_index(app):", RawText: "def test_index(app):\n    @app.route(\"/\")\n    def index():\n        return \"\"\n",
+        		CallSites: []core.CallSite{{Callee: "app.route", Line: 2, Argc: 1}}}
+        	edges := BuildEdges([]core.SymbolRecord{flask, route, fixture, test})
+        	if !javaHasCall(edges, test.ID, route.ID) {
+        		t.Fatalf("fixture-typed app.route did not resolve; edges=%+v", edges)
+        	}
+        }
+        EOF
+        go test ./internal/graph/ -run 'TestPythonFixture|TestPythonInherited' -count=1 2>&1 | tail -4
+      at: 2026-10-05T19:33:06.529322Z
+      classified: test
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/grove && gofmt -l internal/graph | grep -v changeimpact_signatures_test; go vet ./internal/graph/ && go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -10; echo "== grove tests done"; cd ~/Projects/provasign/prism && GOWORK=$S/deco/go.work go build -o $S/deco/prism-route ./cmd/prism && cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/deco/prism-route index . >/dev/null 2>&1; $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); fs={c[''filePath''] for c in d[''callers'']}; print(''route callers'', len(d[''callers'']), ''files'', len(fs))"; cd ~/Projects/provasign/grove/eval && GOWORK=$S/geval/go.work go build -o $S/geval/grove-eval ./cmd/grove-eval && cd $S/geval && rm -rf flask/.grove && ./grove-eval score --repo $S/geval/flask --truth ~/Projects/provasign/grove/eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir $S/geval/out4 --baseline ~/Projects/provasign/grove/eval/baseline.json 2>&1 | grep -E "score: universe|gate"'
+      at: 2026-10-05T19:33:30.214837Z
+      classified: lint
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd $S/deco/fl-new && $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "
+        import sys,json,random,subprocess
+        d=json.load(sys.stdin); cs=d['callers']; random.seed(7); sample=random.sample(cs,12)
+        bad=0
+        for c in sample:
+            ev=(c.get('evidence') or [{}])[0]; ln=ev.get('line'); txt=ev.get('text','')
+            ok='route(' in txt
+            bad+= not ok
+            print(f\"{'OK ' if ok else '?? '}{c['filePath']}:{ln} {c['name']}: {txt.strip()[:70]}\")
+        print('sample', len(sample), 'non-route evidence', bad)
+        "; echo; echo "callers whose evidence is not a .route( call (all):"; $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "
+        import sys,json; d=json.load(sys.stdin)
+        odd=[(c['filePath'],(c.get('evidence') or [{}])[0].get('text','')) for c in d['callers'] if 'route(' not in (c.get('evidence') or [{}])[0].get('text','')]
+        print(len(odd),'of',len(d['callers'])); [print('  ',f,t.strip()[:80]) for f,t in odd[:10]]"
+      at: 2026-10-05T19:33:41.47821Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd $S/deco/fl-new && $S/deco/prism-route change-impact route 2>/dev/null > $S/deco/route_callers.json; python3 - "$S" <<'EOF'
+        import json,sqlite3,sys,re
+        S=sys.argv[1]; d=json.load(open(f'{S}/deco/route_callers.json'))
+        db=sqlite3.connect(f'{S}/deco/fl-new/.grove/grove.db')
+        ok=0; bad=[]
+        for c in d['callers']:
+            rows=db.execute("select raw_text, call_sites from symbols where file_path=? and qualified_name=?",(c['filePath'],c.get('qualifiedName',c['name']))).fetchall()
+            hit=any(re.search(r'\.route\(|\broute\(|\._method_route\(|\.(get|post|put|delete|patch)\(', (r[0] or '')+(r[1] or '')) for r in rows)
+            if hit: ok+=1
+            else: bad.append((c['filePath'],c['name']))
+        print('callers with a route/_method_route/verb call in their own code:', ok, 'of', len(d['callers']))
+        for b in bad[:10]: print('  NOT FOUND', b)
+        EOF
+      at: 2026-10-05T19:33:50.708398Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "importedFilesCache" internal/graph/*.go | grep -v _test | head -6; grep -n "sync\.\(Mutex\|RWMutex\)\|cacheMu\|mu  *sync" internal/graph/edges.go | head -6; grep -n "pyModuleGlobals\s*=\|pyModuleGlobals\[.*\] =" internal/graph/*.go | head -5
+      at: 2026-10-05T19:34:12.037337Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 60,75p internal/graph/edges.go; sed -n 600,640p internal/graph/edges.go; sed -n 690,705p internal/graph/edges.go
+      at: 2026-10-05T19:34:14.567513Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/deco/fl-new && sqlite3 .grove/grove.db "select file_path, name, kind, signature, modifiers from symbols where file_path like 'examples/javascript/js_example/%' and kind in ('variable','field');"; echo ---; sqlite3 .grove/grove.db "select count(*) from symbols where modifiers like '%module-value%';"; sqlite3 .grove/grove.db "select file_path, name, signature from symbols where modifiers like '%module-value%' limit 5;"; grep -rn "module-value" ~/Projects/provasign/astkit/strategies/*.go | grep -v _test | head -3
+      at: 2026-10-05T19:34:24.761336Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && grep -n "buildPyModuleGlobals(" internal/graph/*.go | grep -v "func "; grep -n "pyModuleGlobals " internal/graph/edges.go | head -3; ln=$(grep -n "idx.buildPyModuleGlobals(" internal/graph/edges.go | head -1 | cut -d: -f1); sed -n "$((ln-6)),$((ln+3))p" internal/graph/edges.go; grep -n "pyLocalRebindRe\s*=" internal/graph/*.go'
+      at: 2026-10-05T19:34:38.702048Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 1088,1096p internal/graph/memberclassify.go
+      at: 2026-10-05T19:35:10.691705Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -i '' 's/pyModuleCtorRe\.FindStringSubmatch(s\.Signature)/pyModuleVarCtorRe.FindStringSubmatch(s.Signature)/; s/^\/\/ pyModuleCtorRe matches a plain module assignment/\/\/ pyModuleVarCtorRe matches a plain module assignment/; s/^var pyModuleCtorRe = regexp.MustCompile(`^/var pyModuleVarCtorRe = regexp.MustCompile(`^/' internal/graph/edges.go && grep -n "pyModuleVarCtorRe\|pyModuleCtorRe" internal/graph/edges.go; gofmt -w internal/graph/edges.go internal/graph/pylocaltypes.go && gofmt -l internal/graph | grep -v changeimpact_signatures_test; go build ./... && go vet ./internal/graph/ && echo ok
+      at: 2026-10-05T19:35:17.69537Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/grove && cat >> internal/graph/localtypes_test.go <<'EOF'
+
+        // A module variable built from a constructor types its uses: in the importing
+        // module (`from js_example import app` where js_example/__init__.py has
+        // `app = Flask(__name__)`) and inside its own module's functions.
+        func TestPythonConstructedModuleVariableTypesImportersAndOwnModule(t *testing.T) {
+        	flask := core.SymbolRecord{ID: "flask/app.py::Flask", FilePath: "flask/app.py", Language: "python", Kind: core.KindClass, Name: "Flask", QualifiedName: "Flask", Signature: "class Flask:"}
+        	route := core.SymbolRecord{ID: "flask/app.py::Flask.route", FilePath: "flask/app.py", Language: "python", Kind: core.KindMethod, Name: "route", QualifiedName: "Flask.route", ParentSymbol: "Flask", Signature: "def route(self, rule):"}
+        	logger := core.SymbolRecord{ID: "flask/app.py::Flask.log_exception", FilePath: "flask/app.py", Language: "python", Kind: core.KindMethod, Name: "log_exception", QualifiedName: "Flask.log_exception", ParentSymbol: "Flask", Signature: "def log_exception(self, exc):"}
+        	appVar := core.SymbolRecord{ID: "js_example/__init__.py::app", FilePath: "js_example/__init__.py", Language: "python", Kind: core.KindVariable, Name: "app", QualifiedName: "app",
+        		Signature: "app = Flask(__name__)", Modifiers: []string{"public", "module-value"}}
+        	own := core.SymbolRecord{ID: "js_example/__init__.py::report", FilePath: "js_example/__init__.py", Language: "python", Kind: core.KindFunction, Name: "report", QualifiedName: "report",
+        		Signature: "def report(exc):", RawText: "def report(exc):\n    app.log_exception(exc)\n", CallSites: []core.CallSite{{Callee: "app.log_exception", Line: 2, Argc: 1}}}
+        	views := core.SymbolRecord{ID: "js_example/views.py::<top-level>", FilePath: "js_example/views.py", Language: "python", Kind: core.KindFunction, Name: "<top-level>", QualifiedName: "<top-level>",
+        		Signature: "<top-level>", RawText: "\n\n\n", Imports: []string{"js_example", "@python-binding:1:app=js_example#app"},
+        		CallSites: []core.CallSite{{Callee: "app.route", Line: 3, Argc: 1}}}
+        	shadow := core.SymbolRecord{ID: "js_example/views.py::other", FilePath: "js_example/views.py", Language: "python", Kind: core.KindFunction, Name: "other", QualifiedName: "other",
+        		Signature: "def other(app):", RawText: "def other(app):\n    app.route(\"/x\")\n", Imports: []string{"js_example", "@python-binding:1:app=js_example#app"},
+        		CallSites: []core.CallSite{{Callee: "app.route", Line: 2, Argc: 1}}}
+        	edges := BuildEdges([]core.SymbolRecord{flask, route, logger, appVar, own, views, shadow})
+        	if !javaHasCall(edges, views.ID, route.ID) {
+        		t.Fatalf("imported module variable did not type app.route; edges=%+v", edges)
+        	}
+        	if !javaHasCall(edges, own.ID, logger.ID) {
+        		t.Fatalf("own-module variable did not type app.log_exception; edges=%+v", edges)
+        	}
+        	if javaHasCall(edges, shadow.ID, route.ID) && false {
+        		t.Fatalf("unreachable") // a parameter named app shadows the module variable; untyped params stay unresolved by type
+        	}
+        }
+        EOF
+        go test ./internal/graph/ -run 'TestPythonConstructedModuleVariable|TestPythonFixture|TestPythonInherited' -count=1 2>&1 | tail -4 && go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -10; echo "== grove tests done"
+      at: 2026-10-05T19:35:41.665243Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/localtypes_test.go'; s=open(p).read()
+        a=s.index('	shadow := core.SymbolRecord{ID: "js_example/views.py::other"')
+        b=s.index('	edges := BuildEdges([]core.SymbolRecord{flask, route, logger, appVar, own, views, shadow})')
+        s=s[:a]+s[b:]
+        s=s.replace('edges := BuildEdges([]core.SymbolRecord{flask, route, logger, appVar, own, views, shadow})','edges := BuildEdges([]core.SymbolRecord{flask, route, logger, appVar, own, views})')
+        s=s.replace('''	if javaHasCall(edges, shadow.ID, route.ID) && false {
+        		t.Fatalf("unreachable") // a parameter named app shadows the module variable; untyped params stay unresolved by type
+        	}
+        ''','')
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/graph/localtypes_test.go; go test ./internal/graph/ -run 'TestPythonConstructedModuleVariable' -count=1 2>&1 | tail -2
+      at: 2026-10-05T19:35:49.774535Z
+      classified: test
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/prism && GOWORK=$S/deco/go.work go build -o $S/deco/prism-route ./cmd/prism && cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/deco/prism-route index . >/dev/null 2>&1; $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); fs={c[''filePath''] for c in d[''callers'']}; print(''route callers'', len(d[''callers'']), ''files'', len(fs), ''js_example:'', [f for f in fs if ''js_example'' in f])"; cd ~/Projects/provasign/grove/eval && GOWORK=$S/geval/go.work go build -o $S/geval/grove-eval ./cmd/grove-eval && cd $S/geval && rm -rf flask/.grove && ./grove-eval score --repo $S/geval/flask --truth ~/Projects/provasign/grove/eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir $S/geval/out5 --baseline ~/Projects/provasign/grove/eval/baseline.json 2>&1 | grep -E "score: universe|gate"; cd ~/Projects/provasign/research && python3 $S/guard.py 8192 25 -- python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism $S/deco/prism-route > $S/deco/ci_invariants3.log 2>&1; echo "ci_invariants exit $?"; grep -E "All invariants|FAIL|REGRESS" $S/deco/ci_invariants3.log | head -5'
+      at: 2026-10-05T19:36:00.658921Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/bpdo8zo46.output
+      at: 2026-10-05T19:37:23.406511Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/deco/fl-new && sqlite3 .grove/grove.db "select name, substr(call_sites,1,300), substr(imports,1,300) from symbols where file_path='examples/javascript/js_example/views.py' and name='<top-level>';"; sqlite3 .grove/grove.db "select t.qualified_name, e.reason from edges e join symbols s on s.id=e.from_node join symbols t on t.id=e.to_node where s.file_path='examples/javascript/js_example/views.py' and e.edge_type='calls';"; ls examples/javascript/js_example/; head -12 examples/javascript/js_example/__init__.py
+      at: 2026-10-05T19:37:32.661087Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "^func dirOf" -A10 internal/graph/*.go
+      at: 2026-10-05T19:37:46.344066Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/pylocaltypes.go'; s=open(p).read()
+        old='''func (idx *edgeIndex) pyImportedGlobalType(fromFile, module, member string) string {
+        	files := idx.pyModuleFiles(fromFile, module)'''
+        new='''func (idx *edgeIndex) pyImportedGlobalType(fromFile, module, member string) string {
+        	if strings.Trim(module, ".") == "" {
+        		// `from . import app`: the package's own __init__.py, one directory
+        		// up per extra dot (pyModuleFiles resolves only dotted names).
+        		dir := dirOf(fromFile)
+        		for i := 1; i < len(module); i++ {
+        			dir = dirOf(dir)
+        		}
+        		init := "__init__.py"
+        		if dir != "" {
+        			init = dir + "/__init__.py"
+        		}
+        		return idx.pyFileGlobals[init][member]
+        	}
+        	files := idx.pyModuleFiles(fromFile, module)'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        p='internal/graph/localtypes_test.go'; s=open(p).read()
+        old2='''	edges := BuildEdges([]core.SymbolRecord{flask, route, logger, appVar, own, views})
+        	if !javaHasCall(edges, views.ID, route.ID) {
+        		t.Fatalf("imported module variable did not type app.route; edges=%+v", edges)
+        	}'''
+        new2='''	// flask's own example imports it relatively: `from . import app`.
+        	relative := core.SymbolRecord{ID: "js_example/rel.py::<top-level>", FilePath: "js_example/rel.py", Language: "python", Kind: core.KindFunction, Name: "<top-level>", QualifiedName: "<top-level>",
+        		Signature: "<top-level>", RawText: "\\n\\n\\n", Imports: []string{".", "@python-binding:1:app=.#app"},
+        		CallSites: []core.CallSite{{Callee: "app.route", Line: 3, Argc: 1}}}
+        	edges := BuildEdges([]core.SymbolRecord{flask, route, logger, appVar, own, views, relative})
+        	if !javaHasCall(edges, views.ID, route.ID) {
+        		t.Fatalf("imported module variable did not type app.route; edges=%+v", edges)
+        	}
+        	if !javaHasCall(edges, relative.ID, route.ID) {
+        		t.Fatalf("`from . import app` did not type app.route; edges=%+v", edges)
+        	}'''
+        assert s.count(old2)==1; s=s.replace(old2,new2); open(p,'w').write(s)
+        EOF
+        gofmt -l internal/graph | grep -v changeimpact_signatures_test; go vet ./internal/graph/ && go test ./internal/graph/ -count=1 2>&1 | tail -3
+      at: 2026-10-05T19:37:48.458613Z
+      classified: lint
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/prism && GOWORK=$S/deco/go.work go build -o $S/deco/prism-route ./cmd/prism && cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/deco/prism-route index . >/dev/null 2>&1; $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); fs={c['filePath'] for c in d['callers']}; print('route callers', len(d['callers']), 'files', len(fs), 'js_example:', [f for f in fs if 'js_example' in f])"; mkdir -p $S/dj && for v in old new; do rm -rf $S/dj/$v; cp -R ~/.cache/prism-ci-corpus/django $S/dj/$v; rm -rf $S/dj/$v/.grove; done; (cd $S/dj/old && python3 $S/guard.py 8192 25 -- $S/rel/prism-v0.86.1-darwin-arm64 index . >/dev/null 2>&1; echo "old exit $?"); (cd $S/dj/new && python3 $S/guard.py 8192 25 -- $S/deco/prism-route index . >/dev/null 2>&1; echo "new exit $?"); for v in old new; do sqlite3 $S/dj/$v/.grove/grove.db "select '$v', count(*), sum(reason='decorator') from edges where edge_type='calls';"; done
+      at: 2026-10-05T19:38:58.149571Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - "$S" <<'EOF'
+        import sqlite3,sys,random,re,collections
+        S=sys.argv[1]
+        def load(v):
+            db=sqlite3.connect(f'{S}/dj/{v}/.grove/grove.db')
+            q="select e.from_node,e.to_node,e.reason from edges e where e.edge_type='calls'"
+            return db,{(a,b):r for a,b,r in db.execute(q)}
+        odb,old=load('old'); ndb,new=load('new')
+        added=[k for k in new if k not in old]; removed=[k for k in old if k not in new]
+        print('added',len(added),'removed',len(removed))
+        print('added by reason',collections.Counter(new[k] for k in added).most_common(6))
+        print('removed by reason',collections.Counter(old[k] for k in removed).most_common(6))
+        sym=lambda db,i: db.execute("select file_path,qualified_name,name,raw_text,call_sites from symbols where id=?",(i,)).fetchone()
+        random.seed(3); good=0; samp=random.sample(added,min(30,len(added)))
+        for a,b in samp:
+            fa=sym(ndb,a); fb=sym(ndb,b)
+            if not fa or not fb: continue
+            name=fb[2]; ok=re.search(r'\.'+re.escape(name)+r'\b', (fa[3] or '')+(fa[4] or '')) is not None
+            good+=ok
+            print(f"{'OK' if ok else '??'} {fa[0]}:{fa[1]} -> {fb[1]} ({fb[0].split('/')[-1]})")
+        print('sample plausible', good,'/',len(samp))
+        EOF
+      at: 2026-10-05T19:39:10.473158Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - "$S" <<'EOF'
+        import sqlite3,sys,random,collections,json
+        S=sys.argv[1]
+        odb=sqlite3.connect(f'{S}/dj/old/.grove/grove.db'); ndb=sqlite3.connect(f'{S}/dj/new/.grove/grove.db')
+        q="select from_node,to_node,reason from edges where edge_type='calls'"
+        old={(a,b):r for a,b,r in odb.execute(q)}; new={(a,b):r for a,b,r in ndb.execute(q)}
+        removed=[k for k in old if k not in new]
+        sym=lambda i: odb.execute("select file_path,qualified_name,name,call_sites,raw_text from symbols where id=?",(i,)).fetchone()
+        # for each removed edge, what does the caller now reach for the same callee name instead?
+        random.seed(5)
+        for a,b in random.sample(removed,14):
+            fa,fb=sym(a),sym(b)
+            if not fa or not fb: continue
+            calls=[c['callee'] for c in json.loads(fa[3] or '[]') if c['callee'].split('.')[-1]==fb[2]]
+            now=[r[0] for r in ndb.execute("select t.qualified_name from edges e join symbols t on t.id=e.to_node where e.from_node=? and e.edge_type='calls' and t.name=?",(a,fb[2]))]
+            print(f"{fa[0].split('/')[-1]}:{fa[1]}  call {calls[:2]}  was -> {fb[1]}  now -> {now[:3]}")
+        EOF
+      at: 2026-10-05T19:39:25.713381Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/graph/pylocaltypes.go'; s=open(p).read()
+        anchor='''// inheritedTargets resolves self.method() / self.property to members of the'''
+        helper='''// pyTypeHasDynamicAttrs reports whether a Python class or any ancestor
+        // defines __getattr__: a proxy (django's LazyObject-based default_storage,
+        // DefaultAdminSite) whose members are forwarded, not declared. A typed lookup
+        // that finds nothing on such a type has not shown the call goes nowhere.
+        func pyTypeHasDynamicAttrs(idx *edgeIndex, typ string) bool {
+        	declares := func(class, dir string) bool {
+        		for _, m := range idx.byName["__getattr__"] {
+        			if m.ParentSymbol == class && (dir == "" || dirOf(m.FilePath) == dir) {
+        				return true
+        			}
+        		}
+        		return false
+        	}
+        	if declares(typ, "") {
+        		return true
+        	}
+        	level := pyBaseRefs(idx, typ, "")
+        	seen := map[pyBaseRef]bool{}
+        	for depth := 0; depth < 8 && len(level) > 0; depth++ {
+        		var next []pyBaseRef
+        		for _, b := range level {
+        			if seen[b] {
+        				continue
+        			}
+        			seen[b] = true
+        			if declares(b.name, b.dir) {
+        				return true
+        			}
+        			next = append(next, pyBaseRefs(idx, b.name, b.dir)...)
+        		}
+        		level = next
+        	}
+        	return false
+        }
+
+        '''
+        assert anchor in s; s=s.replace(anchor,helper+anchor,1); open(p,'w').write(s)
+        p='internal/graph/localtypes.go'; s=open(p).read()
+        old='''		byType = pyInheritedTargets(idx, typ, pool)
+        	}'''
+        new='''		byType = pyInheritedTargets(idx, typ, pool)
+        		if len(byType) == 0 && len(targets) == 0 && pyTypeHasDynamicAttrs(idx, typ) {
+        			// A proxy type forwards members through __getattr__: leave the
+        			// call to name-based resolution instead of deciding it to nothing.
+        			return nil, nil, false
+        		}
+        	}'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        p='internal/graph/localtypes_test.go'; s=open(p).read()
+        s+='''
+        // django: `default_storage = DefaultStorage()`, a LazyObject proxy that
+        // forwards `url` through __getattr__. Typing the module variable must not
+        // decide default_storage.url to nothing; name resolution still applies.
+        func TestPythonProxyTypedVariableDoesNotDropForwardedMember(t *testing.T) {
+        	lazy := core.SymbolRecord{ID: "functional.py::LazyObject", FilePath: "utils/functional.py", Language: "python", Kind: core.KindClass, Name: "LazyObject", QualifiedName: "LazyObject", Signature: "class LazyObject:"}
+        	getattr := core.SymbolRecord{ID: "functional.py::LazyObject.__getattr__", FilePath: "utils/functional.py", Language: "python", Kind: core.KindMethod, Name: "__getattr__", QualifiedName: "LazyObject.__getattr__", ParentSymbol: "LazyObject", Signature: "def __getattr__(self, name):"}
+        	def := core.SymbolRecord{ID: "storage.py::DefaultStorage", FilePath: "files/storage.py", Language: "python", Kind: core.KindClass, Name: "DefaultStorage", QualifiedName: "DefaultStorage", Signature: "class DefaultStorage(LazyObject):",
+        		Imports: []string{"utils.functional", "@python-binding:1:LazyObject=utils.functional#LazyObject"}}
+        	fs := core.SymbolRecord{ID: "storage.py::FileSystemStorage", FilePath: "files/storage.py", Language: "python", Kind: core.KindClass, Name: "FileSystemStorage", QualifiedName: "FileSystemStorage", Signature: "class FileSystemStorage:"}
+        	url := core.SymbolRecord{ID: "storage.py::FileSystemStorage.url", FilePath: "files/storage.py", Language: "python", Kind: core.KindMethod, Name: "url", QualifiedName: "FileSystemStorage.url", ParentSymbol: "FileSystemStorage", Signature: "def url(self, name):"}
+        	variable := core.SymbolRecord{ID: "storage.py::default_storage", FilePath: "files/storage.py", Language: "python", Kind: core.KindVariable, Name: "default_storage", QualifiedName: "default_storage",
+        		Signature: "default_storage = DefaultStorage()", Modifiers: []string{"public", "module-value"}}
+        	caller := core.SymbolRecord{ID: "widgets.py::render", FilePath: "files/widgets.py", Language: "python", Kind: core.KindFunction, Name: "render", QualifiedName: "render",
+        		Signature: "def render(name):", RawText: "def render(name):\\n    return default_storage.url(name)\\n", Imports: []string{"files.storage", "@python-binding:1:default_storage=files.storage#default_storage"},
+        		CallSites: []core.CallSite{{Callee: "default_storage.url", Line: 2, Argc: 1}}}
+        	edges := BuildEdges([]core.SymbolRecord{lazy, getattr, def, fs, url, variable, caller})
+        	if !javaHasCall(edges, caller.ID, url.ID) {
+        		t.Fatalf("proxy-typed default_storage.url lost its name-resolved target; edges=%+v", edges)
+        	}
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/graph | grep -v changeimpact_signatures_test; go vet ./internal/graph/ && go test ./internal/graph/ -run 'TestPythonProxy|TestPythonConstructed|TestPythonFixture|TestPythonInherited' -count=1 2>&1 | tail -4
+      at: 2026-10-05T19:40:16.667995Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign/grove && cp internal/graph/localtypes.go /tmp/lt.bak && sed -i '' 's/if len(byType) == 0 \&\& len(targets) == 0 \&\& pyTypeHasDynamicAttrs(idx, typ) {/if false \&\& pyTypeHasDynamicAttrs(idx, typ) {/' internal/graph/localtypes.go && go test ./internal/graph/ -run TestPythonProxyTypedVariableDoesNotDropForwardedMember -count=1 2>&1 | grep -E "^(ok|FAIL|---)" | head -2; cp /tmp/lt.bak internal/graph/localtypes.go && rm /tmp/lt.bak && go test ./internal/graph/ -run TestPythonProxyTypedVariableDoesNotDropForwardedMember -count=1 2>&1 | tail -1
+      at: 2026-10-05T19:40:30.798406Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/prism && GOWORK=$S/deco/go.work go build -o $S/deco/prism-route ./cmd/prism && rm -rf $S/dj/new/.grove && (cd $S/dj/new && python3 $S/guard.py 8192 25 -- $S/deco/prism-route index . >/dev/null 2>&1); python3 - "$S" <<'EOF'
+        import sqlite3,sys,collections,json
+        S=sys.argv[1]
+        odb=sqlite3.connect(f'{S}/dj/old/.grove/grove.db'); ndb=sqlite3.connect(f'{S}/dj/new/.grove/grove.db')
+        q="select from_node,to_node,reason from edges where edge_type='calls'"
+        old={(a,b):r for a,b,r in odb.execute(q)}; new={(a,b):r for a,b,r in ndb.execute(q)}
+        added=[k for k in new if k not in old]; removed=[k for k in old if k not in new]
+        print('calls old',len(old),'new',len(new),'added',len(added),'removed',len(removed))
+        print('added by reason',collections.Counter(new[k] for k in added).most_common(5))
+        print('removed by reason',collections.Counter(old[k] for k in removed).most_common(5))
+        sym=lambda db,i: db.execute("select file_path,qualified_name,name from symbols where id=?",(i,)).fetchone()
+        lost_nothing=0
+        for a,b in removed:
+            fb=sym(odb,b)
+            if not fb: continue
+            now=ndb.execute("select count(*) from edges e join symbols t on t.id=e.to_node where e.from_node=? and e.edge_type='calls' and t.name=?",(a,fb[2])).fetchone()[0]
+            lost_nothing+= (now==0)
+        print('removed edges whose caller now reaches NO same-named target:',lost_nothing)
+        EOF
+      at: 2026-10-05T19:40:59.295192Z
+      classified: build
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/grove && go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -8; echo "== grove tests done"; cd ~/Projects/provasign/grove/eval && GOWORK=$S/geval/go.work go build -o $S/geval/grove-eval ./cmd/grove-eval && cd $S/geval && rm -rf flask/.grove && ./grove-eval score --repo $S/geval/flask --truth ~/Projects/provasign/grove/eval/testdata/flask@36e4a824/calls-truth.jsonl.gz --out-dir $S/geval/out6 --baseline ~/Projects/provasign/grove/eval/baseline.json 2>&1 | grep -E "score: universe|gate"; cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/deco/prism-route index . >/dev/null 2>&1; $S/deco/prism-route change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(''route callers'', len(d[''callers'']), ''files'', len({c[''filePath''] for c in d[''callers'']}))"; cd ~/Projects/provasign/prism && GOWORK=$S/deco/go.work go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -6; echo "== prism tests done"; cd ~/Projects/provasign/research && python3 $S/guard.py 8192 25 -- python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism $S/deco/prism-route > $S/deco/ci_invariants4.log 2>&1; echo "ci_invariants exit $?"; grep -E "All invariants|FAIL|REGRESS" $S/deco/ci_invariants4.log | head -3'
+      at: 2026-10-05T19:41:11.246247Z
+      classified: test
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b1o0176yw.output
+      at: 2026-10-05T19:43:06.887471Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -rn "ResolverVersion\s*=" internal/graph/*.go | head -3
+      at: 2026-10-05T19:43:16.500404Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && sed -n 1,25p internal/graph/version.go | grep -n "ResolverVersion" ; sed -i '' 's/^const ResolverVersion = "2026-09-19-language-graph-v22"$/const ResolverVersion = "2026-10-05-language-graph-v23"/' internal/graph/version.go && grep -n "^const ResolverVersion" internal/graph/version.go && go build ./... && go test ./internal/graph/ ./internal/index/ ./pkg/... -count=1 2>&1 | grep -vE "^ok|no test files" | tail -5; git status --short; git diff --stat
+      at: 2026-10-05T19:43:16.627163Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && sed -n 1,7p internal/graph/resolverversion.go && sed -i '' 's/^const ResolverVersion = "2026-09-19-language-graph-v22"$/const ResolverVersion = "2026-10-05-language-graph-v23"/' internal/graph/resolverversion.go && grep -n "^const ResolverVersion" internal/graph/resolverversion.go && go build ./... && go test ./internal/graph/ ./internal/index/ ./pkg/... -count=1 2>&1 | grep -vE "^ok|no test files" | tail -5; echo tests-done
+      at: 2026-10-05T19:43:31.200175Z
+      classified: test
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_plan_after_boost_2026_10_05.md <<'EOF'
+
+        ITEM 1 DONE LOCALLY 2026-10-05 (grove branch fix/py-aliased-base-walk, uncommitted; not released):
+        - pyBaseRefs/pyInheritedTargets: Python base walk follows the module a base was imported from (flask public
+          Blueprint -> `Blueprint as SansioBlueprint` -> Scaffold); narrowByLocalType used a name-only walk that looped.
+        - pyFixtureType: fixture returning a constructed local (`app = Flask(..); return app`) types the param.
+        - pyFileGlobals: per-file module variables typed by annotation or constructor (astkit module-value symbols);
+          own module + imported via binding (incl. `from . import app`).
+        - pyTypeHasDynamicAttrs: typed lookup on a __getattr__ proxy (django LazyObject default_storage) is not decided.
+        - ResolverVersion -> 2026-10-05-language-graph-v23.
+        Results: flask `route` callers 2 (v0.86.0) -> 27 (v0.86.1) -> 170 / 25 files; django +1678 call edges
+        (1482 proxy __getattr__/__getitem__), 61 removed all redirects (0 pure losses). Gates: grove+prism tests, flask
+        oracle unchanged (universe = src fns), ci_invariants held. Release needs grove v0.62.2 + prism (ask first).
+        EOF
+        echo ok
+      at: 2026-10-05T19:43:38.499079Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/grove && git fetch -q origin && git log --oneline origin/main -1 && python3 - <<'EOF'
+        p='CHANGELOG.md'; s=open(p).read()
+        entry='''# Changelog
+
+        ## v0.62.2 - 2026-10-05
+
+        Python receivers that hold objects built elsewhere now resolve. Flask's
+        `route` goes from 27 callers to 170 (25 files) with this release.
+
+        **Fixes (results)**
+        - **Inherited methods through an aliased base**: flask's public `Blueprint`
+          subclasses `Blueprint as SansioBlueprint` (flask/sansio), and `route` lives
+          on `Scaffold` above it. The base-class walk matched by name, re-picked the
+          public class for its own base, and decided `bp.route` to nothing. Bases now
+          resolve in the module they were imported from.
+        - **pytest fixtures returning a built local**: `app = Flask(...)`, configure,
+          `return app` now types the tests' `app` parameter (flask: ~200
+          `@app.route` uses).
+        - **Module variables**: `bp = Blueprint(...)` / `app = Flask(...)` at module
+          level type that name in its own module's functions and in modules that
+          import it (including `from . import app`).
+        - **Lazy proxies**: a typed lookup on a class that forwards members through
+          `__getattr__` (django's `default_storage`, `admin.site`) no longer drops the
+          name-resolved target. django: +1,678 call edges (mostly real proxy
+          `__getattr__`/`__getitem__` calls); the 61 it removes are all redirects to a
+          better target, none lost.
+        - **ResolverVersion** bumped (2026-10-05-language-graph-v23): stored indexes
+          re-resolve.
+
+        '''
+        assert s.startswith('# Changelog\n\n')
+        open(p,'w').write(entry+s[len('# Changelog\n\n'):])
+        EOF
+        git add CHANGELOG.md internal/graph/edges.go internal/graph/localtypes.go internal/graph/localtypes_test.go internal/graph/pylocaltypes.go internal/graph/resolverversion.go && git status --short && git commit -q -F - <<'EOF'
+        Release v0.62.2: Python receivers built elsewhere resolve
+
+        - Inherited-method walk follows the module each Python base was imported
+          from (flask Blueprint -> `Blueprint as SansioBlueprint` -> Scaffold.route).
+        - pytest fixtures returning a constructed local type the parameter.
+        - Module variables typed by annotation or constructor (astkit module-value
+          symbols), in their own module and through imports incl. `from . import x`.
+        - Typed lookups on __getattr__ proxies fall back to name resolution.
+        - ResolverVersion 2026-10-05-language-graph-v23.
+
+        flask `route` callers 27 -> 170 (25 files). django +1678 call edges, 61
+        removed all redirects. Flask oracle unchanged (P 0.8544 R 0.7288);
+        research ci_invariants held.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_0154Ei8CjJkreabbb7mwy9UU
+        EOF
+        git rebase -q origin/main 2>&1 | tail -1; git log --oneline -2; git push -q -u origin fix/py-aliased-base-walk 2>&1 | grep -v "^remote:" | tail -1
+      at: 2026-10-05T19:57:22.738706Z
+      classified: test
+    - cmd: "cd ~/Projects/provasign/grove && git ls-remote --heads origin fix/py-aliased-base-walk; git status -sb | head -1; gh pr create --base main --head fix/py-aliased-base-walk --title \"Release v0.62.2: Python receivers built elsewhere resolve\" --body \"$(cat <<'EOF'\nPython receivers holding objects built elsewhere now resolve. Flask's `route`: 27 callers -> **170** (25 files).\n\n**Changes**\n- **Aliased base classes**: the Python inherited-method walk in `narrowByLocalType` matched bases by name. Flask's public `Blueprint` subclasses `Blueprint as SansioBlueprint`, so the walk looped on \"Blueprint\" and decided `bp.route` (on `Scaffold`) to nothing. `pyBaseRefs` / `pyInheritedTargets` now resolve each base in the module it was imported from; seen keys on name + directory.\n- **pytest fixtures**: a fixture returning a constructed local (`app = Flask(...)` ... `return app`) types the test parameter.\n- **Module variables**: `pyFileGlobals` types module-level variables by annotation or constructor (astkit `module-value` symbols), per file; used in the defining module and through import bindings, including `from . import app`.\n- **Proxies**: a typed lookup that finds nothing on a class (or ancestor) defining `__getattr__` is not decided (django `default_storage`, `admin.site`), so name resolution still applies.\n- `ResolverVersion` -> `2026-10-05-language-graph-v23`; CHANGELOG v0.62.2. Tests for each case.\n\n**Measured**\n- flask `route` callers: 27 -> 170 (25 files); spot-checked against callers' code.\n- django (ci corpus) vs v0.86.1: +1,678 call edges (1,482 proxy `__getattr__`/`__getitem__`, which run), 61 removed, every one redirected to a better same-named target (e.g. `site.register` -> `AdminSite.register`), 0 lost.\n- flask dynamic oracle unchanged (P 0.8544, R 0.7288; its universe is flask src functions); research `ci_invariants` all held; grove + prism tests green locally.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_0154Ei8CjJkreabbb7mwy9UU\nEOF\n)\" 2>&1 | tail -1"
+      at: 2026-10-05T19:57:36.095015Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/grove && sleep 30; gh pr checks 12 --watch --interval 45 >/dev/null 2>&1; gh pr checks 12 2>&1 | cut -f1,2; gh pr view 12 --json headRefOid --jq .headRefOid | cut -c1-8
+      at: 2026-10-05T19:57:40.649396Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/bo0u3cq23.output
+      at: 2026-10-05T20:13:29.51456Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && gh pr checks 12 --json name,state,link,completedAt --jq '.[] | "\(.state)\t\(.name)\t\(.link)"' | head -14; job=$(gh pr checks 12 --json name,link --jq '.[] | select(.name|test("gin")) | .link' | sed -E 's#.*/job/([0-9]+).*#\1#'); gh run view --job $job --log 2>&1 | cut -f3- | grep -iE "error|fail|cancel|denied|timeout|exit code|##\[" | head -15
+      at: 2026-10-05T20:13:38.958837Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && for r in 37366747526 37366747570; do gh run view $r --json name,status,conclusion,event,headSha --jq '"\(.name) \(.status) \(.conclusion) \(.event) \(.headSha[:8])"'; done; gh run list --branch fix/py-aliased-base-walk --limit 6 2>&1 | cut -f1-5,7; grep -n "concurrency" -A3 .github/workflows/ci.yml .github/workflows/eval.yml | head -12
+      at: 2026-10-05T20:13:45.90065Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && gh run view 37366747570 --log 2>&1 | grep -iE "cancel|operation was canceled|shutdown|runner|lost communication|exceeded" | head -8; gh api repos/provasign/grove/actions/runs/37366747570/jobs --jq ''.jobs[] | "\(.name): \(.conclusion) steps=\([.steps[]? | select(.conclusion!="success" and .conclusion!="skipped") | "\(.name)=\(.conclusion)"] | join(","))"'' | head -12'
+      at: 2026-10-05T20:13:52.183169Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && gh run rerun 37366747526 --failed 2>&1 | tail -1; gh run rerun 37366747570 --failed 2>&1 | tail -1; sleep 60; gh pr checks 12 --watch --interval 45 >/dev/null 2>&1; gh pr checks 12 --json name,state --jq '.[] | "\(.state)\t\(.name)"'
+      at: 2026-10-05T20:13:56.833374Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/bw7ajuud8.output
+      at: 2026-10-05T20:29:30.885836Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/grove && grep -n "verify" -B2 -A25 .github/workflows/ci.yml | grep -nE "name:|timeout|continue-on-error|if:|run:|needs:" | head -15; gh run view 37366747526 --json jobs --jq '.jobs[] | select(.name|test("verify")) | "\(.conclusion) started=\(.startedAt) completed=\(.completedAt) steps=\([.steps[]? | "\(.name):\(.conclusion)"] | join(", "))"'
+      at: 2026-10-05T20:29:36.974809Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && sed -n 46,75p .github/workflows/ci.yml | grep -nE "timeout|PRISM_VERSION|runs-on"; grep -n "PRISM_VERSION" .github/workflows/ci.yml | head -3; gh run list --workflow CI --limit 8 --json databaseId,headBranch,conclusion --jq ''.[] | "\(.databaseId) \(.headBranch) \(.conclusion)"'' | head -6; prev=$(gh run list --workflow CI --branch deps/astkit-v0.15.3 --limit 1 --json databaseId --jq ''.[0].databaseId''); gh run view $prev --json jobs --jq ''.jobs[] | select(.name|test("verify")) | "prev verify: \(.conclusion) \(.startedAt) -> \(.completedAt)"'''
+      at: 2026-10-05T20:29:52.235123Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && gh run rerun 37366747526 --failed 2>&1 | tail -1; sleep 45; gh pr checks 12 --watch --interval 30 >/dev/null 2>&1; gh pr checks 12 --json name,state --jq ''.[] | "\(.state)\t\(.name)"'' | sort | uniq -c | sort -rn | head; gh run view 37366747526 --json jobs --jq ''.jobs[] | select(.name|test("verify")) | "verify: \(.conclusion) \(.startedAt) -> \(.completedAt) steps=\([.steps[]? | .conclusion] | length)"'''
+      at: 2026-10-05T20:29:59.510996Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b81azkbeq.output
+      at: 2026-10-05T20:31:52.365443Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/grove && gh pr checks 12 --json state --jq ''[.[] | select(.state!="SUCCESS")] | length''; gh pr merge 12 --merge --delete-branch 2>&1 | tail -1; git fetch -q origin --tags && git checkout -q main && git merge -q --ff-only origin/main && git log --oneline -1 && git tag -a v0.62.2 -m "v0.62.2: Python receivers built elsewhere resolve (aliased bases, fixtures, module variables, proxies)" && git push -q origin v0.62.2 && git ls-remote --tags origin v0.62.2'
+      at: 2026-10-05T20:32:04.333346Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && git fetch -q origin && git checkout -q main && git pull -q --ff-only && git checkout -q -b deps/grove-v0.62.2 && go get github.com/provasign/grove@v0.62.2 2>&1 | tail -1 && go mod tidy && git diff --stat && go build ./... && go vet ./... 2>&1 | tail -2 && go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -6; echo "== mac tests done"; docker run --rm -m 6g --cpus 6 -v "$PWD":/src -w /src -e GOFLAGS=-buildvcs=false golang:1.26 sh -c ''export PATH=/usr/local/go/bin:$PATH; go test ./... 2>&1 | grep -vE "^ok|no test files|^go: downloading" | tail -8; echo linux-done'' 2>&1 | tail -10'
+      at: 2026-10-05T20:33:14.998782Z
+      classified: lint
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/prism && go build -o $S/deco/prism-v0.86.2-candidate ./cmd/prism && cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/deco/prism-v0.86.2-candidate index . >/dev/null 2>&1; $S/deco/prism-v0.86.2-candidate change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('route callers', len(d['callers']), 'files', len({c['filePath'] for c in d['callers']}))"; cd ~/Projects/provasign/research && python3 $S/guard.py 8192 25 -- python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism $S/deco/prism-v0.86.2-candidate > $S/deco/ci_invariants5.log 2>&1; echo "ci_invariants exit $?"; grep -E "All invariants|FAIL|REGRESS" $S/deco/ci_invariants5.log | head -3
+      at: 2026-10-05T20:33:22.995741Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b7b72q4ti.output
+      at: 2026-10-05T20:38:37.899541Z
+      classified: other
+notes:
+    - text: continuation of session d125dca7-e99f-49fb-bc56-83b796d2af46 — events captured after its evidence was finalized
+      at: 2026-10-05T18:34:38.737344Z
+redactions: 1
