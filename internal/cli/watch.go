@@ -58,7 +58,7 @@ func cmdWatch(args []string) int {
 		}
 	}
 
-	_, client, err := newClient(dir)
+	_, client, err := newClientMode(dir, false) // long-lived: keep resident workers
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

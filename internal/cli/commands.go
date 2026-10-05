@@ -2067,7 +2067,7 @@ func cmdStatus(args []string) int {
 	// engine (newClient -> EnsureRunning) rehydrates the whole graph first —
 	// ~1.3s of work on a 500k-edge index that status never reads. Same counts,
 	// same output shape, ~5ms.
-	client := grove.NewClient("", "").WithTokenFromDir(root)
+	client := grove.NewClient("", "").WithTokenFromDir(root).OneShot()
 	res, err := client.QuickStatus(context.Background())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "status:", err)
@@ -3162,7 +3162,15 @@ func requireDir(root string) error {
 	return nil
 }
 
+// newClient opens a one-shot client for a CLI command (see
+// grove.Client.OneShot).
 func newClient(dir string) (*config.Config, *grove.Client, error) {
+	return newClientMode(dir, true)
+}
+
+// newClientMode opens a client; long-lived commands (watch) pass
+// oneShot=false so the engine keeps resident workers between runs.
+func newClientMode(dir string, oneShot bool) (*config.Config, *grove.Client, error) {
 	root := mustAbs(dir)
 	if err := requireDir(root); err != nil {
 		return nil, nil, err
@@ -3172,6 +3180,9 @@ func newClient(dir string) (*config.Config, *grove.Client, error) {
 		return nil, nil, fmt.Errorf("config: %w", err)
 	}
 	client := grove.NewClient(cfg.GroveURL, cfg.GroveBinary).WithTokenFromDir(root)
+	if oneShot {
+		client.OneShot()
+	}
 	if err := client.EnsureRunning(context.Background()); err != nil {
 		return nil, nil, fmt.Errorf("grove: %w", err)
 	}

@@ -24,7 +24,8 @@ import (
 // Client wraps an embedded Grove engine. baseURL/groveBin are ignored in the
 // embedded model and retained only so existing call sites keep compiling.
 type Client struct {
-	root string
+	root    string
+	oneShot bool
 
 	mu  sync.Mutex
 	eng *groveeng.Engine
@@ -45,6 +46,15 @@ func (c *Client) WithTokenFromDir(root string) *Client {
 	} else {
 		c.root = root
 	}
+	return c
+}
+
+// OneShot marks a client that indexes once and exits (a CLI command): the
+// engine keeps no resident analyzer workers or background warm-up, and an
+// index run with changes diffs against the stored baseline. Long-lived
+// callers (the MCP server, watch) must not set it. Call before EnsureRunning.
+func (c *Client) OneShot() *Client {
+	c.oneShot = true
 	return c
 }
 
@@ -75,7 +85,7 @@ func (c *Client) EnsureRunning(ctx context.Context) error {
 	if c.root == "" {
 		return errors.New("grove: WithTokenFromDir(root) must be called before EnsureRunning")
 	}
-	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root})
+	eng, err := groveeng.Open(ctx, groveeng.Config{RepoRoot: c.root, OneShot: c.oneShot})
 	if err != nil {
 		return fmt.Errorf("grove open: %w", err)
 	}
