@@ -4,7 +4,7 @@ name: windows-stress
 # internal/mcp tests. Runs only on this investigation branch.
 on:
   push:
-    branches: [investigate/windows-crash]
+    branches: [investigate/windows-crash, investigate/windows-crash-released]
 jobs:
   stress:
     name: stress (${{ matrix.variant }})
@@ -13,49 +13,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [plain, race, preemptoff, gogc10]
+        variant: [fullsuite-a, fullsuite-b]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26.3"
           cache: true
-      - name: build test binary
+      - name: loop full suite
         shell: bash
         run: |
-          flags=""
-          [ "${{ matrix.variant }}" = "race" ] && flags="-race"
-          go test $flags -c -o internal/mcp/mcp.test.exe ./internal/mcp/
-      - name: loop
-        shell: bash
-        run: |
-          case "${{ matrix.variant }}" in
-            preemptoff) export GODEBUG=asyncpreemptoff=1 ;;
-            gogc10) export GOGC=10 ;;
-          esac
           export GOTRACEBACK=all
           mkdir -p logs
-          logs="$PWD/logs"
-          cd internal/mcp   # tests read files relative to their package dir
-          n=8; [ "${{ matrix.variant }}" = "race" ] && n=4
           fails=0
-          for i in $(seq 1 $n); do
-            if ./mcp.test.exe -test.count=1 -test.timeout=600s > "$logs/run$i.log" 2>&1; then
+          for i in 1 2 3 4 5 6; do
+            if go test ./... -count=1 -timeout 300s > logs/run$i.log 2>&1; then
               echo "run $i: ok"
             else
-              fails=$((fails+1))
-              echo "run $i: FAIL"
-              grep -m3 -E "fatal error|WARNING: DATA RACE|--- FAIL|panic:" "$logs/run$i.log" || true
+              fails=$((fails+1)); echo "run $i: FAIL"
+              grep -m4 -E "fatal error|--- FAIL|panic:|database is locked" logs/run$i.log || true
             fi
           done
-          echo "variant ${{ matrix.variant }}: $fails of $n runs failed" | tee -a "$GITHUB_STEP_SUMMARY"
-          cd "$GITHUB_WORKSPACE"
-          for f in logs/run*.log; do
-            if grep -qE "fatal error|WARNING: DATA RACE|panic:" "$f"; then
-              echo "### $f" >> "$GITHUB_STEP_SUMMARY"
-              grep -E "fatal error|WARNING: DATA RACE|panic:|provasign|modernc|tree_sitter|go-tree-sitter" "$f" | head -40 | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
-            fi
-          done
+          echo "variant ${{ matrix.variant }} ($(grep 'provasign/grove ' go.mod | awk '{print $2}')): $fails of 6 full-suite runs failed" | tee -a "$GITHUB_STEP_SUMMARY"
           [ "$fails" = 0 ]
       - uses: actions/upload-artifact@v7
         if: always()
