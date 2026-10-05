@@ -1,0 +1,60 @@
+name: windows-stress
+# Temporary: reproduce the intermittent Windows runtime crash
+# ("found pointer to free object" / "new g is not Gdead") seen in
+# internal/mcp tests. Runs only on this investigation branch.
+on:
+  push:
+    branches: [investigate/windows-crash]
+jobs:
+  stress:
+    name: stress (${{ matrix.variant }})
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [plain, race, preemptoff, gogc10]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.3"
+          cache: true
+      - name: build test binary
+        shell: bash
+        run: |
+          flags=""
+          [ "${{ matrix.variant }}" = "race" ] && flags="-race"
+          go test $flags -c -o mcp.test.exe ./internal/mcp/
+      - name: loop
+        shell: bash
+        run: |
+          case "${{ matrix.variant }}" in
+            preemptoff) export GODEBUG=asyncpreemptoff=1 ;;
+            gogc10) export GOGC=10 ;;
+          esac
+          export GOTRACEBACK=all
+          mkdir -p logs
+          n=8; [ "${{ matrix.variant }}" = "race" ] && n=4
+          fails=0
+          for i in $(seq 1 $n); do
+            if ./mcp.test.exe -test.count=1 -test.timeout=600s > logs/run$i.log 2>&1; then
+              echo "run $i: ok"
+            else
+              fails=$((fails+1))
+              echo "run $i: FAIL"
+              grep -m3 -E "fatal error|WARNING: DATA RACE|--- FAIL|panic:" logs/run$i.log || true
+            fi
+          done
+          echo "variant ${{ matrix.variant }}: $fails of $n runs failed" | tee -a "$GITHUB_STEP_SUMMARY"
+          for f in logs/run*.log; do
+            if grep -qE "fatal error|WARNING: DATA RACE|panic:" "$f"; then
+              echo "### $f" >> "$GITHUB_STEP_SUMMARY"
+              grep -E "fatal error|WARNING: DATA RACE|panic:|provasign|modernc|tree_sitter|go-tree-sitter" "$f" | head -40 | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: logs-${{ matrix.variant }}
+          path: logs/
