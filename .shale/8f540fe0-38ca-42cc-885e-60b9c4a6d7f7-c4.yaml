@@ -1,0 +1,600 @@
+shale_version: "0"
+id: 8f540fe0-38ca-42cc-885e-60b9c4a6d7f7-c4
+created_at: 2026-10-05T00:30:06.68113Z
+finalized_at: 2026-10-05T00:45:36.582911Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: "git checkout -q main && git pull -q --ff-only && git checkout -q -b deps/grove-v0.61.4 && GOWORK=off go get github.com/provasign/grove@v0.61.4 2>&1 | grep upgraded; GOWORK=off go mod tidy && GOWORK=off go build -o ~/prism-ab-bins/prism-v08510-candidate ./cmd/prism && GOWORK=off go test ./... 2>&1 | grep -v '^ok\\|no test files'; echo tests-done; cd ../research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism ~/prism-ab-bins/prism-v08510-candidate > ~/prism-ab-bins/ci-v08510.log 2>&1; echo \"gate exit $?\"; diff <(grep -E '\\[(OK|FAIL)' ~/prism-ab-bins/ci-v0859.log | sort -u) <(grep -E '\\[(OK|FAIL)' ~/prism-ab-bins/ci-v08510.log | sort -u) && echo IDENTICAL-to-v0.85.9; cd ../prism && git add go.mod go.sum && git commit -q -m \"grove v0.61.4: body-only edits no longer re-resolve every importer\" -m \"Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E\" && git push -q -u origin deps/grove-v0.61.4 2>&1 | grep -v 'remote\\|shale' | tail -1; git push -q 2>&1 | grep -v shale | tail -1; gh pr create --base main --head deps/grove-v0.61.4 --title \"grove v0.61.4: body-only edits no longer re-resolve every importer\" --body \"Bumps grove to v0.61.4 (provasign/grove#6).\n\n**Speed.** django one-line edit refresh in a session goes from 6.4s to 3.0s.\n\n**Correctness.** One more TS order dependence is fixed: union-typed object literals. Randomized real-corpus shadows are byte-identical to a full index.\n\n**Gate**\n- go test (GOWORK=off): green.\n- ci_invariants: identical to v0.85.9.\n- grove CI and all edge-accuracy oracles: green on grove#6.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_014DYighk7EdKwvz5aW5GA9E\""
+      at: 2026-10-05T00:30:06.68113Z
+      classified: test
+    - cmd: until gh pr checks 26 2>/dev/null | grep -q . && ! gh pr checks 26 2>/dev/null | grep -qE 'pending|queued|in_progress'; do sleep 30; done; gh pr checks 26 | awk -F'\t' '{print $2" | "$1}'
+      at: 2026-10-05T00:30:21.082162Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q main && git pull -q && git checkout -q -b perf/ts-worker && grep -n "jsTSAnalyzer{}\|type Request struct\|type Analyzer interface" -A14 internal/native/native.go | head -60; grep -rn "jsTSAnalyzer{}" internal --include='*.go' | grep -v _test
+      at: 2026-10-05T00:30:31.347615Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 120,131p internal/native/native.go; grep -n "func defaultAnalyzers\|defaultAnalyzers()\|analyzers()" -r internal --include='*.go' | grep -v _test | head; grep -n "type Config struct" -A25 internal/native/native.go | head -35
+      at: 2026-10-05T00:30:35.676555Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 136,262p internal/native/js_ts.go
+      at: 2026-10-05T00:31:04.919145Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 300,370p internal/native/js_ts.go; sed -n 412,455p internal/native/js_ts.go; sed -n 560,600p internal/native/js_ts.go
+      at: 2026-10-05T00:31:04.922409Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "console.log\|process.exit\|process.env" internal/native/js_ts.go | head -20
+      at: 2026-10-05T00:31:37.68054Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        start=s.index('cmd := exec.CommandContext(ctx, "node", "-e", `\n')
+        body_start=start+len('cmd := exec.CommandContext(ctx, "node", "-e", `\n')
+        body_end=s.index('\n`)\n', body_start)
+        script=s[body_start:body_end]
+
+        # header: keep requires outside analyze()
+        hdr="const ts = require('typescript');\nconst path = require('path');\n"
+        assert script.startswith(hdr)
+        script=script[len(hdr):]
+        script=script.replace("const root = process.env.GROVE_ROOT;\nconst inputFiles = JSON.parse(process.env.GROVE_FILES || '[]');\n",
+          "const root = req.root;\nconst inputFiles = req.files || [];\n",1)
+        script=script.replace("const changedRel = JSON.parse(process.env.GROVE_CHANGED || 'null');","const changedRel = req.changed || null;",1)
+        old_nocfg='''if (configs.length === 0) {
+          console.log(JSON.stringify({files: 0, configs: 0, solutionConfigs: 0, configErrors,
+            edges: [], calls: [], types: [], members: []}));
+          process.exit(0);
+        }'''
+        assert old_nocfg in script
+        script=script.replace(old_nocfg,'''if (configs.length === 0) {
+          return {files: 0, configs: 0, solutionConfigs: 0, configErrors,
+            edges: [], calls: [], types: [], members: []};
+        }''')
+        old_end='''process.stdout.write("\\n@@GROVE_TS_PAYLOAD@@");
+        console.log(JSON.stringify({files: loadedFiles.size, configs: configs.length, solutionConfigs, inferredFiles, timing,
+          scopedDirs: visitDirs === null ? null : [...visitDirs],
+          configErrors, edges, calls, types, members}));'''
+        assert old_end in script, script[-400:]
+        script=script.replace(old_end,'''return {files: loadedFiles.size, configs: configs.length, solutionConfigs, inferredFiles, timing,
+          scopedDirs: visitDirs === null ? null : [...visitDirs],
+          configErrors, edges, calls, types, members};''')
+        # persistent source-file cache, validated by mtime+size, dropped for changed files
+        old_cache='''const sharedSourceFiles = new Map();'''
+        assert old_cache in script
+        script=script.replace(old_cache,'''// A resident worker keeps this map across runs: an entry is reused while
+        // its file's mtime and size are unchanged and Grove did not report the
+        // file as changed, so a re-index re-parses only the edited files.
+        const sharedSourceFiles = STATE.sourceFiles;
+        for (const f of req.changed || []) STATE.dropFile(path.resolve(root, f));
+        if (req.changed == null) STATE.sourceFiles.clear();''')
+        old_get='''    let sf = sharedSourceFiles.get(key);
+            if (sf === undefined) {
+              sf = read(fileName, languageVersionOrOptions, onError, shouldCreate);
+              sharedSourceFiles.set(key, sf);
+            }
+            return sf;'''
+        assert old_get in script
+        script=script.replace(old_get,'''    const stamp = fileStamp(fileName);
+            const hit = sharedSourceFiles.get(key);
+            if (hit !== undefined && hit.stamp === stamp) return hit.sf;
+            const sf = read(fileName, languageVersionOrOptions, onError, shouldCreate);
+            sharedSourceFiles.set(key, {sf, stamp, file: path.resolve(fileName)});
+            return sf;''')
+        # oldProgram reuse
+        old_p1='''  const program = ts.createProgram({rootNames: parsed.fileNames, options: parsed.options,
+            projectReferences: parsed.projectReferences, host});'''
+        assert old_p1 in script
+        script=script.replace(old_p1,'''  const program = ts.createProgram({rootNames: parsed.fileNames, options: parsed.options,
+            projectReferences: parsed.projectReferences, host, oldProgram: STATE.programs.get(project.cfg)});
+          STATE.programs.set(project.cfg, program);''')
+        old_p2='''    const program = ts.createProgram({rootNames: files, options, projectReferences: project.parsed.projectReferences, host});'''
+        assert old_p2 in script
+        script=script.replace(old_p2,'''    const program = ts.createProgram({rootNames: files, options, projectReferences: project.parsed.projectReferences, host,
+              oldProgram: STATE.programs.get('inferred:' + project.cfg)});
+            STATE.programs.set('inferred:' + project.cfg, program);''')
+
+        wrapped = hdr + '''const fs = require('fs');
+        // STATE survives across analyze() calls in a resident worker (GROVE_TS_WORKER):
+        // parsed source files and each project's previous program, which
+        // ts.createProgram reuses for every unchanged file.
+        const STATE = {
+          sourceFiles: new Map(),
+          programs: new Map(),
+          dropFile(abs) { for (const [k, v] of this.sourceFiles) if (v.file === abs) this.sourceFiles.delete(k); },
+        };
+        function fileStamp(fileName) {
+          try { const st = fs.statSync(fileName); return st.mtimeMs + ':' + st.size; } catch (e) { return 'missing'; }
+        }
+        function analyze(req) {
+        ''' + script + '''
+        }
+        if (process.env.GROVE_TS_WORKER === '1') {
+          const rl = require('readline').createInterface({input: process.stdin, crlfDelay: Infinity});
+          rl.on('line', line => {
+            let out;
+            try {
+              const req = JSON.parse(line);
+              if (req.reset) { STATE.sourceFiles.clear(); STATE.programs.clear(); }
+              out = analyze(req);
+            } catch (e) {
+              out = {error: String(e && e.stack || e)};
+            }
+            process.stdout.write('@@GROVE_TS_PAYLOAD@@' + JSON.stringify(out) + '\\n');
+          });
+          rl.on('close', () => process.exit(0));
+        } else {
+          const out = analyze({root: process.env.GROVE_ROOT, files: JSON.parse(process.env.GROVE_FILES || '[]'),
+            changed: JSON.parse(process.env.GROVE_CHANGED || 'null')});
+          process.stdout.write("\\n@@GROVE_TS_PAYLOAD@@");
+          console.log(JSON.stringify(out));
+        }'''
+        s=s[:start]+'cmd := exec.CommandContext(ctx, "node", "-e", tsScript)'+s[body_end+len('\n`)'):]
+        s=s.rstrip('\n')+'\n\n// tsScript is the TypeScript analysis, run once per index (environment\n// input) or as a resident worker (GROVE_TS_WORKER=1, one JSON request per\n// stdin line, one marked JSON payload per stdout line).\nconst tsScript = `' + wrapped + '\n`\n'
+        open(p,'w').write(s)
+        EOF
+        grep -n 'tsScript' internal/native/js_ts.go | head; go build ./... && go test -count=1 ./internal/native/ 2>&1 | tail -2
+      at: 2026-10-05T00:32:04.60953Z
+      classified: test
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -n "FileSetChanged\|AnalyzeWithConfig\|nativeCfg\|native.Config" internal/index/indexer.go | head; grep -n "func AnalyzeWithConfig" -A40 internal/native/native.go | grep -n "Request{\|FileSetChanged\|ChangedFiles" '
+      at: 2026-10-05T00:32:18.137219Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "Request{" -A6 internal/native/native.go | head -12; sed -n 710,716p internal/index/indexer.go
+      at: 2026-10-05T00:32:28.165648Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        import re
+        # native: Config.Resident -> Request.Resident
+        p='internal/native/native.go'; s=open(p).read()
+        old='''	FileSetChanged bool
+        }
+
+        // completionCap'''
+        new='''	FileSetChanged bool
+        	// Resident: the caller is a long-lived engine (MCP, watch) that will
+        	// index again, so analyzers may keep a worker process and its caches
+        	// between runs. One-shot CLI runs leave it false.
+        	Resident bool
+        }
+
+        // completionCap'''
+        assert old in s; s=s.replace(old,new)
+        old='''	// FileSetChanged: see Config.FileSetChanged.
+        	FileSetChanged bool
+        }'''
+        new='''	// FileSetChanged: see Config.FileSetChanged.
+        	FileSetChanged bool
+        	// Resident: see Config.Resident.
+        	Resident bool
+        }'''
+        assert old in s; s=s.replace(old,new)
+        s=s.replace('''FileSetChanged: cfg.FileSetChanged}''','''FileSetChanged: cfg.FileSetChanged, Resident: cfg.Resident}''')
+        open(p,'w').write(s)
+
+        p='internal/index/indexer.go'; s=open(p).read()
+        old='''	nativeCfg.FileSetChanged = fileSetChanged || len(prunedFiles) > 0'''
+        new='''	nativeCfg.FileSetChanged = fileSetChanged || len(prunedFiles) > 0
+        	nativeCfg.Resident = opts.Resident'''
+        assert old in s; s=s.replace(old,new)
+        old='''	DeferSpliceCheck bool
+        '''
+        new='''	DeferSpliceCheck bool
+
+        	// Resident marks a long-lived caller: native analyzers may keep worker
+        	// processes and caches between runs (see native.Config.Resident).
+        	Resident bool
+        '''
+        assert old in s; s=s.replace(old,new,1)
+        open(p,'w').write(s)
+
+        p='pkg/grove/grove.go'; s=open(p).read()
+        old='''DeferSpliceCheck: true}'''
+        assert old in s; s=s.replace(old,'''DeferSpliceCheck: true, Resident: true}''')
+        open(p,'w').write(s)
+        EOF
+        grep -n "Resident: cfg.Resident" internal/native/native.go; go build ./... && echo ok
+      at: 2026-10-05T00:32:29.903501Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 108,145p internal/native/js_ts.go; sed -n 27,48p internal/native/js_ts.go; grep -n "func appendEnv" -A12 internal/native/*.go | head -16
+      at: 2026-10-05T00:32:35.989503Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/tasks/bjwf3h1b0.output
+      at: 2026-10-05T00:33:23.456224Z
+      classified: other
+    - cmd: id=$(gh pr checks 26 --json name,link -q '.[]|select(.name=="Test (windows-latest)")|.link' | grep -oE 'runs/[0-9]+' | cut -d/ -f2); job=$(gh pr checks 26 --json name,link -q '.[]|select(.name=="Test (windows-latest)")|.link' | grep -oE 'job/[0-9]+' | cut -d/ -f2); echo "run $id job $job"; gh run view $id --job $job --log-failed 2>&1 | sed 's/^.*Z //' | grep -E 'fatal error|found pointer|--- FAIL|panic:|_test.go:[0-9]+:' | head -10
+      at: 2026-10-05T00:33:32.258777Z
+      classified: other
+    - cmd: gh run view 37247762412 --job 111568952846 --log-failed 2>&1 | sed 's/^.*Z //' > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/win.log; F=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/win.log; wc -l $F; grep -n -E 'fatal error|^goroutine [0-9]+ \[' $F | head -10; grep -n -E 'provasign|modernc|libc' $F | head -30
+      at: 2026-10-05T00:33:42.114472Z
+      classified: other
+    - cmd: F=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/win.log; sed -n 16,46p $F | cut -c1-200; echo ...; sed -n 195,240p $F | grep -E 'provasign|modernc|goroutine|fatal' | cut -c1-200
+      at: 2026-10-05T00:33:47.355842Z
+      classified: other
+    - cmd: F=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/win.log; sed -n 195,240p $F | grep -vE '^\s+C:/hostedtoolcache' | cut -c1-180 | head -40; grep -n "^goroutine" $F | head -20
+      at: 2026-10-05T00:33:55.711407Z
+      classified: other
+    - cmd: grep -n "modernc" go.mod; git log --since=2026-09-20 --format='%h %ad %s' --date=short -p -- go.mod | grep -E '^[0-9a-f]{8} |^[-+].*modernc' | head -20
+      at: 2026-10-05T00:34:05.975885Z
+      classified: other
+    - cmd: gh run rerun 37247762412 --failed && gh run watch 37247762412 --exit-status >/dev/null 2>&1; gh pr checks 26 | awk -F'\t' '{print $2" | "$1}'
+      at: 2026-10-05T00:34:15.876032Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 175,200p internal/native/js_ts.go
+      at: 2026-10-05T00:34:21.16397Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 200,212p internal/native/js_ts.go
+      at: 2026-10-05T00:34:21.165247Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        s=s.replace('''	var out []byte
+        	var workerNote string''','''	var out []byte
+        	var workerNote, stdoutText, stderrText string''',1)
+        s=s.replace('''		err = cmd.Run()
+        		out = stdout.Bytes()''','''		err = cmd.Run()
+        		out = stdout.Bytes()
+        		stdoutText, stderrText = stdout.String(), stderr.String()''',1)
+        s=s.replace('''			out = line
+        		}''','''			out = line
+        			stdoutText = string(line)
+        		}''',1)
+        s=s.replace('''strconv.Quote(clip(stdout.String(), 160)) + "; stderr " + strconv.Quote(clip(stderr.String(), 160))''','''strconv.Quote(clip(stdoutText, 160)) + "; stderr " + strconv.Quote(clip(stderrText, 160))''',1)
+        open(p,'w').write(s)
+        EOF
+        gofmt -w internal/native/js_ts.go internal/native/tsworker.go && go build ./... && go vet ./internal/native && go test -count=1 ./internal/native/ 2>&1 | tail -1
+      at: 2026-10-05T00:34:32.513554Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='pkg/grove/grove.go'; s=open(p).read()
+        old='''	e.indexMu.Lock()
+        	e.runPendingCheck(context.Background())
+        	e.indexMu.Unlock()
+        	return e.store.Close()'''
+        new='''	e.indexMu.Lock()
+        	e.runPendingCheck(context.Background())
+        	e.indexMu.Unlock()
+        	native.StopTSWorkers(e.root)
+        	return e.store.Close()'''
+        assert old in s; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        grep -n '"github.com/provasign/grove/internal/native"' pkg/grove/grove.go || sed -i '' 's#^	"github.com/provasign/grove/internal/index"#	"github.com/provasign/grove/internal/index"\n	"github.com/provasign/grove/internal/native"#' pkg/grove/grove.go; gofmt -w pkg/grove/grove.go; go build ./... && go test -count=1 ./pkg/grove/ ./internal/index/ 2>&1 | tail -2; cd ../prism && go build -o ~/prism-ab-bins/prism-tsw1 ./cmd/prism && B=~/prism-ab-bins/idxbench && TE='[["typeorm body edit","        return this.manager","        return  this.manager"]]' && THINK=3 ERRLOG=$B/tsw1-ts.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-tsw1 $B/repos/typeorm src/data-source/DataSource.ts DataSource.initialize "$TE" | grep -v warm; grep "native-analyzers" $B/tsw1-ts.err | tail -3; pgrep -fl "GROVE_TS_WORKER|node -e" | head -3
+      at: 2026-10-05T00:35:13.022375Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        i=s.index('const tsScript = `')
+        script=s[i:]
+        old_loop='''const loadedFiles = new Set();
+        const timing = {programMs: 0, visitMs: 0};
+        let solutionConfigs = 0;
+        for (const project of configs) {
+          const parsed = project.parsed;
+          if (parsed.fileNames.length === 0) {
+            if ((parsed.projectReferences || []).length > 0) solutionConfigs++;
+            continue;
+          }
+          if (visitDirs !== null && !parsed.fileNames.some(f => inVisitScope(f))) continue;
+          const host = projectHost(project);
+          let began = Date.now();
+          const program = ts.createProgram({rootNames: parsed.fileNames, options: parsed.options,
+            projectReferences: parsed.projectReferences, host, oldProgram: STATE.programs.get(project.cfg)});
+          STATE.programs.set(project.cfg, program);
+          const checker = program.getTypeChecker();
+          timing.programMs += Date.now() - began;'''
+        assert old_loop in script, 'loop'
+        new_loop='''const loadedFiles = new Set();
+        const timing = {programMs: 0, visitMs: 0};
+        let solutionConfigs = 0;
+        const built = new Map();
+        function buildProgram(project) {
+          if (built.has(project.cfg)) return built.get(project.cfg);
+          const parsed = project.parsed;
+          const host = projectHost(project);
+          const began = Date.now();
+          const program = ts.createProgram({rootNames: parsed.fileNames, options: parsed.options,
+            projectReferences: parsed.projectReferences, host, oldProgram: STATE.programs.get(project.cfg)});
+          STATE.programs.set(project.cfg, program);
+          timing.programMs += Date.now() - began;
+          built.set(project.cfg, program);
+          return program;
+        }
+        // Declaration-shape narrowing (resident worker only). An importer can only
+        // observe what a file declares: its top-level declarations' types (inferred
+        // return types included), class/interface members, enum values, and its
+        // imports/exports/namespaces. When every changed file is TypeScript and that
+        // shape is identical before and after the edit, importers' compiler facts
+        // cannot change: walk only the changed files' directories and carry the rest.
+        let narrowed = false;
+        if (visitDirs !== null && Array.isArray(changedRel) && changedRel.length > 0 && !req.fileSetChanged &&
+            changedRel.every(f => /\\.(ts|tsx|mts|cts)$/.test(f) && !/\\.d\\.[cm]?ts$/.test(f))) {
+          const oldShapes = changedRel.map(f => shapeIn([...STATE.programs.values()], path.resolve(root, f)));
+          if (oldShapes.every(x => x !== null)) {
+            const owners = configs.filter(p => p.parsed.fileNames.length > 0 &&
+              changedRel.some(f => p.parsed.fileNames.some(n => path.resolve(n) === path.resolve(root, f))));
+            const fresh = owners.map(buildProgram);
+            const newShapes = changedRel.map(f => shapeIn(fresh, path.resolve(root, f)));
+            if (newShapes.every((x, k) => x !== null && x === oldShapes[k])) {
+              visitDirs = new Set(changedRel.map(relDir));
+              narrowed = true;
+            }
+          }
+        }
+        for (const project of configs) {
+          const parsed = project.parsed;
+          if (parsed.fileNames.length === 0) {
+            if ((parsed.projectReferences || []).length > 0) solutionConfigs++;
+            continue;
+          }
+          if (visitDirs !== null && !parsed.fileNames.some(f => inVisitScope(f))) continue;
+          const host = projectHost(project);
+          const program = buildProgram(project);
+          const checker = program.getTypeChecker();'''
+        script=script.replace(old_loop,new_loop)
+        old_ret='''return {files: loadedFiles.size, configs: configs.length, solutionConfigs, inferredFiles, timing,'''
+        assert old_ret in script
+        script=script.replace(old_ret,'''return {files: loadedFiles.size, configs: configs.length, solutionConfigs, inferredFiles, timing, narrowed,''')
+        # add shape functions before analyze()
+        anchor='function analyze(req) {\n'
+        assert anchor in script
+        shape='''// shapeIn returns the declaration shape of abs in the first program that
+        // holds it, or null.
+        function shapeIn(programs, abs) {
+          for (const program of programs) {
+            const sf = program.getSourceFile(abs);
+            if (sf) return declarationShape(program.getTypeChecker(), sf);
+          }
+          return null;
+        }
+        function declarationShape(checker, sf) {
+          const F = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseFullyQualifiedType;
+          const out = [];
+          const typeOf = (sym, at) => { try { return checker.typeToString(checker.getTypeOfSymbolAtLocation(sym, at), undefined, F); } catch (e) { return '?'; } };
+          const sig = s => { try { return checker.signatureToString(s, undefined, F); } catch (e) { return '?'; } };
+          function describe(sym, at) {
+            if (!sym) { out.push('?' + at.getText(sf)); return; }
+            out.push('S ' + sym.getName() + ' ' + sym.flags + ' ' + typeOf(sym, at));
+            if (sym.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface)) {
+              const dt = checker.getDeclaredTypeOfSymbol(sym);
+              for (const b of (checker.getBaseTypes(dt) || [])) out.push(' base ' + checker.typeToString(b, undefined, F));
+              for (const p of checker.getPropertiesOfType(dt)) out.push(' m ' + p.getName() + ' ' + p.flags + ' ' +
+                ts.getDeclarationModifierFlagsFromSymbol(p) + ' ' + typeOf(p, at));
+              for (const info of checker.getIndexInfosOfType(dt)) out.push(' idx ' + checker.typeToString(info.keyType, undefined, F) + ' ' + checker.typeToString(info.type, undefined, F));
+              for (const s of checker.getSignaturesOfType(dt, ts.SignatureKind.Call)) out.push(' call ' + sig(s));
+            }
+            if (sym.flags & ts.SymbolFlags.Class) {
+              const st = checker.getTypeOfSymbolAtLocation(sym, at);
+              for (const s of checker.getSignaturesOfType(st, ts.SignatureKind.Construct)) out.push(' new ' + sig(s));
+              for (const p of checker.getPropertiesOfType(st)) out.push(' static ' + p.getName() + ' ' + typeOf(p, at));
+            }
+            if (sym.flags & ts.SymbolFlags.TypeAlias) out.push(' = ' + checker.typeToString(checker.getDeclaredTypeOfSymbol(sym), undefined, F | ts.TypeFormatFlags.InTypeAlias));
+            if (sym.flags & ts.SymbolFlags.Enum) for (const d of sym.declarations || []) for (const m of d.members || []) out.push(' e ' + m.name.getText(sf) + '=' + checker.getConstantValue(m));
+          }
+          for (const stmt of sf.statements) {
+            const mods = ts.getCombinedModifierFlags(stmt);
+            if (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt) || ts.isExportAssignment(stmt) ||
+                ts.isImportEqualsDeclaration(stmt) || ts.isModuleDeclaration(stmt)) { out.push('T ' + stmt.getText(sf)); continue; }
+            if (ts.isVariableStatement(stmt)) {
+              for (const d of stmt.declarationList.declarations) {
+                if (ts.isIdentifier(d.name)) describe(checker.getSymbolAtLocation(d.name), d.name);
+                else out.push('T ' + d.name.getText(sf));
+                out.push(' mods ' + mods + ' ' + stmt.declarationList.flags);
+              }
+              continue;
+            }
+            if ((ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt) || ts.isInterfaceDeclaration(stmt) ||
+                 ts.isTypeAliasDeclaration(stmt) || ts.isEnumDeclaration(stmt)) && stmt.name) {
+              describe(checker.getSymbolAtLocation(stmt.name), stmt.name);
+              out.push(' mods ' + mods);
+              continue;
+            }
+            if (ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt)) { out.push('T ' + stmt.getText(sf)); continue; }
+          }
+          return out.join('\\n');
+        }
+        '''
+        script=script.replace(anchor, shape+anchor,1)
+        s=s[:i]+script
+        open(p,'w').write(s)
+        EOF
+        python3 - <<'EOF'
+        # pass fileSetChanged in the worker request
+        p='/Users/tapabratapal/Projects/provasign/grove/internal/native/js_ts.go'; s=open(p).read()
+        old='''request, _ := jsonMarshal(map[string]any{"root": req.Root, "files": req.Files, "changed": tsChangedFiles(req)})'''
+        assert old in s
+        s=s.replace(old,'''request, _ := jsonMarshal(map[string]any{"root": req.Root, "files": req.Files, "changed": tsChangedFiles(req), "fileSetChanged": req.FileSetChanged})''')
+        open(p,'w').write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/grove && grep -n "let visitDirs\|const visitDirs" internal/native/js_ts.go; go build ./... && go test -count=1 ./internal/native/ 2>&1 | tail -1
+      at: 2026-10-05T00:36:28.612118Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        old='''		ScopedDirs      []string `json:"scopedDirs"`'''
+        assert old in s
+        s=s.replace(old,'''		ScopedDirs      []string `json:"scopedDirs"`
+        		Narrowed        bool     `json:"narrowed"`''',1)
+        old='''		res.Diagnostics = append(res.Diagnostics, "scoped to "+itoa(len(payload.ScopedDirs))+" affected dir(s); other dirs' compiler edges carried forward")'''
+        assert old in s
+        s=s.replace(old,'''		res.Diagnostics = append(res.Diagnostics, "scoped to "+itoa(len(payload.ScopedDirs))+" affected dir(s); other dirs' compiler edges carried forward")
+        		if payload.Narrowed {
+        			res.Diagnostics = append(res.Diagnostics, "changed files' declaration shape unchanged: importers not re-walked")
+        		}''')
+        open(p,'w').write(s)
+        EOF
+        go build ./... && cd ../prism && go build -o ~/prism-ab-bins/prism-tsw2 ./cmd/prism && B=~/prism-ab-bins/idxbench && TE='[["typeorm body edit","        return this.manager","        return  this.manager"],["typeorm return-type edit","        return this.manager","        return this.manager as any"]]' && THINK=3 ERRLOG=$B/tsw2-ts.err GROVE_TIMING=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-tsw2 $B/repos/typeorm src/data-source/DataSource.ts DataSource.initialize "$TE" | grep -v warm; grep "native-analyzers" $B/tsw2-ts.err | tail -5
+      at: 2026-10-05T00:37:16.655073Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        old='''    const newShapes = changedRel.map(f => shapeIn(fresh, path.resolve(root, f)));'''
+        new='''    const newShapes = changedRel.map(f => shapeIn(fresh, path.resolve(root, f)));
+            if (process.env.GROVE_TS_SHAPE_DEBUG) { // TEMP DEBUG
+              fs.writeFileSync(process.env.GROVE_TS_SHAPE_DEBUG + '.old', String(oldShapes[0]));
+              fs.writeFileSync(process.env.GROVE_TS_SHAPE_DEBUG + '.new', String(newShapes[0]));
+            }'''
+        assert old in s; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        grep -n "func scrubbedEnv" -A15 internal/native/*.go | head -20
+      at: 2026-10-05T00:37:29.678732Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && sed -i '' 's|\tcmd.Env = appendEnv(\"GROVE_TS_WORKER=1\")|\tcmd.Env = appendEnv(\"GROVE_TS_WORKER=1\", \"GROVE_TS_SHAPE_DEBUG=\"+os.Getenv(\"GROVE_TS_SHAPE_DEBUG\")) // TEMP DEBUG|' internal/native/tsworker.go && go build ./... && cd ../prism && go build -o ~/prism-ab-bins/prism-tsdbg ./cmd/prism && B=~/prism-ab-bins/idxbench && D=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/shape && GROVE_TS_SHAPE_DEBUG=$D python3 $B/mcp_edits.py ~/prism-ab-bins/prism-tsdbg $B/repos/typeorm src/data-source/DataSource.ts DataSource.initialize '[[\"e1\",\"        return this.manager\",\"        return  this.manager\"],[\"e2\",\"        return this.manager\",\"        return  this.manager\"]]' >/dev/null; wc -l $D.old $D.new; diff $D.old $D.new | head -20"
+      at: 2026-10-05T00:37:57.749484Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        old='''return {files: loadedFiles.size, configs: configs.length, solutionConfigs, inferredFiles, timing, narrowed,'''
+        new='''if (process.env.GROVE_TS_SHAPE_DEBUG) fs.appendFileSync(process.env.GROVE_TS_SHAPE_DEBUG + '.log', JSON.stringify({changed: changedRel, narrowed, visit: visitDirs && visitDirs.size, timing, files: loadedFiles.size, progs: STATE.programs.size}) + '\\n'); // TEMP DEBUG
+        return {files: loadedFiles.size, configs: configs.length, solutionConfigs, inferredFiles, timing, narrowed,'''
+        assert old in s; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go build ./... && cd ../prism && go build -o ~/prism-ab-bins/prism-tsdbg ./cmd/prism && B=~/prism-ab-bins/idxbench && D=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/shape && rm -f $D.log && GROVE_TS_SHAPE_DEBUG=$D THINK=3 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-tsdbg $B/repos/typeorm src/data-source/DataSource.ts DataSource.initialize '[["e1","        return this.manager","        return  this.manager"],["e2","        return this.manager","        return  this.manager"]]'; cat $D.log
+      at: 2026-10-05T00:38:51.706685Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        s=s.replace("""      fs.writeFileSync(process.env.GROVE_TS_SHAPE_DEBUG + '.old', String(oldShapes[0]));
+              fs.writeFileSync(process.env.GROVE_TS_SHAPE_DEBUG + '.new', String(newShapes[0]));""","""      STATE.dbgRun = (STATE.dbgRun || 0) + 1;
+              fs.writeFileSync(process.env.GROVE_TS_SHAPE_DEBUG + '.old' + STATE.dbgRun, String(oldShapes[0]));
+              fs.writeFileSync(process.env.GROVE_TS_SHAPE_DEBUG + '.new' + STATE.dbgRun, String(newShapes[0]));""")
+        open(p,'w').write(s)
+        EOF
+        go build ./... && cd ../prism && go build -o ~/prism-ab-bins/prism-tsdbg ./cmd/prism && B=~/prism-ab-bins/idxbench && D=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/shape && rm -f $D.* && GROVE_TS_SHAPE_DEBUG=$D THINK=1 python3 $B/mcp_edits.py ~/prism-ab-bins/prism-tsdbg $B/repos/typeorm src/data-source/DataSource.ts DataSource.initialize '[["e1","        return this.manager","        return  this.manager"]]' >/dev/null; ls $D.*; diff $D.old1 $D.new1 | head -10
+      at: 2026-10-05T00:39:25.645059Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git diff --stat internal/native/js_ts.go | tail -1; grep -c canonicalUnions internal/native/js_ts.go; python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        old='''function declarationShape(checker, sf) {
+          const F = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseFullyQualifiedType;
+          const out = [];
+          const typeOf = (sym, at) => { try { return checker.typeToString(checker.getTypeOfSymbolAtLocation(sym, at), undefined, F); } catch (e) { return '?'; } };
+          const sig = s => { try { return checker.signatureToString(s, undefined, F); } catch (e) { return '?'; } };'''
+        new='''// canonicalUnions sorts the members of every union in a printed type. The
+        // checker prints union members in type creation order, which differs between
+        // programs ("none" | "all" vs "all" | "none") and made identical shapes
+        // compare unequal. Union order carries no meaning; intersections are left
+        // alone (their order can matter for overloads).
+        const BACKTICK = String.fromCharCode(96);
+        function canonicalUnions(text) {
+          const close = {'(': ')', '[': ']', '{': '}', '<': '>'};
+          function parse(i, end) {
+            const parts = [];
+            let cur = '';
+            while (i < text.length && text[i] !== end) {
+              const c = text[i];
+              if (c === '"' || c === "'" || c === BACKTICK) {
+                let j = i + 1;
+                while (j < text.length && text[j] !== c) j += text[j] === '\\\\' ? 2 : 1;
+                cur += text.slice(i, j + 1);
+                i = j + 1;
+              } else if (close[c] && !(c === '<' && text[i - 1] === '=')) {
+                const r = parse(i + 1, close[c]);
+                cur += c + r[0] + (r[1] < text.length ? close[c] : '');
+                i = r[1] + 1;
+              } else if (c === '|') {
+                parts.push(cur.trim()); cur = ''; i++;
+              } else {
+                cur += c; i++;
+              }
+            }
+            parts.push(cur.trim());
+            if (parts.length > 1) parts.sort();
+            return [parts.join(' | '), i];
+          }
+          try { return parse(0, undefined)[0]; } catch (e) { return text; }
+        }
+        function declarationShape(checker, sf) {
+          const F = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseFullyQualifiedType;
+          const out = [];
+          const typeStr = (t, flags) => canonicalUnions(checker.typeToString(t, undefined, flags || F));
+          const typeOf = (sym, at) => { try { return typeStr(checker.getTypeOfSymbolAtLocation(sym, at)); } catch (e) { return '?'; } };
+          const sig = s => { try { return canonicalUnions(checker.signatureToString(s, undefined, F)); } catch (e) { return '?'; } };'''
+        assert old in s; s=s.replace(old,new)
+        reps=[("' base ' + checker.typeToString(b, undefined, F)","' base ' + typeStr(b)"),
+        ("' idx ' + checker.typeToString(info.keyType, undefined, F) + ' ' + checker.typeToString(info.type, undefined, F)","' idx ' + typeStr(info.keyType) + ' ' + typeStr(info.type)"),
+        ("' = ' + checker.typeToString(checker.getDeclaredTypeOfSymbol(sym), undefined, F | ts.TypeFormatFlags.InTypeAlias)","' = ' + typeStr(checker.getDeclaredTypeOfSymbol(sym), F | ts.TypeFormatFlags.InTypeAlias)")]
+        for a,b in reps:
+            assert a in s, a
+            s=s.replace(a,b)
+        assert '`' not in s[s.index('const tsScript = `')+len('const tsScript = `'):s.rindex('`')]
+        open(p,'w').write(s)
+        EOF
+        go build ./... && echo built
+      at: 2026-10-05T00:40:17.26929Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p='internal/native/js_ts.go'; s=open(p).read()
+        i=s.index('function canonicalUnions(text) {')
+        j=s.index("  try { return parse(0, undefined)[0]; } catch (e) { return text; }\n}\n", i)+len("  try { return parse(0, undefined)[0]; } catch (e) { return text; }\n}\n")
+        new='''function canonicalUnions(text) {
+          const close = {'(': ')', '[': ']', '{': '}', '<': '>'};
+          // parse normalizes one bracket level: it is split at the separators that
+          // end a type position (, ; : =>), and each piece's top-level union
+          // members are sorted.
+          function parse(i, end) {
+            let out = '';
+            let parts = [];
+            let cur = '';
+            const flush = () => {
+              parts.push(cur.trim());
+              const lead = cur.match(/^\\s*/)[0];
+              out += (parts.length > 1 ? lead + parts.slice().sort().join(' | ') : cur);
+              parts = []; cur = '';
+            };
+            while (i < text.length && text[i] !== end) {
+              const c = text[i];
+              if (c === '"' || c === "'" || c === BACKTICK) {
+                let j = i + 1;
+                while (j < text.length && text[j] !== c) j += text[j] === '\\\\' ? 2 : 1;
+                cur += text.slice(i, j + 1);
+                i = j + 1;
+              } else if (c === '=' && text[i + 1] === '>') {
+                flush(); out += '=>'; i += 2;
+              } else if (close[c]) {
+                const r = parse(i + 1, close[c]);
+                cur += c + r[0] + (r[1] < text.length ? close[c] : '');
+                i = r[1] + 1;
+              } else if (c === ',' || c === ';' || c === ':') {
+                flush(); out += c; i++;
+              } else if (c === '|') {
+                parts.push(cur.trim()); cur = ''; i++;
+              } else {
+                cur += c; i++;
+              }
+            }
+            flush();
+            return [out, i];
+          }
+          try { return parse(0, undefined)[0]; } catch (e) { return text; }
+        }
+        '''
+        s=s[:i]+new+s[j:]
+        open(p,'w').write(s)
+        EOF
+        go build ./... && node /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/scratchpad/canon.js internal/native/js_ts.go
+      at: 2026-10-05T00:40:52.101959Z
+      classified: build
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/8f540fe0-38ca-42cc-885e-60b9c4a6d7f7/tasks/bdcs5oax9.output
+      at: 2026-10-05T00:40:58.322461Z
+      classified: other
+    - cmd: 'gh pr merge 26 --merge 2>&1 | tail -1; git checkout -q main && git pull -q --ff-only origin main && H=$(git rev-parse HEAD) && until gh run list --branch main --workflow ci.yml --limit 3 --json headSha -q ''.[].headSha'' | grep -q "^$H"; do sleep 10; done; id=$(gh run list --branch main --workflow ci.yml --limit 3 --json databaseId,headSha -q ".[]|select(.headSha==\"$H\")|.databaseId" | head -1); gh run watch $id --exit-status >/dev/null 2>&1; echo "main CI ${H:0:8}: $(gh run view $id --json conclusion,jobs -q ''.conclusion+" | "+([.jobs[]|.name+"="+.conclusion]|join(", "))'')"'
+      at: 2026-10-05T00:45:25.199402Z
+      classified: other
+notes:
+    - text: continuation of session 8f540fe0-38ca-42cc-885e-60b9c4a6d7f7 — events captured after its evidence was finalized
+      at: 2026-10-05T00:30:06.68113Z
+redactions: 0
