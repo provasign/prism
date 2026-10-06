@@ -650,7 +650,7 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 		}
 		regions = append(regions, region)
 	}
-	if rendered := h.renderEnclosingSearchBodies(regions); rendered != "" {
+	if rendered := h.renderSearchBodiesUnlessShared(out, regions, opts.single); rendered != "" {
 		return rendered
 	}
 	return h.compactSearchBodiesLegacyWith(ctx, out, skip, opts)
@@ -677,6 +677,101 @@ func declaresTerm(lines []string, sym grove.SymbolRecord, line int, term string)
 		}
 	}
 	return false
+}
+
+// renderSearchBodiesUnlessShared renders the picked bodies. In the default
+// single-body mode it withholds a body whose symbol name is also an
+// exact-name match for a DIFFERENT symbol in the answer: that body is one of
+// several and would be read as "the" code. (An explicit include_bodies=true
+// asks for several bodies, each headed by its qualified name; those stay.)
+// make_response in flask matches Flask.make_response and the helper
+// make_response; the search delivered the helper's body under a header that
+// never said another existed. Those regions become one line naming every
+// candidate with its span, so the caller looks up the one it means. A class
+// and its own constructor share a name but are one piece of code.
+func (h *Handler) renderSearchBodiesUnlessShared(out map[string]any, regions []searchSourceRegion, single bool) string {
+	if !single {
+		return h.renderEnclosingSearchBodies(regions)
+	}
+	var keep []searchSourceRegion
+	var notes []string
+	noted := map[string]bool{}
+	for _, region := range regions {
+		others := sharedNameSymbols(out, region)
+		if len(others) == 0 {
+			keep = append(keep, region)
+			continue
+		}
+		name := region.symbol.Name
+		if noted[name] {
+			continue
+		}
+		noted[name] = true
+		parts := []string{fmt.Sprintf("%s %s:%d-%d", region.symbol.QualifiedName, region.file, region.symbol.Span.Start, region.symbol.Span.End)}
+		parts = append(parts, others...)
+		notes = append(notes, fmt.Sprintf("// No body: %d different symbols share the name %q -- %s. Use op=lookup with the qualified name you mean.",
+			len(parts), name, strings.Join(parts, "; ")))
+	}
+	rendered := ""
+	if len(keep) > 0 {
+		rendered = h.renderEnclosingSearchBodies(keep)
+	}
+	if len(notes) == 0 {
+		return rendered
+	}
+	return "\n" + strings.Join(notes, "\n") + "\n" + rendered
+}
+
+// sharedNameSymbols lists the answer's other exact-name symbols that share
+// region's symbol name, as "qualifiedName file:start-end".
+func sharedNameSymbols(out map[string]any, region searchSourceRegion) []string {
+	if !region.hasSymbol || region.symbol.Name == "" {
+		return nil
+	}
+	sym := region.symbol
+	groups := []map[string]any{out}
+	if batch, ok := out["results"].([]map[string]any); ok {
+		groups = batch
+	}
+	var others []string
+	seen := map[string]bool{}
+	for _, group := range groups {
+		for _, raw := range anySlice(group["symbols"]) {
+			sm, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			if kind, _ := sm["matchKind"].(string); kind != "name-exact" {
+				continue
+			}
+			name, _ := sm["name"].(string)
+			if name != sym.Name {
+				continue
+			}
+			file, _ := sm["filePath"].(string)
+			qn, _ := sm["qualifiedName"].(string)
+			span, _ := sm["span"].(map[string]any)
+			start, end := intArg(span, "start", 0), intArg(span, "end", 0)
+			if filepath.ToSlash(file) == region.file && start == sym.Span.Start {
+				continue // the delivered symbol itself
+			}
+			if sameTypeAndConstructor(sym.QualifiedName, qn, name) {
+				continue
+			}
+			key := fmt.Sprintf("%s %s:%d-%d", qn, filepath.ToSlash(file), start, end)
+			if !seen[key] {
+				seen[key] = true
+				others = append(others, key)
+			}
+		}
+	}
+	return others
+}
+
+// sameTypeAndConstructor reports a class and its own constructor
+// (Foo and Foo.Foo, or Foo.__init__-style owners named like the type).
+func sameTypeAndConstructor(a, b, name string) bool {
+	return a == b+"."+name || b == a+"."+name
 }
 
 // pythonDocstringLines marks the lines of triple-quoted strings that stand
