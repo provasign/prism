@@ -1,0 +1,763 @@
+shale_version: "0"
+id: d125dca7-e99f-49fb-bc56-83b796d2af46-c4
+created_at: 2026-10-06T01:39:15.704267Z
+finalized_at: 2026-10-06T01:58:08.1077Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/search-no-body-many-symbols
+privacy: redacted
+commands:
+    - cmd: 'cd ~/Projects/provasign/prism && git diff --quiet c3d70631 HEAD && echo "main == gated tree" && git tag -a v0.86.4 -m "v0.86.4: search withholds a single body for a name shared by different symbols; Python docstring lines score like comments in body ranking" && git push -q origin v0.86.4 2>&1 | grep -v "^remote:" | tail -1; sleep 15; gh run list --limit 4 --json name,headBranch,status,databaseId -q ''.[]|"\(.databaseId) \(.name) \(.headBranch) \(.status)"'''
+      at: 2026-10-06T01:39:15.704267Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && for id in 37400228096 37400220224; do gh run watch $id --exit-status >/dev/null 2>&1; echo "$id $(gh run view $id --json name,conclusion -q ''.name+" "+.conclusion'')"; done; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 ''version\|url'' '
+      at: 2026-10-06T01:39:25.461476Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results'; PJ=os.path.expanduser('~/.claude/projects')
+        c=collections.Counter(); sample=None
+        for f in glob.glob(f'{H}/e2e-codexfix-27/*prism_body_exp.json')[:5]:
+            r=json.load(open(f))
+            for p in glob.glob(f"{PJ}/*/{r['session_id']}.jsonl"):
+                for l in open(p):
+                    m=json.loads(l).get('message') or {}
+                    for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                        if isinstance(b,dict) and b.get('type') in('thinking','redacted_thinking','text'):
+                            c[b['type']]+=1; t=b.get('thinking','')
+                            if b['type']=='thinking': c['thinking with text']+=bool(t.strip())
+                            if b['type']=='thinking' and t.strip() and not sample: sample=t[:300]
+        print(c); print(sample)
+        EOF
+      at: 2026-10-06T01:39:25.577334Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os,time,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results'; PJ=os.path.expanduser('~/.claude/projects')
+        since=time.mktime((2026,9,20,0,0,0,0,0,-1)); c=collections.Counter()
+        for f in glob.glob(f'{H}/*/*.json'):
+            if 'archive' in f: continue
+            try: r=json.load(open(f))
+            except Exception: continue
+            if not isinstance(r,dict) or not r.get('session_id'): continue
+            for p in glob.glob(f"{PJ}/*/{r['session_id']}.jsonl"):
+                if os.path.getmtime(p)<since: continue
+                c['sessions']+=1; has=False
+                for l in open(p):
+                    m=json.loads(l).get('message') or {}
+                    for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                        if isinstance(b,dict) and b.get('type')=='thinking':
+                            c['thinking blocks']+=1
+                            if (b.get('thinking') or '').strip(): c['with readable text']+=1; has=True
+                        if isinstance(b,dict) and b.get('type')=='text' and m.get('role')=='assistant': c['visible text blocks']+=1
+                c['sessions with readable thinking']+=has
+        print(dict(c))
+        EOF
+      at: 2026-10-06T01:39:35.121819Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cat > $S/ctx/many_sym_next.py <<'EOF'
+        import json,glob,os,re,time,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results'; PJ=os.path.expanduser('~/.claude/projects')
+        since=time.mktime((2026,9,20,0,0,0,0,0,-1))
+        BODY=re.compile(r'^// (?:Full enclosing body (\S+) spans|WINDOW \S+ around hit line \d+; enclosing (\S+) spans)',re.M)
+        SYMS=re.compile(r'^symbols \((\d+)\):',re.M)
+        out=[]
+        for f in glob.glob(f'{H}/*/*.json'):
+            if 'archive' in f: continue
+            try: r=json.load(open(f))
+            except Exception: continue
+            if not isinstance(r,dict) or r.get('arm') not in ('prism_body_exp','prism_init','prism_body_baseline'): continue
+            for p in glob.glob(f"{PJ}/*/{r['session_id']}.jsonl"):
+                if os.path.getmtime(p)<since: continue
+                ev=[]; ids={}
+                for l in open(p):
+                    m=json.loads(l).get('message') or {}
+                    for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                        if not isinstance(b,dict): continue
+                        if b.get('type')=='tool_use': ids[b['id']]=b; ev.append(('use',b))
+                        elif b.get('type')=='text' and m.get('role')=='assistant': ev.append(('say',b.get('text','')))
+                        elif b.get('type')=='tool_result':
+                            c=b.get('content'); t=c if isinstance(c,str) else ''.join(x.get('text','') for x in (c or []) if isinstance(x,dict))
+                            ev.append(('res',b.get('tool_use_id'),t))
+                for i,e in enumerate(ev):
+                    if e[0]!='res': continue
+                    u=ids.get(e[1]) or {}
+                    if not u.get('name','').startswith('mcp__prism') or (u.get('input') or {}).get('op')!='search': continue
+                    t=e[2]; k=t.find('// Exact source')
+                    if k<0: continue
+                    sm=SYMS.search(t[:k]); n=int(sm.group(1)) if sm else 0
+                    if n<2: continue
+                    syms=[a or b for a,b in BODY.findall(t[k:])]
+                    if not syms: continue
+                    nxt=[]; said=[]
+                    for e2 in ev[i+1:]:
+                        if e2[0]=='say': said.append(e2[1].strip()[:500])
+                        if e2[0]=='use':
+                            inp=e2[1].get('input') or {}
+                            nxt.append(f"{e2[1]['name'].replace('mcp__prism__','')} {json.dumps(inp)[:180]}")
+                        if len(nxt)>=3: break
+                    out.append(dict(task=r['task'],nsym=n,terms=(u['input'].get('args') or {}).get('terms') or (u['input'].get('args') or {}).get('query'),body=syms,said=said[:2],next=nxt))
+        json.dump(out,open(os.path.dirname(__file__)+'/many_sym_next.json','w'),indent=1)
+        c=collections.Counter()
+        for o in out:
+            short=[s.split('.')[-1] for s in o['body']]
+            blob=' '.join(o['said'])+' '.join(o['next'])
+            c['mentions body symbol next' if any(s and s in blob for s in short) else 'no mention']+=1
+            c['has visible text before next calls']+=bool(o['said'])
+        print(len(out),dict(c))
+        EOF
+        python3 $S/ctx/many_sym_next.py
+      at: 2026-10-06T01:39:55.898991Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<EOF
+        import json
+        o=json.load(open('$S/ctx/many_sym_next.json'))
+        for i,x in enumerate(o[:31]):
+            print(f"#{i} {x['task'][:40]} nsym={x['nsym']} terms={str(x['terms'])[:80]}")
+            print('   BODY:',', '.join(x['body'])[:150])
+            for s in x['said'][:1]: print('   SAID:',s.replace(chr(10),' ')[:260])
+            for n in x['next']: print('   NEXT:',n[:170])
+        EOF
+      at: 2026-10-06T01:40:05.294365Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<EOF
+        import json
+        o=json.load(open('$S/ctx/many_sym_next.json'))
+        for i,x in list(enumerate(o))[31:]:
+            print(f"#{i} {x['task'][:40]} nsym={x['nsym']} terms={str(x['terms'])[:80]}")
+            print('   BODY:',', '.join(x['body'])[:150])
+            for s in x['said'][:1]: print('   SAID:',s.replace(chr(10),' ')[:220])
+            for n in x['next']: print('   NEXT:',n.replace('/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/','')[:160])
+        EOF
+      at: 2026-10-06T01:40:25.64074Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/babpgfhhs.output; brew update -q >/dev/null 2>&1; brew info provasign/shale/prism 2>/dev/null | head -1
+      at: 2026-10-06T01:40:50.631939Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && gh run list --limit 3 --json databaseId,name,headBranch,status,conclusion -q '.[]|"\(.databaseId) \(.name) \(.headBranch) \(.status) \(.conclusion)"'
+      at: 2026-10-06T01:40:53.298481Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/babpgfhhs.output; brew update -q >/dev/null 2>&1; brew info provasign/shale/prism 2>/dev/null | head -1; brew upgrade -q provasign/shale/prism 2>&1 | tail -1; /opt/homebrew/bin/prism --version
+      at: 2026-10-06T01:43:16.955672Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/commits -q '.[0:4][]|.commit.committer.date+" "+(.commit.message|split("\n")[0])'; gh release view v0.86.4 -R provasign/prism --json assets -q '.assets|length'; ls ~/Projects/provasign/homebrew-shale/.github/workflows 2>/dev/null; gh api repos/provasign/homebrew-shale/contents/.github/workflows -q '.[].name'
+      at: 2026-10-06T01:43:22.234921Z
+      classified: other
+    - cmd: 'gh workflow run refresh-formulae.yml -R provasign/homebrew-shale && sleep 10 && id=$(gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json databaseId -q ''.[0].databaseId'') && gh run watch $id -R provasign/homebrew-shale --exit-status >/dev/null 2>&1; echo "refresh: $(gh run view $id -R provasign/homebrew-shale --json conclusion -q .conclusion)"; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version; brew update -q >/dev/null 2>&1; brew upgrade -q provasign/shale/prism 2>&1 | tail -1; /opt/homebrew/bin/prism --version'
+      at: 2026-10-06T01:43:45.988324Z
+      classified: other
+    - cmd: brew update 2>&1 | tail -1; brew upgrade provasign/shale/prism 2>&1 | tail -2; /opt/homebrew/bin/prism --version
+      at: 2026-10-06T01:43:53.780054Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md'; s=open(p).read()
+        line='- [Search body study 2026-10-05](project_search_body_study_2026_10_05.md) — v0.86.4 RELEASED (shared-name note + docstring scoring); body useful 18% at 1 symbol vs 2% at 6+; class->ctor + signature-term misfires; thinking unreadable in transcripts\n'
+        s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1); open(p,'w').write(s)
+        EOF
+        head -4 MEMORY.md
+      at: 2026-10-06T01:44:06.648387Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git checkout -q main && git pull -q --ff-only && git checkout -q -b fix/search-no-body-many-symbols && grep -n "compactSearchBodiesBudgeted\|single:" internal/mcp/*.go | grep -v _test; grep -n "type searchBodyOptions" -A8 internal/mcp/*.go
+      at: 2026-10-06T01:45:58.77598Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 630,665p internal/mcp/searchbudget.go; grep -n "symbolsTruncated\|\"symbolCount\"\|totalSymbols" internal/mcp/search*.go | grep -v _test | head
+      at: 2026-10-06T01:46:01.033829Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "searchBodies(ctx" internal/mcp/*.go | grep -v _test; grep -n "renderSearchBodiesUnlessShared\|sharedNameSymbols\|sameTypeAndConstructor" internal/mcp/*.go
+      at: 2026-10-06T01:46:14.92527Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 1800,1820p internal/mcp/tools.go; sed -n 1876,1890p internal/mcp/tools.go
+      at: 2026-10-06T01:46:16.91183Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        import re
+        p='internal/mcp/searchbudget.go'; s=open(p).read()
+        old='''func (h *Handler) searchBodies(ctx context.Context, out map[string]any, b searchBudget) string {
+        	if b.on && !b.explicitBodies {'''
+        new='''func (h *Handler) searchBodies(ctx context.Context, out map[string]any, b searchBudget) string {
+        	// Measured on 465 attached bodies (sessions 2026-09-20..10-05): agents
+        	// edited from the body 18% of the time when search listed one symbol,
+        	// 7% with 2-5 and 2% with 6+, while re-fetching rose from 3% to 20%.
+        	// With several candidates the one picked body was usually not the one
+        	// wanted (a class name delivered its constructor; `func walk` delivered
+        	// walkXFF), so the answer stays a locator. An explicit
+        	// include_bodies=true still gets bodies.
+        	if !b.explicitBodies {
+        		if n := listedSymbolCount(out); n >= 2 {
+        			return fmt.Sprintf("\\n// No source attached: %d symbols match. Use op=lookup with the one you mean (qualified name if several share it).\\n", n)
+        		}
+        	}
+        	if b.on && !b.explicitBodies {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        s+='''
+        // listedSymbolCount counts the symbol matches a search answer lists, across
+        // every term of a batch.
+        func listedSymbolCount(out map[string]any) int {
+        	groups := []map[string]any{out}
+        	if batch, ok := out["results"].([]map[string]any); ok {
+        		groups = batch
+        	}
+        	n := 0
+        	for _, group := range groups {
+        		n += len(anySlice(group["symbols"]))
+        	}
+        	return n
+        }
+        '''
+        if '"fmt"' not in s.split(')')[0]:
+            s=s.replace('import (\n','import (\n\t"fmt"\n',1)
+        open(p,'w').write(s)
+        # remove the now-unreachable shared-name machinery
+        p='internal/mcp/searchevidence.go'; s=open(p).read()
+        s=s.replace('h.renderSearchBodiesUnlessShared(out, regions, opts.single)','h.renderEnclosingSearchBodies(regions)')
+        k=s.index('// renderSearchBodiesUnlessShared renders the picked bodies.')
+        e=s.index('// pythonDocstringLines marks')
+        s=s[:k]+s[e:]
+        open(p,'w').write(s)
+        p='internal/mcp/server.go'; s=open(p).read()
+        s=s.replace('return h.renderSearchBodiesUnlessShared(out, picked, opts.single)','return h.renderEnclosingSearchBodies(picked)')
+        open(p,'w').write(s)
+        EOF
+        git rm -q internal/mcp/searchambiguous_test.go; gofmt -w internal/mcp/searchbudget.go; go build ./... && go vet ./internal/mcp/ 2>&1 | tail -3; grep -c "sameTypeAndConstructor\|sharedNameSymbols" internal/mcp/*.go | grep -v ":0"
+      at: 2026-10-06T01:46:33.991277Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && cat > internal/mcp/searchmanysymbols_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"strings"
+        	"testing"
+        )
+
+        func manySymbolsFixture(t *testing.T) *Server {
+        	return compactFixture(t, map[string]string{
+        		"app.go":     "package r\n\ntype App struct{}\n\nfunc (a *App) MakeResponse(v int) int {\n\tx := v + 1\n\treturn x\n}\n",
+        		"helpers.go": "package r\n\nfunc MakeResponse(v int) int {\n\ty := v * 2\n\treturn y\n}\n",
+        		"unique.go":  "package r\n\nfunc FullDispatch(v int) int {\n\tz := MakeResponse(v)\n\treturn z\n}\n",
+        	})
+        }
+
+        // Several listed symbols: the one picked body was rarely the one wanted, so
+        // the answer stays a locator with a pointer to lookup.
+        func TestSearchListingSeveralSymbolsAttachesNoBody(t *testing.T) {
+        	srv := manySymbolsFixture(t)
+        	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"MakeResponse"}})
+        	if strings.Contains(out, "**`") || !strings.Contains(out, "No source attached: 2 symbols match") {
+        		t.Fatalf("two listed symbols should give a locator answer and the lookup note:\n%s", out)
+        	}
+        	limited := callCompact(t, srv, "search", map[string]any{"terms": []any{"MakeResponse"}, "max_results": 20})
+        	if strings.Contains(limited, "**`") {
+        		t.Fatalf("non-default shape still attached a body for several symbols:\n%s", limited)
+        	}
+        	explicit := callCompact(t, srv, "search", map[string]any{"terms": []any{"MakeResponse"}, "include_bodies": true})
+        	if !strings.Contains(explicit, "**`") || strings.Contains(explicit, "No source attached") {
+        		t.Fatalf("explicit include_bodies=true lost its bodies:\n%s", explicit)
+        	}
+        }
+
+        func TestSearchListingOneSymbolKeepsItsBody(t *testing.T) {
+        	srv := manySymbolsFixture(t)
+        	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"FullDispatch"}})
+        	if strings.Contains(out, "No source attached") || !strings.Contains(out, "z := MakeResponse(v)") {
+        		t.Fatalf("a single listed symbol should keep its body:\n%s", out)
+        	}
+        }
+        EOF
+        go vet ./internal/mcp/ && go test ./internal/mcp/ -run 'TestSearchListing' -count=1 2>&1 | tail -15
+      at: 2026-10-06T01:46:46.885817Z
+      classified: lint
+    - cmd: cd ~/Projects/provasign/prism && go test ./... 2>&1 | grep -E "^--- FAIL|^FAIL|_test.go:[0-9]+:" | head -30; echo "== done"
+      at: 2026-10-06T01:47:12.825615Z
+      classified: test
+    - cmd: 'cd ~/Projects/provasign/prism && n=$(grep -n "func TestCompactSymbolLocatorInlinesSmallBodies" internal/mcp/compact_test.go | cut -d: -f1); sed -n "$((n-6)),$((n+40))p" internal/mcp/compact_test.go'
+      at: 2026-10-06T01:47:15.028806Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "small, complete locator result" internal/mcp/*.go | grep -v _test; grep -n "func (h \*Handler) inlineSmallSymbolBodies\|func.*SmallLocator\|smallLocator" internal/mcp/*.go | grep -v _test | head
+      at: 2026-10-06T01:47:20.764861Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 1245,1290p internal/mcp/server.go; grep -n "compactLocatorBodies\|renderSmallLocator" internal/mcp/*.go | grep -v _test | head
+      at: 2026-10-06T01:47:22.760383Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "renderCompactSearchBodies(" internal/mcp/*.go | grep -v "_test\|func "; sed -n 835,870p internal/mcp/server.go
+      at: 2026-10-06T01:47:24.774262Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && awk ''NR<=932 && /^func /{f=$0; n=NR} END{}; NR==932{print n": "f}'' internal/mcp/server.go; sed -n 880,932p internal/mcp/server.go | grep -n "func\|return\|len(" | head -20'
+      at: 2026-10-06T01:47:32.594856Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "compactSearchBodiesPicked(" internal/mcp/*.go | grep -v "_test\|^.*:func "; sed -n 787,800p internal/mcp/server.go; sed -n 870,880p internal/mcp/server.go
+      at: 2026-10-06T01:47:34.813614Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 725,786p internal/mcp/server.go
+      at: 2026-10-06T01:47:36.701011Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && go test ./internal/mcp/ -run TestCompactSymbolLocatorInlinesSmallBodies -count=1 2>&1 | sed -n 1,30p; git stash -q; go test ./internal/mcp/ -run TestCompactSymbolLocatorInlinesSmallBodies -count=1 -v 2>&1 | grep -c PASS; git stash pop -q
+      at: 2026-10-06T01:47:48.69837Z
+      classified: test
+    - cmd: d=$(mktemp -d /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/t4.XXXX); printf 'package sample\n\nfunc TargetOne() { println(1) }\nfunc TargetTwo() { println(2) }\nfunc TargetThree() { println(3) }\nfunc TargetFour() { println(4) }\n' > $d/sample.go; cd $d && /opt/homebrew/bin/prism index . >/dev/null 2>&1; /opt/homebrew/bin/prism search Target --scope symbols --format text 2>/dev/null | sed -n '/Exact source/,$p'
+      at: 2026-10-06T01:47:55.880951Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && grep -n "func (h \*Handler) renderFileSection" -A30 internal/mcp/server.go | grep -n ''Fprintf\|"//'' | head; grep -n ''renderCompactSearchBodies(\[\]ranking.BudgetedSymbol{pick}, label)'' -B12 internal/mcp/server.go | grep -n "label :=\|label =" '
+      at: 2026-10-06T01:48:04.996852Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "renderFileSection" internal/mcp/*.go | grep -v _test | head -3; grep -n "label" internal/mcp/server.go | sed -n 1,12p
+      at: 2026-10-06T01:48:07.073002Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os,time,re,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results'; PJ=os.path.expanduser('~/.claude/projects')
+        since=time.mktime((2026,9,20,0,0,0,0,0,-1)); c=collections.Counter(); sample=None
+        for f in glob.glob(f'{H}/*/*.json'):
+            if 'archive' in f: continue
+            try: r=json.load(open(f))
+            except Exception: continue
+            if not isinstance(r,dict) or r.get('arm') not in ('prism_body_exp','prism_init','prism_body_baseline'): continue
+            for p in glob.glob(f"{PJ}/*/{r['session_id']}.jsonl"):
+                if os.path.getmtime(p)<since: continue
+                ids={}
+                for l in open(p):
+                    m=json.loads(l).get('message') or {}
+                    for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                        if not isinstance(b,dict): continue
+                        if b.get('type')=='tool_use': ids[b['id']]=b
+                        if b.get('type')=='tool_result':
+                            u=ids.get(b.get('tool_use_id')) or {}
+                            if not u.get('name','').startswith('mcp__prism') or (u.get('input') or {}).get('op')!='search': continue
+                            cc=b.get('content'); t=cc if isinstance(cc,str) else ''.join(x.get('text','') for x in (cc or []) if isinstance(x,dict))
+                            for lab in re.findall(r'// Exact source for ([^(:]+)',t): c[lab.strip()[:70]]+=1
+                            if 'this small, complete locator result' in t and not sample:
+                                k=t.find('// Exact source for this small'); sample=t[:300]+'\n...\n'+t[k:k+500]
+        for k,v in c.most_common(): print(v,k)
+        print(sample)
+        EOF
+      at: 2026-10-06T01:48:17.309748Z
+      classified: other
+    - cmd: "python3 - <<'EOF'\nimport json,glob,os,time,re,collections\nH='/Users/tapabratapal/Projects/provasign/research/harness/results'; PJ=os.path.expanduser('~/.claude/projects')\nsince=time.mktime((2026,9,20,0,0,0,0,0,-1)); rows=[]\nLAB=re.compile(r'// Exact source for (this small, complete locator result|the unique (?:exact-name|small symbol) match in the first batched term)')\nfor f in glob.glob(f'{H}/*/*.json'):\n    if 'archive' in f: continue\n    try: r=json.load(open(f))\n    except Exception: continue\n    if not isinstance(r,dict) or r.get('arm') not in ('prism_body_exp','prism_init','prism_body_baseline'): continue\n    for p in glob.glob(f\"{PJ}/*/{r['session_id']}.jsonl\"):\n        if os.path.getmtime(p)<since: continue\n        ev=[];ids={}\n        for l in open(p):\n            m=json.loads(l).get('message') or {}\n            for b in (m.get('content') if isinstance(m.get('content'),list) else []):\n                if not isinstance(b,dict): continue\n                if b.get('type')=='tool_use': ids[b['id']]=b; ev.append(('use',b))\n                if b.get('type')=='tool_result':\n                    cc=b.get('content'); t=cc if isinstance(cc,str) else ''.join(x.get('text','') for x in (cc or []) if isinstance(x,dict)); ev.append(('res',b.get('tool_use_id'),t))\n        for i,e in enumerate(ev):\n            if e[0]!='res': continue\n            u=ids.get(e[1]) or {}\n            if not u.get('name','').startswith('mcp__prism') or (u.get('input') or {}).get('op')!='search': continue\n            t=e[2]; m=LAB.search(t)\n            if not m: continue\n            sm=re.search(r'^symbols \\((\\d+)\\):',t[:m.start()],re.M); n=int(sm.group(1)) if sm else 0\n            sec=t[m.start():]; fm=re.search(r'\\*\\*`([^`]+)`\\*\\*',sec); \n            if not fm: continue\n            fname=fm.group(1); nums=[int(x) for x in re.findall(r'^(\\d+)\\t',sec,re.M)]; a,bb=min(nums),max(nums)\n            code='\\n'.join(re.sub(r'^\\d+\\t','',x) for x in sec.splitlines() if re.match(r'^\\d+\\t',x))\n            used=ref=False\n            for e2 in ev[i+1:]:\n                if e2[0]!='use': continue\n                nm=e2[1]['name']; inp=e2[1].get('input') or {}\n                if nm in('Edit','MultiEdit') and inp.get('file_path','').endswith(fname):\n                    eds=[inp] if nm=='Edit' else inp.get('edits',[])\n                    if any((x.get('old_string') or '').strip() and (x.get('old_string') or '').strip().splitlines()[0].strip() in code for x in eds): used=True\n                if nm.startswith('mcp__prism') and inp.get('op')=='read':\n                    aa=inp.get('args') or {}; rs=aa.get('ranges') or [{'file':aa.get('file'),'from':aa.get('from',1),'to':aa.get('to',10**6)}]\n                    if any((x.get('file') or '').endswith(fname) and (x.get('from') or 1)<=bb and (x.get('to') or 10**6)>=a for x in rs): ref=True\n                if nm=='Read' and inp.get('file_path','').endswith(fname):\n                    off=inp.get('offset') or 1; lim=inp.get('limit') or 10**6\n                    if off<=bb and off+lim>=a: ref=True\n            rows.append((m.group(1)[:30],n,used,ref))\ng=collections.defaultdict(list)\nfor lab,n,u,rf in rows: g[(lab,'1 symbol' if n<=1 else '2+ symbols')].append((u,rf))\nfor k,v in sorted(g.items()): print(k, len(v), 'edited', sum(u for u,_ in v), 're-fetched only', sum((not u) and rf for u,rf in v))\nEOF"
+      at: 2026-10-06T01:48:34.24412Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p='internal/mcp/server.go'; s=open(p).read()
+        old='''			if budget.on {
+        				// The picked body is the default budget's one body.
+        			} else if terms'''
+        new='''			if budget.on || listedSymbolCount(out) >= 2 {
+        				// The picked body is the default budget's one body; with
+        				// several listed symbols no ranked extras are added either.
+        			} else if terms'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        p='internal/mcp/compact_test.go'; s=open(p).read()
+        old='''		{"Target", "func TargetOne()", true},'''
+        new='''		// Four listed symbols: v0.86.4 attached TargetOne's body, an
+        		// arbitrary pick among four. Several candidates stay locators.
+        		{"Target", "func TargetOne()", false},'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        gofmt -l internal/mcp | grep -v "nested_test\|verify_vs_grep_bench_test"; go vet ./internal/mcp && go test ./... 2>&1 | grep -E "^--- FAIL|^FAIL|_test.go:[0-9]+:" | head; echo "== suite done"
+      at: 2026-10-06T01:49:10.119613Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os,time,re,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results'; PJ=os.path.expanduser('~/.claude/projects')
+        since=time.mktime((2026,9,20,0,0,0,0,0,-1)); c=collections.Counter(); ex=[]
+        HDR=re.compile(r'^// (?:Full enclosing body (\S+) spans|WINDOW \S+ around hit line \d+; enclosing (\S+) spans)',re.M)
+        DECL=re.compile(r'^\s*(?:func\s*(?:\([^)]*\)\s*)?|def\s+|class\s+|function\s+|fn\s+)(\w+)')
+        for f in glob.glob(f'{H}/*/*.json'):
+            if 'archive' in f: continue
+            try: r=json.load(open(f))
+            except Exception: continue
+            if not isinstance(r,dict) or r.get('arm') not in ('prism_body_exp','prism_init','prism_body_baseline'): continue
+            for p in glob.glob(f"{PJ}/*/{r['session_id']}.jsonl"):
+                if os.path.getmtime(p)<since: continue
+                ids={}
+                for l in open(p):
+                    m=json.loads(l).get('message') or {}
+                    for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                        if not isinstance(b,dict): continue
+                        if b.get('type')=='tool_use': ids[b['id']]=b
+                        if b.get('type')!='tool_result': continue
+                        u=ids.get(b.get('tool_use_id')) or {}
+                        if not u.get('name','').startswith('mcp__prism') or (u.get('input') or {}).get('op')!='search': continue
+                        cc=b.get('content'); t=cc if isinstance(cc,str) else ''.join(x.get('text','') for x in (cc or []) if isinstance(x,dict))
+                        k=t.find('// Exact source')
+                        if k<0: continue
+                        sm=re.search(r'^symbols \((\d+)\):',t[:k],re.M); n=int(sm.group(1)) if sm else 0
+                        if n>=2: continue
+                        a=u['input'].get('args') or {}; terms=a.get('terms') or a.get('query') or []; terms=[terms] if isinstance(terms,str) else terms
+                        bodies=[x or y for x,y in HDR.findall(t[k:])]
+                        c['answers <2 symbols with ranked body']+=bool(bodies)
+                        for s in bodies:
+                            parts=s.split('.')
+                            if len(parts)>=2 and parts[-1]==parts[-2] and any(isinstance(x,str) and x==parts[-1] for x in terms):
+                                c['class name -> constructor']+=1; ex.append(('ctor',terms,s))
+                            for x in terms:
+                                dm=DECL.match(x) if isinstance(x,str) else None
+                                if dm and len(terms)==1 and s.split('.')[-1]!=dm.group(1):
+                                    c['declaration term -> other symbol']+=1; ex.append(('decl',terms,s))
+        print(dict(c)); [print(' ',e) for e in ex[:10]]
+        EOF
+      at: 2026-10-06T01:49:23.704097Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 585,660p internal/mcp/searchevidence.go
+      at: 2026-10-06T01:49:36.949095Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "func lexicalOwnerSymbol" -A22 internal/mcp/*.go | head -30
+      at: 2026-10-06T01:49:45.335592Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p='internal/mcp/searchevidence.go'; s=open(p).read()
+        def rep(a,b):
+            global s; assert s.count(a)==1,a; s=s.replace(a,b)
+        rep('''	regions := make([]searchSourceRegion, 0, len(selected))
+        	for _, item := range selected {
+        		region := searchSourceRegion{''','''	regions := make([]searchSourceRegion, 0, len(selected))
+        	droppedConstructor := false
+        	for _, item := range selected {
+        		if item.hasSymbol {
+        			// A search for a class name also hits its constructor's line,
+        			// which outscores the class declaration, and delivered the
+        			// constructor: the agent then read the whole class in its next
+        			// call (12 of 61 several-symbol answers, 7 of 171 single-symbol
+        			// ones, 2026-09-20..10-05). Deliver the named type when it fits,
+        			// otherwise no body.
+        			if owner := constructorOfNamedType(item.symbol, files[item.file].symbols, terms); owner != nil {
+        				if owner.Span.End-owner.Span.Start+1 > fullLines || len(owner.RawText) > fullBytes {
+        					droppedConstructor = true
+        					continue
+        				}
+        				item.symbol = *owner
+        			}
+        		}
+        		region := searchSourceRegion{''')
+        rep('''	if rendered := h.renderEnclosingSearchBodies(regions); rendered != "" {
+        		return rendered
+        	}
+        	return h.compactSearchBodiesLegacyWith(ctx, out, skip, opts)
+        }''','''	if rendered := h.renderEnclosingSearchBodies(regions); rendered != "" {
+        		return rendered
+        	}
+        	if droppedConstructor {
+        		return "" // the legacy picker would deliver the same constructor
+        	}
+        	return h.compactSearchBodiesLegacyWith(ctx, out, skip, opts)
+        }
+
+        // constructorOfNamedType returns the type that sym constructs when a search
+        // term names that type exactly; nil otherwise.
+        func constructorOfNamedType(sym grove.SymbolRecord, fileSyms []grove.SymbolRecord, terms []string) *grove.SymbolRecord {
+        	parent := leafOf(sym.ParentSymbol)
+        	if parent == "" || (sym.Name != parent && !strings.EqualFold(sym.Kind, "constructor")) {
+        		return nil
+        	}
+        	for i := range fileSyms {
+        		owner := &fileSyms[i]
+        		switch strings.ToLower(owner.Kind) {
+        		case "class", "struct", "record", "type":
+        		default:
+        			continue
+        		}
+        		if owner.Name != parent && owner.QualifiedName != sym.ParentSymbol {
+        			continue
+        		}
+        		if owner.Span.Start > sym.Span.Start || owner.Span.End < sym.Span.End {
+        			continue
+        		}
+        		for _, term := range terms {
+        			term = strings.TrimSpace(term)
+        			if term == owner.Name || term == owner.QualifiedName {
+        				return owner
+        			}
+        		}
+        	}
+        	return nil
+        }''')
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/mcp/searchevidence.go; go vet ./internal/mcp 2>&1 | tail -3
+      at: 2026-10-06T01:49:57.208262Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p='internal/mcp/searchevidence.go'; s=open(p).read()
+        old='''				item.symbol = *owner
+        			}
+        		}'''
+        new='''				dup := false
+        				for _, earlier := range regions {
+        					if earlier.file == item.file && earlier.hasSymbol && earlier.symbol.Span == owner.Span {
+        						dup = true
+        					}
+        				}
+        				if dup {
+        					continue
+        				}
+        				item.symbol = *owner
+        			}
+        		}'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go vet ./internal/mcp 2>&1|tail -3
+      at: 2026-10-06T01:50:04.741032Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p='internal/mcp/searchevidence.go'; s=open(p).read()
+        old='''				dup := false
+        				for _, earlier := range regions {
+        					if earlier.file == item.file && earlier.hasSymbol && earlier.symbol.Span == owner.Span {
+        						dup = true
+        					}
+        				}
+        				if dup {
+        					continue
+        				}
+        				item.symbol = *owner'''
+        new='''				item.symbol = *owner'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old2='''		if isTestFilePath(item.file) {
+        			region.evidence += "; test"
+        		}
+        		regions = append(regions, region)'''
+        new2='''		if isTestFilePath(item.file) {
+        			region.evidence += "; test"
+        		}
+        		duplicate := false
+        		for _, earlier := range regions {
+        			if earlier.file == region.file && earlier.start == region.start && earlier.end == region.end {
+        				duplicate = true // a constructor replaced by its class
+        			}
+        		}
+        		if duplicate {
+        			continue
+        		}
+        		regions = append(regions, region)'''
+        assert s.count(old2)==1; s=s.replace(old2,new2); open(p,'w').write(s)
+        EOF
+        go vet ./internal/mcp 2>&1|tail -3
+      at: 2026-10-06T01:50:12.390941Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && cat > internal/mcp/searchconstructor_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"strings"
+        	"testing"
+        )
+
+        // gson pr3112 / jackson-dataformat-xml: searching a class name delivered
+        // its constructor (the constructor line outscores the class declaration),
+        // and the agent read the whole class next. The named class is delivered
+        // when it fits; an oversized class gets no body rather than its constructor.
+        func TestSearchForClassNameDeliversClassNotConstructor(t *testing.T) {
+        	big := "package p;\n\npublic class BigWrapper {\n    private final int a;\n\n    public BigWrapper(int a) {\n        this.a = compute(a);\n    }\n\n" +
+        		strings.Repeat("    int pad() { return 1; }\n", 200) + "}\n"
+        	srv := compactFixture(t, map[string]string{
+        		"Wrapper.java": "package p;\n\npublic class Wrapper {\n    private final int a;\n\n    public Wrapper(int a) {\n        this.a = compute(a);\n    }\n\n    int get() {\n        return a;\n    }\n}\n",
+        		"BigWrapper.java": big,
+        		"Use.java":        "package p;\n\nclass Use {\n    Object w = new Wrapper(1);\n    Object b = new BigWrapper(2);\n}\n",
+        	})
+        	small := callCompact(t, srv, "search", map[string]any{"terms": []any{"Wrapper"}, "scope": "text"})
+        	if strings.Contains(small, "body Wrapper.Wrapper") || !strings.Contains(small, "int get()") {
+        		t.Fatalf("class-name search should deliver the small class, not its constructor:\n%s", small)
+        	}
+        	large := callCompact(t, srv, "search", map[string]any{"terms": []any{"BigWrapper"}, "scope": "text"})
+        	if strings.Contains(large, "BigWrapper.BigWrapper spans") || strings.Contains(large, "this.a = compute(a);") {
+        		t.Fatalf("oversized class should give no body, not its constructor:\n%s", large)
+        	}
+        }
+        EOF
+        go test ./internal/mcp/ -run TestSearchForClassNameDeliversClassNotConstructor -count=1 2>&1 | head -40
+      at: 2026-10-06T01:50:24.839935Z
+      classified: test
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p='internal/mcp/searchconstructor_test.go'; s=open(p).read()
+        s=s.replace('''	if strings.Contains(large, "BigWrapper.BigWrapper spans") || strings.Contains(large, "this.a = compute(a);") {''','''	if strings.Contains(large, "Full enclosing body") || strings.Contains(large, "// WINDOW") {''')
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/mcp | grep -v "nested_test\|verify_vs_grep_bench_test"; go test ./... 2>&1 | grep -E "^--- FAIL|^FAIL|_test.go:[0-9]+:" | head; echo "== suite done"
+      at: 2026-10-06T01:50:55.610645Z
+      classified: test
+    - cmd: cd ~/Projects/provasign/prism && gofmt -w internal/mcp/searchconstructor_test.go && go test ./internal/mcp/ -run 'TestSearchFor|TestSearchListing|TestCompactSymbol' -count=1 2>&1|tail -2 && go build -o ~/prism-ab-bins/prism-nobody-many ./cmd/prism && echo built
+      at: 2026-10-06T01:51:02.21866Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cp /opt/homebrew/bin/prism ~/prism-ab-bins/prism-v0.86.4; python3 - <<EOF
+        s=open('$S/replay/replay_docstring_wide.py').read()
+        s=s.replace("'old':os.path.expanduser('~/prism-ab-bins/prism-v0.86.3'),'new':os.path.expanduser('~/prism-ab-bins/prism-docstring')","'old':os.path.expanduser('~/prism-ab-bins/prism-v0.86.4'),'new':os.path.expanduser('~/prism-ab-bins/prism-nobody-many')")
+        s=s.replace("""    if task.get('lang')!='python' and not t.startswith('seed__'):
+                if task.get('lang') not in (None,'python'): tot['non-python tasks skipped']+=1; continue
+        ""","")
+        s=s.replace("        if not any(wt.rglob('*.py')): tot['non-python tasks skipped']+=1; continue\n","")
+        s=s.replace("HDR=re.compile(r'^// (Full enclosing body \\\\S+|WINDOW","HDR=re.compile(r'^// (Exact source for [^(:]+|Full enclosing body \\\\S+|WINDOW")
+        s=s.replace("def bodies(txt):\n    k=txt.find('// Exact source'); return HDR.findall(txt[k:]) if k>=0 else []","def bodies(txt):\n    k=txt.find('// Exact source'); return [h for h in HDR.findall(txt[k:]) if not h.startswith('Exact source')] + (['(picked) '+re.search(r'\\\\*\\\\*\`([^\`]+)',txt[k:]).group(1)] if k>=0 and 'Full enclosing body' not in txt[k:] and 'WINDOW' not in txt[k:] and '**\`' in txt[k:] else []) if k>=0 else []")
+        s=s.replace("            res.append(bodies(","            res.append((len(''.join(x.get('text','') for x in (d.get('result') or {}).get('content',[]))),)+tuple([bodies(")
+        s=s.replace("for x in (d.get('result') or {}).get('content',[]))))","for x in (d.get('result') or {}).get('content',[])))]))")
+        s=s.replace("""        for inp,a,b in zip(cl,out['old'],out['new']):
+                    tot['search calls']+=1; tot['calls with a body (old)']+=bool(a)
+                    if a!=b: tot['calls whose body changed']+=1; changes.append((t,(inp.get('args') or {}).get('terms') or (inp.get('args') or {}).get('query'),a,b))""","""        for inp,(sa,a),(sb,b) in zip(cl,out['old'],out['new']):
+                    tot['search calls']+=1; tot['calls with a body (old)']+=bool(a); tot['calls with a body (new)']+=bool(b)
+                    tot['chars old']+=sa; tot['chars new']+=sb
+                    if a!=b: tot['calls whose body changed']+=1; changes.append((t,(inp.get('args') or {}).get('terms') or (inp.get('args') or {}).get('query'),a,b))""")
+        s=s.replace("sum(1 for x,y in zip(out['old'],out['new']) if x!=y)","sum(1 for x,y in zip(out['old'],out['new']) if x[1]!=y[1])")
+        s=s.replace('docstring_changes_wide.json','nobody_changes.json')
+        open('$S/replay/replay_nobody.py','w').write(s)
+        EOF
+        grep -n "HDR=\|def bodies\|res.append\|chars old\|BINS=" $S/replay/replay_nobody.py | cut -c1-200; python3 -c "import ast;ast.parse(open('$S/replay/replay_nobody.py').read());print('ok')"
+      at: 2026-10-06T01:51:19.593355Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<EOF
+        import re
+        src=open('$S/replay/replay_nobody.py').read()
+        g={'re':re}; exec(src[src.index('HDR='):src.index('# collect')],g)
+        a="x\n// Exact source for bounded enclosing hits selected by evidence rank; other\n**\`a.go\`**\n// Full enclosing body Foo spans 1-3\n"
+        b="x\n// Exact source for this small, complete locator result (already read; do not fetch it again):\n**\`b.go\`**\n\`\`\`go\n1\tfunc\n"
+        print(g['bodies'](a)); print(g['bodies'](b)); print(g['bodies']('nothing'))
+        EOF
+      at: 2026-10-06T01:51:30.797123Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<EOF
+        import re
+        src=open('$S/replay/replay_nobody.py').read()
+        g={'re':re}; exec(src[src.index('HDR='):src.index('# collect')],g)
+        a="x\n// Exact source for bounded enclosing hits selected by evidence rank; other\n**\`a.go\`**\n// Full enclosing body Foo spans 1-3\n"
+        print(g['HDR'].findall(a))
+        EOF
+      at: 2026-10-06T01:51:37.16435Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<'EOF'
+        p='/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/replay/replay_nobody.py'
+        s=open(p).read()
+        a=s.index('HDR='); b=s.index('# collect')
+        s=s[:a]+r'''HDR=re.compile(r'^// (Full enclosing body \S+|WINDOW \S+:\d+-\d+ around hit line \d+; enclosing \S+|WINDOW \S+:\d+-\d+ around hit line \d+; no indexed)',re.M)
+        def bodies(txt):
+            k=txt.find('// Exact source')
+            if k<0: return []
+            sec=txt[k:]; found=HDR.findall(sec)
+            if not found:
+                found=['(picked) '+f for f in re.findall(r'^\*\*`([^`]+)`\*\*',sec,re.M)]
+            return found
+        '''+s[b:]
+        open(p,'w').write(s)
+        EOF
+        python3 - <<EOF
+        import re
+        src=open('$S/replay/replay_nobody.py').read()
+        g={'re':re}; exec(src[src.index('HDR='):src.index('# collect')],g)
+        a="x\n// Exact source for bounded enclosing hits selected by evidence rank; other\n**\`a.go\`**\n// Full enclosing body Foo spans 1-3\n"
+        b="x\n// Exact source for this small, complete locator result (already read; do not fetch it again):\n**\`b.go\`**\n\`\`\`go\n1\tfunc\n"
+        print(g['bodies'](a)); print(g['bodies'](b)); print(g['bodies']('nothing'))
+        EOF
+      at: 2026-10-06T01:51:45.000292Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<'EOF'
+        p='/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/replay/replay_nobody.py'
+        s=open(p).read()
+        s=s.replace("for t,cl in sorted(calls.items()):\n","for t,cl in sorted(calls.items()):\n    if os.environ.get('ONLY') and t!=os.environ['ONLY']: continue\n",1)
+        open(p,'w').write(s)
+        EOF
+        grep -n "ONLY\|zip(cl" $S/replay/replay_nobody.py | cut -c1-120; cd ~/Projects/provasign/research/harness && ONLY=go-chi__chi__pr1148 python3 $S/guard.py 6000 15 -- python3 $S/replay/replay_nobody.py 2>&1 | tail -30
+      at: 2026-10-06T01:51:56.358283Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/research/harness && python3 $S/guard.py 8000 15 -- python3 $S/replay/replay_nobody.py > $S/replay/nobody.log 2>&1; tail -1 $S/replay/nobody.log
+      at: 2026-10-06T01:52:01.65053Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; grep -c "calls .* changed" $S/replay/nobody.log; ls -la --time-style=+%H:%M:%S $S/replay/nobody.log 2>/dev/null | awk '{print $6}'; date +%H:%M:%S; python3 - <<'EOF'
+        import json,glob,os,time,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        PJ=os.path.expanduser('~/.claude/projects'); since=time.mktime((2026,9,20,0,0,0,0,0,-1)); tasks=set()
+        for f in glob.glob(H+'results/*/*.json'):
+            if 'archive' in f: continue
+            try: r=json.load(open(f))
+            except Exception: continue
+            if not isinstance(r,dict) or r.get('arm') not in ('prism_body_exp','prism_init','prism_body_baseline'): continue
+            for p in glob.glob(f"{PJ}/*/{r.get('session_id')}.jsonl"):
+                if os.path.getmtime(p)>=since and os.path.exists(H+f"tasks/e2e/{r['task']}.json"): tasks.add(r['task'])
+        print('tasks total (upper bound)',len(tasks))
+        EOF
+        grep "calls .* changed" $S/replay/nobody.log | tail -3
+      at: 2026-10-06T01:57:00.56341Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; grep "^{" $S/replay/nobody.log; tail -2 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b1p8whrx5.output; grep -i "traceback\|error" $S/replay/nobody.log | head -3; python3 - <<EOF
+        import json,collections
+        ch=json.load(open('$S/replay/nobody_changes.json'))
+        c=collections.Counter()
+        for t,terms,a,b in ch:
+            if a and not b: c['body removed']+=1
+            elif not a and b: c['body ADDED (unexpected)']+=1
+            elif any('.' in x.split()[-1] for x in a) and len(b)<=len(a): c['replaced/trimmed']+=1
+            else: c['other change']+=1
+        print(dict(c))
+        for t,terms,a,b in ch:
+            if not (a and not b): print(t[:40],str(terms)[:60],'\n   old',a,'\n   new',b)
+        EOF
+      at: 2026-10-06T01:57:09.363258Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os,time
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results'; PJ=os.path.expanduser('~/.claude/projects')
+        want={('colinhacks__zod__pr6144',"['defsSegment', '$ref']"),('urfave__cli__pr2309',"['EnvVars', 'Sources']"),('pallets__click__pr3533',"['echo_via_pager', 'CliRunner']"),('FasterXML__jackson-databind__pr5976',"['filterBeanProps', '_creatorProps']")}
+        for f in glob.glob(f'{H}/*/*.json'):
+            try: r=json.load(open(f))
+            except Exception: continue
+            if not isinstance(r,dict) or r.get('task') not in {w[0] for w in want}: continue
+            for p in glob.glob(f"{PJ}/*/{r.get('session_id')}.jsonl"):
+                for l in open(p):
+                    m=json.loads(l).get('message') or {}
+                    for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                        if isinstance(b,dict) and b.get('type')=='tool_use' and (b.get('input') or {}).get('op')=='search':
+                            a=b['input'].get('args') or {}
+                            if (r['task'],str(a.get('terms'))) in want: print(r['task'][:25],json.dumps(a)[:200])
+        EOF
+      at: 2026-10-06T01:57:22.661642Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 787,830p internal/mcp/server.go | grep -n "inlineBodies\|results\[0\]\|unique\|return" ; grep -n '"inlineBodies"' internal/mcp/*.go | grep -v _test
+      at: 2026-10-06T01:57:29.331993Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -n "func compactSearchCanIncludeBodies" -A14 internal/mcp/*.go
+      at: 2026-10-06T01:57:31.395495Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import sys,json,subprocess,shutil,os
+        sys.path[:0]=['scoring','runners']; import wide_eval
+        t=json.load(open('tasks/e2e/colinhacks__zod__pr6144.json'))
+        wt=wide_eval._checkout(wide_eval.repo_dir(t),t['base_commit'],'')
+        try:
+            subprocess.run([os.path.expanduser('~/prism-ab-bins/prism-v0.86.4'),'index',str(wt)],capture_output=True)
+            outs={}
+            for b in ['prism-v0.86.4','prism-nobody-many']:
+                runs=[]
+                for i in range(3):
+                    r=subprocess.run([os.path.expanduser('~/prism-ab-bins/'+b),'search','defsSegment','$ref','--path','packages/zod/src/v4/core/to-json-schema.ts','--scope','text','--context','3','--format','text'],cwd=wt,capture_output=True,text=True)
+                    runs.append([l for l in r.stdout.splitlines() if l.startswith('// Full enclosing') or l.startswith('// WINDOW')])
+                print(b, 'identical across 3 runs:', all(x==runs[0] for x in runs)); [print('   ',l[:110]) for l in runs[0]]
+        finally: shutil.rmtree(wt,ignore_errors=True)
+        EOF
+      at: 2026-10-06T01:57:46.714937Z
+      classified: other
+notes:
+    - text: continuation of session d125dca7-e99f-49fb-bc56-83b796d2af46 — events captured after its evidence was finalized
+      at: 2026-10-06T01:39:15.704267Z
+redactions: 0
