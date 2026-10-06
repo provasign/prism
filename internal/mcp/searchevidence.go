@@ -36,6 +36,9 @@ type searchEvidence struct {
 type evidenceFile struct {
 	lines   []string
 	symbols []grove.SymbolRecord
+	// docLines marks Python docstring lines (0-based). Example code in a
+	// docstring documents a name; it is not a use of it.
+	docLines []bool
 }
 
 var evidenceCallName = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
@@ -225,6 +228,9 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 			return nil
 		}
 		entry := &evidenceFile{lines: strings.Split(string(data), "\n")}
+		if strings.HasSuffix(file, ".py") || strings.HasSuffix(file, ".pyi") {
+			entry.docLines = pythonDocstringLines(entry.lines)
+		}
 		entry.symbols, _ = h.Grove.FileSymbols(ctx, file)
 		files[file] = entry
 		fileOrder = append(fileOrder, file)
@@ -275,6 +281,12 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 			}
 		}
 		score := evidenceLineScore(entry.lines[line-1])
+		if line-1 < len(entry.docLines) && entry.docLines[line-1] {
+			// flask: `response = make_response(...)` in the helper's
+			// docstring scored as an assignment-with-call and outranked
+			// Flask.make_response. Docstring text scores like a comment.
+			score = -3
+		}
 		if term >= 0 {
 			score += 2
 		}
@@ -665,4 +677,40 @@ func declaresTerm(lines []string, sym grove.SymbolRecord, line int, term string)
 		}
 	}
 	return false
+}
+
+// pythonDocstringLines marks the lines of triple-quoted strings that stand
+// alone as a statement (module, class, and function docstrings). A
+// triple-quoted string that is assigned or passed (`X = """..."""`) is a
+// value, often an embedded script or template, and stays scored as code.
+func pythonDocstringLines(lines []string) []bool {
+	marks := make([]bool, len(lines))
+	delim, doc := "", false
+	for i, line := range lines {
+		if delim != "" {
+			marks[i] = doc
+			if strings.Contains(line, delim) {
+				delim = ""
+			}
+			continue
+		}
+		at, quote := -1, ""
+		for _, q := range []string{`"""`, `'''`} {
+			if k := strings.Index(line, q); k >= 0 && (at < 0 || k < at) {
+				at, quote = k, q
+			}
+		}
+		if at < 0 {
+			continue
+		}
+		prefix := strings.TrimLeft(strings.TrimSpace(line[:at]), "rRuUbB")
+		doc = strings.TrimSpace(line[:at]) == "" || prefix == "" && len(strings.TrimSpace(line[:at])) <= 2
+		if doc {
+			marks[i] = true
+		}
+		if !strings.Contains(line[at+3:], quote) {
+			delim = quote
+		}
+	}
+	return marks
 }
