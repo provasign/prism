@@ -1,0 +1,1313 @@
+shale_version: "0"
+id: d125dca7-e99f-49fb-bc56-83b796d2af46-c3
+created_at: 2026-10-05T21:29:09.906142Z
+finalized_at: 2026-10-06T00:53:54.661462Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: perf/search-group-by-file
+privacy: redacted
+commands:
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/bjewxjn9l.output; gh release view v0.86.2 -R provasign/prism --json assets --jq '[.assets[].name] | length' 2>&1
+      at: 2026-10-05T21:29:17.009302Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/prism && gh release edit v0.86.2 --notes "$(cat <<'EOF'
+        Grove v0.62.2: Python calls on objects built elsewhere now resolve.
+
+        **Fixes**
+        - **Methods inherited through an aliased base class.** Flask's public `Blueprint` subclasses `Blueprint as SansioBlueprint`, and `route` lives further up on `Scaffold`. Prism lost the call entirely. It now follows each base class to the module it was imported from.
+        - **pytest fixtures.** A fixture that builds an object and returns it (`app = Flask(...)`, then `return app`) now gives its type to test parameters named `app`.
+        - **Module variables.** `bp = Blueprint(...)` or `app = Flask(...)` at module level types that name in its own module and in modules that import it, including `from . import app`.
+        - **Lazy proxies.** Objects that forward attributes through `__getattr__`, such as Django's `default_storage` and `admin.site`, no longer lose the call targets Prism found by name.
+
+        | | v0.86.0 | v0.86.1 | v0.86.2 |
+        |---|---|---|---|
+        | Flask `route` callers | 2 (1 file) | 27 (13 files) | 170 (25 files) |
+
+        On Django, this release adds 1,678 call edges, most of them real proxy calls (`settings.X`, `connections[...]`). The 61 edges it removes are all replaced by a better target for the same call; none are lost.
+
+        Existing indexes re-resolve automatically on first use.
+        EOF
+        )" 2>&1 | tail -1; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd $S/rel && rm -f prism-v0.86.2-darwin-arm64 checksums.txt && gh release download v0.86.2 -R provasign/prism -p prism-v0.86.2-darwin-arm64 -p checksums.txt --clobber && shasum -a 256 -c checksums.txt --ignore-missing && chmod +x prism-v0.86.2-darwin-arm64 && xattr -c prism-v0.86.2-darwin-arm64 2>/dev/null; ./prism-v0.86.2-darwin-arm64 version; cd $S/deco/fl-new && rm -rf .grove && python3 $S/guard.py 4096 30 -- $S/rel/prism-v0.86.2-darwin-arm64 index . >/dev/null 2>&1; $S/rel/prism-v0.86.2-darwin-arm64 change-impact route 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('route callers', len(d['callers']), 'files', len({c['filePath'] for c in d['callers']}))"; gh workflow run "Refresh formulae" -R provasign/homebrew-shale && sleep 10 && r=$(gh run list -R provasign/homebrew-shale --limit 1 --json databaseId --jq '.[0].databaseId') && gh run watch $r -R provasign/homebrew-shale --interval 15 >/dev/null 2>&1; gh run view $r -R provasign/homebrew-shale --json conclusion --jq .conclusion; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb --jq .content | base64 -d | grep -m1 'version'
+      at: 2026-10-05T21:30:06.588537Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='project_plan_after_boost_2026_10_05.md'; s=open(p).read()
+        s=s.replace('ITEM 1 DONE LOCALLY 2026-10-05 (grove branch fix/py-aliased-base-walk, uncommitted; not released):','ITEM 1 SHIPPED 2026-10-05: grove v0.62.2 (PR #12) -> prism v0.86.2 (PR #30, tap 0.86.2, released binary smoke: route 170/25 files):')
+        s=s.replace('oracle unchanged (universe = src fns), ci_invariants held. Release needs grove v0.62.2 + prism (ask first).','oracle unchanged (universe = src fns), ci_invariants held.\nCI NOTE: GitHub runners repeatedly left windows/macos/verify/oracle jobs queued then cancelled at exactly 15 min with\n0 steps (grove #12, prism #30); `gh run rerun <id> --failed` fixed it each time. Not a code failure.\nNEXT (item 2): commit research/harness seeded-task work (asked Topo), then grow seeded tasks to 15-20 (+TS/Go).')
+        open(p,'w').write(s)
+        p='MEMORY.md'; s=open(p).read()
+        s=s.replace('Topo: plan = 1) grove module-var inference for @app.route/@bp.route, 2) seeded tasks','Topo: plan = 1) DONE prism v0.86.2 (route 2->170 callers), 2) seeded tasks')
+        open(p,'w').write(s)
+        EOF
+        sed -n 3p MEMORY.md
+      at: 2026-10-05T21:30:13.640207Z
+      classified: other
+    - cmd: 'for r in grove prism astkit; do echo "== $r main"; gh run list -R provasign/$r --branch main --limit 4 --json name,conclusion,status,headSha,createdAt --jq ''.[] | "\(.createdAt[11:16]) \(.name): \(.status)/\(.conclusion) \(.headSha[:8])"''; done; echo "== prism release"; gh run list -R provasign/prism --workflow Release --limit 2 --json conclusion,headBranch --jq ''.[] | "\(.headBranch): \(.conclusion)"''; echo "== grove PR12 / prism PR30 final"; gh pr checks 12 -R provasign/grove --json state --jq ''[.[]|.state]|group_by(.)|map("\(.[0])=\(length)")|join(" ")''; gh pr checks 30 -R provasign/prism --json state --jq ''[.[]|.state]|group_by(.)|map("\(.[0])=\(length)")|join(" ")'''
+      at: 2026-10-05T21:31:59.372615Z
+      classified: other
+    - cmd: for spec in grove:a38170f4 prism:592d6705; do r=${spec%%:*}; sha=${spec##*:}; for id in $(gh run list -R provasign/$r --branch main --limit 6 --json databaseId,headSha,conclusion,name --jq ".[] | select(.headSha|startswith(\"$sha\")) | select(.conclusion==\"failure\") | .databaseId"); do echo "== $r run $id"; gh api repos/provasign/$r/actions/runs/$id/jobs --jq '.jobs[] | "\(.conclusion)\t\(.name)\tsteps=\([.steps[]?] | length)\t\(.started_at[11:19])->\(.completed_at[11:19])\tfailed_step=\([.steps[]? | select(.conclusion=="failure") | .name] | join(","))"'; done; done
+      at: 2026-10-05T21:33:04.126022Z
+      classified: other
+    - cmd: for r in grove prism; do for id in $(gh run list -R provasign/$r --branch main --limit 6 --json databaseId,conclusion --jq '.[] | select(.conclusion=="failure") | .databaseId'); do echo "== $r run $id"; gh api repos/provasign/$r/actions/runs/$id/jobs --jq '.jobs[] | "\(.conclusion)\t\(.name)\tsteps=\(.steps | length)\t\(.started_at[11:19])->\(.completed_at[11:19])\tfailed=\([.steps[] | select(.conclusion=="failure") | .name] | join(","))"'; done; done
+      at: 2026-10-05T21:33:11.652491Z
+      classified: other
+    - cmd: 'gh run rerun 37370332424 -R provasign/grove --failed 2>&1 | tail -1; gh run rerun 37370332452 -R provasign/grove --failed 2>&1 | tail -1; gh run rerun 37373735691 -R provasign/prism --failed 2>&1 | tail -1; sleep 60; for spec in grove:37370332424 grove:37370332452 prism:37373735691; do r=${spec%%:*}; id=${spec##*:}; gh run watch $id -R provasign/$r --interval 30 >/dev/null 2>&1; echo "$r $id: $(gh run view $id -R provasign/$r --json conclusion --jq .conclusion)"; gh api repos/provasign/$r/actions/runs/$id/jobs --jq ''.jobs[] | "   \(.conclusion)\t\(.name)"''; done'
+      at: 2026-10-05T21:33:30.392793Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='project_plan_after_boost_2026_10_05.md'; s=open(p).read()
+        s=s.replace("`gh run rerun <id> --failed` fixed it each time. Not a code failure.","`gh run rerun <id> --failed` fixed it each time. Not a code failure. ALSO hit main's post-merge runs\n(grove a38170f4, prism 592d6705) -- I reported the release done before checking main; Topo asked \"did CI fail\".\nLesson: after merge+tag, check `gh run list --branch main` for the merge commit before saying done.")
+        open(p,'w').write(s)
+        EOF
+        grep -n "Lesson: after merge" project_plan_after_boost_2026_10_05.md
+      at: 2026-10-05T21:33:36.180454Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/bzsdwqanz.output
+      at: 2026-10-05T21:35:49.223501Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - "$S" <<'EOF'
+        import json,glob,os,collections,statistics as st,sys
+        S=sys.argv[1]
+        dates=json.load(open(f'{S}/cutoff/task_dates.json'))
+        tasks={}
+        for f in glob.glob('tasks/e2e/*.json'):
+            t=json.load(open(f))
+            if not isinstance(t,dict) or t.get('invalid_reason'): continue
+            iid=t.get('instance_id') or os.path.basename(f)[:-5]
+            d=dates.get(iid) or ('seeded' if t.get('source')=='seeded' else None)
+            if t.get('source')=='seeded': d='seeded'
+            tasks[iid]=(t.get('kind') or 'bugfix', t.get('lang') or 'python', d)
+        post={k:v for k,v in tasks.items() if v[2] not in (None,'unknown','seeded') and v[2]>='2026-07-01'}
+        seeded={k:v for k,v in tasks.items() if v[2]=='seeded'}
+        print('post-cutoff valid:',len(post), dict(collections.Counter((v[0],v[1]) for v in post.values())))
+        print('seeded valid:',len(seeded), dict(collections.Counter((v[0],v[1]) for v in seeded.values())))
+        # cost per task per arm from past Sonnet 5.5 cells
+        cost=collections.defaultdict(list)
+        for f in glob.glob('results/**/*.json',recursive=True):
+            if 'archive' in f: continue
+            try: r=json.load(open(f))
+            except Exception: continue
+            if isinstance(r,dict) and r.get('model')=='claude-sonnet-5-5' and r.get('cost_usd') and r.get('task') in tasks:
+                cost[r['task']].append(r['cost_usd'])
+            if isinstance(r,list) and r and isinstance(r[0],dict) and 'task' in r[0]:
+                for row in r:
+                    for arm in ('native','prism'):
+                        v=row.get(arm)
+                        if isinstance(v,dict) and v.get('cost_usd') and row['task'] in tasks: cost[row['task']].append(v['cost_usd'])
+        def est(group):
+            known=[st.median(cost[k]) for k in group if cost.get(k)]
+            per=st.median(known) if known else 0.2
+            return sum(st.median(cost[k]) if cost.get(k) else per for k in group), len(known), per
+        for name,g in [('post-cutoff',post),('seeded',seeded)]:
+            tot,n,per=est(g); print(f'{name}: est ${tot:.0f} per arm (history for {n}/{len(g)} tasks, median ${per:.2f}/task) -> two arms ${2*tot:.0f}')
+        json.dump({'post':sorted(post),'seeded':sorted(seeded)},open(f'{S}/cutoff/clean_sets.json','w'))
+        EOF
+      at: 2026-10-05T21:52:11.07153Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git branch --show-current && git log --oneline -5 && git status --short | head -30
+      at: 2026-10-05T21:53:10.044489Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git status --short harness/tasks | head; git add harness/build/build_wide.py harness/scoring/docker_eval.py harness/scoring/wide_eval.py harness/build/census_feedback_gap.py harness/tasks/e2e/seed__*.json harness/tasks/e2e/sig__*.json && git diff --cached --stat && git commit -q -F - <<'EOF'
+        harness: seeded signature-change tasks (site_mode=files), history census
+
+        - wide_eval: site_mode="files" scores signature changes, where old/new token
+          counts mean nothing: every gold file touched and no stale_patterns left.
+        - build_wide: _build_files_mode builds such tasks from a gold patch;
+          pass_to_pass = tests passing at base AND gold; refuses a task whose gold
+          test files never ran or whose gold does not resolve under the scorer.
+        - docker_eval: rich 2020-era deps (+attrs for test_pretty) via EXTRA_PIP.
+        - census_feedback_gap: streams one `git log -p` per repo, memory-capped,
+          to find signature changes with call sites outside the test loop.
+        - tasks: 4 seeded (contamination-free) tasks validated (gold resolves; gold
+          minus examples/ stays green but fails sites): werkzeug run_simple /
+          redirect, click version_option, rich stylize. sig__h3 / sig__rich are
+          marked invalid: their fixes predate the Jun 2026 training cutoff.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_0154Ei8CjJkreabbb7mwy9UU
+        EOF
+        git log --oneline -1; git push -q origin main 2>&1 | grep -v "^remote:" | tail -1; git status -sb | head -1
+      at: 2026-10-05T21:53:22.673292Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cp $S/rel/prism-v0.86.2-darwin-arm64 ~/prism-ab-bins/prism-v0.86.2 && ~/prism-ab-bins/prism-v0.86.2 version; cd ~/Projects/provasign/research/harness && python3 -c "
+        import json; s=json.load(open('$S/cutoff/clean_sets.json'))['seeded']; json.dump(s,open('results/seeded32-manifest.json','w'),indent=1); print(len(s),'tasks'); print([x for x in s if x.startswith('seed__')])"; grep -n "PRISM_BODY_EXP_BIN\|E2E_WAIT_ON_LIMIT\|def _arm_env\|prism_body_exp" runners/run_e2e.py | head -12
+      at: 2026-10-05T21:53:30.858548Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 285,330p runners/run_e2e.py; grep -n "BODY_EXP\|body_exp" runners/run_e2e.py | head
+      at: 2026-10-05T21:53:33.207125Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "def _prism_bin" -A14 runners/run_e2e.py
+      at: 2026-10-05T21:53:35.366557Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "PRISM_BIN_FOR_ARM\s*=" -A8 runners/run_e2e.py | head -12; grep -n "argv\|add_argument\|--models\|--arms\|--limit\|--tasks" runners/run_e2e.py | head -12
+      at: 2026-10-05T21:53:38.133606Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/research/harness && grep -n "PRISM_BIN_FOR_ARM" runners/run_e2e.py | head -5; sed -n "$(grep -n ''PRISM_BIN_FOR_ARM'' runners/run_e2e.py | head -1 | cut -d: -f1),+10p" runners/run_e2e.py'
+      at: 2026-10-05T21:53:40.814207Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && f=$(python3 -c "import sys; sys.path[:0]=['runners','.']; import ab_endtoend_arms as a; print(a.__file__)"); grep -n "PRISM_BIN_FOR_ARM\s*=\|PRISM_BODY_EXP_BIN\|prism_body_exp" $f | head -10
+      at: 2026-10-05T21:53:43.907876Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && echo '["seed__werkzeug__redirect_kwonly"]' > results/seeded32-probe-manifest.json && PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-v0.86.2 E2E_OUT=results/e2e-seeded32-probe python3 runners/run_e2e.py results/seeded32-probe-manifest.json --models claude-sonnet-5-5 --arms native,prism_body_exp > results/seeded32-probe.log 2>&1; echo "exit $?"; tail -4 results/seeded32-probe.log; python3 - <<'EOF'
+        import json,glob
+        for f in sorted(glob.glob('results/e2e-seeded32-probe/*.json')):
+            r=json.load(open(f)); s=r.get('score',{})
+            print(r['arm'], 'resolved', r.get('resolved'), 'sites_ok', s.get('sites_ok'), 'green', s.get('green'), 'missed', (s.get('sites') or {}).get('missed_files'), f"turns {r.get('turns')} ${r.get('cost_usd'):.2f}", 'tools', r.get('tool_trace'))
+        EOF
+      at: 2026-10-05T21:55:23.810062Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-v0.86.2 E2E_OUT=results/e2e-seeded32 E2E_WAIT_ON_LIMIT=1 python3 runners/run_e2e.py results/seeded32-manifest.json --models claude-sonnet-5-5 --arms native,prism_body_exp > results/seeded32.log 2>&1; echo "exit $?"; tail -3 results/seeded32.log
+      at: 2026-10-05T21:55:30.554052Z
+      classified: other
+    - cmd: |-
+        cat > ~/prism-ab-bins/payloadreplay/seeded32_summary.py <<'EOF'
+        """seeded32: native vs prism v0.86.2 (Sonnet 5.5) on 32 seeded tasks. Per-arm totals, paired diffs, per-language,
+        and site misses (which gold files an unresolved arm left untouched)."""
+        import json,glob,collections,statistics as st,math,os
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        man=json.load(open(H+'results/seeded32-manifest.json'))
+        R=collections.defaultdict(dict)
+        for f in glob.glob(H+'results/e2e-seeded32/*.json'):
+            r=json.load(open(f)); R[r['task']][r['arm']]=r
+        lang={t:json.load(open(H+f'tasks/e2e/{t}.json')).get('lang','?') for t in man}
+        arms=['native','prism_body_exp']
+        done=[t for t in man if all(a in R[t] for a in arms)]
+        print(f'{len(done)}/{len(man)} tasks done in both arms')
+        for a in arms:
+            rs=[R[t][a] for t in done]
+            print(f"{a:15} resolved {sum(bool(r.get('resolved')) for r in rs)}/{len(rs)}  turns {st.mean(r.get('turns') or 0 for r in rs):.1f}  cost ${sum(r.get('cost_usd') or 0 for r in rs):.2f}")
+        if done:
+            d=[(R[t]['prism_body_exp'].get('cost_usd') or 0)/(R[t]['native'].get('cost_usd') or 1e-9) for t in done]
+            dt=[(R[t]['prism_body_exp'].get('turns') or 0)-(R[t]['native'].get('turns') or 0) for t in done]
+            se=st.stdev(dt)/math.sqrt(len(dt)) if len(dt)>1 else float('nan')
+            print(f"paired: turns prism-native {st.mean(dt):+.2f} (se {se:.2f}); cost ratio median {st.median(d):.2f}, total {sum(R[t]['prism_body_exp'].get('cost_usd') or 0 for t in done)/max(1e-9,sum(R[t]['native'].get('cost_usd') or 0 for t in done)):.2f}")
+            only=collections.Counter()
+            for t in done:
+                n,p=bool(R[t]['native'].get('resolved')),bool(R[t]['prism_body_exp'].get('resolved'))
+                if n!=p: only['prism only' if p else 'native only']+=1; print(f"   {'PRISM' if p else 'NATIVE'} only: {t}")
+            print('discordant:',dict(only))
+            by=collections.defaultdict(lambda:[0,0,0])
+            for t in done:
+                by[lang[t]][0]+=1; by[lang[t]][1]+=bool(R[t]['native'].get('resolved')); by[lang[t]][2]+=bool(R[t]['prism_body_exp'].get('resolved'))
+            print('by language (n, native, prism):',{k:tuple(v) for k,v in by.items()})
+            for t in done:
+                if t.startswith('seed__'):
+                    row=[]
+                    for a in arms:
+                        s=R[t][a].get('score') or {}
+                        row.append(f"{a}: {'OK' if R[t][a].get('resolved') else 'FAIL'} green={s.get('green')} missed={(s.get('sites') or {}).get('missed_files')}")
+                    print(f'   {t}: '+' | '.join(row))
+        EOF
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_plan_after_boost_2026_10_05.md <<'EOF'
+
+        PAID RUN STARTED 2026-10-05 (Topo chose "Seeded 32 only", est ~$26): research/harness results/e2e-seeded32, manifest
+        results/seeded32-manifest.json (28 seeded renames + 4 signature tasks), native vs prism_body_exp = ~/prism-ab-bins/prism-v0.86.2,
+        Sonnet 5.5, alternating per task. Probe results/e2e-seeded32-probe (redirect task): both resolved, $0.24. Harness commit
+        faa1e192 (research main). Summary: python3 ~/prism-ab-bins/payloadreplay/seeded32_summary.py
+        EOF
+        echo ok
+      at: 2026-10-05T21:55:45.738918Z
+      classified: other
+    - cmd: |-
+        cat > ~/prism-ab-bins/payloadreplay/seeded32_watch.py <<'EOF'
+        """Emit one line per task that has finished in both arms (running tally), plus errors / pauses / finish."""
+        import json,glob,time,os,sys,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        man=json.load(open(H+'results/seeded32-manifest.json')); arms=['native','prism_body_exp']
+        seen=set(json.load(open(sys.argv[1])) if len(sys.argv)>1 and os.path.exists(sys.argv[1]) else [])
+        logpos=0; state=sys.argv[1] if len(sys.argv)>1 else None
+        while True:
+            R=collections.defaultdict(dict)
+            for f in glob.glob(H+'results/e2e-seeded32/*.json'):
+                try: r=json.load(open(f)); R[r['task']][r['arm']]=r
+                except Exception: pass
+            done=[t for t in man if all(a in R[t] for a in arms)]
+            for t in done:
+                if t in seen: continue
+                seen.add(t)
+                n,p=R[t]['native'],R[t]['prism_body_exp']
+                tot={a:(sum(bool(R[x][a].get('resolved')) for x in seen), sum(R[x][a].get('cost_usd') or 0 for x in seen)) for a in arms}
+                print(f"SET {len(seen)}/{len(man)} {t}: native {'PASS' if n.get('resolved') else 'FAIL'} {n.get('turns')}t ${n.get('cost_usd') or 0:.2f} | prism {'PASS' if p.get('resolved') else 'FAIL'} {p.get('turns')}t ${p.get('cost_usd') or 0:.2f} || running native {tot['native'][0]}/{len(seen)} ${tot['native'][1]:.2f}, prism {tot['prism_body_exp'][0]}/{len(seen)} ${tot['prism_body_exp'][1]:.2f}", flush=True)
+                if state: json.dump(sorted(seen),open(state,'w'))
+            try:
+                with open(H+'results/seeded32.log') as fh:
+                    fh.seek(logpos); new=fh.read(); logpos=fh.tell()
+                for line in new.splitlines():
+                    if any(k in line for k in ('Traceback','Error','error:','PAUSED','rate limit','usage limit','# done')):
+                        print('LOG '+line.strip()[:200], flush=True)
+            except FileNotFoundError: pass
+            if os.path.exists(H+'results/e2e-seeded32/PAUSED.json'): print('PAUSED (limit) — run is waiting', flush=True)
+            if len(seen)==len(man): print('ALL SETS DONE', flush=True); break
+            time.sleep(20)
+        EOF
+        python3 ~/prism-ab-bins/payloadreplay/seeded32_watch.py /dev/null 2>&1 | head -3 & sleep 3; kill %1 2>/dev/null; echo syntax-ok
+      at: 2026-10-05T21:56:34.618117Z
+      classified: other
+    - cmd: python3 ~/prism-ab-bins/payloadreplay/seeded32_summary.py 2>&1 | head -6; tail -2 ~/Projects/provasign/research/harness/results/seeded32.log
+      at: 2026-10-05T21:56:38.920318Z
+      classified: other
+    - cmd: sed -i '' 's/^for a in arms:$/for a in (arms if done else []):/' ~/prism-ab-bins/payloadreplay/seeded32_summary.py && python3 ~/prism-ab-bins/payloadreplay/seeded32_summary.py
+      at: 2026-10-05T21:56:42.597002Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && tail -5 results/seeded32.log; ls -t results/e2e-seeded32/ 2>/dev/null | head -5; pgrep -fl "run_e2e.py results/seeded32" | head -2; pgrep -fl "claude -p" | wc -l; date
+      at: 2026-10-05T22:07:08.243747Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && stat -f "%Sm diff written" -t "%H:%M:%S" results/e2e-seeded32/seed__click__version_option_kwonly.claude-sonnet-5-5.native.diff; stat -f "%Sm log started" -t "%H:%M:%S" results/seeded32.log; docker ps --format '{{.Image}} {{.Status}} {{.Command}}' | head -3; date +%H:%M:%S
+      at: 2026-10-05T22:07:14.481408Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json,collections,re
+        t=json.load(open('tasks/e2e/seed__click__version_option_kwonly.json'))
+        p=t['pass_to_pass']; print(len(p),'pass_to_pass ids')
+        c=collections.Counter(x.split('::')[0] for x in p); print(c.most_common(8))
+        fn=collections.Counter(re.sub(r'\[.*','',x) for x in p); print('distinct test functions:',len(fn)); print(fn.most_common(5))
+        "
+      at: 2026-10-05T22:08:31.337382Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json
+        for t in json.load(open('results/seeded32-manifest.json')):
+            d=json.load(open(f'tasks/e2e/{t}.json')); n=len(d.get('pass_to_pass') or [])
+            if n>1500: print(f'{t:50} {n}')
+        print('(others <=1500)')"
+      at: 2026-10-05T22:08:40.672148Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && date +%H:%M:%S; ls -t results/e2e-seeded32/ | head -6; docker ps --format '{{.Image}} {{.Status}}' | head -3; pgrep -fl "claude -p" | wc -l; tail -3 results/seeded32.log; python3 ~/prism-ab-bins/payloadreplay/seeded32_summary.py 2>&1 | head -4
+      at: 2026-10-05T22:13:19.322003Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import glob,os,json,time
+        P=os.path.expanduser('~/.claude/projects')
+        fs=sorted((f for d in glob.glob(P+'/*e2e-run*') for f in glob.glob(d+'/*.jsonl')), [REDACTED:env-secret] reverse=True)[:4]
+        for f in fs:
+            ids=set(); tools={}; first=None
+            for l in open(f):
+                try: m=json.loads(l)
+                except Exception: continue
+                if first is None and m.get('cwd'): first=m['cwd']
+                msg=m.get('message') or {}
+                if msg.get('role')=='assistant':
+                    ids.add(msg.get('id'))
+                    for b in msg.get('content') or []:
+                        if isinstance(b,dict) and b.get('type')=='tool_use': tools[b['name']]=tools.get(b['name'],0)+1
+            txt=open(f).read()
+            if 'version_option' not in txt: continue
+            print(time.strftime('%H:%M:%S',time.localtime(os.path.getmtime(f))), 'turns', len(ids), 'prism' if any(k.startswith('mcp__prism') for k in tools) else 'native', tools)
+        EOF
+      at: 2026-10-05T22:14:00.591289Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && grep -n "\"turns\"\|'turns'\|num_turns" runners/run_e2e.py | head -8; python3 - <<'EOF'
+        import json,glob,os
+        r=json.load(open('results/e2e-seeded32/seed__click__version_option_kwonly.claude-sonnet-5-5.native.json'))
+        print('harness turns', r['turns'], '| session', r['session_id'])
+        P=os.path.expanduser('~/.claude/projects')
+        f=next(f for d in glob.glob(P+'/*') for f in glob.glob(d+f"/{r['session_id']}.jsonl"))
+        ids=[];types=[]
+        for l in open(f):
+            m=json.loads(l); msg=m.get('message') or {}
+            if msg.get('role')=='assistant':
+                ids.append(msg.get('id'))
+                types.append(','.join(b.get('type') for b in msg.get('content') or [] if isinstance(b,dict)))
+        print('assistant transcript entries', len(ids), '| distinct API responses', len(set(ids)))
+        for i,t in zip(ids,types): print('  ',i[-6:],t)
+        EOF
+      at: 2026-10-05T22:15:06.277114Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' '2a\
+        - [Turns are not API calls](feedback_turns_are_not_api_calls.md) — Topo 2026-10-05: harness turns = num_turns = tool calls; report resolved, $ cost, API calls; recount past "turns" before relying on them
+        ' MEMORY.md && sed -n 3p MEMORY.md
+      at: 2026-10-05T22:18:40.163546Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import os
+        p=os.path.expanduser('~/prism-ab-bins/payloadreplay/seeded32_watch.py'); s=open(p).read()
+        s=s.replace('''seen=set(json.load''','''PJ=os.path.expanduser('~/.claude/projects')
+        def api_calls(r):
+            sid=r.get('session_id')
+            for f in glob.glob(f'{PJ}/*/{sid}.jsonl') if sid else []:
+                ids=set()
+                for l in open(f):
+                    try: m=json.loads(l).get('message') or {}
+                    except Exception: continue
+                    if m.get('role')=='assistant' and m.get('id'): ids.add(m['id'])
+                return len(ids)
+            return None
+        seen=set(json.load''')
+        s=s.replace('''{n.get('turns')}t ${n.get('cost_usd') or 0:.2f} | prism {'PASS' if p.get('resolved') else 'FAIL'} {p.get('turns')}t''','''{api_calls(n)} API calls ${n.get('cost_usd') or 0:.2f} | prism {'PASS' if p.get('resolved') else 'FAIL'} {api_calls(p)} API calls''')
+        open(p,'w').write(s)
+        EOF
+        python3 -c "import ast,os; ast.parse(open(os.path.expanduser('~/prism-ab-bins/payloadreplay/seeded32_watch.py')).read()); print('ok')"
+      at: 2026-10-05T22:18:50.64992Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 690,712p runners/run_e2e.py; grep -n "def _transcript\|projects/\|\.jsonl" runners/run_e2e.py | head -5
+      at: 2026-10-05T22:19:34.157388Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 712,800p runners/run_e2e.py
+      at: 2026-10-05T22:19:36.322791Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        p='runners/run_e2e.py'; s=open(p).read()
+        old='''        rec.update(turns=j.get("num_turns"), cost_usd=j.get("total_cost_usd"))'''
+        new='''        # `turns` is the CLI's num_turns: TOOL CALLS plus the final answer,
+                # so parallel calls in one response count separately. Cost follows
+                # api_calls (model responses; each re-reads the cached context).
+                # Measured 2026-10-05: one cell = 9 num_turns but 5 API calls.
+                rec.update(turns=j.get("num_turns"), cost_usd=j.get("total_cost_usd"))'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old2='''        rec["session_id"] = rec["usage"].get("session_id")'''
+        new2='''        rec["session_id"] = rec["usage"].get("session_id")
+                rec["api_calls"] = _api_calls(rec["session_id"])'''
+        assert s.count(old2)==1; s=s.replace(old2,new2)
+        anchor='''def _tool_trace_for(wt: Path) -> dict:'''
+        helper='''def _api_calls(session_id) -> int | None:
+            """Model responses in the session: distinct assistant message ids in the
+            CLI transcript (one response may hold several tool calls, which num_turns
+            counts separately). None when the transcript is not found; the CLI
+            flushes it asynchronously, so retry briefly."""
+            if not session_id:
+                return None
+            for _ in range(10):
+                for f in Path.home().glob(f".claude/projects/*/{session_id}.jsonl"):
+                    ids = set()
+                    for line in f.open():
+                        try:
+                            m = json.loads(line).get("message") or {}
+                        except Exception:
+                            continue
+                        if m.get("role") == "assistant" and m.get("id"):
+                            ids.add(m["id"])
+                    if ids:
+                        return len(ids)
+                time.sleep(1)
+            return None
+
+
+        '''
+        assert s.count(anchor)==1; s=s.replace(anchor,helper+anchor)
+        open(p,'w').write(s)
+        EOF
+        python3 -m py_compile runners/run_e2e.py && python3 -c "
+        import sys,json; sys.path[:0]=['runners','scoring','.']
+        import run_e2e
+        r=json.load(open('results/e2e-seeded32/seed__click__version_option_kwonly.claude-sonnet-5-5.native.json'))
+        print('click native: num_turns', r['turns'], '-> api_calls', run_e2e._api_calls(r['session_id']))
+        r=json.load(open('results/e2e-seeded32-probe/seed__werkzeug__redirect_kwonly.claude-sonnet-5-5.prism_body_exp.json'))
+        print('probe prism:  num_turns', r['turns'], '-> api_calls', run_e2e._api_calls(r['session_id']))
+        " 2>&1 | tail -3
+      at: 2026-10-05T22:19:48.390389Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git add harness/runners/run_e2e.py harness/results/seeded32-manifest.json harness/results/seeded32-probe-manifest.json && git commit -q -F - <<'EOF'
+        harness: record api_calls per cell; num_turns counts tool calls
+
+        `turns` is the CLI's num_turns: tool calls plus the final answer, so
+        parallel calls in one response count separately. Cost follows model
+        responses (each re-reads the cached context), so every cell now also
+        records `api_calls` = distinct assistant message ids in its transcript.
+        Measured: seeded click cell 9 num_turns / 5 API calls; probe prism cell
+        10 / 5 (native 5 / 5) — num_turns made prism look twice as busy.
+
+        Also adds the seeded32 run manifests.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_0154Ei8CjJkreabbb7mwy9UU
+        EOF
+        git log --oneline -1; git push -q origin main 2>&1 | grep -v "^remote:" | tail -1; git status -sb | head -1
+      at: 2026-10-05T22:20:07.35228Z
+      classified: other
+    - cmd: "cd ~/Projects/provasign/research/harness && python3 - <<'EOF'\nimport json,glob,os\nfor arm in ['native','prism_body_exp']:\n    r=json.load(open(f'results/e2e-seeded32-probe/seed__werkzeug__redirect_kwonly.claude-sonnet-5-5.{arm}.json'))\n    f=next(f for f in glob.glob(os.path.expanduser(f\"~/.claude/projects/*/{r['session_id']}.jsonl\")))\n    order=[]; calls={}\n    for l in open(f):\n        m=json.loads(l).get('message') or {}\n        if m.get('role')!='assistant': continue\n        mid=m.get('id')\n        if mid not in calls: calls[mid]=[]; order.append(mid)\n        for b in m.get('content') or []:\n            if isinstance(b,dict) and b.get('type')=='tool_use':\n                inp=b['input']; \n                if b['name'].startswith('mcp__prism'): desc=f\"prism {inp.get('op')} {json.dumps(inp.get('args',{}))[:70]}\"\n                elif b['name']=='Edit': desc=f\"Edit {inp.get('file_path','').split('/werkzeug')[-1][-45:]}\"\n                elif b['name']=='Bash': desc=f\"Bash {inp.get('command','')[:60]}\"\n                elif b['name'] in ('Grep','Read'): desc=f\"{b['name']} {json.dumps({k:v for k,v in inp.items() if k in ('pattern','file_path','path')})[:70]}\"\n                else: desc=b['name']\n                calls[mid].append(desc)\n    print(f\"## {arm}: num_turns {r['turns']}, API calls {len(order)}\")\n    for i,mid in enumerate(order,1):\n        print(f\"  response {i}: \" + (' | '.join(calls[mid]) if calls[mid] else '(final answer)'))\nEOF"
+      at: 2026-10-05T22:21:15.429949Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os
+        for arm in ['native','prism_body_exp']:
+            r=json.load(open(f'results/e2e-seeded32-probe/seed__werkzeug__redirect_kwonly.claude-sonnet-5-5.{arm}.json'))
+            f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+            order=[]; usage={}; tool_in={}; ids_tools={}; results={}
+            for l in open(f):
+                d=json.loads(l); m=d.get('message') or {}
+                if m.get('role')=='assistant':
+                    mid=m['id']
+                    if mid not in usage: order.append(mid); tool_in[mid]=0; ids_tools[mid]=[]
+                    usage[mid]=m.get('usage') or usage.get(mid)
+                    for b in m.get('content') or []:
+                        if isinstance(b,dict) and b.get('type')=='tool_use':
+                            tool_in[mid]+=len(json.dumps(b['input'])); ids_tools[mid].append((b['id'],b['name']))
+                elif m.get('role')=='user' and isinstance(m.get('content'),list):
+                    for b in m['content']:
+                        if isinstance(b,dict) and b.get('type')=='tool_result':
+                            c=b.get('content'); txt=c if isinstance(c,str) else ''.join(x.get('text','') for x in (c or []) if isinstance(x,dict))
+                            results[b['tool_use_id']]=len(txt)
+            i=2; mid=order[i]; names=[n for _,n in ids_tools[mid]]
+            u=usage[mid]; res=sum(results.get(t,0) for t,_ in ids_tools[mid]); nxt=usage[order[i+1]] if i+1<len(order) else {}
+            print(f"## {arm}: editing response #{i+1}: {len(names)} tool call(s) {names}")
+            print(f"   tool-call text written by the model: {tool_in[mid]} chars (~{tool_in[mid]//4} tokens); API output_tokens for that response={u.get('output_tokens')}")
+            print(f"   tool results returned: {res} chars (~{res//4} tokens); next call cache_write={nxt.get('cache_creation_input_tokens')} cache_read={nxt.get('cache_read_input_tokens')}")
+            print(f"   whole session: output {sum((usage[m] or {}).get('output_tokens',0) for m in order)} tokens, cost ${r['cost_usd']:.3f}")
+        EOF
+      at: 2026-10-05T22:23:16.387923Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && ~/prism-ab-bins/prism-v0.86.0 search "Edit" "sed" "cat/head/sed" --scope text --format text --glob 'internal/**/*.go' --glob 'cmd/**/*.go' 2>/dev/null | grep -E "\.go:[0-9]+" | grep -vi "_test.go" | grep -E "Edit|sed" | grep -viE "edited|editor|credit|based|used|closed|parsed|focused|released|passed|unused|caused|exposed|processed|parsed|refused|reused|raised|supersed|collapsed|biased|missed|licensed|proposed|imposed|composed|disposed" | head -25
+      at: 2026-10-05T22:24:30.586593Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && sed -n 100,112p internal/mcp/server.go; echo ......; sed -n 610,660p internal/cli/commands.go
+      at: 2026-10-05T22:24:32.934767Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && grep -rn "tight Read\|must precede Edit\|precede Edit" --include='*.go' . | grep -v _test | cut -c1-220 | head -5
+      at: 2026-10-05T22:24:42.168363Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os,re,collections
+        P=os.path.expanduser('~/.claude/projects')
+        def style(sid):
+            fs=glob.glob(f'{P}/*/{sid}.jsonl')
+            if not fs: return None
+            edit=sedw=0
+            for l in open(fs[0]):
+                m=json.loads(l).get('message') or {}
+                if m.get('role')!='assistant': continue
+                for b in m.get('content') or []:
+                    if not isinstance(b,dict) or b.get('type')!='tool_use': continue
+                    if b['name'] in ('Edit','MultiEdit','Write'): edit+=1
+                    if b['name']=='Bash' and re.search(r"\bsed\s+-i|perl\s+-pi|python3? -c .*write|>\s*\S+\.(py|java|ts|go)\b", b['input'].get('command','')): sedw+=1
+            return edit,sedw
+        for label,run,arm in [('native (bugfix27)','e2e','native'),('prism v0.85.7 (bugfix27)','e2e-codexfix-27','prism_body_exp'),('native (seeded32 so far)','e2e-seeded32','native'),('prism v0.86.2 (seeded32 so far)','e2e-seeded32','prism_body_exp')]:
+            c=collections.Counter(); n=0
+            for f in glob.glob(f'results/{run}/*.{arm}.json'):
+                r=json.load(open(f)); s=style(r.get('session_id'))
+                if not s: continue
+                n+=1; e,w=s
+                c['Edit tool only' if e and not w else 'shell edit only' if w and not e else 'both' if e and w else 'no edits']+=1
+            print(f'{label:32} sessions {n:3}: {dict(c)}')
+        EOF
+      at: 2026-10-05T22:24:57.210509Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os
+        for arm in ['native','prism_body_exp']:
+            r=json.load(open(f'results/e2e-seeded32-probe/seed__werkzeug__redirect_kwonly.claude-sonnet-5-5.{arm}.json'))
+            f=glob.glob(os.path.expanduser(f"~/.claude/projects/*/{r['session_id']}.jsonl"))[0]
+            first_user=None; bash=[]
+            for l in open(f):
+                d=json.loads(l); m=d.get('message') or {}
+                if m.get('role')=='user' and first_user is None:
+                    c=m.get('content'); first_user=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict) and x.get('type')=='text')
+                if m.get('role')=='assistant':
+                    for b in m.get('content') or []:
+                        if isinstance(b,dict) and b.get('type')=='tool_use' and b['name']=='Bash': bash.append(b['input'].get('command','')[:220])
+            print(f'## {arm}: prompt tail: ...{first_user[-330:]!r}')
+            for c in bash: print('   Bash:', c)
+        EOF
+        grep -n "Before declaring it\|confirm your test run" runners/run_e2e.py | head -3; grep -rn "verify\|confirm\|check your\|before declaring" ~/Projects/provasign/prism/internal/mcp/server.go | grep -i "declar\|confirm\|closing" | cut -c1-200 | head -4
+      at: 2026-10-05T22:26:04.165949Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for arm in ['native','prism_body_exp']:
+            r=json.load(open(f'results/e2e-seeded32/wide__echo__Router_Route.claude-sonnet-5-5.{arm}.json')); s=r.get('score') or {}
+            si=s.get('sites') or {}; te=s.get('tests') or {}
+            print(arm, 'sites_ok', s.get('sites_ok'), 'green', s.get('green'), '| missed', si.get('missed'), '| over', si.get('over'), '| other', si.get('other'), '| tests', {k:v for k,v in te.items() if k in ('p2p_ok','n_run','failed','compile_error','build_ok')})
+        t=json.load(open('tasks/e2e/wide__echo__Router_Route.json')); print('task:', t['instruction'][:400]); print('notes:', t.get('notes','')[:300])
+        EOF
+      at: 2026-10-05T22:34:57.096804Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,subprocess
+        t=json.load(open('tasks/e2e/wide__echo__Router_Route.json'))
+        gold=t['patch']
+        diffp=open('results/e2e-seeded32/wide__echo__Router_Route.claude-sonnet-5-5.native.diff').read()
+        def hunks(p,f):
+            out=[];cur=None
+            for l in p.splitlines():
+                if l.startswith('+++ b/'): cur=l[6:]
+                elif cur==f and l[:1] in '+-' and not l.startswith(('+++','---')): out.append(l)
+            return out
+        g=set(hunks(gold,'router_concurrent_test.go')); a=set(hunks(diffp,'router_concurrent_test.go'))
+        print('agent-only lines (in router_concurrent_test.go):'); [print('  ',x[:150]) for x in sorted(a-g)]
+        print('gold-only lines:'); [print('  ',x[:150]) for x in sorted(g-a)]
+        EOF
+      at: 2026-10-05T22:35:06.446924Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && grep -n "already\|exists()\|skip" runners/run_e2e.py | grep -iE "json|result|done|skip" | head -6
+      at: 2026-10-05T22:36:53.490993Z
+      classified: other
+    - cmd: 'P=$(pgrep -f "runners/run_e2e.py results/seeded32-manifest.json" | head -1); echo "harness pid $P"; kids(){ for c in $(pgrep -P $1); do kids $c; echo $c; done; }; ALL="$(kids $P) $P"; echo "stopping: $(echo $ALL | wc -w | tr -d '' '') processes"; kill $ALL 2>/dev/null; sleep 3; pgrep -f "runners/run_e2e.py results/seeded32" || echo "harness stopped"; docker ps --format ''{{.Names}} {{.Image}}'' | head -3'
+      at: 2026-10-05T22:37:01.809999Z
+      classified: other
+    - cmd: sleep 2; pgrep -fl "runners/run_e2e.py results/seeded32" | cut -c1-80; for p in $(pgrep -f "runners/run_e2e.py results/seeded32"); do for c in $(pgrep -P $p); do kill -9 $c 2>/dev/null; done; kill -9 $p 2>/dev/null; done; sleep 1; pgrep -f "runners/run_e2e.py results/seeded32" >/dev/null && echo "STILL RUNNING" || echo "harness stopped"; pgrep -fl "claude -p" | grep -c . ; docker ps -q | wc -l
+      at: 2026-10-05T22:37:09.852617Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && ls results/e2e-seeded32/*.json | wc -l; cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_plan_after_boost_2026_10_05.md <<'EOF'
+        PAUSED 2026-10-05 ~19:00 at Topo's request ("pause - i need to go home") after 12/32 sets: native 11/12 $1.19,
+        prism 11/12 $1.35 (only miss both arms: wide__echo__Router_Route = scorer counts string-literal "Route()" in assert
+        messages; fix scorer to ignore string literals + rescore after run). Resume (skips finished cells):
+          cd research/harness && PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-v0.86.2 E2E_OUT=results/e2e-seeded32 E2E_WAIT_ON_LIMIT=1 \
+            python3 runners/run_e2e.py results/seeded32-manifest.json --models claude-sonnet-5-5 --arms native,prism_body_exp
+        Watcher: ~/prism-ab-bins/payloadreplay/seeded32_watch.py <state.json> (per-set status, API calls); Topo wants a status
+        line after every set. Also TODO: click seed task's p2p includes 30k stress-test ids (test_stream_lifecycle) -> trim.
+        EOF
+        echo saved
+      at: 2026-10-05T22:37:17.891043Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && echo "=== resumed $(date)" >> results/seeded32.log && PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-v0.86.2 E2E_OUT=results/e2e-seeded32 E2E_WAIT_ON_LIMIT=1 python3 runners/run_e2e.py results/seeded32-manifest.json --models claude-sonnet-5-5 --arms native,prism_body_exp >> results/seeded32.log 2>&1; echo "exit $?"; tail -3 results/seeded32.log
+      at: 2026-10-05T22:54:53.506632Z
+      classified: other
+    - cmd: sleep 20; cd ~/Projects/provasign/research/harness && tail -4 results/seeded32.log; pgrep -f "runners/run_e2e.py results/seeded32" >/dev/null && echo running
+      at: 2026-10-05T22:55:16.455053Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for arm in ['native','prism_body_exp']:
+            r=json.load(open(f'results/e2e-seeded32/wide__h3__EventStream_push.claude-sonnet-5-5.{arm}.json')); s=r.get('score') or {}
+            si=s.get('sites') or {}; te=s.get('tests') or {}
+            print(arm,'sites_ok',s.get('sites_ok'),'green',s.get('green'),'| missed',si.get('missed'),'| over',si.get('over'),'| other',si.get('other'),'| tests',{k:(v if not isinstance(v,list) else v[:4]) for k,v in te.items() if k in ('p2p_ok','n_run','failed','f2p_ok')}, '| err', r.get('agent_error') or s.get('error'))
+        EOF
+      at: 2026-10-05T22:55:58.372449Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 -c "
+        import json; t=json.load(open('tasks/e2e/wide__h3__EventStream_push.json')); print('old/new:', t['old'], '->', t['new']); print('gold_tool:', t.get('gold_tool','')[:200]); print('notes:', t.get('notes','')[:300])"; grep -n "push\|EventStream\|createEventStream" ~/gvg-corpus/h3/examples/server-sent-events.mjs 2>/dev/null | head; cd ~/gvg-corpus/h3 && GIT_NO_LAZY_FETCH=1 git show $(python3 -c "import json;print(json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/tasks/e2e/wide__h3__EventStream_push.json'))['base_commit'])"):examples/server-sent-events.mjs | grep -n "push\|EventStream"
+      at: 2026-10-05T22:56:07.788841Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for arm in ['native','prism_body_exp']:
+            r=json.load(open(f'results/e2e-seeded32/wide__hono__ConnInfo_remote.claude-sonnet-5-5.{arm}.json')); s=r.get('score') or {}
+            si=s.get('sites') or {}; te=s.get('tests') or {}
+            print(arm,'resolved',r.get('resolved'),'sites_ok',s.get('sites_ok'),'green',s.get('green'),'| missed',si.get('missed'),'| over',si.get('over'),'| other',si.get('other'),'| tests',{k:(v if not isinstance(v,list) else v[:5]) for k,v in te.items() if k in ('p2p_ok','n_run','failed')})
+        EOF
+      at: 2026-10-05T22:59:19.182203Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        t=json.load(open('tasks/e2e/wide__hono__ConnInfo_remote.json')); print('old/new:', t['old'],'->',t['new'])
+        def lines(p,f):
+            out=[];cur=None
+            for l in p.splitlines():
+                if l.startswith('+++ b/'): cur=l[6:]
+                elif cur==f and l[:1] in '+-' and not l.startswith(('+++','---')): out.append(l)
+            return out
+        f='src/adapter/bun/conninfo.test.ts'
+        g=set(lines(t['patch'],f)); a=set(lines(open('results/e2e-seeded32/wide__hono__ConnInfo_remote.claude-sonnet-5-5.native.diff').read(),f))
+        print('native-only:'); [print('  ',x[:160]) for x in sorted(a-g)]
+        print('gold-only:'); [print('  ',x[:160]) for x in sorted(g-a)]
+        EOF
+        grep -n "remote" ~/gvg-corpus/hono/src/adapter/bun/conninfo.test.ts | head -12
+      at: 2026-10-05T22:59:25.424366Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        t=json.load(open('tasks/e2e/wide__hono__Hono_basePath.json')); print('old/new:', t['old'],'->',t['new'])
+        def lines(p,f):
+            out=[];cur=None
+            for l in p.splitlines():
+                if l.startswith('+++ b/'): cur=l[6:]
+                elif cur==f and l[:1] in '+-' and not l.startswith(('+++','---')): out.append(l)
+            return out
+        for arm in ['native','prism_body_exp']:
+            r=json.load(open(f'results/e2e-seeded32/wide__hono__Hono_basePath.claude-sonnet-5-5.{arm}.json')); s=r.get('score') or {}
+            si=s.get('sites') or {}; te=s.get('tests') or {}
+            print(f'## {arm}: sites_ok',s.get('sites_ok'),'green',s.get('green'),'p2p',te.get('p2p_ok'),'n_run',te.get('n_run'),'failed',(te.get('failed') or [])[:3])
+            d=open(f'results/e2e-seeded32/wide__hono__Hono_basePath.claude-sonnet-5-5.{arm}.diff').read()
+            for kind in ('missed','over','other'):
+                for e in si.get(kind) or []:
+                    f=e['file']; g=set(lines(t['patch'],f)); a=set(lines(d,f))
+                    print(f'   {kind} {f} want {e["want"]} got {e["got"]}')
+                    for x in sorted(a-g)[:4]: print('      agent-only', x[:140])
+                    for x in sorted(g-a)[:4]: print('      gold-only ', x[:140])
+        EOF
+      at: 2026-10-05T23:01:20.313151Z
+      classified: other
+    - cmd: tail -1 ~/Projects/provasign/research/harness/results/seeded32.log
+      at: 2026-10-05T23:03:57.856271Z
+      classified: other
+    - cmd: |-
+        cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/b4h121e9b.output | tail -2; python3 - <<'EOF'
+        import json,glob,collections,statistics as st,math,os
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        PJ=os.path.expanduser('~/.claude/projects')
+        def api(r):
+            for f in glob.glob(f"{PJ}/*/{r.get('session_id')}.jsonl"):
+                return len({json.loads(l).get('message',{}).get('id') for l in open(f) if '"role":"assistant"' in l.replace(' ','')} - {None})
+            return None
+        man=json.load(open(H+'results/seeded32-manifest.json'))
+        R=collections.defaultdict(dict)
+        for f in glob.glob(H+'results/e2e-seeded32/*.json'):
+            r=json.load(open(f)); R[r['task']][r['arm']]=r
+        arms=['native','prism_body_exp']; done=[t for t in man if all(a in R[t] for a in arms)]
+        t32=done[-1] if done else None
+        last=[t for t in man if t not in done]
+        print('done', len(done), 'missing', last)
+        z='wide__zod__ZodTypeInternals_parse'
+        if z in R and all(a in R[z] for a in arms):
+            print('SET 32', z, {a:(R[z][a].get('resolved'), api(R[z][a]), round(R[z][a].get('cost_usd') or 0,2)) for a in arms})
+        for a in arms:
+            rs=[R[t][a] for t in done]; ac=[api(r) for r in rs]
+            print(f"{a:15} resolved {sum(bool(r.get('resolved')) for r in rs)}/{len(rs)}  API calls total {sum(x or 0 for x in ac)} (mean {st.mean([x for x in ac if x]):.2f})  cost ${sum(r.get('cost_usd') or 0 for r in rs):.2f}")
+        d=[(api(R[t]['prism_body_exp']) or 0)-(api(R[t]['native']) or 0) for t in done]
+        print(f"paired API calls prism-native: mean {st.mean(d):+.2f} (se {st.stdev(d)/math.sqrt(len(d)):.2f}); prism fewer in {sum(x<0 for x in d)}, equal {sum(x==0 for x in d)}, more {sum(x>0 for x in d)}")
+        cr=sum(R[t]['prism_body_exp'].get('cost_usd') or 0 for t in done)/sum(R[t]['native'].get('cost_usd') or 0 for t in done)
+        pc=[(R[t]['prism_body_exp'].get('cost_usd') or 0)/(R[t]['native'].get('cost_usd') or 1) for t in done]
+        print(f"cost ratio total {cr:.3f}, median per task {st.median(pc):.2f}; prism cheaper in {sum(x<1 for x in pc)}/{len(pc)} tasks")
+        disc=[(t,bool(R[t]['native'].get('resolved')),bool(R[t]['prism_body_exp'].get('resolved'))) for t in done if bool(R[t]['native'].get('resolved'))!=bool(R[t]['prism_body_exp'].get('resolved'))]
+        print('discordant:',disc)
+        print('both failed:',[t for t in done if not R[t]['native'].get('resolved') and not R[t]['prism_body_exp'].get('resolved')])
+        EOF
+      at: 2026-10-06T00:09:52.186364Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_plan_after_boost_2026_10_05.md <<'EOF'
+        SEEDED32 DONE 2026-10-05 (raw): native 28/32 $4.28, prism v0.86.2 29/32 $4.79 (cost ratio 1.118; median per task 1.08;
+        prism cheaper in 9/32). API calls: native 212, prism 204; paired prism-native -0.25/task (se 0.38; fewer 18, equal 6, more 8).
+        All 4 failures are scorer/gold artifacts, no real agent error: string literals counted as rename sites (echo Router_Route
+        both, hono Hono_basePath both, hono ConnInfo_remote native only = the lone discordant), and h3 EventStream_push gold
+        (TS LanguageService rename) misses examples/server-sent-events.mjs which both agents fixed. 4 signature tasks: both arms
+        found every silent example site. NEXT: scorer ignore string literals + fix h3 gold (check other .mjs-example TS tasks),
+        rescore from saved diffs (no agent reruns); trim click task stress tests; commit results.
+        EOF
+        echo ok
+      at: 2026-10-06T00:10:03.255548Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/ctx/redundancy.py <<'EOF'
+        """Where Prism answers repeat themselves: per line, bytes spent on a file path equal to the previous line's,
+        on a trailing [Symbol] tag equal to the previous line's, and on other repeated prefixes."""
+        import json,glob,os,re,collections,sys
+        H='/Users/tapabratapal/Projects/provasign/research/harness/results'
+        PJ=os.path.expanduser('~/.claude/projects')
+        runs=sys.argv[1:] or ['e2e-seeded32','e2e-codexfix-27']
+        PATHLINE=re.compile(r'^(\s*)([\w./@$+-]+\.[A-Za-z]{1,6})(:\d+(?:-\d+)?[:\s])')
+        TAG=re.compile(r'(\s+\[[^\]\n]{1,80}\])\s*$')
+        for run in runs:
+            tot=collections.Counter(); ops=collections.Counter(); answers=0
+            examples={}
+            for f in glob.glob(f'{H}/{run}/*.json'):
+                r=json.load(open(f))
+                if r.get('arm')!='prism_body_exp': continue
+                for p in glob.glob(f"{PJ}/*/{r.get('session_id')}.jsonl"):
+                    uses={}
+                    for l in open(p):
+                        m=json.loads(l).get('message') or {}
+                        for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                            if not isinstance(b,dict): continue
+                            if b.get('type')=='tool_use' and b['name'].startswith('mcp__prism'): uses[b['id']]=b['input'].get('op')
+                            if b.get('type')=='tool_result' and b.get('tool_use_id') in uses:
+                                c=b.get('content'); txt=c if isinstance(c,str) else ''.join(x.get('text','') for x in (c or []) if isinstance(x,dict))
+                                answers+=1; op=uses[b['tool_use_id']]; ops[op]+=len(txt)
+                                tot['all']+=len(txt)
+                                prev_path=prev_tag=None
+                                for line in txt.splitlines():
+                                    m1=PATHLINE.match(line)
+                                    if m1:
+                                        path=m1.group(2)
+                                        if path==prev_path:
+                                            tot['repeated path']+=len(path); examples.setdefault('repeated path',line[:120])
+                                        prev_path=path
+                                    m2=TAG.search(line)
+                                    if m2:
+                                        tag=m2.group(1)
+                                        if tag==prev_tag:
+                                            tot['repeated [Symbol] tag']+=len(tag); examples.setdefault('repeated [Symbol] tag',line[-120:])
+                                        prev_tag=tag
+                                    else: prev_tag=None
+                                    if line.startswith('// root: '): tot['root header line']+=len(line); examples.setdefault('root header line',line[:120])
+                                    if re.match(r'^\s*\d+\t',line): tot['line-number prefix (read bodies)']+=len(line)-len(line.lstrip()) + len(line.lstrip().split('\t',1)[0])+1
+            a=tot['all']
+            print(f'## {run}: {answers} prism answers, {a/1000:.0f}k chars (~{a//4000}k tokens)')
+            for k,v in tot.most_common():
+                if k=='all': continue
+                print(f'   {k:36} {v/1000:7.1f}k chars  {100*v/a:5.1f}% of all answer text')
+            print('   by op:', {k:f'{100*v/a:.0f}%' for k,v in ops.most_common()})
+            for k,e in examples.items(): print(f'   e.g. {k}: {e!r}')
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/ctx/redundancy.py
+      at: 2026-10-06T00:11:42.44762Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research/harness && sed -n 50,105p scoring/wide_eval.py
+      at: 2026-10-06T00:14:49.373577Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        p='scoring/wide_eval.py'; s=open(p).read()
+        anchor='''def token_counts(root: Path, old: str, new: str) -> dict[str, list[int]]:'''
+        scanner='''def _strip_comments_and_strings(path: str, text: str) -> str:
+            """Code with comments and string-literal text blanked. A name inside a
+            string (a test title "Should return empty remote", an assertion message
+            "all Route() calls ...") is prose, not a reference: agents that update it
+            were scored as over-renaming (seeded32, 2026-10-05). Code inside f-string
+            / template-literal braces is kept: f"{x.render()}" and `${x.push()}` are
+            real call sites. Python docstrings are strings, so they go too."""
+            ext = Path(path).suffix
+            py = ext == ".py"
+            out, i, n = [], 0, len(text)
+
+            def keep_braced(j: int, close_at: str) -> int:
+                """Copy an interpolation body {...} (nested braces) through, return index after it."""
+                depth = 1
+                out.append("{")
+                j += 1
+                while j < n and depth:
+                    ch = text[j]
+                    depth += ch == "{"
+                    depth -= ch == "}"
+                    out.append(ch if depth else "}")
+                    j += 1
+                return j
+
+            while i < n:
+                c = text[i]
+                # comments
+                if py and c == "#":
+                    while i < n and text[i] != "\\n":
+                        i += 1
+                    continue
+                if not py and text.startswith("//", i):
+                    while i < n and text[i] != "\\n":
+                        i += 1
+                    continue
+                if not py and text.startswith("/*", i):
+                    j = text.find("*/", i + 2)
+                    j = n if j < 0 else j + 2
+                    out.append("\\n" * text.count("\\n", i, j))
+                    i = j
+                    continue
+                # strings
+                if py and c in "\\"'":
+                    # prefix letters (f, r, b, rb, fr ...) were already emitted; detect f
+                    k = len(out) - 1
+                    prefix = ""
+                    while k >= 0 and out[k].isalpha() and len(prefix) < 3:
+                        prefix = out[k] + prefix
+                        k -= 1
+                    fstr = "f" in prefix.lower() and (k < 0 or not (out[k].isalnum() or out[k] == "_"))
+                    q = text[i:i + 3] if text[i:i + 3] in ("\\"\\"\\"", "\\'\\'\\'") else c
+                    j = i + len(q)
+                    out.append(" ")
+                    while j < n and not text.startswith(q, j):
+                        if text[j] == "\\\\":
+                            j += 2
+                            continue
+                        if fstr and text[j] == "{":
+                            if text.startswith("{{", j):
+                                j += 2
+                                continue
+                            j = keep_braced(j, "}")
+                            continue
+                        if text[j] == "\\n":
+                            out.append("\\n")
+                        j += 1
+                    i = j + len(q)
+                    out.append(" ")
+                    continue
+                if not py and c in "\\"'`":
+                    if c == "'" and ext in (".go", ".java", ".kt") :
+                        # rune / char literal: 'x', '\\n'
+                        j = i + 1
+                        while j < n and text[j] != "'" and text[j] != "\\n":
+                            j += 2 if text[j] == "\\\\" else 1
+                        i = j + 1
+                        out.append(" ")
+                        continue
+                    q = '"""' if c == '"' and text.startswith('"""', i) and ext in (".java", ".kt") else c
+                    j = i + len(q)
+                    out.append(" ")
+                    while j < n and not text.startswith(q, j):
+                        if text[j] == "\\\\" and not (c == "`" and ext == ".go"):
+                            j += 2
+                            continue
+                        if c == "`" and ext != ".go" and text.startswith("${", j):
+                            j = keep_braced(j + 1, "}")
+                            continue
+                        if text[j] == "\\n":
+                            out.append("\\n")
+                            if q in ("\\"", "'"):
+                                break  # unterminated single-line string: stop at end of line
+                        j += 1
+                    i = j + len(q)
+                    out.append(" ")
+                    continue
+                out.append(c)
+                i += 1
+            return "".join(out)
+
+
+        '''
+        assert s.count(anchor)==1; s=s.replace(anchor, scanner+anchor)
+        old='''            text = _strip_comments(rel, (root / rel).read_text(errors="ignore"))'''
+        new='''            text = _strip_comments_and_strings(rel, (root / rel).read_text(errors="ignore"))'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        python3 - <<'EOF'
+        import sys; sys.path[:0]=['/Users/tapabratapal/Projects/provasign/research/harness/scoring','/Users/tapabratapal/Projects/provasign/research/harness/runners']
+        from wide_eval import _strip_comments_and_strings as S
+        import re
+        cases=[('a.ts',"it('Should return empty remote when x', () => { expect(info.remote).toEqual({}) }) // remote\n/* remote */ const s=`${info.remote} remote`"),
+               ('a.go','assert.Equal(t, n, "all Route() calls"); r.Route(c) // Route\nx := `raw Route`; y := \'R\''),
+               ('a.py','def f():\n    """Route doc"""\n    x = f"{obj.Route()} Route"  # Route\n    y = r\'Route\' + obj.Route()\n    z = "#notacomment Route"; w = obj.Route\n'),
+               ('A.java','String s = "Route()"; char c = \'"\'; r.Route(); String t = """\n Route\n"""; r.Route();')]
+        for p,t in cases:
+            o=S(p,t); print(p, 'Route/remote tokens kept:', re.findall(r'\b(?:Route|remote)\b',o))
+        EOF
+      at: 2026-10-06T00:15:15.385031Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cat > $S/rescore.py <<'EOF'
+        import json,sys,shutil,collections
+        H='/Users/tapabratapal/Projects/provasign/research/harness'
+        sys.path[:0]=[H+'/scoring',H+'/runners']
+        import wide_eval
+        man=json.load(open(H+'/results/seeded32-manifest.json')); arms=['native','prism_body_exp']
+        def counts(task,patch):
+            wt=wide_eval._checkout(wide_eval.repo_dir(task),task['base_commit'],patch)
+            try: return wide_eval.token_counts(wt,task['old'],task['new'])
+            finally: shutil.rmtree(wt,ignore_errors=True)
+        def compare(gold,got):
+            bad=[]
+            for f in sorted(set(gold)|set(got)):
+                w,h=gold.get(f,[0,0]),got.get(f,[0,0])
+                if w!=h: bad.append((f,w,h))
+            return bad
+        out={}
+        for t in man:
+            task=json.load(open(f'{H}/tasks/e2e/{t}.json'))
+            rows={}
+            for a in arms:
+                r=json.load(open(f'{H}/results/e2e-seeded32/{t}.claude-sonnet-5-5.{a}.json'))
+                rows[a]={'raw':bool(r.get('resolved')),'green':(r.get('score') or {}).get('green')}
+            if task.get('site_mode')=='files' or task.get('kind')!='wide':
+                for a in arms: rows[a]['new']=rows[a]['raw']
+                out[t]=rows; continue
+            gold=counts(task,task['patch'])
+            for a in arms:
+                diff=open(f'{H}/results/e2e-seeded32/{t}.claude-sonnet-5-5.{a}.diff').read()
+                try: bad=compare(gold,counts(task,diff))
+                except RuntimeError as e: bad=[('PATCH-FAIL',str(e)[:80],None)]
+                rows[a]['new']=bool(rows[a]['green']) and not bad
+                rows[a]['bad']=bad
+            out[t]=rows
+            flag='' if all(rows[a]['new']==rows[a]['raw'] for a in arms) else '  <- changed'
+            print(f"{t:58} native {int(rows['native']['raw'])}->{int(rows['native']['new'])}  prism {int(rows['prism_body_exp']['raw'])}->{int(rows['prism_body_exp']['new'])}{flag}", flush=True)
+            for a in arms:
+                for b in rows[a].get('bad',[]): print(f"      {a} still differs: {b}")
+        json.dump(out,open(H+'/results/e2e-seeded32/rescore-strings.json','w'),indent=1)
+        for a in arms: print(a,'raw',sum(r[a]['raw'] for r in out.values()),'-> rescored',sum(r[a]['new'] for r in out.values()),'/',len(out))
+        EOF
+        python3 $S/guard.py 4096 30 -- python3 $S/rescore.py 2>&1 | grep -v "^guard"
+      at: 2026-10-06T00:16:15.288682Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 - <<'EOF'
+        import json,sys,shutil,re
+        H='/Users/tapabratapal/Projects/provasign/research/harness'
+        sys.path[:0]=[H+'/scoring',H+'/runners']
+        import wide_eval
+        man=json.load(open(H+'/results/seeded32-manifest.json'))
+        for t in man:
+            task=json.load(open(f'{H}/tasks/e2e/{t}.json'))
+            if task.get('lang') not in ('ts','js') or task.get('site_mode')=='files': continue
+            wt=wide_eval._checkout(wide_eval.repo_dir(task),task['base_commit'],task['patch'])
+            try:
+                c=wide_eval.token_counts(wt,task['old'],task['new'])
+                js={f:v for f,v in c.items() if f.endswith(('.js','.mjs','.cjs','.jsx')) and v[0]>0}
+                lines=[]
+                for f in js:
+                    for i,l in enumerate((wt/f).read_text(errors='ignore').splitlines(),1):
+                        if re.search(rf"\.\s*{re.escape(task['old'])}\b", l): lines.append(f"{f}:{i}: {l.strip()[:90]}")
+                print(f"{t:44} old-name left in JS files of gold: {js if js else 'none'}")
+                for x in lines[:6]: print('     ',x)
+            finally: shutil.rmtree(wt,ignore_errors=True)
+        EOF
+      at: 2026-10-06T00:16:30.046453Z
+      classified: other
+    - cmd: cd ~/gvg-corpus/h3 && B=$(python3 -c "import json;print(json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/tasks/e2e/wide__h3__H3Route_handler.json'))['base_commit'])") && for f in examples/handler-fetch.mjs examples/handler-obj.mjs; do echo "== $f"; GIT_NO_LAZY_FETCH=1 git show "${B}:$f" | grep -n "handler" ; done; GIT_NO_LAZY_FETCH=1 git show "${B}:src/types/h3.ts" 2>/dev/null | grep -n "interface H3Route" -A6 | head -8
+      at: 2026-10-06T00:17:34.842116Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,sys,shutil
+        H='/Users/tapabratapal/Projects/provasign/research/harness'; sys.path[:0]=[H+'/scoring',H+'/runners']
+        import wide_eval
+        task=json.load(open(f'{H}/tasks/e2e/wide__h3__EventStream_push.json'))
+        print('repo dir', wide_eval.repo_dir(task), 'base', task['base_commit'][:10])
+        wt=wide_eval._checkout(wide_eval.repo_dir(task),task['base_commit'],task['patch'])
+        try:
+            f=wt/'examples/server-sent-events.mjs'; print('exists', f.exists()); print(f.read_text()[:500] if f.exists() else '')
+        finally: shutil.rmtree(wt,ignore_errors=True)
+        EOF
+      at: 2026-10-06T00:28:47.315703Z
+      classified: other
+    - cmd: |-
+        cd ~/gvg-corpus/h3 && GIT_NO_LAZY_FETCH=1 git show 7eb018eda1:examples/server-sent-events.mjs | grep -n "push"; cd ~/Projects/provasign/research/harness && for a in native prism_body_exp; do echo "== $a diff for the example:"; python3 -c "
+        d=open('results/e2e-seeded32/wide__h3__EventStream_push.claude-sonnet-5-5.$a.diff').read(); cur=None
+        for l in d.splitlines():
+            if l.startswith('+++ b/'): cur=l[6:]
+            elif cur=='examples/server-sent-events.mjs' and l[:1] in '+-' and not l.startswith(('+++','---')): print('  ',l)
+        "; done
+      at: 2026-10-06T00:28:57.114848Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,sys,shutil
+        H='/Users/tapabratapal/Projects/provasign/research/harness'; sys.path[:0]=[H+'/scoring',H+'/runners']
+        import wide_eval
+        task=json.load(open(f'{H}/tasks/e2e/wide__h3__EventStream_push.json'))
+        print('stored gold_counts for example:', task['gold_counts'].get('examples/server-sent-events.mjs'), '| base:', task['base_counts'].get('examples/server-sent-events.mjs'))
+        for label,patch in [('gold',task['patch']),('native',open(f'{H}/results/e2e-seeded32/wide__h3__EventStream_push.claude-sonnet-5-5.native.diff').read())]:
+            wt=wide_eval._checkout(wide_eval.repo_dir(task),task['base_commit'],patch)
+            try:
+                c=wide_eval.token_counts(wt,task['old'],task['new'])
+                print(label,'fresh count for example:', c.get('examples/server-sent-events.mjs'))
+            finally: shutil.rmtree(wt,ignore_errors=True)
+        EOF
+        grep -n "gold = \|gold=\|task\['gold_counts'\]\|gold_counts" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/rescore.py
+      at: 2026-10-06T00:29:09.804577Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/research && git status --short harness/tasks/e2e | head; git diff --stat -- harness/tasks/e2e/wide__h3__EventStream_push.json; git log --oneline -3 -- harness/tasks/e2e/wide__h3__EventStream_push.json; stat -f "%Sm" -t "%H:%M:%S" harness/tasks/e2e/wide__h3__EventStream_push.json; date +%H:%M:%S
+      at: 2026-10-06T00:29:18.458419Z
+      classified: other
+    - cmd: "cd ~/Projects/provasign/research/harness && python3 - <<'EOF'\nimport json,glob,os\nbad=[];wide=[];mod=[]\nimport subprocess\nchanged=set(l[3:].strip() for l in subprocess.run(['git','-C','..','status','--short','harness/tasks/e2e'],capture_output=True,text=True).stdout.splitlines())\nfor p in sorted(glob.glob('tasks/e2e/*.json')):\n    try: t=json.load(open(p))\n    except Exception as e: bad.append((p,str(e)[:60])); continue\n    if isinstance(t,dict) and t.get('kind')=='wide' and t.get('site_mode')!='files' and t.get('old'):\n        wide.append(p); \n        if 'harness/'+p in changed: mod.append(os.path.basename(p))\nprint('unparseable task files:', bad)\nprint('rename tasks:', len(wide), '| modified on disk:', len(mod))\nprint('modified:', mod)\nt=json.load(open('tasks/e2e/wide__h3__EventStream_push.json'))\nprint('h3 notes \"Gold corrected\" occurrences:', t.get('notes','').count('Gold corrected'), '| patch has example:', '+++ b/examples/server-sent-events.mjs' in t['patch'])\nEOF"
+      at: 2026-10-06T00:29:29.625094Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,sys,shutil,glob,os
+        H='/Users/tapabratapal/Projects/provasign/research/harness'; sys.path[:0]=[H+'/scoring',H+'/runners']
+        import wide_eval
+        n=changed=0
+        for p in sorted(glob.glob(f'{H}/tasks/e2e/*.json')):
+            task=json.load(open(p))
+            if not isinstance(task,dict) or task.get('kind')!='wide' or task.get('site_mode')=='files' or not task.get('old'): continue
+            n+=1
+            base=wide_eval._checkout(wide_eval.repo_dir(task),task['base_commit'],'')
+            gold=wide_eval._checkout(wide_eval.repo_dir(task),task['base_commit'],task['patch'])
+            try:
+                bc=wide_eval.token_counts(base,task['old'],task['new']); gc=wide_eval.token_counts(gold,task['old'],task['new'])
+            finally:
+                shutil.rmtree(base,ignore_errors=True); shutil.rmtree(gold,ignore_errors=True)
+            gs=sum(max(0,v[0]-gc.get(f,[0,0])[0]) for f,v in bc.items())
+            if bc!=task.get('base_counts') or gc!=task.get('gold_counts') or gs!=task.get('gold_sites'):
+                changed+=1; print(f"  updated now: {os.path.basename(p)[:-5]}", flush=True)
+                task['base_counts'],task['gold_counts'],task['gold_sites']=bc,gc,gs
+                json.dump(task,open(p,'w'),indent=1)
+        print(f'{n} rename tasks checked; {changed} needed updating on this pass')
+        EOF
+      at: 2026-10-06T00:30:13.227848Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,sys
+        H='/Users/tapabratapal/Projects/provasign/research/harness'; sys.path[:0]=[H+'/scoring',H+'/runners']
+        import wide_eval
+        man=json.load(open(H+'/results/seeded32-manifest.json')); arms=['native','prism_body_exp']
+        res={a:{} for a in arms}; changes=[]
+        for t in man:
+            task=json.load(open(f'{H}/tasks/e2e/{t}.json'))
+            for a in arms:
+                r=json.load(open(f'{H}/results/e2e-seeded32/{t}.claude-sonnet-5-5.{a}.json'))
+                raw=bool(r.get('resolved')); green=bool((r.get('score') or {}).get('green'))
+                if task.get('site_mode')=='files' or task.get('kind')!='wide':
+                    new=raw
+                else:
+                    diff=open(f'{H}/results/e2e-seeded32/{t}.claude-sonnet-5-5.{a}.diff').read()
+                    s=wide_eval.site_check(wide_eval.repo_dir(task),task,diff)
+                    new=green and s['sites_ok']
+                    if not s['sites_ok']: print(f'  {t} {a} sites still off:', s['missed'][:2], s['over'][:2], s['other'][:2])
+                res[a][t]=new
+                if new!=raw: changes.append((t,a,raw,new))
+        for t,a,raw,new in changes: print(f'  changed: {t:40} {a:15} {int(raw)} -> {int(new)}')
+        for a in arms: print(f'{a:15} rescored {sum(res[a].values())}/{len(man)}')
+        json.dump(res,open(H+'/results/e2e-seeded32/rescore-final.json','w'),indent=1)
+        print('discordant after rescore:', [t for t in man if res['native'][t]!=res['prism_body_exp'][t]])
+        EOF
+      at: 2026-10-06T00:30:48.592732Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research && git add harness/scoring/wide_eval.py harness/tasks/e2e/wide__*.json && git diff --cached --stat | tail -3 && git commit -q -F - <<'EOF'
+        harness: wide scorer ignores string literals; recount rename tasks; fix h3 gold
+
+        wide_eval counts rename sites with comments AND string-literal text blanked
+        (_strip_comments_and_strings; code inside f-string / template-literal braces
+        kept). A name inside a test title or assertion message is prose: agents that
+        updated "Should return empty remote" / "all Route() calls" were scored as
+        over-renaming (seeded32: echo Router_Route, hono Hono_basePath both arms,
+        hono ConnInfo_remote native). The scanner also stops treating `#` / `//`
+        inside strings as comments.
+
+        All 32 rename tasks' base_counts / gold_counts / gold_sites recomputed with
+        the new scanner so live scoring compares like with like.
+
+        wide__h3__EventStream_push gold: the TypeScript LanguageService rename
+        misses examples/server-sent-events.mjs (untyped, outside the TS program),
+        whose `eventStream.push(...)` is an EventStream.push call; added to the gold
+        (both seeded32 agents renamed it).
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_0154Ei8CjJkreabbb7mwy9UU
+        EOF
+        git add harness/results/e2e-seeded32 harness/results/e2e-seeded32-probe harness/results/seeded32.log harness/results/seeded32-probe.log && git commit -q -F - <<'EOF'
+        results: seeded32 (native vs prism v0.86.2, Sonnet 5.5), 2026-10-05
+
+        32 seeded tasks (28 renames + 4 signature changes with silent example
+        sites), one cell per arm, alternating. Raw: native 28/32 $4.28, prism 29/32
+        $4.79. Rescored after the scorer/gold fixes (rescore-final.json, no agent
+        reruns): 32/32 both, no discordant task. API calls 212 vs 204 (paired
+        -0.25/task, se 0.38); cost ratio 1.12. Probe in e2e-seeded32-probe.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_0154Ei8CjJkreabbb7mwy9UU
+        EOF
+        git log --oneline -3; git push -q origin main 2>&1 | grep -v "^remote:" | tail -1; git status -sb | head -1
+      at: 2026-10-06T00:31:05.14322Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_plan_after_boost_2026_10_05.md <<'EOF'
+        SEEDED32 RESCORED + COMMITTED (research 29885434 harness, c324770d results): scorer blanks string literals
+        (+comments), all 32 rename tasks recounted, h3 EventStream_push gold now includes the .mjs example -> 32/32 BOTH ARMS,
+        0 discordant. Correctness tie; prism +12% cost, API calls even. Still TODO: trim click seed task stress-test p2p;
+        prism search payload dedupe (repeated paths 7.1% / tags 3.4% / root header 0.8% of seeded answers ~= 0.7-0.9% of
+        session cost) — Topo raised it, asked to rescore first.
+        EOF
+        cat > feedback_rejected_call_may_have_run.md <<'EOF'
+        ---
+        name: feedback-rejected-call-may-have-run
+        description: 2026-10-05 a Bash call reported "user doesn't want to proceed / interrupted" had actually run partway (14 of 32 task files rewritten); verify on-disk state before retrying or re-describing it
+        metadata:
+          type: feedback
+        ---
+        A tool call came back "The user doesn't want to proceed with this tool use ... [Request interrupted by user for tool
+        use]", and I told Topo "nothing from that step ran". It had run partway: the h3 gold patch was applied and 14 of 32
+        task files were rewritten before the interrupt. Topo asked "Did I stop you?" — it was likely accidental.
+
+        **Why:** an interrupted or rejected long-running command can still have executed up to the interrupt; claiming
+        "nothing changed" without checking was wrong and my retry then tripped on the half-applied state.
+
+        **How to apply:** after any rejected/interrupted call that writes files, check `git status` / file mtimes before
+        saying what did or didn't happen; make multi-file writers idempotent so a rerun is safe. Related:
+        [[feedback-validate-before-declaring-done]].
+        EOF
+        sed -i '' '2a\
+        - [Rejected call may have run](feedback_rejected_call_may_have_run.md) — 2026-10-05: an "interrupted/rejected" Bash call had rewritten 14 files; check git status/mtimes before claiming nothing ran
+        ' MEMORY.md && sed -n 3p MEMORY.md
+      at: 2026-10-06T00:31:16.319834Z
+      classified: other
+    - cmd: 'cd ~/Projects/provasign/prism && sed -i '''' ''s/byLine\[n\] = ln{strings.TrimRight(fmt.Sprint(l), "\\r\\n"), false}/byLine[n] = ln{text: strings.TrimRight(fmt.Sprint(l), "\\r\\n")}/'' internal/mcp/searchtext.go && grep -n "ln{" internal/mcp/searchtext.go; git stash -q && gofmt -l internal/mcp; git stash pop -q; gofmt -l internal/mcp/searchtext.go; go build ./... && go vet ./internal/mcp/ && go test ./internal/mcp/ ./internal/cli/ -count=1 2>&1 | grep -E "^(--- FAIL|FAIL|ok)|_test.go:[0-9]+" | head -30'
+      at: 2026-10-06T00:35:28.778191Z
+      classified: lint
+    - cmd: |-
+        cd ~/Projects/provasign/prism && python3 - <<'EOF'
+        p='internal/mcp/searchtext_test.go'; s=open(p).read()
+        old='''	for _, want := range []string{"a.go:10: func Foo() {}", "a.go:22: Foo()"} {'''
+        new='''	for _, want := range []string{"a.go:\\n  10: func Foo() {}\\n  22: Foo()\\n"} {'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old2='''	if strings.Count(text, "a.go:7: x http3 y") != 1 || strings.Count(text, "a.go:9: z") != 1 {'''
+        new2='''	if strings.Count(text, "  7: x http3 y") != 1 || strings.Count(text, "  9: z") != 1 {'''
+        assert s.count(old2)==1; s=s.replace(old2,new2)
+        s+='''
+        // Several hits in one file print the path once; a lone hit stays one
+        // self-contained line; the enclosing-symbol tag prints only when it changes.
+        func TestRenderSearchAsText_GroupsPathsAndDedupesTags(t *testing.T) {
+        	out := map[string]any{
+        		"textHits": []map[string]any{
+        			{"file": "src/pkg/long/path/exceptions.py", "hits": []map[string]any{
+        				{"line": 62, "text": "self.format_message()", "in": "ClickException.show"},
+        				{"line": 64, "text": "echo(self.format_message())", "in": "ClickException.show"},
+        				{"line": 90, "text": "return self.format_message()", "in": "UsageError.show"},
+        			}},
+        			{"file": "b.py", "hits": []map[string]any{{"line": 3, "text": "x.format_message()", "in": "run"}}},
+        		},
+        		"textBackend": "rg",
+        	}
+        	text, ok := renderSearchAsText(out)
+        	if !ok {
+        		t.Fatal("expected a plain-text rendering")
+        	}
+        	want := "src/pkg/long/path/exceptions.py:\\n" +
+        		"  62: self.format_message()  [ClickException.show]\\n" +
+        		"  64: echo(self.format_message())\\n" +
+        		"  90: return self.format_message()  [UsageError.show]\\n"
+        	if !strings.Contains(text, want) {
+        		t.Errorf("grouped hits with changed-only tags missing:\\n%s", text)
+        	}
+        	if strings.Count(text, "src/pkg/long/path/exceptions.py") != 1 {
+        		t.Errorf("path must print once:\\n%s", text)
+        	}
+        	if !strings.Contains(text, "b.py:3: x.format_message()  [run]\\n") {
+        		t.Errorf("a lone hit must stay one self-contained line:\\n%s", text)
+        	}
+        }
+        '''
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/mcp/searchtext_test.go; go test ./internal/mcp/ -run 'TestRenderSearchAsText' -count=1 2>&1 | tail -4; go test ./... 2>&1 | grep -vE "^ok|no test files" | tail -8; echo "== full suite done"
+      at: 2026-10-06T00:36:10.280471Z
+      classified: test
+    - cmd: ls ~/prism-ab-bins/payloadreplay/ | head -20; sed -n 1,30p ~/prism-ab-bins/payloadreplay/replay.py 2>/dev/null | grep -vE "^\s*$" | head -25
+      at: 2026-10-06T00:36:15.473815Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; cd ~/Projects/provasign/prism && go build -o ~/prism-ab-bins/prism-dedupe ./cmd/prism && ~/prism-ab-bins/prism-dedupe version; mkdir -p $S/replay && cat > $S/replay/replay_dedupe.py <<'EOF'
+        import json,os,sys,subprocess,threading,queue,glob,shutil
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        S=sys.argv[1]; BINS={'v0.86.2':os.path.expanduser('~/prism-ab-bins/prism-v0.86.2'),'dedupe':os.path.expanduser('~/prism-ab-bins/prism-dedupe')}
+        PJ=os.path.expanduser('~/.claude/projects')
+        sys.path[:0]=[H+'scoring',H+'runners']; import wide_eval
+        class MCP:
+            def __init__(s,b,root):
+                s.p=subprocess.Popen([b,'mcp',root],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
+                s.q=queue.Queue(); threading.Thread(target=s._rd,daemon=True).start(); s.id=0
+                s.call('initialize',{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"replay","version":"1"}})
+                s.p.stdin.write(json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})+"\n")
+            def _rd(s):
+                for l in s.p.stdout: s.q.put(l)
+            def call(s,m,params,timeout=600):
+                s.id+=1; s.p.stdin.write(json.dumps({"jsonrpc":"2.0","id":s.id,"method":m,"params":params})+"\n")
+                while True:
+                    d=json.loads(s.q.get(timeout=timeout))
+                    if d.get('id')==s.id: return d
+            def close(s): s.p.kill()
+        rows=[]
+        for t in json.load(open(H+'results/seeded32-manifest.json')):
+            r=json.load(open(H+f'results/e2e-seeded32/{t}.claude-sonnet-5-5.prism_body_exp.json'))
+            calls=[]
+            for p in glob.glob(f"{PJ}/*/{r['session_id']}.jsonl"):
+                for l in open(p):
+                    m=json.loads(l).get('message') or {}
+                    for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                        if isinstance(b,dict) and b.get('type')=='tool_use' and b['name'].startswith('mcp__prism'): calls.append(b['input'])
+            if not calls: continue
+            task=json.load(open(H+f'tasks/e2e/{t}.json'))
+            wt=wide_eval._checkout(wide_eval.repo_dir(task),task['base_commit'],'')
+            try:
+                subprocess.run([BINS['v0.86.2'],'index',str(wt)],capture_output=True,timeout=3000)
+                sizes={}
+                for name,b in BINS.items():
+                    c=MCP(b,str(wt)); tot=0
+                    try:
+                        for inp in calls:
+                            d=c.call('tools/call',{"name":"prism","arguments":inp})
+                            tot+=sum(len(x.get('text','')) for x in (d.get('result') or {}).get('content',[]))
+                    finally: c.close()
+                    sizes[name]=tot
+                rows.append((t,len(calls),sizes['v0.86.2'],sizes['dedupe']))
+                print(f"{t:58} calls {len(calls):2}  v0.86.2 {sizes['v0.86.2']:7}  dedupe {sizes['dedupe']:7}  {100*(sizes['dedupe']-sizes['v0.86.2'])/max(1,sizes['v0.86.2']):+6.1f}%",flush=True)
+            finally: shutil.rmtree(wt,ignore_errors=True)
+        a=sum(r[2] for r in rows); b=sum(r[3] for r in rows)
+        print(f"TOTAL {len(rows)} tasks: v0.86.2 {a} chars, dedupe {b} chars, {100*(b-a)/a:+.1f}% (~{(a-b)//4} tokens saved across the run)")
+        json.dump(rows,open(S+'/replay/dedupe_rows.json','w'))
+        EOF
+        echo written
+      at: 2026-10-06T00:36:35.797895Z
+      classified: build
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad; python3 $S/guard.py 6144 30 -- python3 $S/replay/replay_dedupe.py $S 2>&1 | grep -v "^guard"
+      at: 2026-10-06T00:38:50.763519Z
+      classified: other
+    - cmd: |-
+        cd ~/Projects/provasign/research/harness && cat > results/dedupe10-manifest.json <<'EOF'
+        ["wide__werkzeug__HTTPException_get_headers", "wide__hono__ConnInfo_remote", "wide__werkzeug__Response_get_data", "wide__echo__HTTPStatusCoder_StatusCode", "wide__h3__EventStream_push", "wide__click__Group_get_command", "wide__gin__Binding_Name", "wide__jackson-databind__TypeDeserializer_forProperty", "wide__chi__Routes_Match", "seed__werkzeug__redirect_kwonly"]
+        EOF
+        cp ~/prism-ab-bins/prism-dedupe ~/prism-ab-bins/prism-dedupe-$(cd ~/Projects/provasign/prism && git rev-parse --short HEAD)-dirty 2>/dev/null; PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-dedupe E2E_OUT=results/e2e-dedupe10 E2E_WAIT_ON_LIMIT=1 python3 runners/run_e2e.py results/dedupe10-manifest.json --models claude-sonnet-5-5 --arms prism_body_exp > results/dedupe10.log 2>&1; echo "exit $?"; tail -2 results/dedupe10.log
+      at: 2026-10-06T00:39:07.247965Z
+      classified: other
+    - cmd: |-
+        cat > ~/prism-ab-bins/payloadreplay/dedupe10_watch.py <<'EOF'
+        import json,glob,time,os,sys
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        PJ=os.path.expanduser('~/.claude/projects')
+        man=json.load(open(H+'results/dedupe10-manifest.json')); seen=set(); tot={'new':[0,0,0],'v0862':[0,0,0],'native':[0,0,0]}
+        def api(r):
+            for f in glob.glob(f"{PJ}/*/{r.get('session_id')}.jsonl"):
+                ids=set()
+                for l in open(f):
+                    try: m=json.loads(l).get('message') or {}
+                    except Exception: continue
+                    if m.get('role')=='assistant' and m.get('id'): ids.add(m['id'])
+                return len(ids)
+        def show(r): return f"{'PASS' if r.get('resolved') else 'FAIL'} {api(r)} API ${r.get('cost_usd') or 0:.2f}"
+        old=json.load(open(H+'results/e2e-seeded32/rescore-final.json'))
+        while True:
+            for t in man:
+                f=H+f'results/e2e-dedupe10/{t}.claude-sonnet-5-5.prism_body_exp.json'
+                if t in seen or not os.path.exists(f): continue
+                seen.add(t); n=json.load(open(f))
+                p=json.load(open(H+f'results/e2e-seeded32/{t}.claude-sonnet-5-5.prism_body_exp.json')); p['resolved']=old['prism_body_exp'][t]
+                v=json.load(open(H+f'results/e2e-seeded32/{t}.claude-sonnet-5-5.native.json')); v['resolved']=old['native'][t]
+                for k,r in (('new',n),('v0862',p),('native',v)):
+                    tot[k][0]+=bool(r.get('resolved')); tot[k][1]+=api(r) or 0; tot[k][2]+=r.get('cost_usd') or 0
+                print(f"SET {len(seen)}/10 {t}: dedupe {show(n)} | v0.86.2 {show(p)} | native {show(v)} || totals dedupe {tot['new'][0]}/{len(seen)} {tot['new'][1]} API ${tot['new'][2]:.2f}; v0.86.2 {tot['v0862'][0]}/{len(seen)} {tot['v0862'][1]} API ${tot['v0862'][2]:.2f}; native {tot['native'][0]}/{len(seen)} {tot['native'][1]} API ${tot['native'][2]:.2f}",flush=True)
+            try:
+                log=open(H+'results/dedupe10.log').read()
+                if 'Traceback' in log and 'TRACEBACK_SEEN' not in globals(): globals()['TRACEBACK_SEEN']=1; print('LOG Traceback in dedupe10.log',flush=True)
+            except FileNotFoundError: pass
+            if len(seen)==len(man): print('ALL SETS DONE',flush=True); break
+            time.sleep(15)
+        EOF
+        python3 -c "import ast,os;ast.parse(open(os.path.expanduser('~/prism-ab-bins/payloadreplay/dedupe10_watch.py')).read());print('ok')"
+      at: 2026-10-06T00:39:21.158029Z
+      classified: other
+    - cmd: |-
+        sleep 20; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/tasks/bh7jp1hp1.output | tail -2; python3 - <<'EOF'
+        import json,glob,os,statistics as st
+        H='/Users/tapabratapal/Projects/provasign/research/harness/'
+        PJ=os.path.expanduser('~/.claude/projects')
+        def api(r):
+            for f in glob.glob(f"{PJ}/*/{r.get('session_id')}.jsonl"):
+                return len({json.loads(l).get('message',{}).get('id') for l in open(f) if '"assistant"' in l}-{None})
+        man=json.load(open(H+'results/dedupe10-manifest.json')); old=json.load(open(H+'results/e2e-seeded32/rescore-final.json'))
+        rows=[]
+        for t in man:
+            n=json.load(open(H+f'results/e2e-dedupe10/{t}.claude-sonnet-5-5.prism_body_exp.json'))
+            p=json.load(open(H+f'results/e2e-seeded32/{t}.claude-sonnet-5-5.prism_body_exp.json'))
+            v=json.load(open(H+f'results/e2e-seeded32/{t}.claude-sonnet-5-5.native.json'))
+            rows.append((t,bool(n['resolved']),api(n),n['cost_usd'],old['prism_body_exp'][t],api(p),p['cost_usd'],old['native'][t],api(v),v['cost_usd']))
+        print('last:', rows[-1][0], 'dedupe', rows[-1][1], rows[-1][2], round(rows[-1][3],2), '| v0.86.2', rows[-1][4], rows[-1][5], round(rows[-1][6],2), '| native', rows[-1][7], rows[-1][8], round(rows[-1][9],2))
+        for label,i in [('dedupe',1),('v0.86.2',4),('native',7)]:
+            print(f"{label:8} resolved {sum(r[i] for r in rows)}/10  API calls {sum(r[i+1] for r in rows)}  cost ${sum(r[i+2] for r in rows):.2f}")
+        EOF
+      at: 2026-10-06T00:51:17.584781Z
+      classified: other
+    - cmd: |-
+        cat >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_plan_after_boost_2026_10_05.md <<'EOF'
+        SEARCH DEDUPE (Topo's idea, 2026-10-05): prism branch perf/search-group-by-file (uncommitted), renderContextHits:
+        plain hit lists with >1 hit per file print the path once (grouped `  N: text`, the context form's shape); lone hit
+        stays `path:line: text`; [EnclosingSymbol] tag printed only when it changes. `// root:` kept on every answer on
+        purpose (oncenotes.go: must survive compaction). Replay of all seeded32 prism calls (scratchpad replay/
+        replay_dedupe.py): answers -12.5% (320.5k -> 280.4k chars, every task smaller, 2.6-36.8%) ~= 1% session cost.
+        Paid check results/e2e-dedupe10 (prism arm only, bin ~/prism-ab-bins/prism-dedupe): 10/10 resolved, $1.16 /
+        56 API vs v0.86.2 10/10 $1.17 / 52 API, native 10/10 $0.99 / 50 API on the same tasks. No comprehension regression.
+        Not yet: commit/PR/release (ask Topo).
+        EOF
+        echo ok
+      at: 2026-10-06T00:51:31.577064Z
+      classified: other
+notes:
+    - text: continuation of session d125dca7-e99f-49fb-bc56-83b796d2af46 — events captured after its evidence was finalized
+      at: 2026-10-05T21:29:09.906142Z
+redactions: 1
