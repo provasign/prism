@@ -45,3 +45,15 @@ func TestDeclarationSearchDeliversOnlyTheDeclaredSymbol(t *testing.T) {
 		t.Fatalf("no declared symbol: walkXFF's body should not be delivered:\n%s", miss)
 	}
 }
+
+// The declared symbol wins even when a longer same-prefix name outranks it.
+func TestDeclarationSearchFallsBackToTheDeclaredSymbol(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"xff.go":  "package r\n\nfunc walkXFF(v int) int {\n\tx := v + 1\n\tx = x * 3\n\treturn x\n}\n",
+		"tree.go": "package r\n\nfunc Walk(v int) int {\n\treturn v\n}\n",
+	})
+	out := callCompact(t, srv, "search", map[string]any{"terms": []any{"func walk", "func Walk"}, "scope": "text"})
+	if strings.Contains(out, "body walkXFF") || !strings.Contains(out, "body Walk") {
+		t.Fatalf("want Walk's body, not walkXFF's:\n%s", out)
+	}
+}

@@ -501,6 +501,21 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 		}
 		return value
 	}
+	// A declaration-shaped term names one symbol: `func walk` matched the
+	// text of `func walkXFF` and delivered walkXFF's body (5 sessions in chi
+	// pr1148); `def add_url_rule` delivered ServerList. A section whose only
+	// evidence is declaration terms naming other symbols is not a candidate,
+	// so the declared symbol itself (Walk) can be chosen instead.
+	droppedDeclaration := false
+	kept := order[:0]
+	for _, item := range order {
+		if item.hasSymbol && declarationTermsMiss(item, terms) {
+			droppedDeclaration = true
+			continue
+		}
+		kept = append(kept, item)
+	}
+	order = kept
 	sort.SliceStable(order, func(i, j int) bool {
 		if score(order[i]) != score(order[j]) {
 			return score(order[i]) > score(order[j])
@@ -589,7 +604,7 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 		fullLines, fullBytes = opts.maxLines, opts.maxLines*80
 	}
 	regions := make([]searchSourceRegion, 0, len(selected))
-	droppedConstructor, droppedDeclaration := false, false
+	droppedConstructor := false
 	for _, item := range selected {
 		if item.hasSymbol {
 			// A search for a class name also hits its constructor's line,
@@ -604,15 +619,6 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 					continue
 				}
 				item.symbol = *owner
-			}
-			// A declaration-shaped term names one symbol: `func walk`
-			// matched the text of `func walkXFF` and delivered walkXFF's
-			// body (5 sessions in chi pr1148); `def add_url_rule` delivered
-			// ServerList. A section whose only evidence is declaration
-			// terms naming other symbols is not delivered.
-			if declarationTermsMiss(item, terms) {
-				droppedDeclaration = true
-				continue
 			}
 		}
 		region := searchSourceRegion{file: item.file, hit: item.bestLine, window: true, maxLines: opts.maxLines}
