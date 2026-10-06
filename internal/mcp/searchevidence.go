@@ -589,7 +589,32 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 		fullLines, fullBytes = opts.maxLines, opts.maxLines*80
 	}
 	regions := make([]searchSourceRegion, 0, len(selected))
+	droppedConstructor, droppedDeclaration := false, false
 	for _, item := range selected {
+		if item.hasSymbol {
+			// A search for a class name also hits its constructor's line,
+			// which outscores the class declaration, and delivered the
+			// constructor: the agent then read the whole class in its next
+			// call (12 of 61 several-symbol answers, 7 of 171 single-symbol
+			// ones, 2026-09-20..10-05). Deliver the named type when it fits,
+			// otherwise no body.
+			if owner := constructorOfNamedType(item.symbol, files[item.file].symbols, terms); owner != nil {
+				if owner.Span.End-owner.Span.Start+1 > fullLines || len(owner.RawText) > fullBytes {
+					droppedConstructor = true
+					continue
+				}
+				item.symbol = *owner
+			}
+			// A declaration-shaped term names one symbol: `func walk`
+			// matched the text of `func walkXFF` and delivered walkXFF's
+			// body (5 sessions in chi pr1148); `def add_url_rule` delivered
+			// ServerList. A section whose only evidence is declaration
+			// terms naming other symbols is not delivered.
+			if declarationTermsMiss(item, terms) {
+				droppedDeclaration = true
+				continue
+			}
+		}
 		region := searchSourceRegion{file: item.file, hit: item.bestLine, window: true, maxLines: opts.maxLines}
 		if item.hasSymbol {
 			region.symbol, region.hasSymbol = item.symbol, true
@@ -648,12 +673,77 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 		if isTestFilePath(item.file) {
 			region.evidence += "; test"
 		}
+		duplicate := false
+		for _, earlier := range regions {
+			if earlier.file == region.file && earlier.start == region.start && earlier.end == region.end {
+				duplicate = true // a constructor replaced by its class
+			}
+		}
+		if duplicate {
+			continue
+		}
 		regions = append(regions, region)
 	}
 	if rendered := h.renderSearchBodiesUnlessShared(out, regions, opts.single); rendered != "" {
 		return rendered
 	}
+	if droppedConstructor || droppedDeclaration {
+		return "" // the legacy picker would deliver the same section
+	}
 	return h.compactSearchBodiesLegacyWith(ctx, out, skip, opts)
+}
+
+// constructorOfNamedType returns the type that sym constructs when a search
+// term names that type exactly; nil otherwise.
+func constructorOfNamedType(sym grove.SymbolRecord, fileSyms []grove.SymbolRecord, terms []string) *grove.SymbolRecord {
+	parent := leafOf(sym.ParentSymbol)
+	if parent == "" || (sym.Name != parent && !strings.EqualFold(sym.Kind, "constructor")) {
+		return nil
+	}
+	for i := range fileSyms {
+		owner := &fileSyms[i]
+		switch strings.ToLower(owner.Kind) {
+		case "class", "struct", "record", "type":
+		default:
+			continue
+		}
+		if owner.Name != parent && owner.QualifiedName != sym.ParentSymbol {
+			continue
+		}
+		if owner.Span.Start > sym.Span.Start || owner.Span.End < sym.Span.End {
+			continue
+		}
+		for _, term := range terms {
+			term = strings.TrimSpace(term)
+			if term == owner.Name || term == owner.QualifiedName {
+				return owner
+			}
+		}
+	}
+	return nil
+}
+
+// declarationTerm matches a term written as a declaration and captures the
+// name it declares: "func walk", "func (mx *Mux) Mount", "def add_url_rule",
+// "def add(", "class Foo", "function bar", "fn baz", "async def qux".
+var declarationTerm = regexp.MustCompile(`^\s*(?:func\s*(?:\([^)]*\)\s*)?|(?:async\s+)?def\s+|class\s+|function\s+|fn\s+)([A-Za-z_$][\w$]*)\s*(?:\[[^\]]*\])?\s*\(?\s*$`)
+
+// declarationTermsMiss reports whether every term that matched item is a
+// declaration term, and none declares item's symbol.
+func declarationTermsMiss(item *searchEvidence, terms []string) bool {
+	if len(item.terms) == 0 {
+		return false
+	}
+	for index := range item.terms {
+		if index < 0 || index >= len(terms) {
+			return false
+		}
+		m := declarationTerm.FindStringSubmatch(terms[index])
+		if m == nil || m[1] == item.symbol.Name {
+			return false
+		}
+	}
+	return true
 }
 
 // declaresTerm reports whether line is the declaration line of sym and sym is
