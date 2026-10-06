@@ -760,8 +760,9 @@ func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]an
 				text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
 			}
 			text += bodies
-			if budget.on {
-				// The picked body is the default budget's one body.
+			if budget.on || listedSymbolCount(out) >= 2 {
+				// The picked body is the default budget's one body; with
+				// several listed symbols no ranked extras are added either.
 			} else if terms := stringsArg(args, "query"); len(terms) == 1 {
 				text += h.compactSearchBodiesEnclosingExcept(bodyCtx, withSearchQuery(out, terms[0]), delivered)
 			} else {
@@ -1143,7 +1144,7 @@ func (h *Handler) compactSearchBodiesLegacyWith(ctx context.Context, out map[str
 	if len(picked) == 0 {
 		return ""
 	}
-	return h.renderSearchBodiesUnlessShared(out, picked, opts.single)
+	return h.renderEnclosingSearchBodies(picked)
 }
 
 // renderEnclosingSearchBodies uses exact source spans. Oversized symbols are

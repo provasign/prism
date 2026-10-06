@@ -589,7 +589,23 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 		fullLines, fullBytes = opts.maxLines, opts.maxLines*80
 	}
 	regions := make([]searchSourceRegion, 0, len(selected))
+	droppedConstructor := false
 	for _, item := range selected {
+		if item.hasSymbol {
+			// A search for a class name also hits its constructor's line,
+			// which outscores the class declaration, and delivered the
+			// constructor: the agent then read the whole class in its next
+			// call (12 of 61 several-symbol answers, 7 of 171 single-symbol
+			// ones, 2026-09-20..10-05). Deliver the named type when it fits,
+			// otherwise no body.
+			if owner := constructorOfNamedType(item.symbol, files[item.file].symbols, terms); owner != nil {
+				if owner.Span.End-owner.Span.Start+1 > fullLines || len(owner.RawText) > fullBytes {
+					droppedConstructor = true
+					continue
+				}
+				item.symbol = *owner
+			}
+		}
 		region := searchSourceRegion{file: item.file, hit: item.bestLine, window: true, maxLines: opts.maxLines}
 		if item.hasSymbol {
 			region.symbol, region.hasSymbol = item.symbol, true
@@ -648,12 +664,54 @@ func (h *Handler) compactSearchBodiesWith(ctx context.Context, out map[string]an
 		if isTestFilePath(item.file) {
 			region.evidence += "; test"
 		}
+		duplicate := false
+		for _, earlier := range regions {
+			if earlier.file == region.file && earlier.start == region.start && earlier.end == region.end {
+				duplicate = true // a constructor replaced by its class
+			}
+		}
+		if duplicate {
+			continue
+		}
 		regions = append(regions, region)
 	}
-	if rendered := h.renderSearchBodiesUnlessShared(out, regions, opts.single); rendered != "" {
+	if rendered := h.renderEnclosingSearchBodies(regions); rendered != "" {
 		return rendered
 	}
+	if droppedConstructor {
+		return "" // the legacy picker would deliver the same constructor
+	}
 	return h.compactSearchBodiesLegacyWith(ctx, out, skip, opts)
+}
+
+// constructorOfNamedType returns the type that sym constructs when a search
+// term names that type exactly; nil otherwise.
+func constructorOfNamedType(sym grove.SymbolRecord, fileSyms []grove.SymbolRecord, terms []string) *grove.SymbolRecord {
+	parent := leafOf(sym.ParentSymbol)
+	if parent == "" || (sym.Name != parent && !strings.EqualFold(sym.Kind, "constructor")) {
+		return nil
+	}
+	for i := range fileSyms {
+		owner := &fileSyms[i]
+		switch strings.ToLower(owner.Kind) {
+		case "class", "struct", "record", "type":
+		default:
+			continue
+		}
+		if owner.Name != parent && owner.QualifiedName != sym.ParentSymbol {
+			continue
+		}
+		if owner.Span.Start > sym.Span.Start || owner.Span.End < sym.Span.End {
+			continue
+		}
+		for _, term := range terms {
+			term = strings.TrimSpace(term)
+			if term == owner.Name || term == owner.QualifiedName {
+				return owner
+			}
+		}
+	}
+	return nil
 }
 
 // declaresTerm reports whether line is the declaration line of sym and sym is
@@ -677,101 +735,6 @@ func declaresTerm(lines []string, sym grove.SymbolRecord, line int, term string)
 		}
 	}
 	return false
-}
-
-// renderSearchBodiesUnlessShared renders the picked bodies. In the default
-// single-body mode it withholds a body whose symbol name is also an
-// exact-name match for a DIFFERENT symbol in the answer: that body is one of
-// several and would be read as "the" code. (An explicit include_bodies=true
-// asks for several bodies, each headed by its qualified name; those stay.)
-// make_response in flask matches Flask.make_response and the helper
-// make_response; the search delivered the helper's body under a header that
-// never said another existed. Those regions become one line naming every
-// candidate with its span, so the caller looks up the one it means. A class
-// and its own constructor share a name but are one piece of code.
-func (h *Handler) renderSearchBodiesUnlessShared(out map[string]any, regions []searchSourceRegion, single bool) string {
-	if !single {
-		return h.renderEnclosingSearchBodies(regions)
-	}
-	var keep []searchSourceRegion
-	var notes []string
-	noted := map[string]bool{}
-	for _, region := range regions {
-		others := sharedNameSymbols(out, region)
-		if len(others) == 0 {
-			keep = append(keep, region)
-			continue
-		}
-		name := region.symbol.Name
-		if noted[name] {
-			continue
-		}
-		noted[name] = true
-		parts := []string{fmt.Sprintf("%s %s:%d-%d", region.symbol.QualifiedName, region.file, region.symbol.Span.Start, region.symbol.Span.End)}
-		parts = append(parts, others...)
-		notes = append(notes, fmt.Sprintf("// No body: %d different symbols share the name %q -- %s. Use op=lookup with the qualified name you mean.",
-			len(parts), name, strings.Join(parts, "; ")))
-	}
-	rendered := ""
-	if len(keep) > 0 {
-		rendered = h.renderEnclosingSearchBodies(keep)
-	}
-	if len(notes) == 0 {
-		return rendered
-	}
-	return "\n" + strings.Join(notes, "\n") + "\n" + rendered
-}
-
-// sharedNameSymbols lists the answer's other exact-name symbols that share
-// region's symbol name, as "qualifiedName file:start-end".
-func sharedNameSymbols(out map[string]any, region searchSourceRegion) []string {
-	if !region.hasSymbol || region.symbol.Name == "" {
-		return nil
-	}
-	sym := region.symbol
-	groups := []map[string]any{out}
-	if batch, ok := out["results"].([]map[string]any); ok {
-		groups = batch
-	}
-	var others []string
-	seen := map[string]bool{}
-	for _, group := range groups {
-		for _, raw := range anySlice(group["symbols"]) {
-			sm, ok := raw.(map[string]any)
-			if !ok {
-				continue
-			}
-			if kind, _ := sm["matchKind"].(string); kind != "name-exact" {
-				continue
-			}
-			name, _ := sm["name"].(string)
-			if name != sym.Name {
-				continue
-			}
-			file, _ := sm["filePath"].(string)
-			qn, _ := sm["qualifiedName"].(string)
-			span, _ := sm["span"].(map[string]any)
-			start, end := intArg(span, "start", 0), intArg(span, "end", 0)
-			if filepath.ToSlash(file) == region.file && start == sym.Span.Start {
-				continue // the delivered symbol itself
-			}
-			if sameTypeAndConstructor(sym.QualifiedName, qn, name) {
-				continue
-			}
-			key := fmt.Sprintf("%s %s:%d-%d", qn, filepath.ToSlash(file), start, end)
-			if !seen[key] {
-				seen[key] = true
-				others = append(others, key)
-			}
-		}
-	}
-	return others
-}
-
-// sameTypeAndConstructor reports a class and its own constructor
-// (Foo and Foo.Foo, or Foo.__init__-style owners named like the type).
-func sameTypeAndConstructor(a, b, name string) bool {
-	return a == b+"."+name || b == a+"."+name
 }
 
 // pythonDocstringLines marks the lines of triple-quoted strings that stand

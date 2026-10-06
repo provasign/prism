@@ -430,7 +430,9 @@ func TestCompactSymbolLocatorInlinesSmallBodies(t *testing.T) {
 		inline     bool
 	}{
 		{"TargetOne", "func TargetOne()", true},
-		{"Target", "func TargetOne()", true},
+		// Four listed symbols: v0.86.4 attached TargetOne's body, an
+		// arbitrary pick among four. Several candidates stay locators.
+		{"Target", "func TargetOne()", false},
 	} {
 		params := json.RawMessage(`{"name":"prism","arguments":{"op":"search","args":{"terms":"` + tc.term + `","scope":"symbols"}}}`)
 		result, rpcErr := srv.dispatch("tools/call", params)

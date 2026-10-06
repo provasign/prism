@@ -649,6 +649,18 @@ func searchBudgetFor(args map[string]any, sc searchScope, queries []string, rege
 // bounded non-test body under the default budget, the wider explicit
 // include_bodies=true shape otherwise.
 func (h *Handler) searchBodies(ctx context.Context, out map[string]any, b searchBudget) string {
+	// Measured on 465 attached bodies (sessions 2026-09-20..10-05): agents
+	// edited from the body 18% of the time when search listed one symbol,
+	// 7% with 2-5 and 2% with 6+, while re-fetching rose from 3% to 20%.
+	// With several candidates the one picked body was usually not the one
+	// wanted (a class name delivered its constructor; `func walk` delivered
+	// walkXFF), so the answer stays a locator. An explicit
+	// include_bodies=true still gets bodies.
+	if !b.explicitBodies {
+		if n := listedSymbolCount(out); n >= 2 {
+			return fmt.Sprintf("\n// No source attached: %d symbols match. Use op=lookup with the one you mean (qualified name if several share it).\n", n)
+		}
+	}
 	if b.on && !b.explicitBodies {
 		return h.compactSearchBodiesBudgeted(ctx, out, b.testsTargeted)
 	}
@@ -677,4 +689,18 @@ func budgetSampleWarning(r textsearch.Result, inventory bool) string {
 	}
 	return fmt.Sprintf("SAMPLE: showing %d of %s matches in %d %s. exhaustive=true lists every line; paths=/glob= narrows",
 		len(r.Hits), textMatchCount(r, false), r.FilesMatched, textMatchFileWord(r.FilesMatched))
+}
+
+// listedSymbolCount counts the symbol matches a search answer lists, across
+// every term of a batch.
+func listedSymbolCount(out map[string]any) int {
+	groups := []map[string]any{out}
+	if batch, ok := out["results"].([]map[string]any); ok {
+		groups = batch
+	}
+	n := 0
+	for _, group := range groups {
+		n += len(anySlice(group["symbols"]))
+	}
+	return n
 }
