@@ -1143,7 +1143,7 @@ func (h *Handler) compactSearchBodiesLegacyWith(ctx context.Context, out map[str
 	if len(picked) == 0 {
 		return ""
 	}
-	return h.renderEnclosingSearchBodies(picked)
+	return h.renderSearchBodiesUnlessShared(out, picked, opts.single)
 }
 
 // renderEnclosingSearchBodies uses exact source spans. Oversized symbols are
