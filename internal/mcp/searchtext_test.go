@@ -29,7 +29,7 @@ func TestRenderSearchAsText_SingleTerm(t *testing.T) {
 	if !ok {
 		t.Fatal("expected a plain-text rendering")
 	}
-	for _, want := range []string{"a.go:10: func Foo() {}", "a.go:22: Foo()"} {
+	for _, want := range []string{"a.go:\n  10: func Foo() {}\n  22: Foo()\n"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
@@ -274,10 +274,43 @@ func TestRenderSearchAsText_BatchDedupesLinesAcrossTerms(t *testing.T) {
 	if !ok {
 		t.Fatal("expected a plain-text rendering")
 	}
-	if strings.Count(text, "a.go:7: x http3 y") != 1 || strings.Count(text, "a.go:9: z") != 1 {
+	if strings.Count(text, "  7: x http3 y") != 1 || strings.Count(text, "  9: z") != 1 {
 		t.Errorf("each line should print once across terms:\n%s", text)
 	}
 	if !strings.Contains(text, "a.go: 2 line(s) already shown under an earlier term") {
 		t.Errorf("the second term should carry the dedupe count:\n%s", text)
+	}
+}
+
+// Several hits in one file print the path once; a lone hit stays one
+// self-contained line; the enclosing-symbol tag prints only when it changes.
+func TestRenderSearchAsText_GroupsPathsAndDedupesTags(t *testing.T) {
+	out := map[string]any{
+		"textHits": []map[string]any{
+			{"file": "src/pkg/long/path/exceptions.py", "hits": []map[string]any{
+				{"line": 62, "text": "self.format_message()", "in": "ClickException.show"},
+				{"line": 64, "text": "echo(self.format_message())", "in": "ClickException.show"},
+				{"line": 90, "text": "return self.format_message()", "in": "UsageError.show"},
+			}},
+			{"file": "b.py", "hits": []map[string]any{{"line": 3, "text": "x.format_message()", "in": "run"}}},
+		},
+		"textBackend": "rg",
+	}
+	text, ok := renderSearchAsText(out)
+	if !ok {
+		t.Fatal("expected a plain-text rendering")
+	}
+	want := "src/pkg/long/path/exceptions.py:\n" +
+		"  62: self.format_message()  [ClickException.show]\n" +
+		"  64: echo(self.format_message())\n" +
+		"  90: return self.format_message()  [UsageError.show]\n"
+	if !strings.Contains(text, want) {
+		t.Errorf("grouped hits with changed-only tags missing:\n%s", text)
+	}
+	if strings.Count(text, "src/pkg/long/path/exceptions.py") != 1 {
+		t.Errorf("path must print once:\n%s", text)
+	}
+	if !strings.Contains(text, "b.py:3: x.format_message()  [run]\n") {
+		t.Errorf("a lone hit must stay one self-contained line:\n%s", text)
 	}
 }

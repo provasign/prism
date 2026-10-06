@@ -193,6 +193,7 @@ func renderContextHits(b *strings.Builder, file string, hits []any, seen map[str
 	type ln struct {
 		text  string
 		match bool
+		in    string // enclosing symbol of a match line
 	}
 	byLine := map[int]ln{}
 	dup := 0
@@ -219,18 +220,16 @@ func renderContextHits(b *strings.Builder, file string, hits []any, seen map[str
 		for i, l := range before {
 			n := line - len(before) + i
 			if _, taken := byLine[n]; !taken {
-				byLine[n] = ln{strings.TrimRight(fmt.Sprint(l), "\r\n"), false}
+				byLine[n] = ln{text: strings.TrimRight(fmt.Sprint(l), "\r\n")}
 			}
 		}
 		text := strings.TrimRight(fmt.Sprint(hm["text"]), "\r\n")
-		if in, _ := hm["in"].(string); in != "" {
-			text += "  [" + in + "]"
-		}
-		byLine[line] = ln{text, true}
+		in, _ := hm["in"].(string)
+		byLine[line] = ln{text, true, in}
 		for i, l := range after {
 			n := line + 1 + i
 			if _, taken := byLine[n]; !taken {
-				byLine[n] = ln{strings.TrimRight(fmt.Sprint(l), "\r\n"), false}
+				byLine[n] = ln{text: strings.TrimRight(fmt.Sprint(l), "\r\n")}
 			}
 		}
 	}
@@ -239,23 +238,32 @@ func renderContextHits(b *strings.Builder, file string, hits []any, seen map[str
 		nums = append(nums, n)
 	}
 	sort.Ints(nums)
-	if !hasContext {
-		// Plain hit list: one self-contained `path:line: text` per match.
-		for _, n := range nums {
-			fmt.Fprintf(b, "%s:%d: %s\n", file, n, byLine[n].text)
+	// The enclosing-symbol tag prints when it changes, not on every line of
+	// the same function (seeded32, 2026-10-05: repeated tags were 3.4% and
+	// repeated paths 7.1% of all search answer text).
+	prevIn := ""
+	tagged := func(l ln) string {
+		if l.in == "" || l.in == prevIn {
+			return l.text
 		}
+		prevIn = l.in
+		return l.text + "  [" + l.in + "]"
+	}
+	if !hasContext && len(nums) == 1 {
+		// A lone hit stays one self-contained `path:line: text` line.
+		fmt.Fprintf(b, "%s:%d: %s\n", file, nums[0], tagged(byLine[nums[0]]))
 		return dup, true
 	}
-	// Context form: the path once, then line-numbered lines in the Read
-	// tool's shape. Repeating the path on every line was most of the bytes
-	// of a context result (a 40-char path × every context line).
+	// The path once, then line-numbered lines in the Read tool's shape.
+	// Repeating the path on every line was most of the bytes of a result
+	// (a 40-char path × every line); plain hit lists now share the form.
 	fmt.Fprintf(b, "%s:\n", file)
 	for i, n := range nums {
-		if i > 0 && n != nums[i-1]+1 {
+		if hasContext && i > 0 && n != nums[i-1]+1 {
 			b.WriteString("  --\n")
 		}
 		if l := byLine[n]; l.match {
-			fmt.Fprintf(b, "  %d: %s\n", n, l.text)
+			fmt.Fprintf(b, "  %d: %s\n", n, tagged(l))
 		} else {
 			fmt.Fprintf(b, "  %d- %s\n", n, l.text)
 		}
