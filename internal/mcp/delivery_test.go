@@ -369,7 +369,7 @@ func TestToolQuery_SourceDelivery_E2E(t *testing.T) {
 	if !strings.Contains(content, "util.go") {
 		t.Errorf("content should include util.go section:\n%s", content)
 	}
-	if !strings.Contains(content, "\tfunc FormatGreeting(name string) string {") {
+	if !strings.Contains(content, SourceLineSep+"func FormatGreeting(name string) string {") {
 		t.Errorf("content should include line-numbered source:\n%s", content)
 	}
 	// Anchor summary names the caller relationship and covering test.
@@ -838,22 +838,12 @@ func (User) Close() {}
 	}
 }
 
-// TestTabIndentNote: BACKLOG addendum 2 item 15 — the "N<TAB>source" line
-// format made a delimiter tab read as indentation on tab-indented files
-// (~20 turns of od -c archaeology in ddtb4dv8); the disambiguating
-// sentence must appear for tab-indented content and stay absent otherwise.
-func TestTabIndentNote(t *testing.T) {
-	if n := tabIndentNote([]string{"package p", "\tfunc x() {}"}); n == "" {
-		t.Error("tab-indented lines must carry the delimiter note")
-	}
-	if n := tabIndentNote([]string{"package p", "    spaces only"}); n != "" {
-		t.Errorf("space-indented content must not carry the note, got %q", n)
-	}
-}
-
-// TestToolRead_RangeCarriesTabNote: the range path (the shape the measured
-// failure actually used) must surface it as formatNote.
-func TestToolRead_RangeCarriesTabNote(t *testing.T) {
+// TestToolRead_TabIndentedLinesKeepEveryTab: BACKLOG addendum 2 item 15 —
+// with "N<TAB>source" the delimiter tab read as indentation on tab-indented
+// files and agents copied the wrong tab count into Edit old_string. The
+// separator is now visible, so each tab after it is source, and the old
+// explanatory note is gone.
+func TestToolRead_TabIndentedLinesKeepEveryTab(t *testing.T) {
 	h := newTestHandler(t)
 	if err := os.WriteFile(filepath.Join(h.Root, "tabby.go"),
 		[]byte("package p\n\nfunc a() {\n\tx := 1\n\t_ = x\n}\n"), 0o644); err != nil {
@@ -864,8 +854,12 @@ func TestToolRead_RangeCarriesTabNote(t *testing.T) {
 		t.Fatalf("read: %v", err)
 	}
 	m := out.(map[string]any)
-	if note, _ := m["formatNote"].(string); !strings.Contains(note, "delimiter") {
-		t.Errorf("tab-indented range read must carry formatNote, got %v", m["formatNote"])
+	content, _ := m["content"].(string)
+	if !strings.Contains(content, "4"+SourceLineSep+"\tx := 1\n") || strings.Contains(content, "4\t") {
+		t.Errorf("line 4 must read 4%s<TAB>x := 1, got %q", SourceLineSep, content)
+	}
+	if _, has := m["formatNote"]; has {
+		t.Errorf("no delimiter note is needed with a visible separator, got %v", m["formatNote"])
 	}
 }
 
@@ -904,7 +898,7 @@ func TestToolRead_HostCapDegradesNotErrors(t *testing.T) {
 	if got := len(content); got > 80000 {
 		t.Fatalf("degraded delivery is still oversized: %d bytes", got)
 	}
-	if !strings.Contains(content, "1\tpackage p") {
+	if !strings.Contains(content, "1→package p") {
 		t.Errorf("head window missing:\n%.200s", content)
 	}
 	note, _ := m["note"].(string)

@@ -134,7 +134,7 @@ var (
 	// compactSourceLine matches delivered source: numbered Read-style lines,
 	// grep context lines, and path:line: hits. Their text is verbatim code
 	// and is never reworded.
-	compactSourceLine  = regexp.MustCompile(`^(\d+\t|\s+\d+[:-] |[^\s:]+:\d+[:-] )`)
+	compactSourceLine  = regexp.MustCompile(`^(\s*\d+(?:\t|→)|\s+\d+[:-] |[^\s:]+:\d+[:-] )`)
 	compactReadOffset  = regexp.MustCompile(`prism_read\(file, offset=(\d+), limit=(\d+)\)`)
 	compactLegacyTools = regexp.MustCompile(`\bprism_(lookup|read|search|query|change_impact|verify)\b`)
 )
@@ -1204,7 +1204,7 @@ func (h *Handler) renderEnclosingSearchBodies(picked []searchSourceRegion) strin
 			}
 			fmt.Fprintf(&b, "\n```%s\n", langTag(region.file))
 			for line := start; line <= end; line++ {
-				fmt.Fprintf(&b, "%d\t%s\n", line, clampSourceLine(lines[line-1]))
+				fmt.Fprintf(&b, "%d"+SourceLineSep+"%s\n", line, clampSourceLine(lines[line-1]))
 			}
 			b.WriteString("```\n\n")
 			section := b.String()

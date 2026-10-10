@@ -195,7 +195,7 @@ func TestLookupCapsOversizedBodies(t *testing.T) {
 		t.Fatalf("oversized function not capped with a read continuation:\n%s", out)
 	}
 	// Numbered lines stay truthful: the first delivered line is the header.
-	if !strings.Contains(out, "3\tfunc Huge() int {") {
+	if !strings.Contains(out, "3→func Huge() int {") {
 		t.Fatalf("capped function lost its line numbers:\n%s", out[:minInt(len(out), 400)])
 	}
 	// Small bodies are untouched.
@@ -220,8 +220,8 @@ func TestSearchDeliversTheNamedDefinitionFirst(t *testing.T) {
 	for _, scope := range []string{"text", "both"} {
 		out := callCompact(t, srv, "search", map[string]any{"terms": []any{"readRootValue"}, "scope": scope})
 		// Numbered source lines are delivered bodies; grep lines are not.
-		def := strings.Index(out, "8\t    public Object readRootValue(Object p,")
-		call := strings.Index(out, "9\t            result = ctxt.readRootValue(p, null);")
+		def := strings.Index(out, "8→    public Object readRootValue(Object p,")
+		call := strings.Index(out, "9→            result = ctxt.readRootValue(p, null);")
 		if def < 0 {
 			t.Fatalf("scope=%s: definition body not delivered:\n%s", scope, out)
 		}
@@ -396,9 +396,9 @@ func TestCompactFootersUseOneToolWording(t *testing.T) {
 }
 
 func TestCompactToolWordingLeavesSourceAlone(t *testing.T) {
-	in := "3\t// prism_lookup stays\n  12: x := prism_read()\na.go:4: prism_search\n… [lines 5–9 omitted — prism_read(file, offset=5, limit=5) if needed] …\n// locator result — use prism_lookup for known symbol bodies"
+	in := "3→// prism_lookup stays\n  12: x := prism_read()\na.go:4: prism_search\n… [lines 5–9 omitted — prism_read(file, offset=5, limit=5) if needed] …\n// locator result — use prism_lookup for known symbol bodies"
 	got := compactToolWording(in)
-	for _, keep := range []string{"3\t// prism_lookup stays", "  12: x := prism_read()", "a.go:4: prism_search"} {
+	for _, keep := range []string{"3→// prism_lookup stays", "  12: x := prism_read()", "a.go:4: prism_search"} {
 		if !strings.Contains(got, keep) {
 			t.Errorf("source line changed: %q missing in\n%s", keep, got)
 		}

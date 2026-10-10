@@ -9,7 +9,7 @@ func TestRenderReadAsText_WholeFile(t *testing.T) {
 	out := map[string]any{
 		"file": "pkg/a.go", "strategy": "compressed",
 		"originalTokens": 900, "deliveredTokens": 500, "savingsPercent": 44,
-		"content": "1\tpackage a\n2\tfunc F() {}\n",
+		"content": "1→package a\n2→func F() {}\n",
 	}
 	text, ok := renderReadAsText(out)
 	if !ok {
@@ -27,7 +27,7 @@ func TestRenderReadAsText_RangedRead(t *testing.T) {
 	out := map[string]any{
 		"file": "pkg/a.go", "delivery": "range",
 		"startLine": 10, "endLine": 20, "totalLines": 300,
-		"content": "10\tx := 1\n", "warning": "past EOF",
+		"content": "10→x := 1\n", "warning": "past EOF",
 	}
 	text, ok := renderReadAsText(out)
 	if !ok {
@@ -183,7 +183,7 @@ func TestRenderLookupAsText_FoundSymbol(t *testing.T) {
 	if strings.Count(text, "def get(self, key)") != 1 {
 		t.Errorf("body must appear exactly once (JSON shipped it twice): %q", text)
 	}
-	if !strings.Contains(text, "58\tdef get(self, key):\n59\t    return key\n") {
+	if !strings.Contains(text, "58→def get(self, key):\n59→    return key\n") {
 		t.Errorf("lookup body must carry exact source line numbers: %q", text)
 	}
 	if strings.Contains(text, "beef") {
@@ -243,7 +243,7 @@ func TestRenderVerifyAsText_CleanAndIncomplete(t *testing.T) {
 
 func TestRenderQuerySourceAsText(t *testing.T) {
 	out := map[string]any{
-		"content":  "**Source** — ...\n### a.py\n1\tcode\n",
+		"content":  "**Source** — ...\n### a.py\n1→code\n",
 		"delivery": "source", "deliveredTokens": 100, "symbolCount": 3,
 		"files": []string{"a.py"},
 		"textMatches": []map[string]any{{"file": "b.cfg",

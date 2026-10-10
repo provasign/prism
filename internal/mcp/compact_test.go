@@ -296,13 +296,13 @@ func TestCompactReadBatchesMultipleFiles(t *testing.T) {
 		t.Fatal(rpcErr.Message)
 	}
 	content := result.(map[string]any)["content"].([]map[string]string)[0]["text"]
-	for _, want := range []string{"sample.txt lines 2-3 of 4", "2\ttwo", "3\tthree",
-		"other.txt lines 2-3 of 3", "2\tbeta", "3\tgamma"} {
+	for _, want := range []string{"sample.txt lines 2-3 of 4", "2→two", "3→three",
+		"other.txt lines 2-3 of 3", "2→beta", "3→gamma"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("batched read omitted %q:\n%s", want, content)
 		}
 	}
-	if strings.Index(content, "2\ttwo") > strings.Index(content, "2\tbeta") {
+	if strings.Index(content, "2→two") > strings.Index(content, "2→beta") {
 		t.Errorf("batched read changed requested order:\n%s", content)
 	}
 }
@@ -496,7 +496,7 @@ func TestCompactBroadSearchDeliversOnlyTopTwoEnclosingBodies(t *testing.T) {
 	}
 	longText := longResult.(map[string]any)["content"].([]map[string]string)[0]["text"]
 	if !strings.Contains(longText, "WINDOW sample.go:") || !strings.Contains(longText, "TargetLong spans 341-507") ||
-		!strings.Contains(longText, "long body") || strings.Contains(longText, "507\t}") {
+		!strings.Contains(longText, "long body") || strings.Contains(longText, "507→}") {
 		t.Fatalf("oversized enclosing body did not produce a bounded, labeled window:\n%s", longText)
 	}
 }
@@ -537,8 +537,8 @@ func TestSearchIncludeBodiesDeliversTwoWindowsForHitsInOversizedMethod(t *testin
 	text, ok := RenderSearchText(out)
 	if !ok || strings.Count(text, "// WINDOW sample.py:") != 2 ||
 		!strings.Contains(text, "CliRunner.isolation spans 2-197") ||
-		!strings.Contains(text, "48\t        sys.stdout = stream") ||
-		!strings.Contains(text, "168\t        sys.stdout = stream") ||
+		!strings.Contains(text, "48→        sys.stdout = stream") ||
+		!strings.Contains(text, "168→        sys.stdout = stream") ||
 		!strings.Contains(text, "full body not included") {
 		t.Fatalf("default search did not deliver both bounded hit windows:\n%s", text)
 	}
@@ -551,8 +551,8 @@ func TestSearchIncludeBodiesDeliversTwoWindowsForHitsInOversizedMethod(t *testin
 	}
 	nearText, ok := RenderSearchText(nearOut)
 	if !ok || strings.Count(nearText, "// WINDOW sample.py:") != 2 ||
-		!strings.Contains(nearText, "58\t        sys.stderr = stream") ||
-		!strings.Contains(nearText, "118\t        sys.stderr = stream") ||
+		!strings.Contains(nearText, "58→        sys.stderr = stream") ||
+		!strings.Contains(nearText, "118→        sys.stderr = stream") ||
 		!strings.Contains(nearText, "// WINDOW sample.py:109-") {
 		t.Fatalf("nearby hits did not retain both lines without repeated source:\n%s", nearText)
 	}

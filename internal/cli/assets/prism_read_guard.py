@@ -17,7 +17,13 @@ Never blocks when in doubt:
   - OVERLAP_THRESHOLD: deny only when the requested window is MOSTLY covered
     by an already-delivered range, so legitimate pagination past the end of
     a capped prism read (e.g. lines 200-475 after a 1-200 delivery) is never
-    blocked.
+    blocked;
+  - if the agent's latest edit of the file FAILED (old_string not found, not
+    unique, file not read yet), the Read is allowed: the file is unchanged,
+    so its range still matches, but the agent needs the exact text. A failed
+    Edit is rejected at input validation, before any hook runs, so the
+    tracker never hears of it; the session transcript is the only record
+    (chi tree.go, 2026-10: wrong tab count, then a denied 16-line re-read).
 
 Installed and removed by `prism init --read-guard` / `--no-read-guard`.
 """
@@ -29,6 +35,8 @@ from pathlib import Path
 
 STATE_DIR = Path(".claude") / "prism-read-guard"
 OVERLAP_THRESHOLD = 0.7  # fraction of the REQUESTED window that must already be covered
+EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
+TRANSCRIPT_TAIL_BYTES = 512 * 1024  # recent turns only; bounded cost per Read
 
 
 def state_file(session_id) -> Path:
@@ -50,6 +58,44 @@ def overlap_fraction(req_from: int, req_to: int, cov_from: int, cov_to: int) -> 
         return 0.0
     req_len = req_to - req_from + 1
     return (hi - lo + 1) / req_len if req_len > 0 else 0.0
+
+
+def latest_edit_failed(transcript_path: str, want: str) -> bool:
+    """True when the most recent edit-tool call on `want` in the transcript
+    tail came back as an error. Unknown or unreadable -> False (the normal
+    overlap rule applies)."""
+    if not transcript_path:
+        return False
+    try:
+        with open(transcript_path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - TRANSCRIPT_TAIL_BYTES))
+            tail = f.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return False
+    if size > TRANSCRIPT_TAIL_BYTES:
+        tail = tail[1:]  # first line is partial
+    last_id, failed = None, {}
+    for line in tail:
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        content = (rec.get("message") or {}).get("content")
+        if not isinstance(content, list):
+            continue
+        for c in content:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use" and c.get("name") in EDIT_TOOLS:
+                ti = c.get("input") or {}
+                path = ti.get("file_path") or ti.get("notebook_path") or ""
+                if path and norm_path(path) == want:
+                    last_id = c.get("id")
+            elif c.get("type") == "tool_result" and c.get("tool_use_id"):
+                failed[c["tool_use_id"]] = bool(c.get("is_error"))
+    return last_id is not None and failed.get(last_id, False)
 
 
 def main():
@@ -83,7 +129,7 @@ def main():
         if frac > best_frac:
             best_frac, best_cov = frac, t
 
-    if best_cov and best_frac >= OVERLAP_THRESHOLD:
+    if best_cov and best_frac >= OVERLAP_THRESHOLD and not latest_edit_failed(payload.get("transcript_path"), want):
         f, frm, to = best_cov["file"], best_cov["from"], best_cov["to"]
         print(json.dumps({
             "hookSpecificOutput": {
@@ -95,7 +141,8 @@ def main():
                     f"instead of re-reading. If it is no longer in your context, fetch "
                     f"it again with prism op=read args={{\"file\":\"{f}\",\"from\":{frm},"
                     f"\"to\":{to}}}. If you need content past line {to}, Read only that "
-                    f"range. (Edits and file-rewriting commands clear this automatically.)"
+                    f"range. (Edits and file-rewriting commands clear this automatically, "
+                    f"and a re-read after a failed edit of this file is allowed.)"
                 ),
             }
         }))

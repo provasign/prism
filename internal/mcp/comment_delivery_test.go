@@ -45,7 +45,7 @@ func TestQueryPreservesDeepCommentOutsideNamedSeedWindow(t *testing.T) {
 	}
 	response := out.(map[string]any)
 	content, _ := response["content"].(string)
-	if strings.Contains(content, "103\t    # ORCHID_DEEP_ONLY") {
+	if strings.Contains(content, "103→    # ORCHID_DEEP_ONLY") {
 		t.Fatalf("fixture did not clamp the deep comment from the source window:\n%s", content)
 	}
 	evidence := fmt.Sprint(response["textMatches"])
@@ -65,7 +65,7 @@ func TestQueryPreservesDeepCommentOutsideNamedSeedWindow(t *testing.T) {
 	}
 	response = out.(map[string]any)
 	content, _ = response["content"].(string)
-	if !strings.Contains(content, "103\t    # ORCHID_DEEP_ONLY") || strings.Contains(content, "// [prism:cached] large.py") {
+	if !strings.Contains(content, "103→    # ORCHID_DEEP_ONLY") || strings.Contains(content, "// [prism:cached] large.py") {
 		t.Fatalf("second query did not deliver the previously truncated deep line:\n%s", content)
 	}
 	if evidence := fmt.Sprint(response["textMatches"]); strings.Contains(evidence, "ORCHID_DEEP_ONLY: retain") {

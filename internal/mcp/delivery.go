@@ -629,9 +629,6 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "**`%s`**", fg.path)
-	if note := tabIndentNote(lines); note != "" {
-		fmt.Fprintf(&b, " — %s", note)
-	}
 	fmt.Fprintf(&b, "\n\n```%s\n", langTag(fg.path))
 	prevEnd := 0
 	for _, w := range wins {
@@ -645,7 +642,7 @@ func (h *Handler) renderFileSection(fg fileGroup) (string, func(), bool) {
 				prevEnd+1, w.start-1, prevEnd+1, w.start-1-prevEnd)
 		}
 		for n := w.start; n <= w.end && n <= len(lines); n++ {
-			fmt.Fprintf(&b, "%d\t%s\n", n, clampSourceLine(lines[n-1]))
+			fmt.Fprintf(&b, "%d"+SourceLineSep+"%s\n", n, clampSourceLine(lines[n-1]))
 		}
 		prevEnd = w.end
 	}

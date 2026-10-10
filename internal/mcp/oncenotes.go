@@ -36,7 +36,6 @@ var onceFixed = map[string]string{
 	// every call — and the evidence note once per caller inside one answer.
 	compactSearchLocatorGuidance:          "// locator result",
 	enclosingBodiesHeader:                 "// Exact source for top hits:",
-	"// " + tabIndentNoteText:             "",
 	"// " + impactRelayNote:               "",
 	"// " + indexedScopeBoundary:          "// indexed project graph only — not a global completeness proof",
 	"// " + compilerScopeBoundary:         "// complete for this repository (compiler-backed)",
