@@ -90,3 +90,18 @@ func TestJSInstallCommandFollowsLockfile(t *testing.T) {
 		}
 	}
 }
+
+// A plain JavaScript project never used typescript: nothing is missing and
+// prism index must not exit 3 or tell the user to install dependencies.
+func TestReadinessIgnoresNotApplicableTypeScript(t *testing.T) {
+	if got := Readiness(t.TempDir(), []string{
+		"js-ts: skipped: not applicable: the project does not use the TypeScript compiler (no typescript dependency, no tsconfig.json or jsconfig.json); tree-sitter analysis only (previous native edges carried forward)",
+	}); len(got) != 0 {
+		t.Fatalf("plain JavaScript reported as degraded: %+v", got)
+	}
+	if got := Readiness(t.TempDir(), []string{
+		"js-ts: skipped: typescript not resolvable in the project (previous native edges carried forward)",
+	}); len(got) != 1 {
+		t.Fatalf("declared-but-uninstalled typescript must still be reported, got %+v", got)
+	}
+}

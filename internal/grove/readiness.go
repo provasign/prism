@@ -36,7 +36,10 @@ func Readiness(root string, native []string) []ReadinessIssue {
 	}
 	for _, d := range native {
 		switch {
-		case strings.Contains(d, "no changed files in its languages"), strings.Contains(d, "disabled by config"):
+		case strings.Contains(d, "no changed files in its languages"), strings.Contains(d, "disabled by config"),
+			// The analyzer does not apply (a plain JavaScript project that never
+			// used typescript): tree-sitter is the whole analysis, nothing to fix.
+			strings.Contains(d, "skipped: not applicable:"):
 			continue
 		case strings.HasPrefix(d, "js-ts: "):
 			reason := strings.TrimPrefix(d, "js-ts: ")

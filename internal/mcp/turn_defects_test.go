@@ -123,3 +123,12 @@ func TestNativePassRequiresAffirmativeCompletion(t *testing.T) {
 		t.Fatal("completed Go pass was not recognized")
 	}
 }
+
+func TestNativePassCompletedPlainJavaScript(t *testing.T) {
+	if !nativePassCompleted("typescript", []string{"js-ts: skipped: not applicable: the project does not use the TypeScript compiler (no typescript dependency, no tsconfig.json or jsconfig.json); tree-sitter analysis only"}) {
+		t.Fatal("plain JavaScript project flagged as degraded TypeScript analysis")
+	}
+	if nativePassCompleted("typescript", []string{"js-ts: skipped: typescript not resolvable in the project"}) {
+		t.Fatal("missing typescript dependency must still be flagged")
+	}
+}
