@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -150,6 +151,9 @@ func TestServerHandsOffToUpgradedBinary(t *testing.T) {
 		t.Fatal(err)
 	}
 	launch := filepath.Join(dir, "prism")
+	if runtime.GOOS == "windows" {
+		launch += ".exe" // Windows only executes files with an executable extension
+	}
 	if err := os.Symlink(oldBin, launch); err != nil {
 		t.Skip("symlinks unavailable:", err)
 	}
