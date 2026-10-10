@@ -38,8 +38,9 @@ func TestReadGuard_InstallWritesHooksAndSettings(t *testing.T) {
 		t.Fatalf("expected exactly 2 PostToolUse entries, got %d: %s", len(post), raw)
 	}
 	pre, _ := hooks["PreToolUse"].([]any)
-	if len(pre) != 1 {
-		t.Fatalf("expected exactly 1 PreToolUse entry, got %d: %s", len(pre), raw)
+	// Read (read guard) and Bash (sed guard).
+	if len(pre) != 2 {
+		t.Fatalf("expected exactly 2 PreToolUse entries, got %d: %s", len(pre), raw)
 	}
 }
 
