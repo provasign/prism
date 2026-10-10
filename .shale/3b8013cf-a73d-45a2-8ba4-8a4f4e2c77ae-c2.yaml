@@ -1,0 +1,142 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae-c2
+created_at: 2026-10-10T03:53:25.904968Z
+finalized_at: 2026-10-10T03:59:07.25584Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: mcp-upgrade-handoff
+privacy: redacted
+commands:
+    - cmd: git push 2>&1 | tail -2; git status -sb | head -1
+      at: 2026-10-10T03:53:25.904968Z
+      classified: other
+    - cmd: "gh pr create --head mcp-upgrade-handoff --base main --title \"mcp: hand the session to the upgraded binary instead of exiting\" --body \"$(cat <<'EOF'\nAfter a `brew upgrade` the running MCP server noticed its binary had changed, answered with an error and exited so the client would respawn it. Claude Code does not respawn an exited stdio server, so Prism was gone for the rest of the session (found in the 2026-10-09 failed-call review).\n\n**Now:** the stale server starts the binary at the launch path (the stable Homebrew symlink) with the same arguments, replays the client's `initialize`, closes its own engine, and relays bytes both ways. The client keeps one connection; every later request runs on the new code. If the replacement fails to start or answer `initialize` within 15s, the old error-and-exit is the fallback.\n\n**Tests:** new `TestServerHandsOffToUpgradedBinary` re-runs the test binary as the \"upgraded\" server behind a repointed symlink and checks both requests are answered without the retirement error. The existing retire test now covers the fallback path. `go test ./...` green.\n\n**Live check:** `prism mcp` launched through a symlink, symlink repointed mid-session; the following `tools/call` and `ping` were answered, and the old process's `.grove` handles went 4 → 0 while the new one holds 4.\n\n**Limits:** each upgrade leaves a small relay process for the session; delivery dedupe state resets at handoff; a changed tool schema is not re-advertised (the compact single tool is stable). Not exercised on Windows beyond CI.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\n)\" 2>&1 | tail -1"
+      at: 2026-10-10T03:53:33.852899Z
+      classified: test
+    - cmd: ls /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail/ 2>&1; ls /private/tmp/claude-501/ | head
+      at: 2026-10-10T03:53:37.891796Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail/collect.py
+      at: 2026-10-10T03:53:39.902654Z
+      classified: other
+    - cmd: "cd ~/.claude/projects && python3 - <<'EOF'\nimport json,glob,os,time,collections\ncut=time.time()-8*86400\nsamples=collections.defaultdict(list)\nfor p in glob.glob('*e2e-run*/*.jsonl'):\n    if os.path.getmtime(p)<cut: continue\n    uses={}\n    for line in open(p):\n        try:r=json.loads(line)\n        except:continue\n        m=r.get('message') or {}\n        for c in m.get('content') or [] if isinstance(m.get('content'),list) else []:\n            if c.get('type')=='tool_use': uses[c['id']]=c\n            if c.get('type')=='tool_result':\n                u=uses.get(c['tool_use_id']); \n                if not u: continue\n                t=c.get('content'); t=' '.join(x.get('text','') for x in t if isinstance(x,dict)) if isinstance(t,list) else (t or '')\n                if len(t)<80 and len(samples[u['name']])<6: samples[u['name']].append(t)\nfor k,v in samples.items(): print(k, v)\nEOF"
+      at: 2026-10-10T03:53:55.47155Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/waste && python3 waste.py 8
+      at: 2026-10-10T03:54:33.120441Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/waste && cat > tests.py <<'EOF'
+        import json,re,collections,sys
+        sys.argv=['x']; exec(open('waste.py').read().split("sessions = []")[0])
+        import glob,os,time
+        rows=collections.Counter(); emptyby=collections.Counter(); per=[]; ex=collections.defaultdict(list)
+        for p in glob.glob(root+'/*e2e-run*/*.jsonl'):
+            if os.path.getmtime(p)<cut: continue
+            calls=[];byid={};api=set()
+            for line in open(p):
+                try:r=json.loads(line)
+                except:continue
+                m=r.get('message') or {}; content=m.get('content') if isinstance(m.get('content'),list) else []
+                if r.get('type')=='assistant':
+                    if m.get('id'): api.add(m['id'])
+                    for c in content:
+                        if isinstance(c,dict) and c.get('type')=='tool_use':
+                            d=dict(name=c['name'],input=c.get('input') or {},result='',err=False); d['kind']=kind_of(c['name'],d['input']); calls.append(d); byid[c['id']]=d
+                elif r.get('type')=='user':
+                    for c in content:
+                        if isinstance(c,dict) and c.get('type')=='tool_result' and c.get('tool_use_id') in byid:
+                            byid[c['tool_use_id']].update(result=text_of(c),err=bool(c.get('is_error')))
+            if len(api)<=10: continue
+            prism=any(c['name'].startswith('mcp__prism') for c in calls)
+            for c in calls:
+                if c['kind']=='search' and not c['err'] and EMPTY.search(c['result']): emptyby[c['name'] if c['name']!='Bash' else 'Bash:'+c['input'].get('command','').split()[0]]+=1
+            tests=[i for i,c in enumerate(calls) if c['kind']=='test']
+            lastedit=-1; prev=None; rep=0; passrepeat=0; prevpass=False
+            for i,c in enumerate(calls):
+                if c['kind']=='edit': lastedit=i
+                if c['kind']!='test': continue
+                out=c['result']
+                passed=bool(re.search(r'^ok\s|\bpassed\b|BUILD SUCCESS|Tests run: \d+, Failures: 0, Errors: 0|^PASS$',out,re.M)) and not re.search(r'FAIL|failed|ERROR',out)
+                if prev is not None and prev[1]>lastedit:
+                    rep+=1
+                    if prevpass and passed: passrepeat+=1
+                    if len(ex['norep'])<25: ex['norep'].append((prism,prev[0][:120],'->',c['input'].get('command','')[:120]))
+                prev=(c['input'].get('command',''),i); prevpass=passed
+            first_edit=next((i for i,c in enumerate(calls) if c['kind']=='edit'),len(calls))
+            pre=sum(1 for i in tests if i<first_edit)
+            per.append(dict(prism=prism,tests=len(tests),calls=len(calls),rep=rep,passrepeat=passrepeat,pre=pre))
+        print('empty searches by tool:',emptyby.most_common(12))
+        for lab,g in [('prism',[x for x in per if x['prism']]),('native',[x for x in per if not x['prism']])]:
+            T=sum(x['tests'] for x in g)
+            print(f"{lab}: {len(g)} sessions, tests {T}/{sum(x['calls'] for x in g)} calls, mean {T/len(g):.1f}/session; before first edit {sum(x['pre'] for x in g)}; test run with no edit since previous test run {sum(x['rep'] for x in g)} (both passed: {sum(x['passrepeat'] for x in g)})")
+        print('dist tests/session:',sorted(x['tests'] for x in per))
+        for e in ex['norep'][:25]: print(e)
+        EOF
+        python3 tests.py
+      at: 2026-10-10T03:54:49.609521Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/waste && python3 - <<'EOF'
+        import json,glob,os,time,re,collections
+        exec(open('waste.py').read().split("sessions = []")[0].replace("DAYS = int(sys.argv[1]) if len(sys.argv) > 1 else 8","DAYS=8"))
+        rows=[]
+        for p in glob.glob(root+'/*e2e-run*/*.jsonl'):
+            if os.path.getmtime(p)<cut: continue
+            calls=[];byid={}
+            for line in open(p):
+                try:r=json.loads(line)
+                except:continue
+                m=r.get('message') or {}; content=m.get('content') if isinstance(m.get('content'),list) else []
+                for c in content:
+                    if not isinstance(c,dict):continue
+                    if c.get('type')=='tool_use':
+                        d=dict(name=c['name'],input=c.get('input') or {},result=''); calls.append(d); byid[c['id']]=d
+                    if c.get('type')=='tool_result' and c.get('tool_use_id') in byid: byid[c['tool_use_id']]['result']=text_of(c)
+            for i,c in enumerate(calls):
+                if c['name']=='mcp__prism__prism' and EMPTY.search(c['result']):
+                    rows.append((p.split('/')[-2][-8:],c['input'],c['result'][:300],[(x['name'][-5:],json.dumps(x['input'])[:150], 'EMPTY' if EMPTY.search(x['result']) else 'hit') for x in calls[i+1:i+3]]))
+        print(len(rows))
+        ops=collections.Counter((r[1].get('op'),json.dumps(sorted((r[1].get('args') or {}).keys()))) for r in rows); print(ops.most_common())
+        for r in rows: print('\n#',r[0],json.dumps(r[1])[:300]); print('  RES:',r[2].replace('\n',' | ')[:300]); [print('  NEXT:',n) for n in r[3]]
+        EOF
+      at: 2026-10-10T03:55:00.85507Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/waste && python3 - <<'EOF'
+        s=open('waste.py').read()
+        s=s.replace("""EMPTY = re.compile(r'^\\s*(No matches found|No files found|\\(Bash completed with no output\\)|)\\s*$|// no matches', re.I)""",
+        """_EMPTY_NATIVE = re.compile(r'^\\s*(No matches found|No files found|\\(Bash completed with no output\\)|)\\s*$', re.I)
+
+
+        class _Empty:
+            # A prism search is empty only when every term section reports no matches.
+            def search(self, t):
+                if '// no matches' in t or '── ' in t:
+                    sections = len(re.findall(r'^── .* ──$', t, re.M)) or 1
+                    return len(re.findall(r'// no matches', t)) >= sections and 'exact match' not in t
+                return _EMPTY_NATIVE.search(t)
+
+
+        EMPTY = _Empty()""")
+        open('waste.py','w').write(s)
+        EOF
+        grep -n "_Empty\|EMPTY =" waste.py | head; python3 waste.py 8 2>&1 | grep -E "==|empty"
+      at: 2026-10-10T03:55:10.418658Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bocuaqd1e.output; tail -25 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/ci_inv.log; cd /Users/tapabratapal/Projects/provasign/prism && gh pr checks 38 2>&1 | head
+      at: 2026-10-10T03:55:16.075434Z
+      classified: other
+    - cmd: gh run view 38022151531 --job 114125252289 --log-failed 2>&1 | grep -E "FAIL|---|Error|error|_test.go" | head -30
+      at: 2026-10-10T03:58:43.303812Z
+      classified: other
+    - cmd: gh run view 38022151531 --job 114125252289 --log 2>&1 | grep -B2 -A2 "handoff to upgraded" | cut -c1-400 | head -12
+      at: 2026-10-10T03:58:48.401468Z
+      classified: other
+notes:
+    - text: continuation of session 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae — events captured after its evidence was finalized
+      at: 2026-10-10T03:53:25.904968Z
+redactions: 0
