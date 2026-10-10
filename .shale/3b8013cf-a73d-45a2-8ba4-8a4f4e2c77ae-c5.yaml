@@ -1,0 +1,209 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae-c5
+created_at: 2026-10-10T20:14:32.389367Z
+finalized_at: 2026-10-10T20:21:06.60238Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/prism; git commit -qam \"engine: grove v0.63.1 (plain JavaScript is not degraded TypeScript analysis)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\" && git push -q -u origin fix/plain-js-not-degraded 2>&1 | tail -1; gh pr create --base main --head fix/plain-js-not-degraded --title \"Plain JavaScript repos are not reported as degraded (grove v0.63.1)\" --body \"$(cat <<'EOF'\n`prism index` exited 3 on any plain JavaScript repo that never used typescript, such as express. It also told the user to run `npm install`, which cannot help. MCP answers on such repos carried a \"TypeScript completion is not confirmed\" warning.\n\nWith grove v0.63.1 (provasign/grove#16) these repos report the TypeScript pass as not applicable. Readiness and the MCP warning now treat that as complete analysis. A repo that declares typescript but hasn't installed it still exits 3 with the real fix.\n\nFound when the benchmark harness, which refuses degraded indexes, stopped on the express task.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\n)\" 2>&1 | tail -1"
+      at: 2026-10-10T20:14:32.389367Z
+      classified: other
+    - cmd: M=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/mask; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=off go build -o $M/bin/prism-rc2 ./cmd/prism && cd ../research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-ci-corpus --prism $M/bin/prism-rc2 --decoy-injector $M/bin/decoy > $M/ci-rc2.txt 2>&1; echo "ci rc=$?"; tail -3 $M/ci-rc2.txt; cd ../prism; until ! gh pr checks fix/plain-js-not-degraded 2>&1 | grep -q pending; do sleep 20; done; gh pr checks fix/plain-js-not-degraded 2>&1 | awk -F'\t' '{print $1" | "$2}'
+      at: 2026-10-10T20:14:32.427702Z
+      classified: build
+    - cmd: |-
+        B=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/bench; python3 - "$B/drive.sh" <<'EOF'
+        import sys
+        p=sys.argv[1]; s=open(p).read()
+        s=s.replace('''      echo "STOPPED by monitor after $n cells"; tail -8 $OUT/monitor.txt
+              exit 1''','''      echo "STOPPED by monitor after $n cells"; tail -8 $OUT/monitor.txt
+              sed -n '/^STOP:/,$p' $OUT/monitor.txt > $OUT/STOPPED; touch $OUT/DONE
+              exit 1''')
+        s=s.replace('''echo "run finished rc=$rc"; tail -12 $OUT/monitor.txt''','''echo "run finished rc=$rc"; tail -12 $OUT/monitor.txt
+        [ $rc -ne 0 ] && sed -n '/^STOP:/,$p' $OUT/monitor.txt > $OUT/STOPPED; touch $OUT/DONE''')
+        open(p,'w').write(s)
+        EOF
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/Projects/provasign/research/harness/scoring/bench_pairs.py'
+        s=open(p).read()
+        s=s.replace('''    if os.path.exists(os.path.join(OUT, "DONE")):
+                print("RUN DONE", flush=True)''','''    if os.path.exists(os.path.join(OUT, "DONE")):
+                stop = os.path.join(OUT, "STOPPED")
+                if os.path.exists(stop):
+                    print("RUN STOPPED: " + " / ".join(l.strip() for l in open(stop) if l.strip()), flush=True)
+                else:
+                    print("RUN DONE", flush=True)''')
+        s=s.replace('''if "--from-start" not in sys.argv:
+            pass  # report every pair already present too: a resumed run starts from zero
+        ''','')
+        s=s.replace('''usage: bench_pairs.py <out_dir> [--from-start]''','''usage: bench_pairs.py <out_dir>''')
+        open(p,'w').write(s)
+        EOF
+        grep -n "DONE\|STOPPED" $B/drive.sh
+      at: 2026-10-10T20:17:32.533726Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/be7uk1dtp.output 2>/dev/null | tail -12; pgrep -fl "run_e2e.py" | head -2
+      at: 2026-10-10T20:18:04.602148Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; grep -n "def _worktree" -A45 runners/run_e2e.py | head -70
+      at: 2026-10-10T20:19:06.447802Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; grep -n "def _cell_m2" -A12 runners/run_e2e.py; grep -n "def _agent_env" -A60 runners/run_e2e.py | grep -nE "GOCACHE|GOMODCACHE|npm|pnpm|store|cache|HOME|m2|GRADLE|PIP|UV_|XDG|CLAUDE|env\[" | head -30
+      at: 2026-10-10T20:19:11.068803Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; sed -n 470,540p runners/run_e2e.py
+      at: 2026-10-10T20:19:13.096187Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; grep -n "def _python_venv" -A30 runners/run_e2e.py | head -40
+      at: 2026-10-10T20:19:23.232566Z
+      classified: other
+    - cmd: |-
+        ls ~/.claude/; echo ---; cat ~/.claude/CLAUDE.md 2>/dev/null | head -20; echo "--- settings hooks/plugins/mcp:"; python3 -c "
+        import json,os
+        for p in ['~/.claude/settings.json','~/.claude/settings.local.json']:
+            p=os.path.expanduser(p)
+            if os.path.exists(p):
+                d=json.load(open(p)); print(p, {k:(list(v) if isinstance(v,dict) else v) for k,v in d.items() if k in ('hooks','enabledPlugins','mcpServers','env','outputStyle','statusLine','permissions')})
+        d=json.load(open(os.path.expanduser('~/.claude.json'))); print('user mcpServers:', list((d.get('mcpServers') or {}).keys()))
+        "; ls ~/.claude/skills ~/.claude/agents ~/.claude/commands 2>/dev/null | head; ls ~/.claude/plugins 2>/dev/null | head
+      at: 2026-10-10T20:19:23.345087Z
+      classified: other
+    - cmd: ls ~/.claude/skills/synced | head -30; ls ~/.claude/skills/synced | wc -l; ls ~/.claude/plugins/synced 2>/dev/null | head; grep -ril "prism" ~/.claude/skills/synced 2>/dev/null | head -5
+      at: 2026-10-10T20:19:42.927329Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-2026-10-10/transcripts; ls | head; for f in *native*.jsonl; do echo "$f: $(grep -oi ''prism'' $f | wc -l | tr -d '' '') prism mentions, $(grep -o ''"name":"mcp__[a-z_]*'' $f | sort -u | tr ''\n'' '' '')"; done; grep -l "pip install" *.jsonl 2>/dev/null | head'
+      at: 2026-10-10T20:19:48.347458Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-2026-10-10/transcripts; python3 - <<'EOF'
+        import json,glob,re
+        pat=re.compile(r'\b(pip3?|uv pip|npm|pnpm|yarn|bun|go (get|install)|mvn [^|]*install|gradle[^|]*publish|brew|cargo install)\b[^\n]{0,80}')
+        for f in sorted(glob.glob('*.jsonl')):
+            for line in open(f):
+                m=json.loads(line).get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if isinstance(b,dict) and b.get('type')=='tool_use' and b.get('name')=='Bash':
+                        c=b['input'].get('command','')
+                        if pat.search(c) or re.search(r'(>|tee) *~|~/\.|\$HOME', c): print(f.split('.claude')[0][:45], '|', c[:160].replace('\n',' '))
+        EOF
+      at: 2026-10-10T20:19:55.035214Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; grep -n "def _prepare_build_env" -A40 runners/run_e2e.py | head -60
+      at: 2026-10-10T20:20:02.9933Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; grep -n "def run_cell" -A60 runners/run_e2e.py | sed -n 1,70p | grep -n "_run_cloud\|py_venv\|_agent_env\|rec\[" | head
+      at: 2026-10-10T20:20:15.475902Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; sed -n 980,1000p runners/run_e2e.py
+      at: 2026-10-10T20:20:17.510338Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 - <<'EOF'
+        p='runners/run_e2e.py'
+        s=open(p).read()
+        def rep(a,b):
+            global s
+            assert s.count(a)==1,a; s=s.replace(a,b)
+        # 1. warm Go build cache for every arm in prep
+        rep('''    setup.update(_predownload_go_modules(wt, task))
+            return setup''','''    setup.update(_predownload_go_modules(wt, task))
+            setup.update(_prebuild_go(wt, task))
+            return setup
+
+
+        def _prebuild_go(wt: Path, task) -> dict:
+            """Compile a Go task's packages and tests into the shared build cache
+            before every arm. prism index type-checks the tree (warming GOCACHE)
+            before the prism arm's agent starts, so without this the native agent
+            met a cold cache whenever it ran first and the prism agent never did:
+            the arm order changed build times inside the agent's session."""
+            if task.get("lang") != "go" or not (wt / "go.mod").exists():
+                return {}
+            env, _ = _agent_env(wt, task)
+            t0 = time.monotonic()
+            subprocess.run(["go", "test", "-count=1", "-run", "^$", "./..."], cwd=wt, env=env,
+                           capture_output=True, text=True, timeout=1500)
+            dirty = docker_eval._sh("git", "-C", str(wt), "status", "--porcelain", check=False)
+            if dirty.strip():
+                raise RuntimeError(f"go prebuild left the tree dirty for {task['instance_id']}: {dirty[:300]}")
+            return {"go_prebuild_s": round(time.monotonic() - t0, 1)}
+
+
+        def _venv_fingerprint(venv: Path | None) -> str | None:
+            """Every file under the venv with its size and mtime: an agent's
+            pip install changes it."""
+            if venv is None or not venv.exists():
+                return None
+            import hashlib
+            h = hashlib.sha256()
+            for root, _, files in sorted(os.walk(venv)):
+                for name in sorted(files):
+                    if name.endswith(".pyc"):
+                        continue
+                    f = Path(root) / name
+                    try:
+                        st = f.stat()
+                    except OSError:
+                        continue
+                    h.update(f"{f.relative_to(venv)}\\0{st.st_size}\\0{int(st.st_mtime)}\\n".encode())
+            return h.hexdigest()''')
+        # 2. venv guard around the agent session
+        rep('''        else:
+                    meta = _run_cloud(model, arm, wt, task)
+                diff = _agent_diff(wt, task)''','''        else:
+                    # The task's venv is shared by every arm and trial (it lives
+                    # outside the worktree). If this agent installed or removed
+                    # packages, the next cell must not inherit them: drop the venv
+                    # so it is rebuilt clean, and record that it happened.
+                    venv = _python_venv(task) if _is_python(task) else None
+                    before = _venv_fingerprint(venv)
+                    meta = _run_cloud(model, arm, wt, task)
+                    if before is not None and _venv_fingerprint(venv) != before:
+                        meta["venv_modified"] = True
+                        (venv / ".ready").unlink(missing_ok=True)
+                diff = _agent_diff(wt, task)''')
+        open(p,'w').write(s)
+        EOF
+        python3 -c "import ast;ast.parse(open('runners/run_e2e.py').read())" && echo ok
+      at: 2026-10-10T20:20:28.324167Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; E2E_OUT=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/bench/out-check python3 - <<'EOF' 2>&1 | tail -6
+        import sys,json
+        sys.path[:0]=['runners','scoring','aggregate','build','.']
+        import run_e2e
+        t=json.load(open('tasks/e2e/go-chi__chi__pr1029.json'))
+        repo,wt=run_e2e._worktree(t)
+        try: print('go prep', run_e2e._prepare_build_env(wt,t))
+        finally: run_e2e._remove_worktree(wt)
+        t=json.load(open('tasks/e2e/pallets__click__pr3653.json'))
+        v=run_e2e._python_venv(t); a=run_e2e._venv_fingerprint(v); b=run_e2e._venv_fingerprint(v)
+        print('venv', v.name, 'stable', a==b)
+        EOF
+        tail -8 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/be7uk1dtp.output
+      at: 2026-10-10T20:20:45.065688Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research; git add harness/runners/run_e2e.py harness/scoring/bench_pairs.py && git commit -qm "harness: arm order cannot change a cell (Go build cache, shared Python venv)
+
+        - Go: compile packages and tests into GOCACHE during prep for every arm.
+          prism index type-checks the tree before the prism agent starts, so the
+          native agent met a cold build cache only when it ran first.
+        - Python: the task venv is shared by all arms and trials; fingerprint it
+          around each agent session and, if the agent changed it, drop it so the
+          next cell gets a clean rebuild (recorded as venv_modified).
+        - scoring/bench_pairs.py: one line per finished pair for live reporting.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git push -q origin main 2>&1 | tail -1; git log --oneline -1
+      at: 2026-10-10T20:20:55.295501Z
+      classified: build
+notes:
+    - text: continuation of session 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae — events captured after its evidence was finalized
+      at: 2026-10-10T20:14:32.389367Z
+redactions: 0
