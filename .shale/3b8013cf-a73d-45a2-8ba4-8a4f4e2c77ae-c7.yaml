@@ -1,0 +1,621 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae-c7
+created_at: 2026-10-10T22:21:33.734652Z
+finalized_at: 2026-10-10T22:58:40.379534Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: feat/sed-guard
+privacy: redacted
+files:
+    - path: internal/cli/assets/prism_sed_guard.py
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-10T22:56:33.817727Z
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && for t in deep__h3__H3Event_module_move deep__zod__codec_options_object; do python3 -c "
+        import json;t=json.load(open('tasks/e2e/$t.json'))
+        print('$t',t['gold_sites'],t['gold_site_files'],len(t['gold_files']),t['gold_test_outcomes']['run'],t['gold_test_outcomes']['passed'],t.get('typecheck_cmd'),json.dumps(t['validation']))"; done; tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/deep/work-ts/build-codec.log
+      at: 2026-10-10T22:21:33.734652Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -m py_compile scoring/js_eval.py build/deep_recipes_ts.py && echo ok; git status --short | grep -v results/ | head -30
+      at: 2026-10-10T22:21:38.851636Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/prism; gh pr merge 41 --merge 2>&1 | tail -1; git checkout -q main && git fetch -q origin && git merge -q --ff-only origin/main; H=$(git rev-parse --short HEAD); git log --oneline -1; git tag -a v0.87.2 $H -m "v0.87.2: a complete change-impact answer is not labelled by its weakest edge (grove v0.63.2)" && git push origin v0.87.2 2>&1 | tail -1; sleep 20; R=$(gh run list --workflow Release --limit 1 --json databaseId -q ''.[0].databaseId''); gh run watch $R --exit-status >/dev/null 2>&1; echo "release rc=$?"; gh workflow run "Refresh formulae" -R provasign/homebrew-shale; sleep 15; R2=$(gh run list -R provasign/homebrew-shale --limit 1 --json databaseId -q ''.[0].databaseId''); gh run watch $R2 -R provasign/homebrew-shale --exit-status >/dev/null 2>&1; brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -1; prism --version'
+      at: 2026-10-10T22:24:56.939039Z
+      classified: other
+    - cmd: |-
+        F=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_phantom_comment_symbols_2026_10_10.md; cat >> $F <<'EOF'
+
+        **Same day, follow-ups released:** prism v0.87.1 (grove v0.63.1): plain-JS repos without typescript are "not
+        applicable", not degraded (express made prism index exit 3). prism v0.87.2 (grove v0.63.2): change_impact labelled a
+        complete compiler-backed answer by its weakest edge (hono Router.match: 13/14 callers compiler-resolved, 20/20 gold
+        files, yet "callerCoverage: heuristic, safeToClaimComplete: false, 110 lines omitted" -> agent re-grepped). Now grove
+        NameMatchedCallers is per caller; prism keeps "complete", marks only the name-found site in relaySites, drops the
+        whole-answer label (Topo: "mixed" is the same doubt), and drops bare same-named calls from method evidence in
+        TS/JS/Python/Go/Rust (110 -> 11 omitted). Bench 2026-10-10 (Sonnet 5.5, v0.87.1): easy 19 pairs native 19 vs prism
+        18 (loss = BSD sed \b no-op), cost 1.14x; complex 5 pairs 3 vs 3, cost 1.08x; calls/session equal (5.52), prism extra =
+        ~3k fixed prefix/call (already trimmed before; see [[feedback-check-memory-before-proposing]]). Sonnet 5.5 sessions are
+        ~1/3 the length of Sonnet 5 ones, so the old high-turn tasks are no longer long; hard seeded-task builder agent was
+        started. Results: research harness/results/bench-2026-10-10{,-complex}.
+        EOF
+        echo ok
+      at: 2026-10-10T22:25:04.678056Z
+      classified: other
+    - cmd: until [ -s /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/deep/work/su.build.log ] && [ -s /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/deep/work/nt.build.log ]; do sleep 20; done; tail -c 600 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/deep/work/su.build.log; tail -c 600 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/deep/work/nt.build.log
+      at: 2026-10-10T22:25:11.370372Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        p='build/build_deep.py'; s=open(p).read()
+        old='''    for k in ("test_classes", "test_functions", "test_modules"):'''
+        assert old in s
+        s=s.replace(old,'''    for k in ("test_classes", "test_functions", "test_modules", "typecheck_cmd", "pytest_args"):''',1)
+        open(p,'w').write(s)
+        EOF
+        ls tasks/e2e/deep__* | wc -l; git -C .. status --short | grep -v results/; ls tests | grep -i "wide\|js_eval" ; python3 -m pytest -q tests -k "wide or js_eval" 2>&1 | tail -3
+      at: 2026-10-10T22:25:18.028483Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && (/opt/homebrew/opt/python@3.12/libexec/bin/python3 -m pytest -q tests/test_wide_score.py -p no:cacheprovider 2>&1 || python3 tests/test_wide_score.py 2>&1) | tail -3
+      at: 2026-10-10T22:25:20.817154Z
+      classified: test
+    - cmd: R=/Users/tapabratapal/Projects/provasign/research/harness/results; ls -d $R/bench-2026-10-10*; du -sh $R/bench-2026-10-10* 2>/dev/null | tail -5; rm -rf "${R:?}/bench-2026-10-10" "${R:?}/bench-2026-10-10-complex" "${R:?}/bench-2026-10-10-aborted-v0870"; rm -f "${R:?}/bench-2026-10-10-manifest.json" "${R:?}/bench-2026-10-10-complex-manifest.json"; ls -d $R/bench-2026-10-10* 2>&1 | head -3
+      at: 2026-10-10T22:27:14.044861Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; prism --version; echo '["deep__gin__Binding_Bind_add_validator"]' > results/deep-probe-manifest.json; E2E_OUT=results/deep-probe python3 runners/run_e2e.py results/deep-probe-manifest.json --models claude-sonnet-5-5 --arms native,prism_init 2>&1 | tail -6; python3 scoring/bench_monitor.py results/deep-probe | tail -8
+      at: 2026-10-10T22:28:39.92308Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/deep-probe; for a in native prism_init; do f=deep__gin__Binding_Bind_add_validator.claude-sonnet-5-5.$a; echo "== $a diff lines $(wc -l < $f.diff) files $(grep -c '^+++ ' $f.diff)"; python3 -c "import json;d=json.load(open('$f.json'));print(json.dumps(d['score'])[:700])"; done; python3 - <<'EOF'
+        import json
+        t=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/tasks/e2e/deep__gin__Binding_Bind_add_validator.json'))
+        print(t['problem_statement'][:800]); print('gold lines', t['patch'].count('\n'))
+        EOF
+      at: 2026-10-10T22:28:46.142874Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 -c "
+        import json,glob,os
+        ids=sorted(os.path.basename(f)[:-5] for f in glob.glob('tasks/e2e/deep__*.json'))
+        first='deep__gin__Binding_Bind_add_validator'; ids=[first]+[i for i in ids if i!=first]
+        json.dump(ids,open('results/bench-deep-2026-10-10-manifest.json','w'),indent=1); print(len(ids))"; mkdir -p results/bench-deep-2026-10-10; cp -R results/deep-probe/. results/bench-deep-2026-10-10/; rm -rf results/deep-probe results/deep-probe-manifest.json; ls results/bench-deep-2026-10-10 | head
+      at: 2026-10-10T22:29:00.770703Z
+      classified: other
+    - cmd: BENCH_OUT=/Users/tapabratapal/Projects/provasign/research/harness/results/bench-deep-2026-10-10 BENCH_MANIFEST=results/bench-deep-2026-10-10-manifest.json /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/bench/drive2.sh
+      at: 2026-10-10T22:29:00.812693Z
+      classified: other
+    - cmd: R=/Users/tapabratapal/Projects/provasign/research/harness/results/bench-deep-2026-10-10/transcripts; python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/bench/calls.py $R/deep__cli__ValueCreator_Create_return_error.claude-sonnet-5-5.native.jsonl $R/deep__cli__ValueCreator_Create_return_error.claude-sonnet-5-5.prism_init.jsonl
+      at: 2026-10-10T22:35:36.827093Z
+      classified: other
+    - cmd: |-
+        R=/Users/tapabratapal/Projects/provasign/research/harness/results/bench-deep-2026-10-10/transcripts; python3 - "$R/deep__cli__ValueCreator_Create_return_error.claude-sonnet-5-5.prism_init.jsonl" <<'EOF'
+        import json,sys
+        n=0
+        for line in open(sys.argv[1]):
+            m=json.loads(line).get('message') or {}
+            for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                if not isinstance(b,dict): continue
+                if b.get('type')=='tool_use':
+                    n+=1
+                    if n>=5: print(f'[USE #{n}]', b['input'].get('command', json.dumps(b['input']))[:400])
+                if b.get('type')=='tool_result' and n>=5:
+                    c=b.get('content'); c=c if isinstance(c,str) else json.dumps(c); print('   [RES]', c[:500].replace('\n',' | '))
+                if b.get('type')=='thinking' and b.get('thinking') and n>=4: print('[THINK]', b['thinking'][:500].replace('\n',' '))
+                if b.get('type')=='text' and n>=11: print('[TEXT]', b['text'][:300])
+        EOF
+      at: 2026-10-10T22:35:45.135722Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import json,glob,os,re,collections,datetime
+        files=[]
+        for f in glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl')):
+            if str(datetime.date.fromtimestamp(os.path.getmtime(f)))>='2026-10-01': files.append(f)
+        c=collections.Counter(); sess=collections.Counter(); errs=collections.Counter()
+        for f in files:
+            arm=None; tools=[]; pend={}
+            for line in open(f):
+                r=json.loads(line); m=r.get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(b,dict): continue
+                    if b.get('type')=='tool_use':
+                        if 'prism' in b['name']: arm='prism'
+                        tools.append((b['name'],b.get('input') or {})); pend[b['id']]=(b['name'],b.get('input') or {})
+                    if b.get('type')=='tool_result' and b.get('tool_use_id') in pend:
+                        t=b.get('content'); t=t if isinstance(t,str) else json.dumps(t)
+                        n,i=pend[b['tool_use_id']]
+                        if n=='Bash' and re.search(r'\bsed\b',i.get('command','')) and re.search(r'sed: \d+:|invalid command code|extra characters|unterminated|unknown option',t): errs[f'{"?" }']+=0; tools.append(('SEDERR',{}))
+                        if n in('Edit','MultiEdit') and re.search(r'(must|need to|has not been) read|not been read|Read it first|File has not',t,re.I): tools.append(('EDIT_BLOCKED',{}))
+            if not tools: continue
+            arm=arm or 'native?'
+            sess[arm]+=1
+            for n,i in tools:
+                if n in ('Edit','MultiEdit','Write'): c[(arm,'Edit/Write tool')]+=1
+                elif n=='Bash':
+                    cmd=i.get('command','')
+                    if re.search(r'\bsed\s+(-[a-zA-Z]*i|-i)',cmd): c[(arm,'sed -i')]+=1
+                    if re.search(r'perl\s+-[a-z]*p[a-z]*i|perl -pi',cmd): c[(arm,'perl -pi')]+=1
+                    if re.search(r"python3?\b.*(open\(.*'w'|write_text|\.write\()",cmd,re.S): c[(arm,'python file write')]+=1
+                elif n=='SEDERR': c[(arm,'sed error')]+=1
+                elif n=='EDIT_BLOCKED': c[(arm,'Edit blocked by guard')]+=1
+        print('sessions',dict(sess))
+        for k in sorted(c): print(f'  {k[0]:8} {k[1]:24} {c[k]:5}  per session {c[k]/sess[k[0]]:.2f}')
+        EOF
+      at: 2026-10-10T22:37:12.883037Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 - <<'EOF'
+        import json,glob,os,re,collections
+        arm_of={}
+        for f in glob.glob('results/**/*.json',recursive=True):
+            try: d=json.load(open(f))
+            except: continue
+            if isinstance(d,dict) and d.get('session_id') and d.get('arm'):
+                a=d['arm']; arm_of[d['session_id']]= 'native' if a in('native','baseline') else ('prism' if a.startswith('prism') else a)
+        paths={}
+        for f in glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl'))+glob.glob('results/bench-deep-2026-10-10/transcripts/*.jsonl'):
+            sid=os.path.basename(f)[:-6]
+            if 'bench-deep' in f:
+                a='prism' if 'prism_init' in f else 'native'; paths[f]=a
+            elif sid in arm_of: paths[f]=arm_of[sid]
+        c=collections.Counter(); sess=collections.Counter()
+        for f,arm in paths.items():
+            pend={}; sess[arm]+=1
+            for line in open(f):
+                r=json.loads(line); m=r.get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(b,dict): continue
+                    if b.get('type')=='tool_use':
+                        pend[b['id']]=(b['name'],b.get('input') or {})
+                        n,i=pend[b['id']]
+                        if n in('Edit','MultiEdit','Write'): c[(arm,'Edit/Write tool')]+=1
+                        if n=='Bash':
+                            cmd=i.get('command','')
+                            if re.search(r'\bsed\s+(-[a-zA-Z]*i\b|-i\b)',cmd):
+                                c[(arm,'sed -i')]+=1
+                                if re.search(r"sed\s+(-[a-zA-Z]*)?-?i\s+(['\"]s|-e)",cmd) or re.search(r"sed -i 's",cmd): c[(arm,"  GNU form (no '' after -i)")]+=1
+                                if '\\b' in cmd or '\\<' in cmd or '\\s' in cmd or '\\w' in cmd or '\\+' in cmd: c[(arm,'  GNU regex escape (\\b \\s \\w \\+)')]+=1
+                            if re.search(r'perl\s+-\w*i',cmd): c[(arm,'perl -i')]+=1
+                    if b.get('type')=='tool_result' and b.get('tool_use_id') in pend:
+                        n,i=pend[b['tool_use_id']]; t=b.get('content'); t=t if isinstance(t,str) else json.dumps(t)
+                        if n=='Bash' and re.search(r'\bsed\b',i.get('command','')) and re.search(r'sed: \d|invalid command code|extra characters|unterminated',t): c[(arm,'  sed error output')]+=1
+        print('sessions',dict(sess))
+        for arm in ('native','prism'):
+            for k in sorted(x for x in c if x[0]==arm): print(f'  {arm:7} {k[1]:36} {c[k]:5}  per session {c[k]/sess[arm]:.2f}')
+        EOF
+      at: 2026-10-10T22:37:29.293749Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 - <<'EOF'
+        import json,glob,os,re,collections
+        meta={}
+        for f in glob.glob('results/**/*.json',recursive=True):
+            try: d=json.load(open(f))
+            except: continue
+            if isinstance(d,dict) and d.get('session_id') and d.get('arm') and d.get('task'):
+                a=d['arm']; meta[d['session_id']]=(d['task'], 'native' if a in('native','baseline') else ('prism' if a.startswith('prism') else None))
+        def scan(f):
+            s=collections.Counter(); pend={}
+            for line in open(f):
+                r=json.loads(line); m=r.get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(b,dict): continue
+                    if b.get('type')=='tool_use':
+                        pend[b['id']]=(b['name'],b.get('input') or {})
+                        if b['name']=='Bash' and re.search(r'\bsed\s+(-[a-zA-Z]*i\b|-i\b)',b['input'].get('command','')): s['sed_i']+=1
+                        if b['name'] in ('Edit','MultiEdit'): s['edit']+=1
+                    if b.get('type')=='tool_result' and b.get('tool_use_id') in pend:
+                        n,i=pend[b['tool_use_id']]; t=b.get('content'); t=t if isinstance(t,str) else json.dumps(t)
+                        if n=='Bash' and re.search(r'\bsed\b',i.get('command','')) and re.search(r'sed: \d|invalid command code|extra characters|unterminated',t): s['sed_err']+=1
+            s['n']=1; return s
+        by=collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
+        for f in glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl')):
+            sid=os.path.basename(f)[:-6]
+            if sid in meta and meta[sid][1]: task,arm=meta[sid]; by[task][arm]+=scan(f)
+        for f in glob.glob('results/bench-deep-2026-10-10/transcripts/*.jsonl'):
+            task=os.path.basename(f).split('.claude')[0]; arm='prism' if 'prism_init' in f else 'native'; by[task][arm]+=scan(f)
+        tot=collections.defaultdict(collections.Counter); tasks=0
+        for task,arms in by.items():
+            if 'native' in arms and 'prism' in arms:
+                tasks+=1
+                for arm in ('native','prism'):
+                    a=arms[arm]; n=a['n']
+                    for k in ('sed_i','sed_err','edit'): tot[arm][k]+=a[k]/n   # per-session average for this task
+        print('paired tasks',tasks)
+        for arm in ('native','prism'):
+            print(f"  {arm:7} per-session avg over tasks: sed -i {tot[arm]['sed_i']/tasks:.2f}  sed errors {tot[arm]['sed_err']/tasks:.2f}  Edit tool {tot[arm]['edit']/tasks:.2f}")
+        EOF
+      at: 2026-10-10T22:37:48.723851Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; prism search "read-guard" "readGuard" --scope text --files-only --format text 2>&1 | head -12; grep -rn "func.*[Rr]eadGuard" internal | grep -v _test | head -5
+      at: 2026-10-10T22:37:58.619341Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; sed -n 1,200p internal/cli/assets/prism_read_guard.py | grep -v "^\s*$" | head -120
+      at: 2026-10-10T22:38:01.039852Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; sed -n "$(grep -n '"permissionDecision": "deny"' internal/cli/assets/prism_read_guard.py | cut -d: -f1),+12p" internal/cli/assets/prism_read_guard.py; cd ../research/harness; python3 - <<'EOF'
+        import json,glob,os,re,collections
+        meta={}
+        for f in glob.glob('results/**/*.json',recursive=True):
+            try: d=json.load(open(f))
+            except: continue
+            if isinstance(d,dict) and d.get('session_id') and d.get('arm','').startswith('prism'): meta[d['session_id']]=d['arm']
+        files=[f for f in glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl')) if os.path.basename(f)[:-6] in meta]
+        files+=glob.glob('results/bench-deep-2026-10-10/transcripts/*prism_init*.jsonl')
+        c=collections.Counter(); nxt=collections.Counter(); ex=[]
+        for f in files:
+            seq=[]; pend={}
+            for line in open(f):
+                r=json.loads(line); m=r.get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(b,dict): continue
+                    if b.get('type')=='tool_use': pend[b['id']]=len(seq); seq.append([b['name'],b.get('input') or {},''])
+                    if b.get('type')=='tool_result' and b.get('tool_use_id') in pend:
+                        t=b.get('content'); t=t if isinstance(t,str) else json.dumps(t); seq[pend[b['tool_use_id']]][2]=t
+            for i,(n,inp,res) in enumerate(seq):
+                if n=='Read' and re.search(r'prism already delivered|already delivered|read-guard|prism_read_guard',res,re.I):
+                    c['read denied by guard']+=1
+                    after=[x for x in seq[i+1:i+4]]
+                    kind='other'
+                    for an,ai,ar in after:
+                        if an in('Edit','MultiEdit','Write'): kind='Edit tool'; break
+                        if an=='Bash' and re.search(r'\bsed -i|perl -\w*i|python3? .*(write|open)',ai.get('command',''),re.S): kind='shell edit (sed/perl/python)'; break
+                    nxt[kind]+=1
+                if n in('Edit','MultiEdit') and re.search(r'has not been read|not been read yet|Read it first',res,re.I): c['Edit refused: file not read']+=1
+        print('prism sessions',len(files)); print(dict(c)); print('next edit method within 3 calls after a denied Read:',dict(nxt))
+        EOF
+      at: 2026-10-10T22:38:17.420714Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 - <<'EOF'
+        import json,glob,os,re,collections
+        meta={}
+        for f in glob.glob('results/**/*.json',recursive=True):
+            try: d=json.load(open(f))
+            except: continue
+            if isinstance(d,dict) and d.get('session_id') and d.get('arm') and d.get('task'):
+                a=d['arm']; arm='native' if a in('native','baseline') else ('prism' if a.startswith('prism') else None)
+                if arm: meta[d['session_id']]=(d['task'],arm)
+        paths=[(f,)+meta[os.path.basename(f)[:-6]] for f in glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl')) if os.path.basename(f)[:-6] in meta]
+        paths+=[(f,os.path.basename(f).split('.claude')[0],'prism' if 'prism_init' in f else 'native') for f in glob.glob('results/bench-deep-2026-10-10/transcripts/*.jsonl')]
+        denies=0
+        stats=collections.defaultdict(collections.Counter)
+        for f,task,arm in paths:
+            reads=0; edits=0; shell=0; anydeny=False
+            for line in open(f):
+                if 'already delivered lines' in line and arm=='prism': anydeny=True
+                r=json.loads(line); m=r.get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if isinstance(b,dict) and b.get('type')=='tool_use':
+                        n=b['name']; i=b.get('input') or {}
+                        if n=='Read': reads+=1
+                        if n in ('Edit','MultiEdit'): edits+=1
+                        if n=='Bash' and re.search(r'\bsed\s+-\w*i|\bsed -i|perl -\w*i|write_text\(|open\([^)]*[\'"]w[\'"]',i.get('command','')): shell+=1
+            denies+=anydeny
+            s=stats[arm]; s['sessions']+=1; s['reads']+=reads; s['edit_tool']+=edits; s['shell_edit']+=shell
+            if edits+shell>0:
+                s['editing sessions']+=1
+                s['editing sessions with 0 Reads']+= (reads==0)
+                if reads==0: s['  of those, edit only via shell']+= (edits==0)
+        print('prism sessions containing a read-guard denial:',denies)
+        for arm,s in stats.items():
+            n=s['sessions']; print(arm, {k:(round(v/n,2) if k in('reads','edit_tool','shell_edit') else v) for k,v in s.items()})
+        EOF
+      at: 2026-10-10T22:38:34.331949Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness; python3 - <<'EOF'
+        import json,glob,os,re,collections,random
+        meta={}
+        for f in glob.glob('results/**/*.json',recursive=True):
+            try: d=json.load(open(f))
+            except: continue
+            if isinstance(d,dict) and d.get('session_id') and d.get('arm') and d.get('task'):
+                a=d['arm']; arm='native' if a in('native','baseline') else ('prism' if a.startswith('prism') else None)
+                if arm: meta[d['session_id']]=(d['task'],arm)
+        paths=[(f,)+meta[os.path.basename(f)[:-6]] for f in glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl')) if os.path.basename(f)[:-6] in meta]
+        paths+=[(f,os.path.basename(f).split('.claude')[0],'prism' if 'prism_init' in f else 'native') for f in glob.glob('results/bench-deep-2026-10-10/transcripts/*.jsonl')]
+        def errs(f):
+            n=0; pend={}
+            for line in open(f):
+                r=json.loads(line); m=r.get('message') or {}
+                for b in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(b,dict): continue
+                    if b.get('type')=='tool_use': pend[b['id']]=b.get('input') or {}
+                    if b.get('type')=='tool_result' and b.get('tool_use_id') in pend:
+                        t=b.get('content'); t=t if isinstance(t,str) else json.dumps(t)
+                        if re.search(r'\bsed\b',pend[b['tool_use_id']].get('command','')) and re.search(r'sed: \d|invalid command code|extra characters|unterminated',t): n+=1
+            return n
+        by=collections.defaultdict(lambda: collections.defaultdict(list))
+        for f,task,arm in paths: by[task][arm].append(errs(f))
+        pairs=[(sum(a['prism'])/len(a['prism']), sum(a['native'])/len(a['native'])) for a in by.values() if a['prism'] and a['native']]
+        d=[p-n for p,n in pairs]; mean=sum(d)/len(d)
+        bs=sorted(sum(random.choice(d) for _ in d)/len(d) for _ in range(5000))
+        print(f'tasks {len(d)}  mean (prism-native) sed errors/session {mean:+.3f}  95% CI [{bs[125]:+.3f}, {bs[4875]:+.3f}]')
+        print('tasks where prism worse',sum(x>0 for x in d),' better',sum(x<0 for x in d),' equal',sum(x==0 for x in d))
+        EOF
+      at: 2026-10-10T22:38:53.883737Z
+      classified: other
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad; sed --version 2>&1 | head -1; which -a sed; t(){ printf 'get_foo foo_bar foo\n' > s.txt; out=$(sed "$@" s.txt 2>&1); echo "  [$*] -> $out"; }; echo "BRE:"; t 's/\bfoo\b/X/g'; t 's/\<foo\>/X/g'; t 's/[[:<:]]foo[[:>:]]/X/g'; t 's/fo\+/X/'; t 's/foo\|bar/X/g'; t 's/\w\+/X/'; t 's/\s/_/g'; echo "ERE (-E):"; t -E 's/\bfoo\b/X/g'; t -E 's/\<foo\>/X/g'; t -E 's/\w+/X/'; t -E 's/\s/_/g'; t -E 's/fo+/X/'; echo "in-place:"; printf 'a\n' > i.txt; sed -i 's/a/b/' i.txt 2>&1 | head -1; cat i.txt; printf 'a\n' > i.txt; sed -i '' 's/a/b/' i.txt; cat i.txt; printf 'a\n' > i.txt; sed -i.bak 's/a/b/' i.txt; cat i.txt; printf 'a\n' > i.txt; sed -i -e 's/a/b/' i.txt 2>&1|head -1; ls i.txt*; cat i.txt
+      at: 2026-10-10T22:55:40.164468Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; sed -n 1,140p internal/cli/readguard.go
+      at: 2026-10-10T22:56:00.054387Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; grep -n "^func Test\|python3\|exec.Command" internal/cli/readguard_hooks_test.go | head -20; sed -n 1,60p internal/cli/readguard_hooks_test.go | head -70
+      at: 2026-10-10T22:56:15.656079Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; python3 - <<'EOF'
+        p='internal/cli/assets/prism_sed_guard.py'
+        s=open(p).read()
+        a='''        if a == "-i":
+                    nxt = args[i + 1] if i + 1 < len(args) else ""
+                    if nxt == "-e":
+                        found.append("BSD sed reads the argument after -i as a backup suffix, so `-i -e ...` "
+                                     "edits the file and also writes a `<file>-e` copy into the tree. "
+                                     "`-i ''` means in place with no backup.")
+                    elif nxt and not nxt.startswith("-") and ("/" in nxt or nxt[:1] in "sy"):
+                        found.append("BSD sed reads the argument after -i as a backup suffix, so the sed "
+                                     "script there is taken as the suffix and the command fails. "
+                                     "`-i ''` means in place with no backup.")
+                        scripts.append(nxt)
+                    i += 2 if nxt in ("", "-e") or not nxt.startswith("-") else 1
+                    continue'''
+        b='''        if a == "-i":
+                    nxt = args[i + 1] if i + 1 < len(args) else ""
+                    if nxt.startswith("-"):
+                        # BSD takes the flag itself as the suffix: `-i -e s/a/b/ f`
+                        # edits f and also writes f-e; the flag is not applied.
+                        found.append(f"BSD sed reads the argument after -i as a backup suffix, so `-i {nxt}` "
+                                     f"edits the file and also writes a `<file>{nxt}` copy into the tree, "
+                                     f"and {nxt} is not applied as an option. `-i ''` means in place with "
+                                     "no backup.")
+                        i += 1  # the flag after it is still parsed as an option below
+                        continue
+                    if nxt and ("/" in nxt or nxt[:1] in "sy"):
+                        found.append("BSD sed reads the argument after -i as a backup suffix, so the sed "
+                                     "script there is taken as the suffix and the command fails. "
+                                     "`-i ''` means in place with no backup.")
+                        scripts.append(nxt)
+                    i += 2
+                    continue'''
+        assert a in s; open(p,'w').write(s.replace(a,b))
+        EOF
+        python3 - <<'EOF'
+        import json,subprocess
+        P='/Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_sed_guard.py'
+        cases={
+         "word boundary BRE": r"sed -i '' 's/\bget_command\b/lookup_command/g' a.py b.py",
+         "word boundary in pipeline": r"grep -rl x src | xargs sed -i '' -E 's/\bfoo\(/bar(/g' && git diff --stat",
+         "BSD boundary ok": r"sed -i '' 's/[[:<:]]foo[[:>:]]/bar/g' a.py",
+         "ERE plus ok": r"sed -E -i '' 's/fo+/x/' a",
+         "BRE \+": r"sed 's/fo\+/x/' a",
+         "GNU -i script": r"sed -i 's/a/b/' f.go",
+         "-i -e": r"sed -i -e 's/a/b/' f.go",
+         "-i '' -e ok": r"sed -i '' -e 's/a/b/' f.go",
+         "-i.bak ok": r"sed -i.bak 's/a/b/' f.go",
+         "print only ok": r"sed -n 10,20p file.go",
+         "word mention, not sed": r"echo 'sed is fine' && grep -n '\bfoo' x",
+         "heredoc skipped": "python3 - <<'E'\nimport re\nE\nsed -i 's/a/b/' f",
+         "newline separated": "cd x\nsed -i '' 's/\\bA\\b/B/' f",
+        }
+        for name,cmd in cases.items():
+            r=subprocess.run(['python3',P],input=json.dumps({"tool_input":{"command":cmd}}),capture_output=True,text=True)
+            out=r.stdout.strip(); verdict='DENY' if out else 'allow'
+            print(f"{verdict:5} {name:28} {(json.loads(out)['hookSpecificOutput']['permissionDecisionReason'][:110] if out else '')} {r.stderr[:100]}")
+        EOF
+      at: 2026-10-10T22:56:52.897495Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; python3 - <<'EOF'
+        p='internal/cli/assets/prism_sed_guard.py'
+        s=open(p).read()
+        a='''        if tok in SEPARATORS or (tok and set(tok) <= set(";&|()")):
+                    if current and (current[0] == "sed" or current[0].endswith("/sed")):
+                        yield current[1:]
+                    current = []'''
+        b='''        if tok in SEPARATORS or (tok and set(tok) <= set(";&|()")):
+                    # sed may follow a wrapper: `xargs sed ...`, `env X=1 sed ...`,
+                    # `find . -exec sed ... {} ;`.
+                    for j, word in enumerate(current):
+                        if word == "sed" or word.endswith("/sed"):
+                            yield current[j + 1:]
+                            break
+                    current = []'''
+        assert a in s; open(p,'w').write(s.replace(a,b))
+        EOF
+        python3 - <<'EOF'
+        import json,subprocess
+        P='/Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_sed_guard.py'
+        cases={
+         "xargs pipeline": r"grep -rl x src | xargs sed -i '' -E 's/\bfoo\(/bar(/g' && git diff --stat",
+         "find -exec": r"find . -name '*.go' -exec sed -i '' 's/\bOld\b/New/g' {} \;",
+         "grep for word sed": r"grep -rn sed docs/README.md",
+         "ok xargs": r"grep -rl x src | xargs sed -i '' 's/foo(/bar(/g'",
+        }
+        for name,cmd in cases.items():
+            r=subprocess.run(['python3',P],input=json.dumps({"tool_input":{"command":cmd}}),capture_output=True,text=True)
+            print('DENY ' if r.stdout.strip() else 'allow', name, r.stderr[:120])
+        EOF
+      at: 2026-10-10T22:57:04.055252Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness; grep -n "def _install_read_guard_hook" -A25 runners/run_e2e.py | head -30
+      at: 2026-10-10T22:57:08.332539Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; git checkout -q main && git pull -q --ff-only; git checkout -q -b feat/sed-guard; git status --short | head; python3 - <<'EOF'
+        p='internal/cli/readguard.go'
+        s=open(p).read()
+        def rep(a,b):
+            global s
+            assert s.count(a)==1,a; s=s.replace(a,b)
+        rep('//go:embed assets/prism_read_tracker.py assets/prism_read_guard.py','//go:embed assets/prism_read_tracker.py assets/prism_read_guard.py assets/prism_sed_guard.py')
+        rep('''	readGuardGuardPath   = ".claude/hooks/prism_read_guard.py"
+        ''','''	readGuardGuardPath   = ".claude/hooks/prism_read_guard.py"
+        	sedGuardPath         = ".claude/hooks/prism_sed_guard.py"
+        ''')
+        rep('''func readGuardGuardCmd() string   { return "python3 " + readGuardGuardPath }''','''func readGuardGuardCmd() string   { return "python3 " + readGuardGuardPath }
+        func sedGuardCmd() string         { return "python3 " + sedGuardPath }
+
+        // readGuardScripts are the hook scripts installReadGuard writes and
+        // uninstallReadGuard removes.
+        var readGuardScripts = []string{"prism_read_tracker.py", "prism_read_guard.py", "prism_sed_guard.py"}''')
+        rep('''	for _, name := range []string{"prism_read_tracker.py", "prism_read_guard.py"} {
+        		data, err := readGuardAssets.ReadFile("assets/" + name)''','''	for _, name := range readGuardScripts {
+        		data, err := readGuardAssets.ReadFile("assets/" + name)''')
+        rep('''	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed
+        	doc["hooks"] = hooks''','''	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed
+        	// BSD (macOS) sed reads GNU escapes like \\b as literals: the edit
+        	// silently changes nothing and the agent reports it done. The sed guard
+        	// denies those commands and says why; it does nothing where sed is GNU.
+        	changed = addHookEntry(hooks, "PreToolUse", "Bash", sedGuardCmd()) || changed
+        	doc["hooks"] = hooks''')
+        rep('''	fmt.Println("  denies a Read that substantially overlaps content prism already delivered this session")''','''	fmt.Println("  denies a Read that substantially overlaps content prism already delivered this session")
+        	fmt.Println("  denies a sed command that BSD (macOS) sed would silently misread, and says why")''')
+        rep('''	for _, name := range []string{"prism_read_tracker.py", "prism_read_guard.py"} {
+        		p := filepath.Join(projectDir, ".claude", "hooks", name)''','''	for _, name := range readGuardScripts {
+        		p := filepath.Join(projectDir, ".claude", "hooks", name)''')
+        rep('''		changed = removeHookEntry(hooks, "PreToolUse", readGuardGuardCmd()) || changed''','''		changed = removeHookEntry(hooks, "PreToolUse", readGuardGuardCmd()) || changed
+        		changed = removeHookEntry(hooks, "PreToolUse", sedGuardCmd()) || changed''')
+        open(p,'w').write(s)
+        EOF
+        gofmt -l internal/cli/readguard.go; GOWORK=off go build ./... && echo ok
+      at: 2026-10-10T22:57:22.81335Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; sed -n 60,106p internal/cli/readguard_hooks_test.go
+      at: 2026-10-10T22:57:27.064719Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; cat > internal/cli/sedguard_hooks_test.go <<'EOF'
+        package cli
+
+        import (
+        	"encoding/json"
+        	"os"
+        	"os/exec"
+        	"path/filepath"
+        	"strings"
+        	"testing"
+        )
+
+        func bsdSed(t *testing.T) {
+        	t.Helper()
+        	if exec.Command("sed", "--version").Run() == nil {
+        		t.Skip("sed is GNU here; the guard only acts on BSD sed")
+        	}
+        }
+
+        func (h *hookEnv) sedDecision(command string) string {
+        	h.t.Helper()
+        	out := h.run("prism_sed_guard.py", map[string]any{"tool_name": "Bash", "tool_input": map[string]any{"command": command}})
+        	if out == "" {
+        		return ""
+        	}
+        	var doc struct {
+        		HookSpecificOutput struct {
+        			PermissionDecision       string `json:"permissionDecision"`
+        			PermissionDecisionReason string `json:"permissionDecisionReason"`
+        		} `json:"hookSpecificOutput"`
+        	}
+        	if err := json.Unmarshal([]byte(out), &doc); err != nil || doc.HookSpecificOutput.PermissionDecision != "deny" {
+        		h.t.Fatalf("sed guard output: %q", out)
+        	}
+        	return doc.HookSpecificOutput.PermissionDecisionReason
+        }
+
+        // GNU escapes silently match nothing in BSD sed: the 2026-10-10 benchmark
+        // lost a task to `sed -i '' 's/\bget_command\b/.../g'` changing no file.
+        func TestSedGuard_DeniesCommandsBSDSedMisreads(t *testing.T) {
+        	bsdSed(t)
+        	h := newHookEnv(t)
+        	for _, cmd := range []string{
+        		`sed -i '' 's/\bget_command\b/lookup_command/g' src/click/core.py`,
+        		`grep -rl get_headers src | xargs sed -i '' -E 's/\bget_headers\(/response_headers(/g'`,
+        		`find . -name '*.go' -exec sed -i '' 's/\<Old\>/New/g' {} \;`,
+        		`sed 's/fo\+/x/' a.txt`,
+        		`sed -i 's/a/b/' f.go`,
+        		`sed -i -e 's/a/b/' f.go`,
+        	} {
+        		if reason := h.sedDecision(cmd); !strings.Contains(reason, "BSD") {
+        			t.Errorf("not denied: %s (reason %q)", cmd, reason)
+        		}
+        	}
+        }
+
+        func TestSedGuard_AllowsWorkingCommands(t *testing.T) {
+        	h := newHookEnv(t)
+        	for _, cmd := range []string{
+        		`sed -i '' 's/[[:<:]]foo[[:>:]]/bar/g' a.py`,
+        		`sed -E -i '' 's/fo+/x/' a.txt`,
+        		`sed -i '' -e 's/a/b/' f.go`,
+        		`sed -i.bak 's/a/b/' f.go`,
+        		`sed -n 10,20p file.go`,
+        		`grep -rn sed docs/README.md`,
+        		"python3 - <<'E'\nopen('f','w').write('x')\nE",
+        	} {
+        		if reason := h.sedDecision(cmd); reason != "" {
+        			t.Errorf("denied a working command: %s (%s)", cmd, reason)
+        		}
+        	}
+        }
+
+        func TestSedGuard_InstalledAndRemovedWithReadGuard(t *testing.T) {
+        	h := newHookEnv(t)
+        	script := filepath.Join(h.project, filepath.FromSlash(sedGuardPath))
+        	if _, err := os.Stat(script); err != nil {
+        		t.Fatalf("sed guard not installed: %v", err)
+        	}
+        	settings, _ := os.ReadFile(filepath.Join(h.project, ".claude", "settings.json"))
+        	if !strings.Contains(string(settings), sedGuardCmd()) {
+        		t.Fatalf("settings.json lacks the sed guard entry:\n%s", settings)
+        	}
+        	if err := uninstallReadGuard(h.project); err != nil {
+        		t.Fatal(err)
+        	}
+        	if _, err := os.Stat(script); !os.IsNotExist(err) {
+        		t.Fatalf("sed guard script left behind: %v", err)
+        	}
+        	settings, _ = os.ReadFile(filepath.Join(h.project, ".claude", "settings.json"))
+        	if strings.Contains(string(settings), "prism_sed_guard") {
+        		t.Fatalf("settings.json still references the sed guard:\n%s", settings)
+        	}
+        }
+        EOF
+        gofmt -l internal/cli/sedguard_hooks_test.go; GOWORK=off go test ./internal/cli -run "SedGuard|ReadGuard" -count=1 -v 2>&1 | grep -E "^(=== RUN|--- |ok|FAIL)" | grep -v "=== RUN" | head -30
+      at: 2026-10-10T22:57:45.470689Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; gofmt -w internal/cli/sedguard_hooks_test.go; GOWORK=off go test ./internal/cli -run "TestReadGuard_InstallUpgradesOldWiring|TestReadGuard_InstallWritesHooksAndSettings" -count=1 2>&1 | grep -v "^ok" | head -20
+      at: 2026-10-10T22:57:49.520191Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; sed -n 36,50p internal/cli/readguard_test.go; sed -n 340,356p internal/cli/readguard_hooks_test.go
+      at: 2026-10-10T22:57:52.782578Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/prism; python3 - <<'EOF'
+        def rep(p,a,b):
+            s=open(p).read(); assert s.count(a)==1,(p,a); open(p,'w').write(s.replace(a,b))
+        rep('internal/cli/readguard_test.go','''	if len(pre) != 1 {
+        		t.Fatalf("expected exactly 1 PreToolUse entry, got %d: %s", len(pre), raw)
+        	}''','''	// Read (read guard) and Bash (sed guard).
+        	if len(pre) != 2 {
+        		t.Fatalf("expected exactly 2 PreToolUse entries, got %d: %s", len(pre), raw)
+        	}''')
+        rep('internal/cli/readguard_hooks_test.go','''	if n := len(hooks["PreToolUse"].([]any)); n != 1 {
+        		t.Errorf("PreToolUse entries after upgrade = %d, want 1", n)
+        	}''','''	if n := len(hooks["PreToolUse"].([]any)); n != 2 { // Read guard + sed guard
+        		t.Errorf("PreToolUse entries after upgrade = %d, want 2", n)
+        	}''')
+        EOF
+        GOWORK=off go test ./... -count=1 2>&1 | grep -v "^ok\|no test files" | head
+      at: 2026-10-10T22:58:25.276781Z
+      classified: test
+notes:
+    - text: continuation of session 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae — events captured after its evidence was finalized
+      at: 2026-10-10T22:21:33.734652Z
+redactions: 0
