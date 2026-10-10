@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/provasign/prism/internal/assist"
@@ -3183,20 +3184,28 @@ func cmdMCP(args []string) int {
 		close(readyCh)
 	}()
 
+	// Stop background work and close the embedded engine before returning so no
+	// SQLite handles or .grove files linger — otherwise a caller that removes
+	// the project directory (e.g. a test using t.TempDir) races file creation
+	// and fails with "directory not empty" on Linux or a lock error on Windows.
+	// Also run when an upgraded binary takes over the session mid-Serve.
+	var shutdownOnce sync.Once
+	shutdown := func() {
+		shutdownOnce.Do(func() {
+			cancel()
+			<-doneCh
+			client.Shutdown()
+		})
+	}
+
 	h := mcp.NewHandlerWithReady(cfg, root, client, readyCh)
 	srv := mcp.NewServer(h)
 	if compact {
 		srv = mcp.NewCompactServer(h)
 	}
+	srv.OnHandoff = shutdown
 	serveErr := srv.Serve(os.Stdin, os.Stdout)
-
-	// Stop background work and close the embedded engine before returning so no
-	// SQLite handles or .grove files linger — otherwise a caller that removes
-	// the project directory (e.g. a test using t.TempDir) races file creation
-	// and fails with "directory not empty" on Linux or a lock error on Windows.
-	cancel()
-	<-doneCh
-	client.Shutdown()
+	shutdown()
 
 	if serveErr != nil {
 		fmt.Fprintln(os.Stderr, "mcp:", serveErr)

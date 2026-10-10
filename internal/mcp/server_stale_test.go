@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -113,5 +114,77 @@ func TestServerRetiresBeforeDispatchAfterBinaryReplacement(t *testing.T) {
 	}
 	if strings.Contains(got, `"id":2`) {
 		t.Fatalf("stale server dispatched a second request instead of exiting: %s", got)
+	}
+}
+
+// TestHandoffHelperProcess is the "upgraded binary" for the handoff test: the
+// test executable re-run as a plain MCP server.
+func TestHandoffHelperProcess(t *testing.T) {
+	if os.Getenv("PRISM_HANDOFF_HELPER") != "1" {
+		return
+	}
+	startupBinarySnapshot = binarySnapshot{}
+	_ = NewServer(&Handler{}).Serve(os.Stdin, os.Stdout)
+	os.Exit(0)
+}
+
+func TestServerHandsOffToUpgradedBinary(t *testing.T) {
+	originalSnapshot := startupBinarySnapshot
+	originalWarned := staleBinaryWarned
+	originalArgs := handoffArgs
+	t.Cleanup(func() {
+		startupBinarySnapshot = originalSnapshot
+		staleBinaryWarned = originalWarned
+		handoffArgs = originalArgs
+	})
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PRISM_HANDOFF_HELPER", "1")
+	handoffArgs = func() []string { return []string{"-test.run=^TestHandoffHelperProcess$"} }
+
+	// The launch path is a symlink, as with Homebrew; the upgrade repoints it.
+	dir := t.TempDir()
+	oldBin := filepath.Join(dir, "old")
+	if err := os.WriteFile(oldBin, []byte("old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	launch := filepath.Join(dir, "prism")
+	if runtime.GOOS == "windows" {
+		launch += ".exe" // Windows only executes files with an executable extension
+	}
+	if err := os.Symlink(oldBin, launch); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	startupBinarySnapshot = snapshotBinary(launch)
+	staleBinaryWarned = false
+	next := filepath.Join(dir, "next")
+	if err := os.Symlink(self, next); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(next, launch); err != nil {
+		t.Fatal(err)
+	}
+
+	handedOff := false
+	srv := NewServer(nil)
+	srv.OnHandoff = func() { handedOff = true }
+	input := strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n" +
+		"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\"}\n" +
+		"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"ping\"}\n")
+	var output bytes.Buffer
+	if err := srv.Serve(input, &output); err != nil {
+		t.Fatal(err)
+	}
+	got := output.String()
+	if !handedOff {
+		t.Error("OnHandoff was not called")
+	}
+	if strings.Contains(got, `-32001`) || strings.Contains(got, handoffInitID) {
+		t.Fatalf("client saw the retirement error or the replayed handshake: %s", got)
+	}
+	if !strings.Contains(got, `{"id":1,"jsonrpc":"2.0","result"`) || !strings.Contains(got, `{"id":2,"jsonrpc":"2.0","result"`) {
+		t.Fatalf("upgraded server did not answer both requests: %s", got)
 	}
 }
