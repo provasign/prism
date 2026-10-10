@@ -219,7 +219,7 @@ func graphPointerResponse(name, hash string, seenCount int, out any) map[string]
 				}
 			case string:
 				switch k {
-				case "query", "completeness", "familyCompleteness", "callerCoverage", "coverageNote", "newName", "scope", "completenessScope", "scopeBoundary", "relayNote":
+				case "query", "completeness", "familyCompleteness", "callerCoverage", "callerEvidence", "coverageNote", "newName", "scope", "completenessScope", "scopeBoundary", "relayNote":
 					summary[k] = tv
 				}
 			case bool:

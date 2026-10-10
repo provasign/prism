@@ -135,6 +135,9 @@ type ChangeImpactResult struct {
 	// rather than silently incomplete, but is not certain in the way a
 	// bare "closed" implies.
 	HasHeuristicRefs bool `json:"hasHeuristicRefs,omitempty"`
+	// NameMatchedCallers: IDs of callers reached only by name-derived edges.
+	// Every other caller has a compiler- or AST-resolved edge into the set.
+	NameMatchedCallers []string `json:"nameMatchedCallers,omitempty"`
 
 	// Data-member anchors only (fields, properties, constants, variables).
 	// MemberKind is non-empty exactly for those. Accesses are the source

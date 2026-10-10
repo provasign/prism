@@ -3315,6 +3315,16 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		targetLeaf = targetLeaf[:i]
 	}
 	targetLeaf = leafOf(strings.TrimSpace(targetLeaf))
+	// A method anchor (declared on a type) is never reached by a bare call
+	// in receiver-required languages; a free function is.
+	methodTarget := false
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		for _, d := range group {
+			if d.ParentSymbol != "" {
+				methodTarget = true
+			}
+		}
+	}
 	evidenceBudget := impactEvidenceMaxBytes
 	wideImpact := obligationSiteCount(r) >= wideImpactIdentityThreshold
 	var verifiedCallLines impactPlanSites
@@ -3346,7 +3356,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// actually holds it. Absent for the common non-nested case, which
 			// therefore renders exactly as before.
 			if annotate && !wideImpact {
-				addPlanCheckedCallEvidence(entry, s, targetLeaf, &evidenceBudget, verifiedCallLines)
+				addPlanCheckedCallEvidence(entry, s, targetLeaf, methodTarget, &evidenceBudget, verifiedCallLines)
 			}
 			if annotate {
 				if via := nestedScopeFor(s, targetLeaf); via != "" {
@@ -3377,6 +3387,9 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 		"totalSites":         len(impactSites(r, true)) + len(r.ReExports),
 		"familyCompleteness": r.Completeness,
 		"callerCoverage":     impactCallerCoverage(r),
+	}
+	if ev := impactCallerEvidence(r); ev != "" {
+		out["callerEvidence"] = ev
 	}
 	addIndexedCompletenessSafety(out)
 	if relay := impactRelaySites(r, 40); len(relay) > 0 {
@@ -3475,6 +3488,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	}
 	h.addDegradedNote(ctx, out, r)
 	applyCompilerBackedCompleteness(out, r)
+	markNameMatchedSites(out, r)
 	if familyPickNote != "" {
 		out["resolvedAmbiguity"] = familyPickNote
 	}
@@ -3492,7 +3506,13 @@ var compilerBackedImpactLangs = map[string]bool{
 // answer, and agents re-checked complete answers with grep (exp branch
 // 2026-09-29: capability-first steering).
 func applyCompilerBackedCompleteness(out map[string]any, r *grove.ChangeImpactResult) {
-	if _, degraded := out["degradedAnalysis"]; degraded || r.HasHeuristicRefs {
+	// Name-matched callers do not block this: name matching adds sites the
+	// compiler could not see (a file outside every tsconfig), so they make
+	// the set over-inclusive, never incomplete. They are named in
+	// callerEvidence. One such caller used to withhold "complete" from an
+	// answer whose other 13 callers were compiler-resolved (hono
+	// Router.match), and the agent re-grepped the repository.
+	if _, degraded := out["degradedAnalysis"]; degraded {
 		return
 	}
 	if c, _ := out["completeness"].(string); c != "closed" {
@@ -3628,6 +3648,62 @@ func impactRelaySites(r *grove.ChangeImpactResult, limit int) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// markNameMatchedSites puts the doubt where it belongs once the compiler-backed
+// answer is complete: on the site found only by name, not on the answer. A
+// whole-answer label ("heuristic", or any softer word) told the agent the
+// inventory might be wrong when it was complete, and it re-grepped the
+// repository (hono Router.match: 13 of 14 callers compiler-resolved, the
+// 14th in a file outside every tsconfig).
+func markNameMatchedSites(out map[string]any, r *grove.ChangeImpactResult) {
+	if safe, _ := out["safeToClaimComplete"].(bool); !safe || len(r.NameMatchedCallers) == 0 {
+		return
+	}
+	named := map[string]bool{}
+	for _, c := range r.Callers {
+		for _, id := range r.NameMatchedCallers {
+			if c.ID == id {
+				named[fmt.Sprintf("%s:%d:%s", normalizePath(c.FilePath), c.Span.Start, c.Name)] = true
+			}
+		}
+	}
+	if relay, ok := out["relaySites"].([]string); ok {
+		for i, label := range relay {
+			if named[strings.SplitN(label, " [", 2)[0]] {
+				relay[i] = label + " [found by name in a file the compiler does not analyze]"
+			}
+		}
+	}
+	delete(out, "callerCoverage")
+	delete(out, "hasHeuristicRefs")
+	out["callerEvidence"] = fmt.Sprintf("Every caller is listed: %d resolved by the compiler or AST, %d found by name (marked in relaySites).",
+		len(r.Callers)-len(named), len(named))
+}
+
+// impactCallerEvidence says how many callers the compiler or the AST resolved
+// and names the ones reached only by name matching, instead of labelling the
+// whole answer by its weakest edge. Empty when every caller is resolved.
+func impactCallerEvidence(r *grove.ChangeImpactResult) string {
+	if r == nil || len(r.NameMatchedCallers) == 0 || len(r.Callers) == 0 {
+		return ""
+	}
+	byID := make(map[string]grove.SymbolRecord, len(r.Callers))
+	for _, c := range r.Callers {
+		byID[c.ID] = c
+	}
+	var named []string
+	for _, id := range r.NameMatchedCallers {
+		if c, ok := byID[id]; ok {
+			named = append(named, fmt.Sprintf("%s:%d:%s", normalizePath(c.FilePath), c.Span.Start, displayQN(c)))
+		}
+	}
+	if len(named) == 0 {
+		return ""
+	}
+	sort.Strings(named)
+	return fmt.Sprintf("%d of %d callers resolved by the compiler or AST; name-matched only (included, may be false positives): %s",
+		len(r.Callers)-len(named), len(r.Callers), strings.Join(named, ", "))
 }
 
 // addIndexedCompletenessSafety keeps task-shaped graph tools honest about the

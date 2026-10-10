@@ -129,7 +129,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"widerAnchor": true, "hasHeuristicRefs": true,
 		"evidenceNote": true, "coverageNote": true, "methodFamilyNote": true,
 		"staleWarning": true, "scopeNote": true, "ambiguityNote": true,
-		"familyCompleteness": true, "callerCoverage": true,
+		"familyCompleteness": true, "callerCoverage": true, "callerEvidence": true,
 		"completenessScope": true, "safeToClaimComplete": true,
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
 		"inheritedNote": true, "signatureNote": true, "testOnly": true,
@@ -165,6 +165,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		if value, _ := out[key].(string); value != "" {
 			fmt.Fprintf(&b, "%s: %s\n", key, value)
 		}
+	}
+	if ev, _ := out["callerEvidence"].(string); ev != "" {
+		fmt.Fprintf(&b, "// %s\n", ev)
 	}
 	if note, _ := out["coverageNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
