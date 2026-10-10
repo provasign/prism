@@ -3581,7 +3581,10 @@ func nativePassCompleted(lang string, diagnostics []string) bool {
 				return true
 			}
 		case "typescript":
-			if strings.HasPrefix(diagnostic, "js-ts: resolved ") {
+			// "not applicable": a plain JavaScript project with no typescript;
+			// tree-sitter is the complete analysis there, not a degraded one.
+			if strings.HasPrefix(diagnostic, "js-ts: resolved ") ||
+				strings.HasPrefix(diagnostic, "js-ts: skipped: not applicable:") {
 				return true
 			}
 		}
