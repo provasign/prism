@@ -1,0 +1,275 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae
+created_at: 2026-10-10T03:38:39.310633Z
+finalized_at: 2026-10-10T03:53:14.750687Z
+agent:
+    tool: claude-code
+    model: claude-opus-5-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: mcp-upgrade-handoff
+privacy: redacted
+files:
+    - path: internal/mcp/handoff.go
+      ops:
+        - write
+      via: hook
+      first_touched: 2026-10-10T03:50:13.155331Z
+commands:
+    - cmd: prism search read-guard additionalContext permissionDecision updatedInput --scope text --format text 2>/dev/null | head -60
+      at: 2026-10-10T03:39:28.154933Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_failed_calls_audit_2026_10_09.md
+      at: 2026-10-10T03:46:50.301251Z
+      classified: other
+    - cmd: prism search os.Executable "binary changed" "stale" "upgrade" --scope text --format text 2>/dev/null | head -80
+      at: 2026-10-10T03:49:00.242016Z
+      classified: other
+    - cmd: sed -n 470,620p internal/mcp/server.go; grep -n "staleBinary\|startupBinarySnapshot\|os.Exit" internal/mcp/*.go cmd/*/*.go internal/cli/*.go | grep -v _test | head -40
+      at: 2026-10-10T03:49:02.585006Z
+      classified: other
+    - cmd: sed -n 40,200p internal/mcp/server.go; git log --oneline -5 -- internal/mcp/server.go; git log -S"stale server is exiting" --oneline
+      at: 2026-10-10T03:49:04.835097Z
+      classified: other
+    - cmd: git log -S"stale server is exiting" --format='%h %ad %s%n%b' --date=short | head -40; cat internal/mcp/server_stale_test.go | head -150; grep -n "Serve(\|NewCompactServer\|NewServer" internal/cli/*.go | grep -v _test
+      at: 2026-10-10T03:49:25.347949Z
+      classified: other
+    - cmd: sed -n 3120,3215p internal/cli/commands.go; grep -n "func readMessage\|func writeMessage" -A30 internal/mcp/*.go | head -80
+      at: 2026-10-10T03:49:27.27256Z
+      classified: other
+    - cmd: sed -n 1,39p internal/mcp/server.go; grep -n "func legacyProjectWarning" -A12 internal/mcp/*.go; grep -n "^type Handler struct" -A8 internal/mcp/*.go
+      at: 2026-10-10T03:49:58.731617Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/server.go'
+        s=open(p).read()
+        s=s.replace("""type Server struct {
+        	handler *Handler
+        	compact bool
+        }""","""type Server struct {
+        	handler *Handler
+        	compact bool
+
+        	// OnHandoff, when set, releases this process's engine once an upgraded
+        	// binary has taken over the session.
+        	OnHandoff func()
+
+        	initParams json.RawMessage // last initialize params, replayed on handoff
+        }""")
+        old="""		if note := staleBinaryNote(); note != "" {
+        			if err := writeMessage(w, req.ID, nil, &rpcError{Code: -32001, Message: note}); err != nil {
+        				return err
+        			}
+        			return nil
+        		}
+        """
+        new="""		if note := staleBinaryNote(); note != "" {
+        			if req.Method == "initialize" {
+        				s.initParams = req.Params
+        			}
+        			cmd, childIn, childOut, err := s.startHandoff()
+        			if err == nil {
+        				if s.OnHandoff != nil {
+        					s.OnHandoff()
+        				}
+        				return relayToReplacement(cmd, childIn, childOut, msg, reader, w)
+        			}
+        			fmt.Fprintln(os.Stderr, "mcp: handoff to upgraded binary failed:", err)
+        			if err := writeMessage(w, req.ID, nil, &rpcError{Code: -32001, Message: note}); err != nil {
+        				return err
+        			}
+        			return nil
+        		}
+        		if req.Method == "initialize" {
+        			s.initParams = req.Params
+        		}
+        """
+        assert old in s
+        s=s.replace(old,new)
+        old2="""// staleBinaryNote reports once when the configured executable was replaced
+        // after this server started."""
+        new2="""// staleBinaryNote reports once when the configured executable was replaced
+        // after this server started. Serve first hands the session to the new binary;
+        // the note is the client-facing error only when that handoff fails."""
+        assert old2 in s
+        s=s.replace(old2,new2)
+        open(p,'w').write(s)
+        EOF
+        grep -n "readyCh := make" internal/cli/commands.go
+      at: 2026-10-10T03:50:21.661591Z
+      classified: other
+    - cmd: sed -n 1,40p internal/cli/commands.go | grep -n '"strings"\|"strconv"\|"time"'
+      at: 2026-10-10T03:50:31.385862Z
+      classified: other
+    - cmd: "sed -i '' '17s/.*/\t\"strings\"\\n\t\"sync\"/' internal/cli/commands.go && gofmt -l internal/ ; go build ./... && go vet ./internal/mcp ./internal/cli"
+      at: 2026-10-10T03:50:36.132576Z
+      classified: lint
+    - cmd: |-
+        cat >> internal/mcp/server_stale_test.go <<'EOF'
+
+        // TestHandoffHelperProcess is the "upgraded binary" for the handoff test: the
+        // test executable re-run as a plain MCP server.
+        func TestHandoffHelperProcess(t *testing.T) {
+        	if os.Getenv("PRISM_HANDOFF_HELPER") != "1" {
+        		return
+        	}
+        	startupBinarySnapshot = binarySnapshot{}
+        	_ = NewServer(&Handler{}).Serve(os.Stdin, os.Stdout)
+        	os.Exit(0)
+        }
+
+        func TestServerHandsOffToUpgradedBinary(t *testing.T) {
+        	originalSnapshot := startupBinarySnapshot
+        	originalWarned := staleBinaryWarned
+        	originalArgs := handoffArgs
+        	t.Cleanup(func() {
+        		startupBinarySnapshot = originalSnapshot
+        		staleBinaryWarned = originalWarned
+        		handoffArgs = originalArgs
+        	})
+        	self, err := os.Executable()
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	t.Setenv("PRISM_HANDOFF_HELPER", "1")
+        	handoffArgs = func() []string { return []string{"-test.run=^TestHandoffHelperProcess$"} }
+
+        	// The launch path is a symlink, as with Homebrew; the upgrade repoints it.
+        	dir := t.TempDir()
+        	oldBin := filepath.Join(dir, "old")
+        	if err := os.WriteFile(oldBin, []byte("old"), 0o755); err != nil {
+        		t.Fatal(err)
+        	}
+        	launch := filepath.Join(dir, "prism")
+        	if err := os.Symlink(oldBin, launch); err != nil {
+        		t.Skip("symlinks unavailable:", err)
+        	}
+        	startupBinarySnapshot = snapshotBinary(launch)
+        	staleBinaryWarned = false
+        	next := filepath.Join(dir, "next")
+        	if err := os.Symlink(self, next); err != nil {
+        		t.Fatal(err)
+        	}
+        	if err := os.Rename(next, launch); err != nil {
+        		t.Fatal(err)
+        	}
+
+        	handedOff := false
+        	srv := NewServer(nil)
+        	srv.OnHandoff = func() { handedOff = true }
+        	input := strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n" +
+        		"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\"}\n" +
+        		"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"ping\"}\n")
+        	var output bytes.Buffer
+        	if err := srv.Serve(input, &output); err != nil {
+        		t.Fatal(err)
+        	}
+        	got := output.String()
+        	if !handedOff {
+        		t.Error("OnHandoff was not called")
+        	}
+        	if strings.Contains(got, `-32001`) || strings.Contains(got, handoffInitID) {
+        		t.Fatalf("client saw the retirement error or the replayed handshake: %s", got)
+        	}
+        	if !strings.Contains(got, `"id":1,"result"`) || !strings.Contains(got, `"id":2,"result"`) {
+        		t.Fatalf("upgraded server did not answer both requests: %s", got)
+        	}
+        }
+        EOF
+        go test ./internal/mcp -run 'Stale|Handoff|Retires|BinarySnapshot' -count=1 -v 2>&1 | tail -20
+      at: 2026-10-10T03:50:49.03355Z
+      classified: test
+    - cmd: go test ./internal/mcp -run 'TestServerHandsOff' -count=3 -v 2>&1 | tail -8
+      at: 2026-10-10T03:50:52.267847Z
+      classified: test
+    - cmd: sed -i '' 's/`"id":1,"result"`/`{"id":1,"jsonrpc":"2.0","result"`/; s/`"id":2,"result"`/`{"id":2,"jsonrpc":"2.0","result"`/' internal/mcp/server_stale_test.go && go test ./internal/mcp -run 'TestServerHandsOff|Retires' -count=5 2>&1 | tail -3
+      at: 2026-10-10T03:50:57.445805Z
+      classified: test
+    - cmd: go test ./... > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/gotest.log 2>&1; echo exit=$? >> /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/gotest.log
+      at: 2026-10-10T03:51:12.039988Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/e2e; rm -rf $S; mkdir -p $S/bin $S/repo && cd /Users/tapabratapal/Projects/provasign/prism && go build -o $S/bin/prism-a ./cmd/prism && cp $S/bin/prism-a $S/bin/prism-b && ln -s prism-a $S/bin/prism && printf 'package demo\n\nfunc Hello() string { return "hi" }\n\nfunc Caller() string { return Hello() }\n' > $S/repo/demo.go && cat > $S/drive.py <<'EOF'
+        import json, subprocess, sys, os, time
+        S=sys.argv[1]
+        p=subprocess.Popen([S+"/bin/prism","mcp","--compact",S+"/repo"],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,bufsize=1)
+        def call(i,method,params=None):
+            m={"jsonrpc":"2.0","id":i,"method":method}
+            if params is not None: m["params"]=params
+            p.stdin.write(json.dumps(m)+"\n"); p.stdin.flush()
+            return json.loads(p.stdout.readline())
+        r=call(1,"initialize",{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        print("init ok:", r["result"]["serverInfo"])
+        p.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n'); p.stdin.flush()
+        r=call(2,"tools/call",{"name":"prism","arguments":{"op":"lookup","args":{"name":["Hello"]}}})
+        print("before upgrade:", "error" not in r, "Hello" in json.dumps(r))
+        # simulate brew upgrade: repoint the stable symlink
+        os.symlink("prism-b", S+"/bin/next"); os.rename(S+"/bin/next", S+"/bin/prism")
+        r=call(3,"tools/call",{"name":"prism","arguments":{"op":"lookup","args":{"name":["Caller"]}}})
+        print("after upgrade:", "error" not in r, "Caller" in json.dumps(r), json.dumps(r)[:200])
+        r=call(4,"ping")
+        print("ping after:", r)
+        kids=subprocess.run(["pgrep","-P",str(p.pid)],capture_output=True,text=True).stdout.split()
+        print("child processes of old server:", len(kids))
+        p.stdin.close(); p.wait(timeout=20)
+        print("exit code:", p.returncode)
+        print("stderr:", p.stderr.read()[-500:])
+        EOF
+        python3 $S/drive.py $S
+      at: 2026-10-10T03:51:15.372143Z
+      classified: build
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/e2e; rm -f $S/bin/prism; ln -s prism-a $S/bin/prism; python3 - $S <<'EOF'
+        import json, subprocess, sys, os
+        S=sys.argv[1]
+        p=subprocess.Popen([S+"/bin/prism","mcp","--compact",S+"/repo"],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True,bufsize=1)
+        def call(i,method,params=None):
+            m={"jsonrpc":"2.0","id":i,"method":method,"params":params or {}}
+            p.stdin.write(json.dumps(m)+"\n"); p.stdin.flush(); return json.loads(p.stdout.readline())
+        call(1,"initialize",{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}})
+        call(2,"tools/call",{"name":"prism","arguments":{"op":"lookup","args":{"name":["Hello"]}}})
+        def grove(pid): return len([l for l in subprocess.run(["lsof","-p",str(pid)],capture_output=True,text=True).stdout.splitlines() if ".grove" in l])
+        print("old server .grove handles before:", grove(p.pid))
+        os.symlink("prism-b", S+"/bin/next"); os.rename(S+"/bin/next", S+"/bin/prism")
+        call(3,"ping")
+        kid=subprocess.run(["pgrep","-P",str(p.pid)],capture_output=True,text=True).stdout.split()[0]
+        call(4,"tools/call",{"name":"prism","arguments":{"op":"lookup","args":{"name":["Hello"]}}})
+        print("old server .grove handles after:", grove(p.pid), " new server:", grove(kid))
+        p.stdin.close(); p.wait(timeout=20); print("exit", p.returncode)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/prism && grep -rn "do not reconnect\|stale server is exiting\|Restart the agent" --include=*.md --include=*.go . | grep -v _test
+      at: 2026-10-10T03:51:25.518949Z
+      classified: other
+    - cmd: grep -rn "not reconnect\|stale server is exiting\|Restart the agent\|upgraded on disk" . --include='*.md' --include='*.go' | grep -v _test
+      at: 2026-10-10T03:51:27.457839Z
+      classified: other
+    - cmd: until grep -q '^exit=' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/gotest.log; do sleep 5; done; grep -v '^ok' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/gotest.log | tail -30
+      at: 2026-10-10T03:51:41.915151Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_failed_calls_audit_2026_10_09.md <<'EOF'
+
+        **2026-10-09 brew-upgrade fix (uncommitted on main):** stale MCP server now hands off instead of exiting -
+        internal/mcp/handoff.go starts the new binary at the launch path, replays initialize, releases the old engine
+        (Server.OnHandoff), then relays bytes. Old error+exit kept only as fallback. go test green; live symlink-swap e2e
+        answered calls after the swap, old .grove handles 4->0.
+        EOF
+        sed -i '' 's/v0.86.7 = N→ separator + guard re-read after failed edit/v0.86.7 = N→ separator + guard re-read after failed edit; brew-upgrade handoff fix uncommitted/' MEMORY.md; cd /Users/tapabratapal/Projects/provasign/prism && git status --short
+      at: 2026-10-10T03:51:47.104254Z
+      classified: test
+    - cmd: git tag --sort=-creatordate | head -3; ls ~/Projects/provasign/research/harness/scoring/ci_invariants.py; ls -d ~/ci-corpus* ~/Projects/provasign/research/*corpus* 2>/dev/null; grep -rn "corpus-root" ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/*.md | head -5
+      at: 2026-10-10T03:52:55.589727Z
+      classified: other
+    - cmd: C=~/.cache/prism-research/ci-corpus; ls $C | head; for d in $C/*/; do n=$(find $d -type f \( -name '*.go' -o -name '*.py' -o -name '*.java' -o -name '*.ts' -o -name '*.js' \) | head -1 | wc -l); echo "$d $n"; done | grep ' 0$'; cd /Users/tapabratapal/Projects/provasign/prism && go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/prism-cand ./cmd/prism && echo built
+      at: 2026-10-10T03:53:01.295776Z
+      classified: build
+    - cmd: cd ~/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/prism-cand > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/ci_inv.log 2>&1; echo exit=$?
+      at: 2026-10-10T03:53:06.280988Z
+      classified: other
+    - cmd: git log -3 --format='%h %s%n%b' 7ea57652 | head -30; gh pr view 37 --json title,body -q '.title+"\n"+.body' | head -30
+      at: 2026-10-10T03:53:06.795889Z
+      classified: other
+notes: []
+redactions: 0
