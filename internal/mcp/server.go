@@ -35,6 +35,12 @@ import (
 type Server struct {
 	handler *Handler
 	compact bool
+
+	// OnHandoff, when set, releases this process's engine once an upgraded
+	// binary has taken over the session.
+	OnHandoff func()
+
+	initParams json.RawMessage // last initialize params, replayed on handoff
 }
 
 // NewServer wires a Handler into a stdio JSON-RPC server.
@@ -81,10 +87,24 @@ func (s *Server) Serve(r io.Reader, w io.Writer) error {
 		// JSON-RPC method handling because the new client may send a parameter or
 		// method the old server cannot understand well enough to warn about.
 		if note := staleBinaryNote(); note != "" {
+			if req.Method == "initialize" {
+				s.initParams = req.Params
+			}
+			cmd, childIn, childOut, err := s.startHandoff()
+			if err == nil {
+				if s.OnHandoff != nil {
+					s.OnHandoff()
+				}
+				return relayToReplacement(cmd, childIn, childOut, msg, reader, w)
+			}
+			fmt.Fprintln(os.Stderr, "mcp: handoff to upgraded binary failed:", err)
 			if err := writeMessage(w, req.ID, nil, &rpcError{Code: -32001, Message: note}); err != nil {
 				return err
 			}
 			return nil
+		}
+		if req.Method == "initialize" {
+			s.initParams = req.Params
 		}
 		result, rpcErr := s.dispatch(req.Method, req.Params)
 		if err := writeMessage(w, req.ID, result, rpcErr); err != nil {
@@ -536,7 +556,8 @@ func binarySnapshotChanged(snapshot binarySnapshot) bool {
 var staleBinaryWarned bool
 
 // staleBinaryNote reports once when the configured executable was replaced
-// after this server started.
+// after this server started. Serve first hands the session to the new binary;
+// the note is the client-facing error only when that handoff fails.
 func staleBinaryNote() string {
 	if staleBinaryWarned || !binarySnapshotChanged(startupBinarySnapshot) {
 		return ""
