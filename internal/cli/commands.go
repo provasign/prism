@@ -94,6 +94,7 @@ Usage:
                                   [--dir <path>]  where to search (default: .)
                                   --format text|lean|json  Output format (default: text)
   prism lookup <name> [dir]       Show full source for a symbol
+                                  Multiple names: prism lookup <name>... [--dir <path>]
   prism node <symbol-or-file> [dir]  One-shot orientation: a symbol's source +
                                   its neighbours, or a file's source + the
                                   symbols it defines + the files depending on it
@@ -2511,17 +2512,24 @@ func invokeSearchWithCompactRendering(dir string, args map[string]any, renderTex
 
 func cmdLookup(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: prism lookup <name> [dir]")
+		fmt.Fprintln(os.Stderr, "usage: prism lookup <name>... [--dir <path>]  (two arguments use the second as a directory if it exists)")
 		return 2
 	}
-	name := args[0]
-	dir := "."
+	explicitDir := ""
 	format := formatText
 	fileHint := ""
 	var fields []any
-	for i := 1; i < len(args); i++ {
+	var bare []string
+	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch a {
+		case "--dir":
+			if i+1 >= len(args) || args[i+1] == "" || strings.HasPrefix(args[i+1], "-") {
+				fmt.Fprintln(os.Stderr, "lookup: --dir requires a path")
+				return 2
+			}
+			explicitDir = args[i+1]
+			i++
 		case "--fields":
 			if i+1 < len(args) {
 				for _, f := range strings.Split(args[i+1], ",") {
@@ -2548,10 +2556,40 @@ func cmdLookup(args []string) int {
 			if strings.HasPrefix(a, "-") {
 				return rejectUnknownFlag("lookup", a)
 			}
-			dir = a
+			bare = append(bare, a)
 		}
 	}
-	callArgs := map[string]any{"name": name}
+	if len(bare) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: prism lookup <name>... [--dir <path>]  (two arguments use the second as a directory if it exists)")
+		return 2
+	}
+	dir := "."
+	if explicitDir != "" {
+		dir = explicitDir
+	} else if len(bare) == 2 {
+		// Preserve the positional directory form, while allowing the natural
+		// two-name batch when the second argument is not a directory. A
+		// path-shaped argument is always the directory, so a mistyped path
+		// still fails instead of becoming a lookup in the wrong tree; only a
+		// bare word that is also a directory is ambiguous enough to note.
+		if lookupArgIsPath(bare[1]) {
+			dir = bare[1]
+			bare = bare[:1]
+		} else if info, err := os.Stat(bare[1]); err == nil && info.IsDir() {
+			fmt.Fprintf(os.Stderr, "lookup: reading %q as the directory (legacy form); use --dir . to look up both names\n", bare[1])
+			dir = bare[1]
+			bare = bare[:1]
+		}
+	}
+	if len(bare) > 10 {
+		fmt.Fprintln(os.Stderr, "lookup: at most 10 names per call")
+		return 2
+	}
+	var names any = bare[0]
+	if len(bare) > 1 {
+		names = bare
+	}
+	callArgs := map[string]any{"name": names}
 	if len(fields) > 0 {
 		callArgs["fields"] = fields
 	}
@@ -2563,8 +2601,30 @@ func cmdLookup(args []string) int {
 		fmt.Fprintln(os.Stderr, "lookup:", err)
 		return 1
 	}
+	// A batch answer is {results:[{name,result}]}, which the generic text
+	// printer does not know; render it the way MCP does.
+	if format == formatText && len(bare) > 1 {
+		if text, ok := mcp.RenderLookupText(out); ok {
+			fmt.Print(text)
+			return 0
+		}
+	}
 	printOutput(out, format)
 	return 0
+}
+
+// lookupArgIsPath reports whether a positional lookup argument can only be a
+// directory: no symbol name is ".", "..", or starts with "/", "./", "../" or "~".
+func lookupArgIsPath(a string) bool {
+	if a == "." || a == ".." || filepath.IsAbs(a) {
+		return true
+	}
+	for _, p := range []string{"./", "../", "~", ".\\", "..\\"} {
+		if strings.HasPrefix(a, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // cmdNode is the one-shot orientation view — a symbol's source + neighbours,

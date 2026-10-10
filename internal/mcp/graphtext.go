@@ -294,6 +294,16 @@ func FormatImpactRelaySitesText(out map[string]any) string {
 	return b.String()
 }
 
+// RenderLookupText shares MCP's lookup rendering, including batches, with the
+// CLI. Unknown shapes return false so callers can retain the complete JSON.
+func RenderLookupText(out any) (string, bool) {
+	m, ok := out.(map[string]any)
+	if !ok {
+		return "", false
+	}
+	return renderLookupAsText(m)
+}
+
 // renderLookupAsText renders a prism_lookup result. The JSON form shipped
 // the symbol body TWICE (symbol.rawText and content, both string-escaped)
 // plus index internals (id, blobSha, callSites) no agent uses: measured

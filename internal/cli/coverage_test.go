@@ -78,6 +78,39 @@ func TestCmdQueryAndSearchAndLookup_Smoke(t *testing.T) {
 	if got := cmdLookup([]string{"Main", dir}); got != 0 {
 		t.Fatalf("cmdLookup=%d", got)
 	}
+	if got := cmdLookup([]string{"Main", "--dir", dir}); got != 0 {
+		t.Fatalf("cmdLookup --dir after symbol=%d", got)
+	}
+	if got := cmdLookup([]string{"--dir", dir, "Main"}); got != 0 {
+		t.Fatalf("cmdLookup --dir before symbol=%d", got)
+	}
+	batch := captureStdout(func() {
+		if got := cmdLookup([]string{"Main", "TestMain", "--dir", dir}); got != 0 {
+			t.Fatalf("cmdLookup batch with --dir=%d", got)
+		}
+	})
+	if !strings.Contains(batch, "// lookup Main") || !strings.Contains(batch, "// lookup TestMain") || strings.Contains(batch, `"results"`) {
+		t.Fatalf("cmdLookup batch not rendered as text per name: %s", batch)
+	}
+	t.Chdir(dir)
+	twoNames := captureStdout(func() {
+		if got := cmdLookup([]string{"Main", "TestMain"}); got != 0 {
+			t.Fatalf("cmdLookup two bare names=%d", got)
+		}
+	})
+	if !strings.Contains(twoNames, "// lookup Main") || !strings.Contains(twoNames, "// lookup TestMain") {
+		t.Fatalf("cmdLookup treated a second name as a directory: %s", twoNames)
+	}
+	bareBatch := captureStdout(func() {
+		if got := cmdLookup([]string{"Main", "TestMain", "MissingName"}); got != 0 {
+			t.Fatalf("cmdLookup bare batch=%d", got)
+		}
+	})
+	if !strings.Contains(bareBatch, "// lookup Main") || !strings.Contains(bareBatch, "// lookup TestMain") ||
+		!strings.Contains(bareBatch, "// lookup MissingName") || !strings.Contains(bareBatch, "NO EXACT MATCH") ||
+		strings.Contains(bareBatch, `"results"`) {
+		t.Fatalf("cmdLookup bare batch omitted source or miss: %s", bareBatch)
+	}
 	if got := cmdReferences([]string{"Main", dir}); got != 0 {
 		t.Fatalf("cmdReferences=%d", got)
 	}
@@ -105,6 +138,15 @@ func TestCmdUsageErrors(t *testing.T) {
 	}
 	if got := cmdLookup([]string{}); got != 2 {
 		t.Fatalf("cmdLookup usage=%d", got)
+	}
+	if got := cmdLookup([]string{"Main", "./no-such-dir"}); got != 1 {
+		t.Fatalf("cmdLookup mistyped directory path=%d, want the directory error", got)
+	}
+	if got := cmdLookup([]string{"Main", "--dir"}); got != 2 {
+		t.Fatalf("cmdLookup missing --dir path=%d", got)
+	}
+	if got := cmdLookup(append([]string{"Main", "Other", "Third", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"}, "Eleven")); got != 2 {
+		t.Fatalf("cmdLookup more than ten names=%d", got)
 	}
 	if got := cmdReferences([]string{}); got != 2 {
 		t.Fatalf("cmdReferences usage=%d", got)

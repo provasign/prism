@@ -1,0 +1,444 @@
+shale_version: "0"
+id: 01a11ed0-5848-7422-87cc-3469b5a79cad
+created_at: 2026-10-09T04:00:27.544222Z
+finalized_at: 2026-10-10T02:07:19.004785Z
+agent:
+    tool: codex
+    model: gpt-6-sol
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: cli-lookup-batch
+privacy: redacted
+files:
+    - path: internal/cli/commands.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-09T04:36:58.513753Z
+    - path: internal/cli/coverage_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-09T04:36:58.513753Z
+commands:
+    - cmd: ls -la ..
+      at: 2026-10-09T04:02:03.166777Z
+      classified: other
+    - cmd: prism search stdout.jsonl measurement.json --scope text --dir ../research --rollup-only
+      at: 2026-10-09T04:02:09.868808Z
+      classified: other
+    - cmd: ls -la ../research/harness
+      at: 2026-10-09T04:02:11.381889Z
+      classified: other
+    - cmd: ls -1t ../research/harness/results
+      at: 2026-10-09T04:02:13.130143Z
+      classified: other
+    - cmd: ls -la ../research/harness/results/e2e-venv
+      at: 2026-10-09T04:02:15.801907Z
+      classified: other
+    - cmd: ls -la ../research/harness/results/e2e-holdback
+      at: 2026-10-09T04:02:15.802001Z
+      classified: other
+    - cmd: ls -la ../research/harness/results/e2e-abc
+      at: 2026-10-09T04:02:15.838128Z
+      classified: other
+    - cmd: ls -la ../research/harness/results/e2e
+      at: 2026-10-09T04:02:15.929564Z
+      classified: other
+    - cmd: ls -la ../research/harness/runs
+      at: 2026-10-09T04:02:17.421681Z
+      classified: other
+    - cmd: ls -la ../research/harness/runs/e2e
+      at: 2026-10-09T04:02:19.413239Z
+      classified: other
+    - cmd: prism search evidence stdout.jsonl --scope text --path harness/bench.py --dir ../research --context 3
+      at: 2026-10-09T04:02:21.929266Z
+      classified: other
+    - cmd: ls -d ../research/harness/results/*/evidence
+      at: 2026-10-09T04:02:24.310744Z
+      classified: other
+    - cmd: ls -d ../research/harness/results/*/*/evidence
+      at: 2026-10-09T04:02:25.865999Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; p=Path("../research/harness/results"); a=list(p.rglob("stdout.jsonl")); print("transcripts",len(a)); from collections import Counter; print(*Counter(str(x.parents[2].relative_to(p)) for x in a).most_common(25),sep="\n")'
+      at: 2026-10-09T04:02:29.947231Z
+      classified: other
+    - cmd: python3 -B -c 'import json; from pathlib import Path; p=Path("../research/harness/results/archive-2026-09-tainted/polyglot-native-vs-prism-2026-09-13"); print("top",[x.name for x in p.iterdir()]); e=next((p/"evidence").iterdir()); print("cell",e.name,[x.name for x in e.iterdir()]); q=e/"measurement.json"; print("measurement",json.dumps(json.loads(q.read_text()),indent=2)[:2500] if q.exists() else "none"); s=e/"stdout.jsonl"; print("events",[json.loads(x) for x in s.read_text().splitlines()[:2]])'
+      at: 2026-10-09T04:02:33.63159Z
+      classified: other
+    - cmd: 'python3 -B -c ''from pathlib import Path; import json; root=Path("../research/harness/results/archive-2026-09-tainted"); names=["polyglot-native-vs-prism-2026-09-13","e2e-native-vs-prism-window-2026-09-13","resolved-cases-prism-grove0581-2026-09-20"]; [(lambda p: print(p.name,"\n",(p/"NOTE.md").read_text()[:1000] if (p/"NOTE.md").exists() else "no note","\n",json.dumps(json.loads((p/"summary.json").read_text()).get("aggregate",{}))[:1000]))(root/n) for n in names]'''
+      at: 2026-10-09T04:02:37.271229Z
+      classified: other
+    - cmd: python3 -B -c 'from pathlib import Path; import json; p=Path("../research/harness/results/archive-2026-09-tainted/e2e-native-vs-prism-window-2026-09-13/evidence"); e=next(p.iterdir()); print(e.name); s=e/"stdout.jsonl"; a=[json.loads(x) for x in s.read_text().splitlines()]; print([(x.get("type"),x.get("subtype"),x.get("message",{}).get("role") if isinstance(x.get("message"),dict) else None) for x in a[:20]]); print(json.dumps([x for x in a if x.get("type")=="assistant"][:2],indent=2)[:6000])'
+      at: 2026-10-09T04:02:40.268142Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,re; from pathlib import Path; root=Path("../research/harness/results/archive-2026-09-tainted"); dirs=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"]; pat=re.compile(r"pytest|tox|nox|\.venv|virtualenv|python -m|uv |poetry|hatch|cargo test|go test|npm |pnpm|yarn|mvn|gradle|JAVA_HOME|java -version|which python|command -v|pyproject|Cargo.toml|go.mod|package.json|pom.xml|build.gradle|AGENTS.md|CONTRIBUTING",re.I); n=0
+        for d in dirs:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          hits=[]
+          for x in map(json.loads,f.read_text().splitlines()):
+           if x.get("type")!="assistant": continue
+           for c in x.get("message",{}).get("content",[]):
+            if c.get("type")!="tool_use": continue
+            a=c.get("input",{}); s=str(a.get("command") or a.get("file_path") or a.get("path") or a.get("args") or "")
+            if pat.search(s): hits.append((c.get("name"),s[:180]))
+          if hits:
+           print(f.parent.name,":",len(hits),"|", " ; ".join(f"{a} {b}" for a,b in hits[:10])); n+=1
+        print("cells with hit",n)'
+      at: 2026-10-09T04:02:48.913367Z
+      classified: test
+    - cmd: python3 -B -c 'import json;from pathlib import Path;p=Path("../research/harness/results/e2e-venv/pallets__click__pr3533.claude-sonnet-5-5.baseline.json");print(json.dumps(json.loads(p.read_text()),indent=2)[:4500])'
+      at: 2026-10-09T04:02:55.210644Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path; root=Path("../research/harness/results"); fs=list(root.rglob("stdout.jsonl")); pats={"env_probe":re.compile(r"which (python|java|mvn|gradle|node|npm|uv)|command -v (python|java|mvn|gradle|node|npm|uv)|java -version|python(3)? --version|echo \$JAVA_HOME|\.venv/bin|virtualenv|conda|pip list|pip show|uv venv",re.I),"setup_read":re.compile(r"pyproject\.toml|tox\.ini|noxfile|requirements.*txt|package\.json|pom\.xml|build\.gradle|settings\.gradle|gradle\.properties|Cargo\.toml|\.tool-versions|\.python-version|\.java-version|README|CONTRIBUTING|Makefile|justfile|go\.mod",re.I),"failed_runners":re.compile(r"pytest|mvn|gradle|cargo test|go test|npm test|pnpm test|yarn test",re.I)}; counts=collections.Counter();cells=collections.defaultdict(set); examples=collections.defaultdict(list)
+        for f in fs:
+         arm=f.parent.name.split(".")[-1]
+         for x in map(json.loads,f.read_text().splitlines()):
+          if x.get("type")!="assistant":continue
+          for c in x.get("message",{}).get("content",[]):
+           if c.get("type")!="tool_use":continue
+           a=c.get("input",{}); s=str(a.get("command") or a.get("file_path") or a.get("path") or a.get("args") or "")
+           for k,p in pats.items():
+            if p.search(s):
+             counts[k,arm]+=1; cells[k,arm].add(str(f));
+             if k!="failed_runners" and len(examples[k,arm])<15:examples[k,arm].append((f.parent.name,c.get("name"),s[:160]))
+        print("transcripts",len(fs));print("counts",counts);print("cells",{str(k):len(v) for k,v in cells.items()});print("examples",dict(examples))'
+      at: 2026-10-09T04:03:05.386935Z
+      classified: test
+    - cmd: |-
+        python3 -B -c 'import json,re;from pathlib import Path; root=Path("../research/harness/results/archive-2026-09-tainted"); ds=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"]; pat=re.compile(r"command not found|No module named|ModuleNotFoundError|could not find|not installed|No such file or directory|requires Python|unsupported class file|invalid target release|JAVA_HOME|error:.*toolchain|pytest: error",re.I)
+        for d in ds:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          a=list(map(json.loads,f.read_text().splitlines())); cmds={c["id"]:(c.get("name"),str(c.get("input",{}).get("command") or c.get("input",{}).get("file_path") or "")) for x in a if x.get("type")=="assistant" for c in x.get("message",{}).get("content",[]) if c.get("type")=="tool_use"}
+          for x in a:
+           if x.get("type")!="user":continue
+           for c in x.get("message",{}).get("content",[]):
+            if c.get("type")!="tool_result":continue
+            s=str(c.get("content","")); m=pat.search(s)
+            if m:
+             cmd=cmds.get(c.get("tool_use_id"),(None,None));
+             if cmd[0] in ("Bash","Read"):
+              print(f.parent.name,"|",str(cmd[1])[:140].replace("\n"," "),"|",s[max(0,m.start()-40):m.end()+90].replace("\n"," ")[:150])'
+      at: 2026-10-09T04:03:15.139026Z
+      classified: test
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path;root=Path("../research/harness/results/archive-2026-09-tainted");ds=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"]; counts=collections.Counter();cells=collections.defaultdict(set);chars=collections.Counter();sample=collections.defaultdict(list)
+        for d in ds:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          arm="prism" if f.parent.name.endswith("sonnet_prism") else "native"; ev=list(map(json.loads,f.read_text().splitlines())); uses={}; results={}
+          for x in ev:
+           if x.get("type")=="assistant":
+            for c in x.get("message",{}).get("content",[]):
+             if c.get("type")=="tool_use":uses[c["id"]]=c
+           elif x.get("type")=="user":
+            for c in x.get("message",{}).get("content",[]):
+             if c.get("type")=="tool_result":results[c.get("tool_use_id")]=str(c.get("content",""))
+          for id,c in uses.items():
+           s=str(c.get("input",{}).get("command") or c.get("input",{}).get("file_path") or ""); out=results.get(id,""); kind=None
+           if c.get("name")=="Bash" and re.search(r"(?:cat|grep|head|sed).*(?:package\.json|jest\.config|Cargo\.toml)",s,re.I) and not ("<<" in s):kind="setup_manifest_read"
+           if c.get("name")=="Bash" and re.search(r"(?:^|[;& ])timeout [0-9]+ (?:python|cargo|go)",s) and "command not found: timeout" in out:kind="missing_timeout"
+           if c.get("name")=="Bash" and "pytest" in s and "ModuleNotFoundError: No module named '\''attr'\''" in out:kind="missing_attr"
+           if kind:
+            counts[kind,arm]+=1;cells[kind,arm].add(f.parent.name);chars[kind,arm]+=len(s)+len(out);sample[kind,arm].append(f.parent.name)
+        print("counts",dict(counts));print("cells",{str(k):len(v) for k,v in cells.items()});print("chars",dict(chars));print("cellnames",dict(sample))'
+      at: 2026-10-09T04:03:28.120676Z
+      classified: test
+    - cmd: python3 -B -c 'from pathlib import Path; p=Path("../research/harness/results/archive-2026-09-tainted"); print((p/"e2e-native-vs-prism-window-2026-09-13/NOTE.md").read_text()[-2200:]); print((p/"polyglot-native-vs-prism-2026-09-13/NOTE.md").read_text()[-1500:])'
+      at: 2026-10-09T04:03:39.346235Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json;from pathlib import Path; p=Path("../research/harness/results/archive-2026-09-tainted/polyglot-native-vs-prism-2026-09-13/evidence/darkreader__darkreader__pr7241.r2.sonnet_prism/stdout.jsonl");a=list(map(json.loads,p.read_text().splitlines())); cs={};
+        for x in a:
+         if x.get("type")=="assistant":
+          for c in x.get("message",{}).get("content",[]):
+           if c.get("type")=="tool_use":cs[c["id"]]=c
+        for x in a:
+         if x.get("type")=="user":
+          for c in x.get("message",{}).get("content",[]):
+           if c.get("type")=="tool_result" and c.get("tool_use_id") in cs:
+            u=cs[c["tool_use_id"]];s=str(u.get("input",{}).get("command",""));
+            if "package.json" in s:print(s,"\nRESULT",str(c.get("content",""))[:2500])'
+      at: 2026-10-09T04:03:43.539283Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path;root=Path("../research/harness/results/archive-2026-09-tainted");names=["e2e-native-vs-prism-window-2026-09-13","polyglot-native-vs-prism-2026-09-13"]
+        for name in names:
+         d=root/name; z=collections.Counter();n=0
+         for f in (d/"evidence").glob("*/stdout.jsonl"):
+          n+=1;arm="prism" if f.parent.name.endswith("sonnet_prism") else "native"
+          for x in map(json.loads,f.read_text().splitlines()):
+           if x.get("type")!="assistant":continue
+           for c in x.get("message",{}).get("content",[]):
+            if c.get("type")!="tool_use":continue
+            s=str(c.get("input",{}).get("command") or c.get("input",{}).get("file_path") or "")
+            if c.get("name")=="Bash" and re.search(r"(?:cat|grep|head|sed).*(?:package\.json|jest\.config|Cargo\.toml)",s,re.I) and "<<" not in s:z[arm]+=1
+         print(name,n,dict(z))'
+      at: 2026-10-09T04:03:54.208298Z
+      classified: test
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path;root=Path("../research/harness/results/archive-2026-09-tainted");ds=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"];pat=re.compile(r"\b(?:pytest|cargo test|go test|npm test|npm run test|pnpm test|yarn test|jest|mvn test|gradle test)\b",re.I);q=[]
+        for d in ds:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          arm="prism" if f.parent.name.endswith("sonnet_prism") else "native";a=list(map(json.loads,f.read_text().splitlines()));uses={};res={}
+          for x in a:
+           cs=x.get("message",{}).get("content",[])
+           if x.get("type")=="assistant":
+            for c in cs:
+             if c.get("type")=="tool_use":uses[c["id"]]=c
+           elif x.get("type")=="user":
+            for c in cs:
+             if c.get("type")=="tool_result":res[c.get("tool_use_id")]=str(c.get("content",""))
+          for id,c in uses.items():
+           if c.get("name")!="Bash":continue
+           cmd=str(c.get("input",{}).get("command",""))
+           if not pat.search(cmd) or "<<" in cmd:continue
+           out=res.get(id,"");m=re.search(r"Exit code (\d+)",out);code=m.group(1) if m else "?";q.append((arm,f.parent.name,code,cmd,out))
+        print("test invocations",len(q),"arms",collections.Counter(x[0] for x in q),"nonzero",collections.Counter((x[0],x[2]) for x in q if x[2] not in ("0","?")))
+        for arm,name,code,cmd,out in q:
+         if code not in ("0","?"):
+          clean=re.sub(r"\s+"," ",out)
+          print(arm,name,code,"CMD",re.sub(r"\s+"," ",cmd)[:130],"OUT",clean[:230])'
+      at: 2026-10-09T04:29:40.80533Z
+      classified: test
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path;root=Path("../research/harness/results/archive-2026-09-tainted");ds=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"];pat=re.compile(r"\b(?:pytest|cargo test|go test|npm test|npm run test|pnpm test|yarn test|jest|mvn test|gradle test)\b",re.I);q=[]
+        for d in ds:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          arm="prism" if f.parent.name.endswith("sonnet_prism") else "native";a=list(map(json.loads,f.read_text().splitlines()));uses={};res={}
+          for x in a:
+           msg=x.get("message");cs=msg.get("content",[]) if isinstance(msg,dict) else []
+           if not isinstance(cs,list):continue
+           if x.get("type")=="assistant":
+            for c in cs:
+             if isinstance(c,dict) and c.get("type")=="tool_use":uses[c["id"]]=c
+           elif x.get("type")=="user":
+            for c in cs:
+             if isinstance(c,dict) and c.get("type")=="tool_result":res[c.get("tool_use_id")]=str(c.get("content",""))
+          for id,c in uses.items():
+           if c.get("name")!="Bash":continue
+           cmd=str(c.get("input",{}).get("command",""))
+           if not pat.search(cmd) or "<<" in cmd:continue
+           out=res.get(id,"");m=re.search(r"Exit code (\d+)",out);code=m.group(1) if m else "?";q.append((arm,f.parent.name,code,cmd,out))
+        print("test invocations",len(q),"arms",collections.Counter(x[0] for x in q),"nonzero",collections.Counter((x[0],x[2]) for x in q if x[2] not in ("0","?")))
+        for arm,name,code,cmd,out in q:
+         if code not in ("0","?"):
+          clean=re.sub(r"\s+"," ",out)
+          print(arm,name,code,"CMD",re.sub(r"\s+"," ",cmd)[:130],"OUT",clean[:230])'
+      at: 2026-10-09T04:29:45.83927Z
+      classified: test
+    - cmd: |-
+        python3 -B -c 'import json;from pathlib import Path;p=Path("../research/harness/results/archive-2026-09-tainted/e2e-native-vs-prism-window-2026-09-13/evidence/pallets__click__pr3244.r1.sonnet_prism/stdout.jsonl");a=list(map(json.loads,p.read_text().splitlines()));
+        for x in a:
+         m=x.get("message");cs=m.get("content",[]) if isinstance(m,dict) else []
+         if not isinstance(cs,list):continue
+         for c in cs:
+          if not isinstance(c,dict):continue
+          if c.get("type")=="tool_use" and "timeout 100" in str(c.get("input",{}).get("command","")):print("USE",c)
+          if c.get("type")=="tool_result" and "command not found: timeout" in str(c.get("content")):print("RESULT",str(c)[:1000])'
+      at: 2026-10-09T04:29:49.924841Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path;root=Path("../research/harness/results/archive-2026-09-tainted");ds=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"];pat=re.compile(r"\b(?:pytest|cargo test|go test|npm test|npm run test|pnpm test|yarn test|jest|mvn test|gradle test)\b",re.I);bad=re.compile(r"command not found|No module named|ModuleNotFoundError|no test target|no such test|unrecognized arguments|unknown option|unknown flag|No such file or directory|cannot find module|Cannot find module|could not find.*(?:test|target)|ERROR: file or directory not found|not a package|invalid option|no tests ran",re.I);q=[]
+        for d in ds:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          arm="prism" if f.parent.name.endswith("sonnet_prism") else "native";a=list(map(json.loads,f.read_text().splitlines()));uses={};res={}
+          for x in a:
+           msg=x.get("message");cs=msg.get("content",[]) if isinstance(msg,dict) else []
+           if not isinstance(cs,list):continue
+           for c in cs:
+            if not isinstance(c,dict):continue
+            if x.get("type")=="assistant" and c.get("type")=="tool_use":uses[c["id"]]=c
+            if x.get("type")=="user" and c.get("type")=="tool_result":res[c.get("tool_use_id")]=str(c.get("content",""))
+          for id,c in uses.items():
+           if c.get("name")!="Bash":continue
+           cmd=str(c.get("input",{}).get("command",""))
+           if not pat.search(cmd) or "<<" in cmd:continue
+           out=res.get(id,"");m=bad.search(out)
+           if m:q.append((arm,f.parent.name,re.sub(r"\s+"," ",cmd)[:115],re.sub(r"\s+"," ",out[max(0,m.start()-40):m.end()+100])[:190]))
+        print("hits",len(q),"by arm",collections.Counter(x[0] for x in q));print(*q,sep="\n")'
+      at: 2026-10-09T04:29:57.101092Z
+      classified: test
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path;root=Path("../research/harness/results/archive-2026-09-tainted");ds=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"];rows=[]
+        for d in ds:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          arm="prism" if f.parent.name.endswith("sonnet_prism") else "native";ev=list(map(json.loads,f.read_text().splitlines()));uses={};res={}
+          for i,x in enumerate(ev):
+           m=x.get("message");cs=m.get("content",[]) if isinstance(m,dict) else []
+           if not isinstance(cs,list):continue
+           for c in cs:
+            if not isinstance(c,dict):continue
+            if x.get("type")=="assistant" and c.get("type")=="tool_use":uses[c["id"]]=(c,i)
+            if x.get("type")=="user" and c.get("type")=="tool_result":res[c.get("tool_use_id")]=(str(c.get("content","")),i)
+          for id,(c,i) in uses.items():
+           if c.get("name")!="Bash":continue
+           cmd=str(c.get("input",{}).get("command",""));out,j=res.get(id,("",-1)); kind=None
+           if re.search(r"\b(?:pytest|cargo test|go test)\b",cmd) and "command not found: timeout" in out:kind="timeout"
+           if "cargo test" in cmd and "no test target named" in out:kind="cargo_target"
+           if kind:
+            nxt=""
+            for x in ev[j+1:]:
+             if x.get("type")!="assistant":continue
+             m=x.get("message");cs=m.get("content",[]) if isinstance(m,dict) else []
+             if not isinstance(cs,list):continue
+             nxt="".join(v.get("thinking","")+v.get("text","") for v in cs if isinstance(v,dict));break
+            rows.append((kind,arm,f.parent.name,len(cmd),len(out),len(nxt),cmd[:100].replace("\n"," ")))
+        print(*rows,sep="\n");print("summary");g=collections.defaultdict(list)
+        for r in rows:g[r[:2]].append(r)
+        for k,v in g.items():print(k,"n",len(v),"command_chars",sum(x[3] for x in v),"result_chars",sum(x[4] for x in v),"next_assistant_chars",sum(x[5] for x in v))'
+      at: 2026-10-09T04:31:57.461424Z
+      classified: test
+    - cmd: |-
+        python3 -B -c 'import json;from pathlib import Path;p=Path("../research/harness/results/archive-2026-09-tainted/polyglot-native-vs-prism-2026-09-13/evidence");ns=["BurntSushi__ripgrep__pr723.r1.sonnet_native","BurntSushi__ripgrep__pr723.r1.sonnet_prism","BurntSushi__ripgrep__pr723.r3.sonnet_native"]
+        for n in ns:
+         a=list(map(json.loads,(p/n/"stdout.jsonl").read_text().splitlines()));print("CELL",n)
+         for x in a:
+          m=x.get("message");cs=m.get("content",[]) if isinstance(m,dict) else []
+          if not isinstance(cs,list):continue
+          for c in cs:
+           if isinstance(c,dict) and c.get("type")=="tool_result" and "no test target named" in str(c.get("content","")):print(str(c.get("content",""))[-2200:])'
+      at: 2026-10-09T04:32:03.514463Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json;from pathlib import Path;p=Path("../research/harness/results/archive-2026-09-tainted/e2e-native-vs-prism-window-2026-09-13/evidence/pallets__click__pr3244.r1.sonnet_prism/stdout.jsonl");a=list(map(json.loads,p.read_text().splitlines()));
+        for i,x in enumerate(a):
+         m=x.get("message");cs=m.get("content",[]) if isinstance(m,dict) else []
+         if isinstance(cs,list) and any(isinstance(c,dict) and c.get("type")=="tool_result" and "command not found: timeout" in str(c.get("content")) for c in cs):
+          for y in a[i:i+6]:
+           z=y.get("message");print(y.get("type"),y.get("subtype"),[(c.get("type"),str(c.get("thinking") or c.get("text") or c.get("input"))[:150]) for c in z.get("content",[]) if isinstance(c,dict)] if isinstance(z,dict) and isinstance(z.get("content"),list) else None,z.get("usage") if isinstance(z,dict) else None)
+          break'
+      at: 2026-10-09T04:32:14.478074Z
+      classified: other
+    - cmd: |-
+        python3 -B -c 'import json,re,collections;from pathlib import Path;root=Path("../research/harness/results/archive-2026-09-tainted");ds=[root/"e2e-native-vs-prism-window-2026-09-13",root/"polyglot-native-vs-prism-2026-09-13"];g=collections.defaultdict(list)
+        for d in ds:
+         for f in sorted((d/"evidence").glob("*/stdout.jsonl")):
+          arm="prism" if f.parent.name.endswith("sonnet_prism") else "native";a=list(map(json.loads,f.read_text().splitlines()));uses={}
+          for i,x in enumerate(a):
+           m=x.get("message");cs=m.get("content",[]) if isinstance(m,dict) else []
+           if isinstance(cs,list):
+            for c in cs:
+             if isinstance(c,dict) and x.get("type")=="assistant" and c.get("type")=="tool_use":uses[c["id"]]=str(c.get("input",{}).get("command",""))
+             if isinstance(c,dict) and x.get("type")=="user" and c.get("type")=="tool_result":
+              cmd=uses.get(c.get("tool_use_id"),"");out=str(c.get("content",""));kind=None
+              if re.search(r"\b(?:pytest|cargo test|go test)\b",cmd) and "command not found: timeout" in out:kind="timeout"
+              if "cargo test" in cmd and "no test target named" in out:kind="cargo_target"
+              if kind:
+               next_usage={};next_cmd="";next_text=""
+               for y in a[i+1:]:
+                if y.get("type")!="assistant":continue
+                ym=y.get("message");yc=ym.get("content",[]) if isinstance(ym,dict) else []
+                if isinstance(yc,list) and yc:
+                 next_usage=ym.get("usage",{});next_cmd=" | ".join(str(v.get("input",{}).get("command","")) for v in yc if isinstance(v,dict) and v.get("type")=="tool_use");next_text="".join(str(v.get("thinking") or v.get("text") or "") for v in yc if isinstance(v,dict));break
+               g[kind,arm].append((f.parent.name,next_usage.get("cache_read_input_tokens",0),next_usage.get("cache_creation_input_tokens",0),next_usage.get("output_tokens",0),next_cmd[:110],next_text[:100]))
+        for k,v in g.items():
+         print(k,"n",len(v),"cache_read",sum(x[1] for x in v),"cache_write",sum(x[2] for x in v),"output",sum(x[3] for x in v));print(*v,sep="\n")'
+      at: 2026-10-09T04:32:24.004295Z
+      classified: test
+    - cmd: prism search setup_files runtimes timeout attr template_setup_files --scope text --dir ../research --rollup-only
+      at: 2026-10-09T04:33:40.449376Z
+      classified: other
+    - cmd: prism search template_setup_files make_base_template create_template --scope symbols --path harness/lib/runner_core.py --dir ../research
+      at: 2026-10-09T04:33:44.794278Z
+      classified: other
+    - cmd: prism search 'python -m venv' 'pip install' 'JAVA_HOME' --scope text --path harness/lib/runner_core.py --dir ../research --context 3
+      at: 2026-10-09T04:33:44.842942Z
+      classified: other
+    - cmd: prism lookup prepare_environment --dir ../research
+      at: 2026-10-09T04:33:46.361941Z
+      classified: other
+    - cmd: prism lookup prepare_environment ../research
+      at: 2026-10-09T04:33:47.887162Z
+      classified: other
+    - cmd: prism lookup agent_path prefetch_dependencies --dir ../research
+      at: 2026-10-09T04:33:49.886722Z
+      classified: other
+    - cmd: prism search agent_path prefetch_dependencies --scope symbols --path harness/lib/runner_core.py --dir ../research
+      at: 2026-10-09T04:33:52.076213Z
+      classified: other
+    - cmd: prism lookup prefetch_dependencies ../research
+      at: 2026-10-09T04:33:53.450779Z
+      classified: other
+    - cmd: prism search 'dependencies are preinstalled' 'environment' 'test' --scope text --path harness/lib/runner_core.py --dir ../research --context 2 --rollup-only
+      at: 2026-10-09T04:33:55.146948Z
+      classified: other
+    - cmd: prism search 'dependencies' 'network' 'venv' --scope text --path harness/bench.py --dir ../research --context 2 --rollup-only
+      at: 2026-10-09T04:33:57.514201Z
+      classified: other
+    - cmd: prism search TEST_CMD_BY_LANGUAGE --scope text --path harness/bench.py --dir ../research --context 6
+      at: 2026-10-09T04:33:59.589244Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-09T04:36:27.232063Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/coverage_test.go
+      at: 2026-10-09T04:37:00.533438Z
+      classified: other
+    - cmd: go test ./internal/cli -run 'TestCmdQueryAndSearchAndLookup_Smoke|TestCmdUsageErrors' -count=1
+      at: 2026-10-09T04:37:09.390261Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-10-09T04:37:13.890967Z
+      classified: other
+    - cmd: git diff -- internal/cli/commands.go internal/cli/coverage_test.go
+      at: 2026-10-09T04:37:13.890888Z
+      classified: other
+    - cmd: go test ./internal/cli -count=1
+      at: 2026-10-09T04:37:20.092967Z
+      classified: test
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/coverage_test.go
+      at: 2026-10-09T04:37:52.871085Z
+      classified: other
+    - cmd: go test ./internal/cli -run 'TestCmdQueryAndSearchAndLookup_Smoke|TestCmdUsageErrors' -count=1
+      at: 2026-10-09T04:37:55.714477Z
+      classified: test
+    - cmd: git diff -- internal/cli/commands.go internal/cli/coverage_test.go
+      at: 2026-10-09T04:37:57.854161Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-09T04:37:57.854155Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-09T04:38:04.910785Z
+      classified: other
+    - cmd: go test ./internal/cli -count=1
+      at: 2026-10-09T04:38:10.221536Z
+      classified: test
+    - cmd: git status -sb
+      at: 2026-10-10T01:58:36.378101Z
+      classified: other
+    - cmd: git diff -- internal/cli/commands.go internal/cli/coverage_test.go internal/mcp/graphtext.go
+      at: 2026-10-10T01:58:36.383982Z
+      classified: other
+    - cmd: git status -sb
+      at: 2026-10-10T01:59:38.878394Z
+      classified: other
+    - cmd: gofmt -w internal/cli/commands.go internal/cli/coverage_test.go
+      at: 2026-10-10T02:00:09.475676Z
+      classified: other
+    - cmd: go test ./internal/cli -run 'TestCmdQueryAndSearchAndLookup_Smoke|TestCmdUsageErrors' -count=1
+      at: 2026-10-10T02:00:11.96639Z
+      classified: test
+    - cmd: git diff --check
+      at: 2026-10-10T02:00:14.883356Z
+      classified: other
+    - cmd: git diff --stat
+      at: 2026-10-10T02:00:14.883356Z
+      classified: other
+    - cmd: go test ./...
+      at: 2026-10-10T02:00:41.034175Z
+      classified: test
+    - cmd: git status -sb
+      at: 2026-10-10T02:00:53.359548Z
+      classified: other
+    - cmd: git diff --check
+      at: 2026-10-10T02:00:53.363986Z
+      classified: other
+    - cmd: go test ./internal/cli -count=1
+      at: 2026-10-10T02:00:59.38609Z
+      classified: test
+notes: []
+redactions: 0
