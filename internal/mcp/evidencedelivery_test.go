@@ -116,7 +116,7 @@ func TestImpactEvidenceBoundsAndUncertainty(t *testing.T) {
 			{Callee: "b.get", Line: 12}, {Callee: "a.get", Line: 11}, {Callee: "get", Line: 900}, {Callee: "forget", Line: 14}}}
 	entry := map[string]any{}
 	budget := impactEvidenceMaxBytes
-	addImpactCallEvidence(entry, caller, "get", &budget)
+	addImpactCallEvidence(entry, caller, "get", false, &budget)
 	evidence := entry["evidence"].([]map[string]any)
 	if len(evidence) != 2 || evidence[0]["line"] != 11 || evidence[1]["line"] != 12 {
 		t.Fatalf("want two ordered deduplicated lines: %v", evidence)
@@ -125,12 +125,12 @@ func TestImpactEvidenceBoundsAndUncertainty(t *testing.T) {
 		t.Fatal(note)
 	}
 	entry, budget = map[string]any{}, 0
-	addImpactCallEvidence(entry, caller, "get", &budget)
+	addImpactCallEvidence(entry, caller, "get", false, &budget)
 	if entry["evidence"] != nil || !strings.Contains(entry["evidenceNote"].(string), "3 matching line(s) omitted") {
 		t.Fatalf("zero budget must explain every omitted line: %v", entry)
 	}
 	entry = map[string]any{}
-	addImpactCallEvidence(entry, caller, "other", &budget)
+	addImpactCallEvidence(entry, caller, "other", false, &budget)
 	if !strings.Contains(entry["evidenceNote"].(string), "unavailable") {
 		t.Fatal(entry)
 	}
@@ -265,7 +265,7 @@ func TestImpactEvidencePlanFilterOnlyWhereCovered(t *testing.T) {
 	} {
 		entry := map[string]any{}
 		budget := impactEvidenceMaxBytes
-		addPlanCheckedCallEvidence(entry, caller, "Send", &budget, renamePlanLines(tc.plan))
+		addPlanCheckedCallEvidence(entry, caller, "Send", false, &budget, renamePlanLines(tc.plan))
 		if got := lines(entry); fmt.Sprint(got) != fmt.Sprint(tc.want) {
 			t.Errorf("%s: evidence lines %v, want %v (entry %v)", name, got, tc.want, entry)
 		}

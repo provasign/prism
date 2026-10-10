@@ -3844,7 +3844,7 @@ func printChangeImpactText(m map[string]any) {
 	}
 	fmt.Printf("// %v — change-impact: %d site(s)\n", m["query"], jsonInt(m["totalSites"]))
 	fmt.Print(mcp.FormatImpactHeaderNotesText(m))
-	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "familyCompleteness", "callerCoverage", "coverageNote", "evidenceNote", "hasHeuristicRefs")
+	printNotes(m, "completeness", "completenessScope", "safeToClaimComplete", "scopeBoundary", "familyCompleteness", "callerCoverage", "callerEvidence", "coverageNote", "evidenceNote", "hasHeuristicRefs")
 	fmt.Print(mcp.FormatImpactRelaySitesText(m))
 	fmt.Print(mcp.FormatImpactExtrasText(m))
 	printSiteGroup("declarations", m["declarations"])

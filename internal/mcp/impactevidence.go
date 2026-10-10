@@ -27,11 +27,14 @@ func compactImpactLine(text string) string {
 
 const callExpressionUnavailableNote = "call expression unavailable in indexed source; inspect this caller if needed"
 
-func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, verified ...map[int]bool) {
+func addImpactCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, methodTarget bool, budget *int, verified ...map[int]bool) {
 	lines := strings.Split(caller.RawText, "\n")
 	matched := map[int]bool{}
 	for _, call := range caller.CallSites {
 		if target != "" && leafOf(call.Callee) == target {
+			if methodTarget && bareCallCannotBeMethod(caller.Language, call.Callee) {
+				continue
+			}
 			if len(verified) > 0 && !verified[0][call.Line] {
 				continue
 			}
@@ -111,11 +114,28 @@ func renamePlanLines(plan *grove.RenamePlanResult) impactPlanSites {
 // as unresolved, as with qualified `new Outer.Inner(...)` calls) the
 // name-matched evidence is kept rather than reporting the call expression as
 // unavailable.
-func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, budget *int, plan impactPlanSites) {
+func addPlanCheckedCallEvidence(entry map[string]any, caller grove.SymbolRecord, target string, methodTarget bool, budget *int, plan impactPlanSites) {
 	file := filepath.Clean(caller.FilePath)
 	if lines, ok := plan.lines[file]; ok && !plan.unresolved[file+":"+caller.Name] {
-		addImpactCallEvidence(entry, caller, target, budget, lines)
+		addImpactCallEvidence(entry, caller, target, methodTarget, budget, lines)
 		return
 	}
-	addImpactCallEvidence(entry, caller, target, budget)
+	addImpactCallEvidence(entry, caller, target, methodTarget, budget)
+}
+
+// bareCallCannotBeMethod reports a call written without a receiver in a
+// language where calling a method always needs one (this./self./x.). Such a
+// call is a same-named function, not the method: hono's Router.match evidence
+// counted 110 local match('GET', ...) calls in a test as "omitted" call lines,
+// and the agent re-grepped the repository to find the real ones. Java, C#,
+// Kotlin, Swift, C++ and PHP allow an implicit receiver and keep bare calls.
+func bareCallCannotBeMethod(lang, callee string) bool {
+	if strings.ContainsAny(callee, ".:>") {
+		return false
+	}
+	switch strings.ToLower(lang) {
+	case "typescript", "tsx", "javascript", "python", "go", "rust":
+		return true
+	}
+	return false
 }
