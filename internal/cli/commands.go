@@ -3553,7 +3553,7 @@ func printTextOutput(m map[string]any) {
 			}
 			if start > 0 && end >= start && len(lines) <= end-start+1 {
 				for i, line := range lines {
-					fmt.Printf("%d\t%s", start+i, line)
+					fmt.Printf("%d"+mcp.SourceLineSep+"%s", start+i, line)
 				}
 			} else {
 				fmt.Print(content)
@@ -3977,7 +3977,7 @@ func printLookupOverloadsText(m map[string]any) {
 			}
 			if start > 0 && end >= start+len(lines)-1 {
 				for i, line := range lines {
-					fmt.Printf("%d\t%s", start+i, line)
+					fmt.Printf("%d"+mcp.SourceLineSep+"%s", start+i, line)
 				}
 			} else {
 				fmt.Print(body)

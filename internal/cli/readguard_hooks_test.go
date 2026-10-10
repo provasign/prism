@@ -162,6 +162,64 @@ func TestReadGuardHook_EditToolsInvalidateTheirFile(t *testing.T) {
 	}
 }
 
+// A failed Edit is rejected at input validation, before any hook runs, so
+// the tracker never sees it and the unchanged file's range still matched:
+// the guard denied the re-read the agent needed to see the exact text its
+// old_string missed (chi tree.go, 2026-10). The guard now checks the
+// transcript for a failed latest edit of the file.
+func TestReadGuardHook_ReReadAfterFailedEditIsAllowed(t *testing.T) {
+	h := newHookEnv(t)
+	h.deliver(hookRel, 1406, 1480)
+	transcript := filepath.Join(t.TempDir(), "session.jsonl")
+	write := func(lines ...map[string]any) {
+		var b bytes.Buffer
+		for _, l := range lines {
+			raw, _ := json.Marshal(l)
+			b.Write(append(raw, '\n'))
+		}
+		if err := os.WriteFile(transcript, b.Bytes(), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	edit := func(id, path string) map[string]any {
+		return map[string]any{"type": "assistant", "message": map[string]any{"content": []any{
+			map[string]any{"type": "tool_use", "id": id, "name": "Edit",
+				"input": map[string]any{"file_path": path, "old_string": "x", "new_string": "y"}}}}}
+	}
+	result := func(id string, isErr bool) map[string]any {
+		return map[string]any{"type": "user", "message": map[string]any{"content": []any{
+			map[string]any{"type": "tool_result", "tool_use_id": id, "is_error": isErr,
+				"content": "<tool_use_error>String to replace not found in file.</tool_use_error>"}}}}
+	}
+	decide := func() string {
+		out := h.run("prism_read_guard.py", map[string]any{"tool_name": "Read", "transcript_path": transcript,
+			"tool_input": map[string]any{"file_path": h.abs, "offset": 1406, "limit": 16}})
+		return out
+	}
+
+	write(edit("e1", h.abs), result("e1", true))
+	if out := decide(); out != "" {
+		t.Errorf("re-read after a failed edit of the file was denied: %s", out)
+	}
+	// A failed edit of ANOTHER file does not lift the guard on this one.
+	write(edit("e2", filepath.Join(h.project, "other.go")), result("e2", true))
+	if out := decide(); out == "" {
+		t.Error("failed edit of another file allowed a redundant re-read of this one")
+	}
+	// Only the latest edit of the file counts: one still waiting for its
+	// result keeps the guard.
+	write(edit("e1", h.abs), result("e1", true), edit("e3", h.abs))
+	if out := decide(); out == "" {
+		t.Error("an edit with no result yet must not lift the guard")
+	}
+	// Missing or unreadable transcript: the normal rule applies.
+	if out := h.run("prism_read_guard.py", map[string]any{"tool_name": "Read",
+		"transcript_path": filepath.Join(t.TempDir(), "missing.jsonl"),
+		"tool_input":      map[string]any{"file_path": h.abs, "offset": 1406, "limit": 16}}); out == "" {
+		t.Error("a missing transcript must not lift the guard")
+	}
+}
+
 // Windows hosts pass backslash paths; prism reports '/' paths. Before the
 // fix no range ever matched there, so the guard never blocked anything.
 func TestReadGuardHook_BackslashEditPathInvalidates(t *testing.T) {

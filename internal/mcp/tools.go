@@ -1332,7 +1332,7 @@ func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int
 	var b strings.Builder
 	width := len(strconv.Itoa(end))
 	for i := offset - 1; i < end; i++ {
-		fmt.Fprintf(&b, "%*d\t%s\n", width, i+1, lines[i])
+		fmt.Fprintf(&b, "%*d"+SourceLineSep+"%s\n", width, i+1, lines[i])
 	}
 	out := map[string]any{
 		"file":       sessionPath,
@@ -1341,9 +1341,6 @@ func (h *Handler) readRange(sessionPath, content, hash string, offset, limit int
 		"endLine":    end,
 		"totalLines": total,
 		"content":    b.String(),
-	}
-	if note := tabIndentNote(lines[offset-1 : end]); note != "" {
-		out["formatNote"] = note
 	}
 	if end < total || offset > 1 {
 		out["note"] = fmt.Sprintf("lines %d-%d of %d — this is a WINDOW, not the file",
@@ -1418,7 +1415,7 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 		}
 		var b strings.Builder
 		for i, l := range head {
-			fmt.Fprintf(&b, "%d\t%s\n", i+1, l)
+			fmt.Fprintf(&b, "%d"+SourceLineSep+"%s\n", i+1, l)
 		}
 		symMap := make([]map[string]any, 0, len(fileSyms))
 		for _, s := range fileSyms {
@@ -1439,9 +1436,6 @@ func (h *Handler) toolRead(ctx context.Context, args map[string]any) (any, error
 				"with prism_lookup(name) — do NOT fall back to native Read, it has the "+
 				"same size limit.",
 				len(lines), ranking.EstimateTokens(string(data)), len(head), len(head)+1),
-		}
-		if fn := tabIndentNote(head); fn != "" {
-			out["formatNote"] = fn
 		}
 		if len(fileSyms) > 0 {
 			h.setDriftBase(sessionPath, fileSyms)
@@ -4093,25 +4087,14 @@ func filterSymbolsByScope(syms []grove.SymbolRecord, sc searchScope) []grove.Sym
 	return keep
 }
 
-// tabIndentNote returns the delimiter disambiguation for tab-indented
-// deliveries, or "". Measured (BACKLOG addendum 2 item 15, 2026-09-03,
-// ddtb4dv8 L153-207): the line-number format is "N<TAB>source"; on a
-// tab-indented file the delimiter tab reads as leading indentation, the
-// agent copies one extra \t into an Edit old_string, and every re-read
-// shows the same format so the illusion survived two od -c sessions —
-// ~20 turns of byte-level archaeology that one sentence prevents.
-const tabIndentNoteText = "tab-indented file: the FIRST tab after each line number is the " +
-	"delimiter, not part of the source — source indentation starts after it " +
-	"(a line shown as `12<TAB><TAB>x` has ONE tab of indentation)"
-
-func tabIndentNote(lines []string) string {
-	for _, l := range lines {
-		if strings.HasPrefix(l, "\t") {
-			return tabIndentNoteText
-		}
-	}
-	return ""
-}
+// SourceLineSep separates a delivered line's number from its source text.
+// It was a tab, Read-style. On a tab-indented file the delimiter tab reads
+// as indentation, and agents put the wrong number of tabs into an Edit
+// old_string: ~20 turns of od -c archaeology in ddtb4dv8 (2026-09-03), and
+// 5 failed edits on chi tree.go in both arms 2026-10-02..09 even with a note
+// explaining the delimiter. A visible separator leaves every whitespace
+// character after it as source, so no note is needed.
+const SourceLineSep = "→"
 
 // ambiguousImpactCalls lists each candidate of a short ambiguity as a call the
 // agent can send back unchanged. A bare "re-run with one of these" was where

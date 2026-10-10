@@ -1,0 +1,1152 @@
+shale_version: "0"
+id: d125dca7-e99f-49fb-bc56-83b796d2af46-c4
+created_at: 2026-10-10T02:11:04.058862Z
+finalized_at: 2026-10-10T03:24:21.14907Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: read-separator-and-guard
+privacy: redacted
+commands:
+    - cmd: 'gh pr merge 36 --merge 2>&1 | tail -2; git checkout -q main && git pull -q --ff-only origin main && git log --oneline -1 && git tag -a v0.86.6 -m "v0.86.6: prism lookup CLI takes several names" && git push -q origin v0.86.6 2>&1 | tail -2; git ls-remote --tags origin v0.86.6'
+      at: 2026-10-10T02:11:04.058862Z
+      classified: other
+    - cmd: sleep 20; RID=$(gh run list --workflow Release --limit 1 --json databaseId,headBranch -q '.[0] | "\(.databaseId) \(.headBranch)"'); echo $RID; gh run watch ${RID%% *} --exit-status --interval 30 2>&1 | tail -3
+      at: 2026-10-10T02:13:35.706108Z
+      classified: other
+    - cmd: gh run view 38016022212 --json conclusion -q .conclusion; gh release view v0.86.6 --json assets -q '.assets|length'; gh workflow run refresh-formulae.yml -R provasign/homebrew-shale && sleep 15 && R=$(gh run list -R provasign/homebrew-shale --workflow refresh-formulae.yml --limit 1 --json databaseId -q '.[0].databaseId') && gh run watch $R -R provasign/homebrew-shale --exit-status --interval 15 >/dev/null 2>&1; echo tap=$?; gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version
+      at: 2026-10-10T02:13:58.07689Z
+      classified: other
+    - cmd: brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -2; prism version 2>&1 | head -1; cd /Users/tapabratapal/Projects/provasign/prism && prism lookup cmdLookup cmdNode 2>&1 | grep "^// lookup"
+      at: 2026-10-10T02:14:15.24045Z
+      classified: other
+    - cmd: cd ~/.claude/projects && find . -name '*.jsonl' -mtime -3 | wc -l; find . -name '*.jsonl' -mtime -3 -exec du -ck {} + | tail -1; find . -name '*.jsonl' -mtime -3 | sed 's|^\./||; s|/.*||' | sort | uniq -c | sort -rn | head -25; ls ~/.codex/sessions 2>/dev/null | tail -3
+      at: 2026-10-10T02:19:15.465444Z
+      classified: other
+    - cmd: 'cd ~/.claude/projects && for d in 5 7 10 14; do echo "$d days: $(find . -name ''*.jsonl'' -mtime -$d | wc -l) files"; done; find . -name ''*.jsonl'' -mtime -7 | sed ''s|^\./||; s|/.*||'' | sed ''s/-e2e-run-.*/-e2e-run-*/'' | sort | uniq -c | sort -rn | head; echo; find ~/.codex/sessions -name ''*.jsonl'' -mtime -7 | wc -l; find ~/.codex/sessions -name ''*.jsonl'' -mtime -7 -exec du -ck {} + | tail -1'
+      at: 2026-10-10T02:19:19.338076Z
+      classified: other
+    - cmd: |-
+        mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail/collect.py <<'EOF'
+        import json, os, sys, time, glob
+        root=os.path.expanduser('~/.claude/projects')
+        cut=time.time()-7*86400
+        out=[]; sessions=[]
+        for p in glob.glob(root+'/*/*.jsonl'):
+            if os.path.getmtime(p)<cut: continue
+            ids=set(); uses={}; fails=[]; ntool=0; order=[]
+            with open(p) as f:
+                for line in f:
+                    try: r=json.loads(line)
+                    except: continue
+                    m=r.get('message') or {}
+                    if r.get('type')=='assistant':
+                        if m.get('id'): ids.add(m['id'])
+                        for c in m.get('content') or []:
+                            if isinstance(c,dict) and c.get('type')=='tool_use':
+                                ntool+=1; uses[c['id']]=(c['name'],c.get('input')); order.append(c['id'])
+                    elif r.get('type')=='user' and isinstance(m.get('content'),list):
+                        for c in m['content']:
+                            if isinstance(c,dict) and c.get('type')=='tool_result' and c.get('is_error'):
+                                t=c.get('content')
+                                if isinstance(t,list): t=' '.join(x.get('text','') for x in t if isinstance(x,dict))
+                                name,inp=uses.get(c.get('tool_use_id'),('?',None))
+                                idx=order.index(c['tool_use_id']) if c.get('tool_use_id') in order else -1
+                                nxt=[uses[i][0]+':'+json.dumps(uses[i][1])[:160] for i in order[idx+1:idx+3]] if idx>=0 else []
+                                fails.append(dict(tool=name,input=json.dumps(inp)[:400],err=(t or '')[:600],pos=idx,next=nxt))
+            proj=p.split('/')[-2]
+            kind='e2e' if 'e2e-run' in proj else 'interactive'
+            prism=any(n.startswith('mcp__prism') for n,_ in uses.values())
+            sessions.append(dict(path=p,kind=kind,api=len(ids),tools=ntool,fails=len(fails),prism=prism))
+            if len(ids)>10:
+                for x in fails: x.update(path=p,kind=kind,prism=prism,api=len(ids)); out.append(x)
+        json.dump(dict(sessions=sessions,fails=out),open(sys.argv[1],'w'))
+        big=[s for s in sessions if s['api']>10]
+        print('sessions',len(sessions),'with >10 api calls',len(big),'e2e',sum(s['kind']=='e2e' for s in big),'prism-arm',sum(s['prism'] for s in big))
+        print('tool calls in big',sum(s['tools'] for s in big),'failed',len(out))
+        EOF
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 collect.py fails.json
+      at: 2026-10-10T02:19:35.409135Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json,collections
+        d=json.load(open('fails.json'))
+        big=[s for s in d['sessions'] if s['api']>10]
+        for k in ('e2e','interactive'):
+            ss=[s for s in big if s['kind']==k]
+            print(k,'sessions',len(ss),'tool calls',sum(s['tools'] for s in ss),'failed',sum(s['fails'] for s in ss), 'sessions with a failure',sum(s['fails']>0 for s in ss))
+        c=collections.Counter((f['kind'],f['tool']) for f in d['fails'])
+        for k,v in c.most_common(): print(v,k)
+        # tool call totals per tool in big sessions? skip
+        for f in d['fails']:
+            if f['kind']=='e2e':
+                print('---',f['tool'],'|',f['input'][:200].replace('\n',' '),'\n   ERR:',f['err'][:260].replace('\n',' '))
+        EOF
+      at: 2026-10-10T02:19:40.727715Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json
+        d=json.load(open('fails.json'))
+        f=[x for x in d['fails'] if 'd8e987ea' in x['input']][0]
+        print(f['path']); print(f['err'][:900]); print('NEXT',f['next'])
+        # find how the agent learned the hash
+        p=f['path']
+        for line in open(p):
+            if 'd8e987ea' in line:
+                r=json.loads(line); m=r.get('message',{})
+                for c in m.get('content') or []:
+                    if isinstance(c,dict):
+                        s=json.dumps(c)
+                        i=s.find('d8e987ea'); print(r['type'],c.get('type'),s[max(0,i-400):i+200].replace('\\n','\n')[:700]); print('=====')
+                break
+        EOF
+      at: 2026-10-10T02:19:58.887257Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && cat > editfail.py <<'EOF'\nimport json,re\nd=json.load(open('fails.json'))\nfor f in d['fails']:\n    if f['tool']!='Edit' or 'not found' not in f['err']: continue\n    p=f['path']; recs=[json.loads(l) for l in open(p)]\n    uses={}; results={}; seq=[]\n    for r in recs:\n        m=r.get('message') or {}\n        for c in (m.get('content') if isinstance(m.get('content'),list) else []) or []:\n            if not isinstance(c,dict): continue\n            if c.get('type')=='tool_use': uses[c['id']]=c; seq.append(c['id'])\n            if c.get('type')=='tool_result':\n                t=c.get('content'); \n                if isinstance(t,list): t=''.join(x.get('text','') for x in t if isinstance(x,dict))\n                results[c['tool_use_id']]=t or ''\n    # locate this failed edit\n    idx=f['pos']; e=uses[seq[idx]]['input']; old=e['old_string']\n    lines=[l for l in old.split('\\n') if l.strip()]\n    [REDACTED:env-secret] l:len(l.strip())).strip()\n    # find last earlier result containing key, and its source tool\n    src=None\n    for j in range(idx-1,-1,-1):\n        if key in results.get(seq[j],''): src=uses[seq[j]]; break\n    print('==',p.split('e2e-run-')[1][:8], e['file_path'].split('/')[-1], 'prism-arm' if f['prism'] else 'native', '| key:',key[:50])\n    if src:\n        res=results[src['id']]; i=res.find(key)\n        ctx=res[max(0,res.rfind('\\n',0,i-200)):i+150]\n        print('   source:',src['name'],json.dumps(src['input'])[:150])\n        print('   seen   :',repr(ctx[:420]))\n    else: print('   source: none found')\n    print('   old    :',repr(old[:300]))\n    nxt=uses[seq[idx+1]] if idx+1<len(seq) else None\n    if nxt: print('   next   :',nxt['name'],json.dumps(nxt['input'])[:160], '| ok' if not any(x.get('is_error') for x in []) else '')\nEOF\npython3 editfail.py"
+      at: 2026-10-10T02:20:10.631596Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && cat > prismfail.py <<'EOF'
+        import json,glob,os,time,re,collections
+        cut=time.time()-7*86400
+        pat=re.compile(r'(NO EXACT MATCH|no matches|not found|does not exist|error|ERROR|unknown op|invalid|NOT DELIVERED|truncated|timed out|did you mean|Unknown|refused|failed)',re.I)
+        tot=collections.Counter(); bad=[]
+        for p in glob.glob(os.path.expanduser('~/.claude/projects/*e2e-run*/*.jsonl')):
+            if os.path.getmtime(p)<cut: continue
+            ids=set(); uses={}; seq=[]; res={}
+            for l in open(p):
+                r=json.loads(l); m=r.get('message') or {}
+                if r.get('type')=='assistant' and m.get('id'): ids.add(m['id'])
+                for c in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if not isinstance(c,dict): continue
+                    if c.get('type')=='tool_use': uses[c['id']]=c; seq.append(c['id'])
+                    elif c.get('type')=='tool_result':
+                        t=c.get('content')
+                        if isinstance(t,list): t=''.join(x.get('text','') for x in t if isinstance(x,dict))
+                        res[c['tool_use_id']]=(t or '',c.get('is_error'))
+            if len(ids)<=10: continue
+            for i,u in enumerate(seq):
+                if not uses[u]['name'].startswith('mcp__prism'): continue
+                op=(uses[u]['input'] or {}).get('op','?'); tot[op]+=1
+                t,err=res.get(u,('',False))
+                head=t[:3000]
+                if err or re.search(r'^(// )?(NO EXACT MATCH|ERROR|error:|no matches|// no matching)',head,re.M) or 'not found' in head[:300].lower() or 'NOT DELIVERED' in head:
+                    bad.append(dict(p=p,i=i,op=op,inp=json.dumps(uses[u]['input'])[:300],out=head[:500],next=[uses[x]['name']+' '+json.dumps(uses[x]['input'])[:200] for x in seq[i+1:i+3]]))
+        print('prism calls by op',dict(tot),'total',sum(tot.values()))
+        print('flagged',len(bad))
+        json.dump(bad,open('prismbad.json','w'))
+        for b in bad:
+            print('==',b['p'].split('e2e-run-')[1][:8],b['op'],b['inp'][:220]); print('  OUT:',b['out'][:300].replace('\n',' | ')); print('  NEXT:',' || '.join(b['next'])[:330])
+        EOF
+        python3 prismfail.py
+      at: 2026-10-10T02:20:27.82057Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json,re,collections
+        b=json.load(open('prismbad.json'))
+        cat=collections.defaultdict(list)
+        for x in b:
+            o=x['out']
+            if re.search(r'^(// )?ERROR|error:',o,re.M|re.I): k='error'
+            elif 'NO EXACT MATCH' in o: k='lookup-no-match'
+            elif 'NOT DELIVERED' in o: k='not-delivered'
+            elif 'no matching files' in o or 'no matches' in o: k='search-term-no-match'
+            else: k='other'
+            cat[k].append(x)
+        for k,v in cat.items(): print(k,len(v))
+        for k in ('error','lookup-no-match','not-delivered','other'):
+            for x in cat.get(k,[]):
+                print('==',k,x['p'].split('e2e-run-')[1][:8],x['inp'][:240]); print('  OUT:',x['out'][:420].replace('\n',' | ')); print('  NEXT:',' || '.join(x['next'])[:300])
+        EOF
+      at: 2026-10-10T02:20:34.046112Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json,re,collections
+        d=json.load(open('fails.json'))
+        def cat(f):
+            e=f['err']; i=f['input']; t=f['tool']
+            if t in('bash','bash_placeholder'): return 'wrong tool name (bash lowercase)'
+            if 'InputValidationError' in e: return 'Read: invented parameters (from/to, bad JSON)'
+            if 'PreToolUse:Read hook' in e: return 'prism read-guard blocked re-read'
+            if 'PreToolUse:Bash hook' in e: return 'harness blocked upstream access'
+            if t=='Edit' and 'Found' in e and 'matches' in e: return 'Edit: old_string not unique'
+            if t=='Edit' and 'not been read' in e: return 'Edit: file not read first'
+            if t=='Edit' and 'not found' in e: return 'Edit: old_string not found'
+            if 'sed:' in e and ('bad flag' in e or 'undefined label' in e or 'unescaped newline' in e): return 'BSD sed -i (GNU syntax on macOS)'
+            if 'EISDIR' in e: return 'Read on a directory'
+            if 'does not exist' in e or 'No such file' in e or 'no such file' in e: return 'wrong path'
+            if 'found packages' in e: return 'Go repro file in package dir'
+            if re.search(r'javac|java -cp|ClassNotFound|package com.fasterxml.jackson.annotation does not exist|Unrecognized option',e+i): return 'Java ad-hoc repro classpath'
+            if 'Exit code 144' in e: return 'mvn killed (exit 144)'
+            if 'grep' in i and e.strip()=='Exit code 1': return 'grep found nothing (exit 1)'
+            if 'unable to read' in e: return 'git show on partial clone'
+            return 'test/program failed (expected during debugging)'
+        c=collections.defaultdict(lambda:[0,0]); per=collections.defaultdict(set)
+        for f in d['fails']:
+            if f['kind']!='e2e': continue
+            k=cat(f); c[k][0 if f['prism'] else 1]+=1; per[k].add(f['path'])
+        print('%-48s %6s %6s %8s'%('category','prism','native','sessions'))
+        for k,v in sorted(c.items(),[REDACTED:env-secret] x:-sum(x[1])): print('%-48s %6d %6d %8d'%(k,v[0],v[1],len(per[k])))
+        big=[s for s in d['sessions'] if s['api']>10 and s['kind']=='e2e']
+        print('sessions prism',sum(s['prism'] for s in big),'native',sum(not s['prism'] for s in big))
+        print('tool calls prism',sum(s['tools'] for s in big if s['prism']),'native',sum(s['tools'] for s in big if not s['prism']))
+        EOF
+      at: 2026-10-10T02:20:49.446355Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json
+        d=json.load(open('fails.json'))
+        for f in d['fails']:
+            if 'PreToolUse:Read hook' in f['err'] or f['tool'] in ('bash','bash_placeholder') or 'InputValidationError' in f['err']:
+                print('==',f['tool'],f['path'].split('e2e-run-')[1][:8],'prism' if f['prism'] else 'native'); print('  IN :',f['input'][:200]); print('  ERR:',f['err'][:200].replace('\n',' ')); print('  NEXT:',' || '.join(f['next'])[:300])
+        EOF
+      at: 2026-10-10T02:20:59.906621Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json
+        d=json.load(open('fails.json'))
+        for s in d['sessions']:
+            if s['kind']=='interactive': print(s['path'].split('/')[-1][:12],s['api'],s['tools'],s['fails'])
+        for f in d['fails']:
+            if f['kind']=='interactive': print('--',f['path'].split('/')[-1][:8],f['tool'],f['input'][:110].replace('\\n',' '),'\n    ',f['err'][:150].replace('\n',' '))
+        EOF
+      at: 2026-10-10T02:21:15.044214Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json,glob,os,time,re,collections
+        cut=time.time()-7*86400
+        for p in glob.glob(os.path.expanduser('~/.codex/sessions/**/*.jsonl'),recursive=True):
+            if os.path.getmtime(p)<cut: continue
+            calls={}; fails=[]; n=0; turns=0; cwd=''
+            for l in open(p):
+                try: r=json.loads(l)
+                except: continue
+                pl=r.get('payload') or {}
+                if r.get('type')=='session_meta': cwd=pl.get('cwd','')
+                t=pl.get('type')
+                if t in('function_call','custom_tool_call','local_shell_call'):
+                    n+=1; calls[pl.get('call_id')]=(pl.get('name'),str(pl.get('arguments') or pl.get('input') or '')[:300])
+                elif t=='message' and pl.get('role')=='assistant': turns+=1
+                elif t in('function_call_output','custom_tool_call_output'):
+                    o=pl.get('output'); o=o if isinstance(o,str) else json.dumps(o)
+                    m=re.search(r'(?:Exit code:|"exit_code":|exited with code)\s*(\d+)',o)
+                    mcperr='"isError":true' in o.replace(' ','') or o.startswith('Error') or 'error:' in o[:80].lower()
+                    if (m and m.group(1)!='0') or mcperr:
+                        nm,a=calls.get(pl.get('call_id'),('?',''))
+                        fails.append((nm,a,o[:300]))
+            print('###',os.path.basename(p)[:40],cwd,'tool calls',n,'assistant msgs',turns,'failed',len(fails))
+            c=collections.Counter(f[0] for f in fails); print('  by tool',dict(c))
+            for nm,a,o in fails[:60]:
+                print('  --',nm,a[:150].replace('\\n',' '),'\n       ',o[:200].replace('\n',' '))
+        EOF
+      at: 2026-10-10T02:21:25.675125Z
+      classified: other
+    - cmd: |-
+        P=$(ls -t ~/.codex/sessions/2026/10/*/rollout-2026-10-08T23-58-53*.jsonl | head -1); python3 - "$P" <<'EOF'
+        import json,sys,collections
+        c=collections.Counter(); ex={}
+        for l in open(sys.argv[1]):
+            r=json.loads(l); pl=r.get('payload') or {}; k=(r.get('type'),pl.get('type'))
+            c[k]+=1
+            if k not in ex: ex[k]=json.dumps(r)[:500]
+        for k,v in c.items(): print(v,k); print('   ',ex[k][:400])
+        EOF
+      at: 2026-10-10T02:21:29.108414Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'\nimport json,glob,os,time,re,collections\ncut=time.time()-7*86400\nfor p in glob.glob(os.path.expanduser('~/.codex/sessions/**/*.jsonl'),recursive=True):\n    if os.path.getmtime(p)<cut: continue\n    calls={}; fails=[]; n=0; heads=collections.Counter(); prismcalls=0\n    for l in open(p):\n        r=json.loads(l); pl=r.get('payload') or {}\n        if pl.get('type')=='custom_tool_call':\n            n+=1; calls[pl['call_id']]=pl.get('input','')\n            if 'prism' in pl.get('input',''): prismcalls+=1\n        elif pl.get('type')=='custom_tool_call_output':\n            o=pl.get('output'); o=''.join(x.get('text','') for x in o) if isinstance(o,list) else str(o)\n            heads[o.split('\\n')[0][:30]]+=1\n            if re.search(r'Script failed|exit code[: ]+[1-9]|Exit code: [1-9]|Process exited with code [1-9]|\"isError\":\\s*true|Error:|error\\b',o[:2000]):\n                fails.append((calls.get(pl['call_id'],''),o))\n    print('###',os.path.basename(p)[8:27],'calls',n,'mentioning prism',prismcalls,'failed-looking',len(fails)); print('  first lines',heads.most_common(4))\n    for i,o in fails:\n        print('  -- IN:',i[:220].replace('\\n',' ')); \n        m=re.search(r'.{0,120}(Script failed|exit code[: ]+[1-9]|Exit code: [1-9]|Process exited with code [1-9]|\"isError\":\\s*true|Error:|error\\b).{0,200}',o[:2000],re.S|re.I)\n        print('     OUT:',(m.group(0) if m else o[:200]).replace('\\n',' ')[:330])\nEOF"
+      at: 2026-10-10T02:21:38.527064Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail && python3 - <<'EOF'
+        import json,glob,os,time,re
+        cut=time.time()-7*86400
+        for p in glob.glob(os.path.expanduser('~/.codex/sessions/**/*.jsonl'),recursive=True):
+            if os.path.getmtime(p)<cut: continue
+            calls={}
+            print('###',os.path.basename(p)[8:27])
+            for l in open(p):
+                r=json.loads(l); pl=r.get('payload') or {}
+                if pl.get('type')=='custom_tool_call': calls[pl['call_id']]=pl.get('input','')
+                elif pl.get('type')=='custom_tool_call_output':
+                    o=pl.get('output'); o=''.join(x.get('text','') for x in o) if isinstance(o,list) else str(o)
+                    first=o.split('\n')[0]
+                    body=o.split('Output:\n',1)[-1]
+                    if first.startswith('Script failed') or re.match(r'\s*(ERROR|Error|error:|// ERROR|NO EXACT MATCH|.*isError":true)',body[:200]) or re.search(r'exit(ed)? (with )?code:? [1-9]',body[:400],re.I):
+                        print('  -- IN:',calls.get(pl['call_id'],'')[:230].replace('\n',' ')); print('     OUT:',body[:300].replace('\n',' '))
+        EOF
+      at: 2026-10-10T02:21:45.414439Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md'; s=open(p).read()
+        line='- [Failed calls audit 2026-10-09](project_failed_calls_audit_2026_10_09.md) — 7 days, >10 API calls: 3% of e2e tool calls fail, 0 prism errors; BSD sed, Edit whitespace (tab after line number), wrong paths; prism auto-fixed paths Grep failed on\n'
+        s=s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1); open(p,'w').write(s)
+        EOF
+        head -4 MEMORY.md
+      at: 2026-10-10T02:22:09.790083Z
+      classified: other
+    - cmd: git branch --show-current && git status --short | head
+      at: 2026-10-10T02:37:39.050343Z
+      classified: other
+    - cmd: grep -rn "You already have lines" --include=*.go internal cmd | grep -v _test | head -5; grep -rn '%d\\t%s\|"%6d\\t\|%5d\\t\|Itoa(.*) + "\\t"' --include=*.go internal | grep -v _test | head -20
+      at: 2026-10-10T02:37:42.408395Z
+      classified: other
+    - cmd: grep -rn "You already have lines" internal cmd | grep -v _test | head -5; echo ---; grep -rn '%d\\t%s' internal | grep -v _test | head -20
+      at: 2026-10-10T02:37:44.512395Z
+      classified: other
+    - cmd: grep -rln "already have lines" . 2>/dev/null | grep -v "/\.grove/" | head; echo ---; grep -rn '"\\t"' internal/mcp/*.go | grep -v _test | grep -i "line\|strconv" | head -20
+      at: 2026-10-10T02:37:47.020704Z
+      classified: other
+    - cmd: grep -rn "scroll back\|from an earlier prism result" internal cmd | grep -v _test | head; grep -rln "read-guard\|readguard\|ReadGuard" internal cmd | head
+      at: 2026-10-10T02:37:49.743645Z
+      classified: other
+    - cmd: wc -l internal/cli/assets/prism_read_guard.py internal/cli/assets/prism_read_tracker.py internal/cli/readguard.go internal/cli/readguard_hooks_test.go && cat internal/cli/assets/prism_read_guard.py && cat internal/cli/assets/prism_read_tracker.py
+      at: 2026-10-10T02:37:52.236972Z
+      classified: other
+    - cmd: C=$(readlink -f "$(which claude)"); echo $C; grep -ao "PostToolUseFailure" "$C" 2>/dev/null | head -2; ls ~/.local/share/claude/versions 2>/dev/null | tail -2
+      at: 2026-10-10T02:37:58.927368Z
+      classified: other
+    - cmd: cat internal/cli/readguard.go
+      at: 2026-10-10T02:38:01.345828Z
+      classified: other
+    - cmd: grep -rnE '%[0-9*]*d\\t|Itoa\([^)]*\) ?\+ ?"\\t"|"\\t" ?\+ ?|\\t%s' internal cmd | grep -v _test.go | grep -vE '^\S+:\s*//' | head -40
+      at: 2026-10-10T02:38:20.345677Z
+      classified: other
+    - cmd: grep -rnE "IndexByte\([^,]+, '\\\\t'\)|Index\([^,]+, \"\\\\t\"\)|SplitN\([^,]+, \"\\\\t\"|Cut\([^,]+, \"\\\\t\"\)|\^\\\\d\+\\\\t|\[0-9\]\+\\\\t|\\\\d\+\\\\t" internal cmd | grep -v _test.go | head -30
+      at: 2026-10-10T02:38:27.188281Z
+      classified: other
+    - cmd: grep -n "compactSourceLine" internal/mcp/*.go | head; sed -n 125,145p internal/mcp/server.go; grep -rn '\\t' internal/mcp/*.go | grep -v _test | grep -E 'HasPrefix|TrimLeft|strip|numbered|lineNo' | head -20
+      at: 2026-10-10T02:38:30.001697Z
+      classified: other
+    - cmd: for loc in server.go:1195:1212 delivery.go:640:652 tools.go:1325:1340 tools.go:1412:1425 graphtext.go:410:424 graphtext.go:484:496 selection.go:900:908; do f=${loc%%:*}; r=${loc#*:}; echo "=== $f $r"; sed -n "${r%%:*},${r##*:}p" internal/mcp/$f; done; sed -n 3548,3560p internal/cli/commands.go; sed -n 3972,3984p internal/cli/commands.go
+      at: 2026-10-10T02:38:37.362851Z
+      classified: other
+    - cmd: grep -rn '"\\t"\|`\\t`\|'"'"'\\t'"'" internal/mcp internal/cli | grep -v _test.go | head -30; grep -rniE "line.number prefix|number prefix|tab-separated|NNN" internal/cli/commands.go internal/mcp/*.go | grep -v _test | head
+      at: 2026-10-10T02:38:43.199431Z
+      classified: other
+    - cmd: sed -n 4095,4115p internal/mcp/tools.go
+      at: 2026-10-10T02:38:45.714415Z
+      classified: other
+    - cmd: grep -rn "tabIndentNote\|tab-indented" internal | grep -v "^internal/mcp/tools.go:409[5-9]\|^internal/mcp/tools.go:410" | head -20
+      at: 2026-10-10T02:38:50.2046Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism; sed -n 1341,1352p internal/mcp/tools.go; echo "-----"; sed -n 1436,1450p internal/mcp/tools.go; echo "-----"; sed -n 30,45p internal/mcp/oncenotes.go; echo "-----"; sed -n 838,875p internal/mcp/delivery_test.go; echo "-----"; sed -n 45,62p internal/mcp/oncenotes_test.go
+      at: 2026-10-10T02:38:57.263197Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        def edit(p, pairs):
+            s=open(p).read()
+            for old,new,cnt in pairs:
+                assert s.count(old)==cnt,(p,old,s.count(old)); s=s.replace(old,new)
+            open(p,'w').write(s)
+        M='internal/mcp/'
+        edit(M+'server.go',[
+         ('fmt.Fprintf(&b, "%d\\t%s\\n", line, clampSourceLine(lines[line-1]))','fmt.Fprintf(&b, "%d"+SourceLineSep+"%s\\n", line, clampSourceLine(lines[line-1]))',1),
+         ("regexp.MustCompile(`^(\\d+\\t|\\s+\\d+[:-] |[^\\s:]+:\\d+[:-] )`)","regexp.MustCompile(`^(\\s*\\d+" + "→" + "|\\s+\\d+[:-] |[^\\s:]+:\\d+[:-] )`)",1),
+        ])
+        edit(M+'delivery.go',[
+         ('''	fmt.Fprintf(&b, "**`%s`**", fg.path)
+        	if note := tabIndentNote(lines); note != "" {
+        		fmt.Fprintf(&b, " — %s", note)
+        	}
+        ''','''	fmt.Fprintf(&b, "**`%s`**", fg.path)
+        ''',1),
+         ('fmt.Fprintf(&b, "%d\\t%s\\n", n, clampSourceLine(lines[n-1]))','fmt.Fprintf(&b, "%d"+SourceLineSep+"%s\\n", n, clampSourceLine(lines[n-1]))',1),
+        ])
+        edit(M+'tools.go',[
+         ('fmt.Fprintf(&b, "%*d\\t%s\\n", width, i+1, lines[i])','fmt.Fprintf(&b, "%*d"+SourceLineSep+"%s\\n", width, i+1, lines[i])',1),
+         ('fmt.Fprintf(&b, "%d\\t%s\\n", i+1, l)','fmt.Fprintf(&b, "%d"+SourceLineSep+"%s\\n", i+1, l)',1),
+         ('''	if note := tabIndentNote(lines[offset-1 : end]); note != "" {
+        		out["formatNote"] = note
+        	}
+        ''','',1),
+         ('''		if fn := tabIndentNote(head); fn != "" {
+        			out["formatNote"] = fn
+        		}
+        ''','',1),
+        ])
+        s=open(M+'tools.go').read()
+        i=s.index('// tabIndentNote returns the delimiter disambiguation')
+        j=s.index('return ""\n}\n',i)+len('return ""\n}\n')
+        s=s[:i]+'''// SourceLineSep separates a delivered line's number from its source text.
+        // It was a tab, Read-style. On a tab-indented file the delimiter tab reads
+        // as indentation, and agents put the wrong number of tabs into an Edit
+        // old_string: ~20 turns of od -c archaeology in ddtb4dv8 (2026-09-03), and
+        // 5 failed edits on chi tree.go in both arms 2026-10-02..09 even with a note
+        // explaining the delimiter. A visible separator leaves every whitespace
+        // character after it as source, so no note is needed.
+        const SourceLineSep = "→"
+        '''+s[j:]
+        open(M+'tools.go','w').write(s)
+        edit(M+'graphtext.go',[
+         ('fmt.Fprintf(&b, "%d\\t%s", contentStart+i, line)','fmt.Fprintf(&b, "%d"+SourceLineSep+"%s", contentStart+i, line)',1),
+         ('fmt.Fprintf(b, "%d\\t%s", start+i, line)','fmt.Fprintf(b, "%d"+SourceLineSep+"%s", start+i, line)',1),
+        ])
+        edit(M+'selection.go',[('strconv.Itoa(hit.Line)+"\\t"+hit.Text','strconv.Itoa(hit.Line)+SourceLineSep+hit.Text',1)])
+        edit(M+'oncenotes.go',[('\t"// " + tabIndentNoteText:             "",\n','',1)])
+        edit('internal/cli/commands.go',[
+         ('fmt.Printf("%d\\t%s", start+i, line)','fmt.Printf("%d"+mcp.SourceLineSep+"%s", start+i, line)',2),
+        ])
+        EOF
+        gofmt -l internal/mcp internal/cli | grep -v "_test.go\|nested_test\|verify_vs" ; go build ./... 2>&1 | head
+      at: 2026-10-10T02:39:19.558688Z
+      classified: build
+    - cmd: go vet ./internal/mcp ./internal/cli 2>&1 | head; go test ./internal/mcp ./internal/cli 2>&1 | grep -E "^(--- FAIL|FAIL|ok)" | head -60
+      at: 2026-10-10T02:39:29.443849Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/delivery_test.go'; s=open(p).read()
+        i=s.index('// TestTabIndentNote: BACKLOG addendum 2 item 15')
+        j=s.index('// TestToolRead_HostCapDegradesNotErrors')
+        s=s[:i]+'''// TestToolRead_TabIndentedLinesKeepEveryTab: BACKLOG addendum 2 item 15 —
+        // with "N<TAB>source" the delimiter tab read as indentation on tab-indented
+        // files and agents copied the wrong tab count into Edit old_string. The
+        // separator is now visible, so each tab after it is source, and the old
+        // explanatory note is gone.
+        func TestToolRead_TabIndentedLinesKeepEveryTab(t *testing.T) {
+        	h := newTestHandler(t)
+        	if err := os.WriteFile(filepath.Join(h.Root, "tabby.go"),
+        		[]byte("package p\\n\\nfunc a() {\\n\\tx := 1\\n\\t_ = x\\n}\\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	out, err := h.Invoke("prism_read", map[string]any{"file": "tabby.go", "offset": 3, "limit": 3})
+        	if err != nil {
+        		t.Fatalf("read: %v", err)
+        	}
+        	m := out.(map[string]any)
+        	content, _ := m["content"].(string)
+        	if !strings.Contains(content, "4"+SourceLineSep+"\\tx := 1\\n") || strings.Contains(content, "4\\t") {
+        		t.Errorf("line 4 must read 4%s<TAB>x := 1, got %q", SourceLineSep, content)
+        	}
+        	if _, has := m["formatNote"]; has {
+        		t.Errorf("no delimiter note is needed with a visible separator, got %v", m["formatNote"])
+        	}
+        }
+
+        '''+s[j:]
+        open(p,'w').write(s)
+        p='internal/mcp/oncenotes_test.go'; s=open(p).read()
+        old='''	read := "// a.go lines 1-2 of 9\\n1\\t\\tx := 1\\n// lines 1-2 of 9 — this is a WINDOW, not the file\\n// " + tabIndentNoteText + "\\n"'''
+        new='''	read := "// a.go lines 1-2 of 9\\n1" + SourceLineSep + "\\tx := 1\\n// lines 1-2 of 9 — this is a WINDOW, not the file\\n"'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        old='''strings.Contains(got, "WINDOW") || strings.Contains(got, "tab-indented") || !strings.Contains(got, "1\\t\\tx := 1")'''
+        new='''strings.Contains(got, "WINDOW") || !strings.Contains(got, "1"+SourceLineSep+"\\tx := 1")'''
+        assert s.count(old)==1; s=s.replace(old,new)
+        open(p,'w').write(s)
+        EOF
+        go vet ./internal/mcp 2>&1 | head -5; go test ./internal/mcp ./internal/cli 2>&1 | grep -E "^(--- FAIL|FAIL|ok)" | head -60
+      at: 2026-10-10T02:40:06.181897Z
+      classified: lint
+    - cmd: go test ./internal/mcp ./internal/cli 2>&1 | grep -A3 -E "^--- FAIL" | grep -v "^--$" | cut -c1-260 | head -60
+      at: 2026-10-10T02:40:33.720205Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        p='internal/mcp/server.go'; s=open(p).read()
+        old="regexp.MustCompile(`^(\\s*\\d+→|"
+        assert s.count(old)==1; s=s.replace(old,"regexp.MustCompile(`^(\\s*\\d+(?:\\t|→)|"); open(p,'w').write(s)
+        files=['internal/mcp/comment_delivery_test.go','internal/mcp/compact_test.go','internal/mcp/delivery_test.go','internal/mcp/graphtext_test.go','internal/mcp/impactplus_test.go','internal/mcp/searchmulti_test.go','internal/mcp/sweepsearch_test.go','internal/cli/formattext_test.go']
+        for p in files:
+            s=open(p).read()
+            n=re.sub(r'(["`]|\\n)(\d+)\\t',lambda m:m.group(1)+m.group(2)+'→',s)
+            open(p,'w').write(n)
+        EOF
+        git diff --stat -- '*_test.go'; go test ./internal/mcp ./internal/cli 2>&1 | grep -A3 -E "^--- FAIL" | cut -c1-260 | head -40
+      at: 2026-10-10T02:41:10.908334Z
+      classified: test
+    - cmd: grep -n 'strings.Contains(content, "4' internal/mcp/delivery_test.go; sed -n 365,376p internal/mcp/delivery_test.go
+      at: 2026-10-10T02:41:15.170235Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/mcp/delivery_test.go'; s=open(p).read()
+        a='|| strings.Contains(content, "4→") {'
+        assert s.count(a)==1; s=s.replace(a,'|| strings.Contains(content, "4\\t") {')
+        b='strings.Contains(content, "\\tfunc FormatGreeting(name string) string {")'
+        assert s.count(b)==1; s=s.replace(b,'strings.Contains(content, SourceLineSep+"func FormatGreeting(name string) string {")')
+        open(p,'w').write(s)
+        EOF
+        go test ./internal/mcp ./internal/cli 2>&1 | grep -E "^(--- FAIL|FAIL|ok)"; git diff -- internal/mcp/*_test.go internal/cli/*_test.go | grep "^[-+]" | grep -v "^+++\|^---" | head -70
+      at: 2026-10-10T02:41:45.174842Z
+      classified: test
+    - cmd: grep -n "func Test\|PostToolUse\|readGuardInvalidateMatcher" internal/cli/readguard_test.go internal/cli/readguard_hooks_test.go | head -40
+      at: 2026-10-10T02:41:50.075146Z
+      classified: other
+    - cmd: sed -n 1,66p internal/cli/readguard_test.go; sed -n 1,106p internal/cli/readguard_hooks_test.go | grep -n "func \|payload\|tool_name" | head -30; sed -n 144,166p internal/cli/readguard_hooks_test.go
+      at: 2026-10-10T02:41:52.63345Z
+      classified: other
+    - cmd: "python3 - <<'EOF'\ndef edit(p, pairs):\n    s=open(p).read()\n    for old,new in pairs:\n        assert s.count(old)==1,(p,old); s=s.replace(old,new)\n    open(p,'w').write(s)\nedit('internal/cli/readguard.go',[\n('''\treadGuardInvalidateMatcher = \"Edit|Write|MultiEdit|NotebookEdit|Bash\"\n''','''\treadGuardInvalidateMatcher = \"Edit|Write|MultiEdit|NotebookEdit|Bash\"\n\n\t// readGuardFailedEditMatcher routes FAILED edits to the tracker too\n\t// (PostToolUse does not fire on failure). A failed edit leaves the file\n\t// unchanged, so its ranges still matched and the guard denied the exact\n\t// re-read the agent needed to see the real text: chi tree.go, 2026-10,\n\t// an old_string with the wrong tab count, then a denied 16-line Read.\n\t// Failed Bash needs no entry: whatever it changed, the guard's mtime/size\n\t// check already lets the file be read.\n\treadGuardFailedEditMatcher = \"Edit|Write|MultiEdit|NotebookEdit\"\n'''),\n('''\tchanged = addHookEntry(hooks, \"PreToolUse\", \"Read\", readGuardGuardCmd()) || changed\n''','''\tchanged = addHookEntry(hooks, \"PostToolUseFailure\", readGuardFailedEditMatcher, readGuardTrackerCmd()) || changed\n\tchanged = addHookEntry(hooks, \"PreToolUse\", \"Read\", readGuardGuardCmd()) || changed\n'''),\n('''\t\tchanged = removeHookEntry(hooks, \"PostToolUse\", readGuardTrackerCmd())\n''','''\t\tchanged = removeHookEntry(hooks, \"PostToolUse\", readGuardTrackerCmd())\n\t\tchanged = removeHookEntry(hooks, \"PostToolUseFailure\", readGuardTrackerCmd()) || changed\n'''),\n])\nedit('internal/cli/assets/prism_read_tracker.py',[\n('''On Edit/Write/MultiEdit/NotebookEdit: drop that file's ranges.\n''','''On Edit/Write/MultiEdit/NotebookEdit: drop that file's ranges -- also when\nthe edit FAILED (PostToolUseFailure), so the agent can re-read the exact\ntext its old_string missed.\n'''),\n])\nedit('internal/cli/readguard_test.go',[\n('''\tpre, _ := hooks[\"PreToolUse\"].([]any)\n\tif len(pre) != 1 {\n\t\tt.Fatalf(\"expected exactly 1 PreToolUse entry, got %d: %s\", len(pre), raw)\n\t}\n}\n''','''\tfailed, _ := hooks[\"PostToolUseFailure\"].([]any)\n\tif len(failed) != 1 {\n\t\tt.Fatalf(\"expected exactly 1 PostToolUseFailure entry, got %d: %s\", len(failed), raw)\n\t}\n\tpre, _ := hooks[\"PreToolUse\"].([]any)\n\tif len(pre) != 1 {\n\t\tt.Fatalf(\"expected exactly 1 PreToolUse entry, got %d: %s\", len(pre), raw)\n\t}\n}\n'''),\n])\nedit('internal/cli/readguard_hooks_test.go',[\n('''// Windows hosts pass backslash paths;''','''// A failed Edit leaves the file unchanged, so without the failure hook its\n// range still matched and the guard denied the re-read the agent needed to\n// see the exact text its old_string missed (chi tree.go, 2026-10).\nfunc TestReadGuardHook_FailedEditAllowsReRead(t *testing.T) {\n\th := newHookEnv(t)\n\th.deliver(hookRel, 1406, 1480)\n\tif h.readDecision(1406, 16, \"\") == \"\" {\n\t\tt.Fatal(\"precondition: an unchanged delivered range is denied\")\n\t}\n\th.run(\"prism_read_tracker.py\", map[string]any{\n\t\t\"hook_event_name\": \"PostToolUseFailure\", \"tool_name\": \"Edit\",\n\t\t\"tool_input\": map[string]any{\"file_path\": h.abs, \"old_string\": \"x\", \"new_string\": \"y\"},\n\t\t\"error\":      \"String to replace not found in file.\",\n\t})\n\tif r := h.readDecision(1406, 16, \"\"); r != \"\" {\n\t\tt.Errorf(\"Read after a failed Edit of the file was still denied: %s\", r)\n\t}\n}\n\n// Windows hosts pass backslash paths;'''),\n])\nEOF\nsed -n 255,300p internal/cli/readguard_hooks_test.go; sed -n 67,150p internal/cli/readguard_test.go | grep -n \"PostToolUse\\|len(\" "
+      at: 2026-10-10T02:42:13.189264Z
+      classified: other
+    - cmd: sed -n 300,330p internal/cli/readguard_hooks_test.go; sed -n 100,150p internal/cli/readguard_test.go
+      at: 2026-10-10T02:42:16.49638Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/readguard_hooks_test.go'; s=open(p).read()
+        old='''	if n := len(hooks["PreToolUse"].([]any)); n != 1 {
+        		t.Errorf("PreToolUse entries after upgrade = %d, want 1", n)
+        	}
+        '''
+        new=old+'''	if failed, _ := hooks["PostToolUseFailure"].([]any); len(failed) != 1 ||
+        		failed[0].(map[string]any)["matcher"] != readGuardFailedEditMatcher {
+        		t.Errorf("upgrade did not add the failed-edit tracker entry: %v", hooks["PostToolUseFailure"])
+        	}
+        '''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        p='internal/cli/readguard_test.go'; s=open(p).read()
+        old='''	postEntry := post[0].(map[string]any)'''
+        new='''	if _, ok := hooks["PostToolUseFailure"]; ok {
+        		t.Errorf("prism's failed-edit tracker entry survived uninstall: %s", raw)
+        	}
+        	postEntry := post[0].(map[string]any)'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        gofmt -l internal/cli; go vet ./internal/cli && go test ./internal/cli -run 'ReadGuard|FormatText|Lookup' -count=1 2>&1 | tail -3
+      at: 2026-10-10T02:42:26.898728Z
+      classified: lint
+    - cmd: C=/Users/tapabratapal/.local/share/claude/versions/2.1.289; grep -ao '.\{0,300\}hook_event_name:"PostToolUseFailure".\{0,300\}' "$C" | head -2 | cut -c1-700
+      at: 2026-10-10T02:42:33.340631Z
+      classified: other
+    - cmd: C=/Users/tapabratapal/.local/share/claude/versions/2.1.289; LC_ALL=C strings -n 20 "$C" | LC_ALL=C grep -F 'PostToolUseFailure' | LC_ALL=C grep -F 'tool_input' | head -3 | cut -c1-600
+      at: 2026-10-10T02:42:36.22333Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re,mmap
+        f=open('/Users/tapabratapal/.local/share/claude/versions/2.1.289','rb'); m=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ)
+        seen=0
+        for mt in re.finditer(rb'hook_event_name:"PostToolUseFailure"',m):
+            print(m[mt.start()-150:mt.end()+250].decode('utf8','replace')); print('====')
+            seen+=1
+            if seen>=2: break
+        EOF
+      at: 2026-10-10T02:42:39.671338Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re,mmap
+        f=open('/Users/tapabratapal/.local/share/claude/versions/2.1.289','rb'); m=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ)
+        i=m.find(b'hook_event_name:"PostToolUseFailure",tool_name:e')
+        j=m.rfind(b'async function*',0,i); name=re.match(rb'async function\*([\w$]+)',m[j:j+60]).group(1)
+        print('fn',name)
+        for mt in re.finditer(rb'[^\w$]'+re.escape(name)+rb'\(',m):
+            if mt.start()+1==j+15: continue
+            print(m[mt.start()-900:mt.start()+120].decode('utf8','replace')); print('=====')
+        EOF
+      at: 2026-10-10T02:42:50.007554Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re,mmap
+        f=open('/Users/tapabratapal/.local/share/claude/versions/2.1.289','rb'); m=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ)
+        for mt in re.finditer(rb'[^\w$]CVn\(',m):
+            s=m[mt.start()-1500:mt.start()+100].decode('utf8','replace')
+            if 'async function*CVn' in s[-130:]: continue
+            print(s); print('=====')
+        EOF
+      at: 2026-10-10T02:42:55.652612Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re,mmap
+        f=open('/Users/tapabratapal/.local/share/claude/versions/2.1.289','rb'); m=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ)
+        i=m.find(b'String to replace not found in file')
+        print(m[i-1200:i+200].decode('utf8','replace'))
+        EOF
+      at: 2026-10-10T02:43:00.980423Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re,mmap
+        f=open('/Users/tapabratapal/.local/share/claude/versions/2.1.289','rb'); m=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ)
+        for mt in re.finditer(rb'\.validateInput\?\.\(',m):
+            s=m[mt.start()-200:mt.start()+900].decode('utf8','replace')
+            print(s); print('=====')
+        EOF
+      at: 2026-10-10T02:43:07.472391Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re,mmap
+        f=open('/Users/tapabratapal/.local/share/claude/versions/2.1.289','rb'); m=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ)
+        i=m.find(b'tool validation error: code=')
+        print(m[i+700:i+2600].decode('utf8','replace'))
+        EOF
+      at: 2026-10-10T02:43:11.506414Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        import re,mmap
+        f=open('/Users/tapabratapal/.local/share/claude/versions/2.1.289','rb'); m=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ)
+        for mt in re.finditer(rb'tool validation error: code=',m):
+            ctx=m[mt.start()-30:mt.start()]
+            if b'${Xc(e)}' in ctx:
+                s=m[mt.start()+600:mt.start()+2200].decode('utf8','replace'); print(s)
+        EOF
+      at: 2026-10-10T02:43:15.663615Z
+      classified: other
+    - cmd: |-
+        git checkout -- internal/cli/readguard.go internal/cli/readguard_test.go internal/cli/assets/prism_read_tracker.py && python3 - <<'EOF'
+        p='internal/cli/readguard_hooks_test.go'; s=open(p).read()
+        i=s.index('// A failed Edit leaves the file unchanged, so without the failure hook')
+        j=s.index('// Windows hosts pass backslash paths;')
+        s=s[:i]+s[j:]
+        old='''	if failed, _ := hooks["PostToolUseFailure"].([]any); len(failed) != 1 ||
+        		failed[0].(map[string]any)["matcher"] != readGuardFailedEditMatcher {
+        		t.Errorf("upgrade did not add the failed-edit tracker entry: %v", hooks["PostToolUseFailure"])
+        	}
+        '''
+        assert s.count(old)==1; s=s.replace(old,''); open(p,'w').write(s)
+        EOF
+        git diff --stat -- internal/cli/readguard* internal/cli/assets; sed -n 20,106p internal/cli/readguard_hooks_test.go
+      at: 2026-10-10T02:43:31.011482Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/assets/prism_read_guard.py'; s=open(p).read()
+        def rep(old,new):
+            global s
+            assert s.count(old)==1,old; s=s.replace(old,new)
+        rep('''  - OVERLAP_THRESHOLD: deny only when the requested window is MOSTLY covered
+            by an already-delivered range, so legitimate pagination past the end of
+            a capped prism read (e.g. lines 200-475 after a 1-200 delivery) is never
+            blocked.
+        ''','''  - OVERLAP_THRESHOLD: deny only when the requested window is MOSTLY covered
+            by an already-delivered range, so legitimate pagination past the end of
+            a capped prism read (e.g. lines 200-475 after a 1-200 delivery) is never
+            blocked;
+          - if the agent's latest edit of the file FAILED (old_string not found, not
+            unique, file not read yet), the Read is allowed: the file is unchanged,
+            so its range still matches, but the agent needs the exact text. A failed
+            Edit is rejected at input validation, before any hook runs, so the
+            tracker never hears of it; the session transcript is the only record
+            (chi tree.go, 2026-10: wrong tab count, then a denied 16-line re-read).
+        ''')
+        rep('''OVERLAP_THRESHOLD = 0.7  # fraction of the REQUESTED window that must already be covered
+        ''','''OVERLAP_THRESHOLD = 0.7  # fraction of the REQUESTED window that must already be covered
+        EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
+        TRANSCRIPT_TAIL_BYTES = 512 * 1024  # recent turns only; bounded cost per Read
+        ''')
+        rep('''def main():''','''def latest_edit_failed(transcript_path: str, want: str) -> bool:
+            """True when the most recent edit-tool call on `want` in the transcript
+            tail came back as an error. Unknown or unreadable -> False (the normal
+            overlap rule applies)."""
+            if not transcript_path:
+                return False
+            try:
+                with open(transcript_path, "rb") as f:
+                    f.seek(0, os.SEEK_END)
+                    size = f.tell()
+                    f.seek(max(0, size - TRANSCRIPT_TAIL_BYTES))
+                    tail = f.read().decode("utf-8", "replace").splitlines()
+            except OSError:
+                return False
+            if size > TRANSCRIPT_TAIL_BYTES:
+                tail = tail[1:]  # first line is partial
+            last_id, failed = None, {}
+            for line in tail:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                content = (rec.get("message") or {}).get("content")
+                if not isinstance(content, list):
+                    continue
+                for c in content:
+                    if not isinstance(c, dict):
+                        continue
+                    if c.get("type") == "tool_use" and c.get("name") in EDIT_TOOLS:
+                        ti = c.get("input") or {}
+                        path = ti.get("file_path") or ti.get("notebook_path") or ""
+                        if path and norm_path(path) == want:
+                            last_id = c.get("id")
+                    elif c.get("type") == "tool_result" and c.get("tool_use_id"):
+                        failed[c["tool_use_id"]] = bool(c.get("is_error"))
+            return last_id is not None and failed.get(last_id, False)
+
+
+        def main():''')
+        rep('''    if best_cov and best_frac >= OVERLAP_THRESHOLD:
+        ''','''    if best_cov and best_frac >= OVERLAP_THRESHOLD and not latest_edit_failed(payload.get("transcript_path"), want):
+        ''')
+        rep('''f"range. (Edits and file-rewriting commands clear this automatically.)"''','''f"range. (Edits and file-rewriting commands clear this automatically, "
+                            f"and a re-read after a failed edit of this file is allowed.)"''')
+        open(p,'w').write(s)
+
+        p='internal/cli/readguard_hooks_test.go'; s=open(p).read()
+        old='// Windows hosts pass backslash paths;'
+        new='''// A failed Edit is rejected at input validation, before any hook runs, so
+        // the tracker never sees it and the unchanged file's range still matched:
+        // the guard denied the re-read the agent needed to see the exact text its
+        // old_string missed (chi tree.go, 2026-10). The guard now checks the
+        // transcript for a failed latest edit of the file.
+        func TestReadGuardHook_ReReadAfterFailedEditIsAllowed(t *testing.T) {
+        	h := newHookEnv(t)
+        	h.deliver(hookRel, 1406, 1480)
+        	transcript := filepath.Join(t.TempDir(), "session.jsonl")
+        	write := func(lines ...map[string]any) {
+        		var b bytes.Buffer
+        		for _, l := range lines {
+        			raw, _ := json.Marshal(l)
+        			b.Write(append(raw, '\\n'))
+        		}
+        		if err := os.WriteFile(transcript, b.Bytes(), 0o644); err != nil {
+        			t.Fatal(err)
+        		}
+        	}
+        	edit := func(id, path string) map[string]any {
+        		return map[string]any{"type": "assistant", "message": map[string]any{"content": []any{
+        			map[string]any{"type": "tool_use", "id": id, "name": "Edit",
+        				"input": map[string]any{"file_path": path, "old_string": "x", "new_string": "y"}}}}}
+        	}
+        	result := func(id string, isErr bool) map[string]any {
+        		return map[string]any{"type": "user", "message": map[string]any{"content": []any{
+        			map[string]any{"type": "tool_result", "tool_use_id": id, "is_error": isErr,
+        				"content": "<tool_use_error>String to replace not found in file.</tool_use_error>"}}}}
+        	}
+        	decide := func() string {
+        		out := h.run("prism_read_guard.py", map[string]any{"tool_name": "Read", "transcript_path": transcript,
+        			"tool_input": map[string]any{"file_path": h.abs, "offset": 1406, "limit": 16}})
+        		return out
+        	}
+
+        	write(edit("e1", h.abs), result("e1", true))
+        	if out := decide(); out != "" {
+        		t.Errorf("re-read after a failed edit of the file was denied: %s", out)
+        	}
+        	// A failed edit of ANOTHER file does not lift the guard on this one.
+        	write(edit("e2", filepath.Join(h.project, "other.go")), result("e2", true))
+        	if out := decide(); out == "" {
+        		t.Error("failed edit of another file allowed a redundant re-read of this one")
+        	}
+        	// The latest attempt decides: failed, then a later failure resolved is
+        	// not this case -- a later edit still in flight (no result yet) keeps the guard.
+        	write(edit("e1", h.abs), result("e1", true), edit("e3", h.abs))
+        	if out := decide(); out == "" {
+        		t.Error("an edit with no result yet must not lift the guard")
+        	}
+        	// Missing or unreadable transcript: the normal rule applies.
+        	if out := h.run("prism_read_guard.py", map[string]any{"tool_name": "Read",
+        		"transcript_path": filepath.Join(t.TempDir(), "missing.jsonl"),
+        		"tool_input":      map[string]any{"file_path": h.abs, "offset": 1406, "limit": 16}}); out == "" {
+        		t.Error("a missing transcript must not lift the guard")
+        	}
+        }
+
+        // Windows hosts pass backslash paths;'''
+        assert s.count(old)==1; s=s.replace(old,new,1); open(p,'w').write(s)
+        EOF
+        gofmt -l internal/cli; go vet ./internal/cli && go test ./internal/cli -run 'ReadGuard' -count=1 -v 2>&1 | grep -E "^(=== RUN|--- FAIL|    |ok|FAIL)" | grep -v "=== RUN" | head -20
+      at: 2026-10-10T02:43:57.225254Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'EOF'
+        p='internal/cli/readguard_hooks_test.go'; s=open(p).read()
+        old='''	// The latest attempt decides: failed, then a later failure resolved is
+        	// not this case -- a later edit still in flight (no result yet) keeps the guard.
+        '''
+        new='''	// Only the latest edit of the file counts: one still waiting for its
+        	// result keeps the guard.
+        '''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        go test ./internal/cli -run ReadGuard -count=1 2>&1 | tail -1
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/fail
+        T=$(ls ~/.claude/projects/*s40s1zhc*/*.jsonl); python3 - "$T" "$S" <<'EOF'
+        import json,sys,importlib.util
+        t,S=sys.argv[1],sys.argv[2]
+        lines=open(t).read().splitlines()
+        cut=next(i for i,l in enumerate(lines) if 'PreToolUse:Read hook error' in l)
+        # keep everything before the denied Read's result, and drop the Read tool_use itself is fine (not an edit)
+        open(S+'/s40s_prefix.jsonl','w').write('\n'.join(lines[:cut])+'\n')
+        spec=importlib.util.spec_from_file_location('g','internal/cli/assets/prism_read_guard.py'); g=importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
+        want='/private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-s40s1zhc/tree.go'
+        print('real chi transcript, latest edit of tree.go failed ->',g.latest_edit_failed(S+'/s40s_prefix.jsonl',want))
+        print('same transcript, other file ->',g.latest_edit_failed(S+'/s40s_prefix.jsonl',want.replace('tree.go','mux.go')))
+        EOF
+      at: 2026-10-10T02:44:12.490305Z
+      classified: test
+    - cmd: grep -rn "<TAB>\|N\\\\t\|number.*tab\b\|tab-separated" --include=*.md . 2>/dev/null | grep -v "/\.grove/\|\.shale/" | head; grep -rn "<TAB>" internal cmd | grep -v _test | head; go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -5; echo suite-done
+      at: 2026-10-10T02:44:25.45247Z
+      classified: test
+    - cmd: git ls-files '*.md' | xargs grep -ln "<TAB>\|line-number format\|N\\\\t" 2>/dev/null | head; git ls-files 'internal/*' 'cmd/*' | grep -v _test | xargs grep -n "<TAB>" 2>/dev/null | head
+      at: 2026-10-10T02:44:28.479561Z
+      classified: other
+    - cmd: go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/prism-sep ./cmd/prism && /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/prism-sep lookup lookupArgIsPath 2>&1 | head -8 | cat -A | head -8; git status --short
+      at: 2026-10-10T02:44:36.212458Z
+      classified: build
+    - cmd: rm -rf internal/cli/assets/__pycache__ && /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/prism-sep lookup lookupArgIsPath 2>&1 | head -6 | cat -vt
+      at: 2026-10-10T02:44:40.211264Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls tasks/e2e | wc -l; python3 - <<'EOF'
+        import json,glob,os
+        rows=[]
+        for p in glob.glob('tasks/e2e/*.json'):
+            t=json.load(open(p))
+            lang=t.get('language') or t.get('lang')
+            if (lang or '').lower() in ('go','golang') or t.get('repo','').split('/')[-1] in ('chi','gin','echo','cli','fiber','mux','cobra','viper','testify'):
+                rows.append((os.path.basename(p)[:-5], t.get('repo'), lang, len(t.get('fail_to_pass',[]) or [])))
+        for r in sorted(rows): print(r)
+        EOF
+        grep -n "read-guard\|read_guard" runners/run_e2e.py runners/ab_endtoend_arms.py | head
+      at: 2026-10-10T02:49:46.017647Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 236,300p runners/run_e2e.py; grep -n "_install_read_guard_hook\|PRISM_INIT_ARMS\|def _prism_init\|prism\", \"init\|'init'" runners/run_e2e.py | head -20; sed -n 130,200p runners/ab_endtoend_arms.py
+      at: 2026-10-10T02:49:51.057132Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 300,340p runners/run_e2e.py; diff -q hooks/prism_read_guard.py ~/Projects/provasign/prism/internal/cli/assets/prism_read_guard.py; cd ~/Projects/provasign/prism && git show HEAD:internal/cli/assets/prism_read_guard.py | diff -q - ../research/harness/hooks/prism_read_guard.py; git show HEAD:internal/cli/assets/prism_read_tracker.py | diff -q - ../research/harness/hooks/prism_read_tracker.py; grep -n "readGuard\b\|read-guard" internal/cli/commands.go | head
+      at: 2026-10-10T02:49:56.180367Z
+      classified: other
+    - cmd: cd ~/Projects/provasign/prism && git show HEAD:internal/cli/assets/prism_read_guard.py > /tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/guard_head.py; diff ../research/harness/hooks/prism_read_guard.py /tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/guard_head.py | head -60; git show HEAD:internal/cli/assets/prism_read_tracker.py | diff ../research/harness/hooks/prism_read_tracker.py - | head -40; cd ../research && git log --oneline -3 -- harness/hooks
+      at: 2026-10-10T02:50:04.288775Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os,collections
+        rows=[]
+        for p in glob.glob('tasks/e2e/*.json'):
+            t=json.load(open(p))
+            if isinstance(t,list): t=t[0] if t and isinstance(t[0],dict) else {}
+            repo=t.get('repo','')
+            rows.append((t.get('language') or t.get('lang') or '?',repo,os.path.basename(p)[:-5]))
+        c=collections.Counter(r[0] for r in rows); print(c)
+        for r in sorted(rows):
+            if r[0].lower().startswith('go'): print(r)
+        EOF
+        sed -n "$(grep -n 'def _cloud_cmd' runners/run_e2e.py | cut -d: -f1),+40p" runners/run_e2e.py | grep -n "cwd\|Popen\|subprocess" | head
+      at: 2026-10-10T02:50:13.549198Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os
+        for p in sorted(glob.glob('tasks/e2e/*.json')):
+            t=json.load(open(p))
+            if isinstance(t,list): continue
+            if (t.get('language') or '')!='go': continue
+            keys=[k for k in t if 'date' in k.lower() or k.endswith('_at')]
+            print(os.path.basename(p)[:-5].ljust(42), {k:str(t[k])[:10] for k in keys}, 'f2p',len(t.get('fail_to_pass') or []), 'notes' if t.get('notes') else '')
+        EOF
+      at: 2026-10-10T02:50:19.236241Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/go-chi__chi__pr1148.json'));print(type(t).__name__); t=t if isinstance(t,dict) else t[0]; print({k:(str(v)[:80]) for k,v in t.items()})"
+      at: 2026-10-10T02:50:22.136116Z
+      classified: other
+    - cmd: ls ~/gvg-corpus/e2e-2026/ 2>/dev/null | grep -iE "chi|gin|echo|cli" ; cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "CORPUS\|gvg-corpus" runners/run_e2e.py | head -3
+      at: 2026-10-10T02:50:25.855669Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 70,100p runners/run_e2e.py | grep -n "def \|Path\|home" ; ls ~/gvg-corpus | head -30
+      at: 2026-10-10T02:50:28.695932Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os,subprocess
+        m={'go-chi/chi':'chi','gin-gonic/gin':'gin','labstack/echo':'echo','urfave/cli':'cli'}
+        for p in sorted(glob.glob('tasks/e2e/*.json')):
+            t=json.load(open(p))
+            if not isinstance(t,dict) or t.get('lang')!='go' or not t.get('merge_commit'): continue
+            d=os.path.expanduser('~/gvg-corpus/'+m[t['repo']])
+            r=subprocess.run(['git','-C',d,'log','-1','--format=%cs',t['merge_commit']],capture_output=True,text=True,env={**os.environ,'GIT_NO_LAZY_FETCH':'1'})
+            print(t['instance_id'].ljust(26), (r.stdout.strip() or 'n/a:'+r.stderr.strip()[:40]), t.get('fail_to_pass')[:70])
+        EOF
+      at: 2026-10-10T02:50:33.541662Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness/results && for t in gin-gonic__gin__pr4805 gin-gonic__gin__pr4819 go-chi__chi__pr1029 go-chi__chi__pr1148 go-chi__chi__pr1158 urfave__cli__pr2419 urfave__cli__pr2440; do n=$(find . -path ./archive-2026-09-tainted -prune -o -name "$t.*.json" -print 2>/dev/null | wc -l); r=$(find . -path ./archive-2026-09-tainted -prune -o -name "$t.*.json" -print 2>/dev/null | xargs grep -l ''"resolved": true'' 2>/dev/null | wc -l); echo "$t runs=$n resolved=$r"; done; ls ../tasks/ | head; ls ../tasks/e2e | grep -i valid | head'
+      at: 2026-10-10T02:50:40.615213Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 runners/run_e2e.py --help 2>&1 | head -40
+      at: 2026-10-10T02:50:44.449997Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 1,70p runners/run_e2e.py | grep -v "^#" | head -60; sed -n 76,100p runners/run_e2e.py; grep -n "^def \|^OUT\|^MANIFEST\|OUT =" runners/run_e2e.py | head -40; ls tasks/*.json manifests 2>/dev/null | head
+      at: 2026-10-10T02:50:49.194936Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad && cat > $S/gold_go.py <<'EOF'
+        import sys,json,time
+        sys.path.insert(0,'runners'); sys.path.insert(0,'scoring')
+        import run_e2e, go_eval
+        for tid in sys.argv[1:]:
+            t=json.load(open(f'tasks/e2e/{tid}.json'))
+            t0=time.time()
+            r=go_eval.score(go_eval.REPO_DIR[t['repo']], t, t['patch'])
+            print(tid, 'resolved=',r.get('resolved'), {k:v for k,v in r.items() if k!='resolved' and not isinstance(v,(list,dict))}, f'{time.time()-t0:.0f}s', flush=True)
+        EOF
+        python3 $S/gold_go.py gin-gonic__gin__pr4805 gin-gonic__gin__pr4819 urfave__cli__pr2419 urfave__cli__pr2440 2>&1 | tail -8
+      at: 2026-10-10T02:51:24.128436Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad && python3 - <<'EOF' 2>&1 | tail -5
+        import sys,json,re
+        sys.path.insert(0,'runners'); sys.path.insert(0,'scoring')
+        import go_eval
+        for tid in ['gin-gonic__gin__pr4805','gin-gonic__gin__pr4819','urfave__cli__pr2419','urfave__cli__pr2440']:
+            t=json.load(open(f'tasks/e2e/{tid}.json'))
+            # noop: add a trailing comment to the first src file of the gold patch
+            f=re.search(r'^diff --git a/(\S+)',t['patch'],re.M).group(1)
+            noop=f"--- a/{f}\n+++ b/{f}\n@@ -1,1 +1,2 @@\n"
+            import subprocess,os
+            first=subprocess.run(['git','-C',str(go_eval.REPO_DIR[t['repo']]),'show',f"{t['base_commit']}:{f}"],capture_output=True,text=True).stdout.split('\n')[0]
+            noop=f"diff --git a/{f} b/{f}\n--- a/{f}\n+++ b/{f}\n@@ -1 +1,2 @@\n {first}\n+// noop\n"
+            r=go_eval.score(go_eval.REPO_DIR[t['repo']], t, noop)
+            print(tid,'no-fix resolved=',r.get('resolved'),'f2p_ok=',r.get('f2p_ok'),'p2p_ok=',r.get('p2p_ok'))
+        EOF
+      at: 2026-10-10T02:52:00.453014Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "PRISM_BIN_FOR_ARM\|_BIN\"" runners/ab_endtoend_arms.py | head; grep -n "_upstream_guard_settings\|--settings" runners/run_e2e.py | head -5; git -C .. status --short | head
+      at: 2026-10-10T02:52:15.169827Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        p='runners/run_e2e.py'; s=open(p).read()
+        old='''        if arm != "prism_init_no_guard":
+                    _install_read_guard_hook(wt)
+        '''
+        new='''        if arm != "prism_init_no_guard":
+                    _install_read_guard_hook(wt, arm)
+        '''
+        assert s.count(old)==1; s=s.replace(old,new)
+        i=s.index('def _install_read_guard_hook(wt: Path) -> None:')
+        j=s.index('PRISM_INIT_ARMS = (')
+        s=s[:i]+'''def _install_read_guard_hook(wt: Path, arm: str) -> None:
+            """Deny a native Read that substantially overlaps a range prism already
+            delivered this session. Installed with the arm's own binary
+            (`prism init --read-guard`), the product path, so each arm runs the guard
+            its prism ships. Until 2026-10-09 this copied harness/hooks/, a September
+            copy that had drifted from prism's (no file-change check, old state
+            file), so no benchmark measured the shipped guard. TOOL_ARTIFACTS already
+            excludes .claude/ from the scored diff, so these files never leak into
+            agent_diff."""
+            r = subprocess.run([_prism_bin(arm), "init", "--read-guard", str(wt)],
+                               capture_output=True, text=True, timeout=120)
+            if r.returncode != 0 or not (wt / ".claude" / "hooks" / "prism_read_guard.py").exists():
+                raise RuntimeError(f"prism init --read-guard failed in {wt} (rc={r.returncode}): "
+                                   f"{r.stdout[-300:]} {r.stderr[-300:]}")
+
+
+        '''+s[j:]
+        s=s.replace('HOOKS_SRC = Path(__file__).resolve().parent.parent / "hooks"\n','')
+        assert 'HOOKS_SRC' not in s, 'HOOKS_SRC still used'
+        open(p,'w').write(s)
+        EOF
+        python3 -c "import ast;ast.parse(open('runners/run_e2e.py').read())" && grep -rn "harness/hooks\|HOOKS_SRC\|prism_read_guard" --include=*.py . | grep -v "^./results" | head
+      at: 2026-10-10T02:52:22.867914Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "HOOKS_SRC" runners/run_e2e.py
+      at: 2026-10-10T02:52:25.114041Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        p='runners/run_e2e.py'; s=open(p).read()
+        old='''        if arm != "prism_init_no_guard":
+                    _install_read_guard_hook(wt)
+        '''
+        assert s.count(old)==1; s=s.replace(old,old.replace('(wt)','(wt, arm)'))
+        i=s.index('def _install_read_guard_hook(wt: Path) -> None:')
+        j=s.index('PRISM_INIT_ARMS = (')
+        s=s[:i]+'''def _install_read_guard_hook(wt: Path, arm: str) -> None:
+            """Deny a native Read that substantially overlaps a range prism already
+            delivered this session. Installed with the arm's own binary
+            (`prism init --read-guard`), the product path, so each arm runs the guard
+            its prism ships. Until 2026-10-09 this copied harness/hooks/, a September
+            copy that had drifted from prism's (no file-change check, old state
+            file), so no benchmark measured the shipped guard. TOOL_ARTIFACTS already
+            excludes .claude/ from the scored diff, so these files never leak into
+            agent_diff."""
+            r = subprocess.run([_prism_bin(arm), "init", "--read-guard", str(wt)],
+                               capture_output=True, text=True, timeout=120)
+            if r.returncode != 0 or not (wt / ".claude" / "hooks" / "prism_read_guard.py").exists():
+                raise RuntimeError(f"prism init --read-guard failed in {wt} (rc={r.returncode}): "
+                                   f"{r.stdout[-300:]} {r.stderr[-300:]}")
+
+
+        '''+s[j:]
+        open(p,'w').write(s)
+        EOF
+        python3 -c "import ast;ast.parse(open('runners/run_e2e.py').read())" && git -C .. diff --stat; ls hooks/
+      at: 2026-10-10T02:52:32.291766Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && git grep -n "prism_read_guard\|prism_read_tracker" -- ':!harness/results' | grep -v "^harness/hooks/prism_read" | head
+      at: 2026-10-10T02:52:38.389639Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad && go build -o ~/prism-ab-bins/prism-sepguard-rc ./cmd/prism && ls -la ~/prism-ab-bins/ | grep -E "v0.86.6|sepguard"; readlink -f $(which prism); prism version | head -1
+      at: 2026-10-10T02:52:40.775742Z
+      classified: build
+    - cmd: cp /opt/homebrew/Cellar/prism/0.86.6/bin/prism ~/prism-ab-bins/prism-v0.86.6 && cd /Users/tapabratapal/Projects/provasign/research/harness && head -c 400 results/abc-probe-manifest.json; echo; cat results/abc-probe.log | head -5
+      at: 2026-10-10T02:52:46.570737Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p results/sepguard && echo '["go-chi__chi__pr1148"]' > results/sepguard/probe-manifest.json && E2E_OUT=results/e2e-sepguard-probe PRISM_BODY_BASELINE_BIN=$HOME/prism-ab-bins/prism-v0.86.6 PRISM_BODY_EXP_BIN=$HOME/prism-ab-bins/prism-sepguard-rc python3 runners/run_e2e.py results/sepguard/probe-manifest.json --models claude-sonnet-5-5 --arms prism_body_exp 2>&1 | tail -5
+      at: 2026-10-10T02:54:26.298557Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && F=$(ls results/e2e-sepguard-probe/*.json | head -1); python3 - "$F" <<'EOF'
+        import json,sys,glob,os
+        r=json.load(open(sys.argv[1])); print({k:r.get(k) for k in ('resolved','cost_usd','api_calls','session_id','turns') if k in r}); print([k for k in r][:40])
+        sid=r.get('session_id')
+        ps=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))
+        print(ps)
+        if ps:
+            arrows=tabs=0; ops=[]; errs=[]
+            for l in open(ps[0]):
+                d=json.loads(l); m=d.get('message') or {}
+                for c in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if isinstance(c,dict) and c.get('type')=='tool_use': ops.append(c['name']+':'+str((c.get('input') or {}).get('op','')))
+                    if isinstance(c,dict) and c.get('type')=='tool_result':
+                        t=c.get('content'); t=''.join(x.get('text','') for x in t if isinstance(x,dict)) if isinstance(t,list) else (t or '')
+                        import re
+                        arrows+=len(re.findall(r'^\s*\d+→',t,re.M)); tabs+=len(re.findall(r'^\s*\d+\t',t,re.M))
+                        if c.get('is_error'): errs.append(t[:150])
+            print('lines with N→',arrows,' lines with N<tab>',tabs); print(ops); print('errors',errs)
+        EOF
+      at: 2026-10-10T02:54:34.062469Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad && ls $S/guard.py && echo '["go-chi__chi__pr1148","gin-gonic__gin__pr4805","urfave__cli__pr2419","go-chi__chi__pr1158"]' > results/sepguard/m1.json && echo '["go-chi__chi__pr1029","gin-gonic__gin__pr4819","urfave__cli__pr2440"]' > results/sepguard/m2.json && cat > results/sepguard/run.sh <<EOF
+        #!/bin/zsh
+        cd /Users/tapabratapal/Projects/provasign/research/harness
+        export E2E_OUT=results/e2e-sepguard PRISM_BODY_BASELINE_BIN=\$HOME/prism-ab-bins/prism-v0.86.6 PRISM_BODY_EXP_BIN=\$HOME/prism-ab-bins/prism-sepguard-rc
+        python3 $S/guard.py 6000 10 -- python3 runners/run_e2e.py results/sepguard/m1.json --models claude-sonnet-5-5 --arms prism_body_baseline,prism_body_exp --trials 5 > results/sepguard/p1.log 2>&1 &
+        sleep 20
+        python3 $S/guard.py 6000 10 -- python3 runners/run_e2e.py results/sepguard/m2.json --models claude-sonnet-5-5 --arms prism_body_baseline,prism_body_exp --trials 5 > results/sepguard/p2.log 2>&1 &
+        wait
+        echo ALLDONE
+        EOF
+        chmod +x results/sepguard/run.sh
+      at: 2026-10-10T02:54:47.42645Z
+      classified: other
+    - cmd: /Users/tapabratapal/Projects/provasign/research/harness/results/sepguard/run.sh
+      at: 2026-10-10T02:54:50.875456Z
+      classified: other
+    - cmd: "S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad && cat > $S/sep_analyze.py <<'EOF'\nimport json,glob,os,re,collections,sys,random\nOUT='/Users/tapabratapal/Projects/provasign/research/harness/results/e2e-sepguard'\nrows=[]\nfor p in glob.glob(OUT+'/*.json'):\n    r=json.load(open(p))\n    if not isinstance(r,dict) or 'arm' not in r: continue\n    sid=r.get('session_id'); tp=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl')) if sid else []\n    ed_calls=ed_fail=ed_ws=deny=deny_after_fail=reads_native=0; last_edit_failed=False\n    if tp:\n        uses={}\n        for l in open(tp[0]):\n            d=json.loads(l); m=d.get('message') or {}\n            for c in (m.get('content') if isinstance(m.get('content'),list) else []):\n                if not isinstance(c,dict): continue\n                if c.get('type')=='tool_use':\n                    uses[c['id']]=c\n                    if c['name'] in ('Edit','MultiEdit','Write'): ed_calls+=1\n                    if c['name']=='Read': reads_native+=1\n                elif c.get('type')=='tool_result':\n                    u=uses.get(c.get('tool_use_id'),{}); t=c.get('content')\n                    t=''.join(x.get('text','') for x in t if isinstance(x,dict)) if isinstance(t,list) else (t or '')\n                    if u.get('name') in ('Edit','MultiEdit','Write'):\n                        if c.get('is_error'):\n                            ed_fail+=1; last_edit_failed=True\n                            old=(u.get('input') or {}).get('old_string','')\n                            if 'not found' in t and re.search(r'^\\t',old,re.M): ed_ws+=1\n                        else: last_edit_failed=False\n                    if u.get('name')=='Read' and 'PreToolUse:Read hook' in t:\n                        deny+=1; deny_after_fail+=last_edit_failed\n    rows.append(dict(task=r['task'].split('__')[-1] if isinstance(r['task'],str) else r['task'],arm=r['arm'],res=bool(r.get('resolved')),cost=r.get('cost_usd') or 0,api=r.get('api_calls') or 0,\n        ed=ed_calls,edf=ed_fail,edws=ed_ws,deny=deny,denyaf=deny_after_fail,reads=reads_native,tp=bool(tp)))\njson.dump(rows,open(OUT+'-rows.json','w'))\nA={'prism_body_baseline':'v0.86.6','prism_body_exp':'new'}\nprint('sessions',collections.Counter(A[r['arm']] for r in rows), 'transcripts missing',sum(not r['tp'] for r in rows))\ndef agg(rs):\n    n=len(rs); return dict(n=n,res=sum(r['res'] for r in rs),cost=round(sum(r['cost'] for r in rs),2),api=round(sum(r['api'] for r in rs)/max(n,1),1),\n        edits=sum(r['ed'] for r in rs),edit_fail=sum(r['edf'] for r in rs),edit_tab_fail=sum(r['edws'] for r in rs),guard_deny=sum(r['deny'] for r in rs),deny_after_failed_edit=sum(r['denyaf'] for r in rs))\nfor arm in A:\n    print(A[arm],agg([r for r in rows if r['arm']==arm]))\nprint('per task (resolved/n, $, api/session, edit fails):')\nfor t in sorted({r['task'] for r in rows}):\n    line=[t.ljust(26)]\n    for arm in A:\n        a=agg([r for r in rows if r['task']==t and r['arm']==arm]); line.append(f\"{A[arm]} {a['res']}/{a['n']} ${a['cost']:.2f} {a['api']} ef={a['edit_fail']}\")\n    print('  '+' | '.join(line))\n# stratified permutation test on a metric\ndef perm(metric,iters=20000):\n    tasks=sorted({r['task'] for r in rows}); rng=random.Random(1)\n    def diff(rs): \n        a=[metric(r) for r in rs if r['arm']=='prism_body_exp']; b=[metric(r) for r in rs if r['arm']=='prism_body_baseline']\n        return (sum(a)/len(a))-(sum(b)/len(b)) if a and b else 0\n    obs=diff(rows); cnt=0\n    for _ in range(iters):\n        sh=[]\n        for t in tasks:\n            rs=[dict(r) for r in rows if r['task']==t]; arms=[r['arm'] for r in rs]; rng.shuffle(arms)\n            for r,a in zip(rs,arms): r['arm']=a; sh.append(r)\n        if abs(diff(sh))>=abs(obs)-1e-12: cnt+=1\n    return round(obs,3),round(cnt/iters,3)\nfor name,f in [('resolved',lambda r:r['res']),('cost',lambda r:r['cost']),('api',lambda r:r['api']),('edit_fail',lambda r:r['edf'])]:\n    print('perm',name,'new-minus-old, p =',perm(f))\nEOF\necho ok"
+      at: 2026-10-10T02:55:10.356677Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && sed -n 148,158p harness/runners/ab_endtoend_arms.py; sed -n 205,215p harness/runners/run_e2e.py
+      at: 2026-10-10T02:55:19.257273Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && python3 - <<'EOF'
+        p='harness/runners/ab_endtoend_arms.py'; s=open(p).read()
+        old='''    # CLAUDE.md steering, same alwaysLoad residency) except the read-guard
+            # hook (harness/hooks/prism_read_tracker.py / prism_read_guard.py) is
+            # withheld.'''
+        new='''    # CLAUDE.md steering, same alwaysLoad residency) except the read-guard
+            # hook (installed by `prism init --read-guard`) is withheld.'''
+        assert s.count(old)==1; s=s.replace(old,new); open(p,'w').write(s)
+        EOF
+        git rm -q harness/hooks/prism_read_guard.py harness/hooks/prism_read_tracker.py harness/tests/test_read_guard_hooks.py && git status --short harness/hooks harness/tests harness/runners
+      at: 2026-10-10T02:55:23.481791Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/e2e-sepguard && python3 - <<'EOF'
+        import json,glob,os
+        for p in glob.glob('gin-gonic__gin__pr4819*.json'):
+            r=json.load(open(p)); print(p, r['resolved'], r.get('diff_lines'), r.get('api_calls'), r.get('cost_usd'))
+            sid=r['session_id']; tp=glob.glob(os.path.expanduser(f'~/.claude/projects/*/{sid}.jsonl'))[0]
+            for l in open(tp):
+                d=json.loads(l); m=d.get('message') or {}
+                for c in (m.get('content') if isinstance(m.get('content'),list) else []):
+                    if isinstance(c,dict) and c.get('type') in ('tool_use','text') and d['type']=='assistant':
+                        print('   ',c.get('name',''),(json.dumps(c.get('input'))[:160] if c.get('type')=='tool_use' else c['text'][:160]).replace('\\n',' '))
+        EOF
+        ls | grep -c json
+      at: 2026-10-10T02:57:39.729995Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/e2e-sepguard && python3 -c "
+        import json,glob
+        for p in glob.glob('gin-gonic__gin__pr4805*.json'):
+            r=json.load(open(p)); print(p.split('.')[-2], r['resolved'], r.get('diff_lines'), json.dumps(r.get('score'))[:400])
+        "; ls ../e2e-sepguard/*.diff 2>/dev/null | head -3; ls | grep 4805; python3 -c "
+        import json;t=json.load(open('../../tasks/e2e/gin-gonic__gin__pr4805.json'));print(t['problem_statement'][:700]);print(t['patch'][:1500])"
+      at: 2026-10-10T02:58:27.44351Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/urfave__cli__pr2419.json'));print(t['problem_statement'][:600]);print('----');print(t['patch'][:1200])"; echo ----; cat results/e2e-sepguard/urfave__cli__pr2419.claude-sonnet-5-5.prism_body_exp.diff | head -30
+      at: 2026-10-10T03:05:42.829868Z
+      classified: other
+    - cmd: python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/sep_analyze.py 2>&1 | head -20
+      at: 2026-10-10T03:18:14.676579Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/e2e-sepguard && for f in go-chi__chi__pr1148*.diff; do echo "=== $f $(python3 -c "import json;print(json.load(open('${f%.diff}.json'))['resolved'])")"; grep '^[-+]' $f | grep -v '^+++\|^---' | head -12; done 2>/dev/null | head -120
+      at: 2026-10-10T03:18:23.582374Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob,collections
+        c=collections.defaultdict(lambda:[0,0])
+        for p in glob.glob('*/go-chi__chi__pr1148.*.json'):
+            if 'archive' in p: continue
+            try: r=json.load(open(p))
+            except: continue
+            if not isinstance(r,dict) or 'resolved' not in r: continue
+            k=(p.split('/')[0], r.get('arm'))
+            c[k][0]+=bool(r['resolved']); c[k][1]+=1
+        for k,v in sorted(c.items()): print(f'{v[0]}/{v[1]}',k)
+        EOF
+      at: 2026-10-10T03:18:32.670566Z
+      classified: other
+    - cmd: sleep 5; tail -3 /Users/tapabratapal/Projects/provasign/research/harness/results/sepguard/p1.log; python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/d125dca7-e99f-49fb-bc56-83b796d2af46/scratchpad/sep_analyze.py 2>&1
+      at: 2026-10-10T03:21:51.899482Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_failed_calls_audit_2026_10_09.md <<'EOF'
+
+        **2026-10-10 follow-up (fixes 1 and 3, branch read-separator-and-guard, uncommitted):**
+        - Line separator "N\t" -> "N→" in all numbered source (tabIndentNote removed); read guard allows a Read when the
+          transcript shows the latest edit of that file failed (PostToolUseFailure does NOT fire for Edit validation errors).
+        - Harness now installs the guard via the arm binary's `prism init --read-guard` (old harness/hooks copies had drifted:
+          no mtime check) - research uncommitted, copies + test deleted.
+        - Live A/B, 7 post-cutoff Go tasks x 5 x {v0.86.6, new}: resolved 20/35 vs 24/35 (all from chi1148 0/5 vs 4/5;
+          chi1148 is ~3/5 historically for every prism build), cost $3.28 vs $3.54, 0 failed edits and 0 guard denials in
+          BOTH arms - neither fix was exercised. Verdict: harmless, benefit unproven.
+        EOF
+        echo ok
+      at: 2026-10-10T03:22:00.349596Z
+      classified: other
+    - cmd: |-
+        git status --short && git add -A internal && git status --short && git commit -q -F - <<'EOF'
+        read: visible line-number separator; read guard allows re-read after a failed edit
+
+        Numbered source now prints "N→source" instead of "N<TAB>source". On
+        tab-indented files the delimiter tab read as indentation and agents put
+        the wrong tab count into Edit old_string (5 failed edits on chi tree.go,
+        2026-10-02..09, both arms, despite the delimiter note). With a visible
+        separator every whitespace character after it is source, so the
+        tab-indent note is removed.
+
+        The read guard now allows a Read when the session transcript shows the
+        agent's latest edit of that file failed. A failed Edit is rejected at
+        input validation before any hook runs, so the tracker never sees it and
+        the unchanged file's range kept matching; the guard denied the re-read
+        the agent needed to see the exact text.
+
+        Live A/B, 7 post-cutoff Go tasks x 5 trials vs v0.86.6: resolved 24/35
+        vs 20/35 (all from chi 1148, within its historical range), cost neutral
+        outside that task; no failed edits or guard denials in either arm.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_0154Ei8CjJkreabbb7mwy9UU
+        EOF
+        git log --oneline -1
+      at: 2026-10-10T03:24:09.555425Z
+      classified: other
+notes:
+    - text: continuation of session d125dca7-e99f-49fb-bc56-83b796d2af46 — events captured after its evidence was finalized
+      at: 2026-10-10T02:11:04.058862Z
+redactions: 2

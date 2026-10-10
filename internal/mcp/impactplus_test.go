@@ -150,7 +150,7 @@ func TestChangeImpactFlagsTestOnlyOverloadAndSignatureSelectsIt(t *testing.T) {
 		"name":      "TreeParser.TreeParser",
 		"signature": "TreeParser(Object n, Context c, Context parent)",
 	})
-	if !strings.Contains(looked, "signature selected 1 of 3 overloads (line 10)") || !strings.Contains(looked, "10\tpublic TreeParser(Object n, Context c, Context parent)") {
+	if !strings.Contains(looked, "signature selected 1 of 3 overloads (line 10)") || !strings.Contains(looked, "10→public TreeParser(Object n, Context c, Context parent)") {
 		t.Fatalf("lookup signature did not select the overload:\n%s", looked)
 	}
 	if strings.Contains(looked, "more overload(s)") {

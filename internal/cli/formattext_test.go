@@ -158,7 +158,7 @@ func TestFormatTextNumbersLookupBodyLines(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := capture(t, func() { printOutput(m, formatText) })
-	for _, want := range []string{"12\tfunc Thing() {", "13\t}"} {
+	for _, want := range []string{"12→func Thing() {", "13→}"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in lookup text:\n%s", want, out)
 		}
@@ -196,7 +196,7 @@ func TestFormatTextShowsLookupResolutionNoteFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := capture(t, func() { printOutput(m, formatText) })
-	if !strings.HasPrefix(out, "// inherited: Flask declares no route") || !strings.Contains(out, "3\tdef route(self):") {
+	if !strings.HasPrefix(out, "// inherited: Flask declares no route") || !strings.Contains(out, "3→def route(self):") {
 		t.Fatalf("resolution note must lead:\n%s", out)
 	}
 }

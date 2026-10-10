@@ -904,7 +904,7 @@ func (s *selection) deliverableTextHits(sourceSections map[string]string) []text
 func sourceSectionShowsLine(section string, hit textsearch.Hit) bool {
 	// A numbered source line may itself be clamped; in that case the matched
 	// text is not actually visible and still needs its own text-hit excerpt.
-	return hit.Line > 0 && strings.Contains(section, "\n"+strconv.Itoa(hit.Line)+"\t"+hit.Text)
+	return hit.Line > 0 && strings.Contains(section, "\n"+strconv.Itoa(hit.Line)+SourceLineSep+hit.Text)
 }
 
 // interleaveUniqueTermSeeds gives every explicit term its best still-unseen

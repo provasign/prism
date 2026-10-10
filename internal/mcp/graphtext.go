@@ -417,7 +417,7 @@ func renderLookupAsText(out map[string]any) (string, bool) {
 		}
 		if contentStart > 0 && contentEnd >= contentStart+len(lines)-1 {
 			for i, line := range lines {
-				fmt.Fprintf(&b, "%d\t%s", contentStart+i, line)
+				fmt.Fprintf(&b, "%d"+SourceLineSep+"%s", contentStart+i, line)
 			}
 		} else {
 			// Do not invent source locations when index metadata is missing or
@@ -489,7 +489,7 @@ func writeLookupOverloads(b *strings.Builder, overloads []any) {
 		}
 		if start > 0 && end >= start+len(lines)-1 {
 			for i, line := range lines {
-				fmt.Fprintf(b, "%d\t%s", start+i, line)
+				fmt.Fprintf(b, "%d"+SourceLineSep+"%s", start+i, line)
 			}
 		} else {
 			b.WriteString(body)

@@ -50,12 +50,12 @@ func TestOnceNotes_KnownNotesCollapseIndentedAndAcrossOps(t *testing.T) {
 	if strings.Contains(got, indexedScopeBoundary) || !strings.Contains(got, "not a global completeness proof") {
 		t.Fatalf("repeated boundary must keep its meaning in short form:\n%s", got)
 	}
-	read := "// a.go lines 1-2 of 9\n1\t\tx := 1\n// lines 1-2 of 9 — this is a WINDOW, not the file\n// " + tabIndentNoteText + "\n"
+	read := "// a.go lines 1-2 of 9\n1" + SourceLineSep + "\tx := 1\n// lines 1-2 of 9 — this is a WINDOW, not the file\n"
 	if got := o.applyKnown(read); got != read {
 		t.Fatalf("first read keeps its notes:\n%s", got)
 	}
 	got = o.applyKnown(strings.ReplaceAll(read, "1-2", "3-4"))
-	if strings.Contains(got, "WINDOW") || strings.Contains(got, "tab-indented") || !strings.Contains(got, "1\t\tx := 1") {
+	if strings.Contains(got, "WINDOW") || !strings.Contains(got, "1"+SourceLineSep+"\tx := 1") {
 		t.Fatalf("repeat read notes must drop, source must stay:\n%s", got)
 	}
 	// Unregistered long lines are never touched outside search.

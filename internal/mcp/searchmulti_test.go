@@ -405,7 +405,7 @@ func TestToolRead_Range(t *testing.T) {
 	if strings.Count(c, "\n") != 3 {
 		t.Errorf("want 3 lines, got %q", c)
 	}
-	if !strings.Contains(c, "5\t") {
+	if !strings.Contains(c, "5→") {
 		t.Errorf("lines must be numbered so the agent can cite them: %q", c)
 	}
 	if m["note"] == nil {
