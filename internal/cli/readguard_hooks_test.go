@@ -347,8 +347,8 @@ func TestReadGuard_InstallUpgradesOldWiring(t *testing.T) {
 	if strings.Join(matchers, ",") != "mcp__prism__prism,"+readGuardInvalidateMatcher {
 		t.Errorf("PostToolUse matchers after upgrade = %v", matchers)
 	}
-	if n := len(hooks["PreToolUse"].([]any)); n != 1 {
-		t.Errorf("PreToolUse entries after upgrade = %d, want 1", n)
+	if n := len(hooks["PreToolUse"].([]any)); n != 2 { // Read guard + sed guard
+		t.Errorf("PreToolUse entries after upgrade = %d, want 2", n)
 	}
 	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
 		t.Error("legacy .prism-read-tracker.json survived the upgrade")

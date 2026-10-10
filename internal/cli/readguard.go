@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed assets/prism_read_tracker.py assets/prism_read_guard.py
+//go:embed assets/prism_read_tracker.py assets/prism_read_guard.py assets/prism_sed_guard.py
 var readGuardAssets embed.FS
 
 // readGuardTrackerCmd / readGuardGuardCmd are the exact hook command strings
@@ -21,6 +21,7 @@ var readGuardAssets embed.FS
 const (
 	readGuardTrackerPath = ".claude/hooks/prism_read_tracker.py"
 	readGuardGuardPath   = ".claude/hooks/prism_read_guard.py"
+	sedGuardPath         = ".claude/hooks/prism_sed_guard.py"
 
 	// readGuardInvalidateMatcher routes edits and shell commands to the
 	// tracker so it forgets ranges once their file may have changed (a stale
@@ -39,6 +40,11 @@ const (
 
 func readGuardTrackerCmd() string { return "python3 " + readGuardTrackerPath }
 func readGuardGuardCmd() string   { return "python3 " + readGuardGuardPath }
+func sedGuardCmd() string         { return "python3 " + sedGuardPath }
+
+// readGuardScripts are the hook scripts installReadGuard writes and
+// uninstallReadGuard removes.
+var readGuardScripts = []string{"prism_read_tracker.py", "prism_read_guard.py", "prism_sed_guard.py"}
 
 // installReadGuard writes the two hook scripts into projectDir/.claude/hooks
 // and registers them in projectDir/.claude/settings.json. Denies a native
@@ -52,7 +58,7 @@ func installReadGuard(projectDir string) error {
 	if err := os.MkdirAll(hooksDir, 0o755); err != nil {
 		return fmt.Errorf("read-guard: %w", err)
 	}
-	for _, name := range []string{"prism_read_tracker.py", "prism_read_guard.py"} {
+	for _, name := range readGuardScripts {
 		data, err := readGuardAssets.ReadFile("assets/" + name)
 		if err != nil {
 			return fmt.Errorf("read-guard: %w", err)
@@ -78,6 +84,10 @@ func installReadGuard(projectDir string) error {
 	changed := addHookEntry(hooks, "PostToolUse", "mcp__prism__prism", readGuardTrackerCmd())
 	changed = addHookEntry(hooks, "PostToolUse", readGuardInvalidateMatcher, readGuardTrackerCmd()) || changed
 	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed
+	// BSD (macOS) sed reads GNU escapes like \b as literals: the edit
+	// silently changes nothing and the agent reports it done. The sed guard
+	// denies those commands and says why; it does nothing where sed is GNU.
+	changed = addHookEntry(hooks, "PreToolUse", "Bash", sedGuardCmd()) || changed
 	doc["hooks"] = hooks
 	if changed {
 		if err := writeJSONObject(settingsPath, doc); err != nil {
@@ -86,6 +96,7 @@ func installReadGuard(projectDir string) error {
 	}
 	fmt.Println("installed read-guard hook:", filepath.Join(".claude", "hooks"))
 	fmt.Println("  denies a Read that substantially overlaps content prism already delivered this session")
+	fmt.Println("  denies a sed command that BSD (macOS) sed would silently misread, and says why")
 	fmt.Println("  uninstall any time with: prism init --no-read-guard", projectDir)
 	return nil
 }
@@ -97,7 +108,7 @@ func installReadGuard(projectDir string) error {
 // settings.json entry that has other hooks alongside ours keeps those and
 // only drops prism's.
 func uninstallReadGuard(projectDir string) error {
-	for _, name := range []string{"prism_read_tracker.py", "prism_read_guard.py"} {
+	for _, name := range readGuardScripts {
 		p := filepath.Join(projectDir, ".claude", "hooks", name)
 		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("read-guard: %w", err)
@@ -116,6 +127,7 @@ func uninstallReadGuard(projectDir string) error {
 	if hooks != nil {
 		changed = removeHookEntry(hooks, "PostToolUse", readGuardTrackerCmd())
 		changed = removeHookEntry(hooks, "PreToolUse", readGuardGuardCmd()) || changed
+		changed = removeHookEntry(hooks, "PreToolUse", sedGuardCmd()) || changed
 		if len(hooks) == 0 {
 			delete(doc, "hooks")
 			changed = true
