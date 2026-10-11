@@ -49,8 +49,46 @@ func TestCompactImpactTextGroupsThenCounts(t *testing.T) {
 			t.Fatalf("site %d lost in grouping", i)
 		}
 	}
-	huge := compactImpactText(impactFixtureText(5000, 0))
+	big := compactImpactText(impactFixtureText(5000, 0))
+	if len(big) > impactTextBudget || !strings.Contains(big, "site count and line numbers") {
+		t.Fatalf("line-number form expected, got %d chars", len(big))
+	}
+	for _, n := range []int{10, 2500, 5009} {
+		if !strings.Contains(big, fmt.Sprintf(" %d", n)) {
+			t.Fatalf("line %d missing from line-number form", n)
+		}
+	}
+	huge := compactImpactText(impactFixtureText(40000, 0))
 	if len(huge) > impactTextBudget || !strings.Contains(huge, "per-file site counts only") {
-		t.Fatalf("step 3 expected, got %d chars", len(huge))
+		t.Fatalf("counts-only expected, got %d chars", len(huge))
+	}
+}
+
+// The MCP renderer may group callers per file ("  path:" then "    Name  line N",
+// evidence at 6 spaces). Dropping evidence must keep those site lines: an
+// earlier version dropped every 4-space line and sent file names without sites.
+func TestCompactImpactTextKeepsGroupedLayoutSites(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("// A.m — change-impact: many site(s)\ncallers (600):\n")
+	for f := 0; f < 60; f++ {
+		fmt.Fprintf(&b, "  src/main/java/com/example/deep/pkg/File%d.java:\n", f)
+		for i := 0; i < 10; i++ {
+			fmt.Fprintf(&b, "    Caller%d_%d.run  line %d  [test]\n", f, i, i+1)
+			fmt.Fprintf(&b, "      %d: %s\n", i+1, strings.Repeat("y", 60))
+		}
+	}
+	got := compactImpactText(b.String())
+	if len(got) > impactTextBudget {
+		t.Fatalf("over budget: %d", len(got))
+	}
+	for f := 0; f < 60; f++ {
+		for i := 0; i < 10; i++ {
+			if !strings.Contains(got, fmt.Sprintf("Caller%d_%d.run", f, i)) {
+				t.Fatalf("grouped site Caller%d_%d lost:\n%.600s", f, i, got)
+			}
+		}
+	}
+	if strings.Contains(got, "yyyy") {
+		t.Error("evidence lines should be dropped")
 	}
 }
