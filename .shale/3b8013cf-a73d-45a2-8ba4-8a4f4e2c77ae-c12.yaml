@@ -1,0 +1,49 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae-c12
+created_at: 2026-10-11T13:18:58.967496Z
+finalized_at: 2026-10-11T13:37:50.301031Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: main
+privacy: redacted
+commands:
+    - cmd: 'git fetch -q origin && git tag -a v0.87.6 -m "v0.87.6: change_impact answers stay under the tool-result limit; sed guard handles heredocs; grove v0.63.3" a3298c13 && git push origin v0.87.6 2>&1 | tail -1'
+      at: 2026-10-11T13:18:58.967496Z
+      classified: other
+    - cmd: sleep 15; gh run list --repo provasign/prism --limit 4 --json name,status,headBranch,databaseId -q '.[] | "\(.databaseId) \(.name) \(.headBranch) \(.status)"'
+      at: 2026-10-11T13:19:16.892312Z
+      classified: other
+    - cmd: gh run watch 38142682893 --repo provasign/prism --exit-status --interval 30 >/dev/null 2>&1; echo release rc=$?; gh release view v0.87.6 --repo provasign/prism --json assets -q '.assets|length'
+      at: 2026-10-11T13:21:59.36103Z
+      classified: other
+    - cmd: gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version
+      at: 2026-10-11T13:22:02.364461Z
+      classified: other
+    - cmd: gh workflow run 330199422 --repo provasign/homebrew-shale && sleep 60 && gh api repos/provasign/homebrew-shale/contents/Formula/prism.rb -q .content | base64 -d | grep -m1 version
+      at: 2026-10-11T13:23:07.766176Z
+      classified: other
+    - cmd: brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -1; prism --version
+      at: 2026-10-11T13:23:15.856654Z
+      classified: other
+    - cmd: git branch --show-current && git ls-remote --heads origin feat/impact-batch exp/impact-edit-list exp/lean-impact2 release/v0.87.6
+      at: 2026-10-11T13:36:31.23015Z
+      classified: other
+    - cmd: git branch -D feat/impact-batch
+      at: 2026-10-11T13:36:33.265478Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && sed -i '' 's/(still only on feat\/impact-batch)/(feat\/impact-batch DELETED 2026-10-11 at Topo'"'"'s request; last commit e1b2c3e6)/' project_overnight_2026_10_11.md && grep -n DELETED project_overnight_2026_10_11.md
+      at: 2026-10-11T13:36:37.818491Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git switch -q main && git pull -q origin main && git branch -D fix/contains-same-named-nested && git push origin --delete fix/contains-same-named-nested 2>&1 | tail -1 && git branch --show-current && git log --oneline -1 && git status --short
+      at: 2026-10-11T13:37:30.98237Z
+      classified: other
+    - cmd: git branch --show-current && git branch --list 'exp/*' 'release/*' && git ls-remote --heads origin release/v0.87.6
+      at: 2026-10-11T13:37:34.314305Z
+      classified: other
+notes:
+    - text: continuation of session 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae — events captured after its evidence was finalized
+      at: 2026-10-11T13:18:58.967496Z
+redactions: 0
