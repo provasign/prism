@@ -422,6 +422,14 @@ func cmdInit(args []string) int {
 		return 0
 	}
 
+	// An existing read guard is upgraded by any init run: brew upgrades the
+	// binary but not the hook scripts and settings copied into the project.
+	if readGuardInstalled(abs) {
+		if err := installReadGuard(abs); err != nil {
+			fmt.Fprintln(os.Stderr, "init:", err)
+		}
+	}
+
 	harnesses, err := parseHarnesses(harnessArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "init:", err)

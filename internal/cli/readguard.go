@@ -38,9 +38,46 @@ const (
 	readGuardLegacyState = ".prism-read-tracker.json"
 )
 
-func readGuardTrackerCmd() string { return "python3 " + readGuardTrackerPath }
-func readGuardGuardCmd() string   { return "python3 " + readGuardGuardPath }
-func sedGuardCmd() string         { return "python3 " + sedGuardPath }
+// Hook commands name the script through $CLAUDE_PROJECT_DIR, not a path
+// relative to the working directory: Claude Code runs hooks in the shell's
+// current directory, so after the agent ran `cd src/...` a relative
+// `python3 .claude/hooks/x.py` failed with exit 2, which Claude Code reads as
+// "block". Every later Bash and Read call was refused; one 2026-10-10
+// benchmark agent spent 9 calls (and wrote stub hook files into the repo)
+// getting its shell back.
+//
+// `|| true` makes a hook that cannot run fail open: the scripts report
+// decisions on stdout and never by exit code, so a nonzero exit only ever
+// means the hook itself broke (no python3, unset $CLAUDE_PROJECT_DIR, a
+// deleted script), and that must not block the agent.
+func hookCmd(path string) string { return `python3 "$CLAUDE_PROJECT_DIR"/` + path + " || true" }
+
+func readGuardTrackerCmd() string { return hookCmd(readGuardTrackerPath) }
+func readGuardGuardCmd() string   { return hookCmd(readGuardGuardPath) }
+func sedGuardCmd() string         { return hookCmd(sedGuardPath) }
+
+// legacyHookCmds are the cwd-relative commands v0.87.4 and earlier
+// registered; install replaces them and uninstall removes them.
+var legacyHookCmds = map[string][]string{
+	"PostToolUse": {"python3 " + readGuardTrackerPath},
+	"PreToolUse":  {"python3 " + readGuardGuardPath, "python3 " + sedGuardPath},
+}
+
+func removeLegacyHookEntries(hooks map[string]any) bool {
+	changed := false
+	for event, cmds := range legacyHookCmds {
+		for _, cmd := range cmds {
+			changed = removeHookEntry(hooks, event, cmd) || changed
+		}
+	}
+	return changed
+}
+
+// readGuardInstalled reports whether a read guard install is present, so a
+// later `prism init` can upgrade its scripts and settings in place.
+func readGuardInstalled(projectDir string) bool {
+	return fileExists(filepath.Join(projectDir, filepath.FromSlash(readGuardGuardPath)))
+}
 
 // readGuardScripts are the hook scripts installReadGuard writes and
 // uninstallReadGuard removes.
@@ -81,7 +118,8 @@ func installReadGuard(projectDir string) error {
 	}
 	// Re-running install upgrades an older install in place: the scripts are
 	// rewritten above and addHookEntry only adds the entries that are missing.
-	changed := addHookEntry(hooks, "PostToolUse", "mcp__prism__prism", readGuardTrackerCmd())
+	changed := removeLegacyHookEntries(hooks)
+	changed = addHookEntry(hooks, "PostToolUse", "mcp__prism__prism", readGuardTrackerCmd()) || changed
 	changed = addHookEntry(hooks, "PostToolUse", readGuardInvalidateMatcher, readGuardTrackerCmd()) || changed
 	changed = addHookEntry(hooks, "PreToolUse", "Read", readGuardGuardCmd()) || changed
 	// BSD (macOS) sed reads GNU escapes like \b as literals: the edit
@@ -128,6 +166,7 @@ func uninstallReadGuard(projectDir string) error {
 		changed = removeHookEntry(hooks, "PostToolUse", readGuardTrackerCmd())
 		changed = removeHookEntry(hooks, "PreToolUse", readGuardGuardCmd()) || changed
 		changed = removeHookEntry(hooks, "PreToolUse", sedGuardCmd()) || changed
+		changed = removeLegacyHookEntries(hooks) || changed
 		if len(hooks) == 0 {
 			delete(doc, "hooks")
 			changed = true
