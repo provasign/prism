@@ -63,6 +63,9 @@ func TestSedGuard_RewritesToBSDSpelling(t *testing.T) {
 		`sed -i '' 's/\w\+_id\s*=/key =/' m.py && go test ./...`:              `sed -i '' 's/[[:alnum:]_]\{1,\}_id[[:space:]]*=/key =/' m.py && go test ./...`,
 		`sed -i '' 's/\(resp\|response\)\.get_data(x)/\1.read_body(x)/' t.py`: `sed -E -i '' 's/(resp|response)\.get_data\(x\)/\1.read_body(x)/' t.py`,
 		"sed -i '' \\\n  's/\\bfoo\\b/bar/g' a.py":                            "sed -i '' \\\n  's/[[:<:]]foo[[:>:]]/bar/g' a.py",
+		// A heredoc later in the command no longer hides the sed before it,
+		// and its body (even one mentioning sed) is left as written.
+		"sed -i -E 's/a/b/' d.md\npython3 - <<'EOF'\nprint('sed -i x')\nEOF": "sed -i '' -E 's/a/b/' d.md\npython3 - <<'EOF'\nprint('sed -i x')\nEOF",
 	} {
 		got, denied, note := h.sedHook(cmd)
 		if got != want {
@@ -100,6 +103,7 @@ func TestSedGuard_AllowsWorkingCommands(t *testing.T) {
 		`sed -n 10,20p file.go`,
 		`grep -rn sed docs/README.md`,
 		"python3 - <<'E'\nopen('f','w').write('x')\nE",
+		"python3 - <<'E'\nimport os; os.system(\"sed -i 's/a/b/' f\")\nE",
 	} {
 		if got, denied, _ := h.sedHook(cmd); got != "" || denied != "" {
 			t.Errorf("touched a working command: %s (rewrote %q, denied %q)", cmd, got, denied)
