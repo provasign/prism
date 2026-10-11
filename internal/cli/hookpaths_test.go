@@ -116,3 +116,19 @@ func TestInitUpgradesExistingReadGuard(t *testing.T) {
 		t.Error("init did not rewrite the installed sed guard script")
 	}
 }
+
+// A hook that cannot run at all must not block the agent.
+func TestReadGuardHooksFailOpen(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("needs a POSIX shell")
+	}
+	for _, cmd := range []string{readGuardTrackerCmd(), readGuardGuardCmd(), sedGuardCmd()} {
+		c := exec.Command("sh", "-c", cmd)
+		c.Dir = t.TempDir()
+		c.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR=/nonexistent")
+		c.Stdin = strings.NewReader("{}")
+		if err := c.Run(); err != nil {
+			t.Errorf("%s with no scripts present: %v (exit 2 would block every call)", cmd, err)
+		}
+	}
+}

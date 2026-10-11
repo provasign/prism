@@ -45,7 +45,12 @@ const (
 // "block". Every later Bash and Read call was refused; one 2026-10-10
 // benchmark agent spent 9 calls (and wrote stub hook files into the repo)
 // getting its shell back.
-func hookCmd(path string) string { return `python3 "$CLAUDE_PROJECT_DIR"/` + path }
+//
+// `|| true` makes a hook that cannot run fail open: the scripts report
+// decisions on stdout and never by exit code, so a nonzero exit only ever
+// means the hook itself broke (no python3, unset $CLAUDE_PROJECT_DIR, a
+// deleted script), and that must not block the agent.
+func hookCmd(path string) string { return `python3 "$CLAUDE_PROJECT_DIR"/` + path + " || true" }
 
 func readGuardTrackerCmd() string { return hookCmd(readGuardTrackerPath) }
 func readGuardGuardCmd() string   { return hookCmd(readGuardGuardPath) }
