@@ -96,7 +96,7 @@ func installReadGuard(projectDir string) error {
 	}
 	fmt.Println("installed read-guard hook:", filepath.Join(".claude", "hooks"))
 	fmt.Println("  denies a Read that substantially overlaps content prism already delivered this session")
-	fmt.Println("  denies a sed command that BSD (macOS) sed would silently misread, and says why")
+	fmt.Println("  runs a GNU-style sed command in its BSD (macOS) spelling, or denies it with the reason when there is none")
 	fmt.Println("  uninstall any time with: prism init --no-read-guard", projectDir)
 	return nil
 }
