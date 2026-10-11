@@ -113,9 +113,8 @@ func TestSedGuard_InstalledAndRemovedWithReadGuard(t *testing.T) {
 	if _, err := os.Stat(script); err != nil {
 		t.Fatalf("sed guard not installed: %v", err)
 	}
-	settings, _ := os.ReadFile(filepath.Join(h.project, ".claude", "settings.json"))
-	if !strings.Contains(string(settings), sedGuardCmd()) {
-		t.Fatalf("settings.json lacks the sed guard entry:\n%s", settings)
+	if cmds := strings.Join(settingsHookCommands(t, h.project), "\n"); !strings.Contains(cmds, sedGuardCmd()) {
+		t.Fatalf("settings.json lacks the sed guard entry:\n%s", cmds)
 	}
 	if err := uninstallReadGuard(h.project); err != nil {
 		t.Fatal(err)
@@ -123,7 +122,7 @@ func TestSedGuard_InstalledAndRemovedWithReadGuard(t *testing.T) {
 	if _, err := os.Stat(script); !os.IsNotExist(err) {
 		t.Fatalf("sed guard script left behind: %v", err)
 	}
-	settings, _ = os.ReadFile(filepath.Join(h.project, ".claude", "settings.json"))
+	settings, _ := os.ReadFile(filepath.Join(h.project, ".claude", "settings.json"))
 	if strings.Contains(string(settings), "prism_sed_guard") {
 		t.Fatalf("settings.json still references the sed guard:\n%s", settings)
 	}
