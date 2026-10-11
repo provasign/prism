@@ -1,0 +1,78 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae-c9
+created_at: 2026-10-11T02:55:34.655256Z
+finalized_at: 2026-10-11T02:56:49.260081Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/hook-paths
+privacy: redacted
+commands:
+    - cmd: git -C /Users/tapabratapal/Projects/provasign/prism push -q -u origin fix/hook-paths 2>&1 | tail -1
+      at: 2026-10-11T02:55:34.655256Z
+      classified: other
+    - cmd: "gh pr create --repo provasign/prism --head fix/hook-paths --title \"hooks: name scripts via \\$CLAUDE_PROJECT_DIR; init upgrades an installed read guard\" --body \"$(cat <<'EOF'\n**Bug (regression from v0.87.3):** prism registered its hooks as `python3 .claude/hooks/<script>.py`, relative to the working directory. Claude Code runs hooks in the shell's current directory, so after an agent ran `cd src/...` python exited 2 (file not found), which Claude Code treats as a block. Every later Bash and Read call was refused. v0.87.3 put the sed guard on every Bash call, which made this common: 3 benchmark sessions hit it. In one (jackson `acceptJsonFormatVisitor`, 2026-10-10), the agent spent 9 calls getting its shell back and wrote stub hook files into the repo; that pair cost 24 calls vs native's 16.\n\n**Fix**\n- Hook commands are `python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/<script>.py` (Claude Code's documented pattern).\n- Install replaces the legacy relative entries (a user's own hooks on the same matcher are kept); uninstall removes both forms.\n- Any `prism init` run upgrades an existing read guard install. brew upgrades the binary but not the scripts and settings copied into the project, so without this, existing users would keep the broken commands, and the v0.87.4 sed conversion would never reach them.\n\n**Tests:** every registered command run through `sh -c` from a subdirectory (the actual failure); legacy migration keeping user hooks; init rewriting a stale installed script. `go test ./...` green; ci_invariants on the candidate.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\n)\" 2>&1 | tail -1"
+      at: 2026-10-11T02:55:45.046648Z
+      classified: test
+    - cmd: sleep 20; gh pr checks 44 --repo provasign/prism --watch --interval 30 >/dev/null 2>&1; gh pr checks 44 --repo provasign/prism 2>&1 | awk -F'\t' '{print $1" | "$2}'
+      at: 2026-10-11T02:55:48.678086Z
+      classified: other
+    - cmd: 'echo ''- [Hook cwd bug 2026-10-10](project_hook_cwd_bug_2026_10_10.md) — v0.87.3/4 relative hook paths: after agent cd, exit 2 blocked all Bash/Read; PR #44 fix; 5-pair bench stopped, rerun on fixed release'' >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+      at: 2026-10-11T02:56:06.379256Z
+      classified: other
+    - cmd: grep -n 'sys.exit\|exit(' internal/cli/assets/*.py
+      at: 2026-10-11T02:56:15.672084Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/cli/readguard.go"; s=open(p).read()
+        a='''// getting its shell back.
+        func hookCmd(path string) string { return `python3 "$CLAUDE_PROJECT_DIR"/` + path }'''
+        assert a in s
+        s=s.replace(a,'''// getting its shell back.
+        //
+        // `|| true` makes a hook that cannot run fail open: the scripts report
+        // decisions on stdout and never by exit code, so a nonzero exit only ever
+        // means the hook itself broke (no python3, unset $CLAUDE_PROJECT_DIR, a
+        // deleted script), and that must not block the agent.
+        func hookCmd(path string) string { return `python3 "$CLAUDE_PROJECT_DIR"/` + path + " || true" }''')
+        open(p,"w").write(s)
+        p="internal/cli/hookpaths_test.go"; s=open(p).read()
+        s+='''
+        // A hook that cannot run at all must not block the agent.
+        func TestReadGuardHooksFailOpen(t *testing.T) {
+        	if runtime.GOOS == "windows" {
+        		t.Skip("needs a POSIX shell")
+        	}
+        	for _, cmd := range []string{readGuardTrackerCmd(), readGuardGuardCmd(), sedGuardCmd()} {
+        		c := exec.Command("sh", "-c", cmd)
+        		c.Dir = t.TempDir()
+        		c.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR=/nonexistent")
+        		c.Stdin = strings.NewReader("{}")
+        		if err := c.Run(); err != nil {
+        			t.Errorf("%s with no scripts present: %v (exit 2 would block every call)", cmd, err)
+        		}
+        	}
+        }
+        '''
+        open(p,"w").write(s)
+        EOF
+        go test ./internal/cli -count=1 2>&1 | tail -1 && go test ./... 2>&1 | grep -v '^ok\|no test files'; echo suite-done
+      at: 2026-10-11T02:56:42.213601Z
+      classified: test
+    - cmd: |-
+        git add internal/cli/readguard.go internal/cli/hookpaths_test.go && git commit -q -m "hooks: fail open when a hook cannot run
+
+        The scripts decide via stdout JSON, never exit codes, so a nonzero exit only
+        means the hook broke; \`|| true\` keeps that from blocking the agent.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -1
+      at: 2026-10-11T02:56:48.893313Z
+      classified: other
+notes:
+    - text: continuation of session 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae — events captured after its evidence was finalized
+      at: 2026-10-11T02:55:34.655256Z
+redactions: 0
