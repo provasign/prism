@@ -1,0 +1,1422 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae-c8
+created_at: 2026-10-10T23:25:13.176411Z
+finalized_at: 2026-10-11T02:14:09.268966Z
+agent:
+    tool: claude-code
+    model: claude-opus-5-5
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: feat/sed-convert
+privacy: redacted
+commands:
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness; sleep 5; pgrep -fl run_e2e.py | head -1; python3 scoring/bench_monitor.py results/bench-deep-2026-10-10 | tail -7; cd ../../prism; gh pr merge 42 --merge 2>&1 | tail -1; git checkout -q main && git fetch -q origin && git merge -q --ff-only origin/main; H=$(git rev-parse --short HEAD); git tag -a v0.87.3 $H -m "v0.87.3: sed guard denies commands BSD sed would silently misread" && git push origin v0.87.3 2>&1 | tail -1; sleep 20; R=$(gh run list --workflow Release --limit 1 --json databaseId -q ''.[0].databaseId''); gh run watch $R --exit-status >/dev/null 2>&1; echo "release rc=$?"; gh workflow run "Refresh formulae" -R provasign/homebrew-shale; sleep 15; R2=$(gh run list -R provasign/homebrew-shale --limit 1 --json databaseId -q ''.[0].databaseId''); gh run watch $R2 -R provasign/homebrew-shale --exit-status >/dev/null 2>&1; brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -1; prism --version'
+      at: 2026-10-10T23:25:13.176411Z
+      classified: other
+    - cmd: |-
+        F=~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_phantom_comment_symbols_2026_10_10.md; cat >> $F <<'EOF'
+
+        **BASELINE (Topo: earlier 2026-10-10 run dirs deleted; this is the baseline): deep16, prism v0.87.2 vs native, Sonnet
+        5.5, results/bench-deep-2026-10-10 (+ transcripts with thinking).** 16 seeded deep tasks (tasks/e2e/deep__*.json,
+        build/build_deep.py + deep_recipes_*.py, wide_eval site_mode=shapes; builder+scorer changes UNCOMMITTED in research):
+        resolved 15/16 both (rich loop_helpers failed both); cost 1.019x, tokens 0.991x, API calls 0.983x, turns 0.968x. Long
+        task gson Optional: prism 28 calls vs 35, $0.59 vs $0.65. Sessions still mostly 4-19 calls (bulk scripted edits).
+        sed: task-matched across 67 tasks prism-native sed errors +0.05/session, CI [-0.07,+0.17] (not significant), read-guard
+        denials 0. Shipped anyway: v0.87.3 sed guard (PreToolUse Bash hook with the read guard; denies BSD-sed GNU escapes
+        \b \< \> \w \s / BRE \+ \? \|, -i <script>, -i -<flag>; explains, never proposes commands). Not yet A/B-measured.
+        EOF
+        echo ok
+      at: 2026-10-10T23:25:20.899033Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/feedback_prism_no_edits_or_commands.md; claude --version
+      at: 2026-10-11T01:30:35.473202Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-deep-2026-10-10 && ls | head; ls transcripts | head; ls transcripts | wc -l
+      at: 2026-10-11T01:39:43.857493Z
+      classified: other
+    - cmd: ls ~/.claude/projects | sed 's/-[0-9a-f]\{6,\}.*//' | sort | uniq -c | sort -rn | head -20; ls ~/.claude/projects | wc -l
+      at: 2026-10-11T01:39:49.274103Z
+      classified: other
+    - cmd: cd ~/.claude/projects && find . -name '*.jsonl' -mtime -14 -path '*e2e*' | wc -l; find . -name '*.jsonl' -mtime -14 -path '*e2e*' | xargs grep -l '"name":"Bash"' 2>/dev/null | xargs grep -l 'sed ' | wc -l
+      at: 2026-10-11T01:39:53.827148Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n 'permission\|"claude"\|--model\|allowedTools\|append-system' run_e2e.py | head -30
+      at: 2026-10-11T01:40:01.669082Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && sed -n 640,690p run_e2e.py; grep -n '"allowed"' run_e2e.py | head
+      at: 2026-10-11T01:40:03.661455Z
+      classified: other
+    - cmd: |-
+        mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy/scan.py <<'EOF'
+        import json, os, re, sys, glob, time, collections
+        root = os.path.expanduser("~/.claude/projects")
+        files = [f for f in glob.glob(root + "/*e2e*/**/*.jsonl", recursive=True)
+                 if time.time() - os.path.getmtime(f) < 14*86400 and "/subagents/" not in f]
+        SED = re.compile(r"(^|[|;&(]\s*|xargs\s+|exec\s+)\s*(g?sed)\s", re.M)
+        rows = []
+        sessions = collections.Counter()
+        for f in files:
+            try:
+                lines = [json.loads(l) for l in open(f)]
+            except Exception:
+                continue
+            raw = open(f).read()
+            arm = "prism" if "mcp__prism" in raw else "native"
+            sessions[arm] += 1
+            last_text = ""
+            reads = collections.Counter()
+            results = {}
+            for m in lines:
+                if m.get("type") == "user":
+                    c = m.get("message", {}).get("content")
+                    if isinstance(c, list):
+                        for b in c:
+                            if isinstance(b, dict) and b.get("type") == "tool_result":
+                                cc = b.get("content")
+                                if isinstance(cc, list):
+                                    cc = " ".join(x.get("text", "") for x in cc if isinstance(x, dict))
+                                results[b.get("tool_use_id")] = (str(cc)[:300], b.get("is_error"))
+                if m.get("type") != "assistant":
+                    continue
+                for b in m.get("message", {}).get("content", []):
+                    t = b.get("type")
+                    if t == "thinking" and b.get("thinking"):
+                        last_text = b["thinking"]
+                    elif t == "text" and b.get("text"):
+                        last_text = b["text"]
+                    elif t == "tool_use":
+                        name = b.get("name")
+                        reads[name] += 1
+                        if name == "Bash":
+                            cmd = b["input"].get("command", "")
+                            if SED.search(cmd):
+                                rows.append(dict(file=f, arm=arm, id=b["id"], cmd=cmd, why=last_text[-600:]))
+                        last_text = ""
+            for r in rows:
+                if r["file"] == f:
+                    r["result"] = results.get(r["id"])
+                    r["tools"] = dict(reads)
+        json.dump({"sessions": sessions, "rows": rows}, open(sys.argv[1], "w"), indent=1)
+        print(sessions, len(rows))
+        EOF
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 scan.py rows.json
+      at: 2026-10-11T01:40:16.290373Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && cat > classify.py <<'EOF'\nimport json, re, collections\nd = json.load(open(\"rows.json\"))\ndef kind(c):\n    if re.search(r\"\\bsed\\b[^|;&]*\\s-i\", c) or re.search(r\"\\bsed\\s+-[a-zA-Z]*i\", c): return \"edit-in-place\"\n    if re.search(r\"\\bsed\\s+-n\\s+['\\\"]?\\d+,\\d+p\", c) or re.search(r\"\\bsed\\s+-n\\s+['\\\"]?\\d+p\", c): return \"read-line-range\"\n    if re.search(r\"\\|\\s*sed\\b\", c): return \"filter-output\"\n    if re.search(r\"\\bsed\\s+-n\\s+['\\\"]?/\", c): return \"read-pattern\"\n    return \"other\"\nby = collections.defaultdict(collections.Counter)\nex = collections.defaultdict(list)\nfor r in d[\"rows\"]:\n    k = kind(r[\"cmd\"]); r[\"kind\"] = k\n    by[r[\"arm\"]][k] += 1\n    ex[k].append(r)\nprint(\"sessions\", d[\"sessions\"])\nfor a in by: print(a, sum(by[a].values()), dict(by[a]))\njson.dump(d, open(\"rows.json\",\"w\"))\n# sessions with any sed\ns = collections.Counter(); \nseen=set()\nfor r in d[\"rows\"]:\n    if r[\"file\"] not in seen: seen.add(r[\"file\"]); s[r[\"arm\"]]+=1\nprint(\"sessions w/ sed\", s)\n# pipelines: what precedes sed in filter-output\npre = collections.Counter()\nfor r in ex[\"filter-output\"]:\n    m = re.search(r\"([\\w./-]+)[^|]*\\|\\s*sed\", r[\"cmd\"]); pre[r[\"cmd\"].split()[0]]+=1\nprint(\"filter-output first cmd\", pre.most_common(10))\n# for read-line-range: did session also use Read tool?\nrr = collections.Counter()\nfor r in ex[\"read-line-range\"]:\n    rr[\"has Read\" if r[\"tools\"].get(\"Read\") else \"no Read\"] += 1\nprint(\"line-range sessions\", rr)\nEOF\npython3 classify.py"
+      at: 2026-10-11T01:40:25.305021Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n '"allowed":' -A3 run_e2e.py | head -40
+      at: 2026-10-11T01:40:28.679981Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n 'allowed' run_e2e.py | head -20
+      at: 2026-10-11T01:40:30.554106Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rn '"allowed"' --include=*.py . | head; grep -rn 'BASE_TOOLS\|"Edit"' --include=*.py runners | head
+      at: 2026-10-11T01:40:32.745321Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -rn "allowed" runners/*.py | grep -v '^runners/run_e2e.py:\(10\|674\)' | head
+      at: 2026-10-11T01:40:34.875939Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 - <<'EOF'
+        import json, random, re, collections
+        d = json.load(open("rows.json"))
+        ed = [r for r in d["rows"] if r["kind"]=="edit-in-place"]
+        # how many files/ substitutions per edit; global replace?
+        c = collections.Counter()
+        for r in ed:
+            cmd = r["cmd"]
+            nfiles = len(re.findall(r"\.(py|go|java|ts|js|rs|tsx)\b", cmd))
+            c["multi-file" if nfiles>1 or "xargs" in cmd or "find " in cmd else "single-file"] += 1
+            c["global /g" if re.search(r"/g['\"\s;]", cmd) else "no-g"] += 1
+            c["line-addressed" if re.search(r"sed[^|]*['\"]\d+(,\d+)?[sdaic]", cmd) else "pattern"] += 1
+        print(c)
+        random.seed(3)
+        for r in random.sample(ed, 14):
+            print("=== ", r["arm"], "| WHY:", re.sub(r"\s+"," ", r["why"])[-350:])
+            print("CMD:", r["cmd"][:250].replace("\n"," ⏎ "))
+        EOF
+      at: 2026-10-11T01:40:41.737908Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 - <<'EOF'
+        import json, re, collections, random
+        d = json.load(open("rows.json"))
+        rows=d["rows"]
+        GNU=re.compile(r"\\[bBwWsS<>]")
+        ed=[r for r in rows if r["kind"]=="edit-in-place"]
+        c=collections.Counter()
+        for r in ed:
+            c["gnu-escape" if GNU.search(r["cmd"]) else "ok"]+=1
+            res=r.get("result") or ["",False]
+            if res[1]: c["errored"]+=1
+            if re.search(r"sed -i -e|sed -i 's", r["cmd"]): c["gnu -i form"]+=1
+            nsub=len(re.findall(r"\bsed\b", r["cmd"]))
+            c["sed>1 in call" if nsub>1 else "sed=1"]+=1
+        print("edits", len(ed), dict(c))
+        rd=[r for r in rows if r["kind"]=="read-line-range"]
+        c=collections.Counter()
+        for r in rd:
+            n=len(re.findall(r"sed\s+-n", r["cmd"]))
+            files=set(re.findall(r"sed\s+-n\s+['\"][^'\"]*['\"]\s+(\S+)", r["cmd"]))
+            c["multi-range" if n>1 else "single"]+=1
+            c["multi-file" if len(files)>1 else "one-file"]+=1
+            c["with other cmds" if re.search(r"&&|;|\n|\|", r["cmd"]) else "sed only"]+=1
+        print("reads", len(rd), dict(c))
+        pr=[r for r in rd if r["arm"]=="prism"]
+        for r in random.Random(5).sample(pr,10):
+            print("=== WHY:", re.sub(r"\s+"," ",r["why"])[-250:]); print("CMD:", r["cmd"][:200].replace("\n"," ⏎ "))
+        EOF
+      at: 2026-10-11T01:40:53.182937Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 - <<'EOF'
+        import json, re, collections
+        d = json.load(open("rows.json"))
+        GNU=re.compile(r"\\[bBwWsS<>]"); GI=re.compile(r"sed\s+-i\s+(-e|'s|\"s|s/)")
+        per=collections.defaultdict(list)
+        for r in d["rows"]:
+            if r["kind"]!="edit-in-place": continue
+            bad = bool(GNU.search(r["cmd"]) or GI.search(r["cmd"]))
+            per[r["file"]].append(bad)
+        c=collections.Counter()
+        for f,seq in per.items():
+            nb=sum(seq)
+            if nb==0: c["sessions clean"]+=1; continue
+            c["sessions w/ bad"]+=1
+            c[f"bad calls={min(nb,4)}{'+' if nb>=4 else ''}"]+=1
+            first=seq.index(True)
+            c["bad after a clean BSD edit earlier"]+= any(not x for x in seq[:first])
+        print(dict(c), "sessions with sed edits:", len(per), "total sessions:", sum(d["sessions"].values()))
+        EOF
+      at: 2026-10-11T01:41:08.456997Z
+      classified: other
+    - cmd: |-
+        which -a sed; sed --version 2>&1 | head -1; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 - <<'EOF'
+        import json, re, collections
+        d = json.load(open("rows.json"))
+        GNU=re.compile(r"\\[bBwWsS<>]"); GI=re.compile(r"sed\s+-i\s+(-e|'s|\"s|s/)")
+        c=collections.Counter()
+        for r in d["rows"]:
+            if r["kind"]!="edit-in-place": continue
+            res=r.get("result") or ["",False]
+            if GI.search(r["cmd"]): c[("gnu -i", "error" if res[1] or "invalid command" in res[0] or "undefined label" in res[0] else "no error")]+=1
+            elif GNU.search(r["cmd"]): c[("gnu escape", "error" if res[1] else "no error")]+=1
+        print(c)
+        EOF
+      at: 2026-10-11T01:41:15.966383Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/cli/assets && ls; grep -n 'permissionDecisionReason\|reason' prism_read_guard.py 2>/dev/null | head
+      at: 2026-10-11T01:43:12.467371Z
+      classified: other
+    - cmd: sed -n 1,40p /Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_read_guard.py; sed -n 125,150p /Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_read_guard.py
+      at: 2026-10-11T01:43:14.651863Z
+      classified: other
+    - cmd: "cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && cat > guard.py <<'EOF'\nimport json, re, collections, glob, os, time\nroot=os.path.expanduser(\"~/.claude/projects\")\nfiles=[f for f in glob.glob(root+\"/*e2e*/**/*.jsonl\",recursive=True) if time.time()-os.path.getmtime(f)<14*86400 and \"/subagents/\" not in f]\nSEDREAD=re.compile(r\"\\bsed\\s+-n\\s+['\\\"]?\\d+(,\\d+)?p['\\\"]?\\s+(\\S+)\")\nc=collections.Counter(); follow=collections.Counter(); ex=[]\nfor f in files:\n    raw=open(f).read()\n    if \"mcp__prism\" not in raw: \n        arm=\"native\"\n    else: arm=\"prism\"\n    events=[]  # sequence of (kind, file)\n    for l in raw.splitlines():\n        try: m=json.loads(l)\n        except: continue\n        c_=m.get(\"message\",{}).get(\"content\")\n        if not isinstance(c_,list): continue\n        for b in c_:\n            if not isinstance(b,dict): continue\n            if b.get(\"type\")==\"tool_use\":\n                if b[\"name\"]==\"Bash\":\n                    for mm in SEDREAD.finditer(b[\"input\"].get(\"command\",\"\")):\n                        events.append((\"sedread\", os.path.basename(mm.group(2))))\n                elif b[\"name\"]==\"Read\":\n                    events.append((\"read\", os.path.basename(b[\"input\"].get(\"file_path\",\"\"))))\n            elif b.get(\"type\")==\"tool_result\":\n                t=b.get(\"content\"); t=t if isinstance(t,str) else json.dumps(t)\n                if \"prism already delivered lines\" in t:\n                    mm=re.search(r\"of (\\S+) earlier\", t)\n                    events.append((\"deny\", os.path.basename(mm.group(1)) if mm else \"?\"))\n    c[(arm,\"sessions\")]+=1\n    c[(arm,\"sedreads\")]+=sum(1 for e in events if e[0]==\"sedread\")\n    c[(arm,\"denies\")]+=sum(1 for e in events if e[0]==\"deny\")\n    if any(e[0]==\"deny\" for e in events): c[(arm,\"sessions w/ deny\")]+=1\n    for i,e in enumerate(events):\n        if e[0]==\"sedread\":\n            prior=[x for x in events[:i] if x[1]==e[1]]\n            if any(x[0]==\"deny\" for x in prior[-3:]): follow[(arm,\"sed read of file just denied\")]+=1\n            elif any(x[0]==\"read\" for x in prior): follow[(arm,\"sed read of file already Read\")]+=1\n            elif prior: follow[(arm,\"sed read of file seen by sed before\")]+=1\n            else: follow[(arm,\"first look at file\")]+=1\nfor k in sorted(c): print(k,c[k])\nfor k in sorted(follow): print(k,follow[k])\nEOF\npython3 guard.py"
+      at: 2026-10-11T01:43:26.895972Z
+      classified: other
+    - cmd: cd ~/.claude/projects && find . -path '*e2e*' -name '*.jsonl' -mtime -14 -not -path '*/subagents/*' | xargs grep -l 'already delivered' | wc -l; find . -path '*e2e*' -name '*.jsonl' -mtime -14 -not -path '*/subagents/*' | xargs grep -l 'prism_read_guard' | wc -l
+      at: 2026-10-11T01:43:33.465771Z
+      classified: other
+    - cmd: cd ~/.claude/projects && find . -path '*e2e*' -name '*.jsonl' -mtime -14 -not -path '*/subagents/*' | xargs grep -h -o '.\{200\}already delivered.\{120\}' | head -4
+      at: 2026-10-11T01:45:35.873503Z
+      classified: other
+    - cmd: |-
+        cd ~/.claude/projects && for f in $(find . -path '*e2e*' -name '*.jsonl' -mtime -14 -not -path '*/subagents/*' | xargs grep -l 'already delivered'); do python3 - "$f" <<'EOF'
+        import json,sys
+        for l in open(sys.argv[1]):
+            if 'already delivered' not in l: continue
+            m=json.loads(l)
+            print(m.get("type"), "|", l[l.find('already delivered')-120:l.find('already delivered')+60].replace("\\n"," "))
+            break
+        EOF
+        done
+      at: 2026-10-11T01:45:41.613437Z
+      classified: other
+    - cmd: grep -n 'read-guard\|readGuard' internal/cli/*.go | grep -i 'flag\|default' | head
+      at: 2026-10-11T01:45:45.765169Z
+      classified: other
+    - cmd: grep -rn 'no-read-guard' internal/cli/*.go | head -5; d=$(mktemp -d /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/rg.XXXX) && cd $d && git init -q && echo 'package main' > a.go && prism init --harness claude --yes . >/dev/null 2>&1; cat .claude/settings.json 2>/dev/null | head -30
+      at: 2026-10-11T01:45:49.240627Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n 'read-guard\|read_guard' run_e2e.py ab_endtoend_arms.py | head
+      at: 2026-10-11T01:45:52.086355Z
+      classified: other
+    - cmd: git status --short && git checkout -q -b feat/bsd-sed-note && grep -n 'claudeMDBlock\|steeringBlock\|func.*[Ss]teering\|Prism — context delivery' internal/cli/*.go | head -20
+      at: 2026-10-11T01:48:33.627371Z
+      classified: other
+    - cmd: sed -n 605,680p internal/cli/commands.go; sed -n 860,980p internal/cli/commands.go
+      at: 2026-10-11T01:48:36.046612Z
+      classified: other
+    - cmd: 'grep -rn ''steeringInstructions\|steeringBlock()'' --include=*.go . | grep -v ''^./internal/cli/commands.go:6[01]'' '
+      at: 2026-10-11T01:48:41.648867Z
+      classified: other
+    - cmd: grep -rn 'steeringInstructions\|steeringBlock()' internal cmd 2>/dev/null
+      at: 2026-10-11T01:48:43.930741Z
+      classified: other
+    - cmd: "python3 - <<'EOF'\np=\"internal/cli/commands.go\"\ns=open(p).read()\nold=\"func steeringBlock() string { return steeringInstructions }\\n\"\nnew='''func steeringBlock() string {\n\tif !systemSedIsBSD() {\n\t\treturn steeringInstructions\n\t}\n\treturn strings.Replace(steeringInstructions, \"\\\\n<!-- prism:end -->\", bsdSedNote+\"\\\\n<!-- prism:end -->\", 1)\n}\n\n// bsdSedNote states how this machine's sed differs from GNU sed. Agents write\n// GNU sed by default even when told the platform is darwin: across 1,144\n// benchmark sessions (2026-09-27..10-10, both arms) 24% made at least one\n// GNU-only sed edit, often `sed -i '' 's/\\\\bfoo\\\\b/...'` -- the Mac -i form with\n// a GNU escape that BSD sed reads literally, so the substitution matched\n// nothing and exited 0. The sed guard hook explains the failure after the\n// fact; this tells the agent before it writes the command. It describes the\n// machine and never tells the agent what to run.\nconst bsdSedNote = `\nThis machine's sed is BSD (macOS) sed: in-place editing is ` + \"`sed -i ''`\" + `, and the\nGNU escapes \\\\b \\\\w \\\\s (and \\\\+ \\\\? \\\\| without -E) are read as literal characters,\nso such a pattern matches nothing and exits 0. Word boundaries are [[:<:]] and [[:>:]].\n`\n\n// systemSedIsBSD reports whether the sed on PATH is BSD sed. GNU sed answers\n// --version; BSD sed rejects it. Overridden in tests so the steering text\n// does not depend on the machine running them.\nvar systemSedIsBSD = func() bool {\n\tif runtime.GOOS == \"windows\" {\n\t\treturn false\n\t}\n\tpath, err := exec.LookPath(\"sed\")\n\tif err != nil {\n\t\treturn false\n\t}\n\tctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)\n\tdefer cancel()\n\tcmd := exec.CommandContext(ctx, path, \"--version\")\n\tcmd.Stdin = strings.NewReader(\"\")\n\treturn cmd.Run() != nil && ctx.Err() == nil\n}\n'''\nassert old in s\ns=s.replace(old,new,1)\nopen(p,\"w\").write(s)\nEOF\nsed -n 1,30p internal/cli/commands.go | grep -n '\"' "
+      at: 2026-10-11T01:48:53.606629Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/cli/commands.go"
+        s=open(p).read()
+        s=s.replace('\t"path/filepath"\n','\t"path/filepath"\n\t"runtime"\n',1)
+        open(p,"w").write(s)
+        EOF
+        cat > internal/cli/bsdsed_note_test.go <<'EOF'
+        package cli
+
+        import (
+        	"strings"
+        	"testing"
+        )
+
+        func withSedFlavor(t *testing.T, bsd bool) {
+        	t.Helper()
+        	orig := systemSedIsBSD
+        	systemSedIsBSD = func() bool { return bsd }
+        	t.Cleanup(func() { systemSedIsBSD = orig })
+        }
+
+        func TestSteeringBlock_BSDSedNoteOnlyOnBSD(t *testing.T) {
+        	withSedFlavor(t, true)
+        	got := steeringBlock()
+        	for _, want := range []string{"BSD (macOS) sed", "`sed -i ''`", `\b \w \s`, "[[:<:]] and [[:>:]]"} {
+        		if !strings.Contains(got, want) {
+        			t.Errorf("BSD steering block missing %q", want)
+        		}
+        	}
+        	if !strings.HasSuffix(strings.TrimSpace(got), "<!-- prism:end -->") {
+        		t.Errorf("note must sit inside the section, before the end marker:\n%s", got)
+        	}
+
+        	withSedFlavor(t, false)
+        	if got := steeringBlock(); strings.Contains(got, "BSD") || got != steeringInstructions {
+        		t.Errorf("GNU machine must get the unchanged block")
+        	}
+        }
+
+        func TestSteeringBlock_BSDSedNoteSurvivesReinit(t *testing.T) {
+        	withSedFlavor(t, true)
+        	dir := t.TempDir()
+        	writeSteeringInstructions(dir, []string{"claude"}, false)
+        	writeSteeringInstructions(dir, []string{"claude"}, false)
+        	raw := readFile(t, dir+"/CLAUDE.md")
+        	if n := strings.Count(raw, "BSD (macOS) sed"); n != 1 {
+        		t.Fatalf("want the note exactly once after re-init, got %d:\n%s", n, raw)
+        	}
+        	// Moving to a GNU-sed machine and re-running init drops it.
+        	withSedFlavor(t, false)
+        	writeSteeringInstructions(dir, []string{"claude"}, false)
+        	if strings.Contains(readFile(t, dir+"/CLAUDE.md"), "BSD") {
+        		t.Fatal("re-init on a GNU machine must remove the note")
+        	}
+        }
+        EOF
+        grep -n 'func readFile' internal/cli/*_test.go | head -2
+      at: 2026-10-11T01:49:05.301781Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/cli/bsdsed_note_test.go"
+        s=open(p).read()
+        s=s.replace('import (\n\t"strings"','import (\n\t"os"\n\t"path/filepath"\n\t"strings"')
+        s=s.replace('readFile(t, dir+"/CLAUDE.md")','readClaudeMD(t, dir)')
+        s+='''
+        func readClaudeMD(t *testing.T, dir string) string {
+        	t.Helper()
+        	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+        	if err != nil {
+        		t.Fatal(err)
+        	}
+        	return string(raw)
+        }
+        '''
+        open(p,"w").write(s)
+        EOF
+        gofmt -l internal/cli; go vet ./internal/cli && go test ./internal/cli -run 'Steering|BSDSed|Init' -count=1 2>&1 | tail -15
+      at: 2026-10-11T01:49:13.821396Z
+      classified: lint
+    - cmd: gofmt -d internal/cli/commands.go | head -20; gofmt -w internal/cli/commands.go && go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/prism-sednote ./cmd/prism && d=$(mktemp -d /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sn.XXXX) && cd $d && git init -q && echo 'package main' > a.go && /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/prism-sednote init --harness claude --yes . >/dev/null 2>&1; tail -8 CLAUDE.md
+      at: 2026-10-11T01:49:20.812752Z
+      classified: build
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/cli/commands.go"
+        s=open(p).read()
+        old="""// GNU-only sed edit, often `sed -i ” 's/\\bfoo\\b/...'` -- the Mac -i form with
+        // a GNU escape that BSD sed reads literally, so the substitution matched
+        // nothing and exited 0."""
+        assert old in s, "nf"
+        s=s.replace(old,"""// GNU-only sed edit, often the Mac in-place form combined with a GNU escape
+        // such as \\b, which BSD sed reads literally, so the substitution matched
+        // nothing and exited 0.""")
+        open(p,"w").write(s)
+        EOF
+        gofmt -l internal/cli; go test ./... 2>&1 | grep -v '^ok' | head
+      at: 2026-10-11T01:49:52.24561Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json,glob
+        f=glob.glob("bench-deep-2026-10-10/*.json")[0]
+        d=json.load(open(f)); print(list(d.keys())[:40])
+        EOF
+        ls -d */ | tail -30
+      at: 2026-10-11T01:49:59.856418Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 - <<'EOF'
+        import json,glob,os,re,collections
+        sid2task={}
+        for f in glob.glob("/Users/tapabratapal/Projects/provasign/research/harness/results/**/*.json",recursive=True):
+            try: d=json.load(open(f))
+            except: continue
+            if isinstance(d,dict) and d.get("session_id") and d.get("task"):
+                sid2task[d["session_id"]]=(d["task"], d.get("model",""))
+        d=json.load(open("rows.json"))
+        GNU=re.compile(r"\\[bBwWsS<>]"); GI=re.compile(r"sed\s+-i\s+(-e|'s|\"s|s/)")
+        bad=collections.defaultdict(set)
+        for r in d["rows"]:
+            if r["kind"]=="edit-in-place" and (GNU.search(r["cmd"]) or GI.search(r["cmd"])):
+                bad[os.path.basename(r["file"])[:-6]].add(1)
+        # all sessions
+        root=os.path.expanduser("~/.claude/projects")
+        tot=collections.Counter(); hit=collections.Counter(); unk=0
+        import time
+        for f in glob.glob(root+"/*e2e*/*.jsonl"):
+            if time.time()-os.path.getmtime(f)>14*86400: continue
+            sid=os.path.basename(f)[:-6]
+            t=sid2task.get(sid)
+            if not t: unk+=1; continue
+            tot[t]+=1; hit[t]+= sid in bad
+        print("unmapped",unk, "mapped", sum(tot.values()))
+        rows=sorted(tot, [REDACTED:env-secret] t:(-hit[t]/tot[t], -tot[t]))
+        for t in rows[:25]: print(f"{hit[t]}/{tot[t]}", t[1], t[0])
+        EOF
+      at: 2026-10-11T01:50:09.553736Z
+      classified: other
+    - cmd: |-
+        git add internal/cli/commands.go internal/cli/bsdsed_note_test.go && git commit -q -m "init: tell agents this machine's sed is BSD in the steering block
+
+        Written only when sed on PATH rejects --version (BSD). Agents write GNU sed
+        by default even on darwin: 24% of 1,144 benchmark sessions made at least one
+        GNU-only sed edit, many silently matching nothing.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -1
+      at: 2026-10-11T01:50:16.237982Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n 'def _prism_bin' -A12 run_e2e.py
+      at: 2026-10-11T01:50:18.515084Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n 'PRISM_BIN_FOR_ARM\|PRISM_INIT_ARMS\s*=' run_e2e.py | head; sed -n 100,175p ab_endtoend_arms.py; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/bench/drive2.sh
+      at: 2026-10-11T01:50:46.58128Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n 'PRISM_BIN_FOR_ARM' -A8 ab_endtoend_arms.py | head -20; sed -n 273,276p run_e2e.py; grep -n 'trials\|--trial' run_e2e.py | head -5; ls ../../harness/tasks/e2e 2>/dev/null | head -2; ls /Users/tapabratapal/Projects/provasign/research/harness/tasks/e2e | grep -c .
+      at: 2026-10-11T01:50:51.109012Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness/runners && grep -n ''_install_read_guard_hook('' run_e2e.py; grep -n ''no_guard'' run_e2e.py | head; cat ../results/bench-2026-10-10-manifest.json 2>/dev/null | head -c 300; ls ../results/*manifest* '
+      at: 2026-10-11T01:50:54.178024Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && head -c 400 results/bench-deep-2026-10-10-manifest.json; echo; sed -n 285,300p runners/run_e2e.py; for t in wide__hono__ConnInfo_remote wide__chi__Routes_Match wide__echo__Router_Route wide__gin__ResponseWriter_Status wide__zod__ZodRegistry_get wide__werkzeug__BaseConverter_to_url wide__click__Group_get_command deep__gson__TypeAdapterFactory_create_Optional deep__jackson-databind__acceptJsonFormatVisitor_add_provider wide__jackson-databind__SettableBeanProperty_set; do ls tasks/e2e/$t.json >/dev/null || echo MISSING $t; done
+      at: 2026-10-11T01:50:57.899581Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad; mkdir -p $S/sedab && cp "$(which prism)" $S/sedab/prism-base && cp $S/prism-sednote $S/sedab/prism-note && $S/sedab/prism-base --version && $S/sedab/prism-note --version; cd /Users/tapabratapal/Projects/provasign/prism && git diff 0330e39a HEAD --stat; docker info >/dev/null 2>&1 && echo docker-ok
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;json.dump(['wide__hono__ConnInfo_remote','wide__chi__Routes_Match','wide__echo__Router_Route','wide__gin__ResponseWriter_Status','wide__zod__ZodRegistry_get','wide__werkzeug__BaseConverter_to_url','wide__click__Group_get_command','deep__gson__TypeAdapterFactory_create_Optional','deep__jackson-databind__acceptJsonFormatVisitor_add_provider','wide__jackson-databind__SettableBeanProperty_set'],open('results/sednote-ab-manifest.json','w'),indent=1)
+        json.dump(['wide__click__Group_get_command'],open('results/sednote-probe-manifest.json','w'))"
+      at: 2026-10-11T01:51:08.643174Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab; cd /Users/tapabratapal/Projects/provasign/research/harness && OUT=results/sednote-ab-2026-10-10 && mkdir -p $OUT && PRISM_BODY_BASELINE_BIN=$S/prism-base PRISM_BODY_EXP_BIN=$S/prism-note E2E_OUT=$OUT E2E_WAIT_ON_LIMIT=1 python3 runners/run_e2e.py results/sednote-probe-manifest.json --models claude-sonnet-5-5 --arms prism_body_baseline,prism_body_exp > $OUT/probe.log 2>&1; echo rc=$?; tail -5 $OUT/probe.log; ls $OUT
+      at: 2026-10-11T01:51:13.826195Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab/report.py <<'EOF'
+        import json, glob, re, sys, collections, os
+        OUT = sys.argv[1]
+        GNU = re.compile(r"\\[bBwWsS<>]"); GI = re.compile(r"sed\s+-i\s+(-e|'s|\"s|s/)")
+        SED = re.compile(r"(^|[|;&(]\s*|xargs\s+|exec\s+)\s*sed\s", re.M)
+        rows = []
+        for f in sorted(glob.glob(OUT + "/*.json")):
+            if f.endswith("manifest.json"): continue
+            d = json.load(open(f))
+            if "arm" not in d: continue
+            tr = d.get("transcript") or ""
+            if tr and not os.path.isabs(tr): tr = os.path.join(OUT, tr)
+            if not os.path.exists(tr):
+                cand = glob.glob(OUT + "/transcripts/" + os.path.basename(f)[:-5] + "*.jsonl")
+                tr = cand[0] if cand else ""
+            raw = open(tr).read() if tr else ""
+            sed = bad = denied = 0
+            for l in raw.splitlines():
+                try: m = json.loads(l)
+                except Exception: continue
+                c = m.get("message", {}).get("content")
+                if not isinstance(c, list): continue
+                for b in c:
+                    if not isinstance(b, dict): continue
+                    if b.get("type") == "tool_use" and b.get("name") == "Bash":
+                        cmd = b["input"].get("command", "")
+                        if SED.search(cmd) and re.search(r"sed\s+-[a-zA-Z]*i|sed[^|;&]*\s-i", cmd):
+                            sed += 1
+                            if GNU.search(cmd) or GI.search(cmd): bad += 1
+                    if b.get("type") == "tool_result" and "Not run: " in json.dumps(b.get("content")) and "sed" in json.dumps(b.get("content")):
+                        denied += 1
+            rows.append(dict(task=d["task"], arm=d["arm"], trial=d.get("trial", 1), resolved=d.get("resolved"),
+                             calls=d.get("api_calls"), cost=d.get("cost_usd") or 0, sed_edits=sed, bad=bad, denied=denied,
+                             note="BSD (macOS) sed" in raw, has_tr=bool(raw)))
+        for r in rows:
+            print(f"{r['task'][:52]:52} {r['arm'][-8:]:8} t{r['trial']} res={r['resolved']!s:5} calls={r['calls']} ${r['cost']:.2f} sedEdits={r['sed_edits']} gnuSed={r['bad']} guardDenied={r['denied']} noteSeen={r['note']} tr={r['has_tr']}")
+        agg = collections.defaultdict(lambda: collections.Counter())
+        for r in rows:
+            a = agg[r["arm"]]; a["n"] += 1; a["resolved"] += bool(r["resolved"]); a["calls"] += r["calls"] or 0
+            a["cost"] += r["cost"]; a["sed_edits"] += r["sed_edits"]; a["bad"] += r["bad"]; a["sessions_bad"] += r["bad"] > 0
+        for arm, a in agg.items():
+            print(f"\n{arm}: n={a['n']} resolved={a['resolved']} calls={a['calls']} cost=${a['cost']:.2f} sed_edits={a['sed_edits']} gnu_sed_calls={a['bad']} sessions_with_gnu_sed={a['sessions_bad']}")
+        EOF
+        echo ok
+      at: 2026-10-11T01:51:27.566903Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b2p1ezdm4.output; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab/report.py results/sednote-ab-2026-10-10
+      at: 2026-10-11T01:52:20.998952Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab; sed -i '' 's/"BSD (macOS) sed" in raw/"This machine'"'"'s sed is BSD" in raw/' $S/report.py && grep -n 'This machine' $S/report.py; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 $S/report.py results/sednote-ab-2026-10-10 | head -2; grep -n 'skip\|\.exists()' runners/run_e2e.py | grep -i 'cell\|skip' | head -5
+      at: 2026-10-11T01:52:27.045305Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab; cd /Users/tapabratapal/Projects/provasign/research/harness && OUT=results/sednote-ab-2026-10-10 && PRISM_BODY_BASELINE_BIN=$S/prism-base PRISM_BODY_EXP_BIN=$S/prism-note E2E_OUT=$OUT E2E_WAIT_ON_LIMIT=1 python3 runners/run_e2e.py results/sednote-ab-manifest.json --models claude-sonnet-5-5 --arms prism_body_baseline,prism_body_exp --trials 2 > $OUT/run.log 2>&1; echo rc=$?; tail -3 $OUT/run.log
+      at: 2026-10-11T01:52:33.819809Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab/report.py results/sednote-ab-2026-10-10 | grep hono
+      at: 2026-10-11T01:54:35.567653Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/sednote-ab-2026-10-10/transcripts && python3 - <<'EOF'
+        import json,glob,re
+        f=[x for x in glob.glob("*hono*exp*.jsonl")][0]
+        for l in open(f):
+            m=json.loads(l); c=m.get("message",{}).get("content")
+            if not isinstance(c,list): continue
+            for b in c:
+                if isinstance(b,dict) and b.get("type")=="tool_use" and b["name"]=="Bash" and "sed" in b["input"]["command"]:
+                    print("CMD:",b["input"]["command"][:300])
+                if isinstance(b,dict) and b.get("type")=="thinking" and "sed" in b.get("thinking",""):
+                    print("THINK:",b["thinking"][-300:])
+        EOF
+      at: 2026-10-11T01:55:53.782274Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab/report.py results/sednote-ab-2026-10-10 | grep chi
+      at: 2026-10-11T01:57:36.344342Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/sednote-ab-2026-10-10/transcripts && python3 - <<'EOF'
+        import json,glob
+        f=[x for x in glob.glob("*chi*exp*.jsonl")][0]
+        res={}
+        lines=[json.loads(l) for l in open(f)]
+        for m in lines:
+            c=m.get("message",{}).get("content")
+            if isinstance(c,list):
+                for b in c:
+                    if isinstance(b,dict) and b.get("type")=="tool_result": res[b["tool_use_id"]]=str(b.get("content"))[:250]
+        for m in lines:
+            c=m.get("message",{}).get("content")
+            if not isinstance(c,list): continue
+            for b in c:
+                if isinstance(b,dict) and b.get("type")=="tool_use" and b["name"]=="Bash" and "sed" in b["input"]["command"]:
+                    print("CMD:",b["input"]["command"][:400]); print("  ->",res.get(b["id"]))
+        EOF
+      at: 2026-10-11T01:57:42.051616Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/sednote-ab-2026-10-10/transcripts && python3 - <<'EOF'
+        import json,glob,re
+        GNU=re.compile(r"\\[bBwWsS<>]"); GI=re.compile(r"sed\s+-i\s+(-e|'s|\"s|s/)")
+        f=[x for x in glob.glob("*chi*exp*.jsonl")][0]
+        for l in open(f):
+            m=json.loads(l); c=m.get("message",{}).get("content")
+            if not isinstance(c,list): continue
+            for b in c:
+                if isinstance(b,dict) and b.get("type")=="tool_use" and b["name"]=="Bash":
+                    cmd=b["input"]["command"]
+                    for r in (GNU,GI):
+                        mm=r.search(cmd)
+                        if mm: print(repr(cmd[max(0,mm.start()-60):mm.end()+40]))
+        EOF
+      at: 2026-10-11T01:57:49.152197Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab; python3 - <<EOF
+        p="$S/report.py"
+        s=open(p).read()
+        s=s.replace("import json, glob, re, sys, collections, os\n","""import json, glob, re, sys, collections, os, importlib.util
+        _spec = importlib.util.spec_from_file_location("g", "/Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_sed_guard.py")
+        G = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(G)
+        def gnu_sed(cmd):
+            try: return any(G.problems(a) for a in G.sed_invocations(cmd))
+            except ValueError: return False
+        """,1)
+        s=s.replace("if GNU.search(cmd) or GI.search(cmd): bad += 1","if gnu_sed(cmd): bad += 1")
+        open(p,"w").write(s)
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 $S/report.py results/sednote-ab-2026-10-10 | head -8
+      at: 2026-10-11T01:57:57.698945Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab/report.py results/sednote-ab-2026-10-10 | grep echo
+      at: 2026-10-11T01:58:26.828602Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab/report.py results/sednote-ab-2026-10-10 | grep gin
+      at: 2026-10-11T01:59:25.708271Z
+      classified: other
+    - cmd: sleep 2; pgrep -fl 'run_e2e.py results/sednote' ; pgrep -fl 'claude -p' | head -3; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedab/report.py results/sednote-ab-2026-10-10 | tail -4
+      at: 2026-10-11T02:02:21.13061Z
+      classified: other
+    - cmd: 'echo ''- [No command-rewriting hooks](feedback_no_command_rewriting_hooks.md) — 2026-10-10: GNU->BSD sed rewrite in the guard rejected as hacky; hooks allow or deny+explain only'' >> /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'
+      at: 2026-10-11T02:02:58.321335Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && git mv 2>/dev/null; mv feedback_no_command_rewriting_hooks.md feedback_sed_conversion_approved.md && python3 - <<'EOF'
+        p="MEMORY.md"; s=open(p).read()
+        s=s.replace("- [No command-rewriting hooks](feedback_no_command_rewriting_hooks.md) — 2026-10-10: GNU->BSD sed rewrite in the guard rejected as hacky; hooks allow or deny+explain only",
+        "- [sed conversion approved](feedback_sed_conversion_approved.md) — 2026-10-10: Topo approved the guard rewriting GNU sed to BSD form; narrow exception, deny when not exact")
+        open(p,"w").write(s)
+        EOF
+        tail -1 MEMORY.md
+      at: 2026-10-11T02:04:30.554952Z
+      classified: other
+    - cmd: cat internal/cli/sedguard_hooks_test.go | head -80; grep -n 'func Test' internal/cli/sedguard_hooks_test.go
+      at: 2026-10-11T02:04:34.769599Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PYEOF'
+        p = "internal/cli/assets/prism_sed_guard.py"
+        s = open(p).read()
+        marker = "def main():\n"
+        translator = r'''
+        # --- Translation -------------------------------------------------------------
+        # A denied command costs the agent a call to rewrite it. Where the BSD spelling
+        # of the same command is exact, the hook rewrites it instead and tells the
+        # agent what ran. Anything it cannot translate exactly is denied as above.
+
+        WORD_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+        CLASS_FOR = {"w": "[[:alnum:]_]", "W": "[^[:alnum:]_]", "s": "[[:space:]]", "S": "[^[:space:]]",
+                     "<": "[[:<:]]", ">": "[[:>:]]"}
+
+
+        class Untranslatable(Exception):
+            pass
+
+
+        def shell_words(command: str):
+            """Split a command into (start, end, value, is_operator) with raw spans,
+            so a word can be replaced in place without re-quoting the rest. Raises
+            Untranslatable on shell syntax it does not model (heredocs, backticks,
+            unbalanced quotes)."""
+            out, i, n = [], 0, len(command)
+            while i < n:
+                ch = command[i]
+                if ch in " \t":
+                    i += 1
+                    continue
+                if ch == "\n" or ch in ";&|()":
+                    j = i + 1
+                    while j < n and command[j] in ";&|" and ch != "\n":
+                        j += 1
+                    if command[i:j].startswith("<<"):
+                        raise Untranslatable()
+                    out.append((i, j, command[i:j], True))
+                    i = j
+                    continue
+                start, val = i, []
+                while i < n and command[i] not in " \t\n;&|()":
+                    ch = command[i]
+                    if ch == "'":
+                        j = command.find("'", i + 1)
+                        if j < 0:
+                            raise Untranslatable()
+                        val.append(command[i + 1:j])
+                        i = j + 1
+                    elif ch == '"':
+                        j, buf = i + 1, []
+                        while j < n and command[j] != '"':
+                            if command[j] == "\\" and j + 1 < n and command[j + 1] in '$`"\\\n':
+                                buf.append(command[j + 1])
+                                j += 2
+                                continue
+                            if command[j] in "$`":
+                                buf.append(command[j])  # value only matters for sed scripts
+                            else:
+                                buf.append(command[j])
+                            j += 1
+                        if j >= n:
+                            raise Untranslatable()
+                        val.append("".join(buf))
+                        i = j + 1
+                    elif ch == "\\":
+                        if i + 1 < n:
+                            val.append(command[i + 1])
+                        i += 2
+                    elif ch == "`" or command.startswith("<<", i):
+                        raise Untranslatable()
+                    elif command.startswith("$(", i):
+                        depth, j = 1, i + 2
+                        while j < n and depth:
+                            depth += {"(": 1, ")": -1}.get(command[j], 0)
+                            j += 1
+                        if depth:
+                            raise Untranslatable()
+                        val.append(command[i:j])
+                        i = j
+                    else:
+                        val.append(ch)
+                        i += 1
+                out.append((start, i, "".join(val), False))
+            return out
+
+
+        def _read_bracket(rx: str, i: int) -> int:
+            """rx[i] == '['; return the index just past the matching ']'."""
+            j = i + 1
+            if j < len(rx) and rx[j] == "^":
+                j += 1
+            if j < len(rx) and rx[j] == "]":
+                j += 1
+            while j < len(rx):
+                if rx.startswith("[:", j) or rx.startswith("[.", j) or rx.startswith("[=", j):
+                    k = rx.find(rx[j + 1] + "]", j + 2)
+                    if k < 0:
+                        raise Untranslatable()
+                    j = k + 2
+                    continue
+                if rx[j] == "]":
+                    return j + 1
+                j += 1
+            raise Untranslatable()
+
+
+        def translate_regex(rx: str, ere: bool) -> str:
+            out, i, n = [], 0, len(rx)
+            while i < n:
+                ch = rx[i]
+                if ch == "[":
+                    j = _read_bracket(rx, i)
+                    out.append(rx[i:j])  # GNU also reads a backslash in brackets literally
+                    i = j
+                    continue
+                if ch != "\\" or i + 1 >= n:
+                    out.append(ch)
+                    i += 1
+                    continue
+                nxt = rx[i + 1]
+                if nxt in CLASS_FOR:
+                    out.append(CLASS_FOR[nxt])
+                elif nxt == "b":
+                    prev = "".join(out)[-1:]
+                    after = rx[i + 2:i + 3]
+                    starts = after in WORD_CHARS or after in ("(", "[") or rx.startswith("\\(", i + 2) \
+                        or rx[i + 2:i + 4] in ("\\w", "\\<")
+                    ends = prev in WORD_CHARS or prev in (")", "]", "*", "+", "?", "}")
+                    if starts and not ends:
+                        out.append("[[:<:]]")
+                    elif ends and not starts:
+                        out.append("[[:>:]]")
+                    else:
+                        raise Untranslatable()  # mid-word or empty: no BSD equivalent
+                elif nxt == "B":
+                    raise Untranslatable()
+                elif not ere and nxt == "+":
+                    out.append("\\{1,\\}")
+                elif not ere and nxt == "?":
+                    out.append("\\{0,1\\}")
+                elif not ere and nxt == "|":
+                    raise Untranslatable()
+                else:
+                    out.append(rx[i:i + 2])
+                i += 2
+            return "".join(out)
+
+
+        def _read_delimited(script: str, i: int, delim: str, regex: bool):
+            """Read from script[i] to the next unescaped delim; return (text, index past delim)."""
+            j = i
+            while j < len(script):
+                c = script[j]
+                if c == "\\":
+                    j += 2
+                    continue
+                if regex and c == "[" and delim != "[":
+                    j = _read_bracket(script, j)
+                    continue
+                if c == delim:
+                    return script[i:j], j + 1
+                if c == "\n":
+                    break
+                j += 1
+            raise Untranslatable()
+
+
+        def translate_script(script: str, ere: bool) -> str:
+            """Translate the regexes of a sed script made of addresses and s///, p, d
+            and similar one-letter commands. Anything else is left alone, and refused
+            if a GNU escape appears in it."""
+            out, i, n = [], 0, len(script)
+
+            def address(i):
+                if i < n and script[i] == "/":
+                    rx, j = _read_delimited(script, i + 1, "/", True)
+                    out.append("/" + translate_regex(rx, ere) + "/")
+                    return j
+                if i + 1 < n and script[i] == "\\":
+                    d = script[i + 1]
+                    rx, j = _read_delimited(script, i + 2, d, True)
+                    out.append("\\" + d + translate_regex(rx, ere) + d)
+                    return j
+                j = i
+                while j < n and (script[j].isdigit() or script[j] in "$~"):
+                    j += 1
+                out.append(script[i:j])
+                return j
+
+            while i < n:
+                c = script[i]
+                if c in " \t\n;{}!":
+                    out.append(c)
+                    i += 1
+                    continue
+                i = address(i)
+                if i < n and script[i] == ",":
+                    out.append(",")
+                    i = address(i + 1)
+                while i < n and script[i] in " \t!":
+                    out.append(script[i])
+                    i += 1
+                if i >= n:
+                    break
+                c = script[i]
+                if c == "s" and i + 1 < n:
+                    d = script[i + 1]
+                    rx, j = _read_delimited(script, i + 2, d, True)
+                    repl, j = _read_delimited(script, j, d, False)
+                    k = j
+                    while k < n and script[k] not in ";\n}":
+                        k += 1
+                    flags = script[j:k]
+                    if "w" in flags or "e" in flags:
+                        raise Untranslatable()
+                    out.append("s" + d + translate_regex(rx, ere) + d + repl + d + flags)
+                    i = k
+                elif c in "dpqnNDPhHgGx=lz{}":
+                    out.append(c)
+                    i += 1
+                else:
+                    rest = script[i:]
+                    if GNU_ESCAPES.search(rest) or (not ere and GNU_BRE_OPERATORS.search(rest)):
+                        raise Untranslatable()
+                    out.append(rest)
+                    break
+            return "".join(out)
+
+
+        def quote(s: str) -> str:
+            return "'" + s.replace("'", "'\\''") + "'"
+
+
+        def translate_command(command: str):
+            """Return the command with each sed rewritten to BSD spelling, or None if
+            nothing needed rewriting. Raises Untranslatable when a needed rewrite is
+            not exact."""
+            words = shell_words(command)
+            edits = []  # (start, end, replacement)
+            seg = []
+            for w in words + [(len(command), len(command), ";", True)]:
+                if not w[3]:
+                    seg.append(w)
+                    continue
+                names = [x[2] for x in seg]
+                for j, name in enumerate(names):
+                    if name == "sed" or name.endswith("/sed"):
+                        edits.extend(_translate_invocation(seg[j + 1:]))
+                        break
+                seg = []
+            if not edits:
+                return None
+            for start, end, rep in sorted(edits, reverse=True):
+                command = command[:start] + rep + command[end:]
+            return command
+
+
+        def _translate_invocation(args):
+            vals = [a[2] for a in args]
+            ere = any(v in ("-E", "-r") or (v.startswith("-") and not v.startswith("--") and len(v) > 1
+                                            and set(v[1:]) <= set("Enrsu") and ("E" in v or "r" in v)) for v in vals)
+            edits, i, script_seen = [], 0, False
+            while i < len(args):
+                start, end, v, _ = args[i]
+                if v == "-i":
+                    nxt = vals[i + 1] if i + 1 < len(vals) else ""
+                    if nxt.startswith("-") or (nxt and ("/" in nxt or nxt[:1] in "sy")):
+                        edits.append((start, end, "-i ''"))
+                        i += 1
+                        continue
+                    i += 2
+                    continue
+                if v in ("-e", "--expression"):
+                    if i + 1 < len(args):
+                        edits.extend(_script_edit(args[i + 1], ere))
+                    script_seen = True
+                    i += 2
+                    continue
+                if v in ("-f", "--file", "-l"):
+                    i += 2
+                    continue
+                if v.startswith("-") and len(v) > 1:
+                    i += 1
+                    continue
+                if not script_seen:
+                    edits.extend(_script_edit(args[i], ere))
+                    script_seen = True
+                i += 1
+            return edits
+
+
+        def _script_edit(word, ere):
+            start, end, value, _ = word
+            if not (GNU_ESCAPES.search(value) or (not ere and GNU_BRE_OPERATORS.search(value))):
+                return []
+            return [(start, end, quote(translate_script(value, ere)))]
+
+
+        '''
+        assert marker in s
+        s = s.replace(marker, translator + marker, 1)
+
+        old_main_tail = '''    found = []
+            for args in invocations:
+                for p in problems(args):
+                    if p not in found:
+                        found.append(p)
+            if not found:
+                return
+            print(json.dumps({'''
+        new_main_tail = '''    found = []
+            for args in invocations:
+                for p in problems(args):
+                    if p not in found:
+                        found.append(p)
+            if not found:
+                return
+            try:
+                rewritten = translate_command(command)
+            except Untranslatable:
+                rewritten = None
+            if rewritten and not any(problems(a) for a in sed_invocations(rewritten)):
+                tool_input = dict(payload.get("tool_input") or {})
+                tool_input["command"] = rewritten
+                print(json.dumps({
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "allow",
+                        "updatedInput": tool_input,
+                        "additionalContext": "This machine's sed is BSD (macOS) sed, so the command was run in its "
+                                             "BSD spelling: " + rewritten,
+                    }
+                }))
+                return
+            print(json.dumps({'''
+        assert old_main_tail in s
+        s = s.replace(old_main_tail, new_main_tail, 1)
+        open(p, "w").write(s)
+        PYEOF
+        echo done
+      at: 2026-10-11T02:05:08.78485Z
+      classified: other
+    - cmd: which gsed; ls /opt/homebrew/bin/gsed 2>/dev/null; docker images --format '{{.Repository}}:{{.Tag}}' | grep -iE 'ubuntu|debian|alpine|python|node|golang' | head -5
+      at: 2026-10-11T02:05:15.111329Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 - <<'EOF'
+        import json, importlib.util, collections
+        spec=importlib.util.spec_from_file_location("g","/Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_sed_guard.py")
+        G=importlib.util.module_from_spec(spec); spec.loader.exec_module(G)
+        rows=json.load(open("rows.json"))["rows"]
+        c=collections.Counter(); fails=[]
+        for r in rows:
+            cmd=r["cmd"]
+            if "<<" in cmd: c["heredoc-skip"]+=1; continue
+            try: inv=list(G.sed_invocations(cmd))
+            except ValueError: c["unparsable"]+=1; continue
+            if not any(G.problems(a) for a in inv): continue
+            c["flagged"]+=1
+            try:
+                out=G.translate_command(cmd)
+                if out is None: c["flagged-but-no-edit"]+=1; fails.append(("noedit",cmd))
+                elif any(G.problems(a) for a in G.sed_invocations(out)): c["still-flagged"]+=1; fails.append(("still",cmd))
+                else: c["translated"]+=1
+            except G.Untranslatable: c["untranslatable"]+=1; fails.append(("untr",cmd))
+        print(c)
+        for k,cmd in fails[:12]: print(k,"|",cmd[:220].replace("\n"," ⏎ "))
+        EOF
+      at: 2026-10-11T02:05:28.021451Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedwhy && python3 - <<'EOF'
+        import json, importlib.util
+        spec=importlib.util.spec_from_file_location("g","/Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_sed_guard.py")
+        G=importlib.util.module_from_spec(spec); spec.loader.exec_module(G)
+        rows=json.load(open("rows.json"))["rows"]
+        for r in rows:
+            cmd=r["cmd"]
+            if "<<" in cmd: continue
+            try: inv=list(G.sed_invocations(cmd))
+            except ValueError: continue
+            for a in inv:
+                if not G.problems(a): continue
+                try: G._translate_invocation([(0,0,v,False) for v in a])
+                except G.Untranslatable:
+                    # find which script
+                    for v in a:
+                        if v.startswith("-"): continue
+                        try: G.translate_script(v, "-E" in a)
+                        except G.Untranslatable: print(repr(v[:200])); break
+                        except Exception as e: print("EXC",e)
+        EOF
+      at: 2026-10-11T02:05:46.493396Z
+      classified: other
+    - cmd: echo ab | sed 's/a/x\ny/'; echo ab | sed 's/a/x\ty/' ; printf 'a\tb\n' | sed 's/\t/T/'; echo 'a b' | sed -E 's/a|b/Z/g'
+      at: 2026-10-11T02:06:00.495086Z
+      classified: other
+    - cmd: B=$(readlink -f "$(which claude)"); echo $B; f=$B; [ -d "$B" ] && f=$(ls $B/*.js 2>/dev/null | head -1); strings "$f" 2>/dev/null | grep -o 'PreToolUse[^"]\{0,80\}additionalContext[^"]\{0,80\}' | head -5; strings "$f" | grep -o '.\{120\}hookSpecificOutput.additionalContext.\{120\}' | head -5
+      at: 2026-10-11T02:06:10.618132Z
+      classified: other
+    - cmd: strings /Users/tapabratapal/.local/share/claude/versions/2.1.296 | grep -o '.\{400\}DecisionReason,e.hookSpecificOutput.updatedInput)V.updatedInput' | head -1
+      at: 2026-10-11T02:06:47.293423Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PYEOF'
+        p = "internal/cli/assets/prism_sed_guard.py"
+        s = open(p).read()
+
+        def rep(old, new):
+            global s
+            assert s.count(old) == 1, old[:60]
+            s = s.replace(old, new)
+
+        # line continuations
+        rep('''        ch = command[i]
+                if ch in " \\t":
+                    i += 1
+                    continue
+                if ch == "\\n" or ch in ";&|()":''', '''        ch = command[i]
+                if ch in " \\t" or command.startswith("\\\\\\n", i):
+                    i += 2 if ch == "\\\\" else 1
+                    continue
+                if ch == "\\n" or ch in ";&|()":''')
+        rep('''            elif ch == "\\\\":
+                        if i + 1 < n:
+                            val.append(command[i + 1])
+                        i += 2''', '''            elif ch == "\\\\":
+                        if i + 1 < n and command[i + 1] != "\\n":
+                            val.append(command[i + 1])
+                        i += 2''')
+        # simplify double-quote branch
+        rep('''                    if command[j] in "$`":
+                                buf.append(command[j])  # value only matters for sed scripts
+                            else:
+                                buf.append(command[j])
+                            j += 1''', '''                    buf.append(command[j])
+                            j += 1''')
+
+        # translate_regex with BRE -> ERE conversion
+        rep('''def translate_regex(rx: str, ere: bool) -> str:
+            out, i, n = [], 0, len(rx)
+            while i < n:
+                ch = rx[i]
+                if ch == "[":
+                    j = _read_bracket(rx, i)
+                    out.append(rx[i:j])  # GNU also reads a backslash in brackets literally
+                    i = j
+                    continue
+                if ch != "\\\\" or i + 1 >= n:
+                    out.append(ch)
+                    i += 1
+                    continue
+                nxt = rx[i + 1]
+                if nxt in CLASS_FOR:''', '''BRE_TO_ERE = {"(": "(", ")": ")", "{": "{", "}": "}", "|": "|", "+": "+", "?": "?"}
+
+
+        def translate_regex(rx: str, ere: bool, to_ere: bool = False) -> str:
+            """Rewrite GNU-only escapes in one regex to BSD spelling. With to_ere, a
+            basic regex is also rewritten as an extended one (for `\\\\|`, which basic
+            BSD regexes cannot express): BRE operators lose their backslash and ERE
+            metacharacters that BRE reads literally gain one."""
+            out, i, n = [], 0, len(rx)
+            at_start = True  # start of the regex, a group or an alternative
+            while i < n:
+                ch = rx[i]
+                if ch == "[":
+                    j = _read_bracket(rx, i)
+                    out.append(rx[i:j])  # GNU also reads a backslash in brackets literally
+                    i = j
+                    at_start = False
+                    continue
+                if ch != "\\\\" or i + 1 >= n:
+                    if to_ere:
+                        if ch in "(){}|+?" or (ch == "*" and at_start) or (ch == "^" and not at_start):
+                            ch = "\\\\" + ch
+                        elif ch == "$" and not (i + 1 == n or rx.startswith("\\\\)", i + 1) or rx.startswith("\\\\|", i + 1)):
+                            ch = "\\\\$"
+                    out.append(ch)
+                    at_start = to_ere and ch == "^" and at_start
+                    i += 1
+                    continue
+                nxt = rx[i + 1]
+                if to_ere and nxt in BRE_TO_ERE:
+                    out.append(BRE_TO_ERE[nxt])
+                    at_start = nxt in "(|"
+                    i += 2
+                    continue
+                at_start = False
+                if nxt in CLASS_FOR:''')
+
+        # script translation: to_ere threads through
+        s = s.replace("translate_regex(rx, ere)", "translate_regex(rx, ere, to_ere)")
+        rep('''def translate_script(script: str, ere: bool) -> str:''', '''def translate_script(script: str, ere: bool, to_ere: bool = False) -> str:''')
+        rep('''            if GNU_ESCAPES.search(rest) or (not ere and GNU_BRE_OPERATORS.search(rest)):
+                        raise Untranslatable()''', '''            if to_ere or GNU_ESCAPES.search(rest) or (not ere and GNU_BRE_OPERATORS.search(rest)):
+                        raise Untranslatable()''')
+
+        # invocation: decide to_ere, add -E, translate every script
+        rep('''    edits, i, script_seen = [], 0, False
+            while i < len(args):''', '''    to_ere = not ere and any("\\\\|" in v for v in vals)
+            edits, i, script_seen = [], 0, False
+            if to_ere:
+                if "-f" in vals or "--file" in vals or not args:
+                    raise Untranslatable()
+                edits.append((args[0][0], args[0][0], "-E "))
+            while i < len(args):''')
+        s = s.replace("edits.extend(_script_edit(args[i + 1], ere))", "edits.extend(_script_edit(args[i + 1], ere, to_ere))")
+        s = s.replace("edits.extend(_script_edit(args[i], ere))", "edits.extend(_script_edit(args[i], ere, to_ere))")
+        rep('''def _script_edit(word, ere):
+            start, end, value, _ = word
+            if not (GNU_ESCAPES.search(value) or (not ere and GNU_BRE_OPERATORS.search(value))):
+                return []
+            return [(start, end, quote(translate_script(value, ere)))]''', '''def _script_edit(word, ere, to_ere):
+            start, end, value, _ = word
+            if not to_ere and not (GNU_ESCAPES.search(value) or (not ere and GNU_BRE_OPERATORS.search(value))):
+                return []
+            new = translate_script(value, ere, to_ere)
+            return [] if new == value else [(start, end, quote(new))]''')
+
+        # main: no permission decision; recheck = translation is a fixed point
+        rep('''    if rewritten and not any(problems(a) for a in sed_invocations(rewritten)):
+                tool_input = dict(payload.get("tool_input") or {})
+                tool_input["command"] = rewritten
+                print(json.dumps({
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "allow",
+                        "updatedInput": tool_input,''', '''    if rewritten and settled(rewritten):
+                # No permissionDecision: the rewritten command goes through the
+                # user's normal permission flow, exactly as the original would have.
+                print(json.dumps({
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "updatedInput": {"command": rewritten},''')
+        rep('''def main():''', '''def settled(command: str) -> bool:
+            """The rewrite needs no further rewriting: a second pass is a no-op."""
+            try:
+                return translate_command(command) is None
+            except Untranslatable:
+                return False
+
+
+        def main():''')
+        open(p, "w").write(s)
+        PYEOF
+        python3 -c "import ast;ast.parse(open('internal/cli/assets/prism_sed_guard.py').read())" && echo parsed
+      at: 2026-10-11T02:07:18.282638Z
+      classified: other
+    - cmd: |-
+        W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedeq; mkdir -p $W && cd $W && cat > build.py <<'EOF'
+        import json, importlib.util, re, random, glob, os
+        spec=importlib.util.spec_from_file_location("g","/Users/tapabratapal/Projects/provasign/prism/internal/cli/assets/prism_sed_guard.py")
+        G=importlib.util.module_from_spec(spec); spec.loader.exec_module(G)
+        rows=json.load(open("../sedwhy/rows.json"))["rows"]
+        def invs(cmd):
+            words=G.shell_words(cmd); seg=[]; out=[]
+            for w in words+[(0,0,";",True)]:
+                if not w[3]: seg.append(w[2]); continue
+                for j,n in enumerate(seg):
+                    if n=="sed" or n.endswith("/sed"): out.append(seg[j+1:]); break
+                seg=[]
+            return out
+        def core(args):
+            flags=[]; scripts=[]; i=0
+            while i<len(args):
+                a=args[i]
+                if a=="-i":
+                    nxt=args[i+1] if i+1<len(args) else ""
+                    if nxt=="" : i+=2; continue
+                    i+=1; continue
+                if a.startswith("-i") : i+=1; continue
+                if a in("-e","--expression"): scripts.append(args[i+1]); i+=2; continue
+                if a.startswith("-") and len(a)>1: flags.append(a); i+=1; continue
+                if not scripts: scripts.append(a)
+                i+=1
+            return flags, scripts
+        cases=[]; words=set()
+        for r in rows:
+            cmd=r["cmd"]
+            if "<<" in cmd: continue
+            try:
+                inv=list(G.sed_invocations(cmd))
+                if not any(G.problems(a) for a in inv): continue
+                new=G.translate_command(cmd)
+            except (ValueError, G.Untranslatable): continue
+            if not new: continue
+            a,b=invs(cmd),invs(new)
+            if len(a)!=len(b): cases.append({"bad":"count",cmd:cmd}); continue
+            for x,y in zip(a,b):
+                fx,sx=core(x); fy,sy=core(y)
+                if not sx: continue
+                if any("-f" in f for f in fx): continue
+                cases.append({"cmd":cmd[:200],"gnu":fx+sum([["-e",s] for s in sx],[]),"bsd":fy+sum([["-e",s] for s in sy],[])})
+                for s in sx: words.update(re.findall(r"[A-Za-z_][A-Za-z0-9_]{2,}", s))
+        # sample: real code + synthetic lines around every word
+        lines=[]
+        for f in sorted(glob.glob(os.path.expanduser("~/gvg-corpus/*/**/*.*"),recursive=True))[:4000]:
+            if f.endswith((".py",".go",".java",".ts",".md")) and len(lines)<6000:
+                try: lines+=open(f,errors="ignore").read().splitlines()[:150]
+                except Exception: pass
+        ws=sorted(words)
+        for w in ws:
+            lines+= [w, f" {w} ", f"x.{w}(a, b)", f"{w}_x {w}x x{w} ({w}) [{w}]", f"\t{w}\t= {w}.{w}()", f"// {w} | {w}+ {w}? {w}{{1}}", f"{w}: {w}|{w}"]
+        random.Random(1).shuffle(ws)
+        open("sample.txt","w").write("\n".join(lines)+"\n")
+        json.dump(cases,open("cases.json","w"))
+        print(len(cases),"cases",len(lines),"lines")
+        EOF
+        python3 build.py && cat > run.py <<'EOF'
+        import json, subprocess, sys, hashlib
+        [REDACTED:env-secret] cases=json.load(open("cases.json")); out=[]
+        for c in cases:
+            if key not in c: out.append(None); continue
+            r=subprocess.run(["sed",*c[key]],stdin=open("sample.txt","rb"),capture_output=True)
+            out.append([r.returncode, hashlib.sha1(r.stdout).hexdigest(), r.stderr.decode()[:150], len(r.stdout)])
+        json.dump(out,open(f"out_{key}.json","w"))
+        EOF
+        python3 run.py bsd && docker run --rm -v $W:/w -w /w python:3.12 python3 run.py gnu && python3 - <<'EOF'
+        import json
+        c=json.load(open("cases.json")); a=json.load(open("out_gnu.json")); b=json.load(open("out_bsd.json"))
+        same=diff=0
+        for x,g,bb in zip(c,a,b):
+            if g is None: continue
+            if g[0]==bb[0] and g[1]==bb[1]: same+=1
+            else:
+                diff+=1
+                if diff<=8: print("DIFF", g[0],bb[0], g[2][:80], "|", bb[2][:80]); print("  GNU:",x["gnu"]); print("  BSD:",x["bsd"])
+        print("same",same,"diff",diff)
+        EOF
+      at: 2026-10-11T02:07:57.087073Z
+      classified: other
+    - cmd: |-
+        python3 - <<'PYEOF'
+        p="internal/cli/sedguard_hooks_test.go"
+        s=open(p).read()
+        old_dec = s[s.index("func (h *hookEnv) sedDecision"):s.index("// GNU escapes silently")]
+        new_dec = '''// sedHook runs the guard and returns (rewritten command, deny reason, the
+        // note to the agent); all empty means the command was let through as is.
+        func (h *hookEnv) sedHook(command string) (rewritten, denied, note string) {
+        	h.t.Helper()
+        	out := h.run("prism_sed_guard.py", map[string]any{"tool_name": "Bash", "tool_input": map[string]any{"command": command, "description": "d"}})
+        	if out == "" {
+        		return "", "", ""
+        	}
+        	var doc struct {
+        		HookSpecificOutput struct {
+        			PermissionDecision       string            `json:"permissionDecision"`
+        			PermissionDecisionReason string            `json:"permissionDecisionReason"`
+        			UpdatedInput             map[string]string `json:"updatedInput"`
+        			AdditionalContext        string            `json:"additionalContext"`
+        		} `json:"hookSpecificOutput"`
+        	}
+        	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+        		h.t.Fatalf("sed guard output: %q", out)
+        	}
+        	o := doc.HookSpecificOutput
+        	switch {
+        	case o.PermissionDecision == "deny":
+        		return "", o.PermissionDecisionReason, ""
+        	case o.PermissionDecision == "" && o.UpdatedInput["command"] != "" && len(o.UpdatedInput) == 1:
+        		return o.UpdatedInput["command"], "", o.AdditionalContext
+        	}
+        	h.t.Fatalf("unexpected sed guard output (a rewrite must not decide permission): %q", out)
+        	return "", "", ""
+        }
+
+        '''
+        s = s.replace(old_dec, new_dec)
+        old_deny = s[s.index("// GNU escapes silently"):s.index("func TestSedGuard_AllowsWorkingCommands")]
+        new_deny = r'''// GNU escapes silently match nothing in BSD sed: the 2026-10-10 benchmark
+        // lost a task to `sed -i '' 's/\bget_command\b/.../g'` changing no file.
+        // Where the BSD spelling is exact, the guard runs that instead of denying,
+        // so the agent does not spend a call rewriting the command itself.
+        func TestSedGuard_RewritesToBSDSpelling(t *testing.T) {
+        	bsdSed(t)
+        	h := newHookEnv(t)
+        	for cmd, want := range map[string]string{
+        		`sed -i '' 's/\bget_command\b/lookup_command/g' src/click/core.py`:                                   `sed -i '' 's/[[:<:]]get_command[[:>:]]/lookup_command/g' src/click/core.py`,
+        		`grep -rl get_headers src | xargs sed -i '' -E 's/\bget_headers\(/response_headers(/g'`:             `grep -rl get_headers src | xargs sed -i '' -E 's/[[:<:]]get_headers\(/response_headers(/g'`,
+        		`find . -name '*.go' -exec sed -i '' 's/\<Old\>/New/g' {} \;`:                                        `find . -name '*.go' -exec sed -i '' 's/[[:<:]]Old[[:>:]]/New/g' {} \;`,
+        		`sed 's/fo\+/x/' a.txt`:                                                                               `sed 's/fo\{1,\}/x/' a.txt`,
+        		`sed -i 's/a/b/' f.go`:                                                                                `sed -i '' 's/a/b/' f.go`,
+        		`sed -i -e 's/a/b/' f.go`:                                                                             `sed -i '' -e 's/a/b/' f.go`,
+        		`sed -i '' 's/\w\+_id\s*=/key =/' m.py && go test ./...`:                                              `sed -i '' 's/[[:alnum:]_]\{1,\}_id[[:space:]]*=/key =/' m.py && go test ./...`,
+        		`sed -i '' 's/\(resp\|response\)\.get_data(x)/\1.read_body(x)/' t.py`:                                `sed -i '' -E 's/(resp|response)\.get_data\(x\)/\1.read_body(x)/' t.py`,
+        		"sed -i '' \\\n  's/\\bfoo\\b/bar/g' a.py":                                                             "sed -i '' \\\n  's/[[:<:]]foo[[:>:]]/bar/g' a.py",
+        	} {
+        		got, denied, note := h.sedHook(cmd)
+        		if got != want {
+        			t.Errorf("%s\n  got  %q (denied %q)\n  want %q", cmd, got, denied, want)
+        		}
+        		if got != "" && !strings.Contains(note, got) {
+        			t.Errorf("agent not told what ran: %q", note)
+        		}
+        	}
+        }
+
+        // No exact BSD spelling: deny and explain, as before.
+        func TestSedGuard_DeniesWhatItCannotTranslate(t *testing.T) {
+        	bsdSed(t)
+        	h := newHookEnv(t)
+        	for _, cmd := range []string{
+        		`sed -i '' 's/foo\bbar/x/' a.py`,        // \b between two word characters
+        		`sed -i '' 's/\Bfoo/x/' a.py`,           // \B
+        		`sed -i '' 's/\bMatch\b\(.*\)/&/' c.go`, // \b before a group: start or end?
+        		"sed -i '' \"s/\\bx/y/\" `ls`",          // backticks
+        	} {
+        		if got, denied, _ := h.sedHook(cmd); !strings.Contains(denied, "BSD") {
+        			t.Errorf("not denied: %s (rewrote to %q)", cmd, got)
+        		}
+        	}
+        }
+
+        '''
+        s = s.replace(old_deny, new_deny)
+        s = s.replace('''		if reason := h.sedDecision(cmd); reason != "" {
+        			t.Errorf("denied a working command: %s (%s)", cmd, reason)
+        		}''', '''		if got, denied, _ := h.sedHook(cmd); got != "" || denied != "" {
+        			t.Errorf("touched a working command: %s (rewrote %q, denied %q)", cmd, got, denied)
+        		}''')
+        open(p,"w").write(s)
+        PYEOF
+        gofmt -l internal/cli; go test ./internal/cli -run SedGuard -count=1 2>&1 | tail -30
+      at: 2026-10-11T02:08:23.61901Z
+      classified: test
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/cli/assets/prism_sed_guard.py"; s=open(p).read()
+        old='lexer = shlex.shlex(command.replace("\\n", " ; "),'
+        assert old in s
+        s=s.replace(old,'lexer = shlex.shlex(command.replace("\\\\\\n", " ").replace("\\n", " ; "),')
+        open(p,"w").write(s)
+        p="internal/cli/sedguard_hooks_test.go"; s=open(p).read()
+        s=s.replace("`sed -i '' -E 's/(resp|response)","`sed -E -i '' 's/(resp|response)")
+        open(p,"w").write(s)
+        EOF
+        grep -n 'shlex.shlex' internal/cli/assets/prism_sed_guard.py; grep -rn 'silently misread' internal/cli/*.go
+      at: 2026-10-11T02:08:30.313588Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/cli/readguard.go"; s=open(p).read()
+        s=s.replace('fmt.Println("  denies a sed command that BSD (macOS) sed would silently misread, and says why")',
+         'fmt.Println("  runs a GNU-style sed command in its BSD (macOS) spelling, or denies it with the reason when there is none")')
+        open(p,"w").write(s)
+        p="internal/cli/assets/prism_sed_guard.py"; s=open(p).read()
+        old=s[:s.index('import json')]
+        new='''#!/usr/bin/env python3
+        """PreToolUse hook on Bash: run a GNU-style sed command in its BSD (macOS)
+        spelling, or deny it with the reason when there is no exact one.
+
+        GNU regex escapes (\\\\b \\\\< \\\\> \\\\w \\\\W \\\\s \\\\S, and in basic mode \\\\+ \\\\? \\\\|)
+        are read by BSD sed as literal characters, so a substitution using them
+        matches nothing and exits 0 without changing any file. Agents then run the
+        tests on unchanged code, see them pass, and report the edit done: on the
+        2026-10-10 benchmark that silent no-op cost the only lost task and several
+        wasted turns, in both the native and the prism arm. BSD `-i` also takes the
+        next argument as a backup suffix, so `-i -e ...` edits the file and leaves a
+        stray `<file>-e` copy, and GNU-style `-i 's/...'` fails.
+
+        Denying cost the agent one call to rewrite the command, so where the BSD
+        spelling is exact (\\\\w -> [[:alnum:]_], \\\\bfoo\\\\b -> [[:<:]]foo[[:>:]], \\\\+ ->
+        \\\\{1,\\\\}, -i -> -i '', basic \\\\| -> the -E form) the hook rewrites the sed
+        arguments in place, leaves the rest of the command byte-for-byte, and tells
+        the agent what ran. It sets no permission decision, so the rewritten command
+        goes through the user's normal permission flow. Checked 2026-10-10 against
+        579 benchmark sed scripts: GNU sed on the original and BSD sed on the
+        rewrite gave byte-identical output on a 10k-line sample.
+
+        Never blocks when in doubt:
+          - does nothing unless the command mentions sed and the installed sed is BSD
+            (`sed --version` fails; GNU sed answers it);
+          - unparseable commands (heredocs, unbalanced quotes) are allowed;
+          - only the sed script arguments are inspected, not file names or other
+            commands in the pipeline.
+        Installed and removed with the read guard (`prism init --read-guard` /
+        `--no-read-guard`).
+        """
+        '''
+        s=new+s[len(old):]
+        open(p,"w").write(s)
+        EOF
+        head -30 internal/cli/assets/prism_sed_guard.py | sed -n 5,7p; gofmt -w internal/cli/sedguard_hooks_test.go; go test ./internal/cli -run 'SedGuard|ReadGuard' -count=1 2>&1 | grep -v '^  \|^installed\|^removed' | tail -15
+      at: 2026-10-11T02:08:47.219984Z
+      classified: test
+    - cmd: |-
+        go test ./... 2>&1 | grep -v '^ok\|no test files' | head; grep -rln 'sed guard\|sed_guard\|BSD sed' --include='*.md' . 2>/dev/null | head; W=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/sedeq; cd $W && python3 build.py && python3 run.py bsd && docker run --rm -v $W:/w -w /w python:3.12 python3 run.py gnu && python3 - <<'EOF'
+        import json
+        c=json.load(open("cases.json")); a=json.load(open("out_gnu.json")); b=json.load(open("out_bsd.json"))
+        same=sum(1 for g,bb in zip(a,b) if g and g[:2]==bb[:2]); ere=sum(1 for x,g,bb in zip(c,a,b) if g and "-E" in x["bsd"] and "-E" not in x["gnu"] and g[:2]==bb[:2])
+        print("same",same,"of",len(c),"| -E conversions identical:",ere)
+        EOF
+      at: 2026-10-11T02:09:08.160324Z
+      classified: test
+    - cmd: |-
+        git add internal/cli/assets/prism_sed_guard.py internal/cli/sedguard_hooks_test.go internal/cli/readguard.go && git commit -q -m "sed guard: run GNU-style sed in its BSD spelling instead of denying
+
+        Denying cost the agent a call to rewrite the command. Where the BSD spelling
+        is exact (\\w, \\s, \\b by side, \\< \\>, BRE \\+ \\?, -i without suffix, basic \\|
+        via -E) the hook rewrites the sed arguments in place through updatedInput,
+        tells the agent what ran, and sets no permission decision so the user's
+        normal permission flow applies. Untranslatable cases are denied as before.
+
+        Checked against 579 benchmark sed scripts: GNU sed (Docker) on the original
+        and BSD sed on the rewrite give byte-identical output on a 10k-line sample.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -3
+      at: 2026-10-11T02:09:15.809529Z
+      classified: other
+    - cmd: git revert --no-edit 4a828ac2 >/dev/null && git log --oneline -2 && go test ./internal/cli -count=1 2>&1 | tail -1 && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad && go build -o $S/prism-conv ./cmd/prism && d=$S/smoke && rm -rf "${d:?}" && mkdir -p $d && cd $d && git init -q && printf 'foo food\nxfoo foo.bar\n' > a.txt && git add . && git -c user.email=t@t -c user.name=t commit -qm init && $S/prism-conv init --read-guard . >/dev/null && grep -c sed_guard .claude/settings.json
+      at: 2026-10-11T02:11:21.285195Z
+      classified: test
+    - cmd: cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/smoke && cat a.txt; ls -t ~/.claude/projects/*smoke*/*.jsonl 2>/dev/null | head -2
+      at: 2026-10-11T02:12:26.947554Z
+      classified: other
+    - cmd: ls -d ~/ci-corpus* /Users/tapabratapal/Projects/provasign/research/ci-corpus* 2>/dev/null; grep -o 'corpus-root [^ ]*' /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/*.output 2>/dev/null | head -3; grep -rho 'corpus-root [^ "]*' ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae.jsonl | sort | uniq -c | tail -3
+      at: 2026-10-11T02:13:49.863829Z
+      classified: other
+    - cmd: C=~/.cache/prism-research/ci-corpus; ls $C | head; for d in $C/*/; do n=$(find "$d" -maxdepth 2 -type f | head -3 | wc -l); [ "$n" -eq 0 ] && echo "EMPTY $d"; done; echo checked
+      at: 2026-10-11T02:13:53.529015Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/.cache/prism-research/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/prism-conv > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/ci-conv.log 2>&1; echo "ci rc=$?"; tail -3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/ci-conv.log
+      at: 2026-10-11T02:14:01.632899Z
+      classified: other
+notes:
+    - text: continuation of session 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae — events captured after its evidence was finalized
+      at: 2026-10-10T23:25:13.176411Z
+redactions: 2
