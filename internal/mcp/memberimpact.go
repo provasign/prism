@@ -199,6 +199,76 @@ func memberRelaySites(r *grove.ChangeImpactResult, refs []map[string]any) []stri
 // FormatMemberImpactText renders a data-member change_impact result (see
 // memberImpactOutput) for MCP text delivery and the CLI. ok=false when out
 // is not a member result.
+// memberAccessListCap is the most access sites listed one per line. Above
+// it, sites are grouped one line per file. hono Hono.request has 1105 confirmed
+// accesses; one per line came to 77k characters, past Claude Code's tool
+// result limit, so the answer went to a file the agent never opened and it
+// grepped instead (2026-10-11 deephard benchmark).
+const memberAccessListCap = 100
+
+// groupedAccessBudget bounds the grouped form; past it only per-file counts
+// are listed.
+const groupedAccessBudget = 16000
+
+func groupedAccessLines(query any, items []any) string {
+	type fileSites struct {
+		lines []string
+		tests int
+		kinds map[string]int
+	}
+	var order []string
+	byFile := map[string]*fileSites{}
+	for _, it := range items {
+		m, ok := it.(map[string]any)
+		if !ok {
+			continue
+		}
+		f := fmt.Sprint(m["filePath"])
+		fs := byFile[f]
+		if fs == nil {
+			fs = &fileSites{kinds: map[string]int{}}
+			byFile[f] = fs
+			order = append(order, f)
+		}
+		fs.lines = append(fs.lines, fmt.Sprint(m["line"]))
+		if t, _ := m["isTest"].(bool); t {
+			fs.tests++
+		}
+		if k, _ := m["access"].(string); k != "" {
+			fs.kinds[k]++
+		}
+	}
+	tag := func(fs *fileSites) string {
+		var parts []string
+		for k, n := range fs.kinds {
+			parts = append(parts, fmt.Sprintf("%s %d", k, n))
+		}
+		sort.Strings(parts)
+		t := strings.Join(parts, ", ")
+		if fs.tests == len(fs.lines) {
+			t += ", test"
+		}
+		return t
+	}
+	var g strings.Builder
+	fmt.Fprintf(&g, "  // %d sites in %d files, grouped per file (path (count) [kinds]: lines)\n", len(items), len(order))
+	for _, f := range order {
+		fs := byFile[f]
+		fmt.Fprintf(&g, "  %s (%d) [%s]: %s\n", f, len(fs.lines), tag(fs), strings.Join(fs.lines, " "))
+	}
+	if g.Len() <= groupedAccessBudget {
+		return g.String()
+	}
+	var c strings.Builder
+	fmt.Fprintf(&c, "  // %d sites in %d files; per-file counts only (the line list is too large for one answer)\n", len(items), len(order))
+	for _, f := range order {
+		fs := byFile[f]
+		fmt.Fprintf(&c, "  %s (%d) [%s]\n", f, len(fs.lines), tag(fs))
+	}
+	fmt.Fprintf(&c, "  // lines for one file: prism op=search args={\"terms\":[\"%v\"],\"scope\":\"text\",\"paths\":[\"<file>\"]}\n", query)
+	return c.String()
+}
+
 func FormatMemberImpactText(out map[string]any) (string, bool) {
 	kind, _ := out["memberKind"].(string)
 	if kind == "" {
@@ -243,6 +313,10 @@ func FormatMemberImpactText(out map[string]any) (string, bool) {
 	}
 	writeAccesses := func(label string, items []any, reasonKey string) {
 		fmt.Fprintf(&b, "%s (%d):\n", label, len(items))
+		if len(items) > memberAccessListCap {
+			b.WriteString(groupedAccessLines(out["query"], items))
+			return
+		}
 		for _, it := range items {
 			m, ok := it.(map[string]any)
 			if !ok {
