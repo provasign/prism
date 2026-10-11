@@ -40,6 +40,43 @@ GNU_BRE_OPERATORS = re.compile(r"\\[+?|]")
 SEPARATORS = {";", "&&", "||", "|", "&", "\n", "(", ")"}
 
 
+HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+
+
+def mask_heredocs(command: str) -> str:
+    """Blank each heredoc operator and body with spaces (newlines kept), so
+    the shell text around it can be parsed and rewritten at the same offsets.
+    Agents often chain `sed -i ...` with a `python3 - <<'EOF'` script in one
+    command; skipping every such command left its sed unchecked (2026-10-11:
+    `sed -i -E` before a heredoc wrote a stray `<file>-E` copy)."""
+    out = list(command)
+    pos = 0
+    while True:
+        m = HEREDOC.search(command, pos)
+        if not m:
+            break
+        for i in range(m.start(), m.end()):
+            out[i] = " "
+        body_start = command.find("\n", m.end())
+        if body_start < 0:
+            break
+        delim = m.group(2)
+        i = body_start + 1
+        end = len(command)
+        while i < len(command):
+            j = command.find("\n", i)
+            line_end = j if j >= 0 else len(command)
+            if command[i:line_end].strip() == delim:
+                end = line_end
+                break
+            i = line_end + 1
+        for k in range(body_start + 1, end):
+            if out[k] != "\n":
+                out[k] = " "
+        pos = end
+    return "".join(out)
+
+
 def is_bsd_sed() -> bool:
     try:
         r = subprocess.run(["sed", "--version"], capture_output=True, text=True, timeout=5)
@@ -367,10 +404,11 @@ def quote(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
 
-def translate_command(command: str):
+def translate_command(command: str, original: str | None = None):
     """Return the command with each sed rewritten to BSD spelling, or None if
     nothing needed rewriting. Raises Untranslatable when a needed rewrite is
-    not exact."""
+    not exact. `command` is the heredoc-masked text that is parsed; edits
+    are applied to `original` (same offsets) so heredoc bodies stay intact."""
     words = shell_words(command)
     edits = []  # (start, end, replacement)
     seg = []
@@ -386,9 +424,10 @@ def translate_command(command: str):
         seg = []
     if not edits:
         return None
+    out = original if original is not None else command
     for start, end, rep in sorted(edits, reverse=True):
-        command = command[:start] + rep + command[end:]
-    return command
+        out = out[:start] + rep + out[end:]
+    return out
 
 
 def _translate_invocation(args):
@@ -441,7 +480,7 @@ def _script_edit(word, ere, to_ere):
 def settled(command: str) -> bool:
     """The rewrite needs no further rewriting: a second pass is a no-op."""
     try:
-        return translate_command(command) is None
+        return translate_command(mask_heredocs(command)) is None
     except Untranslatable:
         return False
 
@@ -449,7 +488,11 @@ def settled(command: str) -> bool:
 def main():
     payload = json.load(sys.stdin)
     command = (payload.get("tool_input") or {}).get("command") or ""
-    if "sed" not in command or "<<" in command:
+    if "sed" not in command:
+        return
+    original = command
+    command = mask_heredocs(command)
+    if "sed" not in command:
         return
     try:
         invocations = list(sed_invocations(command))
@@ -465,7 +508,7 @@ def main():
     if not found:
         return
     try:
-        rewritten = translate_command(command)
+        rewritten = translate_command(command, original)
     except Untranslatable:
         rewritten = None
     if rewritten and settled(rewritten):
