@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 )
+
 func TestMemberImpactGroupsLargeAccessLists(t *testing.T) {
 	var acc []any
 	for i := 0; i < 250; i++ {
