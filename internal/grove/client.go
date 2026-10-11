@@ -336,6 +336,8 @@ func (c *Client) QuickStatus(ctx context.Context) (*StatusResult, error) {
 		FilesIndexed: st.FilesIndexed,
 		SymbolCount:  st.SymbolCount,
 		EdgeCount:    st.EdgeCount,
+		Native:       append([]string(nil), st.Native...),
+		Readiness:    Readiness(c.root, st.Native),
 	}, nil
 }
 
