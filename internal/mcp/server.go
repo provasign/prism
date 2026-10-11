@@ -23,7 +23,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/grove"
@@ -143,6 +142,9 @@ const compactServerInstructions = "Use Prism for each repository-discovery step;
 	"at the edit site. Do not re-read unchanged source a Prism result already included."
 
 const enclosingBodiesHeader = "// Exact source for bounded enclosing hits selected by evidence rank; other matches remain locators, and inventory completeness is reported above:"
+
+// compactPickedLabel heads the small-result pick's body section.
+const compactPickedLabel = "this small, complete locator result"
 
 const compactSearchLocatorGuidance = "// locator result — use the prism tool with op=lookup for known symbol bodies, op=read for a known file/range, or op=query for related implementations, callers, and tests"
 
@@ -738,76 +740,30 @@ func legacyMCPTool(name string) bool {
 	}
 }
 
-func compactSearchCanIncludeBodies(args map[string]any) bool {
-	if _, explicit := args["context"]; explicit {
-		return false
-	}
-	return !boolArg(args, "files_only") && !boolArg(args, "rollup_only") &&
-		!boolArg(args, "exhaustive") &&
-		len(stringsArg(args, "query")) > 0
-}
-
 // RenderCompactSearchText is the canonical compact search renderer shared by
-// MCP and CLI. The input args use the normalized legacy prism_search fields.
-func (h *Handler) RenderCompactSearchText(ctx context.Context, out map[string]any, args map[string]any) (string, bool) {
+// MCP and CLI. Bodies were attached by the search itself (attachSearchBodies);
+// this only renders. The ctx and args parameters are kept for the callers.
+func (h *Handler) RenderCompactSearchText(_ context.Context, out map[string]any, _ map[string]any) (string, bool) {
 	text, rendered := renderSearchAsText(out)
 	if !rendered {
 		return "", false
 	}
 	text = rewriteCompactGuidance(text)
-	_, explicitBodies := args["include_bodies"]
-	if compactSearchCanIncludeBodies(args) && !explicitBodies {
-		bodyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-		bodies, delivered := h.compactSearchBodiesPicked(bodyCtx, out)
-		budget := searchBudgetFor(args, searchScope{paths: stringsArg(args, "path"), glob: stringsArg(args, "glob"),
-			rollupOnly: boolArg(args, "rollup_only")}, stringsArg(args, "query"), boolArg(args, "regex"))
-		if budget.on && !budgetPickFits(delivered, budget.testsTargeted) {
-			// The default budget keeps its one bounded body (inlineBodies);
-			// a picked body that is a second one, a test, or oversized is
-			// not added on top of it.
-			bodies = ""
-		}
-		if bodies != "" {
-			withoutInline := make(map[string]any, len(out))
-			for key, value := range out {
-				if key != "inlineBodies" {
-					withoutInline[key] = value
-				}
-			}
-			text, rendered = renderSearchAsText(withoutInline)
-			if !rendered {
-				return "", false
-			}
-			text = rewriteCompactGuidance(text)
-			if _, batched := out["results"]; !batched && !strings.Contains(bodies, "other matches remain locators") {
-				text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
-			}
-			text += bodies
-			if budget.on {
-				// The picked body is the default budget's one body.
-			} else if terms := stringsArg(args, "query"); len(terms) == 1 {
-				text += h.compactSearchBodiesEnclosingExcept(bodyCtx, withSearchQuery(out, terms[0]), delivered)
-			} else {
-				text += h.compactSearchBodiesEnclosingExcept(bodyCtx, out, delivered)
-			}
+	if bodies, _ := out["inlineBodies"].(string); bodies != "" {
+		// A flat result whose body IS the small complete result needs no
+		// "locator result" pointer: the source is right there.
+		if _, batched := out["results"]; !batched && strings.HasPrefix(bodies, "\n// Exact source for "+compactPickedLabel) {
+			text = strings.Replace(text, compactSearchLocatorGuidance, "", 1)
 		}
 	}
 	return h.once.apply(text), true
 }
 
-// compactSearchBodies folds the common search-then-Read pair into one MCP
-// turn when a complete, small literal result lands inside a bounded function
-// or method. Batched searches may also inline the first term's unique exact
-// symbol; other broad, partial, and explicitly shaped hits stay locators.
-func (h *Handler) compactSearchBodies(ctx context.Context, out map[string]any) string {
-	body, _ := h.compactSearchBodiesPicked(ctx, out)
-	return body
-}
-
-// compactSearchBodiesPicked also reports the symbols whose source it delivered
-// so the default enclosing pass can serve the remaining hits without repeating
-// them.
+// compactSearchBodiesPicked is the small-result pick: a complete, small
+// literal result inside a bounded function or method, a batched search's
+// unique exact first symbol, or a lone symbol match. It also reports the
+// symbols whose source it delivered so the enclosing pass can serve the
+// remaining hits without repeating them.
 func (h *Handler) compactSearchBodiesPicked(ctx context.Context, out map[string]any) (string, []grove.SymbolRecord) {
 	if h.Grove == nil {
 		return "", nil
@@ -1295,7 +1251,7 @@ func (h *Handler) renderCompactSearchBodies(picked []ranking.BudgetedSymbol, not
 	for _, commit := range commits {
 		commit()
 	}
-	label := "this small, complete locator result"
+	label := compactPickedLabel
 	if len(note) > 0 {
 		label = note[0]
 	}

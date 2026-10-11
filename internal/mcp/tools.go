@@ -410,7 +410,7 @@ func CompactToolSchemas() []map[string]any {
 		"files_only":      prop("search", "Paths without lines.", map[string]any{"type": "boolean"}),
 		"max_results":     prop("search", "Search-only result cap (max 2000).", map[string]any{"type": "integer", "minimum": 1, "maximum": exhaustiveSymbolCap}),
 		"include_bodies":  prop("search", "Default: one bounded body or window for the top non-test match; false returns locators only; true returns up to two per term.", map[string]any{"type": "boolean", "default": true}),
-		"context":         prop("search", "Lines around each match (grep -C N, max 15). Explicit context disables enclosing-body delivery.", map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap}),
+		"context":         prop("search", "Lines around each match (grep -C N, max 15): windows only, no enclosing bodies. Above 15: the enclosing functions are delivered instead.", map[string]any{"type": "integer", "minimum": 0, "maximum": searchContextCap}),
 		"rollup_only":     prop("search", "Return the compact hit rollup without source excerpts.", map[string]any{"type": "boolean"}),
 		"removed_symbols": prop("verify", "Optional exact-identifier text check after removal; includes comments and docs.", map[string]any{"type": "array", "items": map[string]any{"type": "string"}}),
 		"base":            prop("verify", "Git ref for the full diff check (default HEAD).", map[string]any{"type": "string"}),
@@ -1652,10 +1652,6 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			return nil, errors.New("task must be a string label; query supplies the search terms")
 		}
 	}
-	includeBodies := true
-	if value, present := args["include_bodies"]; present {
-		includeBodies = value == true
-	}
 	queries := stringsArg(args, "query")
 	if len(queries) == 0 {
 		// The schema declares query required; without this an empty string
@@ -1686,43 +1682,16 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		return nil, fmt.Errorf("invalid scope %q; use text, symbols, or both", scope)
 	}
 	regex := boolArg(args, "regex")
-	reqContext := intArg(args, "context", -1)
-	if reqContext < 0 {
-		// CANDIDATE (proposal §6.2, branch cand-search-context): when the
-		// agent did not choose a context, deliver a small one. Measured on
-		// 13 prism cells (read_after_locate, 2026-09-06): the host Reads
-		// that dominate cost are of files a search NAMED but never sent —
-		// 2 of 26 searches asked for context. Off for files_only /
-		// rollup_only (locations are the point) and for exhaustive (the
-		// bounded inventory already carries the shape).
-		reqContext = 0
-		if !boolArg(args, "files_only") && !boolArg(args, "rollup_only") && !boolArg(args, "exhaustive") {
-			reqContext = defaultSearchContext
-		}
+	// One decision for the whole answer: context lines, bodies, fit
+	// (searchshape.go). A raised limit keeps the exact-count pass (adaptive):
+	// click get_command with max_results=500 (2026-09-28) got a 5-per-file
+	// sample with no completeness line and the agent grepped for the list.
+	shape := searchShapeFor(args, limit)
+	if note := shape.clampNote(); note != "" {
+		termNote = appendNote(termNote, note)
 	}
-	if reqContext > searchContextCap {
-		termNote = appendNote(termNote, fmt.Sprintf(
-			"context clamped to %d (asked for %d) — for more than a function's worth, use prism_read on the file",
-			searchContextCap, reqContext))
-		reqContext = searchContextCap
-	}
-	sc := searchScope{
-		paths:      stringsArg(args, "path"),
-		glob:       stringsArg(args, "glob"),
-		filesOnly:  boolArg(args, "files_only"),
-		exhaustive: boolArg(args, "exhaustive"),
-		context:    reqContext,
-		rollupOnly: boolArg(args, "rollup_only"),
-		// A raised limit keeps the exact-count pass. It used to switch it
-		// off: click get_command with max_results=500 (Sonnet 5.5,
-		// 2026-09-28) got a 5-per-file context sample of 29 lines with no
-		// completeness line, and the agent grepped for the full list.
-		adaptive:     limit >= defaultSearchLimit,
-		contextAsked: intArg(args, "context", -1) >= 0,
-	}
-	budget := searchBudgetFor(args, sc, queries, regex)
-	sc.budget = budget.on
-	budget.sc = sc
+	sc := shape.scope(args)
+	budget := shape.budgetFor(sc, queries, regex)
 	if len(queries) > 1 && len(sc.paths) == 0 && len(sc.glob) == 0 {
 		filtered := queries[:0]
 		var skipped []string
@@ -1802,17 +1771,8 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 		if allEmpty && !searchResultPartial(out) && !filterMiss {
 			h.attachEmptySearchGuidance(ctx, out, queries, sc)
 		}
-		if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-			if bodies := h.searchBodies(ctx, out, budget); bodies != "" {
-				out["inlineBodies"] = bodies
-			}
-		}
-		if budget.on {
-			h.applySearchBudget(ctx, out, queries, budget)
-		} else if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-			boundSearchPresentation(out)
-			boundSymbolPresentation(out)
-		}
+		h.attachSearchBodies(ctx, out, shape, budget)
+		h.fitSearchAnswer(ctx, out, queries, shape, budget)
 		if !regex && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
 			h.appendBatchedSearchFallback(ctx, out, results, scope, sc, limit)
 		}
@@ -1870,19 +1830,10 @@ func (h *Handler) toolSearch(ctx context.Context, args map[string]any) (any, err
 			}
 		}
 	}
-	if includeBodies && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-		// The flat single-term shape carries no "query"; body selection
-		// needs the term to recognise the definition of a named symbol.
-		if bodies := h.searchBodies(ctx, withSearchQuery(out, queries[0]), budget); bodies != "" {
-			out["inlineBodies"] = bodies
-		}
-	}
-	if budget.on {
-		h.applySearchBudget(ctx, out, queries, budget)
-	} else if sc.adaptive && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly {
-		boundSearchPresentation(out)
-		boundSymbolPresentation(out)
-	}
+	// The flat single-term shape carries no "query"; body selection needs
+	// the term to recognise the definition of a named symbol.
+	h.attachSearchBodies(ctx, out, shape, budget, queries[0])
+	h.fitSearchAnswer(ctx, out, queries, shape, budget)
 	return out, nil
 }
 
