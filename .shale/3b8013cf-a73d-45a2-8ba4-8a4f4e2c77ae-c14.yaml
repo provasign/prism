@@ -1,0 +1,907 @@
+shale_version: "0"
+id: 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae-c14
+created_at: 2026-10-11T18:11:01.617835Z
+finalized_at: 2026-10-11T23:54:47.725449Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/search-context-no-bodies
+privacy: redacted
+commands:
+    - cmd: 'git checkout -q main && git pull -q && git log --oneline -1 && M=$(git log -1 --format=%H) && git tag -a v0.87.7 -m "v0.87.7: change-impact says complete again after non-source edits (grove v0.63.4); status prints native verdict" $M && git push -q origin v0.87.7 2>&1 | tail -1; echo tagged'
+      at: 2026-10-11T18:11:01.617835Z
+      classified: other
+    - cmd: 'for i in $(seq 1 50); do s=$(gh run list --workflow Release --limit 1 --json status,conclusion,headBranch -q ''.[0].headBranch+" "+.[0].status+" "+(.[0].conclusion//"")''); case "$s" in "v0.87.7 completed"*) break;; esac; sleep 10; done; echo "$s"; gh workflow run 330199422 -R provasign/homebrew-shale && sleep 60 && for i in $(seq 1 20); do s2=$(gh run list -R provasign/homebrew-shale --limit 1 --json status,conclusion -q ''.[0].status+" "+(.[0].conclusion//"")''); case "$s2" in completed*) break;; esac; sleep 10; done; echo tap: $s2; brew update -q >/dev/null 2>&1; brew upgrade provasign/shale/prism 2>&1 | tail -1; prism --version'
+      at: 2026-10-11T18:14:31.390931Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n '^def ' runners/run_e2e.py | head -60
+      at: 2026-10-11T18:14:34.363106Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 1025,1070p runners/run_e2e.py
+      at: 2026-10-11T18:14:36.40025Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad && E2E_OUT=$S/probe-out python3 - <<EOF 2>&1 | tail -25
+        import sys, json, glob, subprocess
+        sys.path.insert(0,'runners'); sys.path.insert(0,'.')
+        import run_e2e
+        for tid in ['deephard__gson__TypeAdapter_writeValue_swap','deephard__chi__URLParam_comma_ok','deephard__hono__request_options_object']:
+            task=json.load(open(f'tasks/e2e/{tid}.json'))
+            repo, wt = run_e2e._worktree(task)
+            try:
+                run_e2e._prepare_build_env(wt, task)
+                run_e2e._index_graph(wt, 'prism_init', task)
+                st=json.loads(subprocess.run(['prism','status',str(wt)],capture_output=True,text=True).stdout)
+                print(tid, '| verdict lines:', len(st.get('native') or []), '| skipped-only:', all('skipped' in l for l in st.get('native') or ['skipped']))
+                name={'gson':'TypeAdapter.write','chi':'URLParam','hono':'HonoRequest'}[tid.split('__')[1]]
+                out=subprocess.run(['python3','$S/mcpdrive.py',str(wt),name],capture_output=True,text=True,timeout=600).stdout
+                print('   ', ' | '.join(l for l in out.splitlines()[:5] if l.startswith(('complet','safe'))))
+            finally:
+                run_e2e._remove_worktree(wt)
+        EOF
+      at: 2026-10-11T18:15:06.837485Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad && E2E_OUT=$S/probe-out python3 - <<EOF 2>&1 | tail -20
+        import sys, json, subprocess
+        sys.path.insert(0,'runners'); sys.path.insert(0,'.')
+        import run_e2e
+        task=json.load(open('tasks/e2e/deephard__chi__URLParam_comma_ok.json'))
+        repo, wt = run_e2e._worktree(task)
+        try:
+            run_e2e._prepare_build_env(wt, task); run_e2e._index_graph(wt, 'prism_init', task)
+            for n in ['RouteContext','URLParam']:
+                out=subprocess.run(['python3','$S/mcpdrive.py',str(wt),n],capture_output=True,text=True,timeout=600)
+                print('==',n); print(out.stdout[:700]); print(out.stderr[-300:])
+        finally:
+            run_e2e._remove_worktree(wt)
+        EOF
+      at: 2026-10-11T18:15:15.092092Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign && grep -rn ''"callers-only"'' grove --include=''*.go'' | grep -v _test | head -5; f=$(grep -rln ''"callers-only"'' grove --include=''*.go'' | grep -v _test | head -1); n=$(grep -n ''"callers-only"'' $f | head -1 | cut -d: -f1); sed -n "$((n-25)),$((n+5))p" $f'
+      at: 2026-10-11T18:15:21.416768Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 40,56p internal/graph/changeimpact.go; sed -n 1100,1175p internal/graph/changeimpact.go
+      at: 2026-10-11T18:15:23.613095Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p results/bench-v0877-compiled8-2026-10-11 && E2E_OUT=results/bench-v0877-compiled8-2026-10-11 nohup python3 runners/run_e2e.py results/compiled8-manifest.json --models claude-sonnet-5-5 --arms native,prism_init --trials 2 > results/bench-v0877-compiled8-2026-10-11/driver.log 2>&1 &
+        sleep 5; head -3 results/bench-v0877-compiled8-2026-10-11/driver.log
+      at: 2026-10-11T18:15:43.117255Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='project_verdict_carry_forward_bug_2026_10_11.md'; s=open(p).read()
+        s=s.replace("Fix: grove fix/carry-forward-native-verdict (PR #19, commit 6c1dc3ac)","RELEASED 2026-10-11: grove v0.63.4 (PR #19) + prism v0.87.7 (PR #46, also `prism status` prints native verdict). Fix: grove carry-forward (commit 6c1dc3ac)")
+        s=s.replace("prism needs a grove bump\nafter the tag.","Harness probe on v0.87.7: gson closed->true; hono type-level and chi free-function (callers-only, direct calls only) stay false\nby design. Bench results/bench-v0877-compiled8-2026-10-11 (8 compiled deephard x native/prism x 2).")
+        open(p,'w').write(s)
+        EOF
+        grep -n RELEASED project_verdict_carry_forward_bug_2026_10_11.md | head -2
+      at: 2026-10-11T18:15:52.094461Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-compiled8-2026-10-11 && ls; cat driver.log; python3 -c "
+        import json,glob
+        for f in glob.glob('*.json'):
+            d=json.load(open(f)); print(f, sorted(d.keys())[:60])" | head -5
+      at: 2026-10-11T18:16:27.252104Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-deephard-2026-10-11 && f=$(ls *.json | head -1); python3 -c "
+        import json; d=json.load(open('$f')); print('$f'); print({k:(v if not isinstance(v,(dict,list)) else type(v).__name__) for k,v in d.items()}); print(d.get('tool_usage'))"; ls transcripts | head -2
+      at: 2026-10-11T18:16:30.055695Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && timeout 20 python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/cellwatch.py results/bench-deephard-2026-10-11 2>&1 | head -6
+      at: 2026-10-11T18:16:49.081158Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && (python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/cellwatch.py results/bench-deephard-2026-10-11 & P=$!; sleep 8; kill $P) 2>&1 | grep -E 'gson|chi' | head -6
+      at: 2026-10-11T18:17:00.568689Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-compiled8-2026-10-11 && python3 - <<'EOF'
+        import json,glob,re
+        f=glob.glob('transcripts/deephard__chi__*prism_init*.jsonl')[0]
+        res={}; calls=[]
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_result':
+                        c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+            if m.get('type')=='assistant':
+                txt=' '.join(b.get('text','') for b in m['message']['content'] if b.get('type')=='text').strip()
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_use': calls.append((b,txt))
+        for i,(b,txt) in enumerate(calls,1):
+            inp=b['input']; s=inp.get('command') or json.dumps(inp)
+            print(f"#{i} {b['name']}: {s[:400]}")
+            if txt: print(f"   said: {txt[:200]}")
+            print(f"   -> {len(res.get(b['id'],''))//4} tok: {res.get(b['id'],'')[:250]!r}\n")
+        EOF
+      at: 2026-10-11T18:18:56.535056Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-compiled8-2026-10-11 && python3 - <<'EOF'
+        import json,glob
+        f=glob.glob('transcripts/deephard__chi__*prism_init*.jsonl')[0]
+        n=0
+        for l in open(f):
+            m=json.loads(l)
+            if m.get('type')=='assistant':
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_use':
+                        n+=1
+                        if n==3: print(b['input']['command'][-500:])
+        EOF
+      at: 2026-10-11T18:19:00.817171Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-compiled8-2026-10-11 && python3 - <<'EOF'
+        import json,glob,re
+        def load(f):
+            res={}; calls=[]
+            for l in open(f):
+                m=json.loads(l)
+                if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result':
+                            c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+                if m.get('type')=='assistant':
+                    u=m['message'].get('usage',{})
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_use': calls.append(b)
+            return calls,res
+        for arm in ('native','prism_init'):
+            f=glob.glob(f'transcripts/deephard__chi__*{arm}.jsonl')[0]
+            calls,res=load(f)
+            print(f"=================== {arm}: first 3 calls")
+            for i,b in enumerate(calls[:3],1):
+                inp=b['input']; s=inp.get('command') or inp.get('pattern') or json.dumps(inp)
+                r=res.get(b['id'],'')
+                print(f"#{i} {b['name']}: {s[:300]}")
+                print(f"   result: {len(r)//4} tokens, {r.count(chr(10))+1} lines")
+                print('   '+r[:1400].replace('\n','\n   '))
+                print()
+        EOF
+      at: 2026-10-11T18:20:59.575262Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-compiled8-2026-10-11 && python3 - <<'EOF'
+        import json,glob
+        for arm in ('native','prism_init'):
+            f=glob.glob(f'transcripts/deephard__chi__*{arm}.jsonl')[0]
+            print('=========',arm)
+            n=0
+            for l in open(f):
+                m=json.loads(l)
+                if m.get('type')=='user' and n==0 and isinstance(m['message']['content'],str):
+                    print('PROMPT:',m['message']['content'][:900]); print()
+                if m.get('type')!='assistant': continue
+                for b in m['message']['content']:
+                    t=b.get('type')
+                    if t=='thinking': print('  THINK:',(b.get('thinking') or '')[:900])
+                    elif t=='text' and b['text'].strip(): print('  TEXT:',b['text'][:600])
+                    elif t=='tool_use':
+                        n+=1; print(f'  CALL #{n}:',b['name'],json.dumps(b['input'])[:160])
+                if n>=3: break
+        EOF
+      at: 2026-10-11T18:24:44.582778Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-compiled8-2026-10-11 && python3 - <<'EOF'
+        import json,glob
+        for arm in ('native','prism_init'):
+            f=sorted(glob.glob(f'transcripts/deephard__gson__JsonWriter*{arm}.jsonl'))[0]
+            res={}; rows=[]
+            recs=[json.loads(l) for l in open(f)]
+            for m in recs:
+                if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result':
+                            c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=(c,b.get('is_error'))
+            print(f'================ {arm}')
+            n=0; think=''
+            for m in recs:
+                if m.get('type')!='assistant': continue
+                u=m['message'].get('usage',{}); ctx=u.get('cache_read_input_tokens',0)+u.get('cache_creation_input_tokens',0)+u.get('input_tokens',0)
+                for b in m['message']['content']:
+                    if b.get('type')=='thinking' and b.get('thinking'): think=b['thinking'][:220].replace('\n',' ')
+                    if b.get('type')=='text' and b['text'].strip(): think=b['text'][:220].replace('\n',' ')
+                    if b.get('type')=='tool_use':
+                        n+=1; inp=b['input']; s=inp.get('command') or inp.get('pattern') or json.dumps(inp)
+                        r,err=res.get(b['id'],('',0))
+                        print(f"#{n:2} ctx {ctx//1000:3}k  {b['name'][:12]:12} {s[:170].replace(chr(10),' ⏎ ')}")
+                        print(f"        -> {len(r)//4} tok{' ERROR' if err else ''}: {r[:140].replace(chr(10),' | ')}")
+                        if think: print(f"        why: {think}"); think=''
+        EOF
+      at: 2026-10-11T18:30:21.777714Z
+      classified: other
+    - cmd: pkill -f 'run_e2e.py results/compiled8-manifest.json'; sleep 3; pgrep -fl 'run_e2e.py|claude -p' | head; ls -d /private/var/folders/*/*/T/e2e-run-* 2>/dev/null | head
+      at: 2026-10-11T18:32:42.195047Z
+      classified: other
+    - cmd: kill 27701; sleep 2; pgrep -fl 'claude -p' | grep -c e2e; pgrep -fl 'run_e2e' | head -2; echo stopped
+      at: 2026-10-11T18:32:46.40383Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat >> project_verdict_carry_forward_bug_2026_10_11.md <<'EOF'
+
+        Bench on v0.87.7 STOPPED by Topo after 4 pairs (8/32 cells, all resolved both arms): chi 1.08x cost, gin 1.05x,
+        gson JsonWriter 0.64x (noise: native chose grep-first fix plan, prism arm compiled first; prism's one search unused),
+        gson TypeAdapter 1.05x. 0 of 4 prism cells called change_impact, so the completeness fix was never exercised.
+        Pattern: one opening prism text search (~1.8x a grep's tokens: bare-name substring matches + comments + wrapping),
+        then the same greps as native. deephard prompts name the file + signatures, so only "who calls it" is left to discover.
+        EOF
+        echo ok
+      at: 2026-10-11T18:32:52.146643Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-compiled8-2026-10-11 && python3 - <<'EOF'
+        import json,glob,re
+        for f in sorted(glob.glob('transcripts/*prism_init.jsonl')):
+            recs=[json.loads(l) for l in open(f)]
+            res={}
+            for m in recs:
+                if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result':
+                            c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+            print('\n################', f.split('/')[-1].split('.')[0])
+            n=0; why=''
+            for m in recs:
+                if m.get('type')!='assistant': continue
+                for b in m['message']['content']:
+                    if b.get('type')=='thinking' and b.get('thinking'): why=b['thinking'].replace('\n',' ')[:260]
+                    if b.get('type')=='text' and b['text'].strip(): why=b['text'].replace('\n',' ')[:260]
+                    if b.get('type')!='tool_use': continue
+                    n+=1; inp=b['input']; cmd=inp.get('command') or inp.get('pattern') or ''
+                    isg = b['name'] in('Grep','Glob') or (b['name']=='Bash' and re.search(r'(^|[;&|(]\s*)(grep|rg|git grep|find)\b',cmd) and not re.search(r'\b(mvn|npx|tsc|go (test|build|vet)|vitest|pnpm|bun)\b',cmd))
+                    if 'prism' in b['name']:
+                        print(f"\n#{n} PRISM {json.dumps(inp['args'])[:200]}\n   -> {len(res.get(b['id'],''))//4} tok")
+                    if not isg: why=''; continue
+                    segs=[s.strip() for s in re.split(r'&&|;|\n',cmd) if re.search(r'\b(grep|rg|find)\b',s)]
+                    print(f"\n#{n} {b['name']}: "+' ⏎ '.join(s[:200] for s in segs)[:420])
+                    print(f"   why: {why}")
+                    r=res.get(b['id'],''); print(f"   -> {len(r)//4} tok, {r.count(chr(10))+1} lines: {r[:160].replace(chr(10),' | ')}")
+                    why=''
+        EOF
+      at: 2026-10-11T18:35:18.091019Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls tasks/; ls tasks/e2e | sed 's/__.*//' | sort | uniq -c; python3 - <<'EOF'
+        import json,glob,re
+        fs=[f for f in glob.glob('tasks/e2e/*.json') if '/deep' not in f.split('/')[-1][:5]]
+        ok=[]
+        for f in fs:
+            try: t=json.load(open(f))
+            except: continue
+            if isinstance(t,dict) and 'problem_statement' in t: ok.append((f,t))
+        n=len(ok); fil=sig=0; L=[]
+        for f,t in ok:
+            p=t['problem_statement']; L.append(len(p.split()))
+            if re.search(r'\b[\w/-]+\.(java|go|ts|py|js|rs)\b',p): fil+=1
+            if re.search(r'`[^`]*\([^`]*\)[^`]*`',p): sig+=1
+        L.sort(); print(f"non-deep n={n} names a file {fil/n:.0%} quotes a signature {sig/n:.0%} words median {L[len(L)//2]}")
+        import random; random.seed(2)
+        for f,t in random.sample(ok,2): print('\n---',f.split('/')[-1],'\n',t['problem_statement'][:600])
+        EOF
+      at: 2026-10-11T18:35:41.578339Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,collections
+        keys=collections.Counter(); prov=collections.Counter(); ex={}
+        for f in glob.glob('tasks/e2e/*.json'):
+            try: t=json.load(open(f))
+            except: continue
+            if not isinstance(t,dict) or 'problem_statement' not in t: continue
+            for k in t: keys[k]+=1
+            p=(t.get('prompt_source') or t.get('statement_source') or t.get('source') or t.get('kind') or '?')
+            prov[str(p)]+=1; ex.setdefault(str(p),f)
+        print('keys:',dict(keys)); print('provenance:',prov); print(ex)
+        EOF
+        ls build/ | head -30; grep -rn 'issue' build/*.py 2>/dev/null | grep -i 'def \|url\|closes' | head -10
+      at: 2026-10-11T18:39:24.633647Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && sed -n 25,60p build/build_task.py; grep -n 'prompt_source' build/*.py | head; python3 - <<'EOF'
+        import json,glob,collections,subprocess,re
+        rows=[]
+        for f in glob.glob('tasks/e2e/*.json'):
+            try: t=json.load(open(f))
+            except: continue
+            if not isinstance(t,dict) or t.get('prompt_source')!='issue': continue
+            p=t['problem_statement']
+            rows.append((t['instance_id'],t.get('lang') or t.get('repo'),len(p.split()),bool(re.search(r'\b[\w/-]+\.(java|go|ts|py|js)\b',p)), t.get('merge_commit','')[:7]))
+        by=collections.Counter(r[1] for r in rows); print('issue-prompted tasks:',len(rows), dict(by))
+        print('name a file:', sum(r[3] for r in rows), '/', len(rows), '| words median', sorted(r[2] for r in rows)[len(rows)//2])
+        EOF
+        ls results/ | grep -iE 'guard-fix|issue|lang71|wide32' | head
+      at: 2026-10-11T18:39:35.67309Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'\nimport json,glob,collections,os,subprocess,datetime\ntasks={}\nfor f in glob.glob('tasks/e2e/*.json'):\n    try: t=json.load(open(f))\n    except: continue\n    if isinstance(t,dict) and 'problem_statement' in t: tasks[t['instance_id']]=t\nissue={k for k,t in tasks.items() if t.get('prompt_source')=='issue'}\n# 1. guard-fix-run manifest\nm=json.load(open('results/guard-fix-run-manifest.json')); m=m if isinstance(m,list) else m.get('tasks',m)\nprint('guard-fix-run:',len(m),'tasks; issue-prompted:',sum(1 for x in m if x in issue),'| sources:',collections.Counter(tasks.get(x,{}).get('prompt_source','?') for x in m))\n# 3. all results since 09-20 on issue-prompted tasks, native vs prism arms\nagg=collections.defaultdict(lambda: collections.defaultdict(list))\nfor d in glob.glob('results/*/'):\n    st=os.stat(d).st_mtime\n    if datetime.datetime.fromtimestamp(st)<datetime.datetime(2026,9,20): continue\n    for f in glob.glob(d+'*.json'):\n        try: c=json.load(open(f))\n        except: continue\n        if not isinstance(c,dict) or c.get('task') not in issue or 'resolved' not in c: continue\n        arm='prism' if str(c.get('arm','')).startswith('prism') else c.get('arm')\n        if arm not in('native','prism'): continue\n        agg[c['task']][arm].append((bool(c['resolved']),(c.get('tokens_request') or 0)+(c.get('tokens_out') or 0),c.get('cost_usd') or 0))\npairs=[(t,v) for t,v in agg.items() if 'native' in v and 'prism' in v]\nprint('\\nissue-prompted tasks with both arms run since 09-20:',len(pairs))\nnr=sum(any(r for r,_,_ in v['native']) for t,v in pairs); pr=sum(any(r for r,_,_ in v['prism']) for t,v in pairs)\nnres=sum(sum(r for r,_,_ in v['native'])/len(v['native']) for t,v in pairs); pres=sum(sum(r for r,_,_ in v['prism'])/len(v['prism']) for t,v in pairs)\nnt=sum(sum(x for _,x,_ in v['native'])/len(v['native']) for t,v in pairs); pt=sum(sum(x for _,x,_ in v['prism'])/len(v['prism']) for t,v in pairs)\nprint(f'  resolve rate (mean over tasks): native {nres/len(pairs):.2f}  prism {pres/len(pairs):.2f}   tokens prism/native {pt/nt:.2f}x')\nby=collections.Counter(tasks[t].get('lang') or tasks[t]['repo'].split('/')[0] for t,v in pairs); print('  by lang:',dict(by))\n# 2. merge dates for issue tasks (post training cutoff Jun 2026?)\nimport sys; sys.path.insert(0,'scoring'); \nREPO={}\ntry:\n    import java_eval, go_eval, js_eval\n    for mod in (java_eval,go_eval,js_eval): REPO.update(getattr(mod,'REPO_DIR',{}))\nexcept Exception as e: print('repo map err',e)\npost=pre=unk=0\nfor k in issue:\n    t=tasks[k]; rd=REPO.get(t['repo']); mc=t.get('merge_commit')\n    if not rd or not mc or not os.path.isdir(rd): unk+=1; continue\n    r=subprocess.run(['git','-C',rd,'log','-1','--format=%cs',mc],capture_output=True,text=True)\n    d=r.stdout.strip()\n    if not d: unk+=1\n    elif d>='2026-06-01': post+=1\n    else: pre+=1\nprint(f'\\nissue tasks merged after 2026-06-01 (post-cutoff): {post}, before: {pre}, unknown/no clone: {unk}')\nEOF"
+      at: 2026-10-11T18:39:59.457778Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,collections,os,subprocess,datetime,sys
+        tasks={}
+        for f in glob.glob('tasks/e2e/*.json'):
+            try: t=json.load(open(f))
+            except: continue
+            if isinstance(t,dict) and 'problem_statement' in t: tasks[t['instance_id']]=t
+        issue={k for k,t in tasks.items() if t.get('prompt_source')=='issue'}
+        sys.path.insert(0,'scoring'); import java_eval, go_eval, js_eval
+        REPO={}; [REPO.update(getattr(m,'REPO_DIR',{})) for m in (java_eval,go_eval,js_eval)]
+        post=[]
+        for k in sorted(issue):
+            t=tasks[k]; rd=REPO.get(t['repo']); mc=t.get('merge_commit')
+            if rd and mc and os.path.isdir(rd):
+                d=subprocess.run(['git','-C',rd,'log','-1','--format=%cs',mc],capture_output=True,text=True).stdout.strip()
+                if d>='2026-06-01': post.append((k,t.get('lang') or t['repo'],d,len(t['problem_statement'].split())))
+        print('POST-CUTOFF ISSUE TASKS:',len(post), dict(collections.Counter(p[1] for p in post)))
+        for p in post: print('  ',p[0][:58].ljust(58),p[1],p[2],f'{p[3]}w')
+        print('\nunknown-date repos:',collections.Counter(tasks[k]['repo'] for k in issue if not (REPO.get(tasks[k]['repo']) and os.path.isdir(REPO.get(tasks[k]['repo'],'')))))
+        # per-task pairs since 09-20
+        agg=collections.defaultdict(lambda: collections.defaultdict(list))
+        for d in glob.glob('results/*/'):
+            if datetime.datetime.fromtimestamp(os.stat(d).st_mtime)<datetime.datetime(2026,9,20): continue
+            for f in glob.glob(d+'*.json'):
+                try: c=json.load(open(f))
+                except: continue
+                if not isinstance(c,dict) or c.get('task') not in issue or 'resolved' not in c: continue
+                arm='prism' if str(c.get('arm','')).startswith('prism') else c.get('arm')
+                if arm in('native','prism'): agg[c['task']][arm].append((bool(c['resolved']),(c.get('tokens_request') or 0)+(c.get('tokens_out') or 0),d.split('/')[1]))
+        print('\nPER-TASK (issue-prompted, both arms since 09-20): task | native n,res,tok | prism n,res,tok | ratio | dirs')
+        rat=[]
+        for t,v in sorted(agg.items()):
+            if 'native' not in v or 'prism' not in v: continue
+            n=v['native']; p=v['prism']; nt=sum(x[1] for x in n)/len(n); pt=sum(x[1] for x in p)/len(p); rat.append(pt/nt if nt else 0)
+            print(f"  {t[:44].ljust(44)} N {len(n)} {sum(x[0] for x in n)}/{len(n)} {nt/1e6:.2f}M | P {len(p)} {sum(x[0] for x in p)}/{len(p)} {pt/1e6:.2f}M | {pt/nt if nt else 0:.2f}x | {','.join(sorted(set(x[2] for x in n+p)))[:60]}")
+        rat.sort(); print(f"\ntoken ratio median {rat[len(rat)//2]:.2f}, mean {sum(rat)/len(rat):.2f}, <0.9: {sum(r<0.9 for r in rat)}, >1.1: {sum(r>1.1 for r in rat)} of {len(rat)}")
+        EOF
+      at: 2026-10-11T18:40:26.917567Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,subprocess
+        tasks={}
+        for f in glob.glob('tasks/e2e/*.json'):
+            try: t=json.load(open(f))
+            except: continue
+            if isinstance(t,dict) and t.get('prompt_source')=='issue': tasks[t['instance_id']]=t
+        for k in ['google__gson__pr3098','honojs__hono__pr5311','gin-gonic__gin__pr4805']:
+            print('=====',k,'\n',tasks[k]['problem_statement'][:650],'\n')
+        print('===== python/unknown-date tasks, merge dates via GitHub:')
+        for k,t in sorted(tasks.items()):
+            if t['repo'].split('/')[0] in ('pallets','urllib3','Textualize','pydantic','psf'):
+                r=subprocess.run(['gh','pr','view',str(t['pr']),'-R',t['repo'],'--json','mergedAt','-q','.mergedAt'],capture_output=True,text=True)
+                print('  ',k.ljust(40),r.stdout.strip()[:10] or r.stderr.strip()[:60])
+        EOF
+      at: 2026-10-11T18:40:52.069175Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,subprocess,os,sys,collections
+        sys.path.insert(0,'scoring'); import java_eval, go_eval, js_eval
+        REPO={}; [REPO.update(getattr(m,'REPO_DIR',{})) for m in (java_eval,go_eval,js_eval)]
+        py_post={'pallets__click__pr3533','pallets__click__pr3653','pallets__click__pr3678','pallets__click__pr3695','pydantic__pydantic__pr13516','urllib3__urllib3__pr3786','urllib3__urllib3__pr5020','urllib3__urllib3__pr5093'}
+        bed=[]
+        for f in glob.glob('tasks/e2e/*.json'):
+            try: t=json.load(open(f))
+            except: continue
+            if not isinstance(t,dict) or t.get('prompt_source')!='issue': continue
+            k=t['instance_id']; rd=REPO.get(t['repo'])
+            if k in py_post: bed.append((k,'python')); continue
+            if rd and os.path.isdir(rd) and t.get('merge_commit'):
+                d=subprocess.run(['git','-C',rd,'log','-1','--format=%cs',t['merge_commit']],capture_output=True,text=True).stdout.strip()
+                if d>='2026-06-01': bed.append((k,t.get('lang')))
+        bed.sort(); json.dump([k for k,_ in bed],open('results/issue-post-cutoff-manifest.json','w'),indent=1)
+        print(len(bed),dict(collections.Counter(l for _,l in bed)))
+        EOF
+      at: 2026-10-11T18:41:02.722693Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF' > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/issue-bed.md
+        import json
+        ids=json.load(open('results/issue-post-cutoff-manifest.json'))
+        print('# Post-cutoff issue-prompted bed (56 tasks)\n')
+        print('Prompt = the linked GitHub issue, title + body, verbatim. Grouped by language.\n')
+        order=['java','go','ts','python']
+        tasks={k:json.load(open(f'tasks/e2e/{k}.json')) for k in ids}
+        for lang in order:
+            ks=[k for k in ids if (tasks[k].get('lang') or ('python' if tasks[k]['repo'].split('/')[0] in('pallets','urllib3','pydantic') else '?'))==lang]
+            print(f'\n---\n\n## {lang} ({len(ks)})\n')
+            for k in ks:
+                t=tasks[k]
+                print(f'### {k}  (https://github.com/{t["repo"]}/pull/{t["pr"]})\n')
+                print(t['problem_statement'].strip()+'\n')
+        EOF
+        wc -w /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad/issue-bed.md
+      at: 2026-10-11T18:41:57.163729Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        for k in ['google__gson__pr3057','go-chi__chi__pr1148','colinhacks__zod__pr6298','pallets__click__pr3653']:
+            t=json.load(open(f'tasks/e2e/{k}.json')); print(f'### {k}\n{t["problem_statement"].strip()[:1100]}\n')
+        EOF
+      at: 2026-10-11T18:42:03.150428Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad && sed -i '' 's/if len(\[x for x in seen if x.endswith(".json")\]) >= 32:/if len([x for x in seen if x.endswith(".json")]) >= int(sys.argv[2]) if len(sys.argv) > 2 else 32:/; s/print("DONE all 32 cells"/print("DONE all cells"/' $S/cellwatch.py && python3 -c "
+        import json; json.dump(['google__gson__pr3057','go-chi__chi__pr1148','colinhacks__zod__pr6298','pallets__click__pr3653','FasterXML__jackson-databind__pr6052','gin-gonic__gin__pr4805'],open('results/issue6-manifest.json','w'))" && mkdir -p results/bench-v0877-issue6-2026-10-11 && E2E_OUT=results/bench-v0877-issue6-2026-10-11 nohup python3 runners/run_e2e.py results/issue6-manifest.json --models claude-sonnet-5-5 --arms native,prism_init --trials 1 > results/bench-v0877-issue6-2026-10-11/driver.log 2>&1 &
+        sleep 4; head -2 /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue6-2026-10-11/driver.log
+      at: 2026-10-11T18:42:59.84845Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue6-2026-10-11 && python3 - <<'EOF'
+        import json,glob
+        f=glob.glob('transcripts/google__gson__pr3057*prism*.jsonl')[0]
+        res={}; recs=[json.loads(l) for l in open(f)]
+        for m in recs:
+            if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_result':
+                        c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+        n=0
+        for m in recs:
+            if m.get('type')!='assistant': continue
+            for b in m['message']['content']:
+                if b.get('type')=='thinking' and b.get('thinking'): print('  THINK:',b['thinking'][:500].replace('\n',' '))
+                if b.get('type')=='text' and b['text'].strip(): print('  TEXT:',b['text'][:1200])
+                if b.get('type')=='tool_use':
+                    n+=1; print(f'#{n}',b['name'],json.dumps(b['input'])[:300]); print('   ->',res.get(b['id'],'')[:500].replace('\n',' | '))
+        d=json.load(open(glob.glob('google__gson__pr3057*prism_init.json')[0])); print('\nscore:',json.dumps(d.get('score'))[:600]); print('diff lines',d.get('diff_lines'),'err',d.get('agent_error'))
+        EOF
+      at: 2026-10-11T18:43:56.749261Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        t=json.load(open('tasks/e2e/google__gson__pr3057.json'))
+        print('F2P:',t.get('fail_to_pass')); print('gold files:',[l for l in t['patch'].split('\n') if l.startswith('+++')])
+        p=t['patch']; print(p[:2500])
+        EOF
+      at: 2026-10-11T18:44:04.046383Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob
+        D='results/bench-v0877-issue6-2026-10-11'
+        f=glob.glob(D+'/transcripts/go-chi__chi__pr1148*prism*.jsonl')[0]
+        res={}; recs=[json.loads(l) for l in open(f)]
+        for m in recs:
+            if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_result':
+                        c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+        n=0
+        for m in recs:
+            if m.get('type')!='assistant': continue
+            for b in m['message']['content']:
+                if b.get('type')=='thinking' and b.get('thinking'): print('  THINK:',b['thinking'][:300].replace('\n',' '))
+                if b.get('type')=='text' and b['text'].strip(): print('  TEXT:',b['text'][:700])
+                if b.get('type')=='tool_use':
+                    n+=1; print(f'#{n}',b['name'],json.dumps(b['input'])[:260]); print('   ->',len(res.get(b['id'],''))//4,'tok:',res.get(b['id'],'')[:300].replace('\n',' | '))
+        d=json.load(open(glob.glob(D+'/go-chi__chi__pr1148*prism_init.json')[0])); print('\nscore:',json.dumps(d.get('score'))[:400])
+        t=json.load(open('tasks/e2e/go-chi__chi__pr1148.json')); print('F2P:',t.get('fail_to_pass')); print('gold:',[l for l in t['patch'].split('\n') if l.startswith('+++')]); print(t['patch'][:1500])
+        EOF
+      at: 2026-10-11T18:45:12.708932Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue6-2026-10-11 && python3 -c "
+        import json,glob; d=json.load(open(glob.glob('go-chi__chi__pr1148*prism_init.json')[0])); s=d['score']; print(json.dumps({k:v for k,v in s.items() if k!='raw'})[:1500])"
+      at: 2026-10-11T18:45:19.703184Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad && python3 - <<EOF
+        import json,sys,subprocess,shutil,os
+        sys.path.insert(0,'scoring'); import go_eval
+        t=json.load(open('tasks/e2e/go-chi__chi__pr1148.json')); rd=go_eval.REPO_DIR[t['repo']]
+        wt='$S/chi-p2p'; shutil.rmtree(wt,ignore_errors=True)
+        subprocess.run(['git','-C',rd,'worktree','prune']); subprocess.run(['git','-C',rd,'worktree','add','-q','--detach',wt,t['base_commit']],check=True)
+        import glob; diff=open(glob.glob('results/bench-v0877-issue6-2026-10-11/go-chi__chi__pr1148*prism_init.diff')[0]).read()
+        subprocess.run(['git','-C',wt,'apply','-'],input=diff,text=True,check=True)
+        open(wt+'/f2p_test.go','w')  # placeholder not needed
+        r=subprocess.run(['go','test','.','-run','Walk|Routes|Mount','-count=1'],cwd=wt,capture_output=True,text=True)
+        print(r.stdout[-2500:], r.stderr[-500:])
+        EOF
+      at: 2026-10-11T18:45:30.527018Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad; cd $S/chi-p2p && rm -f f2p_test.go && go test . -run 'Walk|Routes|Mount' -count=1 2>&1 | grep -vE '^\s*$' | tail -30
+      at: 2026-10-11T18:45:35.696182Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad && python3 - <<EOF
+        import json,subprocess
+        t=json.load(open('tasks/e2e/go-chi__chi__pr1148.json')); wt='$S/chi-p2p'
+        print('P2P:',t.get('pass_to_pass')); print('F2P:',t.get('fail_to_pass'))
+        subprocess.run(['git','-C',wt,'apply','-'],input=t['test_patch'],text=True,check=True)
+        names='|'.join(x.split('::')[-1] for x in (t.get('pass_to_pass') or [])+(t.get('fail_to_pass') or []))
+        r=subprocess.run(['go','test','./...','-run',names,'-count=1','-v'],cwd=wt,capture_output=True,text=True)
+        print('\n'.join(l for l in r.stdout.splitlines() if l.startswith(('--- FAIL','FAIL','ok','panic')) or 'Error' in l or 'expected' in l.lower())[:3000]); print(r.stderr[-400:])
+        EOF
+      at: 2026-10-11T18:45:46.93428Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue6-2026-10-11 && python3 - <<'EOF'
+        import json,glob
+        f=glob.glob('transcripts/go-chi__chi__pr1148*native.jsonl')[0]
+        res={}; recs=[json.loads(l) for l in open(f)]
+        for m in recs:
+            if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_result':
+                        c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+        n=0
+        for m in recs:
+            if m.get('type')!='assistant': continue
+            for b in m['message']['content']:
+                if b.get('type')=='thinking' and b.get('thinking'): print('  THINK:',b['thinking'][:350].replace('\n',' '))
+                if b.get('type')=='tool_use':
+                    n+=1; print(f'#{n}',b['name'],json.dumps(b['input'])[:230]); print('   ->',len(res.get(b['id'],''))//4,'tok:',res.get(b['id'],'')[:200].replace('\n',' | '))
+        d=open(glob.glob('go-chi__chi__pr1148*native.diff')[0]).read(); print('\nDIFF:\n',d[:1800])
+        EOF
+      at: 2026-10-11T18:46:10.87169Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue6-2026-10-11 && python3 - <<'EOF'
+        import json,glob
+        for arm in ('native','prism_init'):
+            f=glob.glob(f'transcripts/colinhacks__zod__pr6298*{arm}.jsonl')[0]
+            res={}; recs=[json.loads(l) for l in open(f)]
+            for m in recs:
+                if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result':
+                            c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+            print('=====',arm); n=0
+            for m in recs:
+                if m.get('type')!='assistant': continue
+                u=m['message'].get('usage',{}); print(f"  turn usage: in {u.get('input_tokens')} cache_w {u.get('cache_creation_input_tokens')} cache_r {u.get('cache_read_input_tokens')} out {u.get('output_tokens')}")
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_use':
+                        n+=1; print(f'  #{n}',b['name'],json.dumps(b['input'])[:200]); print('     ->',len(res.get(b['id'],''))//4,'tok:',res.get(b['id'],'')[:160].replace('\n',' | '))
+            d=json.load(open(glob.glob(f'colinhacks__zod__pr6298*{arm}.json')[0])); print('  cost',d['cost_usd'],'wall',d.get('wall_s'),'models',d.get('models_used'))
+        EOF
+      at: 2026-10-11T18:47:28.095514Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue6-2026-10-11 && python3 - <<'EOF'
+        import json,glob
+        for arm in ('native','prism_init'):
+            f=glob.glob(f'transcripts/pallets__click__pr3653*{arm}.jsonl')[0]
+            res={}; recs=[json.loads(l) for l in open(f)]
+            for m in recs:
+                if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result':
+                            c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+            print('=====',arm); n=0
+            for m in recs:
+                if m.get('type')!='assistant': continue
+                for b in m['message']['content']:
+                    if b.get('type')=='thinking' and b.get('thinking'): print('     think:',b['thinking'][:200].replace('\n',' '))
+                    if b.get('type')=='tool_use':
+                        n+=1; print(f'  #{n}',b['name'],json.dumps(b['input'])[:220]); print('     ->',len(res.get(b['id'],''))//4,'tok:',res.get(b['id'],'')[:150].replace('\n',' | '))
+        EOF
+      at: 2026-10-11T18:48:26.454458Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob
+        D='results/bench-v0877-issue6-2026-10-11'
+        t=json.load(open('tasks/e2e/FasterXML__jackson-databind__pr6052.json')); print('ISSUE:',t['problem_statement'][:700]); print('\nF2P:',t['fail_to_pass']); print('gold files:',[l for l in t['patch'].split('\n') if l.startswith('+++')])
+        f=glob.glob(D+'/transcripts/FasterXML__jackson-databind__pr6052*prism*.jsonl')[0]
+        res={}; recs=[json.loads(l) for l in open(f)]
+        for m in recs:
+            if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_result':
+                        c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+        n=0
+        for m in recs:
+            if m.get('type')!='assistant': continue
+            for b in m['message']['content']:
+                if b.get('type')=='thinking' and b.get('thinking'): print('     think:',b['thinking'][:250].replace('\n',' '))
+                if b.get('type')=='text' and b['text'].strip(): print('     TEXT:',b['text'][:500].replace('\n',' '))
+                if b.get('type')=='tool_use':
+                    n+=1; print(f'  #{n}',b['name'],json.dumps(b['input'])[:220]); print('     ->',len(res.get(b['id'],''))//4,'tok:',res.get(b['id'],'')[:180].replace('\n',' | '))
+        d=json.load(open(glob.glob(D+'/FasterXML__jackson-databind__pr6052*prism_init.json')[0])); print('\nscore:',d['score']); print('diff files:',[l for l in open(glob.glob(D+'/FasterXML__jackson-databind__pr6052*prism_init.diff')[0]).read().split('\n') if l.startswith('+++')])
+        EOF
+      at: 2026-10-11T18:49:28.943757Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob
+        D='results/bench-v0877-issue6-2026-10-11'
+        t=json.load(open('tasks/e2e/gin-gonic__gin__pr4805.json')); print('F2P:',t['fail_to_pass']); print('gold files:',[l for l in t['patch'].split('\n') if l.startswith('+++')]); print(t['patch'][:1400])
+        for arm in ('native','prism_init'):
+            f=glob.glob(D+f'/transcripts/gin-gonic__gin__pr4805*{arm}.jsonl')[0]
+            res={}; recs=[json.loads(l) for l in open(f)]
+            for m in recs:
+                if m.get('type')=='user' and isinstance(m['message']['content'],list):
+                    for b in m['message']['content']:
+                        if b.get('type')=='tool_result':
+                            c=b.get('content'); c=c if isinstance(c,str) else ''.join(x.get('text','') for x in c if isinstance(x,dict)); res[b['tool_use_id']]=c
+            print('\n=====',arm); n=0
+            for m in recs:
+                if m.get('type')!='assistant': continue
+                for b in m['message']['content']:
+                    if b.get('type')=='tool_use':
+                        n+=1; print(f'  #{n}',b['name'],json.dumps(b['input'])[:200]); print('     ->',len(res.get(b['id'],''))//4,'tok')
+            d=json.load(open(glob.glob(D+f'/gin-gonic__gin__pr4805*{arm}.json')[0])); print('  score:',d['score']); print('  DIFF:',open(glob.glob(D+f'/gin-gonic__gin__pr4805*{arm}.diff')[0]).read()[:900])
+        EOF
+      at: 2026-10-11T18:50:57.119632Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat > project_issue_bed_pairs_2026_10_11.md <<'EOF'
+        ---
+        name: project-issue-bed-pairs-2026-10-11
+        description: "2026-10-11 evening: Topo rejected spec-shaped deephard prompts; issue-prompted post-cutoff bed (56 tasks, results/issue-post-cutoff-manifest.json) built; 6 pairs run on v0.87.7: native 3/6 prism 2/6, 2 tasks unsolvable from prompt, 1 bed defect"
+        metadata:
+          type: project
+        ---
+
+        Topo (2026-10-11): deephard/deep prompts are specs I wrote (100% quote signatures, 62-75% name the file), not human
+        issues. 104/203 tasks use the real linked GitHub issue verbatim (prompt_source=issue); 56 are post-cutoff (merged
+        >= 2026-06): 27 java, 11 go, 10 ts, 8 python -> results/issue-post-cutoff-manifest.json. Full texts in scratchpad issue-bed.md.
+        History on issue tasks since 09-20 (mixed runs): resolves tied, prism tokens median 1.21x.
+
+        6 pairs on v0.87.7 (results/bench-v0877-issue6-2026-10-11, ~$1.3): native 3/6, prism 2/6.
+        - gson pr3057: both FAIL - issue asks for IllegalArgumentException, maintainers made the input succeed (design choice).
+        - jackson pr6052: both FAIL - BED DEFECT: linked issue #1803 already implemented at base (test ...1803Test exists);
+          PR is a follow-up in DeserializationContext.readTreeAsValue. Agents correctly said "already fixed". Need an
+          "issue already implemented at base" audit over the 56 before a full run.
+        - gin pr4805: both FAIL - both nil-check + abort 500 in Context.HTML; gold also changes render/html.go (HTML{}.Render error).
+        - zod pr6298: tie, 3 calls each; 1.74x cost = cache artefact (prism cell cache_read 0 on turn 1).
+        - click pr3653: tie, identical fix; prism 1.18x cost (one extra exploratory read).
+        - chi pr1148: NATIVE WIN. Both reached node.routes() by call 2. Native's 3rd call grep -A40 setEndpoint showed the
+          stub handler is written under every method -> compared handler identity (= gold). Prism's 3rd call was lookup
+          Mux.Mount (one level up); never saw setEndpoint; fix left per-method stub copies; failed TestRoutesHidesMountStub.
+        On issue prompts agents DID use graph ops unforced (chi 4 prism calls, click 4: lookup bodies + read ranges, cheap).
+        Retrieval was never the failure; reasoning depth (chi) or the task (gson/jackson/gin) was.
+
+        **How to apply:** use the issue bed, never deephard, for discovery questions; audit the 56 for base-already-fixed
+        and design-choice tasks first; the one engine idea with evidence here = attach one-hop callees (names/signatures) to
+        lookup answers (would have shown setEndpoint under Mount) - see [[project-delivery-gap-2026-09-28]].
+        Related: [[project-verdict-carry-forward-bug-2026-10-11]].
+        EOF
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'; s=open(p).read()
+        line='- [Issue-bed pairs 2026-10-11](project_issue_bed_pairs_2026_10_11.md) — deephard prompts are specs, not issues; 56-task post-cutoff issue bed built; 6 pairs on v0.87.7: native 3/6 prism 2/6, 2 unsolvable tasks, 1 bed defect (issue already fixed at base), chi loss = one neighbour read\n'
+        if 'project_issue_bed_pairs' not in s: open(p,'w').write(s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1))
+        EOF
+        echo saved
+      at: 2026-10-11T18:51:30.607633Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF' 2>&1 | tail -70
+        import json,glob,subprocess,os,sys,re,collections
+        sys.path.insert(0,'scoring'); import java_eval, go_eval, js_eval
+        REPO={}; [REPO.update(getattr(m,'REPO_DIR',{})) for m in (java_eval,go_eval,js_eval)]
+        ids=json.load(open('results/issue-post-cutoff-manifest.json'))
+        rows=[]
+        for k in ids:
+            t=json.load(open(f'tasks/e2e/{k}.json')); rd=REPO.get(t['repo'])
+            issue_nums=set()
+            r=subprocess.run(['gh','pr','view',str(t['pr']),'-R',t['repo'],'--json','closingIssuesReferences','-q','.closingIssuesReferences[].number'],capture_output=True,text=True)
+            issue_nums|= {n for n in r.stdout.split()}
+            already='?'
+            if rd and os.path.isdir(rd) and issue_nums:
+                # files at base whose NAME contains the issue number (tests like Foo1803Test)
+                ls=subprocess.run(['git','-C',rd,'ls-tree','-r','--name-only',t['base_commit']],capture_output=True,text=True).stdout.split('\n')
+                hits=[f for f in ls if any(re.search(rf'(?<!\d){n}(?!\d)',os.path.basename(f)) for n in issue_nums) and 'test' in f.lower()]
+                already=', '.join(hits[:2]) if hits else '-'
+            gold=[l[6:] for l in t['patch'].split('\n') if l.startswith('+++ b/')]
+            p=t['problem_statement']
+            # does the issue text mention any gold file's basename stem or a symbol from it?
+            hinted=sum(1 for g in gold if os.path.splitext(os.path.basename(g))[0] in p)
+            rows.append((k,sorted(issue_nums),already,len(gold),hinted,len(p.split())))
+        print(f"{'task':44} {'issues':12} {'base-already-has-test':38} gold hinted words")
+        for r in rows: print(f"{r[0][:44]:44} {','.join(r[1])[:12]:12} {r[2][:38]:38} {r[3]:4} {r[4]:6} {r[5]:5}")
+        print('\nflag: base already has a test naming the issue:',sum(1 for r in rows if r[2] not in('-','?')))
+        print('flag: no linked issue number from GitHub:',sum(1 for r in rows if not r[1]))
+        print('flag: issue text names none of the gold files:',sum(1 for r in rows if r[4]==0),'of',len(rows))
+        EOF
+      at: 2026-10-11T18:52:46.475495Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF' 2>&1 | tail -70
+        import json,subprocess,re,datetime
+        ids=json.load(open('results/issue-post-cutoff-manifest.json'))
+        def gh(*a):
+            r=subprocess.run(['gh',*a],capture_output=True,text=True); return r.stdout
+        rows=[]
+        for k in ids:
+            t=json.load(open(f'tasks/e2e/{k}.json')); repo=t['repo']; pr=t['pr']
+            d=json.loads(gh('pr','view',str(pr),'-R',repo,'--json','body,title,mergedAt,closingIssuesReferences') or '{}')
+            linked=[str(x['number']) for x in d.get('closingIssuesReferences',[])]
+            kw=re.findall(r'(?i)\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\s*:?\s*#(\d+)',d.get('body','')+' '+d.get('title',''))
+            cands=linked or kw
+            title=t['problem_statement'].strip().split('\n')[0].strip()
+            used=None; closed=None; itit=''
+            for n in cands:
+                i=json.loads(gh('api',f'repos/{repo}/issues/{n}') or '{}')
+                if 'pull_request' in i or not i: continue
+                if i['title'].strip()==title or used is None:
+                    used=n; closed=i.get('closed_at'); itit=i['title']
+                    if i['title'].strip()==title: break
+            merged=d.get('mergedAt','')
+            gap=''
+            if closed and merged:
+                dc=datetime.datetime.fromisoformat(closed.replace('Z','+00:00')); dm=datetime.datetime.fromisoformat(merged.replace('Z','+00:00'))
+                gap=(dm-dc).days
+            src='linked' if linked else ('keyword' if kw else 'none')
+            match='yes' if itit.strip()==title else 'NO'
+            rows.append((k,src,used,match,gap))
+        print(f"{'task':44} {'link':8} {'issue':7} {'title=':6} {'merge-closed days'}")
+        for r in rows: print(f"{r[0][:44]:44} {r[1]:8} {str(r[2]):7} {r[3]:6} {r[4]}")
+        print('\nsuspect (issue closed >7 days before PR merge, or title mismatch):')
+        for r in rows:
+            if (isinstance(r[4],int) and r[4]>7) or r[3]=='NO': print('  ',r)
+        EOF
+        echo '--- python repo clones:'; grep -n 'REPO_DIR\|def repo_dir\|corpus' scoring/docker_eval.py | head -5
+      at: 2026-10-11T18:53:50.338067Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF' 2>&1 | tail -40
+        import json,subprocess,re,os,sys,glob
+        sys.path.insert(0,'scoring'); import java_eval, go_eval, js_eval, docker_eval
+        REPO={}; [REPO.update(getattr(m,'REPO_DIR',{})) for m in (java_eval,go_eval,js_eval)]
+        ids=json.load(open('results/issue-post-cutoff-manifest.json'))
+        num={'FasterXML__jackson-databind__pr6030':'6028','FasterXML__jackson-databind__pr6039':'5962','FasterXML__jackson-databind__pr6042':'6040','FasterXML__jackson-databind__pr6044':'1127','FasterXML__jackson-databind__pr6047':'6043','FasterXML__jackson-databind__pr6052':'1803','FasterXML__jackson-databind__pr6056':'6060','FasterXML__jackson-databind__pr6061':'6059','FasterXML__jackson-databind__pr6076':'4762','FasterXML__jackson-databind__pr6102':'6101','FasterXML__jackson-databind__pr6138':'6137','FasterXML__jackson-databind__pr6155':'6156','FasterXML__jackson-databind__pr6186':'6185','FasterXML__jackson-databind__pr6215':'6214','FasterXML__jackson-dataformat-xml__pr885':'884','apache__dubbo__pr16325':'14939','apache__dubbo__pr16348':'16347','apache__dubbo__pr16350':'16349','apache__dubbo__pr16391':'16389','apache__dubbo__pr16395':'16130','colinhacks__zod__pr6129':'5980','colinhacks__zod__pr6144':'6027','colinhacks__zod__pr6298':'6296','colinhacks__zod__pr6439':'6436','colinhacks__zod__pr6500':'6495','gin-gonic__gin__pr4698':'2088','gin-gonic__gin__pr4702':'4622','gin-gonic__gin__pr4805':'3605','gin-gonic__gin__pr4819':'4818','go-chi__chi__pr1029':'996','go-chi__chi__pr1148':'830','go-chi__chi__pr1158':'746','google__gson__pr3057':'1247','google__gson__pr3059':'992','google__gson__pr3067':'1587','google__gson__pr3098':'1768','google__gson__pr3112':'1870','google__gson__pr3116':'3113','honojs__hono__pr5164':'3189','honojs__hono__pr5199':'4401','honojs__hono__pr5311':'5310','honojs__hono__pr5366':'5365','honojs__hono__pr5373':'5372','labstack__echo__pr3006':'2599','pallets__click__pr3533':'3449','pallets__click__pr3653':'3572','pallets__click__pr3678':'2819','pallets__click__pr3695':'3099','pydantic__pydantic__pr13516':'13507','urfave__cli__pr2355':'2217','urfave__cli__pr2419':'2418','urfave__cli__pr2440':'2439','urllib3__urllib3__pr3786':'2577','urllib3__urllib3__pr5020':'1362','urllib3__urllib3__pr5093':'3472'}
+        def clone(t):
+            rd=REPO.get(t['repo'])
+            if rd and os.path.isdir(rd): return rd
+            for c in glob.glob(str(docker_eval.CLONE_ROOT)+'/*'):
+                if os.path.basename(c).lower().replace('-','_') in t['repo'].split('/')[1].lower().replace('-','_') or t['repo'].split('/')[1].lower() in os.path.basename(c).lower(): return c
+            return None
+        flag=[]; nocl=[]
+        for k in ids:
+            t=json.load(open(f'tasks/e2e/{k}.json')); n=num.get(k); rd=clone(t)
+            if not rd: nocl.append(k); continue
+            if not n: continue
+            # grep test sources at base for the issue number as a word, excluding the gold test files (they'd be in test_patch, not base)
+            r=subprocess.run(['git','-C',rd,'grep','-n','-w','-E',rf'(#|issue[- ]?|Issue |\[\w+#){n}\b',t['base_commit'],'--',':(glob)**/*test*','":(glob)**/*Test*"'],capture_output=True,text=True)
+            hits=[l for l in r.stdout.split('\n') if l.strip()]
+            if hits: flag.append((k,n,len(hits),hits[0][:140]))
+        print('tasks whose BASE tests already mention the issue number:')
+        for f in flag: print('  ',f)
+        print('\nno local clone for:',nocl)
+        EOF
+        echo; echo '=== suspects'; for x in "FasterXML/jackson-databind 6039 5962" "FasterXML/jackson-databind 6105 -" "honojs/hono 5199 4401" "pallets/click 3533 3449"; do set -- $x; echo "--- $1 PR $2 / issue $3"; gh pr view $2 -R $1 --json title,body -q '.title + " || " + (.body|.[0:300])' 2>&1 | tr '\n' ' '; echo; [ "$3" != "-" ] && gh api repos/$1/issues/$3 -q '.title + " | state " + .state + " | closed " + (.closed_at//"") + " | " + (.body|.[0:200])' | tr '\n' ' '; echo; done
+      at: 2026-10-11T18:54:21.886212Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF' 2>&1 | tail -45
+        import json,subprocess,re,os,sys,glob
+        sys.path.insert(0,'scoring'); import java_eval, go_eval, js_eval, docker_eval
+        REPO={}; [REPO.update(getattr(m,'REPO_DIR',{})) for m in (java_eval,go_eval,js_eval)]
+        ids=json.load(open('results/issue-post-cutoff-manifest.json'))
+        num={'FasterXML__jackson-databind__pr6030':'6028','FasterXML__jackson-databind__pr6039':'5962','FasterXML__jackson-databind__pr6042':'6040','FasterXML__jackson-databind__pr6044':'1127','FasterXML__jackson-databind__pr6047':'6043','FasterXML__jackson-databind__pr6052':'1803','FasterXML__jackson-databind__pr6056':'6060','FasterXML__jackson-databind__pr6061':'6059','FasterXML__jackson-databind__pr6076':'4762','FasterXML__jackson-databind__pr6102':'6101','FasterXML__jackson-databind__pr6138':'6137','FasterXML__jackson-databind__pr6155':'6156','FasterXML__jackson-databind__pr6186':'6185','FasterXML__jackson-databind__pr6215':'6214','FasterXML__jackson-dataformat-xml__pr885':'884','apache__dubbo__pr16325':'14939','apache__dubbo__pr16348':'16347','apache__dubbo__pr16350':'16349','apache__dubbo__pr16391':'16389','apache__dubbo__pr16395':'16130','colinhacks__zod__pr6129':'5980','colinhacks__zod__pr6144':'6027','colinhacks__zod__pr6298':'6296','colinhacks__zod__pr6439':'6436','colinhacks__zod__pr6500':'6495','gin-gonic__gin__pr4698':'2088','gin-gonic__gin__pr4702':'4622','gin-gonic__gin__pr4805':'3605','gin-gonic__gin__pr4819':'4818','go-chi__chi__pr1029':'996','go-chi__chi__pr1148':'830','go-chi__chi__pr1158':'746','google__gson__pr3057':'1247','google__gson__pr3059':'992','google__gson__pr3067':'1587','google__gson__pr3098':'1768','google__gson__pr3112':'1870','google__gson__pr3116':'3113','honojs__hono__pr5164':'3189','honojs__hono__pr5199':'4401','honojs__hono__pr5311':'5310','honojs__hono__pr5366':'5365','honojs__hono__pr5373':'5372','labstack__echo__pr3006':'2599','pallets__click__pr3533':'3449','pallets__click__pr3653':'3572','pallets__click__pr3678':'2819','pallets__click__pr3695':'3099','pydantic__pydantic__pr13516':'13507','urfave__cli__pr2355':'2217','urfave__cli__pr2419':'2418','urfave__cli__pr2440':'2439','urllib3__urllib3__pr3786':'2577','urllib3__urllib3__pr5020':'1362','urllib3__urllib3__pr5093':'3472'}
+        def clone(t):
+            rd=REPO.get(t['repo'])
+            if rd and os.path.isdir(rd): return rd
+            name=t['repo'].split('/')[1].lower()
+            for c in glob.glob(str(docker_eval.CLONE_ROOT)+'/*'):
+                if name in os.path.basename(c).lower(): return c
+            return None
+        print('BASE tests already mentioning the issue number:')
+        for k in ids:
+            t=json.load(open(f'tasks/e2e/{k}.json')); n=num.get(k); rd=clone(t)
+            if not rd or not n: print('  skip',k,rd,n); continue
+            r=subprocess.run(['git','-C',rd,'grep','-n','-E',rf'(^|[^0-9]){n}([^0-9]|$)',t['base_commit']],capture_output=True,text=True)
+            hits=[l for l in r.stdout.split('\n') if l.strip() and re.search(r'test',l.split(':')[1] if l.count(':')>1 else l,re.I)]
+            hits=[h for h in hits if not re.search(r'\.(json|lock|sum|mod)\b',h.split(':')[1])]
+            if hits: print(f'  {k}  #{n}: {len(hits)} hit(s) e.g. {hits[0][len(t["base_commit"])+1:][:120]}')
+        print('\n=== suspects')
+        for repo,pr,iss in [('FasterXML/jackson-databind','6039','5962'),('FasterXML/jackson-databind','6105',None),('honojs/hono','5199','4401'),('pallets/click','3533','3449')]:
+            d=json.loads(subprocess.run(['gh','pr','view',pr,'-R',repo,'--json','title,body,mergedAt'],capture_output=True,text=True).stdout or '{}')
+            print(f"--- {repo} PR {pr} merged {d.get('mergedAt','')[:10]}: {d.get('title')}\n    body: {(d.get('body') or '')[:260]!r}")
+            if iss:
+                i=json.loads(subprocess.run(['gh','api',f'repos/{repo}/issues/{iss}'],capture_output=True,text=True).stdout or '{}')
+                print(f"    issue #{iss} [{i.get('state')}, closed {str(i.get('closed_at'))[:10]}]: {i.get('title')}")
+        EOF
+      at: 2026-10-11T18:54:50.792752Z
+      classified: other
+    - cmd: |-
+        gh api repos/honojs/hono/issues/4401 -q '"state_reason=" + (.state_reason//"null") + " closed_at=" + .closed_at'; echo '--- timeline close/reference events:'; gh api repos/honojs/hono/issues/4401/timeline --paginate -q '.[] | select(.event=="closed" or .event=="cross-referenced" or .event=="referenced") | .event + " " + (.created_at//"") + " " + ((.source.issue.number|tostring)//"") + " " + (.commit_id//"")' | head; echo '--- base clone has the fix? (etag incremental hashing at base)'; cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json,subprocess,sys; sys.path.insert(0,'scoring'); import js_eval
+        t=json.load(open('tasks/e2e/honojs__hono__pr5199.json')); rd=js_eval.REPO_DIR[t['repo']]
+        print(subprocess.run(['git','-C',rd,'grep','-n','mergeBuffers\|generator(',t['base_commit'],'--','src/middleware/etag/'],capture_output=True,text=True).stdout[:600])"
+      at: 2026-10-11T18:55:14.272981Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json; ids=json.load(open('results/issue-post-cutoff-manifest.json'))
+        drop={'FasterXML__jackson-databind__pr6052','FasterXML__jackson-databind__pr6105','pallets__click__pr3533','google__gson__pr3057'}
+        keep=[i for i in ids if i not in drop]; json.dump(keep,open('results/issue-bed52-manifest.json','w'),indent=1); print(len(keep))"
+      at: 2026-10-11T18:55:24.32143Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,subprocess,re,os,sys,glob,datetime
+        sys.path.insert(0,'scoring'); import java_eval, go_eval, js_eval
+        REPO={}; [REPO.update(getattr(m,'REPO_DIR',{})) for m in (java_eval,go_eval,js_eval)]
+        keep=json.load(open('results/issue-bed52-manifest.json'))
+        dropped={'FasterXML__jackson-databind__pr6052':'issue #1803 already implemented at base (TreeTraversingParserParentContext1803Test exists); PR is a follow-up the issue text does not describe',
+         'FasterXML__jackson-databind__pr6105':'backport of #6101 with no linked issue; duplicate of pr6102',
+         'pallets__click__pr3533':'"completes the partial fix" of PR #3482, which already closed issue #3449; part of the fix is at base',
+         'google__gson__pr3057':'issue asks for IllegalArgumentException; merged test requires the input to succeed (maintainer design choice) — both arms failed identically on 2026-10-11'}
+        notes={'FasterXML__jackson-databind__pr6039':'backport of a CVE fix to the 2.18 branch; fix absent at base',
+         'honojs__hono__pr5199':'issue closed "completed" in 2025-09 but the buggy line is still at base',
+         'FasterXML__jackson-databind__pr6076':'base has a known-failing test in tofix/ naming the issue',
+         'urllib3__urllib3__pr3786':'base has a pytest.skip naming the issue',
+         'gin-gonic__gin__pr4805':'gold also changes render/html.go, which the issue never mentions; both arms missed it on 2026-10-11',
+         'go-chi__chi__pr1148':'run 2026-10-11: native pass, prism fail (one neighbour read)',
+         'colinhacks__zod__pr6298':'run 2026-10-11: both pass, identical fix','pallets__click__pr3653':'run 2026-10-11: both pass, identical fix'}
+        def gh(*a): return subprocess.run(['gh',*a],capture_output=True,text=True).stdout
+        rows=[]
+        for k in keep:
+            t=json.load(open(f'tasks/e2e/{k}.json')); repo=t['repo']; pr=t['pr']
+            d=json.loads(gh('pr','view',str(pr),'-R',repo,'--json','title,body,mergedAt,closingIssuesReferences') or '{}')
+            linked=[str(x['number']) for x in d.get('closingIssuesReferences',[])]
+            kw=re.findall(r'(?i)\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\s*:?\s*#(\d+)',(d.get('body') or '')+' '+(d.get('title') or ''))
+            title=t['problem_statement'].strip().split('\n')[0].strip()
+            issue=None
+            for n in (linked or kw):
+                i=json.loads(gh('api',f'repos/{repo}/issues/{n}') or '{}')
+                if i and 'pull_request' not in i and i['title'].strip()==title: issue=n; break
+            issue=issue or (linked or kw or ['?'])[0]
+            lang=t.get('lang') or ('python' if repo.split('/')[0] in('pallets','urllib3','pydantic') else '?')
+            gold=[l[6:] for l in t['patch'].split('\n') if l.startswith('+++ b/')]
+            p=t['problem_statement']; hinted=sum(1 for g in gold if os.path.splitext(os.path.basename(g))[0] in p)
+            rows.append(dict(id=k,repo=repo,pr=pr,issue=issue,lang=lang,merged=(d.get('mergedAt') or '')[:10],words=len(p.split()),gold=len(gold),hinted=hinted,title=title,note=notes.get(k,'')))
+        out=['# Issue-prompted benchmark bed (52 tasks) — 2026-10-11','',
+        'Built because the deep/deephard prompts were specs I wrote (every one quotes the target signatures, most name the file), not human issues. This bed uses the GitHub issue each PR closes, title + body verbatim, as the prompt (`prompt_source: issue` in `tasks/e2e/<id>.json`). Manifest: `results/issue-bed52-manifest.json`.','',
+        '## Selection','','1. `prompt_source == "issue"`: the builder (`build/build_task.py: problem_statement`) follows GitHub\'s closing-issue link, else a `fixes/closes/resolves #N` in the PR text, and verifies #N is an issue, not a PR. 104 of 203 tasks.',
+        '2. Merged on or after 2026-06-01 (past the Sonnet 5.5 training cutoff): 56.',
+        '3. Audit (this file): 4 dropped, 52 kept.','',
+        '## Audit checks run','',
+        '- Base tree grep for the issue number in test sources (catches "already implemented at base").',
+        '- Issue closed_at vs PR mergedAt (a gap of more than 7 days means an earlier fix may exist; each hit inspected by hand).',
+        '- Duplicate / backport PRs with no issue of their own.',
+        '- Known from the 2026-10-11 pair run: tasks whose merged test contradicts the issue text.','',
+        'Not detectable automatically: tasks where the gold fix also touches a file the issue never hints at (e.g. gin pr4805). 20 of 52 issues name none of the gold files; that is the discovery work and they stay.','',
+        '## Dropped','']
+        for k,v in dropped.items(): out.append(f'- `{k}` — {v}')
+        out+=['','## Kept (52)','','| task | lang | issue | merged | words | gold files | hinted | note |','|---|---|---|---|---|---|---|---|']
+        for r in sorted(rows,[REDACTED:env-secret] r:(r['lang'],r['id'])):
+            out.append(f"| [{r['id']}](https://github.com/{r['repo']}/pull/{r['pr']}) | {r['lang']} | [#{r['issue']}](https://github.com/{r['repo']}/issues/{r['issue']}) | {r['merged']} | {r['words']} | {r['gold']} | {r['hinted']} | {r['note']} |")
+        import collections; c=collections.Counter(r['lang'] for r in rows)
+        out+=['',f"Languages: {dict(c)}. 'hinted' = how many gold files the issue text names by stem.",'',
+        '## Issue titles','']
+        for r in sorted(rows,[REDACTED:env-secret] r:(r['lang'],r['id'])): out.append(f"- **{r['id']}**: {r['title']}")
+        out+=['','## How to run','','```','cd research/harness','E2E_OUT=results/<run> python3 runners/run_e2e.py results/issue-bed52-manifest.json --models claude-sonnet-5-5 --arms native,prism_init --trials 1','```','',
+        'Per-cell/per-pair watcher used on 2026-10-11: scratchpad `cellwatch.py <results dir> <expected cells>` (prints CELL/PAIR lines; counts greps after the first change_impact in prism cells).']
+        os.makedirs('../docs',exist_ok=True); open('../docs/issue-bed-2026-10-11.md','w').write('\n'.join(out)+'\n'); print('wrote',len(rows))
+        EOF
+        cd /Users/tapabratapal/Projects/provasign/research && git add docs/issue-bed-2026-10-11.md harness/results/issue-bed52-manifest.json harness/results/issue-post-cutoff-manifest.json && git commit -q -m "docs: issue-prompted benchmark bed (52 tasks, audited 2026-10-11)
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -1 && head -c 600 docs/issue-bed-2026-10-11.md
+      at: 2026-10-11T18:57:42.488176Z
+      classified: test
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/scratchpad; cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p tools && cp $S/cellwatch.py tools/cellwatch.py && cp $S/mcpdrive.py tools/mcpdrive.py && python3 -c "
+        import json; json.dump(['FasterXML__jackson-databind__pr6047','apache__dubbo__pr16348','gin-gonic__gin__pr4819','honojs__hono__pr5311','pallets__click__pr3678'],open('results/issue5-manifest.json','w'))" && cd .. && git add harness/tools/cellwatch.py harness/tools/mcpdrive.py harness/results/issue5-manifest.json && git commit -q -m "harness: per-cell/pair watcher, MCP driver, issue5 manifest
+
+        Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git log --oneline -1
+      at: 2026-10-11T18:58:05.105799Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p='/Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/MEMORY.md'; s=open(p).read()
+        line='- [NEXT: run issue5 pairs](project_next_issue5_run.md) — 2026-10-11 evening: after context clear, run 5 approved issue-prompted pairs (manifest+command inside); per-cell + per-pair reporting; bed doc research/docs/issue-bed-2026-10-11.md\n'
+        if 'project_next_issue5_run' not in s: open(p,'w').write(s.replace('# Memory Index\n\n','# Memory Index\n\n'+line,1)); print('indexed')
+        EOF
+      at: 2026-10-11T18:58:09.491902Z
+      classified: other
+notes:
+    - text: continuation of session 3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae — events captured after its evidence was finalized
+      at: 2026-10-11T18:11:01.617835Z
+redactions: 2

@@ -1,0 +1,1363 @@
+shale_version: "0"
+id: 1d98ffa0-a6f9-4e00-a1df-8929a0eb1923
+created_at: 2026-10-11T18:58:27.892119Z
+finalized_at: 2026-10-11T23:54:47.725449Z
+agent:
+    tool: claude-code
+    model: claude-fable-5-1
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/search-context-no-bodies
+privacy: redacted
+files:
+    - path: internal/mcp/searchcontextbodies_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-11T22:46:32.809148Z
+    - path: internal/mcp/tools.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-11T22:46:42.24126Z
+    - path: internal/mcp/searchcontextbodies.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-11T22:54:38.568276Z
+    - path: internal/mcp/searchshape.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-11T23:04:22.203948Z
+    - path: internal/mcp/searchbodies.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-11T23:06:14.688345Z
+    - path: internal/mcp/server.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-11T23:06:14.785851Z
+    - path: internal/mcp/searchbudget.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-11T23:07:03.242029Z
+    - path: internal/mcp/compact_test.go
+      ops:
+        - edit
+      via: hook
+      first_touched: 2026-10-11T23:07:03.310909Z
+    - path: internal/mcp/searchshape_test.go
+      ops:
+        - write
+        - edit
+      via: hook
+      first_touched: 2026-10-11T23:07:03.340619Z
+commands:
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && cat results/issue5-manifest.json | head -40 && ls results/ | grep issue5; ls tools/cellwatch.py runners/run_e2e.py; prism --version 2>/dev/null; which prism
+      at: 2026-10-11T18:58:39.065872Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p results/bench-v0877-issue5-2026-10-11 && E2E_OUT=results/bench-v0877-issue5-2026-10-11 nohup python3 runners/run_e2e.py results/issue5-manifest.json --models claude-sonnet-5-5 --arms native,prism_init --trials 1 > results/bench-v0877-issue5-2026-10-11/driver.log 2>&1 &
+        sleep 20; cat /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue5-2026-10-11/driver.log | tail -20; pgrep -fl run_e2e
+      at: 2026-10-11T18:59:03.543371Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/pallets__click__pr3678.json'))
+        print('fail_to_pass:',t.get('fail_to_pass'));print('PROMPT:');print(t.get('prompt','')[:1500]);print('PATCH:');print(t['patch'][:3000])"
+      at: 2026-10-11T19:08:12.957505Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/pallets__click__pr3678.json'))
+        print(list(t.keys()))
+        for k in t:
+            if k not in ('patch','test_patch') and isinstance(t[k],str) and len(t[k])>200: print('==',k);print(t[k][:2500])
+        print('== test_patch head');print(t.get('test_patch','')[:2500])"; ls results/bench-v0877-issue5-2026-10-11/; ls results/bench-v0877-issue5-2026-10-11/* | grep -i click
+      at: 2026-10-11T19:08:19.414702Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue5-2026-10-11 && cat pallets__click__pr3678.claude-sonnet-5-5.native.diff; python3 -c "
+        import json;r=json.load(open('pallets__click__pr3678.claude-sonnet-5-5.native.json'))
+        print({k:r[k] for k in r if k not in ('test_output','stdout','stderr','transcript')})
+        out=r.get('test_output') or r.get('stdout') or ''
+        import re;print('\n'.join(l for l in out.splitlines() if 'FAILED' in l or 'PASSED' in l or 'passed' in l or 'failed' in l)[:3000])"
+      at: 2026-10-11T19:08:24.850184Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue5-2026-10-11 && cat pallets__click__pr3678.claude-sonnet-5-5.prism_init.diff | head -40; python3 -c "
+        import json,glob
+        tot={}
+        for f in sorted(glob.glob('*.json')):
+            r=json.load(open(f));a=r['arm'];t=tot.setdefault(a,{'res':0,'n':0,'calls':0,'tok':0,'cost':0})
+            t['n']+=1;t['res']+=r['resolved'];t['calls']+=r['api_calls'];t['tok']+=r['tokens_request']+r['tokens_out'];t['cost']+=r['cost_usd']
+        for a,t in tot.items(): print(a,t)
+        "; pgrep -fl run_e2e || echo runner exited
+      at: 2026-10-11T19:08:43.436392Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && rm project_next_issue5_run.md && python3 - <<'EOF'
+        p='MEMORY.md';s=open(p).read().splitlines()
+        s=[l for l in s if 'project_next_issue5_run.md' not in l]
+        i=next(i for i,l in enumerate(s) if l.startswith('- ['))
+        s.insert(i,'- [Issue5 run 2026-10-11](project_issue5_run_2026_10_11.md) — DONE: 5 issue pairs v0.87.7: 4/5 both arms, click pr3678 task-inherent (unguessable reserved name), prism 0.82x calls/0.99x cost, change_impact never called; issue bed total native 7/11 vs prism 6/11')
+        open(p,'w').write('\n'.join(s)+'\n')
+        EOF
+        head -5 MEMORY.md
+      at: 2026-10-11T19:09:04.116309Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue5-2026-10-11/transcripts && ls; python3 - <<'EOF'
+        import json,glob
+        for f in sorted(glob.glob('*.jsonl')):
+            print('\n=====',f)
+            for line in open(f):
+                try: m=json.loads(line)
+                except: continue
+                if m.get('type')!='assistant': continue
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use':
+                        inp=c['input']; s=json.dumps(inp)
+                        print('  TOOL',c['name'],s[:300])
+                    elif c.get('type')=='text' and c['text'].strip():
+                        print('  TEXT',c['text'][:400].replace('\n',' '))
+        EOF
+      at: 2026-10-11T19:24:24.402172Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research && grep -n -i "audit\|unsolv\|defect\|verified\|check" docs/issue-bed-2026-10-11.md | head -30; cd harness && python3 - <<'EOF'
+        import json,os
+        bed=json.load(open('results/issue-bed52-manifest.json'))
+        ran=set(json.load(open('results/issue5-manifest.json')))
+        import glob
+        # earlier 6 pairs
+        for d in glob.glob('results/bench-v0877-issue*'):
+            for f in glob.glob(d+'/*.json'): ran.add(json.load(open(f))['task'])
+        print('bed',len(bed),'ran',len(ran&set(bed)))
+        rem=[t for t in bed if t not in ran]
+        print('remaining',len(rem))
+        bad=[]
+        from collections import Counter
+        langs=Counter(); kinds=Counter()
+        for t in rem:
+            p=f'tasks/e2e/{t}.json'
+            if not os.path.exists(p): bad.append((t,'missing')); continue
+            j=json.load(open(p))
+            if not j.get('problem_statement','').strip(): bad.append((t,'no issue text'))
+            if not j.get('fail_to_pass'): bad.append((t,'no f2p'))
+            if not j.get('patch'): bad.append((t,'no patch'))
+            langs[j.get('repo','').split('/')[0]]+=1; kinds[j.get('kind')]+=1
+        print('bad',bad); print(kinds); print(langs)
+        json.dump(rem,open('results/issue41-manifest.json','w'))
+        EOF
+      at: 2026-10-11T19:27:20.501474Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re
+        from collections import Counter
+        rem=json.load(open('results/issue41-manifest.json'))
+        rem=[t for t in rem if t!='pallets__click__pr3695']
+        json.dump(rem,open('results/issue42-manifest.json','w'))
+        dist=Counter(); rows=[]
+        for t in rem:
+            j=json.load(open(f'tasks/e2e/{t}.json'))
+            files=set();hunks=0
+            for line in j['patch'].splitlines():
+                if line.startswith('diff --git'):
+                    f=line.split(' b/')[-1]; cur=f
+                elif line.startswith('@@'):
+                    if not re.search(r'(^|/)(tests?|test_|__tests__|docs?|CHANGES|CHANGELOG|release-notes)',cur,re.I) and not cur.endswith(('.md','.rst','.txt')):
+                        files.add(cur);hunks+=1
+            b='1 file/1 hunk' if len(files)==1 and hunks==1 else ('1 file/multi' if len(files)==1 else 'multi-file')
+            dist[b]+=1; rows.append((t,len(files),hunks))
+        print(len(rem),dict(dist))
+        for r in sorted(rows,[REDACTED:env-secret] r:-r[1])[:12]: print(r)
+        EOF
+        rm results/issue41-manifest.json
+      at: 2026-10-11T19:27:35.643571Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && mkdir -p results/bench-v0877-issue42-2026-10-11 && E2E_OUT=results/bench-v0877-issue42-2026-10-11 nohup python3 runners/run_e2e.py results/issue42-manifest.json --models claude-sonnet-5-5 --arms native,prism_init --trials 1 > results/bench-v0877-issue42-2026-10-11/driver.log 2>&1 &
+        sleep 25; tail -5 /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11/driver.log; pgrep -fl run_e2e | head -2
+      at: 2026-10-11T19:29:29.44584Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob
+        t=json.load(open('tasks/e2e/FasterXML__jackson-databind__pr6030.json'))
+        print('ISSUE:',t['problem_statement'][:1500]);print('F2P:',t['fail_to_pass'])
+        print('GOLD:');print('\n'.join(l for l in t['patch'].splitlines() if not l.startswith(('index','---','+++')) )[:3500])
+        print('TEST PATCH:');print(t['test_patch'][:2000])
+        d='results/bench-v0877-issue42-2026-10-11'
+        for arm in ('native','prism_init'):
+            print('\n#####',arm);print(open(f'{d}/FasterXML__jackson-databind__pr6030.claude-sonnet-5-5.{arm}.diff').read()[:2500])
+            for line in open(f'{d}/transcripts/FasterXML__jackson-databind__pr6030.claude-sonnet-5-5.{arm}.jsonl'):
+                m=json.loads(line)
+                if m.get('type')!='assistant': continue
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use': print('  TOOL',c['name'],json.dumps(c['input'])[:250])
+                    elif c.get('type')=='text' and c['text'].strip(): print('  TEXT',c['text'][:300].replace('\n',' '))
+        EOF
+      at: 2026-10-11T19:31:39.628622Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11 && python3 - <<'EOF'
+        import json
+        for arm in ('native','prism_init'):
+            print('#####',arm)
+            for line in open(f'transcripts/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.{arm}.jsonl'):
+                m=json.loads(line)
+                if m.get('type')=='assistant':
+                    for c in m['message'].get('content',[]):
+                        if c.get('type')=='tool_use': print('  TOOL',c['name'],json.dumps(c['input'])[:220])
+                        elif c.get('type')=='text' and c['text'].strip(): print('  TEXT',c['text'][:200].replace('\n',' '))
+                elif m.get('type')=='user':
+                    for c in m['message'].get('content',[]) if isinstance(m['message'].get('content'),list) else []:
+                        if c.get('type')=='tool_result':
+                            s=c['content'] if isinstance(c['content'],str) else ''.join(x.get('text','') for x in c['content'])
+                            print('    RESULT',len(s),'chars:',s[:120].replace('\n',' '))
+        EOF
+      at: 2026-10-11T19:36:09.943604Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        t=json.load(open('tasks/e2e/FasterXML__jackson-databind__pr6044.json'))
+        print('ISSUE:',t['problem_statement'][:2000]);print('F2P:',t['fail_to_pass'])
+        print('GOLD:');print('\n'.join(l for l in t['patch'].splitlines() if l.startswith(('diff','@@','+','-')) and not l.startswith(('---','+++')))[:4000])
+        d='results/bench-v0877-issue42-2026-10-11'
+        for arm in ('native','prism_init'):
+            print('\n#####',arm);print(open(f'{d}/FasterXML__jackson-databind__pr6044.claude-sonnet-5-5.{arm}.diff').read()[:2500])
+            r=json.load(open(f'{d}/FasterXML__jackson-databind__pr6044.claude-sonnet-5-5.{arm}.json'))
+            print('score',r['score'])
+            for line in open(f'{d}/transcripts/FasterXML__jackson-databind__pr6044.claude-sonnet-5-5.{arm}.jsonl'):
+                m=json.loads(line)
+                if m.get('type')!='assistant': continue
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use': print('  TOOL',c['name'],json.dumps(c['input'])[:160])
+                    elif c.get('type')=='text' and c['text'].strip(): print('  TEXT',c['text'][:250].replace('\n',' '))
+        EOF
+      at: 2026-10-11T19:42:25.440209Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && pgrep -fl "run_e2e|claude -p" | head; tail -8 results/bench-v0877-issue42-2026-10-11/driver.log; ls results/bench-v0877-issue42-2026-10-11/*.json | wc -l
+      at: 2026-10-11T19:43:51.943818Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py <<'EOF'
+        import json,sys
+        task=sys.argv[1]; d='results/bench-v0877-issue42-2026-10-11'
+        t=json.load(open(f'tasks/e2e/{task}.json'))
+        print('ISSUE:',t['problem_statement'][:1800]);print('F2P:',t['fail_to_pass'][:6])
+        print('GOLD:');print('\n'.join(l for l in t['patch'].splitlines() if l.startswith(('diff','@@','+','-')) and not l.startswith(('---','+++')))[:3000])
+        print('TEST PATCH:');print(t['test_patch'][:1800])
+        for arm in ('native','prism_init'):
+            print('\n#####',arm);print(open(f'{d}/{task}.claude-sonnet-5-5.{arm}.diff').read()[:2200])
+            for line in open(f'{d}/transcripts/{task}.claude-sonnet-5-5.{arm}.jsonl'):
+                m=json.loads(line)
+                if m.get('type')!='assistant': continue
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use': print('  TOOL',c['name'],json.dumps(c['input'])[:160])
+                    elif c.get('type')=='text' and c['text'].strip(): print('  TEXT',c['text'][:250].replace('\n',' '))
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py FasterXML__jackson-databind__pr6061
+      at: 2026-10-11T19:45:34.935995Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py FasterXML__jackson-databind__pr6076
+      at: 2026-10-11T19:48:14.656568Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py FasterXML__jackson-databind__pr6215 2>&1 | head -150
+      at: 2026-10-11T19:56:00.183083Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py FasterXML__jackson-dataformat-xml__pr885 2>&1 | head -140; python3 -c "
+        import json;r=json.load(open('results/bench-v0877-issue42-2026-10-11/FasterXML__jackson-dataformat-xml__pr885.claude-sonnet-5-5.native.json'));print(r['score'])"
+      at: 2026-10-11T19:56:46.280926Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11 && cat FasterXML__jackson-dataformat-xml__pr885.claude-sonnet-5-5.prism_init.diff; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            r=json.load(open(f'FasterXML__jackson-dataformat-xml__pr885.claude-sonnet-5-5.{a}.json'))
+            print(a, {k:v for k,v in r['score'].items()}, r.get('f2p_results') or r.get('test_results') or [k for k in r.keys()])
+        "; grep -l "testNullMemberAccepted\|testIgnoredDefaultGetter" *.json 2>/dev/null | head; ls | grep -i xml
+      at: 2026-10-11T19:56:53.93265Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py apache__dubbo__pr16325 2>&1 | head -170
+      at: 2026-10-11T20:02:45.931516Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -c "findTripleMethodDescriptor" results/bench-v0877-issue42-2026-10-11/apache__dubbo__pr16325.claude-sonnet-5-5.*.diff; grep -o "findTripleMethodDescriptor\|shouldSurfaceCorruptWrapper" tasks/e2e/apache__dubbo__pr16325.json | sort | uniq -c; head -c 600 results/bench-v0877-issue42-2026-10-11/apache__dubbo__pr16325.claude-sonnet-5-5.prism_init.diff
+      at: 2026-10-11T20:02:53.14124Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py apache__dubbo__pr16395 2>&1 | head -260
+      at: 2026-10-11T20:21:06.81966Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py colinhacks__zod__pr6129 2>&1 | head -200
+      at: 2026-10-11T20:23:35.144436Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py colinhacks__zod__pr6500 2>&1 | head -220
+      at: 2026-10-11T20:29:20.300552Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls results/bench-v0877-issue42-2026-10-11/ | grep -v "\.json$\|\.diff$"; python3 - <<'EOF'
+        import json
+        r=json.load(open('results/bench-v0877-issue42-2026-10-11/colinhacks__zod__pr6500.claude-sonnet-5-5.prism_init.json'))
+        print(r['score']); print(r.get('setup'))
+        t=json.load(open('tasks/e2e/colinhacks__zod__pr6500.json'))
+        tp=t['test_patch']; i=tp.find('default.test.ts'); print(tp[i:i+2500])
+        EOF
+        grep -n "def.defaultValue\|defaultValue" /dev/null; cd /tmp 2>/dev/null; ls /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/ | grep e2e-run | head -3
+      at: 2026-10-11T20:29:32.924288Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11 && python3 - <<'EOF'
+        import json
+        for line in open('transcripts/colinhacks__zod__pr6500.claude-sonnet-5-5.prism_init.jsonl'):
+            m=json.loads(line)
+            if m.get('type')=='assistant':
+                for c in m['message'].get('content',[]):
+                    if c.get('type')=='tool_use': print('  TOOL',c['name'],json.dumps(c['input'])[:200])
+                    elif c.get('type')=='text' and c['text'].strip(): print('  TEXT',c['text'][:300].replace('\n',' '))
+            elif m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                for c in m['message']['content']:
+                    if c.get('type')=='tool_result':
+                        s=c['content'] if isinstance(c['content'],str) else ''.join(x.get('text','') for x in c['content'])
+                        if 'Test Files' in s or 'FAIL' in s or 'failed' in s: print('    RESULT',s[-500:].replace('\n',' | '))
+        EOF
+      at: 2026-10-11T20:29:44.227643Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py google__gson__pr3059 2>&1 | head -150; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            print(a, json.load(open('results/bench-v0877-issue42-2026-10-11/google__gson__pr3059.claude-sonnet-5-5.'+a+'.json'))['score'])"
+      at: 2026-10-11T20:34:20.816524Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 -c "
+        import json;t=json.load(open('tasks/e2e/google__gson__pr3059.json'));tp=t['test_patch'];i=tp.find('Integral and floating');print(tp[i:i+1800])"
+      at: 2026-10-11T20:34:32.101534Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py google__gson__pr3098 2>&1 | head -190; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            print(a, json.load(open('results/bench-v0877-issue42-2026-10-11/google__gson__pr3098.claude-sonnet-5-5.'+a+'.json'))['score'])"
+      at: 2026-10-11T20:37:35.450578Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11 && for a in native prism_init; do echo "== $a"; grep -c "^[+-][^+-]" google__gson__pr3098.claude-sonnet-5-5.$a.diff; grep "^+++\|recordPromoted\|PEEKED_BUFFERED\|pathNames\[" google__gson__pr3098.claude-sonnet-5-5.$a.diff | sort | uniq -c; done
+      at: 2026-10-11T20:37:48.611149Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py google__gson__pr3112 2>&1 | head -170; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            print(a, json.load(open('results/bench-v0877-issue42-2026-10-11/google__gson__pr3112.claude-sonnet-5-5.'+a+'.json'))['score'])"
+      at: 2026-10-11T20:38:36.32189Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11 && python3 - <<'EOF'
+        import json
+        for arm in ('native','prism_init'):
+            print('#####',arm)
+            for line in open(f'transcripts/honojs__hono__pr5164.claude-sonnet-5-5.{arm}.jsonl'):
+                m=json.loads(line)
+                if m.get('type')=='assistant':
+                    for c in m['message'].get('content',[]):
+                        if c.get('type')=='tool_use': print('  TOOL',c['name'],json.dumps(c['input'])[:230])
+                        elif c.get('type')=='text' and c['text'].strip(): print('  TEXT',c['text'][:200].replace('\n',' '))
+                elif m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                    for c in m['message']['content']:
+                        if c.get('type')=='tool_result':
+                            s=c['content'] if isinstance(c['content'],str) else ''.join(x.get('text','') for x in c['content'])
+                            print('    RESULT',len(s),s[:150].replace('\n',' | '))
+        EOF
+      at: 2026-10-11T20:42:08.643687Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && ls results/bench-v0877-issue42-2026-10-11/*.json | wc -l; python3 -c "
+        import json;m=json.load(open('results/issue42-manifest.json'));print([t.split('__',1)[1] for t in m[33:]])"
+      at: 2026-10-11T20:44:03.529262Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py pydantic__pydantic__pr13516 2>&1 | head -150; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            print(a, json.load(open('results/bench-v0877-issue42-2026-10-11/pydantic__pydantic__pr13516.claude-sonnet-5-5.'+a+'.json'))['score'])"
+      at: 2026-10-11T20:47:27.90717Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py urfave__cli__pr2419 2>&1 | head -170; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            print(a, json.load(open('results/bench-v0877-issue42-2026-10-11/urfave__cli__pr2419.claude-sonnet-5-5.'+a+'.json'))['score'])"
+      at: 2026-10-11T20:49:28.141455Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11 && python3 - <<'EOF'
+        import json
+        for arm in ('prism_init','native'):
+            print('#####',arm)
+            for line in open(f'transcripts/urfave__cli__pr2419.claude-sonnet-5-5.{arm}.jsonl'):
+                m=json.loads(line)
+                if m.get('type')=='user' and isinstance(m['message'].get('content'),list):
+                    for c in m['message']['content']:
+                        if c.get('type')=='tool_result':
+                            s=c['content'] if isinstance(c['content'],str) else ''.join(x.get('text','') for x in c['content'])
+                            if 'firstArg' in s: print(s[:1800]); break
+                    else: continue
+                    break
+        EOF
+      at: 2026-10-11T20:49:37.822855Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py urllib3__urllib3__pr3786 2>&1 | head -200; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            print(a, json.load(open('results/bench-v0877-issue42-2026-10-11/urllib3__urllib3__pr3786.claude-sonnet-5-5.'+a+'.json'))['score'])"
+      at: 2026-10-11T20:54:58.422053Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/diag.py urllib3__urllib3__pr5093 2>&1 | head -120; python3 -c "
+        import json
+        for a in ('native','prism_init'):
+            print(a, json.load(open('results/bench-v0877-issue42-2026-10-11/urllib3__urllib3__pr5093.claude-sonnet-5-5.'+a+'.json'))['score'])"; pgrep -fl run_e2e || echo runner exited
+      at: 2026-10-11T21:00:28.935929Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && for a in native prism_init; do echo "== $a"; grep "^[+-][^+-]" results/bench-v0877-issue42-2026-10-11/urllib3__urllib3__pr5093.claude-sonnet-5-5.$a.diff | head -14; done; python3 - <<'EOF'
+        import json,glob,re
+        d='results/bench-v0877-issue42-2026-10-11'
+        TI={'FasterXML__jackson-databind__pr6030','FasterXML__jackson-databind__pr6044','FasterXML__jackson-databind__pr6215','FasterXML__jackson-dataformat-xml__pr885','apache__dubbo__pr16325','google__gson__pr3116','pydantic__pydantic__pr13516','urllib3__urllib3__pr3786'}
+        cells={}
+        for f in glob.glob(d+'/*.json'):
+            r=json.load(open(f)); cells.setdefault(r['task'],{})[r['arm']]=r
+        def shape(t):
+            j=json.load(open(f'tasks/e2e/{t}.json'));files=set();hunks=0;cur=''
+            for line in j['patch'].splitlines():
+                if line.startswith('diff --git'): cur=line.split(' b/')[-1]
+                elif line.startswith('@@') and not re.search(r'(^|/)(tests?|test_|__tests__|docs?|CHANGES|CHANGELOG|changelog|release-notes)',cur,re.I) and not cur.endswith(('.md','.rst','.txt')):
+                    files.add(cur);hunks+=1
+            return 'multi-file' if len(files)>1 else ('1file/1hunk' if hunks==1 else '1file/multi')
+        rows=[]
+        for t,c in cells.items():
+            n,p=c['native'],c['prism_init']
+            rows.append(dict(task=t,ti=t in TI,shape=shape(t),nres=n['resolved'],pres=p['resolved'],ncost=n['cost_usd'],pcost=p['cost_usd'],ncalls=n['api_calls'],pcalls=p['api_calls'],ntok=n['tokens_request']+n['tokens_out'],ptok=p['tokens_request']+p['tokens_out'],pcalls_prism=p['tool_usage']['prism_calls']))
+        def agg(rs,label):
+            if not rs: return
+            N=len(rs);print(f"{label:28s} n={N:2d} native {sum(r['nres'] for r in rs):2d} prism {sum(r['pres'] for r in rs):2d} | calls {sum(r['pcalls'] for r in rs)/sum(r['ncalls'] for r in rs):.2f}x tok {sum(r['ptok'] for r in rs)/sum(r['ntok'] for r in rs):.2f}x cost {sum(r['pcost'] for r in rs)/sum(r['ncost'] for r in rs):.2f}x  $n={sum(r['ncost'] for r in rs):.2f} $p={sum(r['pcost'] for r in rs):.2f}")
+        agg(rows,'ALL 41')
+        sc=[r for r in rows if not r['ti']]
+        agg(sc,'scorable')
+        for s in ('1file/1hunk','1file/multi','multi-file'): agg([r for r in sc if r['shape']==s],'  '+s)
+        agg([r for r in rows if r['ti']],'task-inherent')
+        print('prism calls total',sum(r['pcalls_prism'] for r in rows),'impact calls 0')
+        print('splits:',[(r['task'].split('__',1)[1],r['nres'],r['pres']) for r in sc if r['nres']!=r['pres']])
+        print('both fail scorable:',[r['task'].split('__',1)[1] for r in sc if not r['nres'] and not r['pres']])
+        import statistics; print('median pair cost ratio scorable',round(statistics.median(r['pcost']/r['ncost'] for r in sc),2))
+        EOF
+      at: 2026-10-11T21:00:49.003138Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p='MEMORY.md';s=open(p).read().splitlines()
+        i=next(i for i,l in enumerate(s) if l.startswith('- ['))
+        s.insert(i,'- [Issue42 run 2026-10-11](project_issue42_run_2026_10_11.md) — DONE: full issue bed on v0.87.7, 41 pairs: dead tie 25/25 scorable, cost 0.97x, 8 task-inherent (20%), 0 change_impact calls, all 4 splits = judgment not retrieval; bed cannot show a graph effect')
+        open(p,'w').write('\n'.join(s)+'\n')
+        EOF
+        head -3 MEMORY.md | cut -c1-120
+      at: 2026-10-11T21:01:15.860986Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && cat project_intent_sized_responses_2026_10_02.md reference_claude_thinking_display.md project_plan_after_boost_2026_10_05.md; grep -il "tf-idf\|tfidf\|task param\|task arg\|intent" *.md
+      at: 2026-10-11T22:39:05.151267Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "thinking" runners/run_e2e.py | head; ls results/bench-v0877-issue42-2026-10-11/transcripts | head -3; ls results/bench-v0877-issue42-2026-10-11/transcripts | wc -l; f=$(ls results/bench-v0877-issue42-2026-10-11/transcripts/*prism*.jsonl | head -1); echo $f; python3 - "$f" <<'EOF'
+        import json,sys
+        n=0;t=0;tl=0
+        for line in open(sys.argv[1]):
+            try: d=json.loads(line)
+            except: continue
+            m=d.get('message',{})
+            if d.get('type')!='assistant': continue
+            for c in m.get('content',[]):
+                if c.get('type')=='thinking':
+                    t+=1; tl+=len(c.get('thinking',''))
+                if c.get('type')=='tool_use': n+=1
+        print('tool_use',n,'thinking blocks',t,'thinking chars',tl)
+        EOF
+      at: 2026-10-11T22:39:13.89061Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/a4d86546ed6861fca.output 2>/dev/null | head -80
+      at: 2026-10-11T22:39:35.577146Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/think.py > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/think.txt; head -1 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/think.txt; wc -c /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/think.txt
+      at: 2026-10-11T22:39:42.248311Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,re,collections
+        S="/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/think.json"
+        calls=json.load(open(S))
+        ident=re.compile(r"[A-Za-z_$#][A-Za-z0-9_$]{3,}")
+        STOP=set("this that with from into when then than have need check look like just also what which where should would could into after before still might actually seems looks since both only each more some same case cases value values type types list method methods call calls file files code test tests fix issue property line path into there here their them they about because though while whether using used uses does done being because".split())
+        n=len(calls); think=sum(1 for c in calls if c['think']); text=sum(1 for c in calls if c['text'])
+        ops=collections.Counter(c['args'].get('op') for c in calls)
+        print("calls",n,"with thinking",think,"with text",text,"ops",dict(ops))
+        # per op: scope restriction + result size
+        import statistics
+        for op in ("search",):
+            sc=[c for c in calls if c['args'].get('op')==op]
+            a=[c['args'].get('args',{}) for c in sc]
+            restricted=sum(1 for x in a if x.get('paths') or x.get('glob'))
+            nterms=[len(x.get('terms',[])) for x in a]
+            sizes=[c['result_len'] for c in sc]
+            multi=[c for c in sc if re.search(r"across (\d+) files",c['result_head']) and int(re.search(r"across (\d+) files",c['result_head']).group(1))>1]
+            nomatch=sum(1 for c in sc if "no matches" in c['result_head'])
+            print(op,len(sc),"path/glob-restricted",restricted,"median terms",statistics.median(nterms),"median chars",statistics.median(sizes),"multi-file results",len(multi),"no-match",nomatch)
+        # thinking identifiers not in args
+        lost=[];gain=[]
+        for c in calls:
+            if not c['think']: continue
+            argstr=json.dumps(c['args'])
+            ids=set(i for i in ident.findall(c['think']) if i.lower() not in STOP and (any(ch.isupper() for ch in i[1:]) or '_' in i))
+            missing=sorted(i for i in ids if i not in argstr)
+            lost.append((c['task'],c['n'],missing))
+        for t,nn,m in lost: print(t.split('__')[-1],nn,"ident in thinking NOT in args:",m)
+        # first call gold hit
+        first={}
+        for c in calls:
+            first.setdefault(c['task'],c)
+        hit=0
+        for t,c in first.items():
+            s=json.dumps(c['args'])+c['result_head']
+            if any(g in s for g in c['gold'] if not g.startswith(('changelog','CHANGES','docs/'))): hit+=1
+        print("tasks with prism calls",len(first),"first call touches a gold source file",hit)
+        EOF
+      at: 2026-10-11T22:41:07.796463Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="MEMORY.md"; s=open(p).read()
+        line="- [Thinking before prism calls 2026-10-11](project_thinking_before_prism_calls_2026_10_11.md) — 105 calls with summarized thinking: thinking present 20/105, adds no retrievable signal beyond args, one hypothesis pointed away from gold; 39/45 first calls already hit gold file; do NOT revive task/NL/TF-IDF param\n"
+        s=s.replace("# Memory Index\n\n","# Memory Index\n\n"+line,1); open(p,"w").write(s)
+        EOF
+        head -4 MEMORY.md | cut -c1-80
+      at: 2026-10-11T22:41:36.061849Z
+      classified: other
+    - cmd: cat /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/project_search_body_study_2026_10_05.md; ls -dt /Users/tapabratapal/Projects/provasign/research/harness/results/*/ | head -30
+      at: 2026-10-11T22:44:11.042577Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness/results && ls -d */transcripts 2>/dev/null | while read d; do n=$(ls $d | grep -v native | wc -l); echo "$n $d"; done | sort -rn | head -40; find . -path '*transcripts*' -name '*.jsonl' -newermt 2026-09-20 ! -name '*native*' | wc -l
+      at: 2026-10-11T22:44:16.498675Z
+      classified: other
+    - cmd: |-
+        mkdir -p /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/scan.py <<'EOF'
+        import json, glob, os, re, statistics, collections, sys
+        R="/Users/tapabratapal/Projects/provasign/research/harness/results"
+        files=[f for f in glob.glob(R+"/*/transcripts/*.jsonl") if "native" not in os.path.basename(f) and os.path.getmtime(f)>1759000000]
+        SIG=re.compile(r"^\s*(func|def|class|function|public|private|protected|static|export|interface|type|const|async)\b|\($|\w\(")
+        rows=[]
+        for f in files:
+            msgs=[json.loads(l) for l in open(f) if l.strip()]
+            res={}
+            for m in msgs:
+                if m.get("type")=="user":
+                    for c in m.get("message",{}).get("content",[]) or []:
+                        if isinstance(c,dict) and c.get("type")=="tool_result":
+                            cc=c.get("content")
+                            if isinstance(cc,list): cc="\n".join(x.get("text","") for x in cc if isinstance(x,dict))
+                            res[c["tool_use_id"]]=cc or ""
+            uses=[]
+            for m in msgs:
+                if m.get("type")!="assistant": continue
+                for c in m["message"].get("content",[]):
+                    if c.get("type")=="tool_use": uses.append(c)
+            for i,u in enumerate(uses):
+                if "prism" not in u.get("name",""): continue
+                inp=u.get("input",{}); a=inp.get("args",{}) if isinstance(inp.get("args"),dict) else {}
+                if inp.get("op")!="search": continue
+                terms=a.get("terms") or ([a["term"]] if a.get("term") else [])
+                if isinstance(terms,str): terms=[terms]
+                r=res.get(u["id"],"")
+                nxt=[]
+                for v in uses[i+1:i+3]:
+                    vi=v.get("input",{})
+                    nxt.append(v["name"].replace("mcp__prism__","")+":"+(vi.get("op","") if isinstance(vi,dict) else ""))
+                rows.append(dict(sess=os.path.relpath(f,R),terms=terms,ctx=a.get("context"),bodies=a.get("include_bodies"),
+                    scope=a.get("scope"),sig=any(SIG.search(t or "") for t in terms),n=len(terms),chars=len(r),
+                    nfiles=int(m.group(1)) if (m:=re.search(r"across (\d+) files?",r)) else None,nxt=nxt,args=a,res=r))
+        json.dump(rows,open(os.path.dirname(__file__)+"/rows.json","w"))
+        print("sessions",len(files),"searches",len(rows))
+        tot=sum(r["chars"] for r in rows)
+        def summ(name,sel):
+            if not sel: print(name,0); return
+            c=[r["chars"] for r in sel]
+            print(f"{name:38s} n={len(sel):4d} median={statistics.median(c):7.0f} p90={sorted(c)[int(.9*len(c))]:7d} share_of_search_chars={sum(c)/tot:.0%}")
+        summ("all",rows)
+        summ("context set",[r for r in rows if r["ctx"]])
+        summ("context>=10",[r for r in rows if (r["ctx"] or 0)>=10])
+        summ("context>=20",[r for r in rows if (r["ctx"] or 0)>=20])
+        summ("sig-shaped term",[r for r in rows if r["sig"]])
+        summ("sig-shaped + context>=10",[r for r in rows if r["sig"] and (r["ctx"] or 0)>=10])
+        summ("no context",[r for r in rows if not r["ctx"]])
+        print(collections.Counter(r["ctx"] for r in rows).most_common(15))
+        EOF
+        python3 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/scan.py
+      at: 2026-10-11T22:44:33.164735Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,re
+        rows=json.load(open("rows.json"))
+        for r in rows:
+            if not r["ctx"]: continue
+            res=r["res"]
+            nhits=len(re.findall(r"^\s+\d+:",res,re.M))
+            body="symbols (" in res or "Exact source" in res
+            print(f'{r["chars"]:6d} ctx={r["ctx"]:>2} hits={nhits:2d} files={r["nfiles"]} sig={int(r["sig"])} body={int(body)} {r["sess"].split("/")[0][:22]} {r["sess"].split("/")[-1].split(".")[0][-22:]} terms={r["terms"]} next={r["nxt"]}')
+        EOF
+      at: 2026-10-11T22:44:42.173553Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json
+        rows=json.load(open("rows.json"))
+        r=[r for r in rows if r["ctx"]==40][0]
+        print(r["res"])
+        EOF
+      at: 2026-10-11T22:44:48.103418Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && cat > dup.py <<'EOF'
+        import json,re,collections
+        rows=json.load(open("rows.json"))
+        def parse(res):
+            ctx=[]  # (file,line,chars)
+            bodies=[] # (file,a,b,chars,name)
+            cur=None; mode="list"; bfile=None
+            lines=res.split("\n"); i=0
+            while i<len(lines):
+                L=lines[i]
+                m=re.match(r"^\*\*`(.+?)`\*\*",L)
+                if m: bfile=m.group(1); i+=1; continue
+                m=re.match(r"^// Full enclosing body (\S+) spans (\d+)-(\d+)",L)
+                if m and bfile:
+                    a,b=int(m.group(2)),int(m.group(3)); j=i+1; ch=0
+                    while j<len(lines) and not lines[j].startswith("```"): j+=1
+                    j+=1
+                    while j<len(lines) and not lines[j].startswith("```"): ch+=len(lines[j])+1; j+=1
+                    bodies.append((bfile,a,b,ch,m.group(1))); i=j+1; continue
+                m=re.match(r"^(\S[^:]*\.\w+):$",L)
+                if m: cur=m.group(1); i+=1; continue
+                m=re.match(r"^\s+(\d+)[-:] ",L)
+                if m and cur: ctx.append((cur,int(m.group(1)),len(L)+1))
+                i+=1
+            return ctx,bodies
+        tot=0; dup=0; bodych=0; ctxch=0; nwith=0; ex=[]
+        for r in rows:
+            ctx,bodies=parse(r["res"])
+            tot+=r["chars"]
+            if not bodies or not ctx: continue
+            d=sum(c for f,l,c in ctx if any(f==bf and a<=l<=b for bf,a,b,_,_ in bodies))
+            if d: nwith+=1; ex.append((d,r["chars"],r["ctx"],r["sess"].split("/")[-1][:40],r["terms"]))
+            dup+=d; bodych+=sum(b[3] for b in bodies); ctxch+=sum(c for _,_,c in ctx)
+        print(f"searches {len(rows)}; with body+ctx overlap {nwith}; duplicated ctx chars {dup} = {dup/tot:.1%} of all search answer chars; ctx chars {ctxch}, body chars {bodych}")
+        for e in sorted(ex,reverse=True)[:15]: print(e)
+        EOF
+        python3 dup.py
+      at: 2026-10-11T22:45:04.813272Z
+      classified: other
+    - cmd: git describe --tags HEAD; git log --oneline -S'if _, explicit := args["context"]; explicit' -- internal/mcp/server.go; git tag --contains $(git log --format=%h -1 -S'if _, explicit := args["context"]; explicit' -- internal/mcp/server.go) | head; git show v0.87.7:internal/mcp/server.go | grep -n -A4 "func compactSearchCanIncludeBodies"; prism --version; ls ~/prism-ab-bins | tail -5; grep -o '"prism_version"[^,]*' /Users/tapabratapal/Projects/provasign/research/harness/results/bench-v0877-issue42-2026-10-11/*.json 2>/dev/null | head -2
+      at: 2026-10-11T22:45:39.424012Z
+      classified: other
+    - cmd: grep -rn "enclosingBodiesHeader\|searchBodies(ctx\|\.searchBodies(" internal/ --include=*.go | grep -v _test
+      at: 2026-10-11T22:45:45.045624Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,glob,os,re
+        R="/Users/tapabratapal/Projects/provasign/research/harness/results/"
+        rows=json.load(open("rows.json"))
+        def norm(s): return re.sub(r"\s+"," ",s).strip()
+        for r in rows:
+            if not r["ctx"]: continue
+            res=r["res"]; cut=res.find("// Exact source")
+            win,body=(res[:cut],res[cut:]) if cut>=0 else (res,"")
+            # strip line prefixes
+            win_t=norm(re.sub(r"^\s*\d+[-:] ?","",win,flags=re.M)); body_t=norm(re.sub(r"^\d+→","",body,flags=re.M))
+            # find edits within next 4 calls
+            msgs=[json.loads(l) for l in open(R+r["sess"]) if l.strip()]
+            uses=[c for m in msgs if m.get("type")=="assistant" for c in m["message"]["content"] if c.get("type")=="tool_use"]
+            idx=next(i for i,u in enumerate(uses) if "prism" in u["name"] and u["input"].get("args",{}).get("terms")==r["terms"])
+            verdicts=[]
+            for u in uses[idx+1:idx+5]:
+                if u["name"] in("Edit","MultiEdit"):
+                    old=u["input"].get("old_string","")
+                    # use longest line of old_string as probe
+                    probe=max((norm(l) for l in old.split("\n")),[REDACTED:env-secret]"")
+                    if len(probe)<15: continue
+                    verdicts.append("WIN" if probe in win_t else "BODYONLY" if probe in body_t else "neither")
+            print(f'{r["chars"]:6d} ctx={r["ctx"]:>2} body={int(bool(body))} {os.path.basename(r["sess"])[:38]:38s} edits={verdicts}')
+        EOF
+      at: 2026-10-11T22:46:11.786273Z
+      classified: other
+    - cmd: git status --short && git checkout -b fix/search-context-no-bodies && ls internal/mcp/*context*_test.go internal/mcp/searchbudget_test.go 2>&1 | head
+      at: 2026-10-11T22:46:19.289437Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run TestSearchExplicitContextDeliversNoBodies 2>&1 | tail -30
+      at: 2026-10-11T22:46:36.154908Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run TestSearchExplicitContextDeliversNoBodies 2>&1 | tail -5 && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -40
+      at: 2026-10-11T22:47:10.56604Z
+      classified: test
+    - cmd: ls ~/prism-ab-bins/payloadreplay/ | head -40; ls /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/*/scratchpad/replay 2>/dev/null | head
+      at: 2026-10-11T22:47:14.54035Z
+      classified: other
+    - cmd: sed -n 1,80p ~/prism-ab-bins/payloadreplay/replay_codexfix.py
+      at: 2026-10-11T22:47:16.630694Z
+      classified: other
+    - cmd: |-
+        go build -o ~/prism-ab-bins/prism-ctxnobody ./cmd/prism 2>&1 | tail -3; ls ~/prism-ab-bins/prism-ctxnobody && which prism && ls ~/prism-ab-bins/nbreplay/wt/ | head -50; python3 -c "
+        import json;t=json.load(open('/Users/tapabratapal/Projects/provasign/research/harness/tasks/e2e/FasterXML__jackson-databind__pr6042.json'));print({k:t[k] for k in t if k in('repo','base_commit','corpus','repo_path','repo_url')})"
+      at: 2026-10-11T22:47:27.88912Z
+      classified: build
+    - cmd: ls ~/prism-ab-bins/nbreplay/wt/ | wc -l; for t in FasterXML__jackson-databind__pr6042 FasterXML__jackson-databind__pr6044 FasterXML__jackson-databind__pr6056 FasterXML__jackson-databind__pr6030 FasterXML__jackson-databind__pr6061 FasterXML__jackson-databind__pr6076 FasterXML__jackson-databind__pr6039 pydantic__pydantic__pr13516 labstack__echo__pr3006 urfave__cli__pr2419 gin-gonic__gin__pr4819 colinhacks__zod__pr6500 google__gson__pr3116 apache__dubbo__pr16348; do [ -d ~/prism-ab-bins/nbreplay/wt/$t ] && echo "have $t" || echo "MISSING $t"; done; ls ~/prism-ab-bins/nbreplay/; git -C ~/prism-ab-bins/nbreplay/wt/FasterXML__jackson-databind__pr6138 rev-parse --git-common-dir
+      at: 2026-10-11T22:47:32.143541Z
+      classified: other
+    - cmd: sed -n 1,60p ~/prism-ab-bins/nbreplay/setup.py
+      at: 2026-10-11T22:47:34.168395Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_ctx.py <<'EOF'
+        import json,os,sys,subprocess,concurrent.futures as cf
+        sys.path.insert(0,os.path.expanduser('~/prism-ab-bins/payloadreplay'))
+        from replay_codexfix import MCP, reset
+        H=os.path.expanduser('~/Projects/provasign/research/harness'); R=H+'/results/'
+        sys.path[:0]=[H+'/runners',H+'/scoring']; os.chdir(H)
+        import run_e2e
+        WT=os.path.expanduser('~/prism-ab-bins/nbreplay/wt')
+        BINS={'v0877':'/opt/homebrew/bin/prism','cand':os.path.expanduser('~/prism-ab-bins/prism-ctxnobody')}
+        D=os.path.dirname(os.path.abspath(__file__))
+        rows=json.load(open(D+'/rows.json'))
+        sessions=sorted({r['sess'] for r in rows if r['ctx'] is not None})
+        def task_of(s): return os.path.basename(s).split('.claude')[0]
+        def setup(task):
+            t=json.load(open(f'tasks/e2e/{task}.json')); wt=f'{WT}/{task}'
+            if not os.path.isdir(wt):
+                subprocess.run(['git','clone','-q','--local','--no-checkout',str(run_e2e._repo_for(t)),wt],check=True,capture_output=True)
+            reset(wt,t['base_commit'])
+            if not os.path.exists(wt+'/.grove/grove.db'):
+                subprocess.run([BINS['v0877'],'index',wt],capture_output=True,timeout=3000)
+            return wt
+        def one(sess):
+            task=task_of(sess)
+            try: wt=setup(task)
+            except Exception as e: return sess,{'err':str(e)}
+            msgs=[json.loads(l) for l in open(R+sess) if l.strip()]
+            seq=[c['input'] for m in msgs if m.get('type')=='assistant' for c in m['message']['content'] if c.get('type')=='tool_use' and 'prism' in c.get('name','')]
+            out={}
+            for arm,b in BINS.items():
+                m=MCP(b,wt); res=[]
+                for inp in seq:
+                    try:
+                        d=m.call('tools/call',{"name":"prism","arguments":inp})
+                        txt=d['error']['message'] if 'error' in d else '\n'.join(x['text'] for x in d['result']['content'])
+                    except Exception as e: txt=f'<replay error {e}>'
+                    res.append({'in':inp,'text':txt})
+                m.close(); out[arm]=res
+            return sess,out
+        if __name__=='__main__':
+            out={}
+            with cf.ThreadPoolExecutor(3) as ex:
+                for sess,o in ex.map(one,sessions):
+                    out[sess]=o
+                    if 'err' in o: print('ERR',sess,o['err'],flush=True); continue
+                    print(task_of(sess),{a:sum(len(r['text']) for r in v) for a,v in o.items()},flush=True)
+            json.dump(out,open(D+'/replay_ctx.json','w'))
+            print('DONE')
+        EOF
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && nohup python3 replay_ctx.py > replay_ctx.log 2>&1 &
+        echo started
+      at: 2026-10-11T22:47:49.206638Z
+      classified: other
+    - cmd: until grep -qE "^DONE|Traceback" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_ctx.log; do sleep 5; done; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_ctx.log
+      at: 2026-10-11T22:47:55.312427Z
+      classified: other
+    - cmd: grep -rn -i "context.*bod\|bod.*context" --include=*.md . | grep -iv "node_modules" | head -20; grep -rn '"context"' internal/cli/*.go | head
+      at: 2026-10-11T22:47:59.699024Z
+      classified: other
+    - cmd: sed -n 2470,2490p internal/cli/commands.go; git grep -n -i -E "context.{0,40}bod|bod.{0,40}context" -- '*.md' | head
+      at: 2026-10-11T22:48:02.368698Z
+      classified: other
+    - cmd: sleep 1; cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_ctx.log; ls ~/prism-ab-bins/nbreplay/wt | wc -l
+      at: 2026-10-11T22:48:07.432561Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,re,os
+        R="/Users/tapabratapal/Projects/provasign/research/harness/results/"
+        rep=json.load(open("replay_ctx.json"))
+        def norm(s): return re.sub(r"\s+"," ",s).strip()
+        def strip(t): return norm(re.sub(r"^\s*\d+(?:[-:]|→) ?","",t,flags=re.M))
+        tot_o=tot_c=0; ctx_o=ctx_c=0; other_changed=0; lost=[]
+        for sess,o in rep.items():
+            msgs=[json.loads(l) for l in open(R+sess) if l.strip()]
+            uses=[c for m in msgs if m.get("type")=="assistant" for c in m["message"]["content"] if c.get("type")=="tool_use"]
+            pi=[i for i,u in enumerate(uses) if "prism" in u["name"]]
+            for k,(a,b) in enumerate(zip(o["v0877"],o["cand"])):
+                args=a["in"].get("args",{}); isctx=a["in"].get("op")=="search" and "context" in args
+                lo,lc=len(a["text"]),len(b["text"]); tot_o+=lo; tot_c+=lc
+                if isctx:
+                    ctx_o+=lo; ctx_c+=lc
+                    i=pi[k]
+                    for u in uses[i+1:i+5]:
+                        if u["name"]=="Edit":
+                            for line in u["input"].get("old_string","").split("\n"):
+                                p=norm(line)
+                                if len(p)>=15 and p in strip(a["text"]) and p not in strip(b["text"]):
+                                    lost.append((os.path.basename(sess)[:40],args.get("terms"),p[:70]))
+                elif a["text"]!=b["text"]: other_changed+=1
+        print(f"all prism answers {tot_o} -> {tot_c} ({tot_c/tot_o-1:+.1%}); context searches {ctx_o} -> {ctx_c} ({ctx_c/ctx_o-1:+.1%}); non-context calls changed: {other_changed}")
+        print("edit lines present before but missing after:",len(lost))
+        for l in lost: print(l)
+        EOF
+      at: 2026-10-11T22:49:55.048568Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness/results && python3 - <<'EOF'
+        import json
+        f="bench-v0877-issue42-2026-10-11/transcripts/FasterXML__jackson-databind__pr6042.claude-sonnet-5-5.prism_init.jsonl"
+        msgs=[json.loads(l) for l in open(f) if l.strip()]
+        uses=[c for m in msgs if m.get("type")=="assistant" for c in m["message"]["content"] if c.get("type")=="tool_use"]
+        for i,u in enumerate(uses):
+            inp=u["input"]
+            if u["name"]=="Edit": print(i,"EDIT",inp["file_path"].split("/")[-1],"\nOLD:",inp["old_string"][:900],"\nNEW:",inp["new_string"][:1200],"\n")
+            else: print(i,u["name"],json.dumps(inp)[:160])
+        EOF
+      at: 2026-10-11T22:50:01.145555Z
+      classified: other
+    - cmd: gofmt -l internal/mcp/ && go vet ./internal/mcp/ && git status --short && git diff --stat
+      at: 2026-10-11T22:50:13.496462Z
+      classified: lint
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="MEMORY.md"; s=open(p).read()
+        line="- [Search context+bodies bug 2026-10-11](project_search_context_bodies_2026_10_11.md) — explicit context still attached every enclosing body (schema said disabled); fix on branch fix/search-context-no-bodies UNCOMMITTED; replay -25% context-search bytes, 0 edit lines lost\n"
+        s=s.replace("# Memory Index\n\n","# Memory Index\n\n"+line,1); open(p,"w").write(s)
+        EOF
+      at: 2026-10-11T22:50:26.121248Z
+      classified: other
+    - cmd: grep -n "^func anySlice" -A14 internal/mcp/*.go; grep -n "searchContextCap\s*=" internal/mcp/*.go
+      at: 2026-10-11T22:54:24.217051Z
+      classified: other
+    - cmd: 'git grep -n "context clamped" '
+      at: 2026-10-11T22:54:53.812447Z
+      classified: other
+    - cmd: go test ./internal/mcp/ -run TestSearchExplicitContextDeliversNoBodies 2>&1 | tail -60
+      at: 2026-10-11T22:55:13.205921Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run TestSearchExplicitContextDeliversNoBodies 2>&1 | tail -40
+      at: 2026-10-11T22:55:30.391278Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run TestSearchExplicitContextDeliversNoBodies 2>&1 | head -45
+      at: 2026-10-11T22:55:34.626612Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run TestSearchExplicitContextDeliversNoBodies 2>&1 | head -40
+      at: 2026-10-11T22:55:55.680535Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run TestSearchExplicitContextDeliversNoBodies 2>&1 | tail -3 && go vet ./internal/mcp/ && gofmt -l internal/mcp/searchcontextbodies*.go internal/mcp/tools.go; go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -40
+      at: 2026-10-11T22:56:31.322925Z
+      classified: lint
+    - cmd: go build -o ~/prism-ab-bins/prism-ctxnobody ./cmd/prism && cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && cp replay_ctx.json replay_ctx_v1.json && python3 replay_ctx.py > replay_ctx2.log 2>&1; tail -3 replay_ctx2.log
+      at: 2026-10-11T22:56:49.868684Z
+      classified: build
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,re,os
+        R="/Users/tapabratapal/Projects/provasign/research/harness/results/"
+        rep=json.load(open("replay_ctx.json"))
+        def norm(s): return re.sub(r"\s+"," ",s).strip()
+        def strip(t): return norm(re.sub(r"^\s*\d+(?:[-:]|→) ?","",t,flags=re.M))
+        tot_o=tot_c=0; ctx_o=ctx_c=0; other=0; lost=[]
+        for sess,o in rep.items():
+            msgs=[json.loads(l) for l in open(R+sess) if l.strip()]
+            uses=[c for m in msgs if m.get("type")=="assistant" for c in m["message"]["content"] if c.get("type")=="tool_use"]
+            pi=[i for i,u in enumerate(uses) if "prism" in u["name"]]
+            for k,(a,b) in enumerate(zip(o["v0877"],o["cand"])):
+                args=a["in"].get("args",{}); isctx=a["in"].get("op")=="search" and "context" in args
+                lo,lc=len(a["text"]),len(b["text"]); tot_o+=lo; tot_c+=lc
+                if isctx:
+                    ctx_o+=lo; ctx_c+=lc
+                    if args.get("context",0)>15: print("OVERCAP",os.path.basename(sess)[:40],args.get("terms"),args["context"],lo,"->",lc)
+                    i=pi[k]
+                    for u in uses[i+1:i+5]:
+                        if u["name"]=="Edit":
+                            f=u["input"]["file_path"].split("/")[-1]
+                            for line in u["input"].get("old_string","").split("\n"):
+                                p=norm(line)
+                                if len(p)>=15 and p in strip(a["text"]) and p not in strip(b["text"]): lost.append((os.path.basename(sess)[:40],f,p[:60]))
+                elif a["text"]!=b["text"]: other+=1
+        print(f"all prism answers {tot_o} -> {tot_c} ({tot_c/tot_o-1:+.1%}); context searches {ctx_o} -> {ctx_c} ({ctx_c/ctx_o-1:+.1%}); non-context changed {other}; edit lines lost {len(lost)}")
+        for l in lost: print(l)
+        s=[k for k in rep if "pr6042" in k][0]
+        print(rep[s]["cand"][2]["text"])
+        EOF
+      at: 2026-10-11T22:56:59.122031Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,re,os,collections
+        rep=json.load(open("replay_ctx.json"))
+        def src_lines(t):
+            out=collections.Counter()
+            for l in t.split("\n"):
+                m=re.match(r"^\s*(\d+)(?:[-:]|→) ?(.*)$",l)
+                if m and m.group(2).strip(): out[(m.group(1),m.group(2).strip())]+=1
+            return out
+        for sess,o in rep.items():
+            for a,b in zip(o["v0877"],o["cand"]):
+                args=a["in"].get("args",{})
+                if a["in"].get("op")=="search" and "context" in args: continue
+                if a["text"]==b["text"]: continue
+                A,B=src_lines(a["text"]),src_lines(b["text"])
+                missing=[k for k in A if k not in B]
+                print(os.path.basename(sess)[:40],args.get("terms"),len(a["text"]),"->",len(b["text"]),"distinct numbered lines missing:",len(missing),"dup lines before/after:",sum(v-1 for v in A.values()),sum(v-1 for v in B.values()))
+        EOF
+      at: 2026-10-11T22:57:08.348248Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,difflib
+        rep=json.load(open("replay_ctx.json"))
+        s=[k for k in rep if "pr6044" in k][0]
+        for a,b in zip(rep[s]["v0877"],rep[s]["cand"]):
+            if a["in"].get("args",{}).get("terms")==['getValueInstantiator', 'getContentDeserializer', 'createUsingDefault']:
+                print("\n".join(difflib.unified_diff(a["text"].split("\n"),b["text"].split("\n"),lineterm="",n=2)))
+        EOF
+      at: 2026-10-11T22:57:13.569737Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json
+        rep=json.load(open("replay_ctx.json"))
+        s=[k for k in rep if "pr6044" in k][0]
+        seq=rep[s]["cand"]
+        for i,a in enumerate(seq):
+            if a["in"].get("args",{}).get("terms")==['getValueInstantiator', 'getContentDeserializer', 'createUsingDefault']:
+                t=a["text"]; print(t[t.find("// Exact source"):][:1500]); idx=i
+        for j,a in enumerate(seq[:idx]):
+            if "getEmptyValue" in a["text"] and "ContainerDeserializerBase" in a["text"]: print("earlier call",j,a["in"])
+        EOF
+      at: 2026-10-11T22:57:23.121118Z
+      classified: other
+    - cmd: "python3 - <<'EOF'\np=\"internal/mcp/tools.go\"; s=open(p).read()\nold=\"\\t\\t\\t\\tdropContextInsideBodies(out, bodies)\\n\"\nassert s.count(old)==1\ns=s.replace(old,\"\\t\\t\\t\\tif sc.contextAsked {\\n\\t\\t\\t\\t\\t// Only here is inlineBodies the rendered body set; the\\n\\t\\t\\t\\t\\t// default path re-picks bodies in RenderCompactSearchText.\\n\\t\\t\\t\\t\\tdropContextInsideBodies(out, bodies)\\n\\t\\t\\t\\t}\\n\")\nold2=\"\\t\\t\\tdropContextInsideBodies(out, bodies)\\n\"\nassert s.count(old2)==1\ns=s.replace(old2,\"\\t\\t\\tif sc.contextAsked {\\n\\t\\t\\t\\tdropContextInsideBodies(out, bodies)\\n\\t\\t\\t}\\n\")\nopen(p,\"w\").write(s)\nEOF\ngofmt -l internal/mcp/tools.go; git diff internal/mcp/tools.go | grep -n \"contextAsked\" "
+      at: 2026-10-11T22:57:36.851298Z
+      classified: other
+    - cmd: |-
+        gofmt -l internal/mcp/tools.go internal/mcp/searchcontextbodies*.go; go vet ./internal/mcp/ && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -20; go build -o ~/prism-ab-bins/prism-ctxnobody ./cmd/prism && cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 replay_ctx.py > replay_ctx3.log 2>&1; tail -1 replay_ctx3.log; python3 - <<'EOF'
+        import json,re,os,collections
+        R="/Users/tapabratapal/Projects/provasign/research/harness/results/"
+        rep=json.load(open("replay_ctx.json"))
+        def norm(s): return re.sub(r"\s+"," ",s).strip()
+        def strip(t): return norm(re.sub(r"^\s*\d+(?:[-:]|→) ?","",t,flags=re.M))
+        def src(t):
+            out=set()
+            for l in t.split("\n"):
+                m=re.match(r"^\s*(\d+)(?:[-:]|→) ?(.*)$",l)
+                if m and m.group(2).strip(): out.add((m.group(1),m.group(2).strip()))
+            return out
+        tot_o=tot_c=ctx_o=ctx_c=0; other=0; lost=[]
+        for sess,o in rep.items():
+            msgs=[json.loads(l) for l in open(R+sess) if l.strip()]
+            uses=[c for m in msgs if m.get("type")=="assistant" for c in m["message"]["content"] if c.get("type")=="tool_use"]
+            pi=[i for i,u in enumerate(uses) if "prism" in u["name"]]
+            for k,(a,b) in enumerate(zip(o["v0877"],o["cand"])):
+                args=a["in"].get("args",{}); isctx=a["in"].get("op")=="search" and "context" in args
+                tot_o+=len(a["text"]); tot_c+=len(b["text"])
+                if not isctx:
+                    other+= a["text"]!=b["text"]; continue
+                ctx_o+=len(a["text"]); ctx_c+=len(b["text"])
+                if args["context"]>15:
+                    print("OVERCAP",os.path.basename(sess)[:30],len(a["text"]),"->",len(b["text"]),"distinct lines missing:",len(src(a["text"])-src(b["text"])))
+                for u in uses[pi[k]+1:pi[k]+5]:
+                    if u["name"]=="Edit":
+                        for line in u["input"].get("old_string","").split("\n"):
+                            p=norm(line)
+                            if len(p)>=15 and p in strip(a["text"]) and p not in strip(b["text"]): lost.append(p)
+        print(f"all {tot_o}->{tot_c} ({tot_c/tot_o-1:+.1%}); context searches {ctx_o}->{ctx_c} ({ctx_c/ctx_o-1:+.1%}); non-context changed {other}; edit lines lost {len(lost)}")
+        EOF
+      at: 2026-10-11T22:58:36.96433Z
+      classified: lint
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,re
+        rep=json.load(open("replay_ctx.json"))
+        s=[k for k in rep if "pr6042" in k][0]
+        a,b=rep[s]["v0877"][2]["text"],rep[s]["cand"][2]["text"]
+        def src(t):
+            d={}
+            for l in t.split("\n"):
+                m=re.match(r"^\s*(\d+)(?:[-:]|→) ?(.*)$",l)
+                if m and m.group(2).strip(): d[int(m.group(1))]=m.group(2).rstrip()
+            return d
+        A,B=src(a),src(b)
+        for n in sorted(set(A)-set(B)): print(n,A[n][:90])
+        EOF
+      at: 2026-10-11T22:58:45.103595Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="MEMORY.md"; s=open(p).read()
+        import re
+        s=re.sub(r"^- \[Search context\+bodies bug 2026-10-11\].*$","- [Search context+bodies bug 2026-10-11](project_search_context_bodies_2026_10_11.md) — explicit context also attached every body (windows twice); fix UNCOMMITTED on fix/search-context-no-bodies: <=15 windows only, >15 whole functions, de-duped; replay -23% context-search bytes, 0 edit lines lost",s,flags=re.M)
+        open(p,"w").write(s)
+        EOF
+        grep -c "Search context+bodies" MEMORY.md; cd /Users/tapabratapal/Projects/provasign/prism && git status --short
+      at: 2026-10-11T22:59:02.722171Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism/internal/mcp && wc -l tools.go server.go searchbudget.go searchevidence.go searchadaptive.go searchtext.go textmerge.go searchbodies*.go 2>/dev/null; ls *.go | wc -l; ls *.go | grep -v _test | xargs wc -l | sort -rn | head -25
+      at: 2026-10-11T23:01:08.06778Z
+      classified: other
+    - cmd: |-
+        cat > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_all.py <<'EOF'
+        """Replay every prism call of every recent prism-arm session against one binary.
+        usage: replay_all.py <label> <binary>   -> writes replay_all_<label>.json"""
+        import json,os,sys,glob,subprocess,concurrent.futures as cf
+        sys.path.insert(0,os.path.expanduser('~/prism-ab-bins/payloadreplay'))
+        from replay_codexfix import MCP, reset
+        H=os.path.expanduser('~/Projects/provasign/research/harness'); R=H+'/results/'
+        sys.path[:0]=[H+'/runners',H+'/scoring']; os.chdir(H)
+        import run_e2e
+        WT=os.path.expanduser('~/prism-ab-bins/nbreplay/wt')
+        label,BIN=sys.argv[1],sys.argv[2]
+        D=os.path.dirname(os.path.abspath(__file__))
+        files=[f for f in glob.glob(R+"*/transcripts/*.jsonl") if "native" not in os.path.basename(f) and os.path.getmtime(f)>1759000000]
+        def task_of(s): return os.path.basename(s).split('.claude')[0]
+        lock=__import__('threading').Lock()
+        def setup(task):
+            t=json.load(open(f'tasks/e2e/{task}.json')); wt=f'{WT}/{task}'
+            with lock:
+                if not os.path.isdir(wt):
+                    subprocess.run(['git','clone','-q','--local','--no-checkout',str(run_e2e._repo_for(t)),wt],check=True,capture_output=True)
+            reset(wt,t['base_commit'])
+            if not os.path.exists(wt+'/.grove/grove.db'):
+                subprocess.run(['/opt/homebrew/bin/prism','index',wt],capture_output=True,timeout=3000)
+            return wt
+        def one(f):
+            sess=os.path.relpath(f,R); task=task_of(sess)
+            try: wt=setup(task)
+            except Exception as e: return sess,{'err':str(e)}
+            msgs=[json.loads(l) for l in open(f) if l.strip()]
+            seq=[c['input'] for m in msgs if m.get('type')=='assistant' for c in m['message']['content'] if c.get('type')=='tool_use' and 'prism' in c.get('name','')]
+            if not seq: return sess,{'calls':[]}
+            m=MCP(BIN,wt); res=[]
+            for inp in seq:
+                try:
+                    d=m.call('tools/call',{"name":"prism","arguments":inp})
+                    txt=d['error']['message'] if 'error' in d else '\n'.join(x['text'] for x in d['result']['content'])
+                except Exception as e: txt=f'<replay error {e}>'
+                res.append({'in':inp,'text':txt})
+            m.close()
+            return sess,{'calls':res}
+        if __name__=='__main__':
+            # group by task so two sessions never reset the same worktree at once
+            bytask={}
+            for f in files: bytask.setdefault(task_of(f),[]).append(f)
+            def group(fs):
+                return [one(f) for f in fs]
+            out={}
+            with cf.ThreadPoolExecutor(3) as ex:
+                for res in ex.map(group,bytask.values()):
+                    for sess,o in res:
+                        out[sess]=o
+                        print(sess.split('/')[-1][:60],'ERR '+o['err'] if 'err' in o else f"{len(o['calls'])} calls {sum(len(c['text']) for c in o['calls'])} chars",flush=True)
+            json.dump(out,open(f'{D}/replay_all_{label}.json','w'))
+            print('DONE')
+        EOF
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && nohup python3 replay_all.py v0877 /opt/homebrew/bin/prism > replay_all_v0877.log 2>&1 &
+        echo started
+      at: 2026-10-11T23:02:52.821547Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/prism && grep -ln "RenderCompactSearchText\|compactSearchBodies\b\|compactSearchBodiesPicked\|searchBodies(\|compactSearchBodiesEnclosing\|compactSearchBodiesBudgeted\|compactSearchBodiesLegacy\|searchBudgetFor\|compactSearchCanIncludeBodies" internal/mcp/*_test.go internal/cli/*.go; grep -n "func callCompact\|func compactFixture" internal/mcp/*_test.go
+      at: 2026-10-11T23:02:52.892702Z
+      classified: other
+    - cmd: sed -n 1648,1735p internal/mcp/tools.go; grep -n "compactSearchCanIncludeBodies\|searchBodies(\|budgetPickFits\|compactSearchBodies(" internal/mcp/*_test.go
+      at: 2026-10-11T23:03:36.423428Z
+      classified: other
+    - cmd: grep -n "searchBudgetFor\|budgetPickFits\|\.searchBodies(\|compactSearchBodies(\|compactSearchCanIncludeBodies\|searchContextWantsBodies" internal/ --include=*.go -r | grep -v "^internal/mcp/searchshape.go"
+      at: 2026-10-11T23:05:38.064688Z
+      classified: other
+    - cmd: git grep -n "searchBudgetFor\|budgetPickFits\|\.searchBodies(\|compactSearchBodies(\|compactSearchCanIncludeBodies\|searchContextWantsBodies" -- 'internal/*.go' | grep -v "internal/mcp/searchbodies.go"
+      at: 2026-10-11T23:07:03.399904Z
+      classified: other
+    - cmd: go build ./... 2>&1 | head -30; gofmt -l internal/mcp/ | grep -v "nested_test\|verify_vs_grep"; go vet ./internal/mcp/ 2>&1 | head
+      at: 2026-10-11T23:07:07.343791Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'EOF'
+        import re
+        p="internal/mcp/searchbudget.go"; s=open(p).read()
+        s=s.replace('\t"github.com/provasign/prism/internal/grove"\n','',1); open(p,"w").write(s)
+        p="internal/mcp/server.go"; s=open(p).read()
+        s=s.replace('\t"time"\n','',1); open(p,"w").write(s)
+        EOF
+        gofmt -w internal/mcp/compact_test.go internal/mcp/server.go && go build ./... && go vet ./internal/mcp/ && go test ./internal/mcp/ 2>&1 | tail -40
+      at: 2026-10-11T23:07:39.846049Z
+      classified: lint
+    - cmd: go test ./internal/mcp/ 2>&1 | grep -E "^(--- FAIL|FAIL|ok)" | head
+      at: 2026-10-11T23:08:22.327214Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run 'TestSearchShape|TestSearchExplicitContext' 2>&1 | tail -30 && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -20; gofmt -l internal/mcp/ | grep -v "nested_test\|verify_vs_grep"; go vet ./... 2>&1 | tail -3
+      at: 2026-10-11T23:09:06.60024Z
+      classified: lint
+    - cmd: tail -5 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_all_v0877.log; grep -c "calls" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_all_v0877.log
+      at: 2026-10-11T23:09:06.652001Z
+      classified: other
+    - cmd: 'go test ./internal/mcp/ -run ''TestSearchShapeRowsEndToEnd'' 2>&1 | grep -n "searchshape_test.go" '
+      at: 2026-10-11T23:09:16.306263Z
+      classified: test
+    - cmd: go test ./internal/mcp/ -run 'TestSearchShapeRowsEndToEnd' 2>&1 | sed -n 2,50p
+      at: 2026-10-11T23:09:26.426836Z
+      classified: test
+    - cmd: git stash list && git stash pop && git status --short
+      at: 2026-10-11T23:10:30.664634Z
+      classified: other
+    - cmd: gofmt -l internal/mcp/ | grep -v "nested_test\|verify_vs_grep"; go build ./... && go vet ./internal/mcp/ && go test ./internal/mcp/ -run 'TestSearchShape|TestSearchExplicitContext' 2>&1 | grep -E "searchshape_test|searchcontextbodies_test|^ok|^FAIL" | head -20
+      at: 2026-10-11T23:10:44.430164Z
+      classified: lint
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/mcp/searchshape_test.go"; s=open(p).read()
+        fix={
+         '{"default", q, defaultSearchLimit, 2, false, bodiesOne, fitBudget, true, false}':'{"default", q, defaultSearchLimit, 2, false, bodiesOne, fitBudget, true, true}',
+         'bodiesWideNoPick, fitBudgetWide, true, false}':'bodiesWideNoPick, fitBudgetWide, true, true}',
+         '100, 2, false, bodiesWide, fitBounded, false, false}':'100, 2, false, bodiesWide, fitBounded, false, true}',
+         '5, 2, false, bodiesWide, fitNone, false, false}':'5, 2, false, bodiesWide, fitNone, false, true}',
+        }
+        for a,b in fix.items():
+            assert s.count(a)==1,a; s=s.replace(a,b)
+        open(p,"w").write(s)
+        EOF
+        go test ./internal/mcp/ -run 'TestSearchShape|TestSearchExplicitContext' 2>&1 | grep -E "searchshape_test|searchcontextbodies_test|^ok|^FAIL" | head -20
+      at: 2026-10-11T23:11:09.903222Z
+      classified: test
+    - cmd: go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -20; gofmt -l internal/mcp/ | grep -v "nested_test\|verify_vs_grep"; go vet ./... 2>&1 | tail -3; echo SUITE-DONE
+      at: 2026-10-11T23:11:49.456933Z
+      classified: lint
+    - cmd: go build -o ~/prism-ab-bins/prism-shape ./cmd/prism && cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 replay_all.py shape ~/prism-ab-bins/prism-shape > replay_all_shape.log 2>&1; tail -1 replay_all_shape.log
+      at: 2026-10-11T23:11:49.510464Z
+      classified: build
+    - cmd: until grep -q "^DONE\|Traceback" /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx/replay_all_shape.log; do sleep 10; done; cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && grep -c ERR replay_all_shape.log; python3 compare_all.py v0877 shape
+      at: 2026-10-11T23:12:22.526287Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,difflib,re,collections,os
+        a=json.load(open("replay_all_v0877.json")); b=json.load(open("replay_all_shape.json"))
+        NUM=re.compile(r"^\s*(\d+)(?:[-:]|→) ?(.*)$")
+        shown=0
+        for sess in a:
+            if "calls" not in a[sess]: continue
+            for i,(x,y) in enumerate(zip(a[sess]["calls"],b[sess]["calls"])):
+                if x["text"]==y["text"]: continue
+                g=x["in"].get("args",{})
+                if g.get("files_only"):
+                    print("=== files_only diff",os.path.basename(sess)[:40],i)
+                    print("\n".join(difflib.unified_diff(x["text"].split("\n"),y["text"].split("\n"),lineterm="",n=1)))
+                elif x["in"].get("op")=="search" and not any(k in g for k in("context","include_bodies","max_results","exhaustive","rollup_only")):
+                    c=collections.Counter()
+                    for l in y["text"].split("\n"):
+                        m=NUM.match(l)
+                        if m and m.group(2).strip(): c[(m.group(1),m.group(2).strip())]+=1
+                    d=[k for k,v in c.items() if v>1]
+                    if d and shown<2:
+                        shown+=1
+                        print("=== default with remaining dups",os.path.basename(sess)[:40],i,g.get("terms"),d[:3])
+                        print(y["text"][:3000])
+        EOF
+      at: 2026-10-11T23:12:42.222594Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import sys,os,json
+        sys.path.insert(0,os.path.expanduser('~/prism-ab-bins/payloadreplay'))
+        from replay_codexfix import MCP
+        wt=os.path.expanduser('~/prism-ab-bins/nbreplay/wt/apache__dubbo__pr16325')
+        inp={"op":"search","args":{"terms":["WrapResponseUnpack","ReflectionPackableMethod"],"files_only":True}}
+        for b in ['/opt/homebrew/bin/prism',os.path.expanduser('~/prism-ab-bins/prism-shape')]:
+            m=MCP(b,wt); d=m.call('tools/call',{"name":"prism","arguments":inp}); m.close()
+            t='\n'.join(x['text'] for x in d['result']['content'])
+            print(os.path.basename(b),'COMPLETE lines:',t.count('COMPLETE'))
+        EOF
+      at: 2026-10-11T23:13:33.097766Z
+      classified: other
+    - cmd: git diff --stat && wc -l internal/mcp/searchshape.go internal/mcp/searchbodies.go internal/mcp/searchcontextbodies.go internal/mcp/searchshape_test.go internal/mcp/searchcontextbodies_test.go && git diff | grep -c "^-" && git diff | grep -c "^+"
+      at: 2026-10-11T23:13:33.177989Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        import re
+        p="project_search_context_bodies_2026_10_11.md"; s=open(p).read()
+        s=s.replace("files_only 1 diff = replay noise (COMPLETE line present/absent, same on rerun?)","files_only 1 diff = replay noise (COMPLETE line missing in the baseline run only; both binaries print it on rerun)")
+        open(p,"w").write(s)
+        p="MEMORY.md"; s=open(p).read()
+        s=re.sub(r"^- \[Search context\+bodies bug 2026-10-11\].*$","- [Search shape consolidation 2026-10-11](project_search_context_bodies_2026_10_11.md) — context+bodies bug led to one shape table (searchshape.go) + one body attachment; UNCOMMITTED on fix/search-context-no-bodies; 148-session replay: non-search byte-identical, default -3.7%, context<=15 -34%, 0 distinct lines lost outside removed bodies",s,flags=re.M)
+        open(p,"w").write(s)
+        EOF
+        grep -c "Search shape consolidation" MEMORY.md
+      at: 2026-10-11T23:13:42.093943Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "PRISM_.*BIN\|_BIN\b\|def _arm\|ARMS\s*=\|'prism_init'\|\"prism_init\"\|prism_body_exp" runners/run_e2e.py | head -30
+      at: 2026-10-11T23:17:10.617938Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research/harness && grep -n "PRISM_BIN_FOR_ARM" -A12 runners/ab_endtoend_arms.py | head -30; grep -n "prism_body_exp2\|prism_body_exp\b" runners/ab_endtoend_arms.py | head; sed -n 296,330p runners/run_e2e.py
+      at: 2026-10-11T23:17:22.618644Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os
+        R="results/"
+        tasks=sorted({os.path.basename(f).split(".claude")[0] for f in glob.glob(R+"bench-v0877-issue*/transcripts/*prism_init.jsonl")})
+        want=["FasterXML__jackson-databind__pr6030","FasterXML__jackson-databind__pr6039","FasterXML__jackson-databind__pr6042","FasterXML__jackson-databind__pr6044","FasterXML__jackson-databind__pr6056","FasterXML__jackson-databind__pr6061","FasterXML__jackson-databind__pr6076","colinhacks__zod__pr6500","google__gson__pr3116","labstack__echo__pr3006","pydantic__pydantic__pr13516","urfave__cli__pr2419","apache__dubbo__pr16348","gin-gonic__gin__pr4819"]
+        missing=[t for t in want if t not in tasks]; print("missing",missing)
+        man=json.load(open("results/issue42-manifest.json")); print(type(man), (list(man)[:2] if isinstance(man,dict) else man[:2]))
+        # per-task prior results
+        for t in want:
+            for d in glob.glob(R+"bench-v0877-issue*/"):
+                for arm in ("native","prism_init"):
+                    fs=glob.glob(f"{d}{t}.claude-sonnet-5-5.{arm}.json")
+                    for f in fs:
+                        j=json.load(open(f)); print(t[-28:],arm,j.get("score",{}).get("resolved"),j.get("api_calls"),round(j.get("cost_usd",0),3))
+        EOF
+      at: 2026-10-11T23:17:22.710899Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json
+        want=["FasterXML__jackson-databind__pr6030","FasterXML__jackson-databind__pr6039","FasterXML__jackson-databind__pr6042","FasterXML__jackson-databind__pr6044","FasterXML__jackson-databind__pr6056","FasterXML__jackson-databind__pr6061","FasterXML__jackson-databind__pr6076","colinhacks__zod__pr6500","google__gson__pr3116","labstack__echo__pr3006","pydantic__pydantic__pr13516","urfave__cli__pr2419","apache__dubbo__pr16348","gin-gonic__gin__pr4819"]
+        json.dump(want,open("results/shape14-manifest.json","w"),indent=1)
+        EOF
+        ls tools/cellwatch.py && (PRISM_INIT_BIN=$HOME/prism-ab-bins/prism-shape E2E_OUT=results/bench-shape14-2026-10-11 nohup python3 runners/run_e2e.py results/shape14-manifest.json --models claude-sonnet-5-5 --arms prism_init --trials 1 > results/bench-shape14-2026-10-11.driver.log 2>&1 &) ; sleep 5; tail -5 results/bench-shape14-2026-10-11.driver.log
+      at: 2026-10-11T23:17:43.937856Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/research/harness && tail -5 results/bench-shape14-2026-10-11.driver.log; for d in /private/var/folders/pz/cmyjc37x5dz39wxf73my55k80000gn/T/e2e-run-*/; do [ -f "$d/.mcp.json" ] && grep -o ''"command": *"[^"]*"'' "$d/.mcp.json" | head -1; done 2>/dev/null | sort | uniq -c'
+      at: 2026-10-11T23:17:57.050856Z
+      classified: other
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'\nimport json,glob,os,re\nwant=json.load(open(\"results/shape14-manifest.json\"))\nnew=\"results/bench-shape14-2026-10-11/\"\ndef load(d,t,arm):\n    fs=glob.glob(f\"{d}{t}.claude-sonnet-5-5.{arm}.json\")\n    return json.load(open(fs[0])) if fs else None\ntot={k:[0,0,0.0] for k in(\"old\",\"new\",\"nat\")}\nprint(f\"{'task':34s} {'v0877 prism':>12s} {'shape prism':>12s} {'native':>8s}\")\nfor t in want:\n    old=None;nat=None\n    for d in glob.glob(\"results/bench-v0877-issue*/\"):\n        old=old or load(d,t,\"prism_init\"); nat=nat or load(d,t,\"native\")\n    nw=load(new,t,\"prism_init\")\n    def f(j): return f\"{'R' if j['score']['resolved'] else '-'} {j['api_calls']:2d} ${j['cost_usd']:.2f}\"\n    for k,j in((\"old\",old),(\"new\",nw),(\"nat\",nat)):\n        tot[k][0]+=j['score']['resolved']; tot[k][1]+=j['api_calls']; tot[k][2]+=j['cost_usd']\n    print(f\"{t[-34:]:34s} {f(old):>12s} {f(nw):>12s} {f(nat):>8s}\")\nfor k,v in tot.items(): print(k,\"resolved\",v[0],\"calls\",v[1],\"cost $%.2f\"%v[2])\n# prism call shapes in the new run\nprint()\nfor f in sorted(glob.glob(new+\"transcripts/*prism_init.jsonl\")):\n    msgs=[json.loads(l) for l in open(f) if l.strip()]\n    res={}\n    for m in msgs:\n        if m.get(\"type\")==\"user\":\n            for c in m.get(\"message\",{}).get(\"content\",[]) or []:\n                if isinstance(c,dict) and c.get(\"type\")==\"tool_result\":\n                    cc=c.get(\"content\"); \n                    if isinstance(cc,list): cc=\"\\n\".join(x.get(\"text\",\"\") for x in cc if isinstance(x,dict))\n                    res[c[\"tool_use_id\"]]=cc or \"\"\n    for m in msgs:\n        if m.get(\"type\")!=\"assistant\": continue\n        for c in m[\"message\"][\"content\"]:\n            if c.get(\"type\")==\"tool_use\" and \"prism\" in c[\"name\"]:\n                a=c[\"input\"].get(\"args\",{}); r=res.get(c[\"id\"],\"\")\n                if c[\"input\"].get(\"op\")==\"search\":\n                    print(os.path.basename(f)[:30],\"search\",a.get(\"terms\"),\"ctx=\",a.get(\"context\"),\"ib=\",a.get(\"include_bodies\"),len(r),\"chars\",\"bodies:\",r.count(\"**`\"),\"dupnum:\",0)\nEOF"
+      at: 2026-10-11T23:37:01.650824Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="project_search_context_bodies_2026_10_11.md"; s=open(p).read()
+        add="""
+        PAID CHECK 2026-10-11 (Topo: "First test and benchmark the ones that pointed this error"): results/bench-shape14-2026-10-11,
+        manifest results/shape14-manifest.json = the 14 issue-bed tasks whose v0.87.7 prism sessions used a context search;
+        prism_init arm only on ~/prism-ab-bins/prism-shape (PRISM_INIT_BIN), Sonnet 5.5, $1.97.
+        Resolved 7/14 vs v0.87.7 prism 6/14 (native 8/14); calls 96 vs 93; cost $1.97 vs $1.98. Only flip: zod pr6500 now
+        resolved (single session, judgment task - not evidence). 15 of 16 searches in the new run set context (3-15); all
+        got windows only, 0 bodies, as the table says; pr6042's "2883" search 2.6k vs 8.6k chars before. Still-large
+        context answers remain: 41 hits x context 3 in one file = 14.3k ("_beanProperties"); next lever if wanted.
+        Verdict: no regression, cost flat; the change is correctness/shape, not savings (as with v0.86.5).
+        """
+        s=s.replace("\nNext: commit/PR/release",add+"\nNext: commit/PR/release"); open(p,"w").write(s)
+        EOF
+        echo ok
+      at: 2026-10-11T23:37:19.2339Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/research/harness && python3 - <<'EOF'
+        import json,glob,os,re
+        for d in ["results/bench-shape14-2026-10-11/","results/bench-v0877-issue42-2026-10-11/"]:
+            f=glob.glob(d+"transcripts/FasterXML__jackson-databind__pr6039*prism_init.jsonl")[0]
+            msgs=[json.loads(l) for l in open(f) if l.strip()]
+            res={}
+            for m in msgs:
+                if m.get("type")=="user":
+                    for c in m.get("message",{}).get("content",[]) or []:
+                        if isinstance(c,dict) and c.get("type")=="tool_result":
+                            cc=c.get("content")
+                            if isinstance(cc,list): cc="\n".join(x.get("text","") for x in cc if isinstance(x,dict))
+                            res[c["tool_use_id"]]=cc or ""
+            print("=====",d)
+            for m in msgs:
+                if m.get("type")!="assistant": continue
+                for c in m["message"]["content"]:
+                    if c.get("type")=="thinking" and c.get("thinking"): print("THINK:",c["thinking"][:400].replace("\n"," "))
+                    if c.get("type")=="text" and c.get("text").strip(): print("TEXT:",c["text"][:200].replace("\n"," "))
+                    if c.get("type")=="tool_use":
+                        r=res.get(c["id"],"")
+                        print("CALL",c["name"].replace("mcp__prism__",""),json.dumps(c["input"])[:260],"->",len(r),"chars")
+                        if c["name"]=="Edit": print("   EDIT old:",c["input"]["old_string"][:200].replace("\n","⏎"))
+        EOF
+      at: 2026-10-11T23:46:06.696794Z
+      classified: other
+    - cmd: |-
+        cd /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ctx && python3 - <<'EOF'
+        import json,glob,os,re
+        R="/Users/tapabratapal/Projects/provasign/research/harness/results/"
+        files=[f for f in glob.glob(R+"*/transcripts/*.jsonl") if "native" not in os.path.basename(f) and os.path.getmtime(f)>1759000000]
+        rows=[]
+        for f in files:
+            msgs=[json.loads(l) for l in open(f) if l.strip()]
+            res={}
+            for m in msgs:
+                if m.get("type")=="user":
+                    for c in m.get("message",{}).get("content",[]) or []:
+                        if isinstance(c,dict) and c.get("type")=="tool_result":
+                            cc=c.get("content")
+                            if isinstance(cc,list): cc="\n".join(x.get("text","") for x in cc if isinstance(x,dict))
+                            res[c["tool_use_id"]]=cc or ""
+            uses=[c for m in msgs if m.get("type")=="assistant" for c in m["message"]["content"] if c.get("type")=="tool_use"]
+            for i,u in enumerate(uses):
+                inp=u.get("input",{})
+                if "prism" not in u["name"] or inp.get("op")!="search": continue
+                a=inp.get("args",{})
+                if "context" not in a: continue
+                r=res.get(u["id"],"")
+                hits=len(re.findall(r"^\s+\d+: ",r,re.M))
+                nxt=uses[i+1] if i+1<len(uses) else None
+                nx=""
+                if nxt:
+                    ni=nxt.get("input",{})
+                    if nxt["name"]=="Read" or (ni.get("op")=="read"): nx="READ"
+                    elif nxt["name"] in("Edit","MultiEdit"): nx="EDIT"
+                    else: nx=nxt["name"].replace("mcp__prism__","")+":"+str(ni.get("op",""))
+                rows.append((len(r),hits,a.get("context"),nx,os.path.basename(f)[:30],a.get("terms")))
+        rows.sort(reverse=True)
+        tot=sum(r[0] for r in rows)
+        big=[r for r in rows if r[1]>10]
+        print("context searches",len(rows),"chars",tot,"| >10 hits:",len(big),"chars",sum(r[0] for r in big))
+        for r in rows[:14]: print(r)
+        EOF
+      at: 2026-10-11T23:46:21.08032Z
+      classified: other
+    - cmd: git tag --sort=-creatordate | head -3; git log --oneline -6; gh pr list --state merged --limit 3 --json number,title,headRefName; ls docs 2>/dev/null | head; grep -rn "release" CLAUDE.md | head
+      at: 2026-10-11T23:54:18.264141Z
+      classified: other
+    - cmd: gh pr view 46 --json body -q .body | head -40; git show v0.87.7 --stat --format='%an %s' | head -5; gh release view v0.87.7 --json body -q .body | head -30
+      at: 2026-10-11T23:54:24.832379Z
+      classified: other
+    - cmd: go build -o /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/prism-release-cand ./cmd/prism && ls ~/prism-ab-bins/ | grep -i corpus; ls -d /tmp/ci-corpus ~/ci-corpus* 2>/dev/null; grep -rn "corpus-root" ~/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory/*.md | head -5
+      at: 2026-10-11T23:54:26.810922Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && ls ~/ci-corpus | head; du -sh ~/ci-corpus 2>/dev/null | tail -1; for d in ~/ci-corpus/*/; do n=$(find "$d" -maxdepth 3 -type f \( -name '*.java' -o -name '*.go' -o -name '*.py' -o -name '*.ts' \) | head -1); [ -z "$n" ] && echo "EMPTY $d"; done; echo checked
+      at: 2026-10-11T23:54:34.208848Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/prism-release-cand > /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ci_invariants.log 2>&1; echo "exit $?"; tail -25 /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/ci_invariants.log
+      at: 2026-10-11T23:54:34.255046Z
+      classified: other
+    - cmd: find ~/ci-corpus/commons-collections -name '*.java' | wc -l; cd /Users/tapabratapal/Projects/provasign/prism && git status --short
+      at: 2026-10-11T23:54:37.472445Z
+      classified: other
+notes: []
+redactions: 2
