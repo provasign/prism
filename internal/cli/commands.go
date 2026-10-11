@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -971,44 +970,7 @@ func writeSteeringInstructions(projectDir string, harnesses []string, refresh bo
 // agent read, for a 317-token difference. Three copies of the same prose
 // also drifted: a steering edit landed in one of three variants before this
 // collapsed them.
-func steeringBlock() string {
-	if !systemSedIsBSD() {
-		return steeringInstructions
-	}
-	return strings.Replace(steeringInstructions, "\n<!-- prism:end -->", bsdSedNote+"\n<!-- prism:end -->", 1)
-}
-
-// bsdSedNote states how this machine's sed differs from GNU sed. Agents write
-// GNU sed by default even when told the platform is darwin: across 1,144
-// benchmark sessions (2026-09-27..10-10, both arms) 24% made at least one
-// GNU-only sed edit, often the Mac in-place form combined with a GNU escape
-// such as \b, which BSD sed reads literally, so the substitution matched
-// nothing and exited 0. The sed guard hook explains the failure after the
-// fact; this tells the agent before it writes the command. It describes the
-// machine and never tells the agent what to run.
-const bsdSedNote = `
-This machine's sed is BSD (macOS) sed: in-place editing is ` + "`sed -i ''`" + `, and the
-GNU escapes \b \w \s (and \+ \? \| without -E) are read as literal characters,
-so such a pattern matches nothing and exits 0. Word boundaries are [[:<:]] and [[:>:]].
-`
-
-// systemSedIsBSD reports whether the sed on PATH is BSD sed. GNU sed answers
-// --version; BSD sed rejects it. Overridden in tests so the steering text
-// does not depend on the machine running them.
-var systemSedIsBSD = func() bool {
-	if runtime.GOOS == "windows" {
-		return false
-	}
-	path, err := exec.LookPath("sed")
-	if err != nil {
-		return false
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, path, "--version")
-	cmd.Stdin = strings.NewReader("")
-	return cmd.Run() != nil && ctx.Err() == nil
-}
+func steeringBlock() string { return steeringInstructions }
 
 // injectPrismSection replaces the Prism steering section in content, or
 // appends it when absent.
