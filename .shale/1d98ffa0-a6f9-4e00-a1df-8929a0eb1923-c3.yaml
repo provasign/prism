@@ -1,0 +1,138 @@
+shale_version: "0"
+id: 1d98ffa0-a6f9-4e00-a1df-8929a0eb1923-c3
+created_at: 2026-10-12T02:57:49.099071Z
+finalized_at: 2026-10-12T03:26:52.44588Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: fix/bare-name-resolution
+privacy: redacted
+commands:
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git add pkg/grove/grove.go && git commit -q -m "deferred compiler pass: off by default (GROVE_DEFER_NATIVE=1 to enable)
+
+        Measured on jackson-databind: synchronous edit 1.7-2.5s compiler-backed;
+        deferred, a provisional answer at ~1.05s but the compiler-backed one at
+        ~2.5s, because edge construction and the store write (~0.75s) run twice.
+        Default stays today's behaviour; the deferred mode is opt-in.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git push -q 2>&1 | grep -v "^remote:\|^$" | tail -1; git checkout -q integ/release-0.63.5 && git merge -q --no-edit feat/deferred-native 2>&1 | grep -v "^fuse" | tail -2; go build ./... && echo GROVE-INTEG-OK; cd ../prism && git checkout -q feat/compiler-provisional && python3 - <<'EOF'
+        p="internal/mcp/provisional_test.go"; s=open(p).read()
+        old='''	if _, err := exec.LookPath("javac"); err != nil {
+        		t.Skip("no javac on PATH")
+        	}
+        	srv := compactFixture(t, map[string]string{'''
+        new='''	if _, err := exec.LookPath("javac"); err != nil {
+        		t.Skip("no javac on PATH")
+        	}
+        	t.Setenv("GROVE_DEFER_NATIVE", "1") // off by default in grove
+        	srv := compactFixture(t, map[string]string{'''
+        assert old in s; s=s.replace(old,new,1); open(p,"w").write(s)
+        EOF
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; GOWORK=$S/ws/go.work go test ./internal/mcp/ -run 'TestImpactAfterEdit|TestProvisional|TestAttachStale' -v 2>&1 | grep -E "^---|provisional:" ; git add internal/mcp/provisional_test.go && git commit -q -m "provisional test: enable grove's deferred compiler pass explicitly (off by default)
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git push -q 2>&1 | grep -v "^remote:\|^$\|shale" | tail -1; git checkout -q integ/release-0.87.9 && git merge -q --no-edit feat/compiler-provisional 2>&1 | grep -v "^fuse\|shale" | tail -2; git diff --name-only --diff-filter=U; GOWORK=$S/ws/go.work go build -o ~/prism-ab-bins/prism-integ ./cmd/prism && echo PRISM-INTEG-REBUILT
+      at: 2026-10-12T02:57:49.099071Z
+      classified: test
+    - cmd: 'S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; L=$S/final_verify.log; : > $L; ( cd /Users/tapabratapal/Projects/provasign/astkit && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -3; echo "astkit suite done"; cd ../grove && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -5; go test -race -count=3 ./pkg/grove/ 2>&1 | tail -1; echo "grove suite+race done"; cd ../prism && GOWORK=$S/ws/go.work go test ./... 2>&1 | grep -E "^--- FAIL|^FAIL|_test.go:[0-9]+:" | head -5; echo "prism suite done" ) >> $L 2>&1; for d in ~/ci-corpus/*/; do find "$d" -maxdepth 2 -name .grove -type d -prune -exec rm -rf {} + ; done; ( cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism ~/prism-ab-bins/prism-integ --decoy-injector $S/decoy > $S/ci_invariants_final2.log 2>&1; echo "gate exit $?"; grep -E "REGRESSION|All invariants|Traceback" $S/ci_invariants_final2.log; echo "gate OK lines: $(grep -c ''OK\]'' $S/ci_invariants_final2.log)" ) >> $L 2>&1; cd $S/ctx; for mode in default deferred; do if [ $mode = deferred ]; then export GROVE_DEFER_NATIVE=1; else unset GROVE_DEFER_NATIVE; fi; echo "== live gson ($mode)" >> $L; python3 live_edit.py ~/prism-ab-bins/prism-integ ~/prism-ab-bins/nbreplay/wt/deephard__gson__TypeAdapter_writeValue_swap gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java "public void write(JsonWriter out, Class value)" TypeAdapter.write 2>&1 | grep -E "after edit|compiler-backed after|edges   |symbols live|RESULT" >> $L; done; unset GROVE_DEFER_NATIVE; echo "== edit shadow (CLI)" >> $L; python3 edit_shadow.py ~/prism-ab-bins/prism-integ ~/prism-ab-bins/nbreplay/wt/deephard__gson__TypeAdapter_writeValue_swap gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java "public void write(JsonWriter out, Class value)" TypeAdapter.write 2>&1 | grep -E "RESULT|IDENTICAL|DIFFERENT" >> $L; for t in deephard__click__ParamType_context_first deephard__chi__URLParam_comma_ok deephard__echo__WithConfig_return_error deephard__gson__JsonWriter_value_typed_names deephard__gson__TypeAdapter_writeValue_swap deephard__hono__request_options_object deephard__hono__responders_status_init_only deephard__jackson-databind__withType_typeser_first deephard__rich__ConsoleOptions_carries_console deephard__werkzeug__MapAdapter_match_RouteMatch; do rm -rf ~/prism-ab-bins/nbreplay/wt/$t/.grove; done; echo "== ten sentences, agents'' own names" >> $L; PRISM=$HOME/prism-ab-bins/prism-integ python3 graph_vs_text.py 2>&1 | grep -E "^==|impact symbols|text   symbols" >> $L; cat $L'
+      at: 2026-10-12T02:58:04.207232Z
+      classified: test
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && gh pr create --draft --base feat/compiler-declared-symbols --head feat/deferred-native --title \"resident engine: optional background compiler pass (off by default)\" --body-file - <<'EOF'\nOptional mode, `GROVE_DEFER_NATIVE=1` or `Config.DeferNative`. An edit is indexed from the parse first, and the compiler pass (javac, go, tsc) runs in the background. **Off by default**, and the reason is measured.\n\n**Measured on jackson-databind**, first change_impact after an edit:\n\n| mode | seconds | compiler-backed |\n|---|---|---|\n| synchronous, today | 1.7 to 2.5 | yes |\n| deferred, no wait | about 1.05 | no, provisional |\n| deferred, wait for the pass | about 2.5 | yes |\n\njavac is about 0.7 s of the edit. Edge construction plus the store write, about 0.75 s, run twice in deferred mode, so a compiler-backed answer arrives about 0.8 s later than today. Only a provisional answer arrives sooner.\n\n**Mechanism**\n- `index.Options.DeferNative`: an incremental run skips the changed languages' analyzers, but only those that completed a full pass before. It carries their stored compiler edges, re-pointed to the new symbols through the existing carry-forward path, and returns the changed files in `IndexResult.NativePending`. Cold and forced runs never defer.\n- `index.Options.ReextractFiles`: the deferred pass is an ordinary index run over those files.\n- `scanTree`: the indexer's walk, extracted unchanged into a read-only function. `Indexer.HasChanges` uses it, so \"is the index fresh?\" needs no lock while a pass runs.\n- Engine: a pending set and one background loop. A new edit waits for a running pass and never cancels it, because a cancelled pass could leave symbols and edges out of step. `NativePending` and `WaitNative` are exposed for callers.\n\n**Verified**\n- `TestDeferredCompilerPassConvergesToColdIndex` covers the in-memory graph and, after reopening from disk, the stored graph.\n- `pkg/grove` under `-race`, repeated runs, green. Two existing tests now wait for the pass and the splice-check test pins synchronous mode.\n- A live prism session on gson: edit, provisional answer at 0.53 s, compiler-backed at 1.1 s. The stored symbols and edges equal a cold index.\n\nPrism companion: `feat/compiler-provisional`. Graph answers say PROVISIONAL and never claim completeness while a pass runs.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\ncd ../prism && gh pr create --draft --base main --head feat/compiler-provisional --title \"graph answers say PROVISIONAL while a background compiler pass runs\" --body-file - <<'EOF'\nCompanion to grove's optional background compiler pass (`GROVE_DEFER_NATIVE=1`, off by default). With the grove default, prism's behaviour is unchanged.\n\nWhen the mode is on:\n- Graph-claim tools wait up to `PRISM_COMPILER_WAIT` for the pass. That's change_impact, rename plan, missing implementations, dead code, map and cycles. The default wait is 2 s.\n- If the pass is still running, the answer carries a PROVISIONAL warning naming the pending files. Its completeness and familyCompleteness become `provisional` and safeToClaimComplete becomes false.\n- A provisional answer is never collapsed into an \"already delivered\" pointer. A live test showed that pointer hiding the mark.\n- verify, the gate, waits up to 5 minutes instead, because a verdict is final.\n- Search, lookup, query and read don't wait. They answer from freshly parsed symbols and text and make no family-completeness claim.\n\nTests: `TestImpactAfterEditIsProvisionalUntilTheCompilerPassLands` (live), `TestAttachStaleWarningDowngradesOnlyProvisional`, `TestProvisionalAnswerIsNeverDeduplicated`.\n\nNeeds grove `feat/deferred-native` for `NativePending` and `WaitNative`.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF"
+      at: 2026-10-12T02:58:25.642847Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/.claude/projects/-Users-tapabratapal-Projects-provasign-prism/memory && python3 - <<'EOF'
+        p="MEMORY.md"; s=open(p).read()
+        line="- [Release prep v0.87.9 2026-10-12](project_release_prep_0879_2026_10_12.md) — name resolution fixed (grove #21, prism #48); background compiler pass built but OFF by default (measured slower: grove #22, prism #49); astkit #5, grove #20; nothing merged/released\n"
+        s=s.replace("# Memory Index\n\n","# Memory Index\n\n"+line,1); open(p,"w").write(s)
+        EOF
+        echo ok
+      at: 2026-10-12T02:58:44.380003Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/final_verify.log
+      at: 2026-10-12T03:04:13.888788Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && gh pr checks 5 2>&1 | tail -4 && gh pr view 5 --json mergeable,mergeStateStatus,isDraft -q '"mergeable="+.mergeable+" state="+.mergeStateStatus+" draft="+(.isDraft|tostring)' && gh pr merge 5 --merge 2>&1 | tail -2
+      at: 2026-10-12T03:08:16.989053Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/astkit && gh pr view 5 --json state,mergeCommit -q '.state+" "+.mergeCommit.oid' && git checkout -q main && git pull -q && git log --oneline -3 && git tag --sort=-creatordate | head -2
+      at: 2026-10-12T03:08:20.852665Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/astkit && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -3; ls .github/workflows/; git tag -l ''v0.16.0'' -n1; git tag -a v0.16.1 -m "v0.16.1: Java declares anonymous classes and lambdas in field initializers, initializer blocks, lambda bodies and enum-constant arguments" && git push -q origin v0.16.1 2>&1 | tail -1; git ls-remote --tags origin v0.16.1'
+      at: 2026-10-12T03:08:27.696558Z
+      classified: test
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && gh pr checks 21 2>&1 | awk -F''\t'' ''{print $1": "$2}''; gh pr view 21 --json mergeable,mergeStateStatus -q ''.mergeable+" "+.mergeStateStatus'''
+      at: 2026-10-12T03:08:36.237961Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gh pr merge 21 --merge 2>&1 | tail -1; gh pr view 21 --json state -q .state; git checkout -q feat/compiler-declared-symbols && git pull -q 2>/dev/null; GOPROXY=https://proxy.golang.org,direct go get github.com/provasign/astkit@v0.16.1 2>&1 | tail -2; go mod tidy && grep astkit go.mod && go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -3; echo GROVE-TESTS-DONE
+      at: 2026-10-12T03:09:00.00428Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git add go.mod go.sum && git commit -q -m "deps: astkit v0.16.1 (Java declarations in field initializers, initializer blocks, lambda bodies, enum-constant arguments)
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git push -q 2>&1 | grep -v "^remote:\|^$" | tail -1; git log --oneline -1
+      at: 2026-10-12T03:09:09.344943Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && sleep 20; until [ "$(gh pr checks 20 --json bucket 2>/dev/null | jq ''length'')" -gt 0 ] && gh pr checks 20 --json bucket 2>/dev/null | jq -e ''all(.bucket!="pending")'' >/dev/null; do sleep 20; done; gh pr checks 20 --json name,bucket -q ''.[]|.name+": "+.bucket''; gh pr view 20 --json mergeable,mergeStateStatus -q ''.mergeable+" "+.mergeStateStatus'''
+      at: 2026-10-12T03:09:09.388723Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/boz8ja4vz.output
+      at: 2026-10-12T03:13:11.289824Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && run=$(gh pr checks 20 --json name,link -q ''.[]|select(.name|test("gin"))|.link'' | sed ''s#.*/runs/\([0-9]*\)/.*#\1#''); echo run $run; gh run view $run --log-failed 2>/dev/null | grep -iE "error|go: |missing|mismatch|FAIL" | head -15; grep -n "astkit\|replace" eval/go.mod'
+      at: 2026-10-12T03:13:22.298956Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove/eval && GOPROXY=https://proxy.golang.org,direct go get github.com/provasign/astkit@v0.16.1 2>&1 | tail -1; go mod tidy && grep astkit go.mod && go build -o /tmp/claude-grove-eval ./cmd/grove-eval && echo EVAL-BUILD-OK && cd .. && git add eval/go.mod eval/go.sum && git commit -q -m "eval: astkit v0.16.1 (matches the grove module)
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX" && git push -q 2>&1 | grep -v "^remote:\|^$" | tail -1; git log --oneline -1
+      at: 2026-10-12T03:13:34.648761Z
+      classified: build
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && sleep 30; until [ "$(gh pr checks 20 --json bucket 2>/dev/null | jq ''length'')" -gt 0 ] && gh pr checks 20 --json bucket 2>/dev/null | jq -e ''all(.bucket!="pending")'' >/dev/null; do sleep 20; done; gh pr checks 20 --json name,bucket -q ''.[]|.name+": "+.bucket'''
+      at: 2026-10-12T03:13:34.699293Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/bdtib9ws1.output
+      at: 2026-10-12T03:18:07.950044Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gh pr merge 20 --merge 2>&1 | tail -1; gh pr view 20 --json state -q .state; git checkout -q main && git pull -q && git log --oneline -4 && grep astkit go.mod eval/go.mod && go build ./... && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -3; echo GROVE-MAIN-TESTS-DONE
+      at: 2026-10-12T03:18:32.834113Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gh pr update-branch 20 2>&1 | tail -1; sleep 40; until [ "$(gh pr checks 20 --json bucket 2>/dev/null | jq 'length')" -gt 0 ] && gh pr checks 20 --json bucket 2>/dev/null | jq -e 'all(.bucket!="pending")' >/dev/null; do sleep 20; done; gh pr checks 20 --json name,bucket -q '[.[].bucket]|group_by(.)|map("\(.[0])=\(length)")|join(" ")'; gh pr view 20 --json mergeStateStatus -q .mergeStateStatus
+      at: 2026-10-12T03:18:38.81952Z
+      classified: other
+    - cmd: |-
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; cd /Users/tapabratapal/Projects/provasign/grove && git fetch -q origin && git checkout -q -B premerge/v0.63.5 origin/main && git merge -q --no-edit origin/feat/compiler-declared-symbols 2>&1 | grep -v "^fuse" | tail -2; git log --oneline -3; grep astkit go.mod; cd ../astkit && git checkout -q main; cd ../prism && git status --short | grep -v __pycache__; git checkout -q fix/bare-name-resolution && GOWORK=$S/ws/go.work go build -o ~/prism-ab-bins/prism-premerge ./cmd/prism && echo BUILT && ( for d in ~/ci-corpus/*/; do find "$d" -maxdepth 2 -name .grove -type d -prune -exec rm -rf {} + ; done; cd /Users/tapabratapal/Projects/provasign/research && python3 harness/scoring/ci_invariants.py --corpus-root ~/ci-corpus --prism ~/prism-ab-bins/prism-premerge --decoy-injector $S/decoy > $S/ci_invariants_premerge.log 2>&1; echo "gate exit $?"; grep -E "REGRESSION|All invariants|Traceback" $S/ci_invariants_premerge.log; echo "OK lines $(grep -c 'OK\]' $S/ci_invariants_premerge.log)" ) > $S/premerge_gate.txt 2>&1 &
+        echo started
+      at: 2026-10-12T03:18:51.549919Z
+      classified: build
+    - cmd: 'cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/3b8013cf-a73d-45a2-8ba4-8a4f4e2c77ae/tasks/b4ck4j3k4.output; cd /Users/tapabratapal/Projects/provasign/grove && gh pr checks 20 --json name,bucket -q ''.[]|select(.bucket!="pass")|.name+": "+.bucket'''
+      at: 2026-10-12T03:22:43.553612Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gh pr merge 20 --merge 2>&1 | tail -1; gh pr view 20 --json state,mergeCommit -q '.state+" "+.mergeCommit.oid'; git fetch -q origin && git diff --stat premerge/v0.63.5 origin/main | tail -1; echo "(empty diff = gate is testing exactly main)"
+      at: 2026-10-12T03:22:53.566577Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && ls .github/workflows/; grep -ln "tags:" .github/workflows/*.yml; git tag --sort=-creatordate | head -2; gh release view v0.63.4 --json name,assets -q '.name+" assets="+([.assets[].name]|length|tostring)' 2>&1 | head -2
+      at: 2026-10-12T03:22:58.7252Z
+      classified: other
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; until grep -q "gate exit" $S/premerge_gate.txt 2>/dev/null; do sleep 15; done; cat $S/premerge_gate.txt
+      at: 2026-10-12T03:23:03.222494Z
+      classified: other
+    - cmd: cat /private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad/premerge_gate.txt
+      at: 2026-10-12T03:23:06.544207Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && git checkout -q main && git pull -q && git rev-parse --short HEAD && git tag -a v0.63.5 -m "v0.63.5: Java declarations from javac (compiler-declared symbols, ExtractorVersion bump forces re-extraction once); bare-name change-impact never picks silently; astkit v0.16.1" && git push -q origin v0.63.5 2>&1 | tail -1; git ls-remote --tags origin v0.63.5; sleep 30; until [ "$(gh run list --branch v0.63.5 --limit 3 --json status -q ''[.[]|select(.status!="completed")]|length'')" = "0" ] && [ "$(gh run list --branch v0.63.5 --limit 3 --json status -q ''length'')" -gt 0 ]; do sleep 20; done; gh run list --branch v0.63.5 --limit 3 --json name,conclusion -q ''.[]|.name+": "+.conclusion''; gh release view v0.63.5 --json assets -q ''"assets="+([.assets[].name]|length|tostring)'''
+      at: 2026-10-12T03:25:49.714005Z
+      classified: other
+    - cmd: git checkout -q fix/bare-name-resolution && git pull -q 2>/dev/null; GOWORK=off GOPROXY=https://proxy.golang.org,direct go get github.com/provasign/grove@v0.63.5 2>&1 | tail -2; GOWORK=off go mod tidy && grep -E "provasign/(grove|astkit)" go.mod && GOWORK=off go build ./... && GOWORK=off go test ./... 2>&1 | grep -E "^--- FAIL|^FAIL|_test.go:[0-9]+:" | head -5; echo PRISM-TESTS-DONE
+      at: 2026-10-12T03:26:46.281703Z
+      classified: test
+notes:
+    - text: continuation of session 1d98ffa0-a6f9-4e00-a1df-8929a0eb1923 — events captured after its evidence was finalized
+      at: 2026-10-12T02:57:49.099071Z
+redactions: 0
