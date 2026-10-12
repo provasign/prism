@@ -180,6 +180,13 @@ func (h *Handler) graphDedupe(name string, args map[string]any, out any) any {
 	if h.Session == nil || out == nil {
 		return out
 	}
+	if m, ok := out.(map[string]any); ok {
+		if w, _ := m["staleWarning"].(string); strings.HasPrefix(w, provisionalPrefix) {
+			// Never a pointer: a provisional answer repeated as "already in
+			// your context" hides that the compiler pass is still running.
+			return out
+		}
+	}
 	payload, err := json.Marshal(out) // map keys sort: canonical for equal values
 	if err != nil {
 		return out

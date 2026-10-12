@@ -70,3 +70,19 @@ func TestAttachStaleWarningDowngradesOnlyProvisional(t *testing.T) {
 		t.Fatalf("no completeness field may be invented: %v", o)
 	}
 }
+
+// A provisional answer repeated verbatim is sent again in full, never as a
+// pointer to the earlier one: the mark must stay visible on every answer
+// computed before the compiler pass lands.
+func TestProvisionalAnswerIsNeverDeduplicated(t *testing.T) {
+	srv := compactFixture(t, map[string]string{"a.go": "package a\n\nfunc A() {}\n"})
+	h := srv.handler
+	big := map[string]any{"completeness": "closed", "staleWarning": provisionalPrefix + "pass running",
+		"family": strings.Repeat("site ", 4000)}
+	args := map[string]any{"query": "A"}
+	first := h.graphDedupe("prism_change_impact", args, big)
+	second := h.graphDedupe("prism_change_impact", args, big)
+	if m, ok := second.(map[string]any); !ok || m["staleWarning"] == nil || first == nil {
+		t.Fatalf("a provisional answer was replaced by a pointer: %#v", second)
+	}
+}
