@@ -132,7 +132,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"familyCompleteness": true, "callerCoverage": true, "callerEvidence": true,
 		"completenessScope": true, "safeToClaimComplete": true,
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
-		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true,
+		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true, "callSitesByOverload": true, "callSitesSource": true, "unresolvedCallsNote": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
 		"resolvedAmbiguity": true,
 	}
@@ -181,6 +181,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		for _, l := range lines {
 			b.WriteString("  " + l + "\n")
 		}
+	}
+	if note, _ := out["unresolvedCallsNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if note, _ := out["coverageNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)

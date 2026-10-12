@@ -44,7 +44,7 @@ func (h *Handler) overloadCallerTags(ctx context.Context, r *grove.ChangeImpactR
 	}
 	tags := map[string][]string{}
 	callers := map[string]grove.SymbolRecord{}
-	compiled := map[string]map[string][]int{} // caller -> overload -> compiler call lines
+	compiled := map[string]map[string][]string{} // caller -> overload -> compiler call positions ("line:col")
 	for _, d := range overloads {
 		params, ok := signatureParamTypes(d.Signature, d.Language)
 		if !ok {
@@ -61,7 +61,7 @@ func (h *Handler) overloadCallerTags(ctx context.Context, r *grove.ChangeImpactR
 			callers[k] = c
 			if ls := one.CallerLines[c.ID]; len(ls) > 0 {
 				if compiled[k] == nil {
-					compiled[k] = map[string][]int{}
+					compiled[k] = map[string][]string{}
 				}
 				compiled[k][label] = ls
 			}
@@ -79,50 +79,48 @@ func (h *Handler) overloadCallerTags(ctx context.Context, r *grove.ChangeImpactR
 	return tags, overloadCallLines(overloads[0].Name, arity, tags, callers, compiled)
 }
 
-// overloadLines places each call line of an overloaded name under the
-// overload it calls. A caller the compiler resolved to one overload gives
-// its lines exactly; a caller that calls several (TypeAdapters'
-// write(boolean) and write(long) in one body) gives "mixed" lines naming
-// its overloads, which the agent resolves by reading them. A line claimed
-// exactly (a lambda's call) is never also listed as mixed (its enclosing
-// method, which javac credits with the lambda's calls too).
+// overloadLines places each call of an overloaded name under the overload
+// it calls. Where the compiler supplied positions (javac: line:col of the
+// called name) every call is placed exactly, a caller that calls several
+// overloads included. Without them (other languages) a caller resolved to
+// one overload gives its call-site lines; one that calls several gives
+// "mixed" lines naming its overloads. Where the compiler ran, a caller it
+// resolved no call for is a name guess: it is kept OUT of the list (an
+// agent scripts the list as an edit map; the gson probe renamed a guessed
+// line and broke the build) and named in a separate note.
 type overloadLines struct {
-	exact map[string]map[string][]int // overload -> file -> lines
-	mixed map[string]map[int]string   // file -> line -> "a | b"
+	exact map[string]map[string][]string // overload -> file -> positions
+	mixed map[string]map[int]string      // file -> line -> "a | b"
 	calls int
-	// guessed: file -> line -> overloads, for callers reached only by name
-	// where the compiler resolved the others.
-	guessed map[string]map[int]string
-	// fromCompiler: every exact line came from the compiler's per-call
-	// resolution.
+	// unresolved: "file:line" calls of the same name javac resolved to none
+	// of the overloads, where it resolved the rest.
+	unresolved []string
+	// fromCompiler: every listed position came from the compiler.
 	fromCompiler bool
 }
 
 // arity holds the overloads' parameter counts: a same-named call with
 // another count (an annotation's value()) is a different method.
-// compiled holds, per caller and overload, the lines the compiler resolved
-// (javac call lines): those place every line exactly, a caller calling
-// several overloads included. Callers without them fall back to their call
-// sites and the per-caller tags.
-func overloadCallLines(name string, arity map[int]bool, tags map[string][]string, callers map[string]grove.SymbolRecord, compiled map[string]map[string][]int) *overloadLines {
-	out := &overloadLines{exact: map[string]map[string][]int{}, mixed: map[string]map[int]string{}, guessed: map[string]map[int]string{}, fromCompiler: true}
-	// placed dedupes per overload, file and line: one line can hold calls
-	// to two overloads (w.value("x"); w.value(2L);), and javac resolves
-	// both. claimed is any overload's line, which keeps a line placed
-	// exactly out of the mixed and name-matched groups.
+func overloadCallLines(name string, arity map[int]bool, tags map[string][]string, callers map[string]grove.SymbolRecord, compiled map[string]map[string][]string) *overloadLines {
+	out := &overloadLines{exact: map[string]map[string][]string{}, mixed: map[string]map[int]string{}, fromCompiler: true}
+	// placed dedupes per overload, file and position: one line can hold
+	// calls to two overloads (w.value("x"); w.value(2L);) and javac
+	// resolves both. claimedLines is any overload's line, which keeps a
+	// placed line out of the mixed group.
 	placed := map[string]bool{}
-	claimed := map[string]bool{} // file:line placed exactly under some overload
-	place := func(label, file string, ln int) {
-		pos := file + ":" + strconv.Itoa(ln)
-		if placed[label+"\x00"+pos] {
+	claimedLines := map[string]bool{}
+	place := func(label, file, pos string) {
+		key := label + "\x00" + file + "\x00" + pos
+		if placed[key] {
 			return
 		}
-		placed[label+"\x00"+pos] = true
-		claimed[pos] = true
+		placed[key] = true
+		line, _, _ := strings.Cut(pos, ":")
+		claimedLines[file+":"+line] = true
 		if out.exact[label] == nil {
-			out.exact[label] = map[string][]int{}
+			out.exact[label] = map[string][]string{}
 		}
-		out.exact[label][file] = append(out.exact[label][file], ln)
+		out.exact[label][file] = append(out.exact[label][file], pos)
 		out.calls++
 	}
 	lineSet := func(c grove.SymbolRecord) []int {
@@ -145,8 +143,6 @@ func overloadCallLines(name string, arity map[int]bool, tags map[string][]string
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	// Compiler lines first: they are per call, so they settle every line
-	// they cover, whatever else the caller calls.
 	for _, k := range keys {
 		byLabel := compiled[k]
 		labels := make([]string, 0, len(byLabel))
@@ -155,15 +151,13 @@ func overloadCallLines(name string, arity map[int]bool, tags map[string][]string
 		}
 		sort.Strings(labels)
 		for _, l := range labels {
-			for _, ln := range byLabel[l] {
-				place(l, callers[k].FilePath, ln)
+			for _, pos := range byLabel[l] {
+				place(l, callers[k].FilePath, pos)
 			}
 		}
 	}
-	// Where the compiler supplied lines, a caller without any is a name
-	// guess (a same-named static value() in another library): its lines
-	// are listed apart, never among the compiler's.
 	compilerRan := len(compiled) > 0
+	seenUnresolved := map[string]bool{}
 	for _, k := range keys {
 		if len(compiled[k]) > 0 {
 			continue
@@ -171,12 +165,10 @@ func overloadCallLines(name string, arity map[int]bool, tags map[string][]string
 		c := callers[k]
 		if compilerRan {
 			for _, ln := range lineSet(c) {
-				if !claimed[c.FilePath+":"+strconv.Itoa(ln)] {
-					if out.guessed[c.FilePath] == nil {
-						out.guessed[c.FilePath] = map[int]string{}
-					}
-					out.guessed[c.FilePath][ln] = strings.Join(tags[k], " | ")
-					out.calls++
+				pos := c.FilePath + ":" + strconv.Itoa(ln)
+				if !claimedLines[pos] && !seenUnresolved[pos] {
+					seenUnresolved[pos] = true
+					out.unresolved = append(out.unresolved, pos)
 				}
 			}
 			continue
@@ -184,18 +176,19 @@ func overloadCallLines(name string, arity map[int]bool, tags map[string][]string
 		out.fromCompiler = false
 		if t := tags[k]; len(t) == 1 {
 			for _, ln := range lineSet(c) {
-				place(t[0], c.FilePath, ln)
+				place(t[0], c.FilePath, strconv.Itoa(ln))
 			}
 		}
 	}
-	for _, k := range keys {
-		if len(compiled[k]) > 0 || compilerRan {
-			continue
-		}
-		if t := tags[k]; len(t) > 1 {
+	if !compilerRan {
+		for _, k := range keys {
+			t := tags[k]
+			if len(t) < 2 {
+				continue
+			}
 			c := callers[k]
 			for _, ln := range lineSet(c) {
-				if claimed[c.FilePath+":"+strconv.Itoa(ln)] {
+				if claimedLines[c.FilePath+":"+strconv.Itoa(ln)] {
 					continue
 				}
 				if out.mixed[c.FilePath] == nil {
@@ -206,16 +199,17 @@ func overloadCallLines(name string, arity map[int]bool, tags map[string][]string
 			}
 		}
 	}
+	sort.Strings(out.unresolved)
 	if out.calls == 0 {
 		return nil
 	}
 	return out
 }
 
-// render lays the lines out per overload and file:
+// render lays the positions out per overload and file:
 //
-//	value(String) — 120 calls
-//	  gson/.../EnumTypeAdapter.java: 127
+//	value(String) — 120 call(s)
+//	  gson/.../EnumTypeAdapter.java: 127:9
 func (o *overloadLines) render() []string {
 	var lines []string
 	labels := make([]string, 0, len(o.exact))
@@ -226,16 +220,16 @@ func (o *overloadLines) render() []string {
 	for _, l := range labels {
 		n := 0
 		files := make([]string, 0, len(o.exact[l]))
-		for f, ls := range o.exact[l] {
+		for f, ps := range o.exact[l] {
 			files = append(files, f)
-			n += len(ls)
+			n += len(ps)
 		}
 		sort.Strings(files)
 		lines = append(lines, l+" — "+strconv.Itoa(n)+" call(s)")
 		for _, f := range files {
-			ls := append([]int(nil), o.exact[l][f]...)
-			sort.Ints(ls)
-			lines = append(lines, "  "+f+": "+joinInts(ls))
+			ps := append([]string(nil), o.exact[l][f]...)
+			sort.Slice(ps, func(a, b int) bool { return positionLess(ps[a], ps[b]) })
+			lines = append(lines, "  "+f+": "+strings.Join(ps, ", "))
 		}
 	}
 	if len(o.mixed) > 0 {
@@ -258,35 +252,21 @@ func (o *overloadLines) render() []string {
 			lines = append(lines, "  "+f+": "+strings.Join(parts, ", "))
 		}
 	}
-	if len(o.guessed) > 0 {
-		lines = append(lines, "name-matched — the compiler resolved none of these calls to the overloads (likely a different method of the same name); check before editing:")
-		files := make([]string, 0, len(o.guessed))
-		for f := range o.guessed {
-			files = append(files, f)
-		}
-		sort.Strings(files)
-		for _, f := range files {
-			ls := make([]int, 0, len(o.guessed[f]))
-			for ln := range o.guessed[f] {
-				ls = append(ls, ln)
-			}
-			sort.Ints(ls)
-			parts := make([]string, 0, len(ls))
-			for _, ln := range ls {
-				parts = append(parts, strconv.Itoa(ln)+" ("+o.guessed[f][ln]+")")
-			}
-			lines = append(lines, "  "+f+": "+strings.Join(parts, ", "))
-		}
-	}
 	return lines
 }
 
-func joinInts(xs []int) string {
-	parts := make([]string, len(xs))
-	for i, x := range xs {
-		parts[i] = strconv.Itoa(x)
+// positionLess orders "line" / "line:col" positions numerically.
+func positionLess(a, b string) bool {
+	la, ca, _ := strings.Cut(a, ":")
+	lb, cb, _ := strings.Cut(b, ":")
+	na, _ := strconv.Atoi(la)
+	nb, _ := strconv.Atoi(lb)
+	if na != nb {
+		return na < nb
 	}
-	return strings.Join(parts, ", ")
+	x, _ := strconv.Atoi(ca)
+	y, _ := strconv.Atoi(cb)
+	return x < y
 }
 
 func overloadCallerKey(file string, line int, qn string) string {
