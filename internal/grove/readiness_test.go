@@ -105,3 +105,23 @@ func TestReadinessIgnoresNotApplicableTypeScript(t *testing.T) {
 		t.Fatalf("declared-but-uninstalled typescript must still be reported, got %+v", got)
 	}
 }
+
+func TestReadinessRustAnalyzer(t *testing.T) {
+	got := Readiness(t.TempDir(), []string{"rust: rust-analyzer pass skipped: rust-analyzer not found (PATH, ~/.cargo/bin, editor extensions)"})
+	if len(got) != 1 || got[0].Language != "rust" || !strings.Contains(got[0].Fix, "rustup component add rust-analyzer") {
+		t.Fatalf("missing rust-analyzer: %+v", got)
+	}
+	got = Readiness(t.TempDir(), []string{"rust: rust-analyzer scip failed: exit status 1: error: failed to load workspace"})
+	if len(got) != 1 || !strings.Contains(got[0].Fix, "cargo check") {
+		t.Fatalf("failed rust-analyzer: %+v", got)
+	}
+	for _, d := range []string{
+		"rust: rust-analyzer pass skipped: disabled by GROVE_RUST_ANALYZER",
+		"rust: rust-analyzer declared 734 symbol(s) the parser did not index (macro-generated items)",
+		"rust: rust-analyzer edges reused from the last run (no edited file needs it): 1892",
+	} {
+		if got := Readiness(t.TempDir(), []string{d}); len(got) != 0 {
+			t.Errorf("%q is not an issue: %+v", d, got)
+		}
+	}
+}
