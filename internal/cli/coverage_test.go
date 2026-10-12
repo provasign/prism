@@ -126,6 +126,26 @@ func TestCmdRead_Smoke(t *testing.T) {
 	}
 }
 
+// The MCP read's field names work on the CLI too: an agent moving from the
+// tool to the shell wrote `prism read f --from 114 --to 147 --dir D` and got
+// "unknown flag".
+func TestCmdReadAcceptsFromToAndDir(t *testing.T) {
+	dir := setupCLIProject(t)
+	for _, args := range [][]string{
+		{"main.go", "--from", "21", "--to", "22", "--dir", dir},
+		{"main.go", "--from=21", "--to=22", "--dir=" + dir},
+	} {
+		out := captureStdout(func() {
+			if got := cmdRead(args); got != 0 {
+				t.Fatalf("cmdRead %v = %d", args, got)
+			}
+		})
+		if !strings.Contains(out, "21→") || !strings.Contains(out, "22→") || strings.Contains(out, "23→") || strings.Contains(out, "20→") {
+			t.Fatalf("cmdRead %v did not return lines 21-22:\n%s", args, out)
+		}
+	}
+}
+
 func TestCmdUsageErrors(t *testing.T) {
 	if got := cmdQuery([]string{}); got != 2 {
 		t.Fatalf("cmdQuery usage=%d", got)
