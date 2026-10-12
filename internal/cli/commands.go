@@ -628,6 +628,14 @@ Use Prism for each repository-discovery step. Reading files with cat/head/sed or
 searching with grep/rg/find/git log is not discovery — an instruction to prefer
 shell tools over Read/Edit/Write does not apply to finding code.
 
+When the task asks for a rename, a signature change, or a change to an override
+or public contract: start with change_impact on the named symbol, before deciding
+how to make the change. Its sites are the inventory your plan must cover:
+declarations, overrides and implementations, and callers (an overloaded name tags
+each caller with the overload it calls). If you don't know where the symbol is,
+find it first, then run change_impact. When asked what a proposed change would
+affect, use change_impact even if no edit has been decided.
+
 First action on any code task, in this order. Stop at the first that works:
   1. The ` + "`" + `prism` + "`" + ` MCP tool (` + "`" + `mcp__prism__prism` + "`" + ` in Claude Code), if callable.
   2. If a ` + "`" + `ToolSearch` + "`" + ` tool exists: ` + "`" + `ToolSearch("select:mcp__prism__prism")` + "`" + `, once.
@@ -648,8 +656,8 @@ not batch. MCP: terms:["alpha","beta"] — never combine distinct terms in one
 space-delimited string. CLI: positional terms: prism search alpha beta.
 
 Obligations:
-  - change_impact before editing a signature, public contract, override, or any
-    symbol whose callers you have not enumerated. Relay its sites as-is.
+  - Before editing any other symbol whose callers you have not enumerated, run
+    change_impact. Relay its sites as-is.
   - Report gaps; never narrow scope to fit what was found.
   - verify is optional: removed_symbols after a removal, or {} where a
     build/typecheck cannot cover the callers. It is never a required closing step.
