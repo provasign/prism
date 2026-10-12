@@ -50,7 +50,7 @@ func TestSteeringRoutesDiscoveryAndBatchesKnownInputs(t *testing.T) {
 func TestSteeringKeepsImpactMandatoryAndVerificationOptional(t *testing.T) {
 	got := steeringBlock()
 	for _, want := range []string{
-		"change_impact before editing a signature, public contract, override",
+		"start with change_impact on the named symbol, before deciding",
 		"symbol whose callers you have not enumerated",
 		"Relay its sites as-is",
 		"Report gaps; never narrow scope to fit what was found",
