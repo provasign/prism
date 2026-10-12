@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,19 +17,59 @@ var compactFields = map[string][]string{
 	"verify":        {"base", "removed_symbols", "strict"},
 }
 
-func compactFieldError(op, field string) error {
+var compactFieldReplacement = map[string]map[string]string{
+	"lookup":        {"file": "symbol_file"},
+	"read":          {"offset": "from", "limit": "to", "lines": "from and to"},
+	"search":        {"query": "terms", "path": "paths", "limit": "max_results"},
+	"query":         {"query": "terms", "path": "paths", "limit": "terms"},
+	"change_impact": {"query": "name", "file": "symbol_file"},
+}
+
+// compactFieldError names the unsupported field and hands back the request
+// without it, ready to resend: a rejected call that needs rewriting was
+// where an agent gave up on prism and went back to the shell (gson
+// 2026-10-12: one invented "terms_note" field, no further prism calls).
+func compactFieldError(op, field string, args map[string]any) error {
 	accepted := strings.Join(compactFields[op], ", ")
-	replacement := map[string]map[string]string{
-		"lookup":        {"file": "symbol_file"},
-		"read":          {"offset": "from", "limit": "to", "lines": "from and to"},
-		"search":        {"query": "terms", "path": "paths", "limit": "max_results"},
-		"query":         {"query": "terms", "path": "paths", "limit": "terms"},
-		"change_impact": {"query": "name", "file": "symbol_file"},
+	msg := fmt.Sprintf("prism: %s does not accept args.%s. Accepted fields: %s", op, field, accepted)
+	if next := compactFieldReplacement[op][field]; next != "" {
+		msg = fmt.Sprintf("prism: %s does not accept args.%s; use %s. Accepted fields: %s", op, field, next, accepted)
 	}
-	if next := replacement[op][field]; next != "" {
-		return fmt.Errorf("prism: %s does not accept args.%s; use %s. Accepted fields: %s", op, field, next, accepted)
+	if retry := compactRetry(op, args); retry != "" {
+		msg += "\nRetry: " + retry
 	}
-	return fmt.Errorf("prism: %s does not accept args.%s. Accepted fields: %s", op, field, accepted)
+	return errors.New(msg)
+}
+
+// compactRetry is the call with every unsupported field dropped, or moved
+// to its one-field replacement when that is unset. "" when nothing is left
+// to send or the call would be too long to read.
+func compactRetry(op string, args map[string]any) string {
+	allowed := map[string]bool{}
+	for _, f := range compactFields[op] {
+		allowed[f] = true
+	}
+	fixed := map[string]any{}
+	for k, v := range args {
+		if allowed[k] {
+			fixed[k] = v
+		}
+	}
+	for k, v := range args {
+		if next := compactFieldReplacement[op][k]; !allowed[k] && allowed[next] {
+			if _, set := fixed[next]; !set {
+				fixed[next] = v
+			}
+		}
+	}
+	if len(fixed) == 0 {
+		return ""
+	}
+	raw, err := json.Marshal(fixed)
+	if err != nil || len(raw) > 1000 {
+		return ""
+	}
+	return fmt.Sprintf("prism(op=%q, args=%s)", op, raw)
 }
 
 func compactStringList(value any) bool {

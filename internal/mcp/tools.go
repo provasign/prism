@@ -3447,6 +3447,19 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if hint := h.widerAnchorHint(ctx, r); hint != nil {
 		out["widerAnchor"] = hint
 	}
+	if tags := h.overloadCallerTags(ctx, r); len(tags) > 0 {
+		if callers, ok := out["callers"].([]map[string]any); ok {
+			for _, c := range callers {
+				file, _ := c["filePath"].(string)
+				line, _ := c["line"].(int)
+				qn, _ := c["qualifiedName"].(string)
+				if t := tags[overloadCallerKey(file, line, qn)]; len(t) > 0 {
+					c["overloads"] = strings.Join(t, ", ")
+				}
+			}
+			out["overloadNote"] = "Each caller is tagged with the overload(s) it calls, as the compiler resolved them."
+		}
+	}
 	h.addDegradedNote(ctx, out, r)
 	applyCompilerBackedCompleteness(out, r)
 	markNameMatchedSites(out, r)
