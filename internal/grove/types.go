@@ -139,6 +139,9 @@ type ChangeImpactResult struct {
 	// NameMatchedCallers: IDs of callers reached only by name-derived edges.
 	// Every other caller has a compiler- or AST-resolved edge into the set.
 	NameMatchedCallers []string `json:"nameMatchedCallers,omitempty"`
+	// CallerLines: per caller ID, the positions ("line:col" of the called
+	// name) where the compiler resolved its calls into the change set (javac).
+	CallerLines map[string][]string `json:"callerLines,omitempty"`
 
 	// Data-member anchors only (fields, properties, constants, variables).
 	// MemberKind is non-empty exactly for those. Accesses are the source
