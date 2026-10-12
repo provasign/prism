@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/ranking"
 	"github.com/provasign/prism/internal/textsearch"
 )
@@ -62,8 +61,8 @@ func searchBudgetTokens(terms int) int {
 	return minInt(1200+300*(terms-1), 2000)
 }
 
-// searchBudget is the per-call decision: whether the default budget applies
-// and whether the request is about tests.
+// searchBudget carries the fitting code's inputs; searchShape.budgetFor
+// builds it (searchshape.go decides whether the budget applies).
 type searchBudget struct {
 	on             bool
 	testsTargeted  bool
@@ -628,44 +627,6 @@ func narrowReadHint(file string, from, to, shownFrom, shownTo int) string {
 	}
 	return fmt.Sprintf("rest: op=read ranges=[{file:%q,from:%d,to:%d},{file:%q,from:%d,to:%d}]",
 		file, sides[0][0], sides[0][1], file, sides[1][0], sides[1][1])
-}
-
-// searchBudgetFor decides whether the default response budget applies: only
-// when the caller left the shape to Prism. args are the normalized legacy
-// prism_search fields.
-func searchBudgetFor(args map[string]any, sc searchScope, queries []string, regex bool) searchBudget {
-	_, explicitContext := args["context"]
-	_, explicitLimit := args["limit"]
-	return searchBudget{
-		on:             !explicitContext && !explicitLimit && !sc.exhaustive && !sc.filesOnly && !sc.rollupOnly,
-		testsTargeted:  searchTargetsTests(sc, queries),
-		regex:          regex,
-		sc:             sc,
-		explicitBodies: args["include_bodies"] == true,
-	}
-}
-
-// searchBodies delivers the enclosing source for a search result: one
-// bounded non-test body under the default budget, the wider explicit
-// include_bodies=true shape otherwise.
-func (h *Handler) searchBodies(ctx context.Context, out map[string]any, b searchBudget) string {
-	if b.on && !b.explicitBodies {
-		return h.compactSearchBodiesBudgeted(ctx, out, b.testsTargeted)
-	}
-	return h.compactSearchBodiesEnclosing(ctx, out)
-}
-
-// budgetPickFits reports whether a small-result body picked by the compact
-// renderer can serve as the default budget's single body.
-func budgetPickFits(picked []grove.SymbolRecord, allowTests bool) bool {
-	if len(picked) != 1 {
-		return false
-	}
-	sym := picked[0]
-	if !allowTests && isTestFilePath(sym.FilePath) {
-		return false
-	}
-	return sym.Span.End-sym.Span.Start+1 <= searchBudgetBodyLines
 }
 
 // budgetSampleWarning is the one-line sampling notice of the default budget.

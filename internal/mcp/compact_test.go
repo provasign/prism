@@ -809,25 +809,3 @@ func TestCompactQueryHonorsPathsAndGlob(t *testing.T) {
 		t.Fatalf("scoped compact query ignored paths/glob:\n%s", content)
 	}
 }
-
-func TestCompactSearchBodyEligibilityRejectsBroadOrExplicitlyShapedSearches(t *testing.T) {
-	for name, args := range map[string]map[string]any{
-		"explicit context": {"query": "needle", "context": 0},
-		"file inventory":   {"query": "needle", "files_only": true},
-		"rollup":           {"query": "needle", "rollup_only": true},
-		"exhaustive":       {"query": "needle", "exhaustive": true},
-	} {
-		if compactSearchCanIncludeBodies(args) {
-			t.Errorf("%s search unexpectedly eligible: %#v", name, args)
-		}
-	}
-	if !compactSearchCanIncludeBodies(map[string]any{"query": "needle"}) {
-		t.Error("default single-term search should be eligible")
-	}
-	if !compactSearchCanIncludeBodies(map[string]any{"query": "needle", "scope": "symbols"}) {
-		t.Error("small symbol-only search should be eligible for body escalation")
-	}
-	if !compactSearchCanIncludeBodies(map[string]any{"query": []any{"needle", "broad"}}) {
-		t.Error("batched search should be eligible for a unique exact first symbol")
-	}
-}
