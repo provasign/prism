@@ -132,7 +132,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 		"familyCompleteness": true, "callerCoverage": true, "callerEvidence": true,
 		"completenessScope": true, "safeToClaimComplete": true,
 		"scopeBoundary": true, "relaySites": true, "relayNote": true,
-		"inheritedNote": true, "signatureNote": true, "testOnly": true,
+		"inheritedNote": true, "signatureNote": true, "testOnly": true, "overloadNote": true,
 		"reExports": true, "related": true, "degradedAnalysis": true,
 		"resolvedAmbiguity": true,
 	}
@@ -168,6 +168,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 	}
 	if ev, _ := out["callerEvidence"].(string); ev != "" {
 		fmt.Fprintf(&b, "// %s\n", ev)
+	}
+	if note, _ := out["overloadNote"].(string); note != "" {
+		fmt.Fprintf(&b, "// %s\n", note)
 	}
 	if note, _ := out["coverageNote"].(string); note != "" {
 		fmt.Fprintf(&b, "// %s\n", note)
@@ -208,7 +211,7 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 			}
 			for key := range m {
 				switch key {
-				case "name", "qualifiedName", "filePath", "line", "kind", "signature", "via", "isTest", "evidence", "evidenceNote":
+				case "name", "qualifiedName", "filePath", "line", "kind", "signature", "via", "isTest", "evidence", "evidenceNote", "overloads":
 				default:
 					return "", false
 				}
@@ -237,6 +240,9 @@ func renderChangeImpactLayout(out map[string]any, groupPaths bool) (string, bool
 			}
 			if test, _ := m["isTest"].(bool); test {
 				b.WriteString("  [test]")
+			}
+			if ov, _ := m["overloads"].(string); ov != "" {
+				fmt.Fprintf(&b, "  [calls %s]", ov)
 			}
 			b.WriteString("\n")
 			if sig, _ := m["signature"].(string); sig != "" && sec.key != "callers" {

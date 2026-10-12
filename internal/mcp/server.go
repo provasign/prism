@@ -215,7 +215,7 @@ func validateCompactArguments(op string, args map[string]any) error {
 	for _, field := range keys {
 		value := args[field]
 		if !allowedSet[field] {
-			return compactFieldError(op, field)
+			return compactFieldError(op, field, args)
 		}
 		if !schemaAcceptsValue(properties[field].(map[string]any), value) {
 			return fmt.Errorf("prism: %s args.%s has the wrong type. Accepted fields: %s", op, field, strings.Join(allowed, ", "))
