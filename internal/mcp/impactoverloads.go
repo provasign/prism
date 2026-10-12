@@ -106,12 +106,18 @@ type overloadLines struct {
 // sites and the per-caller tags.
 func overloadCallLines(name string, arity map[int]bool, tags map[string][]string, callers map[string]grove.SymbolRecord, compiled map[string]map[string][]int) *overloadLines {
 	out := &overloadLines{exact: map[string]map[string][]int{}, mixed: map[string]map[int]string{}, guessed: map[string]map[int]string{}, fromCompiler: true}
-	claimed := map[string]bool{} // file:line placed exactly
+	// placed dedupes per overload, file and line: one line can hold calls
+	// to two overloads (w.value("x"); w.value(2L);), and javac resolves
+	// both. claimed is any overload's line, which keeps a line placed
+	// exactly out of the mixed and name-matched groups.
+	placed := map[string]bool{}
+	claimed := map[string]bool{} // file:line placed exactly under some overload
 	place := func(label, file string, ln int) {
 		pos := file + ":" + strconv.Itoa(ln)
-		if claimed[pos] {
+		if placed[label+"\x00"+pos] {
 			return
 		}
+		placed[label+"\x00"+pos] = true
 		claimed[pos] = true
 		if out.exact[label] == nil {
 			out.exact[label] = map[string][]int{}

@@ -56,3 +56,18 @@ func TestCallSitesByOverloadSkipOtherArity(t *testing.T) {
 		t.Fatalf("other-arity value() listed, or the real call missing:\n%s", got)
 	}
 }
+
+// One line can call two overloads; javac resolves both, and both are
+// listed (a file:line dedupe kept only the first).
+func TestCallSitesByOverloadKeepsTwoOverloadsOnOneLine(t *testing.T) {
+	srv := compactFixture(t, map[string]string{
+		"p/W.java": "package p;\n\npublic class W {\n    public W value(String s) { return this; }\n    public W value(long n) { return this; }\n}\n",
+		"p/U.java": "package p;\n\npublic class U {\n    void both(W w) { w.value(\"x\"); w.value(2L); }\n}\n",
+	})
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "W.value"})
+	for _, want := range []string{"value(String) — 1 call(s)", "value(long) — 1 call(s)"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %q (both overloads are called on line 4):\n%s", want, got)
+		}
+	}
+}
