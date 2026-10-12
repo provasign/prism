@@ -17,6 +17,7 @@ func TestImpactAfterEditIsProvisionalUntilTheCompilerPassLands(t *testing.T) {
 	if _, err := exec.LookPath("javac"); err != nil {
 		t.Skip("no javac on PATH")
 	}
+	t.Setenv("GROVE_DEFER_NATIVE", "1") // off by default in grove
 	srv := compactFixture(t, map[string]string{
 		"p/Adapter.java": "package p;\n\npublic abstract class Adapter {\n  public abstract void write(Object v);\n}\n",
 		"p/Plain.java":   "package p;\n\npublic class Plain extends Adapter {\n  @Override\n  public void write(Object v) {}\n}\n",
