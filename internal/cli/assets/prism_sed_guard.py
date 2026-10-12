@@ -419,7 +419,7 @@ def translate_command(command: str, original: str | None = None):
         names = [x[2] for x in seg]
         for j, name in enumerate(names):
             if name == "sed" or name.endswith("/sed"):
-                edits.extend(_translate_invocation(seg[j + 1:]))
+                edits.extend(_translate_invocation(seg[j + 1:], command))
                 break
         seg = []
     if not edits:
@@ -430,7 +430,45 @@ def translate_command(command: str, original: str | None = None):
     return out
 
 
-def _translate_invocation(args):
+def has_expansion(raw: str) -> bool:
+    """The raw word text expands something ($var, ${..}, $(..), `..`) outside
+    single quotes: the shell's value differs from the text."""
+    i, n = 0, len(raw)
+    while i < n:
+        ch = raw[i]
+        if ch == "'" and not _in_double(raw, i):
+            j = raw.find("'", i + 1)
+            i = n if j < 0 else j + 1
+            continue
+        if ch == "\\":
+            i += 2
+            continue
+        if ch in "$`":
+            return True
+        i += 1
+    return False
+
+
+def _in_double(raw: str, pos: int) -> bool:
+    """Whether raw[pos] sits inside a double-quoted span."""
+    inside, i = False, 0
+    while i < pos:
+        ch = raw[i]
+        if ch == "\\":
+            i += 2
+            continue
+        if ch == '"':
+            inside = not inside
+        elif ch == "'" and not inside:
+            j = raw.find("'", i + 1)
+            if j < 0 or j >= pos:
+                return False
+            i = j
+        i += 1
+    return inside
+
+
+def _translate_invocation(args, command):
     vals = [a[2] for a in args]
     ere = any(v in ("-E", "-r") or (v.startswith("-") and not v.startswith("--") and len(v) > 1
                                     and set(v[1:]) <= set("Enrsu") and ("E" in v or "r" in v)) for v in vals)
@@ -452,7 +490,7 @@ def _translate_invocation(args):
             continue
         if v in ("-e", "--expression"):
             if i + 1 < len(args):
-                edits.extend(_script_edit(args[i + 1], ere, to_ere))
+                edits.extend(_script_edit(args[i + 1], ere, to_ere, command))
             script_seen = True
             i += 2
             continue
@@ -463,16 +501,21 @@ def _translate_invocation(args):
             i += 1
             continue
         if not script_seen:
-            edits.extend(_script_edit(args[i], ere, to_ere))
+            edits.extend(_script_edit(args[i], ere, to_ere, command))
             script_seen = True
         i += 1
     return edits
 
 
-def _script_edit(word, ere, to_ere):
+def _script_edit(word, ere, to_ere, command):
     start, end, value, _ = word
     if not to_ere and not (GNU_ESCAPES.search(value) or (not ere and GNU_BRE_OPERATORS.search(value))):
         return []
+    # The rewrite is emitted single-quoted: a script whose shell value comes
+    # from an expansion ("s/x/$replacement/") would run with the literal
+    # text. Decline rather than change what the command does.
+    if has_expansion(command[start:end]):
+        raise Untranslatable()
     new = translate_script(value, ere, to_ere)
     return [] if new == value else [(start, end, quote(new))]
 

@@ -60,6 +60,8 @@ func TestSedGuard_RewritesToBSDSpelling(t *testing.T) {
 		`sed 's/fo\+/x/' a.txt`:                                               `sed 's/fo\{1,\}/x/' a.txt`,
 		`sed -i 's/a/b/' f.go`:                                                `sed -i '' 's/a/b/' f.go`,
 		`sed -i -e 's/a/b/' f.go`:                                             `sed -i '' -e 's/a/b/' f.go`,
+		`sed -i '' "s/\bfoo\b/bar/g" a.py`:                                    `sed -i '' 's/[[:<:]]foo[[:>:]]/bar/g' a.py`,
+		`sed -i '' 's/\bfoo\b/$x/g' a.py`:                                     `sed -i '' 's/[[:<:]]foo[[:>:]]/$x/g' a.py`,
 		`sed -i '' 's/\w\+_id\s*=/key =/' m.py && go test ./...`:              `sed -i '' 's/[[:alnum:]_]\{1,\}_id[[:space:]]*=/key =/' m.py && go test ./...`,
 		`sed -i '' 's/\(resp\|response\)\.get_data(x)/\1.read_body(x)/' t.py`: `sed -E -i '' 's/(resp|response)\.get_data\(x\)/\1.read_body(x)/' t.py`,
 		"sed -i '' \\\n  's/\\bfoo\\b/bar/g' a.py":                            "sed -i '' \\\n  's/[[:<:]]foo[[:>:]]/bar/g' a.py",
@@ -86,6 +88,11 @@ func TestSedGuard_DeniesWhatItCannotTranslate(t *testing.T) {
 		`sed -i '' 's/\Bfoo/x/' a.py`,           // \B
 		`sed -i '' 's/\bMatch\b\(.*\)/&/' c.go`, // \b before a group: start or end?
 		"sed -i '' \"s/\\bx/y/\" `ls`",          // backticks
+		// The rewrite is single-quoted: a double-quoted script's expansion
+		// would run as literal text ("$replacement" written into the file).
+		"replacement=bar\nsed -i '' \"s/\\bfoo\\b/$replacement/g\" file",
+		"sed -i '' \"s/\\bfoo\\b/${NEW}/g\" file",
+		"sed -i '' \"s/\\bfoo\\b/$(cat new)/g\" file",
 	} {
 		if got, denied, _ := h.sedHook(cmd); !strings.Contains(denied, "BSD") {
 			t.Errorf("not denied: %s (rewrote to %q)", cmd, got)

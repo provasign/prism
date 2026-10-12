@@ -126,20 +126,18 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 	// just its branch (S0.swt) while its base's (Ser.swt) holds the whole
 	// family, and processing order must not split one family into many.
 	type part struct {
-		keys   map[string]bool
-		root   grove.SymbolRecord
-		result *grove.ChangeImpactResult
-		sites  int
+		keys    map[string]bool
+		root    grove.SymbolRecord
+		queried grove.SymbolRecord // the declaration result answers for
+		result  *grove.ChangeImpactResult
+		sites   int
 	}
 	var parts []*part
 	var unresolved []grove.SymbolRecord
 	seen := map[string]bool{}
 	const maxQueries = 24
 	queries := 0
-	for _, m := range methods {
-		if seen[key(m)] {
-			continue
-		}
+	ask := func(m grove.SymbolRecord) (*grove.ChangeImpactResult, bool) {
 		if queries == maxQueries {
 			return nil, false
 		}
@@ -150,30 +148,46 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 			// may resolve only under its full name.
 			r, cerr = h.Grove.ChangeImpactScoped(ctx, m.QualifiedName, m.FilePath)
 		}
-		if cerr != nil || r == nil {
+		return r, cerr == nil && r != nil
+	}
+	// rootOf: the declaration being overridden when there is one (Able.swt
+	// for A0.swt), else the queried declaration itself; keys gains every
+	// declaration of the change set.
+	rootOf := func(r *grove.ChangeImpactResult, m grove.SymbolRecord, keys map[string]bool) grove.SymbolRecord {
+		var root grove.SymbolRecord
+		for _, group := range [][]grove.SymbolRecord{r.Supers, r.Declarations, r.Family} {
+			for _, s := range group {
+				if s.Name != leaf {
+					continue
+				}
+				keys[key(s)] = true
+				if root.Name == "" {
+					root = s
+				}
+			}
+		}
+		if root.Name == "" {
+			root = m
+		}
+		return root
+	}
+	for _, m := range methods {
+		if seen[key(m)] {
+			continue
+		}
+		if queries == maxQueries {
+			return nil, false
+		}
+		r, ok := ask(m)
+		if !ok {
 			// Listed on its own rather than aborting the partition or being
 			// guessed into a family.
 			unresolved = append(unresolved, m)
 			seen[key(m)] = true
 			continue
 		}
-		p := &part{keys: map[string]bool{key(m): true}, result: r, sites: len(impactSites(r, true))}
-		// The root is the declaration being overridden when there is one
-		// (Able.swt for A0.swt), else the queried declaration itself.
-		for _, group := range [][]grove.SymbolRecord{r.Supers, r.Declarations, r.Family} {
-			for _, s := range group {
-				if s.Name != leaf {
-					continue
-				}
-				p.keys[key(s)] = true
-				if p.root.Name == "" {
-					p.root = s
-				}
-			}
-		}
-		if p.root.Name == "" {
-			p.root = m
-		}
+		p := &part{keys: map[string]bool{key(m): true}, queried: m, result: r, sites: len(impactSites(r, true))}
+		p.root = rootOf(r, m, p.keys)
 		for k := range p.keys {
 			seen[k] = true
 		}
@@ -206,6 +220,21 @@ func (h *Handler) partitionLocalFamilies(ctx context.Context, query string) ([]l
 				parts = append(parts[:j], parts[j+1:]...)
 				merged = true
 			}
+		}
+	}
+	// A family answers from its root. A subclass's change set names the base
+	// it overrides, which marks the base seen, so the base itself may never
+	// have been queried, and a merged family kept one subclass's result:
+	// bare "swt" over a base with eight overrides answered 4 sites, the base
+	// 18. Query the root (and its own super, until stable).
+	for _, p := range parts {
+		for hops := 0; hops < 4 && key(p.root) != key(p.queried); hops++ {
+			r, ok := ask(p.root)
+			if !ok {
+				break
+			}
+			p.queried, p.result, p.sites = p.root, r, len(impactSites(r, true))
+			p.root = rootOf(r, p.root, p.keys)
 		}
 	}
 	covered := map[string]bool{}

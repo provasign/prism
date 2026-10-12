@@ -56,3 +56,25 @@ func TestWideBareNameWithOneJavaFamilyIsAnswered(t *testing.T) {
 		t.Fatalf("one family should be answered:\n%s", got)
 	}
 }
+
+// A subclass's change set names the base it overrides, which marked the base
+// seen before it was ever queried; the merged family then answered with one
+// subclass's result (bare "swt": 4 sites, Zbase.swt: 18). The family is
+// answered from its root.
+func TestWideBareNameAnswersFamilyFromItsRoot(t *testing.T) {
+	files := map[string]string{
+		"p/Zbase.java": "package p;\n\npublic class Zbase {\n    public int swt(int x) { return x; }\n}\n",
+		"p/Main.java":  "package p;\n\npublic class Main {\n    int run(Zbase z) { return z.swt(0); }\n}\n",
+	}
+	for i := 1; i <= 8; i++ {
+		files[fmt.Sprintf("p/A%d.java", i)] = fmt.Sprintf("package p;\n\npublic class A%d extends Zbase {\n    @Override public int swt(int x) { return x + %d; }\n}\n", i, i)
+		files[fmt.Sprintf("p/C%d.java", i)] = fmt.Sprintf("package p;\n\npublic class C%d {\n    int use(A%d a) { return a.swt(%d); }\n}\n", i, i, i)
+	}
+	srv := compactFixture(t, files)
+	got := callCompact(t, srv, "change_impact", map[string]any{"name": "swt"})
+	for _, want := range []string{"Zbase.swt", "Main.java", "A1.swt", "A8.swt", "C1.java", "C8.java"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("bare swt lost %q:\n%s", want, got)
+		}
+	}
+}
