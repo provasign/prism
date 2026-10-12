@@ -1,0 +1,1031 @@
+shale_version: "0"
+id: 1d98ffa0-a6f9-4e00-a1df-8929a0eb1923-c2
+created_at: 2026-10-12T02:34:46.15628Z
+finalized_at: 2026-10-12T02:44:51.672008Z
+agent:
+    tool: ""
+    adapter_version: 0.1.0
+repo:
+    root_hint: prism
+    branch: feat/compiler-provisional
+privacy: redacted
+commands:
+    - cmd: "git branch --show-current && git status --short && git add internal/mcp/impactfamily.go internal/mcp/tools.go internal/mcp/impactfamilies_test.go internal/mcp/lenient_test.go && git commit -q -F - <<'EOF'\nchange_impact: a wide bare name in a nominal language lists its override families\n\njackson-databind (2026-10-12): bare serializeWithType names 57 methods in\ntwo unrelated families, JsonSerializer's (41 declarations) and\nJsonSerializable's (15). The external-interface inference, built for Go's\nimplicit interfaces, clustered them by parameter shape; JsonSerializer's\noverrides bind T differently (QName, Path, Blob...), so its family split\nand the 16-member JsonSerializable cluster was answered as \"one family\",\nsilently.\n\nFor Java, Kotlin, C#, Scala and Swift a wide bare name is now partitioned\ninto the families the graph knows (query an uncovered candidate, merge\nchange sets that share a declaration, root = the overridden declaration).\nOne family is answered with a note; several are listed with their sizes as\nready retries; a candidate whose own query fails is listed on its own line\ninstead of aborting or being guessed in. Go keeps the inference (grafana\nQueryData: external interface, no local root).\n\njackson, names as the agent wrote them, symbol-level vs the gold patch:\nserializeWithType + deserializeWithType recall/precision 0.74/0.99 ->\n0.99/0.96 (deserializeWithType alone is one family: answered, closed).\n\nTestAmbiguousImpactListsReadyCalls now also requires each suggested retry\nto resolve (needs grove PR #21: a bare name + file names the top-level\nfunction there).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF\ngit push -q -u origin fix/bare-name-resolution 2>&1 | grep -v \"^remote:\\|^$\" | tail -1; gh pr create --draft --base main --head fix/bare-name-resolution --title \"change_impact: a wide bare name in a nominal language lists its override families\" --body-file - <<'EOF'\njackson-databind: a bare `serializeWithType` names 57 methods in two unrelated families, JsonSerializer's (41 declarations) and JsonSerializable's (15). The external-interface inference was built for Go's implicit interfaces and clusters methods by parameter shape. JsonSerializer's overrides each bind `T` differently (`QName`, `Path`, `Blob`…), so its family split apart, and the 16-member JsonSerializable cluster was answered as \"one family\" with no warning.\n\n**Change.** For Java, Kotlin, C#, Scala and Swift, a wide bare name is partitioned into the override families the graph already knows. Change sets that share a declaration are merged, and each family is named by the declaration being overridden.\n- One family is answered, with a note saying so.\n- Several are listed with their sizes, as ready-to-send retries.\n- A candidate whose own query fails is listed on its own line, rather than aborting or being guessed into a family.\n\nGo keeps the inference, which exists for external interfaces with no local root.\n\n**Measured on jackson**, using the names as the agent wrote them, symbol-level against the gold patch: recall/precision 0.74/0.99 to 0.99/0.96. `deserializeWithType` alone resolves as one family and is answered as closed.\n\n**Draft:** `TestAmbiguousImpactListsReadyCalls` now also requires every suggested retry to resolve, which needs grove #21. CI will fail on that test until grove is bumped. Tests: `TestWideBareNameInJavaListsEveryOverrideFamily`, `TestWideBareNameWithOneJavaFamilyIsAnswered`. Full suite green against local grove and astkit.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX\nEOF"
+      at: 2026-10-12T02:34:46.15628Z
+      classified: other
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && grep -rn "Resident: *true\|opts.Resident\|Resident  *bool" internal --include=*.go 2>/dev/null | head; grep -rln "Resident" internal cmd | grep -v _test | head'
+      at: 2026-10-12T02:34:57.564886Z
+      classified: other
+    - cmd: grep -n "Resident" internal/grove/client.go internal/mcp/tools.go | head -12; grep -n "^func (c \*Client)" internal/grove/client.go | head -40
+      at: 2026-10-12T02:35:00.663466Z
+      classified: other
+    - cmd: sed -n 340,370p internal/grove/client.go; grep -rn "\.Index(ctx\|\.Index(context\|reindex\|Reindex" internal/mcp/*.go | grep -v _test | head -12
+      at: 2026-10-12T02:35:06.071578Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && ls pkg 2>/dev/null; grep -rn "func (e \*Engine) Index\b\|func (e \*Engine) Index(" --include=*.go . 2>/dev/null | head -3; f=$(grep -rln "func (e \*Engine) Index(" . | head -1); echo $f; grep -n "func (e \*Engine)" $f | head -30
+      at: 2026-10-12T02:35:06.156762Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 150,400p pkg/grove/grove.go
+      at: 2026-10-12T02:35:10.0542Z
+      classified: other
+    - cmd: sed -n 200,270p internal/mcp/tools.go; sed -n 40,80p internal/mcp/graphcache.go
+      at: 2026-10-12T02:35:10.057284Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 85,140p internal/index/indexer.go; grep -n "tasks = append\|type indexTask\|forceExtract\b" internal/index/indexer.go | head -12
+      at: 2026-10-12T02:35:48.051435Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 470,505p internal/index/indexer.go; sed -n 645,700p internal/index/indexer.go; sed -n 40,84p internal/index/indexer.go
+      at: 2026-10-12T02:35:51.734912Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 380,470p internal/index/indexer.go; sed -n 505,560p internal/index/indexer.go
+      at: 2026-10-12T02:36:23.415726Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 296,380p internal/index/indexer.go; sed -n 615,650p internal/index/indexer.go
+      at: 2026-10-12T02:36:29.030202Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && git status --short | grep -v ".mcp.json\|.codex"; git checkout -q feat/compiler-declared-symbols && git checkout -q -b feat/deferred-native && git log --oneline -1; grep -n "type IndexResult struct" -A22 internal/core/types.go | head -30
+      at: 2026-10-12T02:37:02.387711Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "ignore\.\|ignore :=" internal/index/indexer.go | head; grep -n "func (s \*Store) AllFileMeta" internal/store/*.go; grep -n "type FileMeta struct" -A6 internal/store/*.go | head -8; grep -n "func newIgnoreMatcher" internal/index/*.go
+      at: 2026-10-12T02:37:11.426793Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="internal/index/indexer.go"; s=open(p).read()
+        start=s.index("	// Phase 1 (serial): walk the tree, apply ignore/sensitivity rules, and")
+        end_marker="	if err := i.store.UpdateFileStats(ctx, statRefresh); err != nil {"
+        end=s.index(end_marker)
+        old_block=s[start:end]
+        # keep the original walk body to transplant
+        wstart=old_block.index("	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {")
+        walk=old_block[wstart:]
+        pre=old_block[:wstart]
+        # pre contains parseTask type, tasks, fileMeta, stamps, forceExtract, statRefresh, walkFailed
+        assert "type parseTask struct" in pre
+        pre=pre.replace('''	type parseTask struct {
+        		absPath string
+        		relPath string
+        		blobSHA string
+        		size    int64
+        		mtime   int64
+        	}
+        	var tasks []parseTask
+        ''','')
+        pre=pre.replace('''	statRefresh := map[string][2]int64{} // touched but content-identical
+        	var walkFailed []string              // relPaths whose subtree could not be read this run
+        ''','''	reextract := make(map[string]bool, len(opts.ReextractFiles))
+        	for _, f := range opts.ReextractFiles {
+        		reextract[filepath.ToSlash(f)] = true
+        	}
+        	scan, err := scanTree(root, fileMeta, forceExtract, reextract)
+        	if err != nil {
+        		return nil, result, err
+        	}
+        	tasks, statRefresh, walkFailed := scan.tasks, scan.statRefresh, scan.walkFailed
+        	for f := range scan.currentFiles {
+        		currentFiles[f] = true
+        	}
+        	result.FilesSeen += scan.filesSeen
+        	result.FilesSkipped += scan.filesSkipped
+        	result.Errors = append(result.Errors, scan.errors...)
+        ''')
+        s=s[:start]+pre+s[end:]
+        # remove the now-unused ignore matcher creation in indexWithOptions
+        s=s.replace('''	currentFiles := map[string]bool{}
+        	ignore := newIgnoreMatcher(root)
+        ''','''	currentFiles := map[string]bool{}
+        ''',1)
+        # build scanTree from the walk body
+        body=walk
+        body=body.replace("	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {","	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {",1)
+        body=body.replace("			result.Errors = append(result.Errors, walkErr.Error())","			s.errors = append(s.errors, walkErr.Error())")
+        body=body.replace("				walkFailed = append(walkFailed, filepath.ToSlash(rel))","				s.walkFailed = append(s.walkFailed, filepath.ToSlash(rel))")
+        body=body.replace("		result.FilesSeen++\n		currentFiles[relPath] = true","		s.filesSeen++\n		s.currentFiles[relPath] = true")
+        body=body.replace('''		if !forceExtract && statErr == nil && found &&
+        			meta.Size == info.Size() && meta.Mtime == info.ModTime().UnixNano() {
+        			result.FilesSkipped++
+        			return nil
+        		}''','''		if !forceExtract && !reextract[relPath] && statErr == nil && found &&
+        			meta.Size == info.Size() && meta.Mtime == info.ModTime().UnixNano() {
+        			s.filesSkipped++
+        			return nil
+        		}''')
+        body=body.replace('''			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", relPath, err))
+        			return nil''','''			s.errors = append(s.errors, fmt.Sprintf("%s: %v", relPath, err))
+        			return nil''')
+        body=body.replace('''		if !forceExtract && found && meta.BlobSHA == blobSHA {''','''		if !forceExtract && !reextract[relPath] && found && meta.BlobSHA == blobSHA {''')
+        body=body.replace('''			result.FilesSkipped++
+        			statRefresh[relPath] = [2]int64{size, mtime}
+        			return nil''','''			s.filesSkipped++
+        			s.statRefresh[relPath] = [2]int64{size, mtime}
+        			return nil''')
+        body=body.replace('''		tasks = append(tasks, parseTask{absPath: path, relPath: relPath, blobSHA: blobSHA, size: size, mtime: mtime})''','''		s.tasks = append(s.tasks, parseTask{absPath: path, relPath: relPath, blobSHA: blobSHA, size: size, mtime: mtime})''')
+        assert "result." not in body, [l for l in body.split("\n") if "result." in l]
+        assert "tasks = append(tasks" not in body
+        func='''
+        // parseTask is one file the walk found new or changed.
+        type parseTask struct {
+        	absPath string
+        	relPath string
+        	blobSHA string
+        	size    int64
+        	mtime   int64
+        }
+
+        // treeScan is what one walk of the tree found: the files to (re)extract, the
+        // set of files present, content-identical files whose stat must be
+        // refreshed, and subtrees that could not be read.
+        type treeScan struct {
+        	tasks        []parseTask
+        	currentFiles map[string]bool
+        	statRefresh  map[string][2]int64
+        	walkFailed   []string
+        	filesSeen    int
+        	filesSkipped int
+        	errors       []string
+        }
+
+        // scanTree walks root applying the ignore and sensitivity rules and
+        // compares every supported file with the stored stat/blob cache. It reads
+        // the tree and fileMeta only; it writes nothing, so it is safe beside a
+        // running index (HasChanges uses it without the index lock). reextract
+        // names files to extract again even when their bytes are unchanged (a
+        // deferred compiler pass, see Options.ReextractFiles).
+        func scanTree(root string, fileMeta map[string]store.FileMeta, forceExtract bool, reextract map[string]bool) (treeScan, error) {
+        	s := treeScan{currentFiles: map[string]bool{}, statRefresh: map[string][2]int64{}}
+        	ignore := newIgnoreMatcher(root)
+        '''+body.rstrip()+'''
+        	return s, err
+        }
+        '''
+        s=s+func
+        open(p,"w").write(s)
+        print("ok")
+        EOF
+        grep -n '"github.com/provasign/grove/internal/store"' internal/index/indexer.go | head -2; go build ./internal/index/ 2>&1 | head -20
+      at: 2026-10-12T02:37:30.939124Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 1175,1195p internal/index/indexer.go
+      at: 2026-10-12T02:37:33.78071Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="internal/index/indexer.go"; s=open(p).read()
+        old='''		s.tasks = append(s.tasks, parseTask{absPath: path, relPath: relPath, blobSHA: blobSHA, size: size, mtime: mtime})
+        		return nil
+        	})
+        	if err != nil {
+        		return nil, result, err
+        	}
+        	return s, err
+        }'''
+        new='''		s.tasks = append(s.tasks, parseTask{absPath: path, relPath: relPath, blobSHA: blobSHA, size: size, mtime: mtime})
+        		return nil
+        	})
+        	return s, err
+        }'''
+        assert old in s; s=s.replace(old,new,1)
+        old='''	// Resident marks a long-lived caller: native analyzers may keep worker
+        	// processes and caches between runs (see native.Config.Resident).
+        	Resident bool'''
+        new='''	// Resident marks a long-lived caller: native analyzers may keep worker
+        	// processes and caches between runs (see native.Config.Resident).
+        	Resident bool
+
+        	// DeferNative skips the native (compiler) analyzers of the languages an
+        	// incremental run changed: the graph is built from the parse and the
+        	// stored compiler edges (re-pointed to the new symbols), and the changed
+        	// files come back in IndexResult.NativePending for a later run with
+        	// ReextractFiles. A cold or forced run, or an analyzer that never
+        	// completed a full pass, is never deferred.
+        	DeferNative bool
+        	// ReextractFiles are extracted again even when their bytes are unchanged
+        	// (the deferred compiler pass for IndexResult.NativePending). They count
+        	// as changed for native analysis and edge construction.
+        	ReextractFiles []string'''
+        assert old in s; s=s.replace(old,new,1)
+        open(p,"w").write(s)
+        p="internal/core/types.go"; s=open(p).read()
+        old='''	Errors       []string `json:"errors,omitempty"`
+        	Native       []string `json:"native,omitempty"`
+        }
+
+        type IsolatedChangeRegion struct {'''
+        new='''	Errors       []string `json:"errors,omitempty"`
+        	Native       []string `json:"native,omitempty"`
+        	// NativePending lists changed files whose compiler analysis was deferred
+        	// (index.Options.DeferNative): their edges are parse-derived until a
+        	// later run re-analyzes them.
+        	NativePending []string `json:"nativePending,omitempty"`
+        }
+
+        type IsolatedChangeRegion struct {'''
+        assert old in s; s=s.replace(old,new,1); open(p,"w").write(s)
+        EOF
+        gofmt -w internal/core/types.go internal/index/indexer.go; go build ./... && go test ./internal/index/ 2>&1 | tail -3
+      at: 2026-10-12T02:37:53.372858Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "^func analyzerEnabled\|^func touchesLanguages\|^func filterFiles\|^func filesByLanguage" -A12 internal/native/native.go | head -50
+      at: 2026-10-12T02:37:59.143206Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat >> internal/native/native.go <<'EOF'
+
+        // DeferrableLanguages returns the languages whose native analysis an
+        // incremental run may defer: an enabled analyzer touches them, and it has
+        // completed a full pass before (completed, by analyzer name), so stored
+        // compiler edges exist to carry until the deferred pass runs. A language no
+        // analyzer covers is not listed: there is nothing to defer.
+        func DeferrableLanguages(cfg Config, changed, completed map[string]bool) map[string]bool {
+        	out := map[string]bool{}
+        	if !cfg.Enabled {
+        		return out
+        	}
+        	for _, analyzer := range PriorityAnalyzers() {
+        		if !analyzerEnabled(analyzer, cfg) || !completed[analyzer.Name()] || !touchesLanguages(analyzer, changed) {
+        			continue
+        		}
+        		for _, lang := range analyzer.Languages() {
+        			if changed[lang] {
+        				out[lang] = true
+        			}
+        		}
+        	}
+        	return out
+        }
+        EOF
+        python3 - <<'EOF'
+        p="internal/index/indexer.go"; s=open(p).read()
+        old='''	nativeResult := native.AnalyzeChangedFiles(ctx, root, symbols, nativeCfg, scope, changedRel, allFiles)'''
+        new='''	var nativeResult native.Result
+        	deferred := map[string]bool{}
+        	if opts.DeferNative && scope != nil {
+        		deferred = native.DeferrableLanguages(nativeCfg, changedLanguages, completed)
+        	}
+        	if len(deferred) > 0 {
+        		// Deferred compiler pass: the changed languages' analyzers are
+        		// skipped, so their stored edges are carried (re-pointed to the new
+        		// symbols below) and the changed files are reported pending. Other
+        		// changed languages, if any, still run now.
+        		rest := map[string]bool{}
+        		for lang := range changedLanguages {
+        			if !deferred[lang] {
+        				rest[lang] = true
+        			}
+        		}
+        		if len(rest) > 0 {
+        			nativeResult = native.AnalyzeChangedFiles(ctx, root, symbols, nativeCfg, rest, changedRel, allFiles)
+        		}
+        		for lang := range deferred {
+        			nativeResult.SkippedLanguages = append(nativeResult.SkippedLanguages, lang)
+        		}
+        		sort.Strings(nativeResult.SkippedLanguages)
+        		for _, f := range changedRel {
+        			if deferred[parser.DetectLanguage(f)] {
+        				result.NativePending = append(result.NativePending, f)
+        			}
+        		}
+        		sort.Strings(result.NativePending)
+        		nativeResult.Diagnostics = append(nativeResult.Diagnostics, fmt.Sprintf(
+        			"native: compiler analysis deferred for %d changed file(s); stored compiler edges carried until the deferred pass", len(result.NativePending)))
+        	} else {
+        		nativeResult = native.AnalyzeChangedFiles(ctx, root, symbols, nativeCfg, scope, changedRel, allFiles)
+        	}'''
+        assert old in s; s=s.replace(old,new,1); open(p,"w").write(s)
+        EOF
+        gofmt -l internal/index internal/native; go build ./... 2>&1 | head
+      at: 2026-10-12T02:38:11.322813Z
+      classified: build
+    - cmd: "cd /Users/tapabratapal/Projects/provasign/grove && sed -n '/\tprunedFiles, err := i.store.FilesNotIn(ctx, currentFiles)/,+3p' internal/index/indexer.go | head -5; grep -n \"func (s \\*Store) FilesNotIn\" -A6 internal/store/store.go | head -8; n=$(grep -n \"\tprunedFiles, err := i.store.FilesNotIn(ctx, currentFiles)\" internal/index/indexer.go | cut -d: -f1); sed -n \"$((n-22)),$((n-1))p\" internal/index/indexer.go"
+      at: 2026-10-12T02:38:23.346208Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && cat >> internal/index/indexer.go <<'EOF'
+
+        // HasChanges reports whether an index run of root would find work: a new,
+        // changed or removed file, or an extractor/resolver stamp that forces
+        // re-extraction. It applies the same walk (scanTree), stamp and prune rules
+        // as a run and writes nothing, so a resident engine can answer "still fresh"
+        // while a deferred compiler pass holds the index lock.
+        func (i *Indexer) HasChanges(ctx context.Context, root string) (bool, error) {
+        	absRoot, err := filepath.Abs(root)
+        	if err != nil {
+        		return false, err
+        	}
+        	if resolved, err2 := filepath.EvalSymlinks(absRoot); err2 == nil {
+        		absRoot = resolved
+        	}
+        	storedExtractor, _, err := i.store.GetMeta(ctx, "extractor-version")
+        	if err != nil {
+        		return false, err
+        	}
+        	storedResolver, _, err := i.store.GetMeta(ctx, "resolver-version")
+        	if err != nil {
+        		return false, err
+        	}
+        	if storedExtractor != parser.ExtractorVersion || storedResolver != graph.ResolverVersion {
+        		return true, nil
+        	}
+        	fileMeta, err := i.store.AllFileMeta(ctx)
+        	if err != nil {
+        		return false, err
+        	}
+        	scan, err := scanTree(absRoot, fileMeta, false, nil)
+        	if err != nil {
+        		return false, err
+        	}
+        	if len(scan.tasks) > 0 {
+        		return true, nil
+        	}
+        	current := scan.currentFiles
+        	for relPath := range fileMeta {
+        		for _, failed := range scan.walkFailed {
+        			if relPath == failed || strings.HasPrefix(relPath, failed+"/") {
+        				current[relPath] = true
+        				break
+        			}
+        		}
+        	}
+        	pruned, err := i.store.FilesNotIn(ctx, current)
+        	if err != nil {
+        		return false, err
+        	}
+        	return len(pruned) > 0, nil
+        }
+        EOF
+        gofmt -l internal/index; go build ./... 2>&1 | head -5 && echo BUILD-OK
+      at: 2026-10-12T02:38:32.398968Z
+      classified: build
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && grep -n "type IndexResult struct" -A14 pkg/grove/*.go | head -18; grep -n "type Engine struct" -A30 pkg/grove/grove.go | head -40; grep -n "IndexResult{" pkg/grove/*.go | head
+      at: 2026-10-12T02:38:54.030196Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 141,150p pkg/grove/grove.go; grep -rn "IndexResult = \|type IndexResult\b\|IndexResult  *=" pkg/grove/ | head -4; grep -n "type Config struct" -A40 pkg/grove/*.go | grep -n "OneShot\|Native\|bool" | head -12
+      at: 2026-10-12T02:38:57.61303Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="pkg/grove/grove.go"; s=open(p).read()
+        # 1. Config knob
+        old='''	// OneShot marks an engine that indexes once and exits (a CLI command).'''
+        new='''	// DeferNative, when non-nil, overrides whether a resident engine answers
+        	// edits from the parse and runs the compiler pass in the background
+        	// (default: on for resident engines, off for OneShot; GROVE_DEFER_NATIVE=0
+        	// turns it off).
+        	DeferNative *bool
+        	// OneShot marks an engine that indexes once and exits (a CLI command).'''
+        assert old in s; s=s.replace(old,new,1)
+        # 2. Engine fields
+        old='''	bg sync.WaitGroup
+
+        	mu    sync.RWMutex
+        	graph *graph.CodeGraph
+        }'''
+        new='''	bg sync.WaitGroup
+
+        	// Deferred compiler pass (DeferNative): files whose compiler analysis
+        	// is pending, and the background loop draining them. pendMu guards all
+        	// four; the loop takes indexMu for each pass.
+        	pendMu       sync.Mutex
+        	pending      map[string]bool
+        	nativeBusy   bool
+        	nativeDone   chan struct{}
+        	nativeErr    string
+        	closingNatve bool
+
+        	mu    sync.RWMutex
+        	graph *graph.CodeGraph
+        }'''
+        assert old in s; s=s.replace(old,new,1)
+        # 3. Close: stop the loop
+        old='''	e.indexMu.Lock()
+        	e.runPendingCheck(context.Background())
+        	if e.warmCancel != nil {
+        		e.warmCancel()
+        	}
+        	e.indexMu.Unlock()
+        	e.bg.Wait()'''
+        new='''	e.pendMu.Lock()
+        	e.closingNatve = true
+        	e.pendMu.Unlock()
+        	e.indexMu.Lock()
+        	e.runPendingCheck(context.Background())
+        	if e.warmCancel != nil {
+        		e.warmCancel()
+        	}
+        	e.indexMu.Unlock()
+        	e.bg.Wait()'''
+        assert old in s; s=s.replace(old,new,1)
+        # 4. Split Index into public wrapper + indexLocked
+        old='''func (e *Engine) Index(ctx context.Context, dir string) (IndexResult, error) {
+        	if dir == "" {
+        		dir = e.root
+        	}
+        	e.indexMu.Lock()
+        	defer e.indexMu.Unlock()
+        	e.runPendingCheck(ctx)'''
+        new='''func (e *Engine) Index(ctx context.Context, dir string) (IndexResult, error) {
+        	if dir == "" {
+        		dir = e.root
+        	}
+        	deferNative := e.deferNative()
+        	if deferNative {
+        		e.pendMu.Lock()
+        		busy := e.nativeBusy
+        		e.pendMu.Unlock()
+        		if busy {
+        			// A compiler pass holds the index lock. Answer "fresh" without
+        			// waiting for it when nothing changed since the last run; a
+        			// real change waits for the pass, then indexes (never cancels
+        			// it: a pass stopped between its symbol and edge writes would
+        			// leave the store out of step).
+        			if changed, err := e.idx.HasChanges(ctx, dir); err == nil && !changed {
+        				return e.pendingNoopResult(ctx), nil
+        			}
+        		}
+        	}
+        	e.indexMu.Lock()
+        	res, err := e.indexLocked(ctx, dir, func(o *index.Options) { o.DeferNative = deferNative })
+        	e.indexMu.Unlock()
+        	if err != nil {
+        		return res, err
+        	}
+        	if deferNative {
+        		e.pendMu.Lock()
+        		for _, f := range res.NativePending {
+        			if e.pending == nil {
+        				e.pending = map[string]bool{}
+        			}
+        			e.pending[f] = true
+        		}
+        		e.pendMu.Unlock()
+        		e.startNativePass()
+        	}
+        	res.NativePending = e.NativePending()
+        	return res, nil
+        }
+
+        // deferNative reports whether edits are answered from the parse with the
+        // compiler pass in the background (see Config.DeferNative).
+        func (e *Engine) deferNative() bool {
+        	if e.cfg.OneShot {
+        		return false
+        	}
+        	if e.cfg.DeferNative != nil {
+        		return *e.cfg.DeferNative
+        	}
+        	return os.Getenv("GROVE_DEFER_NATIVE") != "0"
+        }
+
+        // NativePending lists the files whose compiler analysis is still pending,
+        // sorted. Empty when the graph is fully compiler-backed (or no compiler ran).
+        func (e *Engine) NativePending() []string {
+        	e.pendMu.Lock()
+        	defer e.pendMu.Unlock()
+        	out := make([]string, 0, len(e.pending))
+        	for f := range e.pending {
+        		out = append(out, f)
+        	}
+        	sort.Strings(out)
+        	return out
+        }
+
+        // WaitNative waits up to d for the pending compiler pass to finish. It
+        // reports whether nothing is pending when it returns.
+        func (e *Engine) WaitNative(ctx context.Context, d time.Duration) bool {
+        	e.pendMu.Lock()
+        	done, busy, empty := e.nativeDone, e.nativeBusy, len(e.pending) == 0
+        	e.pendMu.Unlock()
+        	if !busy || done == nil {
+        		return empty
+        	}
+        	timer := time.NewTimer(d)
+        	defer timer.Stop()
+        	select {
+        	case <-done:
+        	case <-timer.C:
+        	case <-ctx.Done():
+        	}
+        	e.pendMu.Lock()
+        	defer e.pendMu.Unlock()
+        	return len(e.pending) == 0
+        }
+
+        // startNativePass starts the background loop that re-analyzes pending files
+        // with the compiler, one pass per snapshot, until nothing is pending. A
+        // file added while a pass runs is picked up by the next iteration; the
+        // exit check and the busy flag change under pendMu, so none is stranded.
+        func (e *Engine) startNativePass() {
+        	e.pendMu.Lock()
+        	if e.nativeBusy || len(e.pending) == 0 || e.closingNatve {
+        		e.pendMu.Unlock()
+        		return
+        	}
+        	e.nativeBusy = true
+        	e.nativeDone = make(chan struct{})
+        	done := e.nativeDone
+        	e.pendMu.Unlock()
+        	e.bg.Add(1)
+        	go func() {
+        		defer e.bg.Done()
+        		for {
+        			e.pendMu.Lock()
+        			files := make([]string, 0, len(e.pending))
+        			for f := range e.pending {
+        				files = append(files, f)
+        			}
+        			if len(files) == 0 || e.closingNatve {
+        				e.nativeBusy = false
+        				close(done)
+        				e.pendMu.Unlock()
+        				return
+        			}
+        			e.pendMu.Unlock()
+        			sort.Strings(files)
+        			e.indexMu.Lock()
+        			res, err := e.indexLocked(context.Background(), e.root, func(o *index.Options) { o.ReextractFiles = files })
+        			e.indexMu.Unlock()
+        			e.pendMu.Lock()
+        			if err != nil {
+        				// Pending stays; the next Index restarts the loop.
+        				e.nativeErr = err.Error()
+        				e.nativeBusy = false
+        				close(done)
+        				e.pendMu.Unlock()
+        				return
+        			}
+        			e.nativeErr = ""
+        			still := map[string]bool{}
+        			for _, f := range res.NativePending {
+        				still[f] = true
+        			}
+        			for _, f := range files {
+        				if !still[f] {
+        					delete(e.pending, f)
+        				}
+        			}
+        			e.pendMu.Unlock()
+        		}
+        	}()
+        }
+
+        // pendingNoopResult is the answer to an Index call that found nothing new
+        // while the compiler pass runs: counts from the store, the pending files.
+        func (e *Engine) pendingNoopResult(ctx context.Context) IndexResult {
+        	res := IndexResult{Root: e.root, NativePending: e.NativePending()}
+        	if st, err := e.store.Status(ctx); err == nil {
+        		res.SymbolCount, res.EdgeCount = st.SymbolCount, st.EdgeCount
+        	}
+        	res.Native = append(res.Native, fmt.Sprintf(
+        		"skipped: no file changes since last index; compiler pass running for %d file(s)", len(res.NativePending)))
+        	return res
+        }
+
+        // indexLocked is one index run under indexMu; adjust sets per-run options.
+        func (e *Engine) indexLocked(ctx context.Context, dir string, adjust func(*index.Options)) (IndexResult, error) {
+        	e.runPendingCheck(ctx)'''
+        assert old in s; s=s.replace(old,new,1)
+        old='''	opts := index.Options{SkipNoopGraph: true, Force: e.force, Vacuum: e.cfg.VacuumAfterIndex, DeferSpliceCheck: resident, Resident: resident}'''
+        new='''	opts := index.Options{SkipNoopGraph: true, Force: e.force, Vacuum: e.cfg.VacuumAfterIndex, DeferSpliceCheck: resident, Resident: resident}
+        	if adjust != nil {
+        		adjust(&opts)
+        	}'''
+        assert old in s; s=s.replace(old,new,1)
+        open(p,"w").write(s)
+        print("ok")
+        EOF
+        grep -n '^	"sort"\|^	"time"\|^	"fmt"\|^	"os"' pkg/grove/grove.go; gofmt -l pkg/grove; go build ./... 2>&1 | head -10 && go vet ./pkg/grove/ && echo VET-OK
+      at: 2026-10-12T02:39:26.643283Z
+      classified: lint
+    - cmd: 'cd /Users/tapabratapal/Projects/provasign/grove && sed -i '''' ''s/closingNatve/closingNative/g'' pkg/grove/grove.go && gofmt -w pkg/grove/grove.go && ls pkg/grove/*_test.go | head -5; grep -n "func Test" pkg/grove/grove_test.go 2>/dev/null | head -5; grep -rn "OneShot: *true\|grove.Open(ctx, grove.Config\|Open(context.Background(), Config" pkg/grove/*_test.go | head -3'
+      at: 2026-10-12T02:39:38.855299Z
+      classified: other
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go vet ./pkg/grove/ 2>&1 | head -5; go test ./pkg/grove/ -run TestDeferredCompilerPass -v 2>&1 | tail -25
+      at: 2026-10-12T02:40:01.204306Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -15; echo SUITE-DONE; go test -race -count=1 ./pkg/grove/ 2>&1 | tail -5; echo RACE-DONE; go test -race -count=3 -run TestDeferredCompilerPass ./pkg/grove/ 2>&1 | tail -3
+      at: 2026-10-12T02:40:45.979991Z
+      classified: test
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && sed -n 40,85p pkg/grove/splicecheck_test.go; sed -n 120,170p pkg/grove/go_interface_impact_test.go
+      at: 2026-10-12T02:41:00.089048Z
+      classified: other
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="pkg/grove/grove.go"; s=open(p).read()
+        s=s.replace('''	res, err := e.indexLocked(ctx, dir, func(o *index.Options) { o.DeferNative = deferNative })''','''	res, err := e.indexLocked(ctx, dir, false, func(o *index.Options) { o.DeferNative = deferNative })''',1)
+        s=s.replace('''			res, err := e.indexLocked(context.Background(), e.root, func(o *index.Options) { o.ReextractFiles = files })''','''			res, err := e.indexLocked(context.Background(), e.root, true, func(o *index.Options) { o.ReextractFiles = files })''',1)
+        old='''// indexLocked is one index run under indexMu; adjust sets per-run options.
+        func (e *Engine) indexLocked(ctx context.Context, dir string, adjust func(*index.Options)) (IndexResult, error) {'''
+        new='''// indexLocked is one index run under indexMu; adjust sets per-run options.
+        // A background run (the deferred compiler pass) leaves the previous run's
+        // splice note for the next caller-visible result instead of reporting it on
+        // a result nobody reads.
+        func (e *Engine) indexLocked(ctx context.Context, dir string, background bool, adjust func(*index.Options)) (IndexResult, error) {'''
+        assert old in s; s=s.replace(old,new,1)
+        old='''	cg, result, err := e.idx.IndexWithOptions(ctx, dir, opts)
+        	if e.spliceNote != "" {
+        		result.Native = append(result.Native, "previous run: "+e.spliceNote)
+        		e.spliceNote = ""
+        	}'''
+        new='''	cg, result, err := e.idx.IndexWithOptions(ctx, dir, opts)
+        	if e.spliceNote != "" && !background {
+        		result.Native = append(result.Native, "previous run: "+e.spliceNote)
+        		e.spliceNote = ""
+        	}'''
+        assert old in s; s=s.replace(old,new,1)
+        open(p,"w").write(s)
+        p="pkg/grove/go_interface_impact_test.go"; s=open(p).read()
+        old='''			if err := os.WriteFile(filepath.Join(root, "writer.go"), []byte(edited), 0o644); err != nil {
+        				t.Fatal(err)
+        			}
+        			if _, err := eng.Index(ctx, ""); err != nil {
+        				t.Fatal(err)
+        			}
+        			after, err := eng.ChangeImpactScoped(ctx, "writer.CloseNotify", "writer.go")'''
+        new='''			if err := os.WriteFile(filepath.Join(root, "writer.go"), []byte(edited), 0o644); err != nil {
+        				t.Fatal(err)
+        			}
+        			if _, err := eng.Index(ctx, ""); err != nil {
+        				t.Fatal(err)
+        			}
+        			// The compiler pass for the edit may run in the background
+        			// (Config.DeferNative); the compiler-backed answer follows it.
+        			if !eng.WaitNative(ctx, 2*time.Minute) {
+        				t.Fatalf("compiler pass did not drain: %v", eng.NativePending())
+        			}
+        			after, err := eng.ChangeImpactScoped(ctx, "writer.CloseNotify", "writer.go")'''
+        assert old in s; s=s.replace(old,new,1)
+        if '"time"' not in s:
+            s=s.replace('import (\n','import (\n\t"time"\n',1)
+        open(p,"w").write(s)
+        p="pkg/grove/splicecheck_test.go"; s=open(p).read()
+        import re
+        m=re.search(r'eng, err := Open\(ctx, Config\{([^}]*)\}\)', s)
+        print("splice Open:", m.group(0) if m else None)
+        open(p,"w").write(s)
+        EOF
+        grep -n "Open(ctx, Config{" pkg/grove/splicecheck_test.go
+      at: 2026-10-12T02:41:20.414473Z
+      classified: build
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && python3 - <<'EOF'
+        p="pkg/grove/splicecheck_test.go"; s=open(p).read()
+        old='''	eng, err := Open(ctx, Config{RepoRoot: root})'''
+        new='''	// Synchronous compiler pass: this test sequences the deferred splice
+        	// check against the next foreground index, and a background compiler
+        	// pass (Config.DeferNative) would run the check in between.
+        	off := false
+        	eng, err := Open(ctx, Config{RepoRoot: root, DeferNative: &off})'''
+        assert old in s; s=s.replace(old,new,1); open(p,"w").write(s)
+        EOF
+        gofmt -l pkg/grove; go vet ./pkg/grove/ && go test ./... 2>&1 | grep -v "^ok\|no test files" | tail -10; echo SUITE-DONE; go test -race -count=2 ./pkg/grove/ 2>&1 | tail -4; echo RACE-DONE
+      at: 2026-10-12T02:41:56.619005Z
+      classified: lint
+    - cmd: cd /Users/tapabratapal/Projects/provasign/grove && gofmt -w pkg/grove/go_interface_impact_test.go; cd /Users/tapabratapal/Projects/provasign/prism && grep -n "degradedAnalysis\|safeToClaimComplete" internal/mcp/graphtext.go | head -12; grep -n "func (h \*Handler) addDegradedNote" -A25 internal/mcp/tools.go | head -40; grep -n "func (h \*Handler) graphDelivery" -A30 internal/mcp/*.go | head -45
+      at: 2026-10-12T02:42:07.203348Z
+      classified: other
+    - cmd: grep -n "type IndexResult struct" -A16 internal/grove/types.go | head -20; grep -n "IndexResult{\|StatusResult{" internal/grove/client.go | head
+      at: 2026-10-12T02:42:11.041819Z
+      classified: other
+    - cmd: sed -n 240,262p internal/mcp/verify.go; sed -n 350,368p internal/grove/client.go
+      at: 2026-10-12T02:42:31.112148Z
+      classified: other
+    - cmd: |-
+        git status --short | grep -v __pycache__; git checkout -q main && git checkout -q -b feat/compiler-provisional && python3 - <<'EOF'
+        p="internal/grove/types.go"; s=open(p).read()
+        old='''	// Readiness lists languages whose compiler-backed analysis did not run
+        	// or complete, each with the command that fixes it.
+        	Readiness []ReadinessIssue `json:"readiness,omitempty"`
+        }'''
+        new='''	// Readiness lists languages whose compiler-backed analysis did not run
+        	// or complete, each with the command that fixes it.
+        	Readiness []ReadinessIssue `json:"readiness,omitempty"`
+        	// NativePending lists changed files whose compiler pass is still running
+        	// in the background (grove Config.DeferNative).
+        	NativePending []string `json:"nativePending,omitempty"`
+        }'''
+        assert s.count(old)==1, s.count(old); s=s.replace(old,new,1); open(p,"w").write(s)
+        p="internal/grove/client.go"; s=open(p).read()
+        old='''		Native:       append([]string(nil), res.Native...),
+        		Readiness:    Readiness(res.Root, res.Native),
+        	}, nil
+        }
+
+        // SearchSymbols returns symbols matching query (substring).'''
+        new='''		Native:        append([]string(nil), res.Native...),
+        		Readiness:     Readiness(res.Root, res.Native),
+        		NativePending: append([]string(nil), res.NativePending...),
+        	}, nil
+        }
+
+        // NativePending lists the changed files whose compiler pass is still running
+        // in the background (nil without an engine or when nothing is pending).
+        func (c *Client) NativePending() []string {
+        	e := c.engine()
+        	if e == nil {
+        		return nil
+        	}
+        	return e.NativePending()
+        }
+
+        // WaitNative waits up to d for the background compiler pass; it reports
+        // whether nothing is pending when it returns.
+        func (c *Client) WaitNative(ctx context.Context, d time.Duration) bool {
+        	e := c.engine()
+        	if e == nil {
+        		return true
+        	}
+        	return e.WaitNative(ctx, d)
+        }
+
+        // SearchSymbols returns symbols matching query (substring).'''
+        assert old in s; s=s.replace(old,new,1)
+        if '"time"' not in s:
+            s=s.replace('import (\n','import (\n\t"time"\n',1)
+        open(p,"w").write(s)
+        EOF
+        gofmt -w internal/grove/client.go internal/grove/types.go; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; GOWORK=$S/ws/go.work go build ./... 2>&1 | head -5 && echo BUILD-OK
+      at: 2026-10-12T02:42:48.128069Z
+      classified: build
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/mcp/graphcache.go"; s=open(p).read()
+        old='''func (h *Handler) refreshIndexBestEffort(ctx context.Context) string {
+        	if h.Grove == nil {
+        		return ""
+        	}
+        	if _, err := h.Grove.Index(ctx, h.Root); err != nil {
+        		return "index refresh failed (" + err.Error() + "); this result was computed against a possibly stale index"
+        	}
+        	return ""
+        }'''
+        new='''func (h *Handler) refreshIndexBestEffort(ctx context.Context) string {
+        	if h.Grove == nil {
+        		return ""
+        	}
+        	if _, err := h.Grove.Index(ctx, h.Root); err != nil {
+        		return "index refresh failed (" + err.Error() + "); this result was computed against a possibly stale index"
+        	}
+        	return h.awaitCompiler(ctx, compilerWaitBudget())
+        }
+
+        // provisionalPrefix starts the warning of an answer computed while the
+        // background compiler pass for an edit was still running.
+        const provisionalPrefix = "PROVISIONAL: "
+
+        // awaitCompiler waits up to budget for grove's background compiler pass
+        // (an edit is indexed from the parse first, see grove Config.DeferNative).
+        // It returns "" when the answer is compiler-backed, else the provisional
+        // warning: the parse plus the previous compiler edges answered, and no
+        // completeness may be claimed until the pass lands.
+        func (h *Handler) awaitCompiler(ctx context.Context, budget time.Duration) string {
+        	if h.Grove == nil || len(h.Grove.NativePending()) == 0 {
+        		return ""
+        	}
+        	if h.Grove.WaitNative(ctx, budget) {
+        		return ""
+        	}
+        	pending := h.Grove.NativePending()
+        	if len(pending) == 0 {
+        		return ""
+        	}
+        	shown := pending
+        	if len(shown) > 3 {
+        		shown = shown[:3]
+        	}
+        	more := ""
+        	if len(pending) > len(shown) {
+        		more = fmt.Sprintf(" and %d more", len(pending)-len(shown))
+        	}
+        	return fmt.Sprintf("%sthe compiler pass for your latest edit is still running (%s%s); this answer uses the parse and the previous compiler edges. Completeness is not claimed: re-run in a few seconds for the compiler-backed answer",
+        		provisionalPrefix, strings.Join(shown, ", "), more)
+        }
+
+        // compilerWaitBudget is how long a graph tool waits for the background
+        // compiler pass before answering provisionally: PRISM_COMPILER_WAIT (a Go
+        // duration), default 2s (most single-file edits finish inside it).
+        func compilerWaitBudget() time.Duration {
+        	if v := os.Getenv("PRISM_COMPILER_WAIT"); v != "" {
+        		if d, err := time.ParseDuration(v); err == nil && d >= 0 {
+        			return d
+        		}
+        	}
+        	return 2 * time.Second
+        }'''
+        assert old in s; s=s.replace(old,new,1)
+        old='''func attachStaleWarning(out any, note string) any {
+        	if note == "" {
+        		return out
+        	}
+        	if m, ok := out.(map[string]any); ok && m != nil {
+        		m["staleWarning"] = note
+        	}
+        	return out
+        }'''
+        new='''func attachStaleWarning(out any, note string) any {
+        	if note == "" {
+        		return out
+        	}
+        	if m, ok := out.(map[string]any); ok && m != nil {
+        		m["staleWarning"] = note
+        		if strings.HasPrefix(note, provisionalPrefix) {
+        			// A family closed over the parse is not a compiler-backed
+        			// closure: never let it read as one.
+        			if _, has := m["completeness"]; has {
+        				m["completeness"] = "provisional"
+        			}
+        			if _, has := m["familyCompleteness"]; has {
+        				m["familyCompleteness"] = "provisional"
+        			}
+        			if _, has := m["safeToClaimComplete"]; has {
+        				m["safeToClaimComplete"] = false
+        			}
+        		}
+        	}
+        	return out
+        }'''
+        assert old in s; s=s.replace(old,new,1)
+        for imp in ['"fmt"','"os"','"strings"','"time"']:
+            if imp not in s.split(")")[0]:
+                s=s.replace('import (\n','import (\n\t'+imp+'\n',1)
+        open(p,"w").write(s)
+
+        p="internal/mcp/verify.go"; s=open(p).read()
+        old='''	if indexed, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
+        		staleNote = "index refresh failed (" + ierr.Error() +
+        			"); results computed against a possibly stale index"
+        	} else {
+        		refreshErrors = indexed.Errors
+        	}'''
+        new='''	if indexed, ierr := h.Grove.Index(ctx, h.Root); ierr != nil {
+        		staleNote = "index refresh failed (" + ierr.Error() +
+        			"); results computed against a possibly stale index"
+        	} else {
+        		refreshErrors = indexed.Errors
+        		// The gate waits for the background compiler pass: a verdict is
+        		// final, so it is worth seconds to make it compiler-backed.
+        		staleNote = h.awaitCompiler(ctx, 5*time.Minute)
+        	}'''
+        assert old in s; s=s.replace(old,new,1)
+        if '"time"' not in s.split(")")[0]:
+            s=s.replace('import (\n','import (\n\t"time"\n',1)
+        open(p,"w").write(s)
+        print("ok")
+        EOF
+        gofmt -w internal/mcp/graphcache.go internal/mcp/verify.go; S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; GOWORK=$S/ws/go.work go build ./... 2>&1 | head -8 && GOWORK=$S/ws/go.work go vet ./internal/mcp/ && echo VET-OK; grep -n "staleNote" internal/mcp/verify.go | head -8
+      at: 2026-10-12T02:43:09.458042Z
+      classified: lint
+    - cmd: |-
+        cat > internal/mcp/provisional_test.go <<'EOF'
+        package mcp
+
+        import (
+        	"os"
+        	"os/exec"
+        	"path/filepath"
+        	"strings"
+        	"testing"
+        	"time"
+        )
+
+        // An edit is indexed from the parse first and grove runs the compiler pass
+        // in the background (grove Config.DeferNative). A graph answer computed
+        // before that pass lands says so and claims no completeness; once it lands
+        // the same question is compiler-backed again.
+        func TestImpactAfterEditIsProvisionalUntilTheCompilerPassLands(t *testing.T) {
+        	if _, err := exec.LookPath("javac"); err != nil {
+        		t.Skip("no javac on PATH")
+        	}
+        	srv := compactFixture(t, map[string]string{
+        		"p/Adapter.java": "package p;\n\npublic abstract class Adapter {\n  public abstract void write(Object v);\n}\n",
+        		"p/Plain.java":   "package p;\n\npublic class Plain extends Adapter {\n  @Override\n  public void write(Object v) {}\n}\n",
+        	})
+        	first := callCompact(t, srv, "change_impact", map[string]any{"name": "Adapter.write"})
+        	if strings.Contains(first, "PROVISIONAL") {
+        		t.Fatalf("a cold index is compiler-backed:\n%s", first)
+        	}
+
+        	t.Setenv("PRISM_COMPILER_WAIT", "0s")
+        	root := srv.handler.Root
+        	if err := os.WriteFile(filepath.Join(root, "p", "Registry.java"), []byte(
+        		"package p;\n\npublic class Registry {\n  public static final Adapter ANON =\n      new Adapter() {\n        @Override\n        public void write(Object v) {}\n      };\n}\n"), 0o644); err != nil {
+        		t.Fatal(err)
+        	}
+        	during := callCompact(t, srv, "change_impact", map[string]any{"name": "Adapter.write"})
+        	if len(srv.handler.Grove.NativePending()) > 0 || strings.Contains(during, "PROVISIONAL") {
+        		// The pass may already have finished on a fast machine; when it has
+        		// not, the answer must say so and must not claim completeness.
+        		if strings.Contains(during, "PROVISIONAL") {
+        			if !strings.Contains(during, "completeness: provisional") || strings.Contains(during, "safeToClaimComplete: true") {
+        				t.Fatalf("provisional answer still claims completeness:\n%s", during)
+        			}
+        		}
+        	}
+
+        	t.Setenv("PRISM_COMPILER_WAIT", "2m")
+        	if !srv.handler.Grove.WaitNative(t.Context(), 2*time.Minute) {
+        		t.Fatalf("compiler pass did not drain: %v", srv.handler.Grove.NativePending())
+        	}
+        	after := callCompact(t, srv, "change_impact", map[string]any{"name": "Adapter.write"})
+        	if strings.Contains(after, "PROVISIONAL") || !strings.Contains(after, "p/Registry.java") {
+        		t.Fatalf("after the compiler pass the answer must be compiler-backed and include the new override:\n%s", after)
+        	}
+        }
+
+        // The mark itself: completeness fields are downgraded only for a
+        // provisional note, and only where the answer has them.
+        func TestAttachStaleWarningDowngradesOnlyProvisional(t *testing.T) {
+        	m := map[string]any{"completeness": "closed", "familyCompleteness": "closed", "safeToClaimComplete": true}
+        	attachStaleWarning(m, provisionalPrefix+"pass running")
+        	if m["completeness"] != "provisional" || m["familyCompleteness"] != "provisional" || m["safeToClaimComplete"] != false {
+        		t.Fatalf("provisional note did not downgrade: %v", m)
+        	}
+        	n := map[string]any{"completeness": "closed", "safeToClaimComplete": true}
+        	attachStaleWarning(n, "index refresh failed (x)")
+        	if n["completeness"] != "closed" || n["safeToClaimComplete"] != true {
+        		t.Fatalf("a stale note must not rewrite completeness fields: %v", n)
+        	}
+        	o := map[string]any{"symbols": []any{}}
+        	attachStaleWarning(o, provisionalPrefix+"pass running")
+        	if _, has := o["completeness"]; has {
+        		t.Fatalf("no completeness field may be invented: %v", o)
+        	}
+        }
+        EOF
+        grep -n "handler \*Handler\|type Server struct" -A4 internal/mcp/server.go | head -8
+      at: 2026-10-12T02:43:28.946301Z
+      classified: other
+    - cmd: |-
+        python3 - <<'EOF'
+        p="internal/mcp/provisional_test.go"; s=open(p).read()
+        old='''	if len(srv.handler.Grove.NativePending()) > 0 || strings.Contains(during, "PROVISIONAL") {
+        		// The pass may already have finished on a fast machine; when it has
+        		// not, the answer must say so and must not claim completeness.
+        		if strings.Contains(during, "PROVISIONAL") {
+        			if !strings.Contains(during, "completeness: provisional") || strings.Contains(during, "safeToClaimComplete: true") {
+        				t.Fatalf("provisional answer still claims completeness:\\n%s", during)
+        			}
+        		}
+        	}'''
+        new='''	// The pass may already have finished on a fast machine; when it has
+        	// not, the answer must say so and must not claim completeness.
+        	if strings.Contains(during, "PROVISIONAL") &&
+        		(!strings.Contains(during, "completeness: provisional") || strings.Contains(during, "safeToClaimComplete: true")) {
+        		t.Fatalf("provisional answer still claims completeness:\\n%s", during)
+        	}
+        	t.Logf("answer during the compiler pass was provisional: %v", strings.Contains(during, "PROVISIONAL"))'''
+        assert old in s; s=s.replace(old,new,1); open(p,"w").write(s)
+        EOF
+        S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; GOWORK=$S/ws/go.work go test ./internal/mcp/ -run 'TestImpactAfterEditIsProvisional|TestAttachStaleWarning' -v 2>&1 | grep -E "^---|provisional:|_test.go:[0-9]+:|^ok|FAIL" | head -12
+      at: 2026-10-12T02:43:42.058566Z
+      classified: test
+    - cmd: S=/private/tmp/claude-501/-Users-tapabratapal-Projects-provasign-prism/1d98ffa0-a6f9-4e00-a1df-8929a0eb1923/scratchpad; cd /Users/tapabratapal/Projects/provasign/prism && GOWORK=$S/ws/go.work go test ./... 2>&1 | grep -E "^--- FAIL|^FAIL|_test.go:[0-9]+:" | head -20; echo SUITE-DONE
+      at: 2026-10-12T02:44:20.086158Z
+      classified: test
+    - cmd: |-
+        cd /Users/tapabratapal/Projects/provasign/grove && git add internal/index/indexer.go internal/core/types.go internal/native/native.go pkg/grove/grove.go pkg/grove/defernative_test.go pkg/grove/go_interface_impact_test.go pkg/grove/splicecheck_test.go && git status --short | grep -v ".mcp.json\|.codex" ; git commit -q -F - <<'EOF'
+        resident engine: answer edits from the parse, run the compiler pass in the background
+
+        A resident engine ran the compiler pass (javac, go, tsc) synchronously on
+        every edit before answering: 1.7-4s on jackson-sized repos for the first
+        query after an edit. Topo's design (2026-10-12): parse-based answers at edit
+        time, compiler-backed correction in the background, and a provisional mark
+        until it lands.
+
+        - index.Options.DeferNative: an incremental run skips the changed
+          languages' analyzers (only those that completed a full pass before), so
+          their stored compiler edges are carried and re-pointed to the new symbols
+          (the existing carry-forward path), and returns the changed files in
+          IndexResult.NativePending. Cold and forced runs never defer.
+        - index.Options.ReextractFiles: extract named files again although their
+          bytes are unchanged; the deferred pass is an ordinary index run over them.
+        - scanTree: the indexer's walk, extracted unchanged into a read-only
+          function. Indexer.HasChanges uses it (same walk, stamp and prune rules,
+          no writes) so "is the index fresh?" never needs the index lock.
+        - Engine: pending set + one background loop draining it under indexMu; the
+          loop's exit check and the start check share pendMu, so a file added while
+          a pass runs is never stranded. Index answers "fresh" without the lock when
+          nothing changed while the pass runs; a real change waits for the pass
+          (never cancels it: a pass stopped between its symbol and edge writes would
+          leave the store out of step). NativePending / WaitNative for callers.
+          Default on for resident engines, off for OneShot; GROVE_DEFER_NATIVE=0 or
+          Config.DeferNative turns it off.
+        - A background pass leaves the previous run's splice note for the next
+          caller-visible result.
+
+        TestDeferredCompilerPassConvergesToColdIndex: an edit adding an override
+        inside an anonymous class in a field initializer is reported pending, the
+        pass drains it, and symbols and edges equal a cold OneShot index. Existing
+        tests: the Go interface test waits for the pass; the splice-check test pins
+        synchronous mode (it sequences the deferred check against the next index).
+        go test ./... green; pkg/grove under -race x2 green.
+
+        Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+        Claude-Session: https://claude.ai/code/session_01KXa6Cv1ZUXcdMqXcJfQFhX
+        EOF
+        git push -q -u origin feat/deferred-native 2>&1 | grep -v "^remote:\|^$" | tail -1; git log --oneline -1
+      at: 2026-10-12T02:44:43.134533Z
+      classified: test
+notes:
+    - text: continuation of session 1d98ffa0-a6f9-4e00-a1df-8929a0eb1923 — events captured after its evidence was finalized
+      at: 2026-10-12T02:34:46.15628Z
+redactions: 0
