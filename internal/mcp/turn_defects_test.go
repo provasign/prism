@@ -132,3 +132,18 @@ func TestNativePassCompletedPlainJavaScript(t *testing.T) {
 		t.Fatal("missing typescript dependency must still be flagged")
 	}
 }
+
+func TestNativePassCompletedRust(t *testing.T) {
+	if !nativePassCompleted("rust", []string{"rust: rust-analyzer resolved 5936 call edge(s) and 673 type use(s) of compiler-declared symbols"}) {
+		t.Error("a rust-analyzer pass completes Rust")
+	}
+	for _, d := range []string{
+		"rust: resolved 0 native call edge(s)",
+		"rust: rust-analyzer pass skipped: rust-analyzer not found (PATH, ~/.cargo/bin, editor extensions)",
+		"rust: rust-analyzer scip failed: exit status 1",
+	} {
+		if nativePassCompleted("rust", []string{d}) {
+			t.Errorf("%q does not complete Rust", d)
+		}
+	}
+}

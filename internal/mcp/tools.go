@@ -3458,7 +3458,7 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 
 // compilerBackedImpactLangs have a type-checked native pass in grove.
 var compilerBackedImpactLangs = map[string]bool{
-	"go": true, "java": true, "typescript": true, "tsx": true, "javascript": true,
+	"go": true, "java": true, "typescript": true, "tsx": true, "javascript": true, "rust": true,
 }
 
 // applyCompilerBackedCompleteness states plainly that a closed impact result
@@ -3548,7 +3548,7 @@ func (h *Handler) addDegradedNote(ctx context.Context, out map[string]any, r *gr
 	}
 }
 
-var nativePassChecked = map[string]bool{"go": true, "java": true, "typescript": true}
+var nativePassChecked = map[string]bool{"go": true, "java": true, "typescript": true, "rust": true}
 
 func nativePassCompleted(lang string, diagnostics []string) bool {
 	for _, diagnostic := range diagnostics {
@@ -3559,6 +3559,12 @@ func nativePassCompleted(lang string, diagnostics []string) bool {
 			}
 		case "java":
 			if strings.HasPrefix(diagnostic, "java: javac attributed ") {
+				return true
+			}
+		case "rust":
+			// rust-analyzer's call edges (grove v0.63.8+). "rust: resolved N
+			// native call edge(s)" prints without it and proves nothing.
+			if strings.HasPrefix(diagnostic, "rust: rust-analyzer resolved ") {
 				return true
 			}
 		case "typescript":
