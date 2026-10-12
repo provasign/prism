@@ -3447,7 +3447,10 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 	if hint := h.widerAnchorHint(ctx, r); hint != nil {
 		out["widerAnchor"] = hint
 	}
-	if tags := h.overloadCallerTags(ctx, r); len(tags) > 0 {
+	if tags, lines := h.overloadCallerTags(ctx, r); len(tags) > 0 {
+		if lines != nil {
+			out["callSitesByOverload"] = lines.render()
+		}
 		if callers, ok := out["callers"].([]map[string]any); ok {
 			for _, c := range callers {
 				file, _ := c["filePath"].(string)
