@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	groveeng "github.com/provasign/grove/pkg/grove"
 	"os"
@@ -353,17 +354,38 @@ func (c *Client) Index(ctx context.Context, dir string) (*IndexResult, error) {
 		return nil, err
 	}
 	return &IndexResult{
-		Root:         res.Root,
-		FilesSeen:    res.FilesSeen,
-		FilesUpdated: res.FilesUpdated,
-		FilesSkipped: res.FilesSkipped,
-		FilesPruned:  res.FilesPruned,
-		SymbolCount:  res.SymbolCount,
-		EdgeCount:    res.EdgeCount,
-		Errors:       append([]string(nil), res.Errors...),
-		Native:       append([]string(nil), res.Native...),
-		Readiness:    Readiness(res.Root, res.Native),
+		Root:          res.Root,
+		FilesSeen:     res.FilesSeen,
+		FilesUpdated:  res.FilesUpdated,
+		FilesSkipped:  res.FilesSkipped,
+		FilesPruned:   res.FilesPruned,
+		SymbolCount:   res.SymbolCount,
+		EdgeCount:     res.EdgeCount,
+		Errors:        append([]string(nil), res.Errors...),
+		Native:        append([]string(nil), res.Native...),
+		Readiness:     Readiness(res.Root, res.Native),
+		NativePending: append([]string(nil), res.NativePending...),
 	}, nil
+}
+
+// NativePending lists the changed files whose compiler pass is still running
+// in the background (nil without an engine or when nothing is pending).
+func (c *Client) NativePending() []string {
+	e := c.engine()
+	if e == nil {
+		return nil
+	}
+	return e.NativePending()
+}
+
+// WaitNative waits up to d for the background compiler pass; it reports
+// whether nothing is pending when it returns.
+func (c *Client) WaitNative(ctx context.Context, d time.Duration) bool {
+	e := c.engine()
+	if e == nil {
+		return true
+	}
+	return e.WaitNative(ctx, d)
 }
 
 // SearchSymbols returns symbols matching query (substring).

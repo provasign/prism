@@ -28,6 +28,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/provasign/prism/internal/compression"
 	"github.com/provasign/prism/internal/ranking"
@@ -57,7 +60,51 @@ func (h *Handler) refreshIndexBestEffort(ctx context.Context) string {
 	if _, err := h.Grove.Index(ctx, h.Root); err != nil {
 		return "index refresh failed (" + err.Error() + "); this result was computed against a possibly stale index"
 	}
-	return ""
+	return h.awaitCompiler(ctx, compilerWaitBudget())
+}
+
+// provisionalPrefix starts the warning of an answer computed while the
+// background compiler pass for an edit was still running.
+const provisionalPrefix = "PROVISIONAL: "
+
+// awaitCompiler waits up to budget for grove's background compiler pass
+// (an edit is indexed from the parse first, see grove Config.DeferNative).
+// It returns "" when the answer is compiler-backed, else the provisional
+// warning: the parse plus the previous compiler edges answered, and no
+// completeness may be claimed until the pass lands.
+func (h *Handler) awaitCompiler(ctx context.Context, budget time.Duration) string {
+	if h.Grove == nil || len(h.Grove.NativePending()) == 0 {
+		return ""
+	}
+	if h.Grove.WaitNative(ctx, budget) {
+		return ""
+	}
+	pending := h.Grove.NativePending()
+	if len(pending) == 0 {
+		return ""
+	}
+	shown := pending
+	if len(shown) > 3 {
+		shown = shown[:3]
+	}
+	more := ""
+	if len(pending) > len(shown) {
+		more = fmt.Sprintf(" and %d more", len(pending)-len(shown))
+	}
+	return fmt.Sprintf("%sthe compiler pass for your latest edit is still running (%s%s); this answer uses the parse and the previous compiler edges. Completeness is not claimed: re-run in a few seconds for the compiler-backed answer",
+		provisionalPrefix, strings.Join(shown, ", "), more)
+}
+
+// compilerWaitBudget is how long a graph tool waits for the background
+// compiler pass before answering provisionally: PRISM_COMPILER_WAIT (a Go
+// duration), default 2s (most single-file edits finish inside it).
+func compilerWaitBudget() time.Duration {
+	if v := os.Getenv("PRISM_COMPILER_WAIT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d >= 0 {
+			return d
+		}
+	}
+	return 2 * time.Second
 }
 
 // freshened runs an index-backed READ tool against a delta-refreshed index.
@@ -95,6 +142,19 @@ func attachStaleWarning(out any, note string) any {
 	}
 	if m, ok := out.(map[string]any); ok && m != nil {
 		m["staleWarning"] = note
+		if strings.HasPrefix(note, provisionalPrefix) {
+			// A family closed over the parse is not a compiler-backed
+			// closure: never let it read as one.
+			if _, has := m["completeness"]; has {
+				m["completeness"] = "provisional"
+			}
+			if _, has := m["familyCompleteness"]; has {
+				m["familyCompleteness"] = "provisional"
+			}
+			if _, has := m["safeToClaimComplete"]; has {
+				m["safeToClaimComplete"] = false
+			}
+		}
 	}
 	return out
 }

@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/provasign/prism/internal/grove"
 	"github.com/provasign/prism/internal/textsearch"
@@ -254,6 +255,9 @@ func (h *Handler) toolVerify(ctx context.Context, args map[string]any) (any, err
 			"); results computed against a possibly stale index"
 	} else {
 		refreshErrors = indexed.Errors
+		// The gate waits for the background compiler pass: a verdict is
+		// final, so it is worth seconds to make it compiler-backed.
+		staleNote = h.awaitCompiler(ctx, 5*time.Minute)
 	}
 
 	changed, err := gitChangedRanges(h.Root, base)

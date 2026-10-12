@@ -77,6 +77,9 @@ type IndexResult struct {
 	// Readiness lists languages whose compiler-backed analysis did not run
 	// or complete, each with the command that fixes it.
 	Readiness []ReadinessIssue `json:"readiness,omitempty"`
+	// NativePending lists changed files whose compiler pass is still running
+	// in the background (grove Config.DeferNative).
+	NativePending []string `json:"nativePending,omitempty"`
 }
 
 // ImpactNode is one entry returned by Grove's /impact endpoint.
