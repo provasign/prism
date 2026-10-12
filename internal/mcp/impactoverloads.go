@@ -272,3 +272,68 @@ func positionLess(a, b string) bool {
 func overloadCallerKey(file string, line int, qn string) string {
 	return file + "\x00" + strconv.Itoa(line) + "\x00" + qn
 }
+
+// callerCallPositions gives each caller the positions of its calls into the
+// change set: the compiler's (line:col of the called name, javac / go/types
+// / tsc / rust-analyzer) when it supplied them, else the parser's call sites
+// that name a declaration with a matching arity, marked byName. A rename's
+// edit list then names tokens, not lines, and says which it can trust.
+func callerCallPositions(r *grove.ChangeImpactResult) map[string]callerPositions {
+	if r == nil || len(r.Callers) == 0 {
+		return nil
+	}
+	names := map[string]map[int]bool{} // callable name -> arities (-1: unknown)
+	for _, group := range [][]grove.SymbolRecord{r.Declarations, r.Family} {
+		for _, d := range group {
+			if d.Kind != "method" && d.Kind != "function" && d.Kind != "constructor" {
+				continue
+			}
+			if names[d.Name] == nil {
+				names[d.Name] = map[int]bool{}
+			}
+			if params, ok := signatureParamTypes(d.Signature, d.Language); ok {
+				names[d.Name][len(params)] = true
+			} else {
+				names[d.Name][-1] = true
+			}
+		}
+	}
+	out := map[string]callerPositions{}
+	for _, c := range r.Callers {
+		k := overloadCallerKey(c.FilePath, c.Span.Start, displayQN(c))
+		if ps := r.CallerLines[c.ID]; len(ps) > 0 {
+			out[k] = callerPositions{positions: ps}
+			continue
+		}
+		var ps []string
+		seen := map[string]bool{}
+		for _, cs := range c.CallSites {
+			callee := cs.Callee
+			if i := strings.LastIndexByte(callee, '.'); i >= 0 {
+				callee = callee[i+1:]
+			}
+			arities := names[callee]
+			if arities == nil || cs.Line <= 0 || !(arities[-1] || arities[cs.Argc] || cs.Argc == 0) {
+				continue
+			}
+			pos := strconv.Itoa(cs.Line)
+			if cs.Col > 0 {
+				pos += ":" + strconv.Itoa(cs.Col)
+			}
+			if !seen[pos] {
+				seen[pos] = true
+				ps = append(ps, pos)
+			}
+		}
+		if len(ps) > 0 {
+			sort.Slice(ps, func(a, b int) bool { return positionLess(ps[a], ps[b]) })
+			out[k] = callerPositions{positions: ps, byName: true}
+		}
+	}
+	return out
+}
+
+type callerPositions struct {
+	positions []string
+	byName    bool
+}
