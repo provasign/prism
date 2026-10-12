@@ -3206,6 +3206,16 @@ func (h *Handler) toolChangeImpact(ctx context.Context, args map[string]any) (an
 			// interface declares.
 			if owners := h.localContractOwners(ctx, query); len(owners) > 0 {
 				err = localContractError(query, owners, err)
+			} else if families, ok := h.partitionLocalFamilies(ctx, query); ok {
+				// Nominal language: the graph already knows the families.
+				// One family is the answer; several are listed, never guessed.
+				if len(families) == 1 && families[0].result != nil {
+					r, err = families[0].result, nil
+					familyPickNote = fmt.Sprintf("the name matched %d declarations; they are one override family rooted at %s, so this is its change set",
+						families[0].members, displayQN(families[0].root))
+				} else {
+					err = familiesAmbiguityError(query, families)
+				}
 			} else if inferred, note, inferErr := h.inferExternalMethodImpact(ctx, query, signature); inferErr == nil {
 				r, err, inferenceNote = inferred, nil, note
 			}
