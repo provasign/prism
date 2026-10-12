@@ -825,7 +825,7 @@ func convertSymbols(in []groveeng.Symbol) []SymbolRecord {
 func convertSymbol(s groveeng.Symbol) SymbolRecord {
 	calls := make([]CallSite, 0, len(s.CallSites))
 	for _, cs := range s.CallSites {
-		calls = append(calls, CallSite{Callee: cs.Callee, Line: cs.Line})
+		calls = append(calls, CallSite{Callee: cs.Callee, Line: cs.Line, Argc: cs.Argc})
 	}
 	return SymbolRecord{
 		ID:             s.ID,

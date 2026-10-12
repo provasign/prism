@@ -36,6 +36,7 @@ type SpanInfo struct {
 type CallSite struct {
 	Callee string `json:"callee"`
 	Line   int    `json:"line"`
+	Argc   int    `json:"argc,omitempty"` // argument count; 0 = none or unknown
 }
 
 // Edge mirrors grove/internal/core.Edge.
